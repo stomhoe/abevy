@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://b731xanu82oqk"
+path="res://.godot/imported/10 A Hot Meal.mp3-e07f5a1a96d08f427a49536297464b00.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/10 A Hot Meal.mp3"
+dest_files=["res://.godot/imported/10 A Hot Meal.mp3-e07f5a1a96d08f427a49536297464b00.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

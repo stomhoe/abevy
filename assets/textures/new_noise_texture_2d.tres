@@ -1,0 +1,7 @@
+[gd_resource type="NoiseTexture2D" load_steps=2 format=3 uid="uid://c3q4o53p3pt5b"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ocab2"]
+offset = Vector3(0, -81.63, 0)
+
+[resource]
+noise = SubResource("FastNoiseLite_ocab2")

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bg410w10cyd2l"
+path="res://.godot/imported/08 Hoping For Real Betterness.mp3-5a876106f576524e5cab1976d6c267d0.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/ageofmythology/08 Hoping For Real Betterness.mp3"
+dest_files=["res://.godot/imported/08 Hoping For Real Betterness.mp3-5a876106f576524e5cab1976d6c267d0.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bko3x7e411lsl"
+path="res://.godot/imported/04 Felonious Junk.mp3-53938199efc550a943916989d7e5d506.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/04 Felonious Junk.mp3"
+dest_files=["res://.godot/imported/04 Felonious Junk.mp3-53938199efc550a943916989d7e5d506.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,23 @@
+/src/aother/
+/target/
+**/*.rs.bk
+
+# Cargo package files
+Cargo.lock
+
+# IDEs and editors
+/.idea/
+/.vscode/
+/*.swp
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Byebug history
+.byebug_history
+
+# Other
+*.log

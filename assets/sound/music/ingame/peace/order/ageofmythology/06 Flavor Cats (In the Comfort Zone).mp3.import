@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dxvd0sav5bjvn"
+path="res://.godot/imported/06 Flavor Cats (In the Comfort Zone).mp3-0d7e84a705f757b7b31f22788404415d.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/ageofmythology/06 Flavor Cats (In the Comfort Zone).mp3"
+dest_files=["res://.godot/imported/06 Flavor Cats (In the Comfort Zone).mp3-0d7e84a705f757b7b31f22788404415d.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

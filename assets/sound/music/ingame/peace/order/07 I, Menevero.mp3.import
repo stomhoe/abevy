@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://oj8h5ecbsjwo"
+path="res://.godot/imported/07 I, Menevero.mp3-84e79a3a78cac2cbcd2e584fdaf0b5e3.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/07 I, Menevero.mp3"
+dest_files=["res://.godot/imported/07 I, Menevero.mp3-84e79a3a78cac2cbcd2e584fdaf0b5e3.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://yo04rl7g478s"
+path="res://.godot/imported/03 Get Off My Band.mp3-dae9370deb90f53fba8cc8f5aac02320.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/03 Get Off My Band.mp3"
+dest_files=["res://.godot/imported/03 Get Off My Band.mp3-dae9370deb90f53fba8cc8f5aac02320.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

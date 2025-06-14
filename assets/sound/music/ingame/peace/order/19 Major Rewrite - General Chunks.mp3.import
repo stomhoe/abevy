@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://esgf7r3sbxjf"
+path="res://.godot/imported/19 Major Rewrite - General Chunks.mp3-6c0e090211c429307cf0045a84fcd32c.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/19 Major Rewrite - General Chunks.mp3"
+dest_files=["res://.godot/imported/19 Major Rewrite - General Chunks.mp3-6c0e090211c429307cf0045a84fcd32c.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

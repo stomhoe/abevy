@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cfu8do553p7d8"
+path="res://.godot/imported/10. Frostmourne (Alliance).mp3-01b88db2755ae2d23cefb491cbe119e0.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/10. Frostmourne (Alliance).mp3"
+dest_files=["res://.godot/imported/10. Frostmourne (Alliance).mp3-01b88db2755ae2d23cefb491cbe119e0.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

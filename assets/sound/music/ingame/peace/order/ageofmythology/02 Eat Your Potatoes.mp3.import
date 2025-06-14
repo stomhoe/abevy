@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://b7v8nnflpdrlm"
+path="res://.godot/imported/02 Eat Your Potatoes.mp3-de4fca50cac194020070d4ed84e59959.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/peace/order/ageofmythology/02 Eat Your Potatoes.mp3"
+dest_files=["res://.godot/imported/02 Eat Your Potatoes.mp3-de4fca50cac194020070d4ed84e59959.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bjp7gwnf4kwn8"
+path="res://.godot/imported/11 Bubble Chum.mp3-669412033cb709323db60cd1d360d3e6.mp3str"
+
+[deps]
+
+source_file="res://assets/sound/music/ingame/combat/order/11 Bubble Chum.mp3"
+dest_files=["res://.godot/imported/11 Bubble Chum.mp3-669412033cb709323db60cd1d360d3e6.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
