@@ -1,11 +1,17 @@
 use bevy::prelude::*;
+use bevy_ui_text_input::*;
 
 use crate::ui::ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED};
 
 
-#[derive(Component)]
+#[derive(Component, Default)]
 #[require(ButtonBackgroundStyle)]//meter más subestilos en el futuro
 pub struct ButtonStyle {}
+
+
+#[derive(Component)]
+#[require(Node, BackgroundColor(BUTTON_BG_NORMAL), TextInputNode, TextInputPrompt, TextInputContents,)]//Outline
+pub struct LineEdit {}
 
 #[derive(Component)]
 pub struct ButtonBackgroundStyle {
@@ -48,3 +54,5 @@ impl Default for ButtonBackgroundStyle {
         }
     }
 }
+
+

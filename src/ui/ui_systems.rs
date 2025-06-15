@@ -1,21 +1,10 @@
 use std::default;
 
 use bevy::{color::palettes::css::{BLACK, DARK_GRAY, GREY, LIGHT_GRAY, WHITE}, input_focus::InputFocus, prelude::*};
-use bevy_ui_text_input::{TextInputNode, TextSubmitEvent};
-use crate::ui::{ui_components::ButtonBackgroundStyle, ui_resources::InputOutputMap, ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED}};
+use crate::ui::{ui_components::ButtonBackgroundStyle, ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED}};
 
-pub fn cleanup_line_edits_from_map(
-    mut line_edit_map: ResMut<InputOutputMap>,
-    mut removed_inputs: RemovedComponents<TextInputNode>,
-) {
-    removed_inputs.read().for_each(|re| { line_edit_map.remove(&re); });
-}
-
-
-pub fn update_line_edits(
+pub fn update_line_edits_text(
     input_focus: Res<InputFocus>,
-    mut events: EventReader<TextSubmitEvent>,
-    map: Res<InputOutputMap>,
     mut text_query: Query<&mut Text>,
     mut outline_query: Query<(Entity, &mut Outline)>,
 ) {
@@ -27,11 +16,6 @@ pub fn update_line_edits(
                 outline.color = GREY.into();
             }
         }
-    }
-    
-    for event in events.read() {
-        let out = map[&event.entity];
-        text_query.get_mut(out).unwrap().0 = event.text.clone();
     }
 }
 

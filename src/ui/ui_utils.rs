@@ -1,28 +1,30 @@
-use bevy::{color::palettes::tailwind::SLATE_50, prelude::*};
+use bevy::{color::palettes::tailwind::SLATE_50, prelude::*, text::cosmic_text::ttf_parser::Style};
+use bevy_ui_text_input::*;
 
-use crate::ui::ui_components::ButtonBackgroundStyle;
+use crate::ui::{ui_components::ButtonBackgroundStyle, ui_styles::BUTTON_BG_NORMAL};
 
-pub fn text_button<T: Into<String>>(text: T, node: Option<Node>, style: Option<ButtonBackgroundStyle>,) -> impl Bundle 
+//TODO LA FUENTE
+pub fn text_button<T: Into<String>>(base: impl Bundle, text: T, other_children: impl Bundle, style: Option<ButtonBackgroundStyle>,) -> impl Bundle 
 {
-    button((Text::new(text), TextColor(SLATE_50.into())), node, style)
+    button(base, (Text::new(text), other_children), style)
 }
 
 pub fn button(
+    base: impl Bundle,
     children: impl Bundle,
-    node: Option<Node>,
     style: Option<ButtonBackgroundStyle>,
 ) -> impl Bundle {
     (
+        base,
         Button,
         BackgroundColor(style.unwrap_or_default().normal()),
-        node.unwrap_or(Node {
-            padding: UiRect::all(Val::Px(5.)),
-            width: Val::Px(200.),
-            ..default()
-        }),
         children![children],
     )
 }
+
+
 pub const fn color_from_triplicate(value: f32) -> Color {
     Color::srgb(value, value, value)
 }
+
+

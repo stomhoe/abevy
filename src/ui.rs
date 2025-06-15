@@ -1,6 +1,7 @@
-use bevy::prelude::*;
+use bevy::{input_focus::InputFocus, prelude::*};
+use bevy_ui_text_input::TextSubmitEvent;
 
-use crate::ui::{ui_resources::InputOutputMap, ui_systems::*};
+use crate::ui::{ui_systems::*};
 
 // Module ui
 pub mod ui_components;
@@ -14,9 +15,10 @@ pub struct MyUiPlugin;
 impl Plugin for MyUiPlugin {
     fn build(&self, app: &mut App) {
         app
-            .init_resource::<InputOutputMap>()
-
-            .add_systems(Update, (cleanup_line_edits_from_map, update_line_edits, button_change_color_on_mouse_action))
+            .init_resource::<InputFocus>()
+            .add_event::<TextSubmitEvent>()
+            .add_plugins(bevy_ui_text_input::TextInputPlugin)
+            .add_systems(Update, (update_line_edits_text, button_change_color_on_mouse_action))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup))
             //.add_systems(Update, somesystem.runif(in_state(SomeStateType::Literal)))
         ;

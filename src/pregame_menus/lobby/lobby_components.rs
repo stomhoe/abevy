@@ -11,3 +11,4 @@ pub enum LobbyButton {
   CreateCharacter,
   Ready,
 }
+

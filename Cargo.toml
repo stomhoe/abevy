@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.16.1", features = ["dynamic_linking"] }
+bevy = { version = "0.16.1", features = ["dynamic_linking", "track_location"] }
 bevy_renet = "1.0"
+bevy_simple_scroll_view = "0.4.0"
 bevy_ui_text_input = "0.5.2"
 rand = "0.9.1"
-strum = "0.27.1"
-strum_macros = "0.27.1"
+#strum = "0.27.1"
+#strum_macros = "0.27.1"
 superstate = { git = "https://github.com/KurlykovDanila/Superstate.git" }
 
 #log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # Improve Runtime Performance (Optional) 

@@ -1,28 +1,47 @@
 use bevy::prelude::*;
 
-use bevy::text::cosmic_text::ttf_parser::Style;
 use bevy::{
-    color::palettes::css::{GREY, LIGHT_GOLDENROD_YELLOW},
-    input_focus::InputFocus,
-    platform::collections::HashMap,
-    prelude::*,
+    color::palettes::css::{LIGHT_GOLDENROD_YELLOW},
 };
-use bevy_ui_text_input::{
-    TextInputContents, TextInputMode, TextInputNode, TextInputPlugin, TextInputPrompt, TextSubmitEvent,
+use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt, TextSubmitEvent,
 };
 
 use crate::pregame_menus::main_menu::main_menu_styles::main_menu_button;
-use crate::pregame_menus::pregame_components::PreGameScoped;
-use crate::ui::ui_components::ButtonBackgroundStyle;
-use crate::ui::ui_resources::InputOutputMap;
+use crate::ui::ui_components::{LineEdit};
 use crate::{AppState};
 use crate::pregame_menus::main_menu::*;
 use crate::pregame_menus::main_menu::main_menu_components::*;
 
 
+pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    
+    let line_edit = (
+        Node {
+            width: Val::Px(250.),
+            height: Val::Px(30.),
+            ..default()
+        },
+        LineEdit{},
+        TextInputNode {
+            mode: TextInputMode::SingleLine,
+            max_chars: Some(36),
+            ..Default::default()
+        },
+        TextInputPrompt::new("Enter IP address"),
+        MainMenuLineEdit::Ip,
+        Outline {
+            color: LIGHT_GOLDENROD_YELLOW.into(),
+            width: Val::Px(2.),
+            offset: Val::Px(2.),
+        },
+        TextFont {
+            //font: asset_server.load("fonts/.ttf"),
+            font_size: 25.,
+            ..Default::default()
+        },
+    );
 
-pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut line_edit_map: ResMut<InputOutputMap>) {
-    commands.spawn((
+    let parent = commands.spawn((
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
@@ -36,52 +55,19 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut line_ed
             main_menu_button(MainMenuButton::QuickStart, "Quick start", None),
             main_menu_button(MainMenuButton::Host, "Host", None),
             main_menu_button(MainMenuButton::Join, "Join", None),
+            ]
+        )).id();
         
-        ],
-        PreGameScoped{}
-    ));
-    
-    let input_entity = commands
-    .spawn((
-        TextInputNode {
-            mode: TextInputMode::SingleLine,
-            ..Default::default()
-        },
-        TextFont {
-            font: asset_server.load("fonts/name_label/PixAntiqua.ttf"),
-            font_size: 25.,
-            ..Default::default()
-        },
-        TextInputPrompt::default(),
-        TextInputContents::default(),
-        Node {
-            width: Val::Px(250.),
-            height: Val::Px(30.),
-            ..default()
-        },
-        BackgroundColor(bevy::color::palettes::css::NAVY.into()),
-    ))
-    .id();
-
-    let output_entity = commands.spawn(
-
-        Text::default()
-    ).id();
-    
-    line_edit_map.insert(input_entity, output_entity);
-
+    commands.spawn(line_edit).insert(ChildOf(parent));
+        
 }
-
-
-
-
 
 pub fn menu_button_interaction(
     interaction_query: Query<
     (&Interaction, &MainMenuButton),
-    (Changed<Interaction>, With<Button>),
+    Changed<Interaction>,
     >,
-    mut app_exit_events: EventWriter<AppExit>,
+    //mut app_exit_events: EventWriter<AppExit>,
     mut pregame_state: ResMut<NextState<PreGameState>>,
     mut app_state: ResMut<NextState<AppState>>,
 ) {
@@ -97,32 +83,25 @@ pub fn menu_button_interaction(
                 MainMenuButton::Join => {
                     pregame_state.set(PreGameState::LobbyAsClient)
                 }
-                
-            }
+            } 
         }
     }
 }
 
-
-pub fn update(
-    input_focus: Res<InputFocus>,
+pub fn handle_line_edits_interaction(
     mut events: EventReader<TextSubmitEvent>,
-    map: Res<InputOutputMap>,
-    mut text_query: Query<&mut Text>,
-    mut outline_query: Query<(Entity, &mut Outline)>,
+    line_edit_query: Query<&MainMenuLineEdit>,
 ) {
-    if input_focus.is_changed() {
-        for (entity, mut outline) in outline_query.iter_mut() {
-            if input_focus.0.is_some_and(|active| active == entity) {
-                outline.color = Color::WHITE;
-            } else {
-                outline.color = GREY.into();
+    for event in events.read() {
+        let entity = event.entity;
+        if let Ok(line_edit_type) = line_edit_query.get(entity) {
+            match line_edit_type {
+                MainMenuLineEdit::Ip => {
+                    if event.text.len() > 15 {
+                        continue;
+                    }
+                }
             }
         }
-    }
-    
-    for event in events.read() {
-        let out = map[&event.entity];
-        text_query.get_mut(out).unwrap().0 = event.text.clone();
     }
 }
