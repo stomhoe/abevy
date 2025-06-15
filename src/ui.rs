@@ -17,7 +17,7 @@ impl Plugin for MyUiPlugin {
         app
             .init_resource::<InputFocus>()
             .add_event::<TextSubmitEvent>()
-            .add_plugins(bevy_ui_text_input::TextInputPlugin)
+            .add_plugins((bevy_ui_text_input::TextInputPlugin, bevy_simple_scroll_view::ScrollViewPlugin))
             .add_systems(Update, (update_line_edits_text, button_change_color_on_mouse_action))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup))
             //.add_systems(Update, somesystem.runif(in_state(SomeStateType::Literal)))

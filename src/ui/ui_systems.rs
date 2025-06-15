@@ -5,10 +5,10 @@ use crate::ui::{ui_components::ButtonBackgroundStyle, ui_styles::{BUTTON_BG_HOVE
 
 pub fn update_line_edits_text(
     input_focus: Res<InputFocus>,
-    mut text_query: Query<&mut Text>,
     mut outline_query: Query<(Entity, &mut Outline)>,
 ) {
     if input_focus.is_changed() {
+        println!("Input focus changed: {:?}", input_focus.0);
         for (entity, mut outline) in outline_query.iter_mut() {
             if input_focus.0.is_some_and(|active| active == entity) {
                 outline.color = Color::WHITE;
@@ -18,8 +18,6 @@ pub fn update_line_edits_text(
         }
     }
 }
-
-
 
 pub fn button_change_color_on_mouse_action(
     mut interaction_query: Query<

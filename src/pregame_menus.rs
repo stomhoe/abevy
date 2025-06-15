@@ -3,10 +3,12 @@ use bevy::prelude::*;
 use crate::pregame_menus::main_menu::MainMenuPlugin;
 
 
+mod create_character;
+mod lobby;
 mod main_menu;
 mod pregame_systems;
-mod lobby;
 mod pregame_components;
+
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[source(AppState = AppState::PreGame)]

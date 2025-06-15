@@ -10,7 +10,7 @@ pub struct ButtonStyle {}
 
 
 #[derive(Component)]
-#[require(Node, BackgroundColor(BUTTON_BG_NORMAL), TextInputNode, TextInputPrompt, TextInputContents,)]//Outline
+#[require(Node, BackgroundColor(BUTTON_BG_NORMAL), TextInputNode, TextInputPrompt, TextInputContents)]//Outline
 pub struct LineEdit {}
 
 #[derive(Component)]

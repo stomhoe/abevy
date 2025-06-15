@@ -17,6 +17,7 @@ impl Plugin for LobbyPlugin {
             //..add_systems(Update, somesystem)
             .add_systems(OnEnter(PreGameState::LobbyAsHost), (setup_for_host))
             .add_systems(OnEnter(PreGameState::LobbyAsClient), (setup_for_client))
+            .add_systems(Update, (lobby_button_interaction).run_if(in_state(PreGameState::LobbyAsHost)))
         ;
     }
 }

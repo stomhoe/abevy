@@ -1,12 +1,17 @@
 use bevy::{color::palettes::tailwind::SLATE_50, prelude::*, text::cosmic_text::ttf_parser::Style};
-use bevy_ui_text_input::*;
 
-use crate::ui::{ui_components::ButtonBackgroundStyle, ui_styles::BUTTON_BG_NORMAL};
+use crate::ui::{ui_components::ButtonBackgroundStyle};
 
 //TODO LA FUENTE
 pub fn text_button<T: Into<String>>(base: impl Bundle, text: T, other_children: impl Bundle, style: Option<ButtonBackgroundStyle>,) -> impl Bundle 
 {
-    button(base, (Text::new(text), other_children), style)
+
+    let implicit_children = (
+        TextLayout::new_with_justify(JustifyText::Center),
+        BackgroundColor(Color::srgb(0.99, 0.1, 0.1)),
+    );
+
+    button(base, (Text::new(text), other_children, implicit_children), style)
 }
 
 pub fn button(
@@ -17,6 +22,7 @@ pub fn button(
     (
         base,
         Button,
+        //BackgroundColor(Color::srgb(0.99, 0.1, 0.1)),
         BackgroundColor(style.unwrap_or_default().normal()),
         children![children],
     )

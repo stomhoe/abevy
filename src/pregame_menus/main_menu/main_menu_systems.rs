@@ -15,10 +15,30 @@ use crate::pregame_menus::main_menu::main_menu_components::*;
 
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     
+    let vbox = commands.spawn((
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(10.),
+            ..default()
+        },
+        StateScoped(PreGameState::MainMenu),
+
+        children![
+            main_menu_button(MainMenuButton::QuickStart, "Quick start", None),
+            main_menu_button(MainMenuButton::Host, "Host", None),
+            main_menu_button(MainMenuButton::Join, "Join", None),
+            ]
+        )).id();
+
+        
+
     let line_edit = (
         Node {
-            width: Val::Px(250.),
-            height: Val::Px(30.),
+            width: Val::Px(250.), height: Val::Px(30.),
             ..default()
         },
         LineEdit{},
@@ -35,30 +55,14 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             offset: Val::Px(2.),
         },
         TextFont {
-            //font: asset_server.load("fonts/.ttf"),
             font_size: 25.,
             ..Default::default()
         },
     );
 
-    let parent = commands.spawn((
-        Node {
-            width: Val::Percent(100.),
-            height: Val::Percent(100.),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(10.),
-            ..default()
-        },
-        children![
-            main_menu_button(MainMenuButton::QuickStart, "Quick start", None),
-            main_menu_button(MainMenuButton::Host, "Host", None),
-            main_menu_button(MainMenuButton::Join, "Join", None),
-            ]
-        )).id();
+    
         
-    commands.spawn(line_edit).insert(ChildOf(parent));
+    commands.spawn(line_edit).insert(ChildOf(vbox));
         
 }
 

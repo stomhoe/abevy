@@ -4,11 +4,23 @@ use crate::pregame_menus::PreGameState;
 
 
 #[derive(Component)]
-#[require(StateScoped::<PreGameState>)]
-pub enum LobbyButton {
+pub enum LobbyButtonId {
   Start,
   Leave,
   CreateCharacter,
+  LobbyJoinability,
   Ready,
 }
 
+
+#[derive(Component)]
+pub enum LobbyLineEdit {Chat, LobbyName}
+
+
+
+
+#[derive(Component)]
+pub enum LobbySlider {
+    ChatHistory,
+    Settings
+}
