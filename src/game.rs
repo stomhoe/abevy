@@ -43,6 +43,6 @@ pub struct Player {
 #[states(scoped_entities)]
 enum SimulationState {
     #[default]
-    Paused,
     Running,
+    Paused,
 }

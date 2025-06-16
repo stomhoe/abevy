@@ -16,8 +16,7 @@ mod pregame_components;
 pub enum PreGameState {
     #[default]
     MainMenu,
-    LobbyAsHost,
-    LobbyAsClient,
+    Lobby,
 }
 
 pub struct MenuPlugin;

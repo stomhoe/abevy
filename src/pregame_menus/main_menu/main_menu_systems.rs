@@ -8,13 +8,15 @@ use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt, TextSubm
 
 use crate::pregame_menus::main_menu::main_menu_styles::main_menu_button;
 use crate::ui::ui_components::{LineEdit};
-use crate::{AppState};
+use crate::{AppState, MpStatus};
 use crate::pregame_menus::main_menu::*;
 use crate::pregame_menus::main_menu::main_menu_components::*;
 
 
-pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut mp_status: ResMut<NextState<MpStatus>>) {
     
+    mp_status.set(MpStatus::Host);
+
     let vbox = commands.spawn((
         Node {
             width: Val::Percent(100.),
@@ -33,8 +35,6 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             main_menu_button(MainMenuButton::Join, "Join", None),
             ]
         )).id();
-
-        
 
     let line_edit = (
         Node {
@@ -74,6 +74,7 @@ pub fn menu_button_interaction(
     //mut app_exit_events: EventWriter<AppExit>,
     mut pregame_state: ResMut<NextState<PreGameState>>,
     mut app_state: ResMut<NextState<AppState>>,
+    mut mp_status: ResMut<NextState<MpStatus>>,
 ) {
     for (interaction, menu_button_action) in &interaction_query {
         if *interaction == Interaction::Pressed {
@@ -82,10 +83,12 @@ pub fn menu_button_interaction(
                     app_state.set(AppState::Game)
                 }
                 MainMenuButton::Host => {
-                    pregame_state.set(PreGameState::LobbyAsHost);
+                    pregame_state.set(PreGameState::Lobby);
+                    mp_status.set(MpStatus::Host);
                 }
                 MainMenuButton::Join => {
-                    pregame_state.set(PreGameState::LobbyAsClient)
+                    pregame_state.set(PreGameState::Lobby);
+                    mp_status.set(MpStatus::Client);
                 }
             } 
         }

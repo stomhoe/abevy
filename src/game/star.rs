@@ -1,15 +1,15 @@
 use bevy::prelude::*;
 use crate::AppState;
 use crate::game::SimulationState;
-use crate::game::star::components::*;
-use crate::game::star::events::*;
-use crate::game::star::resources::*;
-use crate::game::star::systems::*;
+use crate::game::star::star_components::*;
+use crate::game::star::star_events::*;
+use crate::game::star::star_resources::*;
+use crate::game::star::star_systems::*;
 
-mod systems;
-pub mod components;
-pub mod resources;
-pub mod events;
+mod star_systems;
+pub mod star_components;
+pub mod star_resources;
+pub mod star_events;
 
 const STAR_SPAWN_INTERVAL: f32 = 10.0;
 const NUMBER_OF_STARS: i32 = 100;

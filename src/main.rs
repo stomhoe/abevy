@@ -14,10 +14,20 @@ pub enum AppState {
     #[default]
     PreGame, Game, GameOver,
 }
+
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[states(scoped_entities)]
+pub enum MpStatus {
+    #[default]
+    Host, 
+    Client
+}
+
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins, GamePlugin, MenuPlugin, MyUiPlugin))
         .init_state::<AppState>()
+        .init_state::<MpStatus>()
         //.add_systems(Startup, first_state)
         .run()
     ;

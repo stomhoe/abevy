@@ -3,9 +3,9 @@ use bevy::audio::AudioPlayer;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use crate::game::Player;
-use crate::game::star::components::*;
-use crate::game::star::events::*;
-use crate::game::star::resources::*;
+use crate::game::star::star_components::*;
+use crate::game::star::star_events::*;
+use crate::game::star::star_resources::*;
 use crate::game::star::*;
 
 pub fn update_score(score: Res<Score>){

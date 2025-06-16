@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy = { version = "0.16.1", features = ["dynamic_linking", "track_location"] }
+bevy_ecs_tilemap = "0.16.0"
 bevy_renet = "1.0"
 bevy_simple_scroll_view = "0.4.0"
 bevy_ui_text_input = "0.5.2"
