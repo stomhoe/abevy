@@ -1,13 +1,12 @@
-use crate::{pregame_menus::{lobby::LobbyPlugin, pregame_systems::*}, AppState};
+use crate::{pregame_menus::{pregame_systems::*}, AppState};
 use bevy::prelude::*;
 use crate::pregame_menus::main_menu::MainMenuPlugin;
 
 
 mod create_character;
-mod lobby;
 mod main_menu;
 mod pregame_systems;
-mod pregame_components;
+//mod pregame_components;
 
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -16,7 +15,7 @@ mod pregame_components;
 pub enum PreGameState {
     #[default]
     MainMenu,
-    Lobby,
+    Settings
 }
 
 pub struct MenuPlugin;
@@ -26,7 +25,6 @@ impl Plugin for MenuPlugin {
             .init_state::<PreGameState>()
             .add_systems(Startup, setup)
             .add_plugins(MainMenuPlugin)
-            .add_plugins(LobbyPlugin)
         ;
     }
 }

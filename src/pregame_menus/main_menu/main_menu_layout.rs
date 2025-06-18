@@ -1,0 +1,71 @@
+use bevy::color::palettes::css::LIGHT_GOLDENROD_YELLOW;
+use bevy::prelude::*;
+use crate::pregame_menus::main_menu::main_menu_sys_comps::*;
+use crate::pregame_menus::PreGameState;
+use crate::ui::ui_components::*;
+use crate::ui::ui_utils::*;
+use crate::AppState;
+use bevy_ui_text_input::*;
+
+pub fn layout(mut commands: Commands){
+    let vbox = commands.spawn((
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(10.),
+            ..default()
+        },
+        StateScoped(PreGameState::MainMenu),
+        StateScoped(AppState::PreGame),
+
+        children![
+            main_menu_button(MainMenuButton::QuickStart, "Quick start", None),
+            main_menu_button(MainMenuButton::Host, "Host", None),
+            main_menu_button(MainMenuButton::Join, "Join", None),
+        ]
+        )).id();
+
+    let line_edit = (
+        Node {
+            width: Val::Px(250.), height: Val::Px(30.),
+            ..default()
+        },
+        LineEdit{},
+        TextInputNode {
+            mode: TextInputMode::SingleLine,
+            max_chars: Some(36),
+            ..Default::default()
+        },
+        TextInputPrompt::new("Enter IP address"),
+        MainMenuLineEdit::Ip,
+        Outline {
+            color: LIGHT_GOLDENROD_YELLOW.into(),
+            width: Val::Px(2.),
+            offset: Val::Px(2.),
+        },
+        TextFont {
+            font_size: 25.,
+            ..Default::default()
+        },
+    );
+        
+    commands.spawn(line_edit).insert(ChildOf(vbox));
+}
+
+//construir con ButtonBackgroundStyle::default() para usar el estilo por defecto
+pub fn main_menu_button<T: Into<String>> (
+    menu_button: MainMenuButton, text: T, style: Option<ButtonBackgroundStyle>) -> impl Bundle {
+
+    let base = (Node {
+            padding: UiRect::all(Val::Px(5.)),
+            width: Val::Px(200.),
+            ..default()
+        },);
+    (
+        menu_button,
+        text_button(base , text, (), style),
+    )
+}

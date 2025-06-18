@@ -1,0 +1,24 @@
+hacer estos noisemaps para todo el mundo:
+
+//para q no haya un overflow de recursos, poner mucho oceano y que sea dificil de cruzar wsin morirse de hambre, haría falta stockpilear mucha food (q puede pudrirse)
+
+oceanness (hacer macroscópico para delimitar areas donde poner diferentes continentes o islas) no tiene que ser smooth
+humidity
+temp_variation //añadido sobre el frio que da la coordenada .y al acercarse a los limites del mundo (similar a calc_border_closeness)
+
+corruption
+noiseespecial1
+noiseespecial2
+
+se pueden agregar todos los noises q hagan falta y desp priorizar la generacion de uno respecto a otro si los dos superan el threshold
+
+desp hacer un match q te lleva a un biome generator u otro dependiendo del valor de los noises especiales
+
+
+locales a cada biome generator:
+peninsuler
+beaches
+montañas
+
+
+para q no hayan dos biomas distintos en una misma isla o continente

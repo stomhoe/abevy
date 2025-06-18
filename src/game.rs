@@ -1,14 +1,17 @@
 use bevy::{
     prelude::*,
 };
+use crate::game::setup_menus::SetupMenusPlugin;
 use crate::AppState;
-use crate::game::enemy::EnemyPlugin;
-use crate::game::star::StarPlugin;
 use crate::game::game_systems::*;
 
-pub mod enemy;
-pub mod star;
+pub mod player;
+mod setup_menus;
 mod game_systems;
+mod tilemap;
+mod beings;
+mod things;
+mod server;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ConfinementSystemSet;
@@ -20,29 +23,39 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
 
         app
+            .add_plugins(SetupMenusPlugin)
+
             .configure_sets(Update, MovementSystemSet.before(ConfinementSystemSet).run_if(in_state(SimulationState::Running)))
-            .add_plugins((StarPlugin, EnemyPlugin))
-            .add_systems(OnEnter(AppState::Game),  (spawn_player, spawn_camera))
+            .add_systems(OnEnter(GamePhase::InGame),  (spawn_player,))
 
-            .add_systems(Update,( keyboard_input.in_set(MovementSystemSet), confine_player_to_window.in_set(ConfinementSystemSet)))
-            .add_systems(Update, toggle_simulation.run_if(in_state(AppState::Game)))
+            .add_systems(Update, toggle_simulation.run_if(in_state(GamePhase::InGame)))
+
             .init_state::<SimulationState>()
-
+            .init_state::<GamePhase>()
+            .init_state::<GameMp>()
+            .init_state::<SelfMpKind>()
         ;
     }
 }
 
-
-
-#[derive(Component, Default)]
-#[require(Sprite, StateScoped::<AppState>)]
-pub struct Player {
-}
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[source(AppState = AppState::Game)]
+#[source(AppState = AppState::GameDomain)]
 #[states(scoped_entities)]
-enum SimulationState {
-    #[default]
-    Running,
-    Paused,
-}
+pub enum GamePhase {#[default]Setup, InGame,}
+
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[source(GamePhase = GamePhase::InGame)]
+#[states(scoped_entities)]
+enum SimulationState {#[default]Running, Paused,}
+
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[source(AppState = AppState::GameDomain)]
+#[states(scoped_entities)]
+pub enum GameMp {#[default]Singleplayer, Multiplayer,}
+
+
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[source(GameMp = GameMp::Multiplayer)]
+#[states(scoped_entities)]
+pub enum SelfMpKind {#[default]Host, Client,}
+

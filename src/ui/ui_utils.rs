@@ -1,4 +1,4 @@
-use bevy::{color::palettes::tailwind::SLATE_50, prelude::*, text::cosmic_text::ttf_parser::Style};
+use bevy::prelude::*;
 
 use crate::ui::{ui_components::ButtonBackgroundStyle};
 
@@ -22,7 +22,6 @@ pub fn button(
     (
         base,
         Button,
-        //BackgroundColor(Color::srgb(0.99, 0.1, 0.1)),
         BackgroundColor(style.unwrap_or_default().normal()),
         children![children],
     )

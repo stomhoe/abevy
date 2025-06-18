@@ -1,0 +1,203 @@
+[package]
+name = "bevy_ecs_tilemap"
+description = "A tilemap rendering plugin for bevy which is more ECS friendly by having an entity per tile."
+version = "0.16.0"
+authors = ["John Mitchell"]
+homepage = "https://github.com/StarArawn/bevy_ecs_tilemap"
+repository = "https://github.com/StarArawn/bevy_ecs_tilemap"
+license = "MIT"
+edition = "2024"
+exclude = ["assets/*", "screenshots/*"]
+
+[features]
+default = ["render"]
+atlas = []
+render = []
+serde = ["dep:serde", "bevy/serialize"]
+
+[dependencies]
+bevy = { version = "0.16.0", default-features = false, features = [
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_asset",
+    "bevy_sprite",
+    "bevy_log",
+] }
+log = "0.4"
+serde = { version = "1", features = ["derive"], optional = true }
+
+[dev-dependencies]
+ldtk_rust = { version = "0.6" }
+rand = "0.8"
+serde_json = { version = "1.0" }
+tiled = { version = "0.14.0", default-features = false }
+thiserror = { version = "2.0" }
+
+[dev-dependencies.bevy]
+version = "0.16.0"
+default-features = false
+features = [
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_asset",
+    "png",
+    "ktx2",
+    "bevy_winit",
+    "bevy_window",
+    "bevy_text",
+    "bevy_sprite",
+    "bevy_ui",
+    #"file_watcher",
+    "multi_threaded",
+    "default_font",
+    "webgl2",
+    "bevy_gizmos",
+]
+
+[target.'cfg(unix)'.dev-dependencies.bevy]
+version = "0.16.0"
+default-features = false
+features = [
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_asset",
+    "png",
+    "ktx2",
+    "bevy_winit",
+    "bevy_window",
+    "wayland",
+    "x11",
+    "bevy_text",
+    "bevy_sprite",
+    "bevy_ui",
+    "multi_threaded",
+    "default_font",
+    "webgl2",
+    "bevy_gizmos",
+]
+
+
+[[example]]
+name = "3d_iso"
+path = "examples/3d_iso.rs"
+required-features = ["render"]
+[[example]]
+name = "accessing_tiles"
+path = "examples/accessing_tiles.rs"
+required-features = ["render"]
+[[example]]
+name = "animation"
+path = "examples/animation.rs"
+required-features = ["render"]
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
+required-features = ["render"]
+[[example]]
+name = "bench"
+path = "examples/bench.rs"
+required-features = ["render"]
+[[example]]
+name = "chunking"
+path = "examples/chunking.rs"
+required-features = ["render"]
+[[example]]
+name = "colors"
+path = "examples/colors.rs"
+required-features = ["render"]
+[[example]]
+name = "custom_shader"
+path = "examples/custom_shader.rs"
+required-features = ["render"]
+[[example]]
+name = "frustum_cull_test"
+path = "examples/frustum_cull_test.rs"
+required-features = ["render"]
+[[example]]
+name = "game_of_life"
+path = "examples/game_of_life.rs"
+required-features = ["render"]
+[[example]]
+name = "hex_neighbors_radius_chunks"
+path = "examples/hex_neighbors_radius_chunks.rs"
+required-features = ["render"]
+[[example]]
+name = "hex_neighbors"
+path = "examples/hex_neighbors.rs"
+required-features = ["render"]
+[[example]]
+name = "hexagon_column"
+path = "examples/hexagon_column.rs"
+required-features = ["render"]
+[[example]]
+name = "hexagon_generation"
+path = "examples/hexagon_generation.rs"
+required-features = ["render"]
+[[example]]
+name = "hexagon_row"
+path = "examples/hexagon_row.rs"
+required-features = ["render"]
+[[example]]
+name = "iso_diamond"
+path = "examples/iso_diamond.rs"
+required-features = ["render"]
+[[example]]
+name = "iso_staggered"
+path = "examples/iso_staggered.rs"
+required-features = ["render"]
+[[example]]
+name = "layers"
+path = "examples/layers.rs"
+required-features = ["render"]
+[[example]]
+name = "ldtk"
+path = "examples/ldtk.rs"
+required-features = ["render"]
+[[example]]
+name = "mouse_to_tile"
+path = "examples/mouse_to_tile.rs"
+required-features = ["render"]
+[[example]]
+name = "move_tile"
+path = "examples/move_tile.rs"
+required-features = ["render"]
+[[example]]
+name = "random_map"
+path = "examples/random_map.rs"
+required-features = ["render"]
+[[example]]
+name = "remove_tiles"
+path = "examples/remove_tiles.rs"
+required-features = ["render"]
+[[example]]
+name = "spacing"
+path = "examples/spacing.rs"
+required-features = ["render"]
+[[example]]
+name = "spawn_despawn_tilemap"
+path = "examples/spawn_despawn_tilemap.rs"
+required-features = ["render"]
+[[example]]
+name = "texture_container"
+path = "examples/texture_container.rs"
+required-features = ["render"]
+[[example]]
+name = "texture_vec"
+path = "examples/texture_vec.rs"
+required-features = ["render"]
+[[example]]
+name = "tiled_rotated"
+path = "examples/tiled_rotated.rs"
+required-features = ["render"]
+[[example]]
+name = "tiled"
+path = "examples/tiled.rs"
+required-features = ["render"]
+[[example]]
+name = "visibility"
+path = "examples/visibility.rs"
+required-features = ["render"]
+[[example]]
+name = "anchor"
+path = "examples/anchor.rs"
+required-features = ["render"]

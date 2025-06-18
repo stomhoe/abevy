@@ -1,6 +1,4 @@
-use std::default;
-
-use bevy::{color::palettes::css::{BLACK, DARK_GRAY, GREY, LIGHT_GRAY, WHITE}, input_focus::InputFocus, prelude::*};
+use bevy::{color::palettes::css::{GREY}, input_focus::InputFocus, prelude::*};
 use crate::ui::{ui_components::ButtonBackgroundStyle, ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED}};
 
 pub fn update_line_edits_text(

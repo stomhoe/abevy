@@ -1,7 +1,6 @@
 use bevy::prelude::*;
-use crate::{AppState, StateScopedCamera};
+use crate::{StateScopedCamera};
 
 
 pub fn setup(mut commands: Commands) {
-    commands.spawn(StateScopedCamera);
 }
