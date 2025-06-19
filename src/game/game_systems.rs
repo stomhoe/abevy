@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use crate::game::player::player_components::Player;
 use crate::game::{SimulationState};
 
-pub fn spawn_player(
+pub fn spawn_player_beings(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
     asset_server: Res<AssetServer>,
@@ -45,3 +45,4 @@ pub fn toggle_simulation(
         }
     }
 }
+

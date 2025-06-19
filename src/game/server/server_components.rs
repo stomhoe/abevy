@@ -34,15 +34,3 @@ enum Disallowed {
 //todo hacer wrapper para Entity?
 //PlayerEntity
 
-//para usar cuando es una lista de 2-6 jugadores del lobby
-fn maybe_push<T>(vec: &mut Vec<T>, val: T) {
-    if vec.len() == vec.capacity() {
-        let new_cap = if vec.capacity() == 0 {
-            2
-        } else {
-            vec.capacity() + 2
-        };
-        vec.reserve_exact(new_cap - vec.capacity());
-    }
-    vec.push(val);
-}

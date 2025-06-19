@@ -16,6 +16,7 @@ rand = "0.9.1"
 strum = "0.27.1"
 strum_macros = "0.27.1"
 superstate = { git = "https://github.com/KurlykovDanila/Superstate.git" }
+vec-collections = "0.4.3"
 
 [dependencies.fastnoise-lite]
 version = "*"

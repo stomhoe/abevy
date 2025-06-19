@@ -8,6 +8,7 @@ use crate::pregame_menus::{MenuPlugin};
 use crate::ui::MyUiPlugin;
 mod game;
 mod pregame_menus;
+pub mod common;
 pub mod ui;
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -42,12 +43,3 @@ pub fn spawn_camera(mut commands: Commands, window_query: Single<&Window, With<P
         },
     ));
 }
-
-
-#[derive(Component, Default)]
-#[require(Camera2d, StateScoped::<AppState>)]
-pub struct StateScopedCamera;
-
-
-
-

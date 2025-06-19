@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
 // Module being
-mod beings_components;
+pub mod beings_components;
 mod beings_systems;
 //mod being_events;
-mod beings_resources;
+pub mod beings_resources;
 pub struct BeingPlugin;
 #[allow(unused_parens)]
 impl Plugin for BeingPlugin {

@@ -2,43 +2,61 @@
 
 use bevy::prelude::*;
 
-use crate::game::player::player_components::*;
+use crate::game::{beings::beings_components::{Being, ControlledBySelf, PlayerDirectControllable, InputMoveDirection}, player::{player_components::*, player_resources::KeyboardInputMappings}};
 
+fn setup(
+    mut commsands: Commands, 
+    asset_server: Res<AssetServer>, 
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+) {
 
 }
 
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, )]
-#[states(scoped_entities)]
-enum CameraState {
-    FollowingBeing(Entity),
-    Second,
-    Third,
+#[derive(Component)] pub struct CameraTarget;
+
+
+
+
+pub fn enforce_single_camera_target(
+    mut commands: Commands,
+    new_camera: Single<Entity, Added<CameraTarget>>,
+    existing_cameras: Query<Entity, With<CameraTarget>>,
+) {
+    for existing in existing_cameras.iter() {
+        if existing != *new_camera {
+            commands.entity(existing).remove::<CameraTarget>();
+        }
+    }
 }
 
-#[allow(dead_code)]
-pub fn movement(
+pub fn camera_follow_target(
+    target: Single<&Transform, With<CameraTarget>>,
+    mut camera_query: Single<&mut Transform, (With<Camera>, Without<CameraTarget>)>,
+) {
+    camera_query.translation.x = target.translation.x;
+    camera_query.translation.y = target.translation.y;
+}
+
+
+pub fn update_move_input_dir(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut player_query: Single<&mut Transform, With<SelfPlayer>>,
-    mut cam_query: Single<(&mut Transform, &mut Projection), With<Camera>>,
+    input_mappings: Res<KeyboardInputMappings>,
+    mut move_input_dir: Single<&mut InputMoveDirection, (With<ControlledBySelf>, With<Being>)>,
 ) {
-    let (mut transform, mut projection) = cam_query.into_inner();
-    let mut direction = Vec3::ZERO;
+    let mut input_dir = Vec3::ZERO;
 
-    if keys.pressed(KeyCode::KeyW) {direction.y += 1.0;}
-    if keys.pressed(KeyCode::KeyS) {direction.y -= 1.0;}
-    if keys.pressed(KeyCode::KeyA) {direction.x -= 1.0;}
-    if keys.pressed(KeyCode::KeyD) {direction.x += 1.0;}
-    if direction != Vec3::ZERO {
-        direction = direction.normalize() * 150.0 * time.delta_secs(); // Speed of the player
-        //player_transform.translation += direction;
+    if keys.pressed(input_mappings.move_up) {input_dir.y += 1.0;}
+    if keys.pressed(input_mappings.move_down) {input_dir.y -= 1.0;}
+    if keys.pressed(input_mappings.move_left) {input_dir.x -= 1.0;}
+    if keys.pressed(input_mappings.move_right) {input_dir.x += 1.0;}
+    if keys.pressed(input_mappings.jump_or_fly) {input_dir.z += 1.0;}
+    if keys.pressed(input_mappings.duck) {input_dir.z -= 1.0;}
+    
+    
+    if input_dir != Vec3::ZERO {
+        input_dir = input_dir.normalize();
     }
-
-    let z = transform.translation.z;
-    transform.translation += time.delta_secs() * direction * 500.;
-    // Important! We need to restore the Z values when moving the camera around.
-    // Bevy has a specific camera setup and this can mess with how our layers are shown.
-    transform.translation.z = z;
+    move_input_dir.0 = input_dir;
 }
+

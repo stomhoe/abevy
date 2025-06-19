@@ -26,7 +26,7 @@ impl Plugin for GamePlugin {
             .add_plugins(SetupMenusPlugin)
 
             .configure_sets(Update, MovementSystemSet.before(ConfinementSystemSet).run_if(in_state(SimulationState::Running)))
-            .add_systems(OnEnter(GamePhase::InGame),  (spawn_player,))
+            .add_systems(OnEnter(GamePhase::InGame),  (spawn_player_beings,))
 
             .add_systems(Update, toggle_simulation.run_if(in_state(GamePhase::InGame)))
 
