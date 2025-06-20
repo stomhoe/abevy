@@ -3,6 +3,7 @@ use bevy::input::ButtonInput;
 use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
+use crate::game::beings::beings_components::{Being, BeingNid, ControlledBySelf};
 use crate::game::player::player_components::Player;
 use crate::game::{SimulationState};
 
@@ -12,17 +13,16 @@ pub fn spawn_player_beings(
     asset_server: Res<AssetServer>,
 ) {
     let window = window_query.single().unwrap();
+    println!("Spawning player beings at window size");
 
     commands.spawn((
-        Player {
-            //name: "hola".to_string(),
-            ..default()
-        },
+        Being (BeingNid(0)),
         Sprite {
             image: asset_server.load("textures\\wear\\moss_short_tunic_icon.png"),
             ..default()
         },
         Transform::from_translation(Vec3::new(window.width() / 2.0, window.height() / 2.0, 0.0)),
+        ControlledBySelf
     ));
 }
 
@@ -46,3 +46,53 @@ pub fn toggle_simulation(
     }
 }
 
+
+#[derive(Component, Debug,)]
+pub struct Bullet();
+
+#[derive(Component, Debug,)]
+pub struct Health(pub i32,);
+
+#[derive(Component, Debug,)]
+pub struct PhysicallyImmune();
+
+#[derive(Component, Debug,)]
+pub struct MagicallyInvulnerable();
+
+
+fn hit_detection(
+    mut commands: Commands,
+    being_query: Query<(Entity, &Transform), (Without<PhysicallyImmune>, With<Health>)>,
+    bullet_query: Query<&Transform, With<Bullet>>
+) {
+    for (entity, enemy_transform) in being_query.iter() {
+        for bullet_transform in bullet_query.iter() {
+            // Your collision check
+            if false {
+                commands.entity(entity).despawn();
+            }
+        }
+    }
+}
+
+// pub fn HandleCollisions(mut spriteschange: Query<(&mut Transform, &Meta), With<Sprite>>)
+// {
+//     let mut combos = spriteschange.iter_combinations_mut();
+//     while let Some([(mut trans1, mut meta1), (mut trans2, mut meta2)]) = combos.fetch_next() {
+//         if(meta1.Id != meta2.Id){
+//             let collision = collide(
+//                     trans1.translation,
+//                     trans1.scale.truncate(),
+//                     trans2.translation,
+//                     trans2.scale.truncate()
+//                 );
+//             if let Some(collision) = collision {
+//                 trans1.translation.x += 256.;
+//                 trans1.translation.y += 256.;
+//                 println!("There was a collision!");
+//             }
+//         }
+
+//     }
+
+// }

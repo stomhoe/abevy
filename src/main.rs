@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-//use bevy_renet::netcode::{NetcodeClientPlugin, NetcodeServerPlugin};
-//use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
+use bevy_renet::netcode::{NetcodeClientPlugin, NetcodeServerPlugin};
+use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 
 use crate::game::GamePlugin;
 use crate::pregame_menus::{MenuPlugin};
@@ -19,9 +19,10 @@ fn main() {
     App::new()
         .add_plugins((DefaultPlugins, GamePlugin, MenuPlugin, MyUiPlugin))
         .add_plugins((
-            //RenetClientPlugin,
-            // NetcodeClientPlugin,
-            // NetcodeServerPlugin,
+            RenetClientPlugin,
+            NetcodeClientPlugin,
+            RenetServerPlugin,
+            NetcodeServerPlugin,
         ))
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)

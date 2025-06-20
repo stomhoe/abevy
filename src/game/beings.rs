@@ -1,18 +1,27 @@
 use bevy::prelude::*;
 
+use crate::game::{beings::{beings_systems::*, classes::ClassesPlugin, races::RacesPlugin}, IngameSystems};
+
 // Module being
 pub mod beings_components;
 mod beings_systems;
 //mod being_events;
 pub mod beings_resources;
-pub struct BeingPlugin;
+
+mod races;
+mod classes;
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MovementSystems;
+
+pub struct BeingsPlugin;
 #[allow(unused_parens)]
-impl Plugin for BeingPlugin {
+impl Plugin for BeingsPlugin {
     fn build(&self, app: &mut App) {
         app
-            //.add_systems(Update, (somesystem))
-            //.add_systems(OnEnter(SomeStateType::Literal), (setup))
-            //.add_systems(Update, somesystem.runif(in_state(SomeStateType::Literal)))
+        
+            .add_plugins((RacesPlugin, ClassesPlugin)) 
+            .add_systems(Update, (handle_movement, on_transform_added).in_set(MovementSystems).in_set(IngameSystems))
         ;
     }
 }

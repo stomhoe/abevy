@@ -22,3 +22,8 @@ impl Default for Player {
         }
     }
 }
+
+
+#[derive(Component, Default)] 
+#[require(Transform)]
+pub struct CameraTarget;

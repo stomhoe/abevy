@@ -6,19 +6,27 @@ use crate::game::beings::beings_components::{Being, InputMoveDirection};
 
 pub fn handle_movement(
     time: Res<Time>,
-    mut move_input_dir: Single<&mut InputMoveDirection, (With<Being>)>,
+    mut query: Query<(&InputMoveDirection, &mut Transform), With<Being>>,
 ) {
-    let mut input_dir = Vec3::ZERO;
-
-    // TODO extraer velocidad en el tipo de piso
-    
-    input_dir.xy()
+    for (input_move_direction, mut transform) in query.iter_mut() {
+        let speed = 100.0;
+        let delta = time.delta_secs();
+        let movement = input_move_direction.0 * speed * delta;
+        transform.translation += movement;
+    }
 }
 
 
 
+const BEINGS_Z_INDEX: f32 = 1000.0;
 
-
+pub fn on_transform_added(mut query: Query<&mut Transform, With<Being>>,) {
+    for mut transform in query.iter_mut() {
+        if transform.is_added() {
+            transform.translation.z = BEINGS_Z_INDEX;
+        }
+    }
+}
 
 
 

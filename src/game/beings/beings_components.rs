@@ -1,20 +1,17 @@
 use bevy::{platform::{collections::HashMap, hash}, prelude::*};
 use strum_macros::EnumCount;
 use vec_collections::VecSet;
-
-use crate::AppState;
+use superstate::{SuperstateInfo};
+use crate::{game::player::player_components::CameraTarget, AppState};
 
 
 
 #[derive(Component)]
 #[require(StateScoped::<AppState>)]
 pub struct Body {}
-
-
  
-use superstate::{SuperstateInfo};
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default)]//USADO TAMBIEN POR BOTS
 pub struct InputMoveDirection(pub Vec3);
 
 #[derive(Component, Default)]
@@ -22,7 +19,7 @@ pub struct InputMoveDirection(pub Vec3);
 pub struct PlayerDirectControllable;
 
 #[derive(Component)]
-#[require(PlayerDirectControllable)]
+#[require(PlayerDirectControllable, CameraTarget)]
 pub struct ControlledBySelf;
 
 #[derive(Component)]
@@ -36,6 +33,7 @@ pub struct ControlledByOtherPlayer {
 }
 
 #[derive(Component)]
+#[require(InputMoveDirection)]
 pub struct Being(pub BeingNid);
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -52,21 +50,10 @@ pub struct FollowerOf {
 #[relationship_target(relationship = FollowerOf)]
 pub struct Followers(Vec<Entity>);
 
-//crear una entidad por cada instancia de clase existente
-#[derive(Component, Debug)]
-pub struct Class(pub ClassNid);
-//esto no va en los beings
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct ClassNid(pub u32);
 
-#[derive(Component, Debug)]
-pub struct Race {
-    pub nid: u32,
-}
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct RaceNid(pub u32);
+
 
 #[derive(Component, Debug)]
 pub struct ClassesRefs(pub VecSet<[Entity; 3]>);
@@ -90,12 +77,6 @@ pub enum Sex {
 }
 
 
-#[derive(EnumCount)]
-pub enum BaseRacesNids {
-    Human = 0,
-    Dwarf,
-    Elf,
-}
 
 
 
@@ -119,6 +100,7 @@ pub struct Floating;
 #[derive(Component, Default)]
 #[require(AltitudeState, SuperstateInfo<TouchingGround>)]
 pub struct TouchingGround;
+
 
 #[derive(Component)] #[require(TouchingGround)]
 pub struct Swimming;
