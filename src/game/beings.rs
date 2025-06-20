@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::game::{beings::{beings_systems::*, classes::ClassesPlugin, races::RacesPlugin}, IngameSystems};
+use crate::game::{beings::{beings_systems::*, classes::ClassesPlugin, races::RacesPlugin}, game_systems::*, IngameSystems};
 
 // Module being
 pub mod beings_components;
@@ -21,7 +21,7 @@ impl Plugin for BeingsPlugin {
         app
         
             .add_plugins((RacesPlugin, ClassesPlugin)) 
-            .add_systems(Update, (handle_movement, on_transform_added).in_set(MovementSystems).in_set(IngameSystems))
+            .add_systems(Update, (handle_movement, ).in_set(MovementSystems).in_set(IngameSystems))
         ;
     }
 }

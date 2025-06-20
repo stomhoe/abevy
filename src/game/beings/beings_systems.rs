@@ -17,18 +17,3 @@ pub fn handle_movement(
 }
 
 
-
-const BEINGS_Z_INDEX: f32 = 1000.0;
-
-pub fn on_transform_added(mut query: Query<&mut Transform, With<Being>>,) {
-    for mut transform in query.iter_mut() {
-        if transform.is_added() {
-            transform.translation.z = BEINGS_Z_INDEX;
-        }
-    }
-}
-
-
-
-
-

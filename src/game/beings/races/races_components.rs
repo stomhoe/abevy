@@ -8,3 +8,6 @@ pub struct Race {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct RaceNid(pub u32);
+
+#[derive(Component, Debug)]
+pub struct RaceRef(pub Entity);

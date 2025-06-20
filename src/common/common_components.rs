@@ -12,3 +12,6 @@ pub struct Sid(String);
 #[derive(Component, Debug,)]
 pub struct Nid(u32);
 
+
+#[derive(Component, Debug,)]
+pub struct GameZindex(pub i32);

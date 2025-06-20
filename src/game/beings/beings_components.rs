@@ -2,7 +2,7 @@ use bevy::{platform::{collections::HashMap, hash}, prelude::*};
 use strum_macros::EnumCount;
 use vec_collections::VecSet;
 use superstate::{SuperstateInfo};
-use crate::{game::player::player_components::CameraTarget, AppState};
+use crate::{common::common_components::GameZindex, game::player::player_components::CameraTarget, AppState};
 
 
 
@@ -33,7 +33,7 @@ pub struct ControlledByOtherPlayer {
 }
 
 #[derive(Component)]
-#[require(InputMoveDirection)]
+#[require(InputMoveDirection, GameZindex(1000))]
 pub struct Being(pub BeingNid);
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -51,17 +51,6 @@ pub struct FollowerOf {
 pub struct Followers(Vec<Entity>);
 
 
-
-
-
-
-#[derive(Component, Debug)]
-pub struct ClassesRefs(pub VecSet<[Entity; 3]>);
-//esto va en los beings, permite tener multiples clases
-
-#[derive(Component, Debug)]
-pub struct RaceRef(pub Entity);
-
 #[derive(Component, Debug)]
 pub struct LearningMultiplier(pub HashMap<Entity, f32>);
 
@@ -75,10 +64,6 @@ pub enum Sex {
     Male,
     Female,
 }
-
-
-
-
 
 
 #[derive(EnumCount)]

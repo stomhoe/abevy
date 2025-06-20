@@ -9,6 +9,7 @@ use crate::game::game_systems::*;
 pub mod player;
 mod setup_menus;
 mod game_systems;
+mod game_components;
 mod tilemap;
 mod beings;
 mod things;
@@ -35,7 +36,7 @@ impl Plugin for GamePlugin {
 
             .add_systems(Update, 
                 
-                (toggle_simulation).in_set(IngameSystems)
+                (toggle_simulation, force_z_index).in_set(IngameSystems)
             )
 
             .configure_sets(Update, (

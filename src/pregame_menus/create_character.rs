@@ -7,7 +7,7 @@ mod create_character_systems;
 mod create_character_layout;
 //mod create_character_resources;
 pub struct CreateCharacterPlugin;
-#[allow(unused_parens)]
+#[allow(unused_parens, path_statements)]
 impl Plugin for CreateCharacterPlugin {
     fn build(&self, app: &mut App) {
         app

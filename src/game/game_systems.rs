@@ -3,6 +3,7 @@ use bevy::input::ButtonInput;
 use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
+use crate::common::common_components::GameZindex;
 use crate::game::beings::beings_components::{Being, BeingNid, ControlledBySelf};
 use crate::game::player::player_components::Player;
 use crate::game::{SimulationState};
@@ -51,13 +52,21 @@ pub fn toggle_simulation(
 pub struct Bullet();
 
 #[derive(Component, Debug,)]
-pub struct Health(pub i32,);
+pub struct Health(pub i32,);//SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (IRRECLUTABLES)
 
 #[derive(Component, Debug,)]
 pub struct PhysicallyImmune();
 
 #[derive(Component, Debug,)]
 pub struct MagicallyInvulnerable();
+
+
+pub fn force_z_index(mut query: Query<(&mut Transform, &GameZindex)>,) {
+    for (mut transform, z_index) in query.iter_mut() {
+        transform.translation.z = (z_index.0) as f32;
+    }
+}
+
 
 
 fn hit_detection(

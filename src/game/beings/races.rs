@@ -19,7 +19,7 @@ impl Plugin for RacesPlugin {
             //.add_systems(Update, (somesystem))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup))
             //.add_systems(Update, somesystem.runif(in_state(SomeStateType::Literal)))
-            .init_resource::<RaceDatabase>()
+            .init_resource::<RacesDatabase>()
         ;
     }
 }
