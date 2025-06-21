@@ -4,15 +4,6 @@ use bevy::prelude::*;
 
 use crate::game::{beings::beings_components::{Being, ControlledBySelf, PlayerDirectControllable, InputMoveDirection}, player::{player_components::*, player_resources::KeyboardInputMappings}};
 
-// fn setup(
-//     mut commsands: Commands, 
-//     asset_server: Res<AssetServer>, 
-//     window_query: Query<&Window, (With<Being>)>,
-// ) {
-
-// }
-
-
 
 
 
@@ -34,6 +25,7 @@ pub fn camera_follow_target(
 ) {
     camera_query.translation.x = target.translation.x;
     camera_query.translation.y = target.translation.y;
+    camera_query.translation.z = 0.0;
 }
 
 
@@ -50,7 +42,6 @@ pub fn update_move_input_dir(
     if keys.pressed(input_mappings.move_right) {input_dir.x += 1.0;}
     if keys.pressed(input_mappings.jump_or_fly) {input_dir.z += 1.0;}
     if keys.pressed(input_mappings.duck) {input_dir.z -= 1.0;}
-    
     
     if input_dir != Vec3::ZERO {
         input_dir = input_dir.normalize();

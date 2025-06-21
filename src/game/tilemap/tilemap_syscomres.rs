@@ -1,13 +1,11 @@
 use bevy::{platform::collections::HashSet, prelude::*};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, tiles::*, TilemapBundle};
 
+use crate::game::beings::beings_components::Being;
 
 
-// pub fn setup(mut commands: Commands) {
-//     commands.spawn(());
-// }
 
-const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 16.0, y: 16.0 };
+const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 64.0, y: 64.0 };
 const CHUNK_SIZE: UVec2 = UVec2 { x: 4, y: 4 };
 
 
@@ -19,7 +17,7 @@ const RENDER_CHUNK_SIZE: UVec2 = UVec2 {
 pub fn spawn_chunks_around_camera(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    camera_query: Query<&Transform, With<Camera>>,
+    camera_query: Query<&Transform, (With<Camera>, With<Being>)>,
     mut chunk_manager: ResMut<ChunkManager>,
 ) {
     for transform in camera_query.iter() {
@@ -28,7 +26,7 @@ pub fn spawn_chunks_around_camera(
             for x in (camera_chunk_pos.x - 2)..(camera_chunk_pos.x + 2) {
                 if !chunk_manager.spawned_chunks.contains(&IVec2::new(x, y)) {
                     chunk_manager.spawned_chunks.insert(IVec2::new(x, y));
-                    spawn_chunk(&mut commands, &asset_server, IVec2::new(x, y));
+                    spawn_single_chunk(&mut commands, &asset_server, IVec2::new(x, y));
                 }
             }
         }
@@ -38,7 +36,7 @@ pub fn spawn_chunks_around_camera(
 pub fn despawn_outofrange_chunks(
     mut commands: Commands,
     camera_query: Query<&Transform, With<Camera>>,
-    chunks_query: Query<(Entity, &Transform)>,
+    chunks_query: Query<(Entity, &Transform), With<Chunk>>,
     mut chunk_manager: ResMut<ChunkManager>,
 ) {
     for camera_transform in camera_query.iter() {
@@ -55,44 +53,53 @@ pub fn despawn_outofrange_chunks(
     }
 }
 
-fn spawn_chunk(commands: &mut Commands, asset_server: &AssetServer, chunk_pos: IVec2) {
-    let tilemap_entity = commands.spawn_empty().id();
+#[derive(Component, Debug,)]
+pub struct Chunk();
+
+fn spawn_single_chunk(commands: &mut Commands, asset_server: &AssetServer, chunk_pos: IVec2) {
+    let chunk_tilemap_layer_entity = commands.spawn_empty().id();
     let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
-    // Spawn the elements of the tilemap.
+    
+    // SPAWNEO DE CADA TILE
     for x in 0..CHUNK_SIZE.x {
         for y in 0..CHUNK_SIZE.y {
-            let tile_pos = TilePos { x, y };
-            let tile_entity = commands
+            let tile_pos: TilePos = TilePos { x, y };
+            let tile_entity: Entity = commands
                 .spawn(TileBundle {
                     position: tile_pos,
-                    tilemap_id: TilemapId(tilemap_entity),
+                    tilemap_id: TilemapId(chunk_tilemap_layer_entity),
                     ..Default::default()
                 })
                 .id();
-            commands.entity(tilemap_entity).add_child(tile_entity);
+            commands.entity(chunk_tilemap_layer_entity).add_child(tile_entity);
             tile_storage.set(&tile_pos, tile_entity);
         }
     }
 
-    let transform = Transform::from_translation(Vec3::new(
+    let chunk_transform = Transform::from_translation(Vec3::new(
         chunk_pos.x as f32 * CHUNK_SIZE.x as f32 * TILE_SIZE.x,
         chunk_pos.y as f32 * CHUNK_SIZE.y as f32 * TILE_SIZE.y,
         0.0,
     ));
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
-    commands.entity(tilemap_entity).insert(TilemapBundle {
-        grid_size: TILE_SIZE.into(),
-        size: CHUNK_SIZE.into(),
-        storage: tile_storage,
-        texture: TilemapTexture::Single(texture_handle),
-        tile_size: TILE_SIZE,
-        transform,
-        render_settings: TilemapRenderSettings {
-            render_chunk_size: RENDER_CHUNK_SIZE,
-            ..Default::default()
-        },
-        ..Default::default()
-    });
+    commands.entity(chunk_tilemap_layer_entity).insert((
+        TilemapBundle {
+                grid_size: TILE_SIZE.into(),
+                size: CHUNK_SIZE.into(),
+                storage: tile_storage,
+                texture: TilemapTexture::Single(texture_handle),
+                tile_size: TILE_SIZE,
+                transform: chunk_transform,
+                render_settings: TilemapRenderSettings {
+                    render_chunk_size: RENDER_CHUNK_SIZE,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        Chunk(),
+    )
+
+);
 }
 
 fn camera_pos_to_chunk_pos(camera_pos: &Vec2) -> IVec2 {

@@ -14,4 +14,4 @@ pub struct Nid(u32);
 
 
 #[derive(Component, Debug,)]
-pub struct GameZindex(pub i32);
+pub struct GameZindex(pub f32);

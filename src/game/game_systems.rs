@@ -1,4 +1,5 @@
 use bevy::asset::AssetServer;
+use bevy::ecs::world::OnDespawn;
 use bevy::input::ButtonInput;
 use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
@@ -27,8 +28,6 @@ pub fn spawn_player_beings(
     ));
 }
 
-
-
 pub fn toggle_simulation(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     current_state: Res<State<SimulationState>>, mut next_state: ResMut<NextState<SimulationState>>,
@@ -52,7 +51,7 @@ pub fn toggle_simulation(
 pub struct Bullet();
 
 #[derive(Component, Debug,)]
-pub struct Health(pub i32,);//SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (IRRECLUTABLES)
+pub struct Health(pub i32,);//SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (GRUNTS IRRECLUTABLES PARA FARMEAR XP O LOOT)
 
 #[derive(Component, Debug,)]
 pub struct PhysicallyImmune();
@@ -64,9 +63,9 @@ pub struct MagicallyInvulnerable();
 pub fn force_z_index(mut query: Query<(&mut Transform, &GameZindex)>,) {
     for (mut transform, z_index) in query.iter_mut() {
         transform.translation.z = (z_index.0) as f32;
+        //println!("transform {}", transform.translation);
     }
 }
-
 
 
 fn hit_detection(
@@ -83,6 +82,13 @@ fn hit_detection(
         }
     }
 }
+
+
+pub fn debug_system(mut commands: Commands, query: Query<(Entity, &Transform), With<Being>>, cam_query: Query<&Transform, With<Camera>>) {
+   
+    
+}
+
 
 // pub fn HandleCollisions(mut spriteschange: Query<(&mut Transform, &Meta), With<Sprite>>)
 // {

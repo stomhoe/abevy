@@ -33,7 +33,7 @@ pub struct ControlledByOtherPlayer {
 }
 
 #[derive(Component)]
-#[require(InputMoveDirection, GameZindex(1000))]
+#[require(InputMoveDirection, GameZindex(500.))]
 pub struct Being(pub BeingNid);
 
 #[derive(Debug, PartialEq, Eq, Hash)]
