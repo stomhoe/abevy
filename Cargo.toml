@@ -20,7 +20,6 @@ bevy_renet = { path = "aother/renet/bevy_renet" }
 
 [dependencies.fastnoise-lite]
 version = "*"
-features = ["f64"]
 
 #log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # Improve Runtime Performance (Optional) 
 

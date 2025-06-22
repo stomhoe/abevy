@@ -29,16 +29,10 @@ pub fn pass_time(
         curr_hour.0.0 %= 24;
     }
     if curr_day.is_changed() && curr_day.0.0 % ingame_timing.days_per_season().0 == 0 && curr_day.0 .0 > 1 {
-        println!("asd", );
         curr_season.0 = curr_season.0.next();
     }
     if curr_day.0 > days_per_year {
         curr_day.0 -= days_per_year;
         curr_year.0 += Years(1);
     }
-
-    println!(
-        "Time passed: {}:{} on day {}, season {:?}, year {}",
-        curr_hour.0, curr_min.0, curr_day.0 .0, curr_season.0, curr_year.0 .0
-    );
 }

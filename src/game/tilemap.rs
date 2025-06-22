@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
-use crate::game::{tilemap::tilemap_syscomres::*, SimRunningSystems};
+use crate::game::{tilemap::{tilemap_resources::*, tilemap_systems::*}, SimRunningSystems};
 
-// Module tilemap
-mod tilemap_syscomres;
-//mod tilemap_events;
+mod tilemap_systems;
+pub mod tilemap_components;
+pub mod tilemap_resources;
 
 mod formation_generation;
 
@@ -17,8 +17,9 @@ impl Plugin for MyTileMapPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_plugins(bevy_ecs_tilemap::TilemapPlugin)
-            .add_systems(Update, (spawn_chunks_around_camera, despawn_outofrange_chunks).in_set(SimRunningSystems).in_set(TilemapSystems))
+            .add_systems(Update, (visit_chunks_around_activators, rem_outofrange_chunks_from_activators, despawn_unreferenced_chunks, show_chunks_around_camera, hide_outofrange_chunks, ).in_set(SimRunningSystems).in_set(TilemapSystems))
             .init_resource::<ChunkManager>()
+            .init_resource::<TilemapSettings>()
             
         ;
     }

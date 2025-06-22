@@ -6,7 +6,6 @@ use superstate::{SuperstateInfo};
 pub struct Faction(u32);
 
 #[derive(Component, Debug,)]
-#[require(Faction)]
 pub struct SelfFaction();
 
 pub struct BelongsToFaction(pub Entity);

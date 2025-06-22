@@ -30,7 +30,13 @@ pub struct SimPausedSystems;
 pub struct IngameSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct ServerOnlySystems;
+pub struct NetworkSystems;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct HostOnlySystems;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct ClientSystems;
 
 pub struct GamePlugin;
 impl Plugin for GamePlugin {
@@ -51,6 +57,14 @@ impl Plugin for GamePlugin {
                 IngameSystems.run_if(in_state(GamePhase::InGame)),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
                 SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::InGame))),
+                HostOnlySystems.run_if((in_state(SelfMpKind::Host).and(in_state(GameMp::Multiplayer))).or(in_state(GameMp::Singleplayer))),
+                ClientSystems.run_if(in_state(SelfMpKind::Client).and(in_state(GameMp::Multiplayer))
+            )))
+
+            .configure_sets(FixedUpdate, (
+                NetworkSystems.run_if(in_state(GameMp::Multiplayer)),
+                ClientSystems.run_if(in_state(SelfMpKind::Client).and(in_state(GameMp::Multiplayer))),
+
             ))
 
             .init_state::<SimulationState>()

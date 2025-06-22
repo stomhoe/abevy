@@ -6,6 +6,7 @@ use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
 use crate::game::beings::beings_components::{Being, BeingNid, ControlledBySelf};
+use crate::game::factions::factions_components::SelfFaction;
 use crate::game::player::player_components::Player;
 use crate::game::{SimulationState};
 
@@ -24,7 +25,8 @@ pub fn spawn_player_beings(
             ..default()
         },
         Transform::from_translation(Vec3::new(window.width() / 2.0, window.height() / 2.0, 0.0)),
-        ControlledBySelf
+        ControlledBySelf,
+        SelfFaction(),
     ));
 }
 

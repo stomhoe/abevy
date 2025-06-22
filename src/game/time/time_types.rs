@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use std::ops::*;
-use strum_macros::VariantNames;
+use strum_macros::{IntoStaticStr, VariantNames};
 
 
 #[derive(Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
@@ -36,9 +36,16 @@ impl SubAssign for Years {
     }
 }
 
-#[derive(Default, VariantNames, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Default, VariantNames, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, IntoStaticStr)]
 #[strum(serialize_all = "PascalCase")]
-pub enum Season {#[default]Spring = 1, Summer, Autumn, Winter,}
+pub enum Season {
+    #[default]
+    Spring = 1,
+    Summer,
+    Autumn,
+    Winter,
+}
+
 impl Season {
     pub fn next(&self) -> Self {
         match self {
@@ -58,6 +65,12 @@ impl Season {
     }
     pub fn distance_to(self, other: Self) -> u8 {
         ((self as i8 - other as i8).abs()) as u8
+    }
+}
+
+impl std::fmt::Display for Season {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 

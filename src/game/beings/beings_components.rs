@@ -2,7 +2,7 @@ use bevy::{platform::{collections::HashMap, hash}, prelude::*};
 use strum_macros::EnumCount;
 use vec_collections::VecSet;
 use superstate::{SuperstateInfo};
-use crate::{common::common_components::GameZindex, game::player::player_components::CameraTarget, AppState};
+use crate::{common::common_components::GameZindex, game::{player::player_components::CameraTarget, tilemap::tilemap_components::ActivatesChunks}, AppState};
 
 
 
@@ -15,7 +15,7 @@ pub struct Body {}
 pub struct InputMoveDirection(pub Vec3);
 
 #[derive(Component, Default)]
-#[require(SuperstateInfo<PlayerDirectControllable>)]
+#[require(SuperstateInfo<PlayerDirectControllable>, ActivatesChunks)]
 pub struct PlayerDirectControllable;
 
 #[derive(Component)]

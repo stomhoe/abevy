@@ -6,7 +6,7 @@ use crate::game::factions::factions_components::*;
 //use crate::game::factions::factions_layout::*;
 //use crate::game::factions::factions_events::*;
 mod factions_systems;
-mod factions_components;
+pub mod factions_components;
 //mod factions_resources;
 //mod factions_layout;
 //mod factions_events;

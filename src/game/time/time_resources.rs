@@ -3,6 +3,7 @@
 use crate::game::time::time_types::*;
 
 #[derive(Resource, PartialEq, PartialOrd, Copy, Clone, Debug)]
+//NO OLVIDARSE DE MULTIPLICAR DELTA POR ESTO AL USAR TIMERS.TICKK
 pub struct SimTimeScale(pub f32);
 impl Default for SimTimeScale {fn default() -> Self {Self (100.0)}}
 
