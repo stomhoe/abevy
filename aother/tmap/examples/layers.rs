@@ -33,6 +33,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
         texture: TilemapTexture::Single(texture_handle.clone()),
         tile_size,
         anchor: TilemapAnchor::Center,
+        transform: Transform::from_xyz(0.0, 0.0, 2.0),
         ..Default::default()
     });
 

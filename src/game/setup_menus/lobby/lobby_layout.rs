@@ -177,7 +177,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         lobby_button(LobbyButtonId::CreateCharacter, "Create character",),
     );
 
-    let create_character_button = commands.spawn(create_character_button).insert(ChildOf(rightsplit_bottom_hbox)).id();
+    let _create_character_button = commands.spawn(create_character_button).insert(ChildOf(rightsplit_bottom_hbox)).id();
 
     let chat_input = (
         Node {

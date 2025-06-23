@@ -18,7 +18,7 @@ impl Plugin for MyTileMapPlugin {
         app
             .add_plugins(bevy_ecs_tilemap::TilemapPlugin)
             .add_systems(Update, (visit_chunks_around_activators, rem_outofrange_chunks_from_activators, despawn_unreferenced_chunks, show_chunks_around_camera, hide_outofrange_chunks, ).in_set(SimRunningSystems).in_set(TilemapSystems))
-            .init_resource::<ChunkManager>()
+            .init_resource::<LoadedChunks>()
             .init_resource::<TilemapSettings>()
             
         ;

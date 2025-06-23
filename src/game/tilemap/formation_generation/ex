@@ -1,0 +1,30 @@
+#[allow(unused_parens)]
+pub fn add_tilemaps_to_chunk(mut commands: Commands, chunks_query: Query<(Entity, &Chunk), (Without<TilesInstantiated>)>, mut noise_query: Query<&Noise>, gen_settings: Res<WorldGenSettings>,
+) {
+    for (chunk_ent, chunk) in chunks_query.iter() {
+       
+
+        let mut lens = noise_query.transmute_lens_filtered::<(&Noise, ), (With<SomeComp>)>();
+
+        produce_tilemaps(&mut commands, chunk_ent, chunk.0, lens.query());
+        
+
+        //commands.entity(chunk_ent).in
+
+        commands.entity(chunk_ent).insert(TilesInstantiated);
+    }
+    
+}
+
+
+#[derive(Component, Debug, Default, )]
+pub struct SomeComp;
+
+
+#[allow(unused_parens)]
+fn produce_tilemaps(commands: &mut Commands, chunk_ent: Entity, chunk_pos: IVec2, query: Query<(&Noise, ), (With<SomeComp>)>, ) {
+    
+
+
+    todo!()
+}
