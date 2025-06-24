@@ -12,7 +12,7 @@ impl Default for WorldGenSettings {
     fn default() -> Self {
         Self { 
             seed: 0,
-            average_temp: 15.0, 
+            average_temp: 15.0, //esto debería usarse para reducir o incrementar threshold
             world_size: None 
         }
     }

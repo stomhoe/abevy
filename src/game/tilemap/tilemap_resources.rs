@@ -25,15 +25,21 @@ impl Default for ChunkRangeSettings {
 pub struct LoadedChunks (pub HashMap<IVec2, Entity>,);
 
 pub fn contpos_to_chunkpos(contpos: Vec2) -> IVec2 {
-    let chunk_size: IVec2 = IVec2::new(CHUNK_SIZE.x as i32, CHUNK_SIZE.y as i32);
-    let tile_size_in_pxs: IVec2 = IVec2::new(TILE_SIZE_PXS.x as i32, TILE_SIZE_PXS.y as i32);
-    contpos.as_ivec2().div_euclid(tile_size_in_pxs * chunk_size)
+    contpos.as_ivec2().div_euclid(TILE_SIZE_PXS.as_ivec2() * CHUNK_SIZE.as_ivec2())
 }
 
-pub fn chunkpos_to_contpos(chunk_pos: IVec2) -> Vec2 {
-    let tile_size_in_pxs: IVec2 = IVec2::new(TILE_SIZE_PXS.x as i32, TILE_SIZE_PXS.y as i32);
-    chunk_pos.as_vec2() * tile_size_in_pxs.as_vec2() * CHUNK_SIZE.as_vec2() 
+pub fn chunkpos_to_pixelpos(chunk_pos: IVec2) -> Vec2 {
+    chunk_pos.as_vec2() * TILE_SIZE_PXS.as_vec2() * CHUNK_SIZE.as_vec2() 
 }
+
+pub fn chunkpos_to_tilepos(chunk_pos: IVec2) -> IVec2 {
+    chunk_pos * CHUNK_SIZE.as_ivec2() 
+}
+
+pub fn pixelpos_to_tilepos(pixelpos: Vec2) -> IVec2 {
+    pixelpos.div_euclid(TILE_SIZE_PXS.as_vec2()).as_ivec2()
+}
+
 pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
 
 //TODO HACER DEL TAMAÑO DE LO QUE ES VISIBLE EN PANTALLA

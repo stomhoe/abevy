@@ -6,9 +6,7 @@ use fastnoise_lite::FastNoiseLite;
 use superstate::{SuperstateInfo};
 
 #[derive(Component, Default, )]
-pub struct NoiseComp(
-    pub FastNoiseLite
-);
+pub struct FnlComp(pub FastNoiseLite);
 
 #[derive(Component, Debug, Default, )]
 pub struct Thresholds(pub Vec<(f32, Entity)>); //usar menor igual valor -> entidad. Entidad-> tiledist?
@@ -34,21 +32,11 @@ pub struct Fill;//no sé si ponerle id o q se referencie la entity instanciada
 #[derive(Component, Debug,  )]
 #[require(Fill)] //USAR Option en la query para ver si tiene esto o lo otro
 pub struct Texture {
-    pub start_i: TileTextureIndex,
+    pub start_i: Vec<Handle<Image>>,
     pub modulo_period: Option<UVec2>,
-}
-
-#[derive(Component, Debug, Default, )]
-#[require(Fill)]
-pub struct Shader{
-
 }
 
 
 
 #[derive(Component, Debug, Default, )]
 pub struct TileUnid(pub u16);
-
-
-#[derive(Component, Debug, Default, )]
-pub struct Layer{z_index: f32}

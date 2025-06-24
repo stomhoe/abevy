@@ -3,7 +3,7 @@ use std::mem;
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::{map::*, prelude::MaterialTilemap, tiles::*, TilemapBundle};
 
-use crate::game::{beings::beings_components::Being, factions::factions_components::SelfFaction, tilemap::{formation_generation::{formation_generation_components::NoiseComp, formation_generation_resources::WorldGenSettings, formation_generation_utils::{gather_all_tiles2spawn_within_chunk, }}, tilemap_components::*, tilemap_resources::*}};
+use crate::game::{beings::beings_components::Being, factions::factions_components::SelfFaction, tilemap::{formation_generation::{formation_generation_components::FnlComp, formation_generation_resources::WorldGenSettings, formation_generation_utils::{gather_all_tiles2spawn_within_chunk, TileInfo, }}, tilemap_components::*, tilemap_resources::*}};
 
 
 pub fn visit_chunks_around_activators(
@@ -12,6 +12,8 @@ pub fn visit_chunks_around_activators(
     mut loaded_chunks: ResMut<LoadedChunks>,
     tilemap_settings: Res<ChunkRangeSettings>,
     asset_server: Res<AssetServer>, 
+    gen_settings: Res<WorldGenSettings>,
+    noise_query: Query<&FnlComp>,
 ) {
     let cnt = tilemap_settings.chunk_show_range as i32;   
     for (transform, mut activates_chunks) in query.iter_mut() {
@@ -23,9 +25,11 @@ pub fn visit_chunks_around_activators(
                 let adjacent_chunk_pos = IVec2::new(x, y);
 
                 if ! loaded_chunks.0.contains_key(&adjacent_chunk_pos) {
-                    let chunk_id = commands.spawn((Chunk(adjacent_chunk_pos), Visibility::Hidden, )).id();
-                    loaded_chunks.0.insert(adjacent_chunk_pos, chunk_id);
-                    activates_chunks.0.insert(chunk_id);
+                    let chunk_ent = commands.spawn((Chunk(adjacent_chunk_pos), Visibility::Hidden, )).id();
+                    loaded_chunks.0.insert(adjacent_chunk_pos, chunk_ent);
+                    activates_chunks.0.insert(chunk_ent);
+                    commands.entity(chunk_ent).insert(Transform::from_translation(chunkpos_to_pixelpos(adjacent_chunk_pos).extend(0.0)));
+                    produce_tilemaps(&mut commands, &asset_server, &gen_settings, chunk_ent, adjacent_chunk_pos, noise_query);
                 }
                 else {
                     activates_chunks.0.insert(loaded_chunks.0[&adjacent_chunk_pos]);
@@ -122,75 +126,41 @@ pub fn hide_outofrange_chunks(
         }
     }
 }
-
-#[allow(unused_parens)]
-pub fn add_tilemaps_to_chunk(
-    mut commands: Commands, 
-    asset_server: Res<AssetServer>, 
-    //texturess: Res<Textures>,
-    gen_settings: Res<WorldGenSettings>, 
-    chunks_query: Query<(Entity, &Chunk), (Without<TilesInstantiated>)>, 
-    noise_query: Query<&NoiseComp>, 
-) {
-    for (chunk_ent, chunk) in chunks_query.iter() {
-       
-
-        commands.entity(chunk_ent).insert((TilesInstantiated, Transform::from_translation(chunkpos_to_contpos(chunk.0).extend(0.0)) ));
-
-        produce_tilemaps(&mut commands, &asset_server, &gen_settings, chunk_ent, chunk.0, noise_query);
-    }
-}
-
-fn spawn_single_chunk(commands: &mut Commands, asset_server: &AssetServer, chunk_pos: IVec2) 
--> Entity
-{
-    let chunk_tilemap_layer_entity: Entity = commands.spawn_empty().id();
-    let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
-    
-    let chunk_contpos = chunkpos_to_contpos(chunk_pos);
-
-    // SPAWNEO DE CADA TILE <---
-    for x in 0..CHUNK_SIZE.x {
-        for y in 0..CHUNK_SIZE.y {
-            let tile_pos: TilePos = TilePos { x, y };
-            let tile_entity: Entity = commands
-                .spawn(TileBundle {
-                    position: tile_pos,
-                    tilemap_id: TilemapId(chunk_tilemap_layer_entity),
-                    ..Default::default()
-                })
-                .id();
-            commands.entity(chunk_tilemap_layer_entity).add_child(tile_entity);
-            tile_storage.set(&tile_pos, tile_entity);
-        }
-    }
-
-
-    let texture_handle: Handle<Image> = asset_server.load("textures/world/bushes/bush.png");
-    commands.entity(chunk_tilemap_layer_entity).insert((
-        TilemapBundle {
-                grid_size: TILEMAP_GRID_SIZE,
-                size: CHUNK_SIZE.into(),
-                storage: tile_storage,
-                texture: TilemapTexture::Single(texture_handle),
-                tile_size: TILEMAP_TILE_SIZE,
-                transform: Transform::from_translation(chunk_contpos.extend(0.0)),
-                render_settings: TilemapRenderSettings {
-                    render_chunk_size: RENDER_CHUNK_SIZE,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        Chunk(chunk_pos),
-        TilesInstantiated,
-    ));
-    chunk_tilemap_layer_entity
-}
-
-
 struct LayerInfo {
     pub tilemap_entity: Entity, pub tile_storage: TileStorage,
     pub handles: Vec<Handle<Image>>, pub needs_y_sort: bool,
+}
+
+fn instantiate_tile_bundle(
+    tileinfo: &TileInfo, tilemap_entity: Entity, 
+    texture_index: TileTextureIndex, pos_within_chunk: TilePos,
+) -> TileBundle {
+    TileBundle {
+        position: pos_within_chunk,
+        tilemap_id: TilemapId(tilemap_entity),
+        texture_index, 
+        flip: tileinfo.flip,
+        color: tileinfo.color,
+        visible: tileinfo.visible,
+        ..Default::default()
+    }
+}
+
+fn do_stuff_in_common( 
+    commands: &mut Commands, tileinfo: &TileInfo, 
+    tilemap_entity: Entity,  tile_storage: &mut TileStorage,
+    texture_index: TileTextureIndex, pos_within_chunk: TilePos,
+)  {
+    let tile_bundle = instantiate_tile_bundle(tileinfo, tilemap_entity, texture_index, pos_within_chunk);
+    let tile_entity: Entity = if let Some(existing_entity) = tileinfo.entity {
+        commands.entity(existing_entity).insert(tile_bundle);
+        existing_entity
+    } else {
+        commands
+            .spawn(tile_bundle)
+            .id()
+    };
+    tile_storage.set(&pos_within_chunk, tile_entity);
 }
 
 #[allow(unused_parens)]
@@ -200,7 +170,7 @@ fn produce_tilemaps(
     gen_settings: &WorldGenSettings,
     chunk_ent: Entity, 
     chunk_pos: IVec2, 
-    noise_query: Query<&NoiseComp>,
+    noise_query: Query<&FnlComp>,
 ) {
     let mut layers: HashMap<i16, LayerInfo> = HashMap::new();
 
@@ -208,7 +178,7 @@ fn produce_tilemaps(
         let tilepos_within_chunk = TilePos {x: tileinfo.pos_within_chunk.x, y: tileinfo.pos_within_chunk.y, };
         if let Some(layer_info) = layers.get_mut(&tileinfo.layer_z)
         {
-            let (tilemap_entity, tile_storage, handles) = (
+            let (&mut tilemap_entity, tile_storage, handles) = (
                 &mut layer_info.tilemap_entity,
                 &mut layer_info.tile_storage,
                 &mut layer_info.handles,
@@ -223,44 +193,19 @@ fn produce_tilemaps(
                 }
             };
 
-            let tile_entity: Entity = commands
-                .spawn((
-                    TileBundle {
-                        position: tilepos_within_chunk,
-                        tilemap_id: TilemapId(*tilemap_entity),
-                        texture_index,
-                        flip: tileinfo.flip,
-                        color: tileinfo.color,
-                        ..Default::default()
-                    },
-                    ChildOf(*tilemap_entity),
-                ))
-                .id();
+            do_stuff_in_common(commands, &tileinfo, tilemap_entity, tile_storage, texture_index, tilepos_within_chunk,);
 
-            tile_storage.set(&tilepos_within_chunk, tile_entity);
             layer_info.needs_y_sort = layer_info.needs_y_sort || tileinfo.needs_y_sort;
         } else{
-            let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
             let tilemap_entity: Entity = commands.spawn_empty().id();
+            let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
 
-            let tile_entity: Entity = commands
-                .spawn((
-                    TileBundle {
-                        position: tilepos_within_chunk,
-                        tilemap_id: TilemapId(tilemap_entity),
-                        texture_index: TileTextureIndex(0),
-                        flip: tileinfo.flip,
-                        color: tileinfo.color,
-                        ..Default::default()
-                    },
-                    ChildOf(tilemap_entity),
-                ))
-                .id();
+            do_stuff_in_common(
+                commands, &tileinfo, tilemap_entity, &mut tile_storage,
+                TileTextureIndex(0), tilepos_within_chunk,
+            );
 
-            
-            tile_storage.set(&tilepos_within_chunk, tile_entity);
             let handles = vec![mem::take(&mut tileinfo.used_handle)];
-            
             let layer_info = LayerInfo {
                 tilemap_entity,
                 tile_storage,
@@ -292,7 +237,7 @@ fn make_tilemap(commands: &mut Commands,
     tmap_entity: Entity,
     texture: TilemapTexture, 
     chunk_ent: Entity, 
-    chunk_pos: IVec2,
+    _chunk_pos: IVec2,//lo dejo por si lo necesita algún shader
     storage: TileStorage,
     layer_z_level: i16, y_sort: bool, 
     //mut materials: ResMut<Assets<MyMaterial>>,//buscar formas alternativas de agarrar shaders

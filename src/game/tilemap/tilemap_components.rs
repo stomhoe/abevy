@@ -13,8 +13,3 @@ pub struct ActivatesChunks(pub HashSet<Entity>,);
 //DEJARLO COMO IVec2 ASÍ LOS OBJETOS CON TRANSFORM Q NO SEA EXACTAMENTE EL MISMO PUEDEN INDEXAR EL CHUNK MÁS CERCANO, SINO REQUIERE EXACTITUD
 pub struct Chunk(pub IVec2);
 
-
-#[derive(Component, Debug, Default, )]
-pub struct TilesInstantiated;
-
-
