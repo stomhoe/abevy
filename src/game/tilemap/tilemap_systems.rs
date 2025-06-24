@@ -3,7 +3,7 @@ use std::mem;
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::{map::*, prelude::MaterialTilemap, tiles::*, TilemapBundle};
 
-use crate::game::{beings::beings_components::Being, factions::factions_components::SelfFaction, tilemap::{formation_generation::{formation_generation_components::FnlComp, formation_generation_resources::WorldGenSettings, formation_generation_utils::{gather_all_tiles2spawn_within_chunk, TileInfo, }}, tilemap_components::*, tilemap_resources::*}};
+use crate::game::{beings::beings_components::Being, factions::factions_components::SelfFaction, tilemap::{formation_generation::{formation_generation_components::FnlComp, formation_generation_resources::WorldGenSettings, formation_generation_utils::{gather_all_tiles2spawn_within_chunk, TileDto, }}, tilemap_components::*, tilemap_resources::*}};
 
 
 pub fn visit_chunks_around_activators(
@@ -126,41 +126,62 @@ pub fn hide_outofrange_chunks(
         }
     }
 }
-struct LayerInfo {
+
+struct LayerDto {
     pub tilemap_entity: Entity, pub tile_storage: TileStorage,
     pub handles: Vec<Handle<Image>>, pub needs_y_sort: bool,
 }
 
-fn instantiate_tile_bundle(
-    tileinfo: &TileInfo, tilemap_entity: Entity, 
-    texture_index: TileTextureIndex, pos_within_chunk: TilePos,
-) -> TileBundle {
-    TileBundle {
-        position: pos_within_chunk,
-        tilemap_id: TilemapId(tilemap_entity),
-        texture_index, 
-        flip: tileinfo.flip,
-        color: tileinfo.color,
-        visible: tileinfo.visible,
-        ..Default::default()
-    }
-}
-
-fn do_stuff_in_common( 
-    commands: &mut Commands, tileinfo: &TileInfo, 
+fn insert_tile_into_storage( 
+    commands: &mut Commands, tileinfo: &TileDto, 
     tilemap_entity: Entity,  tile_storage: &mut TileStorage,
     texture_index: TileTextureIndex, pos_within_chunk: TilePos,
 )  {
-    let tile_bundle = instantiate_tile_bundle(tileinfo, tilemap_entity, texture_index, pos_within_chunk);
-    let tile_entity: Entity = if let Some(existing_entity) = tileinfo.entity {
-        commands.entity(existing_entity).insert(tile_bundle);
-        existing_entity
+    let tile_bundle = TileBundle {
+        position: pos_within_chunk, tilemap_id: TilemapId(tilemap_entity),
+        texture_index,  flip: tileinfo.flip, color: tileinfo.color,
+        visible: tileinfo.visible, ..Default::default()
+    };
+    let tile_entity: Entity = if let Some(preexisting_tile_entity) = tileinfo.entity {
+        commands.entity(preexisting_tile_entity).insert(tile_bundle);
+        preexisting_tile_entity
     } else {
         commands
             .spawn(tile_bundle)
             .id()
     };
     tile_storage.set(&pos_within_chunk, tile_entity);
+}
+
+fn instantiate_new_layer_dto(
+    commands: &mut Commands, 
+    layers: &mut Map,
+    tile_dto: TileDto,
+) {
+    let tilemap_entity: Entity = commands.spawn_empty().id();
+    let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
+
+    insert_tile_into_storage(
+        commands, &tile_dto, tilemap_entity, &mut tile_storage,
+        TileTextureIndex(0), TilePos::from(tile_dto.pos_within_chunk),
+    );
+
+    let layer_dto = LayerDto {
+        tilemap_entity,
+        tile_storage,
+        handles: vec![tile_dto.used_handle],
+        needs_y_sort: tile_dto.needs_y_sort,
+    };
+    layers.insert((tile_dto.layer_z, tmaptsize_to_uvec2(tile_dto.tile_size)), layer_dto);
+}
+
+type Map = HashMap<(i32, UVec2), LayerDto>;
+
+pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
+    UVec2::new(tile_size.x as u32, tile_size.y as u32)
+}
+pub fn uvec2_to_tmaptsize(tile_size: UVec2) -> TilemapTileSize {
+    TilemapTileSize { x: tile_size.x as f32, y: tile_size.y as f32 }
 }
 
 #[allow(unused_parens)]
@@ -172,82 +193,68 @@ fn produce_tilemaps(
     chunk_pos: IVec2, 
     noise_query: Query<&FnlComp>,
 ) {
-    let mut layers: HashMap<i16, LayerInfo> = HashMap::new();
+    let mut layers: Map = HashMap::new();
 
-    for mut tileinfo in gather_all_tiles2spawn_within_chunk(commands, &asset_server, noise_query, gen_settings, chunk_pos) {
-        let tilepos_within_chunk = TilePos {x: tileinfo.pos_within_chunk.x, y: tileinfo.pos_within_chunk.y, };
-        if let Some(layer_info) = layers.get_mut(&tileinfo.layer_z)
+    for mut tile_dto in gather_all_tiles2spawn_within_chunk(commands, &asset_server, noise_query, gen_settings, chunk_pos) {
+        let tilepos_within_chunk = TilePos::from(tile_dto.pos_within_chunk);
+
+        if let Some(layer_dto) = layers.get_mut(&(tile_dto.layer_z, tmaptsize_to_uvec2(tile_dto.tile_size))) 
         {
             let (&mut tilemap_entity, tile_storage, handles) = (
-                &mut layer_info.tilemap_entity,
-                &mut layer_info.tile_storage,
-                &mut layer_info.handles,
+                &mut layer_dto.tilemap_entity,
+                &mut layer_dto.tile_storage,
+                &mut layer_dto.handles,
             );
 
 
-            let texture_index = match handles.iter().position(|x| *x == tileinfo.used_handle) {
+            let texture_index = match handles.iter().position(|x| *x == tile_dto.used_handle) {
                 Some(index) => TileTextureIndex(index as u32),
                 None => {
-                    handles.push(mem::take(&mut tileinfo.used_handle));
+                    handles.push(mem::take(&mut tile_dto.used_handle));
                     TileTextureIndex((handles.len() - 1) as u32)
                 }
             };
 
-            do_stuff_in_common(commands, &tileinfo, tilemap_entity, tile_storage, texture_index, tilepos_within_chunk,);
+            insert_tile_into_storage(commands, &tile_dto, tilemap_entity, tile_storage, texture_index, tilepos_within_chunk,);
 
-            layer_info.needs_y_sort = layer_info.needs_y_sort || tileinfo.needs_y_sort;
+            layer_dto.needs_y_sort = layer_dto.needs_y_sort || tile_dto.needs_y_sort;
         } else{
-            let tilemap_entity: Entity = commands.spawn_empty().id();
-            let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
-
-            do_stuff_in_common(
-                commands, &tileinfo, tilemap_entity, &mut tile_storage,
-                TileTextureIndex(0), tilepos_within_chunk,
-            );
-
-            let handles = vec![mem::take(&mut tileinfo.used_handle)];
-            let layer_info = LayerInfo {
-                tilemap_entity,
-                tile_storage,
-                handles,
-                needs_y_sort: tileinfo.needs_y_sort,
-            };
-            
-            layers.insert(tileinfo.layer_z, layer_info);
+            instantiate_new_layer_dto(commands, &mut layers, tile_dto);
         }
     }
     
-    for (&layer_z, layer_info) in layers.iter_mut() {
-        make_tilemap(
-            commands, layer_info.tilemap_entity,
-            TilemapTexture::Vector(mem::take(&mut layer_info.handles)),
-            chunk_ent, chunk_pos, mem::take(&mut layer_info.tile_storage),
-            layer_z, layer_info.needs_y_sort,
+    for (&(layer_z, tile_size), layer_dto) in layers.iter_mut() {
+        fill_tilemap_data(
+            commands, layer_dto.tilemap_entity,
+            TilemapTexture::Vector(mem::take(&mut layer_dto.handles)),
+            chunk_ent, chunk_pos, mem::take(&mut layer_dto.tile_storage),
+            layer_z, layer_dto.needs_y_sort,
+            uvec2_to_tmaptsize(tile_size),
         );
     }
 }
 
 const RENDER_CHUNK_SIZE: UVec2 = UVec2 {x: CHUNK_SIZE.x * 2, y: CHUNK_SIZE.y * 2,};
 const TILEMAP_GRID_SIZE: TilemapGridSize = TilemapGridSize { x: TILE_SIZE_PXS.x as f32, y: TILE_SIZE_PXS.y as f32 };
-pub const TILEMAP_TILE_SIZE: TilemapTileSize = TilemapTileSize { x: TILE_SIZE_PXS.x as f32, y: TILE_SIZE_PXS.y as f32 };
+pub const TILEMAP_TILE_SIZE_64: TilemapTileSize = TilemapTileSize { x: TILE_SIZE_PXS.x as f32, y: TILE_SIZE_PXS.y as f32 };
 
 
 #[allow(unused_parens)]
-fn make_tilemap(commands: &mut Commands, 
+fn fill_tilemap_data(commands: &mut Commands, 
     tmap_entity: Entity,
     texture: TilemapTexture, 
     chunk_ent: Entity, 
     _chunk_pos: IVec2,//lo dejo por si lo necesita algún shader
     storage: TileStorage,
-    layer_z_level: i16, y_sort: bool, 
+    layer_z_level: i32, y_sort: bool, 
+    tile_size: TilemapTileSize,
     //mut materials: ResMut<Assets<MyMaterial>>,//buscar formas alternativas de agarrar shaders
 )
 {
     commands.entity(tmap_entity).insert(ChildOf(chunk_ent));
     let mut ent_commands = commands.entity(tmap_entity);
     let grid_size = TILEMAP_GRID_SIZE; let size = CHUNK_SIZE.into();  
-    let tile_size = TILEMAP_TILE_SIZE;
-    let transform = Transform::from_translation(Vec3::new(0.0, 0.0, layer_z_level as f32));
+    let transform = Transform::from_translation(Vec3::new(0.0, 0.0, (layer_z_level as f32/10000.)));
     let render_settings = TilemapRenderSettings {render_chunk_size: RENDER_CHUNK_SIZE, y_sort,};
 
     match layer_z_level {
