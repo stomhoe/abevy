@@ -70,7 +70,6 @@ fn spawn_chunks_around_camera(
     camera_query: Query<&Transform, With<Camera>>,
     mut chunk_manager: ResMut<ChunkManager>,
 ) {
-    println!("Spawning chunks around camera");
     for transform in camera_query.iter() {
         let camera_chunk_pos = camera_pos_to_chunk_pos(&transform.translation.xy());
         for y in (camera_chunk_pos.y - 2)..(camera_chunk_pos.y + 2) {

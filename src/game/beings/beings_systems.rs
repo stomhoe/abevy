@@ -9,7 +9,7 @@ pub fn handle_movement(
     mut query: Query<(&InputMoveDirection, &mut Transform), With<Being>>,
 ) {
     for (input_move_direction, mut transform) in query.iter_mut() {
-        let speed = 100.0;
+        let speed = 1000.0;
         let delta = time.delta_secs();
         let movement = input_move_direction.0 * speed * delta;
         transform.translation += movement;

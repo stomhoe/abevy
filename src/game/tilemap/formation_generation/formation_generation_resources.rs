@@ -20,6 +20,6 @@ impl Default for WorldGenSettings {
 
 
 #[derive(Resource, Default, )]
-pub struct Textures (
+pub struct Textures (//mejorar eto
     pub HashMap<u32, Handle<Image>>,
 );
