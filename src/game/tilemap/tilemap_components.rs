@@ -8,10 +8,23 @@ use bevy::platform::collections::HashSet;
 pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 
-#[derive(Component, Debug,)]
+
+
+use superstate::{SuperstateInfo};
+
+#[derive(Component, Default)]
+#[require(SuperstateInfo<ChunkState>)]
+pub struct ChunkState;
+
+#[derive(Component)]
+#[require(ChunkState)]
+pub struct InitializedChunk;
+
+#[derive(Component)]
+#[require(ChunkState)]
 #[require(Visibility::Hidden)]
-//DEJARLO COMO IVec2 ASÍ LOS OBJETOS CON TRANSFORM Q NO SEA EXACTAMENTE EL MISMO PUEDEN INDEXAR EL CHUNK MÁS CERCANO, SINO REQUIERE EXACTITUD
-pub struct Chunk(pub IVec2);
+pub struct UninitializedChunk;
+
 
 #[derive(Component, Debug, Default, )]
-pub struct UninitializedChunk(pub IVec2);
+pub struct ChunkPos(pub IVec2);

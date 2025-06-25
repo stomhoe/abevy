@@ -5,6 +5,8 @@ use bevy_ecs_tilemap::tiles::TileTextureIndex;
 use fastnoise_lite::FastNoiseLite;
 use superstate::{SuperstateInfo};
 
+use crate::game::tilemap::terrain_gen::terrain_gen_utils::{TileInstantiationData, UniqueTileDto};
+
 #[derive(Component, Default, )]
 pub struct FnlComp(pub FastNoiseLite);
 
@@ -29,10 +31,10 @@ pub struct TileDistribution(
 pub struct Fill;//no sé si ponerle id o q se referencie la entity instanciada 
 
 
-#[derive(Component, Debug, Default, )]
-pub struct TileUnid(pub u16);
-
 
 #[derive(Component, Debug, Default, )]
 pub struct Tree();
 
+
+#[derive(Component, Debug, Default, )]
+pub struct TilesReady(pub Vec<UniqueTileDto>);

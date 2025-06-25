@@ -1,5 +1,7 @@
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::{math::U16Vec2, platform::collections::HashMap, prelude::*};
+use bevy_ecs_tilemap::map::TilemapTileSize;
 use fastnoise_lite::FastNoiseLite;
+
 
 #[derive(Resource, )]
 pub struct WorldGenSettings {
@@ -18,8 +20,3 @@ impl Default for WorldGenSettings {
     }
 }
 
-
-#[derive(Resource, Default, )]
-pub struct Textures (//mejorar eto
-    pub HashMap<u32, Handle<Image>>,
-);

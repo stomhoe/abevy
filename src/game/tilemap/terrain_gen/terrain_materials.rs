@@ -18,7 +18,7 @@ impl Default for TextureOverlayMaterial {
         Self { 
             texture_overlay: Handle::default(),
             mask_color: Vec4::new(1.0, 0.0, 0.0, 1.0),
-            scale: 0.00000000001,
+            scale: 0.00001,
         }
     }
 }
