@@ -36,7 +36,7 @@ fn startup(
     let tilemap_entity = commands.spawn_empty().id();
 
     fill_tilemap(
-        TileTextureIndex(3),
+        TileTextureIndex(0),
         map_size,
         TilemapId(tilemap_entity),
         &mut commands,

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::game::{tilemap::{terrain_gen::TerrainGenPlugin, tilemap_resources::*, tilemap_systems::*}, SimRunningSystems};
+use crate::game::{tilemap::{terrain_gen::TerrainGenPlugin, tile_imgs::*, tilemap_resources::*, tilemap_systems::*}, SimRunningSystems};
 
 mod tilemap_systems;
 pub mod tilemap_components;
@@ -29,8 +29,9 @@ impl Plugin for MyTileMapPlugin {
                 fill_tilemaps_data).in_set(SimRunningSystems).in_set(TilemapSystems))
             .init_resource::<LoadedChunks>()
             .init_resource::<ChunkRangeSettings>()
-            
-            .add_systems(Startup, tile_imgs::setup)
+            .init_resource::<NidImgMap>()
+            .init_resource::<NidRepeatImgMap>()
+            .add_systems(Startup, (tile_imgs::setup_nid_img_map, tile_imgs::setup_rep_img_map))
         ;
     }
 }
