@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 
-use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt, TextSubmitEvent,
+use bevy_ui_text_input::{*,
 };
 
 use crate::game::{GameMp, GamePhase, SelfMpKind};

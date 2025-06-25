@@ -3,7 +3,7 @@ use std::{hash::Hasher, mem};
 use bevy::{ecs::query, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::{map::*, prelude::{MaterialTilemap, MaterialTilemapHandle}, tiles::*, MaterialTilemapBundle, TilemapBundle};
 
-use crate::game::{beings::beings_components::Being, factions::factions_components::SelfFaction, tilemap::{terrain_gen::{terrain_gen_components::{FnlComp, TilesReady}, terrain_gen_resources::WorldGenSettings, terrain_gen_utils::{TileInstantiationData, UniqueTileDto, GRASS_Z_LEVEL, Z_DIVISOR}, terrain_materials::TextureOverlayMaterial}, tile_imgs::{NidImgMap, TileImgNid}, tilemap_components::*, tilemap_resources::*}};
+use crate::game::{beings::beings_components::Being, factions::factions_components::SelfFaction, tilemap::{terrain_gen::{terrain_gen_components::{FnlComp}, terrain_gen_resources::WorldGenSettings, terrain_gen_utils::{TileInstantiationData, UniqueTileDto, GRASS_Z_LEVEL, Z_DIVISOR}, terrain_materials::TextureOverlayMaterial}, tile_imgs::{NidImgMap, TileImgNid}, tilemap_components::*, tilemap_resources::*}};
 
 
 pub fn visit_chunks_around_activators(
@@ -22,10 +22,12 @@ pub fn visit_chunks_around_activators(
                 let adjacent_chunk_pos = IVec2::new(x, y);
 
                 if ! loaded_chunks.0.contains_key(&adjacent_chunk_pos) {
+                    let chunk_pos = ChunkPos(adjacent_chunk_pos);
+
                     let chunk_ent = commands.spawn((
                         UninitializedChunk,  
-                        ChunkPos(adjacent_chunk_pos),
-                        Transform::from_translation(chunkpos_to_pixelpos(adjacent_chunk_pos).extend(0.0))
+                        Transform::from_translation((chunk_pos.to_pixelpos()).extend(0.0)),
+                        chunk_pos,
                     
                     )).id();
                     loaded_chunks.0.insert(adjacent_chunk_pos, chunk_ent);
@@ -138,7 +140,7 @@ type Map = HashMap<(i32, U16Vec2), LayerDto>;
 #[allow(unused_parens)]
 pub fn produce_tilemaps(
     mut commands: Commands, 
-    chunk_query: Query<(Entity, &TilesReady), With<UninitializedChunk>>,
+    chunk_query: Query<(Entity, &TilesReady),>,
     tile_ins_data_query: Query<&TileInstantiationData>,
     nid_img_map: Res<NidImgMap>, 
 ) {
@@ -165,7 +167,7 @@ pub fn produce_tilemaps(
                         }
                     };
 
-                    fill_tile_bundledata_and_put_in_storage(&mut commands, &uniq_tile_dto, &tile_ins_data, tilemap_entity, tile_storage, texture_index);
+                    add_tile_bundle_and_put_in_storage(&mut commands, &uniq_tile_dto, &tile_ins_data, tilemap_entity, tile_storage, texture_index);
 
                     layer_dto.needs_y_sort = layer_dto.needs_y_sort || tile_ins_data.needs_y_sort;
                 } else {
@@ -178,7 +180,7 @@ pub fn produce_tilemaps(
             commands.entity(layer_dto.tilemap_entity).insert(layer_dto);
         }
 
-        commands.entity(chunk_ent).remove::<TilesReady>();
+        commands.entity(chunk_ent).insert(LayersReady);
     }
 
 }
@@ -186,10 +188,10 @@ pub fn produce_tilemaps(
 #[allow(unused_parens)]
 pub fn fill_tilemaps_data(mut commands: Commands, 
     asset_server: Res<AssetServer>, 
-    mut chunk_query: Query<(Entity, &Children), With<UninitializedChunk>>,
+    mut chunk_query: Query<(Entity, &Children), With<LayersReady>>,//TODO FIJARSE SI ESTO SE EJECUTA CON UN SOLO HIJO
     mut layer_query: Query<(&mut LayerDto), >,
     tile_images_map: Res<NidImgMap>,
-    mut texture_overley_mat: ResMut<Assets<TextureOverlayMaterial>>,//buscar formas alternativas de agarrar shaders
+    mut texture_overley_mat: ResMut<Assets<TextureOverlayMaterial>>,
 )
 {
     for (chunk, children) in chunk_query.iter_mut() {
@@ -235,10 +237,6 @@ pub fn fill_tilemaps_data(mut commands: Commands,
         }
         commands.entity(chunk).insert(InitializedChunk);
     }
-
-
-
-
 }
 
 
@@ -250,7 +248,7 @@ pub struct LayerDto {
     pub image_nids: Vec<TileImgNid>, pub needs_y_sort: bool,
 }
 
-fn fill_tile_bundledata_and_put_in_storage( 
+fn add_tile_bundle_and_put_in_storage( 
     commands: &mut Commands, 
     unique_tile_dto: &UniqueTileDto,
     tile_inst_data: &TileInstantiationData, 
@@ -279,13 +277,13 @@ fn instantiate_new_layer_dto(
 
     let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
 
-    fill_tile_bundledata_and_put_in_storage(
+    add_tile_bundle_and_put_in_storage(
         commands, unique_tile_dto, &tile_inst_data, tilemap_entity, &mut tile_storage,
         TileTextureIndex(0),
     );
 
     let layer_dto = LayerDto {
-        tile_size: uvec2_to_tmaptsize(tile_size.into()),
+        tile_size: uvec2_to_tmaptsize(tile_size),
         layer_z: tile_inst_data.layer_z,
         tilemap_entity,
         tile_storage,

@@ -36,5 +36,3 @@ pub struct Fill;//no sé si ponerle id o q se referencie la entity instanciada
 pub struct Tree();
 
 
-#[derive(Component, Debug, Default, )]
-pub struct TilesReady(pub Vec<UniqueTileDto>);

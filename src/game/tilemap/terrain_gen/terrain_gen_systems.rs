@@ -1,9 +1,10 @@
 
 use bevy::{ecs::query, log::tracing_subscriber::layer, platform::collections::{HashMap, HashSet}, prelude::*};
-use bevy_ecs_tilemap::{map::*, prelude::{MaterialTilemap, MaterialTilemapHandle}, tiles::*, MaterialTilemapBundle, TilemapBundle};
+use bevy_ecs_tilemap::tiles::*;
 
-use crate::game::tilemap::{terrain_gen::{terrain_gen_components::*, terrain_gen_resources::*, terrain_gen_utils::{TileInstantiationData, UniqueTileDto}}, tile_imgs::NidImgMap, tilemap_components::{ ChunkPos, UninitializedChunk}, tilemap_resources::*};
 use fastnoise_lite::FastNoiseLite;
+
+use crate::game::tilemap::{terrain_gen::{terrain_gen_components::*, terrain_gen_resources::*}, tilemap_components::*, tilemap_resources::{ CHUNK_SIZE}};
 
 
 
@@ -41,9 +42,11 @@ pub fn add_tiles2spawn_within_chunk (
         for x in 0..CHUNK_SIZE.x { 
             for y in 0..CHUNK_SIZE.y {
                 let pos_within_chunk = UVec2::new(x, y);
-                let tilepos = chunkpos_to_tilepos(chunk_pos.0) + pos_within_chunk.as_ivec2();
+                let tilepos = chunk_pos.to_tilepos() + pos_within_chunk.as_ivec2();
                 add_tiles_for_tilepos( &mut commands, &mut tiles_ready, noise_query, tilepos, pos_within_chunk);
-            }} 
+        }} 
+
+
         commands.entity(chunk_ent).insert(tiles_ready);
     }
 }

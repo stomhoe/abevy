@@ -22,21 +22,6 @@ impl Default for ChunkRangeSettings {
 #[derive(Default, Debug, Resource)]
 pub struct LoadedChunks (pub HashMap<IVec2, Entity>,);
 
-pub fn contpos_to_chunkpos(contpos: Vec2) -> IVec2 {
-    contpos.as_ivec2().div_euclid(TILE_SIZE_PXS.as_ivec2() * CHUNK_SIZE.as_ivec2())
-}
-
-pub fn chunkpos_to_pixelpos(chunk_pos: IVec2) -> Vec2 {
-    chunk_pos.as_vec2() * TILE_SIZE_PXS.as_vec2() * CHUNK_SIZE.as_vec2() 
-}
-
-pub fn chunkpos_to_tilepos(chunk_pos: IVec2) -> IVec2 {
-    chunk_pos * CHUNK_SIZE.as_ivec2() 
-}
-
-pub fn pixelpos_to_tilepos(pixelpos: Vec2) -> IVec2 {
-    pixelpos.div_euclid(TILE_SIZE_PXS.as_vec2()).as_ivec2()
-}
 
 pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
 
