@@ -1,9 +1,7 @@
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::map::{TilemapGridSize, TilemapTileSize};
-use strum::IntoEnumIterator;
+use bevy_ecs_tilemap::map::{TilemapGridSize};
 
-use crate::game::tilemap::formation_generation::formation_generation_utils::BaseZLevels;
 
 #[derive(Resource, )]
 pub struct ChunkRangeSettings {

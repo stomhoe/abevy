@@ -15,7 +15,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let map_size = TilemapSize { x: 320, y: 320 };
     let mut tile_storage = TileStorage::empty(map_size);
     let tilemap_entity = commands.spawn_empty().id();
-// 
+
     for x in 0..320u32 {
         for y in 0..320u32 {
             let tile_pos = TilePos { x, y };

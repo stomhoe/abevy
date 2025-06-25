@@ -17,7 +17,7 @@ mod no_atlas {
     // const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 48.0, y: 54.0 };
     const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 48.0, y: 56.0 };
     const COORD_SYS: HexCoordSystem = HexCoordSystem::Row;
-// 
+
     #[cfg(not(feature = "atlas"))]
     fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
         commands.spawn(Camera2d);

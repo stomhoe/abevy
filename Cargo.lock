@@ -614,8 +614,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_tilemap"
 version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec11e943225eb172928a85f2183b665f7782743b00bca937fbab3736921a1666"
+source = "git+https://github.com/zachrburke/bevy_ecs_tilemap.git#547d2d4407aa40ffd70315d68b1234b58b7d4769"
 dependencies = [
  "bevy",
  "log",
