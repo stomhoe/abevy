@@ -24,7 +24,7 @@ impl Plugin for MyTileMapPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_plugins((bevy_ecs_tilemap::TilemapPlugin, TerrainGenPlugin))
-            .add_systems(Update, (
+            .add_systems(FixedUpdate, (
                 visit_chunks_around_activators, 
                 rem_outofrange_chunks_from_activators, 
                 despawn_unreferenced_chunks.before(produce_tilemaps), 
@@ -32,7 +32,7 @@ impl Plugin for MyTileMapPlugin {
                 hide_outofrange_chunks, 
 
             ).in_set(IngameSystems).in_set(ChunkVisibSystems))
-            .add_systems(Update, (
+            .add_systems(FixedUpdate, (
                 produce_tilemaps.before(fill_tilemaps_data),
                 fill_tilemaps_data,
                 

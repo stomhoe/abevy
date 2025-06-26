@@ -56,7 +56,7 @@ pub fn camera_zoom_system(
     mut camera_query: Query<&mut Transform, With<Camera>>,
 ) {
     let zoom_speed = 0.1;
-    let min_zoom = 0.2;
+    let min_zoom = 0.01;
     let max_zoom = 3.0;
 
     let mut zoom_delta = 0.0;

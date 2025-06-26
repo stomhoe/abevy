@@ -44,6 +44,7 @@ pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<Wo
 #[allow(unused_parens)]
 pub fn add_tiles2spawn_within_chunk (
     mut commands: Commands, 
+    //TODO EN VEZ DE USAR UNA QUERY, HACER UNA LLAMADA DIRECTA. PONER LOS ARGS EN UN STRUCT
     chunks_query: Query<(Entity, &ChunkPos), (With<UninitializedChunk>, Without<TilesReady>, Without<Children>)>, 
     noise_query: Query<&FnlComp>, 
     gen_settings: Res<WorldGenSettings>,

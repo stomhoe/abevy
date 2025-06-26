@@ -1,3 +1,4 @@
+use bevy::app::FixedMain;
 use bevy::prelude::*;
 use crate::game::beings::{BeingsPlugin, MovementSystems};
 use crate::game::tilemap::terrain_gen::TerrainGenSystems;
@@ -72,6 +73,8 @@ impl Plugin for GamePlugin {
             .init_state::<GamePhase>()
             .init_state::<GameMp>()
             .init_state::<SelfMpKind>()
+
+            .insert_resource(Time::<Fixed>::from_seconds(0.1))
             
         ;
     }
