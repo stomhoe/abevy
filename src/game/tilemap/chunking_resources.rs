@@ -12,9 +12,9 @@ pub struct ChunkRangeSettings {
 impl Default for ChunkRangeSettings {
     fn default() -> Self {
         Self {
-            chunk_visib_max_dist: 1000.0,
+            chunk_visib_max_dist: 1700.0,
             chunk_active_max_dist: 8000.0, 
-            chunk_show_range: 3,
+            chunk_show_range: 1,//TODO
         }
     }
 }

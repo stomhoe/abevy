@@ -66,7 +66,8 @@ impl Plugin for GamePlugin {
             .configure_sets(FixedUpdate, (
                 NetworkSystems.run_if(in_state(GameMp::Multiplayer)),
                 ClientSystems.run_if(in_state(SelfMpKind::Client).and(in_state(GameMp::Multiplayer))),
-
+                SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
+                TerrainGenSystems.before(TilemapsSystems),
             ))
 
             .init_state::<SimulationState>()

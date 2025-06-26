@@ -6,9 +6,9 @@
     //mod things_events;
     //mod things_styles;
     //mod things_resources;
-    pub struct thingsPlugin;
-    #[allow(unused_parens)]
-    impl Plugin for thingsPlugin {
+    pub struct ThingsPlugin;
+    #[allow(unused_parens, path_statements)]
+    impl Plugin for ThingsPlugin {
         fn build(&self, app: &mut App) {
             app
                 //.add_systems(Update, (somesystem))

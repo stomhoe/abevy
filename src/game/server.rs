@@ -7,7 +7,7 @@ mod server_systems;
 //mod server_styles;
 mod server_resources;
 pub struct ServerPlugin;
-#[allow(unused_parens)]
+#[allow(unused_parens, path_statements)]
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         app

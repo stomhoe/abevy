@@ -51,13 +51,14 @@ pub fn update_move_input_dir(
         move_input_dir.0 = input_dir;
     }
 }
+
 pub fn camera_zoom_system(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut camera_query: Query<&mut Transform, With<Camera>>,
 ) {
     let zoom_speed = 0.1;
-    let min_zoom = 0.01;
-    let max_zoom = 3.0;
+    let min_zoom = 0.0001;
+    let max_zoom = 100.0; // Increased max zoom for much further zoom out
 
     let mut zoom_delta = 0.0;
     for event in mouse_wheel_events.read() {
@@ -72,4 +73,3 @@ pub fn camera_zoom_system(
         }
     }
 }
-

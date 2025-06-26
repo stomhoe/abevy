@@ -19,7 +19,7 @@ pub struct InputMoveDirection(pub Vec3);
 pub struct PlayerDirectControllable;
 
 #[derive(Component)]
-#[require(PlayerDirectControllable, CameraTarget)]
+#[require(PlayerDirectControllable)]
 pub struct ControlledBySelf;
 
 #[derive(Component)]

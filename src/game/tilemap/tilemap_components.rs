@@ -8,7 +8,7 @@ pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 use superstate::{SuperstateInfo};
 
-use crate::game::tilemap::{terrain_gen::terrain_gen_utils::UniqueTileDto, tilemap_resources::{CHUNK_SIZE, TILE_SIZE_PXS}};
+use crate::game::tilemap::{terrain_gen::terrain_gen_utils::UniqueTileDto, chunking_resources::{CHUNK_SIZE, TILE_SIZE_PXS}};
 
 #[derive(Component, Default)]
 #[require(SuperstateInfo<ChunkInitState>)]

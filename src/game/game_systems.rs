@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
 use crate::game::beings::beings_components::{Being, BeingNid, ControlledBySelf};
 use crate::game::factions::factions_components::SelfFaction;
-use crate::game::player::player_components::Player;
+use crate::game::player::player_components::{CameraTarget, Player};
 use crate::game::{SimulationState};
 
 pub fn spawn_player_beings(
@@ -24,7 +24,23 @@ pub fn spawn_player_beings(
             image: asset_server.load("textures\\wear\\moss_short_tunic_icon.png"),
             ..default()
         },
-        Transform::from_translation(Vec3::new(window.width() / 2.0, window.height() / 2.0, 0.0)),
+        Transform::default(),
+        ControlledBySelf,
+        SelfFaction(),
+        CameraTarget,
+    ));
+
+    commands.spawn((
+        Being (BeingNid(2)),
+        Sprite {
+            image: asset_server.load("textures\\wear\\moss_short_tunic_icon.png"),
+            ..default()
+        },
+        Transform::from_translation(Vec3::new(
+            window.width() ,
+            window.height(),
+            0.0,
+        )),
         ControlledBySelf,
         SelfFaction(),
     ));

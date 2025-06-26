@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 
-use crate::game::{tilemap::{terrain_gen::TerrainGenPlugin, tile_imgs::*, tilemap_resources::*, tilemap_systems::*, chunking_systems::*}, IngameSystems, SimRunningSystems};
+use crate::game::{tilemap::{terrain_gen::TerrainGenPlugin, tile_imgs::*, chunking_resources::*, tilemap_systems::*, chunking_systems::*}, IngameSystems, SimRunningSystems};
 
 mod tilemap_systems;
 mod chunking_systems;
 pub mod tilemap_components;
-pub mod tilemap_resources;
+pub mod chunking_resources;
 pub mod tile_nids;
 
 pub mod tile_imgs;
@@ -28,15 +28,15 @@ impl Plugin for MyTileMapPlugin {
                 visit_chunks_around_activators, 
                 rem_outofrange_chunks_from_activators, 
                 despawn_unreferenced_chunks.before(produce_tilemaps), 
-                show_chunks_around_camera, 
+                show_chunks_around_camera,//.after(fill_tilemaps_data), 
                 hide_outofrange_chunks, 
 
-            ).in_set(IngameSystems).in_set(ChunkVisibSystems))
+            ).in_set(SimRunningSystems).in_set(ChunkVisibSystems))
             .add_systems(FixedUpdate, (
                 produce_tilemaps.before(fill_tilemaps_data),
                 fill_tilemaps_data,
                 
-            ).in_set(IngameSystems).in_set(TilemapsSystems))
+            ).in_set(SimRunningSystems).in_set(TilemapsSystems))
             .init_resource::<LoadedChunks>()
             .init_resource::<ChunkRangeSettings>()
             .init_resource::<NidImgMap>()

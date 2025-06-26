@@ -5,7 +5,7 @@ use bevy_ecs_tilemap::tiles::*;
 use debug_unwraps::DebugUnwrapExt;
 use fastnoise_lite::FastNoiseLite;
 
-use crate::game::tilemap::{terrain_gen::{terrain_gen_components::*, terrain_gen_resources::*, terrain_gen_utils::UniqueTileDto}, tile_imgs::*, tilemap_components::*, tilemap_resources::CHUNK_SIZE};
+use crate::game::tilemap::{terrain_gen::{terrain_gen_components::*, terrain_gen_resources::*, terrain_gen_utils::UniqueTileDto}, tile_imgs::*, tilemap_components::*, chunking_resources::CHUNK_SIZE};
 
 // NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO
 #[derive(Resource, Default)]

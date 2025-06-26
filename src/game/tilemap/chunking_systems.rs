@@ -1,8 +1,7 @@
 
-use bevy::{math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
-use bevy_ecs_tilemap::{map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
+use bevy::{platform::collections::HashSet, prelude::*};
 
-use crate::game::{factions::factions_components::SelfFaction, tilemap::{terrain_gen::{terrain_gen_components::{TileInstantiationData, UsedShader}, terrain_gen_utils::{ UniqueTileDto, GRASS_Z_LEVEL, Z_DIVISOR}, terrain_materials::TextureOverlayMaterial}, tile_imgs::{ImgIngameCfg, NidImgMap, NidRepeatImgMap, TileImgNid}, tilemap_components::*, tilemap_resources::*}};
+use crate::game::{factions::factions_components::SelfFaction, tilemap::{tilemap_components::*, chunking_resources::*}};
 
 
 pub fn visit_chunks_around_activators(
@@ -13,7 +12,11 @@ pub fn visit_chunks_around_activators(
 ) {
     let cnt = tilemap_settings.chunk_show_range as i32;   
     for (transform, mut activates_chunks) in query.iter_mut() {
+
+        println!("Visiting chunks around activator at: {:?}", transform.translation.xy());
+
         let center_chunk_pos = contpos_to_chunkpos(transform.translation.xy());
+
 
         for y in (center_chunk_pos.y - cnt)..(center_chunk_pos.y + cnt+1) {
             for x in (center_chunk_pos.x - cnt)..(center_chunk_pos.x + cnt+1) {
@@ -56,7 +59,7 @@ pub fn rem_outofrange_chunks_from_activators(
         }
     }
 }
-
+#[allow(unused_parens)]
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,
     activator_query: Query<(&ActivatesChunks), (With<SelfFaction>)>,
