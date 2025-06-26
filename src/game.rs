@@ -1,10 +1,11 @@
 use bevy::prelude::*;
 use crate::game::beings::{BeingsPlugin, MovementSystems};
+use crate::game::tilemap::terrain_gen::TerrainGenSystems;
 use crate::game::time::ClockPlugin;
 use crate::game::factions::FactionsPlugin;
 use crate::game::player::{PlayerInputSystems, PlayerPlugin};
 use crate::game::setup_menus::SetupMenusPlugin;
-use crate::game::tilemap::MyTileMapPlugin;
+use crate::game::tilemap::{MyTileMapPlugin, TilemapsSystems};
 use crate::AppState;
 use crate::game::game_systems::*;
 
@@ -58,8 +59,8 @@ impl Plugin for GamePlugin {
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
                 SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::InGame))),
                 HostOnlySystems.run_if((in_state(SelfMpKind::Host).and(in_state(GameMp::Multiplayer))).or(in_state(GameMp::Singleplayer))),
-                ClientSystems.run_if(in_state(SelfMpKind::Client).and(in_state(GameMp::Multiplayer))
-            )))
+                ClientSystems.run_if(in_state(SelfMpKind::Client).and(in_state(GameMp::Multiplayer))),
+            ))
 
             .configure_sets(FixedUpdate, (
                 NetworkSystems.run_if(in_state(GameMp::Multiplayer)),

@@ -19,9 +19,10 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
 
         app
-            .add_systems(Update, (
-                (camera_follow_target, enforce_single_camera_target),
-                (update_move_input_dir).in_set(PlayerInputSystems).in_set(IngameSystems)
+            .add_systems(Update, ((
+                camera_follow_target, 
+                enforce_single_camera_target).in_set(IngameSystems),
+                (update_move_input_dir, camera_zoom_system).in_set(PlayerInputSystems).in_set(IngameSystems)
             
             ))
 

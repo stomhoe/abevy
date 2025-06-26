@@ -1,6 +1,6 @@
 
 
-use bevy::prelude::*;
+use bevy::{input::mouse::MouseWheel, prelude::*};
 
 use crate::game::{beings::beings_components::{Being, ControlledBySelf, PlayerDirectControllable, InputMoveDirection}, player::{player_components::*, player_resources::KeyboardInputMappings}};
 
@@ -49,6 +49,27 @@ pub fn update_move_input_dir(
 
     for mut move_input_dir in move_input_dir.iter_mut() {
         move_input_dir.0 = input_dir;
+    }
+}
+pub fn camera_zoom_system(
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut camera_query: Query<&mut Transform, With<Camera>>,
+) {
+    let zoom_speed = 0.1;
+    let min_zoom = 0.2;
+    let max_zoom = 3.0;
+
+    let mut zoom_delta = 0.0;
+    for event in mouse_wheel_events.read() {
+        zoom_delta += event.y;
+    }
+
+    if zoom_delta.abs() > f32::EPSILON {
+        for mut transform in camera_query.iter_mut() {
+            let new_scale = (transform.scale.x - zoom_delta * zoom_speed)
+                .clamp(min_zoom, max_zoom);
+            transform.scale = Vec3::splat(new_scale);
+        }
     }
 }
 

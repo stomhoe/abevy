@@ -1,13 +1,12 @@
 use bevy::{math::U16Vec2, platform::collections::HashMap};
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::map::TilemapTileSize;
+use bevy_ecs_tilemap::{map::TilemapTileSize, tiles::*};
 
 
 // NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO
 
 const BASE_PATH: &str = "textures/world/";
 
-pub const REPIMG_GRASS: RepImgNid = RepImgNid(0);
 
 
 #[allow(unused_parens)]
@@ -20,24 +19,9 @@ pub fn setup_nid_img_map(mut commands: Commands, asset_server: Res<AssetServer>,
 
 
 }
-
-#[allow(unused_parens)]
-pub fn setup_rep_img_map(mut commands: Commands, asset_server: Res<AssetServer>,
-    mut m: ResMut<NidRepeatImgMap>
-) {
+pub const IMG_WHITE: TileImgNid = TileImgNid(0);
 
 
-
-
-    m.insert(
-        &asset_server,
-        REPIMG_GRASS,
-        "/terrain/temperate_grass/grass.png",
-        0.001,
-    );
-
-
-}
 
 #[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]
 pub struct TileImgNid(pub u32);
@@ -94,4 +78,20 @@ impl NidRepeatImgMap {
 }
 
 
-pub const IMG_WHITE: TileImgNid = TileImgNid(0);
+
+
+
+#[allow(unused_parens)]
+pub fn setup_rep_img_map(mut commands: Commands, asset_server: Res<AssetServer>,
+    mut m: ResMut<NidRepeatImgMap>
+) {
+    m.insert(
+        &asset_server,
+        REPIMG_GRASS,
+        "/terrain/temperate_grass/grass.png",
+        0.001,
+    );
+
+
+pub const REPIMG_GRASS: RepImgNid = RepImgNid(0);
+}

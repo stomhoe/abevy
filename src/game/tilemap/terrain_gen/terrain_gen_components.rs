@@ -41,20 +41,18 @@ pub struct Tree();
 pub struct TileInstantiationData{
     pub image_nid: TileImgNid,
     pub flip: TileFlip,
-    pub color: TileColor,
-    pub visible: TileVisible,
+    pub color: Color,
+    pub visible: bool,
     pub used_shader: UsedShader, 
     
-}//TODO separar
+}
 impl TileInstantiationData {
-    pub fn new(image_nid: TileImgNid, flip: TileFlip, color: TileColor, visible: TileVisible, used_shader: UsedShader ) -> Self {
-        Self { image_nid, flip, color,  visible, used_shader }
+    pub fn new(image_nid: TileImgNid, flip: TileFlip, color: Color, visible: bool, used_shader: UsedShader ) -> Self {
+        Self { image_nid, flip, color, visible, used_shader }
     }
+    pub fn tile_visible(&self) -> TileVisible {TileVisible(self.visible)}
 
-
-    pub fn visible(&self) -> TileVisible {self.visible}
-
-
+    pub fn tile_color(&self) -> TileColor {TileColor(self.color)}
 }
 
 
@@ -63,8 +61,8 @@ impl Default for TileInstantiationData {
         Self { 
             image_nid: TileImgNid::default(),
             flip: TileFlip::default(),
-            color: TileColor::default(),
-            visible: TileVisible::default(),
+            color: Color::default(),
+            visible: true,
             used_shader: UsedShader::default(),
         }
     }

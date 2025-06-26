@@ -1,4 +1,4 @@
-use bevy::platform::collections::{HashMap, HashSet};
+use bevy::{math::U8Vec2, platform::collections::{HashMap, HashSet}};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::map::{TilemapGridSize};
 
@@ -14,7 +14,7 @@ impl Default for ChunkRangeSettings {
         Self {
             chunk_visib_max_dist: 1700.0,
             chunk_active_max_dist: 8000.0, 
-            chunk_show_range: 2,
+            chunk_show_range: 15,
         }
     }
 }
@@ -26,5 +26,5 @@ pub struct LoadedChunks (pub HashMap<IVec2, Entity>,);
 pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
 
 //TODO HACER DEL TAMAÑO DE LO QUE ES VISIBLE EN PANTALLA
-pub const CHUNK_SIZE: UVec2 = UVec2 { x: 8, y: 8 };
+pub const CHUNK_SIZE: U8Vec2 = U8Vec2 { x: 8, y: 8 };
 
