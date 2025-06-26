@@ -5,7 +5,8 @@ use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
-use crate::game::beings::beings_components::{Being, BeingNid, ControlledBySelf};
+use crate::game::beings::beings_components::{Being, ControlledBySelf};
+use crate::game::beings::beings_resources::BeingEntityMap;
 use crate::game::factions::factions_components::SelfFaction;
 use crate::game::player::player_components::{CameraTarget, Player};
 use crate::game::{SimulationState};
@@ -14,24 +15,21 @@ pub fn spawn_player_beings(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
     asset_server: Res<AssetServer>,
+    mut bmap: ResMut<BeingEntityMap>,
 ) {
     let window = window_query.single().unwrap();
     println!("Spawning player beings at window size");
 
-    commands.spawn((
-        Being (BeingNid(0)),
+    bmap.new_being(&mut commands, (
         Sprite {
             image: asset_server.load("textures\\wear\\moss_short_tunic_icon.png"),
             ..default()
         },
-        Transform::default(),
         ControlledBySelf,
         SelfFaction(),
-        CameraTarget,
     ));
 
-    commands.spawn((
-        Being (BeingNid(2)),
+    bmap.new_being(&mut commands, (
         Sprite {
             image: asset_server.load("textures\\wear\\moss_short_tunic_icon.png"),
             ..default()
@@ -44,6 +42,8 @@ pub fn spawn_player_beings(
         ControlledBySelf,
         SelfFaction(),
     ));
+
+       
 }
 
 pub fn toggle_simulation(

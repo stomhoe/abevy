@@ -6,7 +6,7 @@ use crate::game::time::ClockPlugin;
 use crate::game::factions::FactionsPlugin;
 use crate::game::player::{PlayerInputSystems, PlayerPlugin};
 use crate::game::setup_menus::SetupMenusPlugin;
-use crate::game::tilemap::{MyTileMapPlugin, TilemapsSystems};
+use crate::game::tilemap::{ChunksSystems, MyTileMapPlugin, TilemapsSystems};
 use crate::AppState;
 use crate::game::game_systems::*;
 
@@ -55,7 +55,8 @@ impl Plugin for GamePlugin {
             )
 
             .configure_sets(Update, (
-                PlayerInputSystems.before(MovementSystems),//NO SÉ SI HACE FALTA, MEJOR SACARLO PARA Q VAYA MÁS RÁPIDO
+                PlayerInputSystems,
+                MovementSystems,
                 IngameSystems.run_if(in_state(GamePhase::InGame)),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
                 SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::InGame))),
@@ -67,7 +68,6 @@ impl Plugin for GamePlugin {
                 NetworkSystems.run_if(in_state(GameMp::Multiplayer)),
                 ClientSystems.run_if(in_state(SelfMpKind::Client).and(in_state(GameMp::Multiplayer))),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
-                TerrainGenSystems.before(TilemapsSystems),
             ))
 
             .init_state::<SimulationState>()
@@ -75,7 +75,6 @@ impl Plugin for GamePlugin {
             .init_state::<GameMp>()
             .init_state::<SelfMpKind>()
 
-            .insert_resource(Time::<Fixed>::from_seconds(0.1))
             
         ;
     }

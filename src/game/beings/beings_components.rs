@@ -2,7 +2,7 @@ use bevy::{platform::{collections::HashMap, hash}, prelude::*};
 use strum_macros::EnumCount;
 use vec_collections::VecSet;
 use superstate::{SuperstateInfo};
-use crate::{common::common_components::GameZindex, game::{player::player_components::CameraTarget, tilemap::tilemap_components::ActivatesChunks}, AppState};
+use crate::{common::common_components::GameZindex, game::{player::player_components::CameraTarget, tilemap::chunking_components::ActivatesChunks}, AppState};
 
 
 
@@ -32,12 +32,10 @@ pub struct ControlledByOtherPlayer {
     pub player: Entity,
 }
 
-#[derive(Component)]
+#[derive(Component, Debug, PartialEq, Eq, Hash)]
 #[require(InputMoveDirection, GameZindex(500.))]
-pub struct Being(pub BeingNid);
+pub struct Being(pub u32);
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct BeingNid(pub u32);
 
 #[derive(Component)]
 #[relationship(relationship_target = Followers)]
@@ -94,6 +92,8 @@ pub struct Swimming;
 pub struct Walking;
 
 
+//PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
+//UTIL PARA RAZAS DE IGUANAS O ARAÑAS
 
 #[derive(Component)]
 pub struct WallPhaser;

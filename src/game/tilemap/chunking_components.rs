@@ -14,7 +14,6 @@ use crate::game::tilemap::{terrain_gen::terrain_gen_utils::UniqueTileDto, chunki
 #[require(SuperstateInfo<ChunkInitState>)]
 pub struct ChunkInitState;
 
-
 #[derive(Component, Debug, Default, )]
 #[require(ChunkInitState)]
 #[require(Visibility::Hidden)]
