@@ -18,19 +18,24 @@ pub struct TilesDataMap {//TODO faltan templates para habilitar la randomizacion
     pub data: HashMap<u32, Entity>,//
 }//NO SÉ SI USAR ESTO O DIRECTAMENTE PONERLE MARKER COMPONENTS A LOS ENTITIES DE TILE INSTANTIATION DATA
 
+#[derive(Component, Debug, Default, )]
+pub struct TemperateGrass;
+
 #[allow(unused_parens)]
 pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<WorldGenSettings>, _asset_server: Res<AssetServer>) {
 
     let humidity: FastNoiseLite = FastNoiseLite::default();
 
-    // let grass_instantiation_data = TileInstantiationData {
-    //     image_nid: IMG_WHITE,
-    //     color: Color::srgb(1.0, 0.0, 0.0),
-    //     used_shader: UsedShader::Grass,
-    //     ..Default::default()
-    // };
-
     // commands.spawn(grass_instantiation_data);
+
+    let tile_entity = commands.spawn(( 
+        MyTileBundle {
+            color: TC_RED,
+            shader: UsedShader::Grass,
+            ..Default::default()
+        },
+        TemperateGrass,
+    )).id();
 
     //TODO instanciar todas las instancias de noise y configurarlas acá 
     commands.spawn(FnlComp(humidity));
@@ -48,7 +53,7 @@ pub fn add_tiles2spawn_within_chunk (
     chunks_query: Query<(Entity, &ChunkPos), (With<UninitializedChunk>, Without<TilesReady>, Without<Children>)>, 
     noise_query: Query<&FnlComp>, 
     gen_settings: Res<WorldGenSettings>,
-    clonable_tiles: Query<Entity, With<TileImgNid>>,
+    clonable_tiles: Query<Entity, (With<TileImgNid>, Without<TilePos>)>,
     //tile_insta_data_query: Query<Entity, With<TileInstantiationData>>,
 ) -> Result {
 
@@ -77,16 +82,22 @@ pub fn add_tiles2spawn_within_chunk (
 
 fn add_tiles_for_tilepos(mut co: &mut Commands, tiles2spawn: &mut TilesReady, 
     noise_query: Query<&FnlComp>, tilepos: IVec2, pos_within_chunk: U8Vec2, 
-    clonable_tiles: Query<Entity, With<TileImgNid>>,
+    mut clonable_tiles: Query<Entity, (With<TileImgNid>, Without<TilePos>)>,
     rng : &mut Pcg64,
 
 ) -> Result {
 
     //si una tile es suitable para una edificación, o spawnear una village o algo, se le puede añadir un componente SuitableForVillage o algo así, para que se pueda identificar la tile. después se puede hacer un sistema q borre los árboles molestos en un cierto radio. el problema es si hay múltiples marcadas adyacentemente, en ese caso va a haber q chequear distancias a otras villages
-    let tile_entity = new_tile(co, pos_within_chunk, MyTileBundle::new(IMG_WHITE, TileFlip::default(), TC_RED, TileVisible(true), UsedShader::Grass));
+    let mut grass= clonable_tiles.transmute_lens_filtered::<(Entity), (With<TemperateGrass>, Without<TilePos>)>();
     
+    let grass= grass.query().single()?;
     
-    tiles2spawn.0.push(tile_entity);
+    clone_add_tilepos_and_push(
+        &mut co, 
+        tiles2spawn, 
+        pos_within_chunk, 
+        grass, 
+    );
     
     Ok(()) 
 }
@@ -95,15 +106,15 @@ const TC_RED: TileColor = TileColor(Color::srgb(1., 0., 0.));
 const TC_GREEN: TileColor = TileColor(Color::srgb(0., 1., 0.));
 const TC_BLUE: TileColor = TileColor(Color::srgb(0., 0., 1.));
 
-fn add_tilepos_and_push(
+fn clone_add_tilepos_and_push(
     commands: &mut Commands, 
     tiles2spawn: &mut TilesReady,
     pos_within_chunk: U8Vec2, 
     entity: Entity,
 ) {
-    commands.entity(entity).insert((
+    let entity = commands.entity(entity).clone_and_spawn().insert((
         TilePos::new(pos_within_chunk.x as u32, pos_within_chunk.y as u32),
-    ));
+    )).id();
     tiles2spawn.0.push(entity);
 }
 
@@ -128,7 +139,7 @@ pub struct MyTileBundle{
     pub shader: UsedShader,
 }
 impl MyTileBundle {
-    pub fn new(img_nid: TileImgNid, flip: TileFlip, color: TileColor, visible: TileVisible, shader: UsedShader) -> Self {
-        Self { img_nid, flip, color, visible, shader }
+    pub fn new(img_nid: TileImgNid, flip: TileFlip, color: TileColor, visible: bool, shader: UsedShader) -> Self {
+        Self { img_nid, flip, color, visible: TileVisible(visible), shader }
     }
 }

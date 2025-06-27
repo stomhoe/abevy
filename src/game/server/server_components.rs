@@ -34,3 +34,5 @@ enum Disallowed {
 //todo hacer wrapper para Entity?
 //PlayerEntity
 
+//TODO EN VEZ DE ESTO MIRAR 
+// https://github.com/projectharmonia/bevy_replicon
