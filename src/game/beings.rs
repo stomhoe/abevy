@@ -1,6 +1,7 @@
 use bevy::prelude::*;
+use superstate::superstate_plugin;
 
-use crate::game::{beings::{beings_systems::*, classes::ClassesPlugin, races::RacesPlugin}, game_systems::*, IngameSystems};
+use crate::game::{beings::{beings_components::{AltitudeState, Floating, Swimming, TouchingGround, Walking}, beings_systems::*, classes::ClassesPlugin, races::RacesPlugin}, game_systems::*, IngameSystems};
 
 // Module being
 pub mod beings_components;
@@ -20,7 +21,13 @@ impl Plugin for BeingsPlugin {
     fn build(&self, app: &mut App) {
         app
         
-            .add_plugins((RacesPlugin, ClassesPlugin)) 
+            .add_plugins((
+                RacesPlugin, 
+                ClassesPlugin,
+                // superstate_plugin::<AltitudeState, (Floating, TouchingGround)>,
+                // superstate_plugin::<TouchingGround, (Swimming, Walking)>
+
+            )) 
             .add_systems(Update, (handle_movement, ).in_set(MovementSystems).in_set(IngameSystems))
         ;
     }

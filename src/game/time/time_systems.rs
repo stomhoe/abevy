@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use crate::game::time::{time_resources::*, time_types::*};
+use crate::game::time::{time_components::*, time_resources::*, time_types::*};
 
 
 
@@ -36,3 +36,20 @@ pub fn pass_time(
         curr_year.0 += Years(1);
     }
 }
+
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn reduce_remaining_days(mut commands: Commands, mut query: Query<(&mut RemainingDays),()>, curr_day: Res<CurrDay>) {
+    
+    for mut remaining_days in query.iter_mut() {
+        if curr_day.is_changed() && remaining_days.0 > Days(0) {
+            remaining_days.0 -= Days(1);
+        } 
+    }
+}
+
+
+
+

@@ -3,7 +3,7 @@ use bevy::{math::U16Vec2, platform::collections::{HashMap}, prelude::*};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::game::tilemap::{terrain_gen::{terrain_gen_components::{TileInstantiationData, UsedShader}, terrain_gen_utils::{ UniqueTileDto, Z_DIVISOR}, terrain_materials::TextureOverlayMaterial}, tile_imgs::{ImgIngameCfg, NidImgMap, NidRepeatImgMap, TileImgNid}, chunking_components::*, chunking_resources::*};
+use crate::game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::{terrain_gen_components::{UsedShader}, terrain_gen_systems::MyTileBundle, terrain_gen_utils::Z_DIVISOR, terrain_materials::TextureOverlayMaterial}, tile_imgs::{ImgIngameCfg, NidImgMap, NidRepeatImgMap, TileImgNid}};
 
 
 pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
@@ -19,46 +19,50 @@ type Map = HashMap<(i32, U16Vec2, UsedShader), LayerDto>;
 pub fn produce_tilemaps(
     mut commands: Commands, 
     chunk_query: Query<(Entity, &TilesReady), Without<Children>>,
-    tile_ins_data_query: Query<&TileInstantiationData>,
+    tile_pos: Query<(&TilePos, &TileImgNid, &TileFlip, &TileVisible, &TileColor, &UsedShader)>,
     nid_img_map: Res<NidImgMap>, 
-) {
+) -> Result {
     let mut layers: Map = HashMap::new();
 
     for (chunk_ent, tiles_ready) in chunk_query.iter() {
-        for uniq_tile_dto in tiles_ready.0.iter() {
-            if let Ok(tile_ins_data) = tile_ins_data_query.get(uniq_tile_dto.tile_inst_data_entity()) {unsafe {
-                let img_cfg = nid_img_map.get(tile_ins_data.image_nid).debug_expect_unchecked("Image NID not found in nid_img_map");
+        for &tile_ent in tiles_ready.0.iter() {unsafe{
 
-                if let Some(layer_dto) = layers.get_mut(&(img_cfg.get_z_index(), img_cfg.size, tile_ins_data.used_shader)) {
-                    let (tilemap_entity, tile_storage, image_nids) = (
-                        layer_dto.tilemap_entity,
-                        &mut layer_dto.tile_storage,
-                        &mut layer_dto.image_nids,
-                    );
+            let (tile_pos, &img_nid, &flip, &visible, &color, &shader) = tile_pos.get(tile_ent)?;
 
-                    let texture_index = match image_nids.iter().position(|x| *x == tile_ins_data.image_nid) {
-                        Some(index) => TileTextureIndex(index as u32),
-                        None => {
-                            image_nids.push(tile_ins_data.image_nid);
-                            TileTextureIndex((image_nids.len() - 1) as u32)
-                        }
-                    };
+            let bundle: MyTileBundle = MyTileBundle {img_nid, flip, visible, color, shader};
+            
+            let img_cfg = nid_img_map.get(img_nid).debug_expect_unchecked("Image NID not found in nid_img_map");
 
-                    add_tile_bundle_and_put_in_storage(&mut commands, &uniq_tile_dto, &tile_ins_data, tilemap_entity, tile_storage, texture_index);
+            if let Some(layer_dto) = layers.get_mut(&(img_cfg.get_z_index(), img_cfg.size, shader)) {
+                let (tilemap_entity, tile_storage, image_nids) = (
+                    layer_dto.tilemap_entity,
+                    &mut layer_dto.tile_storage,
+                    &mut layer_dto.image_nids,
+                );
 
-                    layer_dto.needs_y_sort = layer_dto.needs_y_sort || img_cfg.needs_y_sort;
-                } else {
-                    instantiate_new_layer_dto(&mut commands, &mut layers, img_cfg, &uniq_tile_dto, tile_ins_data, chunk_ent);
-                }
-            }}
-        }
+                let texture_index = match image_nids.iter().position(|x| *x == img_nid) {
+                    Some(index) => TileTextureIndex(index as u32),
+                    None => {
+                        image_nids.push(img_nid);
+                        TileTextureIndex((image_nids.len() - 1) as u32)
+                    }
+                };
+
+                add_tile_bundle_and_put_in_storage(&mut commands, tile_ent, tile_pos, tilemap_entity, tile_storage, texture_index);
+
+                layer_dto.needs_y_sort = layer_dto.needs_y_sort || img_cfg.needs_y_sort;
+            } else {
+                instantiate_new_layer_dto(&mut commands, &mut layers, img_cfg, tile_ent, tile_pos, bundle, chunk_ent);
+            }
+            
+        }}
 
         for (_, layer_dto) in layers.drain() {
             commands.entity(layer_dto.tilemap_entity).insert(layer_dto);
         }
         commands.entity(chunk_ent).insert(LayersReady);
     }
-
+    Ok(())
 }
 
 #[derive(Component, Debug, )]
@@ -73,28 +77,25 @@ pub struct LayerDto {
 
 fn add_tile_bundle_and_put_in_storage( 
     commands: &mut Commands, 
-    unique_tile_dto: &UniqueTileDto,
-    tile_inst_data: &TileInstantiationData, 
+    tile_entity: Entity,
+    tile_pos: &TilePos,
     tilemap_entity: Entity,  tile_storage: &mut TileStorage,
     texture_index: TileTextureIndex,
 )  {
     let tile_bundle = TileBundle {
-        position: unique_tile_dto.pos_within_chunk(), tilemap_id: TilemapId(tilemap_entity),
-        texture_index,  flip: tile_inst_data.flip, color: tile_inst_data.tile_color(),
-        visible: tile_inst_data.tile_visible(), ..Default::default()
+        tilemap_id: TilemapId(tilemap_entity), texture_index, ..Default::default()
     };
-
-
-    commands.entity(unique_tile_dto.tile_entity()).insert(tile_bundle);
-    tile_storage.set( &unique_tile_dto.pos_within_chunk(), unique_tile_dto.tile_entity());
+    commands.entity(tile_entity).insert_if_new(tile_bundle);
+    tile_storage.set(tile_pos, tile_entity);
 }
 
-fn instantiate_new_layer_dto(
+fn instantiate_new_layer_dto( 
     commands: &mut Commands, 
     layers: &mut Map,
     img_cfg: &ImgIngameCfg,
-    unique_tile_dto: &UniqueTileDto,
-    tile_inst_data: &TileInstantiationData,
+    tile_ent: Entity,
+    tile_pos: &TilePos,
+    bundle: MyTileBundle,
     chunk_ent: Entity
 ) {
     let tilemap_entity: Entity = commands.spawn(ChildOf(chunk_ent)).id();
@@ -102,20 +103,20 @@ fn instantiate_new_layer_dto(
     let mut tile_storage = TileStorage::empty(CHUNK_SIZE.as_uvec2().into());
 
     add_tile_bundle_and_put_in_storage(
-        commands, unique_tile_dto, &tile_inst_data, tilemap_entity, &mut tile_storage,
+        commands, tile_ent, tile_pos, tilemap_entity, &mut tile_storage,
         TileTextureIndex(0),
     );
 
     let layer_dto = LayerDto {
         tile_size: img_cfg.get_tile_size(),
         layer_z: img_cfg.get_z_index(),
-        used_shader: tile_inst_data.used_shader,
+        used_shader: bundle.shader,
         tilemap_entity,
         tile_storage,
-        image_nids: vec![tile_inst_data.image_nid],
+        image_nids: vec![bundle.img_nid],
         needs_y_sort: img_cfg.needs_y_sort,
     };
-    layers.insert((img_cfg.get_z_index(), img_cfg.size, tile_inst_data.used_shader), layer_dto);
+    layers.insert((img_cfg.get_z_index(), img_cfg.size, bundle.shader), layer_dto);
 }
 
 

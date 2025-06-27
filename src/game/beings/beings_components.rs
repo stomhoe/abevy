@@ -15,7 +15,7 @@ pub struct Body {}
 pub struct InputMoveDirection(pub Vec3);
 
 #[derive(Component, Default)]
-#[require(SuperstateInfo<PlayerDirectControllable>, ActivatesChunks)]
+#[require(SuperstateInfo<PlayerDirectControllable>, ActivatesChunks)]//TODO PONER ActivatesChunks CUANDO SEA ADECUADO
 pub struct PlayerDirectControllable;
 
 #[derive(Component)]
@@ -32,10 +32,9 @@ pub struct ControlledByOtherPlayer {
     pub player: Entity,
 }
 
-#[derive(Component, Debug, PartialEq, Eq, Hash)]
+#[derive(Component, Debug, )]
 #[require(InputMoveDirection, GameZindex(500.))]
-pub struct Being(pub u32);
-
+pub struct Being;
 
 #[derive(Component)]
 #[relationship(relationship_target = Followers)]
@@ -89,7 +88,7 @@ pub struct TouchingGround;
 pub struct Swimming;
 
 #[derive(Component)] #[require(TouchingGround)]
-pub struct Walking;
+pub struct Walking; 
 
 
 //PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
@@ -100,14 +99,14 @@ pub struct WallPhaser;
 
 
 
-#[derive(Component, Default)] pub struct CanMove;
+#[derive(Component, Default)] pub struct MovementCapability;//NO SACARSELO SOLO PORQ ESTÉ ULTRAHERIDO
 
 
 // NO SON EXLUSIVOS ASÍ Q NO ES SUPERSTATE
-#[derive(Component)] #[require(CanMove)] pub struct LandWalker;
+#[derive(Component)] #[require(MovementCapability)] pub struct LandWalker;
 
-#[derive(Component)] #[require(CanMove)] pub struct Swimmer;
+#[derive(Component)] #[require(MovementCapability)] pub struct Swimmer;
 
-#[derive(Component)] #[require(CanMove)] pub struct Flier;
+#[derive(Component)] #[require(MovementCapability)] pub struct Flier;
 
 //NO SÉ SI USAR UN HASHMAP

@@ -1,11 +1,13 @@
 
-use bevy::platform::collections::HashMap;
+use bevy::{math::U8Vec2, platform::collections::HashMap};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::{TileColor, TileFlip, TileTextureIndex, TileVisible};
 use fastnoise_lite::FastNoiseLite;
+use rand::Rng;
+use rand_pcg::Pcg64;
 use superstate::{SuperstateInfo};
 
-use crate::game::tilemap::{terrain_gen::terrain_gen_utils::UniqueTileDto, tile_imgs::*};
+use crate::game::tilemap::{tile_imgs::*};
 
 #[derive(Component, Default, )]
 pub struct FnlComp(pub FastNoiseLite);
@@ -14,61 +16,69 @@ pub struct FnlComp(pub FastNoiseLite);
 pub struct Thresholds(pub Vec<(f32, Entity)>); //usar menor igual valor -> entidad. Entidad-> tiledist?
 
 
-
-#[derive(Component, Default)]
-#[require(SuperstateInfo<TileDeterminism>)]
-pub struct TileDeterminism;
-
-#[derive(Component, Debug, Default, )]
-#[require(TileDeterminism)]
-pub struct TileDistribution(
-    pub HashMap<Entity, f32>, //Entity: una instancia de Fill
-);
-
-
-#[derive(Component, Debug, Default, )]
-#[require(SuperstateInfo<Fill>, TileDeterminism)]
-pub struct Fill;//no sé si ponerle id o q se referencie la entity instanciada 
-
-
-
 #[derive(Component, Debug, Default, )]
 pub struct Tree();
 
-
-//hacerlo parte de una entity 
-#[derive(Component, Debug, )]
-pub struct TileInstantiationData{
-    pub image_nid: TileImgNid,
-    pub flip: TileFlip,
-    pub color: Color,
-    pub visible: bool,
-    pub used_shader: UsedShader, 
-    
-}
-impl TileInstantiationData {
-    pub fn new(image_nid: TileImgNid, flip: TileFlip, color: Color, visible: bool, used_shader: UsedShader ) -> Self {
-        Self { image_nid, flip, color, visible, used_shader }
+//ES COMPONENT PORQ PUEDE HABER UNO PARA ARBUSTOS, OTRO PARA ARBOLES, ETC
+//VA EN UNA ENTIDAD PROPIA ASI ES QUERYABLE. AGREGAR MARKER COMPONENTS PARA DISTINTOS TIPOS DE VEGETACIÓN
+#[derive(Component, Debug, Default, )]
+pub struct TileWeightedMap(
+    pub HashMap<Entity, f32>, 
+);
+impl TileWeightedMap {
+    pub fn new() -> Self {
+        Self(HashMap::new())
     }
-    pub fn tile_visible(&self) -> TileVisible {TileVisible(self.visible)}
-
-    pub fn tile_color(&self) -> TileColor {TileColor(self.color)}
-}
-
-
-impl Default for TileInstantiationData {
-    fn default() -> Self {
-        Self { 
-            image_nid: TileImgNid::default(),
-            flip: TileFlip::default(),
-            color: Color::default(),
-            visible: true,
-            used_shader: UsedShader::default(),
+    pub fn insert(&mut self, entity: Entity, weight: f32) {
+        self.0.insert(entity, weight);
+    }
+    pub fn extract_random(&self, rng: &mut Pcg64) -> Option<Entity> {
+       
+        if self.0.is_empty() {
+            return None;
         }
+
+        let total_weight: f32 = self.0.values().sum();
+        let mut random_value = rng.random_range(0.0..total_weight);
+
+        for (entity, weight) in &self.0 {
+            if random_value < *weight {
+                return Some(*entity);
+            }
+            random_value -= weight;
+        }
+        None
+
     }
+    pub fn extract_random_with_other_maps(&self, rng: &mut Pcg64, others: Vec<TileWeightedMap>) -> Option<Entity> {
+        // Combine all maps into a single HashMap<Entity, f32>
+        let mut combined = self.0.clone();
+        for map in others {
+            for (entity, weight) in map.0 {
+                *combined.entry(entity).or_insert(0.0) += weight;
+            }
+        }
+
+        if combined.is_empty() {
+            return None;
+        }
+
+        let total_weight: f32 = combined.values().sum();
+        let mut random_value = rng.random_range(0.0..total_weight);
+
+        for (entity, weight) in &combined {
+            if random_value < *weight {
+                return Some(*entity);
+            }
+            random_value -= weight;
+        }
+        None
+    }
+
 }
 
-#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Copy)]
+
+#[derive(Component, Debug, Default, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum UsedShader{
     #[default]
     None,

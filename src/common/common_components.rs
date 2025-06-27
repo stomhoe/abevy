@@ -9,8 +9,6 @@ pub struct Description(String);
 #[derive(Component, Debug,)]
 pub struct Sid(String);
 
-#[derive(Component, Debug,)]
-pub struct Nid(u32);
 
 
 #[derive(Component, Debug,)]

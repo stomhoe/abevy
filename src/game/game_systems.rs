@@ -5,9 +5,9 @@ use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
-use crate::game::beings::beings_components::{Being, ControlledBySelf};
-use crate::game::beings::beings_resources::BeingEntityMap;
+use crate::game::beings::beings_components::{Being, ControlledBySelf, PlayerDirectControllable};
 use crate::game::factions::factions_components::SelfFaction;
+use crate::game::game_resources::NidEntityMap;
 use crate::game::player::player_components::{CameraTarget, Player};
 use crate::game::{SimulationState};
 
@@ -15,35 +15,26 @@ pub fn spawn_player_beings(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
     asset_server: Res<AssetServer>,
-    mut bmap: ResMut<BeingEntityMap>,
 ) {
     let window = window_query.single().unwrap();
     println!("Spawning player beings at window size");
 
-    bmap.new_being(&mut commands, (
+    commands.spawn((
         Sprite {
             image: asset_server.load("textures\\wear\\moss_short_tunic_icon.png"),
             ..default()
         },
+        Being,
+        PlayerDirectControllable,
         ControlledBySelf,
-        SelfFaction(),
-    ));
-
-    bmap.new_being(&mut commands, (
-        Sprite {
-            image: asset_server.load("textures\\wear\\moss_short_tunic_icon.png"),
-            ..default()
-        },
+        CameraTarget,
         Transform::from_translation(Vec3::new(
-            window.width() ,
-            window.height(),
+            window.width() / 2.0,
+            window.height() / 2.0,
             0.0,
         )),
-        ControlledBySelf,
         SelfFaction(),
     ));
-
-       
 }
 
 pub fn toggle_simulation(
@@ -108,24 +99,15 @@ pub fn debug_system(mut commands: Commands, query: Query<(Entity, &Transform), W
 }
 
 
-// pub fn HandleCollisions(mut spriteschange: Query<(&mut Transform, &Meta), With<Sprite>>)
-// {
-//     let mut combos = spriteschange.iter_combinations_mut();
-//     while let Some([(mut trans1, mut meta1), (mut trans2, mut meta2)]) = combos.fetch_next() {
-//         if(meta1.Id != meta2.Id){
-//             let collision = collide(
-//                     trans1.translation,
-//                     trans1.scale.truncate(),
-//                     trans2.translation,
-//                     trans2.scale.truncate()
-//                 );
-//             if let Some(collision) = collision {
-//                 trans1.translation.x += 256.;
-//                 trans1.translation.y += 256.;
-//                 println!("There was a collision!");
-//             }
-//         }
-
+// pub fn host_on_entity_spawned(
+//     mut commands: Commands,
+//     new_being: Query<Entity, Added<Ser>>,
+//     mut being_entity_map: ResMut<NidEntityMap>,
+    
+// ) {
+//     for entity in new_being.iter() {
+//         being_entity_map.new_entity(&mut commands, entity);
+        
+//         info!("New being spawned with entity: {:?}", entity);
 //     }
-
 // }

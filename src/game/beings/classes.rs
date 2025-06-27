@@ -18,7 +18,6 @@ impl Plugin for ClassesPlugin {
         app
             //.add_systems(Update, (somesystem).in_set(ClassesSystems).in_set(IngameSystems))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup))
-            .init_resource::<ClassesDatabase>()
         ;
     }
 }

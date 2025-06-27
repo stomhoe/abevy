@@ -23,7 +23,7 @@ pub const IMG_WHITE: TileImgNid = TileImgNid(0);
 
 
 
-#[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]
+#[derive(Component, Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]
 pub struct TileImgNid(pub u32);
 
 #[derive(Debug, Default)]

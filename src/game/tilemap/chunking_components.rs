@@ -8,7 +8,7 @@ pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 use superstate::{SuperstateInfo};
 
-use crate::game::tilemap::{terrain_gen::terrain_gen_utils::UniqueTileDto, chunking_resources::{CHUNK_SIZE, TILE_SIZE_PXS}};
+use crate::game::tilemap::{chunking_resources::{CHUNK_SIZE, TILE_SIZE_PXS}};
 
 #[derive(Component, Default)]
 #[require(SuperstateInfo<ChunkInitState>)]
@@ -19,9 +19,17 @@ pub struct ChunkInitState;
 #[require(Visibility::Hidden)]
 pub struct UninitializedChunk;
 
-#[derive(Component, Debug, Default, )]
+#[derive(Component, Debug)]
 #[require(ChunkInitState)]
-pub struct TilesReady(pub Vec<UniqueTileDto>);
+pub struct TilesReady(pub Vec<Entity>);
+
+impl Default for TilesReady {
+    fn default() -> Self {
+        let chunk_area = (CHUNK_SIZE.x as usize) * (CHUNK_SIZE.y as usize);
+        let cap = chunk_area + chunk_area / 10;
+        TilesReady(Vec::with_capacity(cap))
+    }
+}
 
 
 #[derive(Component, Debug, Default, )]

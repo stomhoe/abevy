@@ -6,9 +6,9 @@ use fastnoise_lite::FastNoiseLite;
 #[derive(Resource, )]
 pub struct WorldGenSettings {
     
-    seed: u64,
-    average_temp: f32,
-    world_size: Option<u32>,
+    pub seed: u32,
+    pub average_temp: f32,
+    pub world_size: Option<u32>,
 }
 impl Default for WorldGenSettings {
     fn default() -> Self {

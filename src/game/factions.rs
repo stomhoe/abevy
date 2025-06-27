@@ -1,4 +1,4 @@
-#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::game::factions::factions_systems::*;
 use crate::game::factions::factions_components::*;
@@ -7,7 +7,7 @@ use crate::game::factions::factions_components::*;
 //use crate::game::factions::factions_events::*;
 mod factions_systems;
 pub mod factions_components;
-//mod factions_resources;
+pub mod factions_resources;
 //mod factions_layout;
 //mod factions_events;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -22,6 +22,10 @@ impl Plugin for FactionsPlugin {
             //.add_systems(Update, (somesystem, ).in_set(FactionsSystems).in_set(IngameSystems))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup))
             //.init_resource::<RESOURCE_NAME>()
+            .add_plugins((
+                superstate_plugin::<NonNeutralState, (AtWar, Truce, Ally)>,
+            ),)
+
         ;
     }
 }

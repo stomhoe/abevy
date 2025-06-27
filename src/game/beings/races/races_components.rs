@@ -1,13 +1,16 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
 
-#[derive(Component, Debug)]
-pub struct Race {
-    pub nid: u32,
+#[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Race (u32);
+
+impl Race {
+    pub fn new(nid: u32) -> Self {
+        Self(nid)
+    }
+    pub fn nid(&self) -> u32 {self.0}
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct RaceNid(pub u32);
 
 #[derive(Component, Debug)]
 pub struct RaceRef(pub Entity);
