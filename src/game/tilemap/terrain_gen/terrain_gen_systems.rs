@@ -44,7 +44,8 @@ pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<Wo
     //TODO hallar punto del terreno con 
 }
 
-
+#[derive(Component, Debug, Default, )]
+pub struct WorldTilePos(IVec2);
 
 #[allow(unused_parens)]
 pub fn add_tiles2spawn_within_chunk (
@@ -61,12 +62,16 @@ pub fn add_tiles2spawn_within_chunk (
 
     for (chunk_ent, chunk_pos) in chunks_query.iter() {
 
+        //SE LES PODRÍA AGREGAR MARKER COMPONENTS A LOS CHUNKS PARA POR EJEMPLO ESPECIFICAR SI ES UN DUNGEON
+
         let mut tiles_ready = TilesReady(Vec::new());
 
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         chunk_pos.0.hash(&mut hasher);
         let mut rng: Pcg64 = Seeder::from(gen_settings.seed + (hasher.finish() as u32)).into_rng();
         
+        //EN ESTE PUNTO SE PODRÍA GENERAR UN CAMINO RANDOM QUE SEA UN VEC DE COORDS, Y DESPUES PASARLO ABAJO Y Q SE OCUPEN?? PA GENERAR DUNGEONS NASE
+
         for x in 0..CHUNK_SIZE.x { 
             for y in 0..CHUNK_SIZE.y {
                 let pos_within_chunk = U8Vec2::new(x, y);
@@ -96,6 +101,7 @@ fn add_tiles_for_tilepos(mut co: &mut Commands, tiles2spawn: &mut TilesReady,
         &mut co, 
         tiles2spawn, 
         pos_within_chunk, 
+        tilepos,
         grass, 
     );
     
@@ -110,10 +116,12 @@ fn clone_add_tilepos_and_push(
     commands: &mut Commands, 
     tiles2spawn: &mut TilesReady,
     pos_within_chunk: U8Vec2, 
+    tilepos: IVec2,
     entity: Entity,
 ) {
     let entity = commands.entity(entity).clone_and_spawn().insert((
         TilePos::new(pos_within_chunk.x as u32, pos_within_chunk.y as u32),
+        WorldTilePos(tilepos),//NO SÉ SI METERLE ESTO O NO, PERO HACE CADA TILE MÁS FÁCILMENTE QUERYABLE POR DISTANCIA
     )).id();
     tiles2spawn.0.push(entity);
 }

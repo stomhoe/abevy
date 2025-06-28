@@ -2,7 +2,7 @@ use bevy::{platform::{collections::HashMap, hash}, prelude::*};
 use strum_macros::EnumCount;
 use vec_collections::VecSet;
 use superstate::{SuperstateInfo};
-use crate::{common::common_components::GameZindex, game::{player::player_components::CameraTarget, tilemap::chunking_components::ActivatesChunks}, AppState};
+use crate::{common::common_components::GameZindex, game::{game_components::Nid, player::player_components::CameraTarget, tilemap::chunking_components::ActivatesChunks}, AppState};
 
 
 
@@ -110,3 +110,12 @@ pub struct WallPhaser;
 #[derive(Component)] #[require(MovementCapability)] pub struct Flier;
 
 //NO SÉ SI USAR UN HASHMAP
+
+
+
+#[derive(Component, Debug, )]
+pub struct CurrentDimension(u32);//TANTO PARA BEINGS COMO PARA OBJETOS Y TILES
+
+//HACER Q AFECTE LA VISIBILIDAD DE LAS COSAS . Q TENGAS
+//DESPUES EN EL TERRAIN_GEN_SYSTEMS SE PUEDE HACER UN MATCH SEGÚN LA DIMENSION ACTUAL DEL PLAYER
+//Y TENER UN PROC DE GENERACIÓN DE TERRAIN POR DIMENSION ANTES DE ENTRAR AL DOBLE FOR DE GENERACIÓN DE CADA TILE
