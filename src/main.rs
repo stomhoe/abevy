@@ -17,13 +17,13 @@ pub enum AppState {#[default]PreGame, GameDomain, }
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, GamePlugin, MenuPlugin, MyUiPlugin))
         .add_plugins((
-            // RenetClientPlugin,
-            // NetcodeClientPlugin,
-            // RenetServerPlugin,
-            // NetcodeServerPlugin,
+            DefaultPlugins, 
+            GamePlugin, 
+            MenuPlugin, 
+            MyUiPlugin
         ))
+      
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)
         .run()

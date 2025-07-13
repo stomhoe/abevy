@@ -21,7 +21,7 @@ pub fn spawn_player_beings(
 
     commands.spawn((
         Sprite {
-            image: asset_server.load("textures\\wear\\moss_short_tunic_icon.png"),
+            image: asset_server.load("textures/wear/moss_short_tunic_icon.png"),
             ..default()
         },
         Being,

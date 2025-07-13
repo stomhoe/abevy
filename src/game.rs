@@ -18,7 +18,7 @@ mod game_resources;
 mod tilemap;
 mod beings;
 mod things;
-mod server;
+mod multiplayer;
 mod factions;
 mod time;
 
