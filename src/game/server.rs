@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_replicon::prelude::*;
 
 // Module server
 mod server_components;
@@ -11,6 +12,7 @@ pub struct ServerPlugin;
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_plugins(RepliconPlugins)
             //.add_systems(Update, (somesystem))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup))
             //.add_systems(Update, somesystem.runif(in_state(SomeStateType::Literal)))
