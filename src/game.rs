@@ -1,6 +1,8 @@
 use bevy::app::FixedMain;
-use bevy::prelude::*;
+#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
 use crate::game::beings::{BeingsPlugin, MovementSystems};
+use crate::game::multiplayer::MpPlugin;
 use crate::game::tilemap::terrain_gen::TerrainGenSystems;
 use crate::game::time::ClockPlugin;
 use crate::game::factions::FactionsPlugin;
@@ -11,14 +13,14 @@ use crate::AppState;
 use crate::game::game_systems::*;
 
 pub mod player;
-mod setup_menus;
+pub mod setup_menus;
 mod game_systems;
 mod game_components;
 mod game_resources;
 mod tilemap;
 mod beings;
 mod things;
-mod multiplayer;
+pub mod multiplayer;
 mod factions;
 mod time;
 
@@ -45,9 +47,9 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
 
         app
-            .add_plugins((SetupMenusPlugin, PlayerPlugin, BeingsPlugin, FactionsPlugin, MyTileMapPlugin, ClockPlugin, ))
+            .add_plugins((MpPlugin, SetupMenusPlugin, PlayerPlugin, BeingsPlugin, FactionsPlugin, MyTileMapPlugin, ClockPlugin, ))
             
-            .add_systems(OnEnter(GamePhase::InGame),  (spawn_player_beings,))
+            .add_systems(OnEnter(GamePhase::InGame),  (spawn_player_beings,).run_if(server_or_singleplayer))
 
             .add_systems(Update, 
                 
@@ -81,7 +83,7 @@ impl Plugin for GamePlugin {
 }
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[source(AppState = AppState::GameDomain)]
+#[source(AppState = AppState::GameSession)]
 #[states(scoped_entities)]
 pub enum GamePhase {#[default]Setup, InGame,}
 
@@ -91,7 +93,7 @@ pub enum GamePhase {#[default]Setup, InGame,}
 enum SimulationState {#[default]Running, Paused,}
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[source(AppState = AppState::GameDomain)]
+#[source(AppState = AppState::GameSession)]
 #[states(scoped_entities)]
 pub enum GameMp {#[default]Singleplayer, Multiplayer,}
 

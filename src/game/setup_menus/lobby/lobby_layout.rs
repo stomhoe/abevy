@@ -33,7 +33,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         },
         StateScoped(GamePhase::Setup),
         StateScoped(GameMp::Multiplayer),
-        StateScoped(AppState::GameDomain),
+        StateScoped(AppState::GameSession),
     );
 
     let top_hbox_container = (

@@ -20,7 +20,9 @@ impl Plugin for PlayerPlugin {
 
         app
             .add_systems(Update, ((
+                on_control_change,
                 camera_follow_target, 
+                react_on_control_removal,
                 enforce_single_camera_target).in_set(IngameSystems),
                 (update_move_input_dir, camera_zoom_system).in_set(PlayerInputSystems).in_set(IngameSystems)
             

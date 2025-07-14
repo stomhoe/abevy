@@ -1,4 +1,6 @@
 use bevy::{platform::{collections::HashMap, hash}, prelude::*};
+use bevy_replicon::prelude::Replicated;
+use serde::{Deserialize, Serialize};
 use strum_macros::EnumCount;
 use vec_collections::VecSet;
 use superstate::{SuperstateInfo};
@@ -20,26 +22,23 @@ pub struct PlayerDirectControllable;
 
 #[derive(Component)]
 #[require(PlayerDirectControllable)]
-pub struct ControlledBySelf;
-
-#[derive(Component)]
-#[require(PlayerDirectControllable)]
 pub struct Free;
 
-#[derive(Component)]
-#[require(PlayerDirectControllable)]
-pub struct ControlledByOtherPlayer {
-    pub player: Entity,
-}
+#[derive(Component, Debug, Deserialize, Serialize)]
+#[require(PlayerDirectControllable, Replicated)]
+pub struct ControlledBy ( #[entities] pub Entity);
 
-#[derive(Component, Debug, )]
-#[require(InputMoveDirection, GameZindex(500.))]
+#[derive(Component, Debug, Default, )]
+pub struct ControlledBySelf;
+
+#[derive(Component, Debug, Deserialize, Serialize)]
+#[require(InputMoveDirection, GameZindex(500.), Replicated)]
 pub struct Being;
 
 #[derive(Component)]
 #[relationship(relationship_target = Followers)]
 pub struct FollowerOf {
-    #[relationship]
+    #[relationship] #[entities]
     pub master: Entity,
 }
 

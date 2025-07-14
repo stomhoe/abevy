@@ -1,7 +1,8 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug,)]
-pub struct Name(String);
+#[derive(Component, Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DisplayName(pub String);
 
 #[derive(Component, Debug,)]
 pub struct Description(String);

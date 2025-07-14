@@ -6,12 +6,15 @@ use superstate::{SuperstateInfo};
 #[derive(Component)]
 #[relationship(relationship_target = Inventory)]
 pub struct HeldIn {
-    #[relationship] pub holder: Entity,
+    #[relationship] #[entities]
+    pub holder: Entity,
 }
 
 #[derive(Component)]
 #[relationship_target(relationship = HeldIn)]
-pub struct Inventory(Vec<Entity>);
+pub struct Inventory(
+    Vec<Entity>
+);
 
 
 

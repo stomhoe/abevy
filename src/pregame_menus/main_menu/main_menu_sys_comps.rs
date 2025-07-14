@@ -31,22 +31,23 @@ pub fn menu_button_interaction(
     mut game_phase: ResMut<NextState<GamePhase>>,
     mut game_mp: ResMut<NextState<GameMp>>,
     mut self_mp_kind: ResMut<NextState<SelfMpKind>>,
+     line_edit_query: Query<(&TextInputContents, &MainMenuLineEdit)>,
 ) {
     for (interaction, menu_button_action) in &interaction_query {
         if *interaction == Interaction::Pressed {
             match menu_button_action {
                 MainMenuButton::QuickStart => {
-                    app_state.set(AppState::GameDomain);
+                    app_state.set(AppState::GameSession);
                     game_mp.set(GameMp::Singleplayer);
                 }
                 MainMenuButton::Host => {
-                    app_state.set(AppState::GameDomain);
+                    app_state.set(AppState::GameSession);
                     game_mp.set(GameMp::Multiplayer);
                     self_mp_kind.set(SelfMpKind::Host);
                     game_phase.set(GamePhase::Setup);
                 }
                 MainMenuButton::Join => {
-                    app_state.set(AppState::GameDomain);
+                    app_state.set(AppState::GameSession);
                     game_mp.set(GameMp::Multiplayer);
                     self_mp_kind.set(SelfMpKind::Client);
                     game_phase.set(GamePhase::Setup);
@@ -71,6 +72,8 @@ pub fn handle_line_edits_interaction(
                     if event.text.len() > 15 {
                         continue;
                     }
+                    
+
                 }
             }
         }

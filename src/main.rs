@@ -13,7 +13,7 @@ pub mod ui;
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[states(scoped_entities)]
-pub enum AppState {#[default]PreGame, GameDomain, }
+pub enum AppState {#[default]PreGame, GameSession, }
 
 fn main() {
     App::new()

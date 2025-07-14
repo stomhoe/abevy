@@ -2,7 +2,7 @@
 
 use bevy::{input::mouse::MouseWheel, prelude::*};
 
-use crate::game::{beings::beings_components::{Being, ControlledBySelf, PlayerDirectControllable, InputMoveDirection}, player::{player_components::*, player_resources::KeyboardInputMappings}};
+use crate::game::{beings::beings_components::{Being, ControlledBy, ControlledBySelf, InputMoveDirection, PlayerDirectControllable}, player::{player_components::*, player_resources::KeyboardInputMappings}};
 
 
 
@@ -28,11 +28,31 @@ pub fn camera_follow_target(
     camera_query.translation.z = 0.0;
 }
 
+#[allow(unused_parens)]
+pub fn on_control_change(mut commands: Commands, 
+    self_player: Single<Entity, With<SelfPlayer>>,
+    query: Query<(Entity, &ControlledBy),(Changed<ControlledBy>)>,) {
+    for (ent, controlled_by) in query.iter() {
+        if controlled_by.0 == *self_player{
+            commands.entity(ent).insert(ControlledBySelf);
+        }
+        else {
+            commands.entity(ent).remove::<ControlledBySelf>();
+        }
+    }
+}
+pub fn react_on_control_removal(mut commands: Commands, mut removed: RemovedComponents<ControlledBy>) {
+    for entity in removed.read() {
+        commands.entity(entity).remove::<ControlledBySelf>();
+    }
+}
 
+
+#[allow(unused_parens, dead_code)]
 pub fn update_move_input_dir(
     keys: Res<ButtonInput<KeyCode>>,
     input_mappings: Res<KeyboardInputMappings>,
-    mut move_input_dir: Query<&mut InputMoveDirection, (With<ControlledBySelf>, With<Being>)>,
+    mut move_input_dir: Query<(&mut InputMoveDirection), (With<ControlledBySelf>)>,
 ) {
     let mut input_dir = Vec3::ZERO;
 
@@ -43,9 +63,7 @@ pub fn update_move_input_dir(
     if keys.pressed(input_mappings.jump_or_fly) {input_dir.z += 1.0;}
     if keys.pressed(input_mappings.duck) {input_dir.z -= 1.0;}
     
-    if input_dir != Vec3::ZERO {
-        input_dir = input_dir.normalize();
-    }
+    if input_dir != Vec3::ZERO {input_dir = input_dir.normalize();}
 
     for mut move_input_dir in move_input_dir.iter_mut() {
         move_input_dir.0 = input_dir;
@@ -73,3 +91,5 @@ pub fn camera_zoom_system(
         }
     }
 }
+
+

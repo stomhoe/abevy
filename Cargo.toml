@@ -30,6 +30,9 @@ bevy_ui_text_input = "0.5.2"
 
 bevy_replicon = "0.34.3"
 bevy_replicon_renet = { git = "https://github.com/projectharmonia/bevy_replicon_renet.git" }
+serde = "1.0.219"
+lightyear_prediction = "0.21.1"
+lightyear_interpolation = "0.21.1"
 
 
 

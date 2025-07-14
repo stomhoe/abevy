@@ -5,15 +5,16 @@ use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
-use crate::game::beings::beings_components::{Being, ControlledBySelf, PlayerDirectControllable};
+use crate::game::beings::beings_components::{Being, ControlledBy, PlayerDirectControllable};
 use crate::game::factions::factions_components::SelfFaction;
 use crate::game::game_resources::NidEntityMap;
-use crate::game::player::player_components::{CameraTarget, Player};
+use crate::game::player::player_components::{CameraTarget, Player, SelfPlayer};
 use crate::game::{SimulationState};
 
 pub fn spawn_player_beings(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    self_player: Single<Entity, With<SelfPlayer>>,
     asset_server: Res<AssetServer>,
 ) {
     let window = window_query.single().unwrap();
@@ -26,7 +27,7 @@ pub fn spawn_player_beings(
         },
         Being,
         PlayerDirectControllable,
-        ControlledBySelf,
+        ControlledBy(*self_player),
         CameraTarget,
         Transform::from_translation(Vec3::new(
             window.width() / 2.0,
