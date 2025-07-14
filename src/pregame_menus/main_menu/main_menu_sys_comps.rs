@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_ui_text_input::{*,
 };
 
-use crate::game::{GameMp, GamePhase, SelfMpKind};
+use crate::game::{GamePhase, GameSetupType};
 use crate::{AppState};
 use crate::pregame_menus::main_menu::*;
 
@@ -29,8 +29,7 @@ pub fn menu_button_interaction(
     mut pregame_state: ResMut<NextState<PreGameState>>,
     mut app_state: ResMut<NextState<AppState>>,
     mut game_phase: ResMut<NextState<GamePhase>>,
-    mut game_mp: ResMut<NextState<GameMp>>,
-    mut self_mp_kind: ResMut<NextState<SelfMpKind>>,
+    mut game_setup_type: ResMut<NextState<GameSetupType>>,
      line_edit_query: Query<(&TextInputContents, &MainMenuLineEdit)>,
 ) {
     for (interaction, menu_button_action) in &interaction_query {
@@ -38,18 +37,15 @@ pub fn menu_button_interaction(
             match menu_button_action {
                 MainMenuButton::QuickStart => {
                     app_state.set(AppState::GameSession);
-                    game_mp.set(GameMp::Singleplayer);
                 }
                 MainMenuButton::Host => {
                     app_state.set(AppState::GameSession);
-                    game_mp.set(GameMp::Multiplayer);
-                    self_mp_kind.set(SelfMpKind::Host);
+                    game_setup_type.set(GameSetupType::HostLobby);
                     game_phase.set(GamePhase::Setup);
                 }
                 MainMenuButton::Join => {
                     app_state.set(AppState::GameSession);
-                    game_mp.set(GameMp::Multiplayer);
-                    self_mp_kind.set(SelfMpKind::Client);
+                    game_setup_type.set(GameSetupType::JoinerLobby);
                     game_phase.set(GamePhase::Setup);
                 }
                 MainMenuButton::Settings => {

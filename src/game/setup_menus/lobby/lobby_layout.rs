@@ -4,7 +4,7 @@ use bevy_simple_scroll_view::ScrollableContent;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 
 use crate::game::setup_menus::lobby::lobby_sys_comps::*;
-use crate::game::{GameMp, GamePhase};
+use crate::game::{GamePhase};
 use crate::ui::ui_components::LineEdit;
 use crate::ui::ui_utils::text_button;
 use crate::AppState;
@@ -32,7 +32,6 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             ..default()
         },
         StateScoped(GamePhase::Setup),
-        StateScoped(GameMp::Multiplayer),
         StateScoped(AppState::GameSession),
     );
 

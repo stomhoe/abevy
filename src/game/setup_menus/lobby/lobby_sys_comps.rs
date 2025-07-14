@@ -1,5 +1,5 @@
 
-use crate::{common::common_components::DisplayName, game::{player::player_components::Player, setup_menus::lobby::lobby_events::SendPlayerName, GamePhase}, pregame_menus::PreGameState, AppState};
+use crate::{common::common_components::DisplayName, game::{player::player_components::Player, setup_menus::lobby::lobby_events::{ SendPlayerName}, GamePhase}, pregame_menus::PreGameState, AppState};
 
 use bevy::{prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -67,12 +67,7 @@ pub fn setup_for_host(mut commands: Commands, channels: Res<RepliconChannels>) -
 }
 
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn server_receive_player_name(mut trigger: Trigger<FromClient<SendPlayerName>>, mut commands: Commands) {
 
@@ -81,7 +76,7 @@ pub fn server_receive_player_name(mut trigger: Trigger<FromClient<SendPlayerName
 
 
 
-pub fn client_attempt_join(mut commands: Commands, channels: Res<RepliconChannels>) -> Result {
+pub fn attempt_join_lobby(mut commands: Commands, channels: Res<RepliconChannels>) -> Result {
     let ip = Ipv4Addr::new(127, 0, 0, 1); // Localhost for testing
     info!("connecting to {ip}:{PORT}");
     let server_channels_config = channels.server_configs();
@@ -107,26 +102,32 @@ pub fn client_attempt_join(mut commands: Commands, channels: Res<RepliconChannel
 
     commands.insert_resource(client);
     commands.insert_resource(transport);
+        //std::thread::sleep(std::time::Duration::from_millis(1000));
 
     Ok(())
 }
 
-pub fn setup_for_client(
+pub fn setup_for_connected_client(
     mut commands: Commands, 
-    client: Res<RenetClient>,
-    mut app_state: ResMut<NextState<AppState>>,
 ) {
+    let name = format!("Player-{}", nano_id::base64::<6>());
+    info!("connected as Client {name}");
+    commands.client_trigger(SendPlayerName(DisplayName(name)));
+   
+    // else{
+    //     info!("Client not connected.");
+    //     app_state.set(AppState::PreGame);
+    // }
 
+}
 
-    if client.is_connected() {
-        let name = format!("Player-{}", nano_id::base64::<6>());
-        info!("Client {name} connected.");
-        commands.client_trigger(SendPlayerName(DisplayName(name)));
-    }
-    else{
-        info!("Client not connected.");
-        app_state.set(AppState::PreGame);
-    }
+pub fn on_connect_failed(
+    mut app_state: ResMut<NextState<AppState>>,
+    mut commands: Commands, 
+) {
+   
+    info!("Client not connected.");
+    app_state.set(AppState::PreGame);
 
 }
 
@@ -168,5 +169,9 @@ pub fn spawn_clients(trigger: Trigger<OnAdd, ConnectedClient>, mut commands: Com
     info!("spawning box for `{}`", trigger.target());
 
     commands.entity(trigger.target()).insert((Player, Replicated));
+    // commands.server_trigger(ToClients {
+    //     mode: SendMode::Direct(trigger.target()),
+    //     event: ConnectedEvent,
+    // });
 }
 

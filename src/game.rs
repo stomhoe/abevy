@@ -49,7 +49,7 @@ impl Plugin for GamePlugin {
         app
             .add_plugins((MpPlugin, SetupMenusPlugin, PlayerPlugin, BeingsPlugin, FactionsPlugin, MyTileMapPlugin, ClockPlugin, ))
             
-            .add_systems(OnEnter(GamePhase::InGame),  (spawn_player_beings,).run_if(server_or_singleplayer))
+            .add_systems(OnEnter(GamePhase::InGame), (spawn_player_beings,).run_if(server_or_singleplayer))
 
             .add_systems(Update, 
                 
@@ -62,22 +62,19 @@ impl Plugin for GamePlugin {
                 IngameSystems.run_if(in_state(GamePhase::InGame)),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
                 SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::InGame))),
-                HostOnlySystems.run_if((in_state(SelfMpKind::Host).and(in_state(GameMp::Multiplayer))).or(in_state(GameMp::Singleplayer))),
-                ClientSystems.run_if(in_state(SelfMpKind::Client).and(in_state(GameMp::Multiplayer))),
+                HostOnlySystems.run_if(server_or_singleplayer),
+                ClientSystems.run_if(not(server_or_singleplayer)),
             ))
-
+            
             .configure_sets(FixedUpdate, (
-                NetworkSystems.run_if(in_state(GameMp::Multiplayer)),
-                ClientSystems.run_if(in_state(SelfMpKind::Client).and(in_state(GameMp::Multiplayer))),
+                HostOnlySystems.run_if(server_or_singleplayer),
+                ClientSystems.run_if(not(server_or_singleplayer)),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
             ))
 
             .init_state::<SimulationState>()
             .init_state::<GamePhase>()
-            .init_state::<GameMp>()
-            .init_state::<SelfMpKind>()
-
-            
+            .init_state::<GameSetupType>()
         ;
     }
 }
@@ -92,14 +89,11 @@ pub enum GamePhase {#[default]Setup, InGame,}
 #[states(scoped_entities)]
 enum SimulationState {#[default]Running, Paused,}
 
-#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[source(AppState = AppState::GameSession)]
-#[states(scoped_entities)]
-pub enum GameMp {#[default]Singleplayer, Multiplayer,}
-
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[source(GameMp = GameMp::Multiplayer)]
+#[source(GamePhase = GamePhase::Setup)]
 #[states(scoped_entities)]
-pub enum SelfMpKind {#[default]Host, Client,}
+pub enum GameSetupType {#[default]Singleplayer, HostLobby, JoinerLobby,}
 
+
+//usar server_or_singleplayer y not(server_or_singleplayer) para distinguir entre servidor y cliente

@@ -12,3 +12,6 @@ pub struct SendPlayerName (pub DisplayName);
 
 // No olvidarse de agregarlo al Plugin del módulo
 // 
+
+// #[derive(serde::Deserialize, Event, serde::Serialize, Clone)]
+// pub struct ConnectedEvent;
