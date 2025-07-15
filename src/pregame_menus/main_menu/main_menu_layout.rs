@@ -1,6 +1,7 @@
 use bevy::color::palettes::css::LIGHT_GOLDENROD_YELLOW;
 use bevy::prelude::*;
-use crate::pregame_menus::main_menu::main_menu_sys_comps::*;
+use crate::pregame_menus::main_menu::main_menu_components::*;
+use crate::pregame_menus::main_menu::main_menu_systems::*;
 use crate::pregame_menus::PreGameState;
 use crate::ui::ui_components::*;
 use crate::ui::ui_utils::*;
@@ -30,17 +31,19 @@ pub fn layout(mut commands: Commands){
 
     let line_edit = (
         Node {
-            width: Val::Px(250.), height: Val::Px(30.),
+            width: Val::Px(270.), height: Val::Px(30.),//dejé espacio para poner el puerto
             ..default()
         },
         LineEdit{},
         TextInputNode {
             mode: TextInputMode::SingleLine,
+            clear_on_submit: false,
             max_chars: Some(36),
             ..Default::default()
         },
-        TextInputPrompt::new("Enter IP address"),
-        MainMenuLineEdit::Ip,
+        TextInputPrompt::new("127.0.0.1"),
+        CurrentText::new("127.0.0.1"),
+        MainMenuIpLineEdit,
         Outline {
             color: LIGHT_GOLDENROD_YELLOW.into(),
             width: Val::Px(2.),

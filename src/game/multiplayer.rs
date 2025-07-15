@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::*;
 
-use crate::game::{beings::beings_components::Being, multiplayer::{multiplayer_events::*, multiplayer_systems::*}, player::player_components::Player, setup_menus::lobby::lobby_events::SendPlayerName};
+use crate::{common::common_components::DisplayName, game::{beings::beings_components::Being, multiplayer::{multiplayer_events::*, multiplayer_systems::*}, player::player_components::Player, setup_menus::lobby::lobby_events::SendPlayerName}};
 
 // Module multiplayer
 pub mod multiplayer_components;
@@ -19,8 +19,8 @@ impl Plugin for MpPlugin {
                 RepliconPlugins,
                 RepliconRenetPlugins,
             ))
-            .replicate::<Player>()
-            .replicate_bundle::<(Player,Name)>()
+            //.replicate::<Player>()
+            .replicate_bundle::<(Player,DisplayName)>()
             .add_client_trigger::<TransformFromClient>(Channel::Unreliable)
             .add_server_trigger::<TransformFromServer>(Channel::Unreliable)
 

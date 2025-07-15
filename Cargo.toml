@@ -21,6 +21,9 @@ bevy = { version = "0.16.1", features = [
     "dynamic_linking",
     "track_location",
     "serialize",
+    "jpeg",
+    #"bevy_remote",
+    #.add_plugins(RemotePlugin::default()).add_plugins(RemoteHttpPlugin::default().with_port(port))
 ] }
 bevy_ecs_tilemap = { git = "https://github.com/zachrburke/bevy_ecs_tilemap.git" }
 superstate = { git = "https://github.com/KurlykovDanila/Superstate.git" }
@@ -33,8 +36,7 @@ bevy_replicon_renet = { git = "https://github.com/projectharmonia/bevy_replicon_
 serde = "1.0.219"
 lightyear_prediction = "0.21.1"
 lightyear_interpolation = "0.21.1"
-
-
+bevy-ui-gradients = "0.4.0"
 
 [dependencies.fastnoise-lite]
 version = "*"

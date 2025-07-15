@@ -10,8 +10,18 @@ pub struct ButtonStyle {}
 
 
 #[derive(Component)]
-#[require(Node, BackgroundColor(BUTTON_BG_NORMAL), TextInputNode, TextInputPrompt, TextInputContents)]//Outline
+#[require(Node, CurrentText, BackgroundColor(BUTTON_BG_NORMAL), TextInputNode, TextInputPrompt, TextInputContents)]//Outline
 pub struct LineEdit {}
+
+#[derive(Component, Debug, Default)]
+pub struct CurrentText(pub String);
+
+impl CurrentText {
+    pub fn new<S: Into<String>>(text: S) -> Self {
+        CurrentText(text.into())
+    }
+}
+
 
 #[derive(Component)]
 pub struct ButtonBackgroundStyle {

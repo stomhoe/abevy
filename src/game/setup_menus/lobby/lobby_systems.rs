@@ -1,8 +1,10 @@
 
-use crate::{common::common_components::DisplayName, game::{player::player_components::Player, setup_menus::lobby::lobby_events::{ SendPlayerName}, GamePhase}, pregame_menus::PreGameState, AppState};
+use crate::{common::common_components::DisplayName, game::{player::player_components::Player, setup_menus::lobby::{lobby_events::SendPlayerName, JoiningState}, GamePhase, GameSetupScreen}, pregame_menus::{main_menu::main_menu_components::MainMenuIpLineEdit, PreGameState}, ui::ui_components::CurrentText, AppState};
 
 use bevy::{prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+
+use bevy_replicon::server::client_entity_map;
 use bevy_replicon_renet::{
     RenetChannelsExt, RepliconRenetPlugins,
     netcode::{
@@ -11,9 +13,10 @@ use bevy_replicon_renet::{
     },
     renet::{ConnectionConfig, RenetClient, RenetServer},
 };
+use bevy_ui_text_input::TextInputContents;
 
-use std::{mem, net::{Ipv4Addr, SocketAddr}, time::SystemTime};
-use std::{collections::HashMap, net::UdpSocket};
+use std::{mem, net::{Ipv4Addr, SocketAddr}, time::SystemTime, net::UdpSocket};
+
 
 
 #[derive(Component)]
@@ -63,6 +66,11 @@ pub fn setup_for_host(mut commands: Commands, channels: Res<RepliconChannels>) -
     commands.insert_resource(server);
     commands.insert_resource(transport);
 
+    commands.spawn((
+        Player,
+        DisplayName("Host".to_string()),
+    ));
+
     Ok(())
 }
 
@@ -76,9 +84,22 @@ pub fn server_receive_player_name(mut trigger: Trigger<FromClient<SendPlayerName
 
 
 
-pub fn attempt_join_lobby(mut commands: Commands, channels: Res<RepliconChannels>) -> Result {
-    let ip = Ipv4Addr::new(127, 0, 0, 1); // Localhost for testing
-    info!("connecting to {ip}:{PORT}");
+pub fn attempt_join_lobby(
+    mut commands: Commands, 
+    channels: Res<RepliconChannels>,
+    mut joining_state: ResMut<NextState<JoiningState>>,
+    line_edit_query: Single<(&CurrentText, &MainMenuIpLineEdit)>,
+) -> Result {
+    let ip_port_str = line_edit_query.0.0.trim();
+    let mut split = ip_port_str.split(':');
+    let ip_str = split.next().ok_or("Missing IP address")?;
+    let ip: Ipv4Addr = ip_str.parse().map_err(|e| format!("Invalid IP address: {}", e))?;
+    let port = if let Some(port_str) = split.next() {
+        port_str.parse::<u16>().map_err(|e| format!("Invalid port: {}", e))?
+    } else {
+        PORT
+    };
+    info!("attempting connect to {ip}:{port}");
     let server_channels_config = channels.server_configs();
     let client_channels_config = channels.client_configs();
 
@@ -90,7 +111,7 @@ pub fn attempt_join_lobby(mut commands: Commands, channels: Res<RepliconChannels
 
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let client_id = current_time.as_millis() as u64;
-    let server_addr = SocketAddr::new(std::net::IpAddr::V4(ip), PORT);
+    let server_addr = SocketAddr::new(std::net::IpAddr::V4(ip), port);
     let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))?;
     let authentication = ClientAuthentication::Unsecure {
         client_id,
@@ -102,33 +123,37 @@ pub fn attempt_join_lobby(mut commands: Commands, channels: Res<RepliconChannels
 
     commands.insert_resource(client);
     commands.insert_resource(transport);
-        //std::thread::sleep(std::time::Duration::from_millis(1000));
+
+    joining_state.set(JoiningState::PostAttempt);
 
     Ok(())
 }
 
-pub fn setup_for_connected_client(
+pub fn client_on_connect_successful(
     mut commands: Commands, 
+    mut joining_state: ResMut<NextState<JoiningState>>,
+    mut app_state: ResMut<NextState<AppState>>,
 ) {
+    app_state.set(AppState::GameSession);
+    joining_state.set(JoiningState::default());
+
     let name = format!("Player-{}", nano_id::base64::<6>());
     info!("connected as Client {name}");
+    
     commands.client_trigger(SendPlayerName(DisplayName(name)));
-   
-    // else{
-    //     info!("Client not connected.");
-    //     app_state.set(AppState::PreGame);
-    // }
-
+    
+    
 }
 
-pub fn on_connect_failed(
+pub fn client_on_connect_failed(
     mut app_state: ResMut<NextState<AppState>>,
-    mut commands: Commands, 
+    mut joining_state: ResMut<NextState<JoiningState>>,
+    //client: Res<RenetClient>,
 ) {
-   
-    info!("Client not connected.");
-    app_state.set(AppState::PreGame);
+    joining_state.set(JoiningState::default());
 
+    info!("Couldn't connect to server, returning to main menu");
+    app_state.set(AppState::PreGame);
 }
 
 pub fn lobby_button_interaction(
@@ -136,10 +161,9 @@ pub fn lobby_button_interaction(
     (&Interaction, &LobbyButtonId),
     Changed<Interaction>,
     >,
-    //mut app_exit_events: EventWriter<AppExit>,
-    mut pregame_state: ResMut<NextState<PreGameState>>,
+    mut game_setup_screen: ResMut<NextState<GameSetupScreen>>,
     mut app_state: ResMut<NextState<AppState>>,
-    mut mp_game_state:  ResMut<NextState<GamePhase>>,
+    mut game_phase:  ResMut<NextState<GamePhase>>,
 ) 
 {
     for (interaction, menu_button_action) in &interaction_query {
@@ -148,14 +172,15 @@ pub fn lobby_button_interaction(
             match menu_button_action {
                 LobbyButtonId::Leave => {
                     app_state.set(AppState::PreGame);
-                    pregame_state.set(PreGameState::MainMenu);
-
+                    
                 }
                 LobbyButtonId::Start =>  {
                     //todo chequear si todos están listos
-                    mp_game_state.set(GamePhase::InGame);
+                    game_phase.set(GamePhase::InGame);
                 },
-                LobbyButtonId::CreateCharacter => {},
+                LobbyButtonId::CreateCharacter => {
+                    game_setup_screen.set(GameSetupScreen::CharacterCreation);
+                },
                 LobbyButtonId::Ready => {},
                 LobbyButtonId::LobbyJoinability => {},
             }
@@ -163,9 +188,7 @@ pub fn lobby_button_interaction(
     }
 }
 
-pub fn spawn_clients(trigger: Trigger<OnAdd, ConnectedClient>, mut commands: Commands) {
-    // Hash index to generate visually distinctive color.
-    
+pub fn add_player_comp(trigger: Trigger<OnAdd, ConnectedClient>, mut commands: Commands) {
     info!("spawning box for `{}`", trigger.target());
 
     commands.entity(trigger.target()).insert((Player, Replicated));
@@ -175,3 +198,13 @@ pub fn spawn_clients(trigger: Trigger<OnAdd, ConnectedClient>, mut commands: Com
     // });
 }
 
+#[allow(unused_parens)]
+pub fn display_stuff(
+    mut query: Query<(&DisplayName),(With<Player>)>
+
+) {
+    // info!("Displaying players in lobby...");
+    // for (display_name) in &mut query {
+    //     info!("Player: {}", display_name.0);
+    // }
+}

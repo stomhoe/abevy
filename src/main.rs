@@ -7,7 +7,7 @@ use crate::game::GamePlugin;
 use crate::pregame_menus::{MenuPlugin};
 use crate::ui::MyUiPlugin;
 mod game;
-mod pregame_menus;
+pub mod pregame_menus;
 pub mod common;
 pub mod ui;
 
@@ -15,13 +15,16 @@ pub mod ui;
 #[states(scoped_entities)]
 pub enum AppState {#[default]PreGame, GameSession, }
 
+
+
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins, 
             GamePlugin, 
             MenuPlugin, 
-            MyUiPlugin
+            MyUiPlugin,
+            
         ))
       
         .init_state::<AppState>()

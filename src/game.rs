@@ -75,6 +75,7 @@ impl Plugin for GamePlugin {
             .init_state::<SimulationState>()
             .init_state::<GamePhase>()
             .init_state::<GameSetupType>()
+            .init_state::<GameSetupScreen>()
         ;
     }
 }
@@ -83,6 +84,12 @@ impl Plugin for GamePlugin {
 #[source(AppState = AppState::GameSession)]
 #[states(scoped_entities)]
 pub enum GamePhase {#[default]Setup, InGame,}
+
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[source(GamePhase = GamePhase::Setup)]
+#[states(scoped_entities)]
+enum GameSetupScreen {#[default]GameSettings, CharacterCreation,}
+
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[source(GamePhase = GamePhase::InGame)]

@@ -3,7 +3,7 @@ use bevy::{color::palettes::css::LIGHT_GOLDENROD_YELLOW};
 use bevy_simple_scroll_view::ScrollableContent;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 
-use crate::game::setup_menus::lobby::lobby_sys_comps::*;
+use crate::game::setup_menus::lobby::lobby_systems::*;
 use crate::game::{GamePhase};
 use crate::ui::ui_components::LineEdit;
 use crate::ui::ui_utils::text_button;
@@ -21,7 +21,7 @@ struct LobbyBaseLayout{
     pub leave_button: Entity,
 }
 fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
-    let vbox_container = (
+    let vbox_container = commands.spawn((
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
@@ -33,9 +33,10 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         },
         StateScoped(GamePhase::Setup),
         StateScoped(AppState::GameSession),
-    );
+    )).id();
 
-    let top_hbox_container = (
+    let top_hbox_container = commands.spawn((
+        ChildOf(vbox_container),
         Node {
             width: Val::Percent(100.),
             min_height: Val::Px(50.),
@@ -44,13 +45,30 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             flex_direction: FlexDirection::Row,
             ..default()
         },
-    );
+    )).id();
 
-    let lobby_visibility = (
-        lobby_button(LobbyButtonId::LobbyJoinability, "Lobby visibility",),
-    );
+    let middlesplitter_hbox = commands.spawn((
+        ChildOf(vbox_container),
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::FlexStart,
+            flex_direction: FlexDirection::Row,
+            ..default()
+        },
+    )).id();
 
-    let lobby_name = (
+    let lobby_visibility = commands
+        .spawn((
+            ChildOf(top_hbox_container),
+            lobby_button(LobbyButtonId::LobbyJoinability, "Lobby visibility"),
+        ))
+        .id();
+
+
+    let lobby_name = commands.spawn((
+        ChildOf(top_hbox_container),
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
@@ -79,34 +97,16 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             font_size: 25.,
             ..Default::default()
         },
-    );
+    )).id();
 
-    let leave_button = (
+    let leave_button = commands.spawn((
+        ChildOf(top_hbox_container),
         lobby_button(LobbyButtonId::Leave, "Leave",),
-    );
-
-    let middlesplitter_hbox = (
-        Node {
-            width: Val::Percent(100.),
-            height: Val::Percent(100.),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::FlexStart,
-            flex_direction: FlexDirection::Row,
-            ..default()
-        },
-    );
-
-    let vbox_container = commands.spawn(vbox_container).id();
-
-    let top_hbox = commands.spawn(top_hbox_container).insert(ChildOf(vbox_container)).id();
-    let middlesplitter_hbox = commands.spawn(middlesplitter_hbox).insert(ChildOf(vbox_container)).id();
-
-    let lobby_visibility = commands.spawn(lobby_visibility).insert(ChildOf(top_hbox)).id();
-    let lobby_name = commands.spawn(lobby_name).insert(ChildOf(top_hbox)).id();
-    let leave_button = commands.spawn(leave_button).insert(ChildOf(top_hbox)).id();
+    )).id();
 
 
-    let leftsplit_settings_slider = (
+    let _leftsplit_settings_slider = commands.spawn((
+        ChildOf(middlesplitter_hbox),
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
@@ -115,10 +115,10 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         ScrollableContent {
             ..default()
         },
-    );
-    commands.spawn(leftsplit_settings_slider).insert(ChildOf(middlesplitter_hbox));
+    )).id();
 
-    let rightsplit_vbox = (
+    let rightsplit_vbox = commands.spawn((
+        ChildOf(middlesplitter_hbox),
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
@@ -128,11 +128,10 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             //row_gap: Val::Px(10.),
             ..default()
         },
-    );
+    )).id();
 
-    let rightsplit_vbox = commands.spawn(rightsplit_vbox).insert(ChildOf(middlesplitter_hbox)).id();
-
-    let rightsplit_top_hbox = (
+    let rightsplit_top_hbox = commands.spawn((
+        ChildOf(rightsplit_vbox),
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
@@ -141,11 +140,10 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             flex_direction: FlexDirection::Row,
             ..default()
         },
-    );
+    )).id();
 
-    let rightsplit_top_hbox = commands.spawn(rightsplit_top_hbox).insert(ChildOf(rightsplit_vbox)).id();
-
-    let chat_history_slider = (
+    let _chat_history_slider = commands.spawn((
+        ChildOf(rightsplit_top_hbox),
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
@@ -154,12 +152,10 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         ScrollableContent {
             ..default()
         },
-    );
-    let _chat_history_slider = commands.spawn(chat_history_slider).insert(ChildOf(rightsplit_top_hbox)).id();
+    )).id();
 
-    
-
-    let rightsplit_bottom_hbox = (
+    let rightsplit_bottom_hbox = commands.spawn((
+        ChildOf(rightsplit_vbox),
         Node {
             width: Val::Percent(100.),
             min_height: Val::Px(100.),
@@ -168,17 +164,15 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             flex_direction: FlexDirection::Row,
             ..default()
         },
-    );
+    )).id();
 
-    let rightsplit_bottom_hbox = commands.spawn(rightsplit_bottom_hbox).insert(ChildOf(rightsplit_vbox)).id();
+    let _create_character_button = commands.spawn((
+        ChildOf(rightsplit_bottom_hbox),
+        lobby_button(LobbyButtonId::CreateCharacter, "Create character"),
+    )).id();
 
-    let create_character_button = (
-        lobby_button(LobbyButtonId::CreateCharacter, "Create character",),
-    );
-
-    let _create_character_button = commands.spawn(create_character_button).insert(ChildOf(rightsplit_bottom_hbox)).id();
-
-    let chat_input = (
+    let _chat_input = commands.spawn((
+        ChildOf(rightsplit_bottom_hbox),
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
@@ -201,13 +195,11 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             font_size: 25.,
             ..Default::default()
         },
-    );
-
-    let _chat_input = commands.spawn(chat_input).insert(ChildOf(rightsplit_bottom_hbox)).id();
+    )).id();
     
     LobbyBaseLayout {
         vbox_container,
-        top_hbox,
+        top_hbox: top_hbox_container,
         middlesplitter_hbox,
         rightsplit_vbox,
         rightsplit_top_hbox,
