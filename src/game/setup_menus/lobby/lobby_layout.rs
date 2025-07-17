@@ -3,6 +3,8 @@ use bevy::{color::palettes::css::LIGHT_GOLDENROD_YELLOW};
 use bevy_simple_scroll_view::ScrollableContent;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 
+use crate::game::player::player_components::Player;
+use crate::game::setup_menus::lobby::lobby_components::LobbyPlayerListing;
 use crate::game::setup_menus::lobby::lobby_systems::*;
 use crate::game::{GamePhase};
 use crate::ui::ui_components::LineEdit;
@@ -20,6 +22,9 @@ struct LobbyBaseLayout{
     pub lobby_name: Entity,
     pub leave_button: Entity,
 }
+
+const MIN_WIDTH: Val = Val::Px(120.);
+
 fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
     let vbox_container = commands.spawn((
         Node {
@@ -32,7 +37,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             ..default()
         },
         StateScoped(GamePhase::Setup),
-        StateScoped(AppState::GameSession),
+        StateScoped(AppState::StatefulGameSession),
     )).id();
 
     let top_hbox_container = commands.spawn((
@@ -77,7 +82,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             flex_direction: FlexDirection::Column,
             ..default()
         },
-        LineEdit{},
+        LineEdit,
         TextInputNode {
             mode: TextInputMode::SingleLine,
             max_chars: Some(50),
@@ -152,7 +157,24 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         ScrollableContent {
             ..default()
         },
+        BackgroundColor(LIGHT_GOLDENROD_YELLOW.into()),
     )).id();
+
+    let player_listing = commands.spawn((
+        ChildOf(rightsplit_top_hbox),
+        LobbyPlayerListing,
+        Node {
+            min_width: MIN_WIDTH,
+            height: Val::Percent(100.),
+            justify_content: JustifyContent::FlexStart,
+            align_items: AlignItems::FlexStart,
+            flex_direction: FlexDirection::Column,
+            //row_gap: Val::Px(10.),
+            ..default()
+        },
+    )).id();
+
+
 
     let rightsplit_bottom_hbox = commands.spawn((
         ChildOf(rightsplit_vbox),
@@ -178,7 +200,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             height: Val::Percent(100.),
             ..default()
         },
-        LineEdit{},
+        LineEdit,
         TextInputNode {
             mode: TextInputMode::SingleLine,
             //max_chars: Some(36),
@@ -267,7 +289,7 @@ pub fn lobby_button<T: Into<String>> (
     let base = (
         Node{
             height: Val::Percent(100.),
-            min_width: Val::Px(120.),
+            min_width: MIN_WIDTH,
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             ..default()

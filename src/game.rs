@@ -37,39 +37,50 @@ pub struct IngameSystems;
 pub struct NetworkSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct HostOnlySystems;
+pub struct GameDataInitSystems;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct HostSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ClientSystems;
 
 pub struct GamePlugin;
+
+#[allow(unused_parens, )]
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
 
         app
             .add_plugins((MpPlugin, SetupMenusPlugin, PlayerPlugin, BeingsPlugin, FactionsPlugin, MyTileMapPlugin, ClockPlugin, ))
             
-            .add_systems(OnEnter(GamePhase::InGame), (spawn_player_beings,).run_if(server_or_singleplayer))
+            .add_systems(OnEnter(GamePhase::ActiveGame), (
+                (spawn_player_beings,).run_if(server_or_singleplayer),
+            ))
 
             .add_systems(Update, 
                 
                 (debug_system, toggle_simulation, force_z_index).in_set(IngameSystems)
             )
 
+            .configure_sets(OnEnter(AppState::StatefulGameSession), (
+                GameDataInitSystems.run_if(server_or_singleplayer)
+            ))
+
             .configure_sets(Update, (
                 PlayerInputSystems,
                 MovementSystems,
-                IngameSystems.run_if(in_state(GamePhase::InGame)),
-                SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
-                SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::InGame))),
-                HostOnlySystems.run_if(server_or_singleplayer),
-                ClientSystems.run_if(not(server_or_singleplayer)),
+                IngameSystems.run_if(in_state(GamePhase::ActiveGame)),
+                SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
+                SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::ActiveGame))),
+                HostSystems.run_if(server_or_singleplayer.or(in_state(GameSetupType::HostLobby))),
+                ClientSystems.run_if(not(server_or_singleplayer).and(in_state(GameSetupType::JoinerLobby))),
             ))
             
             .configure_sets(FixedUpdate, (
-                HostOnlySystems.run_if(server_or_singleplayer),
-                ClientSystems.run_if(not(server_or_singleplayer)),
-                SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::InGame))),
+                HostSystems.run_if(server_or_singleplayer.or(in_state(GameSetupType::HostLobby))),
+                ClientSystems.run_if(not(server_or_singleplayer).and(in_state(GameSetupType::JoinerLobby))),
+                SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
             ))
 
             .init_state::<SimulationState>()
@@ -81,9 +92,9 @@ impl Plugin for GamePlugin {
 }
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[source(AppState = AppState::GameSession)]
+#[source(AppState = AppState::StatefulGameSession)]
 #[states(scoped_entities)]
-pub enum GamePhase {#[default]Setup, InGame,}
+pub enum GamePhase {#[default]Setup, ActiveGame,}
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[source(GamePhase = GamePhase::Setup)]
@@ -92,7 +103,7 @@ enum GameSetupScreen {#[default]GameSettings, CharacterCreation,}
 
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[source(GamePhase = GamePhase::InGame)]
+#[source(GamePhase = GamePhase::ActiveGame)]
 #[states(scoped_entities)]
 enum SimulationState {#[default]Running, Paused,}
 

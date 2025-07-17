@@ -13,6 +13,10 @@ pub struct SelfPlayer {}
 #[require(Replicated)]
 pub struct Player;
 
+#[derive(Debug, Component, Default, Serialize, Deserialize)]
+#[require(Replicated, Player)]
+pub struct HostPlayer;
+
 
 // impl Default for Player {
 //     fn default() -> Self {

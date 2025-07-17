@@ -12,6 +12,7 @@ dependencies = [
  "bevy_replicon",
  "bevy_replicon_renet",
  "bevy_simple_scroll_view",
+ "bevy_spritesheet_animation",
  "bevy_ui_text_input",
  "debug_unwraps",
  "fastnoise-lite",
@@ -1230,6 +1231,15 @@ dependencies = [
  "nonmax",
  "radsort",
  "tracing",
+]
+
+[[package]]
+name = "bevy_spritesheet_animation"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57d6a2a881c12b258b43601122e452f7e441657c50e49d53599d5dd88de1a752"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]

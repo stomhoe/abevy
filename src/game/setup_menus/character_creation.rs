@@ -1,4 +1,5 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 use crate::game::{GameSetupScreen, IngameSystems};
 use crate::game::setup_menus::character_creation::{
@@ -28,6 +29,11 @@ impl Plugin for CharacterCreationPlugin {
             // SomePlugin, 
             // superstate_plugin::<SuperState, (Substate1, Substate2)>
             ))
+            .add_client_trigger::<NameSelected>(Channel::Ordered)
+            .add_client_trigger::<RaceSelected>(Channel::Ordered)
+            .add_client_trigger::<HeadSelected>(Channel::Ordered)
+            .add_client_trigger::<ClassSelected>(Channel::Ordered)
+            .add_client_trigger::<FollowerSelected>(Channel::Ordered)
         ;
     }
 }

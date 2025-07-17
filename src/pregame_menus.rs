@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use crate::pregame_menus::main_menu::MainMenuPlugin;
 
 
-mod create_character;
 pub mod main_menu;
 mod pregame_systems;
 //mod pregame_components;

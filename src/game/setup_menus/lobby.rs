@@ -1,11 +1,10 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
+use bevy::{prelude::*, time::common_conditions::on_timer};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use crate::{game::{setup_menus::lobby::{lobby_events::*, lobby_layout::*, lobby_systems::*}, ClientSystems, GamePhase, GameSetupType }, AppState};
+use crate::{game::{multiplayer::ConnectionAttempt, setup_menus::lobby::{lobby_events::*, lobby_layout::*, lobby_systems::*}, ClientSystems, GamePhase, GameSetupType, HostSystems }, AppState};
 
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[states(scoped_entities)]
-pub enum JoiningState {#[default]Not, PreAttempt, PostAttempt,}
 
 
 // Module lobby
@@ -19,44 +18,38 @@ impl Plugin for LobbyPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(
-                OnEnter(JoiningState::PreAttempt),
+                OnEnter(ConnectionAttempt::Triggered),
                 (
-                    (attempt_join_lobby)
-                        .run_if(in_state(GamePhase::Setup).and(in_state(GameSetupType::JoinerLobby))),
+                    (layout_for_host, host_setup).in_set(HostSystems),
                 ),
             )
             .add_systems(
-                OnEnter(AppState::GameSession),
+                OnEnter(GamePhase::ActiveGame),
                 (
-                    (layout_for_host, setup_for_host)
-                        .run_if(in_state(GamePhase::Setup).and(in_state(GameSetupType::HostLobby))),
-                    (layout_for_client)
-                        .run_if(in_state(GamePhase::Setup).and(in_state(GameSetupType::JoinerLobby))),
+                    remove_player_name_ui_entry
+                ),
+            )
+            .add_systems(
+                OnEnter(AppState::StatefulGameSession),
+                (
+                    (layout_for_client, ).in_set(ClientSystems),
                 ),
             )
             .add_systems(Update, (
-                (lobby_button_interaction).run_if(in_state(GamePhase::Setup).and(not(in_state(GameSetupType::Singleplayer)))),
-                (client_on_connect_successful).run_if(client_just_connected),
-                (client_on_connect_failed).run_if(
-                    in_state(GamePhase::Setup)
-                        .and(in_state(GameSetupType::JoinerLobby))
-                        .and(in_state(JoiningState::PostAttempt))
-                        .and(not(client_connecting))
-                        .and(not(client_connected))
-                )
+                (lobby_button_interaction, on_player_added, ).run_if(in_state(GamePhase::Setup).and(in_state(AppState::StatefulGameSession)).and(not(in_state(GameSetupType::Singleplayer)))),
+                
+                (host_on_server_start_successful).run_if(server_just_started)
+                
+                
                 ,
-                display_stuff.in_set(ClientSystems)
+
+                
+                
+                dbg_display_stuff.in_set(ClientSystems).run_if(on_timer(Duration::from_secs(3)))
             ))
-            .init_state::<JoiningState>()
-
-//            .add_server_trigger::<ConnectedEvent>(Channel::Ordered)
-            .add_client_trigger::<SendPlayerName>(Channel::Ordered)
-
-            // .add_systems(OnEnter(SelfMpKind::Client), (layout_for_client).run_if(in_state(GamePhase::Setup)))
 
 
-            .add_observer(add_player_comp)
-            .add_observer(server_receive_player_name)
+            .add_observer(on_player_disconnect)
 
             //.add_server_trigger::<HostStartedGame>(Channel::Ordered)
             

@@ -1,17 +1,14 @@
 
-use crate::{common::common_components::DisplayName, game::{player::player_components::Player, setup_menus::lobby::{lobby_events::SendPlayerName, JoiningState}, GamePhase, GameSetupScreen}, pregame_menus::{main_menu::main_menu_components::MainMenuIpLineEdit, PreGameState}, ui::ui_components::CurrentText, AppState};
+use crate::{common::common_components::DisplayName, game::{multiplayer::multiplayer_utils, player::player_components::{HostPlayer, Player}, setup_menus::lobby::{lobby_components::{LobbyPlayerListing, LobbyPlayerUiNode}, }, GamePhase, GameSetupScreen}, pregame_menus::{main_menu::main_menu_components::MainMenuIpLineEdit, PreGameState}, ui::ui_components::CurrentText, AppState};
 
-use bevy::{prelude::*};
+use bevy::{ecs::world::OnDespawn, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use bevy_replicon::server::client_entity_map;
 use bevy_replicon_renet::{
-    RenetChannelsExt, RepliconRenetPlugins,
-    netcode::{
-        ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
-        ServerConfig,
-    },
-    renet::{ConnectionConfig, RenetClient, RenetServer},
+    netcode::
+        NetcodeClientTransport
+    ,
+    renet::{RenetClient, RenetServer},
 };
 use bevy_ui_text_input::TextInputContents;
 
@@ -35,135 +32,39 @@ pub enum LobbyLineEdit {Chat, LobbyName}
 #[derive(Component)]
 pub enum LobbySlider {ChatHistory, Settings}
 
-const PROTOCOL_ID: u64 = 7;
-const PORT: u16 = 5000;
 
-pub fn setup(mut commands: Commands){
+pub fn host_setup(mut commands: Commands, mut app_state: ResMut<NextState<AppState>>,){
 
 }
 
-pub fn setup_for_host(mut commands: Commands, channels: Res<RepliconChannels>) -> Result {
-    let server_channels_config = channels.server_configs();
-    let client_channels_config = channels.client_configs();
+#[allow(unused_parens, dead_code)]
+pub fn host_on_server_start_successful(mut commands: Commands){
 
-    let server = RenetServer::new(ConnectionConfig {
-        server_channels_config,
-        client_channels_config,
-        ..Default::default()
-    });
-
-    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, PORT))?;
-    let server_config = ServerConfig {
-        current_time,
-        max_clients: 10,
-        protocol_id: PROTOCOL_ID,
-        authentication: ServerAuthentication::Unsecure,
-        public_addresses: Default::default(),
-    };
-    let transport = NetcodeServerTransport::new(server_config, socket)?;
-
-    commands.insert_resource(server);
-    commands.insert_resource(transport);
-
-    commands.spawn((
-        Player,
-        DisplayName("Host".to_string()),
-    ));
-
-    Ok(())
 }
+
+#[allow(unused_parens, dead_code)]
+pub fn host_on_server_start_failed(mut commands: Commands){
+
+}
+
 
 
 
 #[allow(unused_parens)]
-pub fn server_receive_player_name(mut trigger: Trigger<FromClient<SendPlayerName>>, mut commands: Commands) {
-
-    commands.entity(trigger.client_entity).insert(mem::take(&mut trigger.event_mut().0));
-}
-
-
-
-pub fn attempt_join_lobby(
-    mut commands: Commands, 
-    channels: Res<RepliconChannels>,
-    mut joining_state: ResMut<NextState<JoiningState>>,
-    line_edit_query: Single<(&CurrentText, &MainMenuIpLineEdit)>,
-) -> Result {
-    let ip_port_str = line_edit_query.0.0.trim();
-    let mut split = ip_port_str.split(':');
-    let ip_str = split.next().ok_or("Missing IP address")?;
-    let ip: Ipv4Addr = ip_str.parse().map_err(|e| format!("Invalid IP address: {}", e))?;
-    let port = if let Some(port_str) = split.next() {
-        port_str.parse::<u16>().map_err(|e| format!("Invalid port: {}", e))?
-    } else {
-        PORT
-    };
-    info!("attempting connect to {ip}:{port}");
-    let server_channels_config = channels.server_configs();
-    let client_channels_config = channels.client_configs();
-
-    let client = RenetClient::new(ConnectionConfig {
-        server_channels_config,
-        client_channels_config,
-        ..Default::default()
-    });
-
-    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-    let client_id = current_time.as_millis() as u64;
-    let server_addr = SocketAddr::new(std::net::IpAddr::V4(ip), port);
-    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))?;
-    let authentication = ClientAuthentication::Unsecure {
-        client_id,
-        protocol_id: PROTOCOL_ID,
-        server_addr,
-        user_data: None,
-    };
-    let transport = NetcodeClientTransport::new(current_time, authentication, socket)?;
-
-    commands.insert_resource(client);
-    commands.insert_resource(transport);
-
-    joining_state.set(JoiningState::PostAttempt);
-
-    Ok(())
-}
-
-pub fn client_on_connect_successful(
-    mut commands: Commands, 
-    mut joining_state: ResMut<NextState<JoiningState>>,
-    mut app_state: ResMut<NextState<AppState>>,
-) {
-    app_state.set(AppState::GameSession);
-    joining_state.set(JoiningState::default());
-
-    let name = format!("Player-{}", nano_id::base64::<6>());
-    info!("connected as Client {name}");
-    
-    commands.client_trigger(SendPlayerName(DisplayName(name)));
-    
-    
-}
-
-pub fn client_on_connect_failed(
-    mut app_state: ResMut<NextState<AppState>>,
-    mut joining_state: ResMut<NextState<JoiningState>>,
-    //client: Res<RenetClient>,
-) {
-    joining_state.set(JoiningState::default());
-
-    info!("Couldn't connect to server, returning to main menu");
-    app_state.set(AppState::PreGame);
+pub fn remove_player_name_ui_entry(mut commands: Commands, mut query: Query<(Entity),(With<LobbyPlayerUiNode>)>) {
+    for ent in query.iter() {
+        commands.entity(ent).remove::<LobbyPlayerUiNode>();
+    }
 }
 
 pub fn lobby_button_interaction(
-    interaction_query: Query<
-    (&Interaction, &LobbyButtonId),
-    Changed<Interaction>,
-    >,
+    mut cmd: Commands,
+    interaction_query: Query<(&Interaction, &LobbyButtonId), Changed<Interaction>,>,
     mut game_setup_screen: ResMut<NextState<GameSetupScreen>>,
     mut app_state: ResMut<NextState<AppState>>,
     mut game_phase:  ResMut<NextState<GamePhase>>,
+    mut server: Option<ResMut<RenetServer>>,
+    mut client: Option<ResMut<RenetClient>>,
 ) 
 {
     for (interaction, menu_button_action) in &interaction_query {
@@ -172,11 +73,18 @@ pub fn lobby_button_interaction(
             match menu_button_action {
                 LobbyButtonId::Leave => {
                     app_state.set(AppState::PreGame);
-                    
+
+                    if let Some(ref mut server) = server {
+                        multiplayer_utils::stop_server(&mut cmd, server);
+                    }
+
+                    if let Some(ref mut client) = client {
+                        multiplayer_utils::disconnect_from_server(&mut cmd, client);
+                    }
                 }
                 LobbyButtonId::Start =>  {
                     //todo chequear si todos están listos
-                    game_phase.set(GamePhase::InGame);
+                    game_phase.set(GamePhase::ActiveGame);
                 },
                 LobbyButtonId::CreateCharacter => {
                     game_setup_screen.set(GameSetupScreen::CharacterCreation);
@@ -188,23 +96,54 @@ pub fn lobby_button_interaction(
     }
 }
 
-pub fn add_player_comp(trigger: Trigger<OnAdd, ConnectedClient>, mut commands: Commands) {
-    info!("spawning box for `{}`", trigger.target());
+pub fn on_player_disconnect(
+    trigger: Trigger<OnDespawn, Player>, 
+    players: Query<(&DisplayName, &LobbyPlayerUiNode), With<Player>>,
+    mut commands: Commands)
+{
+    let result = players.get(trigger.target());
 
-    commands.entity(trigger.target()).insert((Player, Replicated));
-    // commands.server_trigger(ToClients {
-    //     mode: SendMode::Direct(trigger.target()),
-    //     event: ConnectedEvent,
-    // });
+    if let Ok((player_name, player_name_entry)) = result {
+        info!("Client `{}` disconnected", player_name.0);
+        commands.entity(player_name_entry.0).despawn();
+    } else {
+        info!("Failed to get player name for disconnected client: {}", trigger.target());
+        return;
+    }
+
 }
 
 #[allow(unused_parens)]
-pub fn display_stuff(
-    mut query: Query<(&DisplayName),(With<Player>)>
+pub fn dbg_display_stuff(
+    query: Query<(&DisplayName),(With<Player>)>
 
 ) {
-    // info!("Displaying players in lobby...");
-    // for (display_name) in &mut query {
-    //     info!("Player: {}", display_name.0);
-    // }
+    for (player_name) in query.iter() {
+        info!("Player name: {}", player_name.0);
+    }
 }
+
+#[allow(unused_parens)]
+pub fn on_player_added(mut cmd: Commands, player_listing: Single<Entity, With<LobbyPlayerListing>>, query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
+    
+    for (ent, player_name) in query.iter() {
+        let pne = cmd.spawn((
+            ChildOf(*player_listing),
+            Node {
+                width: Val::Percent(100.),
+                height: Val::Px(50.),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            Text::new(player_name.0.clone()),
+            TextLayout::new_with_justify(JustifyText::Center),
+        )).id();
+        cmd.entity(ent).insert((
+            StateScoped(AppState::StatefulGameSession),
+            LobbyPlayerUiNode(pne)
+        ));
+    }
+}
+

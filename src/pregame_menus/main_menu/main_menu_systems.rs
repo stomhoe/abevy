@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_ui_text_input::{*,
 };
 
-use crate::game::setup_menus::lobby::JoiningState;
+use crate::game::multiplayer::ConnectionAttempt;
 use crate::game::{GamePhase, GameSetupType};
 use crate::pregame_menus::main_menu::main_menu_components::*;
 use crate::ui::ui_components::CurrentText;
@@ -24,9 +24,10 @@ pub fn menu_button_interaction(
     Changed<Interaction>,
     >,
     //mut app_exit_events: EventWriter<AppExit>,
+    
     mut pregame_state: ResMut<NextState<PreGameState>>,
     mut app_state: ResMut<NextState<AppState>>,
-    mut joining_state: ResMut<NextState<JoiningState>>,
+    mut lobby_state: ResMut<NextState<ConnectionAttempt>>,
     mut game_phase: ResMut<NextState<GamePhase>>,
     mut game_setup_type: ResMut<NextState<GameSetupType>>,
      
@@ -35,17 +36,18 @@ pub fn menu_button_interaction(
         if *interaction == Interaction::Pressed {
             match menu_button_action {
                 MainMenuButton::QuickStart => {
-                    app_state.set(AppState::GameSession);
+                    app_state.set(AppState::StatefulGameSession);
                 }
                 MainMenuButton::Host => {
-                    app_state.set(AppState::GameSession);
                     game_setup_type.set(GameSetupType::HostLobby);
                     game_phase.set(GamePhase::Setup);
+                    lobby_state.set(ConnectionAttempt::Triggered);//TODO mover esto a algún botón del lobby para el host
+                    app_state.set(AppState::StatefulGameSession);
                 }
                 MainMenuButton::Join => {
                     game_setup_type.set(GameSetupType::JoinerLobby);
                     game_phase.set(GamePhase::Setup);
-                    joining_state.set(JoiningState::PreAttempt);
+                    lobby_state.set(ConnectionAttempt::Triggered);
                 }
                 MainMenuButton::Settings => {
                     pregame_state.set(PreGameState::Settings);

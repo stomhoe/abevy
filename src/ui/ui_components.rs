@@ -11,7 +11,7 @@ pub struct ButtonStyle {}
 
 #[derive(Component)]
 #[require(Node, CurrentText, BackgroundColor(BUTTON_BG_NORMAL), TextInputNode, TextInputPrompt, TextInputContents)]//Outline
-pub struct LineEdit {}
+pub struct LineEdit;
 
 #[derive(Component, Debug, Default)]
 pub struct CurrentText(pub String);

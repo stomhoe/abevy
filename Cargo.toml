@@ -37,6 +37,7 @@ serde = "1.0.219"
 lightyear_prediction = "0.21.1"
 lightyear_interpolation = "0.21.1"
 bevy-ui-gradients = "0.4.0"
+bevy_spritesheet_animation = "3.0.0"
 
 [dependencies.fastnoise-lite]
 version = "*"

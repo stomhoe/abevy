@@ -1,10 +1,13 @@
 #[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
+use serde::{Deserialize, Serialize};
 use vec_collections::VecSet;
 
 
 //crear una entidad por cada instancia de clase existente
 //esto no va en los beings
-#[derive(Component, Debug, PartialEq, Eq, Hash)]
+#[derive(Component, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[require(Replicated)]
 pub struct Class(u32);
 
 impl Class {

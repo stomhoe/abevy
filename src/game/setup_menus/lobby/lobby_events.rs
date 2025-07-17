@@ -7,8 +7,7 @@ use crate::common::common_components::DisplayName;
 pub struct HostStartedGame { }
 
 
-#[derive(serde::Deserialize, Event, serde::Serialize, Clone)]
-pub struct SendPlayerName (pub DisplayName);
+
 
 // No olvidarse de agregarlo al Plugin del módulo
 // 

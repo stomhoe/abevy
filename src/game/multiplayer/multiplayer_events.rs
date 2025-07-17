@@ -2,6 +2,8 @@ use std::time::SystemTime;
 
 #[allow(unused_imports)] use bevy::prelude::*;
 
+use crate::common::common_components::DisplayName;
+
 
 #[derive(serde::Deserialize, Event, serde::Serialize, Clone)]
 pub struct TransformFromClient { pub entity: Entity, pub transf: Transform, pub time: SystemTime }
@@ -22,3 +24,5 @@ impl From<TransformFromClient> for TransformFromServer {
 
 
  
+ #[derive(serde::Deserialize, Event, serde::Serialize, Clone)]
+pub struct SendPlayerName (pub DisplayName);

@@ -7,7 +7,8 @@ use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
 use crate::game::beings::beings_components::{Being, ControlledBy, PlayerDirectControllable};
 use crate::game::factions::factions_components::SelfFaction;
-use crate::game::game_resources::NidEntityMap;
+use crate::game::game_components::*;
+use crate::game::game_resources::*;
 use crate::game::player::player_components::{CameraTarget, Player, SelfPlayer};
 use crate::game::{SimulationState};
 
@@ -38,6 +39,23 @@ pub fn spawn_player_beings(
     ));
 }
 
+
+pub enum ImagesNids {
+    PlayerAvatar = 0,
+
+}
+
+
+
+pub fn init_images(
+    mut cmd: Commands,
+    asset_server: Res<AssetServer>,
+) {
+
+
+}
+
+
 pub fn toggle_simulation(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     current_state: Res<State<SimulationState>>, mut next_state: ResMut<NextState<SimulationState>>,
@@ -57,17 +75,6 @@ pub fn toggle_simulation(
 }
 
 
-#[derive(Component, Debug,)]
-pub struct Bullet();
-
-#[derive(Component, Debug,)]
-pub struct Health(pub i32,);//SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (GRUNTS IRRECLUTABLES PARA FARMEAR XP O LOOT)
-
-#[derive(Component, Debug,)]
-pub struct PhysicallyImmune();
-
-#[derive(Component, Debug,)]
-pub struct MagicallyInvulnerable();
 
 
 pub fn force_z_index(mut query: Query<(&mut Transform, &GameZindex)>,) {
