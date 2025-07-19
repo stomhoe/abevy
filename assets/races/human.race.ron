@@ -1,0 +1,13 @@
+
+(
+    id: "human",
+    name: "Human",
+    //icon_path: "assets"
+    description: "A versatile and adaptable"
+    demonym: Some("human"),
+    singular_denomination: Some("human"),  plural_denomination: Some("humans"),
+    males_ratio: 0.5,
+    can_equip_tools: true,
+    used_sprite_categories: ["head", "body",],
+    chooseable_sprites: ["", ""],
+)

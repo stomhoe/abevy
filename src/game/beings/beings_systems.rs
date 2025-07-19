@@ -1,7 +1,7 @@
-use bevy::{ecs::system::command, prelude::*};
+use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
-use crate::game::{beings::beings_components::{Being, ControlledBy, ControlledBySelf, InputMoveDirection}, game_components::Nid, game_resources::NidEntityMap, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::TransformFromClient}, player::player_components::SelfPlayer};
+use crate::game::{beings::beings_components::InputMoveDirection, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::TransformFromClient}};
 
 
 
@@ -28,3 +28,4 @@ pub fn handle_movement(
 
 
 
+//HACER LOS SPRITES HIJOS DE LA ENTITY BEING, HEREDAN EL TRANSFORM

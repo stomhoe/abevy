@@ -10,7 +10,6 @@ mod host_systems;
 mod client_systems;
 pub mod multiplayer_events;
 pub mod multiplayer_utils;
-//mod multiplayer_styles;
 mod multiplayer_resources;
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -65,8 +64,6 @@ impl Plugin for MpPlugin {
             ))
             .init_state::<ConnectionAttempt>()
 
-            //.add_systems(OnEnter(SomeStateType::Literal), (setup))
-            //.add_systems(Update, somesystem.runif(in_state(SomeStateType::Literal)))
         ;
     }
 }

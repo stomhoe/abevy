@@ -1,7 +1,9 @@
 use bevy::app::FixedMain;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+use superstate::superstate_plugin;
 use crate::game::beings::{BeingsPlugin, MovementSystems};
+use crate::game::game_components::*;
 use crate::game::multiplayer::MpPlugin;
 use crate::game::tilemap::terrain_gen::TerrainGenSystems;
 use crate::game::time::ClockPlugin;
@@ -52,7 +54,8 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
 
         app
-            .add_plugins((MpPlugin, SetupMenusPlugin, PlayerPlugin, BeingsPlugin, FactionsPlugin, MyTileMapPlugin, ClockPlugin, ))
+            .add_plugins((MpPlugin, SetupMenusPlugin, PlayerPlugin, BeingsPlugin, 
+                FactionsPlugin, MyTileMapPlugin, ClockPlugin, ))
             
             .add_systems(OnEnter(GamePhase::ActiveGame), (
                 (spawn_player_beings,).run_if(server_or_singleplayer),

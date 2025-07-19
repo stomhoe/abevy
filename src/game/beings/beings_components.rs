@@ -32,7 +32,7 @@ pub struct ControlledBy ( #[entities] pub Entity);
 pub struct ControlledBySelf;
 
 #[derive(Component, Debug, Deserialize, Serialize)]
-#[require(InputMoveDirection, GameZindex(500.), Replicated)]
+#[require(InputMoveDirection, GameZindex(500.), Replicated, Altitude)]
 pub struct Being;
 
 #[derive(Component)]
@@ -69,25 +69,18 @@ pub enum BaseGenTemplsNids {
     Soldier,
 }
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct Moving;
 
 
-#[derive(Component, Default)]
-#[require(SuperstateInfo<AltitudeState>)]
-pub struct AltitudeState;
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub enum Altitude{
+    #[default] 
+    OnGround,
+    Swimming,
+    Floating,
+}
 
-#[derive(Component)] #[require(AltitudeState)]
-pub struct Floating;
-
-#[derive(Component, Default)]
-#[require(AltitudeState, SuperstateInfo<TouchingGround>)]
-pub struct TouchingGround;
-
-
-#[derive(Component)] #[require(TouchingGround)]
-pub struct Swimming;
-
-#[derive(Component)] #[require(TouchingGround)]
-pub struct Walking; 
 
 
 //PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
@@ -98,15 +91,15 @@ pub struct WallPhaser;
 
 
 
-#[derive(Component, Default)] pub struct MovementCapability;//NO SACARSELO SOLO PORQ ESTÉ ULTRAHERIDO
+#[derive(Component, Default)] pub struct InnateMovementCapability;//NO SACARSELO SOLO PORQ ESTÉ ULTRAHERIDO
 
 
 // NO SON EXLUSIVOS ASÍ Q NO ES SUPERSTATE
-#[derive(Component)] #[require(MovementCapability)] pub struct LandWalker;
+#[derive(Component)] #[require(InnateMovementCapability)] pub struct LandWalker;
 
-#[derive(Component)] #[require(MovementCapability)] pub struct Swimmer;
+#[derive(Component)] #[require(InnateMovementCapability)] pub struct Swimmer;
 
-#[derive(Component)] #[require(MovementCapability)] pub struct Flier;
+#[derive(Component)] #[require(InnateMovementCapability)] pub struct Flier;
 
 //NO SÉ SI USAR UN HASHMAP
 

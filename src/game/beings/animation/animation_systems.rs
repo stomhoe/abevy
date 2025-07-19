@@ -1,0 +1,179 @@
+
+
+use bevy::{ecs::bundle, math::{U16Vec2, VectorSpace}};
+#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
+use bevy_spritesheet_animation::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use crate::game::{beings::{animation::*, beings_components::{Altitude, Flier, LandWalker, Moving, Swimmer}}, game_components::{Direction, ImgPathHolder}};
+
+
+#[allow(unused_parens)]
+pub fn init_animations(
+    mut commands: Commands, 
+    mut library: ResMut<AnimationLibrary>,
+) {
+        
+    let spritesheet = base_humanoid_spritesheet();
+
+    let clip = Clip::from_frames([0]);
+    let animation = Animation::from_clip(library.register_clip(clip));
+    let animation_id = library.register_animation(animation);
+    library.name_animation(animation_id, IDLE_DOWN).unwrap();
+    
+    let clip = Clip::from_frames(spritesheet.row_partial(1, 0..=0));
+    let animation = Animation::from_clip(library.register_clip(clip));
+    let animation_id = library.register_animation(animation);
+    library.name_animation(animation_id, IDLE_UP).unwrap();
+
+    let clip = Clip::from_frames(spritesheet.row_partial(2, 0..=0));
+    let animation = Animation::from_clip(library.register_clip(clip));
+    let animation_id = library.register_animation(animation);
+    library.name_animation(animation_id, IDLE_LEFT).unwrap();
+
+    let clip = Clip::from_frames(spritesheet.row_partial(3, 0..=0));
+    let animation = Animation::from_clip(library.register_clip(clip));
+    let animation_id = library.register_animation(animation);
+    library.name_animation(animation_id, IDLE_RIGHT).unwrap();
+
+
+    let clip = Clip::from_frames(spritesheet.row(0));
+    let animation = Animation::from_clip(library.register_clip(clip));
+    let animation_id = library.register_animation(animation);
+    library.name_animation(animation_id, WALK_DOWN).unwrap();
+    
+    let clip = Clip::from_frames(spritesheet.row(1));
+    let animation = Animation::from_clip(library.register_clip(clip));
+    let animation_id = library.register_animation(animation);
+    library.name_animation(animation_id, WALK_UP).unwrap();
+
+    let clip = Clip::from_frames(spritesheet.row_partial(2, 0..=4));
+    let animation = Animation::from_clip(library.register_clip(clip));
+    let animation_id = library.register_animation(animation);
+    library.name_animation(animation_id, WALK_LEFT).unwrap();
+
+    let clip = Clip::from_frames(spritesheet.row_partial(3, 0..=4));
+    let animation = Animation::from_clip(library.register_clip(clip));
+    let animation_id = library.register_animation(animation);
+    library.name_animation(animation_id, WALK_RIGHT).unwrap();
+}
+
+
+#[allow(unused_parens)]
+pub fn init_sprites(
+    mut cmd: Commands, 
+) {
+        
+    let human_body0 = cmd.spawn((
+        SpriteDataId::new("human_body0"),
+        DefaultBodyBundle::new("beings/body/human_male.png"),
+    )).id();
+
+    let human_head0 = cmd.spawn((
+        SpriteDataId::new("human_head0"),
+        DefaultHeadBundle::new("beings/head/human/0.png"),
+    )).id();
+}
+
+#[allow(unused_parens)]
+pub fn change_anim_state_sid(
+    mut sprite_query: Query<(
+            &mut AnimationState,
+            Option<&HasWalkAnim>, Option<&HasFlyAnim>, Option<&HasSwimAnim>,
+            &ChildOf
+        ), (Without<ExcludedFromBaseAnimPickingSystem>)>,
+    parents_query: Query<(Option<&Moving>, &Altitude),>,
+) {
+    for (mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, child_of ) in sprite_query.iter_mut() {
+        if let Ok((moving, curr_parent_altitude)) = parents_query.get(child_of.parent()) {
+            match (moving, curr_parent_altitude, has_walk_anim, has_swim_anim, has_fly_anim) {
+                (_any_move, _any_alti, None, None, None) => {
+                    anim_state.set_idle();
+                },
+                (Some(_move), Altitude::OnGround, Some(_), _, _) => {
+                    anim_state.set_walk();
+                },
+                (Some(_move), Altitude::Swimming, _, Some(_), _) => {
+                    anim_state.set_swim();
+                },
+                (Some(_move), Altitude::Floating, _, _, Some(_)) => {
+                    anim_state.set_fly();
+                },
+                (None, Altitude::OnGround, _, _, _) => {
+                    anim_state.set_idle();
+                },
+                (None, Altitude::Swimming, _, Some(has_swim_anim), _) => {
+                    if has_swim_anim.use_still {
+                        anim_state.set_idle();
+                    } else {
+                        anim_state.set_swim();
+                    }
+                },
+                (None, Altitude::Floating, _, _, Some(has_fly_anim)) => {
+                    if has_fly_anim.use_still {
+                        anim_state.set_idle();
+                    } else {
+                        anim_state.set_fly();
+                    }
+                },
+                (Some(_move), Altitude::Floating, Some(_has_walk), _, None) => {
+                    anim_state.set_walk();
+                },
+                (Some(_move), Altitude::Swimming, Some(_has_walk), None, _) => {
+                    anim_state.set_walk();
+                },
+                (Some(_move), Altitude::OnGround, None, Some(_has_fly), None) => {
+                    anim_state.set_fly();
+                },
+                (Some(_move), Altitude::OnGround, None, None, Some(_has_swim)) => {
+                    anim_state.set_swim();
+                },
+                (Some(_move), Altitude::OnGround, None, Some(_has_fly), Some(_has_swim)) => {
+                    anim_state.set_fly();
+                },
+                (Some(_), Altitude::Swimming, None, None, Some(_fly)) => {anim_state.set_fly();},
+                (Some(_), Altitude::Floating, None, Some(_swim), None) => {anim_state.set_swim();},
+                (None, _curr_alt, _any_walk, _any_swim, _any_fly) => {anim_state.set_idle();},
+            }
+        }
+    }
+      
+}
+
+
+
+
+#[allow(unused_parens)]
+pub fn animate_sprite(
+    mut query: Query<(&mut Sprite, &mut SpritesheetAnimation, Option<&AnimationSidPrefix>, Option<&AnimationState>, Option<&Directionable> ,Option<&FlipXIfDir>, &ChildOf), ()>,
+    parents: Query<(Option<&Direction>, ),>,
+    library: Res<AnimationLibrary>,
+) {
+    for (mut sprite, mut anim, prefix, anim_state, directionable, flip_x, child_of ) in query.iter_mut() {
+        if let Ok(direction) = parents.get(child_of.parent()) {
+            let direction_str = directionable
+                .and_then(|_| direction.0.map(|dir| dir.as_suffix()))
+                .unwrap_or("");
+
+            let prefix = prefix.as_ref().map_or("", |p| p.0.as_str());
+            let anim_state = anim_state.as_ref().map_or("", |s| s.0.as_str());
+            let animation_name = format!("{}{}{}", prefix, anim_state, direction_str);
+
+            if let Some(animation_id) = library.animation_with_name(animation_name) {
+                if anim.animation_id != animation_id {
+                    anim.switch(animation_id);
+                    sprite.flip_x = match (flip_x, direction.0) {
+                        (Some(FlipXIfDir::Left), Some(Direction::Left)) => true,
+                        (Some(FlipXIfDir::Right), Some(Direction::Right)) => true,
+                        (Some(FlipXIfDir::Any), _) => true,
+                        _ => false,
+                    };
+                }
+            }
+        }
+    }
+      
+}
+
+

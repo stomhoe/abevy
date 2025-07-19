@@ -1,6 +1,9 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
+use superstate::SuperstateInfo;
+
+use crate::game::beings::animation::animation_constants::*;
 
 
 #[derive(Component, Debug, )]
@@ -55,5 +58,21 @@ pub struct PhysicallyImmune();
 #[derive(Component, Debug,)]
 pub struct MagicallyInvulnerable();
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct ImgPathHolder(pub String);
 
 
+
+#[derive(Component)]
+pub enum Direction{Down, Left, Right, Up,}
+
+impl Direction {
+    pub fn as_suffix(&self) -> &str {
+        match self {
+            Direction::Down => DOWN,
+            Direction::Left => LEFT,
+            Direction::Right => RIGHT,
+            Direction::Up => UP,
+        }
+    }
+}

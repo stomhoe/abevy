@@ -4,8 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-
-
 nano-id = "0.4.0"
 rand = "0.9.1"
 strum = "0.27.1"
@@ -15,7 +13,6 @@ debug_unwraps = "0.1.0"
 rand_distr = "0.5.1"
 rand_seeder = "*"
 rand_pcg = "*"
-
 
 bevy = { version = "0.16.1", features = [
     "dynamic_linking",
@@ -33,7 +30,9 @@ bevy_ui_text_input = "0.5.2"
 
 bevy_replicon = "0.34.3"
 bevy_replicon_renet = { git = "https://github.com/projectharmonia/bevy_replicon_renet.git" }
-serde = "1.0.219"
+serde = { version = "1.0.219", features = ["derive"] }
+bevy_common_assets = { version = "0.13.0", features = ["ron"]}
+
 lightyear_prediction = "0.21.1"
 lightyear_interpolation = "0.21.1"
 bevy-ui-gradients = "0.4.0"

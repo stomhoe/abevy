@@ -7,7 +7,6 @@ use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTranspo
 
 use crate::{common::common_components::DisplayName, game::{multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::Player, }, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
 
-use bevy_replicon_renet::netcode::NetcodeDisconnectReason::*;
 
 pub fn receive_transf_from_client(
     trigger: Trigger<FromClient<TransformFromClient>>,
