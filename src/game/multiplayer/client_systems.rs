@@ -5,7 +5,7 @@ use std::net::Ipv4Addr;
 
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::*}, renet::RenetClient};
 
-use crate::{common::common_components::DisplayName, game::multiplayer::{multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
+use crate::{game::game_components::DisplayName, game::multiplayer::{multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
 
 pub fn attempt_join(
     mut commands: Commands, 

@@ -1,7 +1,7 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use crate::game::factions::factions_components::*;
+use crate::game::faction::faction_components::*;
 
 
 

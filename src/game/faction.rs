@@ -1,13 +1,12 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::factions::factions_systems::*;
-use crate::game::factions::factions_components::*;
-//use crate::game::factions::factions_resources::*;
-//use crate::game::factions::factions_layout::*;
-//use crate::game::factions::factions_events::*;
-mod factions_systems;
-pub mod factions_components;
-pub mod factions_resources;
+use crate::game::faction::faction_systems::*;
+use crate::game::faction::faction_components::*;
+//use crate::game::faction::factions_resources::*;
+//use crate::game::faction::factions_events::*;
+mod faction_systems;
+pub mod faction_components;
+pub mod faction_resources;
 //mod factions_layout;
 //mod factions_events;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]

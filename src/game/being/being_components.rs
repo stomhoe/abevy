@@ -55,11 +55,9 @@ pub struct LearnableSkill {
     pub nid: u32,
 }
 
-#[derive(Component)]
-pub enum Sex {
-    Male,
-    Female,
-}
+
+sups
+
 
 
 #[derive(EnumCount)]

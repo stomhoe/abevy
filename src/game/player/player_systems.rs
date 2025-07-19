@@ -2,7 +2,7 @@
 
 use bevy::{input::mouse::MouseWheel, prelude::*};
 
-use crate::game::{beings::beings_components::{Being, ControlledBy, ControlledBySelf, InputMoveDirection, PlayerDirectControllable}, player::{player_components::*, player_resources::KeyboardInputMappings}};
+use crate::game::{being::being_components::{Being, ControlledBy, ControlledBySelf, InputMoveDirection, PlayerDirectControllable}, player::{player_components::*, player_resources::KeyboardInputMappings}};
 
 
 

@@ -1,17 +1,14 @@
 use bevy::math::U16Vec2;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_spritesheet_animation::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::game::{beings::animation::*, game_components::*};
-
-
+use crate::game::{being::sprite::{animation_constants::*, sprite_constants::* }, game_components::*};
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct AnimationSidPrefix(pub String);
-impl AnimationSidPrefix {
+pub struct AnimationIdPrefix(pub String);
+impl AnimationIdPrefix {
     pub fn new<S: Into<String>>(prefix: S) -> Self {
         Self(prefix.into())
     }
@@ -32,15 +29,13 @@ pub struct HasSwimAnim{pub use_still: bool,}
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct HasFlyAnim{pub use_still: bool,}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct COMPONENT_NAME();
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct ExcludedFromBaseAnimPickingSystem;
 
 
 impl AnimationState {
-    pub fn idle() -> Self {
+    pub fn new_idle() -> Self {
         Self(IDLE.to_string())
     }
     pub fn set_idle(&mut self) {
@@ -82,13 +77,13 @@ impl SpriteEssentialComps {
 
 #[derive(Bundle)]
 pub struct DefaultHeadBundle{
-    pub sprite_data_bundle: SpriteEssentialComps, directionable: Directionable, prefix: AnimationSidPrefix,
+    pub sprite_data_bundle: SpriteEssentialComps, directionable: Directionable, prefix: AnimationIdPrefix,
 }
 impl DefaultHeadBundle {
     pub fn new<S: Into<String>>(img_path: S) -> Self {
         Self {
             sprite_data_bundle: SpriteEssentialComps::new(img_path, BASE_HEAD_SPRITESHEET_SIZE, BASE_HEAD_FRAME_SIZE,),
-            directionable: Directionable, prefix: AnimationSidPrefix::new(HEAD)
+            directionable: Directionable, prefix: AnimationIdPrefix::new(HEAD)
         }
     }
 }
@@ -96,13 +91,13 @@ impl DefaultHeadBundle {
 
 #[derive(Bundle)]
 pub struct DefaultBodyBundle{
-    pub sprite_data_bundle: SpriteEssentialComps, has_walk_anim: HasWalkAnim, directionable: Directionable, prefix: AnimationSidPrefix,
+    pub sprite_data_bundle: SpriteEssentialComps, has_walk_anim: HasWalkAnim, directionable: Directionable, prefix: AnimationIdPrefix,
 }
 impl DefaultBodyBundle {
     pub fn new<S: Into<String>>(img_path: S) -> Self {
         Self {
             sprite_data_bundle: SpriteEssentialComps::new(img_path, BASE_BODY_SPRITESHEET_SIZE, BASE_BODY_FRAME_SIZE,),
-            has_walk_anim: HasWalkAnim, directionable: Directionable, prefix: AnimationSidPrefix::new(BODY),
+            has_walk_anim: HasWalkAnim, directionable: Directionable, prefix: AnimationIdPrefix::new(BODY),
         }
     }
 }
@@ -124,7 +119,52 @@ impl SpriteDataId {
     pub fn new<S: Into<String>>(id: S) -> Self {
         Self(id.into())
     }
-    pub fn id(&self) -> &str {
-        &self.0
-    }
+    pub fn id(&self) -> &str {&self.0}
 }
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct Scale(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct Offset(pub Vec3);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct OffsetLookingDown(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct OffsetLookingUp(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct OffsetLookingSideways(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct OffsetLookingRight(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct OffsetLookingLeft(pub Vec2);
+
+
+#[derive(serde::Deserialize, Asset, TypePath, Default)]
+pub struct SpriteDataSeri {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub category: String,
+    pub shares_category: bool,
+    pub children_spriteids: Vec<String>,
+    pub offset: [f32; 3],
+    pub offset_down: Option<[f32; 2]>,
+    pub offset_up: Option<[f32; 2]>,
+    pub offset_sideways: Option<[f32; 2]>,
+    pub color: [f32; 4], 
+    pub rows_cols: [u16; 2], 
+    pub frame_size: [u16; 2],
+    pub animation_id: String,
+    pub directionable: bool,
+    pub walk_anim: bool,
+    pub swim_anim: bool,
+    pub swim_anim_still: bool,
+    pub fly_anim: bool,
+    pub fly_anim_still: bool,
+    pub exclude_auto_anim_switching: Option<bool>,
+}
+

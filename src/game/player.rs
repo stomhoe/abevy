@@ -1,15 +1,13 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
-use crate::{common::common_components::DisplayName, game::{player::{player_components::*, player_resources::KeyboardInputMappings, player_systems::*}, IngameSystems}};
+use crate::{game::game_components::DisplayName, game::{player::{player_components::*, player_resources::KeyboardInputMappings, player_systems::*}, IngameSystems}};
 
 // Module player
 pub mod player_components;
 mod player_systems;
 mod player_resources;
 //mod player_events;
-//mod player_styles;
-
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerInputSystems;

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
-use crate::game::{beings::beings_components::InputMoveDirection, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::TransformFromClient}};
+use crate::game::{being::being_components::InputMoveDirection, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::TransformFromClient}};
 
 
 

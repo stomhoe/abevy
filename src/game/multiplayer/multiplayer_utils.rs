@@ -13,7 +13,7 @@ use bevy_replicon_renet::{
     renet::{ConnectionConfig, RenetClient, RenetServer},
 };
 
-use crate::{common::common_components::DisplayName, game::player::player_components::HostPlayer};
+use crate::{game::game_components::DisplayName, game::player::player_components::HostPlayer};
 
 const PROTOCOL_ID: u64 = 7;
 

@@ -1,7 +1,7 @@
 
 use bevy::{platform::collections::HashSet, prelude::*};
 
-use crate::game::{factions::factions_components::SelfFaction, tilemap::{chunking_components::*, chunking_resources::*}};
+use crate::game::{faction::faction_components::SelfFaction, tilemap::{chunking_components::*, chunking_resources::*}};
 
 #[allow(unused_parens, )]
 pub fn add_initialized_chunks_to_loaded_chunks(

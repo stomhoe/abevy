@@ -1,0 +1,14 @@
+
+(
+    id: "human",
+    name: "Human",
+    //icon_path: "assets"
+    description: "Humans are known for their versatility, adaptability, and resilience, thriving in diverse environments and excelling in a wide range of skills."
+    demonym: Some("human"),
+    singular_denomination: Some("human"),  plural_denomination: Some("humans"),
+    males_ratio: 0.5,
+    can_equip_tools: true,
+    sprites_pool: ["human_body0", "human_head0"],
+    player_selectable_sprites: ["human_body0", "human_head0"],
+
+)

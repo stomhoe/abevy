@@ -1,6 +1,6 @@
 
 
-pub const RACES_DIR: &str = "races/";
+pub const RACES_DIR: &str = "race/";
 pub const RACES_EXTENSION: &str = ".race.ron";
 
 

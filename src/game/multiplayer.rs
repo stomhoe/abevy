@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::*;
 
-use crate::{common::common_components::DisplayName, game::{beings::beings_components::Being, multiplayer::{client_systems::*, host_systems::*, multiplayer_events::*}, player::player_components::Player, ClientSystems, GamePhase, GameSetupType, HostSystems }, AppState};
+use crate::{game::game_components::DisplayName, game::{being::being_components::Being, multiplayer::{client_systems::*, host_systems::*, multiplayer_events::*}, player::player_components::Player, ClientSystems, GamePhase, GameSetupType, HostSystems }, AppState};
 
 // Module multiplayer
 pub mod multiplayer_components;

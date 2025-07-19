@@ -1,18 +1,18 @@
 use bevy::prelude::*;
 use superstate::superstate_plugin;
 
-use crate::game::{beings::{beings_systems::*, classes::ClassesPlugin, races::RacesPlugin}, IngameSystems};
+use crate::game::{being::{being_systems::*, class::ClassPlugin, race::RacePlugin}, IngameSystems};
 
 // Module being
-pub mod beings_components;
-mod beings_systems;
+pub mod being_components;
+mod being_systems;
 
 //mod being_events;
-pub mod beings_resources;
+pub mod being_resources;
 
-mod races;
-pub mod animation;
-mod classes;
+mod race;
+pub mod sprite;
+mod class;
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MovementSystems;
@@ -23,7 +23,7 @@ impl Plugin for BeingsPlugin {
     fn build(&self, app: &mut App) {
         app
         
-            .add_plugins((RacesPlugin, ClassesPlugin, )) 
+            .add_plugins((RacePlugin, ClassPlugin, )) 
             // .add_systems(OnEnter(AppState::StatefulGameSession), (
 
             // )) 

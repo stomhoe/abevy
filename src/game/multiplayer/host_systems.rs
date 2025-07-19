@@ -5,7 +5,7 @@ use bevy::platform::collections::HashSet;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{ClientId, RenetClient, RenetServer}};
 
-use crate::{common::common_components::DisplayName, game::{multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::Player, }, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
+use crate::{game::game_components::DisplayName, game::{multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::Player, }, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
 
 
 pub fn receive_transf_from_client(

@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use superstate::SuperstateInfo;
 
-use crate::game::beings::animation::animation_constants::*;
+use crate::game::being::sprite::animation_constants::*;
 
 
 #[derive(Component, Debug, )]
@@ -22,30 +22,6 @@ impl Nid {
     pub fn nid(&self) -> u64 { self.0 }
 }
 
-
-
-
-//es una entity
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct SpriteData;
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OffSetLookingDown;
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OffSetLookingUp();
-
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OffsetLookingSideways();
-
-
-
-
-
 #[derive(Component, Debug,)]
 pub struct Bullet();
 
@@ -62,17 +38,24 @@ pub struct MagicallyInvulnerable();
 pub struct ImgPathHolder(pub String);
 
 
+#[derive(Component, Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DisplayName(pub String);
+impl DisplayName {pub fn new(name: impl Into<String>) -> Self {DisplayName(name.into())}}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct Description(pub String);
+impl Description {
+    pub fn new<S: Into<String>>(id: S) -> Self {Self (id.into())}
+    pub fn id(&self) -> &String {&self.0}
+}
 
 #[derive(Component)]
 pub enum Direction{Down, Left, Right, Up,}
-
 impl Direction {
     pub fn as_suffix(&self) -> &str {
         match self {
-            Direction::Down => DOWN,
-            Direction::Left => LEFT,
-            Direction::Right => RIGHT,
-            Direction::Up => UP,
+            Direction::Down => DOWN, Direction::Left => LEFT,
+            Direction::Right => RIGHT, Direction::Up => UP,
         }
     }
 }

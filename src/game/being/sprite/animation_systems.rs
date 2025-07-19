@@ -6,7 +6,7 @@ use bevy::{ecs::bundle, math::{U16Vec2, VectorSpace}};
 use bevy_spritesheet_animation::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::game::{beings::{animation::*, beings_components::{Altitude, Flier, LandWalker, Moving, Swimmer}}, game_components::{Direction, ImgPathHolder}};
+use crate::game::{being::{being_components::{Altitude, Flier, LandWalker, Moving, Swimmer}, sprite::{animation_constants::*, sprite_components::*, sprite_constants::* }}, game_components::{Direction, ImgPathHolder}};
 
 
 #[allow(unused_parens)]
@@ -60,24 +60,10 @@ pub fn init_animations(
 }
 
 
-#[allow(unused_parens)]
-pub fn init_sprites(
-    mut cmd: Commands, 
-) {
-        
-    let human_body0 = cmd.spawn((
-        SpriteDataId::new("human_body0"),
-        DefaultBodyBundle::new("beings/body/human_male.png"),
-    )).id();
 
-    let human_head0 = cmd.spawn((
-        SpriteDataId::new("human_head0"),
-        DefaultHeadBundle::new("beings/head/human/0.png"),
-    )).id();
-}
 
 #[allow(unused_parens)]
-pub fn change_anim_state_sid(
+pub fn change_anim_state_string(
     mut sprite_query: Query<(
             &mut AnimationState,
             Option<&HasWalkAnim>, Option<&HasFlyAnim>, Option<&HasSwimAnim>,
@@ -144,10 +130,17 @@ pub fn change_anim_state_sid(
 
 
 
-#[allow(unused_parens)]
 pub fn animate_sprite(
-    mut query: Query<(&mut Sprite, &mut SpritesheetAnimation, Option<&AnimationSidPrefix>, Option<&AnimationState>, Option<&Directionable> ,Option<&FlipXIfDir>, &ChildOf), ()>,
-    parents: Query<(Option<&Direction>, ),>,
+    mut query: Query<(
+        &mut Sprite,
+        &mut SpritesheetAnimation,
+        Option<&AnimationIdPrefix>,
+        Option<&AnimationState>,
+        Option<&Directionable>,
+        Option<&FlipXIfDir>,
+        &ChildOf,
+    )>,
+    parents: Query<(Option<&Direction>, )>,
     library: Res<AnimationLibrary>,
 ) {
     for (mut sprite, mut anim, prefix, anim_state, directionable, flip_x, child_of ) in query.iter_mut() {

@@ -2,12 +2,12 @@ use bevy::app::FixedMain;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use superstate::superstate_plugin;
-use crate::game::beings::{BeingsPlugin, MovementSystems};
+use crate::game::being::{BeingsPlugin, MovementSystems};
 use crate::game::game_components::*;
 use crate::game::multiplayer::MpPlugin;
 use crate::game::tilemap::terrain_gen::TerrainGenSystems;
 use crate::game::time::ClockPlugin;
-use crate::game::factions::FactionsPlugin;
+use crate::game::faction::FactionsPlugin;
 use crate::game::player::{PlayerInputSystems, PlayerPlugin};
 use crate::game::setup_menus::SetupMenusPlugin;
 use crate::game::tilemap::{ChunksSystems, MyTileMapPlugin, TilemapsSystems};
@@ -16,14 +16,17 @@ use crate::game::game_systems::*;
 
 pub mod player;
 pub mod setup_menus;
+pub mod multiplayer;
+pub mod game_utils;
+
 mod game_systems;
 mod game_components;
 mod game_resources;
+
 mod tilemap;
-mod beings;
+mod being;
 mod things;
-pub mod multiplayer;
-mod factions;
+mod faction;
 mod time;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
