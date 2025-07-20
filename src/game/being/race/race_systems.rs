@@ -12,7 +12,7 @@ pub fn init_races(
     aserver: Res<AssetServer>,
     mut race_seris: ResMut<Assets<RaceSeri>>,
 
-    mut race_map: ResMut<IdRaceEntityMap>, 
+    mut race_map: ResMut<RaceIdEntityMap>, 
     sprite_map: Res<IdSpriteDataEntityMap>, 
 ) {
 
@@ -29,3 +29,6 @@ pub fn load_race(
 ) -> Handle<RaceSeri> {
     aserver.load(format!("{}{}{}", RACES_DIR, path.as_ref(), RACES_EXTENSION))
 }
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^

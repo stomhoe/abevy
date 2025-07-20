@@ -5,17 +5,14 @@ use crate::game::{being::{race::race_components::*, sprite::animation_resources:
 
 //CASO DE USO: RECIBIS UN PAQUETE ONLINE SOLO CON NID Y TENES Q VER A Q ENTITY SE REFIERE
 #[derive(Resource, Debug, Default )]
-pub struct IdRaceEntityMap {
+pub struct RaceIdEntityMap {
     map: HashMap<String, Entity>,
 }
 
-
-
 #[allow(unused_parens)]
-impl IdRaceEntityMap {
+impl RaceIdEntityMap {
     pub fn new_race_from_seri(
-        &mut self,
-        cmd: &mut Commands,
+        &mut self, cmd: &mut Commands,
         race_seri_handle: Handle<RaceSeri>,
         race_seri_assets: &mut Assets<RaceSeri>,
         sprites_map: &IdSpriteDataEntityMap,
@@ -43,8 +40,8 @@ impl IdRaceEntityMap {
             sprites_pool, selectable_sprites
         )).id();
 
-        if let Some(males_ratio) = race_seri.sexes {
-            cmd.entity(entity).insert(MalesRatio(males_ratio));
+        if let Some(map) = race_seri.sexes.take() {
+            cmd.entity(entity).insert(Sexes::new(map));
         }
 
         self.map.insert(race_seri.id.clone(), entity);

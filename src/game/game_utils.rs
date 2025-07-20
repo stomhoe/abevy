@@ -19,31 +19,19 @@ impl<K: Eq + std::hash::Hash + Clone + Serialize + for<'de> Deserialize<'de>> We
         let weights: Vec<u32> = weights_map.values().cloned().collect();
         let choices: Vec<K> = weights_map.keys().cloned().collect();
         let dist = WeightedAliasIndex::new(weights.clone()).unwrap();
-        Self {
-            weights, choices, dist,
-        }
+        Self {weights, choices, dist,}
     }
-
-    pub fn choose<R: Rng>(&self, rng: &mut R) -> Option<&K> {
+    pub fn rand_weighted<R: Rng>(&self, rng: &mut R) -> Option<&K> {
         let index = self.dist.sample(rng) as usize;
         self.choices.get(index)
     }
 
-    pub fn choices(&self) -> &Vec<K> {
-        &self.choices
-    }
-
-    fn default_dist() -> WeightedAliasIndex<u32> {
-        // This will never be used, as dist is always rebuilt in deserialize_with
-        WeightedAliasIndex::new(vec![1]).unwrap()
-    }
+    pub fn choices(&self) -> &Vec<K> {&self.choices}
 }
 
-// Custom implementation to rebuild dist after deserialization
 impl<'de, K: Eq + std::hash::Hash + Clone + Serialize + Deserialize<'de>> Deserialize<'de> for WeightedMap<K> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
+    where D: serde::Deserializer<'de>,
     {
         #[derive(Deserialize)]
         struct Helper<K> {
@@ -62,8 +50,7 @@ impl<'de, K: Eq + std::hash::Hash + Clone + Serialize + Deserialize<'de>> Deseri
 
 impl<K: Eq + std::hash::Hash + Clone + Serialize> Serialize for WeightedMap<K> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
+    where S: serde::Serializer,
     {
         #[derive(Serialize)]
         struct Helper<'a, K> {

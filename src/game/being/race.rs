@@ -23,7 +23,7 @@ impl Plugin for RacePlugin {
             .add_plugins((RonAssetPlugin::<RaceSeri>::new(&["race.ron"])))
             .add_systems(OnEnter(AppState::StatefulGameSession), (init_races).in_set(GameDataInitSystems).in_set(RaceSystemsSet))
             //.add_systems(Update, somesystem.runif(in_state(SomeStateType::Literal)))
-            .init_resource::<IdRaceEntityMap>()
+            .init_resource::<RaceIdEntityMap>()
             .configure_sets(OnEnter(AppState::StatefulGameSession), RaceSystemsSet.after(SpriteSystems))
         ;
     }

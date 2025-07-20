@@ -129,40 +129,42 @@ pub fn change_anim_state_string(
 
 
 
-
 pub fn animate_sprite(
+    mut commands: Commands,
     mut query: Query<(
-        &mut Sprite,
-        &mut SpritesheetAnimation,
+        Entity,
+        Option<&mut SpritesheetAnimation>,
         Option<&AnimationIdPrefix>,
         Option<&AnimationState>,
         Option<&Directionable>,
-        Option<&FlipXIfDir>,
         &ChildOf,
-    )>,
+    ), With<Sprite>>,
     parents: Query<(Option<&Direction>, )>,
     library: Res<AnimationLibrary>,
 ) {
-    for (mut sprite, mut anim, prefix, anim_state, directionable, flip_x, child_of ) in query.iter_mut() {
+    for (ent, sheet_anim, prefix, anim_state, directionable, child_of) in query.iter_mut() {
         if let Ok(direction) = parents.get(child_of.parent()) {
+            
+            let prefix = prefix.as_ref().map_or("", |p| p.0.as_str());
+            let anim_state = anim_state.as_ref().map_or("", |s| s.0.as_str());
             let direction_str = directionable
                 .and_then(|_| direction.0.map(|dir| dir.as_suffix()))
                 .unwrap_or("");
-
-            let prefix = prefix.as_ref().map_or("", |p| p.0.as_str());
-            let anim_state = anim_state.as_ref().map_or("", |s| s.0.as_str());
             let animation_name = format!("{}{}{}", prefix, anim_state, direction_str);
 
-            if let Some(animation_id) = library.animation_with_name(animation_name) {
-                if anim.animation_id != animation_id {
-                    anim.switch(animation_id);
-                    sprite.flip_x = match (flip_x, direction.0) {
-                        (Some(FlipXIfDir::Left), Some(Direction::Left)) => true,
-                        (Some(FlipXIfDir::Right), Some(Direction::Right)) => true,
-                        (Some(FlipXIfDir::Any), _) => true,
-                        _ => false,
-                    };
+            if let Some(animation_id) = library.animation_with_name(animation_name.clone()) {
+                if let Some(mut sheet_anim) = sheet_anim {
+                    if sheet_anim.animation_id != animation_id {
+                        sheet_anim.switch(animation_id);
+                    }
+                } else{
+                    let new_anim = SpritesheetAnimation::from_id(animation_id);
+                    commands.entity(ent).insert(new_anim);
                 }
+            }
+            else{
+                commands.entity(ent).remove::<SpritesheetAnimation>();
+                warn!("Animation with name '{}' not found in library.", animation_name);
             }
         }
     }

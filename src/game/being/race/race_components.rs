@@ -16,8 +16,7 @@ impl RaceId {
 }
 
 
-#[derive(Component, Debug)]
-pub struct RaceRef(pub Entity);
+
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
@@ -40,25 +39,20 @@ impl SingularDenomination {pub fn new<S: Into<String>>(id: S) -> Self { Self (id
 pub struct PluralDenomination(pub String); 
 impl PluralDenomination {pub fn new<S: Into<String>>(id: S) -> Self { Self (id.into()) }}
 
-
-
-
-
 #[derive(Component, Debug, Deserialize, Serialize, )]
 pub struct Sexes(pub WeightedMap<StrId>);//id, weight
 impl Sexes {
-    pub fn new(map: HashMap<StrId, u32>) -> Self {
-        Sexes(WeightedMap::new(map))
-    }
+    pub fn new(map: HashMap<StrId, u32>) -> Self {Sexes(WeightedMap::new(map))}
 }
 type SexId = StrId;
 
 #[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct RaceSeri {
     pub id: StrId,
-    pub name: String,ss
+    pub name: String,
     pub name_generator: Option<String>,
     pub icon_path: Option<String>,
+    pub body_id: StrId,
     pub description: String,
     pub demonym: String,
     pub singular: String,

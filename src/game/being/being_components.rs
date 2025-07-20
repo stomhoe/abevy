@@ -16,6 +16,9 @@ pub struct Body {}
 #[derive(Component, Debug, Default)]//USADO TAMBIEN POR BOTS
 pub struct InputMoveDirection(pub Vec3);
 
+#[derive(Component, Debug)]
+pub struct RaceRef(pub Entity);
+
 #[derive(Component, Default)]
 #[require(SuperstateInfo<PlayerDirectControllable>, ActivatesChunks)]//TODO PONER ActivatesChunks CUANDO SEA ADECUADO
 pub struct PlayerDirectControllable;
@@ -54,10 +57,6 @@ pub struct LearningMultiplier(pub HashMap<Entity, f32>);
 pub struct LearnableSkill {
     pub nid: u32,
 }
-
-
-sups
-
 
 
 #[derive(EnumCount)]
@@ -109,3 +108,9 @@ pub struct CurrentDimension(u32);//TANTO PARA BEINGS COMO PARA OBJETOS Y TILES
 //HACER Q AFECTE LA VISIBILIDAD DE LAS COSAS . Q TENGAS
 //DESPUES EN EL TERRAIN_GEN_SYSTEMS SE PUEDE HACER UN MATCH SEGÚN LA DIMENSION ACTUAL DEL PLAYER
 //Y TENER UN PROC DE GENERACIÓN DE TERRAIN POR DIMENSION ANTES DE ENTRAR AL DOBLE FOR DE GENERACIÓN DE CADA TILE
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct SpritesToInsert(#[entities] pub Vec<Entity>);
+impl SpritesToInsert {
+
+}

@@ -1,4 +1,4 @@
-use bevy::math::U16Vec2;
+use bevy::math::UVec2;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,7 @@ pub struct HasWalkAnim;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct HasSwimAnim{pub use_still: bool,}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct HasFlyAnim{pub use_still: bool,}
 
@@ -55,7 +56,7 @@ impl AnimationState {
 
 
 #[derive(Component, Debug, Deserialize, Serialize, )]
-pub enum FlipXIfDir{Left, Right, Any,}
+pub enum FlipHorizIfDir{Left, Right, Any,}
 
 #[derive(Component, Debug, Deserialize, Serialize, )]
 pub struct Directionable;
@@ -66,11 +67,11 @@ pub struct SpriteEssentialComps{
     pub atlas_layout_data: AtlasLayoutData,
 }
 impl SpriteEssentialComps {
-    pub fn new<S: Into<String>>(img_path: S, sprite_sheet_size: U16Vec2, frame_size: U16Vec2,) -> Self {
+    pub fn new<S: Into<String>>(img_path: S, spritesheet_size: UVec2, frame_size: UVec2,) -> Self {
         Self {
             img_path_holder: ImgPathHolder(img_path.into()),
             animation_state: AnimationState::default(),
-            atlas_layout_data: AtlasLayoutData::new(sprite_sheet_size, frame_size),
+            atlas_layout_data: AtlasLayoutData::new(spritesheet_size, frame_size),
         }
     }
 }
@@ -103,15 +104,15 @@ impl DefaultBodyBundle {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct AtlasLayoutData{pub sprite_sheet_size: U16Vec2, pub frame_size: U16Vec2,}
+pub struct AtlasLayoutData{pub spritesheet_size: UVec2, pub frame_size: UVec2,}
 impl AtlasLayoutData {
-    pub fn new(sprite_sheet_size: U16Vec2, frame_size: U16Vec2) -> Self {
-        Self { sprite_sheet_size, frame_size, }
+    pub fn new(spritesheet_size: UVec2, frame_size: UVec2) -> Self {
+        Self { spritesheet_size: spritesheet_size, frame_size, }
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct ColorHolder(Color);//NO HACER PARTE DE SpriteDataBundle
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct ColorHolder(pub Color);//NO HACER PARTE DE SpriteDataBundle
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct SpriteDataId(String);
@@ -121,26 +122,35 @@ impl SpriteDataId {
     }
     pub fn id(&self) -> &str {&self.0}
 }
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct Scale(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct ScaleLookUpDown(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct ScaleLookSideWays(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct Offset(pub Vec3);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OffsetLookingDown(pub Vec2);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct OffsetLookUpDown(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OffsetLookingUp(pub Vec2);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct OffsetLookDown(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OffsetLookingSideways(pub Vec2);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct OffsetLookUp(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OffsetLookingRight(pub Vec2);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct OffsetLookSideways(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OffsetLookingLeft(pub Vec2);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct OffsetLookRight(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct OffsetLookLeft(pub Vec2);
 
 
 #[derive(serde::Deserialize, Asset, TypePath, Default)]
@@ -158,7 +168,7 @@ pub struct SpriteDataSeri {
     pub color: [f32; 4], 
     pub rows_cols: [u16; 2], 
     pub frame_size: [u16; 2],
-    pub animation_id: String,
+    pub anim_prefix: String,
     pub directionable: bool,
     pub walk_anim: bool,
     pub swim_anim: bool,
