@@ -46,20 +46,20 @@ impl Sexes {
 }
 type SexId = StrId;
 
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct RaceSeri {
-    pub id: StrId,
+    pub id: String,
     pub name: String,
     pub name_generator: Option<String>,
     pub icon_path: Option<String>,
-    pub body_id: StrId,
+    //pub body_id: StrId,//NO SÉ SI ASOCIAR A CADA SPRITE UNA BODYPART (OPCIONALMENTE)
     pub description: String,
     pub demonym: String,
     pub singular: String,
     pub plural: Option<String>,
     pub sexes: Option<HashMap<SexId, u32>>,
     pub can_equip_tools: bool,
-    pub sprites_pool: Vec<String>,
+    pub sprite_pool: Vec<String>,
     pub selectable_sprites: Vec<String>,
 
 }

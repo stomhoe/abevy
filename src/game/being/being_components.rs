@@ -109,8 +109,9 @@ pub struct CurrentDimension(u32);//TANTO PARA BEINGS COMO PARA OBJETOS Y TILES
 //DESPUES EN EL TERRAIN_GEN_SYSTEMS SE PUEDE HACER UN MATCH SEGÚN LA DIMENSION ACTUAL DEL PLAYER
 //Y TENER UN PROC DE GENERACIÓN DE TERRAIN POR DIMENSION ANTES DE ENTRAR AL DOBLE FOR DE GENERACIÓN DE CADA TILE
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct SpritesToInsert(#[entities] pub Vec<Entity>);
-impl SpritesToInsert {
+#[derive(Component, Debug, Deserialize, Serialize, Default)]
+pub struct SpriteDatasToBuild(#[entities] pub Vec<Entity>);
 
-}
+
+#[derive(Component, Debug, Deserialize, Serialize, )]
+pub struct SpriteDatasIdsToBuild(pub Vec<String>);

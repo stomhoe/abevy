@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use strum_macros::EnumCount;
 
-use crate::{game::{being::{sprite::SpriteSystems, race::{race_components::RaceSeri, race_resources::*, race_systems::*}}, GameDataInitSystems}, AppState};
+use crate::{game::{being::{race::{race_components::RaceSeri, race_resources::*, race_systems::*}, sprite::SpriteSystemsSet}, AssetLoadingState, GameDataInitSystems}, AppState};
 use bevy_common_assets::ron::RonAssetPlugin;
 
 
@@ -21,10 +21,16 @@ impl Plugin for RacePlugin {
     fn build(&self, app: &mut App) {
         app
             .add_plugins((RonAssetPlugin::<RaceSeri>::new(&["race.ron"])))
-            .add_systems(OnEnter(AppState::StatefulGameSession), (init_races).in_set(GameDataInitSystems).in_set(RaceSystemsSet))
-            //.add_systems(Update, somesystem.runif(in_state(SomeStateType::Literal)))
+            //.add_systems(OnEnter(AppState::StatefulGameSession), ().in_set(GameDataInitSystems).in_set(RaceSystemsSet))
+            .add_systems(OnEnter(AssetLoadingState::Complete), init_races.in_set(RaceSystemsSet))
             .init_resource::<RaceIdEntityMap>()
-            .configure_sets(OnEnter(AppState::StatefulGameSession), RaceSystemsSet.after(SpriteSystems))
+
+            .configure_sets(OnEnter(AssetLoadingState::Complete), RaceSystemsSet.after(SpriteSystemsSet))
+            .configure_sets(Update, RaceSystemsSet.after(SpriteSystemsSet))
+
+            
+                
+        
         ;
     }
-}
+} 

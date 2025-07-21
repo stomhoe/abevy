@@ -3,32 +3,26 @@ use bevy::log::tracing::span::Id;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 use crate::game::being::{race::{
-   race_components::*, race_constants::*, race_resources::*
+   race_components::*, race_constants::*, race_resources::*, 
    //race_events::*,
-}, sprite::animation_resources::IdSpriteDataEntityMap};
+}, sprite::sprite_resources::SpriteDataIdEntityMap};
+
 
 pub fn init_races(
     mut cmd: Commands,
-    aserver: Res<AssetServer>,
-    mut race_seris: ResMut<Assets<RaceSeri>>,
-
-    mut race_map: ResMut<RaceIdEntityMap>, 
-    sprite_map: Res<IdSpriteDataEntityMap>, 
+    mut seris_handles: ResMut<RaceSerisHandles>,
+    mut assets: ResMut<Assets<RaceSeri>>,
+    mut strid_ent_map: ResMut<RaceIdEntityMap>, 
+    sprite_map: Res<SpriteDataIdEntityMap>,
 ) {
-
-    let human_handle: Handle<RaceSeri> = load_race(&aserver, "human");
-
-    race_map.new_race_from_seri(&mut cmd, human_handle, &mut race_seris, &sprite_map);
+    
+    let handles_vec = std::mem::take(&mut seris_handles.handles);
+    
+    for handle in handles_vec {
+        strid_ent_map.new_race_from_seri(&mut cmd, handle, &mut assets, &sprite_map);
+    }
 }
 
 
 
-pub fn load_race(
-    aserver: &AssetServer,
-    path: impl AsRef<str>,
-) -> Handle<RaceSeri> {
-    aserver.load(format!("{}{}{}", RACES_DIR, path.as_ref(), RACES_EXTENSION))
-}
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^

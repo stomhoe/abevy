@@ -17,6 +17,8 @@ pub fn init_animations(
         
     let spritesheet = base_humanoid_spritesheet();
 
+    //TODO HACER ESTO DENTRO DE UN FOR (HACER CADA UNO UN ASSET)
+
     let clip = Clip::from_frames([0]);
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
@@ -57,6 +59,7 @@ pub fn init_animations(
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
     library.name_animation(animation_id, WALK_RIGHT).unwrap();
+
 }
 
 
@@ -66,7 +69,7 @@ pub fn init_animations(
 pub fn change_anim_state_string(
     mut sprite_query: Query<(
             &mut AnimationState,
-            Option<&HasWalkAnim>, Option<&HasFlyAnim>, Option<&HasSwimAnim>,
+            Option<&WalkAnim>, Option<&FlyAnim>, Option<&SwimAnim>,
             &ChildOf
         ), (Without<ExcludedFromBaseAnimPickingSystem>)>,
     parents_query: Query<(Option<&Moving>, &Altitude),>,
@@ -104,7 +107,7 @@ pub fn change_anim_state_string(
                     }
                 },
                 (Some(_move), Altitude::Floating, Some(_has_walk), _, None) => {
-                    anim_state.set_walk();
+                    anim_state.set_idle();
                 },
                 (Some(_move), Altitude::Swimming, Some(_has_walk), None, _) => {
                     anim_state.set_walk();
@@ -118,16 +121,14 @@ pub fn change_anim_state_string(
                 (Some(_move), Altitude::OnGround, None, Some(_has_fly), Some(_has_swim)) => {
                     anim_state.set_fly();
                 },
-                (Some(_), Altitude::Swimming, None, None, Some(_fly)) => {anim_state.set_fly();},
-                (Some(_), Altitude::Floating, None, Some(_swim), None) => {anim_state.set_swim();},
+                (Some(_), Altitude::Swimming, None, None, Some(_fly)) => {anim_state.set_idle();},
+                (Some(_), Altitude::Floating, None, Some(_swim), None) => {anim_state.set_idle();},
                 (None, _curr_alt, _any_walk, _any_swim, _any_fly) => {anim_state.set_idle();},
             }
         }
     }
       
 }
-
-
 
 pub fn animate_sprite(
     mut commands: Commands,
