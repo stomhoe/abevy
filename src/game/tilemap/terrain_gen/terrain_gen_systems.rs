@@ -31,7 +31,12 @@ pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<Wo
     let tile_entity = commands.spawn(( 
         MyTileBundle {
             color: TC_RED,
-            shader: UsedShader::Grass,
+            shader: AppliedShader::MonoRepeating(
+                RepeatingTexture::new_w_red_mask(
+                    "texture/world/terrain/temperate_grass/grass.png", 
+                    1_000, //scale to be divided by 1M
+                ),
+            ),
             ..Default::default()
         },
         TemperateGrass,
@@ -144,10 +149,10 @@ pub struct MyTileBundle{
     pub flip: TileFlip,
     pub color: TileColor,
     pub visible: TileVisible,
-    pub shader: UsedShader,
+    pub shader: AppliedShader,
 }
 impl MyTileBundle {
-    pub fn new(img_nid: TileImgNid, flip: TileFlip, color: TileColor, visible: bool, shader: UsedShader) -> Self {
+    pub fn new(img_nid: TileImgNid, flip: TileFlip, color: TileColor, visible: bool, shader: AppliedShader) -> Self {
         Self { img_nid, flip, color, visible: TileVisible(visible), shader }
     }
 }

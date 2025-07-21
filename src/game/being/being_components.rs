@@ -114,4 +114,12 @@ pub struct SpriteDatasToBuild(#[entities] pub Vec<Entity>);
 
 
 #[derive(Component, Debug, Deserialize, Serialize, )]
-pub struct SpriteDatasIdsToBuild(pub Vec<String>);
+pub struct SpriteDatasIdsToBuild(Vec<String>);
+impl SpriteDatasIdsToBuild {
+    pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
+        Self(ids.into_iter().map(|s| s.into()).collect())
+    }
+    pub fn ids(&self) -> &Vec<String> {
+        &self.0
+    }
+}

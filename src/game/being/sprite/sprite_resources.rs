@@ -23,6 +23,11 @@ impl SpriteDataIdEntityMap {
         assets: &mut Assets<SpriteDataSeri>,
     ) {
         if let Some(mut seri) = assets.remove(&handle) {
+            
+            if self.map.contains_key(&seri.id) {
+                error!("SpriteDataSeri with id {:?} already exists in map, skipping", seri.id);
+                return;
+            }
             use std::mem::take;
 
             let spritedata_id = SpriteDataId::new(take(&mut seri.id));

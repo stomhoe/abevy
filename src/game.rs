@@ -3,6 +3,7 @@ use bevy::app::FixedMain;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use superstate::superstate_plugin;
 use crate::game::being::race::race_resources::RaceSerisHandles;
+use crate::game::being::sprite::sprite_resources::SpriteSerisHandles;
 use crate::game::being::{BeingsPlugin, MovementSystems};
 use crate::game::game_components::*;
 use crate::game::multiplayer::MpPlugin;
@@ -71,9 +72,9 @@ impl Plugin for GamePlugin {
                 (debug_system, toggle_simulation, force_z_index).in_set(IngameSystems)
             )
 
-            .configure_sets(OnEnter(AppState::StatefulGameSession), (
-                GameDataInitSystems.run_if(server_or_singleplayer)
-            ))
+            // .configure_sets(OnEnter(AppState::StatefulGameSession), (
+            //     GameDataInitSystems.run_if(server_or_singleplayer)
+            // ))
 
             .configure_sets(Update, (
                 PlayerInputSystems,
@@ -101,6 +102,7 @@ impl Plugin for GamePlugin {
             .add_loading_state(
                 LoadingState::new(AssetLoadingState::InProcess)
                 .continue_to_state(AssetLoadingState::Complete)
+                .load_collection::<SpriteSerisHandles>()
                 .load_collection::<RaceSerisHandles>()
             )
         ;

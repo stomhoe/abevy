@@ -84,6 +84,7 @@ pub fn lobby_button_interaction(
                 }
                 LobbyButtonId::Start =>  {
                     //todo chequear si todos están listos
+                    info!("Starting game");
                     game_phase.set(GamePhase::ActiveGame);
                 },
                 LobbyButtonId::CreateCharacter => {

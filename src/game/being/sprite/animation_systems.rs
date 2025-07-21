@@ -8,6 +8,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::game::{being::{being_components::{Altitude, Flier, LandWalker, Moving, Swimmer}, sprite::{animation_constants::*, sprite_components::*, sprite_constants::* }}, game_components::{Direction, ImgPathHolder}};
 
+pub fn prepend_body_to_string(
+    prefix: &str, 
+    body: &str,
+) -> String {
+ 
+    format!("{}{}", prefix, body)
+}
 
 #[allow(unused_parens)]
 pub fn init_animations(
@@ -17,48 +24,48 @@ pub fn init_animations(
         
     let spritesheet = base_humanoid_spritesheet();
 
-    //TODO HACER ESTO DENTRO DE UN FOR (HACER CADA UNO UN ASSET)
+    //TODO HACER ESTO DENTRO DE UN FOR (HACER CADA UNO CARGADO DE UN ASSET)
 
     let clip = Clip::from_frames([0]);
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, IDLE_DOWN).unwrap();
+    library.name_animation(animation_id, BODY_IDLE_DOWN).unwrap();
     
     let clip = Clip::from_frames(spritesheet.row_partial(1, 0..=0));
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, IDLE_UP).unwrap();
+    library.name_animation(animation_id, BODY_IDLE_UP).unwrap();
 
     let clip = Clip::from_frames(spritesheet.row_partial(2, 0..=0));
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, IDLE_LEFT).unwrap();
+    library.name_animation(animation_id, BODY_IDLE_LEFT).unwrap();
 
     let clip = Clip::from_frames(spritesheet.row_partial(3, 0..=0));
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, IDLE_RIGHT).unwrap();
+    library.name_animation(animation_id, BODY_IDLE_RIGHT).unwrap();
 
 
     let clip = Clip::from_frames(spritesheet.row(0));
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, WALK_DOWN).unwrap();
+    library.name_animation(animation_id, BODY_WALK_DOWN).unwrap();
     
     let clip = Clip::from_frames(spritesheet.row(1));
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, WALK_UP).unwrap();
+    library.name_animation(animation_id, BODY_WALK_UP).unwrap();
 
     let clip = Clip::from_frames(spritesheet.row_partial(2, 0..=4));
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, WALK_LEFT).unwrap();
+    library.name_animation(animation_id, BODY_WALK_LEFT).unwrap();
 
     let clip = Clip::from_frames(spritesheet.row_partial(3, 0..=4));
     let animation = Animation::from_clip(library.register_clip(clip));
     let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, WALK_RIGHT).unwrap();
+    library.name_animation(animation_id, BODY_WALK_RIGHT).unwrap();
 
 }
 

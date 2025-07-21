@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug,)]
 #[require(Player)]
-pub struct SelfPlayer {}
+pub struct SelfPlayer;
 
 
 //NO ES PARA ADJUNTARSELO A ENTITIES COMÚNES (OBJETOS O BEINGS)

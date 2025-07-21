@@ -157,10 +157,10 @@ pub fn apply_offsets_and_scales(
 }
 
 #[allow(unused_parens)]
-pub fn turn_ids_into_entities(mut cmd: Commands, query: Query<(Entity, &SpriteDatasIdsToBuild,),()>, map: Res<SpriteDataIdEntityMap>) {
-    for (ent, spritedata_id) in query.iter() {
+pub fn turn_spritedatasids_into_entities(mut cmd: Commands, query: Query<(Entity, &SpriteDatasIdsToBuild,),()>, map: Res<SpriteDataIdEntityMap>) {
+    for (ent, spritedatas_to_build) in query.iter() {
         let mut spritedata_ents : Vec<Entity> = Vec::new();
-        for id in &spritedata_id.0 {
+        for id in spritedatas_to_build.ids() {
             if let Some(sprite_ent) = map.get_entity(id) {
                 spritedata_ents.push(sprite_ent);
             } else {
@@ -180,7 +180,6 @@ pub fn add_spritechildren_and_comps(
     mut cmd: Commands,
     mut query: Query<(Entity, &SpriteDatasToBuild)>,
     aserver: Res<AssetServer>,
-
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     spritedatas_query: Query<(
         &AtlasLayoutData,
@@ -225,7 +224,7 @@ pub fn add_spritechildren_and_comps(
                     ..default()
                 };
 
-                let image = aserver.load(&img_path_holder.0);
+                let image = aserver.load(format!("textures/{}", &img_path_holder.0));
 
                 let child_sprite = cmd.spawn((
                     ChildOf(father_to_sprite),

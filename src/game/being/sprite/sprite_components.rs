@@ -128,9 +128,10 @@ impl Category {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct SpriteDatasChildrenStringIds(pub Vec<String>);//HACER UN SISTEMA Q LO CAMBIE POR Vec<Entity> AL ENTRAER EN EL ESTADO ASSETSLOADED
 
+// NO USAR ESTOS DOS PARA BEINGS
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct SpriteDatasChildrenStringIds(pub Vec<String>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct SpriteDatasChildren(#[entities] pub Vec<Entity>);
 
@@ -163,4 +164,5 @@ pub struct SpriteDataSeri {
     pub color: Option<[u8; 4]>, 
     pub exclude_from_sys: Option<bool>,
 }
-
+// TODO: hacer shaders aplicables? (para meditacion por ej)
+// TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld. hacer un mapa color-algo 

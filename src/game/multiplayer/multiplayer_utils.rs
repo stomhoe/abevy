@@ -13,7 +13,7 @@ use bevy_replicon_renet::{
     renet::{ConnectionConfig, RenetClient, RenetServer},
 };
 
-use crate::{game::game_components::DisplayName, game::player::player_components::HostPlayer};
+use crate::game::{game_components::DisplayName, player::player_components::{HostPlayer, SelfPlayer}};
 
 const PROTOCOL_ID: u64 = 7;
 
@@ -52,6 +52,7 @@ pub fn host_server<T: Into<String>>(
 
     commands.spawn((
         HostPlayer,
+        SelfPlayer,
         DisplayName(host_name.into()),
     ));
     Ok(())

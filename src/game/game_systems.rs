@@ -5,7 +5,7 @@ use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
-use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable};
+use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, SpriteDatasIdsToBuild};
 use crate::game::faction::faction_components::SelfFaction;
 use crate::game::game_components::*;
 use crate::game::game_resources::*;
@@ -22,10 +22,6 @@ pub fn spawn_player_beings(
     println!("Spawning player beings at window size");
 
     commands.spawn((
-        Sprite {
-            image: asset_server.load("textures/wear/moss_short_tunic_icon.png"),
-            ..default()
-        },
         Being,
         PlayerDirectControllable,
         ControlledBy(*self_player),
@@ -35,25 +31,11 @@ pub fn spawn_player_beings(
             window.height() / 2.0,
             0.0,
         )),
+        SpriteDatasIdsToBuild::new(["humanhe0", "humanbo0"]),
         SelfFaction(),
     ));
 }
 
-
-pub enum ImagesNids {
-    PlayerAvatar = 0,
-
-}
-
-
-
-pub fn init_images(
-    mut cmd: Commands,
-    asset_server: Res<AssetServer>,
-) {
-
-
-}
 
 
 pub fn toggle_simulation(

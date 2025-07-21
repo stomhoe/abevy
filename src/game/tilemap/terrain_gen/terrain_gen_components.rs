@@ -1,5 +1,5 @@
 
-use bevy::{math::U8Vec2, platform::collections::HashMap};
+use bevy::{math::{U8Vec2, U8Vec4}, platform::collections::HashMap};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::{TileColor, TileFlip, TileTextureIndex, TileVisible};
 use fastnoise_lite::FastNoiseLite;
@@ -26,10 +26,39 @@ pub struct TileWeightedMap(
     pub WeightedMap<Entity>, 
 );
 
-
-#[derive(Component, Debug, Default, Hash, PartialEq, Eq, Clone, Copy)]
-pub enum UsedShader{
+#[derive(Component, Debug, Default, Hash, PartialEq, Eq, Clone, )]
+pub enum AppliedShader{
     #[default]
     None,
-    Grass
+    MonoRepeating(RepeatingTexture),
+    BiRepeating(RepeatingTexture, RepeatingTexture),
+    //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
 }
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, )]
+pub struct RepeatingTexture{
+    path: String,
+    scale: u32, //scale to be divided by 1M
+    mask_color: U8Vec4,
+}
+
+impl RepeatingTexture {
+    pub fn new<S: Into<String>>(path: S, scale: u32, mask_color: U8Vec4) -> Self {
+        Self { path: path.into(), scale, mask_color}
+    }
+    pub fn new_w_red_mask<S: Into<String>>(path: S, scale: u32) -> Self {
+        Self { path: path.into(), scale, mask_color: U8Vec4::new(255, 0, 0, 255)}
+    }
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+    #[allow(non_snake_case)]
+    pub fn scale_div_1M(&self) -> f32 {//PARA GRASS DEBE SER MIL EN NEW
+        self.scale as f32 / 1_000_000.0
+    }
+    pub fn mask_color(&self) -> Vec4 {
+        self.mask_color.as_vec4()/255.0 
+    }
+}
+
+//"texture/world/terrain/temperate_grass/grass.png"

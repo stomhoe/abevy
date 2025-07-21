@@ -3,7 +3,7 @@ use bevy::render::render_resource::AsBindGroup;
 use bevy_ecs_tilemap::prelude::MaterialTilemap;
 
 #[derive(AsBindGroup, TypePath, Debug, Clone, Asset)]
-pub struct TextureOverlayMaterial {
+pub struct MonoRepeatTextureOverlayMat {
     #[texture(1)]
     #[sampler(2)]
     pub texture_overlay: Handle<Image>,
@@ -13,7 +13,7 @@ pub struct TextureOverlayMaterial {
     pub scale: f32,
 
 }
-impl Default for TextureOverlayMaterial {
+impl Default for MonoRepeatTextureOverlayMat {
     fn default() -> Self {
         Self { 
             texture_overlay: Handle::default(),
@@ -23,11 +23,12 @@ impl Default for TextureOverlayMaterial {
     }
 }
 
-impl MaterialTilemap for TextureOverlayMaterial {
+impl MaterialTilemap for MonoRepeatTextureOverlayMat {
     fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
         "shaders/textured_tile.wgsl".into()
     }
 }
+
 
 #[derive(AsBindGroup, TypePath, Debug, Clone, Default, Asset)]
 pub struct TwoOverlaysExample {

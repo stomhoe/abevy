@@ -21,3 +21,7 @@ pub const WALK_DOWN: &str = "_walk_down";
 pub const WALK_UP: &str = "_walk_up";
 pub const WALK_LEFT: &str = "_walk_left";
 pub const WALK_RIGHT: &str = "_walk_right";
+pub const BODY_WALK_DOWN: &str = "_body_walk_down";
+pub const BODY_WALK_UP: &str = "_body_walk_up";
+pub const BODY_WALK_LEFT: &str = "_body_walk_left";
+pub const BODY_WALK_RIGHT: &str = "_body_walk_right";

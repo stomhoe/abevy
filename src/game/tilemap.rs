@@ -47,8 +47,7 @@ impl Plugin for MyTileMapPlugin {
             .init_resource::<LoadedChunks>()
             .init_resource::<ChunkRangeSettings>()
             .init_resource::<NidImgMap>()
-            .init_resource::<NidRepeatImgMap>()
-            .add_systems(Startup, (tile_imgs::setup_nid_img_map, tile_imgs::setup_rep_img_map))
+            .add_systems(Startup, (tile_imgs::setup_nid_img_map,))
         ;
     }
 }

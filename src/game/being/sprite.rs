@@ -27,7 +27,7 @@ impl Plugin for SpritePlugin {
             .add_plugins((SpritesheetAnimationPlugin::default(), RonAssetPlugin::<SpriteDataSeri>::new(&["spritedata.ron"])))
             
             .add_systems(Update, (
-                (animate_sprite, change_anim_state_string, apply_offsets_and_scales, turn_ids_into_entities, add_spritechildren_and_comps).in_set(SpriteSystemsSet).in_set(IngameSystems),
+                (animate_sprite, change_anim_state_string, apply_offsets_and_scales, turn_spritedatasids_into_entities, add_spritechildren_and_comps).in_set(SpriteSystemsSet).in_set(IngameSystems),
             ))
             
             .add_systems(OnEnter(AssetLoadingState::Complete), (

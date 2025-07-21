@@ -3,7 +3,7 @@ use bevy::{math::U16Vec2, platform::collections::{HashMap}, prelude::*};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::{terrain_gen_components::{UsedShader}, terrain_gen_systems::MyTileBundle, terrain_gen_utils::Z_DIVISOR, terrain_materials::TextureOverlayMaterial}, tile_imgs::{ImgIngameCfg, NidImgMap, NidRepeatImgMap, TileImgNid}};
+use crate::game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::{terrain_gen_components::{RepeatingTexture, AppliedShader}, terrain_gen_systems::MyTileBundle, terrain_gen_utils::Z_DIVISOR, terrain_materials::MonoRepeatTextureOverlayMat}, tile_imgs::{ImgIngameCfg, NidImgMap, TileImgNid}};
 
 
 pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
@@ -13,13 +13,28 @@ pub fn uvec2_to_tmaptsize(tile_size: U16Vec2) -> TilemapTileSize {
     TilemapTileSize { x: tile_size.x as f32, y: tile_size.y as f32 }
 }
 
-type Map = HashMap<(i32, U16Vec2, UsedShader), LayerDto>;
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct MapKey {
+    z_index: i32,
+    size: U16Vec2,
+    shader: AppliedShader,
+}
+impl MapKey {
+    pub fn new(z_index: i32, size: U16Vec2, shader: AppliedShader) -> Self {
+        Self { z_index, size, shader }
+    }
+    pub fn take_shader(&mut self) -> AppliedShader {
+        std::mem::take(&mut self.shader)
+    }
+}
+
+type Map = HashMap<MapKey, LayerDto>;
 
 #[allow(unused_parens)]
 pub fn produce_tilemaps(
     mut commands: Commands, 
     chunk_query: Query<(Entity, &TilesReady), Without<Children>>,
-    tile_pos: Query<(&TilePos, &TileImgNid, &TileFlip, &TileVisible, &TileColor, &UsedShader)>,
+    mut tile_pos: Query<(&TilePos, &TileImgNid, &mut AppliedShader)>,
     nid_img_map: Res<NidImgMap>, 
 ) -> Result {
     let mut layers: Map = HashMap::new();
@@ -27,13 +42,15 @@ pub fn produce_tilemaps(
     for (chunk_ent, tiles_ready) in chunk_query.iter() {
         for &tile_ent in tiles_ready.0.iter() {unsafe{
 
-            let (tile_pos, &img_nid, &flip, &visible, &color, &shader) = tile_pos.get(tile_ent)?;
-
-            let bundle: MyTileBundle = MyTileBundle {img_nid, flip, visible, color, shader};
+            let (tile_pos, &img_nid, shader) = tile_pos.get_mut(tile_ent)?;
+            let shader = std::mem::take(shader.into_inner());
             
+
             let img_cfg = nid_img_map.get(img_nid).debug_expect_unchecked("Image NID not found in nid_img_map");
 
-            if let Some(layer_dto) = layers.get_mut(&(img_cfg.get_z_index(), img_cfg.size, shader)) {
+            let map_key = MapKey::new(img_cfg.get_z_index(), img_cfg.size, shader);
+
+            if let Some(layer_dto) = layers.get_mut(&map_key) {
                 let (tilemap_entity, tile_storage, image_nids) = (
                     layer_dto.tilemap_entity,
                     &mut layer_dto.tile_storage,
@@ -50,14 +67,14 @@ pub fn produce_tilemaps(
 
                 add_tile_bundle_and_put_in_storage(&mut commands, tile_ent, tile_pos, tilemap_entity, tile_storage, texture_index);
 
-                layer_dto.needs_y_sort = layer_dto.needs_y_sort || img_cfg.needs_y_sort;
             } else {
-                instantiate_new_layer_dto(&mut commands, &mut layers, img_cfg, tile_ent, tile_pos, bundle, chunk_ent);
+                instantiate_new_layer_dto(&mut commands, &mut layers, map_key, img_cfg, tile_ent, tile_pos, img_nid, chunk_ent);
             }
             
         }}
 
-        for (_, layer_dto) in layers.drain() {
+        for (mut key, mut layer_dto) in layers.drain() {
+            layer_dto.used_shader = key.take_shader();
             commands.entity(layer_dto.tilemap_entity).insert(layer_dto);
         }
         commands.entity(chunk_ent).insert(LayersReady);
@@ -69,7 +86,7 @@ pub fn produce_tilemaps(
 pub struct LayerDto {
     pub layer_z: i32, 
     pub tile_size: TilemapTileSize,
-    pub used_shader: UsedShader,
+    pub used_shader: AppliedShader,
     pub tilemap_entity: Entity, 
     pub tile_storage: TileStorage,
     pub image_nids: Vec<TileImgNid>, pub needs_y_sort: bool,
@@ -92,11 +109,12 @@ fn add_tile_bundle_and_put_in_storage(
 fn instantiate_new_layer_dto( 
     commands: &mut Commands, 
     layers: &mut Map,
+    map_key: MapKey,
     img_cfg: &ImgIngameCfg,
     tile_ent: Entity,
     tile_pos: &TilePos,
-    bundle: MyTileBundle,
-    chunk_ent: Entity
+    img_nid: TileImgNid,
+    chunk_ent: Entity,
 ) {
     let tilemap_entity: Entity = commands.spawn(ChildOf(chunk_ent)).id();
 
@@ -110,13 +128,13 @@ fn instantiate_new_layer_dto(
     let layer_dto = LayerDto {
         tile_size: img_cfg.get_tile_size(),
         layer_z: img_cfg.get_z_index(),
-        used_shader: bundle.shader,
+        used_shader: AppliedShader::None,
         tilemap_entity,
         tile_storage,
-        image_nids: vec![bundle.img_nid],
+        image_nids: vec![img_nid],
         needs_y_sort: img_cfg.needs_y_sort,
     };
-    layers.insert((img_cfg.get_z_index(), img_cfg.size, bundle.shader), layer_dto);
+    layers.insert(map_key, layer_dto);
 }
 
 
@@ -127,19 +145,18 @@ pub fn fill_tilemaps_data(
     mut chunk_query: Query<(Entity, &Children), (With<LayersReady>)>,
     mut layer_query: Query<(&mut LayerDto), (With<ChildOf>)>,
     tile_images_map: Res<NidImgMap>,
-    repeat_images_map: Res<NidRepeatImgMap>,
-    mut texture_overley_mat: ResMut<Assets<TextureOverlayMaterial>>,
+    mut texture_overley_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
 ) {unsafe{
-
+    
      for (chunk, children) in chunk_query.iter_mut() {
         commands.entity(chunk).remove::<LayersReady>();
 
 
         for child in children.iter() {
-            if let Ok(mut layer_dto) = layer_query.get_mut(child) {
+            if let Ok(mut layer_dto) = layer_query.get_mut(child) {//DEJAR CON IF LET
                 let grid_size = TilemapGridSize { x: TILE_SIZE_PXS.x as f32, y: TILE_SIZE_PXS.y as f32 };
-                let size = CHUNK_SIZE.as_uvec2().into();  
-                let transform = Transform::from_translation(Vec3::new(0.0, 0.0, (layer_dto.layer_z as f32/Z_DIVISOR as f32)));
+                let size = CHUNK_SIZE.as_uvec2().into();
+                let transform = Transform::from_translation(Vec3::new(0.0, 0.0, (layer_dto.layer_z as f32 / Z_DIVISOR as f32)));
                 let images: Vec<Handle<Image>> = layer_dto
                     .image_nids
                     .iter()
@@ -151,19 +168,20 @@ pub fn fill_tilemaps_data(
                 let tile_size = layer_dto.tile_size.clone();
                 let mut tmap_commands = commands.entity(layer_dto.tilemap_entity);
 
-                match layer_dto.used_shader {
-                    UsedShader::None => {
+                match &layer_dto.used_shader {
+                    AppliedShader::None => {
                         tmap_commands.insert(
                             TilemapBundle {grid_size, size, storage, texture, tile_size, transform, render_settings, ..Default::default()}
                         );
                     }
-                    UsedShader::Grass => {
-
-                        let material = MaterialTilemapHandle::from(texture_overley_mat.add(TextureOverlayMaterial {
-                            texture_overlay: asset_server.load("textures/world/terrain/temperate_grass/grass.png"),
-                            scale: 0.001,
-                            ..Default::default()
-                        }));
+                    AppliedShader::MonoRepeating(rep_texture) => {
+                        let material = MaterialTilemapHandle::from(texture_overley_mat.add(
+                            MonoRepeatTextureOverlayMat {
+                                texture_overlay: asset_server.load(rep_texture.path()),
+                                scale: rep_texture.scale_div_1M(),
+                                mask_color: rep_texture.mask_color(),
+                            }
+                        ));
 
                         tmap_commands.insert((
                             MaterialTilemapBundle {grid_size, size, storage, texture, tile_size, transform, render_settings, 
@@ -171,13 +189,14 @@ pub fn fill_tilemaps_data(
                             },
                         ));
                     },
+                    AppliedShader::BiRepeating(first_texture, second) => todo!(),
                 }
                 tmap_commands.remove::<LayerDto>();
             }
         }
 
         commands.entity(chunk).insert(InitializedChunk);
-
+        
     }
 }}
 

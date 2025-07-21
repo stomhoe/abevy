@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::game::{tilemap::terrain_gen::{terrain_gen_resources::*, terrain_gen_systems::*, terrain_materials::TextureOverlayMaterial}, SimRunningSystems};
+use crate::game::{tilemap::terrain_gen::{terrain_gen_resources::*, terrain_gen_systems::*, terrain_materials::MonoRepeatTextureOverlayMat}, SimRunningSystems};
 
 pub mod terrain_gen_systems;
 pub mod terrain_materials;
@@ -21,7 +21,7 @@ impl Plugin for TerrainGenPlugin {
             .add_systems(Startup, (setup, ))
             .init_resource::<WorldGenSettings>()
 
-            .add_plugins(MaterialTilemapPlugin::<TextureOverlayMaterial>::default())
+            .add_plugins(MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default())
         ;
     }
 }
