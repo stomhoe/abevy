@@ -1,7 +1,7 @@
 (
     id: "humanbo0",
     name: "Human Body 0",
-    path: "being/body/human/0.png",
+    path: "being/body/human/male.png",
     category: "head",
     shares_category: false,
     rows_cols: (6, 4),

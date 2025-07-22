@@ -11,7 +11,7 @@ use crate::game::{being::sprite::sprite_components::*, game_components::{Display
 
 
 #[derive(Resource, Debug, Default )]
-pub struct SpriteDataIdEntityMap {map: HashMap<String, Entity>,}
+pub struct SpriteDataIdEntityMap {pub map: HashMap<String, Entity>,}
 
 
 #[allow(unused_parens)]
@@ -28,45 +28,48 @@ impl SpriteDataIdEntityMap {
                 error!("SpriteDataSeri with id {:?} already exists in map, skipping", seri.id);
                 return;
             }
+            let path_str = take(&mut seri.path);
+            let full_path = format!("assets/texture/{}", path_str);
+            if !std::path::Path::new(&full_path).exists() {
+                error!("Image path does not exist: {}", full_path);
+                return
+            }
+            if seri.id.len() <= 2 {
+                error!("SpriteDataSeri id is too short or empty, skipping");
+                return;
+            }
+
             use std::mem::take;
 
-            let spritedata_id = SpriteDataId::new(take(&mut seri.id));
-            let disp_name = DisplayName(take(&mut seri.name));
-            let path_holder = ImgPathHolder(take(&mut seri.path));
+            let mut extras: CompsToBuild = CompsToBuild::default();
+            //TODO METER TODO ACÁ
+
+            let spritedata_id = SpriteDataId::new(seri.id.clone());
+            let path_holder = ImgPathHolder(path_str);
             let category = Category::new(take(&mut seri.category), seri.shares_category);
-            let offset = Offset(Vec3::from_array(seri.offset));
 
             let atlas_data = AtlasLayoutData::new(seri.rows_cols, seri.frame_size);
             
             let entity = cmd.spawn((
                 spritedata_id, 
-                disp_name,
                 path_holder,
                 category,
-                offset,
                 atlas_data,
                 
             )).id();
 
+            if seri.name.is_empty() {
+                warn!("SpriteDataSeri name is empty");
+            } else {
+                let disp_name = DisplayName(take(&mut seri.name));
+                cmd.entity(entity).insert(disp_name);
+            }
+
             if seri.directionable {cmd.entity(entity).insert(Directionable);}
 
-            if seri.walk_anim {cmd.entity(entity).insert(WalkAnim);}
-            if seri.swim_anim {cmd.entity(entity).insert(SwimAnim{use_still: seri.swim_anim_still});}
-            if seri.fly_anim {cmd.entity(entity).insert(FlyAnim{use_still: seri.fly_anim_still});}
-            match seri.flip_horiz{
-                1 => {cmd.entity(entity).insert(FlipHorizIfDir::Any);},
-                2 => {cmd.entity(entity).insert(FlipHorizIfDir::Left);},
-                3 => {cmd.entity(entity).insert(FlipHorizIfDir::Right);},
-                _ => {},
-            };
-            if let Some(scale) = seri.scale {
-                let vec = Vec2::from_array(scale);
-                if vec.x <= 0.0 || vec.y <= 0.0 {
-                    warn!("SpriteDataSeri scale has non-positive component: {:?}", vec);
-                } else {
-                    cmd.entity(entity).insert(Scale(vec));
-                }
-            }
+  
+           
+            
 
             if ! seri.anim_prefix.is_empty() {
                 let anim_prefix = AnimationIdPrefix::new(take(&mut seri.anim_prefix));
@@ -77,31 +80,50 @@ impl SpriteDataIdEntityMap {
                 let children_sprites = SpriteDatasChildrenStringIds(take(&mut seri.children_sprites));
                 cmd.entity(entity).insert(children_sprites);
             }
-
+            
             if let Some(color) = seri.color {
                 let (red, green, blue, alpha) = color.into();
                 cmd.entity(entity).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
             }
 
+
+            if seri.walk_anim {extras.walk_anim = Some(WalkAnim);}
+            if seri.swim_anim {extras.swim_anim = Some(SwimAnim{use_still: seri.swim_anim_still});}
+            if seri.fly_anim {extras.fly_anim = Some(FlyAnim{use_still: seri.fly_anim_still});}
+
+            let offset = Vec3::from_array(seri.offset);
+            if offset != Vec3::ZERO {
+                extras.offset = Some(Offset(offset));
+            }
+
             if let Some(offset_looking_down) = seri.offset_down {
-                cmd.entity(entity).insert(OffsetLookDown(Vec2::from_array(offset_looking_down)));
+                extras.offset_looking_down = Some(OffsetLookDown(Vec2::from_array(offset_looking_down)));
             }
             if let Some(offset_looking_up) = seri.offset_up {
-                cmd.entity(entity).insert(OffsetLookUp(Vec2::from_array(offset_looking_up)));
+                extras.offset_looking_up = Some(OffsetLookUp(Vec2::from_array(offset_looking_up)));
             }
 
             if let Some(offset_looking_up_down) = seri.offset_up_down {
-                cmd.entity(entity).insert(OffsetLookUpDown(Vec2::from_array(offset_looking_up_down)));
+                extras.offset_looking_up_down = Some(OffsetLookUpDown(Vec2::from_array(offset_looking_up_down)));
             }
             if let Some(offset_looking_sideways) = seri.offset_sideways {
-                cmd.entity(entity).insert(OffsetLookSideways(Vec2::from_array(offset_looking_sideways)));
+                extras.offset_looking_sideways = Some(OffsetLookSideways(Vec2::from_array(offset_looking_sideways)));
+
+            if let Some(scale) = seri.scale {
+                let vec = Vec2::from_array(scale);
+                if vec.x <= 0.0 || vec.y <= 0.0 {
+                    warn!("SpriteDataSeri scale has non-positive component: {:?}", vec);
+                } else {
+                    extras.scale = Some(Scale(vec));
+                }
+            }
             }
             if let Some(scale_looking_sideways) = seri.scale_sideways {
                 let vec = Vec2::from_array(scale_looking_sideways);
                 if vec.x <= 0.0 || vec.y <= 0.0 {
                     warn!("SpriteDataSeri scale_sideways has non-positive component: {:?}", vec);
                 } else {
-                    cmd.entity(entity).insert(ScaleLookSideWays(vec));
+                    extras.scale_looking_sideways = Some(ScaleLookSideWays(vec));
                 }
             }
 
@@ -110,11 +132,18 @@ impl SpriteDataIdEntityMap {
                 if vec.x <= 0.0 || vec.y <= 0.0 {
                     warn!("SpriteDataSeri scale_up_down has non-positive component: {:?}", vec);
                 } else {
-                    cmd.entity(entity).insert(ScaleLookUpDown(vec));
+                    extras.scale_looking_up_down = Some(ScaleLookUpDown(vec));
                 }
             }
 
-            self.map.insert(seri.id.clone(), entity);
+            match seri.flip_horiz {
+                1 => { extras.flip_horiz_if_dir = Some(FlipHorizIfDir::Any); },
+                2 => { extras.flip_horiz_if_dir = Some(FlipHorizIfDir::Left); },
+                3 => { extras.flip_horiz_if_dir = Some(FlipHorizIfDir::Right); },
+                _ => {},
+            };
+            
+            self.map.insert(take(&mut seri.id), entity);
         }
         else {
             warn!("SpriteDataSeri with handle {:?} not found in assets", handle);

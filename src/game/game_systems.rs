@@ -5,7 +5,8 @@ use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
-use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, SpriteDatasIdsToBuild};
+use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, };
+use crate::game::being::sprite::sprite_components::SpriteDatasChildrenStringIds;
 use crate::game::faction::faction_components::SelfFaction;
 use crate::game::game_components::*;
 use crate::game::game_resources::*;
@@ -31,7 +32,7 @@ pub fn spawn_player_beings(
             window.height() / 2.0,
             0.0,
         )),
-        SpriteDatasIdsToBuild::new(["humanhe0", "humanbo0"]),
+        SpriteDatasChildrenStringIds::new(["humanhe0", "humanbo0"]),
         SelfFaction(),
     ));
 }

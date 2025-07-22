@@ -1,4 +1,4 @@
-use bevy::math::{U16Vec2, UVec2};
+use bevy::math::{Vec2, Vec3, U16Vec2, UVec2};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::game::{being::sprite::{animation_constants::*, sprite_constants::* }, game_components::*};
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct AnimationIdPrefix(pub String);
 impl AnimationIdPrefix {
     pub fn new<S: Into<String>>(prefix: S) -> Self {
@@ -21,13 +21,13 @@ impl AnimationIdPrefix {
 //NO VA REPLICATED, SE HACE LOCALMENTE EN CADA PC SEGÚN LOS INPUTS RECIBIDOS DE OTROS PLAYERS
 pub struct AnimationState(pub String);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy )]
 pub struct WalkAnim;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy )]
 pub struct SwimAnim{pub use_still: bool,}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 pub struct FlyAnim{pub use_still: bool,}
 
 
@@ -55,10 +55,10 @@ impl AnimationState {
 }
 
 
-#[derive(Component, Debug, Deserialize, Serialize, )]
+#[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
 pub enum FlipHorizIfDir{Left, Right, Any,}
 
-#[derive(Component, Debug, Deserialize, Serialize, )]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
 
 
@@ -93,10 +93,35 @@ pub struct ScaleLookUpDown(pub Vec2);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct ScaleLookSideWays(pub Vec2);
 
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct CompsToBuild{
+    pub animation_id_prefix: Option<AnimationIdPrefix>,
+    pub directionable: Option<Directionable>,
+    pub walk_anim: Option<WalkAnim>,
+    pub swim_anim: Option<SwimAnim>,
+    pub fly_anim: Option<FlyAnim>,
+    pub offset: Option<Offset>,
+    pub offset_looking_down: Option<OffsetLookDown>,
+    pub offset_looking_up: Option<OffsetLookUp>,
+    pub offset_looking_left: Option<OffsetLookLeft>,
+    pub offset_looking_right: Option<OffsetLookRight>,
+    pub offset_looking_sideways: Option<OffsetLookSideways>,
+    pub offset_looking_up_down: Option<OffsetLookUpDown>,
+    pub scale: Option<Scale>,
+    pub scale_looking_up_down: Option<ScaleLookUpDown>,
+    pub scale_looking_sideways: Option<ScaleLookSideWays>,
+    pub flip_horiz_if_dir: Option<FlipHorizIfDir>,
+    pub color: Option<ColorHolder>,
+    pub children_refs: Option<SpriteDatasChildrenRefs>,
+
+}
+impl CompsToBuild {
+}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct Offset(pub Vec3);
-
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct OffsetLookUpDown(pub Vec2);
@@ -132,8 +157,17 @@ impl Category {
 // NO USAR ESTOS DOS PARA BEINGS
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct SpriteDatasChildrenStringIds(pub Vec<String>);
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct SpriteDatasChildren(#[entities] pub Vec<Entity>);
+impl SpriteDatasChildrenStringIds {
+    pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
+        Self(ids.into_iter().map(|s| s.into()).collect())
+    }
+    pub fn ids(&self) -> &Vec<String> {
+        &self.0
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone )]
+pub struct SpriteDatasChildrenRefs(#[entities] pub Vec<Entity>);
 
 #[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct SpriteDataSeri {

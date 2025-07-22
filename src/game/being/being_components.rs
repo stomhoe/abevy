@@ -108,18 +108,3 @@ pub struct CurrentDimension(u32);//TANTO PARA BEINGS COMO PARA OBJETOS Y TILES
 //HACER Q AFECTE LA VISIBILIDAD DE LAS COSAS . Q TENGAS
 //DESPUES EN EL TERRAIN_GEN_SYSTEMS SE PUEDE HACER UN MATCH SEGÚN LA DIMENSION ACTUAL DEL PLAYER
 //Y TENER UN PROC DE GENERACIÓN DE TERRAIN POR DIMENSION ANTES DE ENTRAR AL DOBLE FOR DE GENERACIÓN DE CADA TILE
-
-#[derive(Component, Debug, Deserialize, Serialize, Default)]
-pub struct SpriteDatasToBuild(#[entities] pub Vec<Entity>);
-
-
-#[derive(Component, Debug, Deserialize, Serialize, )]
-pub struct SpriteDatasIdsToBuild(Vec<String>);
-impl SpriteDatasIdsToBuild {
-    pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
-        Self(ids.into_iter().map(|s| s.into()).collect())
-    }
-    pub fn ids(&self) -> &Vec<String> {
-        &self.0
-    }
-}
