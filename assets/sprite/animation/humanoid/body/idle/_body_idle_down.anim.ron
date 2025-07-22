@@ -1,0 +1,7 @@
+(
+    id: "_body_idle_down",
+    sheet_rows_cols: (4, 6),
+    target: 0,
+    is_row: true,
+    partial: Some((0, 0)),
+)

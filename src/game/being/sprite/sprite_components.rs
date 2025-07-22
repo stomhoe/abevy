@@ -94,10 +94,10 @@ pub struct ScaleLookUpDown(pub Vec2);
 pub struct ScaleLookSideWays(pub Vec2);
 
 
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct CompsToBuild{
-    pub animation_id_prefix: Option<AnimationIdPrefix>,
+pub struct OtherCompsToBuild{
+    pub display_name: Option<DisplayName>,
+    pub anim_prefix: Option<AnimationIdPrefix>,
     pub directionable: Option<Directionable>,
     pub walk_anim: Option<WalkAnim>,
     pub swim_anim: Option<SwimAnim>,
@@ -114,10 +114,7 @@ pub struct CompsToBuild{
     pub scale_looking_sideways: Option<ScaleLookSideWays>,
     pub flip_horiz_if_dir: Option<FlipHorizIfDir>,
     pub color: Option<ColorHolder>,
-    pub children_refs: Option<SpriteDatasChildrenRefs>,
 
-}
-impl CompsToBuild {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
@@ -200,3 +197,12 @@ pub struct SpriteDataSeri {
 }
 // TODO: hacer shaders aplicables? (para meditacion por ej)
 // TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld. hacer un mapa color-algo 
+
+#[derive(serde::Deserialize, Asset, TypePath, Default)]
+pub struct AnimationSeri {
+    pub id: String,
+    pub sheet_rows_cols: [u32; 2], //rows, cols
+    pub target: u32,
+    pub is_row: bool, //true: target is a row , false: target is a column
+    pub partial: Option<[u32; 2]>, //start, end inclusive (0-indexed)
+}

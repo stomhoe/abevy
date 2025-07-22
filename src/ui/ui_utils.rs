@@ -1,4 +1,4 @@
-use bevy::{ecs::bundle, prelude::*};
+use bevy::{prelude::*};
 use bevy_ui_gradients::{BorderGradient, LinearGradient};
 
 use crate::ui::{ui_components::ButtonBackgroundStyle};

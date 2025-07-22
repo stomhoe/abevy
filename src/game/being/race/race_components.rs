@@ -9,7 +9,7 @@ use crate::game::game_utils::{StrId, WeightedMap};
 #[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
 #[require(Replicated)]
 pub struct RaceId(String);
-
+#[allow(unused_parens, dead_code)]
 impl RaceId {
     pub fn new<S: Into<String>>(id: S) -> Self { Self (id.into()) }
     pub fn id(&self) -> &String {&self.0}

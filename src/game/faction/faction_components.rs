@@ -18,6 +18,7 @@ impl Faction {
 pub struct SelfFaction();
 
 //esto en cada Being
+#[allow(dead_code)]
 pub struct BelongsToFaction(pub Entity);
 
 

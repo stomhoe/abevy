@@ -23,7 +23,7 @@ pub struct ClockPlugin;
 impl Plugin for ClockPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, (pass_time, ).in_set(ClockSystems).in_set(SimRunningSystems))
+            .add_systems(Update, (pass_time, reduce_remaining_days, ).in_set(ClockSystems).in_set(SimRunningSystems))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup, ))
             .init_resource::<CurrYear>()
             .init_resource::<CurrSeason>()

@@ -14,7 +14,7 @@
     fly_anim: false,
     fly_anim_still: false,
     flip_horiz: 0,
-    anim_prefix: "body",
+    anim_prefix: "_body",
     children_sprites: [],
     offset_down: None,
     offset_up: None,

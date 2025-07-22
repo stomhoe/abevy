@@ -38,10 +38,11 @@ pub struct MagicallyInvulnerable();
 pub struct ImgPathHolder(pub String);
 
 
-#[derive(Component, Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Component, Debug, Clone, Default, Serialize, Deserialize, )]
 pub struct DisplayName(pub String);
 impl DisplayName {pub fn new(name: impl Into<String>) -> Self {DisplayName(name.into())}}
 
+#[allow(unused_parens, dead_code)]
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct Description(pub String);
 impl Description {
@@ -49,13 +50,14 @@ impl Description {
     pub fn id(&self) -> &String {&self.0}
 }
 
+#[allow(unused_parens, dead_code)]
 #[derive(Component)]
-pub enum Direction{Down, Left, Right, Up,}
-impl Direction {
+pub enum FacingDirection{Down, Left, Right, Up,}
+impl FacingDirection {
     pub fn as_suffix(&self) -> &str {
         match self {
-            Direction::Down => DOWN, Direction::Left => LEFT,
-            Direction::Right => RIGHT, Direction::Up => UP,
+            FacingDirection::Down => DOWN, FacingDirection::Left => LEFT,
+            FacingDirection::Right => RIGHT, FacingDirection::Up => UP,
         }
     }
 }

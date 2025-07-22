@@ -41,7 +41,7 @@ pub fn pass_time(
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^
 #[allow(unused_parens)]
-pub fn reduce_remaining_days(mut commands: Commands, mut query: Query<(&mut RemainingDays),()>, curr_day: Res<CurrDay>) {
+pub fn reduce_remaining_days(mut query: Query<(&mut RemainingDays),()>, curr_day: Res<CurrDay>) {
     
     for mut remaining_days in query.iter_mut() {
         if curr_day.is_changed() && remaining_days.0 > Days(0) {

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use superstate::superstate_plugin;
+#[allow(unused_imports)] use superstate::superstate_plugin;
 
 use crate::game::{being::{being_systems::*, class::ClassPlugin, gen_template::GenTemplatePlugin, race::RacePlugin, sprite::SpritePlugin}, IngameSystems};
 
@@ -28,7 +28,7 @@ impl Plugin for BeingsPlugin {
             // .add_systems(OnEnter(AppState::StatefulGameSession), (
 
             // )) 
-            .add_systems(Update, (handle_movement, ).in_set(MovementSystems).in_set(IngameSystems))
+            .add_systems(Update, (handle_movement, update_direction, ).in_set(MovementSystems).in_set(IngameSystems))
         ;
     }
 }

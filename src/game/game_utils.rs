@@ -13,7 +13,7 @@ pub struct WeightedMap<K> {
     choices: Vec<K>,
     dist: WeightedAliasIndex<u32>,
 }
-
+#[allow(unused_parens, dead_code)]
 impl<K: Eq + std::hash::Hash + Clone + Serialize + for<'de> Deserialize<'de>> WeightedMap<K> {
     pub fn new(weights_map: HashMap<K, u32>) -> Self {
         let weights: Vec<u32> = weights_map.values().cloned().collect();

@@ -1,18 +1,16 @@
-use bevy::app::FixedMain;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use superstate::superstate_plugin;
+#[allow(unused_imports)] use superstate::superstate_plugin;
 use crate::game::being::race::race_resources::RaceSerisHandles;
+use crate::game::being::sprite::animation_resources::AnimSerisHandles;
 use crate::game::being::sprite::sprite_resources::SpriteSerisHandles;
 use crate::game::being::{BeingsPlugin, MovementSystems};
-use crate::game::game_components::*;
 use crate::game::multiplayer::MpPlugin;
-use crate::game::tilemap::terrain_gen::TerrainGenSystems;
 use crate::game::time::ClockPlugin;
 use crate::game::faction::FactionsPlugin;
 use crate::game::player::{PlayerInputSystems, PlayerPlugin};
 use crate::game::setup_menus::SetupMenusPlugin;
-use crate::game::tilemap::{ChunksSystems, MyTileMapPlugin, TilemapsSystems};
+use crate::game::tilemap::MyTileMapPlugin;
 use crate::AppState;
 use crate::game::game_systems::*;
 use bevy_asset_loader::prelude::*;
@@ -68,7 +66,6 @@ impl Plugin for GamePlugin {
             ))
 
             .add_systems(Update, 
-                
                 (debug_system, toggle_simulation, force_z_index).in_set(IngameSystems)
             )
 
@@ -96,13 +93,13 @@ impl Plugin for GamePlugin {
             .init_state::<GamePhase>()
             .init_state::<GameSetupType>()
             .init_state::<GameSetupScreen>()
-
             .init_state::<AssetLoadingState>()
 
             .add_loading_state(
                 LoadingState::new(AssetLoadingState::InProcess)
                 .continue_to_state(AssetLoadingState::Complete)
                 .load_collection::<SpriteSerisHandles>()
+                .load_collection::<AnimSerisHandles>()
                 .load_collection::<RaceSerisHandles>()
             )
         ;
@@ -119,12 +116,10 @@ pub enum GamePhase {#[default]Setup, ActiveGame,}
 #[states(scoped_entities)]
 enum GameSetupScreen {#[default]GameSettings, CharacterCreation,}
 
-
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[source(GamePhase = GamePhase::ActiveGame)]
 #[states(scoped_entities)]
 enum SimulationState {#[default]Running, Paused,}
-
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[source(GamePhase = GamePhase::Setup)]
@@ -134,8 +129,9 @@ pub enum GameSetupType {#[default]Singleplayer, HostLobby, JoinerLobby,}
 
 //usar server_or_singleplayer y not(server_or_singleplayer) para distinguir entre servidor y cliente
 
+#[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[states(scoped_entities)]
+#[states(scoped_entities,)]
 enum AssetLoadingState {
     NotStarted,//HACER EL DEFAULT ESTE SI SE QUIERE HACER ALGO ANTES DE CARGAR LOS ASSETS
     #[default]

@@ -1,0 +1,7 @@
+(
+    id: "_body_walk_left",
+    sheet_rows_cols: (4, 6),
+    target: 2,
+    is_row: true,
+    partial: Some((0, 4)),
+)

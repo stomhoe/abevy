@@ -1,6 +1,5 @@
 use bevy::{math::U8Vec2, platform::collections::{HashMap, HashSet}};
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::map::{TilemapGridSize};
 
 
 #[derive(Resource, )]

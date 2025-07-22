@@ -3,11 +3,7 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-use serde::{Deserialize, Serialize};
-
 use crate::game::{being::sprite::sprite_components::*, game_components::{DisplayName, ImgPathHolder}};
-
-
 
 
 #[derive(Resource, Debug, Default )]
@@ -41,13 +37,12 @@ impl SpriteDataIdEntityMap {
 
             use std::mem::take;
 
-            let mut extras: CompsToBuild = CompsToBuild::default();
             //TODO METER TODO ACÁ
-
+            
             let spritedata_id = SpriteDataId::new(seri.id.clone());
             let path_holder = ImgPathHolder(path_str);
             let category = Category::new(take(&mut seri.category), seri.shares_category);
-
+            
             let atlas_data = AtlasLayoutData::new(seri.rows_cols, seri.frame_size);
             
             let entity = cmd.spawn((
@@ -57,23 +52,21 @@ impl SpriteDataIdEntityMap {
                 atlas_data,
                 
             )).id();
+            
+            let mut comps_to_build: OtherCompsToBuild = OtherCompsToBuild::default();
 
             if seri.name.is_empty() {
                 warn!("SpriteDataSeri name is empty");
             } else {
                 let disp_name = DisplayName(take(&mut seri.name));
-                cmd.entity(entity).insert(disp_name);
+                comps_to_build.display_name = Some(disp_name);
             }
 
-            if seri.directionable {cmd.entity(entity).insert(Directionable);}
-
-  
-           
-            
+            if seri.directionable {comps_to_build.directionable = Some(Directionable);}
 
             if ! seri.anim_prefix.is_empty() {
                 let anim_prefix = AnimationIdPrefix::new(take(&mut seri.anim_prefix));
-                cmd.entity(entity).insert(anim_prefix);
+                comps_to_build.anim_prefix = Some(anim_prefix);
             }
             
             if ! seri.children_sprites.is_empty(){
@@ -83,38 +76,38 @@ impl SpriteDataIdEntityMap {
             
             if let Some(color) = seri.color {
                 let (red, green, blue, alpha) = color.into();
-                cmd.entity(entity).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
+                comps_to_build.color = Some(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
             }
 
 
-            if seri.walk_anim {extras.walk_anim = Some(WalkAnim);}
-            if seri.swim_anim {extras.swim_anim = Some(SwimAnim{use_still: seri.swim_anim_still});}
-            if seri.fly_anim {extras.fly_anim = Some(FlyAnim{use_still: seri.fly_anim_still});}
+            if seri.walk_anim {comps_to_build.walk_anim = Some(WalkAnim);}
+            if seri.swim_anim {comps_to_build.swim_anim = Some(SwimAnim{use_still: seri.swim_anim_still});}
+            if seri.fly_anim {comps_to_build.fly_anim = Some(FlyAnim{use_still: seri.fly_anim_still});}
 
             let offset = Vec3::from_array(seri.offset);
             if offset != Vec3::ZERO {
-                extras.offset = Some(Offset(offset));
+                comps_to_build.offset = Some(Offset(offset));
             }
 
             if let Some(offset_looking_down) = seri.offset_down {
-                extras.offset_looking_down = Some(OffsetLookDown(Vec2::from_array(offset_looking_down)));
+                comps_to_build.offset_looking_down = Some(OffsetLookDown(Vec2::from_array(offset_looking_down)));
             }
             if let Some(offset_looking_up) = seri.offset_up {
-                extras.offset_looking_up = Some(OffsetLookUp(Vec2::from_array(offset_looking_up)));
+                comps_to_build.offset_looking_up = Some(OffsetLookUp(Vec2::from_array(offset_looking_up)));
             }
 
             if let Some(offset_looking_up_down) = seri.offset_up_down {
-                extras.offset_looking_up_down = Some(OffsetLookUpDown(Vec2::from_array(offset_looking_up_down)));
+                comps_to_build.offset_looking_up_down = Some(OffsetLookUpDown(Vec2::from_array(offset_looking_up_down)));
             }
             if let Some(offset_looking_sideways) = seri.offset_sideways {
-                extras.offset_looking_sideways = Some(OffsetLookSideways(Vec2::from_array(offset_looking_sideways)));
+                comps_to_build.offset_looking_sideways = Some(OffsetLookSideways(Vec2::from_array(offset_looking_sideways)));
 
             if let Some(scale) = seri.scale {
                 let vec = Vec2::from_array(scale);
                 if vec.x <= 0.0 || vec.y <= 0.0 {
                     warn!("SpriteDataSeri scale has non-positive component: {:?}", vec);
                 } else {
-                    extras.scale = Some(Scale(vec));
+                    comps_to_build.scale = Some(Scale(vec));
                 }
             }
             }
@@ -123,7 +116,7 @@ impl SpriteDataIdEntityMap {
                 if vec.x <= 0.0 || vec.y <= 0.0 {
                     warn!("SpriteDataSeri scale_sideways has non-positive component: {:?}", vec);
                 } else {
-                    extras.scale_looking_sideways = Some(ScaleLookSideWays(vec));
+                    comps_to_build.scale_looking_sideways = Some(ScaleLookSideWays(vec));
                 }
             }
 
@@ -132,16 +125,18 @@ impl SpriteDataIdEntityMap {
                 if vec.x <= 0.0 || vec.y <= 0.0 {
                     warn!("SpriteDataSeri scale_up_down has non-positive component: {:?}", vec);
                 } else {
-                    extras.scale_looking_up_down = Some(ScaleLookUpDown(vec));
+                    comps_to_build.scale_looking_up_down = Some(ScaleLookUpDown(vec));
                 }
             }
 
             match seri.flip_horiz {
-                1 => { extras.flip_horiz_if_dir = Some(FlipHorizIfDir::Any); },
-                2 => { extras.flip_horiz_if_dir = Some(FlipHorizIfDir::Left); },
-                3 => { extras.flip_horiz_if_dir = Some(FlipHorizIfDir::Right); },
+                1 => { comps_to_build.flip_horiz_if_dir = Some(FlipHorizIfDir::Any); },
+                2 => { comps_to_build.flip_horiz_if_dir = Some(FlipHorizIfDir::Left); },
+                3 => { comps_to_build.flip_horiz_if_dir = Some(FlipHorizIfDir::Right); },
                 _ => {},
             };
+
+            cmd.entity(entity).insert(comps_to_build);
             
             self.map.insert(take(&mut seri.id), entity);
         }
@@ -167,7 +162,7 @@ impl SpriteDataIdEntityMap {
 
 #[derive(AssetCollection, Resource)]
 pub struct SpriteSerisHandles {
-    #[asset(path = "spritedata", collection(typed))]
+    #[asset(path = "sprite/spritedata", collection(typed))]
     pub handles: Vec<Handle<SpriteDataSeri>>,
 }
 

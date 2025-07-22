@@ -1,12 +1,10 @@
 
 
-use bevy::{ecs::bundle, math::{U16Vec2, VectorSpace}};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
-use serde::{Deserialize, Serialize};
 
-use crate::game::{being::{being_components::{Altitude, Flier, LandWalker, Moving, Swimmer}, sprite::{animation_constants::*, sprite_components::*, sprite_constants::* }}, game_components::{Direction, ImgPathHolder}};
+use crate::game::{being::{being_components::{Altitude, Moving}, sprite::{animation_constants::*, animation_resources::*, sprite_components::*, sprite_constants::* }}, game_components::FacingDirection,};
 
 pub fn prepend_body_to_string(
     prefix: &str, 
@@ -18,55 +16,43 @@ pub fn prepend_body_to_string(
 
 #[allow(unused_parens)]
 pub fn init_animations(
-    mut commands: Commands, 
+    mut anim_handles: ResMut<AnimSerisHandles>,
+    mut assets: ResMut<Assets<AnimationSeri>>,
+
     mut library: ResMut<AnimationLibrary>,
 ) {
-        
-    let spritesheet = base_humanoid_spritesheet();
+    use std::mem::take;
+    let handles_vec = take(&mut anim_handles.handles);
+    for handle in handles_vec {
+        if let Some(mut seri) = assets.remove(&handle) 
+            {
+                let spritesheet = Spritesheet::new(seri.sheet_rows_cols[1] as usize, seri.sheet_rows_cols[0] as usize);
 
-    //TODO HACER ESTO DENTRO DE UN FOR (HACER CADA UNO CARGADO DE UN ASSET)
-
-    let clip = Clip::from_frames([0]);
-    let animation = Animation::from_clip(library.register_clip(clip));
-    let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, BODY_IDLE_DOWN).unwrap();
-    
-    let clip = Clip::from_frames(spritesheet.row_partial(1, 0..=0));
-    let animation = Animation::from_clip(library.register_clip(clip));
-    let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, BODY_IDLE_UP).unwrap();
-
-    let clip = Clip::from_frames(spritesheet.row_partial(2, 0..=0));
-    let animation = Animation::from_clip(library.register_clip(clip));
-    let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, BODY_IDLE_LEFT).unwrap();
-
-    let clip = Clip::from_frames(spritesheet.row_partial(3, 0..=0));
-    let animation = Animation::from_clip(library.register_clip(clip));
-    let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, BODY_IDLE_RIGHT).unwrap();
-
-
-    let clip = Clip::from_frames(spritesheet.row(0));
-    let animation = Animation::from_clip(library.register_clip(clip));
-    let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, BODY_WALK_DOWN).unwrap();
-    
-    let clip = Clip::from_frames(spritesheet.row(1));
-    let animation = Animation::from_clip(library.register_clip(clip));
-    let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, BODY_WALK_UP).unwrap();
-
-    let clip = Clip::from_frames(spritesheet.row_partial(2, 0..=4));
-    let animation = Animation::from_clip(library.register_clip(clip));
-    let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, BODY_WALK_LEFT).unwrap();
-
-    let clip = Clip::from_frames(spritesheet.row_partial(3, 0..=4));
-    let animation = Animation::from_clip(library.register_clip(clip));
-    let animation_id = library.register_animation(animation);
-    library.name_animation(animation_id, BODY_WALK_RIGHT).unwrap();
-
+                let clip: Clip = if seri.is_row {
+                match seri.partial {
+                    Some([start, end]) => Clip::from_frames(
+                    spritesheet.row_partial(seri.target as usize, (start as usize)..=(end as usize))
+                    ),
+                    None => Clip::from_frames(
+                    spritesheet.row(seri.target as usize)
+                    ),
+                }
+                } else {
+                match seri.partial {
+                    Some([start, end]) => Clip::from_frames(
+                    spritesheet.column_partial(seri.target as usize, (start as usize)..=(end as usize))
+                    ),
+                    None => Clip::from_frames(
+                    spritesheet.column(seri.target as usize)
+                    ),
+                }
+                };
+                let animation = Animation::from_clip(library.register_clip(clip));
+                let animation_id = library.register_animation(animation);
+                info!("Registered animation: {}", seri.id); 
+                library.name_animation(animation_id, take(&mut seri.id)).unwrap();
+            }
+    }
 }
 
 
@@ -147,7 +133,7 @@ pub fn animate_sprite(
         Option<&Directionable>,
         &ChildOf,
     ), With<Sprite>>,
-    parents: Query<(Option<&Direction>, )>,
+    parents: Query<(Option<&FacingDirection>, )>,
     library: Res<AnimationLibrary>,
 ) {
     for (ent, sheet_anim, prefix, anim_state, directionable, child_of) in query.iter_mut() {

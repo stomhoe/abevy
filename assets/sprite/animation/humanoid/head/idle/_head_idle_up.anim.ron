@@ -1,0 +1,7 @@
+(
+    id: "_head_idle_up",
+    sheet_rows_cols: (1, 4),
+    target: 3,
+    is_row: false,
+    partial: None,
+)

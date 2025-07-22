@@ -33,6 +33,7 @@ pub fn spawn_player_beings(
             0.0,
         )),
         SpriteDatasChildrenStringIds::new(["humanhe0", "humanbo0"]),
+        
         SelfFaction(),
     ));
 }
@@ -68,37 +69,23 @@ pub fn force_z_index(mut query: Query<(&mut Transform, &GameZindex)>,) {
 }
 
 
-fn hit_detection(
-    mut commands: Commands,
-    being_query: Query<(Entity, &Transform), (Without<PhysicallyImmune>, With<Health>)>,
-    bullet_query: Query<&Transform, With<Bullet>>
-) {
-    for (entity, enemy_transform) in being_query.iter() {
-        for bullet_transform in bullet_query.iter() {
-            // Your collision check
-            if false {
-                commands.entity(entity).despawn();
-            }
-        }
-    }
-}
+// fn hit_detection(
+//     mut commands: Commands,
+//     being_query: Query<(Entity, &Transform), (Without<PhysicallyImmune>, With<Health>)>,
+//     bullet_query: Query<&Transform, With<Bullet>>
+// ) {
+//     for (entity, enemy_transform) in being_query.iter() {
+//         for bullet_transform in bullet_query.iter() {
+//             // Your collision check
+//             if false {
+//                 commands.entity(entity).despawn();
+//             }
+//         }
+//     }
+// }
 
 
 pub fn debug_system(mut commands: Commands, query: Query<(Entity, &Transform), With<Being>>, cam_query: Query<&Transform, With<Camera>>) {
    
     
 }
-
-
-// pub fn host_on_entity_spawned(
-//     mut commands: Commands,
-//     new_being: Query<Entity, Added<Ser>>,
-//     mut being_entity_map: ResMut<NidEntityMap>,
-    
-// ) {
-//     for entity in new_being.iter() {
-//         being_entity_map.new_entity(&mut commands, entity);
-        
-//         info!("New being spawned with entity: {:?}", entity);
-//     }
-// }

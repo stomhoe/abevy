@@ -1,10 +1,8 @@
-use bevy::{platform::{collections::HashMap, hash}, prelude::*};
+use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumCount;
-use vec_collections::VecSet;
 use superstate::{SuperstateInfo};
-use crate::{common::common_components::GameZindex, game::{game_components::Nid, player::player_components::CameraTarget, tilemap::chunking_components::ActivatesChunks}, AppState};
+use crate::{common::common_components::GameZindex, game::{tilemap::chunking_components::ActivatesChunks}, AppState};
 
 
 
@@ -16,6 +14,7 @@ pub struct Body {}
 #[derive(Component, Debug, Default)]//USADO TAMBIEN POR BOTS
 pub struct InputMoveDirection(pub Vec3);
 
+#[allow(dead_code)] 
 #[derive(Component, Debug)]
 pub struct RaceRef(pub Entity);
 
@@ -25,7 +24,7 @@ pub struct PlayerDirectControllable;
 
 #[derive(Component)]
 #[require(PlayerDirectControllable)]
-pub struct Free;
+pub struct AvailableForControl;
 
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[require(PlayerDirectControllable, Replicated)]
@@ -35,7 +34,7 @@ pub struct ControlledBy ( #[entities] pub Entity);
 pub struct ControlledBySelf;
 
 #[derive(Component, Debug, Deserialize, Serialize)]
-#[require(InputMoveDirection, GameZindex(500.), Replicated, Altitude)]
+#[require(InputMoveDirection, GameZindex(500.), Replicated, Altitude, Visibility)]
 pub struct Being;
 
 #[derive(Component)]
@@ -59,12 +58,6 @@ pub struct LearnableSkill {
 }
 
 
-#[derive(EnumCount)]
-pub enum BaseGenTemplsNids {
-    Raider = 0,
-    Miner,
-    Soldier,
-}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct Moving;

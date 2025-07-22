@@ -19,7 +19,7 @@ bevy = { version = "0.16.1", features = [
     "track_location",
     "serialize",
     "jpeg",
-    #"bevy_remote",
+    "bevy_remote",
     #.add_plugins(RemotePlugin::default()).add_plugins(RemoteHttpPlugin::default().with_port(port))
 ] }
 bevy_ecs_tilemap = { git = "https://github.com/zachrburke/bevy_ecs_tilemap.git" }
