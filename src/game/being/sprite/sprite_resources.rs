@@ -41,19 +41,30 @@ impl SpriteDataIdEntityMap {
             
             let spritedata_id = SpriteDataId::new(seri.id.clone());
             let path_holder = ImgPathHolder(path_str);
-            let category = Category::new(take(&mut seri.category), seri.shares_category);
+            let category: Category = Category::new(take(&mut seri.category));
             
             let atlas_data = AtlasLayoutData::new(seri.rows_cols, seri.frame_size);
+
+            let visib = match seri.visibility {
+                0 => Visibility::default(), // inherited
+                1 => Visibility::Visible,   // visible
+                2 => Visibility::Hidden,    // hidden
+                _ => {
+                    error!("Invalid visibility value: {}, falling back to inherited", seri.visibility);
+                    Visibility::default()
+                },
+            };
             
             let entity = cmd.spawn((
                 spritedata_id, 
                 path_holder,
                 category,
                 atlas_data,
-                
+                visib,
             )).id();
             
             let mut comps_to_build: OtherCompsToBuild = OtherCompsToBuild::default();
+
 
             if seri.name.is_empty() {
                 warn!("SpriteDataSeri name is empty");
@@ -63,6 +74,11 @@ impl SpriteDataIdEntityMap {
             }
 
             if seri.directionable {comps_to_build.directionable = Some(Directionable);}
+
+            if ! seri.parent_cat.is_empty() {
+                let to_become_child = ToBecomeChildOfCategory::new(take(&mut seri.parent_cat));
+                comps_to_build.to_become_child_of_category = Some(to_become_child);
+            }
 
             if ! seri.anim_prefix.is_empty() {
                 let anim_prefix = AnimationIdPrefix::new(take(&mut seri.anim_prefix));

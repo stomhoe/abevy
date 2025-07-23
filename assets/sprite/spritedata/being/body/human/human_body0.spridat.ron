@@ -15,6 +15,11 @@
     fly_anim_still: false,
     flip_horiz: 0,
     anim_prefix: "_body",
+    visibility: 0,
+    parent_cat: "",
+    offset_for_others: {
+        "head": (20.,0.)
+    },
     children_sprites: [],
     offset_down: None,
     offset_up: None,

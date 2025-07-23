@@ -57,7 +57,7 @@ pub struct RaceSeri {
     pub demonym: String,
     pub singular: String,
     pub plural: Option<String>,
-    pub sexes: Option<HashMap<SexId, u32>>,
+    pub sexes: HashMap<SexId, u32>,
     pub can_equip_tools: bool,
     pub sprite_pool: Vec<String>,
     pub selectable_sprites: Vec<String>,

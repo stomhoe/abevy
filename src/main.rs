@@ -1,6 +1,4 @@
 use bevy::prelude::*;
-use bevy::remote::http::RemoteHttpPlugin;
-use bevy::remote::RemotePlugin;
 use bevy::window::PrimaryWindow;
 // use bevy_renet::netcode::{NetcodeClientPlugin, NetcodeServerPlugin};
 // use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
@@ -21,8 +19,7 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins, 
-            RemotePlugin::default(),
-            RemoteHttpPlugin::default(),
+            //bevy::remote::RemotePlugin::default(), bevy::remote::http::RemoteHttpPlugin::default(),
             GamePlugin, 
             MenuPlugin, 
             MyUiPlugin,

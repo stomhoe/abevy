@@ -1,7 +1,11 @@
+use bevy::ecs::component;
 use bevy::math::{Vec2, Vec3, U16Vec2, UVec2};
+use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
 use crate::game::{being::sprite::{animation_constants::*, sprite_constants::* }, game_components::*};
 
@@ -16,6 +20,10 @@ impl AnimationIdPrefix {
         &self.0
     }
 }
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
+pub struct SpriteHolderRef(#[entities] pub Entity);
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize,)]
 //NO VA REPLICATED, SE HACE LOCALMENTE EN CADA PC SEGÚN LOS INPUTS RECIBIDOS DE OTROS PLAYERS
@@ -84,14 +92,17 @@ impl SpriteDataId {
 impl Into<String> for SpriteDataId {
     fn into(self) -> String {self.0}
 }
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct Scale(pub Vec2);
+impl Default for Scale {fn default() -> Self {Self(Vec2::ONE)}}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct ScaleLookUpDown(pub Vec2);
+impl Default for ScaleLookUpDown {fn default() -> Self {Self(Vec2::ONE)}}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct ScaleLookSideWays(pub Vec2);
+impl Default for ScaleLookSideWays {fn default() -> Self {Self(Vec2::ONE)}}
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
@@ -102,6 +113,7 @@ pub struct OtherCompsToBuild{
     pub walk_anim: Option<WalkAnim>,
     pub swim_anim: Option<SwimAnim>,
     pub fly_anim: Option<FlyAnim>,
+    pub to_become_child_of_category: Option<ToBecomeChildOfCategory>,
     pub offset: Option<Offset>,
     pub offset_looking_down: Option<OffsetLookDown>,
     pub offset_looking_up: Option<OffsetLookUp>,
@@ -141,12 +153,37 @@ pub struct OffsetLookRight(pub Vec2);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct OffsetLookLeft(pub Vec2);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct OffsetGivenByParent(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct Category { pub id: String, pub shared: bool, }
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct OffsetForChildren(pub HashMap<Category, Vec2>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct ToBecomeChildOfCategory (pub Category);
+impl ToBecomeChildOfCategory {
+    pub fn new<S: Into<String>>(id: S) -> Self {
+        Self(Category::new(id))
+    }
+    pub fn category(&self) -> &Category {
+        &self.0
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq, Hash,)]
+pub struct Category { pub id: u64, /*pub shared: bool,*/ }//importante: el equal tiene en cuenta el shared
 impl Category {
-    pub fn new<S: Into<String>>(id: S, shared: bool) -> Self {
-        Self { id: id.into(), shared }
+    pub fn new<S: Into<String>>(id: S, /*shared: bool*/) -> Self {
+        let id_str = id.into();
+        let mut hasher = DefaultHasher::new();
+        id_str.hash(&mut hasher);
+        Self { id: hasher.finish(), /*shared*/ }
+    }
+}
+
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Category({})", self.id)
     }
 }
 
@@ -184,7 +221,10 @@ pub struct SpriteDataSeri {
     pub fly_anim_still: bool,
     pub flip_horiz: u8, //0: none, 1: any, 2: if looking left, 3: if looking right
     pub anim_prefix: String,
-    pub children_sprites: Vec<String>,
+    pub visibility: u8, //0: inherited, 1: visible, 2: invisible
+    pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
+    pub offset_for_others: HashMap<String, [f32; 2]>,//category, offset
+    pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
     pub offset_down: Option<[f32; 2]>,
     pub offset_up: Option<[f32; 2]>,
     pub offset_sideways: Option<[f32; 2]>,

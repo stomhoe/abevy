@@ -46,8 +46,8 @@ impl RaceIdEntityMap {
                 selectable_sprites,
             )).id();
 
-            if let Some(map) = race_seri.sexes.take() {
-                cmd.entity(entity).insert(Sexes::new(map));
+            if ! race_seri.sexes.is_empty() {
+                cmd.entity(entity).insert(Sexes::new(take(&mut race_seri.sexes)));
             }
 
             self.map.insert(race_seri.id.clone(), entity);

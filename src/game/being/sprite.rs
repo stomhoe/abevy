@@ -32,7 +32,7 @@ impl Plugin for SpritePlugin {
             ))
             .add_systems(Update, (
                 (animate_sprite, change_anim_state_string, apply_offsets, apply_scales, add_spritechildren_and_comps).in_set(SpriteSystemsSet).in_set(IngameSystems),
-                replace_string_ids_by_entities.in_set(SpriteSystemsSet).run_if(
+                (replace_string_ids_by_entities, become_child_of_sprite_with_category).in_set(SpriteSystemsSet).run_if(
                     in_state(AssetLoadingState::Complete)
                 )
             ))

@@ -6,10 +6,10 @@
     description: "Humans are known for their versatility, adaptability, and resilience, thriving in diverse environments and excelling in a wide range of skills.",
     demonym: "human",
     singular: "human",  plural: Some("humans"),
-    sexes: Some({
+    sexes: {
         "male": 1,
         "female": 1,
-    }),
+    },
     can_equip_tools: true,
     sprite_pool: ["human_body0", "human_head0"],
     selectable_sprites: ["human_body0", "human_head0"],
