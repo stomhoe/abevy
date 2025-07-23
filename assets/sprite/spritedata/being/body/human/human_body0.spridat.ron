@@ -17,7 +17,7 @@
     anim_prefix: "_body",
     visibility: 0,
     parent_cat: "",
-    offset_for_others: {
+    offset_children: {
         "head": (20.,0.)
     },
     children_sprites: [],

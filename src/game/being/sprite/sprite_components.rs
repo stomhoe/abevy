@@ -113,6 +113,7 @@ pub struct OtherCompsToBuild{
     pub walk_anim: Option<WalkAnim>,
     pub swim_anim: Option<SwimAnim>,
     pub fly_anim: Option<FlyAnim>,
+    pub offset_children: Option<OffsetForChildren>,
     pub to_become_child_of_category: Option<ToBecomeChildOfCategory>,
     pub offset: Option<Offset>,
     pub offset_looking_down: Option<OffsetLookDown>,
@@ -165,9 +166,7 @@ impl ToBecomeChildOfCategory {
     pub fn new<S: Into<String>>(id: S) -> Self {
         Self(Category::new(id))
     }
-    pub fn category(&self) -> &Category {
-        &self.0
-    }
+    pub fn category(&self) -> &Category {&self.0}
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq, Hash,)]
@@ -223,7 +222,7 @@ pub struct SpriteDataSeri {
     pub anim_prefix: String,
     pub visibility: u8, //0: inherited, 1: visible, 2: invisible
     pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
-    pub offset_for_others: HashMap<String, [f32; 2]>,//category, offset
+    pub offset_children: HashMap<String, [f32; 2]>,//category, offset
     pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
     pub offset_down: Option<[f32; 2]>,
     pub offset_up: Option<[f32; 2]>,

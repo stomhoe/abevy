@@ -26,15 +26,15 @@ pub fn init_sprites(
 
 #[allow(unused_parens)]
 pub fn apply_scales(mut query: Query<(
-        &ChildOf, &mut Sprite, &mut Transform,
+        &SpriteHolderRef, &mut Sprite, &mut Transform,
         Option<&FlipHorizIfDir>,
         Option<&Scale>, Option<&ScaleLookUpDown>, Option<&ScaleLookSideWays>,
     ),>, parent_query: Query<Option<&FacingDirection>>, ) {
     for (
-        child_of, mut sprite, mut transform, flip_horiz_if_dir,
+        spriteholder, mut sprite, mut transform, flip_horiz_if_dir,
         scale, scale_look_up_down, scale_look_sideways,
     ) in query.iter_mut() {
-        if let Ok(direction) = parent_query.get(child_of.parent()) {
+        if let Ok(direction) = parent_query.get(spriteholder.0) {
             if let Some(dir) = direction {
                 match dir {
                     FacingDirection::Left => {
@@ -94,7 +94,7 @@ pub fn apply_scales(mut query: Query<(
 
 pub fn apply_offsets(
     mut query: Query<(
-        &ChildOf, &mut Transform,
+        &SpriteHolderRef, &mut Transform,
         Option<&Offset>, Option<&OffsetGivenByParent>,
         Option<&OffsetLookUpDown>, Option<&OffsetLookDown>, Option<&OffsetLookUp>,
         Option<&OffsetLookSideways>, Option<&OffsetLookLeft>, Option<&OffsetLookRight>,
@@ -102,13 +102,13 @@ pub fn apply_offsets(
     parent_query: Query<Option<&FacingDirection>>,
 ) {
     for (
-        child_of,
+        spriteholder,
         mut transform,
         offset, offset_given_by_parent,
         offset_look_up_down, offset_look_down, offset_look_up,
         offset_look_sideways, offset_look_left, offset_look_right,
     ) in query.iter_mut() {
-        if let Ok(direction) = parent_query.get(child_of.parent()) {
+        if let Ok(direction) = parent_query.get(spriteholder.0) {
             let mut total_offset = Vec3::ZERO;
             if let Some(dir) = direction {
                 match dir {
@@ -219,14 +219,24 @@ pub fn add_spritechildren_and_comps(
                     cat.clone(),
                 )).id();
 
-                if let Some(spriteholder) = spriteholder_ref {
-                    cmd.entity(child_sprite).insert(spriteholder.clone());
-                } else{
+                if let Some(spriteholder_ref) = spriteholder_ref {
+                    info!(
+                        "Inserting SpriteHolderRef for child sprite: {:?}, spritedata id: {}",
+                        child_sprite, sprite_data_id.id()
+                    );
+                    cmd.entity(child_sprite).insert(spriteholder_ref.clone());
+                } else {
+                    info!(
+                        "Inserting b SpriteHolderRef for child sprite: {:?}, spritedata id: {}",
+                        child_sprite, sprite_data_id.id()
+                    );
                     cmd.entity(child_sprite).insert(SpriteHolderRef(father_to_sprite));
                 }
-
                 if let Some(refs) = children_refs {
                     cmd.entity(child_sprite).insert(refs.clone());
+                }
+                if let Some(offset_children) = &comps_to_build.offset_children {
+                    cmd.entity(child_sprite).insert(offset_children.clone());
                 }
                 if let Some(to_become) = &comps_to_build.to_become_child_of_category {
                     cmd.entity(child_sprite).insert(to_become.clone());
@@ -294,12 +304,12 @@ pub fn add_spritechildren_and_comps(
 }
 
 #[allow(unused_parens)]
-pub fn become_child_of_sprite_with_category(mut cmd: Commands, mut to_become_child: Query<(Entity, &ChildOf, &Category, &ToBecomeChildOfCategory),(With<Sprite>, Without<SpriteDataId>)>, 
-mut to_parent: Query<(Entity, &SpriteHolderRef, &Category, Option<&OffsetForChildren>), (With<Sprite>,)>,
+pub fn become_child_of_sprite_with_category(mut cmd: Commands, mut to_become_child: Query<(Entity, &SpriteHolderRef, &Category, &ToBecomeChildOfCategory),(With<Sprite>, Without<SpriteDataId>)>, 
+to_become_parent: Query<(Entity, &SpriteHolderRef, &Category, Option<&OffsetForChildren>), (With<Sprite>,)>,
 ) {
-    for (tochild_ent, child_of, cat, child_of_cat) in to_become_child.iter_mut() {
-        for (toparent_ent, SpriteHolderRef(spriteholder), parents_cat, offset_children) in to_parent.iter_mut() {
-            if child_of.parent() == *spriteholder && child_of_cat.0 == *parents_cat {
+    for (tochild_ent, SpriteHolderRef(tochild_spriteholder), cat, child_of_cat) in to_become_child.iter_mut() {
+        for (toparent_ent, SpriteHolderRef(toparent_spriteholder), parents_cat, offset_children) in to_become_parent.iter() {
+            if tochild_spriteholder == toparent_spriteholder && child_of_cat.0 == *parents_cat {
                 info!("Adding ChildOfCategory to entity {:?} with id: {}", tochild_ent, cat);
 
                 cmd.entity(tochild_ent).insert(ChildOf(toparent_ent));

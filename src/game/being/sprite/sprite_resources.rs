@@ -89,6 +89,14 @@ impl SpriteDataIdEntityMap {
                 let children_sprites = SpriteDatasChildrenStringIds(take(&mut seri.children_sprites));
                 cmd.entity(entity).insert(children_sprites);
             }
+
+            if ! seri.offset_children.is_empty(){
+                let mut offset_children = OffsetForChildren::default();
+                for (cat, offset_arr) in take(&mut seri.offset_children) {
+                    offset_children.0.insert(Category::new(cat), Vec2::from_array(offset_arr));
+                }
+                comps_to_build.offset_children = Some(offset_children);
+            }
             
             if let Some(color) = seri.color {
                 let (red, green, blue, alpha) = color.into();

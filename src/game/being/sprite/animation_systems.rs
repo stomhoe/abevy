@@ -6,13 +6,6 @@ use bevy_spritesheet_animation::prelude::*;
 
 use crate::game::{being::{being_components::{Altitude, Moving}, sprite::{animation_constants::*, animation_resources::*, sprite_components::*, sprite_constants::* }}, game_components::FacingDirection,};
 
-pub fn prepend_body_to_string(
-    prefix: &str, 
-    body: &str,
-) -> String {
- 
-    format!("{}{}", prefix, body)
-}
 
 #[allow(unused_parens)]
 pub fn init_animations(
@@ -61,19 +54,18 @@ pub fn init_animations(
 #[allow(unused_parens)]
 pub fn change_anim_state_string(
     mut sprite_query: Query<(
-            &ChildOf, &mut AnimationState,
+            &SpriteHolderRef, &mut AnimationState,
             Option<&WalkAnim>, Option<&FlyAnim>, Option<&SwimAnim>,
-            Option<&AnimationIdPrefix>,
+            //Option<&AnimationIdPrefix>,
         ), (Without<ExcludedFromBaseAnimPickingSystem>)>,
     parents_query: Query<(Option<&Moving>, &Altitude),>,
 ) {
-    for (child_of, mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, prefix) in sprite_query.iter_mut() {
-        if let Ok((moving, curr_parent_altitude)) = parents_query.get(child_of.parent()) {
+    for (sprite_holder, mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, ) in sprite_query.iter_mut() {
+        if let Ok((moving, curr_parent_altitude)) = parents_query.get(sprite_holder.0) {
             match (moving, curr_parent_altitude, has_walk_anim, has_swim_anim, has_fly_anim) {
                 (_any_move, _any_alti, None, None, None) => {
                     anim_state.set_idle();
-                    let prefix_str = prefix.map_or("", |p| p.0.as_str());
-                    info!(" prefix '{}', setting to idle.", prefix_str);    },
+                },
                 (Some(_move), Altitude::OnGround, Some(_), _, _) => {
                     anim_state.set_walk();
                 },
@@ -132,13 +124,13 @@ pub fn animate_sprite(
         Option<&AnimationIdPrefix>,
         Option<&AnimationState>,
         Option<&Directionable>,
-        &ChildOf,
+        &SpriteHolderRef,
     ), With<Sprite>>,
     parents: Query<(Option<&FacingDirection>, )>,
     library: Res<AnimationLibrary>,
 ) {
-    for (ent, sheet_anim, prefix, anim_state, directionable, child_of) in query.iter_mut() {
-        if let Ok(direction) = parents.get(child_of.parent()) {
+    for (ent, sheet_anim, prefix, anim_state, directionable, spriteholder_ref) in query.iter_mut() {
+        if let Ok(direction) = parents.get(spriteholder_ref.0) {
             
             let prefix = prefix.as_ref().map_or("", |p| p.0.as_str());
             let anim_state = anim_state.as_ref().map_or("", |s| s.0.as_str());
@@ -146,7 +138,6 @@ pub fn animate_sprite(
                 .and_then(|_| direction.0.map(|dir| dir.as_suffix()))
                 .unwrap_or("");
             let animation_name = format!("{}{}{}", prefix, anim_state, direction_str);
-            info!("Entity {:?} animation name: {}", ent, animation_name);
 
             if let Some(animation_id) = library.animation_with_name(animation_name.clone()) {
                 if let Some(mut sheet_anim) = sheet_anim {
@@ -160,7 +151,7 @@ pub fn animate_sprite(
             }
             else{
                 commands.entity(ent).remove::<SpritesheetAnimation>();
-                warn!("Animation with name '{}' not found in library.", animation_name);
+                //warn!("Animation with name '{}' not found in library.", animation_name);
             }
         }
     }
