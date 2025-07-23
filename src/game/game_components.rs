@@ -1,7 +1,10 @@
+use std::default;
+
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 use superstate::SuperstateInfo;
+use rand::Rng;
 
 use crate::game::being::sprite::animation_constants::*;
 
@@ -49,15 +52,46 @@ impl Description {
     pub fn new<S: Into<String>>(id: S) -> Self {Self (id.into())}
     pub fn id(&self) -> &String {&self.0}
 }
-
 #[allow(unused_parens, dead_code)]
-#[derive(Component)]
-pub enum FacingDirection{Down, Left, Right, Up,}
+#[derive(Component, Debug, Deserialize, Serialize, )]
+pub enum FacingDirection { Down, Left, Right, Up, }
+
 impl FacingDirection {
     pub fn as_suffix(&self) -> &str {
         match self {
-            FacingDirection::Down => DOWN, FacingDirection::Left => LEFT,
-            FacingDirection::Right => RIGHT, FacingDirection::Up => UP,
+            FacingDirection::Down => DOWN,
+            FacingDirection::Left => LEFT,
+            FacingDirection::Right => RIGHT,
+            FacingDirection::Up => UP,
         }
+    }
+}
+
+impl std::fmt::Display for FacingDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            FacingDirection::Down => "down",
+            FacingDirection::Left => "left",
+            FacingDirection::Right => "right",
+            FacingDirection::Up => "up",
+        };
+        write!(f, "{}", s)
+    }
+}
+impl FacingDirection {
+    pub fn random() -> Self {
+        let mut rng = rand::rng();
+        match rng.random_range(0..4) {
+            0 => FacingDirection::Down,
+            1 => FacingDirection::Left,
+            2 => FacingDirection::Right,
+            _ => FacingDirection::Up,
+        }
+    }
+}
+
+impl Default for FacingDirection {
+    fn default() -> Self {
+        FacingDirection::random()
     }
 }

@@ -151,7 +151,7 @@ pub fn animate_sprite(
             }
             else{
                 commands.entity(ent).remove::<SpritesheetAnimation>();
-                //warn!("Animation with name '{}' not found in library.", animation_name);
+                warn!("Animation with name '{}' not found in library.", animation_name);
             }
         }
     }

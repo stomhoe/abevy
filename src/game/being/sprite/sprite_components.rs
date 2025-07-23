@@ -154,8 +154,6 @@ pub struct OffsetLookRight(pub Vec2);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct OffsetLookLeft(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct OffsetGivenByParent(pub Vec2);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct OffsetForChildren(pub HashMap<Category, Vec2>);
@@ -207,8 +205,10 @@ pub struct SpriteDataSeri {
     pub id: String,
     pub name: String,
     pub path: String,
+    pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
     pub category: String,
-    pub shares_category: bool,
+    pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
+    pub shares_category: bool,//asignar un componente
     pub rows_cols: [u32; 2], 
     pub frame_size: [u32; 2],
     pub offset: [f32; 3],
@@ -221,9 +221,7 @@ pub struct SpriteDataSeri {
     pub flip_horiz: u8, //0: none, 1: any, 2: if looking left, 3: if looking right
     pub anim_prefix: String,
     pub visibility: u8, //0: inherited, 1: visible, 2: invisible
-    pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
     pub offset_children: HashMap<String, [f32; 2]>,//category, offset
-    pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
     pub offset_down: Option<[f32; 2]>,
     pub offset_up: Option<[f32; 2]>,
     pub offset_sideways: Option<[f32; 2]>,

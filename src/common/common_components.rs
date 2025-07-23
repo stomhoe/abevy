@@ -8,4 +8,4 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Component, Debug,)]
-pub struct GameZindex(pub f32);
+pub struct GameZindex(pub i32);

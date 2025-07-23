@@ -62,7 +62,7 @@ pub fn toggle_simulation(
 
 pub fn force_z_index(mut query: Query<(&mut Transform, &GameZindex)>,) {
     for (mut transform, z_index) in query.iter_mut() {
-        transform.translation.z = (z_index.0) as f32;
+        transform.translation.z = z_index.0 as f32 * 1e-9;
         //println!("transform {}", transform.translation);
     }
 }

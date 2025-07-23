@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 
-use crate::game::{being::sprite::{self, sprite_components::*, sprite_resources::*}, game_components::{FacingDirection, ImgPathHolder}};
+use crate::game::{being::sprite::{sprite_components::*, sprite_resources::*}, game_components::{FacingDirection, ImgPathHolder}};
 
 #[allow(unused_parens)]
 pub fn init_sprites(
@@ -11,9 +11,7 @@ pub fn init_sprites(
     mut assets: ResMut<Assets<SpriteDataSeri>>,
     mut strid_ent_map: ResMut<SpriteDataIdEntityMap>,
 ) {
-    let handles_vec = std::mem::take(&mut seris_handles.handles);
-    
-    for handle in handles_vec {
+    for handle in std::mem::take(&mut seris_handles.handles) {
         info!("Loading SpriteDataSeri from handle: {:?}", handle);
         strid_ent_map.new_spritedata_from_seri(&mut cmd, handle, &mut assets);
     }
@@ -92,19 +90,20 @@ pub fn apply_scales(mut query: Query<(
     }
 }
 
+#[allow(unused_parens, )]
 pub fn apply_offsets(
     mut query: Query<(
-        &SpriteHolderRef, &mut Transform,
-        Option<&Offset>, Option<&OffsetGivenByParent>,
+        &SpriteHolderRef, &ChildOf, &mut Transform, &Category,
+        Option<&Offset>, 
         Option<&OffsetLookUpDown>, Option<&OffsetLookDown>, Option<&OffsetLookUp>,
         Option<&OffsetLookSideways>, Option<&OffsetLookLeft>, Option<&OffsetLookRight>,
     ),>,
+    parent_sprite_query: Query<(Option<&OffsetForChildren>), (With<Sprite>)>,
     parent_query: Query<Option<&FacingDirection>>,
 ) {
     for (
-        spriteholder,
-        mut transform,
-        offset, offset_given_by_parent,
+        spriteholder, child_of, mut transform, cat,
+        offset, 
         offset_look_up_down, offset_look_down, offset_look_up,
         offset_look_sideways, offset_look_left, offset_look_right,
     ) in query.iter_mut() {
@@ -149,9 +148,14 @@ pub fn apply_offsets(
             if let Some(offset) = offset {
                 total_offset += offset.0;
             }
-            if let Some(offset_given_by_parent) = offset_given_by_parent {
-                total_offset += offset_given_by_parent.0.extend(0.);
+
+            if let Ok(Some(OffsetForChildren(map))) = parent_sprite_query.get(child_of.parent()) {
+                if map.contains_key(cat) {
+                    total_offset += map[cat].extend(0.);
+                } 
             }
+            total_offset.z *= 1e17;
+
             transform.translation = total_offset / 1.;
         }
     }
@@ -188,10 +192,7 @@ pub fn add_spritechildren_and_comps(
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut father_query: Query<(Entity, &SpriteDatasChildrenRefs, Option<&SpriteHolderRef>,), Without<SpriteDataId>>,
     spritedatas_query: Query<(
-        &ImgPathHolder,
-        &AtlasLayoutData,
-        &Category,
-        &OtherCompsToBuild,
+        &ImgPathHolder, &AtlasLayoutData, &Category, &OtherCompsToBuild,
         Option<&SpriteDatasChildrenRefs>,
         &SpriteDataId,
     ), With<SpriteDataId>>,
@@ -220,16 +221,8 @@ pub fn add_spritechildren_and_comps(
                 )).id();
 
                 if let Some(spriteholder_ref) = spriteholder_ref {
-                    info!(
-                        "Inserting SpriteHolderRef for child sprite: {:?}, spritedata id: {}",
-                        child_sprite, sprite_data_id.id()
-                    );
                     cmd.entity(child_sprite).insert(spriteholder_ref.clone());
                 } else {
-                    info!(
-                        "Inserting b SpriteHolderRef for child sprite: {:?}, spritedata id: {}",
-                        child_sprite, sprite_data_id.id()
-                    );
                     cmd.entity(child_sprite).insert(SpriteHolderRef(father_to_sprite));
                 }
                 if let Some(refs) = children_refs {
@@ -305,23 +298,15 @@ pub fn add_spritechildren_and_comps(
 
 #[allow(unused_parens)]
 pub fn become_child_of_sprite_with_category(mut cmd: Commands, mut to_become_child: Query<(Entity, &SpriteHolderRef, &Category, &ToBecomeChildOfCategory),(With<Sprite>, Without<SpriteDataId>)>, 
-to_become_parent: Query<(Entity, &SpriteHolderRef, &Category, Option<&OffsetForChildren>), (With<Sprite>,)>,
+to_become_parent: Query<(Entity, &SpriteHolderRef, &Category, ), (With<Sprite>,)>,
 ) {
     for (tochild_ent, SpriteHolderRef(tochild_spriteholder), cat, child_of_cat) in to_become_child.iter_mut() {
-        for (toparent_ent, SpriteHolderRef(toparent_spriteholder), parents_cat, offset_children) in to_become_parent.iter() {
+        for (toparent_ent, SpriteHolderRef(toparent_spriteholder), parents_cat, ) in to_become_parent.iter() {
             if tochild_spriteholder == toparent_spriteholder && child_of_cat.0 == *parents_cat {
                 info!("Adding ChildOfCategory to entity {:?} with id: {}", tochild_ent, cat);
 
                 cmd.entity(tochild_ent).insert(ChildOf(toparent_ent));
                 cmd.entity(tochild_ent).remove::<ToBecomeChildOfCategory>();
-
-                if let Some(OffsetForChildren(offset_map))  = offset_children {
-                    if offset_map.contains_key(cat) {
-                        cmd.entity(tochild_ent).insert(OffsetGivenByParent(offset_map[cat]));
-                    } else {
-                        warn!("OffsetForChildren does not contain offset for category: {}", cat);
-                    }
-                } 
 
                 break;
             }

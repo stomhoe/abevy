@@ -18,14 +18,13 @@ pub enum AppState {#[default]PreGame, StatefulGameSession, }
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins, 
+            DefaultPlugins.set(ImagePlugin::default_nearest()),
             //bevy::remote::RemotePlugin::default(), bevy::remote::http::RemoteHttpPlugin::default(),
             GamePlugin, 
             MenuPlugin, 
             MyUiPlugin,
             
         ))
-      
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)
         .run()

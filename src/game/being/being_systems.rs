@@ -40,31 +40,27 @@ pub fn handle_movement(
 //                                                       ^^^^
 #[allow(unused_parens)]
 pub fn update_direction(
-    mut cmd: Commands,
-    mut query: Query<(Entity, &InputMoveDirection, Option<&mut FacingDirection>), >
+    mut query: Query<(&InputMoveDirection, &mut FacingDirection), >
 ) {
-    for (ent, InputMoveDirection(inp_vec), facing_dir) in query.iter_mut() {
+    for (InputMoveDirection(inp_vec), mut facing_dir) in query.iter_mut() {
 
-            if inp_vec.xy() == Vec2::ZERO {continue;}
-            
-            let new_facing_dir = if inp_vec.x.abs() > inp_vec.y.abs() {
-                if inp_vec.x < 0.0 {
-                    FacingDirection::Left
-                } else {
-                    FacingDirection::Right
-                }
-            } else {
-                if inp_vec.y < 0.0 {
-                    FacingDirection::Down
-                } else {
-                    FacingDirection::Up
-                }
-            };
-
-        if let Some(mut current_facing_dir) = facing_dir {
-            *current_facing_dir = new_facing_dir;
-        } else {
-            cmd.entity(ent).insert(new_facing_dir);
+        if inp_vec.xy() == Vec2::ZERO {
+            continue;
         }
+        
+        let new_facing_dir = if inp_vec.x.abs() > inp_vec.y.abs() {
+            if inp_vec.x < 0.0 {
+                FacingDirection::Left
+            } else {
+                FacingDirection::Right
+            }
+        } else {
+            if inp_vec.y <= 0.0 {
+                FacingDirection::Down
+            } else {
+                FacingDirection::Up
+            }
+        };
+        *facing_dir = new_facing_dir;
     }
 }
