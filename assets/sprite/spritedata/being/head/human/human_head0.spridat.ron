@@ -6,7 +6,7 @@
     shares_category: false,
     rows_cols: (1, 4),
     frame_size: (17, 16),
-    offset: (0.0, 0.0, 0.0),
+    offset: (0.0, 20.0, 20.0),
     directionable: true,
     walk_anim: false,
     swim_anim: false,

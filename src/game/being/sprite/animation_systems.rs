@@ -61,18 +61,19 @@ pub fn init_animations(
 #[allow(unused_parens)]
 pub fn change_anim_state_string(
     mut sprite_query: Query<(
-            &mut AnimationState,
+            &ChildOf, &mut AnimationState,
             Option<&WalkAnim>, Option<&FlyAnim>, Option<&SwimAnim>,
-            &ChildOf
+            Option<&AnimationIdPrefix>,
         ), (Without<ExcludedFromBaseAnimPickingSystem>)>,
     parents_query: Query<(Option<&Moving>, &Altitude),>,
 ) {
-    for (mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, child_of ) in sprite_query.iter_mut() {
+    for (child_of, mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, prefix) in sprite_query.iter_mut() {
         if let Ok((moving, curr_parent_altitude)) = parents_query.get(child_of.parent()) {
             match (moving, curr_parent_altitude, has_walk_anim, has_swim_anim, has_fly_anim) {
                 (_any_move, _any_alti, None, None, None) => {
                     anim_state.set_idle();
-                },
+                    let prefix_str = prefix.map_or("", |p| p.0.as_str());
+                    info!(" prefix '{}', setting to idle.", prefix_str);    },
                 (Some(_move), Altitude::OnGround, Some(_), _, _) => {
                     anim_state.set_walk();
                 },
@@ -145,6 +146,7 @@ pub fn animate_sprite(
                 .and_then(|_| direction.0.map(|dir| dir.as_suffix()))
                 .unwrap_or("");
             let animation_name = format!("{}{}{}", prefix, anim_state, direction_str);
+            info!("Entity {:?} animation name: {}", ent, animation_name);
 
             if let Some(animation_id) = library.animation_with_name(animation_name.clone()) {
                 if let Some(mut sheet_anim) = sheet_anim {

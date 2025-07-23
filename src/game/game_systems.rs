@@ -1,5 +1,4 @@
 use bevy::asset::AssetServer;
-use bevy::ecs::world::OnDespawn;
 use bevy::input::ButtonInput;
 use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
@@ -32,7 +31,7 @@ pub fn spawn_player_beings(
             window.height() / 2.0,
             0.0,
         )),
-        SpriteDatasChildrenStringIds::new(["humanhe0", "humanbo0"]),
+        SpriteDatasChildrenStringIds::new(["humanhe0", ]),//"humanbo0"]),
         
         SelfFaction(),
     ));

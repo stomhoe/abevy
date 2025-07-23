@@ -203,7 +203,7 @@ pub fn add_spritechildren_and_comps(
                 let frame_size = atlas_layout_data.frame_size;
 
                 let atlas = TextureAtlas {
-                    layout: atlas_layouts.add(Spritesheet::new(spritesheet_size.x as usize, spritesheet_size.y as usize).atlas_layout(frame_size.x, frame_size.y)),
+                    layout: atlas_layouts.add(Spritesheet::new(spritesheet_size.y as usize, spritesheet_size.x as usize).atlas_layout(frame_size.x, frame_size.y)),
                     ..default()
                 };
 
