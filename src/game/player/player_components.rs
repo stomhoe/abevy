@@ -30,3 +30,7 @@ pub struct HostPlayer;
 #[derive(Component, Default)] 
 #[require(Transform)]
 pub struct CameraTarget;
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
+pub struct CreatedCharacter(pub Entity);

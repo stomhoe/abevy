@@ -3,6 +3,7 @@
     name: "Human Body 0",
     path: "being/body/human/male.png",
     category: "body",
+    exclusive: true,
     shares_category: false,
     rows_cols: (4, 6),
     frame_size: (25, 45),

@@ -65,6 +65,7 @@ impl SpriteDataIdEntityMap {
             
             let mut comps_to_build: OtherCompsToBuild = OtherCompsToBuild::default();
 
+            if seri.exclusive { comps_to_build.exclusive = Some(Exclusive); }
 
             if seri.name.is_empty() {
                 warn!("SpriteDataSeri name is empty");
@@ -81,13 +82,11 @@ impl SpriteDataIdEntityMap {
             }
 
             if ! seri.anim_prefix.is_empty() {
-                let anim_prefix = AnimationIdPrefix::new(take(&mut seri.anim_prefix));
-                comps_to_build.anim_prefix = Some(anim_prefix);
+                comps_to_build.anim_prefix = Some(AnimationIdPrefix::new(take(&mut seri.anim_prefix)));
             }
             
             if ! seri.children_sprites.is_empty(){
-                let children_sprites = SpriteDatasChildrenStringIds(take(&mut seri.children_sprites));
-                cmd.entity(entity).insert(children_sprites);
+                cmd.entity(entity).insert(SpriteDatasChildrenStringIds(take(&mut seri.children_sprites)));
             }
 
             if ! seri.offset_children.is_empty(){

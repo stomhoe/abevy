@@ -4,33 +4,52 @@ use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use crate::common::common_components::GameZindex;
-use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, };
+use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, TargetSpawnPos, };
 use crate::game::being::sprite::sprite_components::SpriteDatasChildrenStringIds;
 use crate::game::faction::faction_components::SelfFaction;
 use crate::game::game_components::*;
 use crate::game::game_resources::*;
-use crate::game::player::player_components::{CameraTarget, Player, SelfPlayer};
+use crate::game::player::player_components::{CameraTarget, CreatedCharacter, Player, SelfPlayer};
 use crate::game::{SimulationState};
+
+#[allow(unused_parens)]
+pub fn placeholder_character_creation(mut cmd: Commands, mut query: Query<(),(With<Player>)>) {
+}
+
 
 pub fn spawn_player_beings(
     mut commands: Commands,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    self_player: Single<Entity, With<SelfPlayer>>,
-    asset_server: Res<AssetServer>,
+    players: Query<(Entity, &CreatedCharacter, Option<&SelfPlayer>), (With<Player>)>,
 ) {
-    let window = window_query.single().unwrap();
-    println!("Spawning player beings at window size");
+
+    for (player_ent, created_character, self_player) in players.iter() {
+        println!("Spawning player being: {:?}", created_character);
+
+        commands.entity(created_character.0).remove::<ChildOf>();
+
+
+        commands.entity(created_character.0).insert((
+            ControlledBy(player_ent),
+            PlayerDirectControllable,
+            TargetSpawnPos::new(0.0, 0.0),
+            //HACER Q OTRO SYSTEMA AGREGUE CAMERATARGET AL BEING CONTROLADO
+        ));
+
+        if self_player.is_some() {
+            
+
+        } 
+
+        commands.entity(player_ent).remove::<CreatedCharacter>();
+    }
 
     commands.spawn((
         Being,
-        PlayerDirectControllable,
-        ControlledBy(*self_player),
-        CameraTarget,
-        Transform::from_translation(Vec3::new(
-            window.width() / 2.0,
-            window.height() / 2.0,
-            0.0,
-        )),
+        // Transform::from_translation(Vec3::new(//USAR ESTO PARA MOSTRAR EL PERSONAJE EN UNA UI DE CREACION
+        //     window.width() / 2.0,
+        //     window.height() / 2.0,
+        //     0.0,
+        // )),
         SpriteDatasChildrenStringIds::new(["humanhe0", "humanbo0"]),
         
         SelfFaction(),
@@ -87,4 +106,7 @@ pub fn force_z_index(mut query: Query<(&mut Transform, &GameZindex)>,) {
 pub fn debug_system(mut commands: Commands, query: Query<(Entity, &Transform), With<Being>>, cam_query: Query<&Transform, With<Camera>>) {
    
     
+}
+pub fn tick_time_based_multipliers(mut cmd: Commands, time: Res<Time>, mut query: Query<&mut TimeBasedMultiplier>) {
+    for mut multiplier in query.iter_mut() { multiplier.timer.tick(time.delta()); }
 }

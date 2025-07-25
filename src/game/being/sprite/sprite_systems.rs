@@ -33,11 +33,13 @@ pub fn apply_scales(mut query: Query<(
         scale, scale_look_up_down, scale_look_sideways,
     ) in query.iter_mut() {
         if let Ok(direction) = parent_query.get(spriteholder.0) {
+            let mut total_scale = Vec3::ONE;
+
             if let Some(dir) = direction {
                 match dir {
                     FacingDirection::Left => {
                         if let Some(scale_look_sideways) = scale_look_sideways {
-                            transform.scale = scale_look_sideways.0.extend(0.);
+                            total_scale *= scale_look_sideways.0.extend(0.);
                         }
                         if let Some(flip_horiz) = flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -49,7 +51,7 @@ pub fn apply_scales(mut query: Query<(
                     },
                     FacingDirection::Right => {
                         if let Some(scale_look_sideways) = scale_look_sideways {
-                            transform.scale = scale_look_sideways.0.extend(0.);
+                            total_scale *= scale_look_sideways.0.extend(0.);
                         }
                         if let Some(flip_horiz) = flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -61,7 +63,7 @@ pub fn apply_scales(mut query: Query<(
                     },
                     FacingDirection::Up => {
                         if let Some(scale_look_up_down) = scale_look_up_down {
-                            transform.scale = scale_look_up_down.0.extend(0.);
+                            total_scale *= scale_look_up_down.0.extend(0.);
                         }
                         if let Some(flip_horiz) = flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -72,7 +74,7 @@ pub fn apply_scales(mut query: Query<(
                     },
                     FacingDirection::Down => {
                         if let Some(scale_look_up_down) = scale_look_up_down {
-                            transform.scale = scale_look_up_down.0.extend(0.);
+                            total_scale *= scale_look_up_down.0.extend(0.);
                         }
                         if let Some(flip_horiz) = flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -84,8 +86,9 @@ pub fn apply_scales(mut query: Query<(
                 }
             }
             if let Some(scale) = scale {
-                transform.scale = scale.0.extend(0.);
+                total_scale *= scale.0.extend(0.);
             }
+            transform.scale = total_scale;
         }
     }
 }
@@ -164,21 +167,25 @@ pub fn apply_offsets(
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
     mut cmd: Commands,
-    mut query: Query<(Entity, &SpriteDatasChildrenStringIds), (Added<SpriteDatasChildrenStringIds>)>,
+    mut query: Query<(Entity, &SpriteDatasChildrenStringIds, Option<&mut SpriteDatasChildrenRefs>), (Added<SpriteDatasChildrenStringIds>)>,
     map: Res<SpriteDataIdEntityMap>,
 ) {
-    for (ent, string_ids) in query.iter_mut() {
-        let mut entities: Vec<Entity> = Vec::new();
+    for (ent, string_ids, children_refs) in query.iter_mut() {
+        let mut entities_vec = if let Some(children_refs) = children_refs {
+            std::mem::take(&mut children_refs.into_inner().0)
+        } else {
+            Vec::new()
+        };
         for id in &string_ids.0 {
             if let Some(sprite_ent) = map.get_entity(id) {
                 info!("Replacing string id '{}' with entity {:?}", id, sprite_ent);
-                entities.push(sprite_ent);
+                entities_vec.push(sprite_ent);
             } else {
                 warn!("SpriteDataIdEntityMap does not contain entity for id: {}", id);
             }
         }
-        if !entities.is_empty() {
-            cmd.entity(ent).insert(SpriteDatasChildrenRefs(entities));
+        if ! entities_vec.is_empty() {
+            cmd.entity(ent).insert(SpriteDatasChildrenRefs(entities_vec));
         }
         cmd.entity(ent).remove::<SpriteDatasChildrenStringIds>();
     }
@@ -228,6 +235,10 @@ pub fn add_spritechildren_and_comps(
                 if let Some(refs) = children_refs {
                     cmd.entity(child_sprite).insert(refs.clone());
                 }
+                if let Some(excl) = &comps_to_build.exclusive {
+                    cmd.entity(child_sprite).insert(excl.clone());
+                }
+
                 if let Some(offset_children) = &comps_to_build.offset_children {
                     cmd.entity(child_sprite).insert(offset_children.clone());
                 }

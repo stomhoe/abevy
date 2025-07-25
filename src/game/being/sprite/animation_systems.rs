@@ -4,7 +4,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 
-use crate::game::{being::{being_components::{Altitude, Moving}, sprite::{animation_constants::*, animation_resources::*, sprite_components::*, sprite_constants::* }}, game_components::FacingDirection,};
+use crate::game::{being::{movement::movement_components::*, sprite::{animation_constants::*, animation_resources::*, sprite_components::*, sprite_constants::* }}, game_components::FacingDirection,};
 
 
 #[allow(unused_parens)]
@@ -58,7 +58,7 @@ pub fn change_anim_state_string(
             Option<&WalkAnim>, Option<&FlyAnim>, Option<&SwimAnim>,
             //Option<&AnimationIdPrefix>,
         ), (Without<ExcludedFromBaseAnimPickingSystem>)>,
-    parents_query: Query<(Option<&Moving>, &Altitude),>,
+    parents_query: Query<(Option<&VoluntarilyMoving>, &Altitude),>,
 ) {
     for (sprite_holder, mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, ) in sprite_query.iter_mut() {
         if let Ok((moving, curr_parent_altitude)) = parents_query.get(sprite_holder.0) {

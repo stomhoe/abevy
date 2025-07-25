@@ -4,6 +4,7 @@
     path: "being/head/human/0.png",
     category: "head",
     parent_cat: "body",
+    exclusive: true,
     shares_category: false,
     rows_cols: (1, 4),
     frame_size: (17, 16),

@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+use bevy_inspector_egui::bevy_egui::EguiPlugin;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 // use bevy_renet::netcode::{NetcodeClientPlugin, NetcodeServerPlugin};
 // use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 
@@ -19,11 +21,10 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins.set(ImagePlugin::default_nearest()),
-            //bevy::remote::RemotePlugin::default(), bevy::remote::http::RemoteHttpPlugin::default(),
             GamePlugin, 
             MenuPlugin, 
             MyUiPlugin,
-            
+            //EguiPlugin::default(), WorldInspectorPlugin::new()
         ))
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)

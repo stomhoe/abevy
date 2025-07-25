@@ -107,6 +107,7 @@ impl Default for ScaleLookSideWays {fn default() -> Self {Self(Vec2::ONE)}}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct OtherCompsToBuild{
+    pub exclusive: Option<Exclusive>,
     pub display_name: Option<DisplayName>,
     pub anim_prefix: Option<AnimationIdPrefix>,
     pub directionable: Option<Directionable>,
@@ -158,14 +159,6 @@ pub struct OffsetLookLeft(pub Vec2);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct OffsetForChildren(pub HashMap<Category, Vec2>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct ToBecomeChildOfCategory (pub Category);
-impl ToBecomeChildOfCategory {
-    pub fn new<S: Into<String>>(id: S) -> Self {
-        Self(Category::new(id))
-    }
-    pub fn category(&self) -> &Category {&self.0}
-}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq, Hash,)]
 pub struct Category { pub id: u64, /*pub shared: bool,*/ }//importante: el equal tiene en cuenta el shared
@@ -176,6 +169,18 @@ impl Category {
         id_str.hash(&mut hasher);
         Self { id: hasher.finish(), /*shared*/ }
     }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct Exclusive;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct ToBecomeChildOfCategory (pub Category);
+impl ToBecomeChildOfCategory {
+    pub fn new<S: Into<String>>(id: S) -> Self {
+        Self(Category::new(id))
+    }
+    pub fn category(&self) -> &Category {&self.0}
 }
 
 impl std::fmt::Display for Category {
@@ -207,6 +212,7 @@ pub struct SpriteDataSeri {
     pub path: String,
     pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
     pub category: String,
+    pub exclusive: bool,
     pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
     pub shares_category: bool,//asignar un componente
     pub rows_cols: [u32; 2], 

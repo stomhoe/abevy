@@ -2,7 +2,7 @@
 
 use bevy::{input::mouse::MouseWheel, prelude::*};
 
-use crate::game::{being::being_components::{Being, ControlledBy, ControlledBySelf, InputMoveDirection, PlayerDirectControllable}, player::{player_components::*, player_resources::KeyboardInputMappings}};
+use crate::game::{being::{being_components::{Being, ControlledBy, ControlledBySelf, PlayerDirectControllable}, movement::movement_components::InputMoveVector}, player::{player_components::*, player_resources::KeyboardInputMappings}};
 
 
 
@@ -52,7 +52,7 @@ pub fn react_on_control_removal(mut commands: Commands, mut removed: RemovedComp
 pub fn update_move_input_dir(
     keys: Res<ButtonInput<KeyCode>>,
     input_mappings: Res<KeyboardInputMappings>,
-    mut move_input_dir: Query<(&mut InputMoveDirection), (With<ControlledBySelf>)>,
+    mut move_input_dir: Query<(&mut InputMoveVector), (With<ControlledBySelf>)>,
 ) {
     let mut input_dir = Vec3::ZERO;
 

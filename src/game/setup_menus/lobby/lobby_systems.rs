@@ -1,5 +1,5 @@
 
-use crate::{game::game_components::DisplayName, game::{multiplayer::multiplayer_utils, player::player_components::{HostPlayer, Player}, setup_menus::lobby::{lobby_components::{LobbyPlayerListing, LobbyPlayerUiNode}, }, GamePhase, GameSetupScreen}, pregame_menus::{main_menu::main_menu_components::MainMenuIpLineEdit, PreGameState}, ui::ui_components::CurrentText, AppState};
+use crate::{game::{being::being_components::Being, game_components::DisplayName, multiplayer::multiplayer_utils, player::player_components::{CreatedCharacter, HostPlayer, Player}, setup_menus::lobby::lobby_components::{LobbyPlayerListing, LobbyPlayerUiNode}, GamePhase, GameSetupScreen}, pregame_menus::{main_menu::main_menu_components::MainMenuIpLineEdit, PreGameState}, ui::ui_components::CurrentText, AppState};
 
 use bevy::{ecs::world::OnDespawn, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -127,7 +127,7 @@ pub fn dbg_display_stuff(
 #[allow(unused_parens)]
 pub fn on_player_added(mut cmd: Commands, player_listing: Single<Entity, With<LobbyPlayerListing>>, query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
     
-    for (ent, player_name) in query.iter() {
+    for (player_ent, player_name) in query.iter() {
         let pne = cmd.spawn((
             ChildOf(*player_listing),
             Node {
@@ -141,10 +141,19 @@ pub fn on_player_added(mut cmd: Commands, player_listing: Single<Entity, With<Lo
             Text::new(player_name.0.clone()),
             TextLayout::new_with_justify(JustifyText::Center),
         )).id();
-        cmd.entity(ent).insert((
+        let being = cmd.spawn((
+            ChildOf(player_ent),
+            Being,
+        )).id();
+
+        cmd.entity(player_ent).insert((
             StateScoped(AppState::StatefulGameSession),
-            LobbyPlayerUiNode(pne)
+            LobbyPlayerUiNode(pne),
+            CreatedCharacter(being),
         ));
+        
+
+
     }
 }
 

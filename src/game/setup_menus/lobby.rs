@@ -41,11 +41,7 @@ impl Plugin for LobbyPlugin {
                 (host_on_server_start_successful).run_if(server_just_started)
                 
                 
-                ,
-
-                
-                
-                dbg_display_stuff.in_set(ClientSystems).run_if(on_timer(Duration::from_secs(3)))
+                ,dbg_display_stuff.in_set(ClientSystems).run_if(on_timer(Duration::from_secs(3)))
             ))
 
 

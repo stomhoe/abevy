@@ -52,28 +52,22 @@ impl Description {
     pub fn new<S: Into<String>>(id: S) -> Self {Self (id.into())}
     pub fn id(&self) -> &String {&self.0}
 }
-#[allow(unused_parens, dead_code)]
+#[allow(unused_parens, )]
 #[derive(Component, Debug, Deserialize, Serialize, )]
 pub enum FacingDirection { Down, Left, Right, Up, }
-
 impl FacingDirection {
     pub fn as_suffix(&self) -> &str {
         match self {
-            FacingDirection::Down => DOWN,
-            FacingDirection::Left => LEFT,
-            FacingDirection::Right => RIGHT,
-            FacingDirection::Up => UP,
+            FacingDirection::Down => DOWN, FacingDirection::Left => LEFT,
+            FacingDirection::Right => RIGHT, FacingDirection::Up => UP,
         }
     }
 }
-
 impl std::fmt::Display for FacingDirection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            FacingDirection::Down => "down",
-            FacingDirection::Left => "left",
-            FacingDirection::Right => "right",
-            FacingDirection::Up => "up",
+            FacingDirection::Down => "down", FacingDirection::Left => "left",
+            FacingDirection::Right => "right", FacingDirection::Up => "up",
         };
         write!(f, "{}", s)
     }
@@ -82,16 +76,86 @@ impl FacingDirection {
     pub fn random() -> Self {
         let mut rng = rand::rng();
         match rng.random_range(0..4) {
-            0 => FacingDirection::Down,
-            1 => FacingDirection::Left,
-            2 => FacingDirection::Right,
-            _ => FacingDirection::Up,
+            0 => FacingDirection::Down, 1 => FacingDirection::Left, 2 => FacingDirection::Right, _ => FacingDirection::Up,
         }
     }
 }
+impl Default for FacingDirection {fn default() -> Self {FacingDirection::random()}}
 
-impl Default for FacingDirection {
-    fn default() -> Self {
-        FacingDirection::random()
+
+#[derive( Debug, Default, Deserialize, Serialize, Clone, )]
+enum FunctionType {#[default] OneOnFinishZero, ZeroOnFinishOne, Curve(Spline<f32, f32>),}
+
+#[derive(Debug, Default, Component, Deserialize, Serialize, Clone, )]
+//ES FINITO PERO ES MEJOR, SIMPLEMENTE PONES UNA DURACIÓN ASTRONÓMICA PARA EL TIMER Y PODES SEGUIR USANDO CURVAS BEZIER, CON INFINITO NO SE PUEDE
+pub struct TimeBasedMultiplier { pub timer: Timer, pub function: FunctionType, }
+impl TimeBasedMultiplier {
+    pub fn new(timer: Timer, spline: Spline<f32, f32>) -> Self {
+        Self { timer, function: FunctionType::Curve(spline) }
     }
+    /// A typical drug blood concentration falloff curve: rapid rise, peak, then slow falloff to zero.
+    pub fn drug_curve(duration: Duration) -> Self {
+        let keys = vec![
+            Key::new(0.0, 0.0, Interpolation::Bezier(0.2)),   // Start at 0, quick rise
+            Key::new(0.1, 1.0, Interpolation::Bezier(0.8)),   // Peak quickly
+            Key::new(0.5, 0.7, Interpolation::Bezier(0.5)),   // Begin to fall
+            Key::new(1.0, 0.0, Interpolation::Bezier(0.2)),   // End at 0
+        ];
+        Self { function: FunctionType::Curve(Spline::from_vec(keys)), timer: Timer::new(duration, TimerMode::Once) }
+    }
+
+    pub fn linear_wean(duration: Duration) -> Self {
+        let keys = vec![
+            Key::new(0.0, 1.0, Interpolation::Linear), // Start at 1
+            Key::new(1.0, 0.0, Interpolation::Linear), // End at 0
+        ];
+        Self { function: FunctionType::Curve(Spline::from_vec(keys)), timer: Timer::new(duration, TimerMode::Once) }
+    }
+
+    pub fn zero_on_finish_one(duration: Duration) -> Self {
+        Self { 
+            function: FunctionType::ZeroOnFinishOne, 
+            timer: Timer::new(duration, TimerMode::Once) 
+        }
+    }
+
+    pub fn one_on_finish_zero(duration: Duration) -> Self {
+        Self { 
+            function: FunctionType::OneOnFinishZero, 
+            timer: Timer::new(duration, TimerMode::Once) 
+        }
+    }
+    pub fn sample(&self) -> f32 {
+        if self.timer.finished() {
+            match self.function {
+                FunctionType::OneOnFinishZero => return 0.0,
+                FunctionType::ZeroOnFinishOne => return 1.0,
+                FunctionType::Curve(ref spline) => {
+                    match spline.clamped_sample(1.0) {
+                        Some(value) => return value,
+                        None => {
+                            error!("Failed to sample spline at the end (1.0)");
+                            return 1.0;
+                        }
+                    }
+                }
+            }
+        } else {
+            match self.function {
+                FunctionType::OneOnFinishZero => 1.0,
+                FunctionType::ZeroOnFinishOne => 0.0,
+                FunctionType::Curve(ref spline) => {
+                    let passed_time_ratio = self.timer.elapsed_secs() / self.timer.duration().as_secs_f32();
+                    match spline.clamped_sample(passed_time_ratio) {
+                        Some(value) => value,
+                        None => {
+                            error!("Failed to sample spline at ratio {}", passed_time_ratio);
+                            0.0
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
 }

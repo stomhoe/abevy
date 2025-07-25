@@ -1,10 +1,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use superstate::superstate_plugin;
+use crate::game::being::movement::MovementSystems;
 use crate::game::being::race::race_resources::RaceSerisHandles;
 use crate::game::being::sprite::animation_resources::AnimSerisHandles;
 use crate::game::being::sprite::sprite_resources::SpriteSerisHandles;
-use crate::game::being::{BeingsPlugin, MovementSystems};
+use crate::game::being::{BeingsPlugin, };
 use crate::game::multiplayer::MpPlugin;
 use crate::game::time::ClockPlugin;
 use crate::game::faction::FactionsPlugin;
@@ -25,7 +26,7 @@ mod game_components;
 mod game_resources;
 
 mod tilemap;
-mod being;
+pub mod being;
 mod things;
 mod faction;
 mod time;
