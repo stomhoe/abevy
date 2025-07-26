@@ -7,7 +7,6 @@ mod tilemap_systems;
 mod chunking_systems;
 pub mod chunking_components;
 pub mod chunking_resources;
-pub mod tile_nids;
 
 pub mod tile_imgs;
 

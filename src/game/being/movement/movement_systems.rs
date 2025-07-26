@@ -7,7 +7,7 @@ use crate::game::{being::{being_components::{Being, }, modifier::modifier_compon
 pub fn apply_movement(
     mut cmd: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &FinalMoveVector, &mut Transform), (With<VoluntarilyMoving>)>,
+    mut query: Query<(Entity, &FinalMoveVector, &mut Transform), /*(With<VoluntarilyMoving>)*/>,
 ) {
     for (ent, FinalMoveVector(move_dir), mut transform) in query.iter_mut() {
         let speed = 1000.0;
@@ -65,6 +65,8 @@ pub fn process_movement_modifiers(mut cmd: Commands,
 ){
 
     for (ent, modifiers, InputMoveVector(inp_vec), mut final_vec) in being_query.iter_mut() {
+
+        final_vec.0 = *inp_vec;
 
         let mut changes_position = false;
         let mut invert_movement: f32 = 0.0;

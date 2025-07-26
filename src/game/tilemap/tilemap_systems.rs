@@ -3,7 +3,7 @@ use bevy::{math::U16Vec2, platform::collections::{HashMap}, prelude::*};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::{terrain_gen_components::{RepeatingTexture, AppliedShader}, terrain_gen_systems::MyTileBundle, terrain_gen_utils::Z_DIVISOR, terrain_materials::MonoRepeatTextureOverlayMat}, tile_imgs::{ImgIngameCfg, NidImgMap, TileImgNid}};
+use crate::game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::{terrain_gen_components::{AppliedShader, RepeatingTexture}, terrain_gen_systems::MyTileBundle, terrain_gen_utils::Z_DIVISOR, terrain_materials::MonoRepeatTextureOverlayMat}, tile_imgs::{ImgIngameCfg, NidImgMap, TileImgId}};
 
 
 pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
@@ -34,7 +34,7 @@ type Map = HashMap<MapKey, LayerDto>;
 pub fn produce_tilemaps(
     mut commands: Commands, 
     chunk_query: Query<(Entity, &TilesReady), Without<Children>>,
-    mut tile_pos: Query<(&TilePos, &TileImgNid, &mut AppliedShader)>,
+    mut tile_pos: Query<(&TilePos, &TileImgId, &mut AppliedShader)>,
     nid_img_map: Res<NidImgMap>, 
 ) -> Result {
     let mut layers: Map = HashMap::new();
@@ -48,7 +48,7 @@ pub fn produce_tilemaps(
 
             let img_cfg = nid_img_map.get(img_nid).debug_expect_unchecked("Image NID not found in nid_img_map");
 
-            let map_key = MapKey::new(img_cfg.get_z_index(), img_cfg.size, shader);
+            let map_key = MapKey::new(img_cfg.z_index(), img_cfg.tile_size_u16vec2(), shader);
 
             if let Some(layer_dto) = layers.get_mut(&map_key) {
                 let (tilemap_entity, tile_storage, image_nids) = (
@@ -89,7 +89,7 @@ pub struct LayerDto {
     pub used_shader: AppliedShader,
     pub tilemap_entity: Entity, 
     pub tile_storage: TileStorage,
-    pub image_nids: Vec<TileImgNid>, pub needs_y_sort: bool,
+    pub image_nids: Vec<TileImgId>, pub needs_y_sort: bool,
 }
 
 fn add_tile_bundle_and_put_in_storage( 
@@ -113,7 +113,7 @@ fn instantiate_new_layer_dto(
     img_cfg: &ImgIngameCfg,
     tile_ent: Entity,
     tile_pos: &TilePos,
-    img_nid: TileImgNid,
+    img_nid: TileImgId,
     chunk_ent: Entity,
 ) {
     let tilemap_entity: Entity = commands.spawn(ChildOf(chunk_ent)).id();
@@ -126,13 +126,13 @@ fn instantiate_new_layer_dto(
     );
 
     let layer_dto = LayerDto {
-        tile_size: img_cfg.get_tile_size(),
-        layer_z: img_cfg.get_z_index(),
+        tile_size: img_cfg.tile_size(),
+        layer_z: img_cfg.z_index(),
         used_shader: AppliedShader::None,
         tilemap_entity,
         tile_storage,
         image_nids: vec![img_nid],
-        needs_y_sort: img_cfg.needs_y_sort,
+        needs_y_sort: img_cfg.needs_y_sort(),
     };
     layers.insert(map_key, layer_dto);
 }
@@ -141,7 +141,6 @@ fn instantiate_new_layer_dto(
 #[allow(unused_parens)]
 pub fn fill_tilemaps_data(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut chunk_query: Query<(Entity, &Children), (With<LayersReady>)>,
     mut layer_query: Query<(&mut LayerDto), (With<ChildOf>)>,
     tile_images_map: Res<NidImgMap>,
@@ -160,7 +159,7 @@ pub fn fill_tilemaps_data(
                 let images: Vec<Handle<Image>> = layer_dto
                     .image_nids
                     .iter()
-                    .map(|&image_nid| tile_images_map.get(image_nid).debug_expect_unchecked("image nid not found").handle.clone())
+                    .map(|&image_nid| tile_images_map.get(image_nid).debug_expect_unchecked("image nid not found").cloned_handle())
                     .collect();
                 let texture = TilemapTexture::Vector(images);
                 let storage = std::mem::take(&mut layer_dto.tile_storage);
@@ -177,7 +176,7 @@ pub fn fill_tilemaps_data(
                     AppliedShader::MonoRepeating(rep_texture) => {
                         let material = MaterialTilemapHandle::from(texture_overley_mat.add(
                             MonoRepeatTextureOverlayMat {
-                                texture_overlay: asset_server.load(rep_texture.path()),
+                                texture_overlay: rep_texture.cloned_handle(),
                                 scale: rep_texture.scale_div_1M(),
                                 mask_color: rep_texture.mask_color(),
                             }

@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use superstate::superstate_plugin;
 
-use crate::game::{being::{being_components::ControlledBy, being_systems::*, class::ClassPlugin, gen_template::GenTemplatePlugin, race::RacePlugin, sprite::SpritePlugin}, IngameSystems};
+use crate::game::{being::{being_components::ControlledBy, being_systems::*, class::ClassPlugin, gen_template::GenTemplatePlugin, modifier::ModifierPlugin, movement::MovementPlugin, race::RacePlugin, sprite::SpritePlugin}, IngameSystems};
 
 pub mod being_components;
 
@@ -26,7 +26,7 @@ impl Plugin for BeingsPlugin {
     fn build(&self, app: &mut App) {
         app
         
-            .add_plugins((SpritePlugin, RacePlugin, ClassPlugin, GenTemplatePlugin )) 
+            .add_plugins((SpritePlugin, RacePlugin, ClassPlugin, GenTemplatePlugin, MovementPlugin, ModifierPlugin, )) 
             // .add_systems(OnEnter(AppState::StatefulGameSession), (
 
             // )) 

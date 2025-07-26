@@ -67,7 +67,7 @@ impl Plugin for GamePlugin {
             ))
 
             .add_systems(Update, 
-                (debug_system, toggle_simulation, force_z_index).in_set(IngameSystems)
+                (debug_system, toggle_simulation, force_z_index, tick_time_based_multipliers).in_set(IngameSystems)
             )
 
             // .configure_sets(OnEnter(AppState::StatefulGameSession), (

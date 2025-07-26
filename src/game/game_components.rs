@@ -1,8 +1,9 @@
-use std::default;
+use std::{default, time::Duration};
 
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
+use splines::{Interpolation, Key, Spline};
 use superstate::SuperstateInfo;
 use rand::Rng;
 
@@ -103,7 +104,6 @@ impl TimeBasedMultiplier {
         ];
         Self { function: FunctionType::Curve(Spline::from_vec(keys)), timer: Timer::new(duration, TimerMode::Once) }
     }
-
     pub fn linear_wean(duration: Duration) -> Self {
         let keys = vec![
             Key::new(0.0, 1.0, Interpolation::Linear), // Start at 1
@@ -111,14 +111,12 @@ impl TimeBasedMultiplier {
         ];
         Self { function: FunctionType::Curve(Spline::from_vec(keys)), timer: Timer::new(duration, TimerMode::Once) }
     }
-
     pub fn zero_on_finish_one(duration: Duration) -> Self {
         Self { 
             function: FunctionType::ZeroOnFinishOne, 
             timer: Timer::new(duration, TimerMode::Once) 
         }
     }
-
     pub fn one_on_finish_zero(duration: Duration) -> Self {
         Self { 
             function: FunctionType::OneOnFinishZero, 
@@ -128,14 +126,14 @@ impl TimeBasedMultiplier {
     pub fn sample(&self) -> f32 {
         if self.timer.finished() {
             match self.function {
-                FunctionType::OneOnFinishZero => return 0.0,
-                FunctionType::ZeroOnFinishOne => return 1.0,
+                FunctionType::OneOnFinishZero => 0.0,
+                FunctionType::ZeroOnFinishOne => 1.0,
                 FunctionType::Curve(ref spline) => {
                     match spline.clamped_sample(1.0) {
-                        Some(value) => return value,
+                        Some(value) => value,
                         None => {
                             error!("Failed to sample spline at the end (1.0)");
-                            return 1.0;
+                            1.0
                         }
                     }
                 }

@@ -22,7 +22,8 @@ pub struct TilesDataMap {//TODO faltan templates para habilitar la randomizacion
 pub struct TemperateGrass;
 
 #[allow(unused_parens)]
-pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<WorldGenSettings>, _asset_server: Res<AssetServer>) {
+pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<WorldGenSettings>, asset_server: Res<AssetServer>, ) 
+{
 
     let humidity: FastNoiseLite = FastNoiseLite::default();
 
@@ -33,6 +34,7 @@ pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<Wo
             color: TC_RED,
             shader: AppliedShader::MonoRepeating(
                 RepeatingTexture::new_w_red_mask(
+                    &asset_server,
                     "texture/world/terrain/temperate_grass/grass.png", 
                     1_000, //scale to be divided by 1M
                 ),
@@ -59,7 +61,7 @@ pub fn add_tiles2spawn_within_chunk (
     chunks_query: Query<(Entity, &ChunkPos), (With<UninitializedChunk>, Without<TilesReady>, Without<Children>)>, 
     noise_query: Query<&FnlComp>, 
     gen_settings: Res<WorldGenSettings>,
-    clonable_tiles: Query<Entity, (With<TileImgNid>, Without<TilePos>)>,
+    clonable_tiles: Query<Entity, (With<TileImgId>, Without<TilePos>)>,
     //tile_insta_data_query: Query<Entity, With<TileInstantiationData>>,
 ) -> Result {
 
@@ -92,16 +94,16 @@ pub fn add_tiles2spawn_within_chunk (
 
 fn add_tiles_for_tilepos(mut co: &mut Commands, tiles2spawn: &mut TilesReady, 
     noise_query: Query<&FnlComp>, tilepos: IVec2, pos_within_chunk: U8Vec2, 
-    mut clonable_tiles: Query<Entity, (With<TileImgNid>, Without<TilePos>)>,
+    mut clonable_tiles: Query<Entity, (With<TileImgId>, Without<TilePos>)>,
     rng : &mut Pcg64,
 
 ) -> Result {
 
     //si una tile es suitable para una edificación, o spawnear una village o algo, se le puede añadir un componente SuitableForVillage o algo así, para que se pueda identificar la tile. después se puede hacer un sistema q borre los árboles molestos en un cierto radio. el problema es si hay múltiples marcadas adyacentemente, en ese caso va a haber q chequear distancias a otras villages
-    let mut grass= clonable_tiles.transmute_lens_filtered::<(Entity), (With<TemperateGrass>, Without<TilePos>)>();
-    
-    let grass= grass.query().single()?;
-    
+    let mut grass = clonable_tiles.transmute_lens_filtered::<(Entity), (With<TemperateGrass>, Without<TilePos>)>();
+
+    let grass = grass.query().single()?;
+
     clone_add_tilepos_and_push(
         &mut co, 
         tiles2spawn, 
@@ -145,14 +147,14 @@ fn new_tile<B: Bundle>(
 
 #[derive(Bundle, Debug, Default, )]
 pub struct MyTileBundle{
-    pub img_nid: TileImgNid,
+    pub img_id: TileImgId,
     pub flip: TileFlip,
     pub color: TileColor,
     pub visible: TileVisible,
     pub shader: AppliedShader,
 }
 impl MyTileBundle {
-    pub fn new(img_nid: TileImgNid, flip: TileFlip, color: TileColor, visible: bool, shader: AppliedShader) -> Self {
-        Self { img_nid, flip, color, visible: TileVisible(visible), shader }
+    pub fn new(img_nid: TileImgId, flip: TileFlip, color: TileColor, visible: bool, shader: AppliedShader) -> Self {
+        Self { img_id: img_nid, flip, color, visible: TileVisible(visible), shader }
     }
 }

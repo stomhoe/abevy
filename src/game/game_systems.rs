@@ -32,28 +32,19 @@ pub fn spawn_player_beings(
             ControlledBy(player_ent),
             PlayerDirectControllable,
             TargetSpawnPos::new(0.0, 0.0),
+            Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),//PROVISORIO
             //HACER Q OTRO SYSTEMA AGREGUE CAMERATARGET AL BEING CONTROLADO
+            SpriteDatasChildrenStringIds::new(["humanhe0", "humanbo0"]),
+            SelfFaction(),
         ));
 
         if self_player.is_some() {
-            
+            info!("Spawning self player being:");
 
         } 
 
         commands.entity(player_ent).remove::<CreatedCharacter>();
     }
-
-    commands.spawn((
-        Being,
-        // Transform::from_translation(Vec3::new(//USAR ESTO PARA MOSTRAR EL PERSONAJE EN UNA UI DE CREACION
-        //     window.width() / 2.0,
-        //     window.height() / 2.0,
-        //     0.0,
-        // )),
-        SpriteDatasChildrenStringIds::new(["humanhe0", "humanbo0"]),
-        
-        SelfFaction(),
-    ));
 }
 
 
