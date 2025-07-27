@@ -1,8 +1,8 @@
 use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-
-#[derive(Component, Debug, Default, )]
+#[derive(Component, Debug, Default, Serialize, Deserialize)]
 pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 

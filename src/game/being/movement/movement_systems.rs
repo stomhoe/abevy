@@ -10,7 +10,7 @@ pub fn apply_movement(
     mut query: Query<(Entity, &FinalMoveVector, &mut Transform), /*(With<VoluntarilyMoving>)*/>,
 ) {
     for (ent, FinalMoveVector(move_dir), mut transform) in query.iter_mut() {
-        let speed = 1000.0;
+        let speed = 800.0;
         let delta = time.delta_secs();
         let movement = move_dir * speed * delta;
 
@@ -54,8 +54,8 @@ pub fn update_facing_dir(mut query: Query<(&FinalMoveVector, &mut FacingDirectio
 pub fn process_movement_modifiers(mut cmd: Commands, 
     mut being_query: Query<(Entity, &AppliedModifiers, &InputMoveVector, &mut FinalMoveVector), (With<Being>)>,
     mut effects_query: Query<(
-        &Modifier,
-        &CurrentPotency,
+        &ModifierCategories,
+        &EffectivePotency,
         Option<&MitigatingOnly>,
         Option<&MultiplyingModifier>,
         Option<&Speed>, 
@@ -68,32 +68,32 @@ pub fn process_movement_modifiers(mut cmd: Commands,
 
         final_vec.0 = *inp_vec;
 
-        let mut changes_position = false;
-        let mut invert_movement: f32 = 0.0;
+        // let mut changes_position = false;
+        // let mut invert_movement: f32 = 0.0;
 
-        for effect in modifiers.entities().iter() {
-            if let Ok((_modifier, _potency, mitigating_only, multiplying_modifier, speed, invert_move)) = effects_query.get(*effect) {
+        // for effect in modifiers.entities().iter() {
+        //     if let Ok((_modifier, _potency, mitigating_only, multiplying_modifier, speed, invert_move)) = effects_query.get(*effect) {
 
-                match (invert_move, mitigating_only) {
-                    (Some(_), None) => {
-                        invert_movement += 1.0;
-                    },
-                    (None, Some(_)) => {
-                        invert_movement -= 1.0;
-                    },
-                    (Some(_), Some(_)) => {},
-                    (None, None) => {}
-                }
-            }
-        }
+        //         match (invert_move, mitigating_only) {
+        //             (Some(_), None) => {
+        //                 invert_movement += 1.0;
+        //             },
+        //             (None, Some(_)) => {
+        //                 invert_movement -= 1.0;
+        //             },
+        //             (Some(_), Some(_)) => {},
+        //             (None, None) => {}
+        //         }
+        //     }
+        // }
 
-        if changes_position {
-            cmd.entity(ent).insert(VoluntarilyMoving);
-        }
+        // if changes_position {
+        //     cmd.entity(ent).insert(VoluntarilyMoving);
+        // }
 
-        if invert_movement > 0.0 {
-            final_vec.0 = -final_vec.0;
-        }
+        // if invert_movement > 0.0 {
+        //     final_vec.0 = -final_vec.0;
+        // }
         
     }
 }

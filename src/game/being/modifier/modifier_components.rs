@@ -8,9 +8,9 @@ use splines::{Interpolation, Key, Spline};
 use serde::{Deserialize, Serialize};
 use crate::game::{being::modifier::{
     //effect_resources::*,
-}, game_components::DisplayName};
+}, };
 
-//USAR DisplayName
+//USAR Name
 
 //USAR CHILDOF PARA Q TENGAN UNA FUENTE Q AL SER BORRADA BORRA LOS EFECTOS
 
@@ -32,22 +32,26 @@ impl AppliedModifiers {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(Modifier)]
+#[require(ModifierCategories)]
 pub struct MovementModifier;
 
 
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[require(CurrTimeBasedPotency, )]
 pub struct BasePotency(pub f32);//negate for opposite effect or negation
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct CurrentPotency(pub f32);
-
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct Antidote(pub HashMap<String, f32>);//poison ID, efectiveness(multiplicador sobre propia Potency, resultado se substrae a la Potency del veneno) 
+pub struct CurrTimeBasedPotency(pub f32);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct EffectivePotency(pub f32);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+///poison ID, efectiveness(multiplicador sobre propia Potency, resultado se substrae a la Potency del veneno) 
+pub struct Antidote(pub HashMap<String, f32>);
 impl Antidote {
 
 }
@@ -57,7 +61,7 @@ impl Antidote {
 superstate_plugin::<Modifier, (Walking, Flying)>,
  EN EL Plugin DEL MÓDULO */
 #[derive(Component, Default)]
-pub struct Modifier(
+pub struct ModifierCategories(
     /*categorías/tipo de sustancia/familia de sustancia a las q pertenece: fentanyl, race_modifier, narcan 
      (así se pueden identificar sustancias origen y hacer sistemas de antidotos q contrarresten sustancias específicas)
     */
@@ -72,16 +76,16 @@ pub struct MitigatingOnly;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(Modifier, MovementModifier)]
+#[require(ModifierCategories, MovementModifier)]
 pub struct Speed;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(Modifier, MovementModifier)]
+#[require(ModifierCategories, MovementModifier)]
 pub struct HandlingCapability;
 
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(Modifier, MovementModifier)]
+#[require(ModifierCategories, MovementModifier)]
 pub struct InvertMovement;

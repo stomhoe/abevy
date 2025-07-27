@@ -1,6 +1,8 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use superstate::superstate_plugin;
+use crate::common::common_components::DisplayName;
+use crate::game::being::being_components::Being;
 use crate::game::being::movement::MovementSystems;
 use crate::game::being::race::race_resources::RaceSerisHandles;
 use crate::game::being::sprite::animation_resources::AnimSerisHandles;
@@ -8,7 +10,7 @@ use crate::game::being::sprite::sprite_resources::SpriteSerisHandles;
 use crate::game::being::{BeingsPlugin, };
 use crate::game::multiplayer::MpPlugin;
 use crate::game::time::ClockPlugin;
-use crate::game::faction::FactionsPlugin;
+use crate::game::faction::FactionPlugin;
 use crate::game::player::{PlayerInputSystems, PlayerPlugin};
 use crate::game::setup_menus::SetupMenusPlugin;
 use crate::game::tilemap::MyTileMapPlugin;
@@ -38,7 +40,10 @@ pub struct SimRunningSystems;
 pub struct SimPausedSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct IngameSystems;
+pub struct StatefulSessionSystems;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct ActiveGameSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct NetworkSystems;
@@ -60,14 +65,18 @@ impl Plugin for GamePlugin {
 
         app
             .add_plugins((MpPlugin, SetupMenusPlugin, PlayerPlugin, BeingsPlugin, 
-                FactionsPlugin, MyTileMapPlugin, ClockPlugin, ))
+                FactionPlugin, MyTileMapPlugin, ClockPlugin, ))
+
+            .add_systems(OnEnter(AppState::StatefulGameSession), (
+                (setup_initial_entities,).run_if(server_or_singleplayer),
+            ))
             
             .add_systems(OnEnter(GamePhase::ActiveGame), (
                 (spawn_player_beings,).run_if(server_or_singleplayer),
             ))
 
             .add_systems(Update, 
-                (debug_system, toggle_simulation, force_z_index, tick_time_based_multipliers).in_set(IngameSystems)
+                (debug_system, toggle_simulation, force_z_index, tick_time_based_multipliers).in_set(ActiveGameSystems)
             )
 
             // .configure_sets(OnEnter(AppState::StatefulGameSession), (
@@ -77,7 +86,7 @@ impl Plugin for GamePlugin {
             .configure_sets(Update, (
                 PlayerInputSystems,
                 MovementSystems,
-                IngameSystems.run_if(in_state(GamePhase::ActiveGame)),
+                ActiveGameSystems.run_if(in_state(GamePhase::ActiveGame)),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
                 SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::ActiveGame))),
                 HostSystems.run_if(server_or_singleplayer.or(in_state(GameSetupType::HostLobby))),
@@ -103,6 +112,9 @@ impl Plugin for GamePlugin {
                 .load_collection::<AnimSerisHandles>()
                 .load_collection::<RaceSerisHandles>()
             )
+
+            .replicate_bundle::<(Being, ChildOf)>()
+            .replicate::<DisplayName>()
         ;
     }
 }

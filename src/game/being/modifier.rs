@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::IngameSystems;
+use crate::game::ActiveGameSystems;
 use crate::game::being::modifier::{
     modifier_systems::*,
 //    modifier_components::*,
@@ -24,7 +24,7 @@ pub struct ModifierPlugin;
 impl Plugin for ModifierPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, (update_current_potency, ).in_set(ModifierSystems).in_set(IngameSystems))
+            .add_systems(Update, (update_currtime_potency, apply_antidotes, tick_time_based_multipliers, ).in_set(ModifierSystems).in_set(ActiveGameSystems))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup, ))
             //.init_resource::<RESOURCE_NAME>()
             .add_plugins((

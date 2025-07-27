@@ -3,7 +3,7 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-use crate::game::{being::sprite::sprite_components::*, game_components::{DisplayName, ImgPathHolder}};
+use crate::{common::common_components::DisplayName, game::{being::sprite::sprite_components::*, game_components::ImgPathHolder}};
 
 
 #[derive(Resource, Debug, Default )]
@@ -21,17 +21,17 @@ impl SpriteDataIdEntityMap {
         if let Some(mut seri) = assets.remove(&handle) {
             
             if self.map.contains_key(&seri.id) {
-                error!("SpriteDataSeri with id {:?} already exists in map, skipping", seri.id);
+                error!(target: "sprite_loading", "SpriteDataSeri with id {:?} already exists in map, skipping", seri.id);
                 return;
             }
             let path_str = take(&mut seri.path);
             let full_path = format!("assets/texture/{}", path_str);
             if !std::path::Path::new(&full_path).exists() {
-                error!("Image path does not exist: {}", full_path);
+                error!(target: "sprite_loading", "Image path does not exist: {}", full_path);
                 return
             }
             if seri.id.len() <= 2 {
-                error!("SpriteDataSeri id is too short or empty, skipping");
+                error!(target: "sprite_loading", "SpriteDataSeri id is too short or empty, skipping");
                 return;
             }
 
@@ -41,7 +41,10 @@ impl SpriteDataIdEntityMap {
             
             let spritedata_id = SpriteDataId::new(seri.id.clone());
             let path_holder = ImgPathHolder(path_str);
-            let category: Category = Category::new(take(&mut seri.category));
+
+            let concatenated_cats = seri.categories.join(",");
+
+            let categories: Categories = Categories::new(take(&mut seri.categories));
             
             let atlas_data = AtlasLayoutData::new(seri.rows_cols, seri.frame_size);
 
@@ -50,29 +53,34 @@ impl SpriteDataIdEntityMap {
                 1 => Visibility::Visible,   // visible
                 2 => Visibility::Hidden,    // hidden
                 _ => {
-                    error!("Invalid visibility value: {}, falling back to inherited", seri.visibility);
+                    error!(target: "sprite_loading", "Invalid visibility value: {}, falling back to inherited", seri.visibility);
                     Visibility::default()
                 },
             };
             
-            let entity = cmd.spawn((
-                spritedata_id, 
+            let sprdat_enti = cmd.spawn((
+                spritedata_id.clone(), 
                 path_holder,
-                category,
+                categories,
                 atlas_data,
                 visib,
             )).id();
             
             let mut comps_to_build: OtherCompsToBuild = OtherCompsToBuild::default();
 
-            if seri.exclusive { comps_to_build.exclusive = Some(Exclusive); }
-
             if seri.name.is_empty() {
-                warn!("SpriteDataSeri name is empty");
+                warn!(target: "sprite_loading", "SpriteDataSeri name is empty");
             } else {
-                let disp_name = DisplayName(take(&mut seri.name));
+                let disp_name = DisplayName::new(seri.name.clone());
                 comps_to_build.display_name = Some(disp_name);
             }
+
+            cmd.entity(sprdat_enti).insert((
+                Name::new(format!("sprdatid:'{}' cats:'{}'", spritedata_id, concatenated_cats)),
+            ));
+
+            //if seri.exclusive { comps_to_build.exclusive = Some(Exclusive); }
+
 
             if seri.directionable {comps_to_build.directionable = Some(Directionable);}
 
@@ -86,12 +94,12 @@ impl SpriteDataIdEntityMap {
             }
             
             if ! seri.children_sprites.is_empty(){
-                cmd.entity(entity).insert(SpriteDatasChildrenStringIds(take(&mut seri.children_sprites)));
+                cmd.entity(sprdat_enti).insert(SpriteDatasChildrenStringIds(take(&mut seri.children_sprites)));
             }
 
-            if ! seri.offset_children.is_empty(){
+            if ! seri.offset4children.is_empty(){
                 let mut offset_children = OffsetForChildren::default();
-                for (cat, offset_arr) in take(&mut seri.offset_children) {
+                for (cat, offset_arr) in take(&mut seri.offset4children) {
                     offset_children.0.insert(Category::new(cat), Vec2::from_array(offset_arr));
                 }
                 comps_to_build.offset_children = Some(offset_children);
@@ -128,7 +136,7 @@ impl SpriteDataIdEntityMap {
             if let Some(scale) = seri.scale {
                 let vec = Vec2::from_array(scale);
                 if vec.x <= 0.0 || vec.y <= 0.0 {
-                    warn!("SpriteDataSeri scale has non-positive component: {:?}", vec);
+                    warn!(target: "sprite_loading", "SpriteDataSeri scale has non-positive component: {:?}", vec);
                 } else {
                     comps_to_build.scale = Some(Scale(vec));
                 }
@@ -137,7 +145,7 @@ impl SpriteDataIdEntityMap {
             if let Some(scale_looking_sideways) = seri.scale_sideways {
                 let vec = Vec2::from_array(scale_looking_sideways);
                 if vec.x <= 0.0 || vec.y <= 0.0 {
-                    warn!("SpriteDataSeri scale_sideways has non-positive component: {:?}", vec);
+                    warn!(target: "sprite_loading", "SpriteDataSeri scale_sideways has non-positive component: {:?}", vec);
                 } else {
                     comps_to_build.scale_looking_sideways = Some(ScaleLookSideWays(vec));
                 }
@@ -146,7 +154,7 @@ impl SpriteDataIdEntityMap {
             if let Some(scale_looking_up_down) = seri.scale_up_down {
                 let vec = Vec2::from_array(scale_looking_up_down);
                 if vec.x <= 0.0 || vec.y <= 0.0 {
-                    warn!("SpriteDataSeri scale_up_down has non-positive component: {:?}", vec);
+                    warn!(target: "sprite_loading", "SpriteDataSeri scale_up_down has non-positive component: {:?}", vec);
                 } else {
                     comps_to_build.scale_looking_up_down = Some(ScaleLookUpDown(vec));
                 }
@@ -159,12 +167,12 @@ impl SpriteDataIdEntityMap {
                 _ => {},
             };
 
-            cmd.entity(entity).insert(comps_to_build);
+            cmd.entity(sprdat_enti).insert(comps_to_build);
             
-            self.map.insert(take(&mut seri.id), entity);
+            self.map.insert(take(&mut seri.id), sprdat_enti);
         }
         else {
-            warn!("SpriteDataSeri with handle {:?} not found in assets", handle);
+            warn!(target: "sprite_loading", "SpriteDataSeri with handle {:?} not found in assets", handle);
         }
     }
 

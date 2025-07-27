@@ -2,7 +2,7 @@ use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use serde::{Deserialize, Serialize};
 use superstate::{SuperstateInfo};
-use crate::{common::common_components::GameZindex, game::{being::movement::movement_components::*, game_components::FacingDirection, tilemap::chunking_components::ActivatesChunks}, AppState};
+use crate::{common::common_components::GameZindex, game::{being::{modifier::modifier_components::AppliedModifiers, movement::movement_components::*}, game_components::FacingDirection, tilemap::chunking_components::ActivatesChunks}, AppState};
 
 
 
@@ -33,7 +33,7 @@ pub struct ControlledBy ( #[entities] pub Entity);
 pub struct ControlledBySelf;
 
 #[derive(Component, Debug, Deserialize, Serialize)]
-#[require(InputMoveVector, GameZindex(500), Replicated, Altitude, Visibility, FacingDirection)]
+#[require(InputMoveVector, FinalMoveVector, GameZindex(500), Replicated, Altitude, Visibility, FacingDirection, AppliedModifiers)]
 pub struct Being;
 
 #[derive(Component)]

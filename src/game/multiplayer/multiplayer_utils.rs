@@ -13,15 +13,12 @@ use bevy_replicon_renet::{
     renet::{ConnectionConfig, RenetClient, RenetServer},
 };
 
-use crate::game::{game_components::DisplayName, player::player_components::{HostPlayer, SelfPlayer}};
-
 const PROTOCOL_ID: u64 = 7;
 
-pub fn host_server<T: Into<String>>(
+pub fn host_server(
     commands: &mut Commands,
     channels: Res<RepliconChannels>,
     port: Option<u16>,
-    host_name: T,
     max_clients: u8,
 ) -> Result {
     let server_channels_config = channels.server_configs();
@@ -49,12 +46,6 @@ pub fn host_server<T: Into<String>>(
     commands.insert_resource(server);
     commands.insert_resource(transport);
 
-
-    commands.spawn((
-        HostPlayer,
-        SelfPlayer,
-        DisplayName(host_name.into()),
-    ));
     Ok(())
 }
 
@@ -107,5 +98,4 @@ pub fn disconnect_from_server(
 ) {
     info!("Disconnecting from server");
     client.disconnect();
-    //commands.remove_resource::<RenetClient>();
 }

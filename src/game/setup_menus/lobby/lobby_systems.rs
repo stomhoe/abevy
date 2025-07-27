@@ -1,5 +1,5 @@
 
-use crate::{game::{being::being_components::Being, game_components::DisplayName, multiplayer::multiplayer_utils, player::player_components::{CreatedCharacter, HostPlayer, Player}, setup_menus::lobby::lobby_components::{LobbyPlayerListing, LobbyPlayerUiNode}, GamePhase, GameSetupScreen}, pregame_menus::{main_menu::main_menu_components::MainMenuIpLineEdit, PreGameState}, ui::ui_components::CurrentText, AppState};
+use crate::{common::common_components::DisplayName, game::{being::being_components::Being, faction::{faction_components::{BelongsToFaction, Faction}, faction_resources::FactionEntityMap}, multiplayer::multiplayer_utils, player::{player_components::{CreatedCharacter, HostPlayer, OfSelf, Player}, player_resources::PlayerData}, setup_menus::lobby::{lobby_components::{LobbyPlayerListing, LobbyPlayerUiNode}, lobby_events::HostStartedGame}, GamePhase, GameSetupScreen}, pregame_menus::{main_menu::main_menu_components::MainMenuIpLineEdit, PreGameState}, ui::ui_components::CurrentText, AppState};
 
 use bevy::{ecs::world::OnDespawn, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -33,12 +33,15 @@ pub enum LobbyLineEdit {Chat, LobbyName}
 pub enum LobbySlider {ChatHistory, Settings}
 
 
-pub fn host_setup(mut commands: Commands, mut app_state: ResMut<NextState<AppState>>,){
+pub fn host_setup(mut cmd: Commands, mut fac_map: ResMut<FactionEntityMap>) {
 
 }
 
 #[allow(unused_parens, dead_code)]
-pub fn host_on_server_start_successful(mut commands: Commands){
+pub fn host_on_server_start_successful(
+    mut cmd: Commands, 
+) {
+    
 
 }
 
@@ -86,6 +89,10 @@ pub fn lobby_button_interaction(
                     //todo chequear si todos están listos
                     info!("Starting game");
                     game_phase.set(GamePhase::ActiveGame);
+                    cmd.server_trigger(ToClients {
+                        mode: SendMode::Broadcast,
+                        event: HostStartedGame,
+                    });
                 },
                 LobbyButtonId::CreateCharacter => {
                     game_setup_screen.set(GameSetupScreen::CharacterCreation);
@@ -99,13 +106,13 @@ pub fn lobby_button_interaction(
 
 pub fn on_player_disconnect(
     trigger: Trigger<OnDespawn, Player>, 
-    players: Query<(&DisplayName, &LobbyPlayerUiNode), With<Player>>,
+    players: Query<(&Name, &LobbyPlayerUiNode), With<Player>>,
     mut commands: Commands)
 {
     let result = players.get(trigger.target());
 
     if let Ok((player_name, player_name_entry)) = result {
-        info!("Client `{}` disconnected", player_name.0);
+        info!("Client `{}` disconnected", player_name);
         commands.entity(player_name_entry.0).despawn();
     } else {
         info!("Failed to get player name for disconnected client: {}", trigger.target());
@@ -116,18 +123,24 @@ pub fn on_player_disconnect(
 
 #[allow(unused_parens)]
 pub fn dbg_display_stuff(
-    query: Query<(&DisplayName),(With<Player>)>
+    query: Query<(&Name),(With<Player>)>
 
 ) {
     for (player_name) in query.iter() {
-        info!("Player name: {}", player_name.0);
+        info!("Player name: {}", player_name);
     }
 }
 
 #[allow(unused_parens)]
-pub fn on_player_added(mut cmd: Commands, player_listing: Single<Entity, With<LobbyPlayerListing>>, query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
+pub fn on_player_added(mut cmd: Commands, 
+    my_data: Res<PlayerData>,
+    player_listing: Single<Entity, With<LobbyPlayerListing>>, query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
     
     for (player_ent, player_name) in query.iter() {
+        if player_name.0 == my_data.name {
+            cmd.entity(player_ent).insert(OfSelf);
+        } 
+
         let pne = cmd.spawn((
             ChildOf(*player_listing),
             Node {
@@ -157,3 +170,9 @@ pub fn on_player_added(mut cmd: Commands, player_listing: Single<Entity, With<Lo
     }
 }
 
+#[allow(unused_parens)]
+pub fn on_host_started_game(trigger: Trigger<HostStartedGame>, mut commands: Commands, mut state: ResMut<NextState<GamePhase>>) {
+    info!(target: "lobby", "Host started game event received, transitioning to GamePhase::ActiveGame");
+    state.set(GamePhase::ActiveGame);
+
+}

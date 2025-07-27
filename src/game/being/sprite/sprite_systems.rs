@@ -96,7 +96,7 @@ pub fn apply_scales(mut query: Query<(
 #[allow(unused_parens, )]
 pub fn apply_offsets(
     mut query: Query<(
-        &SpriteHolderRef, &ChildOf, &mut Transform, &Category,
+        &SpriteHolderRef, &ChildOf, &mut Transform, &Categories,
         Option<&Offset>, 
         Option<&OffsetLookUpDown>, Option<&OffsetLookDown>, Option<&OffsetLookUp>,
         Option<&OffsetLookSideways>, Option<&OffsetLookLeft>, Option<&OffsetLookRight>,
@@ -153,9 +153,12 @@ pub fn apply_offsets(
             }
 
             if let Ok(Some(OffsetForChildren(map))) = parent_sprite_query.get(child_of.parent()) {
-                if map.contains_key(cat) {
-                    total_offset += map[cat].extend(0.);
-                } 
+                for cat in &cat.0 {
+                    if map.contains_key(cat) {
+                        total_offset += map[cat].extend(0.);
+                        break;
+                    }
+                }
             }
             total_offset.z *= 1e17;
 
@@ -178,10 +181,10 @@ pub fn replace_string_ids_by_entities(
         };
         for id in &string_ids.0 {
             if let Some(sprite_ent) = map.get_entity(id) {
-                info!("Replacing string id '{}' with entity {:?}", id, sprite_ent);
+                info!(target: "sprite_building", "Replacing string id '{}' with entity {:?}", id, sprite_ent);
                 entities_vec.push(sprite_ent);
             } else {
-                warn!("SpriteDataIdEntityMap does not contain entity for id: {}", id);
+                error!(target: "sprite_building", "SpriteDataIdEntityMap does not contain entity for id: {}", id);
             }
         }
         if ! entities_vec.is_empty() {
@@ -199,7 +202,7 @@ pub fn add_spritechildren_and_comps(
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut father_query: Query<(Entity, &SpriteDatasChildrenRefs, Option<&SpriteHolderRef>,), Without<SpriteDataId>>,
     spritedatas_query: Query<(
-        &ImgPathHolder, &AtlasLayoutData, &Category, &OtherCompsToBuild,
+        &ImgPathHolder, &AtlasLayoutData, &Categories, &OtherCompsToBuild,
         Option<&SpriteDatasChildrenRefs>,
         &SpriteDataId,
     ), With<SpriteDataId>>,
@@ -210,7 +213,7 @@ pub fn add_spritechildren_and_comps(
                 img_path_holder, atlas_layout_data, cat, comps_to_build, children_refs, sprite_data_id
             )) 
             = spritedatas_query.get(*sprite_to_insert_ent) {
-                info !("Building sprite with spritedata {}", sprite_data_id.id());
+                info!(target: "sprite_building", "Building sprite with spritedata {}", sprite_data_id.id());
                 let spritesheet_size= atlas_layout_data.spritesheet_size;
                 let frame_size = atlas_layout_data.frame_size;
 
@@ -224,6 +227,7 @@ pub fn add_spritechildren_and_comps(
                 let child_sprite = cmd.spawn((
                     ChildOf(father_to_sprite),
                     Sprite::from_atlas_image(image, atlas),
+                    Name::new(format!("sprite {}", sprite_data_id.id())),
                     cat.clone(),
                 )).id();
 
@@ -235,9 +239,9 @@ pub fn add_spritechildren_and_comps(
                 if let Some(refs) = children_refs {
                     cmd.entity(child_sprite).insert(refs.clone());
                 }
-                if let Some(excl) = &comps_to_build.exclusive {
-                    cmd.entity(child_sprite).insert(excl.clone());
-                }
+                // if let Some(excl) = &comps_to_build.exclusive {
+                //     cmd.entity(child_sprite).insert(excl.clone());
+                // }
 
                 if let Some(offset_children) = &comps_to_build.offset_children {
                     cmd.entity(child_sprite).insert(offset_children.clone());
@@ -300,7 +304,7 @@ pub fn add_spritechildren_and_comps(
                     cmd.entity(child_sprite).insert(color.clone());
                 }
             } else{
-                warn!("query does not contain entity for: {}", sprite_to_insert_ent);
+                warn!(target: "sprite_building", "query does not contain entity for: {}", sprite_to_insert_ent);
             }
         }
         cmd.entity(father_to_sprite).remove::<SpriteDatasChildrenRefs>();
@@ -308,18 +312,20 @@ pub fn add_spritechildren_and_comps(
 }
 
 #[allow(unused_parens)]
-pub fn become_child_of_sprite_with_category(mut cmd: Commands, mut to_become_child: Query<(Entity, &SpriteHolderRef, &Category, &ToBecomeChildOfCategory),(With<Sprite>, Without<SpriteDataId>)>, 
-to_become_parent: Query<(Entity, &SpriteHolderRef, &Category, ), (With<Sprite>,)>,
+pub fn become_child_of_sprite_with_category(mut cmd: Commands, mut to_become_child: Query<(Entity, &SpriteHolderRef, &Categories, &ToBecomeChildOfCategory),(With<Sprite>, Without<SpriteDataId>)>, 
+to_become_parent: Query<(Entity, &SpriteHolderRef, &Categories, ), (With<Sprite>,)>,
 ) {
-    for (tochild_ent, SpriteHolderRef(tochild_spriteholder), cat, child_of_cat) in to_become_child.iter_mut() {
-        for (toparent_ent, SpriteHolderRef(toparent_spriteholder), parents_cat, ) in to_become_parent.iter() {
-            if tochild_spriteholder == toparent_spriteholder && child_of_cat.0 == *parents_cat {
-                info!("Adding ChildOfCategory to entity {:?} with id: {}", tochild_ent, cat);
-
-                cmd.entity(tochild_ent).insert(ChildOf(toparent_ent));
-                cmd.entity(tochild_ent).remove::<ToBecomeChildOfCategory>();
-
-                break;
+    for (tochild_ent, SpriteHolderRef(tochild_spriteholder), cats, child_of_cat) in to_become_child.iter_mut() {
+        for (toparent_ent, SpriteHolderRef(toparent_spriteholder), Categories(parents_cats), ) in to_become_parent.iter() {
+            if tochild_spriteholder == toparent_spriteholder {
+                for pare_cat in parents_cats {
+                    if pare_cat == &child_of_cat.0 {
+                        info!(target: "sprite_building", "Adding ChildOfCategory to entity {:?} with id: {}", tochild_ent, pare_cat);
+                        cmd.entity(tochild_ent).insert(ChildOf(toparent_ent));
+                        cmd.entity(tochild_ent).remove::<ToBecomeChildOfCategory>();
+                        break;
+                    }
+                }
             }
         }
         

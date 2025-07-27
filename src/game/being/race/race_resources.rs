@@ -2,7 +2,7 @@
 use bevy::{platform::collections::HashMap, prelude::*, sprite};
 use bevy_asset_loader::prelude::*;
 
-use crate::game::{being::{race::race_components::*, sprite::sprite_resources::SpriteDataIdEntityMap}, game_components::{Description, DisplayName}};
+use crate::{common::common_components::DisplayName, game::{being::{race::race_components::*, sprite::sprite_resources::SpriteDataIdEntityMap}, game_components::Description}};
 
 //CASO DE USO: RECIBIS UN PAQUETE ONLINE SOLO CON NID Y TENES Q VER A Q ENTITY SE REFIERE
 #[derive(Resource, Debug, Default )]
@@ -22,8 +22,9 @@ impl RaceIdEntityMap {
         if let Some(mut race_seri) = assets.remove(handle.id()){
             use std::mem::take;
 
+            let enti_name = Name::new(format!("race id:'{}' '{}'", race_seri.id.clone(), race_seri.name.clone()));
             let race_id = RaceId::new(take(&mut race_seri.id));
-            let disp_name = DisplayName(take(&mut race_seri.name));
+            let ingame_name = DisplayName::new(take(&mut race_seri.name));
             let description = Description(take(&mut race_seri.description));
             let demonym = Demonym(take(&mut race_seri.demonym));
             let plural = PluralDenomination(
@@ -37,7 +38,8 @@ impl RaceIdEntityMap {
             
             let entity = cmd.spawn((
                 race_id, 
-                disp_name,
+                enti_name,
+                ingame_name,
                 description,
                 demonym,
                 plural,

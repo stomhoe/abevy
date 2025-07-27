@@ -16,9 +16,6 @@ impl RaceId {
 }
 
 
-
-
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct SpritesPool(#[entities] pub Vec<Entity>);
 

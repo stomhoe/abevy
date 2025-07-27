@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
-use crate::{game::game_components::DisplayName, game::{player::{player_components::*, player_resources::KeyboardInputMappings, player_systems::*}, IngameSystems}};
+use crate::game::{player::{player_components::*, player_resources::*, player_systems::*}, ActiveGameSystems};
 
 // Module player
 pub mod player_components;
+pub mod player_resources;
 mod player_systems;
-mod player_resources;
 //mod player_events;
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -18,18 +18,21 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
 
         app
-            .add_systems(Update, ((
-                on_control_change,
-                camera_follow_target, 
-                react_on_control_removal,
-                enforce_single_camera_target,
-                (update_move_input_dir, camera_zoom_system).in_set(PlayerInputSystems)
-            ).in_set(IngameSystems),
+            .add_systems(Update, (
+                (
+                    on_control_change,
+                    camera_follow_target, 
+                    react_on_control_removal,
+                    enforce_single_camera_target,
+                    (update_move_input_dir, camera_zoom_system).in_set(PlayerInputSystems)
+                ).in_set(ActiveGameSystems),
             ))
-            .replicate_bundle::<(Player,DisplayName)>()
+            .replicate_bundle::<(Player,Name)>()
             .replicate::<Player>()
             .replicate::<HostPlayer>()
 
-            .init_resource::<KeyboardInputMappings>();
+            .init_resource::<KeyboardInputMappings>()
+            .init_resource::<PlayerData>()
+        ;
     }
 }

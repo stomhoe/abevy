@@ -1,14 +1,15 @@
 use bevy::prelude::*;
+use bevy_replicon::prelude::AppRuleExt;
 use superstate::superstate_plugin;
 
-use crate::game::{tilemap::{chunking_resources::*, chunking_systems::*, terrain_gen::TerrainGenPlugin, tile_imgs::*, chunking_components::*, tilemap_systems::*}, IngameSystems, SimRunningSystems};
+use crate::game::{tilemap::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::TerrainGenPlugin, tile::TilePlugin, tilemap_systems::*}, ActiveGameSystems, SimRunningSystems};
 
 mod tilemap_systems;
 mod chunking_systems;
 pub mod chunking_components;
 pub mod chunking_resources;
 
-pub mod tile_imgs;
+pub mod tile;
 
 pub mod terrain_gen;
 
@@ -26,6 +27,7 @@ impl Plugin for MyTileMapPlugin {
             .add_plugins((
                 bevy_ecs_tilemap::TilemapPlugin, 
                 TerrainGenPlugin,
+                TilePlugin,
                 superstate_plugin::<ChunkInitState, (UninitializedChunk, TilesReady, LayersReady, InitializedChunk)>
             ))
 
@@ -45,8 +47,7 @@ impl Plugin for MyTileMapPlugin {
             ).in_set(SimRunningSystems).in_set(TilemapsSystems))
             .init_resource::<LoadedChunks>()
             .init_resource::<ChunkRangeSettings>()
-            .init_resource::<NidImgMap>()
-            .add_systems(Startup, (tile_imgs::setup_nid_img_map,))
+            .replicate_once::<ActivatesChunks>()
         ;
     }
 }

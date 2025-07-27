@@ -3,13 +3,15 @@ use bevy::input::ButtonInput;
 use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
-use crate::common::common_components::GameZindex;
+use crate::common::common_components::{DisplayName, GameZindex};
 use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, TargetSpawnPos, };
+use crate::game::being::modifier::modifier_components::ModifierCategories;
 use crate::game::being::sprite::sprite_components::SpriteDatasChildrenStringIds;
-use crate::game::faction::faction_components::SelfFaction;
+use crate::game::faction::faction_components::{BelongsToFaction, Faction};
+use crate::game::faction::faction_resources::FactionEntityMap;
 use crate::game::game_components::*;
 use crate::game::game_resources::*;
-use crate::game::player::player_components::{CameraTarget, CreatedCharacter, Player, SelfPlayer};
+use crate::game::player::player_components::{CameraTarget, CreatedCharacter, HostPlayer, OfSelf, Player};
 use crate::game::{SimulationState};
 
 #[allow(unused_parens)]
@@ -17,12 +19,22 @@ pub fn placeholder_character_creation(mut cmd: Commands, mut query: Query<(),(Wi
 }
 
 
+pub fn setup_initial_entities(mut cmd: Commands, mut fac_map: ResMut<FactionEntityMap>) {
+    let fac_ent = Faction::new(&mut cmd, &mut fac_map, "host", "Host Faction", ());
+    cmd.spawn((
+        OfSelf, HostPlayer,
+        DisplayName::new("host"),
+        BelongsToFaction(fac_ent),
+    ));
+}
+
+
 pub fn spawn_player_beings(
     mut commands: Commands,
-    players: Query<(Entity, &CreatedCharacter, Option<&SelfPlayer>), (With<Player>)>,
+    players: Query<(Entity, &CreatedCharacter, &BelongsToFaction, Option<&OfSelf>), (With<Player>)>,
 ) {
 
-    for (player_ent, created_character, self_player) in players.iter() {
+    for (player_ent, created_character, belongs_to_fac, self_player) in players.iter() {
         println!("Spawning player being: {:?}", created_character);
 
         commands.entity(created_character.0).remove::<ChildOf>();
@@ -35,7 +47,7 @@ pub fn spawn_player_beings(
             Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),//PROVISORIO
             //HACER Q OTRO SYSTEMA AGREGUE CAMERATARGET AL BEING CONTROLADO
             SpriteDatasChildrenStringIds::new(["humanhe0", "humanbo0"]),
-            SelfFaction(),
+            belongs_to_fac.clone(),
         ));
 
         if self_player.is_some() {
@@ -45,6 +57,7 @@ pub fn spawn_player_beings(
 
         commands.entity(player_ent).remove::<CreatedCharacter>();
     }
+
 }
 
 
@@ -98,6 +111,6 @@ pub fn debug_system(mut commands: Commands, query: Query<(Entity, &Transform), W
    
     
 }
-pub fn tick_time_based_multipliers(mut cmd: Commands, time: Res<Time>, mut query: Query<&mut TimeBasedMultiplier>) {
+pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<&mut TimeBasedMultiplier, Without<ModifierCategories>>) {
     for mut multiplier in query.iter_mut() { multiplier.timer.tick(time.delta()); }
 }

@@ -5,7 +5,7 @@ use std::net::Ipv4Addr;
 
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::*}, renet::RenetClient};
 
-use crate::{game::game_components::DisplayName, game::multiplayer::{multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
+use crate::{common::common_components::DisplayName, game::{multiplayer::{multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_resources::PlayerData}, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
 
 pub fn attempt_join(
     mut commands: Commands, 
@@ -30,16 +30,17 @@ pub fn attempt_join(
     Ok(())
 }
 
-pub fn client_on_connect_successful(
+pub fn client_on_connect_successful_send_name(
     mut commands: Commands, 
     mut app_state: ResMut<NextState<AppState>>,
+    player_data: Res<PlayerData>,
+    
 ) {
     app_state.set(AppState::StatefulGameSession);
-
-    let name = format!("Player-{}", nano_id::base64::<6>());
+    let name = player_data.name.clone();
     info!("connected as Client {name}");
-    
-    commands.client_trigger(SendPlayerName(DisplayName(name)));
+
+    commands.client_trigger(SendPlayerName(DisplayName::new(name)));
 }
 
 pub fn client_on_connect_failed(

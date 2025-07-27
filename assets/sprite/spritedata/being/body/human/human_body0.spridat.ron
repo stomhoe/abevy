@@ -2,9 +2,8 @@
     id: "humanbo0",
     name: "Human Body 0",
     path: "being/body/human/male.png",
-    category: "body",
-    exclusive: true,
-    shares_category: false,
+    categories: ["body"],
+    shares_category: [],
     rows_cols: (4, 6),
     frame_size: (25, 45),
     offset: (0.0, 0.0, 0.0),
@@ -18,7 +17,7 @@
     anim_prefix: "_body",
     visibility: 0,
     parent_cat: "",
-    offset_children: {
+    offset4children: {
         "head": (0., 21.)
     },
     children_sprites: [],

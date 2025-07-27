@@ -1,7 +1,7 @@
 
 use bevy::{platform::collections::HashSet, prelude::*};
 
-use crate::game::{faction::faction_components::SelfFaction, tilemap::{chunking_components::*, chunking_resources::*}};
+use crate::game::{faction::faction_components::BelongsToSelfPlayerFaction, tilemap::{chunking_components::*, chunking_resources::*}};
 
 #[allow(unused_parens, )]
 pub fn add_initialized_chunks_to_loaded_chunks(
@@ -16,7 +16,7 @@ pub fn add_initialized_chunks_to_loaded_chunks(
 
 pub fn visit_chunks_around_activators(
     mut commands: Commands, 
-    mut query: Query<(&Transform, &mut ActivatesChunks), (With<SelfFaction>)>,
+    mut query: Query<(&Transform, &mut ActivatesChunks), (With<BelongsToSelfPlayerFaction>)>,
     loaded_chunks: Res<LoadedChunks>,
     tilemap_settings: Res<ChunkRangeSettings>,
 ) {
@@ -49,7 +49,7 @@ pub fn visit_chunks_around_activators(
 }
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
-    mut activator_query: Query<(&Transform, &mut ActivatesChunks), (With<SelfFaction>)>,
+    mut activator_query: Query<(&Transform, &mut ActivatesChunks), (With<BelongsToSelfPlayerFaction>)>,
     mut chunks_query: Query<(Entity, &ChunkPos ,&Transform), With<InitializedChunk>>,
     tilemap_settings: Res<ChunkRangeSettings>,
 ) {
@@ -72,11 +72,10 @@ pub fn rem_outofrange_chunks_from_activators(
 #[allow(unused_parens)]
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,
-    activator_query: Query<(&ActivatesChunks), (With<SelfFaction>)>,
+    activator_query: Query<(&ActivatesChunks), (With<BelongsToSelfPlayerFaction>)>,
     mut chunks_query: Query<(Entity, &Transform,), With<InitializedChunk>>,
     mut loaded_chunks: ResMut<LoadedChunks>,
 ) {
-
     let mut referenced_chunks: HashSet<Entity> = HashSet::new();
 
     for activates_chunks in activator_query.iter() {
@@ -84,7 +83,6 @@ pub fn despawn_unreferenced_chunks(
             referenced_chunks.insert(*chunk_entity);
         }
     }
-
     for (entity, chunk_transform) in chunks_query.iter_mut() {
         if !referenced_chunks.contains(&entity) {
             let chunk_cont_pos = chunk_transform.translation.xy();

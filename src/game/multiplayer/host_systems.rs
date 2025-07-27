@@ -4,10 +4,10 @@ use std::{mem, };
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
 
-use crate::game::{multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::Player, };
+use crate::game::{faction::faction_components::{BelongsToFaction, Faction, BelongsToSelfPlayerFaction}, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::{OfSelf, Player} };
 
 
-pub fn receive_transf_from_client(
+pub fn receive_transf_from_client(//PROVISORIO, DEBE RECIBIR INPUTS EN REALIDAD
     trigger: Trigger<FromClient<TransformFromClient>>,
     mut commands: Commands,
     mut query: Query<(&MpAuthority, &mut Transform,)>,
@@ -32,7 +32,7 @@ pub fn attempt_host(
     channels: Res<RepliconChannels>,
     
 ) -> Result {
-    multiplayer_utils::host_server(&mut commands, channels, None, "host", 3)?;
+    multiplayer_utils::host_server(&mut commands, channels, None, 3)?;
     Ok(())
 }
 
@@ -44,11 +44,15 @@ pub fn host_receive_client_name(mut trigger: Trigger<FromClient<SendPlayerName>>
 }
 
 
+#[allow(unused_parens, )]
+pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>, 
+    mut cmd: Commands, host_faction: Single<(Entity ), (With<Faction>, With<OfSelf>)>,
 
-pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>, mut commands: Commands) {
+) {
     info!("(HOST) `{}` connected", trigger.target());
 
-    commands.entity(trigger.target()).insert((Player, Replicated));
+    // TA BIEN, TODOS LOS JOINERS POR DEFECTO SON DE LA FACTION DEL HOST, SI NO ES ASÍ, AL CARGAR LA SAVEGAME SE CAMBIA?
+    cmd.entity(trigger.target()).insert((Player, Replicated, BelongsToFaction(host_faction.into_inner())));
 }
 
 

@@ -5,6 +5,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 // use bevy_renet::netcode::{NetcodeClientPlugin, NetcodeServerPlugin};
 // use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 
+use crate::common::common_components::{DisplayName, EntityPrefix};
 use crate::game::GamePlugin;
 use crate::pregame_menus::{MenuPlugin};
 use crate::ui::MyUiPlugin;
@@ -24,10 +25,11 @@ fn main() {
             GamePlugin, 
             MenuPlugin, 
             MyUiPlugin,
-            //EguiPlugin::default(), WorldInspectorPlugin::new()
+            EguiPlugin::default(), WorldInspectorPlugin::new()
         ))
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)
+        .add_systems(Update, set_entity_name)
         .run()
     ;
 }
@@ -45,4 +47,13 @@ pub fn spawn_camera(mut commands: Commands, window_query: Single<&Window, With<P
             ..default()
         },
     ));
+}
+
+
+#[allow(unused_parens)]
+pub fn set_entity_name(mut cmd: Commands, mut query: Query<(Entity, &EntityPrefix, &DisplayName),(Changed<EntityPrefix>, Changed<DisplayName>)>) {
+    for (ent, prefix, disp_name) in query.iter_mut() {
+        let new_name = format!("{}('{}')", prefix, disp_name.0);
+        cmd.entity(ent).insert(Name::new(new_name));
+    }
 }

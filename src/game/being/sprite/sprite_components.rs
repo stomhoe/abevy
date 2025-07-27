@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-use crate::game::{being::sprite::{animation_constants::*, sprite_constants::* }, game_components::*};
+use crate::common::common_components::DisplayName;
+use crate::game::{being::sprite::{animation_constants::*, }, game_components::*};
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
@@ -92,6 +93,11 @@ impl SpriteDataId {
 impl Into<String> for SpriteDataId {
     fn into(self) -> String {self.0}
 }
+impl std::fmt::Display for SpriteDataId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct Scale(pub Vec2);
 impl Default for Scale {fn default() -> Self {Self(Vec2::ONE)}}
@@ -107,7 +113,7 @@ impl Default for ScaleLookSideWays {fn default() -> Self {Self(Vec2::ONE)}}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct OtherCompsToBuild{
-    pub exclusive: Option<Exclusive>,
+    //pub exclusive: Option<Exclusive>,
     pub display_name: Option<DisplayName>,
     pub anim_prefix: Option<AnimationIdPrefix>,
     pub directionable: Option<Directionable>,
@@ -159,15 +165,36 @@ pub struct OffsetLookLeft(pub Vec2);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct OffsetForChildren(pub HashMap<Category, Vec2>);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Category(u64);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq, Hash,)]
-pub struct Category { pub id: u64, /*pub shared: bool,*/ }//importante: el equal tiene en cuenta el shared
 impl Category {
-    pub fn new<S: Into<String>>(id: S, /*shared: bool*/) -> Self {
+    pub fn new<S: Into<String>>(id: S) -> Self {
         let id_str = id.into();
         let mut hasher = DefaultHasher::new();
         id_str.hash(&mut hasher);
-        Self { id: hasher.finish(), /*shared*/ }
+        Self(hasher.finish())
+    }
+}
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Category({})", self.0)
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct Categories(pub Vec<Category>);
+
+impl Categories {
+    pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
+        let mut vec = Vec::new();
+        for id in ids {
+            let id_str = id.into();
+            let mut hasher = DefaultHasher::new();
+            id_str.hash(&mut hasher);
+            vec.push(Category(hasher.finish()));
+        }
+        Self(vec)
     }
 }
 
@@ -183,11 +210,7 @@ impl ToBecomeChildOfCategory {
     pub fn category(&self) -> &Category {&self.0}
 }
 
-impl std::fmt::Display for Category {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Category({})", self.id)
-    }
-}
+
 
 
 // NO USAR ESTOS DOS PARA BEINGS
@@ -211,10 +234,9 @@ pub struct SpriteDataSeri {
     pub name: String,
     pub path: String,
     pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
-    pub category: String,
-    pub exclusive: bool,
+    pub categories: Vec<String>,
     pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
-    pub shares_category: bool,//asignar un componente
+    pub shares_category: Vec<bool>,//asignar un componente
     pub rows_cols: [u32; 2], 
     pub frame_size: [u32; 2],
     pub offset: [f32; 3],
@@ -227,7 +249,7 @@ pub struct SpriteDataSeri {
     pub flip_horiz: u8, //0: none, 1: any, 2: if looking left, 3: if looking right
     pub anim_prefix: String,
     pub visibility: u8, //0: inherited, 1: visible, 2: invisible
-    pub offset_children: HashMap<String, [f32; 2]>,//category, offset
+    pub offset4children: HashMap<String, [f32; 2]>,//category, offset
     pub offset_down: Option<[f32; 2]>,
     pub offset_up: Option<[f32; 2]>,
     pub offset_sideways: Option<[f32; 2]>,
@@ -238,6 +260,8 @@ pub struct SpriteDataSeri {
     pub color: Option<[u8; 4]>, 
     pub exclude_from_sys: Option<bool>,
 }
+// PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)
+
 // TODO: hacer shaders aplicables? (para meditacion por ej)
 // TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld. hacer un mapa color-algo 
 

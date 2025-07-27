@@ -2,15 +2,16 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::common::common_components::EntityPrefix;
+
 #[derive(Component, Debug,)]
-#[require(Player)]
-pub struct SelfPlayer;
+pub struct OfSelf;
 
 
 //NO ES PARA ADJUNTARSELO A ENTITIES COMÚNES (OBJETOS O BEINGS)
 // ES PARA ADJUNTARSELO A ENTITIES QUE REPRESENTAN JUGADORES
 #[derive(Debug, Component, Default, Serialize, Deserialize)]
-#[require(Replicated)]
+#[require(Replicated, EntityPrefix::new("Player "))]
 pub struct Player;
 
 #[derive(Debug, Component, Default, Serialize, Deserialize)]

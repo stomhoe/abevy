@@ -10,13 +10,8 @@ use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
 
-use crate::game::tilemap::{terrain_gen::{terrain_gen_components::*, terrain_gen_resources::*, }, tile_imgs::*, chunking_components::*, chunking_resources::CHUNK_SIZE};
 
-// NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO
-#[derive(Resource, Default)]
-pub struct TilesDataMap {//TODO faltan templates para habilitar la randomizacion entre tiles del mismo tipo
-    pub data: HashMap<u32, Entity>,//
-}//NO SÉ SI USAR ESTO O DIRECTAMENTE PONERLE MARKER COMPONENTS A LOS ENTITIES DE TILE INSTANTIATION DATA
+use crate::game::tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrain_gen_components::*, terrain_gen_resources::*, }, tile::tile_components::{AppliedShader, MyTileBundle, RepeatingTexture, Tileimg}, };
 
 #[derive(Component, Debug, Default, )]
 pub struct TemperateGrass;
@@ -30,7 +25,8 @@ pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<Wo
     // commands.spawn(grass_instantiation_data);
 
     let tile_entity = commands.spawn(( 
-        MyTileBundle {
+        MyTileBundle {//TODO ponerle un componente Name de alguna forma???
+            img_id: Tileimg::new(&asset_server, "white.png"),
             color: TC_RED,
             shader: AppliedShader::MonoRepeating(
                 RepeatingTexture::new_w_red_mask(
@@ -61,7 +57,7 @@ pub fn add_tiles2spawn_within_chunk (
     chunks_query: Query<(Entity, &ChunkPos), (With<UninitializedChunk>, Without<TilesReady>, Without<Children>)>, 
     noise_query: Query<&FnlComp>, 
     gen_settings: Res<WorldGenSettings>,
-    clonable_tiles: Query<Entity, (With<TileImgId>, Without<TilePos>)>,
+    clonable_tiles: Query<Entity, (With<Tileimg>, Without<TilePos>)>,
     //tile_insta_data_query: Query<Entity, With<TileInstantiationData>>,
 ) -> Result {
 
@@ -92,9 +88,9 @@ pub fn add_tiles2spawn_within_chunk (
     Ok(())
 }
 
-fn add_tiles_for_tilepos(mut co: &mut Commands, tiles2spawn: &mut TilesReady, 
+fn add_tiles_for_tilepos(mut cmd: &mut Commands, tiles2spawn: &mut TilesReady, 
     noise_query: Query<&FnlComp>, tilepos: IVec2, pos_within_chunk: U8Vec2, 
-    mut clonable_tiles: Query<Entity, (With<TileImgId>, Without<TilePos>)>,
+    mut clonable_tiles: Query<Entity, (With<Tileimg>, Without<TilePos>)>,
     rng : &mut Pcg64,
 
 ) -> Result {
@@ -105,7 +101,7 @@ fn add_tiles_for_tilepos(mut co: &mut Commands, tiles2spawn: &mut TilesReady,
     let grass = grass.query().single()?;
 
     clone_add_tilepos_and_push(
-        &mut co, 
+        &mut cmd, 
         tiles2spawn, 
         pos_within_chunk, 
         tilepos,
@@ -145,16 +141,3 @@ fn new_tile<B: Bundle>(
     )).id()
 }
 
-#[derive(Bundle, Debug, Default, )]
-pub struct MyTileBundle{
-    pub img_id: TileImgId,
-    pub flip: TileFlip,
-    pub color: TileColor,
-    pub visible: TileVisible,
-    pub shader: AppliedShader,
-}
-impl MyTileBundle {
-    pub fn new(img_nid: TileImgId, flip: TileFlip, color: TileColor, visible: bool, shader: AppliedShader) -> Self {
-        Self { img_id: img_nid, flip, color, visible: TileVisible(visible), shader }
-    }
-}

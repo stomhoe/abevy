@@ -1,9 +1,12 @@
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
+#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
+
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::IngameSystems;
+use crate::game::ActiveGameSystems;
 use crate::game::{being::sprite::{
    animation_constants::*, sprite_resources::*, animation_systems::*, sprite_components::*, sprite_systems::*
    //animation_events::*,
@@ -12,7 +15,6 @@ mod animation_systems;
 mod sprite_systems;
 pub mod sprite_components;
 pub mod animation_constants;
-pub mod sprite_constants;
 pub mod sprite_resources;
 pub mod animation_resources;
 //mod animation_events;
@@ -31,7 +33,8 @@ impl Plugin for SpritePlugin {
                 RonAssetPlugin::<AnimationSeri>::new(&["anim.ron"]),
             ))
             .add_systems(Update, (
-                (animate_sprite, change_anim_state_string, apply_offsets, apply_scales, add_spritechildren_and_comps).in_set(SpriteSystemsSet).in_set(IngameSystems),
+                (animate_sprite, change_anim_state_string, apply_offsets, apply_scales, add_spritechildren_and_comps).in_set(SpriteSystemsSet).in_set(ActiveGameSystems),
+
                 (replace_string_ids_by_entities, become_child_of_sprite_with_category).in_set(SpriteSystemsSet).run_if(
                     in_state(AssetLoadingState::Complete)
                 )
@@ -42,7 +45,8 @@ impl Plugin for SpritePlugin {
                 init_sprites,
             ).in_set(SpriteSystemsSet)) 
             .init_resource::<SpriteDataIdEntityMap>()
-            
+            .replicate::<SpriteDatasChildrenStringIds>()
+
         ;
     }
 }

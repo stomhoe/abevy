@@ -42,9 +42,9 @@ pub struct MagicallyInvulnerable();
 pub struct ImgPathHolder(pub String);
 
 
-#[derive(Component, Debug, Clone, Default, Serialize, Deserialize, )]
-pub struct DisplayName(pub String);
-impl DisplayName {pub fn new(name: impl Into<String>) -> Self {DisplayName(name.into())}}
+
+
+
 
 #[allow(unused_parens, dead_code)]
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]

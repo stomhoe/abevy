@@ -4,14 +4,13 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 
-use crate::game::{being::{movement::movement_components::*, sprite::{animation_constants::*, animation_resources::*, sprite_components::*, sprite_constants::* }}, game_components::FacingDirection,};
+use crate::game::{being::{movement::movement_components::*, sprite::{animation_constants::*, animation_resources::*, sprite_components::*, }}, game_components::FacingDirection,};
 
 
 #[allow(unused_parens)]
 pub fn init_animations(
     mut anim_handles: ResMut<AnimSerisHandles>,
     mut assets: ResMut<Assets<AnimationSeri>>,
-
     mut library: ResMut<AnimationLibrary>,
 ) {
     use std::mem::take;
@@ -26,30 +25,24 @@ pub fn init_animations(
                     Some([start, end]) => Clip::from_frames(
                     spritesheet.row_partial(seri.target as usize, (start as usize)..=(end as usize))
                     ),
-                    None => Clip::from_frames(
-                    spritesheet.row(seri.target as usize)
-                    ),
+                    None => Clip::from_frames(spritesheet.row(seri.target as usize)),
                 }
                 } else {
                 match seri.partial {
                     Some([start, end]) => Clip::from_frames(
                     spritesheet.column_partial(seri.target as usize, (start as usize)..=(end as usize))
                     ),
-                    None => Clip::from_frames(
-                    spritesheet.column(seri.target as usize)
-                    ),
+                    None => Clip::from_frames(spritesheet.column(seri.target as usize)),
                 }
                 };
-                let animation = Animation::from_clip(library.register_clip(clip));
+                let mut animation = Animation::from_clip(library.register_clip(clip));
+                animation.set_repetitions(AnimationRepeat::Loop);
                 let animation_id = library.register_animation(animation);
-                info!("Registered animation: {}", seri.id); 
+                info!(target: "sprite_animation", "Registered animation: {}", seri.id);
                 library.name_animation(animation_id, take(&mut seri.id)).unwrap();
             }
     }
 }
-
-
-
 
 #[allow(unused_parens)]
 pub fn change_anim_state_string(
@@ -58,16 +51,18 @@ pub fn change_anim_state_string(
             Option<&WalkAnim>, Option<&FlyAnim>, Option<&SwimAnim>,
             //Option<&AnimationIdPrefix>,
         ), (Without<ExcludedFromBaseAnimPickingSystem>)>,
-    parents_query: Query<(Option<&VoluntarilyMoving>, &Altitude),>,
+    parents_query: Query<(Option<&VoluntarilyMoving>, &Altitude), >,
 ) {
-    for (sprite_holder, mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, ) in sprite_query.iter_mut() {
+    for (sprite_holder, mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, /*has_anim_id_prefix*/) in sprite_query.iter_mut() {
         if let Ok((moving, curr_parent_altitude)) = parents_query.get(sprite_holder.0) {
             match (moving, curr_parent_altitude, has_walk_anim, has_swim_anim, has_fly_anim) {
                 (_any_move, _any_alti, None, None, None) => {
                     anim_state.set_idle();
+                    //let prefix_str = has_anim_id_prefix.map_or("", |p| p.0.as_str()); info!("Setting idle animation for entity: {:?} with prefix '{}'", sprite_holder.0, prefix_str);
                 },
                 (Some(_move), Altitude::OnGround, Some(_), _, _) => {
                     anim_state.set_walk();
+                    //let prefix_str = has_anim_id_prefix.map_or("", |p| p.0.as_str()); info!("Setting walk animation for entity: {:?}", sprite_holder.0); 
                 },
                 (Some(_move), Altitude::Swimming, _, Some(_), _) => {
                     anim_state.set_swim();
@@ -77,6 +72,7 @@ pub fn change_anim_state_string(
                 },
                 (None, Altitude::OnGround, _, _, _) => {
                     anim_state.set_idle();
+                    //let prefix_str = has_anim_id_prefix.map_or("", |p| p.0.as_str()); info!("Setting idle animation for entity: {:?} with prefix '{}'", sprite_holder.0, prefix_str);
                 },
                 (None, Altitude::Swimming, _, Some(has_swim_anim), _) => {
                     if has_swim_anim.use_still {
@@ -143,15 +139,17 @@ pub fn animate_sprite(
                 if let Some(mut sheet_anim) = sheet_anim {
                     if sheet_anim.animation_id != animation_id {
                         sheet_anim.switch(animation_id);
+                        info!(target: "sprite_animation", "Switched animation for entity {:?} to '{}'", ent, animation_name);
                     }
                 } else{
                     let new_anim = SpritesheetAnimation::from_id(animation_id);
                     commands.entity(ent).insert(new_anim);
+                    info!(target: "sprite_animation", "Inserted new animation for entity {:?} with name '{}'", ent, animation_name);
                 }
             }
             else{
                 commands.entity(ent).remove::<SpritesheetAnimation>();
-                warn!("Animation with name '{}' not found in library.", animation_name);
+                warn!(target: "sprite_animation", "Animation with name '{}' not found in library.", animation_name);
             }
         }
     }

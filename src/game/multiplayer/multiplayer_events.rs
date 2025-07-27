@@ -2,7 +2,9 @@ use std::time::SystemTime;
 
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use crate::game::game_components::DisplayName;
+use crate::common::common_components::DisplayName;
+
+
 
 
 #[derive(serde::Deserialize, Event, serde::Serialize, Clone)]

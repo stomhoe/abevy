@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use superstate::superstate_plugin;
 
-use crate::game::{being::{being_components::ControlledBy, being_systems::*, class::ClassPlugin, gen_template::GenTemplatePlugin, modifier::ModifierPlugin, movement::MovementPlugin, race::RacePlugin, sprite::SpritePlugin}, IngameSystems};
+use crate::game::{being::{being_components::ControlledBy, being_systems::*, class::ClassPlugin, gen_template::GenTemplatePlugin, modifier::ModifierPlugin, movement::MovementPlugin, race::RacePlugin, sprite::SpritePlugin}, player::player_components::CreatedCharacter, ActiveGameSystems};
 
 pub mod being_components;
 
@@ -13,7 +13,7 @@ pub mod sprite;
 pub mod being_utils;
 pub mod race;
 pub mod class;
-pub mod movement;
+pub mod movement;  
 pub mod modifier;
 
 mod being_systems;
@@ -32,10 +32,12 @@ impl Plugin for BeingsPlugin {
             // )) 
             .add_systems(Update, 
                 
-                 (on_control_change).in_set(IngameSystems),
+                 (on_control_change).in_set(ActiveGameSystems),
                 
             )
             .replicate::<ControlledBy>()
+            .replicate::<CreatedCharacter>()
+
         ;
     }
 }

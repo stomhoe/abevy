@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
-use crate::game::{being::being_components::*, game_components::FacingDirection, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::TransformFromClient}, player::player_components::{CameraTarget, SelfPlayer}};
+use crate::game::{being::being_components::*, game_components::FacingDirection, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::TransformFromClient}, player::player_components::{CameraTarget, OfSelf}};
 
 
 
@@ -10,7 +10,7 @@ use crate::game::{being::being_components::*, game_components::FacingDirection, 
 
 #[allow(unused_parens)]
 pub fn on_control_change(mut cmd: Commands, query: Query<(Entity, &ControlledBy),(Changed<ControlledBy>)>,
-    self_player_ent: Single<Entity, With<SelfPlayer>>,
+    self_player_ent: Single<Entity, With<OfSelf>>,
 ) {
     let self_player_ent = *self_player_ent;
     for (being_ent, ControlledBy(player_ent)) in query.iter() {
@@ -23,5 +23,3 @@ pub fn on_control_change(mut cmd: Commands, query: Query<(Entity, &ControlledBy)
 }
 
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^

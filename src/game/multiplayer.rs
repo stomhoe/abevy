@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::*;
 
-use crate::{game::{multiplayer::{client_systems::*, host_systems::*, multiplayer_events::*}, ClientSystems, GamePhase, GameSetupType, HostSystems }, AppState};
+use crate::{common::common_components::{DisplayName, EntityPrefix}, game::{multiplayer::{client_systems::*, host_systems::*, multiplayer_events::*}, ClientSystems, GamePhase, GameSetupType, HostSystems }, AppState};
 
 // Module multiplayer
 pub mod multiplayer_components;
@@ -39,7 +39,7 @@ impl Plugin for MpPlugin {
                 ),
             )
             .add_systems(Update, (
-                client_on_connect_successful.run_if(client_just_connected),
+                client_on_connect_successful_send_name.run_if(client_just_connected),
                 
                 (client_on_connect_failed).run_if(
                     in_state(GamePhase::Setup)
@@ -63,6 +63,10 @@ impl Plugin for MpPlugin {
                 ClientSystems.run_if(in_state(GameSetupType::JoinerLobby)),
             ))
             .init_state::<ConnectionAttempt>()
+
+            .replicate::<Name>()
+            .replicate::<EntityPrefix>()
+            .replicate::<DisplayName>()
 
         ;
     }

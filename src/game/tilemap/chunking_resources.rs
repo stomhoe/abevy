@@ -12,8 +12,8 @@ impl Default for ChunkRangeSettings {
     fn default() -> Self {
         Self {
             chunk_visib_max_dist: 2000.0,
-            chunk_active_max_dist: 4000.0,//POSIBLE BUG, SI ESTO ES MÁS BAJO Q EL SHOW RANGE, SE DESPAWNEAN Y RESPAWNEAN CONSTANTEMENTE LOS CHUNKS 
-            chunk_show_range: 4,//TODO
+            chunk_active_max_dist: 2000.0,//POSIBLE BUG, SI ESTO ES MÁS BAJO Q EL SHOW RANGE, SE DESPAWNEAN Y RESPAWNEAN CONSTANTEMENTE LOS CHUNKS 
+            chunk_show_range: 1,//no subir mucho o afecta visiualización sprites en movimiento
         }
     }
 }
@@ -24,6 +24,5 @@ pub struct LoadedChunks (pub HashMap<IVec2, Entity>,);
 
 pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
 
-//TODO HACER DEL TAMAÑO DE LO QUE ES VISIBLE EN PANTALLA
-pub const CHUNK_SIZE: U8Vec2 = U8Vec2 { x: 16, y: 16 };
+pub const CHUNK_SIZE: U8Vec2 = U8Vec2 { x: 5, y: 5 };
 

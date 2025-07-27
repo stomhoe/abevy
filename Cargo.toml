@@ -45,7 +45,7 @@ splines = { version = "5.0.0", features = ["serde"] }
 [dependencies.fastnoise-lite]
 version = "*"
 
-#log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # Improve Runtime Performance (Optional) 
+log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # Improve Runtime Performance (Optional) 
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

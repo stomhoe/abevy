@@ -8,10 +8,10 @@ use crate::{game::{multiplayer::ConnectionAttempt, setup_menus::lobby::{lobby_ev
 
 
 // Module lobby
-mod lobby_systems;
 pub mod lobby_components;
+mod lobby_systems;
 mod lobby_layout;
-pub mod lobby_events;
+mod lobby_events;
 pub struct LobbyPlugin;
 #[allow(unused_parens)]
 impl Plugin for LobbyPlugin {
@@ -47,7 +47,8 @@ impl Plugin for LobbyPlugin {
 
             .add_observer(on_player_disconnect)
 
-            //.add_server_trigger::<HostStartedGame>(Channel::Ordered)
+            .add_server_trigger::<HostStartedGame>(Channel::Ordered)
+            .add_observer(on_host_started_game)
             
         ;
     }

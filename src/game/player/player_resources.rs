@@ -43,3 +43,18 @@ pub struct GamepadInputMappings {
     pub pause: GamepadButton,
     
 }
+
+// ---------------------------> NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO <-----------------------
+#[derive(Resource, )]
+pub struct PlayerData {
+    pub name: String,
+    
+}
+impl Default for PlayerData {
+    fn default() -> Self {
+        let name = format!("Player-{}", nano_id::base64::<6>());
+        Self {
+            name,
+        }
+    }
+}

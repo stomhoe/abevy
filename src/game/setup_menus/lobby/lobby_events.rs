@@ -3,7 +3,7 @@
 
 
 #[derive(serde::Deserialize, Event, serde::Serialize, Clone)]
-pub struct HostStartedGame { }
+pub struct HostStartedGame;
 
 
 
