@@ -157,3 +157,6 @@ impl TimeBasedMultiplier {
     }
     
 }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct LocalCpu;

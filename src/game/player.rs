@@ -24,7 +24,7 @@ impl Plugin for PlayerPlugin {
                     camera_follow_target, 
                     react_on_control_removal,
                     enforce_single_camera_target,
-                    (update_move_input_dir, camera_zoom_system).in_set(PlayerInputSystems)
+                    (camera_zoom_system, ).in_set(PlayerInputSystems)
                 ).in_set(ActiveGameSystems),
             ))
             .replicate_bundle::<(Player,Name)>()

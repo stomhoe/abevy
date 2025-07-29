@@ -51,9 +51,10 @@ pub fn spawn_camera(mut commands: Commands, window_query: Single<&Window, With<P
 
 
 #[allow(unused_parens)]
-pub fn set_entity_name(mut cmd: Commands, mut query: Query<(Entity, &EntityPrefix, &DisplayName),(Changed<EntityPrefix>, Changed<DisplayName>)>) {
+pub fn set_entity_name(mut cmd: Commands, mut query: Query<(Entity, &EntityPrefix, Option<&DisplayName>),(Changed<DisplayName>)>) {
     for (ent, prefix, disp_name) in query.iter_mut() {
-        let new_name = format!("{}('{}')", prefix, disp_name.0);
+        let new_name = format!("{}('{}')", prefix, disp_name.cloned().unwrap_or_default());
+        info!(target: "set_ent_name", "Set name of entity {} to {}", ent, new_name);
         cmd.entity(ent).insert(Name::new(new_name));
     }
 }

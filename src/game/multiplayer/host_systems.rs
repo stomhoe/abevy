@@ -7,26 +7,6 @@ use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTranspo
 use crate::game::{faction::faction_components::{BelongsToFaction, Faction, BelongsToSelfPlayerFaction}, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::{OfSelf, Player} };
 
 
-pub fn receive_transf_from_client(//PROVISORIO, DEBE RECIBIR INPUTS EN REALIDAD
-    trigger: Trigger<FromClient<TransformFromClient>>,
-    mut commands: Commands,
-    mut query: Query<(&MpAuthority, &mut Transform,)>,
-) {
-   let (mp_auth, mut transf) = query.get_mut(trigger.entity).unwrap();
-
-   if mp_auth.0 == trigger.client_entity {
-        if transf.translation != trigger.transf.translation || transf.rotation != trigger.transf.rotation || transf.scale != trigger.transf.scale{
-            commands.entity(trigger.entity).insert(trigger.transf.clone());
-
-            commands.server_trigger(
-                ToClients { mode: SendMode::BroadcastExcept(trigger.client_entity), event: TransformFromServer::from(trigger.event().event.clone()) },
-                
-            );
-        }
-
-   }
-}
-
 pub fn attempt_host(
     mut commands: Commands, 
     channels: Res<RepliconChannels>,

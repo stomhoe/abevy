@@ -1,6 +1,6 @@
 use bevy::ecs::component;
 use bevy::math::{Vec2, Vec3, U16Vec2, UVec2};
-use bevy::platform::collections::HashMap;
+use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -214,7 +214,8 @@ impl ToBecomeChildOfCategory {
 
 
 // NO USAR ESTOS DOS PARA BEINGS
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+#[require(Replicated)]
 pub struct SpriteDatasChildrenStringIds(pub Vec<String>);
 impl SpriteDatasChildrenStringIds {
     pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
@@ -226,7 +227,7 @@ impl SpriteDatasChildrenStringIds {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone )]
-pub struct SpriteDatasChildrenRefs(#[entities] pub Vec<Entity>);
+pub struct SpriteDatasChildrenRefs(#[entities] pub HashSet<Entity>);
 
 #[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct SpriteDataSeri {

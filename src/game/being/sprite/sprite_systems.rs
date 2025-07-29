@@ -1,3 +1,4 @@
+use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
@@ -170,19 +171,20 @@ pub fn apply_offsets(
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
     mut cmd: Commands,
-    mut query: Query<(Entity, &SpriteDatasChildrenStringIds, Option<&mut SpriteDatasChildrenRefs>), (Added<SpriteDatasChildrenStringIds>)>,
+    mut query: Query<(Entity, &SpriteDatasChildrenStringIds, Option<&mut SpriteDatasChildrenRefs>), (Changed<SpriteDatasChildrenStringIds>,)>,
     map: Res<SpriteDataIdEntityMap>,
 ) {
     for (ent, string_ids, children_refs) in query.iter_mut() {
+        info!(target: "sprite_building", "Replacing string ids for entity {:?}", ent);
         let mut entities_vec = if let Some(children_refs) = children_refs {
             std::mem::take(&mut children_refs.into_inner().0)
         } else {
-            Vec::new()
+            HashSet::new()
         };
         for id in &string_ids.0 {
             if let Some(sprite_ent) = map.get_entity(id) {
                 info!(target: "sprite_building", "Replacing string id '{}' with entity {:?}", id, sprite_ent);
-                entities_vec.push(sprite_ent);
+                entities_vec.insert(sprite_ent);
             } else {
                 error!(target: "sprite_building", "SpriteDataIdEntityMap does not contain entity for id: {}", id);
             }
@@ -190,7 +192,7 @@ pub fn replace_string_ids_by_entities(
         if ! entities_vec.is_empty() {
             cmd.entity(ent).insert(SpriteDatasChildrenRefs(entities_vec));
         }
-        cmd.entity(ent).remove::<SpriteDatasChildrenStringIds>();
+        //cmd.entity(ent).remove::<SpriteDatasChildrenStringIds>();
     }
 }
 

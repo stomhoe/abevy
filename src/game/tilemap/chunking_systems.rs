@@ -14,6 +14,7 @@ pub fn add_initialized_chunks_to_loaded_chunks(
     }
 }
 
+#[allow(unused_parens, )]
 pub fn visit_chunks_around_activators(
     mut commands: Commands, 
     mut query: Query<(&Transform, &mut ActivatesChunks), (With<BelongsToSelfPlayerFaction>)>,

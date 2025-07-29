@@ -8,6 +8,7 @@ use crate::game::being::race::race_resources::RaceSerisHandles;
 use crate::game::being::sprite::animation_resources::AnimSerisHandles;
 use crate::game::being::sprite::sprite_resources::SpriteSerisHandles;
 use crate::game::being::{BeingsPlugin, };
+use crate::game::game_components::FacingDirection;
 use crate::game::multiplayer::MpPlugin;
 use crate::game::time::ClockPlugin;
 use crate::game::faction::FactionPlugin;
@@ -68,16 +69,20 @@ impl Plugin for GamePlugin {
                 FactionPlugin, MyTileMapPlugin, ClockPlugin, ))
 
             .add_systems(OnEnter(AppState::StatefulGameSession), (
-                (setup_initial_entities,).run_if(server_or_singleplayer),
+                (sors_setup_initial_entities,).run_if(server_or_singleplayer),
             ))
             
             .add_systems(OnEnter(GamePhase::ActiveGame), (
                 (spawn_player_beings,).run_if(server_or_singleplayer),
             ))
 
-            .add_systems(Update, 
-                (debug_system, toggle_simulation, force_z_index, tick_time_based_multipliers).in_set(ActiveGameSystems)
-            )
+            .add_systems(Update, (
+                host_on_player_added.run_if(server_or_singleplayer),
+                (
+                    debug_system, toggle_simulation, force_z_index, tick_time_based_multipliers,
+                
+                ).in_set(ActiveGameSystems),
+            ))
 
             // .configure_sets(OnEnter(AppState::StatefulGameSession), (
             //     GameDataInitSystems.run_if(server_or_singleplayer)
@@ -86,16 +91,16 @@ impl Plugin for GamePlugin {
             .configure_sets(Update, (
                 PlayerInputSystems,
                 MovementSystems,
+
                 ActiveGameSystems.run_if(in_state(GamePhase::ActiveGame)),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
                 SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::ActiveGame))),
-                HostSystems.run_if(server_or_singleplayer.or(in_state(GameSetupType::HostLobby))),
-                ClientSystems.run_if(not(server_or_singleplayer).and(in_state(GameSetupType::JoinerLobby))),
+
+                ClientSystems.run_if(not(server_or_singleplayer).or(in_state(GameSetupType::JoinerLobby))),
             ))
             
             .configure_sets(FixedUpdate, (
-                HostSystems.run_if(server_or_singleplayer.or(in_state(GameSetupType::HostLobby))),
-                ClientSystems.run_if(not(server_or_singleplayer).and(in_state(GameSetupType::JoinerLobby))),
+                ClientSystems.run_if(not(server_or_singleplayer).or(in_state(GameSetupType::JoinerLobby))),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
             ))
 
@@ -112,9 +117,12 @@ impl Plugin for GamePlugin {
                 .load_collection::<AnimSerisHandles>()
                 .load_collection::<RaceSerisHandles>()
             )
-
+            //.replicate_bundle::<(Children)>()
             .replicate_bundle::<(Being, ChildOf)>()
             .replicate::<DisplayName>()
+            .replicate_bundle::<(Being, FacingDirection)>()//PROVISORIO, VA A HABER Q REVISAR
+
+
         ;
     }
 }

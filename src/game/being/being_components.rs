@@ -2,7 +2,7 @@ use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use serde::{Deserialize, Serialize};
 use superstate::{SuperstateInfo};
-use crate::{common::common_components::GameZindex, game::{being::{modifier::modifier_components::AppliedModifiers, movement::movement_components::*}, game_components::FacingDirection, tilemap::chunking_components::ActivatesChunks}, AppState};
+use crate::{common::common_components::{EntityPrefix, GameZindex}, game::{being::{modifier::modifier_components::AppliedModifiers, movement::movement_components::*}, game_components::FacingDirection, player::player_components::Controls, tilemap::chunking_components::ActivatesChunks}, AppState};
 
 
 
@@ -15,28 +15,37 @@ pub struct Body {}
 
 #[allow(dead_code)] 
 #[derive(Component, Debug)]
-pub struct RaceRef(pub Entity);
+pub struct RaceRef(#[entities] pub Entity);
 
 #[derive(Component, Default)]
-#[require(SuperstateInfo<PlayerDirectControllable>, ActivatesChunks)]//TODO PONER ActivatesChunks CUANDO SEA ADECUADO
+#[require(ActivatesChunks)]//TODO PONER ActivatesChunks CUANDO SEA ADECUADO
 pub struct PlayerDirectControllable;
 
 #[derive(Component)]
-#[require(PlayerDirectControllable)]
-pub struct AvailableForControl;//chequear si es de la misma facción antes de intentar tomar control
+//no insertar este component si no se quiere restringir quien puede tomar control
+/// entities: whitelisted players
+pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si es de la misma facción antes de intentar tomar control
 
 #[derive(Component, Debug, Deserialize, Serialize)]
-#[require(PlayerDirectControllable, Replicated)]
-pub struct ControlledBy ( #[entities] pub Entity);
+#[relationship(relationship_target = Controls)]
+pub struct ControlledBy  { 
+    #[relationship] #[entities]
+    pub player: Entity 
+}
+
 
 #[derive(Component, Debug, Default, )]
-pub struct ControlledBySelf;
+pub struct ControlledLocally;
 
 #[derive(Component, Debug, Deserialize, Serialize)]
-#[require(InputMoveVector, FinalMoveVector, GameZindex(500), Replicated, Altitude, Visibility, FacingDirection, AppliedModifiers)]
+pub struct CpuControlled;
+
+
+#[derive(Component, Debug, Deserialize, Serialize)]
+#[require(InputMoveVector, FinalMoveVector, GameZindex(500), Replicated, Altitude, Visibility, FacingDirection, AppliedModifiers, EntityPrefix::new("Being "))]
 pub struct Being;
 
-#[derive(Component)]
+#[derive(Component, Debug, Deserialize, Serialize)]
 #[relationship(relationship_target = Followers)]
 pub struct FollowerOf {
     #[relationship] #[entities]

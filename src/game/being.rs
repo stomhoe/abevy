@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use superstate::superstate_plugin;
 
-use crate::game::{being::{being_components::ControlledBy, being_systems::*, class::ClassPlugin, gen_template::GenTemplatePlugin, modifier::ModifierPlugin, movement::MovementPlugin, race::RacePlugin, sprite::SpritePlugin}, player::player_components::CreatedCharacter, ActiveGameSystems};
+use crate::game::{being::{being_components::*, being_systems::*, class::ClassPlugin, gen_template::GenTemplatePlugin, modifier::ModifierPlugin, movement::MovementPlugin, race::RacePlugin, sprite::SpritePlugin}, ActiveGameSystems};
 
 pub mod being_components;
 
@@ -35,8 +35,10 @@ impl Plugin for BeingsPlugin {
                  (on_control_change).in_set(ActiveGameSystems),
                 
             )
+            .replicate::<Being>()
+            .replicate::<CpuControlled>()
             .replicate::<ControlledBy>()
-            .replicate::<CreatedCharacter>()
+            .replicate_bundle::<(Being, Transform)>()//PROVISORIO
 
         ;
     }

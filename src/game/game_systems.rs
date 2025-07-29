@@ -19,7 +19,7 @@ pub fn placeholder_character_creation(mut cmd: Commands, mut query: Query<(),(Wi
 }
 
 
-pub fn setup_initial_entities(mut cmd: Commands, mut fac_map: ResMut<FactionEntityMap>) {
+pub fn sors_setup_initial_entities(mut cmd: Commands, mut fac_map: ResMut<FactionEntityMap>) {
     let fac_ent = Faction::new(&mut cmd, &mut fac_map, "host", "Host Faction", ());
     cmd.spawn((
         OfSelf, HostPlayer,
@@ -28,7 +28,7 @@ pub fn setup_initial_entities(mut cmd: Commands, mut fac_map: ResMut<FactionEnti
     ));
 }
 
-
+#[allow(unused_parens, )]
 pub fn spawn_player_beings(
     mut commands: Commands,
     players: Query<(Entity, &CreatedCharacter, &BelongsToFaction, Option<&OfSelf>), (With<Player>)>,
@@ -37,11 +37,8 @@ pub fn spawn_player_beings(
     for (player_ent, created_character, belongs_to_fac, self_player) in players.iter() {
         println!("Spawning player being: {:?}", created_character);
 
-        commands.entity(created_character.0).remove::<ChildOf>();
-
-
         commands.entity(created_character.0).insert((
-            ControlledBy(player_ent),
+            ControlledBy { player: player_ent },
             PlayerDirectControllable,
             TargetSpawnPos::new(0.0, 0.0),
             Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),//PROVISORIO
@@ -54,12 +51,27 @@ pub fn spawn_player_beings(
             info!("Spawning self player being:");
 
         } 
-
         commands.entity(player_ent).remove::<CreatedCharacter>();
     }
 
 }
 
+
+#[allow(unused_parens)]
+pub fn host_on_player_added(mut cmd: Commands, 
+    query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
+    
+    for (player_ent, player_name) in query.iter() {
+        let being = cmd.spawn((
+            Being,
+            DisplayName::new(player_name.0.clone()),
+        )).id();
+
+        cmd.entity(player_ent).insert((
+            CreatedCharacter(being),
+        ));
+    }
+}
 
 
 pub fn toggle_simulation(

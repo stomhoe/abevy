@@ -23,7 +23,6 @@ impl Plugin for MpPlugin {
         app
             .add_plugins((RepliconPlugins, RepliconRenetPlugins, ))
             
-            .add_observer(receive_transf_from_client)
             .add_observer(host_on_player_connect)
             .add_observer(host_receive_client_name)
             
@@ -50,8 +49,6 @@ impl Plugin for MpPlugin {
                 ),
                 client_on_disconnect.run_if((client_just_disconnected),),
             ))
-            .add_server_trigger::<TransformFromServer>(Channel::Unreliable)
-            .add_client_trigger::<TransformFromClient>(Channel::Unreliable)
             .add_client_trigger::<SendPlayerName>(Channel::Ordered)
 
             .configure_sets(OnEnter(ConnectionAttempt::Triggered), (

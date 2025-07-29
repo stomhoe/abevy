@@ -105,15 +105,21 @@ pub fn lobby_button_interaction(
 }
 
 pub fn on_player_disconnect(
-    trigger: Trigger<OnDespawn, Player>, 
-    players: Query<(&Name, &LobbyPlayerUiNode), With<Player>>,
+    trigger: Trigger<OnDespawn, Player>,
+    created_character_query: Query<(&CreatedCharacter, ), ()>, 
+    players: Query<(&DisplayName, &LobbyPlayerUiNode), With<Player>>,
+
     mut commands: Commands)
 {
     let result = players.get(trigger.target());
+    let created_character = created_character_query.get(trigger.target());
 
     if let Ok((player_name, player_name_entry)) = result {
         info!("Client `{}` disconnected", player_name);
         commands.entity(player_name_entry.0).despawn();
+        if let Ok((created_character, )) = created_character {
+            commands.entity(created_character.0).despawn();
+        }
     } else {
         info!("Failed to get player name for disconnected client: {}", trigger.target());
         return;
@@ -121,18 +127,9 @@ pub fn on_player_disconnect(
 
 }
 
-#[allow(unused_parens)]
-pub fn dbg_display_stuff(
-    query: Query<(&Name),(With<Player>)>
-
-) {
-    for (player_name) in query.iter() {
-        info!("Player name: {}", player_name);
-    }
-}
 
 #[allow(unused_parens)]
-pub fn on_player_added(mut cmd: Commands, 
+pub fn all_on_player_added(mut cmd: Commands, 
     my_data: Res<PlayerData>,
     player_listing: Single<Entity, With<LobbyPlayerListing>>, query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
     
@@ -154,19 +151,12 @@ pub fn on_player_added(mut cmd: Commands,
             Text::new(player_name.0.clone()),
             TextLayout::new_with_justify(JustifyText::Center),
         )).id();
-        let being = cmd.spawn((
-            ChildOf(player_ent),
-            Being,
-        )).id();
+
 
         cmd.entity(player_ent).insert((
-            StateScoped(AppState::StatefulGameSession),
+            
             LobbyPlayerUiNode(pne),
-            CreatedCharacter(being),
         ));
-        
-
-
     }
 }
 

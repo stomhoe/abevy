@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use crate::{game::{multiplayer::ConnectionAttempt, setup_menus::lobby::{lobby_events::*, lobby_layout::*, lobby_systems::*}, ClientSystems, GamePhase, GameSetupType, HostSystems }, AppState};
+use crate::{game::{multiplayer::ConnectionAttempt, player::player_components::CreatedCharacter, setup_menus::lobby::{lobby_events::*, lobby_layout::*, lobby_systems::*}, ClientSystems, GamePhase, GameSetupType, HostSystems }, AppState};
 
 
 
@@ -36,12 +36,13 @@ impl Plugin for LobbyPlugin {
                 ),
             )
             .add_systems(Update, (
-                (lobby_button_interaction, on_player_added, ).run_if(in_state(GamePhase::Setup).and(in_state(AppState::StatefulGameSession)).and(not(in_state(GameSetupType::Singleplayer)))),
+                (lobby_button_interaction, all_on_player_added,
+                ).run_if(in_state(GamePhase::Setup).and(in_state(AppState::StatefulGameSession)).and(not(in_state(GameSetupType::Singleplayer)))),
                 
                 (host_on_server_start_successful).run_if(server_just_started)
                 
                 
-                ,dbg_display_stuff.in_set(ClientSystems).run_if(on_timer(Duration::from_secs(3)))
+                //,dbg_display_stuff.in_set(ClientSystems).run_if(on_timer(Duration::from_secs(3)))
             ))
 
 
@@ -49,6 +50,7 @@ impl Plugin for LobbyPlugin {
 
             .add_server_trigger::<HostStartedGame>(Channel::Ordered)
             .add_observer(on_host_started_game)
+            .replicate::<CreatedCharacter>()
             
         ;
     }

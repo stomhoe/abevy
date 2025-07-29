@@ -46,6 +46,8 @@ impl Plugin for SpritePlugin {
             ).in_set(SpriteSystemsSet)) 
             .init_resource::<SpriteDataIdEntityMap>()
             .replicate::<SpriteDatasChildrenStringIds>()
+            .replicate::<Directionable>()
+
 
         ;
     }

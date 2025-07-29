@@ -11,11 +11,21 @@ use crate::game::being::movement::{
 };
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct InputMoveVector(pub Vec3);//USADO TMB POR BOTS
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct FinalMoveVector(pub Vec3);
+pub struct InputMoveVector(pub Vec2);//USADO TMB POR BOTS
+//no se incluye la coordenada z de agacharse o saltar porq esto se debe mandar reliably ya q no se spammea tanto
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Event)]
+pub struct InputJump;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Event)]
+pub struct InputDuck;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct FinalMoveVector(pub Vec2);
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct VoluntarilyMoving;
 
