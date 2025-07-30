@@ -64,7 +64,7 @@ pub fn send_move_input_to_server(
         break;
    }
     for (entity, move_vec) in cpu_move_input.iter() {
-        let entity = map.server_entry(entity).get().unwrap();
+        let entity = map.client_entry(entity).get().unwrap();
         cmd.client_trigger(
             SendMoveInput {
                 vec: move_vec.clone(),
@@ -116,7 +116,6 @@ pub fn apply_movement(
     mut cmd: Commands,
     time: Res<Time>,
     server: Option<Res<RenetServer>>,
-    host: Single<Entity, (With<HostPlayer>)>,
     mut query: Query<(Entity, &FinalMoveVector, &mut Transform), /*(With<VoluntarilyMoving>)*/>,
 ) {
     for (being_ent, FinalMoveVector(move_dir), mut transform) in query.iter_mut() {
@@ -129,7 +128,7 @@ pub fn apply_movement(
             if server.is_some() {
                 info!("Sending transform for being: {:?}", being_ent);
                 let to_clients = ToClients { 
-                    mode: SendMode::BroadcastExcept(*host), 
+                    mode: SendMode::Broadcast, 
                     event: TransformFromServer::new(being_ent, transform.clone(), true),
                 };
                 cmd.server_trigger(to_clients);
@@ -145,7 +144,7 @@ pub fn apply_movement(
 
 
 #[allow(unused_parens)]
-pub fn on_receive_transf_from_server(
+pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE DE INTERPOLATION/PREDICTION/ROLLBACK/LOQSEA
     trigger: Trigger<TransformFromServer>,
     mut query: Query<&mut Transform>,
     mut map: ResMut<ServerEntityMap>,
@@ -158,10 +157,11 @@ pub fn on_receive_transf_from_server(
 
     info!("Received transform for entity: {:?}", entity);
 
-    if let Some(entity) = map.client_entry(entity).get() {
+    if let Some(entity) = map.server_entry(entity).get() {
         if let Ok(mut transf) = query.get_mut(entity) {
+            info!("Applying transform to entity: {:?}", entity);
             if interpolate {
-                transf.translation = transf.translation.lerp(transform.translation, 0.5);
+                transf.translation = transf.translation.lerp(transform.translation, 0.7);//TODO HACER Q CADA CIERTO TIEMPO SE FUERZE LA POSICIÓN REAL SIN INTERPOLACIÓN
             } else {
                 *transf = transform;
             }

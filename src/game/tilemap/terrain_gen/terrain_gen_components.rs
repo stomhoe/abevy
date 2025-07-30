@@ -27,14 +27,69 @@ impl TileId {
 }
 
 #[derive(Component, Default, )]
-pub struct FnlComp(pub FastNoiseLite);
-
-#[derive(Component, Debug, Default, )]
-pub struct Thresholds(pub Vec<(f32, Entity)>); //usar menor igual valor -> entidad. Entidad-> tiledist?
+pub struct FnlComp { pub noise: FastNoiseLite, pub offset: IVec2, }
 
 
-#[derive(Component, Debug, Default, )]
-pub struct Tree();
+#[derive(Component, Default, )]
+pub struct HashPosComp;
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, )]
+pub enum NextAction {
+    Continue,
+    Break,
+    OverwriteAcc(f32),
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, )]
+pub struct OnCompareConfig {
+    pub tiles_on_success: ProducedTiles,
+    pub tiles_on_failure: ProducedTiles,
+    pub on_success: NextAction,
+    pub on_failure: NextAction,
+}
+
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq,)]
+pub enum Operation {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulo,
+    Log,
+    Min,
+    Max,
+    Pow,
+    Assign,
+    GreaterThan(OnCompareConfig),
+    LessThan(OnCompareConfig),
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, )]
+pub struct Operand(pub f32);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, )]
+pub struct Finished;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq)]
+pub struct ProducedTiles(pub Vec<Entity>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct FirstOperand(pub f32);
+
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct OperationList {
+    pub trunk: Vec<(Entity, Operation)>,
+    pub threshold: f32,
+    pub bifurcation_over: Option<Entity>,
+    pub bifurcation_under: Option<Entity>,
+}
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct AwaitingChildOperationList;
 
 //ES COMPONENT PORQ PUEDE HABER UNO PARA ARBUSTOS, OTRO PARA ARBOLES, ETC
 //VA EN UNA ENTIDAD PROPIA ASI ES QUERYABLE. AGREGAR MARKER COMPONENTS PARA DISTINTOS TIPOS DE VEGETACIÓN
@@ -42,4 +97,3 @@ pub struct Tree();
 pub struct TileWeightedMap(
     pub WeightedMap<Entity>, 
 );
-

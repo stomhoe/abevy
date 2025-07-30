@@ -1,7 +1,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use bevy::{ecs::query, log::tracing_subscriber::layer, math::U8Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::{query, relationship::Relationship}, log::tracing_subscriber::layer, math::U8Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::tiles::*;
 
 use debug_unwraps::DebugUnwrapExt;
@@ -19,8 +19,10 @@ pub struct TemperateGrass;
 #[allow(unused_parens)]
 pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<WorldGenSettings>, asset_server: Res<AssetServer>, ) 
 {
-
+    //HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
     let humidity: FastNoiseLite = FastNoiseLite::default();
+
+    let temp_variation: FastNoiseLite = FastNoiseLite::default();
 
     // commands.spawn(grass_instantiation_data);
 
@@ -41,7 +43,7 @@ pub fn setup(mut commands: Commands, query: Query<(),()>, world_settings: Res<Wo
     )).id();
 
     //TODO instanciar todas las instancias de noise y configurarlas acá 
-    commands.spawn(FnlComp(humidity));
+    commands.spawn(FnlComp { noise: humidity, ..Default::default()});
 
 
     //TODO hallar punto del terreno con 
@@ -71,10 +73,12 @@ pub fn add_tiles2spawn_within_chunk (
 
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         chunk_pos.0.hash(&mut hasher);
-        let mut rng: Pcg64 = Seeder::from(gen_settings.seed + (hasher.finish() as u32)).into_rng();
+        let mut rng: Pcg64 = Seeder::from(gen_settings.seed + (hasher.finish() as i32)).into_rng();
         
         //EN ESTE PUNTO SE PODRÍA GENERAR UN CAMINO RANDOM QUE SEA UN VEC DE COORDS, Y DESPUES PASARLO ABAJO Y Q SE OCUPEN?? PA GENERAR DUNGEONS NASE
 
+        let tiles_ready_expected_count = CHUNK_SIZE.x * CHUNK_SIZE.y;
+ 
         for x in 0..CHUNK_SIZE.x { 
             for y in 0..CHUNK_SIZE.y {
                 let pos_within_chunk = U8Vec2::new(x, y);
@@ -141,3 +145,119 @@ fn new_tile<B: Bundle>(
     )).id()
 }
 
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn produce_tiles(mut cmd: Commands, curr_tile: Res<CurrGenTileWorldPos>, 
+    mut query: Query<(Entity, &FirstOperand, &OperationList, Option<&mut ProducedTiles>), ()>, vals: Query<&Operand>,
+){
+    if curr_tile.is_changed() {
+        for (oplist_ent, first_operand, oplist, tiles) in query.iter_mut() {
+
+            let tiles = if let Some(mut tiles) = tiles {
+                std::mem::take(&mut *tiles)
+            } else {
+                ProducedTiles::default()
+            };
+            
+            let mut acc_val: f32 = first_operand.0; 
+            cmd.entity(oplist_ent).remove::<FirstOperand>();
+
+            for ((ent, operation)) in oplist.trunk.iter() {
+
+                if let Ok(&Operand(operand)) = vals.get(*ent) {
+
+                    match operation {
+                        Operation::Add => acc_val += operand,
+                        Operation::Subtract => acc_val -= operand,
+                        Operation::Multiply => acc_val *= operand,
+                        Operation::Divide => if operand != 0.0 { acc_val /= operand },
+                        Operation::Min => acc_val = acc_val.min(operand),
+                        Operation::Max => acc_val = acc_val.max(operand),
+                        Operation::Pow => if acc_val >= 0.0 || operand.fract() == 0.0 { acc_val = acc_val.powf(operand) },
+                        Operation::Modulo => if operand != 0.0 { acc_val = acc_val % operand },
+                        Operation::Log => if acc_val > 0.0 && operand > 0.0 && operand != 1.0 { acc_val = acc_val.log(operand) },
+                        Operation::GreaterThan(conf) => {
+                            if acc_val > operand {
+                                cmd.entity(oplist_ent).insert(conf.tiles_on_success.clone());
+                                match &conf.on_success {
+                                    NextAction::Continue => {},
+                                    NextAction::Break => break,
+                                    NextAction::OverwriteAcc(val) => acc_val = *val,
+                                }
+                            } else {
+                                cmd.entity(oplist_ent).insert(conf.tiles_on_failure.clone());
+                                match &conf.on_failure {
+                                    NextAction::Continue => {},
+                                    NextAction::Break => break,
+                                    NextAction::OverwriteAcc(val) => acc_val = *val,
+                                }
+                            }
+                        },
+                        Operation::LessThan(conf) => {
+                            if acc_val < operand {
+                                cmd.entity(oplist_ent).insert(conf.tiles_on_success.clone());
+                                match &conf.on_success {
+                                    NextAction::Continue => {},
+                                    NextAction::Break => break,
+                                    NextAction::OverwriteAcc(val) => acc_val = *val,
+                                }
+                            } else {
+                                cmd.entity(oplist_ent).insert(conf.tiles_on_failure.clone());
+                                match &conf.on_failure {
+                                    NextAction::Continue => {},
+                                    NextAction::Break => break,
+                                    NextAction::OverwriteAcc(val) => acc_val = *val,
+                                }
+                            }
+                        },
+                        Operation::Assign => {acc_val = operand;},
+                    }
+                } else {
+                    warn!("Entity {:?} not found in CurrValue query", ent);
+                    continue; // Si no se encuentra el valor, se salta a la siguiente iteración
+                }
+            }
+
+            if acc_val > oplist.threshold {
+                if let Some(bifover_ent) = oplist.bifurcation_over {
+                    cmd.entity(bifover_ent).insert((FirstOperand(acc_val), tiles));
+                    continue;
+                }
+            }
+            else {
+                if let Some(bifunder_ent) = oplist.bifurcation_under {
+                    cmd.entity(bifunder_ent).insert((FirstOperand(acc_val), tiles));
+                    continue;
+                }
+            }
+            cmd.entity(oplist_ent).insert((tiles, Finished));
+        }
+    }
+
+}
+
+
+#[allow(unused_parens)]
+pub fn update_noise_curr_value(curr_tile: Res<CurrGenTileWorldPos>, mut query: Query<(&mut Operand, &FnlComp)>) {
+    for (mut curr_value, fnl_comp) in query.iter_mut() {
+        let (noise, offset) = (&fnl_comp.noise, &fnl_comp.offset);
+        curr_value.0 = noise.get_noise_2d(
+            (curr_tile.0.x + offset.x) as f32, (curr_tile.0.y + offset.y) as f32,
+        );
+    }
+}
+
+#[allow(unused_parens)]
+pub fn update_hashval(curr_tile: Res<CurrGenTileWorldPos>, world_settings: Res<WorldGenSettings>, 
+    mut query: Query<(&mut Operand,), (With<HashPosComp>,)>) 
+{
+    for (mut curr_value,) in query.iter_mut() {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        curr_tile.0.hash(&mut hasher);
+        world_settings.seed.hash(&mut hasher);
+        let hash_val = hasher.finish();
+        // Normalize to [0,1] using u64::MAX
+        curr_value.0 = (hash_val as f64 / u64::MAX as f64) as f32;
+    }
+}

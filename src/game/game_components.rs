@@ -42,7 +42,8 @@ pub struct MagicallyInvulnerable();
 pub struct ImgPathHolder(pub String);
 
 
-
+#[derive(Component, Debug, )]
+pub struct CurrentDimension(pub Entity);
 
 
 

@@ -64,6 +64,9 @@ impl MyTileBundle {
     }
 }
 
+#[derive(Component, Debug, Default, )]
+pub struct Tree;
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Copy)]
 pub struct TileZIndex(pub i32);
 

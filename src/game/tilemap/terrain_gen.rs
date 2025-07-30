@@ -17,7 +17,7 @@ pub struct TerrainGenPlugin;
 impl Plugin for TerrainGenPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, (add_tiles2spawn_within_chunk, ).in_set(TerrainGenSystems).in_set(SimRunningSystems))
+            .add_systems(Update, (add_tiles2spawn_within_chunk, update_noise_curr_value, update_hashval, produce_tiles).in_set(TerrainGenSystems).in_set(SimRunningSystems))
             .add_systems(Startup, (setup, ))
             .init_resource::<WorldGenSettings>()
 
