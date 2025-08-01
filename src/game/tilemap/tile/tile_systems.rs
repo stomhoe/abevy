@@ -1,3 +1,5 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
@@ -43,5 +45,22 @@ pub fn update_img_sizes_on_load(
 
             }
         }
+    }
+}
+#[allow(unused_parens)]
+pub fn update_tile_hash_value(mut query: Query<(&GlobalTilePos, &mut TileposHashRand),(Added<GlobalTilePos>)>) {
+    for (pos, mut hash) in query.iter_mut() {
+        let mut hasher = DefaultHasher::new();
+        pos.hash(&mut hasher);
+        hash.0 = (hasher.finish() as f64 / u64::MAX as f64) as f32;
+    }
+}
+
+
+#[allow(unused_parens)]
+pub fn update_tile_name(mut query: Query<(&mut Name, &GlobalTilePos),(Changed<GlobalTilePos>)>) {
+    for (mut name, pos) in query.iter_mut() {
+        let prev_name = name.as_str().split(GlobalTilePos::TYPE_DEBUG_NAME).next().unwrap_or("Tile").to_string();
+        name.set(format!("{} {:?}", prev_name, pos));
     }
 }

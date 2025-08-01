@@ -32,7 +32,6 @@ impl Plugin for MyTileMapPlugin {
             ))
 
             .add_systems(FixedUpdate, (
-                add_initialized_chunks_to_loaded_chunks,
                 visit_chunks_around_activators, 
                 rem_outofrange_chunks_from_activators, 
                 despawn_unreferenced_chunks, 

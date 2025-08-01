@@ -29,7 +29,7 @@ fn main() {
         ))
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)
-        .add_systems(Update, set_entity_name)
+        .add_systems(Update, (set_entity_name, set_entity_name2))
         .run()
     ;
 }
@@ -37,24 +37,22 @@ fn main() {
 pub fn spawn_camera(mut commands: Commands, window_query: Single<&Window, With<PrimaryWindow>>) {
     let _window = window_query;
 
-    commands.spawn((
-        Camera2d::default(),
-        Camera {
-            hdr: true,
-            ..default()
-        },
-        Transform {
-            ..default()
-        },
-    ));
+    commands.spawn((Camera2d::default(), Camera {hdr: true, ..default()}, Transform::default(),));
 }
 
 
 #[allow(unused_parens)]
-pub fn set_entity_name(mut cmd: Commands, mut query: Query<(Entity, &EntityPrefix, Option<&DisplayName>),(Changed<DisplayName>)>) {
+pub fn set_entity_name(mut cmd: Commands, mut query: Query<(Entity, &EntityPrefix, Option<&DisplayName>),(Changed<EntityPrefix>, )>) {//DESACTIVAR PARA RELEASE
     for (ent, prefix, disp_name) in query.iter_mut() {
         let new_name = format!("{}('{}')", prefix, disp_name.cloned().unwrap_or_default());
-        info!(target: "set_ent_name", "Set name of entity {} to {}", ent, new_name);
+        cmd.entity(ent).insert(Name::new(new_name));
+    }
+}
+
+#[allow(unused_parens)]
+pub fn set_entity_name2(mut cmd: Commands, mut query: Query<(Entity, &EntityPrefix, Option<&DisplayName>),(Changed<DisplayName>, )>) {//DESACTIVAR PARA RELEASE
+    for (ent, prefix, disp_name) in query.iter_mut() {
+        let new_name = format!("{}('{}')", prefix, disp_name.cloned().unwrap_or_default());
         cmd.entity(ent).insert(Name::new(new_name));
     }
 }

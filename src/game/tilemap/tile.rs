@@ -3,12 +3,14 @@
 use crate::game::{AssetLoadingState, ActiveGameSystems};
 use crate::game::tilemap::tile::{
     tile_systems::*,
-     tile_resources::*,
+    tile_resources::*,
 };
 mod tile_systems;
 pub mod tile_components;
 pub mod tile_resources;
 pub mod tile_constants;
+pub mod tile_utils;
+
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TileSystems;
 
@@ -18,7 +20,9 @@ pub struct TilePlugin;
 impl Plugin for TilePlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, (update_img_sizes_on_load/*NO PONER EN SET */, ))
+            .add_systems(Update, (update_img_sizes_on_load/*NO PONER EN SET */, 
+                update_tile_hash_value, update_tile_name, 
+            ))
             .add_systems(Startup/*OnEnter(AssetLoadingState::InProcess)*/, (add_tileimgs_to_map, ))
             //.init_resource::<RESOURCE_NAME>()
             .add_plugins((

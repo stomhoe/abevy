@@ -5,7 +5,7 @@ use bevy::{math::U16Vec2, platform::collections::HashMap};
 use bevy_ecs_tilemap::{map::TilemapTileSize, tiles::*};
 
 use crate::game::tilemap::tile::{
-    tile_components::*, tile_constants::TILEMAP_TILE_SIZE_64,
+    tile_components::*, 
     tile_constants::*,
 };
 

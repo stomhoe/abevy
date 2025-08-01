@@ -40,6 +40,7 @@ bevy_spritesheet_animation = "3.0.0"
 bevy_asset_loader = "0.23.0"
 bevy-inspector-egui = "0.32.0"
 splines = { version = "5.0.0", features = ["serde"] }
+bevy_enhanced_input = "0.15.2"
 #bevy_northstar = "0.3.1"
 
 [dependencies.fastnoise-lite]

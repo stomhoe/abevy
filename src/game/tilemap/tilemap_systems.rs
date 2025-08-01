@@ -3,7 +3,7 @@ use bevy::{math::U16Vec2, platform::collections::{HashMap}, prelude::*};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::{terrain_gen_utils::Z_DIVISOR, terrain_materials::MonoRepeatTextureOverlayMat}, tile::{tile_components::{AppliedShader, TileZIndex, Tileimg}, tile_resources::{HandleConfigMap, TileimgConfig}},};
+use crate::game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::{terrain_materials::MonoRepeatTextureOverlayMat, terrgen_utils::Z_DIVISOR}, tile::{tile_components::{AppliedShader, TileZIndex, Tileimg}, tile_constants::TILE_SIZE_PXS, tile_resources::{HandleConfigMap, TileimgConfig}},};
 
 
 pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
@@ -23,9 +23,7 @@ impl MapKey {
     pub fn new(z_index: TileZIndex, size: U16Vec2, shader: AppliedShader) -> Self {
         Self { z_index, tile_size: size, shader }
     }
-    pub fn take_shader(&mut self) -> AppliedShader {
-        std::mem::take(&mut self.shader)
-    }
+    pub fn take_shader(&mut self) -> AppliedShader { std::mem::take(&mut self.shader) }
 }
 
 type Map = HashMap<MapKey, LayerDto>;
@@ -33,7 +31,7 @@ type Map = HashMap<MapKey, LayerDto>;
 #[allow(unused_parens)]
 pub fn produce_tilemaps(
     mut commands: Commands, 
-    chunk_query: Query<(Entity, &TilesReady), Without<Children>>,
+    chunk_query: Query<(Entity, &ProducedTiles), (Without<Children>, Added<TilesReady>)>,
     mut tile_comps: Query<(&TilePos, &Tileimg, &TileZIndex, &mut AppliedShader)>,
     handle_config_map: Res<HandleConfigMap>, 
 ) -> Result {
@@ -112,7 +110,7 @@ fn add_tile_bundle_and_put_in_storage(
     let tile_bundle = TileBundle {
         tilemap_id: TilemapId(tilemap_entity), texture_index, ..Default::default()
     };
-    commands.entity(tile_entity).insert_if_new(tile_bundle);
+    commands.entity(tile_entity).insert_if_new((ChildOf(tilemap_entity), tile_bundle));
     tile_storage.set(tile_pos, tile_entity);
 }
 
@@ -126,7 +124,7 @@ fn instantiate_new_layer_dto(
     tileimg: Tileimg,
     chunk_ent: Entity,
 ) {
-    let tilemap_entity: Entity = commands.spawn(ChildOf(chunk_ent)).id();
+    let tilemap_entity: Entity = commands.spawn((Name::new("Tilemap"), ChildOf(chunk_ent))).id();
 
     let mut tile_storage = TileStorage::empty(CHUNK_SIZE.as_uvec2().into());
 
@@ -153,7 +151,6 @@ pub fn fill_tilemaps_data(
     mut commands: Commands,
     mut chunk_query: Query<(Entity, &Children), (With<LayersReady>)>,
     mut layer_query: Query<(&mut LayerDto), (With<ChildOf>)>,
-    tile_images_map: Res<HandleConfigMap>,
     mut texture_overley_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
 ) {unsafe{
     
@@ -163,7 +160,7 @@ pub fn fill_tilemaps_data(
 
         for child in children.iter() {
             if let Ok(mut layer_dto) = layer_query.get_mut(child) {//DEJAR CON IF LET
-                let grid_size = TilemapGridSize { x: TILE_SIZE_PXS.x as f32, y: TILE_SIZE_PXS.y as f32 };
+                let grid_size = TilemapGridSize { x: TILE_SIZE_PXS.x as f32, y: TILE_SIZE_PXS.y as f32 };//NO TOCAR
                 let size = CHUNK_SIZE.as_uvec2().into();
                 let transform = Transform::from_translation(Vec3::new(0.0, 0.0, (layer_dto.layer_z.0 as f32 / Z_DIVISOR as f32)));
                 let texture = TilemapTexture::Vector(layer_dto.take_images());

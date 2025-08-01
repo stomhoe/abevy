@@ -20,8 +20,3 @@ impl Default for WorldGenSettings {
     }
 }
 
-// ---------------------------> NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO <-----------------------
-#[derive(Resource, )]
-pub struct CurrGenTileWorldPos (
-    pub IVec2,
-);

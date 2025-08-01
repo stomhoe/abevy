@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use rand_distr::weighted::WeightedAliasIndex;
 use rand::prelude::*;
 
-#[derive(Debug, )]
+pub type EntityWeightedMap = WeightedMap<Entity>;
+
+#[derive(Debug, Component)]
 pub struct WeightedMap<K> {
     weights: Vec<u32>,
     choices: Vec<K>,
@@ -28,39 +30,24 @@ impl<K: Eq + std::hash::Hash + Clone + Serialize + for<'de> Deserialize<'de>> We
 
     pub fn choices(&self) -> &Vec<K> {&self.choices}
 }
-
 impl<'de, K: Eq + std::hash::Hash + Clone + Serialize + Deserialize<'de>> Deserialize<'de> for WeightedMap<K> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where D: serde::Deserializer<'de>,
     {
         #[derive(Deserialize)]
-        struct Helper<K> {
-            weights: Vec<u32>,
-            choices: Vec<K>,
-        }
+        struct Helper<K> { weights: Vec<u32>, choices: Vec<K> }
         let Helper { weights, choices } = Helper::deserialize(deserializer)?;
         let dist = WeightedAliasIndex::new(weights.clone()).map_err(serde::de::Error::custom)?;
-        Ok(WeightedMap {
-            weights,
-            choices,
-            dist,
-        })
+        Ok(WeightedMap { weights, choices, dist })
     }
 }
-
 impl<K: Eq + std::hash::Hash + Clone + Serialize> Serialize for WeightedMap<K> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where S: serde::Serializer,
     {
         #[derive(Serialize)]
-        struct Helper<'a, K> {
-            weights: &'a Vec<u32>,
-            choices: &'a Vec<K>,
-        }
-        let helper = Helper {
-            weights: &self.weights,
-            choices: &self.choices,
-        };
+        struct Helper<'a, K> { weights: &'a Vec<u32>, choices: &'a Vec<K> }
+        let helper = Helper { weights: &self.weights, choices: &self.choices };
         helper.serialize(serializer)
     }
 }

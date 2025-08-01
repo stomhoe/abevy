@@ -3,12 +3,7 @@ use bevy::math::U8Vec4;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::game::tilemap::{tile::{
-//    tile_resources::*,
-    tile_constants::*,
-//    tile_layout::*,
-//    tile_events::*,
-}, };
+use crate::game::tilemap::{chunking_components::ChunkPos, tile::tile_constants::* };
 use bevy_ecs_tilemap::tiles::*;
 
 use bevy_ecs_tilemap::{map::TilemapTileSize, tiles::*};
@@ -29,7 +24,7 @@ pub struct MyTileBundle {
 
 impl Default for MyTileBundle {
     fn default() -> Self {
-        let rand_string: String = format!("Tile{}", nano_id::base64::<3>());
+        let rand_string: String = format!("Tile {}", nano_id::base64::<3>());
         Self {
             name: Name::new(rand_string),
             img_id: Tileimg::default(),
@@ -63,6 +58,15 @@ impl MyTileBundle {
         }
     }
 }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct TileposHashRand(pub f32);
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[require(TileposHashRand)]
+pub struct FlipAlongX;
+
 
 #[derive(Component, Debug, Default, )]
 pub struct Tree;
@@ -116,4 +120,51 @@ impl Tileimg {
         Self(asset_server.load(path))
     }
 
+}
+
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy)]
+pub struct GlobalTilePos(pub IVec2);
+
+impl GlobalTilePos {
+    pub fn get_pos_within_chunk(self, chunk_pos: ChunkPos) -> TilePos {
+        let pos_within_chunk = self - chunk_pos.to_tilepos();
+        TilePos::new(pos_within_chunk.x() as u32, pos_within_chunk.y() as u32)
+    }
+    pub fn x(&self) -> i32 { self.0.x }
+    pub fn y(&self) -> i32 { self.0.y }
+
+    pub const TYPE_DEBUG_NAME: &'static str = "GlobalTilePos";
+}
+
+impl std::fmt::Display for GlobalTilePos {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}({}, {})", Self::TYPE_DEBUG_NAME, self.0.x, self.0.y)
+    }
+}
+impl std::fmt::Debug for GlobalTilePos {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}({}, {})", Self::TYPE_DEBUG_NAME, self.0.x, self.0.y)
+    }
+}
+
+impl From<Vec2> for GlobalTilePos {
+    fn from(pixelpos: Vec2) -> Self {
+        GlobalTilePos(pixelpos.div_euclid(TILE_SIZE_PXS.as_vec2()).as_ivec2())
+    }
+}
+
+impl std::ops::Add for GlobalTilePos {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        GlobalTilePos(self.0 + other.0)
+    }
+}
+
+impl std::ops::Sub for GlobalTilePos {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        GlobalTilePos(self.0 - other.0)
+    }
 }

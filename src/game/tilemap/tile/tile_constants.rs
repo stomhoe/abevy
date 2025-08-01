@@ -7,6 +7,4 @@ use crate::game::tilemap::tile::tile_components::*;
 pub const TILEIMG_BASE_PATH: &str = "texture/world/";
 
 
-
-pub const TILEMAP_TILE_SIZE_64: U16Vec2 = U16Vec2::new(64, 64);
-pub const TILEMAP_TILE_SIZE_128: U16Vec2 = U16Vec2::new(128, 128);
+pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
