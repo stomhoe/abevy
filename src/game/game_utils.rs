@@ -54,3 +54,4 @@ impl<K: Eq + std::hash::Hash + Clone + Serialize> Serialize for WeightedMap<K> {
 
 
 pub type StrId = String;
+

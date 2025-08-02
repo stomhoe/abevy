@@ -14,7 +14,7 @@ use crate::game::time::ClockPlugin;
 use crate::game::faction::FactionPlugin;
 use crate::game::player::{PlayerInputSystems, PlayerPlugin};
 use crate::game::setup_menus::SetupMenusPlugin;
-use crate::game::tilemap::MyTileMapPlugin;
+use crate::game::tilemap::{ChunkSystems, MyTileMapPlugin};
 use crate::AppState;
 use crate::game::game_systems::*;
 use bevy_asset_loader::prelude::*;
@@ -35,19 +35,17 @@ mod faction;
 mod time;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct SimRunningSystems;
+struct SimRunningSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct SimPausedSystems;
+struct SimPausedSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct StatefulSessionSystems;
+struct StatefulSessionSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct ActiveGameSystems;
+struct ActiveGameSystems;
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct NetworkSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct GameDataInitSystems;
@@ -97,10 +95,14 @@ impl Plugin for GamePlugin {
                 SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::ActiveGame))),
 
                 ClientSystems.run_if(not(server_or_singleplayer).or(in_state(GameSetupType::JoinerLobby))),
+
+                ChunkSystems.in_set(ActiveGameSystems).in_set(SimRunningSystems)
+
+
             ))
             
             .configure_sets(FixedUpdate, (
-                ClientSystems.run_if(not(server_or_singleplayer).or(in_state(GameSetupType::JoinerLobby))),
+                ClientSystems.run_if(not(server_or_singleplayer).or(in_state(GameSetupType::JoinerLobby))),//NO TOCAR
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
             ))
 
@@ -118,7 +120,7 @@ impl Plugin for GamePlugin {
                 .load_collection::<RaceSerisHandles>()
             )
             //.replicate_bundle::<(Children)>()
-            .replicate_bundle::<(Being, ChildOf)>()
+            .replicate_bundle::<(Being, ChildOf)>()//NO FUNCIONA BIEN LO DE CHILDOF
             .replicate::<DisplayName>()
             .replicate_bundle::<(Being, FacingDirection)>()//PROVISORIO, VA A HABER Q REVISAR
 

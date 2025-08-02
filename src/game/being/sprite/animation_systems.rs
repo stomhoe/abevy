@@ -139,12 +139,12 @@ pub fn animate_sprite(
                 if let Some(mut sheet_anim) = sheet_anim {
                     if sheet_anim.animation_id != animation_id {
                         sheet_anim.switch(animation_id);
-                        info!(target: "sprite_animation", "Switched animation for entity {:?} to '{}'", ent, animation_name);
+                        //info!(target: "sprite_animation", "Switched animation for entity {:?} to '{}'", ent, animation_name);
                     }
                 } else{
                     let new_anim = SpritesheetAnimation::from_id(animation_id);
                     commands.entity(ent).insert(new_anim);
-                    info!(target: "sprite_animation", "Inserted new animation for entity {:?} with name '{}'", ent, animation_name);
+                    //info!(target: "sprite_animation", "Inserted new animation for entity {:?} with name '{}'", ent, animation_name);
                 }
             }
             else{

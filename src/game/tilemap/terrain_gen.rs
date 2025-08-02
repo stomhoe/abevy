@@ -19,13 +19,13 @@ pub struct TerrainGenPlugin;
 impl Plugin for TerrainGenPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, (add_tiles2spawn_within_chunk, produce_tiles).in_set(TerrainGenSystems).in_set(SimRunningSystems))
+            .add_systems(Update, (spawn_terrain_operations, produce_tiles).in_set(TerrainGenSystems))
             .add_systems(Startup, (setup, ))
             .init_resource::<WorldGenSettings>()
 
             .add_plugins(MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default())
 
-            .configure_sets(Update, TerrainGenSystems.run_if(in_state(ImageSizeSetState::Done)))
+            //.configure_sets(Update, TerrainGenSystems.run_if(in_state(ImageSizeSetState::Done)))
         ;
     }
 }

@@ -9,7 +9,7 @@ pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 use superstate::{SuperstateInfo};
 
-use crate::game::{game_utils::WeightedMap, tilemap::{chunking_resources::CHUNK_SIZE, tile::{tile_components::GlobalTilePos, tile_constants::TILE_SIZE_PXS}}};
+use crate::game::{game_utils::WeightedMap, tilemap::{chunking_resources::CHUNK_SIZE, terrain_gen::terrgen_resources::WorldGenSettings, tile::{tile_components::{GlobalTilePos, TileWeightedSampler}, tile_constants::TILE_SIZE_PXS}}};
 
 #[derive(Component, Default)]
 #[require(SuperstateInfo<ChunkInitState>)]
@@ -33,19 +33,50 @@ pub struct LayersReady;
 pub struct InitializedChunk;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq)]
-pub struct ProducedTiles(pub Vec<Entity>);
+pub struct ProducedTiles(Vec<Entity>);
 impl Default for ProducedTiles {
     fn default() -> Self {
-        let chunk_area = (CHUNK_SIZE.x as usize) * (CHUNK_SIZE.y as usize);
-        let cap = chunk_area + chunk_area / 10;
-        ProducedTiles(Vec::with_capacity(cap))
+        ProducedTiles(Vec::new())
     }
 }
 impl ProducedTiles {
-    pub fn insert_cloned_with_pos(&self, cmd: &mut Commands, destination: &mut Self, global_pos: GlobalTilePos, pos_within_chunk: TilePos, ) {
+    pub fn new_with_chunk_capacity() -> Self {
+        let chunk_area = (CHUNK_SIZE.x as usize) * (CHUNK_SIZE.y as usize);
+        let cap = chunk_area + chunk_area / 8;//TODO CALCULAR PROMEDIO DE TILES POR CHUNK
+        ProducedTiles(Vec::with_capacity(cap))
+    }
+    pub fn new<I>(entities: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<Entity>,
+    {
+        ProducedTiles(entities.into_iter().map(Into::into).collect())
+    }
+
+    pub fn produced_tiles(&self) -> &[Entity] {
+        &self.0
+    }
+    pub fn drain(&mut self) -> Vec<Entity> {
+        std::mem::take(&mut self.0)
+    }
+
+    pub fn insert_cloned_with_pos(&self, cmd: &mut Commands, destination: &mut Self,
+        global_pos: GlobalTilePos,
+        pos_within_chunk: TilePos,
+        weight_maps: &Query<(&TileWeightedSampler,), ()>,
+        gen_settings: &WorldGenSettings,
+    ) {
         for tile in self.0.iter().cloned() {
-            let tile = cmd.entity(tile).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
-            destination.0.push(tile);
+            if let Ok((wmap, )) = weight_maps.get(tile) {
+                if let Some(entity) = wmap.sample(gen_settings, global_pos) {
+                    let entity = cmd.entity(entity).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
+                    destination.0.push(entity);
+                    continue;
+                }
+            } else {
+                let tile = cmd.entity(tile).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
+                destination.0.push(tile);
+            }
         }
     }
 }

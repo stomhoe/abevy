@@ -126,7 +126,7 @@ pub fn apply_movement(
         if movement != Vec2::ZERO {
             transform.translation += movement.extend(0.0);
             if server.is_some() {
-                info!("Sending transform for being: {:?}", being_ent);
+                //info!("Sending transform for being: {:?}", being_ent);
                 let to_clients = ToClients { 
                     mode: SendMode::Broadcast, 
                     event: TransformFromServer::new(being_ent, transform.clone(), true),
@@ -155,11 +155,11 @@ pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE D
 
     if server.is_some() {return Ok(());}
 
-    info!("Received transform for entity: {:?}", entity);
+    //info!("Received transform for entity: {:?}", entity);
 
     if let Some(entity) = map.server_entry(entity).get() {
         if let Ok(mut transf) = query.get_mut(entity) {
-            info!("Applying transform to entity: {:?}", entity);
+            //info!("Applying transform to entity: {:?}", entity);
             if interpolate {
                 transf.translation = transf.translation.lerp(transform.translation, 0.7);//TODO HACER Q CADA CIERTO TIEMPO SE FUERZE LA POSICIÓN REAL SIN INTERPOLACIÓN
             } else {

@@ -41,7 +41,7 @@ pub fn visit_chunks_around_activators(
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
     mut activator_query: Query<(&Transform, &mut ActivatesChunks), (With<BelongsToSelfPlayerFaction>)>,
-    mut chunks_query: Query<(Entity, &ChunkPos ,&Transform), With<InitializedChunk>>,
+    mut chunks_query: Query<(Entity, &ChunkPos, &Transform), >,
     tilemap_settings: Res<ChunkRangeSettings>,
 ) {
     for (act_transform, mut activate_chunks) in activator_query.iter_mut() {
@@ -56,6 +56,7 @@ pub fn rem_outofrange_chunks_from_activators(
             let chunk_delta: UVec2 = (act_chunk_pos - chunk_pos).0.abs().as_uvec2();
             if distance > tilemap_settings.chunk_active_max_dist && (chunk_delta.x > show_range || chunk_delta.y > show_range) {
                 activate_chunks.0.remove(&entity);
+                info!("Removed chunk {:?} (pos: {:?}) from activator", entity, chunk_pos, );
             }
         }
     }
@@ -64,19 +65,20 @@ pub fn rem_outofrange_chunks_from_activators(
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,
     activator_query: Query<(&ActivatesChunks), (With<BelongsToSelfPlayerFaction>)>,
-    mut chunks_query: Query<(Entity, &Transform,), With<InitializedChunk>>,
+    mut chunks_query: Query<(Entity, &Transform,), With<ChunkInitState>>,
     mut loaded_chunks: ResMut<LoadedChunks>,
 ) {
 
-    for (entity, chunk_transform) in chunks_query.iter_mut() {
-        let referenced = activator_query.iter().any(|activates_chunks| activates_chunks.0.contains(&entity));
+    for (chunk_ent, chunk_transform) in chunks_query.iter_mut() {
+        let referenced = activator_query.iter().any(|activates_chunks| activates_chunks.0.contains(&chunk_ent));
         
         if !referenced {
 
             let chunk_pos = ChunkPos::from(chunk_transform.translation.xy());
+            info!("Despawning chunk {:?} at pos: {:?}", chunk_ent, chunk_pos);
 
             loaded_chunks.0.remove(&chunk_pos);
-            commands.entity(entity).remove::<ChunkInitState>().despawn();
+            commands.entity(chunk_ent).remove::<ChunkInitState>().despawn();//DEJAR EL REMOVE
         }
     }
 }

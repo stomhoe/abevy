@@ -2,7 +2,10 @@ use bevy::math::U8Vec4;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
+use crate::common::common_components::MyZindex;
+use crate::game::tilemap::terrain_gen::terrgen_resources::WorldGenSettings;
 use crate::game::tilemap::{chunking_components::ChunkPos, tile::tile_constants::* };
 use bevy_ecs_tilemap::tiles::*;
 
@@ -17,7 +20,7 @@ pub struct MyTileBundle {
     pub img_id: Tileimg,
     pub flip: TileFlip,
     pub color: TileColor,
-    pub z_index: TileZIndex,
+    pub z_index: MyZindex,
     pub visible: TileVisible,
     pub shader: AppliedShader,
 }
@@ -30,7 +33,7 @@ impl Default for MyTileBundle {
             img_id: Tileimg::default(),
             flip: TileFlip::default(),
             color: TileColor::default(),
-            z_index: TileZIndex::default(),
+            z_index: MyZindex::default(),
             visible: TileVisible::default(),
             shader: AppliedShader::default(),
         }
@@ -43,7 +46,7 @@ impl MyTileBundle {
         img_id: Tileimg,
         flip: TileFlip,
         color: TileColor,
-        z_index: TileZIndex,
+        z_index: MyZindex,
         visible: bool,
         shader: AppliedShader,
     ) -> Self {
@@ -70,9 +73,6 @@ pub struct FlipAlongX;
 
 #[derive(Component, Debug, Default, )]
 pub struct Tree;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Copy)]
-pub struct TileZIndex(pub i32);
 
 
 #[derive(Component, Debug, Default, Hash, PartialEq, Eq, Clone, )]
@@ -132,6 +132,18 @@ impl GlobalTilePos {
     }
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
+    pub fn hash_value(&self, settings: &WorldGenSettings) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.0.hash(&mut hasher);
+        settings.seed.hash(&mut hasher);
+        hasher.finish()
+    }
+    pub fn normalized_hash_value(&self, settings: &WorldGenSettings) -> f32 {
+        let hash = self.hash_value(settings);
+        let normalized = (hash as f32 / u64::MAX as f32);
+        info!("Normalized hash value for {}: {}", self, normalized);
+        normalized
+    }
 
     pub const TYPE_DEBUG_NAME: &'static str = "GlobalTilePos";
 }
@@ -146,25 +158,89 @@ impl std::fmt::Debug for GlobalTilePos {
         write!(f, "{}({}, {})", Self::TYPE_DEBUG_NAME, self.0.x, self.0.y)
     }
 }
-
 impl From<Vec2> for GlobalTilePos {
     fn from(pixelpos: Vec2) -> Self {
         GlobalTilePos(pixelpos.div_euclid(TILE_SIZE_PXS.as_vec2()).as_ivec2())
     }
 }
+impl std::ops::Add for GlobalTilePos {type Output = Self; fn add(self, other: Self) -> Self {GlobalTilePos(self.0 + other.0)}}
+impl std::ops::Sub for GlobalTilePos {type Output = Self; fn sub(self, other: Self) -> Self {GlobalTilePos(self.0 - other.0)}}
 
-impl std::ops::Add for GlobalTilePos {
-    type Output = Self;
+#[derive(Debug, Clone, Component)]
+pub struct TileWeightedSampler {
+    alias: Vec<usize>,
+    prob: Vec<f32>,
+    entities: Vec<Entity>,
+}
 
-    fn add(self, other: Self) -> Self {
-        GlobalTilePos(self.0 + other.0)
+impl TileWeightedSampler {
+    pub fn new(weights: &[(Entity, f32)]) -> Self {
+        let n = weights.len();
+        let mut prob = vec![0.0; n];
+        let mut alias = vec![0; n];
+        let mut entities = Vec::with_capacity(n);
+
+        if n == 0 {
+            return Self { alias, prob, entities };
+        }
+
+        let mut norm_weights: Vec<f32> = weights.iter().map(|(_, w)| *w).collect();
+        let sum: f32 = norm_weights.iter().sum();
+        if sum > 0.0 {
+            for w in &mut norm_weights {
+                *w *= n as f32 / sum;
+            }
+        }
+
+        let mut small = Vec::new();
+        let mut large = Vec::new();
+
+        for (i, &w) in norm_weights.iter().enumerate() {
+            entities.push(weights[i].0);
+            if w < 1.0 {
+                small.push(i);
+            } else {
+                large.push(i);
+            }
+        }
+
+        while let (Some(s), Some(l)) = (small.pop(), large.pop()) {
+            prob[s] = norm_weights[s];
+            alias[s] = l;
+            norm_weights[l] = (norm_weights[l] + norm_weights[s]) - 1.0;
+            if norm_weights[l] < 1.0 {
+                small.push(l);
+            } else {
+                large.push(l);
+            }
+        }
+
+        for &i in large.iter().chain(small.iter()) {
+            prob[i] = 1.0;
+            alias[i] = i;
+        }
+
+        Self { alias, prob, entities }
+    }
+
+    pub fn sample(&self, settings: &WorldGenSettings, pos: GlobalTilePos) -> Option<Entity> {
+        if self.entities.is_empty() {
+            return None;
+        } 
+        
+        let n = self.entities.len();
+        let hash = pos.hash_value(settings);
+
+        let idx = (hash % n as u64) as usize;
+        // Use upper 32 bits for float
+        let float_bits = ((hash >> 32) as u32) | 1; // avoid 0
+        let u = (float_bits as f32) / (u32::MAX as f32);
+
+        if u < self.prob[idx] {
+            Some(self.entities[idx])
+        } else {
+            Some(self.entities[self.alias[idx]])
+        }
     }
 }
 
-impl std::ops::Sub for GlobalTilePos {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self {
-        GlobalTilePos(self.0 - other.0)
-    }
-}

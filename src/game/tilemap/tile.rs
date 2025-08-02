@@ -21,7 +21,7 @@ impl Plugin for TilePlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(Update, (update_img_sizes_on_load/*NO PONER EN SET */, 
-                update_tile_hash_value, update_tile_name, 
+                update_tile_hash_value, update_tile_name, flip_tile_along_x
             ))
             .add_systems(Startup/*OnEnter(AssetLoadingState::InProcess)*/, (add_tileimgs_to_map, ))
             //.init_resource::<RESOURCE_NAME>()

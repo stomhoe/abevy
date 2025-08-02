@@ -7,9 +7,7 @@ use crate::game::tilemap::{chunking_components::*, tile::tile_components::Global
 
 
 
-pub const Z_DIVISOR: i32 = 10000;
 
-pub const GRASS_Z_LEVEL: i32 = 10 * Z_DIVISOR;
 
 pub const TC_RED: TileColor = TileColor(Color::srgb(1., 0., 0.));
 pub const TC_GREEN: TileColor = TileColor(Color::srgb(0., 1., 0.));

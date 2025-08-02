@@ -3,7 +3,7 @@ use bevy::{math::U16Vec2, platform::collections::{HashMap}, prelude::*};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::{terrain_materials::MonoRepeatTextureOverlayMat, terrgen_utils::Z_DIVISOR}, tile::{tile_components::{AppliedShader, TileZIndex, Tileimg}, tile_constants::TILE_SIZE_PXS, tile_resources::{HandleConfigMap, TileimgConfig}},};
+use crate::{common::common_components::MyZindex, game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::{AppliedShader, Tileimg}, tile_constants::TILE_SIZE_PXS, tile_resources::{HandleConfigMap, TileimgConfig}},}};
 
 
 pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
@@ -15,12 +15,12 @@ pub fn uvec2_to_tmaptsize(tile_size: U16Vec2) -> TilemapTileSize {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct MapKey {
-    z_index: TileZIndex,
+    z_index: MyZindex,
     tile_size: U16Vec2,
     shader: AppliedShader,
 }
 impl MapKey {
-    pub fn new(z_index: TileZIndex, size: U16Vec2, shader: AppliedShader) -> Self {
+    pub fn new(z_index: MyZindex, size: U16Vec2, shader: AppliedShader) -> Self {
         Self { z_index, tile_size: size, shader }
     }
     pub fn take_shader(&mut self) -> AppliedShader { std::mem::take(&mut self.shader) }
@@ -31,14 +31,15 @@ type Map = HashMap<MapKey, LayerDto>;
 #[allow(unused_parens)]
 pub fn produce_tilemaps(
     mut commands: Commands, 
-    chunk_query: Query<(Entity, &ProducedTiles), (Without<Children>, Added<TilesReady>)>,
-    mut tile_comps: Query<(&TilePos, &Tileimg, &TileZIndex, &mut AppliedShader)>,
+    mut chunk_query: Query<(Entity, &mut ProducedTiles), (Without<Children>, Added<TilesReady>)>,
+    mut tile_comps: Query<(&TilePos, &Tileimg, &MyZindex, &mut AppliedShader)>,
     handle_config_map: Res<HandleConfigMap>, 
 ) -> Result {
     let mut layers: Map = HashMap::new();
 
-    for (chunk_ent, tiles_ready) in chunk_query.iter() {
-        for &tile_ent in tiles_ready.0.iter() {unsafe{
+    #[allow(unused_mut)]
+    for (chunk_ent, mut produced_tiles) in chunk_query.iter_mut() {
+        for &tile_ent in produced_tiles.produced_tiles().iter() {unsafe{
 
             let (tile_pos, tile_img, &tile_z_index, shader) = tile_comps.get_mut(tile_ent)?;
             let shader = std::mem::take(shader.into_inner());
@@ -56,7 +57,7 @@ pub fn produce_tilemaps(
                 );
 
                 let texture_index = match tile_imgs.iter().position(|x| *x == tile_img.0) {
-                    Some(index) => TileTextureIndex(index as u32),
+                    Some(i) => TileTextureIndex(i as u32),
                     None => {
                         tile_imgs.push(tile_img.0.clone());
                         TileTextureIndex((tile_imgs.len() - 1) as u32)
@@ -68,21 +69,25 @@ pub fn produce_tilemaps(
             } else {
                 instantiate_new_layer_dto(&mut commands, &mut layers, map_key, img_cfg, tile_ent, tile_pos, tile_img.clone(), chunk_ent);
             }
-            
         }}
+        if layers.is_empty() {
+            warn!("No tiles produced for chunk {:?}", chunk_ent);
+            commands.entity(chunk_ent).insert(InitializedChunk);
 
-        for (mut key, mut layer_dto) in layers.drain() {
-            layer_dto.used_shader = key.take_shader();
-            commands.entity(layer_dto.tilemap_entity).insert(layer_dto);
+        } else{
+            commands.entity(chunk_ent).insert(LayersReady);
+            for (mut key, mut layer_dto) in layers.drain() {
+                layer_dto.used_shader = key.take_shader();
+                commands.entity(layer_dto.tilemap_entity).insert(layer_dto);
+            }
         }
-        commands.entity(chunk_ent).insert(LayersReady);
     }
     Ok(())
 }
 
 #[derive(Component, Debug, )]
 pub struct LayerDto {
-    pub layer_z: TileZIndex, 
+    pub layer_z: MyZindex, 
     pub tile_size: TilemapTileSize,
     pub used_shader: AppliedShader,
     pub tilemap_entity: Entity, 
@@ -91,7 +96,7 @@ pub struct LayerDto {
     pub needs_y_sort: bool,
 }
 impl LayerDto {
-    pub fn new(tilemap_entity: Entity, tile_storage: TileStorage, images: Vec<Handle<Image>>, tile_size: TilemapTileSize, layer_z: TileZIndex, used_shader: AppliedShader, needs_y_sort: bool) -> Self {
+    pub fn new(tilemap_entity: Entity, tile_storage: TileStorage, images: Vec<Handle<Image>>, tile_size: TilemapTileSize, layer_z: MyZindex, used_shader: AppliedShader, needs_y_sort: bool) -> Self {
         Self { tilemap_entity, tile_storage, images, tile_size, layer_z, used_shader, needs_y_sort }
     }
 
@@ -162,7 +167,7 @@ pub fn fill_tilemaps_data(
             if let Ok(mut layer_dto) = layer_query.get_mut(child) {//DEJAR CON IF LET
                 let grid_size = TilemapGridSize { x: TILE_SIZE_PXS.x as f32, y: TILE_SIZE_PXS.y as f32 };//NO TOCAR
                 let size = CHUNK_SIZE.as_uvec2().into();
-                let transform = Transform::from_translation(Vec3::new(0.0, 0.0, (layer_dto.layer_z.0 as f32 / Z_DIVISOR as f32)));
+                let transform = Transform::from_translation(Vec3::new(0.0, 0.0, (layer_dto.layer_z.div_1e9())));
                 let texture = TilemapTexture::Vector(layer_dto.take_images());
                 let storage = std::mem::take(&mut layer_dto.tile_storage);
                 let render_settings = TilemapRenderSettings {render_chunk_size: UVec2 {x: (CHUNK_SIZE.x * 2) as u32, y: (CHUNK_SIZE.y * 2) as u32,}, y_sort: layer_dto.needs_y_sort};

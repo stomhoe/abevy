@@ -66,45 +66,37 @@ impl TgenNoise {
     }
 }
 
-impl std::hash::Hash for TgenNoise {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // Hash FastNoiseLite fields that are public and relevant
-        self.noise.seed.hash(state);
-        self.noise.frequency.to_bits().hash(state);
-        (self.noise.noise_type as i32).hash(state);
-        (self.noise.rotation_type_3d as i32).hash(state);
 
-        (self.noise.fractal_type as i32).hash(state);
-        self.noise.octaves.hash(state);
-        self.noise.lacunarity.to_bits().hash(state);
-        self.noise.gain.to_bits().hash(state);
-        self.noise.weighted_strength.to_bits().hash(state);
-        self.noise.ping_pong_strength.to_bits().hash(state);
-
-        (self.noise.cellular_distance_function as i32).hash(state);
-        (self.noise.cellular_return_type as i32).hash(state);
-        self.noise.cellular_jitter_modifier.to_bits().hash(state);
-
-        (self.noise.domain_warp_type as i32).hash(state);
-        self.noise.domain_warp_amp.to_bits().hash(state);
-
-        // Hash the offset
-        self.offset.hash(state);
+#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, )]
+pub struct PoissonDisk {
+    pub min_distance: u8,
+}
+impl PoissonDisk {
+    pub fn sample(&self, settings: &WorldGenSettings, tile_pos: GlobalTilePos) -> f32 {
+        let val = tile_pos.normalized_hash_value(settings);
+        // Check neighbors within min_distance — reject if any has lower hash (pseudo-distance enforcement)
+        for dy in -(self.min_distance as i32)..=(self.min_distance as i32) {
+            for dx in -(self.min_distance as i32)..=(self.min_distance as i32) {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                // Only check within circle of radius min_distance
+                if dx * dx + dy * dy > (self.min_distance as i32).pow(2) {
+                    continue;
+                }
+                let neighbor_pos = GlobalTilePos(IVec2::new(tile_pos.0.x + dx, tile_pos.0.y + dy));
+                let neighbor_val = neighbor_pos.normalized_hash_value(settings);
+                if neighbor_val > val {
+                    return 0.0;
+                }
+            }
+        }
+        val 
     }
 }
+impl Default for PoissonDisk {fn default() -> Self { Self { min_distance: 1 } } }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
-#[require(EntityPrefix::new("HashPosComp"))]
-pub struct TgenHashPos;
-impl TgenHashPos {
-    pub fn get_val(&self, tile_pos: GlobalTilePos, settings: &WorldGenSettings) -> f32 {
-       let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        tile_pos.0.hash(&mut hasher);
-        settings.seed.hash(&mut hasher);
-        let hash_val = hasher.finish();
-        (hash_val as f64 / u64::MAX as f64) as f32
-    }
-}
+
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct ChunkRef(pub Entity);
@@ -128,8 +120,8 @@ pub struct OnCompareConfig {
 impl Default for OnCompareConfig {
     fn default() -> Self {
         Self {
-            tiles_on_success: ProducedTiles(vec![]),
-            tiles_on_failure: ProducedTiles(vec![]),
+            tiles_on_success: ProducedTiles::default(),
+            tiles_on_failure: ProducedTiles::default(),
             on_success: NextAction::Continue,
             on_failure: NextAction::Break,
         }
@@ -137,16 +129,7 @@ impl Default for OnCompareConfig {
 }
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq,)]
 pub enum Operation {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Modulo,
-    Log,
-    Min,
-    Max,
-    Pow,
-    Assign,
+    Add, Subtract, Multiply, Divide, Modulo, Log, Min, Max, Pow, Assign,
     GreaterThan(OnCompareConfig),
     LessThan(OnCompareConfig),
     GetTiles(ProducedTiles),
@@ -158,12 +141,21 @@ pub struct InputOperand(pub f32);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 pub struct RootOpList;
 
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+pub enum Operand {
+    Entity(Entity),
+    Value(f32),
+    HashPos,
+    PoissonDisk(PoissonDisk),
+    #[default] Zero,
+}
+impl From<Entity> for Operand { fn from(e: Entity) -> Self { Self::Entity(e) } }
+impl From<f32> for Operand { fn from(v: f32) -> Self { Self::Value(v) } }
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct OperationList {
-    pub trunk: Vec<(Entity, Operation)>,
-    pub threshold: f32,
-    pub bifurcation_over: Option<Entity>,
-    pub bifurcation_under: Option<Entity>,
+    pub trunk: Vec<(Operand, Operation)>, pub threshold: f32,
+    pub bifurcation_over: Option<Entity>, pub bifurcation_under: Option<Entity>,
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, )]
