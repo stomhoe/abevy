@@ -2,65 +2,19 @@ use bevy::math::U8Vec4;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
-use crate::common::common_components::MyZindex;
+use crate::common::common_components::MyZ;
 use crate::game::tilemap::terrain_gen::terrgen_resources::WorldGenSettings;
 use crate::game::tilemap::{chunking_components::ChunkPos, tile::tile_constants::* };
 use bevy_ecs_tilemap::tiles::*;
 
-use bevy_ecs_tilemap::{map::TilemapTileSize, tiles::*};
+use bevy_ecs_tilemap::tiles::*;
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 
-
-#[derive(Bundle, Debug)]
-pub struct MyTileBundle {
-    pub name: Name,
-    pub img_id: Tileimg,
-    pub flip: TileFlip,
-    pub color: TileColor,
-    pub z_index: MyZindex,
-    pub visible: TileVisible,
-    pub shader: AppliedShader,
-}
-
-impl Default for MyTileBundle {
-    fn default() -> Self {
-        let rand_string: String = format!("Tile {}", nano_id::base64::<3>());
-        Self {
-            name: Name::new(rand_string),
-            img_id: Tileimg::default(),
-            flip: TileFlip::default(),
-            color: TileColor::default(),
-            z_index: MyZindex::default(),
-            visible: TileVisible::default(),
-            shader: AppliedShader::default(),
-        }
-    }
-}
-
-impl MyTileBundle {
-    pub fn new(
-        name: Name,
-        img_id: Tileimg,
-        flip: TileFlip,
-        color: TileColor,
-        z_index: MyZindex,
-        visible: bool,
-        shader: AppliedShader,
-    ) -> Self {
-        Self {
-            name,
-            img_id,
-            flip,
-            color,
-            z_index,
-            visible: TileVisible(visible),
-            shader,
-        }
-    }
-}
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[require(MyZ)]
+pub struct Tile;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct TileposHashRand(pub f32);
@@ -75,10 +29,8 @@ pub struct FlipAlongX;
 pub struct Tree;
 
 
-#[derive(Component, Debug, Default, Hash, PartialEq, Eq, Clone, )]
+#[derive(Component, Debug, Hash, PartialEq, Eq, Clone, )]
 pub enum AppliedShader{
-    #[default]
-    None,
     MonoRepeating(RepeatingTexture),
     BiRepeating(RepeatingTexture, RepeatingTexture),
     //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
@@ -92,6 +44,7 @@ pub struct RepeatingTexture{
 }
 
 impl RepeatingTexture {
+    #[allow(dead_code, )]
     pub fn new<S: Into<String>>(asset_server: &AssetServer, path: S, scale: u32, mask_color: U8Vec4) -> Self {
         Self { img: asset_server.load(path.into()), scale, mask_color }
     }
@@ -133,18 +86,12 @@ impl GlobalTilePos {
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
     pub fn hash_value(&self, settings: &WorldGenSettings) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.0.hash(&mut hasher);
-        settings.seed.hash(&mut hasher);
-        hasher.finish()
+        let mut hasher = DefaultHasher::new(); self.0.hash(&mut hasher);
+        settings.seed.hash(&mut hasher); hasher.finish()
     }
     pub fn normalized_hash_value(&self, settings: &WorldGenSettings) -> f32 {
-        let hash = self.hash_value(settings);
-        let normalized = (hash as f32 / u64::MAX as f32);
-        info!("Normalized hash value for {}: {}", self, normalized);
-        normalized
+        self.hash_value(settings) as f32 / u64::MAX as f32
     }
-
     pub const TYPE_DEBUG_NAME: &'static str = "GlobalTilePos";
 }
 
@@ -172,18 +119,15 @@ pub struct TileWeightedSampler {
     prob: Vec<f32>,
     entities: Vec<Entity>,
 }
-
 impl TileWeightedSampler {
     pub fn new(weights: &[(Entity, f32)]) -> Self {
         let n = weights.len();
         let mut prob = vec![0.0; n];
         let mut alias = vec![0; n];
         let mut entities = Vec::with_capacity(n);
-
         if n == 0 {
             return Self { alias, prob, entities };
         }
-
         let mut norm_weights: Vec<f32> = weights.iter().map(|(_, w)| *w).collect();
         let sum: f32 = norm_weights.iter().sum();
         if sum > 0.0 {
@@ -191,10 +135,8 @@ impl TileWeightedSampler {
                 *w *= n as f32 / sum;
             }
         }
-
         let mut small = Vec::new();
         let mut large = Vec::new();
-
         for (i, &w) in norm_weights.iter().enumerate() {
             entities.push(weights[i].0);
             if w < 1.0 {
@@ -203,7 +145,6 @@ impl TileWeightedSampler {
                 large.push(i);
             }
         }
-
         while let (Some(s), Some(l)) = (small.pop(), large.pop()) {
             prob[s] = norm_weights[s];
             alias[s] = l;
@@ -214,12 +155,10 @@ impl TileWeightedSampler {
                 large.push(l);
             }
         }
-
         for &i in large.iter().chain(small.iter()) {
             prob[i] = 1.0;
             alias[i] = i;
         }
-
         Self { alias, prob, entities }
     }
 
@@ -227,7 +166,7 @@ impl TileWeightedSampler {
         if self.entities.is_empty() {
             return None;
         } 
-        
+
         let n = self.entities.len();
         let hash = pos.hash_value(settings);
 

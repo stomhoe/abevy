@@ -2,7 +2,7 @@ use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use serde::{Deserialize, Serialize};
 use superstate::{SuperstateInfo};
-use crate::{common::common_components::{EntityPrefix, MyZindex}, game::{being::{modifier::modifier_components::AppliedModifiers, movement::movement_components::*}, game_components::FacingDirection, player::player_components::Controls, tilemap::chunking_components::ActivatesChunks}, AppState};
+use crate::{common::common_components::{EntityPrefix, MyZ}, game::{being::{modifier::modifier_components::AppliedModifiers, movement::movement_components::*}, game_components::FacingDirection, player::player_components::Controls, tilemap::chunking_components::ActivatesChunks}, AppState};
 
 
 
@@ -42,8 +42,16 @@ pub struct CpuControlled;
 
 
 #[derive(Component, Debug, Deserialize, Serialize)]
-#[require(InputMoveVector, FinalMoveVector, MyZindex(500), Replicated, Altitude, Visibility, FacingDirection, AppliedModifiers, EntityPrefix::new("Being "))]
+#[require(InputMoveVector, FinalMoveVector, MyZ(500), Replicated, Altitude, Visibility, FacingDirection, AppliedModifiers, EntityPrefix::new("Being "))]
 pub struct Being;
+impl Being {
+
+    /// max Z (clothes included)
+    pub const MAX_Z: MyZ = MyZ(1_000_000_000);
+
+    /// lowest z allowed for either clothes or body sprites
+    pub const MIN_Z: MyZ = MyZ(1_000);
+}
 
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[relationship(relationship_target = Followers)]

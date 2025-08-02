@@ -15,8 +15,6 @@ pub fn add_tileimgs_to_map(asset_server: Res<AssetServer>,
                             mut map: ResMut<HandleConfigMap>, 
 ) {
     map.insert(&asset_server, "white.png", false);
-    map.insert(&asset_server, "bush/bush0.png", true);
-    map.insert(&asset_server, "bush/bush1.png", true);
 } 
 
 

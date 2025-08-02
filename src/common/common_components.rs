@@ -17,12 +17,13 @@ impl core::fmt::Display for EntityPrefix {
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Copy)]
-pub struct MyZindex(pub i32);
-impl MyZindex {
+pub struct MyZ(pub i32);
+impl MyZ {
     pub fn new(z: i32) -> Self { Self(z) } 
     pub fn div_1e9(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
     pub const Z_MULTIPLIER: f32 = 1e-16;
 }
+
 
 #[derive(Component, Debug, Clone, Default, Serialize, Deserialize, )]
 pub struct DisplayName(pub String);

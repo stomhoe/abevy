@@ -43,8 +43,19 @@ pub struct ImgPathHolder(pub String);
 
 
 #[derive(Component, Debug, )]
-pub struct CurrentDimension(pub Entity);
+pub struct DimensionRef(pub Entity);
 
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+pub struct YSort { z: f32, }
+
+pub fn y_sort(
+    mut q: Query<(&mut Transform, &YSort)>,
+) {
+    for (mut tf, ysort) in q.iter_mut() {
+        tf.translation.z = ysort.z-(1.0f32 / (1.0f32 + (2.0f32.powf(-0.01*tf.translation.y))));
+    }
+}
 
 
 #[allow(unused_parens, dead_code)]

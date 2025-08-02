@@ -56,7 +56,7 @@ pub fn rem_outofrange_chunks_from_activators(
             let chunk_delta: UVec2 = (act_chunk_pos - chunk_pos).0.abs().as_uvec2();
             if distance > tilemap_settings.chunk_active_max_dist && (chunk_delta.x > show_range || chunk_delta.y > show_range) {
                 activate_chunks.0.remove(&entity);
-                info!("Removed chunk {:?} (pos: {:?}) from activator", entity, chunk_pos, );
+                //info!("Removed chunk {:?} (pos: {:?}) from activator", entity, chunk_pos, );
             }
         }
     }
@@ -75,7 +75,7 @@ pub fn despawn_unreferenced_chunks(
         if !referenced {
 
             let chunk_pos = ChunkPos::from(chunk_transform.translation.xy());
-            info!("Despawning chunk {:?} at pos: {:?}", chunk_ent, chunk_pos);
+            //info!("Despawning chunk {:?} at pos: {:?}", chunk_ent, chunk_pos);
 
             loaded_chunks.0.remove(&chunk_pos);
             commands.entity(chunk_ent).remove::<ChunkInitState>().despawn();//DEJAR EL REMOVE

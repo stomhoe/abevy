@@ -3,7 +3,7 @@ use bevy::input::ButtonInput;
 use bevy::math::Vec3;
 use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
-use crate::common::common_components::{DisplayName, MyZindex};
+use crate::common::common_components::{DisplayName, MyZ};
 use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, TargetSpawnPos, };
 use crate::game::being::modifier::modifier_components::ModifierCategories;
 use crate::game::being::sprite::sprite_components::SpriteDatasChildrenStringIds;
@@ -95,7 +95,7 @@ pub fn toggle_simulation(
 
 
 
-pub fn force_z_index(mut query: Query<(&mut Transform, &MyZindex), (Changed<MyZindex>,)>) {
+pub fn force_z_index(mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>,)>) {
     for (mut transform, z_index) in query.iter_mut() {
         transform.translation.z = z_index.div_1e9();
     }

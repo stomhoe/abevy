@@ -11,7 +11,7 @@ use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
 
 
-use crate::game::tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_resources::*, terrgen_utils::* }, tile::tile_components::{AppliedShader, FlipAlongX, GlobalTilePos, MyTileBundle, RepeatingTexture, TileWeightedSampler, Tileimg}, };
+use crate::{common::common_components::MyZ, game::tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_resources::*, terrgen_utils::* }, tile::{tile_components::{AppliedShader, FlipAlongX, GlobalTilePos, RepeatingTexture, TileWeightedSampler, Tileimg}, tile_constants::TILEIMG_BASE_PATH}, }};
 
 #[derive(Component, Debug, Default, )]
 pub struct TemperateGrass;
@@ -31,22 +31,18 @@ pub fn setup(mut cmd: Commands, query: Query<(),()>, asset_server: Res<AssetServ
 
     
     let bush0 = cmd.spawn((
-        MyTileBundle {
-            name: Name::new("bush0"),
-            img_id: Tileimg::new(&asset_server, "bush/bush0.png"),
-            ..Default::default()
-        },
-        FlipAlongX,
+        Name::new("bush0"),
+        Sprite::from_image(asset_server.load(&(TILEIMG_BASE_PATH.to_string() + "bush/bush0.png"))),        
+        Visibility::Hidden,
+        MyZ(100),
     )).id();
 
 
      let bush1 = cmd.spawn((
-        MyTileBundle {
-            name: Name::new("bush1"),
-            img_id: Tileimg::new(&asset_server, "bush/bush1.png"),
-            ..Default::default()
-        },
-        FlipAlongX,
+        Name::new("bush1"),
+        Sprite::from_image(asset_server.load(&(TILEIMG_BASE_PATH.to_string() + "bush/bush1.png"))),
+        Visibility::Hidden,
+        MyZ(100),
     )).id();
     info!("bush0: {:?}, bush1: {:?}", bush0, bush1);
 
@@ -54,20 +50,20 @@ pub fn setup(mut cmd: Commands, query: Query<(),()>, asset_server: Res<AssetServ
     info!("wmap: {:?}", wmap);
     
     let grasstile_ent = cmd.spawn(( 
-        MyTileBundle {
-            name: Name::new("tempgrass"),
-            img_id: Tileimg::new(&asset_server, "white.png"),
-            color: TC_RED,
-            shader: AppliedShader::MonoRepeating(
-                RepeatingTexture::new_w_red_mask(
-                    &asset_server,
-                    "texture/world/terrain/temperate_grass/grass.png", 
-                    1_000, //scale to be divided by 1M
-                ),
+        Name::new("tempgrass"),
+        AppliedShader::MonoRepeating(
+            RepeatingTexture::new_w_red_mask(
+                &asset_server,
+                "texture/world/terrain/temperate_grass/grass.png", 
+                1_000, //scale to be divided by 1M
             ),
-            ..Default::default()
-        },
+        ),
+            
+        Tileimg::new(&asset_server, "white.png"),
+        TC_RED,
         TemperateGrass,
+        MyZ(10),
+
     )).id();
 
 
@@ -103,6 +99,8 @@ pub fn setup(mut cmd: Commands, query: Query<(),()>, asset_server: Res<AssetServ
         },
         RootOpList
     ));
+
+    //DimensionRef usarlo para algo con las operations nase
 
 }
 
