@@ -1,23 +1,35 @@
-#[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
-#[allow(unused_imports)] use superstate::superstate_plugin;
-use crate::common::common_components::DisplayName;
-use crate::game::being::being_components::Being;
-use crate::game::being::movement::MovementSystems;
-use crate::game::being::race::race_resources::RaceSerisHandles;
-use crate::game::being::sprite::animation_resources::AnimSerisHandles;
-use crate::game::being::sprite::sprite_resources::SpriteSerisHandles;
-use crate::game::being::{BeingsPlugin, };
-use crate::game::game_components::FacingDirection;
-use crate::game::multiplayer::MpPlugin;
-use crate::game::time::ClockPlugin;
-use crate::game::faction::FactionPlugin;
-use crate::game::player::{PlayerInputSystems, PlayerPlugin};
-use crate::game::setup_menus::SetupMenusPlugin;
-use crate::game::tilemap::{ChunkSystems, MyTileMapPlugin};
-use crate::AppState;
-use crate::game::game_systems::*;
+#[allow(unused_imports)]
+use bevy::prelude::*;
+#[allow(unused_imports)]
+use bevy_replicon::prelude::*;
+#[allow(unused_imports)]
+use superstate::superstate_plugin;
+
 use bevy_asset_loader::prelude::*;
+
+use crate::{
+    common::common_components::DisplayName, game::{
+        being::{
+            being_components::Being,
+            movement::MovementSystems,
+            race::race_resources::RaceSerisHandles,
+            sprite::{
+                animation_resources::AnimSerisHandles,
+                sprite_resources::SpriteSerisHandles,
+            },
+            BeingsPlugin,
+        },
+        faction::FactionPlugin,
+        game_components::FacingDirection,
+        game_resources::*,
+        game_systems::*,
+        multiplayer::MpPlugin,
+        player::{PlayerInputSystems, PlayerPlugin},
+        setup_menus::SetupMenusPlugin,
+        tilemap::{tile::tile_resources::*, ChunkSystems, MyTileMapPlugin},
+        time::ClockPlugin,
+    }, AppState
+};
 
 pub mod player;
 pub mod setup_menus;
@@ -75,16 +87,13 @@ impl Plugin for GamePlugin {
             ))
 
             .add_systems(Update, (
+                update_img_sizes_on_load,
                 host_on_player_added.run_if(server_or_singleplayer),
                 (
-                    debug_system, toggle_simulation, force_z_index, tick_time_based_multipliers,
+                    toggle_simulation, update_transform_z, tick_time_based_multipliers,
                 
                 ).in_set(ActiveGameSystems),
             ))
-
-            // .configure_sets(OnEnter(AppState::StatefulGameSession), (
-            //     GameDataInitSystems.run_if(server_or_singleplayer)
-            // ))
 
             .configure_sets(Update, (
                 PlayerInputSystems,
@@ -105,12 +114,13 @@ impl Plugin for GamePlugin {
                 ClientSystems.run_if(not(server_or_singleplayer).or(in_state(GameSetupType::JoinerLobby))),//NO TOCAR
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
             ))
+            .init_resource::<ImageSizeMap>().init_resource::<GlobalEntityMap>()
 
-            .init_state::<SimulationState>()
+            .init_state::<AssetLoadingState>()
             .init_state::<GamePhase>()
             .init_state::<GameSetupType>()
             .init_state::<GameSetupScreen>()
-            .init_state::<AssetLoadingState>()
+            .init_state::<SimulationState>()
 
             .add_loading_state(
                 LoadingState::new(AssetLoadingState::InProcess)
@@ -118,8 +128,10 @@ impl Plugin for GamePlugin {
                 .load_collection::<SpriteSerisHandles>()
                 .load_collection::<AnimSerisHandles>()
                 .load_collection::<RaceSerisHandles>()
+                .load_collection::<ShaderRepeatTexSerisHandles>()
+                .load_collection::<TileSerisHandles>()
+                .load_collection::<TileWeightedSamplerSerisHandles>()
             )
-            //.replicate_bundle::<(Children)>()
             .replicate_bundle::<(Being, ChildOf)>()//NO FUNCIONA BIEN LO DE CHILDOF
             .replicate::<DisplayName>()
             .replicate_bundle::<(Being, FacingDirection)>()//PROVISORIO, VA A HABER Q REVISAR
@@ -149,8 +161,6 @@ enum SimulationState {#[default]Running, Paused,}
 #[states(scoped_entities)]
 pub enum GameSetupType {#[default]Singleplayer, HostLobby, JoinerLobby,}
 
-
-//usar server_or_singleplayer y not(server_or_singleplayer) para distinguir entre servidor y cliente
 
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]

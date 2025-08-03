@@ -1,9 +1,9 @@
 
-use bevy::{math::U16Vec2, platform::collections::{HashMap}, prelude::*};
+use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections::HashMap, prelude::*};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::{common::common_components::MyZ, game::tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::{AppliedShader, Tileimg}, tile_constants::TILE_SIZE_PXS, tile_resources::{HandleConfigMap, TileimgConfig}},}};
+use crate::{common::common_components::MyZ, game::{game_components::ImageHolder, game_resources::ImageSizeMap, tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::TileShader, tile_constants::TILE_SIZE_PXS, },}}};
 
 
 pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
@@ -14,12 +14,12 @@ pub fn uvec2_to_tmaptsize(tile_size: U16Vec2) -> TilemapTileSize {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct MapKey {z_index: MyZ, tile_size: U16Vec2, shader: Option<AppliedShader>,}
+struct MapKey {z_index: MyZ, tile_size: U16Vec2, shader: Option<TileShader>,}
 impl MapKey {
-    pub fn new(z_index: MyZ, size: U16Vec2, shader: Option<AppliedShader>) -> Self {
+    pub fn new(z_index: MyZ, size: U16Vec2, shader: Option<TileShader>) -> Self {
         Self { z_index, tile_size: size, shader }
     }
-    pub fn take_shader(&mut self) -> Option<AppliedShader> { std::mem::take(&mut self.shader) }
+    pub fn take_shader(&mut self) -> Option<TileShader> { std::mem::take(&mut self.shader) }
 }
 
 type Map = HashMap<MapKey, LayerDto>;
@@ -28,8 +28,8 @@ type Map = HashMap<MapKey, LayerDto>;
 pub fn produce_tilemaps(
     mut cmd: Commands, 
     mut chunk_query: Query<(Entity, &mut ProducedTiles), (Without<Children>, Added<TilesReady>)>,
-    mut tile_comps: Query<(Entity, &TilePos, Option<&Tileimg>, Option<&MyZ>, Option<&AppliedShader>, Option<&mut Transform>)>,
-    handle_config_map: Res<HandleConfigMap>, 
+    mut tile_comps: Query<(Entity, &TilePos, Option<&ImageHolder>, Option<&MyZ>, Option<&TileShader>, Option<&mut Transform>)>,
+    imgsize_map: Res<ImageSizeMap>, 
 ) -> Result {
     let mut layers: Map = HashMap::new();
 
@@ -46,12 +46,12 @@ pub fn produce_tilemaps(
                 transform.translation.y += (tile_pos.y as f32 * TILE_SIZE_PXS.y as f32);
             }
 
-            let shader: Option<AppliedShader> = shader.take().cloned();
-            cmd.entity(tile_ent).remove::<Tileimg>().remove::<AppliedShader>();
+            let shader: Option<TileShader> = shader.take().cloned();
+            cmd.entity(tile_ent).remove::<ImageHolder>().remove::<TileShader>();
                 
 
-            let tile_size = if let Some(img) = tile_img {
-                handle_config_map.get(img).debug_expect_unchecked("img not found in handle_config_map").tile_size_u16vec2()
+            let tile_size = if let Some(ImageHolder(img)) = tile_img {
+                imgsize_map.0.get(img).cloned().debug_expect_unchecked("img not found in handle_config_map")
             } else {
                 U16Vec2::ONE
             };
@@ -65,7 +65,7 @@ pub fn produce_tilemaps(
                     &mut layer_dto.images,
                 );
 
-                let texture_index: Option<TileTextureIndex> = if let Some(Tileimg(handle)) = tile_img {
+                let texture_index: Option<TileTextureIndex> = if let Some(ImageHolder(handle)) = tile_img {
                     match tile_imgs.iter().position(|x| *x == *handle) {
                         Some(i) => Some(TileTextureIndex(i as u32)),
                         None => {
@@ -99,7 +99,7 @@ pub fn produce_tilemaps(
 pub struct LayerDto {
     pub layer_z: MyZ, 
     pub tile_size: TilemapTileSize,
-    pub used_shader: Option<AppliedShader>,
+    pub used_shader: Option<TileShader>,
     pub tilemap: TilemapId, 
     pub tile_storage: TileStorage,
     pub images: Vec<Handle<Image>>, 
@@ -120,11 +120,12 @@ fn add_tile_bundle_and_put_in_storage(
         ..Default::default()
     };
 
-    commands.entity(tile_entity).insert_if_new((ChildOf(tilemap.entity()), tile_bundle));
+    commands.entity(tile_entity)
+        .insert_if_new((ChildOf(tilemap.entity()), tile_bundle))
+        .remove::<Disabled>()
+    ;
     if texture_index.is_none() {
-        commands.entity(tile_entity).insert_if_new((
-            tile_bundle,
-        )).insert((TileVisible(false), Visibility::Inherited));
+        commands.entity(tile_entity).insert((TileVisible(false)));
     }
     tile_storage.set(tile_pos, tile_entity);
 
@@ -133,7 +134,7 @@ fn add_tile_bundle_and_put_in_storage(
 fn instantiate_new_layer_dto( commands: &mut Commands, 
     layers: &mut Map, map_key: MapKey,
     tile_size: U16Vec2, tile_ent: Entity, tile_pos: &TilePos,
-    tileimg: Option<&Tileimg>, chunk_ent: Entity,
+    tileimg: Option<&ImageHolder>, chunk_ent: Entity,
 ) {
     let tilemap_entity = commands.spawn((Name::new("Tilemap"), ChildOf(chunk_ent))).id();
     let tilemap = TilemapId(tilemap_entity);
@@ -143,10 +144,8 @@ fn instantiate_new_layer_dto( commands: &mut Commands,
     let texture_index = tileimg.map(|_| TileTextureIndex(0));
 
     add_tile_bundle_and_put_in_storage(
-        commands,
-        tile_ent,
-        tile_pos,
-        tilemap,
+        commands, tile_ent,
+        tile_pos, tilemap,
         &mut tile_storage,
         texture_index,
     );
@@ -173,7 +172,7 @@ pub fn fill_tilemaps_data(
     mut chunk_query: Query<(Entity, &Children), (With<LayersReady>)>,
     mut layer_query: Query<(&mut LayerDto), (With<ChildOf>)>,
     mut texture_overley_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
-) {unsafe{
+) {
     
      for (chunk, children) in chunk_query.iter_mut() {
         commands.entity(chunk).remove::<LayersReady>();
@@ -193,11 +192,11 @@ pub fn fill_tilemaps_data(
 
                 if let Some(shader) = &layer_dto.used_shader {
                     match shader{
-                        AppliedShader::MonoRepeating(rep_texture) => {
+                        TileShader::TexRepeat(rep_texture) => {
                             let material = MaterialTilemapHandle::from(texture_overley_mat.add(
                                 MonoRepeatTextureOverlayMat {
                                     texture_overlay: rep_texture.cloned_handle(),
-                                    scale: rep_texture.scale_div_1M(),
+                                    scale: rep_texture.scale_div_1kM(),
                                     mask_color: rep_texture.mask_color(),
                                 }
                             ));
@@ -208,7 +207,7 @@ pub fn fill_tilemaps_data(
                                 },
                             ));
                         },
-                        AppliedShader::BiRepeating(first_texture, second) => todo!(),
+                        TileShader::TwoTexRepeat(first_texture, second) => todo!(),
                     }
                 } else {
                     tmap_commands.insert(
@@ -222,6 +221,6 @@ pub fn fill_tilemaps_data(
         commands.entity(chunk).insert(InitializedChunk);
         
     }
-}}
+}
 
 

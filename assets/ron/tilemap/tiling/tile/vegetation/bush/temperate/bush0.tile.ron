@@ -1,0 +1,14 @@
+(
+    id: "tempbush0",
+    name: "Temperate bush 0",
+    img_path: "texture/world/bush/bush0.png",
+    shader: "",
+    sprite: true,
+    offset: (0.0, 0.0),
+    z: 100,
+    color: Some((255, 0, 0, 255)),
+    color_map: "",
+    spawns: [],
+    spawns_children: [],
+    somecomp_present: Some(true),
+)

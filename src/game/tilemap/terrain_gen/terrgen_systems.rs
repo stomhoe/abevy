@@ -11,7 +11,7 @@ use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
 
 
-use crate::{common::common_components::MyZ, game::tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_resources::*, terrgen_utils::* }, tile::{tile_components::{AppliedShader, FlipAlongX, GlobalTilePos, RepeatingTexture, TileWeightedSampler, Tileimg}, tile_constants::TILEIMG_BASE_PATH}, }};
+use crate::{common::common_components::MyZ, game::{game_components::{ImageHolder, ImgPathHolder}, tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_resources::*, terrgen_utils::* }, tile::{tile_components::{TileShader, FlipAlongX, GlobalTilePos, RepeatingTexture, TileWeightedSampler, }, tile_constants::TILEIMG_BASE_PATH}, }}};
 
 #[derive(Component, Debug, Default, )]
 pub struct TemperateGrass;
@@ -22,83 +22,44 @@ pub fn setup(mut cmd: Commands, query: Query<(),()>, asset_server: Res<AssetServ
     //TODO cargar todo esto de ficheros
 
     //HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
-    let humidity = FastNoiseLite::default();
+    // let humidity = FastNoiseLite::default();
 
-    let temp_variation = FastNoiseLite::default();
+    // let temp_variation = FastNoiseLite::default();
 
-    let continent = FastNoiseLite::default();
-    let laker = FastNoiseLite::default();
+    // let continent = FastNoiseLite::default();
+    // let laker = FastNoiseLite::default();
 
-    
-    let bush0 = cmd.spawn((
-        Name::new("bush0"),
-        Sprite::from_image(asset_server.load(&(TILEIMG_BASE_PATH.to_string() + "bush/bush0.png"))),        
-        Visibility::Hidden,
-        MyZ(100),
-    )).id();
+    // let continent = cmd.spawn(TgenNoise::new(continent)).id();
+    // let humidity = cmd.spawn(TgenNoise::new(humidity)).id();
+    // let temp_variation = cmd.spawn(TgenNoise::new(temp_variation)).id();
+ 
+    // let land_ops = cmd.spawn(
+    //     OperationList {
+    //         trunk: vec![
+    //             (Operand::Zero, Operation::GetTiles(ProducedTiles::new([grasstile_ent]))),
+    //             (Operand::PoissonDisk(Default::default()), Operation::Assign),
+    //             (Operand::Value(0.5), Operation::GreaterThan(OnCompareConfig {
+    //                 tiles_on_success: ProducedTiles::new([wmap]),
+    //                 ..Default::default()
+    //             })),
+    //         ],
+    //         bifurcation_over: None,
+    //         bifurcation_under: None,
+    //         threshold: 0.5,
+    //     }
+    // ).id();
 
-
-     let bush1 = cmd.spawn((
-        Name::new("bush1"),
-        Sprite::from_image(asset_server.load(&(TILEIMG_BASE_PATH.to_string() + "bush/bush1.png"))),
-        Visibility::Hidden,
-        MyZ(100),
-    )).id();
-    info!("bush0: {:?}, bush1: {:?}", bush0, bush1);
-
-    let wmap = cmd.spawn(TileWeightedSampler::new(&[(bush0, 3.5), (bush1, 7.5)])).id();
-    info!("wmap: {:?}", wmap);
-    
-    let grasstile_ent = cmd.spawn(( 
-        Name::new("tempgrass"),
-        AppliedShader::MonoRepeating(
-            RepeatingTexture::new_w_red_mask(
-                &asset_server,
-                "texture/world/terrain/temperate_grass/grass.png", 
-                1_000, //scale to be divided by 1M
-            ),
-        ),
-            
-        Tileimg::new(&asset_server, "white.png"),
-        TC_RED,
-        TemperateGrass,
-        MyZ(10),
-
-    )).id();
-
-
-
-    let continent = cmd.spawn(TgenNoise::new(continent)).id();
-    let humidity = cmd.spawn(TgenNoise::new(humidity)).id();
-    let temp_variation = cmd.spawn(TgenNoise::new(temp_variation)).id();
-
-    let land_ops = cmd.spawn(
-        OperationList {
-            trunk: vec![
-                (Operand::Zero, Operation::GetTiles(ProducedTiles::new([grasstile_ent]))),
-                (Operand::PoissonDisk(Default::default()), Operation::Assign),
-                (Operand::Value(0.5), Operation::GreaterThan(OnCompareConfig {
-                    tiles_on_success: ProducedTiles::new([wmap]),
-                    ..Default::default()
-                })),
-            ],
-            bifurcation_over: None,
-            bifurcation_under: None,
-            threshold: 0.5,
-        }
-    ).id();
-
-    cmd.spawn((
-        OperationList {
-            trunk: vec![
-                (Operand::Entity(continent), Operation::Add),
-            ],
-            bifurcation_over: Some(land_ops),
-            bifurcation_under: None,
-            threshold: 0.5,
-        },
-        RootOpList
-    ));
+    // cmd.spawn((
+    //     OperationList {
+    //         trunk: vec![
+    //             (Operand::Entity(continent), Operation::Add),
+    //         ],
+    //         bifurcation_over: Some(land_ops),
+    //         bifurcation_under: None,
+    //         threshold: 0.5,
+    //     },
+    //     RootOpList
+    // ));
 
     //DimensionRef usarlo para algo con las operations nase
 

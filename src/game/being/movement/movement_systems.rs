@@ -113,9 +113,7 @@ pub fn receive_move_input_from_client(
 
 #[allow(unused_parens, )]
 pub fn apply_movement(
-    mut cmd: Commands,
-    time: Res<Time>,
-    server: Option<Res<RenetServer>>,
+    mut cmd: Commands, time: Res<Time>, server: Option<Res<RenetServer>>,
     mut query: Query<(Entity, &FinalMoveVector, &mut Transform), /*(With<VoluntarilyMoving>)*/>,
 ) {
     for (being_ent, FinalMoveVector(move_dir), mut transform) in query.iter_mut() {
@@ -136,7 +134,6 @@ pub fn apply_movement(
             
             cmd.entity(being_ent).insert(VoluntarilyMoving);//PROVISORIO
         } else{
-
             cmd.entity(being_ent).remove::<VoluntarilyMoving>();//PROVISORIO
         }
     }
@@ -161,7 +158,7 @@ pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE D
         if let Ok(mut transf) = query.get_mut(entity) {
             //info!("Applying transform to entity: {:?}", entity);
             if interpolate {
-                transf.translation = transf.translation.lerp(transform.translation, 0.7);//TODO HACER Q CADA CIERTO TIEMPO SE FUERZE LA POSICIÓN REAL SIN INTERPOLACIÓN
+                transf.translation = transf.translation.lerp(transform.translation, 0.5);//TODO HACER Q CADA CIERTO TIEMPO SE FUERZE LA POSICIÓN REAL SIN INTERPOLACIÓN
             } else {
                 *transf = transform;
             }

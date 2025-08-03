@@ -7,7 +7,7 @@ use crate::{common::common_components::DisplayName, game::{being::sprite::sprite
 
 
 #[derive(Resource, Debug, Default )]
-pub struct SpriteDataIdEntityMap {pub map: HashMap<String, Entity>,}
+pub struct SpriteDataIdEntityMap(pub HashMap<String, Entity>);
 
 
 #[allow(unused_parens)]
@@ -20,16 +20,16 @@ impl SpriteDataIdEntityMap {
     ) {
         if let Some(mut seri) = assets.remove(&handle) {
             
-            if self.map.contains_key(&seri.id) {
+            if self.0.contains_key(&seri.id) {
                 error!(target: "sprite_loading", "SpriteDataSeri with id {:?} already exists in map, skipping", seri.id);
                 return;
             }
-            let path_str = take(&mut seri.path);
-            let full_path = format!("assets/texture/{}", path_str);
-            if !std::path::Path::new(&full_path).exists() {
-                error!(target: "sprite_loading", "Image path does not exist: {}", full_path);
+            let img_path = format!("assets/{}", seri.img_path);
+            if !std::path::Path::new(&img_path).exists() {
+                error!(target: "sprite_loading", "Image path does not exist: {}", img_path);
                 return
             }
+            let img_path = take(&mut seri.img_path);
             if seri.id.len() <= 2 {
                 error!(target: "sprite_loading", "SpriteDataSeri id is too short or empty, skipping");
                 return;
@@ -40,7 +40,7 @@ impl SpriteDataIdEntityMap {
             //TODO METER TODO ACÁ
             
             let spritedata_id = SpriteDataId::new(seri.id.clone());
-            let path_holder = ImgPathHolder(path_str);
+            let path_holder = ImgPathHolder(img_path);
 
             let concatenated_cats = seri.categories.join(",");
 
@@ -169,7 +169,7 @@ impl SpriteDataIdEntityMap {
 
             cmd.entity(sprdat_enti).insert(comps_to_build);
             
-            self.map.insert(take(&mut seri.id), sprdat_enti);
+            self.0.insert(take(&mut seri.id), sprdat_enti);
         }
         else {
             warn!(target: "sprite_loading", "SpriteDataSeri with handle {:?} not found in assets", handle);
@@ -177,23 +177,18 @@ impl SpriteDataIdEntityMap {
     }
 
     pub fn get_entity<S: Into<String>>(&self, spritedata_id: S) -> Option<Entity> {
-        self.map.get(&spritedata_id.into()).copied()
+        self.0.get(&spritedata_id.into()).copied()
     }
 
-    pub fn get_entities(&self, spritedatas: &Vec<String>) -> Vec<Entity> {
-        let mut entities = Vec::new();
-        for spritedata in spritedatas {
-            if let Some(entity) = self.get_entity(spritedata) {
-                entities.push(entity);
-            }
-        }
-        entities
+    pub fn get_entities<I, S>(&self, ids: I) -> Vec<Entity>
+    where I: IntoIterator<Item = S>, S: AsRef<str>, {
+        ids.into_iter().filter_map(|id| self.0.get(id.as_ref()).copied()).collect()
     }
 }
 
 #[derive(AssetCollection, Resource)]
 pub struct SpriteSerisHandles {
-    #[asset(path = "sprite/spritedata", collection(typed))]
+    #[asset(path = "ron/sprite/spritedata", collection(typed))]
     pub handles: Vec<Handle<SpriteDataSeri>>,
 }
 

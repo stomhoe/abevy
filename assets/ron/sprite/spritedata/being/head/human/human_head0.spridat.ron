@@ -1,7 +1,7 @@
 (
     id: "humanhe0",
     name: "Human Head 0",
-    path: "being/head/human/0.png",
+    img_path: "texture/being/head/human/0.png",
     categories: ["head"],
     parent_cat: "body",
     shares_category: [],

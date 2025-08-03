@@ -1,0 +1,7 @@
+(
+    id: "tempveg_sampler",
+    weights: {
+        "tempbush0": 1.0,
+        "tempbush1": 1.0,
+    },
+)

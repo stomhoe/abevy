@@ -1,0 +1,14 @@
+(
+    id: "tempgrass",
+    name: "Temp grass",
+    img_path: "texture/world/white.png",
+    shader: "tempgrass",
+    sprite: false,
+    offset: (0.0, 0.0),
+    z: 10,
+    color: Some((255, 0, 0, 255)),
+    color_map: "",
+    spawns: [],
+    spawns_children: [],
+    somecomp_present: Some(true),
+)

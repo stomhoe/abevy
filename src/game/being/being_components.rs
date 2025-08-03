@@ -42,7 +42,7 @@ pub struct CpuControlled;
 
 
 #[derive(Component, Debug, Deserialize, Serialize)]
-#[require(InputMoveVector, FinalMoveVector, MyZ(500), Replicated, Altitude, Visibility, FacingDirection, AppliedModifiers, EntityPrefix::new("Being "))]
+#[require(InputMoveVector, FinalMoveVector, MyZ(Being::MINZ_I32), Replicated, Altitude, Visibility, FacingDirection, AppliedModifiers, EntityPrefix::new("Being "))]
 pub struct Being;
 impl Being {
 
@@ -50,7 +50,9 @@ impl Being {
     pub const MAX_Z: MyZ = MyZ(1_000_000_000);
 
     /// lowest z allowed for either clothes or body sprites
-    pub const MIN_Z: MyZ = MyZ(1_000);
+    pub const MIN_Z: MyZ = MyZ(Self::MINZ_I32);
+
+    pub const MINZ_I32: i32 = 1_000;
 }
 
 #[derive(Component, Debug, Deserialize, Serialize)]

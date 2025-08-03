@@ -3,6 +3,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 
+use crate::game::being::being_components::Being;
 use crate::game::player::PlayerInputSystems;
 use crate::game::ActiveGameSystems;
 use crate::game::being::movement::{
@@ -46,6 +47,11 @@ impl Plugin for MovementPlugin {
             .add_plugins((
             // SomePlugin, 
             // superstate_plugin::<SuperState, (Substate1, Substate2)>
+            ))
+
+            .replicate_with((
+                RuleFns::<Being>::default(),
+                (RuleFns::<Transform>::default(), SendRate::Periodic((64*3))),
             ))
         ;
     }

@@ -1,7 +1,6 @@
 use bevy::asset::AssetServer;
 use bevy::input::ButtonInput;
 use bevy::math::Vec3;
-use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use crate::common::common_components::{DisplayName, MyZ};
 use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, TargetSpawnPos, };
@@ -58,18 +57,10 @@ pub fn spawn_player_beings(
 
 
 #[allow(unused_parens)]
-pub fn host_on_player_added(mut cmd: Commands, 
-    query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
-    
+pub fn host_on_player_added(mut cmd: Commands, query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
     for (player_ent, player_name) in query.iter() {
-        let being = cmd.spawn((
-            Being,
-            DisplayName::new(player_name.0.clone()),
-        )).id();
-
-        cmd.entity(player_ent).insert((
-            CreatedCharacter(being),
-        ));
+        let being = cmd.spawn((Being, DisplayName::new(player_name.0.clone()),)).id();
+        cmd.entity(player_ent).insert((CreatedCharacter(being),));
     }
 }
 
@@ -92,36 +83,26 @@ pub fn toggle_simulation(
     }
 }
 
-
-
-
-pub fn force_z_index(mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>,)>) {
-    for (mut transform, z_index) in query.iter_mut() {
-        transform.translation.z = z_index.div_1e9();
-    }
+pub fn update_transform_z(mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>,)>) {
+    for (mut transform, z_index) in query.iter_mut() { transform.translation.z = z_index.div_1e9(); }
 }
 
 
-// fn hit_detection(
-//     mut commands: Commands,
-//     being_query: Query<(Entity, &Transform), (Without<PhysicallyImmune>, With<Health>)>,
-//     bullet_query: Query<&Transform, With<Bullet>>
-// ) {
-//     for (entity, enemy_transform) in being_query.iter() {
-//         for bullet_transform in bullet_query.iter() {
-//             // Your collision check
-//             if false {
-//                 commands.entity(entity).despawn();
-//             }
-//         }
-//     }
-// }
-
-
-pub fn debug_system(mut commands: Commands, query: Query<(Entity, &Transform), With<Being>>, cam_query: Query<&Transform, With<Camera>>) {
-   
-    
-}
 pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<&mut TimeBasedMultiplier, Without<ModifierCategories>>) {
     for mut multiplier in query.iter_mut() { multiplier.timer.tick(time.delta()); }
+}
+
+
+pub fn update_img_sizes_on_load(mut events: EventReader<AssetEvent<Image>>, assets: Res<Assets<Image>>, mut map: ResMut<ImageSizeMap>,) {
+    for ev in events.read() {
+        match ev {
+            AssetEvent::Added { id } => {
+                if let Some(img) = assets.get(*id) {
+                    let img_size = UVec2::new(img.texture_descriptor.size.width, img.texture_descriptor.size.height);
+                    map.0.insert(Handle::Weak(id.clone()), img_size.as_u16vec2());
+                }
+            },
+            _ => {}
+        }
+    }
 }

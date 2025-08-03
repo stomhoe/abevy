@@ -65,7 +65,7 @@ impl RaceIdEntityMap {
 
 #[derive(AssetCollection, Resource)]
 pub struct RaceSerisHandles {
-    #[asset(path = "race", collection(typed))]
+    #[asset(path = "ron/race", collection(typed))]
     pub handles: Vec<Handle<RaceSeri>>,
 }
 

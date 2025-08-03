@@ -18,7 +18,7 @@ pub fn init_sprites(
     }
 
     info!("SpriteDataIdEntityMap contents:");
-    for (id, ent) in strid_ent_map.map.iter() {
+    for (id, ent) in strid_ent_map.0.iter() {
         info!("  - id: {}, entity: {:?}", id, ent);
     }
 } 

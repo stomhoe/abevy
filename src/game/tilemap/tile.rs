@@ -1,6 +1,8 @@
+use bevy_common_assets::ron::RonAssetPlugin;
+
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::{AssetLoadingState, ActiveGameSystems};
+use crate::game::{AssetLoadingState};
 use crate::game::tilemap::tile::{
     tile_systems::*,
     tile_resources::*,
@@ -20,27 +22,23 @@ pub struct TilePlugin;
 impl Plugin for TilePlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, (update_img_sizes_on_load/*NO PONER EN SET */, 
+            .add_systems(Update, (
                 update_tile_hash_value, update_tile_name, flip_tile_along_x
             ))
-            .add_systems(Startup/*OnEnter(AssetLoadingState::InProcess)*/, (add_tileimgs_to_map, ))
-            //.init_resource::<RESOURCE_NAME>()
+            .add_systems(OnEnter(AssetLoadingState::Complete), (
+                init_shaders.before(init_tiles),
+                init_tiles.before(init_tile_weighted_samplers),
+                init_tile_weighted_samplers
+            ).in_set(TileSystems))
             .add_plugins((
-            // SomePlugin, 
-            // superstate_plugin::<SuperState, (Substate1, Substate2)>
+                RonAssetPlugin::<ShaderRepeatTexSeri>::new(&["rep1shader.ron"]),
+                RonAssetPlugin::<TileSeri>::new(&["tile.ron"]),
+                RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
             ))
-            .init_resource::<HandleConfigMap>()
-            .init_state::<ImageSizeSetState>()
+            .init_resource::<TilingEntityMap>()
+            .init_resource::<TileShaderEntityMap>()
 
         ;
     }
 }
 
-
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
-pub enum ImageSizeSetState {
-    #[default]
-    NotStarted,
-    InProcess,
-    Done,
-}

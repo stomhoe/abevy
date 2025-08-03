@@ -20,3 +20,44 @@ impl Default for WorldGenSettings {
     }
 }
 
+
+
+#[derive(Resource, Debug, Default )]
+pub struct NoiseEntityMap(pub HashMap<String, Entity>);
+
+#[allow(unused_parens)]
+impl NoiseEntityMap {
+    pub fn new_tile_ent_from_seri(
+        &mut self, cmd: &mut Commands, handle: Handle<NoiseSeri>, assets: &mut Assets<NoiseSeri>,
+    ) {
+        if let Some(mut seri) = assets.remove(&handle) {
+            use std::mem::take;
+            if self.0.contains_key(&seri.id) {
+                error!(target: "something_loading", "NoiseSeri with id {:?} already exists in map, skipping", seri.id);
+                return;
+            }
+            let path_str = take(&mut seri.img_path);
+            let full_path = format!("assets/texture/{}", path_str);
+            if !std::path::Path::new(&full_path).exists() {
+                error!(target: "something_loading", "Image path does not exist: {}", full_path);
+                return;
+            }
+            if seri.id.len() <= 2 {
+                error!(target: "something_loading", "NoiseSeri id is too short or empty, skipping");
+                return;
+            }
+        }
+    }
+
+    pub fn get_entity<S: Into<String>>(&self, id: S) -> Option<Entity> { self.0.get(&id.into()).copied() }
+
+    pub fn get_entities<I, S>(&self, ids: I) -> Vec<Entity> where I: IntoIterator<Item = S>, S: AsRef<str>, {
+        ids.into_iter().filter_map(|id| self.0.get(id.as_ref()).copied()).collect()
+    }
+}
+
+#[derive(AssetCollection, Resource)]
+pub struct NoiseSerisHandles {
+    #[asset(path = "ron/somepathhhhhhhhhhh", collection(typed))]
+    pub handles: Vec<Handle<NoiseSeri>>,
+}

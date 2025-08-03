@@ -1,7 +1,7 @@
 (
     id: "humanbo0",
     name: "Human Body 0",
-    path: "being/body/human/male.png",
+    img_path: "texture/being/body/human/male.png",
     categories: ["body"],
     shares_category: [],
     rows_cols: (4, 6),

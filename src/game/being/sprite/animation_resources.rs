@@ -9,6 +9,6 @@ use crate::game::being::sprite::{
 
 #[derive(AssetCollection, Resource)]
 pub struct AnimSerisHandles {
-    #[asset(path = "sprite/animation", collection(typed))]
+    #[asset(path = "ron/sprite/animation", collection(typed))]
     pub handles: Vec<Handle<AnimationSeri>>,
 }

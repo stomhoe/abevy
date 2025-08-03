@@ -1,52 +1,57 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
+use std::{hash::{DefaultHasher, Hash, Hasher}, iter::Map};
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use crate::game::tilemap::{terrain_gen::terrgen_resources::WorldGenSettings, tile::{
-    tile_components::*, tile_constants::*, tile_resources::*, ImageSizeSetState
+    tile_components::*, tile_constants::*, tile_resources::*, 
 }};
 
-
+#[allow(unused_parens)]
+pub fn init_shaders(
+    mut cmd: Commands, asset_server: Res<AssetServer>, 
+    mut repeat_tex_handles: ResMut<ShaderRepeatTexSerisHandles>,
+    mut assets: ResMut<Assets<ShaderRepeatTexSeri>>,
+    mut map: ResMut<TileShaderEntityMap>,
+) {
+    for handle in std::mem::take(&mut repeat_tex_handles.handles) {
+        info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
+        map.new_repeat_tex_shader(&mut cmd, &asset_server, handle, &mut assets);
+    }
+} 
 
 #[allow(unused_parens)]
-pub fn add_tileimgs_to_map(asset_server: Res<AssetServer>, 
-                            mut map: ResMut<HandleConfigMap>, 
+pub fn init_tiles(
+    mut cmd: Commands, 
+    asset_server: Res<AssetServer>,
+    mut seris_handles: ResMut<TileSerisHandles>,
+    mut assets: ResMut<Assets<TileSeri>>,
+    mut map: ResMut<TilingEntityMap>,
+    shader_map: Res<TileShaderEntityMap>,
 ) {
-    map.insert(&asset_server, "white.png", false);
+    for handle in std::mem::take(&mut seris_handles.handles) {
+        info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
+        map.new_tile_ent_from_seri(&mut cmd, &asset_server, handle, &mut assets, &shader_map);
+    }
+} 
+
+#[allow(unused_parens)]
+pub fn init_tile_weighted_samplers(
+    mut cmd: Commands, 
+    mut seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
+    mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
+    mut map: ResMut<TilingEntityMap>,
+) {
+    for handle in std::mem::take(&mut seris_handles.handles) {
+        info!(target: "tiling_loading", "Loading TileWeightedSamplerSeri from handle: {:?}", handle);
+        map.new_weighted_tilesampler_ent_from_seri(&mut cmd, handle, &mut assets);
+    }
+
+    //info!(target: "tiling_loading", "TilingEntityMap contents:"); for (id, ent) in map.0.iter() { info!(target: "tiling_loading", "  - id: {}, entity: {:?}", id, ent); }
 } 
 
 
-pub fn update_img_sizes_on_load(
-    mut state: ResMut<NextState<ImageSizeSetState>>,
-    mut events: EventReader<AssetEvent<Image>>,
-    assets: Res<Assets<Image>>,
-    mut confmap: ResMut<HandleConfigMap>,
-) {
-    for ev in events.read() {
-        match ev {
-            AssetEvent::Added { id } => {
-
-                if let Some(_) = confmap.get(&Tileimg(Handle::Weak(*id))) {
-                    let img = assets.get(*id).unwrap();
-    
-                    let img_size = UVec2::new(
-                        img.texture_descriptor.size.width,
-                        img.texture_descriptor.size.height,
-                    );
-                    confmap.set_size(&Tileimg(Handle::Weak(*id)), img_size.as_u16vec2());
-                    if confmap.all_tile_sizes_loaded() {
-                        state.set(ImageSizeSetState::Done);
-                    }
-                }
-            },
-            _ => {
-
-            }
-        }
-    }
-}
 #[allow(unused_parens)]
 pub fn update_tile_hash_value(
     settings: Res<WorldGenSettings>,

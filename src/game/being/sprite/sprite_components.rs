@@ -233,7 +233,7 @@ pub struct SpriteDatasChildrenRefs(#[entities] pub HashSet<Entity>);
 pub struct SpriteDataSeri {
     pub id: String,
     pub name: String,
-    pub path: String,
+    pub img_path: String,
     pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
     pub categories: Vec<String>,
     pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data

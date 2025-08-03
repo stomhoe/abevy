@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::game::{tilemap::{terrain_gen::{terrgen_resources::*, terrgen_systems::*, terrain_materials::MonoRepeatTextureOverlayMat}, tile::ImageSizeSetState}, SimRunningSystems};
+use crate::game::{tilemap::{terrain_gen::{terrgen_resources::*, terrgen_systems::*, terrain_materials::MonoRepeatTextureOverlayMat}, }, SimRunningSystems};
 
 pub mod terrgen_systems;
 pub mod terrain_materials;
@@ -25,7 +25,6 @@ impl Plugin for TerrainGenPlugin {
 
             .add_plugins(MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default())
 
-            //.configure_sets(Update, TerrainGenSystems.run_if(in_state(ImageSizeSetState::Done)))
         ;
     }
 }

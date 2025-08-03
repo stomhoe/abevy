@@ -7,7 +7,7 @@ use splines::{Interpolation, Key, Spline};
 use superstate::SuperstateInfo;
 use rand::Rng;
 
-use crate::game::being::sprite::animation_constants::*;
+use crate::game::being::{being_components::Being, sprite::animation_constants::*};
 
 
 #[derive(Component, Debug, )]
@@ -42,20 +42,35 @@ pub struct MagicallyInvulnerable();
 pub struct ImgPathHolder(pub String);
 
 
+#[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq)]
+pub struct ImageHolder(pub Handle<Image>);
+impl ImageHolder {
+    pub fn new_tile<S: Into<String>>(asset_server: &AssetServer, path: S) -> Self {
+        let path = format!("{}{}", crate::game::tilemap::tile::tile_constants::TILEIMG_BASE_PATH, path.into());
+        Self(asset_server.load(path))
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+pub struct ClonedSpawned(pub Vec<Entity>);
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
+
 #[derive(Component, Debug, )]
 pub struct DimensionRef(pub Entity);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct YSort { z: f32, }
+pub struct YSortOrigin (pub f32);
 
-pub fn y_sort(
-    mut q: Query<(&mut Transform, &YSort)>,
-) {
-    for (mut tf, ysort) in q.iter_mut() {
-        tf.translation.z = ysort.z-(1.0f32 / (1.0f32 + (2.0f32.powf(-0.01*tf.translation.y))));
-    }
-}
+// pub fn y_sort(
+//     tmap: Query<(&Transform, )>,//add this tranform to tile transform
+//     tile: Query<(&ChildOf, &Transform, &YSortOrigin)>,
+//     being: Query<(&Transform, ), ( With<Being>, Changed<Transform>, )>,
+// ) -> Result {
+   
+// }
 
 
 #[allow(unused_parens, dead_code)]

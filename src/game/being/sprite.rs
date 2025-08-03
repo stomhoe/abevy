@@ -41,8 +41,8 @@ impl Plugin for SpritePlugin {
             ))
             
             .add_systems(OnEnter(AssetLoadingState::Complete), (
-                init_animations,
                 init_sprites,
+                init_animations,
             ).in_set(SpriteSystemsSet)) 
             .init_resource::<SpriteDataIdEntityMap>()
             .replicate::<SpriteDatasChildrenStringIds>()
