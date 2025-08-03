@@ -32,7 +32,7 @@ pub struct FlipAlongX;
 pub struct Tree;
 
 #[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone)]
-pub struct ShaderRef(pub Entity);
+pub struct TileShaderRef(pub Entity);
 
 #[derive(Component, Debug, Hash, PartialEq, Eq, Clone, )]//HACER ENTIDAD PROPIA
 pub enum TileShader{

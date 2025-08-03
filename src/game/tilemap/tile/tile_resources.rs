@@ -19,6 +19,10 @@ impl TileShaderEntityMap {
     ) {
         if let Some(mut seri) = assets.remove(&handle) {
             use std::mem::take;
+            if seri.id.len() <= 2 {
+                error!(target: "tiling_loading", "Shader id '{}' is too short or empty, skipping", seri.id);
+                return;
+            }
             if self.0.contains_key(&seri.id) {
                 error!(target: "tiling_loading", "Shader with id {:?} already exists in shader map, skipping", seri.id);
                 return;
@@ -29,10 +33,6 @@ impl TileShaderEntityMap {
                 return
             }
             let img_path = take(&mut seri.img_path);
-            if seri.id.len() <= 2 {
-                error!(target: "tiling_loading", "Shader id '{}' is too short or empty, skipping", seri.id);
-                return;
-            }
             if seri.scale == 0 {
                 error!(target: "tiling_loading", "Shader id '{}' scale is zero, skipping", seri.id);
                 return;
@@ -100,7 +100,7 @@ impl TilingEntityMap {
                 if seri.shader.len() > 2 {
                     match shader_map.get_entity(&seri.shader) {
                         Some(shader_ent) => {
-                            cmd.entity(enti).insert(ShaderRef(shader_ent));
+                            cmd.entity(enti).insert(TileShaderRef(shader_ent));
                         }
                         None => {
                             warn!(target: "tiling_loading", "TileSeri id '{}' references missing shader '{}'", seri.id, seri.shader);
@@ -145,7 +145,6 @@ impl TilingEntityMap {
                 error!(target: "tiling_loading", "TileWeightedSampler id is too short or empty, skipping");
                 return;
             }
-
             let mut weights: Vec<(Entity, f32)> = Vec::new();
 
             for (tile_id, weight) in seri.weights.drain() {
@@ -161,7 +160,6 @@ impl TilingEntityMap {
                     continue;
                 }
             }
-
             if weights.is_empty() {
                 error!(target: "tiling_loading", "TileWeightedSampler id {:?} has no valid tiles, skipping", seri.id);
                 return;

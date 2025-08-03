@@ -131,6 +131,8 @@ impl Plugin for GamePlugin {
                 .load_collection::<ShaderRepeatTexSerisHandles>()
                 .load_collection::<TileSerisHandles>()
                 .load_collection::<TileWeightedSamplerSerisHandles>()
+                .load_collection::<NoiseSerisHandles>()
+
             )
             .replicate_bundle::<(Being, ChildOf)>()//NO FUNCIONA BIEN LO DE CHILDOF
             .replicate::<DisplayName>()

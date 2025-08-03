@@ -3,7 +3,7 @@ use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::{common::common_components::MyZ, game::{game_components::ImageHolder, game_resources::ImageSizeMap, tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::TileShader, tile_constants::TILE_SIZE_PXS, },}}};
+use crate::{common::common_components::MyZ, game::{game_components::ImageHolder, game_resources::ImageSizeMap, tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::{TileShaderRef, TileShader}, tile_constants::TILE_SIZE_PXS, },}}};
 
 
 pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
@@ -28,7 +28,8 @@ type Map = HashMap<MapKey, LayerDto>;
 pub fn produce_tilemaps(
     mut cmd: Commands, 
     mut chunk_query: Query<(Entity, &mut ProducedTiles), (Without<Children>, Added<TilesReady>)>,
-    mut tile_comps: Query<(Entity, &TilePos, Option<&ImageHolder>, Option<&MyZ>, Option<&TileShader>, Option<&mut Transform>)>,
+    mut tile_comps: Query<(Entity, &TilePos, Option<&ImageHolder>, Option<&MyZ>, Option<&TileShaderRef>, Option<&mut Transform>)>,
+    shader_query: Query<(&TileShader, ), ( )>,
     imgsize_map: Res<ImageSizeMap>, 
 ) -> Result {
     let mut layers: Map = HashMap::new();
@@ -37,7 +38,7 @@ pub fn produce_tilemaps(
     for (chunk_ent, mut produced_tiles) in chunk_query.iter_mut() {
         for &tile_ent in produced_tiles.produced_tiles().iter() {unsafe{
 
-            let (tile_ent, tile_pos, tile_img, tile_z_index, mut shader, transf) = tile_comps.get_mut(tile_ent)?;
+            let (tile_ent, tile_pos, tile_img, tile_z_index, shader_ref, transf) = tile_comps.get_mut(tile_ent)?;
 
             let tile_z_index = tile_z_index.cloned().unwrap_or_default();
 
@@ -46,9 +47,12 @@ pub fn produce_tilemaps(
                 transform.translation.y += (tile_pos.y as f32 * TILE_SIZE_PXS.y as f32);
             }
 
-            let shader: Option<TileShader> = shader.take().cloned();
-            cmd.entity(tile_ent).remove::<ImageHolder>().remove::<TileShader>();
-                
+            let shader: Option<TileShader> = if let Some(shader_ref) = shader_ref {
+                shader_query.get(shader_ref.0).map(|(shader, )| shader.clone()).ok()
+            } 
+            else { None };
+
+            cmd.entity(tile_ent).remove::<ImageHolder>();    
 
             let tile_size = if let Some(ImageHolder(img)) = tile_img {
                 imgsize_map.0.get(img).cloned().debug_expect_unchecked("img not found in handle_config_map")

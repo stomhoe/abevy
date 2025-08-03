@@ -1,4 +1,5 @@
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::prelude::*;
 
 use crate::game::{tilemap::{terrain_gen::{terrgen_resources::*, terrgen_systems::*, terrain_materials::MonoRepeatTextureOverlayMat}, }, SimRunningSystems};
@@ -22,8 +23,13 @@ impl Plugin for TerrainGenPlugin {
             .add_systems(Update, (spawn_terrain_operations, produce_tiles).in_set(TerrainGenSystems))
             .add_systems(Startup, (setup, ))
             .init_resource::<WorldGenSettings>()
+            .init_resource::<NoiseEntityMap>()
 
-            .add_plugins(MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default())
+
+            .add_plugins((
+                MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
+                RonAssetPlugin::<NoiseSeri>::new(&["noise.ron"]),
+            ))
 
         ;
     }

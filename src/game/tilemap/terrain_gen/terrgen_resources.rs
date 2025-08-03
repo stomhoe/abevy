@@ -1,4 +1,5 @@
-use bevy::{math::U16Vec2, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::entity, math::U16Vec2, platform::collections::HashMap, prelude::*};
+use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_ecs_tilemap::map::TilemapTileSize;
 use fastnoise_lite::FastNoiseLite;
 
@@ -33,19 +34,14 @@ impl NoiseEntityMap {
         if let Some(mut seri) = assets.remove(&handle) {
             use std::mem::take;
             if self.0.contains_key(&seri.id) {
-                error!(target: "something_loading", "NoiseSeri with id {:?} already exists in map, skipping", seri.id);
-                return;
-            }
-            let path_str = take(&mut seri.img_path);
-            let full_path = format!("assets/texture/{}", path_str);
-            if !std::path::Path::new(&full_path).exists() {
-                error!(target: "something_loading", "Image path does not exist: {}", full_path);
+                error!(target: "noise_loading", "NoiseSeri with id {:?} already exists in map, skipping", seri.id);
                 return;
             }
             if seri.id.len() <= 2 {
-                error!(target: "something_loading", "NoiseSeri id is too short or empty, skipping");
+                error!(target: "noise_loading", "NoiseSeri id is too short or empty, skipping");
                 return;
             }
+
         }
     }
 
@@ -58,6 +54,11 @@ impl NoiseEntityMap {
 
 #[derive(AssetCollection, Resource)]
 pub struct NoiseSerisHandles {
-    #[asset(path = "ron/somepathhhhhhhhhhh", collection(typed))]
+    #[asset(path = "ron/noise", collection(typed))]
     pub handles: Vec<Handle<NoiseSeri>>,
+}
+#[derive(serde::Deserialize, Asset, TypePath, Default)]
+pub struct NoiseSeri {
+    pub id: String,
+
 }
