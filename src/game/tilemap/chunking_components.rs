@@ -45,38 +45,45 @@ impl ProducedTiles {
         let cap = chunk_area + chunk_area / 8;//TODO CALCULAR PROMEDIO DE TILES POR CHUNK
         ProducedTiles(Vec::with_capacity(cap))
     }
-    pub fn new<I>(entities: I) -> Self
-    where
-        I: IntoIterator,
-        I::Item: Into<Entity>,
-    {
+    pub fn new<I>(entities: I) -> Self where I: IntoIterator, I::Item: Into<Entity>, {
         ProducedTiles(entities.into_iter().map(Into::into).collect())
     }
 
-    pub fn produced_tiles(&self) -> &[Entity] {
-        &self.0
-    }
-    pub fn drain(&mut self) -> Vec<Entity> {
-        std::mem::take(&mut self.0)
+    pub fn produced_tiles(&self) -> &[Entity] { &self.0 }
+    pub fn drain(&mut self) -> Vec<Entity> { std::mem::take(&mut self.0) }
+
+    fn insert_tile_recursive(
+        cmd: &mut Commands,
+        destination: &mut Self,
+        global_pos: GlobalTilePos,
+        pos_within_chunk: TilePos,
+        weight_maps: &Query<(&TileWeightedSampler,), ()>,
+        gen_settings: &WorldGenSettings,
+        tiling_ent: Entity,
+    ) {
+        if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
+            if let Some(tiling_ent) = wmap.sample(gen_settings, global_pos) {
+                Self::insert_tile_recursive(
+                    cmd, destination, global_pos, pos_within_chunk, weight_maps, gen_settings, tiling_ent
+                );
+            }
+        } else {
+            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
+            destination.0.push(tile_ent);
+        }
     }
 
-    pub fn insert_cloned_with_pos(&self, cmd: &mut Commands, destination: &mut Self,
+    pub fn insert_cloned_with_pos(
+        &self,
+        cmd: &mut Commands,
+        destination: &mut Self,
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&TileWeightedSampler,), ()>,
         gen_settings: &WorldGenSettings,
     ) {
         for tile in self.0.iter().cloned() {
-            if let Ok((wmap, )) = weight_maps.get(tile) {
-                if let Some(entity) = wmap.sample(gen_settings, global_pos) {
-                    let entity = cmd.entity(entity).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
-                    destination.0.push(entity);
-                    continue;
-                }
-            } else {
-                let tile = cmd.entity(tile).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
-                destination.0.push(tile);
-            }
+            Self::insert_tile_recursive(cmd, destination, global_pos, pos_within_chunk, weight_maps, gen_settings, tile);
         }
     }
 }

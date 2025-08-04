@@ -31,7 +31,7 @@ pub struct FlipAlongX;
 #[derive(Component, Debug, Default, )]
 pub struct Tree;
 
-#[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone)]
+#[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TileShaderRef(pub Entity);
 
 #[derive(Component, Debug, Hash, PartialEq, Eq, Clone, )]//HACER ENTIDAD PROPIA

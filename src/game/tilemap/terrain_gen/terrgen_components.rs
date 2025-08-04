@@ -30,11 +30,7 @@ impl TileId {
 #[require(EntityPrefix::new("Noise"))]
 pub struct TgenNoise {noise: FastNoiseLite, offset: IVec2,}
 impl TgenNoise {
-    pub fn new(noise: FastNoiseLite,) -> Self {
-        Self::new_with_offset(noise, IVec2::ZERO) 
-    }
-
-    pub fn new_with_offset(mut noise: FastNoiseLite, offset: IVec2, ) -> Self {
+    pub fn new(mut noise: FastNoiseLite,) -> Self {
         // Hash the noise and offset to generate a seed
         let mut hasher = DefaultHasher::new();
         noise.seed.hash(&mut hasher);
@@ -52,12 +48,15 @@ impl TgenNoise {
         noise.cellular_jitter_modifier.to_bits().hash(&mut hasher);
         (noise.domain_warp_type as i32).hash(&mut hasher);
         noise.domain_warp_amp.to_bits().hash(&mut hasher);
-        offset.hash(&mut hasher);
 
         noise.seed = (hasher.finish() & 0xFFFF_FFFF) as i32 ;
 
-        Self { noise, offset }
+        Self { noise, offset: IVec2::ZERO }
     }
+    pub fn set_offset(&mut self, offset: IVec2) {
+        self.offset = offset;//NO CAMBIAR SEED, SINO NO AL SETTER EL OFFSET SEGUN UNA PREFERENCIA SE ALTERARÍA TODO
+    }
+
     pub fn get_val(&self, tile_pos: GlobalTilePos) -> f32 {
         (self.noise.get_noise_2d(
             (tile_pos.0.x + self.offset.x) as f32, 
@@ -72,6 +71,9 @@ pub struct PoissonDisk {
     pub min_distance: u8,
 }
 impl PoissonDisk {
+    pub fn new(min_distance: u8) -> Self {
+        Self { min_distance }
+    }
     pub fn sample(&self, settings: &WorldGenSettings, tile_pos: GlobalTilePos) -> f32 {
         let val = tile_pos.normalized_hash_value(settings);
         // Check neighbors within min_distance — reject if any has lower hash (pseudo-distance enforcement)
@@ -111,28 +113,9 @@ pub enum NextAction {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, )]
-pub struct OnCompareConfig {
-    pub tiles_on_success: ProducedTiles,
-    pub tiles_on_failure: ProducedTiles,
-    pub on_success: NextAction,
-    pub on_failure: NextAction,
-}
-impl Default for OnCompareConfig {
-    fn default() -> Self {
-        Self {
-            tiles_on_success: ProducedTiles::default(),
-            tiles_on_failure: ProducedTiles::default(),
-            on_success: NextAction::Continue,
-            on_failure: NextAction::Break,
-        }
-    }
-}
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq,)]
 pub enum Operation {
-    Add, Subtract, Multiply, Divide, Modulo, Log, Min, Max, Pow, Assign,
-    GreaterThan(OnCompareConfig),
-    LessThan(OnCompareConfig),
-    GetTiles(ProducedTiles),
+    Add, Subtract, Multiply, Divide, Modulo, Log, Min, Max, Pow, Assign, Interpolate,
+    GetTiles,
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
@@ -141,15 +124,24 @@ pub struct InputOperand(pub f32);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 pub struct RootOpList;
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, )]
 pub enum Operand {
-    Entity(Entity),
     Value(f32),
+    Entities(Vec<Entity>),
     HashPos,
     PoissonDisk(PoissonDisk),
-    #[default] Zero,
 }
-impl From<Entity> for Operand { fn from(e: Entity) -> Self { Self::Entity(e) } }
+impl Operand {
+    pub fn new_poisson_disk(min_distance: u8) -> Self {
+        Self::PoissonDisk(PoissonDisk::new(min_distance))
+    }
+}
+impl Default for Operand {
+    fn default() -> Self {
+        Self::Value(0.0)
+    }
+}
+impl From<Entity> for Operand { fn from(e: Entity) -> Self { Self::Entities(vec![e]) } }
 impl From<f32> for Operand { fn from(v: f32) -> Self { Self::Value(v) } }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]

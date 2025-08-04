@@ -45,9 +45,8 @@ pub struct ImgPathHolder(pub String);
 #[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq)]
 pub struct ImageHolder(pub Handle<Image>);
 impl ImageHolder {
-    pub fn new_tile<S: Into<String>>(asset_server: &AssetServer, path: S) -> Self {
-        let path = format!("{}{}", crate::game::tilemap::tile::tile_constants::TILEIMG_BASE_PATH, path.into());
-        Self(asset_server.load(path))
+    pub fn new<S: Into<String>>(asset_server: &AssetServer, path: S) -> Self {
+        Self(asset_server.load(path.into()))
     }
 }
 
@@ -57,8 +56,12 @@ pub struct ClonedSpawned(pub Vec<Entity>);
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
 pub struct DimensionRef(pub Entity);
+
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+pub struct OriginalEntity(pub Entity);
+
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]

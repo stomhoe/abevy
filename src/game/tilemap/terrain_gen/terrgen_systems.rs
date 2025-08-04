@@ -1,38 +1,66 @@
 
-use std::hash::{Hash, Hasher};
 
-use bevy::{ecs::{query, relationship::Relationship}, log::tracing_subscriber::layer, math::U8Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
-use bevy_ecs_tilemap::tiles::*;
+use bevy::{math::U8Vec2, prelude::*};
 
-use debug_unwraps::DebugUnwrapExt;
 use fastnoise_lite::FastNoiseLite;
-use rand::SeedableRng;
-use rand_pcg::Pcg64;
-use rand_seeder::Seeder;
 
 
-use crate::{common::common_components::MyZ, game::{game_components::{ImageHolder, ImgPathHolder}, tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_resources::*, terrgen_utils::* }, tile::{tile_components::{TileShader, FlipAlongX, GlobalTilePos, RepeatingTexture, TileWeightedSampler, }, tile_constants::TILEIMG_BASE_PATH}, }}};
+
+use crate::game::{game_resources::GlobalEntityMap, tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::tile_components::{GlobalTilePos, TileWeightedSampler, }, }};
 
 #[derive(Component, Debug, Default, )]
 pub struct TemperateGrass;
 
 #[allow(unused_parens)]
+pub fn init_noises(
+    mut cmd: Commands, mut seris_handles: ResMut<NoiseSerisHandles>,
+    mut assets: ResMut<Assets<NoiseSerialization>>, mut map: ResMut<TerrGenEntityMap>,
+) {
+    for handle in std::mem::take(&mut seris_handles.handles) {
+        if let Some(seri) = assets.remove(&handle) {
+            info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
+            map.new_noise_ent_from_seri(&mut cmd, seri, );
+        }
+    }
+} 
+
+#[allow(unused_parens)]
+pub fn init_oplists(
+    mut cmd: Commands, mut seris_handles: ResMut<OpListSerisHandles>,
+    mut assets: ResMut<Assets<OpListSeri>>, mut map: ResMut<OpListEntityMap>,
+    terr_gen_map: Res<TerrGenEntityMap>,
+    mut oplist_query: Query<&mut OperationList>
+) -> Result {
+    for handle in seris_handles.handles.iter() {
+        if let Some(seri) = assets.get(handle) {
+            info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
+            map.new_oplist_ent_from_seri(&mut cmd, seri, &terr_gen_map);
+        } 
+    }
+    for handle in std::mem::take(&mut seris_handles.handles) {
+        if let Some(seri) = assets.remove(&handle) {
+            info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
+            if let Some(oplist_entity) = map.0.get(&seri.id) {
+                let mut oplist = oplist_query.get_mut(*oplist_entity)?;
+                map.set_bifurcations(&mut cmd, seri, &mut oplist);
+            }
+            else {
+                error!(target: "oplist_loading", "OpListSeri with id {} not found in map", seri.id);
+            }
+        } 
+    }
+    Ok(())
+} 
+
+#[allow(unused_parens)]
 pub fn setup(mut cmd: Commands, query: Query<(),()>, asset_server: Res<AssetServer>, ) 
 {
-    //TODO cargar todo esto de ficheros
+    // TODO cargar todo esto de ficheros
 
-    //HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
-    // let humidity = FastNoiseLite::default();
+    // HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
 
-    // let temp_variation = FastNoiseLite::default();
+    // PARA HACER ISLAS CON FORMA CUSTOM (P. EJ CIRCULAR O DISCO O ALGO RARO Q NO SE PUEDE HACER CON NOISE), MARCAR EN UN PUNTO EXTREMADAMENTE OCÉANICO CON UNA TILE MARKER Y DESP HACER OTRO SISTEMA Q LO PONGA TODO POR ENCIMA, SOBREESCRIBIENDO LO Q HABÍA ANTES
 
-    // let continent = FastNoiseLite::default();
-    // let laker = FastNoiseLite::default();
-
-    // let continent = cmd.spawn(TgenNoise::new(continent)).id();
-    // let humidity = cmd.spawn(TgenNoise::new(humidity)).id();
-    // let temp_variation = cmd.spawn(TgenNoise::new(temp_variation)).id();
- 
     // let land_ops = cmd.spawn(
     //     OperationList {
     //         trunk: vec![
@@ -127,69 +155,42 @@ pub fn produce_tiles(mut cmd: Commands,
 
             for ((operand, operation)) in oplist.trunk.iter() {
                 
-                let operand = match operand {
-                    Operand::Entity(ent) => {
-                                        if let Ok((fnl_comp, )) = operands.get(*ent) {
-                                            fnl_comp.map_or(0.0, |fnl| fnl.get_val(global_tile_pos))
-                                        } else {
-                                            warn!("Entity {:?} in Operand not found ", ent);
-                                            0.0 // Si no hay componente, asumimos 0
-                                        }
-                                    },
+                let num_operand = match operand {
+                    Operand::Entities(entities) => {
+                        if let Ok((fnl_comp, )) = operands.get(entities[0]) {
+                            fnl_comp.map_or(0.0, |fnl| fnl.get_val(global_tile_pos))
+                        } else {
+                            0.0 // Si no hay componente, asumimos 0
+                        }
+                    },
                     Operand::Value(val) => *val,
                     Operand::HashPos => global_tile_pos.normalized_hash_value(&gen_settings),
-                    Operand::Zero => 0.0,
                     Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos),
+                    _ => {
+                        error!("Unsupported operand type as numeric value: {:?}", operand);
+                        0.0
+                    },
                 };
 
                 match operation {
-                    Operation::Add => acc_val += operand,
-                    Operation::Subtract => acc_val -= operand,
-                    Operation::Multiply => acc_val *= operand,
-                    Operation::Divide => if operand != 0.0 { acc_val /= operand },
-                    Operation::Min => acc_val = acc_val.min(operand),
-                    Operation::Max => acc_val = acc_val.max(operand),
-                    Operation::Pow => if acc_val >= 0.0 || operand.fract() == 0.0 { acc_val = acc_val.powf(operand) },
-                    Operation::Modulo => if operand != 0.0 { acc_val = acc_val % operand },
-                    Operation::Log => if acc_val > 0.0 && operand > 0.0 && operand != 1.0 { acc_val = acc_val.log(operand) },
-                    Operation::GreaterThan(conf) => {
-                        if acc_val > operand {
-                            conf.tiles_on_success.insert_cloned_with_pos(&mut cmd, &mut tiles, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
-                            match &conf.on_success {
-                                NextAction::Continue => {},
-                                NextAction::Break => break,
-                                NextAction::OverwriteAcc(val) => acc_val = *val,
-                            }
-                        } else {
-                            conf.tiles_on_failure.insert_cloned_with_pos(&mut cmd, &mut tiles, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
-                            match &conf.on_failure {
-                                NextAction::Continue => {},
-                                NextAction::Break => break,
-                                NextAction::OverwriteAcc(val) => acc_val = *val,
-                            }
-                        }
-                    },
-                    Operation::LessThan(conf) => {
-                        if acc_val < operand {
-                            conf.tiles_on_success.insert_cloned_with_pos(&mut cmd, &mut tiles, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
-                            match &conf.on_success {
-                                NextAction::Continue => {},
-                                NextAction::Break => break,
-                                NextAction::OverwriteAcc(val) => acc_val = *val,
-                            }
-                        } else {
-                            conf.tiles_on_failure.insert_cloned_with_pos(&mut cmd, &mut tiles, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
-                            match &conf.on_failure {
-                                NextAction::Continue => {},
-                                NextAction::Break => break,
-                                NextAction::OverwriteAcc(val) => acc_val = *val,
-                            }
-                        }
-                    },
-                    Operation::Assign => {acc_val = operand;},
-                    Operation::GetTiles(produced_tiles) => {
-                        produced_tiles.insert_cloned_with_pos(&mut cmd, &mut tiles, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
-                    },
+                    Operation::Add => acc_val += num_operand,
+                    Operation::Subtract => acc_val -= num_operand,
+                    Operation::Multiply => acc_val *= num_operand,
+                    Operation::Divide => if num_operand != 0.0 { acc_val /= num_operand },
+                    Operation::Min => acc_val = acc_val.min(num_operand),
+                    Operation::Max => acc_val = acc_val.max(num_operand),
+                    Operation::Pow => if acc_val >= 0.0 || num_operand.fract() == 0.0 { acc_val = acc_val.powf(num_operand) },
+                    Operation::Modulo => if num_operand != 0.0 { acc_val = acc_val % num_operand },
+                    Operation::Log => if acc_val > 0.0 && num_operand > 0.0 && num_operand != 1.0 { acc_val = acc_val.log(num_operand) },
+                    Operation::Assign => {acc_val = num_operand;},
+                    Operation::Interpolate => {acc_val = acc_val.lerp(num_operand, 0.5);},
+                    Operation::GetTiles => {
+                                        if let Operand::Entities(entities) = operand {
+                            
+                                            let produced_tiles = ProducedTiles::new(entities.clone());
+                                            produced_tiles.insert_cloned_with_pos(&mut cmd, &mut tiles, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
+                                        } 
+                                    },
                 }
                
             }

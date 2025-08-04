@@ -4,10 +4,10 @@ use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_ecs_tilemap::{map::TilemapTileSize, tiles::*};
 
-use crate::{common::common_components::{DisplayName, MyZ}, game::tilemap::tile::{
+use crate::{common::common_components::{DisplayName, MyZ}, game::{game_components::ImageHolder, tilemap::tile::{
     tile_components::*, 
     tile_constants::*,
-}};
+}}};
 
 
 #[derive(Resource, Debug, Default )]
@@ -96,7 +96,10 @@ impl TilingEntityMap {
             let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
             let color = Color::srgba_u8(r, g, b, a);
             if ! seri.sprite {
-                cmd.entity(enti).insert(TileColor::from(color));
+                cmd.entity(enti).insert((
+                    TileColor::from(color),
+                    ImageHolder::new(asset_server, img_path),
+                ));
                 if seri.shader.len() > 2 {
                     match shader_map.get_entity(&seri.shader) {
                         Some(shader_ent) => {

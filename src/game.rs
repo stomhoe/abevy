@@ -26,7 +26,7 @@ use crate::{
         multiplayer::MpPlugin,
         player::{PlayerInputSystems, PlayerPlugin},
         setup_menus::SetupMenusPlugin,
-        tilemap::{tile::tile_resources::*, ChunkSystems, MyTileMapPlugin},
+        tilemap::{terrain_gen::terrgen_resources::{NoiseSerisHandles, OpListSerisHandles}, tile::tile_resources::*, ChunkSystems, MyTileMapPlugin},
         time::ClockPlugin,
     }, AppState
 };
@@ -132,7 +132,7 @@ impl Plugin for GamePlugin {
                 .load_collection::<TileSerisHandles>()
                 .load_collection::<TileWeightedSamplerSerisHandles>()
                 .load_collection::<NoiseSerisHandles>()
-
+                .load_collection::<OpListSerisHandles>()
             )
             .replicate_bundle::<(Being, ChildOf)>()//NO FUNCIONA BIEN LO DE CHILDOF
             .replicate::<DisplayName>()

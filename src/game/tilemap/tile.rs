@@ -16,6 +16,10 @@ pub mod tile_utils;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TileSystems;
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct TilingInitSystems;
+
+
 //PLU ¡¡ NO OLVIDARSE DE METERLO EN .add_plugins((,Tile)) del módulo tilemap !!
 pub struct TilePlugin;
 #[allow(unused_parens, path_statements, )]
@@ -29,7 +33,7 @@ impl Plugin for TilePlugin {
                 init_shaders.before(init_tiles),
                 init_tiles.before(init_tile_weighted_samplers),
                 init_tile_weighted_samplers
-            ).in_set(TileSystems))
+            ).in_set(TilingInitSystems))
             .add_plugins((
                 RonAssetPlugin::<ShaderRepeatTexSeri>::new(&["rep1shader.ron"]),
                 RonAssetPlugin::<TileSeri>::new(&["tile.ron"]),

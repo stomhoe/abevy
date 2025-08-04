@@ -14,12 +14,11 @@ pub fn uvec2_to_tmaptsize(tile_size: U16Vec2) -> TilemapTileSize {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct MapKey {z_index: MyZ, tile_size: U16Vec2, shader: Option<TileShader>,}
+struct MapKey {z_index: MyZ, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>,}
 impl MapKey {
-    pub fn new(z_index: MyZ, size: U16Vec2, shader: Option<TileShader>) -> Self {
-        Self { z_index, tile_size: size, shader }
+    pub fn new(z_index: MyZ, size: U16Vec2, shader_ref: Option<TileShaderRef>) -> Self {
+        Self { z_index, tile_size: size, shader_ref }
     }
-    pub fn take_shader(&mut self) -> Option<TileShader> { std::mem::take(&mut self.shader) }
 }
 
 type Map = HashMap<MapKey, LayerDto>;
@@ -29,7 +28,6 @@ pub fn produce_tilemaps(
     mut cmd: Commands, 
     mut chunk_query: Query<(Entity, &mut ProducedTiles), (Without<Children>, Added<TilesReady>)>,
     mut tile_comps: Query<(Entity, &TilePos, Option<&ImageHolder>, Option<&MyZ>, Option<&TileShaderRef>, Option<&mut Transform>)>,
-    shader_query: Query<(&TileShader, ), ( )>,
     imgsize_map: Res<ImageSizeMap>, 
 ) -> Result {
     let mut layers: Map = HashMap::new();
@@ -47,10 +45,7 @@ pub fn produce_tilemaps(
                 transform.translation.y += (tile_pos.y as f32 * TILE_SIZE_PXS.y as f32);
             }
 
-            let shader: Option<TileShader> = if let Some(shader_ref) = shader_ref {
-                shader_query.get(shader_ref.0).map(|(shader, )| shader.clone()).ok()
-            } 
-            else { None };
+            
 
             cmd.entity(tile_ent).remove::<ImageHolder>();    
 
@@ -60,7 +55,7 @@ pub fn produce_tilemaps(
                 U16Vec2::ONE
             };
 
-            let map_key = MapKey::new(tile_z_index, tile_size, shader);
+            let map_key = MapKey::new(tile_z_index, tile_size, shader_ref.copied());
 
             if let Some(layer_dto) = layers.get_mut(&map_key) {
                 let (tilemap_entity, tile_storage, tile_imgs) = (
@@ -91,7 +86,7 @@ pub fn produce_tilemaps(
         } else{
             cmd.entity(chunk_ent).insert(LayersReady);
             for (mut key, mut layer_dto) in layers.drain() {
-                layer_dto.used_shader = key.take_shader();
+                layer_dto.shader_ref = key.shader_ref;
                 cmd.entity(layer_dto.tilemap.entity()).insert(layer_dto);
             }
         }
@@ -103,7 +98,7 @@ pub fn produce_tilemaps(
 pub struct LayerDto {
     pub layer_z: MyZ, 
     pub tile_size: TilemapTileSize,
-    pub used_shader: Option<TileShader>,
+    pub shader_ref: Option<TileShaderRef>,
     pub tilemap: TilemapId, 
     pub tile_storage: TileStorage,
     pub images: Vec<Handle<Image>>, 
@@ -163,7 +158,7 @@ fn instantiate_new_layer_dto( commands: &mut Commands,
         tilemap,
         tile_storage,
         images,
-        used_shader: None,
+        shader_ref: None,
     };
 
     layers.insert(map_key, layer_dto);
@@ -176,6 +171,7 @@ pub fn fill_tilemaps_data(
     mut chunk_query: Query<(Entity, &Children), (With<LayersReady>)>,
     mut layer_query: Query<(&mut LayerDto), (With<ChildOf>)>,
     mut texture_overley_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
+    shader_query: Query<(&TileShader, ), ( )>,
 ) {
     
      for (chunk, children) in chunk_query.iter_mut() {
@@ -193,9 +189,13 @@ pub fn fill_tilemaps_data(
                 let tile_size = layer_dto.tile_size.clone();
                 let mut tmap_commands = commands.entity(layer_dto.tilemap.entity());
 
+                let shader: Option<TileShader> = if let Some(shader_ref) = layer_dto.shader_ref {
+                    shader_query.get(shader_ref.0).map(|(shader, )| shader.clone()).ok()
+                } 
+                else { None };
 
-                if let Some(shader) = &layer_dto.used_shader {
-                    match shader{
+                if let Some(shader) = shader {
+                    match shader {
                         TileShader::TexRepeat(rep_texture) => {
                             let material = MaterialTilemapHandle::from(texture_overley_mat.add(
                                 MonoRepeatTextureOverlayMat {

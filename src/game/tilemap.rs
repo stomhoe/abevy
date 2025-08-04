@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use superstate::superstate_plugin;
 
-use crate::game::{tilemap::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{TerrainGenPlugin, TerrainGenSystems}, tile::TilePlugin, tilemap_systems::*}, ActiveGameSystems, SimRunningSystems};
+use crate::game::{tilemap::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::*, tile::*, tilemap_systems::*}, ActiveGameSystems, AssetLoadingState, SimRunningSystems};
 
 mod tilemap_systems;
 mod chunking_systems;
@@ -41,8 +41,14 @@ impl Plugin for MyTileMapPlugin {
                 ).in_set(ChunkSystems)
             ))
             .configure_sets(Update, (
-                TerrainGenSystems.in_set(ChunkSystems)
+                TerrainGenSystems.in_set(ChunkSystems),
+                TilingInitSystems.before(TerrainGenInitSystems),
             ))
+            .configure_sets(
+                OnEnter(AssetLoadingState::Complete), (
+                    TilingInitSystems.before(TerrainGenInitSystems),
+                )
+            )
            
             .init_resource::<LoadedChunks>()
             .init_resource::<ChunkRangeSettings>()
