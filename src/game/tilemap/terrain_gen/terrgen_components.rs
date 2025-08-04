@@ -114,8 +114,7 @@ pub enum NextAction {
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, )]
 pub enum Operation {
-    Add, Subtract, Multiply, Divide, Modulo, Log, Min, Max, Pow, Assign, Interpolate,
-    GetTiles,
+    Add, Subtract, Multiply, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean,
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
@@ -148,6 +147,7 @@ impl From<f32> for Operand { fn from(v: f32) -> Self { Self::Value(v) } }
 pub struct OperationList {
     pub trunk: Vec<(Operand, Operation)>, pub threshold: f32,
     pub bifurcation_over: Option<Entity>, pub bifurcation_under: Option<Entity>,
+    pub tiles: ProducedTiles,
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, )]

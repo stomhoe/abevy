@@ -29,29 +29,29 @@ pub fn init_oplists(
     mut cmd: Commands, mut seris_handles: ResMut<OpListSerisHandles>,
     mut assets: ResMut<Assets<OpListSeri>>, mut map: ResMut<OpListEntityMap>,
     terr_gen_map: Res<TerrGenEntityMap>,
-    mut oplist_query: Query<&mut OperationList>
+    mut oplist_query: Query<(&mut OperationList, Option<&RootOpList>)>,
 ) -> Result {
     for handle in seris_handles.handles.iter() {
         if let Some(seri) = assets.get(handle) {
-            info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
+            info!(target: "oplist_loading", "Loading OpListSeri from handle: {:?}", handle);
             map.new_oplist_ent_from_seri(&mut cmd, seri, &terr_gen_map);
         } 
     }
     for handle in std::mem::take(&mut seris_handles.handles) {
         if let Some(seri) = assets.remove(&handle) {
-            info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
-            if let Some(oplist_entity) = map.0.get(&seri.id) {
-                let mut oplist = oplist_query.get_mut(*oplist_entity)?;
-                map.set_bifurcations(&mut cmd, seri, &mut oplist);
-            }
-            else {
+            if let Some(&oplist_entity) = map.0.get(&seri.id) {
+                map.set_bifurcations(
+                    seri, oplist_entity, &mut oplist_query,
+                )?;
+            } else {
                 error!(target: "oplist_loading", "OpListSeri with id {} not found in map", seri.id);
             }
-        } 
+        }
     }
     Ok(())
 } 
 
+ 
 #[allow(unused_parens)]
 pub fn setup(mut cmd: Commands, query: Query<(),()>, asset_server: Res<AssetServer>, ) 
 {
@@ -143,7 +143,7 @@ pub fn produce_tiles(mut cmd: Commands,
 ) -> Result {
     for (enti, &input_operand, &oplist_ref, &chunk_ref, &global_tile_pos) in query.iter_mut() {
 
-        if let Ok((mut pending_ops_count, mut tiles, &chunk_pos)) = chunk_query.get_mut(chunk_ref.0) {
+        if let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos)) = chunk_query.get_mut(chunk_ref.0) {
             let mut acc_val: f32 = input_operand.0; 
             //cmd.entity(enti).remove::<InputOperand>();
             cmd.entity(enti).despawn();//NO PONER ABAJO
@@ -183,17 +183,12 @@ pub fn produce_tiles(mut cmd: Commands,
                     Operation::Modulo => if num_operand != 0.0 { acc_val = acc_val % num_operand },
                     Operation::Log => if acc_val > 0.0 && num_operand > 0.0 && num_operand != 1.0 { acc_val = acc_val.log(num_operand) },
                     Operation::Assign => {acc_val = num_operand;},
-                    Operation::Interpolate => {acc_val = acc_val.lerp(num_operand, 0.5);},
-                    Operation::GetTiles => {
-                                        if let Operand::Entities(entities) = operand {
-                            
-                                            let produced_tiles = ProducedTiles::new(entities.clone());
-                                            produced_tiles.insert_cloned_with_pos(&mut cmd, &mut tiles, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
-                                        } 
-                                    },
+                    Operation::Mean => {acc_val = acc_val.lerp(num_operand, 0.5);},
                 }
                
             }
+
+            chunk_tiles.insert_clonespawned_with_pos(&oplist.tiles, &mut cmd, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
             
             
             if acc_val > oplist.threshold {

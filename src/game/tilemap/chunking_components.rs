@@ -53,37 +53,37 @@ impl ProducedTiles {
     pub fn drain(&mut self) -> Vec<Entity> { std::mem::take(&mut self.0) }
 
     fn insert_tile_recursive(
+        &mut self,
+        tiling_ent: Entity,
         cmd: &mut Commands,
-        destination: &mut Self,
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&TileWeightedSampler,), ()>,
         gen_settings: &WorldGenSettings,
-        tiling_ent: Entity,
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
             if let Some(tiling_ent) = wmap.sample(gen_settings, global_pos) {
-                Self::insert_tile_recursive(
-                    cmd, destination, global_pos, pos_within_chunk, weight_maps, gen_settings, tiling_ent
+                self.insert_tile_recursive(
+                    tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings
                 );
             }
         } else {
             let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
-            destination.0.push(tile_ent);
+            self.0.push(tile_ent);
         }
     }
 
-    pub fn insert_cloned_with_pos(
-        &self,
+    pub fn insert_clonespawned_with_pos(
+        &mut self,
+        to_insert: &ProducedTiles,
         cmd: &mut Commands,
-        destination: &mut Self,
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&TileWeightedSampler,), ()>,
         gen_settings: &WorldGenSettings,
     ) {
-        for tile in self.0.iter().cloned() {
-            Self::insert_tile_recursive(cmd, destination, global_pos, pos_within_chunk, weight_maps, gen_settings, tile);
+        for tile in to_insert.0.iter().cloned() {
+            self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings, );
         }
     }
 }

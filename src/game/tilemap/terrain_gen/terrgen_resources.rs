@@ -213,7 +213,7 @@ impl OpListEntityMap {
                         "max" => Operation::Max,
                         "pow" => Operation::Pow,
                         "set" => Operation::Assign,
-                        "intp" => Operation::Interpolate,
+                        "mean" => Operation::Mean,
                         _ => panic!("Unexpected operation string encountered in OpListSeri: {}", operation),
                     };
 
@@ -229,7 +229,7 @@ impl OpListEntityMap {
                             if let Ok(val) = val_str.parse::<u8>() && val > 0 {
                                 Operand::new_poisson_disk(val)
                             } else {
-                                error!(target: "oplist_loading", "Invalid PoissonDisk value: {}", val_str);
+                                warn!(target: "oplist_loading", "Invalid PoissonDisk value: {}", val_str);
                                 Operand::new_poisson_disk(1)
                             }
                         } else {
@@ -256,7 +256,7 @@ impl OpListEntityMap {
                     oplist.trunk.push((operand, op));
                 }
                 "tiles" => {
-                    // Operation::GetTiles(ProducedTiles)
+                   
                 }
                 _ => {
                     error!(target: "oplist_loading", "Unknown operation: {}", operation);
@@ -276,30 +276,64 @@ impl OpListEntityMap {
     }
     
     pub fn set_bifurcations(
-        &mut self, cmd: &mut Commands, seri: OpListSeri, oplist: &mut OperationList,
-    ) {
-        
+        &mut self, seri: OpListSeri, 
+        oplist_ent: Entity,
+        oplist_query: &mut Query<(&mut OperationList, Option<&RootOpList>)>,
+
+    ) -> Result {
         if  ! seri.bifurcation_over.is_empty() {
             if let Some(bifurcation_over_ent) = self.get_entity(&seri.bifurcation_over) {
-                oplist.bifurcation_over = Some(bifurcation_over_ent);
+                
+                if oplist_ent == bifurcation_over_ent {
+                    error!(target: "oplist_loading", "Bifurcation over entity {} cannot be the same as the oplist entity", seri.bifurcation_over);
+                        return Ok(());
+                    }
+                    match oplist_query.get(bifurcation_over_ent) {
+                        Ok((_, None)) => {
+                            let (mut oplist, _) = oplist_query.get_mut(oplist_ent)?;
+                            oplist.bifurcation_over = Some(bifurcation_over_ent);
+                        }
+                        Ok((_, Some(_))) => {
+                            error!(target: "oplist_loading", "Bifurcation over entity {} must not be a root oplist", seri.bifurcation_over);
+                        }
+                        Err(_) => {
+                            error!(target: "oplist_loading", "Bifurcation over entity {} not found in map", seri.bifurcation_over);
+                        }
+                    }
+                } else {
+                    error!(target: "oplist_loading", "Bifurcation over entity id:{} not found in map", seri.bifurcation_over);
+                }
+            }
+            if !seri.bifurcation_under.is_empty() {
+                if let Some(bifurcation_under_ent) = self.get_entity(&seri.bifurcation_under) {
 
-            } else {
-                error!(target: "oplist_loading", "Bifurcation over entity {} not found in map", seri.bifurcation_over);
-                return;
+                    if oplist_ent == bifurcation_under_ent {
+                        error!(target: "oplist_loading", "Bifurcation under entity {} cannot be the same as the oplist entity", seri.bifurcation_under);
+                        return Ok(());
+                    }
+
+                    match oplist_query.get(bifurcation_under_ent) {
+                        Ok((_, None)) => {
+                            let (mut oplist, _) = oplist_query.get_mut(oplist_ent)?;
+                            oplist.bifurcation_under = Some(bifurcation_under_ent);
+                        }
+                        Ok((_, Some(_))) => {
+                            error!(target: "oplist_loading", "Bifurcation under entity {} must not be a root oplist", seri.bifurcation_under);
+                        }
+                        Err(_) => {
+                            error!(target: "oplist_loading", "Bifurcation under entity {} not found in map", seri.bifurcation_under);
+                        }
+                    }
+                } else {
+                    error!(target: "oplist_loading", "Bifurcation under entity id:{} not found in map", seri.bifurcation_under);
+                }
             }
+            Ok(())
         }
-        if ! seri.bifurcation_under.is_empty() {
-            if let Some(bifurcation_under_ent) = self.get_entity(&seri.bifurcation_under) {
-                oplist.bifurcation_under = Some(bifurcation_under_ent);
-            } else {
-                error!(target: "oplist_loading", "Bifurcation under entity {} not found in map", seri.bifurcation_under);
-                return;
-            }
-        }
+        
          
-
-      
-    }
+        
+    
     
     pub fn get_entity<S: Into<String>>(&self, id: S) -> Option<Entity> { self.0.get(&id.into()).copied() }
     
@@ -322,4 +356,5 @@ pub struct OpListSeri {
     pub bifurcation_over: String,
     pub threshold: f32,
     pub bifurcation_under: String,
+    pub tiles: Vec<String>,
 }
