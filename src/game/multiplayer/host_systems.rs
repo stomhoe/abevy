@@ -4,7 +4,7 @@ use std::{mem, };
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
 
-use crate::game::{faction::faction_components::{BelongsToFaction, Faction, BelongsToSelfPlayerFaction}, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::{OfSelf, Player} };
+use crate::game::{faction::faction_components::{BelongsToFaction, BelongsToSelfPlayerFaction, Faction}, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::{OfSelf, Player}, tilemap::tile::tile_resources::TilingEntityMap };
 
 
 pub fn attempt_host(
@@ -27,12 +27,18 @@ pub fn host_receive_client_name(mut trigger: Trigger<FromClient<SendPlayerName>>
 #[allow(unused_parens, )]
 pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>, 
     mut cmd: Commands, host_faction: Single<(Entity ), (With<Faction>, With<OfSelf>)>,
-
+    own_tiling_map: Res<TilingEntityMap>,
 ) {
-    info!("(HOST) `{}` connected", trigger.target());
-
-    // TA BIEN, TODOS LOS JOINERS POR DEFECTO SON DE LA FACTION DEL HOST, SI NO ES ASÍ, AL CARGAR LA SAVEGAME SE CAMBIA?
-    cmd.entity(trigger.target()).insert((Player, Replicated, BelongsToFaction(host_faction.into_inner())));
+    let client_entity = trigger.target();
+    cmd.entity(client_entity).insert((Player, Replicated, BelongsToFaction(host_faction.into_inner())));
+    info!("(HOST) `{}` connected", client_entity);
+    let sync_tiles = ToClients { 
+        mode: SendMode::Direct(client_entity), 
+        event: own_tiling_map.clone()
+    };
+    cmd.server_trigger(sync_tiles);
+    
+        // TA BIEN, TODOS LOS JOINERS POR DEFECTO SON DE LA FACTION DEL HOST, SI NO ES ASÍ, AL CARGAR LA SAVEGAME SE CAMBIA?
 }
 
 

@@ -1,10 +1,12 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::prelude::*;
+use bevy_replicon::prelude::*;
 
-use crate::game::{tilemap::terrain_gen::{terrain_materials::MonoRepeatTextureOverlayMat, terrgen_resources::*, terrgen_systems::*}, AssetLoadingState, SimRunningSystems};
+use crate::game::{tilemap::{chunking_components::ProducedTiles, terrain_gen::{terrain_materials::MonoRepeatTextureOverlayMat, terrgen_components::*, terrgen_init_systems::*, terrgen_resources::*, terrgen_systems::*}}, ReplicatedAssetsLoadingState};
 
 pub mod terrgen_systems;
+mod terrgen_init_systems;
 pub mod terrain_materials;
 pub mod terrgen_components;
 pub mod terrgen_resources;
@@ -23,22 +25,34 @@ pub struct TerrainGenPlugin;
 impl Plugin for TerrainGenPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, (spawn_terrain_operations, produce_tiles).in_set(TerrainGenSystems))
-            .add_systems(Startup, (setup, ))
-            .add_systems(OnEnter(AssetLoadingState::Complete), (
-                init_noises.before(init_oplists),
-                init_oplists,
+            .add_systems(Update, (
+                (spawn_terrain_operations, produce_tiles).in_set(TerrainGenSystems),
+                (add_noises_to_map, add_oplists_to_map, client_change_operand_entities,).run_if(not(server_or_singleplayer)),
+            ))
+        
+            .add_systems(OnEnter(ReplicatedAssetsLoadingState::Complete), (
+                init_noises.before(add_noises_to_map),   
+                add_noises_to_map.before(init_oplists_from_assets),
+                init_oplists_from_assets.before(add_oplists_to_map),
+                add_oplists_to_map.before(init_oplists_bifurcations),
+                init_oplists_bifurcations,
             ).in_set(TerrainGenInitSystems))
 
             .init_resource::<WorldGenSettings>()
-            .init_resource::<TerrGenEntityMap>()
-            .init_resource::<OpListEntityMap>()
+            
 
             .add_plugins((
                 MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
                 RonAssetPlugin::<NoiseSerialization>::new(&["noise.ron"]),
-                RonAssetPlugin::<OpListSeri>::new(&["oplist.ron"]),
+                RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
 
+            ))
+
+            .replicate::<TgenNoise>()
+            .replicate::<RootOpList>()
+            .replicate_with((
+                RuleFns::<ProducedTiles>::default(),
+                (RuleFns::<OperationList>::default(), SendRate::Once),
             ))
 
         ;

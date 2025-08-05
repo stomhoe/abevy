@@ -6,7 +6,7 @@
     sprite: true,
     offset: (0.0, 0.0),
     z: 100,
-    color: Some((255, 0, 0, 255)),
+    color: Some((255, 255, 255, 255)),
     color_map: "",
     spawns: [],
     spawns_children: [],

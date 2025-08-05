@@ -3,7 +3,7 @@ use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 
-use crate::game::{being::sprite::{sprite_components::*, sprite_resources::*}, game_components::{FacingDirection, ImgPathHolder}};
+use crate::game::{being::sprite::{sprite_components::*, sprite_resources::*}, game_components::{FacingDirection, ImagePathHolder}};
 
 #[allow(unused_parens)]
 pub fn init_sprites(
@@ -204,7 +204,7 @@ pub fn add_spritechildren_and_comps(
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut father_query: Query<(Entity, &SpriteDatasChildrenRefs, Option<&SpriteHolderRef>,), Without<SpriteDataId>>,
     spritedatas_query: Query<(
-        &ImgPathHolder, &AtlasLayoutData, &Categories, &OtherCompsToBuild,
+        &ImagePathHolder, &AtlasLayoutData, &Categories, &OtherCompsToBuild,
         Option<&SpriteDatasChildrenRefs>,
         &SpriteDataId,
     ), With<SpriteDataId>>,
@@ -224,7 +224,7 @@ pub fn add_spritechildren_and_comps(
                     ..default()
                 };
 
-                let image = aserver.load(format!("texture/{}", &img_path_holder.0));
+                let image = aserver.load(img_path_holder.clone());
 
                 let child_sprite = cmd.spawn((
                     ChildOf(father_to_sprite),

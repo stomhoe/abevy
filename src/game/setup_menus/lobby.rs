@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use crate::{game::{multiplayer::ConnectionAttempt, player::player_components::CreatedCharacter, setup_menus::lobby::{lobby_events::*, lobby_layout::*, lobby_systems::*}, ClientSystems, GamePhase, GameSetupType, HostSystems }, AppState};
+use crate::{game::{multiplayer::{ConnectionAttempt, HostSystems}, player::player_components::CreatedCharacter, setup_menus::lobby::{lobby_events::*, lobby_layout::*, lobby_systems::*}, ClientSystems, GamePhase, GameSetupType, }, AppState};
 
 
 

@@ -1,0 +1,17 @@
+(
+    id: "example",
+    root: false,
+    operation_operands: {
+        "": ["",],
+        "": ["",],
+        "": ["",],
+        "": ["",],
+    },
+   
+    bifurcation_over: "",
+    threshold: 0.5,
+    bifurcation_under: "",
+    tiles: [
+    
+    ],
+)

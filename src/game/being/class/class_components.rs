@@ -1,7 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
-use vec_collections::VecSet;
 
 
 //crear una entidad por cada instancia de clase existente
@@ -17,6 +16,22 @@ impl Class {
     pub fn nid(&self) -> u32 {self.0}
 }
 
-#[derive(Component, Debug)]
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Default)]
 //esto va en los beings, permite tener multiples clases
-pub struct ClassesRefs(pub VecSet<[Entity; 3]>);
+pub struct ClassesRefs(#[entities] Vec<Entity>);
+
+impl ClassesRefs {
+    pub fn new<I>(classes: I) -> Self 
+    where 
+        I: IntoIterator, 
+        I::Item: Into<Entity>, 
+    {
+        let iter = classes.into_iter();
+        let mut vec = Vec::with_capacity(3);
+        vec.extend(iter.map(Into::into));
+        Self(vec)
+    }
+    pub fn classes(&self) -> &[Entity] { &self.0 }
+    pub fn classes_mut(&mut self) -> &mut Vec<Entity> { &mut self.0 }
+}

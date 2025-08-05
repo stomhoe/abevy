@@ -38,7 +38,7 @@ pub fn init_animations(
                 let mut animation = Animation::from_clip(library.register_clip(clip));
                 animation.set_repetitions(AnimationRepeat::Loop);
                 let animation_id = library.register_animation(animation);
-                info!(target: "sprite_animation", "Registered animation: {}", seri.id);
+                //info!(target: "sprite_animation", "Registered animation: {}", seri.id);
                 library.name_animation(animation_id, take(&mut seri.id)).unwrap();
             }
     }
@@ -140,7 +140,8 @@ pub fn animate_sprite(
                     if sheet_anim.animation_id != animation_id {
                         sheet_anim.switch(animation_id);
                         //info!(target: "sprite_animation", "Switched animation for entity {:?} to '{}'", ent, animation_name);
-                    }
+                    } 
+                    sheet_anim.speed_factor = 1.0;//AJUSTAR EN OTRO SISTEMA DISTINTO
                 } else{
                     let new_anim = SpritesheetAnimation::from_id(animation_id);
                     commands.entity(ent).insert(new_anim);

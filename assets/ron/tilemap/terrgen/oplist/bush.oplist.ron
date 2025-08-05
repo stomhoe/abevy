@@ -1,0 +1,17 @@
+(
+    id: "bush",
+    root: false,
+    operation_operands: {
+        "": ["",],
+        "": ["",],
+        "": ["",],
+    },
+   
+    bifurcation_over: "",
+    threshold: 0.5,
+    bifurcation_under: "",
+    tiles: [
+        "tempveg_sampler",
+
+    ],
+)

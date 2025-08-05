@@ -3,20 +3,21 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use serde::{Deserialize, Serialize};
-use crate::common::common_components::MyZ;
+use crate::common::common_components::{EntityPrefix, MyZ};
+use crate::game::game_components::ImagePathHolder;
 use crate::game::tilemap::terrain_gen::terrgen_resources::WorldGenSettings;
-use crate::game::tilemap::{chunking_components::ChunkPos, tile::tile_constants::* };
+use crate::game::tilemap::{chunking_components::ChunkPos, tile::tile_utils::* };
 use bevy_ecs_tilemap::tiles::*;
 
 use bevy_ecs_tilemap::tiles::*;
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(MyZ)]
+#[require(MyZ, EntityPrefix::new("Tile"), )]
 pub struct Tile;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -34,7 +35,8 @@ pub struct Tree;
 #[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TileShaderRef(pub Entity);
 
-#[derive(Component, Debug, Hash, PartialEq, Eq, Clone, )]//HACER ENTIDAD PROPIA
+#[derive(Component, Debug, Hash, PartialEq, Eq, Clone, )]
+#[require(EntityPrefix::new("TileShader"), )]
 pub enum TileShader{
     TexRepeat(RepeatingTexture),
     TwoTexRepeat(RepeatingTexture, RepeatingTexture),
@@ -45,8 +47,8 @@ pub enum TileShader{
 pub struct RepeatingTexture{ img: Handle<Image>, scale: u32, mask_color: U8Vec4, }
 impl RepeatingTexture {
     #[allow(dead_code, )]
-    pub fn new<S: Into<String>>(asset_server: &AssetServer, path: S, scale: u32, mask_color: U8Vec4) -> Self {
-        Self { img: asset_server.load(path.into()), scale, mask_color }
+    pub fn new(asset_server: &AssetServer, path: ImagePathHolder, scale: u32, mask_color: U8Vec4) -> Self {
+        Self { img: asset_server.load(path), scale, mask_color }
     }
     pub fn new_w_red_mask<S: Into<String>>(asset_server: &AssetServer, path: S, scale: u32) -> Self {
         Self { img: asset_server.load(path.into()), scale, mask_color: U8Vec4::new(255, 0, 0, 255) }
@@ -68,12 +70,24 @@ impl GlobalTilePos {
     pub fn x(&self) -> i32 { self.0.x } 
     pub fn y(&self) -> i32 { self.0.y }
 
-    pub fn hash_value(&self, settings: &WorldGenSettings) -> u64 {
-        let mut hasher = DefaultHasher::new(); self.0.hash(&mut hasher);
-        settings.seed.hash(&mut hasher); hasher.finish()
+    pub fn hash_value(&self, settings: &WorldGenSettings, seed: u64) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        // Mix coordinates with a unique constant and the seed
+        self.hash(&mut hasher);
+        settings.seed.hash(&mut hasher);
+        seed.hash(&mut hasher);
+        hasher.finish()
     }
-    pub fn normalized_hash_value(&self, settings: &WorldGenSettings) -> f32 {
-        self.hash_value(settings) as f32 / u64::MAX as f32
+    pub fn hash_for_weight_maps(&self, settings: &WorldGenSettings,) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        // Use a different mixing and constants
+        self.hash(&mut hasher);
+        settings.seed.hash(&mut hasher);
+        49.hash(&mut hasher); 
+        hasher.finish()
+    }
+    pub fn normalized_hash_value(&self, settings: &WorldGenSettings, seed: u64) -> f32 {
+        self.hash_value(settings, seed) as f32 / u64::MAX as f32
     }
     pub const TYPE_DEBUG_NAME: &'static str = "GlobalTilePos";
 }
@@ -96,69 +110,74 @@ impl From<Vec2> for GlobalTilePos {
 impl std::ops::Add for GlobalTilePos {type Output = Self; fn add(self, other: Self) -> Self {GlobalTilePos(self.0 + other.0)}}
 impl std::ops::Sub for GlobalTilePos {type Output = Self; fn sub(self, other: Self) -> Self {GlobalTilePos(self.0 - other.0)}}
 
-#[derive(Debug, Clone, Component)]
-pub struct TileWeightedSampler { alias: Vec<usize>, prob: Vec<f32>, entities: Vec<Entity>, }
+#[derive(Debug, Clone, Component, Default)]
+#[require(EntityPrefix::new("TileWeightedSampler"), Replicated)]
+pub struct TileWeightedSampler {
+    #[entities]
+    entities: Vec<Entity>,
+    weights: Vec<f32>,
+    cumulative_weights: Vec<f32>,
+    total_weight: f32,
+}
+
 impl TileWeightedSampler {
     pub fn new(weights: &[(Entity, f32)]) -> Self {
-        let n = weights.len();
-        let mut prob = vec![0.0; n];
-        let mut alias = vec![0; n];
-        let mut entities = Vec::with_capacity(n);
-        if n == 0 {
-            return Self { alias, prob, entities };
+        let mut cumulative_weights = Vec::with_capacity(weights.len());
+        let mut acc = 0.0;
+        for &(_, w) in weights {
+            acc += w;
+            cumulative_weights.push(acc);
         }
-        let mut norm_weights: Vec<f32> = weights.iter().map(|(_, w)| *w).collect();
-        let sum: f32 = norm_weights.iter().sum();
-        if sum > 0.0 {
-            for w in &mut norm_weights {
-                *w *= n as f32 / sum;
-            }
+        let total_weight = acc;
+        Self {
+            entities: weights.iter().map(|(e, _)| *e).collect(),
+            weights: weights.iter().map(|(_, w)| *w).collect(),
+            cumulative_weights,
+            total_weight,
         }
-        let mut small = Vec::new();
-        let mut large = Vec::new();
-        for (i, &w) in norm_weights.iter().enumerate() {
-            entities.push(weights[i].0);
-            if w < 1.0 {
-                small.push(i);
-            } else {
-                large.push(i);
-            }
-        }
-        while let (Some(s), Some(l)) = (small.pop(), large.pop()) {
-            prob[s] = norm_weights[s];
-            alias[s] = l;
-            norm_weights[l] = (norm_weights[l] + norm_weights[s]) - 1.0;
-            if norm_weights[l] < 1.0 {
-                small.push(l);
-            } else {
-                large.push(l);
-            }
-        }
-        for &i in large.iter().chain(small.iter()) {
-            prob[i] = 1.0;
-            alias[i] = i;
-        }
-        Self { alias, prob, entities }
     }
 
     pub fn sample(&self, settings: &WorldGenSettings, pos: GlobalTilePos) -> Option<Entity> {
         if self.entities.is_empty() {
             return None;
-        } 
+        }
+        let hash_used_to_sample = pos.hash_for_weight_maps(settings);
+        let mut rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
+        if rng_val >= 1.0 { rng_val = 0.999_999; }
+        let target = rng_val * self.total_weight;
 
-        let n = self.entities.len();
-        let hash = pos.hash_value(settings);
-
-        let idx = (hash % n as u64) as usize;
-        // Use upper 32 bits for float
-        let float_bits = ((hash >> 32) as u32) | 1; // avoid 0
-        let u = (float_bits as f32) / (u32::MAX as f32);
-
-        if u < self.prob[idx] {
-            Some(self.entities[idx])
-        } else {
-            Some(self.entities[self.alias[idx]])
+        match self.cumulative_weights.binary_search_by(|w| w.partial_cmp(&target).unwrap()) {
+            Ok(idx) | Err(idx) => {
+                self.entities.get(idx).map(|e| *e)
+            }
         }
     }
 }
 
+// Manual Serialize/Deserialize to skip cumulative_weights and total_weight
+
+impl Serialize for TileWeightedSampler {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (&self.entities, &self.weights).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for TileWeightedSampler {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let (entities, weights): (Vec<Entity>, Vec<f32>) = Deserialize::deserialize(deserializer)?;
+        // Recompute cumulative_weights and total_weight
+        let mut cumulative_weights = Vec::with_capacity(weights.len());
+        let mut acc = 0.0;
+        for &w in &weights {
+            acc += w;
+            cumulative_weights.push(acc);
+        }
+        let total_weight = acc;
+        Ok(TileWeightedSampler {
+            entities,
+            weights,
+            cumulative_weights,
+            total_weight,
+        })
+    }
+}

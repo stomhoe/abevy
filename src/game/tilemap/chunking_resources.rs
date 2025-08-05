@@ -2,6 +2,7 @@ use bevy::{math::U8Vec2, platform::collections::{HashMap, HashSet}};
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use crate::game::{tilemap::{chunking_components::*, },};
+use crate::game::dimension::dimension_components::DimensionRef;
 
 #[derive(Resource, )]
 pub struct ChunkRangeSettings {
@@ -20,6 +21,7 @@ impl Default for ChunkRangeSettings {
 }
 
 #[derive(Default, Debug, Resource)]
+//pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 pub struct LoadedChunks (pub HashMap<ChunkPos, Entity>,);
 
 

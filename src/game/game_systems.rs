@@ -8,7 +8,8 @@ use crate::game::being::modifier::modifier_components::ModifierCategories;
 use crate::game::being::sprite::sprite_components::SpriteDatasChildrenStringIds;
 use crate::game::faction::faction_components::{BelongsToFaction, Faction};
 use crate::game::faction::faction_resources::FactionEntityMap;
-use crate::game::game_components::*;
+use crate::game::tilemap::terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap};
+use crate::game::{game_components::*, ReplicatedAssetsLoadingState};
 use crate::game::game_resources::*;
 use crate::game::player::player_components::{CameraTarget, CreatedCharacter, HostPlayer, OfSelf, Player};
 use crate::game::{SimulationState};
@@ -17,8 +18,20 @@ use crate::game::{SimulationState};
 pub fn placeholder_character_creation(mut cmd: Commands, mut query: Query<(),(With<Player>)>) {
 }
 
+#[allow(unused_parens)]
+pub fn remove_server_resources(mut cmd: Commands, ) {
+    cmd.remove_resource::<TerrGenEntityMap>();
+    cmd.remove_resource::<OpListEntityMap>();
 
-pub fn sors_setup_initial_entities(mut cmd: Commands, mut fac_map: ResMut<FactionEntityMap>) {
+
+}
+
+pub fn server_or_singleplayer_setup(mut cmd: Commands, 
+    mut assets_loading_state: ResMut<NextState<ReplicatedAssetsLoadingState>>,
+    mut fac_map: ResMut<FactionEntityMap>)
+{
+    assets_loading_state.set(ReplicatedAssetsLoadingState::InProcess);
+
     let fac_ent = Faction::new(&mut cmd, &mut fac_map, "host", "Host Faction", ());
     cmd.spawn((
         OfSelf, HostPlayer,

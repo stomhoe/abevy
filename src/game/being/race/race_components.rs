@@ -3,7 +3,7 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::game::game_utils::{StrId, WeightedMap};
+use crate::game::game_utils::{WeightedMap};
 
 
 #[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
@@ -37,11 +37,10 @@ pub struct PluralDenomination(pub String);
 impl PluralDenomination {pub fn new<S: Into<String>>(id: S) -> Self { Self (id.into()) }}
 
 #[derive(Component, Debug, Deserialize, Serialize, )]
-pub struct Sexes(pub WeightedMap<StrId>);//id, weight
+pub struct Sexes(pub WeightedMap<String>);//id, weight
 impl Sexes {
-    pub fn new(map: HashMap<StrId, u32>) -> Self {Sexes(WeightedMap::new(map))}
+    pub fn new(map: HashMap<String, u32>) -> Self {Sexes(WeightedMap::new(map))}
 }
-type SexId = StrId;
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct RaceSeri {
@@ -54,7 +53,7 @@ pub struct RaceSeri {
     pub demonym: String,
     pub singular: String,
     pub plural: Option<String>,
-    pub sexes: HashMap<SexId, u32>,
+    pub sexes: HashMap<String, u32>,
     pub can_equip_tools: bool,
     pub sprite_pool: Vec<String>,
     pub selectable_sprites: Vec<String>,

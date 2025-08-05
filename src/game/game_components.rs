@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use splines::{Interpolation, Key, Spline};
 use superstate::SuperstateInfo;
 use rand::Rng;
+use std::fmt::Display;
 
 use crate::game::being::{being_components::Being, sprite::animation_constants::*};
 
@@ -38,15 +39,40 @@ pub struct PhysicallyImmune();
 #[derive(Component, Debug,)]
 pub struct MagicallyInvulnerable();
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct ImgPathHolder(pub String);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct ImagePathHolder(pub String);
+impl ImagePathHolder {
+    pub fn new<S: AsRef<str>>(path: S) -> Result<Self, BevyError> {
+        let img_path = format!("assets/{}", path.as_ref());
+        if !std::path::Path::new(&img_path).exists() {
+            let err = BevyError::from(format!("Image path does not exist: {}", img_path));
+            error!(target: "image_loading", "{}", err);
+            return Err(err);
+        }
+        Ok(Self(path.as_ref().to_string()))
+    }
+    pub fn path(&self) -> &str { &self.0 }
+}
+impl Display for ImagePathHolder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+}
+impl From<ImagePathHolder> for bevy::asset::AssetPath<'_> {
+    fn from(holder: ImagePathHolder) -> Self { bevy::asset::AssetPath::from(holder.0) }
+}
 
 
 #[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq)]
 pub struct ImageHolder(pub Handle<Image>);
 impl ImageHolder {
-    pub fn new<S: Into<String>>(asset_server: &AssetServer, path: S) -> Self {
-        Self(asset_server.load(path.into()))
+
+    pub fn new<S: AsRef<str>>(asset_server: &AssetServer, path: S) -> Result<Self, BevyError> {
+        let img_path = format!("assets/{}", path.as_ref());
+        if !std::path::Path::new(&img_path).exists() {
+            let err = BevyError::from(format!("Image path does not exist: {}", img_path));
+            error!(target: "image_loading", "{}", err);
+            return Err(err);
+        }
+        Ok(Self(asset_server.load(path.as_ref())))
     }
 }
 
@@ -56,8 +82,7 @@ pub struct ClonedSpawned(pub Vec<Entity>);
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 
-#[derive(Component, Debug, Clone, Deserialize, Serialize)]
-pub struct DimensionRef(pub Entity);
+
 
 #[derive(Component, Debug, Clone, Deserialize, Serialize)]
 pub struct OriginalEntity(pub Entity);
@@ -190,3 +215,5 @@ impl TimeBasedMultiplier {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct LocalCpu;
+
+

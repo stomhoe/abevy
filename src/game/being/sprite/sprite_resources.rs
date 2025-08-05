@@ -3,11 +3,13 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-use crate::{common::common_components::DisplayName, game::{being::sprite::sprite_components::*, game_components::ImgPathHolder}};
+use crate::{common::common_components::DisplayName, game::{being::sprite::sprite_components::*, game_components::ImagePathHolder}};
 
 
 #[derive(Resource, Debug, Default )]
+//pub struct SpriteDataIdEntityMap(pub HashIdToEntityMap);
 pub struct SpriteDataIdEntityMap(pub HashMap<String, Entity>);
+
 
 
 #[allow(unused_parens)]
@@ -40,7 +42,7 @@ impl SpriteDataIdEntityMap {
             //TODO METER TODO ACÁ
             
             let spritedata_id = SpriteDataId::new(seri.id.clone());
-            let path_holder = ImgPathHolder(img_path);
+            let path_holder = ImagePathHolder(img_path);
 
             let concatenated_cats = seri.categories.join(",");
 

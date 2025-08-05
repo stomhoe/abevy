@@ -9,7 +9,7 @@ pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 use superstate::{SuperstateInfo};
 
-use crate::game::{game_utils::WeightedMap, tilemap::{chunking_resources::CHUNK_SIZE, terrain_gen::terrgen_resources::WorldGenSettings, tile::{tile_components::{GlobalTilePos, TileWeightedSampler}, tile_constants::TILE_SIZE_PXS}}};
+use crate::game::{game_utils::WeightedMap, tilemap::{chunking_resources::CHUNK_SIZE, terrain_gen::terrgen_resources::WorldGenSettings, tile::{tile_components::{GlobalTilePos, TileWeightedSampler}, tile_utils::TILE_SIZE_PXS}}};
 
 #[derive(Component, Default)]
 #[require(SuperstateInfo<ChunkInitState>)]
@@ -33,7 +33,7 @@ pub struct LayersReady;
 pub struct InitializedChunk;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq)]
-pub struct ProducedTiles(Vec<Entity>);
+pub struct ProducedTiles(#[entities] Vec<Entity>);
 impl Default for ProducedTiles {
     fn default() -> Self {
         ProducedTiles(Vec::new())
@@ -52,6 +52,8 @@ impl ProducedTiles {
     pub fn produced_tiles(&self) -> &[Entity] { &self.0 }
     pub fn drain(&mut self) -> Vec<Entity> { std::mem::take(&mut self.0) }
 
+    pub fn push(&mut self, entity: Entity) {self.0.push(entity);}
+
     fn insert_tile_recursive(
         &mut self,
         tiling_ent: Entity,
@@ -63,6 +65,7 @@ impl ProducedTiles {
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
             if let Some(tiling_ent) = wmap.sample(gen_settings, global_pos) {
+                info!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
                 self.insert_tile_recursive(
                     tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings
                 );

@@ -3,7 +3,7 @@ use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::{common::common_components::MyZ, game::{game_components::ImageHolder, game_resources::ImageSizeMap, tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::{TileShaderRef, TileShader}, tile_constants::TILE_SIZE_PXS, },}}};
+use crate::{common::common_components::MyZ, game::{game_components::ImageHolder, game_resources::ImageSizeMap, tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::{TileShaderRef, TileShader}, tile_utils::TILE_SIZE_PXS, },}}};
 
 
 pub fn tmaptsize_to_uvec2(tile_size: TilemapTileSize) -> UVec2 {
@@ -27,7 +27,7 @@ type Map = HashMap<MapKey, LayerDto>;
 pub fn produce_tilemaps(
     mut cmd: Commands, 
     mut chunk_query: Query<(Entity, &mut ProducedTiles), (Without<Children>, Added<TilesReady>)>,
-    mut tile_comps: Query<(Entity, &TilePos, Option<&ImageHolder>, Option<&MyZ>, Option<&TileShaderRef>, Option<&mut Transform>)>,
+    mut tile_comps: Query<(Entity, &TilePos, Option<&ImageHolder>, Option<&MyZ>, Option<&TileShaderRef>, Option<&mut Transform>),(With<Disabled>)>,
     imgsize_map: Res<ImageSizeMap>, 
 ) -> Result {
     let mut layers: Map = HashMap::new();

@@ -1,0 +1,17 @@
+(
+    id: "land",
+    root: false,
+    operation_operands: {
+        "=": ["pd","1", "0"],
+        "": ["",],
+        "": ["",],
+    },
+   
+    bifurcation_over: "bush",
+    threshold: 0.5,
+    bifurcation_under: "",
+    tiles: [
+        "tempgrass",
+
+    ],
+)

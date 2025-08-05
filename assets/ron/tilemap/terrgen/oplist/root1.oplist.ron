@@ -1,0 +1,14 @@
+(
+    id: "root1",
+    root: true,
+    operation_operands: {
+        "+": ["continenter",],
+    },
+   
+    bifurcation_over: "land",
+    threshold: 0.5,
+    bifurcation_under: "",
+    tiles: [
+        
+    ],
+)

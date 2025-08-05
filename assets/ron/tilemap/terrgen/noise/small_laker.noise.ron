@@ -1,5 +1,5 @@
 (
-    id: "continent",
+    id: "small_laker",
     frequency: Some(0.01),
     noise_type: Some(0),
     fractal_type: Some(0),
