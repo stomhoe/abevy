@@ -3,7 +3,7 @@
 
 use bevy::{math::U8Vec2, prelude::*};
 
-use crate::{common::common_components::{DisplayName, EntityPrefix, HashId, StrId}, game::{game_resources::GlobalEntityMap, tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::{tile_components::{GlobalTilePos, TileWeightedSampler, }, tile_resources::TilingEntityMap}, }}};
+use crate::{common::common_components::{DisplayName, EntityPrefix, HashId, StrId}, game::{game_resources::GlobalEntityMap, tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::{tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, }, tile_resources::AnyTilingEntityMap}, }}};
 
 
 
@@ -48,7 +48,7 @@ pub fn produce_tiles(mut cmd: Commands,
     oplist_query: Query<(&OperationList, &ProducedTiles ), ( )>,
     operands: Query<(Option<&TgenNoise>, ), ( )>,
     mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos), (Without<OperationList> )>,
-    weight_maps: Query<(&TileWeightedSampler, ), ( )>,
+    weight_maps: Query<(&HashPosEntiWeightedSampler, ), ( )>,
 ) -> Result {
     for (enti, &input_operand, &oplist_ref, &chunk_ref, &global_tile_pos) in query.iter_mut() {
 

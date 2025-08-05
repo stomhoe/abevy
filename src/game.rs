@@ -12,10 +12,10 @@ use crate::{
         being::{
             being_components::Being,
             movement::MovementSystems,
-            race::race_resources::RaceSerisHandles,
+            race::{race_resources::RaceSerisHandles, RaceSystemsSet},
             sprite::{
                 animation_resources::AnimSerisHandles,
-                sprite_resources::{SpriteDataIdEntityMap, SpriteSerisHandles},
+                sprite_resources::{SpriteCfgEntityMap, SpriteSerisHandles}, SpriteSystemsSet,
             },
             BeingsPlugin,
         }, dimension::{dimension_resources::DimensionEntityMap, DimensionPlugin}, faction::FactionPlugin, game_components::FacingDirection, game_resources::*, game_systems::*, multiplayer::{ClientSystems, MpPlugin}, player::{PlayerInputSystems, PlayerPlugin}, setup_menus::SetupMenusPlugin, tilemap::{terrain_gen::terrgen_resources::{NoiseSerisHandles, OpListEntityMap, OpListSerisHandles, TerrGenEntityMap}, tile::tile_resources::*, ChunkSystems, MyTileMapPlugin}, time::ClockPlugin
@@ -105,6 +105,10 @@ impl Plugin for GamePlugin {
                 ClientSystems.run_if(not(server_or_singleplayer).or(in_state(GameSetupType::JoinerLobby))),//NO TOCAR
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
             ))
+            .configure_sets(OnEnter(ReplicatedAssetsLoadingState::Finished), (
+                SpriteSystemsSet.before(RaceSystemsSet),
+            ))
+
             .init_resource::<ImageSizeMap>().init_resource::<GlobalEntityMap>()
 
             .init_state::<LocalAssetsLoadingState>()
@@ -121,12 +125,12 @@ impl Plugin for GamePlugin {
                 .load_collection::<RaceSerisHandles>()
                 .load_collection::<ShaderRepeatTexSerisHandles>()
                 .load_collection::<TileSerisHandles>()
-                .finally_init_resource::<SpriteDataIdEntityMap>()
-                .finally_init_resource::<TilingEntityMap>()
+                .finally_init_resource::<SpriteCfgEntityMap>()
+                .finally_init_resource::<AnyTilingEntityMap>()
                 .finally_init_resource::<TileShaderEntityMap>()
             )
             .add_loading_state(
-                LoadingState::new(ReplicatedAssetsLoadingState::InProcess).continue_to_state(ReplicatedAssetsLoadingState::Complete)
+                LoadingState::new(ReplicatedAssetsLoadingState::InProcess).continue_to_state(ReplicatedAssetsLoadingState::Finished)
                 .load_collection::<NoiseSerisHandles>()
                 .load_collection::<OpListSerisHandles>()
                 //.load_collection::<DimensionSerisHandles>()
@@ -186,5 +190,5 @@ enum ReplicatedAssetsLoadingState {
     #[default]
     NotStarted,//HACER EL DEFAULT ESTE SI SE QUIERE HACER ALGO ANTES DE CARGAR LOS ASSETS
     InProcess,
-    Complete,
+    Finished,
 }

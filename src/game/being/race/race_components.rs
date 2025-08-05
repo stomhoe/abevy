@@ -3,17 +3,13 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::game::game_utils::{WeightedMap};
+use crate::{common::common_components::{EntityPrefix, FixedStr}, game::game_utils::WeightedMap};
 
 
 #[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
-#[require(Replicated)]
-pub struct RaceId(String);
-#[allow(unused_parens, dead_code)]
-impl RaceId {
-    pub fn new<S: Into<String>>(id: S) -> Self { Self (id.into()) }
-    pub fn id(&self) -> &String {&self.0}
-}
+#[require(Replicated, EntityPrefix::new("Race"))]
+pub struct Race;
+
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
@@ -25,16 +21,13 @@ pub struct SpritesPool(#[entities] pub Vec<Entity>);
 pub struct SelectableSprites(#[entities] pub Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct Demonym(pub String); 
-impl Demonym {pub fn new<S: Into<String>>(id: S) -> Self { Self (id.into()) }}
+pub struct Demonym(pub FixedStr<32>); //DEJARLO ASÍ PORQ NO DEBE SER SUPER LARGO ESTO
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct SingularDenomination(pub String); 
-impl SingularDenomination {pub fn new<S: Into<String>>(id: S) -> Self { Self (id.into()) }}
+pub struct SingularDenomination(pub FixedStr<32>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct PluralDenomination(pub String); 
-impl PluralDenomination {pub fn new<S: Into<String>>(id: S) -> Self { Self (id.into()) }}
+pub struct PluralDenomination(pub FixedStr<32>);
 
 #[derive(Component, Debug, Deserialize, Serialize, )]
 pub struct Sexes(pub WeightedMap<String>);//id, weight

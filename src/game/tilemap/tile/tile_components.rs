@@ -4,7 +4,7 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use crate::common::common_components::{EntityPrefix, MyZ};
-use crate::game::game_components::ImagePathHolder;
+use crate::game::game_components::{ImageHolder, ImagePathHolder};
 use crate::game::tilemap::terrain_gen::terrgen_resources::WorldGenSettings;
 use crate::game::tilemap::{chunking_components::ChunkPos, tile::tile_utils::* };
 use bevy_ecs_tilemap::tiles::*;
@@ -44,16 +44,14 @@ pub enum TileShader{
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, )]
-pub struct RepeatingTexture{ img: Handle<Image>, scale: u32, mask_color: U8Vec4, }
+pub struct RepeatingTexture{ img: ImageHolder, scale: u32, mask_color: U8Vec4, }
 impl RepeatingTexture {
     #[allow(dead_code, )]
-    pub fn new(asset_server: &AssetServer, path: ImagePathHolder, scale: u32, mask_color: U8Vec4) -> Self {
-        Self { img: asset_server.load(path), scale, mask_color }
+    pub fn new(img: ImageHolder, scale: u32, mask_color: U8Vec4) -> Self {
+        Self { img, scale, mask_color }
     }
-    pub fn new_w_red_mask<S: Into<String>>(asset_server: &AssetServer, path: S, scale: u32) -> Self {
-        Self { img: asset_server.load(path.into()), scale, mask_color: U8Vec4::new(255, 0, 0, 255) }
-    }
-    pub fn cloned_handle(&self) -> Handle<Image> { self.img.clone() }
+
+    pub fn cloned_handle(&self) -> Handle<Image> { self.img.0.clone() }
     #[allow(non_snake_case)]
     pub fn scale_div_1kM(&self) -> f32 { self.scale as f32 / 1_000_000_000.0 }
     pub fn mask_color(&self) -> Vec4 { self.mask_color.as_vec4()/255.0 }
@@ -110,9 +108,10 @@ impl From<Vec2> for GlobalTilePos {
 impl std::ops::Add for GlobalTilePos {type Output = Self; fn add(self, other: Self) -> Self {GlobalTilePos(self.0 + other.0)}}
 impl std::ops::Sub for GlobalTilePos {type Output = Self; fn sub(self, other: Self) -> Self {GlobalTilePos(self.0 - other.0)}}
 
+
 #[derive(Debug, Clone, Component, Default)]
-#[require(EntityPrefix::new("TileWeightedSampler"), Replicated)]
-pub struct TileWeightedSampler {
+#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated)]
+pub struct HashPosEntiWeightedSampler {
     #[entities]
     entities: Vec<Entity>,
     weights: Vec<f32>,
@@ -120,7 +119,7 @@ pub struct TileWeightedSampler {
     total_weight: f32,
 }
 
-impl TileWeightedSampler {
+impl HashPosEntiWeightedSampler {
     pub fn new(weights: &[(Entity, f32)]) -> Self {
         let mut cumulative_weights = Vec::with_capacity(weights.len());
         let mut acc = 0.0;
@@ -154,15 +153,13 @@ impl TileWeightedSampler {
     }
 }
 
-// Manual Serialize/Deserialize to skip cumulative_weights and total_weight
 
-impl Serialize for TileWeightedSampler {
+impl Serialize for HashPosEntiWeightedSampler {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         (&self.entities, &self.weights).serialize(serializer)
     }
 }
-
-impl<'de> Deserialize<'de> for TileWeightedSampler {
+impl<'de> Deserialize<'de> for HashPosEntiWeightedSampler {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let (entities, weights): (Vec<Entity>, Vec<f32>) = Deserialize::deserialize(deserializer)?;
         // Recompute cumulative_weights and total_weight
@@ -173,11 +170,86 @@ impl<'de> Deserialize<'de> for TileWeightedSampler {
             cumulative_weights.push(acc);
         }
         let total_weight = acc;
-        Ok(TileWeightedSampler {
+        Ok(HashPosEntiWeightedSampler {
             entities,
             weights,
             cumulative_weights,
             total_weight,
         })
     }
+
+    
 }
+
+
+#[derive(Debug, Clone, Component, Default)]
+#[require(EntityPrefix::new("HashPosWSampler"), Replicated)]
+pub struct HashPosWeightedSampler<T: Clone + Serialize> {
+    choices_and_weights: Vec<(T, f32)>,
+    cumulative_weights: Vec<f32>,
+    total_weight: f32,
+}
+
+impl<T: Clone + Serialize> HashPosWeightedSampler<T> {
+    pub fn new_from_map(weights_map: &HashMap<T, f32>) -> Self {
+        let mut choices_and_weights = Vec::with_capacity(weights_map.len());
+        for (choice, weight) in weights_map.iter() {
+            choices_and_weights.push((choice.clone(), *weight));
+        }
+        let mut cumulative_weights = Vec::with_capacity(choices_and_weights.len());
+        let mut acc = 0.0;
+        for &(_, w) in &choices_and_weights {
+            acc += w;
+            cumulative_weights.push(acc);
+        }
+        let total_weight = acc;
+        Self {
+            choices_and_weights,
+            cumulative_weights,
+            total_weight,
+        }
+    }
+
+    pub fn sample(&self, settings: &WorldGenSettings, pos: GlobalTilePos) -> Option<T> {
+        if self.choices_and_weights.is_empty() {
+            return None;
+        }
+        let hash_used_to_sample = pos.hash_for_weight_maps(settings);
+        let mut rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
+        if rng_val >= 1.0 { rng_val = 0.999_999; }
+        let target = rng_val * self.total_weight;
+
+        match self.cumulative_weights.binary_search_by(|w| w.partial_cmp(&target).unwrap()) {
+            Ok(idx) | Err(idx) => {
+                self.choices_and_weights.get(idx).map(|(choice, _)| choice.clone())
+            }
+        }
+    }
+}
+
+impl<T: Clone + Serialize + for<'de> Deserialize<'de>> Serialize for HashPosWeightedSampler<T> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (&self.choices_and_weights).serialize(serializer)
+    }
+}
+impl<'de, T> Deserialize<'de> for HashPosWeightedSampler<T>
+where
+    T: Clone + Serialize + Deserialize<'de>,
+{
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let choices_and_weights: Vec<(T, f32)> = Deserialize::deserialize(deserializer)?;
+        let mut cumulative_weights = Vec::with_capacity(choices_and_weights.len());
+        let mut acc = 0.0;
+        for &(_, w) in &choices_and_weights {
+            acc += w;
+            cumulative_weights.push(acc);
+        }
+        let total_weight = acc;
+        Ok(HashPosWeightedSampler {
+            choices_and_weights,
+            cumulative_weights,
+            total_weight,
+        })
+    }
+}
+

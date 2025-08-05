@@ -20,16 +20,16 @@ pub fn init_shaders(
     let mut result: Result = Ok(());
     for handle in repeat_tex_handles.handles.iter() {
         info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
-        if let Some(mut seri) = assets.remove(handle) {
+        if let Some(seri) = assets.remove(handle) {
 
-            let str_id = StrId::new_take(&mut seri.id)?;
+            let str_id = StrId::new(seri.id)?;
 
-            match ImagePathHolder::new(seri.img_path) {
-                Ok(img_path_holder) => {
+            match ImageHolder::new(&asset_server, seri.img_path) {
+                Ok(img_holder) => {
                     cmd.spawn((
                         str_id,
                         TileShader::TexRepeat(RepeatingTexture::new(
-                            &asset_server, img_path_holder, seri.scale, seri.mask_color.into()
+                            img_holder, seri.scale, seri.mask_color.into()
                         )),
                     ));
                 },
@@ -40,13 +40,14 @@ pub fn init_shaders(
             }
         }
     }
+    // FORS PARA OTROS TIPOS DE SHADERS...
     result
 }
 
 #[allow(unused_parens)]
 pub fn add_shaders_to_map(
-    mut terrgen_map: Option<ResMut<TileShaderEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<StrId>, With<TileShader>)>,
+    terrgen_map: Option<ResMut<TileShaderEntityMap>>,
+    query: Query<(Entity, &EntityPrefix, &StrId), (Added<TileShader>,)>,
 ) -> Result {
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = terrgen_map {
@@ -69,9 +70,9 @@ pub fn init_tiles(
     let mut result: Result = Ok(());
     for handle in seris_handles.handles.iter() {
         //info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
-        if let Some(mut seri) = assets.remove(handle) {
+        if let Some(seri) = assets.remove(handle) {
 
-            let str_id = StrId::new_take(&mut seri.id)?;
+            let str_id = StrId::new(seri.id)?;
             let my_z = MyZ::new(seri.z);
             let enti = cmd.spawn((
                 str_id.clone(),
@@ -125,8 +126,8 @@ pub fn init_tiles(
 } 
 
 pub fn add_tiles_to_map(
-    terrgen_map: Option<ResMut<TilingEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<StrId>, With<Tile>, With<Disabled>)>,
+    terrgen_map: Option<ResMut<AnyTilingEntityMap>>,
+    query: Query<(Entity, &EntityPrefix, &StrId), (Added<Tile>, With<Disabled>)>,
 ) -> Result {
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = terrgen_map {
@@ -147,14 +148,14 @@ pub fn init_tile_weighted_samplers(
     mut cmd: Commands, 
     seris_handles: Res<TileWeightedSamplerSerisHandles>,
     mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
-    map: Res<TilingEntityMap>,
+    map: Res<AnyTilingEntityMap>,
 ) -> Result {
     let mut result: Result = Ok(());
     for handle in seris_handles.handles.iter() {
         if let Some(mut seri) = assets.remove(&*handle) {
             info!(target: "tiling_loading", "Loading TileWeightedSamplerSeri from handle: {:?}", handle);
 
-            let str_id = StrId::new_take(&mut seri.id)?;
+            let str_id = StrId::new(seri.id)?;
 
             let mut weights: Vec<(Entity, f32)> = Vec::new();
 
@@ -180,18 +181,15 @@ pub fn init_tile_weighted_samplers(
                 result = Err(err);
                 continue;
             }
-            cmd.spawn((
-                str_id,
-                TileWeightedSampler::new(&weights),
-            ));
+            cmd.spawn((str_id, HashPosEntiWeightedSampler::new(&weights), ));
         }
     }
     result
 } 
-
+#[allow(unused_parens, )]
 pub fn add_tile_weighted_samplers_to_map(
-    terrgen_map: Option<ResMut<TilingEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<StrId>, With<TileWeightedSampler>)>,
+    terrgen_map: Option<ResMut<AnyTilingEntityMap>>,
+    query: Query<(Entity, &EntityPrefix, &StrId), (Added<HashPosEntiWeightedSampler>)>,
 ) -> Result {
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = terrgen_map {
@@ -209,14 +207,14 @@ pub fn add_tile_weighted_samplers_to_map(
 
 
 pub fn client_map_server_tiling(
-    trigger: Trigger<TilingEntityMap>,
+    trigger: Trigger<AnyTilingEntityMap>,
     server: Option<Res<RenetServer>>,
     mut entis_map: ResMut<ServerEntityMap>,
-    own_map: Res<TilingEntityMap>,
+    own_map: Res<AnyTilingEntityMap>,
 ) {
     if server.is_some() { return; }
 
-    let TilingEntityMap(received_map) = trigger.event().clone();
+    let AnyTilingEntityMap(received_map) = trigger.event().clone();
     for (hash_id, &server_entity) in received_map.0.iter() {
         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
             // Map the server entity to the local entity
@@ -227,19 +225,3 @@ pub fn client_map_server_tiling(
         }
     }
 }
-// pub fn server_map_client_tiles(
-//     trigger: Trigger<FromClient<TilingEntityMap>>,
-//     mut entis_map: ResMut<ServerEntityMap>,
-//     own_map: Res<TilingEntityMap>,
-// ) {
-
-//     let TilingEntityMap(received_map) = trigger.event.clone();
-//     for (hash_id, &client_entity) in received_map.0.iter() {
-//         if let Ok(server_entity) = own_map.0.get_with_hash(hash_id) {
-//             info!(target: "tiling_loading", "Mapping client entity {:?} to server entity {:?}", client_entity, server_entity);
-//             entis_map.insert(client_entity, server_entity);
-//         } else {
-//             error!(target: "tiling_loading", "Received entity {:?} with hash id {:?} not found in own map", client_entity, hash_id);
-//         }
-//     }
-// }

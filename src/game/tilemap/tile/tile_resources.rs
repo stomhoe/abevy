@@ -1,12 +1,9 @@
-use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections::HashMap};
+use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use bevy_ecs_tilemap::{map::TilemapTileSize, tiles::*};
 
-use crate::{common::{common_components::{DisplayName, MyZ}, common_utils::HashIdToEntityMap}, game::{game_components::ImageHolder, tilemap::tile::{
-    tile_components::*, 
-}}};
+use crate::common::common_utils::HashIdToEntityMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Default )]
@@ -14,18 +11,7 @@ pub struct TileShaderEntityMap(pub HashIdToEntityMap);
 
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event)]
-pub struct TilingEntityMap(pub HashIdToEntityMap);
-
-#[allow(unused_parens)]
-impl TilingEntityMap {
-
-    pub fn new_weighted_tilesampler_ent_from_seri(
-        &mut self, cmd: &mut Commands, handle: Handle<TileWeightedSamplerSeri>, assets: &mut Assets<TileWeightedSamplerSeri>,
-    ) {
-        
-    }
-
-}
+pub struct AnyTilingEntityMap(pub HashIdToEntityMap);
 
 #[derive(AssetCollection, Resource)] pub struct TileSerisHandles {
 #[asset(path = "ron/tilemap/tiling/tile" , collection(typed))] pub handles: Vec<Handle<TileSeri>>,
@@ -62,6 +48,7 @@ pub struct TileSeri {
     pub somecomp_present: Option<bool>,
 }
 
+//SE PUEDE USAR TMB PARA SAMPLEAR COLORES PARA TILES
 #[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct TileWeightedSamplerSeri {
     pub id: String,

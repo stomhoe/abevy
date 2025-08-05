@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use crate::game::tilemap::tile::{
-    tile_components::*, tile_resources::TilingEntityMap,
+    tile_components::*, tile_resources::AnyTilingEntityMap,
 };
 
 

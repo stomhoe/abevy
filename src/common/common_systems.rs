@@ -13,7 +13,7 @@ use crate::common::{
 #[allow(unused_parens)]
 pub fn set_entity_name(
     mut cmd: Commands,
-    mut query: Query<(Entity, &EntityPrefix, Option<&StrId>, Option<&DisplayName>), ()>,
+    mut query: Query<(Entity, &EntityPrefix, Option<&StrId>, Option<&DisplayName>), (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>)>, )>,
 ) {
     for (ent, prefix, str_id, disp_name) in query.iter_mut() {
         let new_name = format!("{} {} {:?}", prefix, str_id.cloned().unwrap_or_default(), disp_name.cloned().unwrap_or_default());

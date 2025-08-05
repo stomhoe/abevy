@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::common::common_components::{DisplayName, MyZ};
 use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, TargetSpawnPos, };
 use crate::game::being::modifier::modifier_components::ModifierCategories;
-use crate::game::being::sprite::sprite_components::SpriteDatasChildrenStringIds;
+use crate::game::being::sprite::sprite_components::SpriteConfigStringIds;
 use crate::game::faction::faction_components::{BelongsToFaction, Faction};
 use crate::game::faction::faction_resources::FactionEntityMap;
 use crate::game::tilemap::terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap};
@@ -55,7 +55,7 @@ pub fn spawn_player_beings(
             TargetSpawnPos::new(0.0, 0.0),
             Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),//PROVISORIO
             //HACER Q OTRO SYSTEMA AGREGUE CAMERATARGET AL BEING CONTROLADO
-            SpriteDatasChildrenStringIds::new(["humanhe0", "humanbo0"]),
+            SpriteConfigStringIds::new(["humanhe0", "humanbo0"]),
             belongs_to_fac.clone(),
         ));
 

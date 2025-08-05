@@ -40,7 +40,7 @@ pub struct PhysicallyImmune();
 pub struct MagicallyInvulnerable();
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct ImagePathHolder(pub String);
+pub struct ImagePathHolder(String);
 impl ImagePathHolder {
     pub fn new<S: AsRef<str>>(path: S) -> Result<Self, BevyError> {
         let img_path = format!("assets/{}", path.as_ref());
@@ -104,13 +104,10 @@ pub struct YSortOrigin (pub f32);
 #[allow(unused_parens, dead_code)]
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct Description(pub String);
-impl Description {
-    pub fn new<S: Into<String>>(id: S) -> Self {Self (id.into())}
-    pub fn id(&self) -> &String {&self.0}
-}
+
 #[allow(unused_parens, )]
-#[derive(Component, Debug, Deserialize, Serialize, )]
-pub enum FacingDirection { Down, Left, Right, Up, }
+#[derive(Component, Debug, Deserialize, Serialize, Default )]
+pub enum FacingDirection { #[default] Down, Left, Right, Up, }//PARA CAMBIAR ALEATORIAMENTE AL SPAWNEAR, HACER UN SISTEMA PARA BEINGS ADDED Q USE BEVY_RAND
 impl FacingDirection {
     pub fn as_suffix(&self) -> &str {
         match self {
@@ -128,15 +125,7 @@ impl std::fmt::Display for FacingDirection {
         write!(f, "{}", s)
     }
 }
-impl FacingDirection {
-    pub fn random() -> Self {
-        let mut rng = rand::rng();
-        match rng.random_range(0..4) {
-            0 => FacingDirection::Down, 1 => FacingDirection::Left, 2 => FacingDirection::Right, _ => FacingDirection::Up,
-        }
-    }
-}
-impl Default for FacingDirection {fn default() -> Self {FacingDirection::random()}}
+
 
 
 #[derive( Debug, Default, Deserialize, Serialize, Clone, )]

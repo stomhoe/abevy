@@ -30,7 +30,7 @@ impl Plugin for TerrainGenPlugin {
                 (add_noises_to_map, add_oplists_to_map, client_change_operand_entities,).run_if(not(server_or_singleplayer)),
             ))
         
-            .add_systems(OnEnter(ReplicatedAssetsLoadingState::Complete), (
+            .add_systems(OnEnter(ReplicatedAssetsLoadingState::Finished), (
                 init_noises.before(add_noises_to_map),   
                 add_noises_to_map.before(init_oplists_from_assets),
                 init_oplists_from_assets.before(add_oplists_to_map),

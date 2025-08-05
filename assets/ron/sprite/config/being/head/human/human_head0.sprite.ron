@@ -7,6 +7,7 @@
     shares_category: [],
     rows_cols: (1, 4),
     frame_size: (17, 16),
+    z: 10000000,
     offset: (0.0, 0.0, 0.0),
     directionable: true,
     walk_anim: false,

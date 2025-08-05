@@ -1,17 +1,63 @@
+use std::fmt::Display;
+
 use bevy::prelude::*;
 #[allow(unused_imports)] 
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct EntityPrefix(String);
+#[derive(Clone, PartialEq, Eq, Hash, )]
+pub struct FixedStr<const N: usize>([u8; N]);
+
+impl<const N: usize> FixedStr<N> {
+    pub fn new<S: AsRef<str>>(s: S) -> Self {
+        let bytes = s.as_ref().as_bytes();
+        let mut arr = [0u8; N];
+        let len = bytes.len().min(N);
+        arr[..len].copy_from_slice(&bytes[..len]);
+        Self(arr)
+    }
+    pub fn new_with_result<S: AsRef<str>>(s: S) -> Result<Self, BevyError> {
+        if s.as_ref().len() > N {
+            return Err(BevyError::from(format!(
+                "String too long for FixedStr<{}>: '{}'",
+                N, s.as_ref()
+            )));
+        }
+        Ok(Self::new(s))
+    }
+    pub fn is_empty(&self) -> bool { self.0.iter().all(|&b| b == 0) }
+    pub fn as_str(&self) -> &str {
+        let nul_pos = self.0.iter().position(|&b| b == 0).unwrap_or(N);
+        std::str::from_utf8(&self.0[..nul_pos]).unwrap_or("")
+    }
+}
+
+impl<const N: usize> Default for FixedStr<N> {fn default() -> Self { Self([0u8; N]) } }
+impl<const N: usize> std::fmt::Display for FixedStr<N> { #[inline(always)] fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { std::fmt::Display::fmt(self.as_str(), f) } }
+impl<const N: usize> std::fmt::Debug for FixedStr<N> { #[inline(always)] fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "{}", self.as_str()) } }
+impl<const N: usize> serde::Serialize for FixedStr<N> { fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer, { serializer.serialize_str(self.as_str()) } }
+impl<'de, const N: usize> serde::Deserialize<'de> for FixedStr<N> { fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de>, { let s = <&str>::deserialize(deserializer)?; Ok(FixedStr::new(s)) } }
+impl<const N: usize> From<&str> for FixedStr<N> { fn from(s: &str) -> Self { FixedStr::new(s) } }
+impl<const N: usize> From<String> for FixedStr<N> { fn from(s: String) -> Self { FixedStr::new(s) } }
+impl<const N: usize> AsRef<str> for FixedStr<N> { fn as_ref(&self) -> &str { self.as_str() } }
+
+#[derive(Component, Default, Deserialize, Serialize, Clone, )]
+pub struct EntityPrefix(pub FixedStr<20>);
+
 impl EntityPrefix {
-    pub fn new<S: Into<String>>(id: S) -> Self { Self (id.into()) }
+    pub fn new<S: AsRef<str>>(id: S) -> Self { Self(FixedStr::new(id)) }
+    pub fn as_str(&self) -> &str { self.0.as_str() }
+}
+impl core::fmt::Debug for EntityPrefix {
+    #[inline(always)]
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "EntityPrefix({})", self.as_str())
+    }
 }
 impl core::fmt::Display for EntityPrefix {
     #[inline(always)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        core::fmt::Display::fmt(&self.0, f)
+        core::fmt::Display::fmt(self.as_str(), f)
     }
 }
 
@@ -27,7 +73,12 @@ impl MyZ {
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, )]
 pub struct DisplayName(pub String);
-impl DisplayName {pub fn new(name: impl Into<String>) -> Self {DisplayName(name.into())}}
+
+impl DisplayName {
+    pub fn new(name: impl Into<String>) -> Self {
+        DisplayName(name.into())
+    }
+}
 
 impl core::fmt::Display for DisplayName {
     #[inline(always)]
@@ -48,27 +99,18 @@ impl core::fmt::Debug for DisplayName {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq )]
 //#[require(Replicated, /*StateScoped::<AppState>, */ )]
-pub struct StrId(String);
+pub struct StrId(FixedStr<32>);
 impl StrId {
-    pub fn new<S: Into<String>>(id: S) -> Result<Self, &'static str> {
+    pub fn new<S: Into<String>>(id: S) -> Result<Self, BevyError> {
         let s = id.into();
         if s.len() >= 3 {
-            Ok(Self(s))
+            FixedStr::new_with_result(s).map(Self)
         } else {
-            Err("StrId must be at least 3 characters long")
+            Err(BevyError::from(format!("StrId {} must be at least 3 characters long", s)))
         }
     }
-    pub fn new_take(id: &mut String) -> Result<Self, &'static str> {
-        let s: String = std::mem::take(id);
-        if s.len() >= 3 {
-            Ok(Self(s))
-        } else {
-            Err("StrId must be at least 3 characters long")
-        }
-    }
-    pub fn as_str(&self) -> &String {&self.0}
-    pub fn len(&self) -> usize {self.0.len()}
-    pub fn is_empty(&self) -> bool {self.0.is_empty()}
+    pub fn as_str(&self) -> &str { &self.0.as_str() }
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
 }
 impl std::fmt::Display for StrId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -79,12 +121,8 @@ impl std::fmt::Display for StrId {
         }
     }
 }
-impl From<StrId> for String {
-    fn from(str_id: StrId) -> Self {
-        str_id.0
-    }
-}
-impl AsRef<str> for StrId {fn as_ref(&self) -> &str {&self.0 }}
+
+impl AsRef<str> for StrId {fn as_ref(&self) -> &str {&self.0.as_str() }}
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy )]
 //#[require(Replicated, /*StateScoped::<AppState>, */ )]

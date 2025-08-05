@@ -7,7 +7,7 @@ use bevy::{math::U8Vec2, prelude::*};
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use fastnoise_lite::FastNoiseLite;
 
-use crate::{common::common_components::{DisplayName, EntityPrefix, StrId}, game::tilemap::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::tile_resources::TilingEntityMap, }};
+use crate::{common::common_components::{DisplayName, EntityPrefix, StrId}, game::tilemap::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::tile_resources::AnyTilingEntityMap, }};
 
 
 #[allow(unused_parens)]
@@ -19,7 +19,15 @@ pub fn init_noises(
     for handle in seris_handles.handles.iter() {
         if let Some(seri) = assets.remove(handle) {
 
-            let str_id = StrId::new(seri.id.clone())?;
+            let str_id = match StrId::new(seri.id.clone()) {
+                Ok(id) => id,
+                Err(e) => {
+                    let err = BevyError::from(format!("Failed to create StrId for noise {}: {}", seri.id, e));
+                    error!(target: "noise_loading", "{}", err);
+                    result = Err(err);
+                    continue;
+                }
+            };
   
             let mut noise = FastNoiseLite::new();
             noise.set_frequency(seri.frequency);
@@ -142,7 +150,7 @@ pub fn init_oplists_from_assets(
     mut cmd: Commands, seris_handles: Res<OpListSerisHandles>,
     assets: Res<Assets<OpListSerialization>>, 
     terr_gen_map: Res<TerrGenEntityMap>, 
-    tiling_map: Res<TilingEntityMap>,
+    tiling_map: Res<AnyTilingEntityMap>,
 ) -> Result {
     let mut result: Result = Ok(());
     for handle in seris_handles.handles.iter() {

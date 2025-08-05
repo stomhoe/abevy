@@ -3,27 +3,49 @@ use bevy::math::{Vec2, Vec3, U16Vec2, UVec2};
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+use bevy_spritesheet_animation::prelude::Spritesheet;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-use crate::common::common_components::DisplayName;
+use crate::common::common_components::{DisplayName, EntityPrefix, FixedStr};
 use crate::game::{being::sprite::{animation_constants::*, }, game_components::*};
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[require(EntityPrefix::new("SpriteConfig"))]
+pub struct SpriteConfig;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct AnimationIdPrefix(pub String);
-impl AnimationIdPrefix {
-    pub fn new<S: Into<String>>(prefix: S) -> Self {
-        Self(prefix.into())
-    }
-    pub fn prefix(&self) -> &str {
-        &self.0
+pub struct AnimationIdPrefix(pub FixedStr<32>);
+
+
+impl From<&str> for AnimationIdPrefix {
+    fn from(s: &str) -> Self {
+        AnimationIdPrefix(FixedStr::from(s))
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
-pub struct SpriteHolderRef(#[entities] pub Entity);
+impl From<String> for AnimationIdPrefix {
+    fn from(s: String) -> Self {
+        AnimationIdPrefix(FixedStr::from(s))
+    }
+}
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+#[relationship(relationship_target = HeldSprites)]
+pub struct SpriteHolderRef {
+    #[relationship] #[entities]
+    pub base: Entity,
+}
+#[derive(Component)]
+#[relationship_target(relationship = SpriteHolderRef)]
+pub struct HeldSprites(Vec<Entity>);
+impl HeldSprites {
+    pub fn entities(&self) -> &Vec<Entity> { &self.0 }
+}
+
+
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize,)]
@@ -72,98 +94,116 @@ pub struct Directionable;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct AtlasLayoutData{pub spritesheet_size: UVec2, pub frame_size: UVec2,}
+pub struct AtlasLayoutData {
+    pub spritesheet_size: UVec2,
+    pub frame_size: UVec2,
+}
+
 impl AtlasLayoutData {
     pub fn new(spritesheet_size: [u32; 2], frame_size: [u32; 2]) -> Self {
         Self { spritesheet_size: spritesheet_size.into(), frame_size: frame_size.into(), }
+    }
+}
+// Implement conversion into TextureAtlas
+impl AtlasLayoutData {
+    pub fn into_texture_atlas(
+        self,
+        atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    ) -> TextureAtlas {
+        let spritesheet_size = self.spritesheet_size;
+        let frame_size = self.frame_size;
+        TextureAtlas {
+            layout: atlas_layouts.add(
+                Spritesheet::new(
+                    spritesheet_size.y as usize,
+                    spritesheet_size.x as usize,
+                )
+                .atlas_layout(frame_size.x, frame_size.y)
+            ),
+            ..Default::default()
+        }
     }
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct ColorHolder(pub Color);//NO HACER PARTE DE SpriteDataBundle
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct SpriteDataId(String);
-impl SpriteDataId {
-    pub fn new<S: Into<String>>(id: S) -> Self {
-        Self(id.into())
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
+pub struct Scale2D(Vec2);
+impl Scale2D {
+    pub fn new(scale: Vec2) -> Self {
+        let mut fixed = scale; let mut warned = false;
+        if fixed.x <= 0.0 { fixed.x = 1.0; warned = true; }
+        if fixed.y <= 0.0 { fixed.y = 1.0; warned = true; }
+        if warned {
+            warn!("Non-positive scale component detected in Scale2D::new({:?}), set to 1.0", scale);
+        }
+        Self(fixed)
     }
-    pub fn id(&self) -> &str { &self.0 }
+    pub fn set(&mut self, scale: Vec2) { *self = Scale2D::new(scale); }
+    pub fn as_vec2(&self) -> Vec2 { self.0 }
 }
-impl Into<String> for SpriteDataId {
-    fn into(self) -> String {self.0}
-}
-impl std::fmt::Display for SpriteDataId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-#[derive(Component, Debug, Deserialize, Serialize, Clone)]
-pub struct Scale(pub Vec2);
-impl Default for Scale {fn default() -> Self {Self(Vec2::ONE)}}
+impl From<Vec2> for Scale2D { fn from(v: Vec2) -> Self { Scale2D::new(v) } }
+impl From<[f32; 2]> for Scale2D { fn from(v: [f32; 2]) -> Self { Scale2D::new(Vec2::from(v)) } }
+impl std::ops::Mul for Scale2D {type Output = Self; fn mul(self, rhs: Self) -> Self { Scale2D(self.0 * rhs.0) } }
+impl std::ops::MulAssign for Scale2D {fn mul_assign(&mut self, rhs: Scale2D) { self.0 *= rhs.0; } }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone)]
-pub struct ScaleLookUpDown(pub Vec2);
-impl Default for ScaleLookUpDown {fn default() -> Self {Self(Vec2::ONE)}}
+impl Default for Scale2D {fn default() -> Self {Self(Vec2::ONE)}}
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone)]
-pub struct ScaleLookSideWays(pub Vec2);
-impl Default for ScaleLookSideWays {fn default() -> Self {Self(Vec2::ONE)}}
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Default)] 
+pub struct ScaleLookUp(pub Scale2D);
+impl From<Vec2> for ScaleLookUp { fn from(v: Vec2) -> Self { Self(Scale2D::new(v)) } }
+impl From<[f32; 2]> for ScaleLookUp { fn from(v: [f32; 2]) -> Self { Self(Scale2D::from(v)) } }
 
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Default)] 
+pub struct ScaleLookDown(pub Scale2D);
+impl From<Vec2> for ScaleLookDown { fn from(v: Vec2) -> Self { Self(Scale2D::new(v)) } }
+impl From<[f32; 2]> for ScaleLookDown { fn from(v: [f32; 2]) -> Self { Self(Scale2D::from(v)) } }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct OtherCompsToBuild{
-    //pub exclusive: Option<Exclusive>,
-    pub display_name: Option<DisplayName>,
-    pub anim_prefix: Option<AnimationIdPrefix>,
-    pub directionable: Option<Directionable>,
-    pub walk_anim: Option<WalkAnim>,
-    pub swim_anim: Option<SwimAnim>,
-    pub fly_anim: Option<FlyAnim>,
-    pub offset_children: Option<OffsetForChildren>,
-    pub to_become_child_of_category: Option<ToBecomeChildOfCategory>,
-    pub offset: Option<Offset>,
-    pub offset_looking_down: Option<OffsetLookDown>,
-    pub offset_looking_up: Option<OffsetLookUp>,
-    pub offset_looking_left: Option<OffsetLookLeft>,
-    pub offset_looking_right: Option<OffsetLookRight>,
-    pub offset_looking_sideways: Option<OffsetLookSideways>,
-    pub offset_looking_up_down: Option<OffsetLookUpDown>,
-    pub scale: Option<Scale>,
-    pub scale_looking_up_down: Option<ScaleLookUpDown>,
-    pub scale_looking_sideways: Option<ScaleLookSideWays>,
-    pub flip_horiz_if_dir: Option<FlipHorizIfDir>,
-    pub color: Option<ColorHolder>,
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Default)] 
+pub struct ScaleLookUpDown(pub Scale2D);
+impl From<Vec2> for ScaleLookUpDown { fn from(v: Vec2) -> Self { Self(Scale2D::new(v)) } }
+impl From<[f32; 2]> for ScaleLookUpDown { fn from(v: [f32; 2]) -> Self { Self(Scale2D::from(v)) } }
 
-}
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Default)] 
+pub struct ScaleSideways(pub Scale2D);
+impl From<Vec2> for ScaleSideways { fn from(v: Vec2) -> Self { Self(Scale2D::new(v)) } }
+impl From<[f32; 2]> for ScaleSideways { fn from(v: [f32; 2]) -> Self { Self(Scale2D::from(v)) } }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct Offset(pub Vec3);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct Offset2D(pub Vec2);
+impl From<Vec2> for Offset2D { fn from(v: Vec2) -> Self { Offset2D(v) } }
+impl From<[f32; 2]> for Offset2D { fn from(v: [f32; 2]) -> Self { Offset2D(Vec2::from(v)) } }
+impl std::ops::Add for Offset2D { type Output = Self; fn add(self, rhs: Self) -> Self { Offset2D(self.0 + rhs.0) } }
+impl std::ops::AddAssign for Offset2D { fn add_assign(&mut self, rhs: Self) { self.0 += rhs.0; } }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct OffsetLookUpDown(pub Vec2);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct OffsetUpDown(pub Offset2D);
+impl From<Vec2> for OffsetUpDown { fn from(v: Vec2) -> Self { OffsetUpDown(Offset2D::from(v)) } }
+impl From<[f32; 2]> for OffsetUpDown { fn from(v: [f32; 2]) -> Self { OffsetUpDown(Offset2D::from(v)) } }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct OffsetLookDown(pub Vec2);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct OffsetDown(pub Offset2D);
+impl From<Vec2> for OffsetDown { fn from(v: Vec2) -> Self { OffsetDown(Offset2D::from(v)) } }
+impl From<[f32; 2]> for OffsetDown { fn from(v: [f32; 2]) -> Self { OffsetDown(Offset2D::from(v)) } }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct OffsetUp(pub Offset2D);
+impl From<Vec2> for OffsetUp { fn from(v: Vec2) -> Self { OffsetUp(Offset2D::from(v)) } }
+impl From<[f32; 2]> for OffsetUp { fn from(v: [f32; 2]) -> Self { OffsetUp(Offset2D::from(v)) } }
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct OffsetLookUp(pub Vec2);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct OffsetSideways(pub Offset2D);
+impl From<Vec2> for OffsetSideways { fn from(v: Vec2) -> Self { OffsetSideways(Offset2D::from(v)) } }
+impl From<[f32; 2]> for OffsetSideways { fn from(v: [f32; 2]) -> Self { OffsetSideways(Offset2D::from(v)) } }
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct OffsetLookSideways(pub Vec2);
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct OffsetLookRight(pub Vec2);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct OffsetLookLeft(pub Vec2);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct OffsetForChildren(pub HashMap<Category, Vec2>);
+pub struct OffsetForChildren(pub HashMap<Category, Offset2D>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Category(u64);
@@ -176,25 +216,21 @@ impl Category {
         Self(hasher.finish())
     }
 }
-impl std::fmt::Display for Category {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Category({})", self.0)
-    }
-}
+impl std::fmt::Display for Category {fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {write!(f, "Category({})", self.0)}}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct Categories(pub Vec<Category>);
+pub struct Categories(pub HashSet<Category>);
 
 impl Categories {
     pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
-        let mut vec = Vec::new();
+        let mut set = HashSet::new();
         for id in ids {
             let id_str = id.into();
             let mut hasher = DefaultHasher::new();
             id_str.hash(&mut hasher);
-            vec.push(Category(hasher.finish()));
+            set.insert(Category(hasher.finish()));
         }
-        Self(vec)
+        Self(set)
     }
 }
 
@@ -202,8 +238,8 @@ impl Categories {
 pub struct Exclusive;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct ToBecomeChildOfCategory (pub Category);
-impl ToBecomeChildOfCategory {
+pub struct BecomeChildOfSpriteWithCategory (pub Category);
+impl BecomeChildOfSpriteWithCategory {
     pub fn new<S: Into<String>>(id: S) -> Self {
         Self(Category::new(id))
     }
@@ -216,8 +252,8 @@ impl ToBecomeChildOfCategory {
 // NO USAR ESTOS DOS PARA BEINGS
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(Replicated)]
-pub struct SpriteDatasChildrenStringIds(pub Vec<String>);
-impl SpriteDatasChildrenStringIds {
+pub struct SpriteConfigStringIds(pub Vec<String>);
+impl SpriteConfigStringIds {
     pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
         Self(ids.into_iter().map(|s| s.into()).collect())
     }
@@ -227,50 +263,12 @@ impl SpriteDatasChildrenStringIds {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone )]
-pub struct SpriteDatasChildrenRefs(#[entities] pub HashSet<Entity>);
+pub struct SpriteCfgsToBuild(#[entities] pub HashSet<Entity>);
 
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
-pub struct SpriteDataSeri {
-    pub id: String,
-    pub name: String,
-    pub img_path: String,
-    pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
-    pub categories: Vec<String>,
-    pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
-    pub shares_category: Vec<bool>,//asignar un componente
-    pub rows_cols: [u32; 2], 
-    pub frame_size: [u32; 2],
-    pub offset: [f32; 3],
-    pub directionable: bool,
-    pub walk_anim: bool,
-    pub swim_anim: bool,
-    pub swim_anim_still: bool,
-    pub fly_anim: bool,
-    pub fly_anim_still: bool,
-    pub flip_horiz: u8, //0: none, 1: any, 2: if looking left, 3: if looking right
-    pub anim_prefix: String,
-    pub visibility: u8, //0: inherited, 1: visible, 2: invisible
-    pub offset4children: HashMap<String, [f32; 2]>,//category, offset
-    pub offset_down: Option<[f32; 2]>,
-    pub offset_up: Option<[f32; 2]>,
-    pub offset_sideways: Option<[f32; 2]>,
-    pub offset_up_down: Option<[f32; 2]>,
-    pub scale: Option<[f32; 2]>,
-    pub scale_up_down: Option<[f32; 2]>,
-    pub scale_sideways: Option<[f32; 2]>,
-    pub color: Option<[u8; 4]>, 
-    pub exclude_from_sys: Option<bool>,
-}
-// PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone )]
+pub struct SpriteCfgsBuiltSoFar(#[entities] pub HashSet<Entity>);
 
-// TODO: hacer shaders aplicables? (para meditacion por ej)
-// TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld. hacer un mapa color-algo 
 
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
-pub struct AnimationSeri {
-    pub id: String,
-    pub sheet_rows_cols: [u32; 2], //rows, cols
-    pub target: u32,
-    pub is_row: bool, //true: target is a row , false: target is a column
-    pub partial: Option<[u32; 2]>, //start, end inclusive (0-indexed)
-}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy )]
+pub struct SpriteConfigRef(#[entities] pub Entity);

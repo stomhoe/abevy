@@ -54,7 +54,7 @@ pub fn change_anim_state_string(
     parents_query: Query<(Option<&VoluntarilyMoving>, &Altitude), >,
 ) {
     for (sprite_holder, mut anim_state, has_walk_anim, has_swim_anim, has_fly_anim, /*has_anim_id_prefix*/) in sprite_query.iter_mut() {
-        if let Ok((moving, curr_parent_altitude)) = parents_query.get(sprite_holder.0) {
+        if let Ok((moving, curr_parent_altitude)) = parents_query.get(sprite_holder.base) {
             match (moving, curr_parent_altitude, has_walk_anim, has_swim_anim, has_fly_anim) {
                 (_any_move, _any_alti, None, None, None) => {
                     anim_state.set_idle();
@@ -126,7 +126,7 @@ pub fn animate_sprite(
     library: Res<AnimationLibrary>,
 ) {
     for (ent, sheet_anim, prefix, anim_state, directionable, spriteholder_ref) in query.iter_mut() {
-        if let Ok(direction) = parents.get(spriteholder_ref.0) {
+        if let Ok(direction) = parents.get(spriteholder_ref.base) {
             
             let prefix = prefix.as_ref().map_or("", |p| p.0.as_str());
             let anim_state = anim_state.as_ref().map_or("", |s| s.0.as_str());

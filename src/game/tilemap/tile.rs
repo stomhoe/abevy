@@ -3,7 +3,7 @@ use bevy_replicon::prelude::*;
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::{tilemap::tile::tile_components::TileWeightedSampler, LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
+use crate::game::{tilemap::tile::tile_components::HashPosEntiWeightedSampler, LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
 use crate::game::tilemap::tile::{
     tile_systems::*,
     tiling_init_systems::*,
@@ -43,7 +43,7 @@ impl Plugin for TilePlugin {
                 init_tiles.before(add_tiles_to_map),
                 add_tiles_to_map
             ).in_set(TilingInitSystems::Local))
-            .add_systems(OnEnter(ReplicatedAssetsLoadingState::Complete), (
+            .add_systems(OnEnter(ReplicatedAssetsLoadingState::Finished), (
                 (init_tile_weighted_samplers.before(add_tile_weighted_samplers_to_map),
                 add_tile_weighted_samplers_to_map).run_if(server_or_singleplayer),
             ).in_set(TilingInitSystems::Replicated))
@@ -53,13 +53,12 @@ impl Plugin for TilePlugin {
                 RonAssetPlugin::<TileSeri>::new(&["tile.ron"]),
                 RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
             ))
-            //.add_client_trigger::<TilingEntityMap>(Channel::Ordered)
-            .add_server_trigger::<TilingEntityMap>(Channel::Ordered)
+            .add_server_trigger::<AnyTilingEntityMap>(Channel::Unordered)
             
-            .make_trigger_independent::<TilingEntityMap>()
+            .make_trigger_independent::<AnyTilingEntityMap>()
             .add_observer(client_map_server_tiling)
             
-            .replicate::<TileWeightedSampler>()
+            .replicate::<HashPosEntiWeightedSampler>()
         ;
     }
 }

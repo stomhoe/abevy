@@ -9,7 +9,7 @@ pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 use superstate::{SuperstateInfo};
 
-use crate::game::{game_utils::WeightedMap, tilemap::{chunking_resources::CHUNK_SIZE, terrain_gen::terrgen_resources::WorldGenSettings, tile::{tile_components::{GlobalTilePos, TileWeightedSampler}, tile_utils::TILE_SIZE_PXS}}};
+use crate::game::{game_utils::WeightedMap, tilemap::{chunking_resources::CHUNK_SIZE, terrain_gen::terrgen_resources::WorldGenSettings, tile::{tile_components::{GlobalTilePos, HashPosEntiWeightedSampler}, tile_utils::TILE_SIZE_PXS}}};
 
 #[derive(Component, Default)]
 #[require(SuperstateInfo<ChunkInitState>)]
@@ -60,7 +60,7 @@ impl ProducedTiles {
         cmd: &mut Commands,
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
-        weight_maps: &Query<(&TileWeightedSampler,), ()>,
+        weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
         gen_settings: &WorldGenSettings,
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
@@ -82,7 +82,7 @@ impl ProducedTiles {
         cmd: &mut Commands,
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
-        weight_maps: &Query<(&TileWeightedSampler,), ()>,
+        weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
         gen_settings: &WorldGenSettings,
     ) {
         for tile in to_insert.0.iter().cloned() {

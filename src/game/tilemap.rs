@@ -50,7 +50,7 @@ impl Plugin for MyTileMapPlugin {
                 )
             )
             .configure_sets(
-                OnEnter(ReplicatedAssetsLoadingState::Complete), (
+                OnEnter(ReplicatedAssetsLoadingState::Finished), (
                     TilingInitSystems::Replicated.before(TerrainGenInitSystems),
                 )
             )
