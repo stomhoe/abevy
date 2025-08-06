@@ -4,7 +4,7 @@ use bevy_inspector_egui::inspector_options::Target;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::RenetServer;
-use crate::game::{being::{being_components::{Being, ControlledBy, ControlledLocally, CpuControlled }, modifier::modifier_components::*, movement::{movement_components::*, movement_events::*}}, game_components::FacingDirection, player::{player_components::{Controls, HostPlayer}, player_resources::KeyboardInputMappings}};
+use crate::game::{being::{being_components::{Being, ControlledBy, ControlledLocally, CpuControlled }, modifier::modifier_components::*, movement::{movement_components::*, movement_events::*}}, game_components::FacingDirection, player::{player_components::{Controls, HostPlayer, OfSelf, Player}, player_resources::KeyboardInputMappings}};
 
 #[allow(unused_parens, )]
 pub fn human_move_input(
@@ -79,7 +79,7 @@ pub fn receive_move_input_from_client(
     trigger: Trigger<FromClient<SendMoveInput>>,
     mut cmd: Commands,
     ents_controlled_by_client: Query<(&Controls, ), ( )>,
-    mut controlled_beings_query: Query<(&mut InputMoveVector, &ControlledBy, Option<&CpuControlled>), ()>,
+    mut controlled_beings_query: Query<(&mut InputMoveVector, &ControlledBy, Has<CpuControlled>), ()>,
 
 ) -> Result {
     let SendMoveInput { vec: new_vec, being_ent } = trigger.event.clone();
@@ -99,7 +99,7 @@ pub fn receive_move_input_from_client(
     } else {
         for controlled_ent in ents_controlled_by_client.0.iter() {
             if let Ok((mut inp_mov_vec, _, cpu_controlled)) = controlled_beings_query.get_mut(controlled_ent) {
-                if cpu_controlled.is_none() {
+                if ! cpu_controlled {
                     inp_mov_vec.0 = new_vec.0;
                 }
             } 
@@ -146,7 +146,8 @@ pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE D
     mut query: Query<&mut Transform>,
     mut map: ResMut<ServerEntityMap>,
     server: Option<Res<RenetServer>>,
-
+    selfplayer: Single<(Entity), (With<OfSelf>, With<Player>)>,
+    controlled_by: Query<&ControlledBy>,
 ) -> Result {
     let TransformFromServer { being: entity, trans: transform, interpolate } = trigger.event().clone();
 
@@ -157,10 +158,12 @@ pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE D
     if let Some(entity) = map.server_entry(entity).get() {
         if let Ok(mut transf) = query.get_mut(entity) {
             //info!("Applying transform to entity: {:?}", entity);
-            if interpolate {
-                transf.translation = transf.translation.lerp(transform.translation, 0.5);//TODO HACER Q CADA CIERTO TIEMPO SE FUERZE LA POSICIÓN REAL SIN INTERPOLACIÓN
-            } else {
-                *transf = transform;
+            if let Ok(controller) = controlled_by.get(entity) {
+                if controller.player == selfplayer.into_inner() && interpolate {
+                    transf.translation = transf.translation.lerp(transform.translation, 0.5);
+                } else {
+                    *transf = transform;
+                }
             }
         } else {
             warn!("Received transform for entity that does not exist: {:?}", entity);

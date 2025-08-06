@@ -17,3 +17,8 @@ impl TransformFromServer {
         TransformFromServer { being, trans, interpolate }
     }
 }
+
+
+
+// #[derive(serde::Deserialize, Event, serde::Serialize, Clone)]
+// pub struct AnimStateFromServer { pub being: Entity, pub trans: Transform, pub interpolate: bool }

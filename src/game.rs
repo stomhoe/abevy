@@ -97,8 +97,6 @@ impl Plugin for GamePlugin {
                 ClientSystems.run_if(not(server_or_singleplayer).or(in_state(GameSetupType::JoinerLobby))),
 
                 ChunkSystems.in_set(ActiveGameSystems).in_set(SimRunningSystems)
-
-
             ))
             
             .configure_sets(FixedUpdate, (

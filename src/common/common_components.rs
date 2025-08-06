@@ -89,11 +89,7 @@ impl core::fmt::Display for DisplayName {
 impl core::fmt::Debug for DisplayName {
     #[inline(always)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        if self.0.is_empty() {
-            write!(f, "")
-        } else {
-            write!(f, "dname:'{}'", self.0)
-        }
+        if self.0.is_empty() {write!(f, "")} else {write!(f, "DN({})", self.0)}
     }
 }
 

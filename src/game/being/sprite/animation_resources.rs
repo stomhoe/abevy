@@ -25,3 +25,13 @@ pub struct AnimationSeri {
     pub is_row: bool, //true: target is a row , false: target is a column
     pub partial: Option<[u32; 2]>, //start, end inclusive (0-indexed)
 }
+
+
+#[derive(serde::Deserialize, Event, serde::Serialize, Clone)]
+pub struct AnimStateUpdated {
+    pub sprite_ent: Entity,
+    pub anim_state: AnimationState, 
+ }
+
+// No olvidarse de agregarlo al Plugin del módulo
+// .add_client_trigger::<AnimStateUpdated>(Channel::Ordered)

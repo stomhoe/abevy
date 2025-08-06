@@ -4,7 +4,7 @@ use std::{mem, };
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
 
-use crate::{common::common_components::EntityPrefix, game::{faction::faction_components::{BelongsToFaction, BelongsToSelfPlayerFaction, Faction}, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::{OfSelf, Player}, tilemap::tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::AnyTilingEntityMap} }};
+use crate::{common::common_components::EntityPrefix, game::{being::sprite::sprite_resources::SpriteCfgEntityMap, faction::faction_components::{BelongsToFaction, BelongsToSelfPlayerFaction, Faction}, multiplayer::{multiplayer_components::MpAuthority, multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_components::{OfSelf, Player}, tilemap::tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::AnyTilingEntityMap} }};
 
 
 pub fn attempt_host(
@@ -28,6 +28,7 @@ pub fn host_receive_client_name(mut trigger: Trigger<FromClient<SendPlayerName>>
 pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>, 
     mut cmd: Commands, host_faction: Single<(Entity ), (With<Faction>, With<OfSelf>)>,
     own_tiling_map: Res<AnyTilingEntityMap>,
+    own_sprite_cfg_map: Res<SpriteCfgEntityMap>,
     samplers: Query <(Entity,), (With<HashPosEntiWeightedSampler>)>,
 ) -> Result {
     let client_entity = trigger.target();
@@ -42,11 +43,12 @@ pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>,
         }
     }
 
-    let sync_tiles = ToClients { 
-        mode: SendMode::Direct(client_entity), 
-        event: filtered_map,
-    };
+    let sync_tiles = ToClients { mode: SendMode::Direct(client_entity), event: filtered_map, };
     cmd.server_trigger(sync_tiles);
+
+    let sync_sprite_cfgs = ToClients { mode: SendMode::Direct(client_entity), event: own_sprite_cfg_map.clone(),};
+
+    cmd.server_trigger(sync_sprite_cfgs);
         // TA BIEN, TODOS LOS JOINERS POR DEFECTO SON DE LA FACTION DEL HOST, SI NO ES ASÍ, AL CARGAR LA SAVEGAME SE CAMBIA?
     Ok(())
 }

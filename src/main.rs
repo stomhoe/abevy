@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_simple_subsecond_system::SimpleSubsecondPlugin;
 // use bevy_renet::netcode::{NetcodeClientPlugin, NetcodeServerPlugin};
 // use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 
@@ -25,6 +26,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins.set(ImagePlugin::default_nearest()),
             MpPlugin,
+            SimpleSubsecondPlugin::default(),
             CommonPlugin,
             GamePlugin, 
             MenuPlugin, 

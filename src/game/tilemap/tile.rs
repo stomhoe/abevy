@@ -14,7 +14,7 @@ mod tiling_init_systems;
 pub mod tile_components;
 pub mod tile_resources;
 pub mod tile_utils;
-pub mod tile_events;
+//pub mod tile_events;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TileSystems;
@@ -54,7 +54,6 @@ impl Plugin for TilePlugin {
                 RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
             ))
             .add_server_trigger::<AnyTilingEntityMap>(Channel::Unordered)
-            
             .make_trigger_independent::<AnyTilingEntityMap>()
             .add_observer(client_map_server_tiling)
             

@@ -48,6 +48,7 @@ impl Plugin for MovementPlugin {
             // SomePlugin, 
             // superstate_plugin::<SuperState, (Substate1, Substate2)>
             ))
+            .replicate::<Altitude>()
 
             .replicate_with((
                 RuleFns::<Being>::default(),

@@ -21,7 +21,6 @@ bevy = { version = "0.16.1", features = [
     "serialize",
     "jpeg",
     #"bevy_remote",
-    #.add_plugins(RemotePlugin::default()).add_plugins(RemoteHttpPlugin::default().with_port(port))
 ] }
 bevy_ecs_tilemap = { git = "https://github.com/zachrburke/bevy_ecs_tilemap.git" }
 superstate = { git = "https://github.com/KurlykovDanila/Superstate.git" }
@@ -34,7 +33,7 @@ bevy_replicon_renet = { git = "https://github.com/projectharmonia/bevy_replicon_
 serde = { version = "1.0.219", features = ["derive"] }
 bevy_common_assets = { version = "0.13.0", features = ["ron"]}
 
-#lightyear_prediction = "0.22.5"
+lightyear_prediction = "0.22.5"
 #lightyear_interpolation = "0.22.5"
 bevy_simple_subsecond_system = "0.2.0" #IMPORTANTE PARA HOTPATCHEAR SISTEMAS
 bevy-ui-gradients = "0.4.0"
@@ -42,7 +41,7 @@ bevy_spritesheet_animation = "3.0.0"
 bevy_asset_loader = "0.23.0"
 bevy-inspector-egui = "0.32.0"
 splines = { version = "5.0.0", features = ["serde"] }
-bevy_rand = "0.11.1"
+#bevy_rand = "0.11.1"
 #bevy_enhanced_input = "0.15.2"
 #bevy_northstar = "0.3.1"
 

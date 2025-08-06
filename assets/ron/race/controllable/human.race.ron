@@ -11,7 +11,7 @@
         "female": 1,
     },
     can_equip_tools: true,
-    sprite_pool: ["human_body0", "human_head0"],
-    selectable_sprites: ["human_body0", "human_head0"],
+    sprite_pool: ["humanbo0", "humanhe0"],
+    selectable_sprites: ["humanbo0", "humanhe0"],
 
 )

@@ -18,26 +18,15 @@ pub struct SpriteConfig;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct AnimationIdPrefix(pub FixedStr<32>);
 
-
-impl From<&str> for AnimationIdPrefix {
-    fn from(s: &str) -> Self {
-        AnimationIdPrefix(FixedStr::from(s))
-    }
-}
-
-impl From<String> for AnimationIdPrefix {
-    fn from(s: String) -> Self {
-        AnimationIdPrefix(FixedStr::from(s))
-    }
-}
+impl From<&str> for AnimationIdPrefix {fn from(s: &str) -> Self {AnimationIdPrefix(FixedStr::from(s))}}
+impl From<String> for AnimationIdPrefix {fn from(s: String) -> Self {AnimationIdPrefix(FixedStr::from(s))}}
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
 #[relationship(relationship_target = HeldSprites)]
-pub struct SpriteHolderRef {
-    #[relationship] #[entities]
-    pub base: Entity,
-}
+#[require(EntityPrefix::new("Sprite"), Replicated,)]
+pub struct SpriteHolderRef {#[relationship]#[entities]pub base: Entity, }
+
 #[derive(Component)]
 #[relationship_target(relationship = SpriteHolderRef)]
 pub struct HeldSprites(Vec<Entity>);
@@ -46,11 +35,25 @@ impl HeldSprites {
 }
 
 
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize,)]
+// No olvidarse de agregarlo al Plugin del módulo
+// .add_client_trigger::<MpEvent>(Channel::Ordered)
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 //NO VA REPLICATED, SE HACE LOCALMENTE EN CADA PC SEGÚN LOS INPUTS RECIBIDOS DE OTROS PLAYERS
-pub struct AnimationState(pub String);
+pub struct AnimationState(pub FixedStr<32>);
+impl AnimationState {
+    pub fn new_idle() -> Self { Self(IDLE.into()) }
+    pub fn set_idle(&mut self) { self.0 = IDLE.into(); }
+    pub fn set_walk(&mut self) { self.0 = WALK.into(); }
+    pub fn set_swim(&mut self) { self.0 = SWIM.into(); }
+    pub fn set_fly(&mut self) { self.0 = FLY.into(); }
+}
+
+impl std::fmt::Display for AnimationState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy )]
 pub struct WalkAnim;
@@ -66,26 +69,6 @@ pub struct FlyAnim{pub use_still: bool,}
 pub struct ExcludedFromBaseAnimPickingSystem;
 
 
-impl AnimationState {
-    pub fn new_idle() -> Self {
-        Self(IDLE.to_string())
-    }
-    pub fn set_idle(&mut self) {
-        self.0 = IDLE.to_string();
-    }
-    pub fn set_walk(&mut self) {
-        self.0 = WALK.to_string();
-    }
-    pub fn set_swim(&mut self) {
-        self.0 = SWIM.to_string();
-    }
-    pub fn set_fly(&mut self) {
-        self.0 = FLY.to_string();
-    }
-
-}
-
-
 #[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
 pub enum FlipHorizIfDir{Left, Right, Any,}
 
@@ -94,17 +77,13 @@ pub struct Directionable;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct AtlasLayoutData {
-    pub spritesheet_size: UVec2,
-    pub frame_size: UVec2,
-}
+pub struct AtlasLayoutData {pub spritesheet_size: UVec2, pub frame_size: UVec2,}
 
 impl AtlasLayoutData {
     pub fn new(spritesheet_size: [u32; 2], frame_size: [u32; 2]) -> Self {
         Self { spritesheet_size: spritesheet_size.into(), frame_size: frame_size.into(), }
     }
 }
-// Implement conversion into TextureAtlas
 impl AtlasLayoutData {
     pub fn into_texture_atlas(
         self,
@@ -256,9 +235,6 @@ pub struct SpriteConfigStringIds(pub Vec<String>);
 impl SpriteConfigStringIds {
     pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
         Self(ids.into_iter().map(|s| s.into()).collect())
-    }
-    pub fn ids(&self) -> &Vec<String> {
-        &self.0
     }
 }
 

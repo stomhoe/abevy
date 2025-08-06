@@ -16,27 +16,30 @@ use crate::{common::common_components::{DisplayName, EntityPrefix, HashId, StrId
 pub fn spawn_terrain_operations (
     mut commands: Commands, 
     chunks_query: Query<(Entity, &ChunkPos), (With<UninitializedChunk>, Without<PendingOperations>, )>, 
-    oplists: Query<(Entity, ), (With<OperationList>,  With<RootOpList>)>,
+    oplists: Query<(Entity), (With<OperationList>,  With<RootOpList>)>,
 ) -> Result {
     for (chunk_ent, chunk_pos) in chunks_query.iter() {
         //SE LES PODRÍA AGREGAR MARKER COMPONENTS A LOS CHUNKS PARA POR EJEMPLO ESPECIFICAR SI ES UN DUNGEON
         //EN ESTE PUNTO SE PODRÍA GENERAR UN CAMINO RANDOM QUE SEA UN VEC DE COORDS, Y DESPUES PASARLO ABAJO Y Q SE OCUPEN?? PA GENERAR DUNGEONS NASE
+        let now = std::time::Instant::now();
 
-        let mut pending_ops_count: i32 = 0;
-        for x in 0..CHUNK_SIZE.x { 
-            for y in 0..CHUNK_SIZE.y {
-                let pos_within_chunk = U8Vec2::new(x, y);
-                for (oplist_ent, ) in oplists.iter() {
-                    commands.spawn((
-                        OplistRef(oplist_ent),
-                        ChunkRef(chunk_ent),
-                        chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk.as_ivec2()),
+        let chunk_area = CHUNK_SIZE.element_product() as i32;
+        let pending_ops_count: i32 = oplists.iter().count() as i32 * chunk_area;
+        oplists.iter().for_each(|oplist_ent| {
+            let mut batch = Vec::with_capacity((chunk_area) as usize);
+            for x in 0..CHUNK_SIZE.x { 
+                for y in 0..CHUNK_SIZE.y {
+                    let pos_within_chunk = IVec2::new(x as i32, y as i32);
+                    batch.push((
+                        OplistRef(oplist_ent), ChunkRef(chunk_ent),
+                        chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk),
                     ));
-                    pending_ops_count += 1;
                 }
             }
-        } 
+            commands.spawn_batch(batch);
+        });
         commands.entity(chunk_ent).insert((PendingOperations(pending_ops_count), ProducedTiles::new_with_chunk_capacity()));
+        info!(target: "terrain_gen", "Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
     }
     Ok(())
 }
@@ -101,14 +104,12 @@ pub fn produce_tiles(mut cmd: Commands,
             if acc_val > oplist.threshold {
                 if let Some(bifover_ent) = oplist.bifurcation_over {
                     cmd.spawn((OplistRef(bifover_ent), InputOperand(acc_val), chunk_ref.clone(), global_tile_pos));
-                    //cmd.entity(enti).despawn();//NO PONER ABAJO
                     continue;
                 }
             }
             else {
                 if let Some(bifunder_ent) = oplist.bifurcation_under {
                     cmd.spawn((OplistRef(bifunder_ent), InputOperand(acc_val), chunk_ref.clone(), global_tile_pos));
-                    //cmd.entity(enti).despawn();//NO PONER ABAJO
                     continue;
                 }
             }

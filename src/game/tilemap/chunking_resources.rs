@@ -26,7 +26,7 @@ pub struct LoadedChunks (pub HashMap<ChunkPos, Entity>,);
 
 
 
-pub const CHUNK_SIZE: U8Vec2 = U8Vec2 { x: 5, y: 5 };
+pub const CHUNK_SIZE: UVec2 = UVec2 { x: 5, y: 5 };
 
 
 // ---------------------------> NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO <-----------------------

@@ -76,6 +76,23 @@ impl ImageHolder {
     }
 }
 
+#[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq)]
+pub struct MultipleImageHolder(Vec<ImageHolder>);
+impl MultipleImageHolder {
+    pub fn new(holders: Vec<ImageHolder>) -> Self {//TODO HACER ALGO DE NEW WITH CAPACITY
+        Self(holders)
+    }
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(Vec::with_capacity(capacity))
+    }
+    pub fn add(&mut self, holder: ImageHolder) {
+        self.0.push(holder);
+    }
+    pub fn get(&self, index: usize) -> Option<&ImageHolder> {
+        self.0.get(index)
+    }
+}
+
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct ClonedSpawned(pub Vec<Entity>);
 

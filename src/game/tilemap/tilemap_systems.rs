@@ -80,7 +80,7 @@ pub fn produce_tilemaps(
             }
         }}
         if layers.is_empty() {
-            warn!("No tiles produced for chunk {:?}", chunk_ent);
+            //warn!("No tiles produced for chunk {:?}", chunk_ent);
             cmd.entity(chunk_ent).insert(InitializedChunk);
 
         } else{
@@ -138,7 +138,7 @@ fn instantiate_new_layer_dto( commands: &mut Commands,
     let tilemap_entity = commands.spawn((Name::new("Tilemap"), ChildOf(chunk_ent))).id();
     let tilemap = TilemapId(tilemap_entity);
 
-    let mut tile_storage = TileStorage::empty(CHUNK_SIZE.as_uvec2().into());
+    let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
 
     let texture_index = tileimg.map(|_| TileTextureIndex(0));
 
@@ -181,7 +181,7 @@ pub fn fill_tilemaps_data(
         for child in children.iter() {
             if let Ok(mut layer_dto) = layer_query.get_mut(child) {//DEJAR CON IF LET
                 let grid_size = TilemapGridSize { x: TILE_SIZE_PXS.x as f32, y: TILE_SIZE_PXS.y as f32 };//NO TOCAR
-                let size = CHUNK_SIZE.as_uvec2().into();
+                let size = CHUNK_SIZE.into();
                 let transform = Transform::from_translation(Vec3::new(0.0, 0.0, (layer_dto.layer_z.div_1e9())));
                 let texture = TilemapTexture::Vector(layer_dto.take_images());
                 let storage = std::mem::take(&mut layer_dto.tile_storage);

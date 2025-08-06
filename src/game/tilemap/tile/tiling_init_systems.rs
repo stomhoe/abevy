@@ -84,6 +84,8 @@ pub fn init_tiles(
             let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
             let color = Color::srgba_u8(r, g, b, a);
             let img_holder = ImageHolder::new(&asset_server, seri.img_path)?;
+
+            //TODO HACER Q LAS TILES PUEDAN TENER MUCHAS IMÁGENES (PARA IR CAMBIANDO ENTRE ELLAS SEGÚN EL ESTADO, USANDO EL INDEX)
             if ! seri.sprite {
                 cmd.entity(enti).insert((
                     TileColor::from(color),
@@ -136,7 +138,7 @@ pub fn add_tiles_to_map(
                     error!(target: "tiling_loading", "{}", err);
                     result = Err(err);
                 } else {
-                    info!(target: "tiling_loading", "Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
+                    //info!(target: "tiling_loading", "Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
                 }
         }
     }
@@ -198,7 +200,7 @@ pub fn add_tile_weighted_samplers_to_map(
                 error!(target: "tiling_loading", "{}", err);
                 result = Err(err);
             } else {
-                info!(target: "tiling_loading", "Inserted tile weighted sampler '{}' into TilingEntityMap with entity {:?}", str_id, ent);
+                //info!(target: "tiling_loading", "Inserted tile weighted sampler '{}' into TilingEntityMap with entity {:?}", str_id, ent);
             }
         }
     }

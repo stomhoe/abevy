@@ -65,10 +65,8 @@ impl ProducedTiles {
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
             if let Some(tiling_ent) = wmap.sample(gen_settings, global_pos) {
-                info!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
-                self.insert_tile_recursive(
-                    tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings
-                );
+                //info!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
+                self.insert_tile_recursive( tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings );
             }
         } else {
             let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
