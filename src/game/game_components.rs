@@ -99,42 +99,6 @@ impl ImageHolderMap {
 
 
 
-
-#[derive(Component, Debug, Clone, Default)]
-pub struct TileIdsHandles { pub ids: Vec<HashId>, pub handles: Vec<Handle<Image>>,}
-
-impl TileIdsHandles {
-    pub fn from_paths(asset_server: &AssetServer, img_paths: HashMap<String, String>,
-    ) -> Result<Self, BevyError> {
-
-        if img_paths.is_empty() {
-            return Err(BevyError::from("TileImgsMap cannot be created with an empty image paths map"));
-        }
-        let mut ids = Vec::new();
-        let mut handles = Vec::new();
-        for (key, path) in img_paths {
-            let image_holder = ImageHolder::new(asset_server, &path)?;
-            ids.push(HashId::from(key));
-            handles.push(image_holder.0);
-        }
-
-        Ok(Self { ids, handles, })
-
-    }
-
-    pub fn first_handle(&self) -> Handle<Image> {
-        self.handles.first().cloned().unwrap_or_else(|| Handle::default())
-    }
-
-    pub fn clone_handles(&self) -> Vec<Handle<Image>> {
-        self.handles.clone()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (HashId, &Handle<Image>)> {
-        self.ids.iter().cloned().zip(self.handles.iter())
-    }
-}
-
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct ClonedSpawned(pub Vec<Entity>);
 
@@ -188,10 +152,10 @@ impl std::fmt::Display for FacingDirection {
 
 
 #[derive( Debug, Default, Deserialize, Serialize, Clone, )]
-enum FunctionType {#[default] OneOnFinishZero, ZeroOnFinishOne, Curve(Spline<f32, f32>),}
+pub enum FunctionType {#[default] OneOnFinishZero, ZeroOnFinishOne, Curve(Spline<f32, f32>),}
 
 #[derive(Debug, Default, Component, Deserialize, Serialize, Clone, )]
-//ES FINITO PERO ES MEJOR, SIMPLEMENTE PONES UNA DURACIÓN ASTRONÓMICA PARA EL TIMER Y PODES SEGUIR USANDO CURVAS BEZIER, CON INFINITO NO SE PUEDE
+//ES FINITO PERO ES MEJOR, SIMPLEMENTE PONES UNA DURACIÓN ASTRONÓMICA PARA EL TIMER Y PODES SEGUIR USANDO CURVAS BEZIER, CON INFINITO NO SE PUEDE USAR CURVA BEZIER
 pub struct TimeBasedMultiplier { pub timer: Timer, pub function: FunctionType, }
 impl TimeBasedMultiplier {
     pub fn new(timer: Timer, spline: Spline<f32, f32>) -> Self {
@@ -258,10 +222,29 @@ impl TimeBasedMultiplier {
             }
         }
     }
-    
 }
 
+//CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct LocalCpu;
+pub struct ControlledByBot;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+pub struct TickMultFactors(pub Vec<TickMultFactor>);
 
+impl TickMultFactors {
+    pub fn new<I, T>(factors: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<TickMultFactor>,
+    {
+        Self(factors.into_iter().map(Into::into).collect())
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq)]
+pub struct TickMultFactor(f32);
+
+impl TickMultFactor {
+    pub fn new(value: f32) -> Self { Self(value.max(0.0)) }
+    pub fn value(&self) -> f32 { self.0 }
+}

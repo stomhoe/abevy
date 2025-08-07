@@ -1,3 +1,4 @@
+use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
@@ -27,10 +28,10 @@ pub struct AnimationSeri {
 }
 
 
-#[derive(serde::Deserialize, Event, serde::Serialize, Clone)]
-pub struct AnimStateUpdated {
-    pub sprite_ent: Entity,
-    pub anim_state: AnimationState, 
+#[derive(serde::Deserialize, Event, serde::Serialize, Clone, Component, MapEntities)]
+pub struct MoveStateUpdated {
+     #[entities] pub being_ent: Entity,
+    pub moving: bool, 
  }
 
 // No olvidarse de agregarlo al Plugin del módulo

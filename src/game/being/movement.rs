@@ -30,8 +30,8 @@ impl Plugin for MovementPlugin {
                 (process_movement_modifiers, update_facing_dir, apply_movement, 
                     update_jump_duck_inputs,
                     send_move_input_to_server.run_if(not(server_or_singleplayer)),
-                ).in_set   (MovementSystems),
-                (human_move_input, ).in_set(PlayerInputSystems)
+                ).in_set(MovementSystems),
+                (update_human_move_input, ).in_set(PlayerInputSystems)
             ))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup, ))
             //.init_resource::<RESOURCE_NAME>()
@@ -39,8 +39,8 @@ impl Plugin for MovementPlugin {
                 (MovementSystems).in_set(ActiveGameSystems)
             )
 
-            .add_client_trigger::<SendMoveInput>(Channel::Unreliable)
-            .add_server_trigger::<TransformFromServer>(Channel::Unreliable)
+            .add_mapped_client_trigger::<SendMoveInput>(Channel::Unreliable)
+            .add_mapped_server_trigger::<TransformFromServer>(Channel::Unreliable)
             .add_observer(receive_move_input_from_client)
             .add_observer(on_receive_transf_from_server)
 

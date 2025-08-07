@@ -5,10 +5,10 @@ use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::RenetServer;
-use crate::{common::common_components::{DisplayName, EntityPrefix, MyZ, StrId}, game::{game_components::{ImageHolder, ImageHolderMap, TileIdsHandles}, game_resources::ImageSizeMap, tilemap::tile::{
+use crate::{common::common_components::{DisplayName, EntityPrefix, MyZ, StrId}, game::{game_components::{ImageHolder, ImageHolderMap, }, game_resources::ImageSizeMap, tilemap::{tile::{
     tile_components::*,
     tile_resources::*,
-}}};
+}, tilemap_components::TileIdsHandles}}};
 
 
 #[allow(unused_parens)]
@@ -19,7 +19,7 @@ pub fn init_shaders(
 ) -> Result {
     let mut result: Result = Ok(());
     for handle in repeat_tex_handles.handles.iter() {
-        info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
+        //info!(target: "tiling_loading", "Loading Shader from handle: {:?}", handle);
         if let Some(seri) = assets.remove(handle) {
 
             let str_id = StrId::new(seri.id)?;
@@ -66,7 +66,6 @@ pub fn init_tiles(
     mut cmd: Commands,  asset_server: Res<AssetServer>,
     seris_handles: Res<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
     shader_map: Res<TileShaderEntityMap>,
-    image_size_map: Res<ImageSizeMap>,
 ) -> Result {
     let mut result: Result = Ok(());
     for handle in seris_handles.handles.iter() {
@@ -183,7 +182,7 @@ pub fn init_tile_weighted_samplers(
     let mut result: Result = Ok(());
     for handle in seris_handles.handles.iter() {
         if let Some(mut seri) = assets.remove(&*handle) {
-            info!(target: "tiling_loading", "Loading TileWeightedSamplerSeri from handle: {:?}", handle);
+            //info!(target: "tiling_loading", "Loading TileWeightedSamplerSeri from handle: {:?}", handle);
 
             let str_id = StrId::new(seri.id)?;
 
@@ -242,11 +241,13 @@ pub fn client_map_server_tiling(
 ) {
     if server.is_some() { return; }
 
+    //debug!(target: "tiling_loading", "Own AnyTilingEntityMap: \n{:?}", own_map.0);
+
     let AnyTilingEntityMap(received_map) = trigger.event().clone();
     for (hash_id, &server_entity) in received_map.0.iter() {
         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
-            // Map the server entity to the local entity
-            info!(target: "tiling_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
+
+            //debug!(target: "tiling_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
             entis_map.insert(server_entity, client_entity);
         } else {
             error!(target: "tiling_loading", "Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);

@@ -34,7 +34,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     let fac_ent = Faction::new(&mut cmd, &mut fac_map, "host", "Host Faction", ());
     cmd.spawn((
         OfSelf, HostPlayer,
-        DisplayName::new("host"),
+        DisplayName::new("HOOOOOST"),
         BelongsToFaction(fac_ent),
     ));
 }
@@ -44,7 +44,6 @@ pub fn spawn_player_beings(
     mut commands: Commands,
     players: Query<(Entity, &CreatedCharacter, &BelongsToFaction, Option<&OfSelf>), (With<Player>)>,
 ) {
-
     for (player_ent, created_character, belongs_to_fac, self_player) in players.iter() {
         println!("Spawning player being: {:?}", created_character);
 
@@ -96,12 +95,23 @@ pub fn toggle_simulation(
 }
 
 pub fn update_transform_z(mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>,)>) {
-    for (mut transform, z_index) in query.iter_mut() { transform.translation.z = z_index.div_1e9(); }
+    for (mut transform, z_index) in query.iter_mut() {
+        let new_z = z_index.div_1e9();
+        if (transform.translation.z - new_z).abs() > f32::EPSILON {
+            transform.translation.z = new_z;
+        }
+    }
 }
 
 
-pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<&mut TimeBasedMultiplier, Without<ModifierCategories>>) {
-    for mut multiplier in query.iter_mut() { multiplier.timer.tick(time.delta()); }
+pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<(&mut TimeBasedMultiplier, Option<&TickMultFactor>, Option<&TickMultFactors>)>) {
+    for (mut multiplier, tick_mult_factor, tick_mult_factors) in query.iter_mut() {
+        let mut factor = tick_mult_factor.map(|f| f.value()).unwrap_or(1.0);
+        if let Some(factors) = tick_mult_factors {
+            factor *= factors.0.iter().map(|f| f.value()).product::<f32>();
+        }
+        multiplier.timer.tick(time.delta().mul_f32(factor));
+    }
 }
 
 

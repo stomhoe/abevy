@@ -1,3 +1,0 @@
-
-
-// NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO <--------

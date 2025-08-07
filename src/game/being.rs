@@ -11,6 +11,7 @@ pub mod being_resources;
 pub mod gen_template;
 pub mod sprite;
 pub mod being_utils;
+pub mod body;
 pub mod race;
 pub mod class;
 pub mod movement;  
@@ -38,7 +39,7 @@ impl Plugin for BeingsPlugin {
             .replicate::<Being>()
             .replicate::<CpuControlled>()
             .replicate::<ControlledBy>()
-            .replicate_bundle::<(Being, Transform)>()//PROVISORIO
+            //.replicate_bundle::<(Being, Transform)>()//PROVISORIO
 
         ;
     }

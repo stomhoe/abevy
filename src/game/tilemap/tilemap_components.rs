@@ -1,8 +1,9 @@
+use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::{map::{TilemapGridSize, TilemapRenderSettings, TilemapSize}, tiles::TileTextureIndex};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use crate::{common::common_components::{EntityPrefix, HashIdMap}, game::tilemap::{chunking_resources::CHUNK_SIZE, tile::tile_utils::TILE_SIZE_PXS}, AppState};
+use crate::{common::common_components::{EntityPrefix, HashId, HashIdMap}, game::{game_components::ImageHolder, tilemap::{chunking_resources::CHUNK_SIZE, tile::tile_utils::TILE_SIZE_PXS}}, AppState};
 
 
 #[derive(Component, Debug, Default)]
@@ -66,5 +67,42 @@ impl<'a> IntoIterator for &'a mut TileMapHandles {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter_mut()
+    }
+}
+
+
+
+#[derive(Component, Debug, Clone, Default)]
+pub struct TileIdsHandles { pub ids: Vec<HashId>, pub handles: Vec<Handle<Image>>,}
+
+impl TileIdsHandles {
+    pub fn from_paths(asset_server: &AssetServer, img_paths: HashMap<String, String>,
+    ) -> Result<Self, BevyError> {
+
+        if img_paths.is_empty() {
+            return Err(BevyError::from("TileImgsMap cannot be created with an empty image paths map"));
+        }
+        let mut ids = Vec::new();
+        let mut handles = Vec::new();
+        for (key, path) in img_paths {
+            let image_holder = ImageHolder::new(asset_server, &path)?;
+            ids.push(HashId::from(key));
+            handles.push(image_holder.0);
+        }
+
+        Ok(Self { ids, handles, })
+
+    }
+
+    pub fn first_handle(&self) -> Handle<Image> {
+        self.handles.first().cloned().unwrap_or_else(|| Handle::default())
+    }
+
+    pub fn clone_handles(&self) -> Vec<Handle<Image>> {
+        self.handles.clone()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (HashId, &Handle<Image>)> {
+        self.ids.iter().cloned().zip(self.handles.iter())
     }
 }

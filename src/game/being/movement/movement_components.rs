@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[require(FinalMoveVector, )]
 pub struct InputMoveVector(pub Vec2);//USADO TMB POR BOTS
 //no se incluye la coordenada z de agacharse o saltar porq esto se debe mandar reliably ya q no se spammea tanto
 
@@ -20,8 +21,6 @@ pub struct InputDuck;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct FinalMoveVector(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct VoluntarilyMoving;
 
 
 
@@ -39,7 +38,7 @@ pub enum Altitude{
 //UTIL PARA RAZAS DE IGUANAS O ARAÑAS
 
 #[derive(Component)]
-pub struct WallPhaser;
+pub struct WallPhaser;//HACER ATACABLE POR MODIFIERS PARA DEFENDERSE/ESCAPAR DE FANTASMAS
 
 #[derive(Component, Default)] pub struct InnateMovementCapability;//NO SACARSELO SOLO PORQ ESTÉ ULTRAHERIDO
 

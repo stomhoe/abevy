@@ -3,7 +3,7 @@ use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections
 use bevy_ecs_tilemap::{map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::{common::common_components::MyZ, game::{game_components::{ImageHolder, TileIdsHandles}, game_resources::ImageSizeMap, tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::{TileShader, TileShaderRef}, tile_utils::TILE_SIZE_PXS, }, tilemap_components::*,}}};
+use crate::{common::common_components::MyZ, game::{game_resources::ImageSizeMap, tilemap::{chunking_components::*, chunking_resources::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::{tile_components::{TileShader, TileShaderRef}, tile_utils::TILE_SIZE_PXS, }, tilemap_components::*,}}};
 
 
 

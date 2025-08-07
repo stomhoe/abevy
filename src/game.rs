@@ -142,7 +142,7 @@ impl Plugin for GamePlugin {
             //https://github.com/NiklasEi/bevy_asset_loader/blob/main/bevy_asset_loader/examples/finally_init_resource.rs
 
             .replicate_bundle::<(Being, ChildOf)>()//NO FUNCIONA BIEN LO DE CHILDOF
-            .replicate_bundle::<(Being, FacingDirection)>()//PROVISORIO, VA A HABER Q REVISAR
+            .replicate::<FacingDirection>()//PROVISORIO, VA A HABER Q REVISAR
 
 
         ;

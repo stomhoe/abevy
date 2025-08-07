@@ -9,7 +9,7 @@ use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::{being::sprite::animation_resources::{AnimStateUpdated, AnimationSeri}, ActiveGameSystems};
+use crate::game::{being::sprite::animation_resources::{MoveStateUpdated, AnimationSeri}, ActiveGameSystems};
 use crate::game::{being::sprite::{
    sprite_resources::*, animation_systems::*, sprite_components::*, sprite_systems::*,
    sprite_init_systems::*,
@@ -38,7 +38,7 @@ impl Plugin for SpritePlugin {
                 RonAssetPlugin::<AnimationSeri>::new(&["anim.ron"]),
             ))
             .add_systems(FixedUpdate, (
-                (animate_sprite, change_anim_state_string, apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(5))).in_set(ActiveGameSystems),
+                (animate_sprite, update_animstate, apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(5))).in_set(ActiveGameSystems),
 
                 ((
                     replace_string_ids_by_entities, add_spritechildren_and_comps, ).run_if(server_or_singleplayer), 
@@ -56,19 +56,24 @@ impl Plugin for SpritePlugin {
             ).in_set(SpriteSystemsSet)) 
 
             .add_server_trigger::<SpriteCfgEntityMap>(Channel::Unordered)
-            .add_server_trigger::<AnimStateUpdated>(Channel::Unordered)
+            .add_mapped_server_trigger::<MoveStateUpdated>(Channel::Ordered)
             
             .make_trigger_independent::<SpriteCfgEntityMap>()
             .add_observer(client_map_server_sprite_cfgs)
-            .add_observer(on_receive_anim_state_from_server)
+            .add_observer(on_receive_moving_anim_from_server)
             //TODO TRIGGER PARA SYNQUEAR MAPAS
 
             .replicate_with((
                 (RuleFns::<ChildOf>::default(), SendRate::EveryTick),
                 (RuleFns::<SpriteHolderRef>::default(), SendRate::EveryTick),
                 (RuleFns::<SpriteConfigRef>::default(), SendRate::EveryTick),
-                (RuleFns::<AnimationState>::default(), SendRate::Periodic(64*5)),//NO TIENE Q SER FRECUENTE ESTE, ES RELIABLE. HACER OTRO NO RELIABLE
                 //para late joiners usar Added<SpriteCfgsToBuild>
+            ))
+            .replicate_with((
+                (RuleFns::<AnimationState>::default(), SendRate::Periodic(64*7)),//NO TIENE Q SER FRECUENTE ESTE, ES RELIABLE. HACER OTRO NO RELIABLE
+            ))
+            .replicate_with((
+                (RuleFns::<MoveAnimActive>::default(), SendRate::Once),//NO TIENE Q SER FRECUENTE ESTE, ES RELIABLE. HACER OTRO NO RELIABLE
             ))
 
             // .replicate_with((
@@ -76,6 +81,7 @@ impl Plugin for SpritePlugin {
             //     (RuleFns::<SpriteCfgsBuiltSoFar>::default(), SendRate::Once),//para late joiners usar Added<SpriteCfgsBuiltSoFar> 
             // ))
             .replicate::<Directionable>()
+
 
 
         ;

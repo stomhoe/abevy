@@ -5,7 +5,6 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use ahash::AHasher;
 
 
 #[derive(Clone, PartialEq, Eq, Hash, )]
@@ -129,20 +128,22 @@ impl HashId {}
 impl<S: AsRef<str>> From<S> for HashId {
     fn from(id: S) -> Self {
         let s = id.as_ref();
-        let mut hasher = AHasher::default();
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        use std::hash::{Hash, Hasher};
         s.hash(&mut hasher);
-        Self(hasher.finish())
+        Self((&hasher).finish())
     }
 }
 
 impl std::fmt::Display for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HashId({:05}...)", self.0 & 0xFFFFF)
+        write!(f, "HashId({:03}...)", self.0 & 0xFFF)
     }
 }
 impl std::fmt::Debug for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HashId({})", self.0)
+        write!(f, "HashId({:03}...)", self.0 & 0xFFF)
+
     }
 }
 
@@ -166,9 +167,9 @@ impl<T> HashIdMap<T> {
 use delegate::delegate;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Debug)]
-pub struct HashIdIndexMap<T>(pub IndexMap<HashId, T, ahash::RandomState>);
+pub struct HashIdIndexMap<T>(pub IndexMap<HashId, T>);
 impl<T> HashIdIndexMap<T> {
-    pub fn new() -> Self { Self(IndexMap::with_hasher(ahash::RandomState::default())) }
+    pub fn new() -> Self { Self(IndexMap::new()) }
     pub fn insert<S: AsRef<str>>(&mut self, key: S, value: T) -> Option<T> { self.0.insert(HashId::from(key), value) }
     pub fn get<S: AsRef<str>>(&self, key: S) -> Option<&T> { self.0.get(&HashId::from(key)) }
     pub fn get_mut<S: AsRef<str>>(&mut self, key: S) -> Option<&mut T> { self.0.get_mut(&HashId::from(key)) }

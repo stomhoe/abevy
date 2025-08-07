@@ -33,6 +33,9 @@ impl HeldSprites {
     pub fn entities(&self) -> &Vec<Entity> { &self.0 }
 }
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone,)]
+pub struct MoveAnimActive(pub bool);
+
 
 // No olvidarse de agregarlo al Plugin del módulo
 // .add_client_trigger::<MpEvent>(Channel::Ordered)

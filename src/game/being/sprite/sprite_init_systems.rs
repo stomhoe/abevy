@@ -183,7 +183,7 @@ pub fn insert_sprite_to_instance(mut cmd: Commands,
 ) {
     for (ent, sprite_config_ref, ) in instance_query.iter() {
         if let Ok((sprite, visibility)) = spritecfgs_query.get(sprite_config_ref.0) {
-            cmd.entity(ent).insert((sprite.clone(), visibility.clone(), Transform::default(),));
+            cmd.entity(ent).insert_if_new(Sprite::default()).insert((sprite.clone(), visibility.clone(), ));
         } else {
             warn!(target: "sprite_building", "SpriteConfigRef {:?} does not have a Sprite component", sprite_config_ref.0);
         }
@@ -263,7 +263,7 @@ pub fn become_child_of_sprite_with_category(
                     },
                 };
                 if other_cats.0.contains(&becomes_child_of_sprite_with_cat.0) {
-                    //info!(target: "sprite_building", "Adding ChildOfCategory to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
+                    //debug!(target: "sprite_building", "Adding ChildOfCategory to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
                     cmd.entity(new_ent).insert(ChildOf(other_ent));
                     break;
                 }
@@ -282,10 +282,13 @@ pub fn client_map_server_sprite_cfgs(
 ) {
     if server.is_some() { return; }
 
+    //debug!(target: "sprite_loading", "Own SpriteCfgEntityMap: \n{:?}", own_map.0);
+
+
     let SpriteCfgEntityMap(received_map) = trigger.event().clone();
     for (hash_id, &server_entity) in received_map.0.iter() {
         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
-            info!(target: "sprite_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
+            //debug!(target: "sprite_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
             entis_map.insert(server_entity, client_entity);
         } else {
             error!(target: "sprite_loading", "Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);

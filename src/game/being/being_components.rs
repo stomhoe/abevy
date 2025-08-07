@@ -1,16 +1,37 @@
 use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use serde::{Deserialize, Serialize};
-use crate::{common::common_components::{EntityPrefix, MyZ}, game::{being::{modifier::modifier_components::AppliedModifiers, movement::movement_components::*, sprite::sprite_components::SpriteCfgsBuiltSoFar}, game_components::FacingDirection, player::player_components::Controls, tilemap::chunking_components::ActivatesChunks}, AppState};
+use crate::{common::common_components::{EntityPrefix, MyZ}, game::{being::{body::body_components::BodyPartOf, modifier::modifier_components::AppliedModifiers, movement::movement_components::*, sprite::sprite_components::{MoveAnimActive, SpriteCfgsBuiltSoFar}}, game_components::FacingDirection, player::player_components::Controls, tilemap::chunking_components::ActivatesChunks}, AppState};
+
+
+#[derive(Component, Debug, Deserialize, Serialize)]
+#[require(InputMoveVector,  MyZ(Being::MINZ_I32), Replicated, MoveAnimActive,
+Altitude, Visibility, FacingDirection, AppliedModifiers, 
+EntityPrefix::new("BEING"), SpriteCfgsBuiltSoFar)]
+pub struct Being;
+impl Being {
+
+    /// max Z (clothes included)
+    pub const MAX_Z: MyZ = MyZ(1_000_000_000);
+
+    /// lowest z allowed for either clothes or body sprites
+    pub const MIN_Z: MyZ = MyZ(Self::MINZ_I32);
+
+    pub const MINZ_I32: i32 = 1_000;
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
+pub struct MainCharacter{#[entities] created_by: Entity}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
+pub struct InfiniteMorale;
 
 
 
 #[derive(Component)]
-#[require(StateScoped::<AppState>)]
-pub struct Body {}
- 
-
-
+#[relationship_target(relationship = BodyPartOf)]
+pub struct BodyParts(Vec<Entity>);
+impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
 #[allow(dead_code)] 
 #[derive(Component, Debug)]
@@ -27,6 +48,7 @@ pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si e
 
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[relationship(relationship_target = Controls)]
+//client entity en control del being, ya sea manualmente o mediante su CPU
 pub struct ControlledBy  { 
     #[relationship] #[entities]
     pub player: Entity 
@@ -40,19 +62,7 @@ pub struct ControlledLocally;
 pub struct CpuControlled;
 
 
-#[derive(Component, Debug, Deserialize, Serialize)]
-#[require(InputMoveVector, FinalMoveVector, MyZ(Being::MINZ_I32), Replicated, Altitude, Visibility, FacingDirection, AppliedModifiers, EntityPrefix::new("Being "), SpriteCfgsBuiltSoFar)]
-pub struct Being;
-impl Being {
 
-    /// max Z (clothes included)
-    pub const MAX_Z: MyZ = MyZ(1_000_000_000);
-
-    /// lowest z allowed for either clothes or body sprites
-    pub const MIN_Z: MyZ = MyZ(Self::MINZ_I32);
-
-    pub const MINZ_I32: i32 = 1_000;
-}
 
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[relationship(relationship_target = Followers)]
