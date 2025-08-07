@@ -1,7 +1,6 @@
-use bevy::math::VectorSpace;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_ui_gradients::{BorderGradient, ColorStop, LinearGradient, Position, RadialGradient, RadialGradientShape};
+use bevy_ui_gradients::ColorStop;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 
 use crate::{game::GameSetupScreen, ui::{ui_components::{CurrentText, LineEdit}, ui_utils::{produce_gradient_border, BorderBundle}}};

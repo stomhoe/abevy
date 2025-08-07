@@ -9,9 +9,9 @@ use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::{being::{being_components::Being, sprite::animation_resources::{AnimStateUpdated, AnimationSeri}}, ActiveGameSystems};
+use crate::game::{being::sprite::animation_resources::{AnimStateUpdated, AnimationSeri}, ActiveGameSystems};
 use crate::game::{being::sprite::{
-   animation_constants::*, sprite_resources::*, animation_systems::*, sprite_components::*, sprite_systems::*,
+   sprite_resources::*, animation_systems::*, sprite_components::*, sprite_systems::*,
    sprite_init_systems::*,
    //animation_events::*,
 }, LocalAssetsLoadingState};
@@ -42,7 +42,7 @@ impl Plugin for SpritePlugin {
 
                 ((
                     replace_string_ids_by_entities, add_spritechildren_and_comps, ).run_if(server_or_singleplayer), 
-                    on_anim_state_change.run_if(server_running).run_if(on_timer(Duration::from_millis(30))),
+                    update_animstate_for_clients.run_if(server_running),
                     become_child_of_sprite_with_category, insert_sprite_to_instance,
                 ).run_if(
                     in_state(LocalAssetsLoadingState::Complete)
@@ -56,7 +56,7 @@ impl Plugin for SpritePlugin {
             ).in_set(SpriteSystemsSet)) 
 
             .add_server_trigger::<SpriteCfgEntityMap>(Channel::Unordered)
-            .add_server_trigger::<AnimStateUpdated>(Channel::Unreliable)
+            .add_server_trigger::<AnimStateUpdated>(Channel::Unordered)
             
             .make_trigger_independent::<SpriteCfgEntityMap>()
             .add_observer(client_map_server_sprite_cfgs)

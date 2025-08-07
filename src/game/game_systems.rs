@@ -1,4 +1,3 @@
-use bevy::asset::AssetServer;
 use bevy::input::ButtonInput;
 use bevy::math::Vec3;
 use bevy::prelude::*;
@@ -11,11 +10,11 @@ use crate::game::faction::faction_resources::FactionEntityMap;
 use crate::game::tilemap::terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap};
 use crate::game::{game_components::*, ReplicatedAssetsLoadingState};
 use crate::game::game_resources::*;
-use crate::game::player::player_components::{CameraTarget, CreatedCharacter, HostPlayer, OfSelf, Player};
+use crate::game::player::player_components::{CreatedCharacter, HostPlayer, OfSelf, Player};
 use crate::game::{SimulationState};
 
 #[allow(unused_parens)]
-pub fn placeholder_character_creation(mut cmd: Commands, mut query: Query<(),(With<Player>)>) {
+pub fn placeholder_character_creation(cmd: Commands, query: Query<(),(With<Player>)>) {
 }
 
 #[allow(unused_parens)]

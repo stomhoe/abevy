@@ -2,10 +2,11 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use superstate::superstate_plugin;
 
-use crate::game::{tilemap::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::*, tile::*, tilemap_systems::*}, ActiveGameSystems, LocalAssetsLoadingState, ReplicatedAssetsLoadingState, SimRunningSystems};
+use crate::game::{tilemap::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::*, tile::*, tilemap_systems::*}, LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
 
 mod tilemap_systems;
 mod chunking_systems;
+pub mod tilemap_components;
 pub mod chunking_components;
 pub mod chunking_resources;
 

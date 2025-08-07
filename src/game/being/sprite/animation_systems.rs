@@ -5,8 +5,10 @@ use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::RenetServer;
 use bevy_spritesheet_animation::prelude::*;
+use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 
-use crate::{common::common_components::StrId, game::{being::{being_components::ControlledBy, movement::movement_components::*, sprite::{animation_constants::*, animation_resources::*, sprite_components::*, }}, game_components::FacingDirection,}};
+
+use crate::{common::common_components::StrId, game::{being::{being_components::ControlledBy, movement::movement_components::*, sprite::{animation_resources::*, sprite_components::*, }}, game_components::FacingDirection,}};
 
 
 #[allow(unused_parens)]
@@ -138,28 +140,30 @@ pub fn change_anim_state_string(
 }
 
 
-#[allow(unused_parens)]
-pub fn on_anim_state_change(//hacer cada 50ms, no poner changed porq se puede perder el paquete y puede quedarse corriendo
+#[allow(unused_parens)]#[bevy_simple_subsecond_system::hot]
+pub fn update_animstate_for_clients(//hacer cada 50ms, no poner changed porq se puede perder el paquete y puede quedarse corriendo
     mut cmd: Commands,
     query: Query<(Entity, &SpriteHolderRef, &AnimationState), (Changed<AnimationState>,)>,
-    controlled_by: Query<&ControlledBy>,
+    base_holder: Query<&ControlledBy>,
 )
 {
     for (sprite_ent, sprite_holder, anim_state) in query.iter() {
         let event_data = AnimStateUpdated {
             sprite_ent, anim_state: anim_state.clone(),
         };
-        if let Ok(controller) = controlled_by.get(sprite_holder.base) {
+        if let Ok(controller) = base_holder.get(sprite_holder.base) {
             cmd.server_trigger(ToClients {
                 mode: SendMode::BroadcastExcept(controller.player),
                 event: event_data.clone(),
             });
+            //info!("Sending animation state update for entity {:?} to all clients except {:?}", sprite_ent, controller.player);
         }
         else {
             cmd.server_trigger(ToClients {
                 mode: SendMode::Broadcast,
                 event: event_data.clone(),
             });
+            //info!("Sending animation state update for entity {:?} to all clients", sprite_ent);
         }
     }
 }
@@ -168,17 +172,22 @@ pub fn on_receive_anim_state_from_server(
     trigger: Trigger<AnimStateUpdated>,
     mut query: Query<&mut AnimationState, >,
     server: Option<Res<RenetServer>>,
+    mut map: ResMut<ServerEntityMap>,
 ) {
     if server.is_some() { return; }
 
-    
     let AnimStateUpdated { sprite_ent, anim_state } = trigger.event().clone();
     
-    if let Ok(mut state) = query.get_mut(sprite_ent) {
-        *state = anim_state;
-        //info!("Received animation state for entity {:?}: {:?}", sprite_ent, state);
-    } else {
-        warn!("Received animation state for entity {:?} that does not exist or is not a sprite.", sprite_ent);
+    if let Some(sprite_ent) = map.server_entry(sprite_ent).get() {
+        if let Ok(mut state) = query.get_mut(sprite_ent) {
+            *state = anim_state;
+            info!("Received animation state for entity {:?}: {:?}", sprite_ent, state);
+        } else {
+            warn!("Received animation state for entity {:?} that does not exist or is not a sprite.", sprite_ent);
+        }
+    }
+    else {
+        warn!("Received animation state for entity {:?} that is not in the server entity map.", sprite_ent);
     }
 }
 

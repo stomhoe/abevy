@@ -1,8 +1,8 @@
-use bevy::{math::U8Vec2, platform::collections::{HashMap, HashSet}};
+use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_ecs_tilemap::map::TilemapRenderSettings;
 
 use crate::game::{tilemap::{chunking_components::*, },};
-use crate::game::dimension::dimension_components::DimensionRef;
 
 #[derive(Resource, )]
 pub struct ChunkRangeSettings {
@@ -27,6 +27,7 @@ pub struct LoadedChunks (pub HashMap<ChunkPos, Entity>,);
 
 
 pub const CHUNK_SIZE: UVec2 = UVec2 { x: 5, y: 5 };
+
 
 
 // ---------------------------> NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO <-----------------------

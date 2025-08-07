@@ -9,7 +9,7 @@ pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 use superstate::{SuperstateInfo};
 
-use crate::game::{game_utils::WeightedMap, tilemap::{chunking_resources::CHUNK_SIZE, terrain_gen::terrgen_resources::WorldGenSettings, tile::{tile_components::{GlobalTilePos, HashPosEntiWeightedSampler}, tile_utils::TILE_SIZE_PXS}}};
+use crate::game::tilemap::{chunking_resources::CHUNK_SIZE, terrain_gen::terrgen_resources::WorldGenSettings, tile::{tile_components::{GlobalTilePos, HashPosEntiWeightedSampler}, tile_utils::TILE_SIZE_PXS}};
 
 #[derive(Component, Default)]
 #[require(SuperstateInfo<ChunkInitState>)]
@@ -33,7 +33,7 @@ pub struct LayersReady;
 pub struct InitializedChunk;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq)]
-pub struct ProducedTiles(#[entities] Vec<Entity>);
+pub struct ProducedTiles(#[entities] pub Vec<Entity>);
 impl Default for ProducedTiles {
     fn default() -> Self {
         ProducedTiles(Vec::new())
@@ -50,7 +50,6 @@ impl ProducedTiles {
     }
 
     pub fn produced_tiles(&self) -> &[Entity] { &self.0 }
-    pub fn drain(&mut self) -> Vec<Entity> { std::mem::take(&mut self.0) }
 
     pub fn push(&mut self, entity: Entity) {self.0.push(entity);}
 

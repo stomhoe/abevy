@@ -1,8 +1,11 @@
-use std::fmt::Display;
 
 use bevy::prelude::*;
+use indexmap::IndexMap;
 #[allow(unused_imports)] 
 use serde::{Deserialize, Serialize};
+use bevy::platform::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use ahash::AHasher;
 
 
 #[derive(Clone, PartialEq, Eq, Hash, )]
@@ -121,16 +124,14 @@ impl std::fmt::Display for StrId {
 impl AsRef<str> for StrId {fn as_ref(&self) -> &str {&self.0.as_str() }}
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy )]
-//#[require(Replicated, /*StateScoped::<AppState>, */ )]
 pub struct HashId(u64);
 impl HashId {}
 impl<S: AsRef<str>> From<S> for HashId {
     fn from(id: S) -> Self {
         let s = id.as_ref();
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        use std::hash::{Hash, Hasher};
+        let mut hasher = AHasher::default();
         s.hash(&mut hasher);
-        Self((&hasher).finish())
+        Self(hasher.finish())
     }
 }
 
@@ -142,5 +143,51 @@ impl std::fmt::Display for HashId {
 impl std::fmt::Debug for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "HashId({})", self.0)
+    }
+}
+
+
+#[derive(Component, Default, Deserialize, Serialize, Clone, Debug)]
+pub struct HashIdMap<T>(pub HashMap<HashId, T>);
+impl<T> HashIdMap<T> {
+    pub fn new() -> Self { Self(HashMap::new()) }
+    pub fn insert<S: AsRef<str>>(&mut self, key: S, value: T) -> Option<T> { self.0.insert(HashId::from(key), value) }
+    pub fn insert_with_id(&mut self, id: HashId, value: T) -> Option<T> { self.0.insert(id, value) }
+
+    pub fn get<S: AsRef<str>>(&self, key: S) -> Option<&T> { self.0.get(&HashId::from(key)) }
+    pub fn get_mut<S: AsRef<str>>(&mut self, key: S) -> Option<&mut T> { self.0.get_mut(&HashId::from(key)) }
+    pub fn remove<S: AsRef<str>>(&mut self, key: S) -> Option<T> { self.0.remove(&HashId::from(key)) }
+    pub fn contains_key<S: AsRef<str>>(&self, key: S) -> bool { self.0.contains_key(&HashId::from(key)) }
+    pub fn len(&self) -> usize { self.0.len() }
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
+    pub fn iter(&self) -> impl Iterator<Item = (&HashId, &T)> { self.0.iter() }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&HashId, &mut T)> { self.0.iter_mut() }
+}
+use delegate::delegate;
+
+#[derive(Component, Default, Deserialize, Serialize, Clone, Debug)]
+pub struct HashIdIndexMap<T>(pub IndexMap<HashId, T, ahash::RandomState>);
+impl<T> HashIdIndexMap<T> {
+    pub fn new() -> Self { Self(IndexMap::with_hasher(ahash::RandomState::default())) }
+    pub fn insert<S: AsRef<str>>(&mut self, key: S, value: T) -> Option<T> { self.0.insert(HashId::from(key), value) }
+    pub fn get<S: AsRef<str>>(&self, key: S) -> Option<&T> { self.0.get(&HashId::from(key)) }
+    pub fn get_mut<S: AsRef<str>>(&mut self, key: S) -> Option<&mut T> { self.0.get_mut(&HashId::from(key)) }
+    pub fn first(&self) -> Option<&T> {
+        self.0.values().next()
+    }
+    pub fn contains_key<S: AsRef<str>>(&self, key: S) -> bool {self.0.contains_key(&HashId::from(key))}
+    delegate! {
+        to self.0 {
+            pub fn iter(&self) -> impl Iterator<Item = (&HashId, &T)>;
+            pub fn iter_mut(&mut self) -> impl Iterator<Item = (&HashId, &mut T)>;
+            pub fn get_index(&self, i: usize) -> Option<(&HashId, &T)>;
+            pub fn get_index_mut(&mut self, i: usize) -> Option<(&HashId, &mut T)>;
+            pub fn values(&self) -> impl Iterator<Item = &T>;
+            pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T>;
+            pub fn len(&self) -> usize;
+            pub fn is_empty(&self) -> bool;
+            pub fn keys(&self) -> impl Iterator<Item = &HashId>;
+            pub fn clear(&mut self);
+        }
     }
 }

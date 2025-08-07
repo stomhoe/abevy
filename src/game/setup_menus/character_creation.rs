@@ -1,10 +1,8 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use crate::game::{GameSetupScreen, ActiveGameSystems};
+use crate::game::GameSetupScreen;
 use crate::game::setup_menus::character_creation::{
-    character_creation_systems::*,
-    character_creation_components::*, 
     character_creation_events::*, 
     character_creation_layout::*,
     //character_creation_resources::*,

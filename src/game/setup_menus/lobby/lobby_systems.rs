@@ -1,18 +1,11 @@
 
-use crate::{common::common_components::DisplayName, game::{being::being_components::Being, faction::{faction_components::{BelongsToFaction, Faction}, faction_resources::FactionEntityMap}, multiplayer::multiplayer_utils, player::{player_components::{CreatedCharacter, HostPlayer, OfSelf, Player}, player_resources::PlayerData}, setup_menus::lobby::{lobby_components::{LobbyPlayerListing, LobbyPlayerUiNode}, lobby_events::HostStartedGame}, GamePhase, GameSetupScreen}, pregame_menus::{main_menu::main_menu_components::MainMenuIpLineEdit, PreGameState}, ui::ui_components::CurrentText, AppState};
+use crate::{common::common_components::DisplayName, game::{faction::faction_resources::FactionEntityMap, multiplayer::multiplayer_utils, player::{player_components::{CreatedCharacter, OfSelf, Player}, player_resources::PlayerData}, setup_menus::lobby::{lobby_components::{LobbyPlayerListing, LobbyPlayerUiNode}, lobby_events::HostStartedGame}, GamePhase, GameSetupScreen}, AppState};
 
 use bevy::{ecs::world::OnDespawn, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use bevy_replicon_renet::{
-    netcode::
-        NetcodeClientTransport
-    ,
-    renet::{RenetClient, RenetServer},
-};
-use bevy_ui_text_input::TextInputContents;
+use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 
-use std::{mem, net::{Ipv4Addr, SocketAddr}, time::SystemTime, net::UdpSocket};
 
 
 
@@ -33,20 +26,20 @@ pub enum LobbyLineEdit {Chat, LobbyName}
 pub enum LobbySlider {ChatHistory, Settings}
 
 
-pub fn host_setup(mut cmd: Commands, mut fac_map: ResMut<FactionEntityMap>) {
+pub fn host_setup(cmd: Commands, fac_map: ResMut<FactionEntityMap>) {
 
 }
 
 #[allow(unused_parens, dead_code)]
 pub fn host_on_server_start_successful(
-    mut cmd: Commands, 
+    cmd: Commands, 
 ) {
     
 
 }
 
 #[allow(unused_parens, dead_code)]
-pub fn host_on_server_start_failed(mut commands: Commands){
+pub fn host_on_server_start_failed(commands: Commands){
 
 }
 
@@ -54,7 +47,7 @@ pub fn host_on_server_start_failed(mut commands: Commands){
 
 
 #[allow(unused_parens)]
-pub fn remove_player_name_ui_entry(mut commands: Commands, mut query: Query<(Entity),(With<LobbyPlayerUiNode>)>) {
+pub fn remove_player_name_ui_entry(mut commands: Commands, query: Query<(Entity),(With<LobbyPlayerUiNode>)>) {
     for ent in query.iter() {
         commands.entity(ent).remove::<LobbyPlayerUiNode>();
     }
@@ -161,7 +154,7 @@ pub fn all_on_player_added(mut cmd: Commands,
 }
 
 #[allow(unused_parens)]
-pub fn on_host_started_game(trigger: Trigger<HostStartedGame>, mut commands: Commands, mut state: ResMut<NextState<GamePhase>>) {
+pub fn on_host_started_game(trigger: Trigger<HostStartedGame>, commands: Commands, mut state: ResMut<NextState<GamePhase>>) {
     info!(target: "lobby", "Host started game event received, transitioning to GamePhase::ActiveGame");
     state.set(GamePhase::ActiveGame);
 

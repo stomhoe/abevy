@@ -1,6 +1,5 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use bevy_asset_loader::asset_collection::AssetCollection;
-use fastnoise_lite::FastNoiseLite;
 
 use crate::common::common_utils::HashIdToEntityMap;
 

@@ -5,7 +5,7 @@ use std::net::Ipv4Addr;
 
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::*}, renet::RenetClient};
 
-use crate::{common::common_components::DisplayName, game::{dimension::dimension_resources::DimensionEntityMap, multiplayer::{multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_resources::PlayerData, tilemap::terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap}, ReplicatedAssetsLoadingState}, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
+use crate::{common::common_components::DisplayName, game::{dimension::dimension_resources::DimensionEntityMap, multiplayer::{multiplayer_events::*, multiplayer_utils, ConnectionAttempt}, player::player_resources::PlayerData, tilemap::terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap}}, pregame_menus::main_menu::main_menu_components::MainMenuIpLineEdit, ui::ui_components::CurrentText, AppState};
 
 pub fn attempt_join(
     mut cmd: Commands, 
@@ -65,7 +65,7 @@ pub fn client_on_connect_failed(
 }
 
 pub fn client_on_disconnect(
-    mut commands: Commands, 
+    commands: Commands, 
     mut app_state: ResMut<NextState<AppState>>,
     netcode_client_transport: Option<Res<NetcodeClientTransport>>,
 ) {

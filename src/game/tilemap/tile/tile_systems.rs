@@ -1,7 +1,7 @@
-use std::{hash::{DefaultHasher, Hash, Hasher}, iter::Map, result};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::{TileColor, TileFlip};
+use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use crate::game::tilemap::{terrain_gen::terrgen_resources::WorldGenSettings, tile::tile_components::*};

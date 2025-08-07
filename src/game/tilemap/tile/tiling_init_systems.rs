@@ -5,7 +5,7 @@ use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::RenetServer;
-use crate::{common::common_components::{DisplayName, EntityPrefix, MyZ, StrId}, game::{game_components::{ImageHolder, ImagePathHolder}, tilemap::tile::{
+use crate::{common::common_components::{DisplayName, EntityPrefix, MyZ, StrId}, game::{game_components::{ImageHolder, ImageHolderMap, TileIdsHandles}, game_resources::ImageSizeMap, tilemap::tile::{
     tile_components::*,
     tile_resources::*,
 }}};
@@ -66,6 +66,7 @@ pub fn init_tiles(
     mut cmd: Commands,  asset_server: Res<AssetServer>,
     seris_handles: Res<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
     shader_map: Res<TileShaderEntityMap>,
+    image_size_map: Res<ImageSizeMap>,
 ) -> Result {
     let mut result: Result = Ok(());
     for handle in seris_handles.handles.iter() {
@@ -83,13 +84,30 @@ pub fn init_tiles(
 
             let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
             let color = Color::srgba_u8(r, g, b, a);
-            let img_holder = ImageHolder::new(&asset_server, seri.img_path)?;
+
+           
+
+            if seri.img_paths.is_empty() {
+                error!(target: "tiling_loading", "Tile '{}' has no images", str_id);
+                continue;
+            }
 
             //TODO HACER Q LAS TILES PUEDAN TENER MUCHAS IMÁGENES (PARA IR CAMBIANDO ENTRE ELLAS SEGÚN EL ESTADO, USANDO EL INDEX)
             if ! seri.sprite {
+                let tile_handles = TileIdsHandles::from_paths(&asset_server, seri.img_paths, );
+
+                let tile_handles = match tile_handles {
+                    Ok(tile_handles) => tile_handles,
+                    Err(err) => {
+                        error!(target: "tiling_loading", "Failed to create TileHandles for tile '{}': {}", str_id, err);
+                        result = Err(err);
+                        continue;
+                    }
+                };
+
                 cmd.entity(enti).insert((
                     TileColor::from(color),
-                    img_holder,
+                    tile_handles,
                 ));
                 if seri.shader.len() > 2 {
                     match shader_map.0.get(&seri.shader) {
@@ -106,12 +124,22 @@ pub fn init_tiles(
                 }
             }
             else{
+                let map = match ImageHolderMap::from_paths(&asset_server, seri.img_paths) {
+                    Ok(map) => map,
+                    Err(err) => {
+                        error!(target: "tiling_loading", "Failed to create ImageHolderMap for tile '{}': {}", str_id, err);
+                        result = Err(err);
+                        continue;
+                    }
+                };
+
                 cmd.entity(enti).insert((
                     Sprite{
-                        image: img_holder.0.clone(),
+                        image: map.first_handle(),
                         color,
                         ..Default::default()
                     },
+                    map,
                     Transform::from_translation(Vec2::from_array(seri.offset).extend(my_z.div_1e9())),
                 ));
                 if ! seri.shader.is_empty() {
@@ -209,10 +237,8 @@ pub fn add_tile_weighted_samplers_to_map(
 
 
 pub fn client_map_server_tiling(
-    trigger: Trigger<AnyTilingEntityMap>,
-    server: Option<Res<RenetServer>>,
-    mut entis_map: ResMut<ServerEntityMap>,
-    own_map: Res<AnyTilingEntityMap>,
+    trigger: Trigger<AnyTilingEntityMap>, server: Option<Res<RenetServer>>,
+    mut entis_map: ResMut<ServerEntityMap>, own_map: Res<AnyTilingEntityMap>,
 ) {
     if server.is_some() { return; }
 

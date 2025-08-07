@@ -6,6 +6,7 @@ version = 4
 name = "ArgentumCoopBevy"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "bevy",
  "bevy-inspector-egui",
  "bevy-ui-gradients",
@@ -19,7 +20,9 @@ dependencies = [
  "bevy_spritesheet_animation",
  "bevy_ui_text_input",
  "debug_unwraps",
+ "delegate",
  "fastnoise-lite",
+ "indexmap",
  "lightyear_prediction",
  "nano-id",
  "rand 0.9.2",
@@ -2353,6 +2356,17 @@ name = "debug_unwraps"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4035b0e7d016a076349f24ea97ddd9ae6c506bfb717bba52cd30616d10ecc1d2"
+
+[[package]]
+name = "delegate"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6178a82cf56c836a3ba61a7935cdb1c49bfaa6fa4327cd5bf554a503087de26b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.103",
+]
 
 [[package]]
 name = "derivative"
@@ -7056,9 +7070,9 @@ checksum = "3f423a2c17029964870cfaabb1f13dfab7d092a62a29a89264f4d36990ca414a"
 
 [[package]]
 name = "zune-jpeg"
-version = "0.4.19"
+version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c9e525af0a6a658e031e95f14b7f889976b74a11ba0eca5a5fc9ac8a1c43a6a"
+checksum = "fc1f7e205ce79eb2da3cd71c5f55f3589785cb7c79f6a03d1c8d1491bda5d089"
 dependencies = [
  "zune-core",
 ]

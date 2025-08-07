@@ -1,10 +1,9 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_inspector_egui::inspector_options::Target;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::RenetServer;
-use crate::game::{being::{being_components::{Being, ControlledBy, ControlledLocally, CpuControlled }, modifier::modifier_components::*, movement::{movement_components::*, movement_events::*}}, game_components::FacingDirection, player::{player_components::{Controls, HostPlayer, OfSelf, Player}, player_resources::KeyboardInputMappings}};
+use crate::game::{being::{being_components::{Being, ControlledBy, ControlledLocally, CpuControlled }, modifier::modifier_components::*, movement::{movement_components::*, movement_events::*}}, game_components::FacingDirection, player::{player_components::{Controls, OfSelf, Player}, player_resources::KeyboardInputMappings}};
 
 #[allow(unused_parens, )]
 pub fn human_move_input(
@@ -77,7 +76,7 @@ pub fn send_move_input_to_server(
 #[allow(unused_parens, )]
 pub fn receive_move_input_from_client(
     trigger: Trigger<FromClient<SendMoveInput>>,
-    mut cmd: Commands,
+    cmd: Commands,
     ents_controlled_by_client: Query<(&Controls, ), ( )>,
     mut controlled_beings_query: Query<(&mut InputMoveVector, &ControlledBy, Has<CpuControlled>), ()>,
 
@@ -190,9 +189,9 @@ pub fn update_facing_dir(mut query: Query<(&FinalMoveVector, &mut FacingDirectio
 //PARA HACER ANTÍDOTOS Q ATACAN SUSTANCIAS ESPECÍFICAS, HACER OTRO SISTEMA Q AFECTE EL POWER DE OTROS EFECTOS
 
 #[allow(unused_parens)]
-pub fn process_movement_modifiers(mut cmd: Commands, 
+pub fn process_movement_modifiers(cmd: Commands, 
     mut being_query: Query<(Entity, &AppliedModifiers, &InputMoveVector, &mut FinalMoveVector), (With<Being>)>,
-    mut effects_query: Query<(
+    effects_query: Query<(
         &ModifierCategories,
         &EffectivePotency,
         Option<&MitigatingOnly>,

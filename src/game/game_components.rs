@@ -1,14 +1,14 @@
-use std::{default, time::Duration};
+use std::time::Duration;
 
+use bevy::{math::U16Vec2, platform::collections::{HashMap, HashSet}};
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TileTextureIndex;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 use splines::{Interpolation, Key, Spline};
-use superstate::SuperstateInfo;
-use rand::Rng;
 use std::fmt::Display;
 
-use crate::game::being::{being_components::Being, sprite::animation_constants::*};
+use crate::{common::common_components::{HashId, HashIdIndexMap, HashIdMap}, game::{being::sprite::animation_constants::*, game_resources::ImageSizeMap}};
 
 
 #[derive(Component, Debug, )]
@@ -76,20 +76,62 @@ impl ImageHolder {
     }
 }
 
-#[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq)]
-pub struct MultipleImageHolder(Vec<ImageHolder>);
-impl MultipleImageHolder {
-    pub fn new(holders: Vec<ImageHolder>) -> Self {//TODO HACER ALGO DE NEW WITH CAPACITY
-        Self(holders)
+
+#[derive(Component, Debug, Clone, Default, )]
+pub struct ImageHolderMap(pub HashIdIndexMap<Handle<Image>>);
+impl ImageHolderMap {
+    pub fn from_paths(
+        asset_server: &AssetServer, 
+        img_paths: HashMap<String, String>, 
+    ) -> Result<Self, BevyError> {
+        let mut map = HashIdIndexMap::default();
+        for (key, path) in img_paths {
+            let image_holder = ImageHolder::new(asset_server, &path)?;
+            map.insert(key, image_holder.0);
+        }
+        Ok(Self(map))
     }
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self(Vec::with_capacity(capacity))
+    pub fn first_handle(&self) -> Handle<Image> {
+        self.0.first().cloned().unwrap_or_else(|| Handle::default())
     }
-    pub fn add(&mut self, holder: ImageHolder) {
-        self.0.push(holder);
+   
+}
+
+
+
+
+#[derive(Component, Debug, Clone, Default)]
+pub struct TileIdsHandles { pub ids: Vec<HashId>, pub handles: Vec<Handle<Image>>,}
+
+impl TileIdsHandles {
+    pub fn from_paths(asset_server: &AssetServer, img_paths: HashMap<String, String>,
+    ) -> Result<Self, BevyError> {
+
+        if img_paths.is_empty() {
+            return Err(BevyError::from("TileImgsMap cannot be created with an empty image paths map"));
+        }
+        let mut ids = Vec::new();
+        let mut handles = Vec::new();
+        for (key, path) in img_paths {
+            let image_holder = ImageHolder::new(asset_server, &path)?;
+            ids.push(HashId::from(key));
+            handles.push(image_holder.0);
+        }
+
+        Ok(Self { ids, handles, })
+
     }
-    pub fn get(&self, index: usize) -> Option<&ImageHolder> {
-        self.0.get(index)
+
+    pub fn first_handle(&self) -> Handle<Image> {
+        self.handles.first().cloned().unwrap_or_else(|| Handle::default())
+    }
+
+    pub fn clone_handles(&self) -> Vec<Handle<Image>> {
+        self.handles.clone()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (HashId, &Handle<Image>)> {
+        self.ids.iter().cloned().zip(self.handles.iter())
     }
 }
 

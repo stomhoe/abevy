@@ -63,7 +63,7 @@ pub fn apply_antidotes(
 //HACER Q SI EL PARENT FILTRA MAS RAPIDO TICKEE POR EL FACTOR DADO
 #[allow(unused_parens, )]
 pub fn tick_time_based_multipliers(
-    time: Res<Time>, mut query: Query<(&mut TimeBasedMultiplier), ( With<ModifierCategories>)>
+    time: Res<Time>, query: Query<(&mut TimeBasedMultiplier), ( With<ModifierCategories>)>
 ) {
     //for (mut multiplier, ) in query.iter_mut() { multiplier.timer.tick(time.delta()); }
 }

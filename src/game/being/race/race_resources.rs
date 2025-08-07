@@ -1,8 +1,8 @@
 
-use bevy::{platform::collections::HashMap, prelude::*, sprite};
+use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 
-use crate::{common::{common_components::DisplayName, common_utils::HashIdToEntityMap}, game::{being::{race::race_components::*, sprite::sprite_resources::SpriteCfgEntityMap}, game_components::Description}};
+use crate::{common::common_utils::HashIdToEntityMap, game::being::race::race_components::*};
 
 //CASO DE USO: RECIBIS UN PAQUETE ONLINE SOLO CON NID Y TENES Q VER A Q ENTITY SE REFIERE
 #[derive(Resource, Debug, Default )]

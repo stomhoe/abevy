@@ -3,7 +3,6 @@
 
 use crate::game::being::class::{
     class_components::*,
-    class_resources::*,
     class_systems::*,
     //classes::classes_events::*,
 };

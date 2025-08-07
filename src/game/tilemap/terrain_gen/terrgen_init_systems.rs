@@ -2,7 +2,7 @@
 
 use core::panic;
 
-use bevy::{math::U8Vec2, prelude::*};
+use bevy::prelude::*;
 
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use fastnoise_lite::FastNoiseLite;
@@ -346,7 +346,7 @@ pub fn init_oplists_bifurcations(
 }
 
 #[allow(unused_parens)]
-pub fn client_change_operand_entities(mut cmd: Commands, 
+pub fn client_change_operand_entities(cmd: Commands, 
     mut query: Query<(&mut OperationList), (Added<OperationList>)>, 
     mut map: ResMut<ServerEntityMap>,
 )

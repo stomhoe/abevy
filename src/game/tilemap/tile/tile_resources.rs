@@ -36,7 +36,7 @@ pub struct ShaderRepeatTexSeri {
 pub struct TileSeri {
     pub id: String,
     pub name: String,
-    pub img_path: String,
+    pub img_paths: HashMap<String, String>,
     pub shader: String,
     pub sprite: bool,
     pub offset: [f32; 2],

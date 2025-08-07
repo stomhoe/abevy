@@ -4,12 +4,11 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use crate::common::common_components::{EntityPrefix, MyZ};
-use crate::game::game_components::{ImageHolder, ImagePathHolder};
+use crate::game::game_components::ImageHolder;
 use crate::game::tilemap::terrain_gen::terrgen_resources::WorldGenSettings;
 use crate::game::tilemap::{chunking_components::ChunkPos, tile::tile_utils::* };
 use bevy_ecs_tilemap::tiles::*;
 
-use bevy_ecs_tilemap::tiles::*;
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 use serde::{Serialize, Serializer, Deserialize, Deserializer};

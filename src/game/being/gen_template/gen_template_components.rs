@@ -1,7 +1,6 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use serde::{Deserialize, Serialize};
 
 //use crate::game::being::gen_template::{
 //    gen_template_constants::*,

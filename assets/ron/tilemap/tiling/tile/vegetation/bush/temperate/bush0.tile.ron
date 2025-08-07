@@ -1,7 +1,9 @@
 (
     id: "tempbush0",
     name: "Temperate bush 0",
-    img_path: "texture/world/bush/bush0.png",
+    img_paths: {
+        "default": "texture/world/bush/bush0.png"
+    },
     shader: "",
     sprite: true,
     offset: (0.0, 0.0),

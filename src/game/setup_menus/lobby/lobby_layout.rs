@@ -3,7 +3,6 @@ use bevy::{color::palettes::css::LIGHT_GOLDENROD_YELLOW};
 use bevy_simple_scroll_view::ScrollableContent;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 
-use crate::game::player::player_components::Player;
 use crate::game::setup_menus::lobby::lobby_components::LobbyPlayerListing;
 use crate::game::setup_menus::lobby::lobby_systems::*;
 use crate::game::{GamePhase};

@@ -1,7 +1,6 @@
 use bevy::prelude::*;
-use bevy_replicon::prelude::*;
 
-use crate::game::{being::being_components::*, game_components::{FacingDirection, LocalCpu}, multiplayer::{multiplayer_components::MpAuthority, }, player::player_components::{CameraTarget, OfSelf, Player}};
+use crate::game::{being::being_components::*, player::player_components::{CameraTarget, OfSelf, Player}};
 
 
 

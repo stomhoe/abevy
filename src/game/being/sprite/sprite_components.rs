@@ -1,5 +1,4 @@
-use bevy::ecs::component;
-use bevy::math::{Vec2, Vec3, U16Vec2, UVec2};
+use bevy::math::{Vec2, UVec2};
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -8,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-use crate::common::common_components::{DisplayName, EntityPrefix, FixedStr};
-use crate::game::{being::sprite::{animation_constants::*, }, game_components::*};
+use crate::common::common_components::{EntityPrefix, FixedStr};
+use crate::game::being::sprite::{animation_constants::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(EntityPrefix::new("SpriteConfig"))]

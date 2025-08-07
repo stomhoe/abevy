@@ -1,9 +1,9 @@
 
 
 
-use bevy::{math::U8Vec2, prelude::*};
+use bevy::prelude::*;
 
-use crate::{common::common_components::{DisplayName, EntityPrefix, HashId, StrId}, game::{game_resources::GlobalEntityMap, tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::{tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, }, tile_resources::AnyTilingEntityMap}, }}};
+use crate::game::tilemap::{chunking_components::*, chunking_resources::CHUNK_SIZE, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, }, };
 
 
 
@@ -39,7 +39,7 @@ pub fn spawn_terrain_operations (
             commands.spawn_batch(batch);
         });
         commands.entity(chunk_ent).insert((PendingOperations(pending_ops_count), ProducedTiles::new_with_chunk_capacity()));
-        info!(target: "terrain_gen", "Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
+       // info!(target: "terrain_gen", "Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
     }
     Ok(())
 }

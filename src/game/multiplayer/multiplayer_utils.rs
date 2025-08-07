@@ -2,10 +2,9 @@ use std::{net::{Ipv4Addr, SocketAddr, UdpSocket}, time::SystemTime};
 
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use bevy_replicon_renet::{
-    RenetChannelsExt, RepliconRenetPlugins,
+    RenetChannelsExt,
     netcode::{
         ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
         ServerConfig,

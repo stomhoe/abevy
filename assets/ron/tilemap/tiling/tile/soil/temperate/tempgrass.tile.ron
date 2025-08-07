@@ -1,7 +1,9 @@
 (
     id: "tempgrass",
     name: "Temp grass",
-    img_path: "texture/world/white.png",
+    img_paths: {
+        "default": "texture/world/white.png"
+    },
     shader: "tempgrass",
     sprite: false,
     offset: (0.0, 0.0),
