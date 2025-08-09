@@ -20,3 +20,8 @@ Thumbs.db
 
 # Other
 *.log
+
+run1_err.txt
+run1_out.txt
+run2_err.txt
+run2_out.txt

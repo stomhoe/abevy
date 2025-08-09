@@ -3,7 +3,7 @@ use bevy::platform::collections::HashSet;
 use bevy_ecs_tilemap::tiles::TilePos;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Default, Serialize, Deserialize)]
+#[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
 pub struct ActivatesChunks(pub HashSet<Entity>,);
 
 
@@ -32,7 +32,7 @@ pub struct LayersReady;
 #[require(ChunkInitState)]
 pub struct InitializedChunk;
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct ProducedTiles(#[entities] pub Vec<Entity>);
 impl Default for ProducedTiles {
     fn default() -> Self {
@@ -89,7 +89,7 @@ impl ProducedTiles {
 }
 
 
-#[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq)]
+#[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, Reflect)]
 pub struct ChunkPos(pub IVec2);
 
 impl ChunkPos {

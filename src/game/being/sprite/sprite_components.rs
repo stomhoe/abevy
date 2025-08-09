@@ -8,6 +8,7 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use crate::common::common_components::{EntityPrefix, FixedStr};
+use crate::game::being::being_components::HeldSprites;
 use crate::game::being::sprite::{animation_constants::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -21,40 +22,12 @@ impl From<&str> for AnimationIdPrefix {fn from(s: &str) -> Self {AnimationIdPref
 impl From<String> for AnimationIdPrefix {fn from(s: String) -> Self {AnimationIdPrefix(FixedStr::from(s))}}
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[relationship(relationship_target = HeldSprites)]
 #[require(EntityPrefix::new("Sprite"), Replicated,)]
 pub struct SpriteHolderRef {#[relationship]#[entities]pub base: Entity, }
 
-#[derive(Component)]
-#[relationship_target(relationship = SpriteHolderRef)]
-pub struct HeldSprites(Vec<Entity>);
-impl HeldSprites {
-    pub fn entities(&self) -> &Vec<Entity> { &self.0 }
-}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone,)]
-pub struct MoveAnimActive(pub bool);
-
-
-// No olvidarse de agregarlo al Plugin del módulo
-// .add_client_trigger::<MpEvent>(Channel::Ordered)
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-//NO VA REPLICATED, SE HACE LOCALMENTE EN CADA PC SEGÚN LOS INPUTS RECIBIDOS DE OTROS PLAYERS
-pub struct AnimationState(pub FixedStr<32>);
-impl AnimationState {
-    pub fn new_idle() -> Self { Self(IDLE.into()) }
-    pub fn set_idle(&mut self) { self.0 = IDLE.into(); }
-    pub fn set_walk(&mut self) { self.0 = WALK.into(); }
-    pub fn set_swim(&mut self) { self.0 = SWIM.into(); }
-    pub fn set_fly(&mut self) { self.0 = FLY.into(); }
-}
-
-impl std::fmt::Display for AnimationState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy )]
@@ -108,50 +81,87 @@ impl AtlasLayoutData {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct ColorHolder(pub Color);//NO HACER PARTE DE SpriteDataBundle
-
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
-pub struct Scale2D(Vec2);
-impl Scale2D {
-    pub fn new(scale: Vec2) -> Self {
-        let mut fixed = scale; let mut warned = false;
-        if fixed.x <= 0.0 { fixed.x = 1.0; warned = true; }
-        if fixed.y <= 0.0 { fixed.y = 1.0; warned = true; }
-        if warned {
-            warn!("Non-positive scale component detected in Scale2D::new({:?}), set to 1.0", scale);
-        }
-        Self(fixed)
-    }
-    pub fn set(&mut self, scale: Vec2) { *self = Scale2D::new(scale); }
-    pub fn as_vec2(&self) -> Vec2 { self.0 }
+/// Trait for 2D scale components.
+pub trait Scale2DComponent: Sized {
+    fn new(scale: Vec2) -> Self;
+    fn from_vec2(v: Vec2) -> Self { Self::new(v) }
+    fn from_array(v: [f32; 2]) -> Self { Self::new(Vec2::from(v)) }
+    fn as_vec2(&self) -> Vec2;
 }
-impl From<Vec2> for Scale2D { fn from(v: Vec2) -> Self { Scale2D::new(v) } }
-impl From<[f32; 2]> for Scale2D { fn from(v: [f32; 2]) -> Self { Scale2D::new(Vec2::from(v)) } }
-impl std::ops::Mul for Scale2D {type Output = Self; fn mul(self, rhs: Self) -> Self { Scale2D(self.0 * rhs.0) } }
-impl std::ops::MulAssign for Scale2D {fn mul_assign(&mut self, rhs: Scale2D) { self.0 *= rhs.0; } }
 
-impl Default for Scale2D {fn default() -> Self {Self(Vec2::ONE)}}
+/// Macro to implement a strongly-typed 2D scale component and its ops.
+macro_rules! define_scale2d_type {
+    ($name:ident) => {
+        #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, )]
+        pub struct $name(pub Vec2);
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Default)] 
-pub struct ScaleLookUp(pub Scale2D);
-impl From<Vec2> for ScaleLookUp { fn from(v: Vec2) -> Self { Self(Scale2D::new(v)) } }
-impl From<[f32; 2]> for ScaleLookUp { fn from(v: [f32; 2]) -> Self { Self(Scale2D::from(v)) } }
+        impl $name {
+            pub fn new(scale: Vec2) -> Self {
+                let mut fixed = scale;
+                let mut warned = false;
+                if fixed.x <= 0.0 { fixed.x = 1.0; warned = true; }
+                if fixed.y <= 0.0 { fixed.y = 1.0; warned = true; }
+                if warned {
+                    warn!("Non-positive scale component detected in {}::new({:?}), set to 1.0", stringify!($name), scale);
+                }
+                Self(fixed)
+            }
+            pub fn set(&mut self, scale: Vec2) { *self = Self::new(scale); }
+            pub fn as_vec2(&self) -> Vec2 { self.0 }
+        }
+        impl Default for $name {fn default() -> Self {Self::new(Vec2::ONE)}}
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Default)] 
-pub struct ScaleLookDown(pub Scale2D);
-impl From<Vec2> for ScaleLookDown { fn from(v: Vec2) -> Self { Self(Scale2D::new(v)) } }
-impl From<[f32; 2]> for ScaleLookDown { fn from(v: [f32; 2]) -> Self { Self(Scale2D::from(v)) } }
+        impl Scale2DComponent for $name {
+            fn new(scale: Vec2) -> Self { Self::new(scale) }
+            fn as_vec2(&self) -> Vec2 { self.0 }
+        }
+        impl From<Vec2> for $name { fn from(v: Vec2) -> Self { Self::new(v) } }
+        impl From<[f32; 2]> for $name { fn from(v: [f32; 2]) -> Self { Self::new(Vec2::from(v)) } }
+        impl std::ops::Mul for $name {
+            type Output = Self;
+            fn mul(self, rhs: Self) -> Self { Self(self.0 * rhs.0) }
+        }
+        impl std::ops::MulAssign for $name {
+            fn mul_assign(&mut self, rhs: Self) { self.0 *= rhs.0; }
+        }
+    };
+}
+define_scale2d_type!(Scale2D);
+define_scale2d_type!(ScaleLookUp);
+define_scale2d_type!(ScaleLookDown);
+define_scale2d_type!(ScaleLookUpDown);
+define_scale2d_type!(ScaleSideways);
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Default)] 
-pub struct ScaleLookUpDown(pub Scale2D);
-impl From<Vec2> for ScaleLookUpDown { fn from(v: Vec2) -> Self { Self(Scale2D::new(v)) } }
-impl From<[f32; 2]> for ScaleLookUpDown { fn from(v: [f32; 2]) -> Self { Self(Scale2D::from(v)) } }
+macro_rules! impl_cross_mul {
+    ($A:ty, $B:ty) => {
+        impl std::ops::Mul<$B> for $A {
+            type Output = $A;
+            fn mul(self, rhs: $B) -> $A { <$A>::new(self.as_vec2() * rhs.as_vec2()) }
+        }
+        impl std::ops::Mul<$A> for $B {
+            type Output = $B;
+            fn mul(self, rhs: $A) -> $B { <$B>::new(self.as_vec2() * rhs.as_vec2()) }
+        }
+        impl std::ops::MulAssign<$B> for $A {
+            fn mul_assign(&mut self, rhs: $B) { self.0 *= rhs.as_vec2(); }
+        }
+        impl std::ops::MulAssign<$A> for $B {
+            fn mul_assign(&mut self, rhs: $A) { self.0 *= rhs.as_vec2(); }
+        }
+    };
+}
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Default)] 
-pub struct ScaleSideways(pub Scale2D);
-impl From<Vec2> for ScaleSideways { fn from(v: Vec2) -> Self { Self(Scale2D::new(v)) } }
-impl From<[f32; 2]> for ScaleSideways { fn from(v: [f32; 2]) -> Self { Self(Scale2D::from(v)) } }
+// Cross-multiplication for all pairs (excluding reflexive, already covered)
+impl_cross_mul!(Scale2D, ScaleLookUp);
+impl_cross_mul!(Scale2D, ScaleLookDown);
+impl_cross_mul!(Scale2D, ScaleLookUpDown);
+impl_cross_mul!(Scale2D, ScaleSideways);
+impl_cross_mul!(ScaleLookUp, ScaleLookDown);
+impl_cross_mul!(ScaleLookUp, ScaleLookUpDown);
+impl_cross_mul!(ScaleLookUp, ScaleSideways);
+impl_cross_mul!(ScaleLookDown, ScaleLookUpDown);
+impl_cross_mul!(ScaleLookDown, ScaleSideways);
+impl_cross_mul!(ScaleLookUpDown, ScaleSideways);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 pub struct Offset2D(pub Vec2);

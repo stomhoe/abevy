@@ -21,10 +21,10 @@ pub struct AnimSerisHandles {
 #[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct AnimationSeri {
     pub id: String,
-    pub sheet_rows_cols: [u32; 2], //rows, cols
-    pub target: u32,
+    pub sheet_rows_cols: [usize; 2], //rows, cols
+    pub target: usize,
     pub is_row: bool, //true: target is a row , false: target is a column
-    pub partial: Option<[u32; 2]>, //start, end inclusive (0-indexed)
+    pub partial: Option<[usize; 2]>, //start, end inclusive (0-indexed)
 }
 
 

@@ -73,11 +73,9 @@ pub fn init_tiles(
         if let Some(seri) = assets.remove(handle) {
 
             let str_id = StrId::new(seri.id)?;
-            let my_z = MyZ::new(seri.z);
+            let my_z = MyZ(seri.z);
             let enti = cmd.spawn((
-                str_id.clone(),
-                Tile,
-                Disabled,
+                Tile, str_id.clone(), Disabled,
                 my_z.clone(),
             )).id();
 
@@ -139,7 +137,7 @@ pub fn init_tiles(
                         ..Default::default()
                     },
                     map,
-                    Transform::from_translation(Vec2::from_array(seri.offset).extend(my_z.div_1e9())),
+                    Transform::from_translation(Vec2::from_array(seri.offset).extend(my_z.as_float())),
                 ));
                 if ! seri.shader.is_empty() {
                     warn!(target: "tiling_loading", "Tile {} tilemap shaders ('{}') are not compatible with sprite=true, ignoring", str_id, seri.shader);

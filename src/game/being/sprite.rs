@@ -9,7 +9,7 @@ use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::{being::sprite::animation_resources::{MoveStateUpdated, AnimationSeri}, ActiveGameSystems};
+use crate::game::{being::sprite::{animation_components::{AnimationState, MoveAnimActive}, animation_resources::{AnimationSeri, MoveStateUpdated}}, ActiveGameSystems};
 use crate::game::{being::sprite::{
    sprite_resources::*, animation_systems::*, sprite_components::*, sprite_systems::*,
    sprite_init_systems::*,
@@ -22,6 +22,7 @@ pub mod sprite_components;
 pub mod animation_constants;
 pub mod sprite_resources;
 pub mod animation_resources;
+pub mod animation_components;
 //mod animation_events;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -38,18 +39,18 @@ impl Plugin for SpritePlugin {
                 RonAssetPlugin::<AnimationSeri>::new(&["anim.ron"]),
             ))
             .add_systems(FixedUpdate, (
-                (animate_sprite, update_animstate, apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(5))).in_set(ActiveGameSystems),
+                (update_animstate.before(animate_sprite), animate_sprite, apply_offsets, apply_scales, ).in_set(ActiveGameSystems),
 
                 ((
                     replace_string_ids_by_entities, add_spritechildren_and_comps, ).run_if(server_or_singleplayer), 
                     update_animstate_for_clients.run_if(server_running),
                     become_child_of_sprite_with_category, insert_sprite_to_instance,
                 ).run_if(
-                    in_state(LocalAssetsLoadingState::Complete)
+                    in_state(LocalAssetsLoadingState::Finished)
                 )
             ).in_set(SpriteSystemsSet))
             
-            .add_systems(OnEnter(LocalAssetsLoadingState::Complete), (
+            .add_systems(OnEnter(LocalAssetsLoadingState::Finished), (
                 init_sprite_cfgs.before(add_sprites_to_local_map,),
                 add_sprites_to_local_map,
                 init_animations,
@@ -81,6 +82,10 @@ impl Plugin for SpritePlugin {
             //     (RuleFns::<SpriteCfgsBuiltSoFar>::default(), SendRate::Once),//para late joiners usar Added<SpriteCfgsBuiltSoFar> 
             // ))
             .replicate::<Directionable>()
+            .register_type::<SpriteCfgEntityMap>()
+            .register_type::<SpriteHolderRef>()
+            .register_type::<AnimationState>()
+            .register_type::<MoveAnimActive>()
 
 
 

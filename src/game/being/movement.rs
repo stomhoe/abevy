@@ -54,6 +54,8 @@ impl Plugin for MovementPlugin {
                 RuleFns::<Being>::default(),
                 (RuleFns::<Transform>::default(), SendRate::Periodic((64*3))),
             ))
+            .register_type::<InputMoveVector>()
+            .register_type::<InputSpeedVector>()
         ;
     }
 }

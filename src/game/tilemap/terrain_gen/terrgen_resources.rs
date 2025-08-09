@@ -4,7 +4,7 @@ use bevy_asset_loader::asset_collection::AssetCollection;
 use crate::common::common_utils::HashIdToEntityMap;
 
 
-#[derive(Resource, )]
+#[derive(Resource, Debug, Reflect)]
 pub struct WorldGenSettings {
     
     pub seed: i32,

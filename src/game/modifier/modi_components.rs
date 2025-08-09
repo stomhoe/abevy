@@ -2,7 +2,6 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-#[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use serde::{Deserialize, Serialize};
 
 //USAR Name
@@ -43,6 +42,7 @@ pub struct EffectiveValue(pub f32);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 ///poison ID, efectiveness(multiplicador sobre propia Potency, resultado se substrae a la Potency del veneno) 
 pub struct Antidote(pub HashMap<String, f32>);
+//                        HACER UN TIPO HASHMAP ESPECÍFICO PARA ESTE TIPO DE HASHMAP
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]//PARA PIERNAS 
@@ -52,6 +52,15 @@ pub struct OffsetValForSelf(pub HashMap<String, f32>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]//PARA PIERNAS 
 /// copy a portion of value from another modifier into self if present on same target
 pub struct CopyValPortionForSelf(pub HashMap<String, f32>);///f32 entre 0 y 1, se multiplica con el valor presente en la cat y lo devuelto se le suma a la efective potency nuestra
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq,  )]
+pub struct MinForDamage;
+
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq,  )]
+//para flat/scaled damage reduction o increase. combinar con OperationType para flat damage reduction o scaled
+pub struct ConvertsDamageOnNonPenetration(pub HashMap<String, String>);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -69,17 +78,7 @@ pub enum OperationType {
 pub struct MitigatingOnly;
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(ModifierCategories)]
-pub struct MovementModifier;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(ModifierCategories, MovementModifier)]
-pub struct Speed;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(ModifierCategories, MovementModifier)]
-pub struct InvertMovement;
 
 
 

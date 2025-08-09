@@ -1,8 +1,10 @@
+use core::f32;
+
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon_renet::renet::RenetServer;
-use crate::game::{being::{being_components::{Being, ControlledBy, ControlledLocally, CpuControlled }, modifier::modifier_components::*, movement::{movement_components::*, movement_events::*}, sprite::sprite_components::MoveAnimActive}, game_components::FacingDirection, player::{player_components::{ OfSelf, Player}, player_resources::KeyboardInputMappings}};
+use crate::game::{being::{being_components::{Being, ControlledBy, ControlledLocally, CpuControlled }, movement::{movement_components::*, movement_events::*}, sprite::animation_components::MoveAnimActive}, game_components::FacingDirection, modifier::{modi_components::*, modi_move_components::*}, player::{player_components::{ OfSelf, Player}, player_resources::KeyboardInputMappings}};
 
 #[allow(unused_parens, )]
 pub fn update_human_move_input(
@@ -30,7 +32,7 @@ pub fn update_jump_duck_inputs(
     keys: Res<ButtonInput<KeyCode>>,
     input_mappings: Res<KeyboardInputMappings>,) 
 {
-    if keys.pressed(input_mappings.jump_or_fly) {
+    if keys.pressed(input_mappings.jump_or_fly) {//TODO USAR BEVY ENHANCED INPUT
         for ent in query.iter() {cmd.entity(ent).insert(InputJump);}
     } else {
         for ent in query.iter() {cmd.entity(ent).remove::<InputJump>();}
@@ -44,10 +46,10 @@ pub fn update_jump_duck_inputs(
 
 #[allow(unused_parens, )]
 pub fn send_move_input_to_server(
-    mut cmd: Commands,  move_input: Query<(Entity,&InputMoveVector), (Changed<InputMoveVector>, With<ControlledLocally>)>,
+    mut cmd: Commands,  move_input: Query<(Entity, &InputMoveVector), (Changed<InputMoveVector>, With<ControlledLocally>)>,
 ) {
     for (being_ent, move_vec) in move_input.iter() {
-        //info!(target: "movement", "Sending move input for entity {:?} with vector {:?}", being_ent, move_vec);
+        //debug!(target: "movement", "Sending move input for entity {:?} with vector {:?}", being_ent, move_vec);
         cmd.client_trigger( SendMoveInput { being_ent, vec: move_vec.clone(), } );
     }
 
@@ -62,9 +64,9 @@ pub fn receive_move_input_from_client(
     let SendMoveInput { vec: new_vec, being_ent } = trigger.event.clone();
     
     if let Ok((mut input_vec, controlled_by, )) = controlled_beings_query.get_mut(being_ent) {
-        if controlled_by.player == trigger.client_entity {
+        if controlled_by.client == trigger.client_entity {
             if input_vec.0 != new_vec.0 { input_vec.0 = new_vec.0; }
-            //info!(target: "movement", "Received move input for entity {:?} with vector {:?}", being_ent, new_vec);
+            //debug!(target: "movement", "Received move input for entity {:?} with vector {:?}", being_ent, new_vec);
         } else {
             warn!("Client tried to control a being not controlled by them: {}", being_ent);
         }
@@ -78,16 +80,14 @@ pub fn receive_move_input_from_client(
 #[allow(unused_parens, )]
 pub fn apply_movement(
     mut cmd: Commands, time: Res<Time>, server: Option<Res<RenetServer>>,
-    mut query: Query<(Entity, &FinalMoveVector, &mut Transform, &mut MoveAnimActive, Has<ControlledLocally>), >,
+    mut query: Query<(Entity, &InputSpeedVector, &mut Transform, &mut MoveAnimActive, Has<ControlledLocally>), >,
 ) {
-    for (being_ent, FinalMoveVector(move_dir), mut transform, mut move_anim, controlled_locally) in query.iter_mut() {
+    for (being_ent, InputSpeedVector(speed_vec), mut transform, mut move_anim, controlled_locally) in query.iter_mut() {
 
         if server.is_none() && !controlled_locally { continue;}
 
-        let speed = 800.0;
         let delta = time.delta_secs();
-        let movement = move_dir * speed * delta;
-
+        let movement = speed_vec  * delta;
 
         if movement != Vec2::ZERO {
             transform.translation += movement.extend(0.0);
@@ -100,12 +100,9 @@ pub fn apply_movement(
                 cmd.server_trigger(to_clients);
             }
             
-            if !move_anim.0 {
-                move_anim.0 = true;
-            }
-        } else if move_anim.0 {
-            move_anim.0 = false;
-        }
+            if !move_anim.0 { move_anim.0 = true; }
+        } 
+        else if move_anim.0 { move_anim.0 = false; }
     }
 }
 
@@ -121,25 +118,27 @@ pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE D
 
     if server.is_some() {return Ok(());}
 
-    if let Ok(mut transf) = query.get_mut(entity) {
-        //info!("Applying transform to entity: {:?}", entity);
-        if let Ok(controller) = controlled_by.get(entity) {
-            if controller.player == selfplayer.into_inner() && interpolate {
-                transf.translation = transf.translation.lerp(transform.translation, 0.5);
-            } else {
-                *transf = transform;
-            }
+    let Ok(mut transf) = query.get_mut(entity) else {
+        let err = Err(BevyError::from(format!("Received transform for entity that does not exist: {:?}", entity)));
+        return err;
+    };
+    
+    //debug!("Applying transform to entity: {:?}", entity);
+    if let Ok(controller) = controlled_by.get(entity) {
+        if controller.client == selfplayer.into_inner() && interpolate {
+            transf.translation = transf.translation.lerp(transform.translation, 0.5);
+        } else {
+            *transf = transform;
         }
-    } else {
-        error!("Received transform for entity that does not exist: {:?}", entity);
+    } else{
+        *transf = transform;
     }
-
    Ok(())
 }
 
 #[allow(unused_parens)]
-pub fn update_facing_dir(mut query: Query<(&FinalMoveVector, &mut FacingDirection), >) {
-    for (FinalMoveVector(dir_vec), mut facing_dir) in query.iter_mut() {
+pub fn update_facing_dir(mut query: Query<(&InputSpeedVector, &mut FacingDirection), >) {
+    for (InputSpeedVector(dir_vec), mut facing_dir) in query.iter_mut() {
         if dir_vec.xy() == Vec2::ZERO {continue;}
         
         *facing_dir = if dir_vec.x.abs() > dir_vec.y.abs() {
@@ -154,34 +153,33 @@ pub fn update_facing_dir(mut query: Query<(&FinalMoveVector, &mut FacingDirectio
 
 #[allow(unused_parens)]//LO HACE EL CLEINT TMB CON LOS Q CONTROLA EL PARA TENER UNA TRANSFORM Q SE ACTUALIZA PREDECIBLEMENTE SIMILAR AL SERVER
 pub fn process_movement_modifiers(
+    //TODO: ACELERACIÓN Y FRICCIÓN? P. EJ, PARA TENER CABALLOS CON INERCIA. USAR BEVY RAPIER DESP
     server: Option<Res<RenetServer>>,
-    mut being_query: Query<(&AppliedModifiers, &InputMoveVector, &mut FinalMoveVector, Has<ControlledLocally>), (With<Being>, )>,
+    mut being_query: Query<(&AppliedModifiers, &InputMoveVector, &mut InputSpeedVector, Has<ControlledLocally>), (With<Being>, )>,
     speed_query: Query<(
         &EffectiveValue,
         &OperationType,
-        Has<Speed>,//DEJAR CON HAS POR AHORA
+        Has<Speed>,
         Has<InvertMovement>,
         Has<MitigatingOnly>
-    ), ( )>, //PRIMERO HACER UN SUMATORIO NEGATIVO DE EXCLUSIVAMENTE LOS NEGATIVOS
-
+    ), ( )>, 
 ) {
     for (applied, InputMoveVector(inp_vec), mut final_vec, controlled_locally) in being_query.iter_mut() {
         if server.is_none() && !controlled_locally { continue;}
 
         final_vec.0 = *inp_vec;
 
-        let mut speed_max: f32 = 0.0;
+        let mut speed_max: f32 = f32::INFINITY;
         let mut speed_min: f32 = 0.0;
 
         let mut speed_scale: f32 = 1.0;//NO RECOMENDADO USAR MULTIPLIERS (MÁS DIFÍCIL DE BALANCEAR)
         
         let mut speed_neg_sum: f32 = 0.0;
-        let mut slowdown_mitigators_sum: f32 = 0.0;
-        let mut speed_offset: f32 = 0.0;
+        let mut slowdown_mitigators_sum: f32 = 0.0; 
+        let mut speed_sum: f32 = 400.0;//ESTE 400.0 ES PROVISORIO, DESPUES CAMBIAR A 0.<---------------------
 
         let mut invert_sum: f32 = 0.0;
         let mut invert_scale: f32 = 1.0;
-
 
         for effect in applied.entities().iter() {
             if let Ok((&EffectiveValue(val), optype, speed, invert, mitigating)) = speed_query.get(*effect) {
@@ -193,7 +191,7 @@ pub fn process_movement_modifiers(
                                 if mitigating{
                                     slowdown_mitigators_sum += val;
                                 } else {
-                                    speed_offset += val;
+                                    speed_sum += val;
                                 }
                             } else {
                                 speed_neg_sum += val;
@@ -206,21 +204,21 @@ pub fn process_movement_modifiers(
                         if invert { invert_scale *= val.max(0.0); }
                     }
                     OperationType::Min => {
-                        speed_min = speed_min.min(val).min(speed_max).max(0.0);
+                        speed_min = speed_min.max(val)
                     },
                     OperationType::Max => {
-                        speed_max = speed_max.max(val).max(0.0); 
-                        speed_min = speed_min.min(val).max(0.0);
+                        speed_max = speed_max.min(val).max(0.0); 
                     },
                 }
                 
             }
         }
-        speed_offset += (speed_neg_sum + slowdown_mitigators_sum).max(0.0);
+        speed_sum += (speed_neg_sum + slowdown_mitigators_sum);
 
-        let final_speed = speed_offset * speed_scale;
+        let final_speed = (speed_sum * speed_scale).max(speed_min).min(speed_max).max(0.0);
         
-        final_vec.0 += final_speed;
+        
+        final_vec.0 *= final_speed;
 
         if invert_sum * invert_scale > 1.0 { final_vec.0 = -final_vec.0; }
     }

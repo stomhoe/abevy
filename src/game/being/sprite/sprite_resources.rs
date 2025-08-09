@@ -7,7 +7,7 @@ use crate::common::common_utils::HashIdToEntityMap;
 
 use::serde::{Deserialize, Serialize};
 
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event)]
+#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect, )]
 pub struct SpriteCfgEntityMap(pub HashIdToEntityMap);
 
 

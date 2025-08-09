@@ -12,21 +12,21 @@ pub struct Race;
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct SpritesPool(#[entities] pub Vec<Entity>);
 
 //Usar DisplayName para cada grupo
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct SelectableSprites(#[entities] pub Vec<Entity>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct Demonym(pub FixedStr<32>); //DEJARLO ASÍ PORQ NO DEBE SER SUPER LARGO ESTO
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct SingularDenomination(pub FixedStr<32>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct PluralDenomination(pub FixedStr<32>);
 
 #[derive(Component, Debug, Deserialize, Serialize, )]

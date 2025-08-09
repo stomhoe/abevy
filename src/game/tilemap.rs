@@ -1,8 +1,9 @@
 use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::prelude::AppRuleExt;
 use superstate::superstate_plugin;
 
-use crate::game::{tilemap::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::*, tile::*, tilemap_systems::*}, LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
+use crate::game::{tilemap::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{terrgen_resources::WorldGenSettings, *}, tile::{tile_components::GlobalTilePos, *}, tilemap_systems::*}, LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
 
 mod tilemap_systems;
 mod chunking_systems;
@@ -46,7 +47,7 @@ impl Plugin for MyTileMapPlugin {
                 TilingInitSystems::Replicated.before(TerrainGenInitSystems),
             ))
             .configure_sets(
-                OnEnter(LocalAssetsLoadingState::Complete), (
+                OnEnter(LocalAssetsLoadingState::Finished), (
                     TilingInitSystems::Local.before(TerrainGenInitSystems),
                 )
             )
@@ -55,7 +56,10 @@ impl Plugin for MyTileMapPlugin {
                     TilingInitSystems::Replicated.before(TerrainGenInitSystems),
                 )
             )
-           
+            .register_type::<ActivatesChunks>()
+            .register_type::<ProducedTiles>()
+            .register_type::<ChunkPos>()
+            .register_type::<WorldGenSettings>()
             .init_resource::<LoadedChunks>()
             .init_resource::<ChunkRangeSettings>()
             .replicate_once::<ActivatesChunks>()

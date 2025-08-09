@@ -31,6 +31,8 @@ impl Plugin for CommonPlugin {
             .add_systems(Update, (set_entity_name,).run_if(on_timer(Duration::from_secs(1))))
             //.add_systems(OnEnter(SomeStateType::Literal), (setup, ))
             //.init_resource::<RESOURCE_NAME>()
+            .add_systems(Startup, spawn_camera)
+
             .add_plugins((
             // SomePlugin, 
             // superstate_plugin::<SuperState, (Substate1, Substate2)>
@@ -39,6 +41,10 @@ impl Plugin for CommonPlugin {
             .replicate::<HashId>()
             .replicate::<StrId>()
             .replicate::<EntityPrefix>()
+            .register_type::<MyZ>()
+            .register_type::<DisplayName>()
+            .register_type::<StrId>()
+            .register_type::<HashId>()
 
         ;
     }

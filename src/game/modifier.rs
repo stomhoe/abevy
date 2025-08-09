@@ -1,16 +1,18 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::game::ActiveGameSystems;
-use crate::game::being::modifier::{
-    modifier_systems::*,
+use crate::game::modifier::{
+    modi_systems::*,
 //    modifier_components::*,
 //    modifier_resources::*,
 //    modifier_constants::*,
 //    modifier_events::*,
 //    modifier_layout::*,
 };
-mod modifier_systems;
-pub mod modifier_components;
+mod modi_systems;
+pub mod modi_components;
+pub mod modi_damage_components;
+pub mod modi_move_components;
 //mod modifier_resources;
 //mod modifier_constants;
 //mod modifier_events;

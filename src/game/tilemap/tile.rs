@@ -1,9 +1,10 @@
 use bevy_common_assets::ron::RonAssetPlugin;
+use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::prelude::*;
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::game::{tilemap::tile::tile_components::HashPosEntiWeightedSampler, LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
+use crate::game::{tilemap::tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler}, LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
 use crate::game::tilemap::tile::{
     tile_systems::*,
     tiling_init_systems::*,
@@ -37,7 +38,7 @@ impl Plugin for TilePlugin {
                 (add_tile_weighted_samplers_to_map, ).run_if(not(server_or_singleplayer)),
             ))
   
-            .add_systems(OnEnter(LocalAssetsLoadingState::Complete), (
+            .add_systems(OnEnter(LocalAssetsLoadingState::Finished), (
                 init_shaders.before(add_shaders_to_map),
                 add_shaders_to_map.before(init_tiles),
                 init_tiles.before(add_tiles_to_map),
@@ -56,6 +57,9 @@ impl Plugin for TilePlugin {
             .add_server_trigger::<AnyTilingEntityMap>(Channel::Unordered)
             .make_trigger_independent::<AnyTilingEntityMap>()
             .add_observer(client_map_server_tiling)
+            .register_type::<TilePos>()
+            .register_type::<GlobalTilePos>()
+
             
             .replicate::<HashPosEntiWeightedSampler>()
         ;

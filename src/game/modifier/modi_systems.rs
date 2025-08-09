@@ -1,8 +1,7 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-#[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use crate::game::{being::modifier::modifier_components::*, game_components::TimeBasedMultiplier};
+use crate::game::{modifier::modi_components::*, game_components::TimeBasedMultiplier};
 
 
 #[allow(unused_parens)]
@@ -24,7 +23,6 @@ pub fn apply_antidotes(
                     }
                 }
             }
-            
         }
 
         for modif_ent in affected.entities() {

@@ -120,7 +120,7 @@ pub fn init_noises(
             cmd.spawn((
                 str_id,
                 DisplayName::new(seri.id.clone()),
-                TgenNoise::new(noise,),
+                FnlNoise::new(noise,),
             ));
 
         }
@@ -131,7 +131,7 @@ pub fn init_noises(
 #[allow(unused_parens)]
 pub fn add_noises_to_map(
     terrgen_map: Option<ResMut<TerrGenEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<StrId>, With<TgenNoise>)>,
+    query: Query<(Entity, &EntityPrefix, &StrId), (Added<StrId>, With<FnlNoise>)>,
 ) -> Result {
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = terrgen_map {

@@ -1,3 +1,4 @@
+use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
@@ -9,11 +10,15 @@ use crate::common::{
 //    common_events::*,
 };
 
+pub fn spawn_camera(mut commands: Commands, ) {
+    commands.spawn((Camera2d::default(), Camera {hdr: true, ..default()}, ));
+}
+
 
 #[allow(unused_parens)]
 pub fn set_entity_name(
     mut cmd: Commands,
-    mut query: Query<(Entity, &EntityPrefix, Option<&StrId>, Option<&DisplayName>), (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>)>, )>,
+    mut query: Query<(Entity, &EntityPrefix, Option<&StrId>, Option<&DisplayName>), (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>, Or<(With<Disabled>, Without<Disabled>)>)>, )>,
 ) {
     for (ent, prefix, str_id, disp_name) in query.iter_mut() {
         let new_name = format!("{} {} {:?}", prefix, str_id.cloned().unwrap_or_default(), disp_name.cloned().unwrap_or_default());

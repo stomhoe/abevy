@@ -32,7 +32,7 @@ pub fn on_control_change(mut commands: Commands,
     self_player: Single<Entity, With<OfSelf>>,
     query: Query<(Entity, &ControlledBy),(Changed<ControlledBy>)>,) {
     for (ent, controlled_by) in query.iter() {
-        if controlled_by.player == *self_player{
+        if controlled_by.client == *self_player{
             commands.entity(ent).insert(ControlledLocally);
         }
         else {

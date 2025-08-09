@@ -61,7 +61,7 @@ impl From<ImagePathHolder> for bevy::asset::AssetPath<'_> {
 }
 
 
-#[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq)]
+#[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq, Reflect)]
 pub struct ImageHolder(pub Handle<Image>);
 impl ImageHolder {
 
@@ -125,7 +125,7 @@ pub struct YSortOrigin (pub f32);
 
 
 #[allow(unused_parens, dead_code)]
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct Description(pub String);
 
 #[allow(unused_parens, )]

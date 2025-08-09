@@ -6,11 +6,11 @@ use bevy::platform::collections::HashMap;
 use crate::common::common_utils::HashIdToEntityMap;
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Debug, Default )]
+#[derive(Resource, Debug, Default, Reflect )]
 pub struct TileShaderEntityMap(pub HashIdToEntityMap);
 
 
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event)]
+#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
 pub struct AnyTilingEntityMap(pub HashIdToEntityMap);
 
 #[derive(AssetCollection, Resource)] pub struct TileSerisHandles {

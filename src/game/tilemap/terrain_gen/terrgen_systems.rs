@@ -20,11 +20,14 @@ pub fn spawn_terrain_operations (
 ) -> Result {
     for (chunk_ent, chunk_pos) in chunks_query.iter() {
         //SE LES PODRÍA AGREGAR MARKER COMPONENTS A LOS CHUNKS PARA POR EJEMPLO ESPECIFICAR SI ES UN DUNGEON
+
+//PONER MARKERS A TODAS LAS POSICIONES SUITABLE, DESPUES HACER UNA QUERY Q COMPARA LAS TILESMARCADAS COMO Q YA GENERARON UNA ESTRUCTURA NO PROCEDURAL CON LAS Q NO. SI LA DISTANCIA ES SUFICIENTE, SPAWNEAR UNA EN LA SIGUIENTE
         //EN ESTE PUNTO SE PODRÍA GENERAR UN CAMINO RANDOM QUE SEA UN VEC DE COORDS, Y DESPUES PASARLO ABAJO Y Q SE OCUPEN?? PA GENERAR DUNGEONS NASE
         let now = std::time::Instant::now();
 
         let chunk_area = CHUNK_SIZE.element_product() as i32;
-        let pending_ops_count: i32 = oplists.iter().count() as i32 * chunk_area;
+        let mut pending_ops_count: i32 = 0;
+
         oplists.iter().for_each(|oplist_ent| {
             let mut batch = Vec::with_capacity((chunk_area) as usize);
             for x in 0..CHUNK_SIZE.x { 
@@ -36,10 +39,13 @@ pub fn spawn_terrain_operations (
                     ));
                 }
             }
+            pending_ops_count += 1;
             commands.spawn_batch(batch);
         });
-        commands.entity(chunk_ent).insert((PendingOperations(pending_ops_count), ProducedTiles::new_with_chunk_capacity()));
-       // info!(target: "terrain_gen", "Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
+
+
+        commands.entity(chunk_ent).insert((PendingOperations(pending_ops_count*chunk_area), ProducedTiles::new_with_chunk_capacity()));
+        trace!(target: "terrgen", "Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
     }
     Ok(())
 }
@@ -49,75 +55,76 @@ pub fn produce_tiles(mut cmd: Commands,
     gen_settings: Res<WorldGenSettings>,
     mut query: Query<(Entity, &InputOperand, &OplistRef, &ChunkRef, &GlobalTilePos), (Added<InputOperand>, )>, 
     oplist_query: Query<(&OperationList, &ProducedTiles ), ( )>,
-    operands: Query<(Option<&TgenNoise>, ), ( )>,
+    operands: Query<(Option<&FnlNoise>, ), ( )>,
     mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos), (Without<OperationList> )>,
     weight_maps: Query<(&HashPosEntiWeightedSampler, ), ( )>,
 ) -> Result {
     for (enti, &input_operand, &oplist_ref, &chunk_ref, &global_tile_pos) in query.iter_mut() {
 
-        if let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos)) = chunk_query.get_mut(chunk_ref.0) {
-            let mut acc_val: f32 = input_operand.0; 
+        let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos)) = chunk_query.get_mut(chunk_ref.0) 
+        else { continue };
+        
+        let mut acc_val: f32 = input_operand.0; 
 
-            cmd.entity(enti).despawn();//NO PONER ABAJO
+        cmd.entity(enti).despawn();//NO PONER ABAJO
 
-            let (oplist, oplist_tiles) = oplist_query.get(oplist_ref.0)?;
+        let (oplist, oplist_tiles) = oplist_query.get(oplist_ref.0)?;
 
-            let pos_within_chunk = global_tile_pos.get_pos_within_chunk(chunk_pos);
-            //info!("Producing tiles at {:?} with oplist {:?}", pos_within_chunk, oplist_ref.0);
+        let pos_within_chunk = global_tile_pos.get_pos_within_chunk(chunk_pos);
+        trace!(target: "terrgen", "Producing tiles at {:?} with oplist {:?}", pos_within_chunk, oplist_ref.0);
 
-            for ((operand, operation)) in oplist.trunk.iter() {
-                
-                let num_operand = match operand {
-                    Operand::Entities(entities) => {
-                        if let Ok((fnl_comp, )) = operands.get(entities[0]) {
-                            fnl_comp.map_or(0.0, |fnl| fnl.get_val(global_tile_pos))
-                        } else {
-                            0.0 // Si no hay componente, asumimos 0
-                        }
-                    },
-                    Operand::Value(val) => *val,
-                    Operand::HashPos => global_tile_pos.normalized_hash_value(&gen_settings, 0),
-                    Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos),
-                    _ => {
-                        error!("Unsupported operand type as numeric value: {:?}", operand);
-                        0.0
-                    },
-                };
-
-                match operation {
-                    Operation::Add => acc_val += num_operand,
-                    Operation::Subtract => acc_val -= num_operand,
-                    Operation::Multiply => acc_val *= num_operand,
-                    Operation::Divide => if num_operand != 0.0 { acc_val /= num_operand },
-                    Operation::Min => acc_val = acc_val.min(num_operand),
-                    Operation::Max => acc_val = acc_val.max(num_operand),
-                    Operation::Pow => if acc_val >= 0.0 || num_operand.fract() == 0.0 { acc_val = acc_val.powf(num_operand) },
-                    Operation::Modulo => if num_operand != 0.0 { acc_val = acc_val % num_operand },
-                    Operation::Log => if acc_val > 0.0 && num_operand > 0.0 && num_operand != 1.0 { acc_val = acc_val.log(num_operand) },
-                    Operation::Assign => {acc_val = num_operand;},
-                    Operation::Mean => {acc_val = acc_val.lerp(num_operand, 0.5);},
-                }
-            }
-            chunk_tiles.insert_clonespawned_with_pos(&oplist_tiles, &mut cmd, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
+        for ((operand, operation)) in oplist.trunk.iter() {
             
-            
-            if acc_val > oplist.threshold {
-                if let Some(bifover_ent) = oplist.bifurcation_over {
-                    cmd.spawn((OplistRef(bifover_ent), InputOperand(acc_val), chunk_ref.clone(), global_tile_pos));
-                    continue;
-                }
-            }
-            else {
-                if let Some(bifunder_ent) = oplist.bifurcation_under {
-                    cmd.spawn((OplistRef(bifunder_ent), InputOperand(acc_val), chunk_ref.clone(), global_tile_pos));
-                    continue;
-                }
-            }
+            let num_operand = match operand {
+                Operand::Entities(entities) => {
+                    if let Ok((fnl_comp, )) = operands.get(entities[0]) {
+                        fnl_comp.map_or(0.0, |fnl| fnl.get_val(global_tile_pos))
+                    } else {
+                        0.0 // Si no hay componente, asumimos 0
+                    }
+                },
+                Operand::Value(val) => *val,
+                Operand::HashPos => global_tile_pos.normalized_hash_value(&gen_settings, 0),
+                Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos),
+                _ => {
+                    error!(target: "terrgen", "Unsupported operand type as numeric value: {:?}", operand);
+                    0.0
+                },
+            };
 
-            pending_ops_count.0 -= 1;
-            if pending_ops_count.0 <= 0 {
-                cmd.entity(chunk_ref.0).remove::<PendingOperations>().insert(TilesReady);
+            match operation {
+                Operation::Add => acc_val += num_operand,
+                Operation::Subtract => acc_val -= num_operand,
+                Operation::Multiply => acc_val *= num_operand,
+                Operation::Divide => if num_operand != 0.0 { acc_val /= num_operand },
+                Operation::Min => acc_val = acc_val.min(num_operand),
+                Operation::Max => acc_val = acc_val.max(num_operand),
+                Operation::Pow => if acc_val >= 0.0 || num_operand.fract() == 0.0 { acc_val = acc_val.powf(num_operand) },
+                Operation::Modulo => if num_operand != 0.0 { acc_val = acc_val % num_operand },
+                Operation::Log => if acc_val > 0.0 && num_operand > 0.0 && num_operand != 1.0 { acc_val = acc_val.log(num_operand) },
+                Operation::Assign => {acc_val = num_operand;},
+                Operation::Mean => {acc_val = acc_val.lerp(num_operand, 0.5);},
             }
+        }
+        chunk_tiles.insert_clonespawned_with_pos(&oplist_tiles, &mut cmd, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings);
+        
+        
+        if acc_val > oplist.threshold {
+            if let Some(bifover_ent) = oplist.bifurcation_over {
+                cmd.spawn((OplistRef(bifover_ent), InputOperand(acc_val), chunk_ref.clone(), global_tile_pos));
+                continue;
+            }
+        }
+        else {
+            if let Some(bifunder_ent) = oplist.bifurcation_under {
+                cmd.spawn((OplistRef(bifunder_ent), InputOperand(acc_val), chunk_ref.clone(), global_tile_pos));
+                continue;
+            }
+        }
+
+        pending_ops_count.0 -= 1;
+        if pending_ops_count.0 <= 0 {
+            cmd.entity(chunk_ref.0).remove::<PendingOperations>().insert(TilesReady);
         }
     }
     Ok(())

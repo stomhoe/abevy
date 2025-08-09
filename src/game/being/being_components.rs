@@ -1,7 +1,7 @@
 use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use serde::{Deserialize, Serialize};
-use crate::{common::common_components::{EntityPrefix, MyZ}, game::{being::{body::body_components::BodyPartOf, modifier::modifier_components::AppliedModifiers, movement::movement_components::*, sprite::sprite_components::{MoveAnimActive, SpriteCfgsBuiltSoFar}}, game_components::FacingDirection, player::player_components::Controls, tilemap::chunking_components::ActivatesChunks}, AppState};
+use crate::{common::common_components::{EntityPrefix, MyZ}, game::{being::{body::body_components::BodyPartOf, movement::movement_components::*, sprite::{animation_components::MoveAnimActive, sprite_components::{SpriteCfgsBuiltSoFar, SpriteHolderRef}}}, game_components::FacingDirection, modifier::modi_components::AppliedModifiers, player::player_components::Controls, tilemap::chunking_components::ActivatesChunks}};
 
 
 #[derive(Component, Debug, Deserialize, Serialize)]
@@ -26,6 +26,10 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
 pub struct InfiniteMorale;
 
+#[derive(Component, Debug, Reflect)]
+#[relationship_target(relationship = SpriteHolderRef)]
+pub struct HeldSprites(Vec<Entity>);
+impl HeldSprites {pub fn sprite_ents(&self) -> &Vec<Entity> { &self.0 }}
 
 
 #[derive(Component)]
@@ -46,12 +50,12 @@ pub struct PlayerDirectControllable;
 /// entities: whitelisted players
 pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si es de la misma facción antes de intentar tomar control
 
-#[derive(Component, Debug, Deserialize, Serialize)]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
 #[relationship(relationship_target = Controls)]
 //client entity en control del being, ya sea manualmente o mediante su CPU
 pub struct ControlledBy  { 
     #[relationship] #[entities]
-    pub player: Entity 
+    pub client: Entity 
 }
 
 
@@ -64,17 +68,17 @@ pub struct CpuControlled;
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize)]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
 #[relationship(relationship_target = Followers)]
 pub struct FollowerOf {
     #[relationship] #[entities]
     pub master: Entity,
 }
 
-#[derive(Component)]
+#[derive(Component, Debug, Reflect)]
 #[relationship_target(relationship = FollowerOf)]
 pub struct Followers(Vec<Entity>);
-
+impl Followers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
 
 #[derive(Component, Debug)]
 pub struct LearningMultiplier(pub HashMap<Entity, f32>);

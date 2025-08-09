@@ -5,7 +5,7 @@ use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::RenetServer;
 use debug_unwraps::DebugUnwrapExt;
 
-use crate::{common::common_components::{DisplayName, EntityPrefix, MyZ, StrId}, game::{being::sprite::{sprite_components::*, sprite_resources::*}, game_components::ImageHolder}};
+use crate::{common::common_components::{DisplayName, EntityPrefix, MyZ, StrId}, game::{being::{being_components::HeldSprites, sprite::{animation_components::AnimationState, sprite_components::*, sprite_resources::*}}, game_components::ImageHolder}};
 
 #[allow(unused_parens)]
 pub fn init_sprite_cfgs(
@@ -19,107 +19,105 @@ pub fn init_sprite_cfgs(
     use std::mem::take;
 
     for handle in take(&mut seris_handles.handles) {
-        info!("Loading SpriteDataSeri from handle: {:?}", handle);
-        if let Some(mut seri) = assets.remove(&handle) {
-            
-            let str_id = match StrId::new(seri.id) {
-                Ok(id) => id,
-                Err(e) => {
-                    let err = BevyError::from(format!("Failed to create StrId for SpriteConfig: {}", e));
+        let Some(mut seri) = assets.remove(&handle) else {continue;};
+
+        debug!(target: "sprite_loading", "Loading SpriteDataSeri from handle: {:?}", handle);
+        
+        let str_id = match StrId::new(seri.id) {
+            Ok(id) => id,
+            Err(e) => {
+                let err = BevyError::from(format!("Failed to create StrId for SpriteConfig: {}", e));
                     error!(target: "sprite_loading", "{}", err);
                     result = Err(err);
                     continue;
                 }
             };
-            let img_holder = match ImageHolder::new(&aserver, seri.img_path) {
-                Ok(holder) => holder,
-                Err(e) => {
-                    let err = BevyError::from(format!("Failed to load image for SpriteConfig {}: {}", str_id, e));
-                    error!(target: "sprite_loading", "{}", err);
-                    result = Err(err);
-                    continue;
-                }
-            };
-            
-            let atlas = AtlasLayoutData::new(seri.rows_cols, seri.frame_size);
-            let atlas: TextureAtlas = atlas.into_texture_atlas(&mut atlas_layouts);
-
-            let visib = match seri.visibility {
-                0 => Visibility::Inherited, 1 => Visibility::Visible, 2 => Visibility::Hidden,    
-                _ => {
-                    warn!(target: "sprite_loading", "Invalid visibility value: {} for SpriteConfig '{}', falling back to inherited", seri.visibility, str_id);
-                    Visibility::default()
-                },
-            };
-
-            let mut offset4children_cats = OffsetForChildren::default();
-            for (cat, offset_arr) in take(&mut seri.offset4children) {
-                offset4children_cats.0.insert(Category::new(cat), Offset2D::from(offset_arr));
+        let img_holder = match ImageHolder::new(&aserver, seri.img_path) {
+            Ok(holder) => holder,
+            Err(e) => {
+                let err = BevyError::from(format!("Failed to load image for SpriteConfig {}: {}", str_id, e));
+                error!(target: "sprite_loading", "{}", err);
+                result = Err(err);
+                continue;
             }
-            
-            let spritecfg_ent = cmd.spawn((
-                str_id.clone(), 
-                SpriteConfig,
-                Categories::new(seri.categories),
-                visib,
-                offset4children_cats,
-                MyZ::new(seri.z),
-                Scale2D::from(seri.scale.unwrap_or([1.0, 1.0])),
-                ScaleLookUpDown::from(seri.scale_up_down.unwrap_or([1.0, 1.0])),
-                ScaleSideways::from(seri.scale_sideways.unwrap_or([1.0, 1.0])),
-                Offset2D::from(seri.offset),
-                OffsetUpDown::from(seri.offset_up_down.unwrap_or_default()),
-                OffsetDown::from(seri.offset_down.unwrap_or_default()),
-                OffsetUp::from(seri.offset_up.unwrap_or_default()),
-                OffsetSideways::from(seri.offset_sideways.unwrap_or_default()),
+        };
+        
+        let atlas = AtlasLayoutData::new(seri.rows_cols, seri.frame_size);
+        let atlas: TextureAtlas = atlas.into_texture_atlas(&mut atlas_layouts);
 
-                Sprite::from_atlas_image(img_holder.0, atlas),
-            )).id();
-            
+        let visib = match seri.visibility {
+            0 => Visibility::Inherited, 1 => Visibility::Visible, 2 => Visibility::Hidden,    
+            _ => {
+                warn!(target: "sprite_loading", "Invalid visibility value: {} for SpriteConfig '{}', falling back to inherited", seri.visibility, str_id);
+                Visibility::default()
+            },
+        };
 
-            if seri.name.is_empty() {
-                warn!(target: "sprite_loading", "SpriteConfig name is empty for SpriteConfig '{}', using StrId as name", str_id);
-                cmd.entity(spritecfg_ent).insert(DisplayName(str_id.to_string()));
-            } else {
-                let disp_name = DisplayName::new(seri.name.clone());
-                cmd.entity(spritecfg_ent).insert(disp_name);
-            }
-            //if seri.exclusive { comps_to_build.exclusive = Some(Exclusive); }
-
-            if seri.directionable { cmd.entity(spritecfg_ent).insert(Directionable); }
-
-            if ! seri.parent_cat.is_empty() {
-                let to_become_child = BecomeChildOfSpriteWithCategory::new(seri.parent_cat);
-                cmd.entity(spritecfg_ent).insert(to_become_child);
-            }
-
-            if ! seri.anim_prefix.is_empty() {
-                cmd.entity(spritecfg_ent).insert(AnimationIdPrefix::from(seri.anim_prefix));
-            }
-            
-            if ! seri.children_sprites.is_empty(){
-                cmd.entity(spritecfg_ent).insert(SpriteConfigStringIds(seri.children_sprites));
-            }
-            
-            if let Some(color) = seri.color {
-                let (red, green, blue, alpha) = color.into();
-                cmd.entity(spritecfg_ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
-            }
-
-            if seri.walk_anim {cmd.entity(spritecfg_ent).insert(WalkAnim);}
-            if seri.swim_anim {cmd.entity(spritecfg_ent).insert(SwimAnim{use_still: seri.swim_anim_still});}
-            if seri.fly_anim {cmd.entity(spritecfg_ent).insert(FlyAnim{use_still: seri.fly_anim_still});}
-
-            match seri.flip_horiz {
-                1 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Any); },
-                2 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Left); },
-                3 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Right); },
-                _ => {},
-            };
+        let mut offset4children_cats = OffsetForChildren::default();
+        for (cat, offset_arr) in take(&mut seri.offset4children) {
+            offset4children_cats.0.insert(Category::new(cat), Offset2D::from(offset_arr));
         }
-        else {
-            warn!(target: "sprite_loading", "SpriteDataSeri with handle {:?} not found in assets", handle);
+        
+        let spritecfg_ent = cmd.spawn((
+            str_id.clone(), 
+            SpriteConfig,
+            Categories::new(seri.categories),
+            visib,
+            offset4children_cats,
+            MyZ(seri.z),
+            Scale2D::from(seri.scale.unwrap_or([1.0, 1.0])),
+            ScaleLookUpDown::from(seri.scale_up_down.unwrap_or([1.0, 1.0])),
+            ScaleSideways::from(seri.scale_sideways.unwrap_or([1.0, 1.0])),
+            Offset2D::from(seri.offset),
+            OffsetUpDown::from(seri.offset_up_down.unwrap_or_default()),
+            OffsetDown::from(seri.offset_down.unwrap_or_default()),
+            OffsetUp::from(seri.offset_up.unwrap_or_default()),
+            OffsetSideways::from(seri.offset_sideways.unwrap_or_default()),
+
+            Sprite::from_atlas_image(img_holder.0, atlas),
+        )).id();
+        
+
+        if seri.name.is_empty() {
+            warn!(target: "sprite_loading", "SpriteConfig name is empty for SpriteConfig '{}', using StrId as name", str_id);
+            cmd.entity(spritecfg_ent).insert(DisplayName(str_id.to_string()));
+        } else {
+            let disp_name = DisplayName::new(seri.name.clone());
+            cmd.entity(spritecfg_ent).insert(disp_name);
         }
+        //if seri.exclusive { comps_to_build.exclusive = Some(Exclusive); }
+
+        if seri.directionable { cmd.entity(spritecfg_ent).insert(Directionable); }
+
+        if ! seri.parent_cat.is_empty() {
+            let to_become_child = BecomeChildOfSpriteWithCategory::new(seri.parent_cat);
+            cmd.entity(spritecfg_ent).insert(to_become_child);
+        }
+
+        if ! seri.anim_prefix.is_empty() {
+            cmd.entity(spritecfg_ent).insert(AnimationIdPrefix::from(seri.anim_prefix));
+        }
+        
+        if ! seri.children_sprites.is_empty(){
+            cmd.entity(spritecfg_ent).insert(SpriteConfigStringIds(seri.children_sprites));
+        }
+        
+        if let Some(color) = seri.color {
+            let (red, green, blue, alpha) = color.into();
+            cmd.entity(spritecfg_ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
+        }
+
+        if seri.walk_anim {cmd.entity(spritecfg_ent).insert(WalkAnim);}
+        if seri.swim_anim {cmd.entity(spritecfg_ent).insert(SwimAnim{use_still: seri.swim_anim_still});}
+        if seri.fly_anim {cmd.entity(spritecfg_ent).insert(FlyAnim{use_still: seri.fly_anim_still});}
+
+        match seri.flip_horiz {
+            1 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Any); },
+            2 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Left); },
+            3 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Right); },
+            _ => {},
+        };
+        
     }
     result
 } 
@@ -194,10 +192,10 @@ pub fn insert_sprite_to_instance(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     mut cmd: Commands,
-    mut father_query: Query<(Entity, &mut SpriteCfgsToBuild, Option<&SpriteHolderRef>,), (Without<SpriteConfig>, Changed<SpriteCfgsToBuild>,)>,
-    spritecfgs_query: Query<(
-        &StrId, Has<AnimationIdPrefix>, Option<&SpriteCfgsToBuild>
-    ), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    mut father_query: Query<(Entity, &mut SpriteCfgsToBuild, Option<&SpriteHolderRef>,), 
+    (Without<SpriteConfig>, Changed<SpriteCfgsToBuild>,)>,
+    spritecfgs_query: Query<(&StrId, Has<AnimationIdPrefix>, Option<&SpriteCfgsToBuild>), 
+    (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     for (father_to_sprite, mut to_build, spriteholder_ref,) in father_query.iter_mut() {
 
@@ -251,7 +249,7 @@ pub fn become_child_of_sprite_with_category(
         if let Ok(becomes_child_of_sprite_with_cat) = becomes.get(new_sprite_cfg_ref.0) {unsafe {
             let held_sprites = sprite_holder.get(sprite_holder_ref.base).debug_expect_unchecked("SpriteHolderRef should have a HeldSprites component");
 
-            for (other_ent, o_spritecfg_ref) in other_sprites.iter_many(held_sprites.entities()) {
+            for (other_ent, o_spritecfg_ref) in other_sprites.iter_many(held_sprites.sprite_ents()) {
                 if new_ent == other_ent { continue; }
 
                 let other_cats = match other_cats.get(o_spritecfg_ref.0) {
@@ -263,7 +261,7 @@ pub fn become_child_of_sprite_with_category(
                     },
                 };
                 if other_cats.0.contains(&becomes_child_of_sprite_with_cat.0) {
-                    //debug!(target: "sprite_building", "Adding ChildOfCategory to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
+                    debug!(target: "sprite_building", "Adding ChildOfCategory to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
                     cmd.entity(new_ent).insert(ChildOf(other_ent));
                     break;
                 }
@@ -281,8 +279,6 @@ pub fn client_map_server_sprite_cfgs(
     own_map: Res<SpriteCfgEntityMap>,
 ) {
     if server.is_some() { return; }
-
-    //debug!(target: "sprite_loading", "Own SpriteCfgEntityMap: \n{:?}", own_map.0);
 
 
     let SpriteCfgEntityMap(received_map) = trigger.event().clone();

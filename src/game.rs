@@ -28,6 +28,8 @@ pub mod multiplayer;
 pub mod game_utils;
 pub mod being;
 pub mod dimension;
+pub mod modifier;
+
 
 mod game_systems;
 mod game_components;
@@ -90,7 +92,7 @@ impl Plugin for GamePlugin {
                 PlayerInputSystems,
                 MovementSystems,
 
-                ActiveGameSystems.run_if(in_state(GamePhase::ActiveGame)),
+                ActiveGameSystems.run_if(in_state(GamePhase::ActiveGame).and(in_state(ReplicatedAssetsLoadingState::Finished))),
                 SimRunningSystems.run_if(in_state(SimulationState::Running).and(in_state(GamePhase::ActiveGame))),
                 SimPausedSystems.run_if(in_state(SimulationState::Paused).and(in_state(GamePhase::ActiveGame))),
 
@@ -117,7 +119,7 @@ impl Plugin for GamePlugin {
             .init_state::<SimulationState>()
 
             .add_loading_state(
-                LoadingState::new(LocalAssetsLoadingState::InProcess).continue_to_state(LocalAssetsLoadingState::Complete)
+                LoadingState::new(LocalAssetsLoadingState::InProcess).continue_to_state(LocalAssetsLoadingState::Finished)
                 .load_collection::<SpriteSerisHandles>()
                 .load_collection::<AnimSerisHandles>()
                 .load_collection::<RaceSerisHandles>()
@@ -143,7 +145,7 @@ impl Plugin for GamePlugin {
 
             .replicate_bundle::<(Being, ChildOf)>()//NO FUNCIONA BIEN LO DE CHILDOF
             .replicate::<FacingDirection>()//PROVISORIO, VA A HABER Q REVISAR
-
+            //.register_type::<MyType>()
 
         ;
     }
@@ -177,7 +179,7 @@ enum LocalAssetsLoadingState {
     NotStarted,//HACER EL DEFAULT ESTE SI SE QUIERE HACER ALGO ANTES DE CARGAR LOS ASSETS
     #[default]
     InProcess,
-    Complete,
+    Finished,
 }
 
 

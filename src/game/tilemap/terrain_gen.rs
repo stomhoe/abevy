@@ -2,6 +2,7 @@
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
+use fastnoise_lite::FastNoiseLite;
 
 use crate::game::{tilemap::{chunking_components::ProducedTiles, terrain_gen::{terrain_materials::MonoRepeatTextureOverlayMat, terrgen_components::*, terrgen_init_systems::*, terrgen_resources::*, terrgen_systems::*}}, ReplicatedAssetsLoadingState};
 
@@ -47,8 +48,13 @@ impl Plugin for TerrainGenPlugin {
                 RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
 
             ))
+            .register_type::<FnlNoise>()
+            .register_type::<FastNoiseLite>()
+            .register_type::<OperationList>()
+            .register_type::<Operand>()
+            .register_type::<Operation>()
 
-            .replicate::<TgenNoise>()
+            .replicate::<FnlNoise>()
             .replicate::<RootOpList>()
             .replicate_with((
                 RuleFns::<ProducedTiles>::default(),

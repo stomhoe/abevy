@@ -8,7 +8,7 @@ use crate::{common::{
 //    common_events::*,
 }};
 
-#[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize, )]
+#[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize, Reflect)]
 pub struct HashIdToEntityMap(pub HashMap<HashId, Entity>);
 
 impl HashIdToEntityMap {

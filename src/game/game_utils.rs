@@ -11,8 +11,7 @@ pub type EntityWeightedMap = WeightedMap<Entity>;
 
 #[derive(Debug, Component)]
 pub struct WeightedMap<K> {
-    weights: Vec<u32>,
-    choices: Vec<K>,
+    weights: Vec<u32>, choices: Vec<K>,
     dist: WeightedAliasIndex<u32>,
 }
 #[allow(unused_parens, dead_code)]

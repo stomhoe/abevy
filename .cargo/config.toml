@@ -3,5 +3,5 @@
 rustflags = [
   "-Zshare-generics=off", # (Nightly) Nightly-only feature that disables sharing of monomorphized generic code.
   # Can improve compilation speed for large projects like Bevy games. Trades slightly larger binary size for faster compile times
-  "-Zthreads=16",        # (Nightly) Use improved multithreading with the recommended amount of threads.
+  "-Zthreads=0",        # (Nightly) Use improved multithreading with the recommended amount of threads.
 ]#CAMBIAR ALGO DE ESTO ES EQUIVALENTE A HACER CARGO CLEAN!!!!

@@ -8,8 +8,6 @@ use crate::{common::common_utils::HashIdToEntityMap, game::being::race::race_com
 #[derive(Resource, Debug, Default )]
 pub struct RaceEntityMap (pub HashIdToEntityMap);
 
-
-
 #[derive(AssetCollection, Resource)]
 pub struct RaceSerisHandles {
     #[asset(path = "ron/race", collection(typed))]

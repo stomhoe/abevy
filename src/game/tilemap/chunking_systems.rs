@@ -125,3 +125,18 @@ pub fn hide_outofrange_chunks(
         }
     }
 }
+
+
+#[allow(unused_parens, )]
+pub fn despawn_all_chunks(
+    mut cmd: Commands, 
+    keys: Res<ButtonInput<KeyCode>>,
+    query: Query<(Entity, ), (With<ChunkInitState>, )>,
+) {
+    if keys.pressed(KeyCode::KeyP) {
+        for (chunk_ent, ) in query.iter() {
+            cmd.entity(chunk_ent).despawn();
+        }
+    }
+   
+}

@@ -35,7 +35,7 @@ pub fn produce_tilemaps(
 
     #[allow(unused_mut)]
     for (chunk_ent, mut produced_tiles) in chunk_query.iter_mut() {
-        for &tile_ent in produced_tiles.produced_tiles().iter() {unsafe{
+        for &tile_ent in produced_tiles.produced_tiles().iter() {
 
             let (tile_ent, tile_pos, tile_handles, tile_z_index, shader_ref, transf) = tile_comps.get_mut(tile_ent)?;
             let tile_ent = cmd.entity(tile_ent).clone_and_spawn()
@@ -63,27 +63,26 @@ pub fn produce_tilemaps(
             if let Some(MapStruct { tmap_ent, handles, storage, tmap_hash_id_map }) = layers.get_mut(&map_key) {
                 cmd.entity(tile_ent).insert((ChildOf(*tmap_ent), TilemapId(*tmap_ent)));
 
-                if let Some(tile_handles) = tile_handles {
-                    let mut first_texture_index = None;
-                    for (id, handle) in tile_handles.iter() {
-                        let texture_index = handles
-                            .into_iter()
-                            .position(|x| *x == *handle)
-                            .map(|i| TileTextureIndex(i as u32))
-                            .unwrap_or_else(|| {
-                                handles.push_handle(handle.clone());
-                                TileTextureIndex((handles.len() - 1) as u32)
-                            });
-                        tmap_hash_id_map.0.insert_with_id(id, texture_index);
-                        if first_texture_index.is_none() {
-                            first_texture_index = Some(texture_index);
-                        }
-                    }
-                    if let Some(index) = first_texture_index {
-                        cmd.entity(tile_ent).insert(index);
+                storage.set(&tile_pos, tile_ent);
+
+                 let Some(tile_handles) = tile_handles else { continue; };
+                let mut first_texture_index = None;
+                for (id, handle) in tile_handles.iter() {
+                    let texture_index = handles
+                        .into_iter()
+                        .position(|x| *x == *handle)
+                        .map(|i| TileTextureIndex(i as u32))
+                        .unwrap_or_else(|| {
+                            handles.push_handle(handle.clone());
+                            TileTextureIndex((handles.len() - 1) as u32)
+                        });
+                    tmap_hash_id_map.0.insert_with_id(id, texture_index);
+                    if first_texture_index.is_none() {
+                        first_texture_index = Some(texture_index);
                     }
                 }
-                storage.set(&tile_pos, tile_ent);
+                cmd.entity(tile_ent).insert(first_texture_index.unwrap_or_default());
+                
             
             } else {
                 let tmap_ent = cmd.spawn((
@@ -103,7 +102,7 @@ pub fn produce_tilemaps(
                     tmap_hash_id_map: TmapHashIdtoTextureIndex::default(),
                 });
             }
-        }}
+        }
         if layers.is_empty() {
             //warn!("No tiles produced for chunk {:?}", chunk_ent);
             cmd.entity(chunk_ent).insert(InitializedChunk);
@@ -154,7 +153,7 @@ pub fn fill_tilemaps_data(
                                 MaterialTilemapHandle::from(texture_overley_mat.add(
                                     MonoRepeatTextureOverlayMat {
                                         texture_overlay: rep_texture.cloned_handle(),
-                                        scale: rep_texture.scale_div_1kM(),
+                                        scale: rep_texture.scale_div_1e9(),
                                         mask_color: rep_texture.mask_color(),
                                     }
                                 ))

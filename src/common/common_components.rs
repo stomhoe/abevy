@@ -7,7 +7,7 @@ use bevy::platform::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 
-#[derive(Clone, PartialEq, Eq, Hash, )]
+#[derive(Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct FixedStr<const N: usize>([u8; N]);
 
 impl<const N: usize> FixedStr<N> {
@@ -43,9 +43,8 @@ impl<const N: usize> From<&str> for FixedStr<N> { fn from(s: &str) -> Self { Fix
 impl<const N: usize> From<String> for FixedStr<N> { fn from(s: String) -> Self { FixedStr::new(s) } }
 impl<const N: usize> AsRef<str> for FixedStr<N> { fn as_ref(&self) -> &str { self.as_str() } }
 
-#[derive(Component, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct EntityPrefix(pub FixedStr<20>);
-
 impl EntityPrefix {
     pub fn new<S: AsRef<str>>(id: S) -> Self { Self(FixedStr::new(id)) }
     pub fn as_str(&self) -> &str { self.0.as_str() }
@@ -64,16 +63,15 @@ impl core::fmt::Display for EntityPrefix {
 }
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Copy)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Copy, Reflect)]
 pub struct MyZ(pub i32);
 impl MyZ {
-    pub fn new(z: i32) -> Self { Self(z) } 
-    pub fn div_1e9(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
+    pub fn as_float(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
     pub const Z_MULTIPLIER: f32 = 1e-16;
 }
 
 
-#[derive(Component, Clone, Default, Serialize, Deserialize, )]
+#[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
 pub struct DisplayName(pub String);
 
 impl DisplayName {
@@ -95,8 +93,7 @@ impl core::fmt::Debug for DisplayName {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq )]
-//#[require(Replicated, /*StateScoped::<AppState>, */ )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect )]
 pub struct StrId(FixedStr<32>);
 impl StrId {
     pub fn new<S: Into<String>>(id: S) -> Result<Self, BevyError> {
@@ -122,7 +119,7 @@ impl std::fmt::Display for StrId {
 
 impl AsRef<str> for StrId {fn as_ref(&self) -> &str {&self.0.as_str() }}
 
-#[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy )]
+#[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect, )]
 pub struct HashId(u64);
 impl HashId {}
 impl<S: AsRef<str>> From<S> for HashId {
@@ -137,13 +134,12 @@ impl<S: AsRef<str>> From<S> for HashId {
 
 impl std::fmt::Display for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HashId({:03}...)", self.0 & 0xFFF)
+        write!(f, "HId({:05})", self.0 & 0xFFFFF)
     }
 }
 impl std::fmt::Debug for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HashId({:03}...)", self.0 & 0xFFF)
-
+        write!(f, "HId({:05})", self.0 & 0xFFFFF)
     }
 }
 

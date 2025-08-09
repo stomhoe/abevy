@@ -7,6 +7,8 @@ use crate::common::common_components::{EntityPrefix, MyZ};
 use crate::game::game_components::ImageHolder;
 use crate::game::tilemap::terrain_gen::terrgen_resources::WorldGenSettings;
 use crate::game::tilemap::{chunking_components::ChunkPos, tile::tile_utils::* };
+use crate::game::LocalAssetsLoadingState;
+use crate::AppState;
 use bevy_ecs_tilemap::tiles::*;
 
 use std::hash::{Hasher, Hash};
@@ -16,10 +18,10 @@ use serde::{Serialize, Serializer, Deserialize, Deserializer};
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(MyZ, EntityPrefix::new("Tile"), )]
+#[require(MyZ, EntityPrefix::new("Tile"), StateScoped::<LocalAssetsLoadingState>(LocalAssetsLoadingState::Finished),)]
 pub struct Tile;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct TileposHashRand(pub f32);
 
 
@@ -34,29 +36,26 @@ pub struct Tree;
 #[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TileShaderRef(pub Entity);
 
-#[derive(Component, Debug, Hash, PartialEq, Eq, Clone, )]
-#[require(EntityPrefix::new("TileShader"), )]
+#[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, )]
+#[require(EntityPrefix::new("TileShader"), StateScoped::<LocalAssetsLoadingState>(LocalAssetsLoadingState::Finished),)]
 pub enum TileShader{
     TexRepeat(RepeatingTexture),
     TwoTexRepeat(RepeatingTexture, RepeatingTexture),
     //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, )]
+#[derive(Debug, PartialEq, Eq, Clone, Reflect, )]
 pub struct RepeatingTexture{ img: ImageHolder, scale: u32, mask_color: U8Vec4, }
 impl RepeatingTexture {
-    #[allow(dead_code, )]
-    pub fn new(img: ImageHolder, scale: u32, mask_color: U8Vec4) -> Self {
-        Self { img, scale, mask_color }
-    }
+    pub fn new(img: ImageHolder, scale: u32, mask_color: U8Vec4) -> Self { Self { img, scale, mask_color } }
 
     pub fn cloned_handle(&self) -> Handle<Image> { self.img.0.clone() }
-    #[allow(non_snake_case)]
-    pub fn scale_div_1kM(&self) -> f32 { self.scale as f32 / 1_000_000_000.0 }
+
+    pub fn scale_div_1e9(&self) -> f32 { self.scale as f32 / 1e9 }
     pub fn mask_color(&self) -> Vec4 { self.mask_color.as_vec4()/255.0 }
 }
 
-#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy)]
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
 pub struct GlobalTilePos(pub IVec2);
 
 impl GlobalTilePos {
@@ -109,13 +108,10 @@ impl std::ops::Sub for GlobalTilePos {type Output = Self; fn sub(self, other: Se
 
 
 #[derive(Debug, Clone, Component, Default)]
-#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated)]
+#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated, StateScoped::<AppState>(AppState::StatefulGameSession),)]
 pub struct HashPosEntiWeightedSampler {
-    #[entities]
-    entities: Vec<Entity>,
-    weights: Vec<f32>,
-    cumulative_weights: Vec<f32>,
-    total_weight: f32,
+    #[entities]entities: Vec<Entity>, weights: Vec<f32>,
+    cumulative_weights: Vec<f32>, total_weight: f32,
 }
 
 impl HashPosEntiWeightedSampler {
@@ -151,7 +147,6 @@ impl HashPosEntiWeightedSampler {
         }
     }
 }
-
 
 impl Serialize for HashPosEntiWeightedSampler {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

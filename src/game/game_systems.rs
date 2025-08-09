@@ -3,7 +3,7 @@ use bevy::math::Vec3;
 use bevy::prelude::*;
 use crate::common::common_components::{DisplayName, MyZ};
 use crate::game::being::being_components::{Being, ControlledBy, PlayerDirectControllable, TargetSpawnPos, };
-use crate::game::being::modifier::modifier_components::ModifierCategories;
+use crate::game::modifier::modi_components::ModifierCategories;
 use crate::game::being::sprite::sprite_components::SpriteConfigStringIds;
 use crate::game::faction::faction_components::{BelongsToFaction, Faction};
 use crate::game::faction::faction_resources::FactionEntityMap;
@@ -48,7 +48,7 @@ pub fn spawn_player_beings(
         println!("Spawning player being: {:?}", created_character);
 
         commands.entity(created_character.0).insert((
-            ControlledBy { player: player_ent },
+            ControlledBy { client: player_ent },
             PlayerDirectControllable,
             TargetSpawnPos::new(0.0, 0.0),
             Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),//PROVISORIO
@@ -58,7 +58,7 @@ pub fn spawn_player_beings(
         ));
 
         if self_player.is_some() {
-            info!("Spawning self player being:");
+            debug!(target: "game", "Spawning self player being:");
 
         } 
         commands.entity(player_ent).remove::<CreatedCharacter>();
@@ -83,11 +83,11 @@ pub fn toggle_simulation(
     if keyboard_input.just_pressed(KeyCode::Space) {
         match current_state.get() {
             SimulationState::Paused => {
-                println!("Switching to Running state");
+                info!("Switching to Running state");
                 next_state.set(SimulationState::Running)
             },
             SimulationState::Running => {
-                println!("Switching to Paused state");
+                info!("Switching to Paused state");
                 next_state.set(SimulationState::Paused)
             },
         }
@@ -96,8 +96,9 @@ pub fn toggle_simulation(
 
 pub fn update_transform_z(mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>,)>) {
     for (mut transform, z_index) in query.iter_mut() {
-        let new_z = z_index.div_1e9();
-        if (transform.translation.z - new_z).abs() > f32::EPSILON {
+        let new_z = z_index.as_float();
+        if transform.translation.z != new_z {
+            debug!(target: "zlevel", "Updating transform z-index to {}", new_z);
             transform.translation.z = new_z;
         }
     }
