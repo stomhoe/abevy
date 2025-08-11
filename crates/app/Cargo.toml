@@ -1,0 +1,46 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+#tilemap = { path = "../tilemap" }
+
+bevy = { workspace = true }
+nano-id = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+debug_unwraps = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+rand_seeder = { workspace = true }
+rand_pcg = { workspace = true }
+bevy_ecs_tilemap = { workspace = true }
+superstate = { workspace = true }
+bevy_simple_scroll_view = { workspace = true }
+bevy_ui_text_input = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }
+serde = { workspace = true }
+bevy_common_assets = { workspace = true }
+bevy_simple_subsecond_system = { workspace = true }
+bevy-ui-gradients = { workspace = true }
+bevy_spritesheet_animation = { workspace = true }
+bevy_asset_loader = { workspace = true }
+splines = { workspace = true }
+indexmap = { workspace = true }
+delegate = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+
+
+
+
+
+
+#log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # Improve Runtime Performance (Optional) 
+
+
+

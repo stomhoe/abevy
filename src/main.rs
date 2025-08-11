@@ -6,18 +6,9 @@ use bevy_inspector_egui::{
 use bevy_simple_subsecond_system::SimpleSubsecondPlugin;
 use tracing::Level;
 
-use crate::{
-    common::*,
-    game::{multiplayer::MpPlugin, GamePlugin},
-    pregame_menus::MenuPlugin,
-    ui::MyUiPlugin,
-};
-mod game;
-pub mod pregame_menus;
-pub mod common;
-pub mod ui;
-#[allow(unused_imports)] use bevy::ecs::error::{panic, error, GLOBAL_ERROR_HANDLER, };
 
+
+#[allow(unused_imports)] use bevy::ecs::error::{panic, error, GLOBAL_ERROR_HANDLER, };
 
 pub const FILTER: &str = 
 concat!(
@@ -29,9 +20,7 @@ concat!(
     "sprite_building=trace",
 );
 
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[states(scoped_entities)]
-pub enum AppState {#[default]PreGame, StatefulGameSession, }
+
 fn main() {
     GLOBAL_ERROR_HANDLER.set(panic ).expect("Error handler can only be set once, globally.");
     
@@ -45,17 +34,16 @@ fn main() {
                     ..Default::default()
                 })
             .set(ImagePlugin::default_nearest(),),
-            
-            MpPlugin,
             SimpleSubsecondPlugin::default(),
-            CommonPlugin,
-            GamePlugin, 
-            MenuPlugin, 
-            MyUiPlugin,
+            host::plugin,
+            client::plugin,
+            common::plugin,
+            tilemap::plugin,
+            setup_screen::plugin,
+            ui_shared::plugin,
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape))
         ))
-        .init_state::<AppState>()
         .run()
 
     ;

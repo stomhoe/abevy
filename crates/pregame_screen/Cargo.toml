@@ -1,0 +1,11 @@
+[package]
+name = "pregame_screen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+ui_shared = { path = "../ui_shared" }
+
+bevy = { workspace = true }
+bevy_ui_text_input = { workspace = true }

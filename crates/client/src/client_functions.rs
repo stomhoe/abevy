@@ -1,0 +1,55 @@
+#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
+use multiplayer_shared::multiplayer_shared::PROTOCOL_ID;
+use std::{net::{Ipv4Addr, SocketAddr, UdpSocket}, time::SystemTime};
+
+
+use bevy_replicon_renet::{
+    RenetChannelsExt,
+    netcode::{
+        ClientAuthentication, NetcodeClientTransport,
+    },
+    renet::{ConnectionConfig, RenetClient},
+};
+
+pub fn join_server (
+    commands: &mut Commands,
+    channels: Res<RepliconChannels>,
+    ip: Ipv4Addr, port: Option<u16>,
+) -> Result{
+    let port = port.unwrap_or(5000);
+    info!("attempting connect to {ip}:{port}");
+    let server_channels_config = channels.server_configs();
+    let client_channels_config = channels.client_configs();
+    
+
+    let client = RenetClient::new(ConnectionConfig {
+        server_channels_config,
+        client_channels_config,
+        ..Default::default()
+    });
+
+    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
+    let client_id = current_time.as_millis() as u64;
+    let server_addr = SocketAddr::new(std::net::IpAddr::V4(ip), port);
+    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))?;
+    let authentication = ClientAuthentication::Unsecure {
+        client_id,
+        protocol_id: PROTOCOL_ID,
+        server_addr,
+        user_data: None,
+    };
+    let transport = NetcodeClientTransport::new(current_time, authentication, socket)?;
+
+    commands.insert_resource(client);
+    commands.insert_resource(transport);
+    Ok(())
+}
+
+pub fn disconnect_from_server(
+    commands: &mut Commands,
+    client: &mut RenetClient,
+) {
+    info!("Disconnecting from server");
+    client.disconnect();
+}

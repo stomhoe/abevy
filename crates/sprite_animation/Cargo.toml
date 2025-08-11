@@ -1,0 +1,23 @@
+[package]
+name = "sprite_animation"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+sprite_shared = { path = "../sprite_shared" }
+game_common = { path = "../agame_common" }
+game = { path = "../game" }
+
+bevy = { workspace = true }
+debug_unwraps = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }
+serde = { workspace = true }
+bevy_common_assets = { workspace = true }
+bevy_simple_subsecond_system = { workspace = true }
+bevy_spritesheet_animation = { workspace = true }
+bevy_asset_loader = { workspace = true }
+delegate = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

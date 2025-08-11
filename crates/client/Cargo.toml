@@ -1,0 +1,23 @@
+[package]
+name = "client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+multiplayer_shared = { path = "../multiplayer_shared" }
+ui_shared = { path = "../ui_shared" }
+tilemap = { path = "../tilemap" }
+sprite_shared = { path = "../sprite_shared" }
+
+bevy = { workspace = true }
+nano-id = { workspace = true }
+debug_unwraps = { workspace = true }
+superstate = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }
+serde = { workspace = true }
+bevy_simple_subsecond_system = { workspace = true }
+bevy_asset_loader = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

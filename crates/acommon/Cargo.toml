@@ -1,0 +1,25 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+bevy_simple_subsecond_system = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }
+bevy_common_assets = { workspace = true }
+superstate = { workspace = true }
+nano-id = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+debug_unwraps = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+rand_seeder = { workspace = true }
+rand_pcg = { workspace = true }
+indexmap = { workspace = true }
+delegate = { workspace = true }
