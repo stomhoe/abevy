@@ -1,12 +1,10 @@
 use bevy::{ecs::entity_disabling::Disabled, platform::collections::HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use bevy_replicon_renet::renet::RenetServer;
-use common::components::{DisplayName, EntityPrefix, ImageHolder, StrId};
+use common::common_components::{DisplayName, EntityPrefix, ImageHolder, StrId};
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::MyZ;
-use sprite_shared::{animation_shared::AnimationState, sprite_shared::*};
+use game_common::game_common_components::{Directionable, MyZ};
+use sprite_shared::{animation_shared::{AnimationIdPrefix, AnimationState}, sprite_shared::*};
 
 use crate::sprite_resources::*;
 
@@ -136,11 +134,11 @@ pub fn add_sprites_to_local_map(
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = map {
         for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = terrgen_map.0.insert(str_id, ent, prefix) {
-                error!(target: "sprite_loading", "{}", err);
+            if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
+                error!(target: "sprite_loading", "{} {} already in spritecfgmap : {}", prefix, str_id, err);
                 result = Err(err);
             } else {
-                info!(target: "sprite_loading", "Inserted sprite '{}' into SpriteConfigEntityMap with entity {:?}", str_id, ent);
+                debug!(target: "sprite_loading", "Inserted sprite '{}' into SpriteConfigEntityMap with entity {:?}", str_id, ent);
             }
         }
     }

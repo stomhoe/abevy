@@ -7,6 +7,8 @@ edition = "2024"
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 game = { path = "../game" }
+tilemap = { path = "../tilemap" }
+sprite_shared = { path = "../sprite_shared" }
 
 bevy = { workspace = true }
 serde = { workspace = true }

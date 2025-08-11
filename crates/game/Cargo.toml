@@ -6,11 +6,14 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
+camera = { path = "../camera" }
 sprite_shared = { path = "../sprite_shared" }
 tilemap = { path = "../tilemap" }
+modifier = { path = "../modifier" }
 
 bevy = { workspace = true }
 nano-id = { workspace = true }
+serde = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 debug_unwraps = { workspace = true }
@@ -24,7 +27,6 @@ bevy_simple_scroll_view = { workspace = true }
 bevy_ui_text_input = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_replicon_renet = { workspace = true }
-serde = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_simple_subsecond_system = { workspace = true }
 bevy-ui-gradients = { workspace = true }

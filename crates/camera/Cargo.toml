@@ -1,0 +1,10 @@
+[package]
+name = "camera"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+game_common = { path = "../agame_common" }
+
+bevy = { workspace = true }

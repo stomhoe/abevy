@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::states::AppState;
+use common::common_states::AppState;
 use serde::{Deserialize, Serialize};
 
 use crate::being_components::BodyParts;

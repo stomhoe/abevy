@@ -1,18 +1,20 @@
 use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
-use game_common::game_common_components::MyZ;
+use game_common::game_common_components::{BeingAltitude, FacingDirection, MyZ};
+use modifier::modifier_components::AppliedModifiers;
 use serde::{Deserialize, Serialize};
 use sprite_shared::{animation_shared::MoveAnimActive, sprite_shared::SpriteCfgsBuiltSoFar};
-use common::components::EntityPrefix;
+use common::common_components::EntityPrefix;
 use tilemap::chunking_components::ActivatingChunks;
+use superstate::{SuperstateInfo};
 
-use crate::{body_components::BodyPartOf, modi_components::AppliedModifiers, movement_components::{Altitude, InputMoveVector, FacingDirection}, };
+use crate::{body_components::BodyPartOf, movement_components::{ InputMoveVector, }, };
 
 
 
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[require(InputMoveVector, MyZ(Being::MINZ_I32), Replicated, MoveAnimActive,
-Altitude, Visibility, FacingDirection, AppliedModifiers, 
+BeingAltitude, Visibility, FacingDirection, AppliedModifiers, 
 EntityPrefix::new("BEING"), SpriteCfgsBuiltSoFar)]
 pub struct Being;
 impl Being {
@@ -55,11 +57,17 @@ pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si e
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
 #[relationship(relationship_target = Controls)]
-//client entity en control del being, ya sea manualmente o mediante su CPU
+#[require(SuperstateInfo<ControlledBy>)]
 pub struct ControlledBy  { 
     #[relationship] #[entities]
     pub client: Entity 
 }
+impl Default for ControlledBy {
+    fn default() -> Self {
+        Self { client: Entity::PLACEHOLDER }
+    }
+}
+
 #[derive(Component, Debug, Reflect, )]
 #[relationship_target(relationship = ControlledBy)]
 pub struct Controls(Vec<Entity>);
@@ -69,10 +77,11 @@ impl Controls {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 pub struct ControlledLocally;
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct ControlledByBot;
 
 
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
+#[require(ControlledBy)]
+pub struct HumanControlled(pub bool);
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, )]

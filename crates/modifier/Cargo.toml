@@ -1,0 +1,14 @@
+[package]
+name = "modifier"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+game_common = { path = "../agame_common" }
+
+bevy = { workspace = true }
+superstate = { workspace = true }
+serde = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }

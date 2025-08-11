@@ -1,18 +1,27 @@
 use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+use common::common_types::FixedStr;
 use serde::{Deserialize, Serialize};
 
-pub const DOWN: &str = "_down";
-pub const LEFT: &str = "_left";
-pub const UP: &str = "_up";
-pub const RIGHT: &str = "_right";
-pub const IDLE: &str = "_idle";
-pub const WALK: &str = "_walk";
-pub const SWIM : &str = "_swim";
-pub const FLY: &str = "_fly";
+pub const DOWN: &str = "down";
+pub const LEFT: &str = "left";
+pub const UP: &str = "up";
+pub const RIGHT: &str = "right";
+pub const IDLE: &str = "idle";
+pub const WALK: &str = "walk";
+pub const SWIM : &str = "swim";
+pub const FLY: &str = "fly";
 
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct AnimationIdPrefix(pub FixedStr<32>);
+
+impl<T: AsRef<str>> From<T> for AnimationIdPrefix {
+    fn from(s: T) -> Self {
+        AnimationIdPrefix(FixedStr::from(s.as_ref()))
+    }
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct MoveAnimActive(pub bool);

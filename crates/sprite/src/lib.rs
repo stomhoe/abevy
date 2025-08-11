@@ -1,4 +1,4 @@
-use sprite::*;
+pub use sprite::*;
 
 pub mod sprite;
 

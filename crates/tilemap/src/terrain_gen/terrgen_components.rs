@@ -1,7 +1,7 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::states::AppState;
+use common::common_states::AppState;
 use fastnoise_lite::FastNoiseLite;
 
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use std::collections::hash_map::DefaultHasher;
 use crate::terrain_gen::terrgen_resources::GlobalGenSettings;
 use crate::tile::tile_components::*;
 
-use {common::components::EntityPrefix, };
+use {common::common_components::EntityPrefix, };
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize, )]
 #[require(EntityPrefix::new("Noise"), Replicated, StateScoped::<AppState>(AppState::StatefulGameSession), )]

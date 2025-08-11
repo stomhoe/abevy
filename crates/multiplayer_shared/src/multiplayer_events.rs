@@ -1,5 +1,5 @@
 use bevy::{ecs::entity::MapEntities, prelude::*};
-use common::components::DisplayName;
+use common::common_components::{StrId};
 use game::movement_components::InputMoveVector;
 use serde::{Deserialize, Serialize};
 
@@ -7,20 +7,16 @@ use serde::{Deserialize, Serialize};
 pub struct HostStartedGame;
 
 #[derive(Deserialize, Event, Serialize, Clone)]
-pub struct SendPlayerName(pub DisplayName);
+pub struct SendUsername(pub StrId);
 
 #[derive(Deserialize, Event, Serialize, Clone, Component, MapEntities)]
 pub struct MoveStateUpdated {
-    #[entities]
-    pub being_ent: Entity,
-    pub moving: bool,
+    #[entities]pub being_ent: Entity, pub moving: bool,
 }
 
 #[derive(Deserialize, Event, Serialize, Clone, MapEntities)]
 pub struct SendMoveInput {
-    #[entities]
-    pub being_ent: Entity,
-    pub vec: InputMoveVector,
+    #[entities]pub being_ent: Entity, pub vec: InputMoveVector,
 }
 
 #[derive(Deserialize, Event, Serialize, Clone, MapEntities)]

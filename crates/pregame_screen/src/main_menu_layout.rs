@@ -1,6 +1,6 @@
 use bevy::color::palettes::css::LIGHT_GOLDENROD_YELLOW;
 use bevy::prelude::*;
-use common::states::{AppState, PreGameState};
+use common::common_states::{AppState, PreGameState};
 use bevy_ui_text_input::*;
 use ui_shared::{ui_components::{ButtonBackgroundStyle, CurrentText, LineEdit}, ui_functions::text_button};
 
@@ -18,7 +18,7 @@ pub fn layout(mut commands: Commands){
             ..default()
         },
         StateScoped(PreGameState::MainMenu),
-        StateScoped(AppState::PreGame),
+        StateScoped(AppState::NoGameSession),
 
         children![
             main_menu_button(MainMenuButton::QuickStart, "Quick start", None),

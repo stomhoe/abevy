@@ -28,21 +28,33 @@ fn main() {
         .add_plugins((
             DefaultPlugins
             .set(//https://bevy-logging.github.io/chapter_5.html
-                LogPlugin {//sin espacios
+                LogPlugin {
                     filter: FILTER.to_string(),
                     level: Level::TRACE,
                     ..Default::default()
                 })
             .set(ImagePlugin::default_nearest(),),
+            EguiPlugin::default(),
+            WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
             SimpleSubsecondPlugin::default(),
+        ))
+        .add_plugins((
+            multiplayer_shared::plugin,
             host::plugin,
             client::plugin,
             common::plugin,
+            game_common::plugin,
+            game::plugin,
+            camera::plugin,
+            sprite_animation::plugin,
+            movement::plugin,
+            sprite::plugin,
+            modifier::plugin,
             tilemap::plugin,
             setup_screen::plugin,
+            pregame_screen::plugin,
             ui_shared::plugin,
-            EguiPlugin::default(),
-            WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape))
+            
         ))
         .run()
 

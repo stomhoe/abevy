@@ -48,12 +48,4 @@ pub fn host_server(
     Ok(())
 }
 
-pub fn stop_server(
-    commands: &mut Commands,
-    server: &mut RenetServer,
-) {
-        info!("Stopping server");
-        server.disconnect_all();
-        
-}
 

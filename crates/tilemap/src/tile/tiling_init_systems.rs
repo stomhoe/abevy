@@ -3,7 +3,7 @@ use bevy::ecs::entity_disabling::Disabled;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
+use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
 use game_common::{game_common_components::MyZ, };
 
 use crate::{tile::{tile_components::*, tile_resources::*}, };
@@ -52,8 +52,8 @@ pub fn add_shaders_to_map(
     };
     let mut result: Result = Ok(());
     for (ent, prefix, str_id) in query.iter() {
-        if let Err(err) = terrgen_map.0.insert(str_id, ent, prefix) {
-            error!(target: "tiling_loading", "{}", err);
+        if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
+            error!(target: "tiling_loading", "{} {} already in TileShaderEntityMap : {}", prefix, str_id, err);
             result = Err(err);
         }
     }
@@ -158,8 +158,8 @@ pub fn add_tiles_to_map(
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = terrgen_map {
         for (ent, prefix, str_id) in query.iter() {
-                if let Err(err) = terrgen_map.0.insert(str_id, ent, prefix) {
-                    error!(target: "tiling_loading", "{}", err);
+                if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
+                    error!(target: "tiling_loading", "{} {} already in TilingEntityMap : {}", prefix, str_id, err);
                     result = Err(err);
                 } else {
                     //info!(target: "tiling_loading", "Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
@@ -220,8 +220,8 @@ pub fn add_tile_weighted_samplers_to_map(
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = terrgen_map {
         for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = terrgen_map.0.insert(str_id, ent, prefix) {
-                error!(target: "tiling_loading", "{}", err);
+            if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
+                error!(target: "tiling_loading", "{} {} already in TilingEntityMap : {}", prefix, str_id, err);
                 result = Err(err);
             } else {
                 //info!(target: "tiling_loading", "Inserted tile weighted sampler '{}' into TilingEntityMap with entity {:?}", str_id, ent);

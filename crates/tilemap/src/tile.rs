@@ -1,7 +1,7 @@
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::prelude::*;
-use common::states::{LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
+use common::common_states::{LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 

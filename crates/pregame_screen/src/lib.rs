@@ -1,4 +1,4 @@
-use main_menu::*;
+pub use main_menu::*;
 
 pub mod main_menu;
 pub mod main_menu_layout;

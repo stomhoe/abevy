@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use common::states::{AppState, GamePhase};
+use common::common_states::*;
 
 
 

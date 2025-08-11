@@ -3,9 +3,6 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use serde::{Deserialize, Serialize};
-use sprite_shared::animation_shared::{DOWN, LEFT, RIGHT, UP};
-
-
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
@@ -21,25 +18,10 @@ pub struct InputDuck;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct InputSpeedVector(pub Vec2);
-use strum::{VariantNames};
-use strum_macros::{AsRefStr, Display, VariantNames};
-
-
-#[allow(unused_parens, )]
-#[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display )]
-#[strum(serialize_all = "lowercase")]
-pub enum FacingDirection { #[default] Down, Left, Right, Up, }//PARA CAMBIAR ALEATORIAMENTE AL SPAWNEAR, HACER UN SISTEMA PARA BEINGS ADDED Q USE BEVY_RAND
 
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub enum Altitude{
-    #[default] 
-    OnGround,
-    Swimming,
-    Floating,
-}
 
 //PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
 //UTIL PARA RAZAS DE IGUANAS O ARAÑAS

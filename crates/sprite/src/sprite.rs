@@ -1,11 +1,12 @@
 
 use bevy_common_assets::ron::RonAssetPlugin;
-use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::states::LocalAssetsLoadingState;
-use game_common::game_common::GameplaySystems;
+use common::common_states::{LocalAssetsLoadingState, ReplicatedAssetsLoadingState};
+use game_common::{game_common::GameplaySystems, SpriteSystemsSet};
+use sprite_shared::sprite_shared::{SpriteCfgEntityMap, SpriteHolderRef};
 
+use bevy_asset_loader::prelude::*;
 
 use crate::{sprite_init_systems::*, sprite_resources::*, sprite_systems::*};
 
@@ -13,16 +14,10 @@ use crate::{sprite_init_systems::*, sprite_resources::*, sprite_systems::*};
 
 
 
-//mod animation_events;
-
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct SpriteSystemsSet;
-
 
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        SpritesheetAnimationPlugin::default(), 
         RonAssetPlugin::<SpriteConfigSeri>::new(&["sprite.ron"]),
     ))
     .add_systems(Update, (
@@ -41,9 +36,17 @@ pub fn plugin(app: &mut App) {
         add_sprites_to_local_map,
     ).in_set(SpriteSystemsSet)) 
 
+    .register_type::<SpriteCfgEntityMap>()
+    .register_type::<SpriteHolderRef>()
 
+    .configure_loading_state(
+        LoadingStateConfig::new(LocalAssetsLoadingState::InProcess)
+        .load_collection::<SpriteSerisHandles>()
+        // .load_collection::<AnimSerisHandles>()
+        // .load_collection::<RaceSerisHandles>()
 
-    
+        .finally_init_resource::<SpriteCfgEntityMap>()
+    )
 
     ;
 }

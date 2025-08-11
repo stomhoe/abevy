@@ -1,10 +1,23 @@
 use bevy::input::ButtonInput;
+
 use bevy::prelude::*;
+use common::common_states::ConnectionAttempt;
+use common::common_states::GamePhase;
 
 use crate::game_common_components::*;
 use crate::game_common_states::*;
 
 
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn reset_states(
+    mut connection: ResMut<NextState<ConnectionAttempt>>,
+    mut state: ResMut<NextState<GamePhase>>
+) {
+    state.set(GamePhase::default());
+    connection.set(ConnectionAttempt::default());
+}
 
 
 pub fn toggle_simulation(

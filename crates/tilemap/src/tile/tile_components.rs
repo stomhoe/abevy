@@ -4,7 +4,7 @@ use bevy::platform::collections::HashMap;
 use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::{components::{EntityPrefix, HashId, ImageHolder}, states::{AppState, LocalAssetsLoadingState}};
+use common::{common_components::{EntityPrefix, HashId, ImageHolder}, common_states::{AppState, LocalAssetsLoadingState}};
 use game_common::game_common_components::MyZ;
 
 use std::hash::{DefaultHasher, Hash, Hasher};

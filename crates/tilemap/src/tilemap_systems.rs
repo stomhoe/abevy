@@ -1,7 +1,7 @@
 
 use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections::HashMap, prelude::*};
 use bevy_ecs_tilemap::{map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
-use common::resources::ImageSizeMap;
+use common::common_resources::ImageSizeMap;
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::MyZ;
 
@@ -48,8 +48,9 @@ pub fn produce_tilemaps(
 
             let tile_z_index = tile_z_index.cloned().unwrap_or_default();
 
-            if let Some(mut transform) = transf {
-                let displacement: Vec2 = Vec2::from(tile_pos) + Tile::PIXELS.as_vec2();
+            
+            if let Some(mut transform) = transf {//TODO USAR EL IMAGE
+                let displacement: Vec2 = Vec2::from(tile_pos) * Tile::PIXELS.as_vec2();
                 transform.translation += displacement.extend(0.0);
             }
 

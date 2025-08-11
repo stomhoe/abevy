@@ -1,6 +1,6 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use bevy_asset_loader::asset_collection::AssetCollection;
-use common::types::HashIdToEntityMap;
+use common::common_types::HashIdToEntityMap;
 
 
 

@@ -7,12 +7,9 @@ edition = "2024"
 common = { path = "../acommon" }
 sprite_shared = { path = "../sprite_shared" }
 game_common = { path = "../agame_common" }
-game = { path = "../game" }
 
 bevy = { workspace = true }
 debug_unwraps = { workspace = true }
-bevy_replicon = { workspace = true }
-bevy_replicon_renet = { workspace = true }
 serde = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_simple_subsecond_system = { workspace = true }

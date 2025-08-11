@@ -3,8 +3,8 @@ use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::Spritesheet;
-use common::components::{EntityPrefix, };
-use common::types::FixedStr;
+use common::common_components::{EntityPrefix, };
+use common::common_types::*;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
@@ -14,11 +14,7 @@ use std::collections::hash_map::DefaultHasher;
 #[require(EntityPrefix::new("SpriteConfig"))]
 pub struct SpriteConfig;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct AnimationIdPrefix(pub FixedStr<32>);
 
-impl From<&str> for AnimationIdPrefix {fn from(s: &str) -> Self {AnimationIdPrefix(FixedStr::from(s))}}
-impl From<String> for AnimationIdPrefix {fn from(s: String) -> Self {AnimationIdPrefix(FixedStr::from(s))}}
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
@@ -49,8 +45,7 @@ pub struct ExcludedFromBaseAnimPickingSystem;
 #[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
 pub enum FlipHorizIfDir{Left, Right, Any,}
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
-pub struct Directionable;
+
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
@@ -264,7 +259,6 @@ pub struct SpriteCfgsBuiltSoFar(#[entities] pub HashSet<Entity>);
 pub struct SpriteConfigRef(#[entities] pub Entity);
 
 
-use common::types::HashIdToEntityMap;
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect, )]
 pub struct SpriteCfgEntityMap(pub HashIdToEntityMap);

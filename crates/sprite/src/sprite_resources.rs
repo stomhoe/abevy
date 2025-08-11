@@ -3,7 +3,7 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
 
-use common::types::HashIdToEntityMap;
+use common::common_types::HashIdToEntityMap;
 use::serde::{Deserialize, Serialize};
 
 

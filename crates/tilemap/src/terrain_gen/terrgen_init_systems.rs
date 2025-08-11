@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use fastnoise_lite::FastNoiseLite;
 
-use common::components::{DisplayName, EntityPrefix, StrId};
+use common::common_components::{DisplayName, EntityPrefix, StrId};
 
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_resources::*}, tile::tile_resources::*};
 
@@ -138,8 +138,8 @@ pub fn add_noises_to_map(
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = terrgen_map {
         for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = terrgen_map.0.insert(str_id, ent, prefix) {
-                error!(target: "noise_loading", "{}", err);
+            if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
+                error!(target: "noise_loading", "{} {} already in TerrGenEntityMap : {}", prefix, str_id, err);
                 result = Err(err);
             }
         }
@@ -270,8 +270,9 @@ pub fn add_oplists_to_map(
     let mut result: Result = Ok(());
     if let Some(mut oplist_map) = oplist_map {
         for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = oplist_map.0.insert(str_id, ent, prefix) {
-                error!(target: "oplist_loading", "{}", err);
+            if let Err(err) = oplist_map.0.insert(str_id, ent, ) {
+
+                error!(target: "oplist_loading", "{} {} already in OpListEntityMap : {}", prefix, str_id, err);
                 result = Err(err);
             }
         }

@@ -3,10 +3,10 @@ use std::{mem, };
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
-use common::{components::{DisplayName, EntityPrefix}, states::ConnectionAttempt};
-use game::{being_components::ControlledBy, faction_components::{BelongsToFaction, Faction}, player::{OfSelf, Player}};
-use multiplayer_shared::multiplayer_events::SendPlayerName;
-use sprite_shared::{animation_shared::MoveAnimActive, sprite_shared::SpriteCfgEntityMap};
+use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_states::ConnectionAttempt};
+use game::{being_components::{Being, ControlledBy}, faction_components::{BelongsToFaction, Faction}, player::{CharacterCreatedBy, CreatedCharacters, OfSelf, Player}};
+use multiplayer_shared::multiplayer_events::SendUsername;
+use sprite_shared::{animation_shared::MoveAnimActive, sprite_shared::{SpriteCfgEntityMap, SpriteConfigStringIds}};
 use multiplayer_shared::multiplayer_events::MoveStateUpdated;
 use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::TilingEntityMap}};
 
@@ -19,16 +19,10 @@ pub fn attempt_host(
     channels: Res<RepliconChannels>,
     
 ) -> Result {
-    host_server(&mut commands, channels, None, 3)?;
-    Ok(())
+    host_server(&mut commands, channels, None, 3)
 }
 
 
-#[allow(unused_parens)]
-pub fn host_receive_client_name(mut trigger: Trigger<FromClient<SendPlayerName>>, mut commands: Commands) {
-
-    commands.entity(trigger.client_entity).insert(mem::take(&mut trigger.event_mut().0));
-}
 
 
 #[allow(unused_parens, )]
@@ -39,14 +33,14 @@ pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>,
     samplers: Query <(Entity,), (With<HashPosEntiWeightedSampler>)>,
 ) -> Result {
     let client_entity = trigger.target();
-    cmd.entity(client_entity).insert((Player, Replicated, BelongsToFaction(host_faction.into_inner())));
+    cmd.entity(client_entity).insert((Player, BelongsToFaction(host_faction.into_inner())));
     info!("(HOST) `{}` connected", client_entity);
 
     // Clone the map, but filter out any samplers
     let mut filtered_map = TilingEntityMap::default();
-    for (hash_id, entity) in own_tiling_map.0.iter() {
-        if samplers.iter().all(|(sampler_entity, )| *entity != sampler_entity) {
-            filtered_map.0.insert_with_hash(hash_id, *entity, &EntityPrefix::default())?;
+    for (&hash_id, &entity) in own_tiling_map.0.iter() {
+        if samplers.iter().all(|(sampler_entity, )| entity != sampler_entity) {
+            filtered_map.0.insert_with_hash(hash_id, entity, )?;
         }
     }
 
@@ -54,17 +48,47 @@ pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>,
     cmd.server_trigger(sync_tiles);
 
     let sync_sprite_cfgs = ToClients { mode: SendMode::Direct(client_entity), event: own_sprite_cfg_map.clone(),};
-
     cmd.server_trigger(sync_sprite_cfgs);
         // TA BIEN, TODOS LOS JOINERS POR DEFECTO SON DE LA FACTION DEL HOST, SI NO ES ASÍ, AL CARGAR LA SAVEGAME SE CAMBIA?
     Ok(())
 }
 
 #[allow(unused_parens)]
-pub fn host_on_player_added(mut cmd: Commands, query: Query<(Entity, &DisplayName),(Added<DisplayName>, With<Player>)>) {
-    for (player_ent, player_name) in query.iter() {
-        let being = cmd.spawn((Being, DisplayName::new(player_name.0.clone()),)).id();
-        cmd.entity(player_ent).insert((CreatedCharacter(being),));
+pub fn host_receive_client_name(mut trigger: Trigger<FromClient<SendUsername>>, 
+    mut cmd: Commands, 
+) {
+    let username = mem::take(&mut trigger.event_mut().0);
+    cmd.entity(trigger.client_entity).insert(username.clone());
+    //TODO chequear el estado actual de la partida (new game o loaded (cargar su character si ya tiene)) y los Res<State<GamePhase>> antes de hacer esto
+   
+}
+
+#[allow(unused_parens)]
+pub fn host_on_player_added(mut cmd: Commands, 
+    query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>,
+    player_query: Query<(&CreatedCharacters)>,
+
+    host_faction: Single<(Entity), (With<Faction>, With<OfSelf>)>,
+) {
+    let host_faction = host_faction.into_inner();
+    for (player_ent, username) in query.iter() {
+
+        if player_query.get(player_ent).is_err() {
+
+
+            cmd.spawn((Being, username.clone(), 
+                ControlledBy { client: player_ent }, 
+                CharacterCreatedBy { player: player_ent },
+                
+                BelongsToFaction(host_faction.clone()),
+                Transform::default(),
+                SpriteConfigStringIds::new(["humanhe0", "humanbo0"]),
+                
+            ));
+
+        }else{
+            //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER
+        }
     }
 }
 
@@ -95,15 +119,15 @@ pub fn update_animstate_for_clients(
 }
 
 
-pub fn clean_resources(
-    mut cmd: Commands,
-    mut lobby_state: ResMut<NextState<ConnectionAttempt>>,
-){
-    lobby_state.set(ConnectionAttempt::default());
 
-    cmd.remove_resource::<RenetServer>();
+pub fn server_cleanup(
+    mut cmd: Commands, 
+    server: Option<ResMut<RenetServer>>,
+) {
+    debug!(target: "server_cleanup", "Cleaning up server resources");
+    if let Some(mut server) = server {
+        server.disconnect_all();
+    }
+    cmd.remove_resource::<RenetServer>();//HAY Q BORRAR LOS DOS
     cmd.remove_resource::<NetcodeServerTransport>();
-    cmd.remove_resource::<TerrGenEntityMap>();
-    cmd.remove_resource::<OpListEntityMap>();
 }
-

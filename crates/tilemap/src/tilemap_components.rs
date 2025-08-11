@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{components::{EntityPrefix, HashIdMap}, states::AppState};
+use common::{common_components::{EntityPrefix, HashIdMap}, common_states::AppState};
 
 
 use crate::{chunking_components::ChunkInitState, tile::tile_components::Tile, };

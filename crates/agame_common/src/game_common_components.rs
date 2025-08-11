@@ -1,6 +1,10 @@
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
+#[allow(unused_imports)] use bevy::prelude::*;
+use splines::{Interpolation, Key, Spline};
+use strum_macros::{AsRefStr, Display, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Copy, Reflect)]
 pub struct MyZ(pub i32);
@@ -13,13 +17,19 @@ impl MyZ {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct Description(pub String);
 
-use std::time::Duration;
 
-#[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
-use splines::{Interpolation, Key, Spline};
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, )]
+pub enum BeingAltitude{
+    #[default] OnGround, Swimming, Floating,
+}
 
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
+pub struct Directionable;
 
+#[allow(unused_parens, )]
+#[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display )]
+#[strum(serialize_all = "lowercase")]
+pub enum FacingDirection { #[default] Down, Left, Right, Up, }//PARA CAMBIAR ALEATORIAMENTE AL SPAWNEAR, HACER UN SISTEMA PARA BEINGS ADDED Q USE BEVY_RAND
 
 #[derive(Component, Debug, )]
 pub struct SourceDest{
@@ -29,7 +39,7 @@ pub struct SourceDest{
 
 
 #[derive(Component, Debug,)]
-pub struct Health(pub i32,);//SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (GRUNTS IRRECLUTABLES PARA FARMEAR XP O LOOT)
+pub struct Health(pub f32,);//SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (GRUNTS IRRECLUTABLES PARA FARMEAR XP O LOOT)
 
 #[derive(Component, Debug,)]
 pub struct PhysicallyImmune();

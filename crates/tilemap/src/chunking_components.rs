@@ -105,7 +105,8 @@ pub struct PendingOperations(pub i32);
 #[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
 pub struct ActivatingChunks(pub EntityHashSet,);
 
-
+#[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
+pub struct VisualizingChunks(pub EntityHashSet,);
 
 
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, Reflect)]

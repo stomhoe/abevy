@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use game::movement_components::FacingDirection;
+use game_common::game_common_components::FacingDirection;
 use sprite_shared::sprite_shared::*;
 
 

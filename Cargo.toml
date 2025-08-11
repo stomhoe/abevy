@@ -57,18 +57,26 @@ tracing-subscriber = "0.3.19"
 
 [dependencies]
 
+multiplayer_shared = { path = "crates/multiplayer_shared" }
 common = { path = "crates/acommon" }
-client = { path = "crates/client" }
+game_common = { path = "crates/agame_common" }
 host = { path = "crates/host" }
-sprite_animation = { path = "crates/sprite_animation" }
+client = { path = "crates/client" }
+game = { path = "crates/game" }
+movement = { path = "crates/movement" }
+camera = { path = "crates/camera" }
 sprite_shared = { path = "crates/sprite_shared" }
+sprite_animation = { path = "crates/sprite_animation" }
+sprite = { path = "crates/sprite" } 
 tilemap = { path = "crates/tilemap" }
+modifier = { path = "crates/modifier" }
 
 ui_shared = { path = "crates/ui_shared" }
 pregame_screen = { path = "crates/pregame_screen" }
 setup_screen = { path = "crates/setup_screen" }
 bevy = { workspace = true }
 bevy-inspector-egui = { workspace = true }
+bevy_simple_subsecond_system = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 

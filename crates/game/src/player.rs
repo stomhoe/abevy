@@ -1,7 +1,9 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{components::EntityPrefix, states::AppState};
+use common::{common_components::EntityPrefix, common_states::AppState};
 use serde::{Deserialize, Serialize};
+
+use crate::being_components::{HumanControlled, PlayerDirectControllable};
 
 
 #[derive(Component, Debug,)]
@@ -24,18 +26,22 @@ pub struct TrustedForOtracosa;
 pub struct TrustedMovement;
 
 #[derive(Debug, Component, Default, Serialize, Deserialize)]
-#[require(Replicated, Player)]
+#[require(Player)]
 pub struct HostPlayer;
 
 
-#[derive(Component, Default)] 
-#[require(Transform)]
-pub struct CameraTarget;
+          
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[relationship(relationship_target = CreatedCharacters)]
+#[require(PlayerDirectControllable, HumanControlled(true))]
+pub struct CharacterCreatedBy {
+    #[relationship] #[entities] pub player: Entity,
+}
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
-pub struct CreatedCharacter(#[entities] pub Entity);
-
+#[derive(Component, Debug, Reflect)]
+#[relationship_target(relationship = CharacterCreatedBy)]
+pub struct CreatedCharacters(Vec<Entity>);
+impl CreatedCharacters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
 

@@ -2,11 +2,9 @@
 
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 use bevy_spritesheet_animation::prelude::*;
-use common::components::{DisplayName, StrId};
-use game::{being_components::ControlledBy, movement_components::{Altitude, FacingDirection}, player::{OfSelf, Player}};
+use common::common_components::StrId;
+use game_common::game_common_components::{BeingAltitude, Directionable, FacingDirection};
 use sprite_shared::{animation_shared::*, sprite_shared::*};
 
 use crate::animation_resources::*;
@@ -52,7 +50,7 @@ pub fn init_animations(
 //#[bevy_simple_subsecond_system::hot]
 #[allow(unused_parens)]
 pub fn update_animstate(
-    parents_query: Query<(&MoveAnimActive, &Altitude, &HeldSprites), (Or<(Changed<Altitude>, Changed<MoveAnimActive>, Changed<HeldSprites>)>,)>,
+    parents_query: Query<(&MoveAnimActive, &BeingAltitude, &HeldSprites), (Or<(Changed<BeingAltitude>, Changed<MoveAnimActive>, Changed<HeldSprites>)>,)>,
     mut sprite_query: Query<(&StrId, &SpriteConfigRef, &mut AnimationState,), (Without<ExcludedFromBaseAnimPickingSystem>,)>,
     sprite_config_query: Query<(Option<&WalkAnim>, Option<&SwimAnim>, Option<&FlyAnim>, ),(Or<(With<Disabled>, Without<Disabled>)>,)>,
 ) { 
@@ -70,23 +68,23 @@ pub fn update_animstate(
                         anim_state.set_idle();
                         trace!(target: "sprite_animation", "AnimState: set_idle for {:?}", _str_id);
                     },
-                    (true, Altitude::OnGround, Some(_), _, _) => {
+                    (true, BeingAltitude::OnGround, Some(_), _, _) => {
                         anim_state.set_walk();
                         trace!(target: "sprite_animation", "AnimState: set_walk for {:?}", _str_id);
                     },
-                    (true, Altitude::Swimming, _, Some(_), _) => {
+                    (true, BeingAltitude::Swimming, _, Some(_), _) => {
                         anim_state.set_swim();
                         trace!(target: "sprite_animation", "AnimState: set_swim for {:?}", _str_id);
                     },
-                    (true, Altitude::Floating, _, _, Some(_)) => {
+                    (true, BeingAltitude::Floating, _, _, Some(_)) => {
                         anim_state.set_fly();
                         trace!(target: "sprite_animation", "AnimState: set_fly for {:?}", _str_id);
                     },
-                    (false, Altitude::OnGround, _, _, _) => {
+                    (false, BeingAltitude::OnGround, _, _, _) => {
                         anim_state.set_idle();
                         trace!(target: "sprite_animation", "AnimState: set_idle for {:?}", _str_id);
                     },
-                    (false, Altitude::Swimming, _, Some(has_swim_anim), _) => {
+                    (false, BeingAltitude::Swimming, _, Some(has_swim_anim), _) => {
                         if has_swim_anim.use_still {
                             anim_state.set_idle();
                             trace!(target: "sprite_animation", "AnimState: set_idle for {:?}", _str_id);
@@ -95,7 +93,7 @@ pub fn update_animstate(
                             trace!(target: "sprite_animation", "AnimState: set_swim for {:?}", _str_id);
                         }
                     },
-                    (false, Altitude::Floating, _, _, Some(has_fly_anim)) => {
+                    (false, BeingAltitude::Floating, _, _, Some(has_fly_anim)) => {
                         if has_fly_anim.use_still {
                             anim_state.set_idle();
                             trace!(target: "sprite_animation", "AnimState: set_idle for {:?}", _str_id);
@@ -104,31 +102,31 @@ pub fn update_animstate(
                             trace!(target: "sprite_animation", "AnimState: set_fly for {:?}", _str_id);
                         }
                     },
-                    (true, Altitude::Floating, Some(_has_walk), _, None) => {
+                    (true, BeingAltitude::Floating, Some(_has_walk), _, None) => {
                         anim_state.set_idle();
                         trace!(target: "sprite_animation", "AnimState: set_idle for {:?}", _str_id);
                     },
-                    (true, Altitude::Swimming, Some(_has_walk), None, _) => {
+                    (true, BeingAltitude::Swimming, Some(_has_walk), None, _) => {
                         anim_state.set_walk();
                         trace!(target: "sprite_animation", "AnimState: set_walk for {:?}", _str_id);
                     },
-                    (true, Altitude::OnGround, None, Some(_has_fly), None) => {
+                    (true, BeingAltitude::OnGround, None, Some(_has_fly), None) => {
                         anim_state.set_fly();
                         trace!(target: "sprite_animation", "AnimState: set_fly for {:?}", _str_id);
                     },
-                    (true, Altitude::OnGround, None, None, Some(_has_swim)) => {
+                    (true, BeingAltitude::OnGround, None, None, Some(_has_swim)) => {
                         anim_state.set_swim();
                         trace!(target: "sprite_animation", "AnimState: set_swim for {:?}", _str_id);
                     },
-                    (true, Altitude::OnGround, None, Some(_has_fly), Some(_has_swim)) => {
+                    (true, BeingAltitude::OnGround, None, Some(_has_fly), Some(_has_swim)) => {
                         anim_state.set_fly();
                         trace!(target: "sprite_animation", "AnimState: set_fly for {:?}", _str_id);
                     },
-                    (true, Altitude::Swimming, None, None, Some(_fly)) => {
+                    (true, BeingAltitude::Swimming, None, None, Some(_fly)) => {
                         anim_state.set_idle();
                         trace!(target: "sprite_animation", "AnimState: set_idle for {:?}", _str_id);
                     },
-                    (true, Altitude::Floating, None, Some(_swim), None) => {
+                    (true, BeingAltitude::Floating, None, Some(_swim), None) => {
                         anim_state.set_idle();
                         trace!(target: "sprite_animation", "AnimState: set_idle for {:?}", _str_id);
                     },
@@ -151,8 +149,7 @@ pub fn update_animstate(
 pub fn animate_sprite(
     mut commands: Commands,
     mut query: Query<(Entity, &SpriteHolderRef, &SpriteConfigRef,
-        Option<&mut SpritesheetAnimation>,
-        Option<&AnimationState>,
+        Option<&mut SpritesheetAnimation>, Option<&AnimationState>,
     ), (With<Sprite>, Changed<AnimationState>)>,
     cfg_query: Query<(&AnimationIdPrefix, Has<Directionable>, Option<&FlipHorizIfDir>), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>,)>,
     spriteholder_direction: Query<(&FacingDirection, )>,
@@ -173,7 +170,7 @@ pub fn animate_sprite(
         } 
         else {""};
         
-        let animation_name = format!("_{}_{}_{}", prefix, moving_anim.map(|f| f.0.as_str()).unwrap_or(""), direction_str);
+        let animation_name = format!("{}_{}_{}", prefix, moving_anim.map(|f| f.0.as_str()).unwrap_or(""), direction_str);
         trace!(target: "animate_sprite", "Entity {:?} concatted animation name: '{}'", ent, animation_name);
 
         if let Some(animation_id) = library.animation_with_name(animation_name.clone()) {

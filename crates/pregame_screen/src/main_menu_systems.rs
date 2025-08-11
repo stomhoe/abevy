@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use bevy_ui_text_input::{*,
 };
-use common::states::*;
+use common::common_states::*;
 use ui_shared::ui_components::CurrentText;
 
 use crate::main_menu_components::{MainMenuButton, MainMenuIpLineEdit};
@@ -30,13 +30,13 @@ pub fn menu_button_interaction(
                     app_state.set(AppState::StatefulGameSession);
                 }
                 MainMenuButton::Host => {
-                    game_setup_type.set(GameSetupType::HostLobby);
+                    game_setup_type.set(GameSetupType::AsHost);
                     game_phase.set(GamePhase::Setup);
                     lobby_state.set(ConnectionAttempt::Triggered);//TODO mover esto a algún botón del lobby para el host
                     app_state.set(AppState::StatefulGameSession);
                 }
                 MainMenuButton::Join => {
-                    game_setup_type.set(GameSetupType::JoinerLobby);
+                    game_setup_type.set(GameSetupType::AsJoiner);
                     game_phase.set(GamePhase::Setup);
                     lobby_state.set(ConnectionAttempt::Triggered);
                 }

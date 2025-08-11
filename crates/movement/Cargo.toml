@@ -1,0 +1,18 @@
+[package]
+name = "movement"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+game_common = { path = "../agame_common" }
+game = { path = "../game" }
+modifier = { path = "../modifier" }
+sprite_shared = { path = "../sprite_shared" }
+multiplayer_shared = { path = "../multiplayer_shared" }
+# tilemap = { path = "../tilemap" }
+
+bevy = { workspace = true }
+serde = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }

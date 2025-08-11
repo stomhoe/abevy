@@ -1,13 +1,15 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::components::EntityPrefix;
+use common::common_components::EntityPrefix;
 use superstate::{SuperstateInfo};
 
 use serde::{Deserialize, Serialize};
 
+use crate::player::OfSelf;
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
-#[require(Replicated, EntityPrefix::new("Faction "))]
+#[require(Replicated, EntityPrefix::new("Faction"))]
 pub struct Faction;
 
 
@@ -26,6 +28,13 @@ pub struct BelongsToSelfPlayerFaction;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 pub struct BelongsToFaction(#[entities] pub Entity);
+impl FromWorld for BelongsToFaction {
+    fn from_world(world: &mut World) -> Self {
+        let self_faction = world.query_filtered::<Entity, (With<Faction>, With<OfSelf>)>().single(world)
+            .expect("BelongsToFaction: No Faction found with OfSelf");
+        BelongsToFaction(self_faction)
+    }
+}
 
 
 #[derive(Component, Debug, PartialEq, Eq, Hash, )]
