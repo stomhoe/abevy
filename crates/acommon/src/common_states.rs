@@ -2,11 +2,14 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities)]
 pub enum AppState {#[default]NoGameSession, StatefulGameSession, }
 
-#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
+
+
+
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[source(AppState = AppState::NoGameSession)]
 #[states(scoped_entities)]
 pub enum PreGameState {
@@ -16,34 +19,43 @@ pub enum PreGameState {
 }
 
 
-#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[source(AppState = AppState::StatefulGameSession)]
 #[states(scoped_entities)]
 pub enum GamePhase {#[default]Setup, ActiveGame,}
 
-#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[source(GamePhase = GamePhase::Setup)]
 #[states(scoped_entities)]
 pub enum GameSetupType {#[default]Singleplayer, AsHost, AsJoiner,}
 
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities)]
 pub enum ConnectionAttempt {#[default]Not, Triggered, PostAttempt,}
 
 #[allow(unused_parens, dead_code)]
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities,)]
-pub enum LocalAssetsLoadingState {
+pub enum AssetsLoadingState {
     NotStarted,//HACER EL DEFAULT ESTE SI SE QUIERE HACER ALGO ANTES DE CARGAR LOS ASSETS
     #[default]
-    InProcess,
-    Finished,
+    LocalInProcess,
+    LocalFinished,
+    ReplicatedInProcess,
+    ReplicatedFinished,
 }
 
 
 #[allow(unused_parens, dead_code)]
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities,)]
-/// Used only by host
-pub enum ReplicatedAssetsLoadingState {#[default]NotStarted, InProcess, Finished,}
+pub enum LoadedAssetsSession {#[default]KeepAlive, DespawnAll,}
 
+#[allow(unused_parens, dead_code)]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
+#[reflect(State, Default)]
+#[states(scoped_entities,)]
+pub enum TerrainGenHotLoading {#[default]KeepAlive, DespawnAll,}
+
+
+// ---------------------------> NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO <-----------------------

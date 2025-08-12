@@ -8,7 +8,7 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 game = { path = "../game" }
 modifier = { path = "../modifier" }
-sprite_shared = { path = "../sprite_shared" }
+sprite_animation = { path = "../sprite_animation" }
 multiplayer_shared = { path = "../multiplayer_shared" }
 # tilemap = { path = "../tilemap" }
 

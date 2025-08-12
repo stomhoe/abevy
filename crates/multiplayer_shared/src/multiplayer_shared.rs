@@ -1,12 +1,12 @@
 
 
+use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::{prelude::*, shared::RepliconSharedPlugin};
 use common::{common_components::*, common_states::*};
 use game::{being_components::*, faction_components::*, movement_components::*, player::*};
 use game_common::game_common_components::{BeingAltitude, Directionable, FacingDirection};
-use crate::{multiplayer_events::*, multiplayer_shared_systems::*};
-use sprite_shared::{animation_shared::MoveAnimActive , sprite_shared::*};
+use crate::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, multiplayer_shared_systems::*};
 use tilemap::{chunking_components::{ActivatingChunks, ProducedTiles}, terrain_gen::terrgen_components::*, tile::{tile_components::*, tile_resources::*}};
 
 
@@ -49,24 +49,23 @@ pub fn plugin(app: &mut App) {
         all_clean_resources
     ))
 
+    .init_resource::<TargetJoinServer>()
+
     .add_server_trigger::<HostStartedGame>(Channel::Unordered)
     
-    .add_server_trigger::<SpriteCfgEntityMap>(Channel::Unordered)
-    .make_trigger_independent::<SpriteCfgEntityMap>()
+
     
     .add_mapped_server_trigger::<MoveStateUpdated>(Channel::Unordered)
     
+
+
+    .add_client_trigger::<SendUsername>(Channel::Ordered)
+
     
-    .replicate::<Name>()
-    .replicate::<EntityPrefix>().replicate::<StrId>().replicate::<HashId>()
-    .replicate::<DisplayName>()
     
+    .replicate::<PlayerDirectControllable>()
     
-    .replicate_with((
-        (RuleFns::<ChildOf>::default(), SendRate::EveryTick),
-        (RuleFns::<SpriteHolderRef>::default(), SendRate::EveryTick),
-        (RuleFns::<SpriteConfigRef>::default(), SendRate::EveryTick),
-    ))
+
     
     .replicate::<Player>()
     .replicate::<HostPlayer>()
@@ -90,10 +89,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<ControlledBy>()
 
 
-    .replicate_with((
-        (RuleFns::<MoveAnimActive>::default(), SendRate::Once),//NO TIENE Q SER FRECUENTE ESTE, ES RELIABLE. HACER OTRO NO RELIABLE
-    ))
-    
     .replicate::<HashPosEntiWeightedSampler>()
     
 
@@ -108,11 +103,6 @@ pub fn plugin(app: &mut App) {
         (RuleFns::<OperationList>::default(), SendRate::Once),
     ))
     
-    .add_server_trigger::<TilingEntityMap>(Channel::Unordered)
-    .make_trigger_independent::<TilingEntityMap>()
-
-
-    .add_client_trigger::<SendUsername>(Channel::Ordered)
 
 
 

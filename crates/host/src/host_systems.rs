@@ -1,13 +1,14 @@
 use std::{mem, };
 
+use sprite_animation_shared::sprite_animation_shared::MoveAnimActive;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
 use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_states::ConnectionAttempt};
 use game::{being_components::{Being, ControlledBy}, faction_components::{BelongsToFaction, Faction}, player::{CharacterCreatedBy, CreatedCharacters, OfSelf, Player}};
 use multiplayer_shared::multiplayer_events::SendUsername;
-use sprite_shared::{animation_shared::MoveAnimActive, sprite_shared::{SpriteCfgEntityMap, SpriteConfigStringIds}};
 use multiplayer_shared::multiplayer_events::MoveStateUpdated;
+use sprite::{sprite_components::SpriteConfigStringIds, sprite_resources::SpriteCfgEntityMap};
 use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::TilingEntityMap}};
 
 use crate::host_functions::host_server;
@@ -97,19 +98,19 @@ pub fn host_on_player_added(mut cmd: Commands,
 pub fn update_animstate_for_clients(
     mut cmd: Commands,
     connected: Query<&Player, Without<OfSelf>>,
-    started_query: Query<(Entity, &MoveAnimActive, &DisplayName), (Changed<MoveAnimActive>)>,
+    started_query: Query<(Entity, &MoveAnimActive, Option<&StrId>), (Changed<MoveAnimActive>)>,
     controller: Query<&ControlledBy>,
 ){
     if connected.is_empty() { return; }
 
-    for (being_ent, &MoveAnimActive(moving), dn) in started_query.iter() {
+    for (being_ent, &MoveAnimActive(moving), id) in started_query.iter() {
         let event_data = MoveStateUpdated {being_ent, moving};
         if let Ok(controller) = controller.get(being_ent) {
             cmd.server_trigger(ToClients {
                 mode: SendMode::BroadcastExcept(controller.client),
                 event: event_data,
             });
-            info!(target: "sprite_animation", "Sending moving {} for entity {:?} named {} to all clients except {:?}", moving, being_ent, dn, controller.client);
+            info!(target: "sprite_animation", "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client);
         }
         else {
             cmd.server_trigger(ToClients { mode: SendMode::Broadcast, event: event_data, });

@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{common_components::EntityPrefix, common_states::AppState};
+use common::{common_components::*, common_states::AppState};
 use serde::{Deserialize, Serialize};
 
 use crate::being_components::{HumanControlled, PlayerDirectControllable};
@@ -10,10 +10,8 @@ use crate::being_components::{HumanControlled, PlayerDirectControllable};
 pub struct OfSelf;
 
 
-//NO ES PARA ADJUNTARSELO A ENTITIES COMÚNES (OBJETOS O BEINGS)
-// ES PARA ADJUNTARSELO A ENTITIES QUE REPRESENTAN JUGADORES
 #[derive(Debug, Component, Default, Serialize, Deserialize)]
-#[require(Replicated, EntityPrefix::new("Player"), StateScoped::<AppState>(AppState::StatefulGameSession))]
+#[require(Replicated, EntityPrefix::new("Player"), SessionScoped)]
 pub struct Player;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]

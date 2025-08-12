@@ -1,7 +1,6 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::common_states::AppState;
 use fastnoise_lite::FastNoiseLite;
 
 use serde::{Deserialize, Serialize};
@@ -11,10 +10,14 @@ use std::collections::hash_map::DefaultHasher;
 use crate::terrain_gen::terrgen_resources::GlobalGenSettings;
 use crate::tile::tile_components::*;
 
-use {common::common_components::EntityPrefix, };
+use {common::common_components::*, common::common_states::*};
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+#[require(Replicated, SessionScoped, AssetScoped, TgenScoped, )]
+pub struct TerrGen;
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize, )]
-#[require(EntityPrefix::new("Noise"), Replicated, StateScoped::<AppState>(AppState::StatefulGameSession), )]
+#[require(TerrGen, EntityPrefix::new("Noise"), )]
 pub struct FnlNoise { pub noise: FastNoiseLite, pub offset: IVec2, }
 
 impl FnlNoise {
@@ -55,7 +58,14 @@ impl FnlNoise {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
 pub struct PoissonDisk { pub min_distance: u8, pub seed: u64, }
 impl PoissonDisk {
-    pub fn new(min_distance: u8, seed: u64) -> Self { Self { min_distance, seed } }
+    pub fn new(min_distance: u8, seed: u64) -> Result<Self, BevyError> { 
+        if min_distance > 5 {
+            return Err(BevyError::from("min_distance must be <= 5"));
+        } else if min_distance == 0 {
+            return Err(BevyError::from("min_distance must be > 0"));
+        }
+        Ok(Self { min_distance, seed }) 
+    }
     pub fn sample(&self, settings: &GlobalGenSettings, tile_pos: GlobalTilePos) -> f32 {
 
         let val = tile_pos.normalized_hash_value(settings, self.seed);
@@ -87,26 +97,26 @@ impl Default for PoissonDisk { fn default() -> Self { Self { min_distance: 1, se
 pub struct ChunkRef(pub Entity);
 
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect)]
-pub enum Operation {
-    Add, Subtract, Multiply, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean,
-}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct InputOperand(pub f32);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct RootOpList;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(Replicated, StateScoped::<AppState>(AppState::StatefulGameSession), EntityPrefix::new("OpList"), )]
+#[require(EntityPrefix::new("OpList"), Replicated, SessionScoped, AssetScoped, TgenScoped)]
 pub struct OperationList {
     pub trunk: Vec<(Operand, Operation)>, pub threshold: f32,
     #[entities] pub bifurcation_over: Option<Entity>, 
     #[entities] pub bifurcation_under: Option<Entity>,
 }
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct RootOpList;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct InputOperand(pub f32);
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect)]
+pub enum Operation {
+    Add, Subtract, Multiply, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean,
+}
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Reflect)]
 pub enum Operand {
@@ -116,8 +126,8 @@ pub enum Operand {
     PoissonDisk(PoissonDisk),
 }
 impl Operand {
-    pub fn new_poisson_disk(min_distance: u8, seed: u64) -> Self {
-        Self::PoissonDisk(PoissonDisk::new(min_distance, seed))
+    pub fn new_poisson_disk(min_distance: u8, seed: u64) -> Result<Self, BevyError> {
+        PoissonDisk::new(min_distance, seed).map(Self::PoissonDisk)
     }
 }
 impl Default for Operand { fn default() -> Self { Self::Value(0.0) } }

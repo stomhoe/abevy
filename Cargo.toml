@@ -59,13 +59,14 @@ tracing-subscriber = "0.3.19"
 
 multiplayer_shared = { path = "crates/multiplayer_shared" }
 common = { path = "crates/acommon" }
+asset_loading = { path = "crates/asset_loading" }
 game_common = { path = "crates/agame_common" }
 host = { path = "crates/host" }
 client = { path = "crates/client" }
 game = { path = "crates/game" }
 movement = { path = "crates/movement" }
 camera = { path = "crates/camera" }
-sprite_shared = { path = "crates/sprite_shared" }
+sprite_animation_shared = { path = "crates/sprite_animation_shared" }
 sprite_animation = { path = "crates/sprite_animation" }
 sprite = { path = "crates/sprite" } 
 tilemap = { path = "crates/tilemap" }

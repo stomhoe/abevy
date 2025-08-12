@@ -8,21 +8,24 @@ use tracing::Level;
 
 
 
-#[allow(unused_imports)] use bevy::ecs::error::{panic, error, GLOBAL_ERROR_HANDLER, };
+#[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, GLOBAL_ERROR_HANDLER, };
 
 pub const FILTER: &str = 
 concat!(
     "error,",
     "terrgen=warn,",
     "zlevel=warn,",
-    "sprite_animation=trace,",
+    "movement=warn,",
+    "sprite_animation=warn,",
     "sprite_loading=trace,",
-    "sprite_building=trace",
+    "sprite_building=trace,",
+    "asset_loading=warn,",
+    "tiling_loading=warn,",
 );
 
 
 fn main() {
-    GLOBAL_ERROR_HANDLER.set(panic ).expect("Error handler can only be set once, globally.");
+    GLOBAL_ERROR_HANDLER.set(warn).expect("Error handler can only be set once, globally.");
     
     App::new()
         .add_plugins((
@@ -37,12 +40,13 @@ fn main() {
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
             SimpleSubsecondPlugin::default(),
+            multiplayer_shared::plugin,
         ))
         .add_plugins((
-            multiplayer_shared::plugin,
             host::plugin,
             client::plugin,
             common::plugin,
+            asset_loading::plugin,
             game_common::plugin,
             game::plugin,
             camera::plugin,

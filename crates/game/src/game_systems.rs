@@ -1,4 +1,4 @@
-use common::{common_components::{ StrId}, common_states::ReplicatedAssetsLoadingState};
+use common::{common_components::{ StrId}, common_states::AssetsLoadingState};
 use tilemap::chunking_components::ActivatingChunks;
 
 use crate::{being_components::TargetSpawnPos, faction_components::*, player::*};
@@ -7,14 +7,12 @@ use bevy::prelude::*;
 
 #[allow(unused_parens, )]
 pub fn server_or_singleplayer_setup(mut cmd: Commands, 
-    curr_assets_loading_state: Res<State<ReplicatedAssetsLoadingState>>,
-    mut assets_loading_state: ResMut<NextState<ReplicatedAssetsLoadingState>>,
+    curr_assets_loading_state: Res<State<AssetsLoadingState>>,
+    mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
     faction: Single<(Entity), (With<Faction>, With<OfSelf>)>,
 ) -> Result
 {
-    if *curr_assets_loading_state.into_inner() != ReplicatedAssetsLoadingState::Finished{
-        assets_loading_state.set(ReplicatedAssetsLoadingState::InProcess);
-    }
+    assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
     cmd.spawn((
         OfSelf, HostPlayer,
         StrId::new("HOOOOOST")?,

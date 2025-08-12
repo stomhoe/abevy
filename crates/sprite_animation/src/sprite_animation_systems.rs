@@ -1,24 +1,26 @@
 
 
+use std::ops::Deref;
+
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 use common::common_components::StrId;
 use game_common::game_common_components::{BeingAltitude, Directionable, FacingDirection};
-use sprite_shared::{animation_shared::*, sprite_shared::*};
+use sprite::sprite_components::*;
 
-use crate::animation_resources::*;
+use crate::{sprite_animation_components::*, sprite_animation_resources::*};
 
 
 #[allow(unused_parens)]
 pub fn init_animations(
+    mut cmd: Commands,
     mut anim_handles: ResMut<AnimSerisHandles>,
     mut assets: ResMut<Assets<AnimationSeri>>,
     mut library: ResMut<AnimationLibrary>,
 ) {
     use std::mem::take;
-    let handles_vec = take(&mut anim_handles.handles);
-    for handle in handles_vec {
+    for handle in take(&mut anim_handles.handles) {
         let Some(seri) = assets.remove(&handle) else { continue };
         
         let sheet = Spritesheet::new(seri.sheet_rows_cols[1], seri.sheet_rows_cols[0]);
@@ -41,9 +43,12 @@ pub fn init_animations(
         let mut animation = Animation::from_clip(library.register_clip(clip));
         animation.set_repetitions(AnimationRepeat::Loop);
         let animation_id = library.register_animation(animation);
-        info!(target: "sprite_animation", "Registered animation: {}", seri.id);
-        library.name_animation(animation_id, seri.id).unwrap();
-        
+
+        if let Ok(()) = library.name_animation(animation_id, seri.id.clone()) {
+            info!(target: "sprite_animation", "Registered animation: {}", seri.id);
+        }else {
+            error!(target: "sprite_animation", "Animation with same name already present: {}", seri.id);
+        }
     }
 }
 
@@ -54,7 +59,8 @@ pub fn update_animstate(
     mut sprite_query: Query<(&StrId, &SpriteConfigRef, &mut AnimationState,), (Without<ExcludedFromBaseAnimPickingSystem>,)>,
     sprite_config_query: Query<(Option<&WalkAnim>, Option<&SwimAnim>, Option<&FlyAnim>, ),(Or<(With<Disabled>, Without<Disabled>)>,)>,
 ) { 
-        for (&MoveAnimActive(moving), curr_parent_altitude, held_sprites) in parents_query.iter() {
+        for (moving, curr_parent_altitude, held_sprites) in parents_query.iter() {
+            let moving = moving.0;
             info !(target: "sprite_animation", "Updating animation state for held sprites: {:?}", held_sprites.sprite_ents());
             for held_sprite in held_sprites.sprite_ents() {
                 let Ok((_str_id, sprite_config_ref, mut anim_state)) = sprite_query.get_mut(*held_sprite) 
@@ -150,16 +156,23 @@ pub fn animate_sprite(
     mut commands: Commands,
     mut query: Query<(Entity, &SpriteHolderRef, &SpriteConfigRef,
         Option<&mut SpritesheetAnimation>, Option<&AnimationState>,
-    ), (With<Sprite>, Changed<AnimationState>)>,
+    ), (With<Sprite>, )>,
     cfg_query: Query<(&AnimationIdPrefix, Has<Directionable>, Option<&FlipHorizIfDir>), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>,)>,
     spriteholder_direction: Query<(&FacingDirection, )>,
-    library: Res<AnimationLibrary>,
+    library: Option<Res<AnimationLibrary>>,
 ) {
+    let Some(library) = library else {
+        error!(target: "animate_sprite", "AnimationLibrary not found, skipping animation update.");
+        return;
+    };
     for (ent, spriteholder_ref, sprite_cfg_ref, sheet_anim, moving_anim, ) in query.iter_mut() {
         
         let direction = spriteholder_direction.get(spriteholder_ref.base);
 
-        let Ok((prefix, directionable, flip_horiz)) = cfg_query.get(sprite_cfg_ref.0) else {continue };
+        let Ok((prefix, directionable, flip_horiz)) = cfg_query.get(sprite_cfg_ref.0) else {
+            trace!(target: "animate_sprite", "Failed to get config for SpriteConfigRef {:?}", sprite_cfg_ref.0);
+            continue;
+        };
 
         let prefix = prefix.0.as_str();
         let direction_str = if directionable {
@@ -185,9 +198,11 @@ pub fn animate_sprite(
                 commands.entity(ent).insert(new_anim);
                 trace!(target: "animate_sprite", "Inserted new animation for entity {:?} with name '{}'", ent, animation_name);
             }
-        } else {
-            commands.entity(ent).remove::<SpritesheetAnimation>();
+        } else{ 
             error!(target: "animate_sprite", "Animation with name '{}' not found in library.", animation_name);
+            if let Some(mut sheet_anim) = sheet_anim {
+                sheet_anim.playing = false;
+            }
         }
     }
 }

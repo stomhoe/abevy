@@ -27,7 +27,7 @@ pub enum BeingAltitude{
 pub struct Directionable;
 
 #[allow(unused_parens, )]
-#[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display )]
+#[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, )]
 #[strum(serialize_all = "lowercase")]
 pub enum FacingDirection { #[default] Down, Left, Right, Up, }//PARA CAMBIAR ALEATORIAMENTE AL SPAWNEAR, HACER UN SISTEMA PARA BEINGS ADDED Q USE BEVY_RAND
 

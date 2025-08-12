@@ -35,7 +35,7 @@ impl Sexes {
     pub fn new(map: HashMap<String, u32>) -> Self {Sexes(WeightedMap::new(map))}
 }
 
-#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
+#[derive(serde::Deserialize, Asset, Reflect, Default, Debug)]
 pub struct RaceSeri {
     pub id: String,
     pub name: String,

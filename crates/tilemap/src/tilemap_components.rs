@@ -1,14 +1,14 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{common_components::{EntityPrefix, HashIdMap}, common_states::AppState};
+use common::{common_components::*, common_states::*};
 
 
 use crate::{chunking_components::ChunkInitState, tile::tile_components::Tile, };
 
 #[derive(Component, Debug, Default)]
 #[require(
-    StateScoped::<AppState>(AppState::StatefulGameSession), EntityPrefix::new("Tilemap"), 
+    EntityPrefix::new("Tilemap"), 
     TilemapRenderSettings {render_chunk_size: ChunkInitState::SIZE*2, y_sort: false},
     TilemapGridSize::from(Tile::PIXELS.as_vec2()),
     TilemapSize::from(ChunkInitState::SIZE),

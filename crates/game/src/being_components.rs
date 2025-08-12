@@ -3,8 +3,9 @@ use bevy_replicon::prelude::Replicated;
 use game_common::game_common_components::{BeingAltitude, FacingDirection, MyZ};
 use modifier::modifier_components::AppliedModifiers;
 use serde::{Deserialize, Serialize};
-use sprite_shared::{animation_shared::MoveAnimActive, sprite_shared::SpriteCfgsBuiltSoFar};
 use common::common_components::EntityPrefix;
+use sprite::sprite_components::SpriteCfgsBuiltSoFar;
+use sprite_animation::sprite_animation_components::MoveAnimActive;
 use tilemap::chunking_components::ActivatingChunks;
 use superstate::{SuperstateInfo};
 
@@ -46,7 +47,7 @@ impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 #[derive(Component, Debug)]
 pub struct RaceRef(#[entities] pub Entity);
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Deserialize, Serialize)]
 #[require(ActivatingChunks)]//PROVISORIO, HACER UN SISTEMA Q AGREGUE ActivatingChunks automaticamente al being cuando sea de nuestra faccion
 pub struct PlayerDirectControllable;
 
@@ -57,7 +58,6 @@ pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si e
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
 #[relationship(relationship_target = Controls)]
-#[require(SuperstateInfo<ControlledBy>)]
 pub struct ControlledBy  { 
     #[relationship] #[entities]
     pub client: Entity 
@@ -80,7 +80,6 @@ pub struct ControlledLocally;
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
-#[require(ControlledBy)]
 pub struct HumanControlled(pub bool);
 
 

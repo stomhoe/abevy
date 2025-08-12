@@ -7,37 +7,23 @@ use common::common_types::HashIdToEntityMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Default, Reflect )]
+#[reflect(Resource, Default)]
 pub struct TileShaderEntityMap(pub HashIdToEntityMap);
 
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
+#[reflect(Resource, Default)]
 pub struct TilingEntityMap(pub HashIdToEntityMap);
 
 
 
-#[derive(AssetCollection, Resource)] pub struct TileSerisHandles {
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)] 
+pub struct TileSerisHandles {
     #[asset(path = "ron/tilemap/tiling/tile" , collection(typed))] 
     pub handles: Vec<Handle<TileSeri>>,
 }
-#[derive(AssetCollection, Resource)] pub struct TileWeightedSamplerSerisHandles {
-    #[asset(path = "ron/tilemap/tiling/weighted_sampler" , collection(typed))] 
-    pub handles: Vec<Handle<TileWeightedSamplerSeri>>,
-}
-#[derive(AssetCollection, Resource)] pub struct ShaderRepeatTexSerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader" , collection(typed))] 
-    pub handles: Vec<Handle<ShaderRepeatTexSeri>>,
-}
-
-
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
-pub struct ShaderRepeatTexSeri {
-    pub id: String,
-    pub img_path: String,
-    pub scale: u32,
-    pub mask_color: [u8; 4],
-}
-
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct TileSeri {
     pub id: String,
     pub name: String,
@@ -53,9 +39,34 @@ pub struct TileSeri {
     pub somecomp_present: Option<bool>,
 }
 
+
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)] 
+pub struct TileWeightedSamplerSerisHandles {
+    #[asset(path = "ron/tilemap/tiling/weighted_sampler" , collection(typed))] 
+    pub handles: Vec<Handle<TileWeightedSamplerSeri>>,
+}
 //SE PUEDE USAR TMB PARA SAMPLEAR COLORES PARA TILES
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct TileWeightedSamplerSeri {
     pub id: String,
     pub weights: HashMap<String, f32>,
 }
+
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)] 
+pub struct ShaderRepeatTexSerisHandles {
+    #[asset(path ="ron/tilemap/tiling/shader" , collection(typed))] 
+    pub handles: Vec<Handle<ShaderRepeatTexSeri>>,
+}
+
+
+#[derive(serde::Deserialize, Asset, Reflect, Default)]
+pub struct ShaderRepeatTexSeri {
+    pub id: String,
+    pub img_path: String,
+    pub scale: u32,
+    pub mask_color: [u8; 4],
+}
+
+

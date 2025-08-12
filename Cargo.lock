@@ -228,6 +228,7 @@ dependencies = [
 name = "argentum_coop"
 version = "0.1.0"
 dependencies = [
+ "asset_loading",
  "bevy",
  "bevy-inspector-egui",
  "bevy_simple_subsecond_system",
@@ -244,7 +245,7 @@ dependencies = [
  "setup_screen",
  "sprite",
  "sprite_animation",
- "sprite_shared",
+ "sprite_animation_shared",
  "tilemap",
  "tracing",
  "tracing-subscriber",
@@ -290,8 +291,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "assets"
+name = "asset_loading"
 version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_asset_loader",
+ "bevy_common_assets",
+ "bevy_replicon",
+ "bevy_replicon_renet",
+ "bevy_simple_subsecond_system",
+ "bevy_spritesheet_animation",
+ "common",
+ "serde",
+ "sprite",
+ "sprite_animation",
+ "superstate",
+ "tilemap",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "async-broadcast"
@@ -1975,7 +1993,8 @@ dependencies = [
  "multiplayer_shared",
  "nano-id",
  "serde",
- "sprite_shared",
+ "sprite",
+ "sprite_animation",
  "superstate",
  "tilemap",
  "tracing",
@@ -2924,7 +2943,9 @@ dependencies = [
  "rand_seeder",
  "serde",
  "splines",
- "sprite_shared",
+ "sprite",
+ "sprite_animation",
+ "sprite_animation_shared",
  "strum 0.27.2",
  "strum_macros 0.27.2",
  "superstate",
@@ -2939,6 +2960,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_asset_loader",
+ "bevy_replicon",
  "bevy_simple_subsecond_system",
  "common",
  "delegate",
@@ -3283,7 +3305,8 @@ dependencies = [
  "multiplayer_shared",
  "nano-id",
  "serde",
- "sprite_shared",
+ "sprite",
+ "sprite_animation_shared",
  "superstate",
  "tilemap",
  "tracing",
@@ -3693,7 +3716,7 @@ dependencies = [
  "modifier",
  "multiplayer_shared",
  "serde",
- "sprite_shared",
+ "sprite_animation",
 ]
 
 [[package]]
@@ -3713,7 +3736,8 @@ dependencies = [
  "indexmap",
  "nano-id",
  "serde",
- "sprite_shared",
+ "sprite",
+ "sprite_animation_shared",
  "superstate",
  "tilemap",
  "tracing",
@@ -4525,6 +4549,7 @@ dependencies = [
  "bevy",
  "bevy_ui_text_input",
  "common",
+ "multiplayer_shared",
  "ui_shared",
 ]
 
@@ -5194,12 +5219,13 @@ dependencies = [
  "bevy_replicon",
  "bevy_replicon_renet",
  "bevy_simple_subsecond_system",
+ "bevy_spritesheet_animation",
  "common",
  "debug_unwraps",
  "delegate",
  "game_common",
  "serde",
- "sprite_shared",
+ "sprite_animation_shared",
  "tracing",
  "tracing-subscriber",
 ]
@@ -5211,6 +5237,8 @@ dependencies = [
  "bevy",
  "bevy_asset_loader",
  "bevy_common_assets",
+ "bevy_replicon",
+ "bevy_replicon_renet",
  "bevy_simple_subsecond_system",
  "bevy_spritesheet_animation",
  "common",
@@ -5218,19 +5246,17 @@ dependencies = [
  "delegate",
  "game_common",
  "serde",
- "sprite_shared",
+ "sprite",
+ "sprite_animation_shared",
  "tracing",
  "tracing-subscriber",
 ]
 
 [[package]]
-name = "sprite_shared"
+name = "sprite_animation_shared"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "bevy_replicon",
- "bevy_replicon_renet",
- "bevy_spritesheet_animation",
  "common",
  "serde",
 ]

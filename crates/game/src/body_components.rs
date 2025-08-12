@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_states::AppState;
+use common::common_components::*;
 use serde::{Deserialize, Serialize};
 
 use crate::being_components::BodyParts;
@@ -9,7 +9,7 @@ use crate::being_components::BodyParts;
 
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[relationship(relationship_target = BodyParts)]
-#[require(Replicated, StateScoped::<AppState>(AppState::StatefulGameSession),  )]
+#[require(Replicated, SessionScoped,  )]
 pub struct BodyPartOf {
     #[relationship] #[entities]
     pub being: Entity,

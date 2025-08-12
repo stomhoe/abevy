@@ -8,7 +8,8 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 game = { path = "../game" }
 tilemap = { path = "../tilemap" }
-sprite_shared = { path = "../sprite_shared" }
+sprite_animation_shared = { path = "../sprite_animation_shared" }
+sprite = { path = "../sprite" }
 
 bevy = { workspace = true }
 serde = { workspace = true }

@@ -2,7 +2,9 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use game_common::game_common_components::FacingDirection;
-use sprite_shared::sprite_shared::*;
+use sprite_animation_shared::sprite_animation_shared::*;
+
+use crate::sprite_components::*;
 
 
 
@@ -99,25 +101,28 @@ pub fn apply_offsets(
         let mut total_offset = offset.cloned().unwrap_or_default();
 
         let Ok((my_cats, &offset, &offset_sideways, &offset_updown, &offset_up, &offset_down, &_)) = sprite_config_query.get(sprite_config) 
-        else { continue; };
+        else {
+            error!(target: "sprite_animation", "Failed to get sprite config for entity {:?}", sprite_config);
+            continue;
+        };
 
         total_offset += offset;
 
         if let Ok(direction) = base_query.get(baseholder.base) {
             match direction {
                 FacingDirection::Left => {
-                    total_offset += offset_sideways.0;
+                    total_offset += offset_sideways;
                 },
                 FacingDirection::Right => {
-                    total_offset += offset_sideways.0;
+                    total_offset += offset_sideways;
                 },
                 FacingDirection::Up => {
-                    total_offset += offset_updown.0;
-                    total_offset += offset_up.0;
+                    total_offset += offset_updown;
+                    total_offset += offset_up;
                 },
                 FacingDirection::Down => {
-                    total_offset += offset_updown.0;
-                    total_offset += offset_down.0;
+                    total_offset += offset_updown;
+                    total_offset += offset_down;
                 }
             }
             if let Ok(SpriteConfigRef(ent)) = parent_sprite_query.get(child_of.parent()) {

@@ -1,23 +1,23 @@
 [package]
-name = "sprite_animation"
+name = "asset_loading"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
+tilemap = { path = "../tilemap" }
+sprite_animation = { path = "../sprite_animation" }
 sprite = { path = "../sprite" }
-sprite_animation_shared = { path = "../sprite_animation_shared" }
-game_common = { path = "../agame_common" }
+
 
 bevy = { workspace = true }
-debug_unwraps = { workspace = true }
 serde = { workspace = true }
-bevy_common_assets = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 bevy_simple_subsecond_system = { workspace = true }
 bevy_spritesheet_animation = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_replicon_renet = { workspace = true }
+bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
-delegate = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+superstate = { workspace = true }

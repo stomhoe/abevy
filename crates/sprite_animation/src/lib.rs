@@ -1,5 +1,6 @@
-pub use animation::*;
+pub use sprite_animation::*;
 
-pub mod animation;
-mod animation_systems;
-pub mod animation_resources;
+pub mod sprite_animation;
+mod sprite_animation_systems;
+pub mod sprite_animation_resources;
+pub mod sprite_animation_components;

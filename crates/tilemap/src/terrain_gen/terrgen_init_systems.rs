@@ -11,15 +11,21 @@ use common::common_components::{DisplayName, EntityPrefix, StrId};
 
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_resources::*}, tile::tile_resources::*};
 
+use std::mem::take;
 
 #[allow(unused_parens)]
 pub fn init_noises(
-    mut cmd: Commands, seris_handles: Res<NoiseSerisHandles>,
+    mut cmd: Commands, 
+    mut seris_handles: ResMut<NoiseSerisHandles>,
     mut assets: ResMut<Assets<NoiseSerialization>>,
+    terrgen_map: Option<Res<TerrGenEntityMap>>,
 ) -> Result {
+    if terrgen_map.is_some() { return Ok(()); }
+    cmd.init_resource::<TerrGenEntityMap>();
     let mut result: Result = Ok(());
-    for handle in seris_handles.handles.iter() {
-        if let Some(seri) = assets.remove(handle) {
+
+    for handle in take(&mut seris_handles.handles) {
+        if let Some(seri) = assets.remove(&handle) {
 
             let str_id = match StrId::new(seri.id.clone()) {
                 Ok(id) => id,
@@ -151,11 +157,14 @@ pub fn add_noises_to_map(
 pub fn init_oplists_from_assets(
     mut cmd: Commands, seris_handles: Res<OpListSerisHandles>,
     assets: Res<Assets<OpListSerialization>>, 
-    terr_gen_map: Res<TerrGenEntityMap>, 
-    tiling_map: Res<TilingEntityMap>,
+    terr_gen_map: Res<TerrGenEntityMap>,  tiling_map: Res<TilingEntityMap>,
+    oplist_map: Option<Res<OpListEntityMap>>,
 ) -> Result {
+    if oplist_map.is_some() { return Ok(()); }
+    cmd.init_resource::<OpListEntityMap>();
+
     let mut result: Result = Ok(());
-    for handle in seris_handles.handles.iter() {
+    for handle in seris_handles.handles.iter() {//ESTE VA CON ITER
         if let Some(seri) = assets.get(handle) {
             //info!(target: "oplist_loading", "Loading OpListSeri from handle: {:?}", handle);
             let str_id = StrId::new(seri.id.clone())?;
@@ -197,25 +206,31 @@ pub fn init_oplists_from_assets(
                             Operand::HashPos
                         } else if operand_str == "pd" {
                             // PoissonDisk expects a value as second operand
-                            if let Some(val_str) = operands.get(1) {
-                                if let Ok(val) = val_str.parse::<u8>() && val > 0 {
-                                    if let Some(seed_str) = operands.get(2) {
-                                        if let Ok(seed) = seed_str.parse::<u64>() {
-                                            Operand::new_poisson_disk(val, seed)
-                                        } else {
-                                            warn!(target: "oplist_loading", "Invalid PoissonDisk seed: {}", seed_str);
-                                            Operand::new_poisson_disk(val, 0)
-                                        }
-                                    } else {
-                                        Operand::new_poisson_disk(val, 0)
+                            let Some(val_str) = operands.get(1) else {
+                                warn!(target: "oplist_loading", "Missing PoissonDisk value for operand 'pd'");
+                                continue;
+                            };
+                            let Ok(val) = val_str.parse::<u8>() else {
+                                warn!(target: "oplist_loading", "Invalid PoissonDisk value: {}", val_str);
+                                continue;
+                            };
+                            let seed = if let Some(seed_str) = operands.get(2) {
+                                match seed_str.parse::<u64>() {
+                                    Ok(seed) => seed,
+                                    Err(_) => {
+                                        warn!(target: "oplist_loading", "Invalid PoissonDisk seed: {}", seed_str);
+                                        0
                                     }
-                                } else {
-                                    warn!(target: "oplist_loading", "Invalid PoissonDisk value: {}", val_str);
-                                    Operand::new_poisson_disk(1, 0)
                                 }
                             } else {
-                                warn!(target: "oplist_loading", "Missing PoissonDisk value for operand 'pd'");
-                                Operand::new_poisson_disk(1, 0)
+                                0
+                            };
+                            match Operand::new_poisson_disk(val, seed) {
+                                Ok(op) => op,
+                                Err(e) => {
+                                    warn!(target: "oplist_loading", "Failed to create PoissonDisk operand: {}", e);
+                                    continue;
+                                }
                             }
                         } else if let Ok(first_entity) = terr_gen_map.0.get(&operand_str) {
                             let mut op_entities = vec![first_entity];
@@ -223,23 +238,22 @@ pub fn init_oplists_from_assets(
                                 if entity_str.is_empty() {
                                     continue;
                                 }
-                                op_entities.push(terr_gen_map.0.get(entity_str)?);
-                                
+                                let Ok(ent) = terr_gen_map.0.get(entity_str) else {
+                                    warn!(target: "oplist_loading", "Invalid entity operand: {}", entity_str);
+                                    continue;
+                                };
+                                op_entities.push(ent);
                             }
                             Operand::Entities(op_entities)
                         } else {
-                            result = Err(BevyError::from(format!("Invalid operand string: {}", operand_str)));
-                            error!(target: "oplist_loading", "{}", result.as_ref().unwrap_err());
+                            warn!(target: "oplist_loading", "Invalid operand string: {}", operand_str);
                             continue;
                         };
-                        
-                        oplist.trunk.push((operand, op));
-                    }
-                    "" => continue, 
 
+                        oplist.trunk.push((operand, op));    
+                    }
                     _ => {
-                        result = Err(BevyError::from(format!("Unknown operation: {}", operation)));
-                        error!(target: "oplist_loading", "{}", result.as_ref().unwrap_err());
+                        warn!(target: "oplist_loading", "Unknown operation: {}", operation);
                         continue;
                     }
                 }
@@ -288,7 +302,8 @@ pub fn init_oplists_bifurcations(
     mut oplist_query: Query<(&mut OperationList, Option<&RootOpList>)>,
 ) -> Result {
     let mut result: Result = Ok(());
-    for handle in std::mem::take(&mut seris_handles.handles) {
+
+    for handle in take(&mut seris_handles.handles) {
         if let Some(seri) = assets.remove(&handle) {
             let oplist_ent = map.0.get(&seri.id)?;
 
@@ -345,7 +360,7 @@ pub fn init_oplists_bifurcations(
             }
         }
     }
-    Ok(())
+    result
 }
 
 

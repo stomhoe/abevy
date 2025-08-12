@@ -5,6 +5,7 @@ use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
 use game_common::{game_common_components::MyZ, };
+use bevy_ecs_tilemap::tiles::TilePos;
 
 use crate::{tile::{tile_components::*, tile_resources::*}, };
 
@@ -12,13 +13,17 @@ use crate::{tile::{tile_components::*, tile_resources::*}, };
 #[allow(unused_parens)]
 pub fn init_shaders(
     mut cmd: Commands, asset_server: Res<AssetServer>, 
-    repeat_tex_handles: Res<ShaderRepeatTexSerisHandles>,
+    mut repeat_tex_handles: ResMut<ShaderRepeatTexSerisHandles>,
     mut assets: ResMut<Assets<ShaderRepeatTexSeri>>,
+    tileshader_map: Option<Res<TileShaderEntityMap>>,
 ) -> Result {
     let mut result: Result = Ok(());
-    for handle in repeat_tex_handles.handles.iter() {
-        //info!(target: "tiling_loading", "Loading Shader from handle: {:?}", handle);
-        if let Some(seri) = assets.remove(handle) {
+    if tileshader_map.is_some(){ return Ok(());}
+    cmd.init_resource::<TileShaderEntityMap>();
+    
+    for handle in repeat_tex_handles.handles.drain(..) {
+        if let Some(seri) = assets.remove(&handle) {
+            info!(target: "tiling_loading", "Loading Shader from handle: {:?}", handle);
 
             let str_id = StrId::new(seri.id)?;
 
@@ -38,7 +43,7 @@ pub fn init_shaders(
             }
         }
     }
-    // FORS PARA OTROS TIPOS DE SHADERS...
+    
     result
 }
 
@@ -47,12 +52,12 @@ pub fn add_shaders_to_map(
     terrgen_map: Option<ResMut<TileShaderEntityMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<TileShader>,)>,
 ) -> Result {
-    let Some(mut terrgen_map) = terrgen_map else {
+    let Some(mut tileshader_map) = terrgen_map else {
         return Err(BevyError::from("Failed to get TileShaderEntityMap"));
     };
     let mut result: Result = Ok(());
     for (ent, prefix, str_id) in query.iter() {
-        if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
+        if let Err(err) = tileshader_map.0.insert(str_id, ent, ) {
             error!(target: "tiling_loading", "{} {} already in TileShaderEntityMap : {}", prefix, str_id, err);
             result = Err(err);
         }
@@ -63,13 +68,17 @@ pub fn add_shaders_to_map(
 #[allow(unused_parens)]
 pub fn init_tiles(
     mut cmd: Commands,  asset_server: Res<AssetServer>,
-    seris_handles: Res<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
+    mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
     shader_map: Res<TileShaderEntityMap>,
+    tiling_map: Option<Res<TilingEntityMap>>,
 ) -> Result {
+    if tiling_map.is_some() { return Ok(()); }
+    cmd.init_resource::<TilingEntityMap>();
+
     let mut result: Result = Ok(());
-    for handle in seris_handles.handles.iter() {
+    for handle in seris_handles.handles.drain(..) {
         //info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
-        if let Some(seri) = assets.remove(handle) {
+        if let Some(seri) = assets.remove(&handle) {
 
             let str_id = StrId::new(seri.id)?;
             let my_z = MyZ(seri.z);
@@ -152,18 +161,18 @@ pub fn init_tiles(
 } 
 
 pub fn add_tiles_to_map(
-    terrgen_map: Option<ResMut<TilingEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<Tile>, With<Disabled>)>,
+    tiling_map: Option<ResMut<TilingEntityMap>>,
+    query: Query<(Entity, &EntityPrefix, &StrId), (Added<Tile>, Added<Disabled>, Without<TilePos>)>,
 ) -> Result {
     let mut result: Result = Ok(());
-    if let Some(mut terrgen_map) = terrgen_map {
+    if let Some(mut tiling_map) = tiling_map {
         for (ent, prefix, str_id) in query.iter() {
-                if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
-                    error!(target: "tiling_loading", "{} {} already in TilingEntityMap : {}", prefix, str_id, err);
-                    result = Err(err);
-                } else {
-                    //info!(target: "tiling_loading", "Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
-                }
+            if let Err(err) = tiling_map.0.insert(str_id, ent, ) {
+                error!(target: "tiling_loading", "{} {} already in TilingEntityMap : {}", prefix, str_id, err);
+                result = Err(err);
+            } else {
+                info!(target: "tiling_loading", "Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
+            }
         }
     }
     result
@@ -172,13 +181,13 @@ pub fn add_tiles_to_map(
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
     mut cmd: Commands, 
-    seris_handles: Res<TileWeightedSamplerSerisHandles>,
+    mut seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
     mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
     map: Res<TilingEntityMap>,
 ) -> Result {
     let mut result: Result = Ok(());
-    for handle in seris_handles.handles.iter() {
-        if let Some(mut seri) = assets.remove(&*handle) {
+    for handle in seris_handles.handles.drain(..) {
+        if let Some(mut seri) = assets.remove(&handle) {
             //info!(target: "tiling_loading", "Loading TileWeightedSamplerSeri from handle: {:?}", handle);
 
             let str_id = StrId::new(seri.id)?;
@@ -214,13 +223,13 @@ pub fn init_tile_weighted_samplers(
 } 
 #[allow(unused_parens, )]
 pub fn add_tile_weighted_samplers_to_map(
-    terrgen_map: Option<ResMut<TilingEntityMap>>,
+    tiling_map: Option<ResMut<TilingEntityMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<HashPosEntiWeightedSampler>)>,
 ) -> Result {
     let mut result: Result = Ok(());
-    if let Some(mut terrgen_map) = terrgen_map {
+    if let Some(mut tiling_map) = tiling_map {
         for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
+            if let Err(err) = tiling_map.0.insert(str_id, ent, ) {
                 error!(target: "tiling_loading", "{} {} already in TilingEntityMap : {}", prefix, str_id, err);
                 result = Err(err);
             } else {

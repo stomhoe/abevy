@@ -6,15 +6,20 @@ use bevy::platform::collections::HashMap;
 use common::common_types::HashIdToEntityMap;
 use::serde::{Deserialize, Serialize};
 
+#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect, )]
+#[reflect(Resource, Default)]
+pub struct SpriteCfgEntityMap(pub HashIdToEntityMap);
 
-#[derive(AssetCollection, Resource)]
+
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)]
 pub struct SpriteSerisHandles {
     #[asset(path = "ron/sprite/config", collection(typed))]
     pub handles: Vec<Handle<SpriteConfigSeri>>,
 }
 
 
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,

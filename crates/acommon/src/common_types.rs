@@ -73,6 +73,7 @@ impl HashIdToEntityMap {
     pub fn iter(&self) -> impl Iterator<Item = (&HashId, &Entity)> {
         self.0.iter()
     }
+    pub fn clear(&mut self) { self.0.clear(); }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Reflect)]

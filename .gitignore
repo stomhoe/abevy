@@ -1,27 +1,42 @@
+# Rust build and backup files
 /target/
 **/*.rs.bk
+**/*.rlib
+**/*.d
+**/*.exe
+**/*.dll
+**/*.so
+**/*.dylib
 
 # Cargo package files
 Cargo.lock
+Cargo.toml.orig
 
 # IDEs and editors
 /.idea/
-/.vscode/
 /*.swp
 *.sublime-workspace
 *.sublime-project
+*.code-workspace
+*.iml
 
-# OS files
+# OS generated files
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Byebug history
+# Debugger and log files
 .byebug_history
-
-# Other
 *.log
+*.tmp
 
-run1_err.txt
-run1_out.txt
-run2_err.txt
-run2_out.txt
+# Output and error files
+run*_err.txt
+run*_out.txt
+rustc*.txt
+
+# Miscellaneous
+*.bak
+*.old
+*.orig

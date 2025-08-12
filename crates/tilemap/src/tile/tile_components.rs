@@ -4,7 +4,7 @@ use bevy::platform::collections::HashMap;
 use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::{common_components::{EntityPrefix, HashId, ImageHolder}, common_states::{AppState, LocalAssetsLoadingState}};
+use common::{common_components::*, common_states::*};
 use game_common::game_common_components::MyZ;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -13,7 +13,7 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use crate::{chunking_components::ChunkPos, terrain_gen::terrgen_resources::GlobalGenSettings, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(MyZ, EntityPrefix::new("Tile"), StateScoped::<LocalAssetsLoadingState>(LocalAssetsLoadingState::Finished),)]
+#[require(MyZ, EntityPrefix::new("Tile"), AssetScoped,)]
 pub struct Tile;
 impl Tile {
     pub const PIXELS: UVec2 = UVec2 { x: 64, y: 64 };
@@ -22,15 +22,15 @@ impl Tile {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct TileposHashRand(pub f32);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 #[require(TileposHashRand)]
 pub struct FlipAlongX;
 
-#[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct TileShaderRef(pub Entity);
 
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, )]
-#[require(EntityPrefix::new("TileShader"), StateScoped::<LocalAssetsLoadingState>(LocalAssetsLoadingState::Finished),)]
+#[require(EntityPrefix::new("TileShader"), AssetScoped,)]
 pub enum TileShader{
     TexRepeat(RepeatingTexture),
     TwoTexRepeat(RepeatingTexture, RepeatingTexture),
@@ -102,7 +102,7 @@ impl std::ops::Sub for GlobalTilePos {type Output = Self; fn sub(self, other: Se
 
 
 #[derive(Debug, Clone, Component, Default)]
-#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated, StateScoped::<AppState>(AppState::StatefulGameSession),)]
+#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated, SessionScoped,)]
 pub struct HashPosEntiWeightedSampler {
     #[entities]entities: Vec<Entity>, weights: Vec<f32>,
     cumulative_weights: Vec<f32>, total_weight: f32,

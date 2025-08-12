@@ -7,7 +7,9 @@ edition = "2024"
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 camera = { path = "../camera" }
-sprite_shared = { path = "../sprite_shared" }
+sprite_animation_shared = { path = "../sprite_animation_shared" }
+sprite = { path = "../sprite" }
+sprite_animation = { path = "../sprite_animation" }
 tilemap = { path = "../tilemap" }
 modifier = { path = "../modifier" }
 

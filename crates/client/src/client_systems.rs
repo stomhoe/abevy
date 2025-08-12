@@ -7,11 +7,12 @@ use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::*}, renet::RenetClient};
 use common::{common_resources::PlayerData, common_states::*};
 use game::{being_components::{ControlledBy, ControlledLocally, HumanControlled}, movement_components::InputMoveVector, player::{OfSelf, Player}};
-use multiplayer_shared::{multiplayer_events::*, };
-use sprite_shared::{animation_shared::MoveAnimActive, sprite_shared::SpriteCfgEntityMap};
+use multiplayer_shared::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, };
+use sprite::sprite_resources::SpriteCfgEntityMap;
+use sprite_animation::sprite_animation_components::MoveAnimActive;
 use tilemap::{terrain_gen::{terrgen_components::{Operand, OperationList}, terrgen_resources::{OpListEntityMap, TerrGenEntityMap}}, tile::tile_resources::TilingEntityMap};
 
-use crate::{client_functions::*, client_resources::TargetJoinServer};
+use crate::{client_functions::*, };
 
 
 
@@ -19,12 +20,12 @@ pub fn attempt_join(
     mut cmd: Commands, 
     channels: Res<RepliconChannels>,
     mut lobby_state: ResMut<NextState<ConnectionAttempt>>,
-    joined_server: Option<Res<TargetJoinServer>>,
+    target_join_server: Option<Res<TargetJoinServer>>,
     //line_edit_query: Single<&CurrentText, With<MainMenuIpLineEdit>>,
 ) -> Result {
 
-    let Some(joined_server) = joined_server else {
-        error!("No server to join, aborting attempt_join");
+    let Some(joined_server) = target_join_server else {
+        error!("No address was specified for joining, aborting attempt_join");
         return Ok(());
     };
 

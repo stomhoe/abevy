@@ -7,7 +7,7 @@ use bevy::platform::collections::HashMap;
 //};
 
 
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct GenTemplateSeri {
     pub id: String,
     pub name_generator: String,

@@ -1,14 +1,17 @@
 
 use bevy_common_assets::ron::RonAssetPlugin;
+use bevy_replicon::prelude::AppRuleExt;
 use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::common_states::LocalAssetsLoadingState;
+use common::common_states::AssetsLoadingState;
 use game_common::game_common::SimRunningSystems;
-use sprite_shared::animation_shared::*;
 
 use bevy_asset_loader::prelude::*;
 
-use crate::{animation_resources::*, animation_systems::*};
+use crate::{sprite_animation_components::*, sprite_animation_resources::*, sprite_animation_systems::*};
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct AnimationSystems;
 
 #[allow(unused_imports)] use {bevy::prelude::*, };
 
@@ -24,24 +27,22 @@ pub fn plugin(app: &mut App) {
     ).in_set(AnimationSystems))
 
     .configure_sets(Update, (
-        AnimationSystems.run_if(in_state(LocalAssetsLoadingState::Finished)),
-        AnimationSystems.in_set(SimRunningSystems)
+        
+        AnimationSystems.in_set(SimRunningSystems),
     ))
 
-    .add_systems(OnEnter(LocalAssetsLoadingState::Finished), (
+    .add_systems(OnEnter(AssetsLoadingState::LocalFinished), (
         init_animations,
     ).in_set(AnimationSystems)) 
 
-    .configure_loading_state(
-        LoadingStateConfig::new(LocalAssetsLoadingState::InProcess)
-        .load_collection::<AnimSerisHandles>()
-        // .load_collection::<RaceSerisHandles>()
-    )
-
- 
+    .replicate_once::<AnimationState>()
+    .replicate_once::<MoveAnimActive>()
 
     .register_type::<AnimationState>()
+    .register_type::<AnimationIdPrefix>()
     .register_type::<MoveAnimActive>()
+    .register_type::<AnimSerisHandles>()
+    .register_type::<AnimationSeri>()
 
     ;
 }

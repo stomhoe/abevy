@@ -8,8 +8,9 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 game = { path = "../game" }
 multiplayer_shared = { path = "../multiplayer_shared" }
-sprite_shared = { path = "../sprite_shared" }
 tilemap = { path = "../tilemap" }
+sprite_animation_shared = { path = "../sprite_animation_shared" }
+sprite = { path = "../sprite" }
 
 bevy = { workspace = true }
 nano-id = { workspace = true }

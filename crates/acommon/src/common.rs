@@ -1,4 +1,6 @@
 
+use bevy_replicon::prelude::AppRuleExt;
+
 use crate::{common_components::*, common_resources::*, common_states::*, common_systems::*, common_types::HashIdToEntityMap};
 
 use {bevy::prelude::*,};
@@ -15,14 +17,22 @@ pub fn plugin(app: &mut App) {
         .init_state::<PreGameState>()
         .init_state::<GamePhase>()
         .init_state::<GameSetupType>()
-        .init_state::<LocalAssetsLoadingState>()
-        .init_state::<ReplicatedAssetsLoadingState>()
+        .init_state::<AssetsLoadingState>()
         .init_state::<ConnectionAttempt>()
+        .init_state::<LoadedAssetsSession>()
+        .init_state::<TerrainGenHotLoading>()
 
 
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
         .init_resource::<PlayerData>()
+
+        .replicate::<Name>()
+        .replicate::<EntityPrefix>()
+        .replicate::<StrId>()
+        .replicate::<HashId>()
+        .replicate::<DisplayName>()
+
 
         .register_type::<DisplayName>()
         .register_type::<StrId>()

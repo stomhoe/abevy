@@ -3,7 +3,7 @@ use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::Spritesheet;
-use common::common_components::{EntityPrefix, };
+use common::common_components::*;
 use common::common_types::*;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -11,7 +11,7 @@ use std::collections::hash_map::DefaultHasher;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(EntityPrefix::new("SpriteConfig"))]
+#[require(EntityPrefix::new("SpriteConfig"), AssetScoped,)]
 pub struct SpriteConfig;
 
 
@@ -48,6 +48,14 @@ pub enum FlipHorizIfDir{Left, Right, Any,}
 
 
 
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
+pub struct SpriteConfigRef(#[entities] pub Entity);
+
+
+
+
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct AtlasLayoutData {pub spritesheet_size: UVec2, pub frame_size: UVec2,}
 
@@ -76,7 +84,7 @@ impl AtlasLayoutData {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct ColorHolder(pub Color);//NO HACER PARTE DE SpriteDataBundle
 /// Trait for 2D scale components.
 pub trait Scale2DComponent: Sized {
@@ -89,7 +97,7 @@ pub trait Scale2DComponent: Sized {
 /// Macro to implement a strongly-typed 2D scale component and its ops.
 macro_rules! define_scale2d_type {
     ($name:ident) => {
-        #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, )]
+        #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
         pub struct $name(pub Vec2);
 
         impl $name {
@@ -160,33 +168,53 @@ impl_cross_mul!(ScaleLookDown, ScaleLookUpDown);
 impl_cross_mul!(ScaleLookDown, ScaleSideways);
 impl_cross_mul!(ScaleLookUpDown, ScaleSideways);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct Offset2D(pub Vec2);
-impl From<Vec2> for Offset2D { fn from(v: Vec2) -> Self { Offset2D(v) } }
-impl From<[f32; 2]> for Offset2D { fn from(v: [f32; 2]) -> Self { Offset2D(Vec2::from(v)) } }
-impl std::ops::Add for Offset2D { type Output = Self; fn add(self, rhs: Self) -> Self { Offset2D(self.0 + rhs.0) } }
-impl std::ops::AddAssign for Offset2D { fn add_assign(&mut self, rhs: Self) { self.0 += rhs.0; } }
+macro_rules! define_offset2d_type {
+    ($name:ident) => {
+        #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+        pub struct $name(pub Vec2);
+        impl From<Vec2> for $name { fn from(v: Vec2) -> Self { $name(v) } }
+        impl From<[f32; 2]> for $name { fn from(v: [f32; 2]) -> Self { $name(Vec2::from(v)) } }
+        impl std::ops::Add for $name { type Output = Self; fn add(self, rhs: Self) -> Self { $name(self.0 + rhs.0) } }
+        impl std::ops::AddAssign for $name { fn add_assign(&mut self, rhs: Self) { self.0 += rhs.0; } }
+    };
+}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct OffsetUpDown(pub Offset2D);
-impl From<Vec2> for OffsetUpDown { fn from(v: Vec2) -> Self { OffsetUpDown(Offset2D::from(v)) } }
-impl From<[f32; 2]> for OffsetUpDown { fn from(v: [f32; 2]) -> Self { OffsetUpDown(Offset2D::from(v)) } }
+define_offset2d_type!(Offset2D);
+define_offset2d_type!(OffsetUpDown);
+define_offset2d_type!(OffsetDown);
+define_offset2d_type!(OffsetUp);
+define_offset2d_type!(OffsetSideways);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct OffsetDown(pub Offset2D);
-impl From<Vec2> for OffsetDown { fn from(v: Vec2) -> Self { OffsetDown(Offset2D::from(v)) } }
-impl From<[f32; 2]> for OffsetDown { fn from(v: [f32; 2]) -> Self { OffsetDown(Offset2D::from(v)) } }
+macro_rules! impl_cross_sum {
+    ($A:ty, $B:ty) => {
+        impl std::ops::Add<$B> for $A {
+            type Output = $A;
+            fn add(self, rhs: $B) -> $A { <$A>::from(self.0 + rhs.0) }
+        }
+        impl std::ops::Add<$A> for $B {
+            type Output = $B;
+            fn add(self, rhs: $A) -> $B { <$B>::from(self.0 + rhs.0) }
+        }
+        impl std::ops::AddAssign<$B> for $A {
+            fn add_assign(&mut self, rhs: $B) { self.0 += rhs.0; }
+        }
+        impl std::ops::AddAssign<$A> for $B {
+            fn add_assign(&mut self, rhs: $A) { self.0 += rhs.0; }
+        }
+    };
+}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct OffsetUp(pub Offset2D);
-impl From<Vec2> for OffsetUp { fn from(v: Vec2) -> Self { OffsetUp(Offset2D::from(v)) } }
-impl From<[f32; 2]> for OffsetUp { fn from(v: [f32; 2]) -> Self { OffsetUp(Offset2D::from(v)) } }
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct OffsetSideways(pub Offset2D);
-impl From<Vec2> for OffsetSideways { fn from(v: Vec2) -> Self { OffsetSideways(Offset2D::from(v)) } }
-impl From<[f32; 2]> for OffsetSideways { fn from(v: [f32; 2]) -> Self { OffsetSideways(Offset2D::from(v)) } }
+// Cross-sum for all pairs (excluding reflexive, already covered)
+impl_cross_sum!(Offset2D, OffsetUpDown);
+impl_cross_sum!(Offset2D, OffsetDown);
+impl_cross_sum!(Offset2D, OffsetUp);
+impl_cross_sum!(Offset2D, OffsetSideways);
+impl_cross_sum!(OffsetUpDown, OffsetDown);
+impl_cross_sum!(OffsetUpDown, OffsetUp);
+impl_cross_sum!(OffsetUpDown, OffsetSideways);
+impl_cross_sum!(OffsetDown, OffsetUp);
+impl_cross_sum!(OffsetDown, OffsetSideways);
+impl_cross_sum!(OffsetUp, OffsetSideways);
 
 
 
@@ -253,12 +281,3 @@ pub struct SpriteCfgsToBuild(#[entities] pub HashSet<Entity>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone )]
 pub struct SpriteCfgsBuiltSoFar(#[entities] pub HashSet<Entity>);
 
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy )]
-pub struct SpriteConfigRef(#[entities] pub Entity);
-
-
-
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect, )]
-pub struct SpriteCfgEntityMap(pub HashIdToEntityMap);

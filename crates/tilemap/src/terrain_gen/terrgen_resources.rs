@@ -22,19 +22,22 @@ impl Default for GlobalGenSettings {
     }
 }
 
-#[derive(Resource, Debug, Default )]
+#[derive(Resource, Debug, Default, Reflect, )]
+#[reflect(Resource, Default)]
 pub struct TerrGenEntityMap(pub HashIdToEntityMap);
 
-#[derive(Resource, Debug, Default )]
+#[derive(Resource, Debug, Default, Reflect, )]
+#[reflect(Resource, Default)]
 pub struct OpListEntityMap(pub HashIdToEntityMap);
 
 
-#[derive(AssetCollection, Resource)]
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)]
 pub struct NoiseSerisHandles {
     #[asset(path = "ron/tilemap/terrgen/noise", collection(typed))]
     pub handles: Vec<Handle<NoiseSerialization>>,
 }
-#[derive(serde::Deserialize, Asset, TypePath, )]
+#[derive(serde::Deserialize, Asset, Reflect, )]
 pub struct NoiseSerialization {
     pub id: String,
     /// Default is 0.01
@@ -69,12 +72,13 @@ pub struct NoiseSerialization {
 
 
 
-#[derive(AssetCollection, Resource)]
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)]
 pub struct OpListSerisHandles {
     #[asset(path ="ron/tilemap/terrgen/oplist", collection(typed))]
     pub handles: Vec<Handle<OpListSerialization>>,
 }
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct OpListSerialization {
     pub id: String,
     pub root: bool,

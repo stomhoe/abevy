@@ -4,23 +4,27 @@ use bevy::{ecs::entity_disabling::Disabled, platform::collections::HashSet};
 use common::common_components::{DisplayName, EntityPrefix, ImageHolder, StrId};
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{Directionable, MyZ};
-use sprite_shared::{animation_shared::{AnimationIdPrefix, AnimationState}, sprite_shared::*};
+use sprite_animation_shared::sprite_animation_shared::{AnimationIdPrefix, AnimationState};
 
-use crate::sprite_resources::*;
+use crate::{sprite_components::*, sprite_resources::*};
 
 
 
 #[allow(unused_parens)]
 pub fn init_sprite_cfgs(
+    mut map: Option<Res<SpriteCfgEntityMap>>,
     mut cmd: Commands, 
     aserver: Res<AssetServer>,
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut seris_handles: ResMut<SpriteSerisHandles>,
     mut assets: ResMut<Assets<SpriteConfigSeri>>,
 ) -> Result {
-    let mut result: Result = Ok(());
-    use std::mem::take;
+    if map.is_some(){ return Ok(());}
+    cmd.init_resource::<SpriteCfgEntityMap>();
 
+    let mut result: Result = Ok(());
+
+    use std::mem::take;
     for handle in take(&mut seris_handles.handles) {
         let Some(mut seri) = assets.remove(&handle) else {continue;};
 
@@ -129,16 +133,16 @@ pub fn init_sprite_cfgs(
 
 pub fn add_sprites_to_local_map(
     map: Option<ResMut<SpriteCfgEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    query: Query<(Entity, &EntityPrefix, &StrId), (Added<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) -> Result {
     let mut result: Result = Ok(());
     if let Some(mut terrgen_map) = map {
         for (ent, prefix, str_id) in query.iter() {
             if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
-                error!(target: "sprite_loading", "{} {} already in spritecfgmap : {}", prefix, str_id, err);
+                error!(target: "sprite_loading", "{} {} already in SpriteCfgEntityMap : {}", prefix, str_id, err);
                 result = Err(err);
             } else {
-                debug!(target: "sprite_loading", "Inserted sprite '{}' into SpriteConfigEntityMap with entity {:?}", str_id, ent);
+                debug!(target: "sprite_loading", "Inserted sprite '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
             }
         }
     }
@@ -150,8 +154,13 @@ pub fn replace_string_ids_by_entities(
     mut cmd: Commands,
     //NO SÉ SI HACE FALTA EL TERCER PARAM
     mut query: Query<(Entity, &SpriteConfigStringIds, Option<&mut SpriteCfgsBuiltSoFar>), (Added<SpriteConfigStringIds>,)>,
-    map: Res<SpriteCfgEntityMap>,
+    map: Option<Res<SpriteCfgEntityMap>>,
 ) {
+    let Some(map) = map else {
+        error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
+        return;
+    };
+
     for (ent, string_ids, built_so_far) in query.iter_mut() {
         info!(target: "sprite_building", "Replacing string ids for entity {:?}", ent);
         let mut entities_to_build = HashSet::new();

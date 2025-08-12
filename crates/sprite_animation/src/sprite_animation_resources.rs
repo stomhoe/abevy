@@ -1,17 +1,21 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-#[derive(AssetCollection, Resource)]
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)]
 pub struct AnimSerisHandles {
     #[asset(path = "ron/sprite/animation", collection(typed))]
     pub handles: Vec<Handle<AnimationSeri>>,
 }
 
+// ---------------------------> NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO <-----------------------
+
+
 
 // TODO: hacer shaders aplicables? (para meditacion por ej)
 // TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld. hacer un mapa color-algo 
 
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, Reflect, Default,)]
 pub struct AnimationSeri {
     pub id: String,
     pub sheet_rows_cols: [usize; 2], //rows, cols

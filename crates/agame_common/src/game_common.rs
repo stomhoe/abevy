@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
+use bevy_replicon::prelude::*;
 
 use crate::{game_common_components::*, game_common_states::*, game_common_systems::* };
 
@@ -19,11 +20,15 @@ pub struct SimPausedSystems;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ModifierSystems;
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct SpriteSystemsSet;
+
+
+
 
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
+
+    let sets = 
+
     app
     .add_plugins((
     ))
@@ -36,8 +41,16 @@ pub fn plugin(app: &mut App) {
     .configure_sets(Update, (
         (ModifierSystems, ).in_set(SimRunningSystems),
         (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
-        (GameplaySystems).in_set(StatefulSessionSystems).run_if(in_state(ReplicatedAssetsLoadingState::Finished)
-        .and(in_state(GamePhase::ActiveGame))),
+        (GameplaySystems).run_if(
+            in_state(GamePhase::ActiveGame)
+            .and(in_state(LoadedAssetsSession::KeepAlive))
+            .and(
+                in_state(AssetsLoadingState::LocalFinished).and(not(server_or_singleplayer))
+                .or(in_state(AssetsLoadingState::ReplicatedFinished).and(server_or_singleplayer))
+            )
+        )
+        .in_set(StatefulSessionSystems),
+        
         StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
         SimRunningSystems.run_if(in_state(SimulationState::Running)),
         SimPausedSystems.run_if(in_state(SimulationState::Paused)),
@@ -45,27 +58,28 @@ pub fn plugin(app: &mut App) {
     .configure_sets(FixedUpdate, (
         (ModifierSystems, ).in_set(SimRunningSystems),
         (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
-        (GameplaySystems).in_set(StatefulSessionSystems).run_if(in_state(ReplicatedAssetsLoadingState::Finished)
-        .and(in_state(GamePhase::ActiveGame))),
+        (GameplaySystems).run_if(
+            in_state(GamePhase::ActiveGame)
+            .and(in_state(LoadedAssetsSession::KeepAlive))
+            .and(
+                in_state(AssetsLoadingState::LocalFinished).and(not(server_or_singleplayer))
+                .or(in_state(AssetsLoadingState::ReplicatedFinished).and(server_or_singleplayer))
+            )
+        )
+        .in_set(StatefulSessionSystems),
+
         StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
         SimRunningSystems.run_if(in_state(SimulationState::Running)),
         SimPausedSystems.run_if(in_state(SimulationState::Paused)),
     ))
-     .add_loading_state(
-        LoadingState::new(LocalAssetsLoadingState::InProcess).continue_to_state(LocalAssetsLoadingState::Finished)
 
-    )
-    .add_loading_state(
-        LoadingState::new(ReplicatedAssetsLoadingState::InProcess).continue_to_state(ReplicatedAssetsLoadingState::Finished)
-  
-        //.load_collection::<DimensionSerisHandles>()
-    )
 
     .init_state::<GameSetupScreen>()
     .init_state::<SimulationState>()
     .register_type::<MyZ>()
     .register_type::<Description>()
     .register_type::<BeingAltitude>()
+    .register_type::<FacingDirection>()
 
     ;
 }

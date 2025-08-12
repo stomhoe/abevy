@@ -7,9 +7,10 @@ use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::
 use crate::{terrain_gen::terrgen_resources::GlobalGenSettings, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, Tile},};
 
 
+use common::{common_components::*, };
 
 #[derive(Component, Default)]
-#[require(SuperstateInfo<ChunkInitState>)]
+#[require(SuperstateInfo<ChunkInitState>, SessionScoped, )]
 pub struct ChunkInitState;
 impl ChunkInitState {
     pub const SIZE: UVec2 = UVec2 { x: 5, y: 5 };
@@ -105,8 +106,6 @@ pub struct PendingOperations(pub i32);
 #[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
 pub struct ActivatingChunks(pub EntityHashSet,);
 
-#[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
-pub struct VisualizingChunks(pub EntityHashSet,);
 
 
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, Reflect)]

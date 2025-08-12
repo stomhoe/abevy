@@ -1,14 +1,15 @@
 
 use bevy::prelude::*;
+use common::common_states::{AssetsLoadingState, };
 
-use crate::{chunking_components::*, chunking_resources::*};
+use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap}, tile::tile_resources::{TileShaderEntityMap, TilingEntityMap}};
 
 
 
 #[allow(unused_parens, )]
 pub fn visit_chunks_around_activators(
     mut commands: Commands, 
-    mut query: Query<(&Transform, &mut ActivatingChunks), >,
+    mut query: Query<(&Transform, &mut ActivatingChunks), >,//TODO HACER Q HAY ACTIVATO
     mut loaded_chunks: ResMut<LoadedChunks>,
     tilemap_settings: Res<ChunkRangeSettings>,
 ) {
@@ -129,16 +130,3 @@ pub fn hide_outofrange_chunks(
 }
 
 
-#[allow(unused_parens, )]
-pub fn despawn_all_chunks(
-    mut cmd: Commands, 
-    keys: Res<ButtonInput<KeyCode>>,
-    query: Query<(Entity, ), (With<ChunkInitState>, )>,
-) {
-    if keys.pressed(KeyCode::KeyP) {
-        for (chunk_ent, ) in query.iter() {
-            cmd.entity(chunk_ent).despawn();
-        }
-    }
-   
-}

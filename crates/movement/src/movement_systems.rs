@@ -8,7 +8,7 @@ use game::{being_components::{ControlledBy, ControlledLocally, HumanControlled},
 use game_common::game_common_components::FacingDirection;
 use modifier::{modifier_components::*, modifier_move_components::*};
 use multiplayer_shared::multiplayer_events::{SendMoveInput, TransformFromServer};
-use sprite_shared::animation_shared::*;
+use sprite_animation::sprite_animation_components::MoveAnimActive;
 
 #[allow(unused_parens, )]
 pub fn update_human_move_input(
@@ -23,9 +23,12 @@ pub fn update_human_move_input(
     if keys.pressed(input_mappings.move_right) {input_dir.x += 1.0;}
     
     if input_dir != Vec2::ZERO {input_dir = input_dir.normalize();}
-
+    
     for (mut move_input_dir, human_controlled) in move_input.iter_mut() {
-        if human_controlled.0 && move_input_dir.0 != input_dir { move_input_dir.0 = input_dir; }
+        if human_controlled.0 && move_input_dir.0 != input_dir { 
+            trace!(target: "movement", "Updating human move input");
+            move_input_dir.0 = input_dir; 
+        }
     }
 }
 

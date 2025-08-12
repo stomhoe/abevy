@@ -20,16 +20,18 @@ pub fn on_control_change(
     query: Query<(Entity, &ControlledBy, &HumanControlled),(Or<(Changed<ControlledBy>, Changed<HumanControlled>)>)>,
 ) {
     for (ent, controlled_by, human_controlled) in query.iter() {
-        if controlled_by.client == *self_player{
+        if controlled_by.client == *self_player {
+            info!("debug {:?} is now controlled locally by self", ent);
             commands.entity(ent).insert((ControlledLocally, ));
-            if human_controlled.0{
+            if human_controlled.0 {
+                debug!("Entity {:?} is now a CameraTarget", ent);
                 commands.entity(ent).insert(CameraTarget);
-            } else{
+            } else {
+                debug!("Entity {:?} is no longer a CameraTarget", ent);
                 commands.entity(ent).remove::<CameraTarget>();
             }
-  
-        }
-        else {
+        } else {
+            debug!("Entity {:?} is no longer controlled locally by self", ent);
             commands.entity(ent).remove::<ControlledLocally>();
         }
     }

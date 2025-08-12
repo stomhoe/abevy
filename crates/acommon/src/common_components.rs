@@ -10,9 +10,19 @@ use bevy::platform::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use rand_distr::weighted::WeightedAliasIndex;
 use rand::prelude::*;
-use crate::common_types::*;
+use crate::{common_states::*, common_types::*};
 
+#[derive(Component, Debug, Default, Clone, Hash, PartialEq, Reflect)]
+#[require(StateScoped::<AppState>(AppState::StatefulGameSession))]
+pub struct SessionScoped;
 
+#[derive(Component, Debug, Default, Clone, Hash, PartialEq, Reflect)]
+#[require(StateScoped::<LoadedAssetsSession>(LoadedAssetsSession::KeepAlive), )]
+pub struct AssetScoped;
+
+#[derive(Component, Debug, Default, Clone, Hash, PartialEq, Reflect)]
+#[require(StateScoped::<TerrainGenHotLoading>(TerrainGenHotLoading::KeepAlive), )]
+pub struct TgenScoped;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct EntityPrefix(pub FixedStr<20>);
