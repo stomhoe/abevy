@@ -14,4 +14,6 @@
         "tempgrass",
 
     ],
+    root_in_dimensions: [],
+    size: Some((2, 2)),
 )

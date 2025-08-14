@@ -37,6 +37,7 @@ pub struct TileSeri {
     pub spawns: Vec<String>,
     pub spawns_children: Vec<String>,
     pub somecomp_present: Option<bool>,
+    pub child_of_chunk: bool,
 }
 
 

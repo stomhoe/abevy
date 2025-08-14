@@ -9,14 +9,9 @@ use crate::{chunking_components::ChunkInitState, tile::tile_components::Tile, };
 #[derive(Component, Debug, Default)]
 #[require(
     EntityPrefix::new("Tilemap"), 
-    TilemapRenderSettings {render_chunk_size: ChunkInitState::SIZE*2, y_sort: false},
-    TilemapGridSize::from(Tile::PIXELS.as_vec2()),
-    TilemapSize::from(ChunkInitState::SIZE),
 )]
 pub struct Tilemap;
-impl Tilemap {
-    pub fn default_storage() -> TileStorage { TileStorage::empty(ChunkInitState::SIZE.into()) }
-}
+
 
 #[derive(Component, Debug, Clone, Default,)]
 pub struct TmapHashIdtoTextureIndex(pub HashIdMap<TileTextureIndex>);

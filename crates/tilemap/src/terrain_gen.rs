@@ -5,7 +5,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
 use fastnoise_lite::FastNoiseLite;
 
-use crate::{{chunking_components::ProducedTiles, terrain_gen::{terrgen_components::*, terrgen_init_systems::*, terrgen_resources::*, terrgen_systems::*}}, };
+use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_init_systems::*, terrgen_resources::*, terrgen_systems::*}, };
 
 pub mod terrgen_systems;
 mod terrgen_init_systems;
@@ -46,6 +46,7 @@ pub fn plugin(app: &mut App) {
             RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
 
         ))
+        
         .register_type::<NoiseSerisHandles>()
         .register_type::<NoiseSerialization>()
         .register_type::<OpListSerisHandles>()
@@ -57,7 +58,16 @@ pub fn plugin(app: &mut App) {
         .register_type::<Operation>()
         .register_type::<TerrGenEntityMap>()
         .register_type::<OpListEntityMap>()
-
+        .register_type::<OplistSize>()
+        .register_type::<PendingOperations>()
+        .replicate::<ProducedTiles>()
+        
+        .replicate::<OplistSize>()
+        .replicate::<FnlNoise>()
+        .replicate_with((
+            RuleFns::<ProducedTiles>::default(),
+            (RuleFns::<OperationList>::default(), SendRate::Once),
+        ))
       
     ;
 }

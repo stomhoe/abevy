@@ -1,3 +1,4 @@
+use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
@@ -12,8 +13,6 @@ use crate::{
 
 
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn replace_string_ref_by_entity_ref(
     mut cmd: Commands, 
@@ -28,5 +27,26 @@ pub fn replace_string_ref_by_entity_ref(
         else {
             warn!(target: "dimension_loading", "DimensionStrIdRef '{}' does not have a corresponding DimensionRef in the map.", dimension_strid.0);
         }
+    }
+}
+
+
+pub fn replace_multiple_string_refs_by_entity_refs(
+    mut cmd: Commands,
+    dimension_entity_map: Res<DimensionEntityMap>,
+    mut query: Query<(Entity, &MultipleDimensionStringRefs), Changed<MultipleDimensionStringRefs>>,
+) {
+    for (ent, string_refs) in query.iter_mut() {
+        let mut entity_set = EntityHashSet::default();
+        for str_id in &string_refs.0 {
+            if let Ok(entity) = dimension_entity_map.0.get(str_id) {
+                entity_set.insert(entity);
+            } else {
+                warn!(target: "dimension_loading", "MultipleDimensionStringRefs '{}' does not have a corresponding Entity in DimensionEntityMap.", str_id);
+            }
+        }
+        cmd.entity(ent)
+            .remove::<MultipleDimensionStringRefs>()
+            .insert(MultipleDimensionRefs(entity_set));
     }
 }

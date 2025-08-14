@@ -6,9 +6,12 @@
     },
    
     bifurcation_over: "land",
-    threshold: 0.5,
+    threshold: 0.0,
     bifurcation_under: "",
     tiles: [
         
     ],
+    root_in_dimensions: ["overworld"],
+    size: Some((1, 1)),
+
 )

@@ -5,6 +5,7 @@ use core::panic;
 use bevy::prelude::*;
 
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
+use dimension::dimension_components::MultipleDimensionStringRefs;
 use fastnoise_lite::FastNoiseLite;
 
 use common::common_components::{DisplayName, EntityPrefix, StrId};
@@ -168,13 +169,27 @@ pub fn init_oplists_from_assets(
             //info!(target: "oplist_loading", "Loading OpListSeri from handle: {:?}", handle);
             let str_id = StrId::new(seri.id.clone())?;
 
-            if seri.root && seri.operation_operands.is_empty() {
+            if seri.is_root() && seri.operation_operands.is_empty() {
                 result = Err(BevyError::from("root OpListSeri has no operations"));
                 error!(target: "oplist_loading", "{}", result.as_ref().unwrap_err());
             }    
+            
+            let size =
+                if let Some(size) = seri.size {
+                    if let Ok(size) = OplistSize::new(size) {
+                        size
+                    } else {
+                        error!(target: "oplist_loading", "Invalid oplist_size for {}, must be in [1,4] for each vec component", seri.id);
+                        continue;
+                    }
+                } else{
+                    OplistSize::default()
+                };
+
             let mut oplist = OperationList::default();
             oplist.threshold = seri.threshold;
-            
+
+
             for (operation, operands) in &seri.operation_operands {
                 match operation.as_str() {
                     "+" | "-" | "*" | "/" | "mod" | "log" | "min" | "max" | "pow" | "=" => {
@@ -266,9 +281,12 @@ pub fn init_oplists_from_assets(
                     warn!(target: "oplist_loading", "Tile {} not found in TilingEntityMap", tile_str);
                 }
             }
+            
+            
 
-            let spawned_oplist = cmd.spawn(( str_id, oplist, produced_tiles, )).id();
-            if seri.root { cmd.entity(spawned_oplist).insert(RootOpList); }
+            let spawned_oplist = cmd.spawn(( str_id, oplist, produced_tiles, size)).id();
+            if seri.is_root() { cmd.entity(spawned_oplist).insert(MultipleDimensionStringRefs(seri.root_in_dimensions.clone())); }
+
         } 
     }
     result
@@ -298,7 +316,7 @@ pub fn init_oplists_bifurcations(
     mut cmd: Commands,
     mut seris_handles: ResMut<OpListSerisHandles>,
     mut assets: ResMut<Assets<OpListSerialization>>, map: Res<OpListEntityMap>,
-    mut oplist_query: Query<(&mut OperationList, Option<&RootOpList>)>,
+    mut oplist_query: Query<(&mut OperationList, Has<MultipleDimensionStringRefs>)>,
 ) -> Result {
     let mut result: Result = Ok(());
 
@@ -317,12 +335,12 @@ pub fn init_oplists_bifurcations(
                     continue;
                 }
                 match oplist_query.get(bifurcation_over_ent)? {
-                    (_, None) => {
+                    (_, false) => {
                         cmd.entity(bifurcation_over_ent).insert(ChildOf(oplist_ent));
                         let (mut oplist, _) = oplist_query.get_mut(oplist_ent)?;
                         oplist.bifurcation_over = Some(bifurcation_over_ent);
                     }
-                    (_, Some(_)) => {
+                    (_, true) => {
                         result = Err(BevyError::from(format!(
                             "bifurcation_over entity {} must not be a root oplist", seri.bifurcation_over
                         )));
@@ -342,12 +360,12 @@ pub fn init_oplists_bifurcations(
                     continue;
                 }
                 match oplist_query.get(bifurcation_under_ent)? {
-                    (_, None) => {
+                    (_, false) => {
                         cmd.entity(bifurcation_under_ent).insert(ChildOf(oplist_ent));
                         let (mut oplist, _) = oplist_query.get_mut(oplist_ent)?;
                         oplist.bifurcation_under = Some(bifurcation_under_ent);
                     }
-                    (_, Some(_)) => {
+                    (_, true) => {
                         result = Err(BevyError::from(format!(
                             "bifurcation_under entity {} must not be a root oplist", seri.bifurcation_under
                         )));

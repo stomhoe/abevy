@@ -10,6 +10,7 @@ use game_common::game_common_components::MyZ;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
+use crate::terrain_gen::terrgen_components::OplistSize;
 use crate::{chunking_components::ChunkPos, terrain_gen::terrgen_resources::GlobalGenSettings, };
 use crate::{tile::{tile_materials::*}, };
 
@@ -45,9 +46,11 @@ pub enum TileShader{
 pub struct GlobalTilePos(pub IVec2);
 
 impl GlobalTilePos {
-    pub fn get_pos_within_chunk(self, chunk_pos: ChunkPos) -> TilePos {
-        let pos_within_chunk = self - chunk_pos.to_tilepos();
-        TilePos::new(pos_within_chunk.x() as u32, pos_within_chunk.y() as u32)
+    pub fn new(x: i32, y: i32) -> Self {GlobalTilePos(IVec2::new(x, y))}
+    
+    pub fn get_pos_within_chunk(self, chunk_pos: ChunkPos, oplist_size: OplistSize) -> TilePos {
+        let pos_within_chunk = (self.0 - chunk_pos.to_tilepos().0) / oplist_size.inner().as_ivec2();
+        TilePos::from(pos_within_chunk.as_uvec2())
     }
     pub fn x(&self) -> i32 { self.0.x } pub fn y(&self) -> i32 { self.0.y }
 
@@ -86,6 +89,11 @@ impl std::fmt::Debug for GlobalTilePos {
 impl From<Vec2> for GlobalTilePos {
     fn from(pixelpos: Vec2) -> Self {
         GlobalTilePos(pixelpos.div_euclid(Tile::PIXELS.as_vec2()).as_ivec2())
+    }
+}
+impl From<IVec2> for GlobalTilePos {
+    fn from(ivec2: IVec2) -> Self {
+        GlobalTilePos(ivec2)
     }
 }
 impl std::ops::Add for GlobalTilePos {type Output = Self; fn add(self, other: Self) -> Self {GlobalTilePos(self.0 + other.0)}}

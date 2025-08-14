@@ -94,14 +94,7 @@ pub fn plugin(app: &mut App) {
 
 
     .replicate_once::<ActivatingChunks>()
-    .replicate::<ProducedTiles>()
-    
-    .replicate::<FnlNoise>()
-    .replicate::<RootOpList>()
-    .replicate_with((
-        RuleFns::<ProducedTiles>::default(),
-        (RuleFns::<OperationList>::default(), SendRate::Once),
-    ))
+  
     
 
 

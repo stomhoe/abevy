@@ -5559,6 +5559,7 @@ dependencies = [
  "bevy_replicon",
  "bevy_replicon_renet",
  "bevy_simple_subsecond_system",
+ "camera",
  "common",
  "debug_unwraps",
  "delegate",

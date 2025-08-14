@@ -1,5 +1,7 @@
 
 use bevy::prelude::*;
+use camera::camera_components::CameraTarget;
+use dimension::dimension_components::DimensionRef;
 
 use crate::{chunking_components::*, chunking_resources::*};
 
@@ -8,12 +10,12 @@ use crate::{chunking_components::*, chunking_resources::*};
 #[allow(unused_parens, )]
 pub fn visit_chunks_around_activators(
     mut commands: Commands, 
-    mut query: Query<(&Transform, &mut ActivatingChunks), >,//TODO HACER Q HAY ACTIVATO
+    mut query: Query<(&Transform, &mut ActivatingChunks, &DimensionRef), >,//TODO HACER Q HAY ACTIVATO
     mut loaded_chunks: ResMut<LoadedChunks>,
     tilemap_settings: Res<ChunkRangeSettings>,
 ) {
     let cnt = tilemap_settings.chunk_show_range as i32;   
-    for (transform, mut activates_chunks) in query.iter_mut() {
+    for (transform, mut activates_chunks, &dimension_ref) in query.iter_mut() {
 
         let center_chunk_pos = ChunkPos::from(transform.translation.xy());
 
@@ -22,19 +24,20 @@ pub fn visit_chunks_around_activators(
 
                 let chunk_pos = ChunkPos::new(x, y);
 
-                if ! loaded_chunks.0.contains_key(&chunk_pos) {
+                if ! loaded_chunks.0.contains_key(&(dimension_ref, chunk_pos)) {
 
                     let chunk_ent = commands.spawn((
                         Name::new(format!("Chunk ({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
                         UninitializedChunk,
                         Transform::from_translation((chunk_pos.to_pixelpos()).extend(0.0)),
+                        dimension_ref,
                         chunk_pos,
                     )).id();
                     activates_chunks.0.insert(chunk_ent);
-                    loaded_chunks.0.insert(chunk_pos, chunk_ent);
+                    loaded_chunks.0.insert((dimension_ref, chunk_pos), chunk_ent);
                 }
                 else {
-                    activates_chunks.0.insert(loaded_chunks.0[&chunk_pos]);
+                    activates_chunks.0.insert(loaded_chunks.0[&(dimension_ref, chunk_pos)]);
                 }
             }
         }
@@ -42,15 +45,20 @@ pub fn visit_chunks_around_activators(
 }
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
-    mut activator_query: Query<(&Transform, &mut ActivatingChunks), >,
-    mut chunks_query: Query<(Entity, &ChunkPos, &Transform), >,
+    mut activator_query: Query<(&DimensionRef, &Transform, &mut ActivatingChunks, ), >,
+    mut chunks_query: Query<(&DimensionRef, Entity, &ChunkPos, &Transform, ), >,
     tilemap_settings: Res<ChunkRangeSettings>,
 ) {
-    for (act_transform, mut activate_chunks) in activator_query.iter_mut() {
+    for (dimension_ref, act_transform, mut activate_chunks) in activator_query.iter_mut() {
 
         let act_chunk_pos = ChunkPos::from(act_transform.translation.xy());
 
-        for (entity, &chunk_pos, chunk_transform) in chunks_query.iter_mut() {
+        for (chunk_dimension_ref, entity, &chunk_pos, chunk_transform) in chunks_query.iter_mut() {
+            if chunk_dimension_ref != dimension_ref {
+                activate_chunks.0.remove(&entity);
+                continue;
+            }
+
             let chunk_cont_pos = chunk_transform.translation.xy();
             let distance = act_transform.translation.xy().distance(chunk_cont_pos);
             
@@ -66,41 +74,38 @@ pub fn rem_outofrange_chunks_from_activators(
 #[allow(unused_parens)]
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,
-    activator_query: Query<(&ActivatingChunks), >,
-    mut chunks_query: Query<(Entity, &Transform,), With<ChunkInitState>>,
+    activator_query: Query<(&ActivatingChunks, ), >,
+    mut chunks_query: Query<(&DimensionRef, Entity, &ChunkPos, ), With<ChunkInitState>>,
     mut loaded_chunks: ResMut<LoadedChunks>,
 ) {
 
-    for (chunk_ent, chunk_transform) in chunks_query.iter_mut() {
-        let referenced = activator_query.iter().any(|activates_chunks| activates_chunks.0.contains(&chunk_ent));
+    for (&dimension, chunk_ent, &chunk_pos) in chunks_query.iter_mut() {
+        let referenced = activator_query.iter().any(|(activates_chunks, )| activates_chunks.0.contains(&chunk_ent));
         
         if !referenced {
-
-            let chunk_pos = ChunkPos::from(chunk_transform.translation.xy());
             //info!("Despawning chunk {:?} at pos: {:?}", chunk_ent, chunk_pos);
 
-            loaded_chunks.0.remove(&chunk_pos);
+            loaded_chunks.0.remove(&(dimension, chunk_pos));
             commands.entity(chunk_ent).remove::<ChunkInitState>().despawn();//DEJAR EL REMOVE
         }
     }
 }
-
 #[allow(unused_parens)]
 pub fn show_chunks_around_camera(
-    camera_query: Query<&Transform, With<Camera>>,
+    camera_query: Query<(&DimensionRef, &Transform), (With<CameraTarget>)>,
     mut chunks_query: Query<&mut Visibility, (With<InitializedChunk>)>,
     loaded_chunks: Res<LoadedChunks>,
     tilemap_settings: Res<ChunkRangeSettings>,
 ) {
     let cnt = tilemap_settings.chunk_show_range as i32;   
-    for transform in camera_query.iter() {
+    for (&dimension_ref, transform, ) in camera_query.iter() {
         let camera_chunk_pos = ChunkPos::from(transform.translation.xy());
         for y in (camera_chunk_pos.y() - cnt)..(camera_chunk_pos.y() + cnt+1) {
             for x in (camera_chunk_pos.x() - cnt)..(camera_chunk_pos.x() + cnt+1) {
 
                 let adj_chunk_pos = ChunkPos::new(x, y);
 
-                loaded_chunks.0.get(&adj_chunk_pos).map(|ent| {
+                loaded_chunks.0.get(&(dimension_ref, adj_chunk_pos)).map(|ent| {
                     if let Ok(mut visibility) = chunks_query.get_mut(*ent) {
                         *visibility = Visibility::Visible;
                     }
@@ -109,14 +114,18 @@ pub fn show_chunks_around_camera(
         }
     }
 }
-
+#[allow(unused_parens)]
 pub fn hide_outofrange_chunks(
-    camera_query: Query<&Transform, With<Camera>>,
-    mut chunks_query: Query<(&Transform, &mut Visibility), With<InitializedChunk>>,
+    camera_query: Query<(&DimensionRef, &Transform), (With<CameraTarget>)>,
+    mut chunks_query: Query<(&DimensionRef, &Transform, &mut Visibility), With<InitializedChunk>>,
     tilemap_settings: Res<ChunkRangeSettings>,
 ) {
-    for camera_transform in camera_query.iter() {
-        for (chunk_transform, mut visibility) in chunks_query.iter_mut() {
+    for (cam_dimension_ref, camera_transform) in camera_query.iter() {
+        for (chunk_dimension_ref, chunk_transform, mut visibility) in chunks_query.iter_mut() {
+            if cam_dimension_ref != chunk_dimension_ref{
+                *visibility = Visibility::Hidden;
+                continue;
+            }
             let chunk_cont_pos = chunk_transform.translation.xy();
 
             let distance = camera_transform.translation.xy().distance(chunk_cont_pos);

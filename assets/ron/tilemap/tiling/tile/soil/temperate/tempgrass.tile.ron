@@ -13,4 +13,5 @@
     spawns: [],
     spawns_children: [],
     somecomp_present: Some(true),
+    child_of_chunk: true,
 )

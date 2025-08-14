@@ -81,10 +81,14 @@ pub struct OpListSerisHandles {
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct OpListSerialization {
     pub id: String,
-    pub root: bool,
+    pub root_in_dimensions: Vec<String>,
     pub operation_operands: HashMap<String, Vec<String>>,
     pub bifurcation_over: String,
     pub threshold: f32,
     pub bifurcation_under: String,
     pub tiles: Vec<String>,
+    pub size: Option<[u32; 2]>
+}
+impl OpListSerialization {
+    pub fn is_root(&self) -> bool { !self.root_in_dimensions.is_empty() }
 }

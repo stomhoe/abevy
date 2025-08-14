@@ -1,10 +1,11 @@
 use bevy::{platform::collections::HashMap, prelude::*};
+use dimension::dimension_components::DimensionRef;
 
 use crate::chunking_components::ChunkPos;
 
 #[derive(Default, Debug, Resource)]
-//pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
-pub struct LoadedChunks (pub HashMap<ChunkPos, Entity>,);
+pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
+//pub struct LoadedChunks (pub HashMap<ChunkPos, Entity>,);
 
 #[derive(Resource, )]
 pub struct ChunkRangeSettings {

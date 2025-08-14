@@ -4,7 +4,7 @@ use superstate::{SuperstateInfo};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::*};
 
-use crate::{terrain_gen::terrgen_resources::GlobalGenSettings, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, Tile},};
+use crate::{terrain_gen::{terrgen_components::OplistSize, terrgen_resources::GlobalGenSettings}, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, Tile},};
 
 
 use common::{common_components::*, };
@@ -13,7 +13,7 @@ use common::{common_components::*, };
 #[require(SuperstateInfo<ChunkInitState>, SessionScoped, )]
 pub struct ChunkInitState;
 impl ChunkInitState {
-    pub const SIZE: UVec2 = UVec2 { x: 5, y: 5 };
+    pub const SIZE: UVec2 = UVec2 { x: 12, y: 12 };
 }
 
 #[derive(Component, Debug, Default, )]
@@ -58,6 +58,7 @@ impl ProducedTiles {
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
         gen_settings: &GlobalGenSettings,
+        oplist_size: OplistSize,
         depth: u32
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
@@ -69,10 +70,10 @@ impl ProducedTiles {
                     return;
                 }
 
-                self.insert_tile_recursive( tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings, depth + 1);
+                self.insert_tile_recursive( tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings, oplist_size, depth + 1);
             }
         } else {
-            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().insert((global_pos, pos_within_chunk)).id();
+            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().insert((global_pos, pos_within_chunk, oplist_size)).id();
             self.0.push(tile_ent);
         }
     }
@@ -85,9 +86,10 @@ impl ProducedTiles {
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
         gen_settings: &GlobalGenSettings,
+        oplist_size: OplistSize,
     ) {
         for tile in to_insert.0.iter().cloned() {
-            self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings, 0, );
+            self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings, oplist_size, 0);
         }
     }
 }
@@ -96,7 +98,7 @@ impl ProducedTiles {
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct PendingOperations(pub i32);
 
 
@@ -104,7 +106,7 @@ pub struct PendingOperations(pub i32);
 
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
-pub struct ActivatingChunks(pub EntityHashSet,);
+pub struct ActivatingChunks(#[entities] pub EntityHashSet,);
 
 
 

@@ -1,3 +1,4 @@
+use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::*};
 use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
@@ -25,3 +26,10 @@ impl DimensionStrIdRef {
         DimensionStrIdRef(StrId::new("overworld").unwrap())
     }
 }
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+pub struct MultipleDimensionStringRefs(pub Vec<String>);
+
+
+#[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
+pub struct MultipleDimensionRefs(#[entities] pub EntityHashSet,);

@@ -13,7 +13,8 @@ use tracing::Level;
 pub const FILTER: &str = 
 concat!(
     "error,",
-    "terrgen=warn,",
+    "terrgen=debug,",
+    "tilemap=debug,",
     "zlevel=warn,",
     "movement=warn,",
     "sprite_animation=warn,",

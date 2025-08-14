@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 
 use common::common_states::*;
+use dimension::DimensionSystems;
 use game_common::game_common::GameplaySystems;
 use superstate::superstate_plugin;
 
@@ -38,11 +39,13 @@ pub fn plugin(app: &mut App) {
     .configure_sets(
         OnEnter(AssetsLoadingState::LocalFinished), (
             TilingSystems.before(TerrainGenSystems),
+            DimensionSystems.before(TerrainGenSystems),
         )
     )
     .configure_sets(
         OnEnter(AssetsLoadingState::ReplicatedFinished), (
             TilingSystems.before(TerrainGenSystems),
+            DimensionSystems.before(TerrainGenSystems),
         )
     )
     .register_type::<ActivatingChunks>()
