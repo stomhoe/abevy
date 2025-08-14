@@ -32,7 +32,7 @@ pub fn plugin(app: &mut App) {
     app
     .add_plugins((
     ))
-    .add_systems(OnEnter(AppState::NoGameSession), (reset_states))
+    .add_systems(OnEnter(AppState::NoSession), (reset_states))
 
     .add_systems(Update, (
         (toggle_simulation, update_transform_z).in_set(GameplaySystems),

@@ -22,7 +22,7 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<AnimationSeri>::new(&["anim.ron"]),
     ))
     .add_systems(Update, (
-        (update_animstate.before(animate_sprite), animate_sprite, ),
+        (update_animstate, animate_sprite, ).chain(),
      
     ).in_set(AnimationSystems))
 

@@ -1,8 +1,7 @@
 
 use bevy::prelude::*;
-use common::common_states::{AssetsLoadingState, };
 
-use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap}, tile::tile_resources::{TileShaderEntityMap, TilingEntityMap}};
+use crate::{chunking_components::*, chunking_resources::*};
 
 
 

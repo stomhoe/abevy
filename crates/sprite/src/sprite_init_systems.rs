@@ -1,3 +1,5 @@
+use std::mem::take;
+
 use bevy::{ecs::entity_disabling::Disabled, platform::collections::HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -12,8 +14,7 @@ use crate::{sprite_components::*, sprite_resources::*};
 
 #[allow(unused_parens)]
 pub fn init_sprite_cfgs(
-    mut map: Option<Res<SpriteCfgEntityMap>>,
-    mut cmd: Commands, 
+    mut cmd: Commands, map: Option<Res<SpriteCfgEntityMap>>,
     aserver: Res<AssetServer>,
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut seris_handles: ResMut<SpriteSerisHandles>,
@@ -24,7 +25,6 @@ pub fn init_sprite_cfgs(
 
     let mut result: Result = Ok(());
 
-    use std::mem::take;
     for handle in take(&mut seris_handles.handles) {
         let Some(mut seri) = assets.remove(&handle) else {continue;};
 
@@ -106,7 +106,12 @@ pub fn init_sprite_cfgs(
         }
         
         if ! seri.children_sprites.is_empty(){
-            cmd.entity(spritecfg_ent).insert(SpriteConfigStringIds(seri.children_sprites));
+            if let Ok(ids) = SpriteConfigStrIds::new(seri.children_sprites){
+                cmd.entity(spritecfg_ent).insert(ids);
+            }
+            else {
+                error!(target: "sprite_loading", "Failed to create SpriteConfigStrIds for SpriteConfig '{}'", str_id);
+            }
         }
         
         if let Some(color) = seri.color {
@@ -152,8 +157,7 @@ pub fn add_sprites_to_local_map(
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
     mut cmd: Commands,
-    //NO SÉ SI HACE FALTA EL TERCER PARAM
-    mut query: Query<(Entity, &SpriteConfigStringIds, Option<&mut SpriteCfgsBuiltSoFar>), (Added<SpriteConfigStringIds>,)>,
+    mut query: Query<(Entity, &SpriteConfigStrIds, ), (Added<SpriteConfigStrIds>,)>,
     map: Option<Res<SpriteCfgEntityMap>>,
 ) {
     let Some(map) = map else {
@@ -161,10 +165,10 @@ pub fn replace_string_ids_by_entities(
         return;
     };
 
-    for (ent, string_ids, built_so_far) in query.iter_mut() {
+    for (ent, str_ids, ) in query.iter_mut() {
         info!(target: "sprite_building", "Replacing string ids for entity {:?}", ent);
         let mut entities_to_build = HashSet::new();
-        for id in &string_ids.0 {
+        for id in str_ids.ids() {
             if let Ok(sprite_ent) = map.0.get(id) {
                 info!(target: "sprite_building", "Replacing string id '{}' with entity {:?}", id, sprite_ent);
                 entities_to_build.insert(sprite_ent);
@@ -173,12 +177,10 @@ pub fn replace_string_ids_by_entities(
             }
         }
         if ! entities_to_build.is_empty() {
-            if let Some(mut built_so_far) = built_so_far {
-                built_so_far.0.extend(entities_to_build.iter().cloned());
-            }
+          
             cmd.entity(ent).insert(SpriteCfgsToBuild(entities_to_build));
         }
-        cmd.entity(ent).remove::<SpriteConfigStringIds>();
+        cmd.entity(ent).remove::<SpriteConfigStrIds>();
     }
 }
 

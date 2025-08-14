@@ -8,7 +8,7 @@ use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_state
 use game::{being_components::{Being, ControlledBy}, faction_components::{BelongsToFaction, Faction}, player::{CharacterCreatedBy, CreatedCharacters, OfSelf, Player}};
 use multiplayer_shared::multiplayer_events::SendUsername;
 use multiplayer_shared::multiplayer_events::MoveStateUpdated;
-use sprite::{sprite_components::SpriteConfigStringIds, sprite_resources::SpriteCfgEntityMap};
+use sprite::{sprite_components::SpriteConfigStrIds, sprite_resources::SpriteCfgEntityMap};
 use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::TilingEntityMap}};
 
 use crate::host_functions::host_server;
@@ -70,7 +70,7 @@ pub fn host_on_player_added(mut cmd: Commands,
     player_query: Query<(&CreatedCharacters)>,
 
     host_faction: Single<(Entity), (With<Faction>, With<OfSelf>)>,
-) {
+) -> Result {
     let host_faction = host_faction.into_inner();
     for (player_ent, username) in query.iter() {
 
@@ -83,7 +83,7 @@ pub fn host_on_player_added(mut cmd: Commands,
                 
                 BelongsToFaction(host_faction.clone()),
                 Transform::default(),
-                SpriteConfigStringIds::new(["humanhe0", "humanbo0"]),
+                SpriteConfigStrIds::new(["humanhe0", "humanbo0"])?,
                 
             ));
 
@@ -91,6 +91,7 @@ pub fn host_on_player_added(mut cmd: Commands,
             //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER
         }
     }
+    Ok(())
 }
 
 

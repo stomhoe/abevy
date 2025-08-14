@@ -11,6 +11,8 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
 use crate::{chunking_components::ChunkPos, terrain_gen::terrgen_resources::GlobalGenSettings, };
+use crate::{tile::{tile_materials::*}, };
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(MyZ, EntityPrefix::new("Tile"), AssetScoped,)]
@@ -32,21 +34,11 @@ pub struct TileShaderRef(pub Entity);
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, )]
 #[require(EntityPrefix::new("TileShader"), AssetScoped,)]
 pub enum TileShader{
-    TexRepeat(RepeatingTexture),
-    TwoTexRepeat(RepeatingTexture, RepeatingTexture),
+    TexRepeat(MonoRepeatTextureOverlayMat),
+    TwoTexRepeat(TwoOverlaysExample),
     //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Reflect, )]
-pub struct RepeatingTexture{ img: ImageHolder, scale: u32, mask_color: U8Vec4, }
-impl RepeatingTexture {
-    pub fn new(img: ImageHolder, scale: u32, mask_color: U8Vec4) -> Self { Self { img, scale, mask_color } }
-
-    pub fn cloned_handle(&self) -> Handle<Image> { self.img.0.clone() }
-
-    pub fn scale_div_1e9(&self) -> f32 { self.scale as f32 / 1e9 }
-    pub fn mask_color(&self) -> Vec4 { self.mask_color.as_vec4()/255.0 }
-}
 
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
@@ -57,8 +49,7 @@ impl GlobalTilePos {
         let pos_within_chunk = self - chunk_pos.to_tilepos();
         TilePos::new(pos_within_chunk.x() as u32, pos_within_chunk.y() as u32)
     }
-    pub fn x(&self) -> i32 { self.0.x } 
-    pub fn y(&self) -> i32 { self.0.y }
+    pub fn x(&self) -> i32 { self.0.x } pub fn y(&self) -> i32 { self.0.y }
 
     pub fn hash_value(&self, settings: &GlobalGenSettings, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();

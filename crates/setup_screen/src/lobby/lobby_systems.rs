@@ -51,7 +51,7 @@ pub fn lobby_button_interaction(
         if *interaction == Interaction::Pressed {
             match menu_button_action {
                 LobbyButtonId::Leave => {
-                    app_state.set(AppState::NoGameSession);
+                    app_state.set(AppState::NoSession);
 
                 }
                 LobbyButtonId::Start =>  {

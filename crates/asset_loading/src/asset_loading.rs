@@ -3,6 +3,7 @@
 use bevy_replicon::prelude::*;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
+use dimension::dimension_resources::DimensionSerisHandles;
 use sprite::sprite_resources::*;
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
 use tilemap::{terrain_gen::terrgen_resources::*, tile::tile_resources::*};
@@ -41,6 +42,8 @@ pub fn plugin(app: &mut App) {
             .load_collection::<TileWeightedSamplerSerisHandles>()
             .load_collection::<NoiseSerisHandles>()
             .load_collection::<OpListSerisHandles>()
+            .load_collection::<DimensionSerisHandles>()
+
         )
 
     ;

@@ -21,8 +21,8 @@ concat!(
     "sprite_building=trace,",
     "asset_loading=warn,",
     "tiling_loading=warn,",
+    "dimension_loading=warn"
 );
-
 
 fn main() {
     GLOBAL_ERROR_HANDLER.set(warn).expect("Error handler can only be set once, globally.");
@@ -40,15 +40,21 @@ fn main() {
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
             SimpleSubsecondPlugin::default(),
-            multiplayer_shared::plugin,
         ))
         .add_plugins((
+            multiplayer_shared::plugin, //VA ARRIBA    
             host::plugin,
             client::plugin,
-            common::plugin,
+        ))
+        .add_plugins((
             asset_loading::plugin,
+            common::plugin,
             game_common::plugin,
+            ui_shared::plugin,
+        ))
+        .add_plugins((
             game::plugin,
+            dimension::plugin,
             camera::plugin,
             sprite_animation::plugin,
             movement::plugin,
@@ -57,7 +63,6 @@ fn main() {
             tilemap::plugin,
             setup_screen::plugin,
             pregame_screen::plugin,
-            ui_shared::plugin,
             
         ))
         .run()

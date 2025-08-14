@@ -12,6 +12,8 @@ sprite = { path = "../sprite" }
 sprite_animation = { path = "../sprite_animation" }
 tilemap = { path = "../tilemap" }
 modifier = { path = "../modifier" }
+dimension = { path = "../dimension" }
+
 
 bevy = { workspace = true }
 nano-id = { workspace = true }

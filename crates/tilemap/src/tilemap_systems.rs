@@ -5,7 +5,7 @@ use common::common_resources::ImageSizeMap;
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::MyZ;
 
-use crate::{chunking_components::*, terrain_gen::terrain_materials::MonoRepeatTextureOverlayMat, tile::tile_components::*, tilemap_components::*};
+use crate::{chunking_components::*, tile::tile_materials::*, tile::tile_components::*, tilemap_components::*};
 
 
 
@@ -151,17 +151,13 @@ pub fn fill_tilemaps_data(
                 if let Some(shader) = shader {
                     let material = 
                         match shader {
-                            TileShader::TexRepeat(rep_texture) => {
+                            TileShader::TexRepeat(handle) => {
                                 MaterialTilemapHandle::from(texture_overley_mat.add(
-                                    MonoRepeatTextureOverlayMat {
-                                        texture_overlay: rep_texture.cloned_handle(),
-                                        scale: rep_texture.scale_div_1e9(),
-                                        mask_color: rep_texture.mask_color(),
-                                    }
+                                    handle.clone()
                                 ))
     
                             },
-                            TileShader::TwoTexRepeat(first_texture, second) => todo!(),
+                            TileShader::TwoTexRepeat(handle) => todo!(),
                         };
     
                     commands.entity(tmap_entity).insert_if_new(MaterialTilemapBundle{

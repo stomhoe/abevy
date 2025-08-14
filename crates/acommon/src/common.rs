@@ -1,7 +1,8 @@
 
+use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 
-use crate::{common_components::*, common_resources::*, common_states::*, common_systems::*, common_types::HashIdToEntityMap};
+use crate::{common_components::*, common_resources::*, common_states::*, common_systems::*, common_types::{FixedStr, HashIdToEntityMap}};
 
 use {bevy::prelude::*,};
 
@@ -13,7 +14,7 @@ pub fn plugin(app: &mut App) {
         .add_plugins((
 
         ))
-        .init_state::<AppState>()
+        .insert_state::<AppState>(AppState::NoSession)
         .init_state::<PreGameState>()
         .init_state::<GamePhase>()
         .init_state::<GameSetupType>()
@@ -28,17 +29,18 @@ pub fn plugin(app: &mut App) {
         .init_resource::<PlayerData>()
 
         .replicate::<Name>()
+        
+        .register_type::<EntityPrefix>().register_type_data::<EntityPrefix, InspectorEguiImpl>()
+        
+        .register_type::<DisplayName>()
+        .register_type::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
+        .register_type::<StrId>()
+        .register_type::<HashIdToEntityMap>()
+        
         .replicate::<EntityPrefix>()
         .replicate::<StrId>()
-        .replicate::<HashId>()
+        .replicate::<StrId>()
         .replicate::<DisplayName>()
-
-
-        .register_type::<DisplayName>()
-        .register_type::<StrId>()
-        .register_type::<HashId>()
-        .register_type::<HashIdToEntityMap>()
-
 
     ;
 }

@@ -8,6 +8,7 @@ use crate::{
 //    common_events::*,
 };
 use serde::{Deserialize, Serialize};
+use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, Reflect)]
 pub struct HashIdToEntityMap(pub HashMap<HashId, Entity>);
@@ -78,6 +79,36 @@ impl HashIdToEntityMap {
 
 #[derive(Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct FixedStr<const N: usize>([u8; N]);
+
+impl<const N: usize> InspectorPrimitive for FixedStr<N> {
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _: &dyn std::any::Any,
+        _: egui::Id,
+        _: InspectorUi<'_, '_>,
+    ) -> bool {
+        let mut s = self.as_str().to_string();
+        let mut changed = false;
+        if ui.text_edit_singleline(&mut s).changed() {
+            if let Ok(fixed) = FixedStr::new_with_result(&s) {
+                *self = fixed;
+                changed = true;
+            }
+        }
+        changed
+    }
+
+    fn ui_readonly(
+        &self,
+        ui: &mut egui::Ui,
+        _: &dyn std::any::Any,
+        _: egui::Id,
+        _: InspectorUi<'_, '_>,
+    ) {
+        ui.label(self.as_str());
+    }
+}
 
 impl<const N: usize> FixedStr<N> {
     pub fn new<S: AsRef<str>>(s: S) -> Self {

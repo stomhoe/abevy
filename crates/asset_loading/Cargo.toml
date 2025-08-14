@@ -8,6 +8,7 @@ common = { path = "../acommon" }
 tilemap = { path = "../tilemap" }
 sprite_animation = { path = "../sprite_animation" }
 sprite = { path = "../sprite" }
+dimension = { path = "../dimension" }
 
 
 bevy = { workspace = true }

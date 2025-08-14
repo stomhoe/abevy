@@ -1,4 +1,4 @@
-use bevy::platform::collections::HashMap;
+use bevy::{math::f32, platform::collections::HashMap};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
@@ -65,8 +65,8 @@ pub struct ShaderRepeatTexSerisHandles {
 pub struct ShaderRepeatTexSeri {
     pub id: String,
     pub img_path: String,
-    pub scale: u32,
-    pub mask_color: [u8; 4],
+    pub scale: f32,
+    pub mask_color: [f32; 4],
 }
 
 

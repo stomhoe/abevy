@@ -24,12 +24,11 @@ pub fn plugin(app: &mut App) {
         (apply_offsets, apply_scales, become_child_of_sprite_with_category, insert_sprite_to_instance,),
 
         (replace_string_ids_by_entities, add_spritechildren_and_comps, ).run_if(server_or_singleplayer), 
-    ).in_set(GameplaySystems).in_set(SpriteSystemsSet))
+    ).in_set(GameplaySystems))
     .configure_sets(SPRITES_SCHEDULE, SpriteSystemsSet.in_set(GameplaySystems))
     
     .add_systems(OnEnter(AssetsLoadingState::LocalFinished), (
-        init_sprite_cfgs.before(add_sprites_to_local_map,),
-        add_sprites_to_local_map,
+        (init_sprite_cfgs, add_sprites_to_local_map).chain(),
     ).in_set(SpriteSystemsSet)) 
 
     .replicate_with((

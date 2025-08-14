@@ -1,6 +1,6 @@
 (
     id: "tempgrass",
     img_path: "texture/world/terrain/temperate_grass/grass.png",
-    scale: 1_000_000,
-    mask_color: (255, 0, 0, 255),
+    scale: 1e-3,
+    mask_color: (255., 0, 0, 255.),
 )

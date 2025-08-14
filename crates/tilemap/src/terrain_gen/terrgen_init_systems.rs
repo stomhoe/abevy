@@ -25,113 +25,112 @@ pub fn init_noises(
     let mut result: Result = Ok(());
 
     for handle in take(&mut seris_handles.handles) {
-        if let Some(seri) = assets.remove(&handle) {
+        let Some(seri) = assets.remove(&handle) else { continue };
 
-            let str_id = match StrId::new(seri.id.clone()) {
-                Ok(id) => id,
-                Err(e) => {
-                    let err = BevyError::from(format!("Failed to create StrId for noise {}: {}", seri.id, e));
+        let str_id = match StrId::new(seri.id.clone()) {
+            Ok(id) => id,
+            Err(e) => {
+                let err = BevyError::from(format!("Failed to create StrId for noise {}: {}", seri.id, e));
+                error!(target: "noise_loading", "{}", err);
+                result = Err(err);
+                continue;
+            }
+        };
+
+        let mut noise = FastNoiseLite::new();
+        noise.set_frequency(seri.frequency);
+        
+        if let Some(noise_type) = seri.noise_type {
+            noise.set_noise_type(Some(match noise_type {
+                0 => fastnoise_lite::NoiseType::OpenSimplex2,
+                1 => fastnoise_lite::NoiseType::OpenSimplex2S,
+                2 => fastnoise_lite::NoiseType::Cellular,
+                3 => fastnoise_lite::NoiseType::Perlin,
+                4 => fastnoise_lite::NoiseType::ValueCubic,
+                5 => fastnoise_lite::NoiseType::Value,
+                _ => {
+                    let err = BevyError::from(format!("Unknown noise type: {} for noise {}", noise_type, seri.id));
                     error!(target: "noise_loading", "{}", err);
                     result = Err(err);
                     continue;
                 }
-            };
-  
-            let mut noise = FastNoiseLite::new();
-            noise.set_frequency(seri.frequency);
-            
-            if let Some(noise_type) = seri.noise_type {
-                noise.set_noise_type(Some(match noise_type {
-                    0 => fastnoise_lite::NoiseType::OpenSimplex2,
-                    1 => fastnoise_lite::NoiseType::OpenSimplex2S,
-                    2 => fastnoise_lite::NoiseType::Cellular,
-                    3 => fastnoise_lite::NoiseType::Perlin,
-                    4 => fastnoise_lite::NoiseType::ValueCubic,
-                    5 => fastnoise_lite::NoiseType::Value,
-                    _ => {
-                        let err = BevyError::from(format!("Unknown noise type: {} for noise {}", noise_type, seri.id));
-                        error!(target: "noise_loading", "{}", err);
-                        result = Err(err);
-                        continue;
-                    }
-                }));
-            }
-            if let Some(fractal_type) = seri.fractal_type {
-                noise.set_fractal_type(Some(match fractal_type {
-                    0 => fastnoise_lite::FractalType::None,
-                    1 => fastnoise_lite::FractalType::FBm,
-                    2 => fastnoise_lite::FractalType::Ridged,
-                    3 => fastnoise_lite::FractalType::PingPong,
-                    4 => fastnoise_lite::FractalType::DomainWarpProgressive,
-                    5 => fastnoise_lite::FractalType::DomainWarpIndependent,
-                    _ => {
-                        let err = BevyError::from(format!("Unknown fractal type: {} for noise {}", fractal_type, seri.id));
-                        error!(target: "noise_loading", "{}", err);
-                        result = Err(err);
-                        continue;
-                    }
-                }));
-            }
-            noise.set_fractal_octaves(Some(seri.octaves.unwrap_or(3) as i32));
-            noise.set_fractal_lacunarity(seri.lacunarity);
-            noise.set_fractal_gain(seri.gain);
-            noise.set_fractal_weighted_strength(seri.weighted_strength);
-            noise.set_fractal_ping_pong_strength(seri.ping_pong_strength);
-            if let Some(cellular_distance_function) = seri.cellular_distance_function {
-                noise.set_cellular_distance_function(Some(match cellular_distance_function {
-                    0 => fastnoise_lite::CellularDistanceFunction::Euclidean,
-                    1 => fastnoise_lite::CellularDistanceFunction::EuclideanSq,
-                    2 => fastnoise_lite::CellularDistanceFunction::Manhattan,
-                    3 => fastnoise_lite::CellularDistanceFunction::Hybrid,
-                    _ => {
-                        let err = BevyError::from(format!("Unknown cellular distance function: {} for noise {}", cellular_distance_function, seri.id));
-                        error!(target: "noise_loading", "{}", err);
-                        result = Err(err);
-                        continue;
-                    }
-                }));
-            }
-            
-            if let Some(cellular_return_type) = seri.cellular_return_type {
-                noise.set_cellular_return_type(Some(match cellular_return_type {
-                    0 => fastnoise_lite::CellularReturnType::CellValue,
-                    1 => fastnoise_lite::CellularReturnType::Distance,
-                    2 => fastnoise_lite::CellularReturnType::Distance2,
-                    3 => fastnoise_lite::CellularReturnType::Distance2Add,
-                    4 => fastnoise_lite::CellularReturnType::Distance2Sub,
-                    5 => fastnoise_lite::CellularReturnType::Distance2Mul,
-                    6 => fastnoise_lite::CellularReturnType::Distance2Div,
-                    _ => {
-                        let err = BevyError::from(format!("Unknown cellular return type: {} for noise {}", cellular_return_type, seri.id));
-                        error!(target: "noise_loading", "{}", err);
-                        result = Err(err);
-                        continue;
-                    }
-                }));
-            }
-            if let Some(domain_warp_type) = seri.domain_warp_type {
-                noise.set_domain_warp_type(Some(match domain_warp_type {
-                    0 => fastnoise_lite::DomainWarpType::OpenSimplex2,
-                    1 => fastnoise_lite::DomainWarpType::OpenSimplex2Reduced,
-                    2 => fastnoise_lite::DomainWarpType::BasicGrid,
-                    _ => {
-                        let err = BevyError::from(format!("Unknown domain warp type: {} for noise {}", domain_warp_type, seri.id));
-                        error!(target: "noise_loading", "{}", err);
-                        result = Err(err);
-                        continue;
-                    }
-                }));
-            }
-            noise.set_cellular_jitter(seri.cellular_jitter);
-            noise.set_domain_warp_amp(seri.domain_warp_amp);
-
-            cmd.spawn((
-                str_id,
-                DisplayName::new(seri.id.clone()),
-                FnlNoise::new(noise,),
-            ));
-
+            }));
         }
+        if let Some(fractal_type) = seri.fractal_type {
+            noise.set_fractal_type(Some(match fractal_type {
+                0 => fastnoise_lite::FractalType::None,
+                1 => fastnoise_lite::FractalType::FBm,
+                2 => fastnoise_lite::FractalType::Ridged,
+                3 => fastnoise_lite::FractalType::PingPong,
+                4 => fastnoise_lite::FractalType::DomainWarpProgressive,
+                5 => fastnoise_lite::FractalType::DomainWarpIndependent,
+                _ => {
+                    let err = BevyError::from(format!("Unknown fractal type: {} for noise {}", fractal_type, seri.id));
+                    error!(target: "noise_loading", "{}", err);
+                    result = Err(err);
+                    continue;
+                }
+            }));
+        }
+        noise.set_fractal_octaves(Some(seri.octaves.unwrap_or(3) as i32));
+        noise.set_fractal_lacunarity(seri.lacunarity);
+        noise.set_fractal_gain(seri.gain);
+        noise.set_fractal_weighted_strength(seri.weighted_strength);
+        noise.set_fractal_ping_pong_strength(seri.ping_pong_strength);
+        if let Some(cellular_distance_function) = seri.cellular_distance_function {
+            noise.set_cellular_distance_function(Some(match cellular_distance_function {
+                0 => fastnoise_lite::CellularDistanceFunction::Euclidean,
+                1 => fastnoise_lite::CellularDistanceFunction::EuclideanSq,
+                2 => fastnoise_lite::CellularDistanceFunction::Manhattan,
+                3 => fastnoise_lite::CellularDistanceFunction::Hybrid,
+                _ => {
+                    let err = BevyError::from(format!("Unknown cellular distance function: {} for noise {}", cellular_distance_function, seri.id));
+                    error!(target: "noise_loading", "{}", err);
+                    result = Err(err);
+                    continue;
+                }
+            }));
+        }
+        
+        if let Some(cellular_return_type) = seri.cellular_return_type {
+            noise.set_cellular_return_type(Some(match cellular_return_type {
+                0 => fastnoise_lite::CellularReturnType::CellValue,
+                1 => fastnoise_lite::CellularReturnType::Distance,
+                2 => fastnoise_lite::CellularReturnType::Distance2,
+                3 => fastnoise_lite::CellularReturnType::Distance2Add,
+                4 => fastnoise_lite::CellularReturnType::Distance2Sub,
+                5 => fastnoise_lite::CellularReturnType::Distance2Mul,
+                6 => fastnoise_lite::CellularReturnType::Distance2Div,
+                _ => {
+                    let err = BevyError::from(format!("Unknown cellular return type: {} for noise {}", cellular_return_type, seri.id));
+                    error!(target: "noise_loading", "{}", err);
+                    result = Err(err);
+                    continue;
+                }
+            }));
+        }
+        if let Some(domain_warp_type) = seri.domain_warp_type {
+            noise.set_domain_warp_type(Some(match domain_warp_type {
+                0 => fastnoise_lite::DomainWarpType::OpenSimplex2,
+                1 => fastnoise_lite::DomainWarpType::OpenSimplex2Reduced,
+                2 => fastnoise_lite::DomainWarpType::BasicGrid,
+                _ => {
+                    let err = BevyError::from(format!("Unknown domain warp type: {} for noise {}", domain_warp_type, seri.id));
+                    error!(target: "noise_loading", "{}", err);
+                    result = Err(err);
+                    continue;
+                }
+            }));
+        }
+        noise.set_cellular_jitter(seri.cellular_jitter);
+        noise.set_domain_warp_amp(seri.domain_warp_amp);
+
+        cmd.spawn((
+            str_id,
+            DisplayName::new(seri.id.clone()),
+            FnlNoise::new(noise,),
+        ));
+
     }
     result
 }

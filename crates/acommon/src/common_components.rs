@@ -11,18 +11,13 @@ use std::hash::{Hash, Hasher};
 use rand_distr::weighted::WeightedAliasIndex;
 use rand::prelude::*;
 use crate::{common_states::*, common_types::*};
+use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 
-#[derive(Component, Debug, Default, Clone, Hash, PartialEq, Reflect)]
-#[require(StateScoped::<AppState>(AppState::StatefulGameSession))]
-pub struct SessionScoped;
+pub type SessionScoped = StateScoped::<AppState>;
 
-#[derive(Component, Debug, Default, Clone, Hash, PartialEq, Reflect)]
-#[require(StateScoped::<LoadedAssetsSession>(LoadedAssetsSession::KeepAlive), )]
-pub struct AssetScoped;
+pub type AssetScoped = StateScoped::<LoadedAssetsSession>;
 
-#[derive(Component, Debug, Default, Clone, Hash, PartialEq, Reflect)]
-#[require(StateScoped::<TerrainGenHotLoading>(TerrainGenHotLoading::KeepAlive), )]
-pub struct TgenScoped;
+pub type TgenScoped = StateScoped::<TerrainGenHotLoading>;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct EntityPrefix(pub FixedStr<20>);
@@ -42,7 +37,22 @@ impl core::fmt::Display for EntityPrefix {
         core::fmt::Display::fmt(self.as_str(), f)
     }
 }
-
+impl InspectorPrimitive for EntityPrefix {
+    fn ui(&mut self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) -> bool {
+        let mut s = self.0.as_str().to_string();
+        let mut changed = false;
+        if ui.text_edit_singleline(&mut s).changed() {
+            if let Ok(fixed) = FixedStr::new_with_result(&s) {
+                self.0 = fixed;
+                changed = true;
+            }
+        }
+        changed
+    }
+    fn ui_readonly(&self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) {
+        ui.label(self.0.as_str());
+    }
+}
 
 
 
@@ -50,7 +60,16 @@ impl core::fmt::Display for EntityPrefix {
 pub struct DisplayName(pub String);
 
 impl DisplayName {
-    pub fn new(name: impl Into<String>) -> Self {DisplayName(name.into())}
+    pub fn new<S: AsRef<str>>(name: S) -> Self {
+        DisplayName(name.as_ref().to_string())
+    }
+
+    pub fn insert_name_if_non_empty<S: AsRef<str>>(name: S, entity: &mut EntityCommands) {
+        let name_str = name.as_ref();
+        if !name_str.is_empty() {
+            entity.insert(DisplayName(name_str.to_string()));
+        }
+    }
 }
 
 impl core::fmt::Display for DisplayName {
@@ -71,14 +90,31 @@ pub struct StrId(FixedStr<32>);
 impl StrId {
     pub fn new<S: AsRef<str>>(id: S) -> Result<Self, BevyError> {
         let s = id.as_ref();
-        if s.len() >= 1 {
+        if s.len() >= 3 {
             FixedStr::new_with_result(s).map(Self)
         } else {
-            Err(BevyError::from(format!("StrId '{}' must be at least 1 character long", s)))
+            Err(BevyError::from(format!("StrId '{}' must be at least 3 characters long", s)))
         }
     }
-    pub fn as_str(&self) -> &str { &self.0.as_str() }
+    pub fn as_str(&self) -> &str { self.0.as_str() }
     pub fn is_empty(&self) -> bool { self.0.is_empty() }
+}
+
+impl InspectorPrimitive for StrId {
+    fn ui(&mut self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) -> bool {
+        let mut s = self.0.as_str().to_string();
+        let mut changed = false;
+        if ui.text_edit_singleline(&mut s).changed() {
+            if let Ok(fixed) = FixedStr::new_with_result(&s) {
+                self.0 = fixed;
+                changed = true;
+            }
+        }
+        changed
+    }
+    fn ui_readonly(&self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) {
+        ui.label(self.0.as_str());
+    }
 }
 impl std::fmt::Display for StrId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

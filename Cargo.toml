@@ -43,12 +43,14 @@ bevy_simple_subsecond_system = "0.2.0" #IMPORTANTE PARA HOTPATCHEAR SISTEMAS
 bevy-ui-gradients = "0.4.0"
 bevy_spritesheet_animation = "3.0.0"
 bevy_asset_loader = "0.23.0"
-bevy-inspector-egui = "0.32.0"
+bevy-inspector-egui = "0.33.1"
 splines = { version = "5.0.0", features = ["serde"] }
 indexmap = "2.10.0"
 delegate = "0.13.4"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
+noiz = "0.2.0"
+
 #bevy_save = "1.0.0"
 #bevy_rapier2d = "0.31.0"
 #bevy_rand = "0.11.1"
@@ -66,6 +68,7 @@ client = { path = "crates/client" }
 game = { path = "crates/game" }
 movement = { path = "crates/movement" }
 camera = { path = "crates/camera" }
+dimension = { path = "crates/dimension" }
 sprite_animation_shared = { path = "crates/sprite_animation_shared" }
 sprite_animation = { path = "crates/sprite_animation" }
 sprite = { path = "crates/sprite" } 

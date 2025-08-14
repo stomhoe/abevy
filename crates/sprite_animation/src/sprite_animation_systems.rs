@@ -18,8 +18,15 @@ pub fn init_animations(
     mut anim_handles: ResMut<AnimSerisHandles>,
     mut assets: ResMut<Assets<AnimationSeri>>,
     mut library: ResMut<AnimationLibrary>,
+    //usar state
 ) {
     use std::mem::take;
+    // if ! library.is_empty(){
+    //     cmd.remove_resource::<AnimationLibrary>();
+    // }
+
+
+
     for handle in take(&mut anim_handles.handles) {
         let Some(seri) = assets.remove(&handle) else { continue };
         

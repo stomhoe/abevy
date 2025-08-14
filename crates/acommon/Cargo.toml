@@ -23,3 +23,4 @@ rand_seeder = { workspace = true }
 rand_pcg = { workspace = true }
 indexmap = { workspace = true }
 delegate = { workspace = true }
+bevy-inspector-egui = { workspace = true }

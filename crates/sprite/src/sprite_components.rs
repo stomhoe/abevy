@@ -1,7 +1,7 @@
 use bevy::math::{Vec2, UVec2};
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
+#[allow(unused_imports)] use bevy_replicon::prelude::Replicated;
 use bevy_spritesheet_animation::prelude::Spritesheet;
 use common::common_components::*;
 use common::common_types::*;
@@ -268,16 +268,14 @@ impl BecomeChildOfSpriteWithCategory {
 // NO USAR ESTOS DOS PARA BEINGS
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(Replicated)]
-pub struct SpriteConfigStringIds(pub Vec<String>);
-impl SpriteConfigStringIds {
-    pub fn new<S: Into<String>>(ids: impl IntoIterator<Item = S>) -> Self {
-        Self(ids.into_iter().map(|s| s.into()).collect())
+pub struct SpriteConfigStrIds(Vec<StrId>);
+impl SpriteConfigStrIds {
+    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Result<SpriteConfigStrIds, BevyError> {
+        let ids: Result<Vec<StrId>, _> = ids.into_iter().map(|s| StrId::new(s.as_ref())).collect();
+        Ok(SpriteConfigStrIds(ids?))
     }
+    pub fn ids(&self) -> &Vec<StrId> { &self.0 }
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone )]
 pub struct SpriteCfgsToBuild(#[entities] pub HashSet<Entity>);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone )]
-pub struct SpriteCfgsBuiltSoFar(#[entities] pub HashSet<Entity>);
-

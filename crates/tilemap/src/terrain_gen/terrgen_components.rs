@@ -3,6 +3,7 @@
 use bevy_replicon::prelude::*;
 use fastnoise_lite::FastNoiseLite;
 
+use noiz::DynamicConfigurableSampleable;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
@@ -54,6 +55,12 @@ impl FnlNoise {
         ) + 1.0) / 2.0 // Normalizar a [0, 1]
     }
 }
+
+//            .replicate::<NoizRef>()
+#[derive(Component, )]
+#[require(Replicated, /*StateScoped::<AppState>, */ )]
+pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sync >);
+
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
 pub struct PoissonDisk { pub min_distance: u8, pub seed: u64, }

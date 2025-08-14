@@ -58,7 +58,7 @@ pub fn client_on_connect_failed(
 
     //client: Res<RenetClient>,
 ) {
-    app_state.set(AppState::NoGameSession);
+    app_state.set(AppState::NoSession);
 
     warn!("Couldn't connect to server, returning to main menu");
     commands.remove_resource::<RenetClient>();
@@ -78,7 +78,7 @@ pub fn client_on_disconnect(
                 info!("Client (self) has disconnected with reason: {:?}", reason);
                 match reason{
                     DisconnectedByClient => {
-                        app_state.set(AppState::NoGameSession);
+                        app_state.set(AppState::NoSession);
                     },//LO DEJÉ ASÍ POR SI SE QUIERE VOLVER A INTENTAR CONECTAR A LA IP EN NETCODECLIENTTRANSPORT
                     // ConnectTokenExpired => todo!(),
                     // ConnectionTimedOut => todo!(),
@@ -88,7 +88,7 @@ pub fn client_on_disconnect(
                     // DisconnectedByServer => todo!(),
                     _ => {},
                 }
-                app_state.set(AppState::NoGameSession);//provisorio
+                app_state.set(AppState::NoSession);//provisorio
             },
             None => warn!("Client (self) has disconnected without a reason"),
         }

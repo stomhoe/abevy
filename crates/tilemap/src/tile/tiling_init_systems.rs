@@ -7,7 +7,7 @@ use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHol
 use game_common::{game_common_components::MyZ, };
 use bevy_ecs_tilemap::tiles::TilePos;
 
-use crate::{tile::{tile_components::*, tile_resources::*}, };
+use crate::{tile::{tile_components::*, tile_resources::*, tile_materials::*}, };
 
 
 #[allow(unused_parens)]
@@ -31,8 +31,8 @@ pub fn init_shaders(
                 Ok(img_holder) => {
                     cmd.spawn((
                         str_id,
-                        TileShader::TexRepeat(RepeatingTexture::new(
-                            img_holder, seri.scale, seri.mask_color.into()
+                        TileShader::TexRepeat(MonoRepeatTextureOverlayMat::new(
+                            img_holder, seri.mask_color.into(), seri.scale,
                         )),
                     ));
                 },
@@ -43,6 +43,8 @@ pub fn init_shaders(
             }
         }
     }
+
+    //FOR PA OTRO SHADER (CREAR OTRO FORMATO DE SHADER SERIALIZED, NO UNIFICARLOS EN UN SOLO FORMATO)
     
     result
 }

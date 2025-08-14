@@ -1,16 +1,19 @@
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::{AssetsLoadingState, };
+use bevy_ecs_tilemap::prelude::*;
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::tile::{
-    tile_components::*, tile_resources::*, tile_systems::*, tiling_init_systems::*
+    tile_components::*, tile_resources::*, tile_systems::*, tiling_init_systems::*, tile_materials::*,
 };
 mod tile_systems;
 mod tiling_init_systems;
 pub mod tile_components;
 pub mod tile_resources;
+pub mod tile_materials;
+
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TilingSystems;
@@ -26,17 +29,20 @@ pub fn plugin(app: &mut App) {
         ))
 
         .add_systems(OnEnter(AssetsLoadingState::LocalFinished), (
-            init_shaders.before(add_shaders_to_map),
-            add_shaders_to_map.before(init_tiles),
-            init_tiles.before(add_tiles_to_map),
+            (
+            init_shaders,
+            add_shaders_to_map,
+            init_tiles,
             add_tiles_to_map
+            ).chain()
         ).in_set(TilingSystems))
         .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
-            (init_tile_weighted_samplers.before(add_tile_weighted_samplers_to_map),
-            add_tile_weighted_samplers_to_map).run_if(server_or_singleplayer),
+            (init_tile_weighted_samplers, add_tile_weighted_samplers_to_map)
+            .chain().run_if(server_or_singleplayer),
         ).in_set(TilingSystems))
 
         .add_plugins((
+            MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
             RonAssetPlugin::<ShaderRepeatTexSeri>::new(&["rep1shader.ron"]),
             RonAssetPlugin::<TileSeri>::new(&["tile.ron"]),
             RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
@@ -56,7 +62,8 @@ pub fn plugin(app: &mut App) {
         .register_type::<TileShaderEntityMap>()
         .register_type::<TileShader>()
         .register_type::<TileShaderRef>()
-        .register_type::<RepeatingTexture>()
+        .register_type::<MonoRepeatTextureOverlayMat>()
+        .register_type::<TwoOverlaysExample>()
 
     ;
 }

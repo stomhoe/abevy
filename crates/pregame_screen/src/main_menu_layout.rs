@@ -18,7 +18,7 @@ pub fn layout(mut commands: Commands){
             ..default()
         },
         StateScoped(PreGameState::MainMenu),
-        StateScoped(AppState::NoGameSession),
+        StateScoped(AppState::NoSession),
 
         children![
             main_menu_button(MainMenuButton::QuickStart, "Quick start", None),

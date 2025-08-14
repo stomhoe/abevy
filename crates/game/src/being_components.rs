@@ -1,10 +1,11 @@
 use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
+use dimension::dimension_components::DimensionStrIdRef;
+
 use game_common::game_common_components::{BeingAltitude, FacingDirection, MyZ};
 use modifier::modifier_components::AppliedModifiers;
 use serde::{Deserialize, Serialize};
-use common::common_components::EntityPrefix;
-use sprite::sprite_components::SpriteCfgsBuiltSoFar;
+use common::common_components::*;
 use sprite_animation::sprite_animation_components::MoveAnimActive;
 use tilemap::chunking_components::ActivatingChunks;
 use superstate::{SuperstateInfo};
@@ -16,7 +17,8 @@ use crate::{body_components::BodyPartOf, movement_components::{ InputMoveVector,
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[require(InputMoveVector, MyZ(Being::MINZ_I32), Replicated, MoveAnimActive,
 BeingAltitude, Visibility, FacingDirection, AppliedModifiers, 
-EntityPrefix::new("BEING"), SpriteCfgsBuiltSoFar)]
+EntityPrefix::new("BEING"), DimensionStrIdRef::overworld(),
+)]
 pub struct Being;
 impl Being {
 

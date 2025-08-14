@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
+dimension = { path = "../dimension" }
 
 bevy = { workspace = true }
 serde = { workspace = true }
@@ -27,6 +28,9 @@ rand_pcg = { workspace = true }
 indexmap = { workspace = true }
 delegate = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }
+bevy-inspector-egui = { workspace = true }
+
+noiz = { workspace = true }
 
 fastnoise-lite = { workspace = true }
 

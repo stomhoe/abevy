@@ -4,13 +4,13 @@
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities)]
-pub enum AppState {#[default]NoGameSession, StatefulGameSession, }
+pub enum AppState {NoSession, #[default]StatefulGameSession, }
 
 
 
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[source(AppState = AppState::NoGameSession)]
+#[source(AppState = AppState::NoSession)]
 #[states(scoped_entities)]
 pub enum PreGameState {
     #[default]
@@ -57,5 +57,3 @@ pub enum LoadedAssetsSession {#[default]KeepAlive, DespawnAll,}
 #[states(scoped_entities,)]
 pub enum TerrainGenHotLoading {#[default]KeepAlive, DespawnAll,}
 
-
-// ---------------------------> NO OLVIDARSE DE INICIALIZARLO EN EL Plugin DEL MÓDULO <-----------------------
