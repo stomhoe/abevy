@@ -130,7 +130,11 @@ impl AsRef<str> for StrId {fn as_ref(&self) -> &str {&self.0.as_str() }}
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect, )]
 pub struct HashId(u64);
-impl HashId {}
+impl HashId {
+    pub fn new(id: u64) -> Self {
+        HashId(id)
+    }
+}
 impl<S: AsRef<str>> From<S> for HashId {
     fn from(id: S) -> Self {
         let s = id.as_ref();

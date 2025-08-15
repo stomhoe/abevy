@@ -1,7 +1,6 @@
 #[allow(unused_imports)] use bevy::platform::collections::HashMap;
 use bevy::{ecs::entity::MapEntities, prelude::*};
 use common::common_types::HashIdToEntityMap;
-use std::mem::take;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use crate::{
     dimension_components::*,

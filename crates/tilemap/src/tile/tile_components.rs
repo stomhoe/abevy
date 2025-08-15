@@ -26,7 +26,7 @@ impl Tile {
 pub struct TilemapChild;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
-pub struct TileRef(pub Entity);
+pub struct TileRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct TileposHashRand(pub f32);
@@ -50,6 +50,10 @@ pub enum TileShader{
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
 pub struct GlobalTilePos(pub IVec2);
+
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
+pub struct InitialPos(pub GlobalTilePos);
+
 
 impl GlobalTilePos {
     pub fn new(x: i32, y: i32) -> Self {GlobalTilePos(IVec2::new(x, y))}

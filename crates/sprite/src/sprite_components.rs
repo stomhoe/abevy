@@ -253,7 +253,7 @@ impl Categories {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct Exclusive;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct BecomeChildOfSpriteWithCategory (pub Category);
 impl BecomeChildOfSpriteWithCategory {
     pub fn new<S: Into<String>>(id: S) -> Self {
@@ -266,7 +266,7 @@ impl BecomeChildOfSpriteWithCategory {
 
 
 // NO USAR ESTOS DOS PARA BEINGS
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
 #[require(Replicated)]
 pub struct SpriteConfigStrIds(Vec<StrId>);
 impl SpriteConfigStrIds {
@@ -277,5 +277,9 @@ impl SpriteConfigStrIds {
     pub fn ids(&self) -> &Vec<StrId> { &self.0 }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone )]
+#[derive(Component, Debug, Deserialize, Serialize, Clone )]
 pub struct SpriteCfgsToBuild(#[entities] pub HashSet<Entity>);
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy )]
+pub struct BecomeChildOf(#[entities] pub Entity);

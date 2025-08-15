@@ -10,6 +10,7 @@ multiplayer_shared = { path = "../multiplayer_shared" }
 tilemap = { path = "../tilemap" }
 sprite = { path = "../sprite" }
 sprite_animation = { path = "../sprite_animation" }
+dimension = { path = "../dimension" }
 
 
 bevy = { workspace = true }

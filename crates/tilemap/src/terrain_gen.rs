@@ -60,10 +60,12 @@ pub fn plugin(app: &mut App) {
         .register_type::<OpListEntityMap>()
         .register_type::<OplistSize>()
         .register_type::<PendingOperations>()
-        .replicate::<ProducedTiles>()
+        .register_type::<ChunkRef>()
+
         
         .replicate::<OplistSize>()
         .replicate::<FnlNoise>()
+        //.replicate::<ProducedTiles>()
         .replicate_with((
             RuleFns::<ProducedTiles>::default(),
             (RuleFns::<OperationList>::default(), SendRate::Once),

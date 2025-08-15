@@ -142,8 +142,8 @@ pub fn produce_tiles(mut cmd: Commands,
 
         pending_ops_count.0 -= 1;
         
-        if pending_ops_count.0 <= 0 {
-            cmd.entity(chunk_ref.0).remove::<PendingOperations>().insert(TilesReady);
+        if pending_ops_count.0 <= 0  {
+            cmd.entity(chunk_ref.0).try_remove::<PendingOperations>().try_insert(TilesReady);
         }
     }
     Ok(())

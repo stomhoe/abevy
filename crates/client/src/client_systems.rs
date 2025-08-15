@@ -6,6 +6,7 @@ use std::net::Ipv4Addr;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::*}, renet::RenetClient};
 use common::{common_resources::PlayerData, common_states::*};
+use dimension::dimension_resources::DimensionEntityMap;
 use game::{being_components::{ControlledBy, ControlledLocally, HumanControlled}, movement_components::InputMoveVector, player::{OfSelf, Player}};
 use multiplayer_shared::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, };
 use sprite::sprite_resources::SpriteCfgEntityMap;
@@ -249,6 +250,7 @@ pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE D
 pub fn client_init_resources(mut cmd: Commands, ) {
     cmd.init_resource::<TerrGenEntityMap>();
     cmd.init_resource::<OpListEntityMap>();
+    cmd.init_resource::<DimensionEntityMap>();
 }
 
 // HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE

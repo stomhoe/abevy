@@ -1,6 +1,6 @@
 use std::mem::take;
 
-use bevy::{ecs::entity_disabling::Disabled, platform::collections::HashSet};
+use bevy::{ecs::entity_disabling::Disabled, platform::collections::HashSet, render::{sync_world::SyncToRenderWorld, view::VisibilityClass}};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::{DisplayName, EntityPrefix, ImageHolder, StrId};
@@ -187,13 +187,13 @@ pub fn replace_string_ids_by_entities(
 //LO HACEN TODOS
 #[allow(unused_parens)]
 pub fn insert_sprite_to_instance(mut cmd: Commands, 
-    instance_query: Query<(Entity, &SpriteConfigRef, ),(Changed<SpriteHolderRef>, Without<SpriteConfig>, )>,
+    instance_query: Query<(Entity, &SpriteConfigRef, /*&BecomeChildOf*/),( Changed<SpriteHolderRef>, Without<SpriteConfig>, )>,
     spritecfgs_query: Query<(&Sprite, &Visibility), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
     
 ) {
-    for (ent, sprite_config_ref, ) in instance_query.iter() {
+    for (ent, sprite_config_ref, /*become_child_of*/) in instance_query.iter() {
         if let Ok((sprite, visibility)) = spritecfgs_query.get(sprite_config_ref.0) {
-            cmd.entity(ent).insert_if_new(Sprite::default()).insert((sprite.clone(), visibility.clone(), ));
+            cmd.entity(ent).insert((SyncToRenderWorld, sprite.clone(), visibility.clone(), /*ChildOf(become_child_of.0)*/));
         } else {
             warn!(target: "sprite_building", "SpriteConfigRef {:?} does not have a Sprite component", sprite_config_ref.0);
         }
@@ -219,7 +219,9 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
                 let child_sprite = cmd.spawn((
                     str_id.clone(),
                     SpriteConfigRef(spritecfg_ent),
+                    Transform::default(),
                     ChildOf(father_to_sprite),
+                    Visibility::Inherited,
                 )).id();
 
                 if let Some(spriteholder_ref) = spriteholder_ref {

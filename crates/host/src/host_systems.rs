@@ -20,7 +20,9 @@ pub fn attempt_host(
     channels: Res<RepliconChannels>,
     
 ) -> Result {
-    host_server(&mut commands, channels, None, 3)
+    host_server(&mut commands, channels, None, 3)?;
+    commands.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
+    Ok(())
 }
 
 

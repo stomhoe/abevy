@@ -52,52 +52,31 @@ pub fn plugin(app: &mut App) {
     .init_resource::<TargetJoinServer>()
 
     .add_server_trigger::<HostStartedGame>(Channel::Unordered)
-    
-
-    
     .add_mapped_server_trigger::<MoveStateUpdated>(Channel::Unordered)
     
-
-
     .add_client_trigger::<SendUsername>(Channel::Ordered)
 
-    
-    
     .replicate::<PlayerDirectControllable>()
-    
-
-    
     .replicate::<Player>()
     .replicate::<HostPlayer>()
     .replicate::<CharacterCreatedBy>()
     .replicate::<HumanControlled>()
-
-
     .replicate::<Faction>()
     .replicate::<BelongsToFaction>()
     
     .replicate_with((
         RuleFns::<Being>::default(),
+        RuleFns::<ChildOf>::default(),
         (RuleFns::<Transform>::default(), SendRate::Periodic((64*3))),
+        (RuleFns::<GlobalTransform>::default(), SendRate::Once),
     ))
-    
     .replicate::<FacingDirection>()
     .replicate::<Directionable>()
-    
     .replicate::<BeingAltitude>()
     .replicate::<Being>()
     .replicate::<ControlledBy>()
-
-
     .replicate::<HashPosEntiWeightedSampler>()
-    
-
-
     .replicate_once::<ActivatingChunks>()
-  
-    
-
-
 
     ;
 }

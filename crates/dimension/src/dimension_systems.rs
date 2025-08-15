@@ -7,7 +7,6 @@ use crate::{
     dimension_resources::*,
 /*
     dimension_events::*,
-    dimension_layout::*,
 */
 };
 
@@ -17,7 +16,8 @@ use crate::{
 pub fn dim_replace_string_ref_by_entity_ref(
     mut cmd: Commands, 
     dimension_entity_map: Res<DimensionEntityMap>,
-    mut dimension_strid_query: Query<(Entity, &DimensionStrIdRef, Has<ChildOf>),(Changed<DimensionStrIdRef>,)>,
+    dimension_query: Query<&Dimension>,
+    mut dimension_strid_query: Query<(Entity, &DimensionStrIdRef, Option<&ChildOf>),>,
 ) {
     for (thing_ent, dimension_strid, child_of) in dimension_strid_query.iter_mut() {
 
@@ -26,14 +26,15 @@ pub fn dim_replace_string_ref_by_entity_ref(
                 .insert(DimensionRef(dimension_entity))
                 .remove::<DimensionStrIdRef>();
 
-            if child_of {
-                warn!(target: "dimension_loading", "{} with added DimensionStrIdRef '{}' shouldn't have ChildOf component, the parent should be the one with the DimensionStrIdRef", thing_ent, dimension_strid.0);
+            if let Some(child_of) = child_of {
+                if dimension_query.get(child_of.parent()).is_err() {
+                    warn!(target: "dimension_loading", "{} with added DimensionStrIdRef '{}' shouldn't have ChildOf component, the parent should be the one with the DimensionStrIdRef", thing_ent, dimension_strid.0);
+                }
             }
             cmd.entity(thing_ent).insert(ChildOf(dimension_entity));
-
         }
         else {
-            warn!(target: "dimension_loading", "DimensionStrIdRef '{}' does not have a corresponding DimensionRef in the map.", dimension_strid.0);
+            warn!(target: "dimension_loading", "DimensionStrIdRef '{}' does not have a corresponding Dimension entity in the map.", dimension_strid.0);
         }
     }
 }

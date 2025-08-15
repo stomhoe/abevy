@@ -22,7 +22,7 @@ concat!(
     "sprite_building=trace,",
     "asset_loading=warn,",
     "tiling_loading=warn,",
-    "dimension_loading=warn"
+    "dimension_loading=debug"
 );
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
