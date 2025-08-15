@@ -12,9 +12,9 @@ use tracing::Level;
 
 pub const FILTER: &str = 
 concat!(
-    "error,",
-    "terrgen=debug,",
-    "tilemap=debug,",
+    "info,",
+    "terrgen=warn,",
+    "tilemap=warn,",
     "zlevel=warn,",
     "movement=warn,",
     "sprite_animation=warn,",
@@ -24,6 +24,7 @@ concat!(
     "tiling_loading=warn,",
     "dimension_loading=warn"
 );
+//Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
 fn main() {
     GLOBAL_ERROR_HANDLER.set(warn).expect("Error handler can only be set once, globally.");

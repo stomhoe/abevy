@@ -266,6 +266,7 @@ pub fn init_oplists_from_assets(
 
                         oplist.trunk.push((operand, op));    
                     }
+                    "" => { continue;}
                     _ => {
                         warn!(target: "oplist_loading", "Unknown operation: {}", operation);
                         continue;

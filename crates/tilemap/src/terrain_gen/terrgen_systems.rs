@@ -1,7 +1,7 @@
 
 
 
-use bevy::prelude::*;
+use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_ecs_tilemap::tiles::TilePos;
 use debug_unwraps::DebugUnwrapExt;
 use dimension::dimension_components::{DimensionRef, MultipleDimensionRefs};
@@ -18,7 +18,7 @@ use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen
 #[allow(unused_parens)]
 pub fn spawn_terrain_operations (
     mut commands: Commands, 
-    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (With<UninitializedChunk>, Without<PendingOperations>, )>, 
+    chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (With<UninitializedChunk>, Without<PendingOperations>, )>, 
     oplists: Query<(Entity, &MultipleDimensionRefs, &OplistSize), (With<OperationList>, )>,
 ) -> Result {
     for (chunk_ent, chunk_pos, dim_ref) in chunks_query.iter() {
@@ -74,14 +74,15 @@ pub fn produce_tiles(mut cmd: Commands,
     oplist_query: Query<(&OperationList, &ProducedTiles, &OplistSize ), ( )>,
     mut instantiated_oplist_query: Query<(Entity, &InputOperand, &OplistRef, &ChunkRef, &GlobalTilePos), ()>, 
     operands: Query<(Option<&FnlNoise>, ), ( )>,
-    mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos), (Without<OperationList> )>,
+    mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, &ChildOf), (Without<OperationList> )>,
     weight_maps: Query<(&HashPosEntiWeightedSampler, ), ( )>,
+    tile_query: Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
 ) -> Result {
 
 
     for (enti, &input_operand, &oplist_ref, &chunk_ref, &global_tile_pos) in instantiated_oplist_query.iter_mut() {
 
-        let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos)) = chunk_query.get_mut(chunk_ref.0)
+        let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos, child_of)) = chunk_query.get_mut(chunk_ref.0)
         else { continue };
 
         let mut acc_val: f32 = input_operand.0;
@@ -126,7 +127,8 @@ pub fn produce_tiles(mut cmd: Commands,
                 Operation::Mean => {acc_val = acc_val.lerp(num_operand, 0.5);},
             }
         }
-        chunk_tiles.insert_clonespawned_with_pos(&oplist_tiles, &mut cmd, global_tile_pos, pos_within_chunk, &weight_maps, &gen_settings, my_oplist_size);
+        chunk_tiles.insert_clonespawned_with_pos(&oplist_tiles, &mut cmd, global_tile_pos, pos_within_chunk, &weight_maps, &tile_query, &gen_settings,
+            my_oplist_size, DimensionRef(child_of.parent()));
 
         if acc_val > oplist.threshold {
             if let Some(bifover_ent) = oplist.bifurcation_over {
@@ -140,7 +142,7 @@ pub fn produce_tiles(mut cmd: Commands,
 
         pending_ops_count.0 -= 1;
         
-        if pending_ops_count.0 <= 0 /*PROVISORIO, BORRAR SI NO HACE FALTA ->*/&& oplist.bifurcation_over.is_none() && oplist.bifurcation_under.is_none() {
+        if pending_ops_count.0 <= 0 {
             cmd.entity(chunk_ref.0).remove::<PendingOperations>().insert(TilesReady);
         }
     }

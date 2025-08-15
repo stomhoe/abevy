@@ -21,9 +21,10 @@ pub fn plugin(app: &mut App) {
         ))
         .add_systems(Update, (
             add_dimensions_to_map.run_if(not(server_or_singleplayer)),
-            (replace_multiple_string_refs_by_entity_refs, replace_string_ref_by_entity_ref).run_if(server_or_singleplayer),
-            
-        ))
+            (replace_multiple_string_refs_by_entity_refs, dim_replace_string_ref_by_entity_ref).run_if(server_or_singleplayer),
+
+        ).in_set(GameplaySystems).in_set(DimensionSystems))
+
         .replicate::<Dimension>()
         .replicate::<DimensionRef>()
         .replicate::<MultipleDimensionRefs>()

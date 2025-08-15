@@ -1894,7 +1894,9 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "common",
+ "dimension",
  "game_common",
+ "sprite",
 ]
 
 [[package]]
@@ -5260,6 +5262,7 @@ dependencies = [
  "common",
  "debug_unwraps",
  "delegate",
+ "dimension",
  "game_common",
  "serde",
  "sprite_animation_shared",

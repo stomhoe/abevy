@@ -1,5 +1,8 @@
 
 use bevy::{input::mouse::MouseWheel, prelude::*};
+use dimension::dimension_components::{Dimension, DimensionRef};
+use game_common::game_common_components::VisibilityGameState;
+use sprite::sprite_components::SpriteHolderRef;
 
 use crate::camera_components::*;
 
@@ -43,6 +46,21 @@ pub fn camera_zoom_system(
             let new_scale = (transform.scale.x - zoom_delta * zoom_speed)
                 .clamp(min_zoom, max_zoom);
             transform.scale = Vec3::splat(new_scale);
+        }
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn hide_nonvisualized_dimension(
+    camera_curr_dimension: Single<(&DimensionRef), (With<CameraTarget>,)>,
+    mut dimensions: Query<(Entity, &mut Visibility, ), (With<Dimension>)>,
+) {
+    for (dimension_ent, mut visibility, ) in dimensions.iter_mut() {
+        if camera_curr_dimension.0 != dimension_ent {
+            *visibility = Visibility::Hidden;
+        }
+        else {
+            *visibility = Visibility::Visible;
         }
     }
 }

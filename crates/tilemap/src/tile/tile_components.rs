@@ -22,6 +22,12 @@ impl Tile {
     pub const PIXELS: UVec2 = UVec2 { x: 64, y: 64 };
 }
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+pub struct TilemapChild;
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+pub struct TileRef(pub Entity);
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct TileposHashRand(pub f32);
 
@@ -47,7 +53,7 @@ pub struct GlobalTilePos(pub IVec2);
 
 impl GlobalTilePos {
     pub fn new(x: i32, y: i32) -> Self {GlobalTilePos(IVec2::new(x, y))}
-    
+
     pub fn get_pos_within_chunk(self, chunk_pos: ChunkPos, oplist_size: OplistSize) -> TilePos {
         let pos_within_chunk = (self.0 - chunk_pos.to_tilepos().0) / oplist_size.inner().as_ivec2();
         TilePos::from(pos_within_chunk.as_uvec2())
@@ -89,6 +95,11 @@ impl std::fmt::Debug for GlobalTilePos {
 impl From<Vec2> for GlobalTilePos {
     fn from(pixelpos: Vec2) -> Self {
         GlobalTilePos(pixelpos.div_euclid(Tile::PIXELS.as_vec2()).as_ivec2())
+    }
+}
+impl Into<Vec2> for GlobalTilePos {
+    fn into(self) -> Vec2 {
+        self.0.as_vec2() * Tile::PIXELS.as_vec2()
     }
 }
 impl From<IVec2> for GlobalTilePos {

@@ -24,6 +24,7 @@ pub struct ModifierSystems;
 
 
 
+
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
 
@@ -81,5 +82,6 @@ pub fn plugin(app: &mut App) {
     .register_type::<BeingAltitude>()
     .register_type::<FacingDirection>()
 
+    .replicate::<VisibilityGameState>()
     ;
 }

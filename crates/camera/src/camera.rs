@@ -12,7 +12,7 @@ pub fn plugin(app: &mut App) {
         ))
         .add_systems(Startup, spawn_camera)
         .add_systems(Update, (
-            enforce_single_camera_target, camera_follow_target, camera_zoom_system
+            enforce_single_camera_target, camera_follow_target, camera_zoom_system, hide_nonvisualized_dimension,
         ).in_set(GameplaySystems))
         ;
 }

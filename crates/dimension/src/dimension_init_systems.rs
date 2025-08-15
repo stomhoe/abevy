@@ -34,8 +34,10 @@ pub fn init_dimensions(
         info!(target: "dimension_loading", "Spawning dimension '{}' with id '{}' ", seri.name, str_id);
         cmd.spawn((
             str_id,
+            Transform::default(),
             DisplayName::new(seri.name),
             Dimension,
+            Visibility::Visible,
         ));
     }
     Ok(())

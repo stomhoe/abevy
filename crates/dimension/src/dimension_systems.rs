@@ -14,15 +14,23 @@ use crate::{
 
 
 #[allow(unused_parens)]
-pub fn replace_string_ref_by_entity_ref(
+pub fn dim_replace_string_ref_by_entity_ref(
     mut cmd: Commands, 
     dimension_entity_map: Res<DimensionEntityMap>,
-    mut dimension_strid_query: Query<(Entity, &DimensionStrIdRef,),(Changed<DimensionStrIdRef>,)>,
+    mut dimension_strid_query: Query<(Entity, &DimensionStrIdRef, Has<ChildOf>),(Changed<DimensionStrIdRef>,)>,
 ) {
-    for (ent, dimension_strid) in dimension_strid_query.iter_mut() {
-        cmd.entity(ent).remove::<DimensionStrIdRef>();
-        if let Ok(entity) = dimension_entity_map.0.get(&dimension_strid.0) {
-            cmd.entity(ent).insert(DimensionRef(entity));
+    for (thing_ent, dimension_strid, child_of) in dimension_strid_query.iter_mut() {
+
+        if let Ok(dimension_entity) = dimension_entity_map.0.get(&dimension_strid.0) {
+            cmd.entity(thing_ent)
+                .insert(DimensionRef(dimension_entity))
+                .remove::<DimensionStrIdRef>();
+
+            if child_of {
+                warn!(target: "dimension_loading", "{} with added DimensionStrIdRef '{}' shouldn't have ChildOf component, the parent should be the one with the DimensionStrIdRef", thing_ent, dimension_strid.0);
+            }
+            cmd.entity(thing_ent).insert(ChildOf(dimension_entity));
+
         }
         else {
             warn!(target: "dimension_loading", "DimensionStrIdRef '{}' does not have a corresponding DimensionRef in the map.", dimension_strid.0);

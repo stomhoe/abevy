@@ -47,15 +47,17 @@ pub fn plugin(app: &mut App) {
             RonAssetPlugin::<TileSeri>::new(&["tile.ron"]),
             RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
         ))
-        .register_type::<GlobalTilePos>()
+        
         
         .add_server_trigger::<TilingEntityMap>(Channel::Unordered)
         .make_trigger_independent::<TilingEntityMap>()
-
+        
         .register_type::<ShaderRepeatTexSerisHandles>()
         .register_type::<ShaderRepeatTexSeri>()
         .register_type::<TileSerisHandles>()
         .register_type::<TileSeri>()
+        .register_type::<GlobalTilePos>()
+        .register_type::<TileRef>()
         .register_type::<TileWeightedSamplerSerisHandles>()
         .register_type::<TileWeightedSamplerSeri>()
         .register_type::<TilingEntityMap>()

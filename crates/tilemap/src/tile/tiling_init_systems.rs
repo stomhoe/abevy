@@ -92,6 +92,12 @@ pub fn init_tiles(
             let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
             let color = Color::srgba_u8(r, g, b, a);
 
+             if ! seri.name.is_empty() {
+                cmd.entity(enti).insert(DisplayName(seri.name.clone()));
+            }
+            if seri.tmapchild {
+                cmd.entity(enti).insert(TilemapChild);
+            }
            
 
             if seri.img_paths.is_empty() {
@@ -154,9 +160,7 @@ pub fn init_tiles(
                 }
             }
 
-            if ! seri.name.is_empty() {
-                cmd.entity(enti).insert(DisplayName(seri.name.clone()));
-            }
+           
         }
     }
     result

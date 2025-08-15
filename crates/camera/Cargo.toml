@@ -6,5 +6,7 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
+dimension = { path = "../dimension" }
+sprite = { path = "../sprite" }
 
 bevy = { workspace = true }

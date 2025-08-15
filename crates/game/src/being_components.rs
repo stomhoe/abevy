@@ -16,7 +16,7 @@ use crate::{body_components::BodyPartOf, movement_components::{ InputMoveVector,
 
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[require(InputMoveVector, MyZ(Being::MINZ_I32), Replicated, MoveAnimActive,
-BeingAltitude, Visibility, FacingDirection, AppliedModifiers, 
+BeingAltitude, Visibility, FacingDirection, AppliedModifiers, Transform,
 EntityPrefix::new("BEING"), DimensionStrIdRef::overworld(),
 )]
 pub struct Being;

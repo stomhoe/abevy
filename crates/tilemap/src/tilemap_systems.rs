@@ -31,7 +31,7 @@ type Map = HashMap<MapKey, MapStruct>;
 pub fn produce_tilemaps(
     mut cmd: Commands, 
     mut chunk_query: Query<(Entity, &mut ProducedTiles,), (Without<Children>, Added<TilesReady>, Without<LayersReady>)>,
-    mut tile_comps: Query<(Entity, &StrId, &TilePos, &OplistSize, Option<&TileIdsHandles>, Option<&MyZ>, Option<&TileShaderRef>, Option<&mut Transform>),(With<Disabled>)>,
+    mut tile_comps: Query<(Entity, &StrId, &TilePos, &OplistSize, Option<&TileIdsHandles>, Option<&MyZ>, Option<&TileShaderRef>, Option<&mut Transform>, ),(With<Disabled>, With<TilemapChild>, )>,
     image_size_map: Res<ImageSizeMap>,
 ) -> Result {
     let mut layers: Map = HashMap::with_capacity(10);
@@ -40,20 +40,23 @@ pub fn produce_tilemaps(
     for (chunk_ent, mut produced_tiles) in chunk_query.iter_mut() {
         for &tile_ent in produced_tiles.produced_tiles().iter() {
 
-            let (tile_ent, tile_str_id, &tile_pos, &oplist_size, tile_handles, tile_z_index, shader_ref, transf) = tile_comps.get_mut(tile_ent)?;
+            let (tile_ent, tile_str_id, &tile_pos, &oplist_size, tile_handles, tile_z_index, shader_ref, transf, ) = tile_comps.get_mut(tile_ent)?;
             trace!(target: "tilemap", "Producing tile {:?} at pos {:?} in chunk {:?}", tile_str_id, tile_pos, chunk_ent);
 
             let tile_ent = cmd.entity(tile_ent)
-                .remove::<Disabled>()
+                .remove::<TilemapChild>()
                 .insert_if_new(TileBundle::default())
+                .remove::<Disabled>()
                 .id();
 
             let tile_z_index = tile_z_index.cloned().unwrap_or_default();
 
             
             if let Some(mut transform) = transf {//TODO USAR EL IMAGE
+
                 let displacement: Vec2 = Vec2::from(tile_pos) * oplist_size.inner().as_vec2() * Tile::PIXELS.as_vec2();
                 transform.translation += displacement.extend(0.0);
+            
             }
 
             let (handles, tile_size) = match tile_handles {
@@ -94,17 +97,14 @@ pub fn produce_tilemaps(
             
             } else {
                 let tmap_ent = cmd.spawn((
-                    Tilemap, ChildOf(chunk_ent),
-                    TilemapTileSize::from(tile_size.as_vec2()) ,
-                    TilemapGridSize::from(Tile::PIXELS.as_vec2()*oplist_size.inner().as_vec2()),
-                    TilemapSize::from(ChunkInitState::SIZE/oplist_size.inner()),
-                    TilemapRenderSettings {render_chunk_size: ChunkInitState::SIZE*2/oplist_size.inner(), y_sort: false},
+                    ChildOf(chunk_ent),
+                    TilemapConfig::new(oplist_size, tile_size),
                 ))
                 .id();
             
                 cmd.entity(tile_ent).insert((ChildOf(tmap_ent), TilemapId(tmap_ent)));
 
-                let mut storage = TileStorage::empty((ChunkInitState::SIZE/oplist_size.inner()).into());
+                let mut storage = TilemapConfig::new_storage(oplist_size);
                 storage.set(&tile_pos, tile_ent);
                 layers.insert(map_key, MapStruct {
                     tmap_ent,
@@ -176,7 +176,7 @@ pub fn fill_tilemaps_data(
 
         commands.entity(chunk).insert(InitializedChunk);
         
-        info!(target: "tilemap", "Filled tilemaps data in {:?}", _now.elapsed());
+        trace!(target: "tilemap", "Filled tilemaps data in {:?}", _now.elapsed());
     }
 }
 

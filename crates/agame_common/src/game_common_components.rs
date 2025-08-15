@@ -47,11 +47,15 @@ pub struct PhysicallyImmune();
 #[derive(Component, Debug,)]
 pub struct MagicallyInvulnerable();
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+pub enum VisibilityGameState {
+    #[default]
+    Inherited,
+    Visible,
+    Hidden,
+}
 
-
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 pub struct ClonedSpawned(pub Vec<Entity>);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]

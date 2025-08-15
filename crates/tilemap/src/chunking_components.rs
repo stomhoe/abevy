@@ -1,10 +1,12 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
+use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
+use dimension::dimension_components::DimensionRef;
 use superstate::{SuperstateInfo};
 use serde::{Deserialize, Serialize};
-use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
 
-use crate::{terrain_gen::{terrgen_components::OplistSize, terrgen_resources::GlobalGenSettings}, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, Tile},};
+use crate::{terrain_gen::{terrgen_components::OplistSize, terrgen_resources::GlobalGenSettings}, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, Tile, TileRef, TilemapChild},};
 
 
 use common::{common_components::*, };
@@ -57,8 +59,10 @@ impl ProducedTiles {
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
+        tilemap_child: &Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>)>,//NO MUTAR
         gen_settings: &GlobalGenSettings,
         oplist_size: OplistSize,
+        dimension_ref: DimensionRef,
         depth: u32
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
@@ -70,11 +74,32 @@ impl ProducedTiles {
                     return;
                 }
 
-                self.insert_tile_recursive( tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings, oplist_size, depth + 1);
+                self.insert_tile_recursive( tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, 
+                    tilemap_child, gen_settings, oplist_size, dimension_ref, depth + 1);
             }
         } else {
-            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().insert((global_pos, pos_within_chunk, oplist_size)).id();
-            self.0.push(tile_ent);
+            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().insert(
+                (oplist_size, TileRef(tiling_ent), dimension_ref, global_pos)).id();
+            unsafe {
+                let (tilemap_child, transform) = tilemap_child.get(tiling_ent).debug_expect_unchecked("asdasda");
+    
+                if tilemap_child {
+                    trace!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
+                    cmd.entity(tile_ent).insert((oplist_size, global_pos, pos_within_chunk));
+                    self.0.push(tile_ent);
+                } else {
+                    trace!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}, but it is not a TilemapChild", tiling_ent, global_pos, pos_within_chunk);
+                    cmd.entity(tile_ent).insert(ChildOf(dimension_ref.0)).remove::<Tile>().remove::<Disabled>();
+                    let displacement: Vec2 = global_pos.into();
+                    let displacement: Vec3 = displacement.extend(0.0);
+                    //info displacement PRINT DISPLACEMENT
+                    info!(target: "tilemap", "Displacement for tile {:?} is {:?}", tile_ent, displacement);
+                    if let Some(transform) = transform {
+                        cmd.entity(tile_ent).insert(Transform::from_translation( transform.translation + displacement));
+                    } 
+                }
+    
+            }
         }
     }
 
@@ -85,11 +110,13 @@ impl ProducedTiles {
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
+        tilemap_child: &Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>)>,
         gen_settings: &GlobalGenSettings,
         oplist_size: OplistSize,
+        dimension_ref: DimensionRef,
     ) {
         for tile in to_insert.0.iter().cloned() {
-            self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, gen_settings, oplist_size, 0);
+            self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, tilemap_child, gen_settings, oplist_size, dimension_ref, 0);
         }
     }
 }
