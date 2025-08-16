@@ -1,7 +1,9 @@
+use being::being_components::CreatedCharacters;
 use common::{common_components::{ StrId}, common_states::AssetsLoadingState};
+use faction::faction_components::*;
+use player::player_components::*;
 use tilemap::chunking_components::ActivatingChunks;
 
-use crate::{being_components::TargetSpawnPos, faction_components::*, player::*};
 use bevy::prelude::*;
 
 
@@ -24,14 +26,14 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 #[allow(unused_parens, )]
 pub fn spawn_player_beings(
     mut commands: Commands,
-    players: Query<(Entity, &CreatedCharacters, &BelongsToFaction, Option<&OfSelf>), (With<Player>)>,
+    players: Query<(Entity, &CreatedCharacters, Option<&OfSelf>), (With<Player>)>,
 ) {
-    for (player_ent, created_characters, belongs_to_fac, self_player) in players.iter() {
+    for (player_ent, created_characters, self_player) in players.iter() {
         println!("Spawning player being: {:?}", created_characters);
 
         for created_character in created_characters.entities() {
             commands.entity(*created_character).insert((
-                TargetSpawnPos::new(0.0, 0.0),
+                //TargetSpawnPos::new(0.0, 0.0),
                 ActivatingChunks::default(),
             ));
             //HACER Q OTRO SYSTEMA AGREGUE CAMERATARGET AL BEING CONTROLADO

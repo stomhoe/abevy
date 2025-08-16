@@ -1,5 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_replicon::prelude::Replicated;
+use bevy_replicon_renet::renet::RenetServer;
 use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
 use dimension::dimension_components::DimensionRef;
 use superstate::{SuperstateInfo};
@@ -64,7 +66,7 @@ impl ProducedTiles {
         gen_settings: &GlobalGenSettings,
         oplist_size: OplistSize,
         dimension_ref: DimensionRef,
-        
+        is_server: bool,
         depth: u32
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
@@ -77,10 +79,10 @@ impl ProducedTiles {
                 }
 
                 self.insert_tile_recursive( tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, 
-                    tilemap_child, gen_settings, oplist_size, dimension_ref, depth + 1);
+                    tilemap_child, gen_settings, oplist_size, dimension_ref, is_server, depth + 1);
             }
         } else {
-            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().insert(
+            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().try_insert(
                 (TileRef(tiling_ent), dimension_ref, InitialPos(global_pos)))
                 .remove::<DisplayName>()
                 .id();
@@ -89,17 +91,18 @@ impl ProducedTiles {
 
             if tilemap_child {
                 trace!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
-                cmd.entity(tile_ent).insert((oplist_size, pos_within_chunk, global_pos));
+                cmd.entity(tile_ent).try_insert((oplist_size, pos_within_chunk, global_pos));
                 self.0.push(tile_ent);
-            } else {
+            } 
+            else if is_server {
                 trace!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}, but it is not a TilemapChild", tiling_ent, global_pos, pos_within_chunk);
-                cmd.entity(tile_ent).insert((ChildOf(dimension_ref.0), )).remove::<Tile>().remove::<Disabled>();
+                cmd.entity(tile_ent).try_insert((Replicated, ChildOf(dimension_ref.0), )).try_remove::<Tile>().try_remove::<Disabled>();
                 let displacement: Vec2 = global_pos.into();
                 let displacement: Vec3 = displacement.extend(0.0);
                 //info displacement PRINT DISPLACEMENT
                 info!(target: "tilemap", "Displacement for tile {:?} is {:?}", tile_ent, displacement);
                 if let Some(transform) = transform {
-                    cmd.entity(tile_ent).insert(Transform::from_translation( transform.translation + displacement));
+                    cmd.entity(tile_ent).try_insert(Transform::from_translation( transform.translation + displacement));
                 } 
             }
     
@@ -118,9 +121,10 @@ impl ProducedTiles {
         gen_settings: &GlobalGenSettings,
         oplist_size: OplistSize,
         dimension_ref: DimensionRef,
+        is_server: bool
     ) {
         for tile in to_insert.0.iter().cloned() {
-            self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, tilemap_child, gen_settings, oplist_size, dimension_ref, 0);
+            self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, tilemap_child, gen_settings, oplist_size, dimension_ref, is_server, 0);
         }
     }
 }

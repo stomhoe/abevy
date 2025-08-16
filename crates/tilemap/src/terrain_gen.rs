@@ -22,7 +22,7 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
             (spawn_terrain_operations, produce_tiles).in_set(TerrainGenSystems),
-            (add_noises_to_map, add_oplists_to_map, ).run_if(not(server_or_singleplayer))
+            (add_noises_to_map, add_oplists_to_map, client_change_operand_entities).run_if(not(server_or_singleplayer))
         ))
     
         .add_systems(

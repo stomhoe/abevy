@@ -8,6 +8,7 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 dimension = { path = "../dimension" }
 camera = { path = "../camera" }
+player = { path = "../player" }
 
 bevy = { workspace = true }
 serde = { workspace = true }

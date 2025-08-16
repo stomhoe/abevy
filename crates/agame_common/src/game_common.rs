@@ -79,9 +79,10 @@ pub fn plugin(app: &mut App) {
     .init_state::<SimulationState>()
     .register_type::<MyZ>()
     .register_type::<Description>()
-    .register_type::<BeingAltitude>()
     .register_type::<FacingDirection>()
 
-    .replicate::<VisibilityGameState>()
+    .replicate::<VisibilityGameState>()    
+    .replicate::<FacingDirection>()
+    .replicate::<Directionable>()
     ;
 }

@@ -38,24 +38,13 @@ pub fn plugin(app: &mut App) {
         ),
         client_on_disconnect.run_if((client_just_disconnected),),
 
-        (
-            client_change_operand_entities
-        )
-        .in_set(ClientSystems),
+        // (
+        // )
+        // .in_set(ClientSystems),
     ))
-    .add_systems(FixedUpdate,(
-     
-        (
-            send_move_input_to_server,
-        )
-        .in_set(ClientSystems),
-    ))
-    .add_observer(on_receive_transf_from_server)
+   
 
-    .add_observer(client_map_server_tiling)
     .add_observer(client_on_game_started)
-    .add_observer(client_map_server_sprite_cfgs)
-    .add_observer(client_receive_moving_anim)
 
     ;
 }

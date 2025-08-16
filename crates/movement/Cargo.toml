@@ -6,10 +6,10 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
-game = { path = "../game" }
+being_shared = { path = "../being_shared" }
+player = { path = "../player" }
 modifier = { path = "../modifier" }
-sprite_animation = { path = "../sprite_animation" }
-multiplayer_shared = { path = "../multiplayer_shared" }
+sprite_animation_shared = { path = "../sprite_animation_shared" }
 # tilemap = { path = "../tilemap" }
 
 bevy = { workspace = true }

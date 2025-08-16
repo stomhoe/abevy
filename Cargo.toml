@@ -74,6 +74,9 @@ sprite_animation = { path = "crates/sprite_animation" }
 sprite = { path = "crates/sprite" } 
 tilemap = { path = "crates/tilemap" }
 modifier = { path = "crates/modifier" }
+faction = { path = "crates/faction" }
+player = { path = "crates/player" }
+being = { path = "crates/being" }
 
 ui_shared = { path = "crates/ui_shared" }
 pregame_screen = { path = "crates/pregame_screen" }

@@ -8,6 +8,8 @@ common = { path = "../acommon" }
 sprite = { path = "../sprite" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 game_common = { path = "../agame_common" }
+being_shared = { path = "../being_shared" }
+player = { path = "../player" }
 
 bevy = { workspace = true }
 debug_unwraps = { workspace = true }

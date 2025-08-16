@@ -33,13 +33,6 @@ pub fn plugin(app: &mut App) {
             (attempt_host,).in_set(HostSystems),
         ),
     )
-    .add_systems(Update, (
-        (update_animstate_for_clients).in_set(GameplaySystems).run_if(server_running),
-    ))
-    
-
- 
-
 
     ;
 }

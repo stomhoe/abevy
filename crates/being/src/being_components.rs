@@ -1,17 +1,15 @@
 use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
-use dimension::dimension_components::DimensionStrIdRef;
 
-use game_common::game_common_components::{BeingAltitude, FacingDirection, MyZ};
+use dimension::dimension_components::*;
+use game_common::game_common_components::{FacingDirection, MyZ};
 use modifier::modifier_components::AppliedModifiers;
+use movement::movement_components::InputMoveVector;
 use serde::{Deserialize, Serialize};
 use common::common_components::*;
-use sprite_animation::sprite_animation_components::MoveAnimActive;
+use sprite_animation_shared::MoveAnimActive;
 use tilemap::chunking_components::ActivatingChunks;
 use superstate::{SuperstateInfo};
-
-use crate::{body_components::BodyPartOf, movement_components::{ InputMoveVector, }, };
-
 
 
 #[derive(Component, Debug, Deserialize, Serialize)]
@@ -37,15 +35,15 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
 pub struct InfiniteMorale;
 
+pub type BeingAltitude = being_shared::BeingAltitude;
 
 
+// #[derive(Component)]
+// #[relationship_target(relationship = BodyPartOf)]
+// pub struct BodyParts(Vec<Entity>);
+// impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
-#[derive(Component)]
-#[relationship_target(relationship = BodyPartOf)]
-pub struct BodyParts(Vec<Entity>);
-impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
-
-#[allow(dead_code)] 
+// #[allow(dead_code)] 
 #[derive(Component, Debug)]
 pub struct RaceRef(#[entities] pub Entity);
 
@@ -58,32 +56,12 @@ pub struct PlayerDirectControllable;
 /// entities: whitelisted players
 pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si es de la misma facción antes de intentar tomar control
 
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
-#[relationship(relationship_target = Controls)]
-pub struct ControlledBy  { 
-    #[relationship] #[entities]
-    pub client: Entity 
-}
-impl Default for ControlledBy {
-    fn default() -> Self {
-        Self { client: Entity::PLACEHOLDER }
-    }
-}
 
-#[derive(Component, Debug, Reflect, )]
-#[relationship_target(relationship = ControlledBy)]
-pub struct Controls(Vec<Entity>);
-impl Controls {pub fn being_ents(&self) -> &[Entity] {&self.0}}
+pub type ControlledLocally = being_shared::ControlledLocally;
+pub type HumanControlled = being_shared::HumanControlled;
 
-#[derive(Component, Debug, Default, )]
-pub struct ControlledLocally;
-
-//CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
-pub struct HumanControlled(pub bool);
-
+pub type Controls = being_shared::Controls;
+pub type DirControlledBy = being_shared::ControlledBy;
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
 #[relationship(relationship_target = Followers)]
@@ -113,6 +91,17 @@ impl TargetSpawnPos {
     }
 }
 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[relationship(relationship_target = CreatedCharacters)]
+#[require(PlayerDirectControllable, being_shared::HumanControlled(true))]
+pub struct CharacterCreatedBy {
+    #[relationship] #[entities] pub player: Entity,
+}
+
+#[derive(Component, Debug, Reflect)]
+#[relationship_target(relationship = CharacterCreatedBy)]
+pub struct CreatedCharacters(Vec<Entity>);
+impl CreatedCharacters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
 

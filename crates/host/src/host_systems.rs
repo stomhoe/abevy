@@ -1,13 +1,13 @@
 use std::{mem, };
 
-use sprite_animation_shared::sprite_animation_shared::MoveAnimActive;
+use being::being_components::{Being, CharacterCreatedBy, DirControlledBy, CreatedCharacters};
+use faction::faction_components::{BelongsToFaction, Faction};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
 use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_states::ConnectionAttempt};
-use game::{being_components::{Being, ControlledBy}, faction_components::{BelongsToFaction, Faction}, player::{CharacterCreatedBy, CreatedCharacters, OfSelf, Player}};
 use multiplayer_shared::multiplayer_events::SendUsername;
-use multiplayer_shared::multiplayer_events::MoveStateUpdated;
+use player::player_components::{OfSelf, Player};
 use sprite::{sprite_components::SpriteConfigStrIds, sprite_resources::SpriteCfgEntityMap};
 use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::TilingEntityMap}};
 
@@ -80,9 +80,9 @@ pub fn host_on_player_added(mut cmd: Commands,
 
 
             cmd.spawn((Being, username.clone(), 
-                ControlledBy { client: player_ent }, 
+                DirControlledBy { client: player_ent }, 
                 CharacterCreatedBy { player: player_ent },
-                
+
                 BelongsToFaction(host_faction.clone()),
                 Transform::default(),
                 SpriteConfigStrIds::new(["humanhe0", "humanbo0"])?,
@@ -97,30 +97,7 @@ pub fn host_on_player_added(mut cmd: Commands,
 }
 
 
-#[allow(unused_parens)]
-pub fn update_animstate_for_clients(
-    mut cmd: Commands,
-    connected: Query<&Player, Without<OfSelf>>,
-    started_query: Query<(Entity, &MoveAnimActive, Option<&StrId>), (Changed<MoveAnimActive>)>,
-    controller: Query<&ControlledBy>,
-){
-    if connected.is_empty() { return; }
 
-    for (being_ent, &MoveAnimActive(moving), id) in started_query.iter() {
-        let event_data = MoveStateUpdated {being_ent, moving};
-        if let Ok(controller) = controller.get(being_ent) {
-            cmd.server_trigger(ToClients {
-                mode: SendMode::BroadcastExcept(controller.client),
-                event: event_data,
-            });
-            info!(target: "sprite_animation", "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client);
-        }
-        else {
-            cmd.server_trigger(ToClients { mode: SendMode::Broadcast, event: event_data, });
-            info!(target: "sprite_animation", "Sending moving {} for entity {:?} to all clients", moving, being_ent);
-        }
-    }
-}
 
 
 

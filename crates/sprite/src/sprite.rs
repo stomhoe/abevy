@@ -23,7 +23,7 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<SpriteConfigSeri>::new(&["sprite.ron"]),
     ))
     .add_systems(SPRITES_SCHEDULE, (
-        (apply_offsets, apply_scales, (become_child_of_sprite_with_category .run_if(server_or_singleplayer), 
+        (apply_offsets, apply_scales, (become_child_of_sprite_with_category.run_if(server_or_singleplayer), 
             insert_sprite_to_instance,).chain()),
 
         (replace_string_ids_by_entities, add_spritechildren_and_comps, ).run_if(server_or_singleplayer)
@@ -37,7 +37,6 @@ pub fn plugin(app: &mut App) {
     .replicate_with((
         (RuleFns::<ChildOf>::default(), SendRate::EveryTick),
         (RuleFns::<Transform>::default(), SendRate::Once),
-        (RuleFns::<GlobalTransform>::default(), SendRate::Once),
         (RuleFns::<SpriteHolderRef>::default(), SendRate::EveryTick),
         (RuleFns::<SpriteConfigRef>::default(), SendRate::EveryTick),
     ))
@@ -66,6 +65,8 @@ pub fn plugin(app: &mut App) {
     .register_type::<ScaleSideways>()
     .add_server_trigger::<SpriteCfgEntityMap>(Channel::Unordered)
     .make_trigger_independent::<SpriteCfgEntityMap>()
+    .add_observer(client_map_server_sprite_cfgs)
+
    
     ;
 }

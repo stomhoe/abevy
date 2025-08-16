@@ -13,6 +13,8 @@ use tracing::Level;
 pub const FILTER: &str = 
 concat!(
     "info,",
+    "naga=error,",
+    "wgpu_hal=error,",
     "terrgen=warn,",
     "tilemap=warn,",
     "zlevel=warn,",
@@ -20,9 +22,13 @@ concat!(
     "sprite_animation=warn,",
     "sprite_loading=trace,",
     "sprite_building=trace,",
+    "sprite_systems=debug,",
     "asset_loading=warn,",
-    "tiling_loading=warn,",
-    "dimension_loading=debug"
+    "tiling_loading=debug,",
+    "dimension_loading=debug,",
+    "control=debug,",
+    "being=debug,",
+    "faction=debug,",
 );
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
@@ -56,6 +62,9 @@ fn main() {
         ))
         .add_plugins((
             game::plugin,
+            being::plugin,
+            player::plugin,
+            faction::plugin,
             dimension::plugin,
             camera::plugin,
             sprite_animation::plugin,

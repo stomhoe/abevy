@@ -9,6 +9,7 @@ ui_shared = { path = "../ui_shared" }
 multiplayer_shared = { path = "../multiplayer_shared" }
 game_common = { path = "../agame_common" }
 game = { path = "../game" }
+player = { path = "../player" }
 
 bevy = { workspace = true }
 bevy_simple_scroll_view = { workspace = true }

@@ -26,7 +26,6 @@ pub fn plugin(app: &mut App) {
 
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
-        .init_resource::<PlayerData>()
         
         .register_type::<EntityPrefix>().register_type_data::<EntityPrefix, InspectorEguiImpl>()
         

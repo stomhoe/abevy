@@ -3,6 +3,8 @@ use bevy::ecs::entity_disabling::Disabled;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+use bevy_replicon::shared::server_entity_map::ServerEntityMap;
+use bevy_replicon_renet::renet::RenetClient;
 use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
 use game_common::{game_common_components::MyZ, };
 use bevy_ecs_tilemap::tiles::TilePos;
@@ -239,10 +241,29 @@ pub fn add_tile_weighted_samplers_to_map(
                 error!(target: "tiling_loading", "{} {} already in TilingEntityMap : {}", prefix, str_id, err);
                 result = Err(err);
             } else {
-                //info!(target: "tiling_loading", "Inserted tile weighted sampler '{}' into TilingEntityMap with entity {:?}", str_id, ent);
+                info!(target: "tiling_loading", "Inserted tile weighted sampler '{}' into TilingEntityMap with entity {:?}", str_id, ent);
             }
         }
     }
     result
 }
 
+#[allow(unused_parens, )]
+pub fn client_map_server_tiling(
+    trigger: Trigger<TilingEntityMap>, 
+    client: Option<Res<RenetClient>>,
+    mut entis_map: ResMut<ServerEntityMap>, own_map: Res<TilingEntityMap>,
+) {
+    if client.is_none() { return; }
+
+    let TilingEntityMap(received_map) = trigger.event().clone();
+    for (hash_id, &server_entity) in received_map.0.iter() {
+        if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
+
+            debug!(target: "tiling_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
+            entis_map.insert(server_entity, client_entity);
+        } else {
+            error!(target: "tiling_loading", "Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
+        }
+    }
+}

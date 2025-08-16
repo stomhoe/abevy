@@ -13,6 +13,9 @@ sprite_animation = { path = "../sprite_animation" }
 tilemap = { path = "../tilemap" }
 modifier = { path = "../modifier" }
 dimension = { path = "../dimension" }
+faction = { path = "../faction" }
+player = { path = "../player" }
+being = { path = "../being" }
 
 
 bevy = { workspace = true }

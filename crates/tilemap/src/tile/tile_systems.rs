@@ -5,9 +5,11 @@ use bevy::ecs::{entity::MapEntities, entity_disabling::Disabled};
 use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use common::common_components::{HashId, StrId};
 use game_common::game_common_components::MyZ;
-use crate::{terrain_gen::terrgen_resources::GlobalGenSettings, tile::{tile_components::*, tile_resources::TileInstancesEntityMap}};
+use player::player_components::{HostPlayer, OfSelf, Player};
+use crate::{terrain_gen::terrgen_resources::GlobalGenSettings, tile::{tile_components::*, tile_resources::{TileInstancesEntityMap, TilingEntityMap}}};
 
 
 
@@ -51,7 +53,7 @@ pub struct SyncTilesToServer {
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO -----------------------------
 //                                                       ^^^^
-#[allow(unused_parens)]
+#[allow(unused_parens)]// ESBOZO
 pub fn add_tile_instances_to_map(mut cmd: Commands, 
     mut tile_instances_map: ResMut<TileInstancesEntityMap>,
     mut query: Query<(Entity, &InitialPos, &MyZ, &TileRef), (Added<InitialPos>, Or<(With<Disabled>, Without<Disabled>)>)>,
@@ -77,4 +79,3 @@ pub fn add_tile_instances_to_map(mut cmd: Commands,
 - 
 
 */
-

@@ -18,10 +18,7 @@ impl MyZ {
 pub struct Description(pub String);
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, )]
-pub enum BeingAltitude{
-    #[default] OnGround, Swimming, Floating,
-}
+
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;

@@ -67,6 +67,11 @@ pub fn plugin(app: &mut App) {
         .register_type::<MonoRepeatTextureOverlayMat>()
         .register_type::<TwoOverlaysExample>()
 
+
+        .replicate::<HashPosEntiWeightedSampler>()
+        .add_observer(client_map_server_tiling)
+
+
     ;
 }
 

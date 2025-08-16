@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use common::common_states::ConnectionAttempt;
-use tilemap::terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap};
+use tilemap::terrain_gen::terrgen_resources::*;
 
 
 pub fn all_clean_resources(

@@ -3,8 +3,12 @@
 
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_replicon::shared::server_entity_map::ServerEntityMap;
+use bevy_replicon_renet::renet::RenetServer;
+use common::common_states::GameSetupType;
 use debug_unwraps::DebugUnwrapExt;
 use dimension::dimension_components::{DimensionRef, MultipleDimensionRefs};
+use player::player_components::{HostPlayer, OfSelf, Player};
 
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::tile_components::* , };
 
@@ -21,7 +25,8 @@ pub fn spawn_terrain_operations (
     chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (With<UninitializedChunk>, Without<PendingOperations>, )>, 
     oplists: Query<(Entity, &MultipleDimensionRefs, &OplistSize), (With<OperationList>, )>,
 ) -> Result {
-    for (chunk_ent, chunk_pos, dim_ref) in chunks_query.iter() {
+    
+    'oplist: for (chunk_ent, chunk_pos, dim_ref) in chunks_query.iter() {
         //SE LES PODRÍA AGREGAR MARKER COMPONENTS A LOS CHUNKS PARA POR EJEMPLO ESPECIFICAR SI ES UN DUNGEON
 
 //PONER MARKERS A TODAS LAS POSICIONES SUITABLE, DESPUES HACER UNA QUERY Q COMPARA LAS TILESMARCADAS COMO Q YA GENERARON UNA ESTRUCTURA NO PROCEDURAL CON LAS Q NO. SI LA DISTANCIA ES SUFICIENTE, SPAWNEAR UNA EN LA SIGUIENTE
@@ -31,12 +36,13 @@ pub fn spawn_terrain_operations (
         let chunk_area = ChunkInitState::SIZE.element_product() as i32;
         let mut pending_ops_count: i32 = 0;
 
-        oplists.iter().filter(|(_, oplist_dim_refs, _)| {
-            oplist_dim_refs.0.contains(&dim_ref.0)
-        }).for_each(|(oplist_ent, _, oplist_size)| {
-            let mut batch = Vec::with_capacity((chunk_area) as usize);
-            for x in 0..ChunkInitState::SIZE.x/oplist_size.x() { 
-                for y in 0..ChunkInitState::SIZE.y/oplist_size.y() {
+        for (oplist_ent, oplist_dim_refs, oplist_size) in oplists.iter() {
+            if !oplist_dim_refs.0.contains(&dim_ref.0) {
+                continue;
+            }
+            let mut batch = Vec::with_capacity(chunk_area as usize);
+            for x in 0..ChunkInitState::SIZE.x / oplist_size.x() {
+                for y in 0..ChunkInitState::SIZE.y / oplist_size.y() {
                     let pos_within_chunk = IVec2::new(x as i32, y as i32);
                     let global_pos = chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * oplist_size.inner().as_ivec2());
                     trace!(
@@ -47,22 +53,29 @@ pub fn spawn_terrain_operations (
                         chunk_ent,
                         pos_within_chunk,
                         oplist_size
-                    );      
+                    );
+                    if commands.get_entity(chunk_ent).is_err() {
+                        break 'oplist;
+                    }
                     batch.push((
                         OplistRef(oplist_ent), ChunkRef(chunk_ent),
                         global_pos,
                     ));
+                    
                 }
             }
             pending_ops_count += (ChunkInitState::SIZE.element_product() / oplist_size.inner().element_product()) as i32;
+            if commands.get_entity(chunk_ent).is_err() {break 'oplist;}
+
             commands.spawn_batch(batch);
-        });
-        if pending_ops_count <= 0 {
-            warn!(target: "terrgen", "No operations to spawn for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
+        }
+        
+        if pending_ops_count <= 0 {      
+            warn!(target: "terrgen", "No operations to spawn for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);      
             continue;
         }
 
-        commands.entity(chunk_ent).insert((PendingOperations(pending_ops_count), ProducedTiles::new_with_chunk_capacity()));
+        commands.entity(chunk_ent).try_insert((PendingOperations(pending_ops_count), ProducedTiles::new_with_chunk_capacity()));
         trace!(target: "terrgen", "Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
     }
     Ok(())
@@ -77,17 +90,18 @@ pub fn produce_tiles(mut cmd: Commands,
     mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, &ChildOf), (Without<OperationList> )>,
     weight_maps: Query<(&HashPosEntiWeightedSampler, ), ( )>,
     tile_query: Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
+    state : Res<State<GameSetupType>>,
 ) -> Result {
-
+    let is_host = state.get() != &GameSetupType::AsJoiner;
 
     for (enti, &input_operand, &oplist_ref, &chunk_ref, &global_tile_pos) in instantiated_oplist_query.iter_mut() {
+        cmd.entity(enti).despawn();//NO PONER ABAJO
 
         let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos, child_of)) = chunk_query.get_mut(chunk_ref.0)
         else { continue };
 
         let mut acc_val: f32 = input_operand.0;
 
-        cmd.entity(enti).despawn();//NO PONER ABAJO
 
         let (oplist, oplist_tiles, &my_oplist_size) = oplist_query.get(oplist_ref.0)?;
 
@@ -128,7 +142,7 @@ pub fn produce_tiles(mut cmd: Commands,
             }
         }
         chunk_tiles.insert_clonespawned_with_pos(&oplist_tiles, &mut cmd, global_tile_pos, pos_within_chunk, &weight_maps, &tile_query, &gen_settings,
-            my_oplist_size, DimensionRef(child_of.parent()));
+            my_oplist_size, DimensionRef(child_of.parent()), is_host);
 
         if acc_val > oplist.threshold {
             if let Some(bifover_ent) = oplist.bifurcation_over {
@@ -179,3 +193,31 @@ fn spawn_bifurcation(
         }
     }
 }
+
+//#[cfg(not(feature = "headless_server"))]
+#[allow(unused_parens)]
+pub fn client_change_operand_entities(
+    mut query: Query<(&mut OperationList), (Added<OperationList>)>, 
+    mut map: ResMut<ServerEntityMap>,
+)
+{
+    for mut oplist in query.iter_mut() {
+        for (operand, _) in &mut oplist.trunk {
+            let Operand::Entities(entities) = operand 
+            else { continue };
+
+            let mut new_entities = Vec::with_capacity(entities.len());
+            for ent in entities.iter() {
+                if let Some(new_ent) = map.server_entry(*ent).get() {
+                    new_entities.push(new_ent);
+                } else {
+                    error!(target: "oplist_loading", "Entity {} not found in ServerEntityMap", ent);
+                    new_entities.push(Entity::PLACEHOLDER);
+                }
+            }
+            *operand = Operand::Entities(new_entities);
+        
+        }
+    }
+}
+

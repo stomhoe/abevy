@@ -7,6 +7,7 @@ edition = "2024"
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
+player = { path = "../player" }
 
 bevy_spritesheet_animation = { workspace = true }
 

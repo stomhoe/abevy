@@ -3,15 +3,13 @@
 use bevy::{ecs::world::OnDespawn, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use bevy_replicon_renet::renet::{RenetServer};
-use common::{common_components::StrId, common_resources::PlayerData, common_states::*};
-use game::{faction_resources::FactionEntityMap, player::*};
+use common::{common_components::StrId, common_states::*};
 use game_common::game_common_states::GameSetupScreen;
 use multiplayer_shared::multiplayer_events::HostStartedGame;
-
+use player::{player_components::*, player_resources::PlayerData};
 use crate::lobby::lobby_components::*;
 
-pub fn host_setup(cmd: Commands, fac_map: ResMut<FactionEntityMap>) {
+pub fn host_setup(cmd: Commands, ) {
 
 }
 

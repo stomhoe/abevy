@@ -1,10 +1,12 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
+use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use game_common::game_common_components::FacingDirection;
+use player::player_components::*;
 use sprite_animation_shared::sprite_animation_shared::*;
 
-use crate::sprite_components::*;
+use crate::{sprite_components::*, sprite_resources::SpriteCfgEntityMap};
 
 
 
@@ -68,7 +70,7 @@ pub fn apply_scales(
         }
         let total_scale_vec2 = total_scale.as_vec2();
         if total_scale_vec2.x == 0.0 || total_scale_vec2.y == 0.0 {
-            warn!(target: "sprite_animation", "total_scale is zero for sprite entity");
+            warn!("total_scale is zero for sprite entity");
         }
         transform.scale.x = total_scale_vec2.x;
         transform.scale.y = total_scale_vec2.y;
@@ -102,7 +104,7 @@ pub fn apply_offsets(
 
         let Ok((my_cats, &offset, &offset_sideways, &offset_updown, &offset_up, &offset_down, &_)) = sprite_config_query.get(sprite_config) 
         else {
-            error!(target: "sprite_animation", "Failed to get sprite config for entity {:?}", sprite_config);
+            error!("Failed to get sprite config for entity {:?}", sprite_config);
             continue;
         };
 
@@ -142,7 +144,5 @@ pub fn apply_offsets(
         }
     }
 }
-
-
 
 

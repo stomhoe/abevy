@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_types::HashIdToEntityMap};
+use player::player_components::OfSelf;
 
-use crate::{faction_components::Faction, player::OfSelf};
+use crate::{faction_components::Faction, };
 
 #[derive(Resource, Reflect, )]
 pub struct FactionEntityMap (pub HashIdToEntityMap);
