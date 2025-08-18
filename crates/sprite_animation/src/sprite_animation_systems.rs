@@ -171,7 +171,7 @@ pub fn animate_sprite(
     library: Option<Res<AnimationLibrary>>,
 ) {
     let Some(library) = library else {
-        error!(target: "animate_sprite", "AnimationLibrary not found, skipping animation update.");
+        error!("AnimationLibrary not found, skipping animation update.");
         return;
     };
     for (ent, spriteholder_ref, sprite_cfg_ref, sheet_anim, moving_anim, ) in query.iter_mut() {
@@ -179,7 +179,7 @@ pub fn animate_sprite(
         let direction = spriteholder_direction.get(spriteholder_ref.base);
 
         let Ok((prefix, directionable, flip_horiz)) = cfg_query.get(sprite_cfg_ref.0) else {
-            trace!(target: "animate_sprite", "Failed to get config for SpriteConfigRef {:?}", sprite_cfg_ref.0);
+            trace!("Failed to get config for SpriteConfigRef {:?}", sprite_cfg_ref.0);
             continue;
         };
 
@@ -193,22 +193,22 @@ pub fn animate_sprite(
         else {""};
         
         let animation_name = format!("{}_{}_{}", prefix, moving_anim.map(|f| f.0.as_str()).unwrap_or(""), direction_str);
-        trace!(target: "animate_sprite", "Entity {:?} concatted animation name: '{}'", ent, animation_name);
+        trace!("Entity {:?} concatted animation name: '{}'", ent, animation_name);
 
         if let Some(animation_id) = library.animation_with_name(animation_name.clone()) {
             if let Some(mut sheet_anim) = sheet_anim {
                 if sheet_anim.animation_id != animation_id {
                     sheet_anim.switch(animation_id);
-                    trace!(target: "animate_sprite", "Switched animation for entity {:?} to '{}'", ent, animation_name);
+                    trace!("Switched animation for entity {:?} to '{}'", ent, animation_name);
                 } 
                 sheet_anim.speed_factor = 1.0;//AJUSTAR EN OTRO SISTEMA DISTINTO
             } else {
                 let new_anim = SpritesheetAnimation::from_id(animation_id);
                 commands.entity(ent).insert(new_anim);
-                trace!(target: "animate_sprite", "Inserted new animation for entity {:?} with name '{}'", ent, animation_name);
+                trace!("Inserted new animation for entity {:?} with name '{}'", ent, animation_name);
             }
         } else{ 
-            error!(target: "animate_sprite", "Animation with name '{}' not found in library.", animation_name);
+            error!("Animation with name '{}' not found in library.", animation_name);
             if let Some(mut sheet_anim) = sheet_anim {
                 sheet_anim.playing = false;
             }

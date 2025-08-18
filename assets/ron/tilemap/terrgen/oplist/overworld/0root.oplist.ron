@@ -5,12 +5,11 @@
         "=": ["natgen",],
     },
    
-    bifurcation_over: "1sep",
-    threshold: 0.5,
-    bifurcation_under: "ocean",
-    tiles: [
-        
-    ],
+    bifover: "",
+    tiles_over: ["pink"],
+    split: 0.5,
+    bifunder: "",
+    tiles_under: ["ocean"],
     root_in_dimensions: ["ow"],
     size: Some((1, 1)),
 

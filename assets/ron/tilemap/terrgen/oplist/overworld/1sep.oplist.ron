@@ -5,11 +5,11 @@
         "=": ["myst",],
     },
    
-    bifurcation_over: "myst",
-    threshold: 0.5,
-    bifurcation_under: "normal",
-    tiles: [
-    ],
+    bifover: "myst",
+    tiles_over: [],
+    split: 0.5,
+    bifunder: "normal",
+    tiles_under: [],
     root_in_dimensions: [],
     size: Some((1, 1)),
 

@@ -5,12 +5,12 @@
         "=": ["natgen","conti"],
         "*opo": ["myst",],
     },
-   
-    bifurcation_over: "grass",
-    threshold: 0.2,
-    bifurcation_under: "pink",
-    tiles: [
-    ],
+
+    bifover: "",
+    tiles_over: ["tempgrass"],
+    split: 0.2,
+    bifunder: "",
+    tiles_under: ["pink"],
     root_in_dimensions: [],
     size: Some((1, 1)),
 

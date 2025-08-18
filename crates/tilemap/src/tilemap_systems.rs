@@ -41,7 +41,7 @@ pub fn produce_tilemaps(
         for &tile_ent in produced_tiles.produced_tiles().iter() {
 
             let (tile_ent, tile_str_id, &tile_pos, &oplist_size, tile_handles, tile_z_index, shader_ref, transf, ) = tile_comps.get_mut(tile_ent)?;
-            trace!(target: "tilemap", "Producing tile {:?} at pos {:?} in chunk {:?}", tile_str_id, tile_pos, chunk_ent);
+            trace!("Producing tile {:?} at pos {:?} in chunk {:?}", tile_str_id, tile_pos, chunk_ent);
 
             let tile_ent = cmd.entity(tile_ent)
                 .remove::<TilemapChild>()
@@ -191,7 +191,7 @@ pub fn fill_tilemaps_data(
 
         commands.entity(chunk).try_insert(InitializedChunk);
         
-        trace!(target: "tilemap", "Filled tilemaps data in {:?}", _now.elapsed());
+        trace!("Filled tilemaps data in {:?}", _now.elapsed());
     }
 }
 

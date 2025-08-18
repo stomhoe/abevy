@@ -50,7 +50,6 @@ pub fn plugin(app: &mut App) {
             RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
         ))
         
-        
         .add_server_trigger::<TileWeightedSamplersMap>(Channel::Unordered)
         .make_trigger_independent::<TileWeightedSamplersMap>()
         

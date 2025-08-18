@@ -5,11 +5,11 @@
         "=": ["natgen","myst","conti2"],
     },
    
-    bifurcation_over: "black",
-    threshold: 0.2,
-    bifurcation_under: "red",
-    tiles: [
-    ],
+    bifover: "",
+    tiles_over: ["black"],
+    split: 0.2,
+    bifunder: "",
+    tiles_under: ["red"],
     root_in_dimensions: [],
     size: Some((1, 1)),
 

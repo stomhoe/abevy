@@ -5,9 +5,6 @@ use bevy_inspector_egui::{
 };
 use bevy_simple_subsecond_system::SimpleSubsecondPlugin;
 use tracing::Level;
-
-
-
 #[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, GLOBAL_ERROR_HANDLER, };
 
 pub const FILTER: &str = 
@@ -15,8 +12,17 @@ concat!(
     "warn,",
     "naga=error,",
     "wgpu_hal=error,",
-    "terrgen=warn,",
-    "tilemap=warn,",
+    "bevy_ecs_tilemap=warn,",
+    "wgpu_core=error,",
+    "bevy_egui=warn,",
+    "bevy_replicon=warn,",
+    "bevy_render=warn,",
+    "bevy_app=warn,",
+    "cosmic_text=warn,",
+    "offset_allocator=warn,",
+    "bevy_asset_loader=warn,",
+
+    "tilemap::terrain_gen::terrgen_systems=warn,",
     "zlevel=warn,",
     "movement=warn,",
     "sprite_animation=warn,",

@@ -11,7 +11,8 @@ use std::collections::hash_map::DefaultHasher;
 use crate::terrain_gen::terrgen_resources::GlobalGenSettings;
 use crate::tile::tile_components::*;
 
-use {common::common_components::*, common::common_states::*};
+use {common::common_components::*, };
+use strum_macros::{AsRefStr, Display, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 #[require(Replicated, SessionScoped, AssetScoped, TgenScoped, )]
@@ -114,9 +115,11 @@ pub struct ChunkRef(pub Entity);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 #[require(EntityPrefix::new("OpList"), Replicated, SessionScoped, AssetScoped, TgenScoped)]
 pub struct OperationList {
-    pub trunk: Vec<(Operand, Operation)>, pub threshold: f32,
+    pub trunk: Vec<(Operand, Operation)>, pub split: f32,
     #[entities] pub bifurcation_over: Option<Entity>, 
     #[entities] pub bifurcation_under: Option<Entity>,
+    #[entities] pub tiles_over: Vec<Entity>,
+    #[entities] pub tiles_under: Vec<Entity>,
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
@@ -145,9 +148,9 @@ impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 // pub struct RootOpList;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct InputOperand(pub f32);
+pub struct FirstOperand(pub f32);
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect, AsRefStr, Display, )]
 pub enum Operation {
     Add, Subtract, Multiply, MultiplyOpo, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean, Abs, MultiplyNormalized, MultiplyNormalizedAbs
 }
@@ -170,5 +173,5 @@ impl From<f32> for Operand { fn from(v: f32) -> Self { Self::Value(v) } }
 
 
 #[derive(Component, Debug, Clone, Copy, Reflect)]
-#[require(InputOperand)]
+#[require(FirstOperand)]
 pub struct OplistRef(pub Entity);

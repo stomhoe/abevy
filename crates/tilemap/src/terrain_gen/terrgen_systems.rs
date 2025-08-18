@@ -46,7 +46,6 @@ pub fn spawn_terrain_operations (
                     let pos_within_chunk = IVec2::new(x as i32, y as i32);
                     let global_pos = chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * oplist_size.inner().as_ivec2());
                     trace!(
-                        target: "terrgen",
                         "Spawning terrain operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
                         oplist_ent,
                         global_pos,
@@ -71,12 +70,12 @@ pub fn spawn_terrain_operations (
         }
         
         if pending_ops_count <= 0 {      
-            warn!(target: "terrgen", "No operations to spawn for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);      
+            warn!("No operations to spawn for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);      
             continue;
         }
 
         commands.entity(chunk_ent).try_insert((PendingOperations(pending_ops_count), ProducedTiles::new_with_chunk_capacity()));
-        trace!(target: "terrgen", "Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
+        trace!("Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
     }
     Ok(())
 }
@@ -84,17 +83,18 @@ pub fn spawn_terrain_operations (
 #[allow(unused_parens)]
 pub fn produce_tiles(mut cmd: Commands, 
     gen_settings: Res<GlobalGenSettings>,
-    oplist_query: Query<(&OperationList, &ProducedTiles, &OplistSize ), ( )>,
-    mut instantiated_oplist_query: Query<(Entity, &InputOperand, &OplistRef, &ChunkRef, &GlobalTilePos), ()>, 
+    oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
+    instantiated_oplist_query: Query<(Entity, &FirstOperand, &OplistRef, &ChunkRef, &GlobalTilePos), ()>, 
     operands: Query<(Option<&FnlNoise>, ), ( )>,
-    mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, &ChildOf), (Without<OperationList> )>,
+    mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, &ChildOf), ()>,
     weight_maps: Query<(&HashPosEntiWeightedSampler, ), ( )>,
     tile_query: Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
     state : Res<State<GameSetupType>>,
 ) -> Result {
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
-    for (enti, &input_operand, &oplist_ref, &chunk_ref, &global_tile_pos) in instantiated_oplist_query.iter_mut() {
+
+    for (enti, &input_operand, &oplist_ref, &chunk_ref, &global_tile_pos) in instantiated_oplist_query.iter() {
         cmd.entity(enti).despawn();//NO PONER ABAJO
 
         let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos, child_of)) = chunk_query.get_mut(chunk_ref.0)
@@ -103,10 +103,10 @@ pub fn produce_tiles(mut cmd: Commands,
         let mut acc_val: f32 = input_operand.0;
 
 
-        let (oplist, oplist_tiles, &my_oplist_size) = oplist_query.get(oplist_ref.0)?;
+        let (oplist, &my_oplist_size) = oplist_query.get(oplist_ref.0)?;
 
         let pos_within_chunk = global_tile_pos.get_pos_within_chunk(chunk_pos, my_oplist_size);
-        trace!(target: "terrgen", "Producing tiles at {:?} with oplist {:?} for chunk {:?}", pos_within_chunk, oplist_ref.0, chunk_pos);
+        trace!("Producing tiles at {:?} with oplist {:?} for chunk {:?}", pos_within_chunk, oplist_ref.0, chunk_pos);
 
         for ((operand, operation)) in oplist.trunk.iter() {
 
@@ -119,14 +119,16 @@ pub fn produce_tiles(mut cmd: Commands,
                             acc
                         }
                     })
-                },      Operand::Value(val) => *val,
+                },      
+                Operand::Value(val) => *val,
                 Operand::HashPos => global_tile_pos.normalized_hash_value(&gen_settings, 0),
                 Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos, my_oplist_size),
                 _ => {
-                    error!(target: "terrgen", "Unsupported operand type as numeric value: {:?}", operand);
+                    error!("Unsupported operand type as numeric value: {:?}", operand);
                     0.0
                 },
             };
+            trace!("Evaluated operand {:?} with operation {:?} to {}", operand, operation, acc_val);
 
             match operation {
                 Operation::Add => acc_val += num_operand,
@@ -146,14 +148,18 @@ pub fn produce_tiles(mut cmd: Commands,
                 Operation::MultiplyNormalizedAbs => acc_val *= ((num_operand - 0.5) * 2.).abs(),
             }
         }
-        chunk_tiles.insert_clonespawned_with_pos(&oplist_tiles, &mut cmd, global_tile_pos, pos_within_chunk, &weight_maps, &tile_query, &gen_settings,
-            my_oplist_size, DimensionRef(child_of.parent()), is_host);
 
-        if acc_val > oplist.threshold {
+        if acc_val > oplist.split {
+            trace!("Spawning tiles over for oplist {:?} at pos {:?} with acc_val: {}", oplist_ref.0, global_tile_pos, acc_val);
+            chunk_tiles.insert_clonespawned_with_pos(&oplist.tiles_over, &mut cmd, global_tile_pos, pos_within_chunk, 
+                &weight_maps, &tile_query, &gen_settings, my_oplist_size, DimensionRef(child_of.parent()), is_host);
             if let Some(bifover_ent) = oplist.bifurcation_over {
                 pending_ops_count.0 += spawn_bifurcation(&mut cmd, &oplist_query, bifover_ent, acc_val, &chunk_ref, global_tile_pos, my_oplist_size);
             }
         } else {
+            trace!("Spawning tiles under for oplist {:?} at pos {:?} with acc_val: {}", oplist_ref.0, global_tile_pos, acc_val);
+            chunk_tiles.insert_clonespawned_with_pos(&oplist.tiles_under, &mut cmd, global_tile_pos, pos_within_chunk, 
+                &weight_maps, &tile_query, &gen_settings, my_oplist_size, DimensionRef(child_of.parent()), is_host);
             if let Some(bifunder_ent) = oplist.bifurcation_under {
                 pending_ops_count.0 += spawn_bifurcation(&mut cmd, &oplist_query, bifunder_ent, acc_val, &chunk_ref, global_tile_pos, my_oplist_size);
             }
@@ -171,7 +177,7 @@ pub fn produce_tiles(mut cmd: Commands,
 
 fn spawn_bifurcation(
     cmd: &mut Commands,
-    oplist_query: &Query<(&OperationList, &ProducedTiles, &OplistSize), ()>,
+    oplist_query: &Query<(&OperationList, &OplistSize), ()>,
     bif_ent: Entity,
     acc_val: f32,
     chunk_ref: &ChunkRef,
@@ -179,7 +185,7 @@ fn spawn_bifurcation(
     my_oplist_size: OplistSize,
 ) -> i32 {
     unsafe{
-        let (_oplist, _tiles, &child_oplist_size) = oplist_query.get(bif_ent).debug_expect_unchecked("faltacoso");
+        let (_oplist, &child_oplist_size) = oplist_query.get(bif_ent).debug_expect_unchecked("faltacoso");
         if my_oplist_size != child_oplist_size
             && (global_tile_pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
         {
@@ -187,13 +193,13 @@ fn spawn_bifurcation(
             for x in 0..child_oplist_size.x() as i32 {
                 for y in 0..child_oplist_size.y() as i32 {
                     let pos = global_tile_pos + GlobalTilePos::new(x, y);
-                    batch.push((OplistRef(bif_ent), InputOperand(acc_val), chunk_ref.clone(), pos));
+                    batch.push((OplistRef(bif_ent), FirstOperand(acc_val), chunk_ref.clone(), pos));
                 }
             }
             cmd.spawn_batch(batch);
             child_oplist_size.size() as i32
         } else {
-            cmd.spawn((OplistRef(bif_ent), InputOperand(acc_val), chunk_ref.clone(), global_tile_pos));
+            cmd.spawn((OplistRef(bif_ent), FirstOperand(acc_val), chunk_ref.clone(), global_tile_pos));
             1
         }
     }

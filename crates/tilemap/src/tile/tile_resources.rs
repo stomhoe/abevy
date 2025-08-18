@@ -14,7 +14,6 @@ pub struct TileShaderEntityMap(pub HashIdToEntityMap);
 #[reflect(Resource, Default)]
 pub struct TileEntitiesMap(pub HashIdToEntityMap);
 
-
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
 #[reflect(Resource, Default)]
 pub struct TileInstancesEntityMap(pub HashIdToEntityMap);

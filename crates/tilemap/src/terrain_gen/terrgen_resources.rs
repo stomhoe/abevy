@@ -16,7 +16,7 @@ impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self { 
             seed: 0,
-            c_decrease_per_1km: 15.0, //esto debería usarse para reducir o incrementar threshold
+            c_decrease_per_1km: 15.0, //esto debería usarse para reducir o incrementar split
             world_size: None 
         }
     }
@@ -80,10 +80,11 @@ pub struct OpListSerialization {
     pub id: String,
     pub root_in_dimensions: Vec<String>,
     pub operation_operands: HashMap<String, Vec<String>>,
-    pub bifurcation_over: String,
-    pub threshold: f32,
-    pub bifurcation_under: String,
-    pub tiles: Vec<String>,
+    pub bifover: String,
+    pub tiles_over: Vec<String>,
+    pub split: f32,
+    pub bifunder: String,
+    pub tiles_under: Vec<String>,
     pub size: Option<[u32; 2]>
 }
 impl OpListSerialization {

@@ -71,7 +71,7 @@ impl ProducedTiles {
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
             if let Some(tiling_ent) = wmap.sample(gen_settings, global_pos) {
-                //info!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
+                //info!("Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
 
                 if depth > 6 {
                     warn!("Tile insertion depth exceeded 6, stopping recursion for tile at {:?} with pos within chunk {:?}", global_pos, pos_within_chunk);
@@ -81,7 +81,7 @@ impl ProducedTiles {
                 self.insert_tile_recursive( tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, 
                     tilemap_child, gen_settings, oplist_size, dimension_ref, is_server, depth + 1);
             }
-        } else {
+        } else {//TODO EXTRAER A UN SISTEMA TODAS LAS COSAS DE SPAWNING
             let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().try_insert(
                 (TileRef(tiling_ent), dimension_ref, InitialPos(global_pos)))
                 .remove::<DisplayName>()
@@ -90,17 +90,15 @@ impl ProducedTiles {
             let (tilemap_child, transform) = tilemap_child.get(tiling_ent).debug_expect_unchecked("asdasda");
 
             if tilemap_child {
-                trace!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
+                trace!("Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
                 cmd.entity(tile_ent).try_insert((oplist_size, pos_within_chunk, global_pos));
                 self.0.push(tile_ent);
             } 
             else if is_server {
-                trace!(target: "tilemap", "Inserting tile {:?} at {:?} with pos within chunk {:?}, but it is not a TilemapChild", tiling_ent, global_pos, pos_within_chunk);
+                trace!("Inserting tile {:?} at {:?} with pos within chunk {:?}, but it is not a TilemapChild", tiling_ent, global_pos, pos_within_chunk);
                 cmd.entity(tile_ent).try_insert((Replicated, ChildOf(dimension_ref.0), )).try_remove::<Tile>().try_remove::<Disabled>();
-                let displacement: Vec2 = global_pos.into();
-                let displacement: Vec3 = displacement.extend(0.0);
-                //info displacement PRINT DISPLACEMENT
-                info!(target: "tilemap", "Displacement for tile {:?} is {:?}", tile_ent, displacement);
+                let displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
+                info!("Displacement for tile {:?} is {:?}", tile_ent, displacement);
                 if let Some(transform) = transform {
                     cmd.entity(tile_ent).try_insert(Transform::from_translation( transform.translation + displacement));
                 } 
@@ -112,7 +110,7 @@ impl ProducedTiles {
 
     pub fn insert_clonespawned_with_pos(
         &mut self,
-        to_insert: &ProducedTiles,
+        tiling_ents: &Vec<Entity>,
         cmd: &mut Commands,
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
@@ -123,7 +121,7 @@ impl ProducedTiles {
         dimension_ref: DimensionRef,
         is_server: bool
     ) {
-        for tile in to_insert.0.iter().cloned() {
+        for tile in tiling_ents.iter().cloned() {
             self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, tilemap_child, gen_settings, oplist_size, dimension_ref, is_server, 0);
         }
     }
