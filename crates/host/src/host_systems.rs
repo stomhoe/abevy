@@ -9,7 +9,7 @@ use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_state
 use multiplayer_shared::multiplayer_events::SendUsername;
 use player::player_components::{OfSelf, Player};
 use sprite::{sprite_components::SpriteConfigStrIds, sprite_resources::SpriteCfgEntityMap};
-use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::TilingEntityMap}};
+use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::{TileEntitiesMap}}};
 
 use crate::host_functions::host_server;
 
@@ -31,23 +31,16 @@ pub fn attempt_host(
 #[allow(unused_parens, )]
 pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>, 
     mut cmd: Commands, host_faction: Single<(Entity ), (With<Faction>, With<OfSelf>)>,
-    own_tiling_map: Res<TilingEntityMap>,
+    own_tiles_map: Res<TileEntitiesMap>,
     own_sprite_cfg_map: Res<SpriteCfgEntityMap>,
-    samplers: Query <(Entity,), (With<HashPosEntiWeightedSampler>)>,
 ) -> Result {
     let client_entity = trigger.target();
     cmd.entity(client_entity).insert((Player, BelongsToFaction(host_faction.into_inner())));
     info!("(HOST) `{}` connected", client_entity);
 
-    // Clone the map, but filter out any samplers
-    let mut filtered_map = TilingEntityMap::default();
-    for (&hash_id, &entity) in own_tiling_map.0.iter() {
-        if samplers.iter().all(|(sampler_entity, )| entity != sampler_entity) {
-            filtered_map.0.insert_with_hash(hash_id, entity, )?;
-        }
-    }
 
-    let sync_tiles = ToClients { mode: SendMode::Direct(client_entity), event: filtered_map, };
+
+    let sync_tiles = ToClients { mode: SendMode::Direct(client_entity), event: own_tiles_map.clone(), };
     cmd.server_trigger(sync_tiles);
 
     let sync_sprite_cfgs = ToClients { mode: SendMode::Direct(client_entity), event: own_sprite_cfg_map.clone(),};

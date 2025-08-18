@@ -1,0 +1,17 @@
+(
+    id: "ocean",
+    name: "Ocean",
+    img_paths: {
+        "default": "texture/world/terrain/water/water0.png"
+    },
+    shader: "",
+    sprite: false,
+    offset: (0.0, 0.0),
+    z: 10,
+    color: Some((255, 255, 255, 255)),
+    color_map: "",
+    spawns: [],
+    spawns_children: [],
+    somecomp_present: Some(true),
+    tmapchild: true,
+)

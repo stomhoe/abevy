@@ -51,6 +51,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<ActivatingChunks>()
     .register_type::<ProducedTiles>()
     .register_type::<ChunkPos>()
+    .register_type::<ChunkRangeSettings>()
     .init_resource::<LoadedChunks>()
     .init_resource::<ChunkRangeSettings>()
     

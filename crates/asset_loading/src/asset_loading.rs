@@ -6,7 +6,7 @@ use bevy_asset_loader::prelude::*;
 use dimension::dimension_resources::DimensionSerisHandles;
 use sprite::sprite_resources::*;
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
-use tilemap::{terrain_gen::terrgen_resources::*, tile::tile_resources::*};
+use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_samplers_resources::TileWeightedSamplerHandles}};
 
 use crate::asset_loading_systems::*;
 
@@ -39,7 +39,7 @@ pub fn plugin(app: &mut App) {
         )
         .add_loading_state(
             LoadingState::new(AssetsLoadingState::ReplicatedInProcess).continue_to_state(AssetsLoadingState::ReplicatedFinished)
-            .load_collection::<TileWeightedSamplerSerisHandles>()
+            .load_collection::<TileWeightedSamplerHandles>()
             .load_collection::<NoiseSerisHandles>()
             .load_collection::<OpListSerisHandles>()
             .load_collection::<DimensionSerisHandles>()

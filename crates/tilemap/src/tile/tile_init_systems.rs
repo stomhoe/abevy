@@ -21,13 +21,13 @@ pub fn init_shaders(
 ) -> Result {
     let mut result: Result = Ok(());
     if tileshader_map.is_some(){ return Ok(());}
-    cmd.init_resource::<TileShaderEntityMap>();
+    cmd.insert_resource(TileShaderEntityMap::default());
     
     for handle in repeat_tex_handles.handles.drain(..) {
         if let Some(seri) = assets.remove(&handle) {
-            info!(target: "tiling_loading", "Loading Shader from handle: {:?}", handle);
+            info!("Loading Shader from handle: {:?}", handle);
 
-            let str_id = StrId::new(seri.id)?;
+            let str_id = StrId::new(seri.id, 4)?;
 
             match ImageHolder::new(&asset_server, seri.img_path) {
                 Ok(img_holder) => {
@@ -39,7 +39,7 @@ pub fn init_shaders(
                     ));
                 },
                 Err(err) => {
-                    error!(target: "tiling_loading", "Failed to create ImagePathHolder for shader '{}': {}", str_id, err);
+                    error!("Failed to create ImagePathHolder for shader '{}': {}", str_id, err);
                     result = Err(err);
                 }
             }
@@ -53,6 +53,7 @@ pub fn init_shaders(
 
 #[allow(unused_parens)]
 pub fn add_shaders_to_map(
+    mut cmd: Commands,
     terrgen_map: Option<ResMut<TileShaderEntityMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<TileShader>,)>,
 ) -> Result {
@@ -62,7 +63,8 @@ pub fn add_shaders_to_map(
     let mut result: Result = Ok(());
     for (ent, prefix, str_id) in query.iter() {
         if let Err(err) = tileshader_map.0.insert(str_id, ent, ) {
-            error!(target: "tiling_loading", "{} {} already in TileShaderEntityMap : {}", prefix, str_id, err);
+            error!("{} {} already in TileShaderEntityMap : {}", prefix, str_id, err);
+            cmd.entity(ent).despawn();
             result = Err(err);
         }
     }
@@ -74,17 +76,17 @@ pub fn init_tiles(
     mut cmd: Commands,  asset_server: Res<AssetServer>,
     mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
     shader_map: Res<TileShaderEntityMap>,
-    tiling_map: Option<Res<TilingEntityMap>>,
+    tiling_map: Option<Res<TileEntitiesMap>>,
 ) -> Result {
     if tiling_map.is_some() { return Ok(()); }
-    cmd.init_resource::<TilingEntityMap>();
+    cmd.insert_resource(TileEntitiesMap::default());
 
     let mut result: Result = Ok(());
     for handle in seris_handles.handles.drain(..) {
-        //info!(target: "tiling_loading", "Loading TileSeri from handle: {:?}", handle);
+        //info!("Loading TileSeri from handle: {:?}", handle);
         if let Some(seri) = assets.remove(&handle) {
 
-            let str_id = StrId::new(seri.id)?;
+            let str_id = StrId::new(seri.id, Tile::MIN_ID_LENGTH)?;
             let my_z = MyZ(seri.z);
             let enti = cmd.spawn((
                 Tile, str_id.clone(), Disabled,
@@ -103,7 +105,7 @@ pub fn init_tiles(
            
 
             if seri.img_paths.is_empty() {
-                error!(target: "tiling_loading", "Tile '{}' has no images", str_id);
+                error!("Tile '{}' has no images", str_id);
                 continue;
             }
 
@@ -114,7 +116,7 @@ pub fn init_tiles(
                 let tile_handles = match tile_handles {
                     Ok(tile_handles) => tile_handles,
                     Err(err) => {
-                        error!(target: "tiling_loading", "Failed to create TileHandles for tile '{}': {}", str_id, err);
+                        error!("Failed to create TileHandles for tile '{}': {}", str_id, err);
                         result = Err(err);
                         continue;
                     }
@@ -130,19 +132,19 @@ pub fn init_tiles(
                             cmd.entity(enti).insert(TileShaderRef(shader_ent));
                         }
                         Err(err) => {
-                            warn!(target: "tiling_loading", "Tile '{}' references missing shader '{}': {}", str_id, seri.shader, err);
+                            warn!("Tile '{}' references missing shader '{}': {}", str_id, seri.shader, err);
                             result = Err(err);
                         }
                     }
                 } else if seri.shader.len() > 0 {
-                    warn!(target: "tiling_loading", "Tile {} shader {} is too short for a shader", str_id, seri.shader);
+                    warn!("Tile {} shader {} is too short for a shader", str_id, seri.shader);
                 }
             }
             else{
                 let map = match ImageHolderMap::from_paths(&asset_server, seri.img_paths) {
                     Ok(map) => map,
                     Err(err) => {
-                        error!(target: "tiling_loading", "Failed to create ImageHolderMap for tile '{}': {}", str_id, err);
+                        error!("Failed to create ImageHolderMap for tile '{}': {}", str_id, err);
                         result = Err(err);
                         continue;
                     }
@@ -158,7 +160,7 @@ pub fn init_tiles(
                     Transform::from_translation(Vec2::from_array(seri.offset).extend(my_z.as_float())),
                 ));
                 if ! seri.shader.is_empty() {
-                    warn!(target: "tiling_loading", "Tile {} tilemap shaders ('{}') are not compatible with sprite=true, ignoring", str_id, seri.shader);
+                    warn!("Tile {} tilemap shaders ('{}') are not compatible with sprite=true, ignoring", str_id, seri.shader);
                 }
             }
 
@@ -169,79 +171,19 @@ pub fn init_tiles(
 } 
 
 pub fn add_tiles_to_map(
-    tiling_map: Option<ResMut<TilingEntityMap>>,
+    mut cmd: Commands,
+    map: Option<ResMut<TileEntitiesMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<Tile>, Added<Disabled>, Without<TilePos>)>,
 ) -> Result {
     let mut result: Result = Ok(());
-    if let Some(mut tiling_map) = tiling_map {
+    if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = tiling_map.0.insert(str_id, ent, ) {
-                error!(target: "tiling_loading", "{} {} already in TilingEntityMap : {}", prefix, str_id, err);
+            if let Err(err) = map.0.insert(str_id, ent, ) {
+                error!("{} {} already in TilingEntityMap : {}", prefix, str_id, err);
+                cmd.entity(ent).despawn();
                 result = Err(err);
             } else {
-                info!(target: "tiling_loading", "Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
-            }
-        }
-    }
-    result
-}
-
-#[allow(unused_parens)]
-pub fn init_tile_weighted_samplers(
-    mut cmd: Commands, 
-    mut seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
-    mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
-    map: Res<TilingEntityMap>,
-) -> Result {
-    let mut result: Result = Ok(());
-    for handle in seris_handles.handles.drain(..) {
-        if let Some(mut seri) = assets.remove(&handle) {
-            //info!(target: "tiling_loading", "Loading TileWeightedSamplerSeri from handle: {:?}", handle);
-
-            let str_id = StrId::new(seri.id)?;
-
-            let mut weights: Vec<(Entity, f32)> = Vec::new();
-
-            for (tile_id, weight) in seri.weights.drain() {
-                if weight <= 0.0 {
-                    let err = BevyError::from(format!("TileWeightedSampler {:?} has non-positive weight {}, skipping", str_id, weight));
-                    error!(target: "tiling_loading", "{}", err);
-                    result = Err(err);
-                    continue;
-                }
-                if let Ok(ent) = map.0.get(&tile_id) {
-                    weights.push((ent.clone(), weight));
-                } else {
-                    let err = BevyError::from(format!("TileWeightedSampler {:?} references non-existent tile id {:?}, skipping", str_id, tile_id));
-                    error!(target: "tiling_loading", "{}", err);
-                    result = Err(err);
-                    continue;
-                }
-            }
-            if weights.is_empty() {
-                let err = BevyError::from(format!("TileWeightedSampler {:?} has no valid tiles, skipping", str_id));
-                error!(target: "tiling_loading", "{}", err);
-                result = Err(err);
-                continue;
-            }
-            cmd.spawn((str_id, HashPosEntiWeightedSampler::new(&weights), ));
-        }
-    }
-    result
-} 
-#[allow(unused_parens, )]
-pub fn add_tile_weighted_samplers_to_map(
-    tiling_map: Option<ResMut<TilingEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<HashPosEntiWeightedSampler>)>,
-) -> Result {
-    let mut result: Result = Ok(());
-    if let Some(mut tiling_map) = tiling_map {
-        for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = tiling_map.0.insert(str_id, ent, ) {
-                error!(target: "tiling_loading", "{} {} already in TilingEntityMap : {}", prefix, str_id, err);
-                result = Err(err);
-            } else {
-                info!(target: "tiling_loading", "Inserted tile weighted sampler '{}' into TilingEntityMap with entity {:?}", str_id, ent);
+                info!("Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
             }
         }
     }
@@ -250,20 +192,20 @@ pub fn add_tile_weighted_samplers_to_map(
 
 #[allow(unused_parens, )]
 pub fn client_map_server_tiling(
-    trigger: Trigger<TilingEntityMap>, 
+    trigger: Trigger<TileEntitiesMap>, 
     client: Option<Res<RenetClient>>,
-    mut entis_map: ResMut<ServerEntityMap>, own_map: Res<TilingEntityMap>,
+    mut entis_map: ResMut<ServerEntityMap>, own_map: Res<TileEntitiesMap>,
 ) {
     if client.is_none() { return; }
 
-    let TilingEntityMap(received_map) = trigger.event().clone();
+    let TileEntitiesMap(received_map) = trigger.event().clone();
     for (hash_id, &server_entity) in received_map.0.iter() {
         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
 
-            debug!(target: "tiling_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
+            debug!("Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
             entis_map.insert(server_entity, client_entity);
         } else {
-            error!(target: "tiling_loading", "Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
+            error!("Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
         }
     }
 }

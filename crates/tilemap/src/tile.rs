@@ -6,12 +6,14 @@ use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::tile::{
-    tile_components::*, tile_resources::*, tile_systems::*, tiling_init_systems::*, tile_materials::*,
+    tile_components::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_systems::*, tile_samplers_init_systems::*, tile_samplers_resources::*
 };
 mod tile_systems;
-mod tiling_init_systems;
+mod tile_init_systems;
+mod tile_samplers_init_systems;
 pub mod tile_components;
 pub mod tile_resources;
+pub mod tile_samplers_resources;
 pub mod tile_materials;
 
 
@@ -25,7 +27,7 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
             update_tile_hash_value, update_tile_name, flip_tile_along_x,
-            (add_tile_weighted_samplers_to_map, ).run_if(not(server_or_singleplayer)),
+            //(add_tile_weighted_samplers_to_map, ).run_if(not(server_or_singleplayer)),
         ))
 
         .add_systems(OnEnter(AssetsLoadingState::LocalFinished), (
@@ -37,7 +39,7 @@ pub fn plugin(app: &mut App) {
             ).chain()
         ).in_set(TilingSystems))
         .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
-            (init_tile_weighted_samplers, add_tile_weighted_samplers_to_map)
+            (init_tile_weighted_samplers, add_tile_weighted_samplers_to_map, init_tile_weighted_samplers_weights, )
             .chain().run_if(server_or_singleplayer),
         ).in_set(TilingSystems))
 
@@ -49,8 +51,8 @@ pub fn plugin(app: &mut App) {
         ))
         
         
-        .add_server_trigger::<TilingEntityMap>(Channel::Unordered)
-        .make_trigger_independent::<TilingEntityMap>()
+        .add_server_trigger::<TileWeightedSamplersMap>(Channel::Unordered)
+        .make_trigger_independent::<TileWeightedSamplersMap>()
         
         .register_type::<ShaderRepeatTexSerisHandles>()
         .register_type::<ShaderRepeatTexSeri>()
@@ -58,9 +60,10 @@ pub fn plugin(app: &mut App) {
         .register_type::<TileSeri>()
         .register_type::<GlobalTilePos>()
         .register_type::<TileRef>()
-        .register_type::<TileWeightedSamplerSerisHandles>()
+        .register_type::<TileWeightedSamplerHandles>()
         .register_type::<TileWeightedSamplerSeri>()
-        .register_type::<TilingEntityMap>()
+        .register_type::<TileEntitiesMap>()
+        .register_type::<TileWeightedSamplersMap>()
         .register_type::<TileShaderEntityMap>()
         .register_type::<TileShader>()
         .register_type::<TileShaderRef>()

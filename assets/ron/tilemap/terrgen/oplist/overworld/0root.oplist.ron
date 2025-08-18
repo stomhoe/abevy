@@ -1,0 +1,17 @@
+(
+    id: "ow_root",
+    root: true,
+    operation_operands: {
+        "=": ["natgen",],
+    },
+   
+    bifurcation_over: "1sep",
+    threshold: 0.5,
+    bifurcation_under: "ocean",
+    tiles: [
+        
+    ],
+    root_in_dimensions: ["ow"],
+    size: Some((1, 1)),
+
+)

@@ -1,5 +1,5 @@
 (
-    id: "overworld",
+    id: "ow",
     name: "Overworld",
     description: "The overworld"
 )

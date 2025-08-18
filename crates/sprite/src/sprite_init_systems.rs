@@ -32,7 +32,7 @@ pub fn init_sprite_cfgs(
 
         debug!(target: "sprite_loading", "Loading SpriteDataSeri from handle: {:?}", handle);
         
-        let str_id = match StrId::new(seri.id) {
+        let str_id = match StrId::new(seri.id, 3) {
             Ok(id) => id,
             Err(e) => {
                 let err = BevyError::from(format!("Failed to create StrId for SpriteConfig: {}", e));
@@ -139,6 +139,7 @@ pub fn init_sprite_cfgs(
 
 
 pub fn add_sprites_to_local_map(
+    mut cmd: Commands,
     map: Option<ResMut<SpriteCfgEntityMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) -> Result {
@@ -147,6 +148,7 @@ pub fn add_sprites_to_local_map(
         for (ent, prefix, str_id) in query.iter() {
             if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
                 error!(target: "sprite_loading", "{} {} already in SpriteCfgEntityMap : {}", prefix, str_id, err);
+                cmd.entity(ent).despawn();
                 result = Err(err);
             } else {
                 debug!(target: "sprite_loading", "Inserted sprite '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);

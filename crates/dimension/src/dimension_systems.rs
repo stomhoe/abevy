@@ -47,7 +47,7 @@ pub fn replace_multiple_string_refs_by_entity_refs(
 ) {
     for (ent, string_refs) in query.iter_mut() {
         let mut entity_set = EntityHashSet::default();
-        for str_id in &string_refs.0 {
+        for str_id in string_refs.iter() {
             if let Ok(entity) = dimension_entity_map.0.get(str_id) {
                 entity_set.insert(entity);
             } else {

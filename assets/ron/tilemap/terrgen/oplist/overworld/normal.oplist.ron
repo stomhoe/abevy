@@ -1,0 +1,17 @@
+(
+    id: "normal",
+    root: true,
+    operation_operands: {
+        "=": ["natgen","conti"],
+        "*opo": ["myst",],
+    },
+   
+    bifurcation_over: "grass",
+    threshold: 0.2,
+    bifurcation_under: "pink",
+    tiles: [
+    ],
+    root_in_dimensions: [],
+    size: Some((1, 1)),
+
+)

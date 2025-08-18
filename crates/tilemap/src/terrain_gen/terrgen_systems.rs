@@ -112,13 +112,14 @@ pub fn produce_tiles(mut cmd: Commands,
 
             let num_operand = match operand {
                 Operand::Entities(entities) => {
-                    if let Ok((fnl_comp, )) = operands.get(entities[0]) {
-                        fnl_comp.map_or(0.0, |fnl| fnl.get_val(global_tile_pos))
-                    } else {
-                        0.0 // Si no hay componente, asumimos 0
-                    }
-                },
-                Operand::Value(val) => *val,
+                    entities.iter().fold(1.0, |acc, &ent| {
+                        if let Ok((fnl_comp, )) = operands.get(ent) {
+                            acc * fnl_comp.map_or(1.0, |fnl| fnl.get_val(global_tile_pos))
+                        } else {
+                            acc
+                        }
+                    })
+                },      Operand::Value(val) => *val,
                 Operand::HashPos => global_tile_pos.normalized_hash_value(&gen_settings, 0),
                 Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos, my_oplist_size),
                 _ => {
@@ -131,6 +132,7 @@ pub fn produce_tiles(mut cmd: Commands,
                 Operation::Add => acc_val += num_operand,
                 Operation::Subtract => acc_val -= num_operand,
                 Operation::Multiply => acc_val *= num_operand,
+                Operation::MultiplyOpo => acc_val *= (1.0 - num_operand),
                 Operation::Divide => if num_operand != 0.0 { acc_val /= num_operand },
                 Operation::Min => acc_val = acc_val.min(num_operand),
                 Operation::Max => acc_val = acc_val.max(num_operand),
@@ -139,6 +141,9 @@ pub fn produce_tiles(mut cmd: Commands,
                 Operation::Log => if acc_val > 0.0 && num_operand > 0.0 && num_operand != 1.0 { acc_val = acc_val.log(num_operand) },
                 Operation::Assign => {acc_val = num_operand;},
                 Operation::Mean => {acc_val = acc_val.lerp(num_operand, 0.5);},
+                Operation::Abs => acc_val = acc_val.abs(),
+                Operation::MultiplyNormalized => acc_val *= (num_operand - 0.5) * 2.,
+                Operation::MultiplyNormalizedAbs => acc_val *= ((num_operand - 0.5) * 2.).abs(),
             }
         }
         chunk_tiles.insert_clonespawned_with_pos(&oplist_tiles, &mut cmd, global_tile_pos, pos_within_chunk, &weight_maps, &tile_query, &gen_settings,

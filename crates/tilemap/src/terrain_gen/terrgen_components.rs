@@ -149,7 +149,7 @@ pub struct InputOperand(pub f32);
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect)]
 pub enum Operation {
-    Add, Subtract, Multiply, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean,
+    Add, Subtract, Multiply, MultiplyOpo, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean, Abs, MultiplyNormalized, MultiplyNormalizedAbs
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Reflect)]

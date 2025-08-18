@@ -26,21 +26,6 @@ pub struct IsAffiliatedToMyFaction;
 pub struct BelongsToAPlayerFaction;
 
 
-/*
-           .replicate::<FactionMembers>()
-           .register_type::<BelongsToFaction>()
-           .register_type::<FactionMembers>()
-*/
-
-
-//esto en cada Being y Player
-
-
-/*
-           .replicate::<BelongsToFaction>()
-           .register_type::<BelongsToFaction>()
-           .register_type::<FactionThings>()
-*/
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 #[relationship(relationship_target = FactionThings)]
 pub struct BelongsToFaction(
@@ -53,11 +38,6 @@ pub struct BelongsToFaction(
 pub struct FactionThings(Vec<Entity>);
 impl FactionThings { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-/*
-           .replicate::<PlayerBelongsTofaction>()
-           .register_type::<PlayerBelongsTofaction>()
-           .register_type::<PlayersInFaction>()
-*/
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 #[relationship(relationship_target = PlayerMembers)]
 pub struct PlayerOfFaction {

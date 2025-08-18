@@ -5,10 +5,11 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
 use fastnoise_lite::FastNoiseLite;
 
-use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_init_systems::*, terrgen_resources::*, terrgen_systems::*}, };
+use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_oplist_init_systems::*, terrgen_noise_init_systems::*, terrgen_resources::*, terrgen_systems::*}, };
 
 pub mod terrgen_systems;
-mod terrgen_init_systems;
+mod terrgen_oplist_init_systems;
+mod terrgen_noise_init_systems;
 pub mod terrgen_components;
 pub mod terrgen_resources;
 

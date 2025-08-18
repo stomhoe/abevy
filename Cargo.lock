@@ -851,10 +851,15 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_tilemap"
 version = "0.16.0"
-source = "git+https://github.com/zachrburke/bevy_ecs_tilemap.git#547d2d4407aa40ffd70315d68b1234b58b7d4769"
 dependencies = [
  "bevy",
+ "ldtk_rust",
  "log",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tiled",
 ]
 
 [[package]]
@@ -3641,6 +3646,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "ldtk_rust"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e6ec9d145e9e4265fc8d473114353c07ab84a21ea1e1ad7c86ba7fc6337aebe"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "lewton"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5672,6 +5687,17 @@ dependencies = [
  "flate2",
  "jpeg-decoder",
  "weezl",
+]
+
+[[package]]
+name = "tiled"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "963ef63fa3552ead705617d9f42de2b076c48a15f780e4d1c95dd52e9362a700"
+dependencies = [
+ "base64 0.22.1",
+ "flate2",
+ "xml-rs",
 ]
 
 [[package]]

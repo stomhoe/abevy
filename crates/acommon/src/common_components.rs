@@ -88,12 +88,12 @@ impl core::fmt::Debug for DisplayName {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect )]
 pub struct StrId(FixedStr<32>);
 impl StrId {
-    pub fn new<S: AsRef<str>>(id: S) -> Result<Self, BevyError> {
+    pub fn new<S: AsRef<str>>(id: S, min: u8) -> Result<Self, BevyError> {
         let s = id.as_ref();
-        if s.len() >= 3 {
+        if s.len() >= min as usize {
             FixedStr::new_with_result(s).map(Self)
         } else {
-            Err(BevyError::from(format!("StrId '{}' must be at least 3 characters long", s)))
+            Err(BevyError::from(format!("StrId '{}' must be at least {} characters long", s, min)))
         }
     }
     pub fn as_str(&self) -> &str { self.0.as_str() }

@@ -69,9 +69,6 @@ pub struct NoiseSerialization {
 }
 
 
-
-
-
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
 pub struct OpListSerisHandles {
@@ -90,5 +87,7 @@ pub struct OpListSerialization {
     pub size: Option<[u32; 2]>
 }
 impl OpListSerialization {
-    pub fn is_root(&self) -> bool { !self.root_in_dimensions.is_empty() }
+    pub fn is_root(&self) -> bool {
+        self.root_in_dimensions.iter().any(|s| !s.is_empty())
+    }
 }

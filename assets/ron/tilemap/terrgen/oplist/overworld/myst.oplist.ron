@@ -1,0 +1,16 @@
+(
+    id: "myst",
+    root: true,
+    operation_operands: {
+        "=": ["natgen","myst","conti2"],
+    },
+   
+    bifurcation_over: "black",
+    threshold: 0.2,
+    bifurcation_under: "red",
+    tiles: [
+    ],
+    root_in_dimensions: [],
+    size: Some((1, 1)),
+
+)

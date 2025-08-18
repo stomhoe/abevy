@@ -1,19 +1,17 @@
 (
-    id: "land",
-    root: false,
+    id: "grass",
+    root: true,
     operation_operands: {
-        "=": ["pd","1", "0"],
-        "": ["",],
         "": ["",],
     },
    
-    bifurcation_over: "bush",
-    threshold: 0.5,
+    bifurcation_over: "",
+    threshold: 0.0,
     bifurcation_under: "",
     tiles: [
-        "tempgrass",
-
+        "tempgrass"
     ],
     root_in_dimensions: [],
     size: Some((1, 1)),
+
 )

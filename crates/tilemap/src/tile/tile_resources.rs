@@ -10,16 +10,14 @@ use serde::{Deserialize, Serialize};
 #[reflect(Resource, Default)]
 pub struct TileShaderEntityMap(pub HashIdToEntityMap);
 
-
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
 #[reflect(Resource, Default)]
-pub struct TilingEntityMap(pub HashIdToEntityMap);
+pub struct TileEntitiesMap(pub HashIdToEntityMap);
 
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
 #[reflect(Resource, Default)]
 pub struct TileInstancesEntityMap(pub HashIdToEntityMap);
-
 
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
@@ -45,19 +43,6 @@ pub struct TileSeri {
     pub tmapchild: bool,
 }
 
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
-pub struct TileWeightedSamplerSerisHandles {
-    #[asset(path = "ron/tilemap/tiling/weighted_sampler" , collection(typed))] 
-    pub handles: Vec<Handle<TileWeightedSamplerSeri>>,
-}
-//SE PUEDE USAR TMB PARA SAMPLEAR COLORES PARA TILES
-#[derive(serde::Deserialize, Asset, Reflect, Default)]
-pub struct TileWeightedSamplerSeri {
-    pub id: String,
-    pub weights: HashMap<String, f32>,
-}
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 

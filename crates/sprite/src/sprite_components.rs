@@ -271,7 +271,7 @@ impl BecomeChildOfSpriteWithCategory {
 pub struct SpriteConfigStrIds(Vec<StrId>);
 impl SpriteConfigStrIds {
     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Result<SpriteConfigStrIds, BevyError> {
-        let ids: Result<Vec<StrId>, _> = ids.into_iter().map(|s| StrId::new(s.as_ref())).collect();
+        let ids: Result<Vec<StrId>, _> = ids.into_iter().map(|s| StrId::new(s.as_ref(), 3)).collect();
         Ok(SpriteConfigStrIds(ids?))
     }
     pub fn ids(&self) -> &Vec<StrId> { &self.0 }

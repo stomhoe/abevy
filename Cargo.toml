@@ -29,7 +29,7 @@ rand_distr = "0.5.1"
 rand_seeder = "*"
 rand_pcg = "*"
 
-bevy_ecs_tilemap = { git = "https://github.com/zachrburke/bevy_ecs_tilemap.git" }
+bevy_ecs_tilemap = { path = "aother/tmap" }
 superstate = { git = "https://github.com/KurlykovDanila/Superstate.git" }
 bevy_simple_scroll_view = "0.4.0"
 bevy_ui_text_input = "0.5.2"

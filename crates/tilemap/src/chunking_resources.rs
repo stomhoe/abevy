@@ -7,7 +7,8 @@ use crate::chunking_components::ChunkPos;
 pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 //pub struct LoadedChunks (pub HashMap<ChunkPos, Entity>,);
 
-#[derive(Resource, )]
+#[derive(Resource, Reflect)]
+#[reflect(Resource, Default)]
 pub struct ChunkRangeSettings {
     pub chunk_visib_max_dist: f32,
     pub chunk_active_max_dist: f32,
@@ -18,7 +19,7 @@ impl Default for ChunkRangeSettings {
         Self {
             chunk_visib_max_dist: 1000.0,
             chunk_active_max_dist: 1000.0,//POSIBLE BUG, SI ESTO ES MÁS BAJO Q EL SHOW RANGE, SE DESPAWNEAN Y RESPAWNEAN CONSTANTEMENTE LOS CHUNKS 
-            chunk_show_range: 1,//no subir mucho o afecta visiualización sprites en movimiento
+            chunk_show_range: 2,//no subir mucho o afecta visiualización sprites en movimiento
         }
     }
 }

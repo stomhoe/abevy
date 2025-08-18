@@ -1,0 +1,5 @@
+(
+    id: "cave",
+    name: "Cave dimension",
+    description: "The cave dimension"
+)

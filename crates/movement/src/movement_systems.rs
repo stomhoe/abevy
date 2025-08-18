@@ -165,7 +165,7 @@ pub fn process_movement_modifiers(
         
         let mut speed_neg_sum: f32 = 0.0;
         let mut slowdown_mitigators_sum: f32 = 0.0; 
-        let mut speed_sum: f32 = 400.0;//ESTE 400.0 ES PROVISORIO, DESPUES CAMBIAR A 0.<---------------------
+        let mut speed_sum: f32 = 4000.0;//ESTE 400.0 ES PROVISORIO, DESPUES CAMBIAR A 0.<---------------------
 
         let mut invert_sum: f32 = 0.0;
         let mut invert_scale: f32 = 1.0;

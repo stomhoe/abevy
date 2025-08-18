@@ -19,6 +19,7 @@ use crate::{tile::{tile_materials::*}, };
 #[require(MyZ, EntityPrefix::new("Tile"), AssetScoped,)]
 pub struct Tile;
 impl Tile {
+    pub const MIN_ID_LENGTH: u8 = 3;
     pub const PIXELS: UVec2 = UVec2 { x: 64, y: 64 };
 }
 
@@ -121,7 +122,6 @@ pub struct HashPosEntiWeightedSampler {
     #[entities]entities: Vec<Entity>, weights: Vec<f32>,
     cumulative_weights: Vec<f32>, total_weight: f32,
 }
-
 impl HashPosEntiWeightedSampler {
     pub fn new(weights: &[(Entity, f32)]) -> Self {
         let mut cumulative_weights = Vec::with_capacity(weights.len());
@@ -138,16 +138,12 @@ impl HashPosEntiWeightedSampler {
             total_weight,
         }
     }
-
     pub fn sample(&self, settings: &GlobalGenSettings, pos: GlobalTilePos) -> Option<Entity> {
-        if self.entities.is_empty() {
-            return None;
-        }
+        if self.entities.is_empty() {return None;}
         let hash_used_to_sample = pos.hash_for_weight_maps(settings);
         let mut rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
         if rng_val >= 1.0 { rng_val = 0.999_999; }
         let target = rng_val * self.total_weight;
-
         match self.cumulative_weights.binary_search_by(|w| w.partial_cmp(&target).unwrap()) {
             Ok(idx) | Err(idx) => {
                 self.entities.get(idx).map(|e| *e)
@@ -155,7 +151,6 @@ impl HashPosEntiWeightedSampler {
         }
     }
 }
-
 impl Serialize for HashPosEntiWeightedSampler {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         (&self.entities, &self.weights).serialize(serializer)
@@ -181,17 +176,13 @@ impl<'de> Deserialize<'de> for HashPosEntiWeightedSampler {
     }
 }
 
-
 #[derive(Debug, Clone, Component, Default)]
 #[require(EntityPrefix::new("HashPosWSampler"), Replicated)]
 pub struct HashPosWeightedSampler<T: Clone + Serialize> {
-    choices_and_weights: Vec<(T, f32)>,
-    cumulative_weights: Vec<f32>,
-    total_weight: f32,
+    choices_and_weights: Vec<(T, f32)>, cumulative_weights: Vec<f32>, total_weight: f32,
 }
-
 impl<T: Clone + Serialize> HashPosWeightedSampler<T> {
-    pub fn new_from_map(weights_map: &HashMap<T, f32>) -> Self {
+    pub fn new(weights_map: &HashMap<T, f32>) -> Self {
         let mut choices_and_weights = Vec::with_capacity(weights_map.len());
         for (choice, weight) in weights_map.iter() {
             choices_and_weights.push((choice.clone(), *weight));
@@ -209,7 +200,6 @@ impl<T: Clone + Serialize> HashPosWeightedSampler<T> {
             total_weight,
         }
     }
-
     pub fn sample(&self, settings: &GlobalGenSettings, pos: GlobalTilePos) -> Option<T> {
         if self.choices_and_weights.is_empty() {
             return None;

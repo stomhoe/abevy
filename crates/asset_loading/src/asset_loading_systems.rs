@@ -3,7 +3,7 @@ use bevy_spritesheet_animation::prelude::{AnimationLibrary, SpritesheetAnimation
 use common::common_states::*;
 use sprite::sprite_resources::SpriteCfgEntityMap;
 use sprite_animation::sprite_animation_components::{AnimationIdPrefix, AnimationState};
-use tilemap::{chunking_components::{ActivatingChunks, InitializedChunk}, terrain_gen::{terrgen_components::{OperationList, TerrGen}, terrgen_resources::*}, tile::{tile_components::*, tile_resources::*}};
+use tilemap::{chunking_components::{ActivatingChunks, InitializedChunk}, terrain_gen::{terrgen_components::{OperationList, TerrGen}, terrgen_resources::*}, tile::{tile_components::*, tile_resources::*, tile_samplers_resources::TileWeightedSamplersMap}};
 
 
 #[allow(unused_parens, )]
@@ -27,9 +27,9 @@ pub fn reload_assets_ingame(
         
         //cmd.remove_resource::<SpriteCfgEntityMap>();
 
-        cmd.remove_resource::<TilingEntityMap>();
+        cmd.remove_resource::<TileWeightedSamplersMap>();
         cmd.remove_resource::<TileShaderEntityMap>();
-        
+        cmd.remove_resource::<TileEntitiesMap>();
         
         cmd.remove_resource::<OpListEntityMap>();
         cmd.remove_resource::<TerrGenEntityMap>();

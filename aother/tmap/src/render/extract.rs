@@ -280,7 +280,7 @@ pub fn extract(
             color: color.0.to_linear().to_f32_array(),
         };
 
-        let data = tilemap_query.get(tilemap_id.0).unwrap();
+        let Ok(data) = tilemap_query.get(tilemap_id.0) else { break };
 
         extracted_tilemaps.insert(
             data.0.id(),
@@ -303,6 +303,7 @@ pub fn extract(
                 },
             ),
         );
+
         extracted_tiles.push((
             render_entity.id(),
             ExtractedTileBundle {
@@ -374,9 +375,9 @@ pub fn extract(
             .insert(ExtractedFrustum { frustum: *frustum });
     }
 
-    commands.insert_batch(extracted_tiles);
-    commands.insert_batch(extracted_tilemaps);
-    commands.insert_batch(extracted_tilemap_textures);
+    commands.try_insert_batch(extracted_tiles);
+    commands.try_insert_batch(extracted_tilemaps);
+    commands.try_insert_batch(extracted_tilemap_textures);
 }
 
 pub fn remove_changed(mut commands: Commands, query: Query<Entity, With<ChangedInMainWorld>>) {

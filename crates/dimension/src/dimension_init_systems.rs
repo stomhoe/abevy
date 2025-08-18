@@ -22,7 +22,7 @@ pub fn init_dimensions(
     for handle in std::mem::take(&mut seris_handles.handles) {
         let Some(seri) = assets.remove(&handle) else { continue };
 
-        let str_id = match StrId::new(seri.id.clone()) {
+        let str_id = match StrId::new(seri.id.clone(), 2) {
             Ok(id) => id,
             Err(e) => {
                 let err = BevyError::from(format!("Failed to create StrId for dimension {}: {}", seri.id, e));

@@ -17,7 +17,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
     cmd.spawn((
         OfSelf, HostPlayer,
-        StrId::new("HOOOOOST")?,
+        StrId::new("HOOOOOST", 0)?,
         BelongsToFaction(faction.into_inner()),
     ));
     Ok(())

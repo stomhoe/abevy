@@ -1,6 +1,6 @@
 (
-    id: "big_laker",
-    frequency: Some(0.01),
+    id: "conti2",
+    frequency: Some(0.0001),
     noise_type: Some(0),
     fractal_type: Some(0),
     octaves: Some(3),

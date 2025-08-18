@@ -1,17 +1,17 @@
 (
-    id: "root1",
+    id: "pink",
     root: true,
     operation_operands: {
-        "+": ["continenter",],
+        "": ["",],
     },
    
-    bifurcation_over: "land",
+    bifurcation_over: "",
     threshold: 0.0,
     bifurcation_under: "",
     tiles: [
-        
+        "pink"
     ],
-    root_in_dimensions: ["overworld"],
+    root_in_dimensions: [""],
     size: Some((1, 1)),
 
 )
