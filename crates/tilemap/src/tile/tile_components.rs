@@ -22,6 +22,8 @@ impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
     pub const PIXELS: UVec2 = UVec2 { x: 64, y: 64 };
 }
+//TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
+//SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 pub struct TilemapChild;

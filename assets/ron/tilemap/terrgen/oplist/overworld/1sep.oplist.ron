@@ -1,9 +1,8 @@
 (
     id: "1sep",
-    root: true,
-    operation_operands: {
-        "=": ["myst",],
-    },
+    operation_operands: [
+        ("=", ["myst"], 0),
+    ],
    
     bifover: "myst",
     tiles_over: [],

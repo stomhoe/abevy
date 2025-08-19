@@ -54,10 +54,19 @@ pub fn init_oplists_from_assets(
             let mut oplist = OperationList::default();
             oplist.split = seri.split;
 
-            for (operation, operands) in seri.operation_operands.iter() {
+            //define a mutable array of 16 f64s here
+
+            for (operation, str_operands, out) in seri.operation_operands.iter() {
+
+                if *out >= VariablesArray::SIZE {
+                    error!("Output index {} out of bounds for OperationList", out);
+                    continue;
+                }
+
 
                 let operation = match operation.as_str().trim() {
                     "" => continue,
+                    "CLEAR" => Operation::ClearArray,
                     "+" => Operation::Add,
                     "-" => Operation::Subtract,
                     "*" => Operation::Multiply,
@@ -78,72 +87,79 @@ pub fn init_oplists_from_assets(
                         continue;
                     },
                 };
-                let operand: String = operands.get(0).map(|s| s.trim().to_string()).unwrap_or_default();
-
-                match (&operation, operand.as_str()) {
-                    (Operation::Abs, "") => {}
-                    (Operation::Abs, _) => {warn!("{} has no effect on Abs operation", operand);}
-                    (_, "") => {
-                        continue;
-                    }
+                let mut operands = Vec::new();
+                for operand in str_operands {
+                    let operand = operand.trim();    
+                    match (&operation, operand) {
+                        (Operation::Abs, "") => {}
+                        (Operation::Abs, _) => {warn!("{} has no effect on Abs operation", operand);}
+                        (_, "") => { continue; }
                     _ => {}
-                }
+                    }
 
-                let operand = if let Ok(value) = operand.parse::<f32>() {
-                    Operand::Value(value)
-                } else if operand == "hp" {
-                    Operand::HashPos
-                } else if operand == "pd" {
-                    let val = if let Some(val_str) = operands.get(1) {
-                        match val_str.parse::<u8>() {
-                            Ok(val) => val,
+                    let operand = if let Ok(value) = operand.parse::<f32>() {
+                        Operand::Value(value)
+                    } else if let Some(var_i) = operand.strip_prefix("$") {
+                        match var_i.parse::<u8>() {
+                            Ok(var_i) => {
+                                if var_i >= VariablesArray::SIZE {
+                                    warn!("Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
+                                }
+                                Operand::StackArray(var_i)
+                            }
                             Err(_) => {
-                                warn!("Invalid PoissonDisk value: {}", val_str);
+                                warn!("Failed to parse Stack array index from '{}'", operand);
                                 continue;
                             }
                         }
-                    } else { 1 };
-                    let seed = if let Some(seed_str) = operands.get(2) {
-                        match seed_str.parse::<u64>() {
-                            Ok(seed) => seed,
+                    } else if let Some(seed_str) = operand.strip_prefix("hp") {
+                        let seed = seed_str.parse::<u64>().unwrap_or(0);
+                        Operand::HashPos(seed)    
+                    } else if let Some(pd_str) = operand.strip_prefix("pd") {
+                          // Parse PoissonDisk operand: "pd{min_dist}{seed}"
+                          // Example: "pd3123" -> min_dist = 3, seed = 123
+                          let (min_dist_str, seed_str) = pd_str.split_at(1);
+                          let min_dist = match min_dist_str.parse::<u8>() {
+                                Ok(val) => val,
+                                Err(_) => {
+                                     warn!("Invalid PoissonDisk min_dist: '{}'", min_dist_str);
+                                     continue;
+                                }
+                          };
+                          let seed = match seed_str.parse::<u64>() {
+                                Ok(seed) => seed,
+                                Err(_) => {
+                                     warn!("Invalid PoissonDisk seed: '{}'", seed_str);
+                                     0
+                                }
+                          };
+                          match Operand::new_poisson_disk(min_dist, seed) {
+                                Ok(op) => op,
+                                Err(e) => {
+                                     warn!("Failed to create PoissonDisk operand: {}", e);
+                                     continue;
+                                }
+                          }
+                    } else {
+                        // Handle entity operand, possibly with '*' prefix for "opposited"
+                        let (complement, operand_str) = if let Some(stripped) = operand.strip_prefix("COMP") {
+                            (true, stripped)
+                        } else {
+                            (false, operand)
+                        };
+
+                        match terr_gen_map.0.get(&operand_str.to_string()) {
+                            Ok(ent) => Operand::Entity(ent, complement as u64),
                             Err(_) => {
-                                warn!("Invalid PoissonDisk seed: {}", seed_str);
-                                0
-                            }
-                        }
-                    } else { 0 };
-                    match Operand::new_poisson_disk(val, seed) {
-                        Ok(op) => op,
-                        Err(e) => {
-                            warn!("Failed to create PoissonDisk operand: {}", e);
-                            continue;
-                        }
-                    }
-                } else {
-                    // Operand is an entity list, with bitmask for selected indices
-                    let mut op_entities = Vec::new();
-                    let mut bitmask: u64 = 0;
-                    for (i, entity_str) in operands.iter().enumerate() {
-                        let entity_str = entity_str.trim();
-                        if entity_str.is_empty() {
-                            continue;
-                        }
-                        // If the operand at index i starts with '$', set the bit
-                        if entity_str.starts_with('$') {
-                            bitmask |= 1 << i;
-                        }
-                        let entity_key: String = entity_str.trim_start_matches('$').to_string();
-                        match terr_gen_map.0.get(&entity_key) {
-                            Ok(ent) => op_entities.push(ent),
-                            Err(_) => {
-                                warn!("Entity not found in TerrGenEntityMap: {}", entity_str);
+                                warn!("Entity not found in TerrGenEntityMap: {}", operand_str);
                                 continue;
                             }
                         }
-                    }
-                    Operand::Entities(op_entities, bitmask,)
+                    };
+
+                    operands.push(operand);
                 };
-                oplist.trunk.push((operand, operation));    
+                oplist.trunk.push((operation, operands, *out));    
                     
             }
             

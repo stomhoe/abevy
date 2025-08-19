@@ -12,7 +12,7 @@ use player::player_components::{HostPlayer, OfSelf, Player};
 
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::tile_components::* , };
 
-
+use std::mem::take;
 
 // HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
 
@@ -84,8 +84,8 @@ pub fn spawn_terrain_operations (
 pub fn produce_tiles(mut cmd: Commands, 
     gen_settings: Res<GlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
-    instantiated_oplist_query: Query<(Entity, &FirstOperand, &OplistRef, &ChunkRef, &GlobalTilePos), ()>, 
-    operands: Query<(Option<&FnlNoise>, ), ( )>,
+    mut instantiated_oplist_query: Query<(Entity, &mut VariablesArray, &OplistRef, &ChunkRef, &GlobalTilePos), ()>, 
+    terrgens: Query<(Option<&FnlNoise>, ), ( )>,
     mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, &ChildOf), ()>,
     weight_maps: Query<(&HashPosEntiWeightedSampler, ), ( )>,
     tile_query: Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
@@ -94,79 +94,89 @@ pub fn produce_tiles(mut cmd: Commands,
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
 
-    for (enti, &input_operand, &oplist_ref, &chunk_ref, &global_tile_pos) in instantiated_oplist_query.iter() {
+    for (enti, mut variables, &oplist_ref, &chunk_ref, &global_tile_pos) in instantiated_oplist_query.iter_mut() {
         cmd.entity(enti).despawn();//NO PONER ABAJO
 
         let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos, child_of)) = chunk_query.get_mut(chunk_ref.0)
         else { continue };
 
-        let mut acc_val: f32 = input_operand.0;
-
-
         let (oplist, &my_oplist_size) = oplist_query.get(oplist_ref.0)?;
 
         let pos_within_chunk = global_tile_pos.get_pos_within_chunk(chunk_pos, my_oplist_size);
-        trace!("Producing tiles at {:?} with oplist {:?} for chunk {:?}", pos_within_chunk, oplist_ref.0, chunk_pos);
 
-        for ((operand, operation)) in oplist.trunk.iter() {
+        unsafe{
 
-            let num_operand = match operand {
-                Operand::Entities(entities, opmask) => {
-                    entities.iter().enumerate().fold(1.0, |acc, (i, &ent)| {
-                        if let Ok((fnl_comp, )) = operands.get(ent) {
-                            let val = fnl_comp.map_or(1.0, |fnl| {
-                                if (opmask >> i) & 1 == 1 {
-                                    fnl.get_opo_val(global_tile_pos)
-                                } else {
-                                    fnl.get_val_0_1(global_tile_pos)
-                                }
-                            });
-                            acc * val
-                        } else { acc }
-                    })
-                },      
-                Operand::Value(val) => *val,
-                Operand::HashPos => global_tile_pos.normalized_hash_value(&gen_settings, 0),
-                Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos, my_oplist_size),
-                _ => {
-                    error!("Unsupported operand type as numeric value: {:?}", operand);
-                    0.0
-                },
-            };
-            trace!("Evaluated operand {:?} with operation {:?} to {}", operand, operation, acc_val);
+        for ((operation, operands, stackarr_out_i)) in oplist.trunk.iter() {
+            let mut operation_acc_val = 0.0;
 
-            match operation {
-                Operation::Add => acc_val += num_operand,
-                Operation::Subtract => acc_val -= num_operand,
-                Operation::Multiply => acc_val *= num_operand,
-                Operation::MultiplyOpo => acc_val *= (1.0 - num_operand),
-                Operation::Divide => if num_operand != 0.0 { acc_val /= num_operand },
-                Operation::Min => acc_val = acc_val.min(num_operand),
-                Operation::Max => acc_val = acc_val.max(num_operand),
-                Operation::Pow => if acc_val >= 0.0 || num_operand.fract() == 0.0 { acc_val = acc_val.powf(num_operand) },
-                Operation::Modulo => if num_operand != 0.0 { acc_val = acc_val % num_operand },
-                Operation::Log => if acc_val > 0.0 && num_operand > 0.0 && num_operand != 1.0 { acc_val = acc_val.log(num_operand) },
-                Operation::Assign => {acc_val = num_operand;},
-                Operation::Mean => {acc_val = acc_val.lerp(num_operand, 0.5);},
-                Operation::Abs => acc_val = acc_val.abs(),
-                Operation::MultiplyNormalized => acc_val *= (num_operand - 0.5) * 2.,
-                Operation::MultiplyNormalizedAbs => acc_val *= ((num_operand - 0.5) * 2.).abs(),
+            for operand in operands.iter() 
+            {
+                let curr_operand_val = match operand {
+                    Operand::StackArray(i) => variables[*i],
+                    Operand::Value(val) => *val,
+                    Operand::Entity(ent, terrgen_settings,) => {
+                        if let Ok((Some(noise),)) = terrgens.get(*ent) {
+                            noise.sample(global_tile_pos, *terrgen_settings)
+                        } else {
+                            error!("Entity {} not found in terrgens", ent);
+                            continue;
+                        }
+                    },
+                    Operand::HashPos(seed) => global_tile_pos.normalized_hash_value(&gen_settings, *seed),
+                    Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos, my_oplist_size),
+                };
+
+                let is_first = operand == operands.first().unwrap_unchecked();
+
+                let prev_value = operation_acc_val;
+
+                match (operation, is_first) {
+                    (Operation::ClearArray, _) => {for v in variables.0.iter_mut() { *v = 0.0; }; break;},
+                    (Operation::Add, false) => operation_acc_val += curr_operand_val,
+                    (Operation::Subtract, false) => operation_acc_val -= curr_operand_val,
+                    (Operation::Multiply, false) => operation_acc_val *= curr_operand_val,
+                    (Operation::MultiplyOpo, false) => operation_acc_val *= (1.0 - curr_operand_val),
+                    (Operation::Divide, false) => if curr_operand_val != 0.0 { operation_acc_val /= curr_operand_val },
+                    (Operation::Min, false) => operation_acc_val = operation_acc_val.min(curr_operand_val),
+                    (Operation::Max, false) => operation_acc_val = operation_acc_val.max(curr_operand_val),
+                    (Operation::Pow, false) => if operation_acc_val >= 0.0 || curr_operand_val.fract() == 0.0 { operation_acc_val = operation_acc_val.powf(curr_operand_val) },
+                    (Operation::Modulo, false) => if curr_operand_val != 0.0 { operation_acc_val = operation_acc_val % curr_operand_val },
+                    (Operation::Log, false) => if operation_acc_val > 0.0 && curr_operand_val > 0.0 && curr_operand_val != 1.0 { operation_acc_val = operation_acc_val.log(curr_operand_val) },
+                    (Operation::Mean, false) => {operation_acc_val = operation_acc_val.lerp(curr_operand_val, 0.5);},
+                    (Operation::MultiplyNormalized, false) => operation_acc_val *= (curr_operand_val - 0.5) * 2.,
+                    (Operation::MultiplyNormalizedAbs, false) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
+                    (Operation::Abs, _) => operation_acc_val = operation_acc_val.abs(),
+                    (Operation::Assign, _) | (_, true) => {operation_acc_val = curr_operand_val;},
+                }
+
+                trace!(
+                    "{} with operand {:?} at stack array index {}: prev_value: {}, curr_value: {}, {:?}, {:?}",
+                    operation,
+                    operand,
+                    *stackarr_out_i,
+                    prev_value,
+                    operation_acc_val,
+                    global_tile_pos,
+                    chunk_pos
+                );      
             }
+            trace!("Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
+            variables[*stackarr_out_i] = operation_acc_val;
+
         }
+        let acc_val = variables[0];
 
         if acc_val > oplist.split {
-            trace!("Spawning tiles over for oplist {:?} at pos {:?} with acc_val: {}", oplist_ref.0, global_tile_pos, acc_val);
             chunk_tiles.insert_clonespawned_with_pos(&oplist.tiles_over, &mut cmd, global_tile_pos, pos_within_chunk, 
                 &weight_maps, &tile_query, &gen_settings, my_oplist_size, DimensionRef(child_of.parent()), is_host);
             if let Some(bifover_ent) = oplist.bifurcation_over {
-                pending_ops_count.0 += spawn_bifurcation(&mut cmd, &oplist_query, bifover_ent, acc_val, &chunk_ref, global_tile_pos, my_oplist_size);
+                pending_ops_count.0 += spawn_bifurcation(&mut cmd, &oplist_query, bifover_ent, take(&mut variables), &chunk_ref, global_tile_pos, my_oplist_size);
             }
         } else {
-            trace!("Spawning tiles under for oplist {:?} at pos {:?} with acc_val: {}", oplist_ref.0, global_tile_pos, acc_val);
             chunk_tiles.insert_clonespawned_with_pos(&oplist.tiles_under, &mut cmd, global_tile_pos, pos_within_chunk, 
                 &weight_maps, &tile_query, &gen_settings, my_oplist_size, DimensionRef(child_of.parent()), is_host);
             if let Some(bifunder_ent) = oplist.bifurcation_under {
-                pending_ops_count.0 += spawn_bifurcation(&mut cmd, &oplist_query, bifunder_ent, acc_val, &chunk_ref, global_tile_pos, my_oplist_size);
+                pending_ops_count.0 += spawn_bifurcation(&mut cmd, &oplist_query, bifunder_ent, take(&mut variables), &chunk_ref, global_tile_pos, my_oplist_size);
             }
         }
 
@@ -175,6 +185,8 @@ pub fn produce_tiles(mut cmd: Commands,
         if pending_ops_count.0 <= 0  {
             cmd.entity(chunk_ref.0).try_remove::<PendingOperations>().try_insert(TilesReady);
         }
+        }
+
     }
     Ok(())
 }
@@ -184,7 +196,7 @@ fn spawn_bifurcation(
     cmd: &mut Commands,
     oplist_query: &Query<(&OperationList, &OplistSize), ()>,
     bif_ent: Entity,
-    acc_val: f32,
+    variables: VariablesArray,
     chunk_ref: &ChunkRef,
     global_tile_pos: GlobalTilePos,
     my_oplist_size: OplistSize,
@@ -198,45 +210,17 @@ fn spawn_bifurcation(
             for x in 0..child_oplist_size.x() as i32 {
                 for y in 0..child_oplist_size.y() as i32 {
                     let pos = global_tile_pos + GlobalTilePos::new(x, y);
-                    batch.push((OplistRef(bif_ent), FirstOperand(acc_val), chunk_ref.clone(), pos));
+                    batch.push((OplistRef(bif_ent), variables, chunk_ref.clone(), pos));
                 }
             }
             cmd.spawn_batch(batch);
             child_oplist_size.size() as i32
         } else {
-            cmd.spawn((OplistRef(bif_ent), FirstOperand(acc_val), chunk_ref.clone(), global_tile_pos));
+            cmd.spawn((OplistRef(bif_ent), variables, chunk_ref.clone(), global_tile_pos));
             1
         }
     }
 }
-
-//#[cfg(not(feature = "headless_server"))]
-#[allow(unused_parens)]
-pub fn client_change_operand_entities(
-    mut query: Query<(&mut OperationList), (Added<OperationList>)>, 
-    mut map: ResMut<ServerEntityMap>,
-) {
-    for mut oplist in query.iter_mut() {
-        for (operand, _) in &mut oplist.trunk {
-            let Operand::Entities(entities, opmask) = operand
-            else { continue };
-
-            let mut new_entities = Vec::with_capacity(entities.len());
-            for ent in entities.iter() {
-                if let Some(new_ent) = map.server_entry(*ent).get() {
-                    new_entities.push(new_ent);
-                } else {
-                    error!(target: "oplist_loading", "Entity {} not found in ServerEntityMap", ent);
-                    new_entities.push(Entity::PLACEHOLDER);
-                }
-            }
-            *operand = Operand::Entities(new_entities, *opmask);
-
-        }
-    }
-}
-
-
 
 #[allow(unused_parens)]
 pub fn adjust_changed_terrgens_to_settings( 

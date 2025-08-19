@@ -82,7 +82,8 @@ pub struct OpListSerisHandles {
 pub struct OpListSerialization {
     pub id: String,
     pub root_in_dimensions: Vec<String>,
-    pub operation_operands: HashMap<String, Vec<String>>,
+    /// input variable index, operation name, operands, ouput variable indexs 
+    pub operation_operands: Vec<(String, Vec<String>, u8)>,
     pub bifover: String,
     pub tiles_over: Vec<String>,
     pub split: f32,

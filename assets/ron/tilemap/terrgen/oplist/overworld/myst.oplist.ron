@@ -1,9 +1,10 @@
 (
     id: "myst",
-    root: true,
-    operation_operands: {
-        "=": ["natgen","myst","conti2"],
-    },
+
+    operation_operands: [
+        ("*", ["natgen","myst","conti2"], 0),
+    ],
+   
    
     bifover: "",
     tiles_over: ["black"],

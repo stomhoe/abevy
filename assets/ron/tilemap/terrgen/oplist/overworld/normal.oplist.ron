@@ -1,9 +1,8 @@
 (
     id: "normal",
-    root: true,
-    operation_operands: {
-        "=": ["natgen", "$myst", "conti"],
-    },
+    operation_operands: [
+        ("*", ["natgen","COMPmyst","conti"], 0),
+    ],
 
     bifover: "",
     tiles_over: ["tempgrass"],

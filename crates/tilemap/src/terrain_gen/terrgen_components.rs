@@ -1,4 +1,5 @@
 
+use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use fastnoise_lite::FastNoiseLite;
@@ -13,6 +14,7 @@ use crate::tile::tile_components::*;
 
 use {common::common_components::*, };
 use strum_macros::{AsRefStr, Display, };
+use std::ops::{Index, IndexMut};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 #[require(Replicated, SessionScoped, AssetScoped, TgenScoped, )]
@@ -68,19 +70,31 @@ impl FnlNoise {
     }
     pub fn set_offset(&mut self, offset: IVec2) { self.offset = offset; }
 
-    pub fn get_val_0_1(&self, tile_pos: GlobalTilePos) -> f32 {
+    pub fn sample(&self, tile_pos: GlobalTilePos, settings: u64) -> f32 {
+        match settings {
+            0 => self.get_val_0_1(tile_pos),
+            1 => self.get_opo_val(tile_pos),
+            2 => self.get_val_neg1_1(tile_pos),
+            _ => {
+                error!("Unknown noise settings: {}", settings);
+                0.0
+            }
+        }
+    }
+
+    fn get_val_0_1(&self, tile_pos: GlobalTilePos) -> f32 {
         (self.noise.get_noise_2d(
             (tile_pos.0.x + self.offset.x) as f32,
             (tile_pos.0.y + self.offset.y) as f32
         ) + 1.0) / 2.0 // Normalizar a [0, 1]
     }
-    pub fn get_val_neg1_1(&self, tile_pos: GlobalTilePos) -> f32 {
+    fn get_val_neg1_1(&self, tile_pos: GlobalTilePos) -> f32 {
         self.noise.get_noise_2d(
             (tile_pos.0.x + self.offset.x) as f32,
             (tile_pos.0.y + self.offset.y) as f32
         )
     }
-    pub fn get_opo_val(&self, tile_pos: GlobalTilePos) -> f32 {
+    fn get_opo_val(&self, tile_pos: GlobalTilePos) -> f32 {
         1. - self.noise.get_noise_2d(
             (tile_pos.0.x + self.offset.x) as f32,
             (tile_pos.0.y + self.offset.y) as f32
@@ -146,11 +160,37 @@ pub struct ChunkRef(pub Entity);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 #[require(EntityPrefix::new("OpList"), Replicated, SessionScoped, AssetScoped, TgenScoped)]
 pub struct OperationList {
-    pub trunk: Vec<(Operand, Operation)>, pub split: f32,
-    #[entities] pub bifurcation_over: Option<Entity>, 
-    #[entities] pub bifurcation_under: Option<Entity>,
-    #[entities] pub tiles_over: Vec<Entity>,
-    #[entities] pub tiles_under: Vec<Entity>,
+
+    pub trunk: Vec<(Operation, Vec<Operand>, u8)>,
+    pub split: f32,
+    pub bifurcation_over: Option<Entity>,
+    pub bifurcation_under: Option<Entity>,
+    pub tiles_over: Vec<Entity>,
+    pub tiles_under: Vec<Entity>,
+}
+
+impl MapEntities for OperationList {
+    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
+        for (_, operands, _) in self.trunk.iter_mut() {
+            for operand in operands.iter_mut() {
+                if let Operand::Entity(ent, _) = operand {
+                    *ent = entity_mapper.get_mapped(*ent);
+                }
+            }
+        }
+        if let Some(entity) = self.bifurcation_over.as_mut() {
+            *entity = entity_mapper.get_mapped(*entity);
+        }
+        if let Some(entity) = self.bifurcation_under.as_mut() {
+            *entity = entity_mapper.get_mapped(*entity);
+        }
+        for entity in self.tiles_over.iter_mut() {
+            *entity = entity_mapper.get_mapped(*entity);
+        }
+        for entity in self.tiles_under.iter_mut() {
+            *entity = entity_mapper.get_mapped(*entity);
+        }
+    }
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
@@ -179,20 +219,38 @@ impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 // pub struct RootOpList;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct FirstOperand(pub f32);
+pub struct VariablesArray(pub [f32; Self::SIZE as usize]);
+
+impl VariablesArray {
+    pub const SIZE: u8 = 16;
+}
+
+impl Index<u8> for VariablesArray {
+    type Output = f32;
+    fn index(&self, index: u8) -> &Self::Output {
+        unsafe { self.0.get_unchecked(index as usize) }
+    }
+}
+
+impl IndexMut<u8> for VariablesArray {
+    fn index_mut(&mut self, index: u8) -> &mut Self::Output {
+        unsafe { self.0.get_unchecked_mut(index as usize) }
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect, AsRefStr, Display, )]
 pub enum Operation {
-    Add, Subtract, Multiply, MultiplyOpo, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean, Abs, MultiplyNormalized, MultiplyNormalizedAbs
+    Add, Subtract, Multiply, MultiplyOpo, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean, Abs, MultiplyNormalized, MultiplyNormalizedAbs, ClearArray,
 }
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Reflect)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
 pub enum Operand {
+    StackArray(u8),
     Value(f32),
-    Entities(#[entities] Vec<Entity>, u64, ),
-    HashPos,
+    Entity(Entity, u64,),
+    HashPos(u64),
     PoissonDisk(PoissonDisk),
 }
 impl Operand {
@@ -205,5 +263,5 @@ impl From<f32> for Operand { fn from(v: f32) -> Self { Self::Value(v) } }
 
 
 #[derive(Component, Debug, Clone, Copy, Reflect)]
-#[require(FirstOperand)]
+#[require(VariablesArray)]
 pub struct OplistRef(pub Entity);
