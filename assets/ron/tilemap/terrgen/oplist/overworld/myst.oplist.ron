@@ -7,9 +7,9 @@
    
     bifover: "",
     tiles_over: ["black"],
-    split: 0.2,
+    split: 0.3,
     bifunder: "",
-    tiles_under: ["red"],
+    tiles_under: ["dblue"],
     root_in_dimensions: [],
     size: Some((1, 1)),
 

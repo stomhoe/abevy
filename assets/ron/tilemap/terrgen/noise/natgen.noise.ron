@@ -1,13 +1,13 @@
 (
-    id: "natgen",
-    frequency: Some(0.01),
-    noise_type: Some(0),
+    id: "natgen",//TAL VEZ ES MEJOR SIMPLEX ASÍ NO HAY ISLAS ARTIFICIALES SOLO EN MEDIO DE OCEANOS, MÁS IMPREDECIBLE
+    frequency: Some(0.001),
+    noise_type: Some(4),
     fractal_type: Some(0),
-    octaves: Some(3),
+    octaves: Some(2),
     lacunarity: Some(2.0),
     gain: Some(0.5),
-    weighted_strength: Some(0.0),
-    ping_pong_strength: Some(2.0),
+    weighted_strength: Some(1.0),
+    ping_pong_strength: None,
 
     cellular_distance_function: None,
     cellular_return_type: None,

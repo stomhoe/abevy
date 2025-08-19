@@ -5,8 +5,8 @@
         "=": ["natgen",],
     },
    
-    bifover: "",
-    tiles_over: ["pink"],
+    bifover: "1sep",
+    tiles_over: [],
     split: 0.5,
     bifunder: "",
     tiles_under: ["ocean"],

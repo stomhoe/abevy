@@ -6,18 +6,21 @@ use common::common_types::HashIdToEntityMap;
 
 
 #[derive(Resource, Debug, Reflect)]
+#[reflect(Resource, Default)]
 pub struct GlobalGenSettings {
     
     pub seed: i32,
     pub c_decrease_per_1km: f32,
-    pub world_size: Option<u32>,
+    pub world_freq: f32,
+    pub world_limits: Option<u32>,
 }
 impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self { 
             seed: 0,
             c_decrease_per_1km: 15.0, //esto debería usarse para reducir o incrementar split
-            world_size: None 
+            world_limits: None,
+            world_freq: 1e1,
         }
     }
 }

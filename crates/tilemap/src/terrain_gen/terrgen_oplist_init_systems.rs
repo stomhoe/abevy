@@ -119,24 +119,32 @@ pub fn init_oplists_from_assets(
                             continue;
                         }
                     }
-                } else if let Ok(first_entity) = terr_gen_map.0.get(&operand) {
-                    let mut op_entities = vec![first_entity];
-                    for entity_str in operands.iter().skip(1) {
+                } else {
+                    // Operand is an entity list, with bitmask for selected indices
+                    let mut op_entities = Vec::new();
+                    let mut bitmask: u64 = 0;
+                    for (i, entity_str) in operands.iter().enumerate() {
+                        let entity_str = entity_str.trim();
                         if entity_str.is_empty() {
                             continue;
                         }
-                        let Ok(ent) = terr_gen_map.0.get(entity_str) else {
-                            warn!("Invalid entity operand: {}", entity_str);
-                            continue;
-                        };
-                        op_entities.push(ent);
+                        // If the operand at index i starts with '$', set the bit
+                        if entity_str.starts_with('$') {
+                            bitmask |= 1 << i;
+                        }
+                        let entity_key: String = entity_str.trim_start_matches('$').to_string();
+                        match terr_gen_map.0.get(&entity_key) {
+                            Ok(ent) => op_entities.push(ent),
+                            Err(_) => {
+                                warn!("Entity not found in TerrGenEntityMap: {}", entity_str);
+                                continue;
+                            }
+                        }
                     }
-                    Operand::Entities(op_entities)
-                } else {
-                    warn!("Invalid operand string: {}", operand);
-                    continue;
+                    Operand::Entities(op_entities, bitmask,)
                 };
                 oplist.trunk.push((operand, operation));    
+                    
             }
             
             oplist.tiles_over = seri.tiles_over

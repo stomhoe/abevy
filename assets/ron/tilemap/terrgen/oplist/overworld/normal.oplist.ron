@@ -2,15 +2,14 @@
     id: "normal",
     root: true,
     operation_operands: {
-        "=": ["natgen","conti"],
-        "*opo": ["myst",],
+        "=": ["natgen", "$myst", "conti"],
     },
 
     bifover: "",
     tiles_over: ["tempgrass"],
-    split: 0.2,
+    split: 0.5,
     bifunder: "",
-    tiles_under: ["pink"],
+    tiles_under: ["blue"],
     root_in_dimensions: [],
     size: Some((1, 1)),
 

@@ -29,12 +29,14 @@ pub fn init_noises(
         };
 
         let mut noise = FastNoiseLite::new();
-        noise.set_frequency(seri.frequency);
 
-        let mut hasher = DefaultHasher::new();
-        seri.id.hash(&mut hasher);
-        let seed = hasher.finish() as i32;
-        noise.set_seed(Some(seed));
+        
+        if let Some(frequency) = seri.frequency {
+            if frequency < 0.00000001 {
+                error!("Frequency is too small (< 0.0001) for noise {}", seri.id);
+            }
+        }
+        noise.set_frequency(seri.frequency);
 
         if let Some(noise_type) = seri.noise_type {
             noise.set_noise_type(Some(match noise_type {
@@ -112,9 +114,9 @@ pub fn init_noises(
         noise.set_domain_warp_amp(seri.domain_warp_amp);
 
         cmd.spawn((
-            str_id,
+            str_id.clone(),
             DisplayName::new(seri.id.clone()),
-            FnlNoise::new(noise,),
+            FnlNoise::new(noise, str_id),
         ));
 
     }

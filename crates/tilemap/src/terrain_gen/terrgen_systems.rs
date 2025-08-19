@@ -111,13 +111,18 @@ pub fn produce_tiles(mut cmd: Commands,
         for ((operand, operation)) in oplist.trunk.iter() {
 
             let num_operand = match operand {
-                Operand::Entities(entities) => {
-                    entities.iter().fold(1.0, |acc, &ent| {
+                Operand::Entities(entities, opmask) => {
+                    entities.iter().enumerate().fold(1.0, |acc, (i, &ent)| {
                         if let Ok((fnl_comp, )) = operands.get(ent) {
-                            acc * fnl_comp.map_or(1.0, |fnl| fnl.get_val(global_tile_pos))
-                        } else {
-                            acc
-                        }
+                            let val = fnl_comp.map_or(1.0, |fnl| {
+                                if (opmask >> i) & 1 == 1 {
+                                    fnl.get_opo_val(global_tile_pos)
+                                } else {
+                                    fnl.get_val_0_1(global_tile_pos)
+                                }
+                            });
+                            acc * val
+                        } else { acc }
                     })
                 },      
                 Operand::Value(val) => *val,
@@ -210,11 +215,10 @@ fn spawn_bifurcation(
 pub fn client_change_operand_entities(
     mut query: Query<(&mut OperationList), (Added<OperationList>)>, 
     mut map: ResMut<ServerEntityMap>,
-)
-{
+) {
     for mut oplist in query.iter_mut() {
         for (operand, _) in &mut oplist.trunk {
-            let Operand::Entities(entities) = operand 
+            let Operand::Entities(entities, opmask) = operand
             else { continue };
 
             let mut new_entities = Vec::with_capacity(entities.len());
@@ -226,9 +230,32 @@ pub fn client_change_operand_entities(
                     new_entities.push(Entity::PLACEHOLDER);
                 }
             }
-            *operand = Operand::Entities(new_entities);
-        
+            *operand = Operand::Entities(new_entities, *opmask);
+
         }
     }
 }
 
+
+
+#[allow(unused_parens)]
+pub fn adjust_changed_terrgens_to_settings( 
+    settings: Res<GlobalGenSettings>,
+    mut changed_noises: Query<(&mut FnlNoise,), (Changed<FnlNoise>,)>,
+) {
+    for (mut noise,) in changed_noises.iter_mut() {
+        noise.adjust2world_settings(&settings);
+    }
+}
+
+#[allow(unused_parens)]
+pub fn adjust_terrgens_on_settings_changed(
+    settings: Res<GlobalGenSettings>,
+    mut all_noises: Query<(&mut FnlNoise,), ()>,
+) {
+    if settings.is_changed() {
+        for (mut noise,) in all_noises.iter_mut() {
+            noise.adjust2world_settings(&settings);
+        }
+    }
+}

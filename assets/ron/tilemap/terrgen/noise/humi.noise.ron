@@ -1,7 +1,7 @@
 (//humidity
     id: "humi",
     frequency: Some(0.01),
-    noise_type: Some(0),
+    noise_type: Some(4),
     fractal_type: Some(0),
     octaves: Some(3),
     lacunarity: Some(2.0),
