@@ -10,7 +10,7 @@ use game_common::game_common_components::MyZ;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
-use crate::terrain_gen::terrgen_components::OplistSize;
+use crate::terrain_gen::terrgen_oplist_components::OplistSize;
 use crate::{chunking_components::ChunkPos, terrain_gen::terrgen_resources::GlobalGenSettings, };
 use crate::{tile::{tile_materials::*}, };
 

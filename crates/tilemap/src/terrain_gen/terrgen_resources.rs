@@ -84,11 +84,8 @@ pub struct OpListSerialization {
     pub root_in_dimensions: Vec<String>,
     /// input variable index, operation name, operands, ouput variable indexs 
     pub operation_operands: Vec<(String, Vec<String>, u8)>,
-    pub bifover: String,
-    pub tiles_over: Vec<String>,
-    pub split: f32,
-    pub bifunder: String,
-    pub tiles_under: Vec<String>,
+    /// oplist id, produced tiles
+    pub bifs: Vec<(String, Vec<String>)>,
     pub size: Option<[u32; 2]>
 }
 impl OpListSerialization {

@@ -8,7 +8,7 @@ use superstate::{SuperstateInfo};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
 
-use crate::{terrain_gen::{terrgen_components::OplistSize, terrgen_resources::GlobalGenSettings}, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, InitialPos, Tile, TileRef, TilemapChild},};
+use crate::{terrain_gen::{terrgen_oplist_components::OplistSize, terrgen_resources::GlobalGenSettings}, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, InitialPos, Tile, TileRef, TilemapChild},};
 
 
 use common::{common_components::*, };

@@ -1,9 +1,6 @@
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
-use bevy_spritesheet_animation::prelude::{AnimationLibrary, SpritesheetAnimation};
 use common::common_states::*;
-use sprite::sprite_resources::SpriteCfgEntityMap;
-use sprite_animation::sprite_animation_components::{AnimationIdPrefix, AnimationState};
-use tilemap::{chunking_components::{ActivatingChunks, InitializedChunk}, terrain_gen::{terrgen_components::{OperationList, TerrGen}, terrgen_resources::*}, tile::{tile_components::*, tile_resources::*, tile_samplers_resources::TileWeightedSamplersMap}};
+use tilemap::{chunking_components::{ActivatingChunks, InitializedChunk}, terrain_gen::{terrgen_components::{TerrGen}, terrgen_resources::*}, tile::{tile_components::*, tile_resources::*, tile_samplers_resources::TileWeightedSamplersMap}};
 
 
 #[allow(unused_parens, )]
@@ -43,7 +40,6 @@ pub fn reload_assets_ingame(
 
 #[allow(unused_parens, )]
 pub fn moveon_to_replicated(
-    mut cmd: Commands, 
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
 ) {
     loading_state.set(AssetsLoadingState::ReplicatedInProcess);
@@ -51,7 +47,6 @@ pub fn moveon_to_replicated(
 
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(
-    mut cmd: Commands, 
     mut hot_loading: ResMut<NextState<TerrainGenHotLoading>>,
 ) {
     hot_loading.set(TerrainGenHotLoading::KeepAlive);

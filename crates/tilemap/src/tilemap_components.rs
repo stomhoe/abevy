@@ -5,7 +5,7 @@ use bevy_ecs_tilemap::prelude::*;
 use common::{common_components::*, common_states::*};
 
 
-use crate::{chunking_components::ChunkInitState, terrain_gen::terrgen_components::OplistSize, tile::tile_components::Tile };
+use crate::{chunking_components::ChunkInitState, terrain_gen::terrgen_oplist_components::OplistSize, tile::tile_components::Tile };
 
 #[derive(Bundle, Debug, Default)]
 pub struct TilemapConfig {

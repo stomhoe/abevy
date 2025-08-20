@@ -10,7 +10,7 @@ use fastnoise_lite::FastNoiseLite;
 
 use common::common_components::{DisplayName, EntityPrefix, StrId};
 
-use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_samplers_resources::TileWeightedSamplersMap}};
+use crate::{chunking_components::*, terrain_gen::{terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_samplers_resources::TileWeightedSamplersMap}};
 
 use std::mem::take;
 
@@ -52,7 +52,6 @@ pub fn init_oplists_from_assets(
                 };
 
             let mut oplist = OperationList::default();
-            oplist.split = seri.split;
 
             //define a mutable array of 16 f64s here
 
@@ -82,6 +81,7 @@ pub fn init_oplists_from_assets(
                     "abs" => Operation::Abs,
                     "*nm" => Operation::MultiplyNormalized,
                     "*nmabs" => Operation::MultiplyNormalizedAbs,
+                    "idxmax" => Operation::i_Max,
                     _ => {
                         error!("Unknown operation: {}", operation);
                         continue;
@@ -162,8 +162,10 @@ pub fn init_oplists_from_assets(
                 oplist.trunk.push((operation, operands, *out));    
                     
             }
-            
-            oplist.tiles_over = seri.tiles_over
+            oplist.bifurcations = Vec::with_capacity(seri.bifs.len());
+
+            for (_oplist, tiles) in seri.bifs.iter() {
+                let tiles = tiles
                 .iter().filter(|tile_str| !tile_str.is_empty())
                 .filter_map(|tile_str| {
                     if let Ok(sampler_ent) = samplers_map.0.get(tile_str) {
@@ -176,18 +178,12 @@ pub fn init_oplists_from_assets(
                     }
                 }).collect::<Vec<Entity>>();
 
-            oplist.tiles_under = seri.tiles_under
-                .iter().filter(|tile_str| !tile_str.is_empty())
-                .filter_map(|tile_str| {
-                    if let Ok(sampler_ent) = samplers_map.0.get(tile_str) {
-                        Some(sampler_ent)
-                    } else if let Ok(tile_ent) = tiles_map.0.get(tile_str) {
-                        Some(tile_ent)
-                    } else {
-                        warn!("Tile {} not found in TilingEntityMap or TileWeightedSamplersMap", tile_str);
-                        None
-                    }
-                }).collect::<Vec<Entity>>();
+                let bifurcation = Bifurcation { oplist: None, tiles };
+                oplist.bifurcations.push(bifurcation);
+            }
+
+
+            
 
             let spawned_oplist = cmd.spawn(( str_id, oplist, size)).id();
             if seri.is_root() { cmd.entity(spawned_oplist).insert(MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))); }
@@ -213,40 +209,6 @@ pub fn add_oplists_to_map(
     }
 }
 
-fn handle_bifurcation(
-    cmd: &mut Commands,
-    oplist_ent: Entity,
-    bifurcation_str: &str,
-    oplist_map: &OpListEntityMap,
-    is_root: &Query<&MultipleDimensionStringRefs>,
-    set_bifurcation: &mut dyn FnMut(Entity),
-    id: &str,
-    over_or_under: &str,
-) {
-    // Handle bifurcation string: either an OpList entity or a tile/tile sampler entity (ending with '*')
-    let bifurcation_str = bifurcation_str.trim();
-    if bifurcation_str.is_empty() { return; }
-
-
-    let Ok(bifurcation_ent) = oplist_map.0.get(&bifurcation_str.to_string()) else {
-        error!(
-            "bifurcation_{} entity '{}' not found in OpListEntityMap",
-            over_or_under, bifurcation_str
-        );
-        return;
-    };
-    if oplist_ent == bifurcation_ent {
-        error!("bifurcation_{} cannot be the parent oplist '{}'", over_or_under, id);
-        return;
-    }
-    if is_root.get(bifurcation_ent).is_ok() {
-        error!("bifurcation_{} entity {} must not be a root oplist", over_or_under, bifurcation_str);
-    } else {
-        cmd.entity(bifurcation_ent).insert(ChildOf(oplist_ent));
-        set_bifurcation(bifurcation_ent);
-    }
-}
-
 #[allow(unused_parens)]
 pub fn init_oplists_bifurcations(
     mut cmd: Commands,
@@ -260,26 +222,30 @@ pub fn init_oplists_bifurcations(
         if let Some(seri) = assets.remove(&handle) {
             let oplist_ent = oplist_map.0.get(&seri.id)?;
             let (mut oplist, ) = oplist_query.get_mut(oplist_ent)?;
-            handle_bifurcation(
-                &mut cmd,
-                oplist_ent,
-                &seri.bifover,
-                &oplist_map,
-                &is_root,
-                &mut |ent| oplist.bifurcation_over = Some(ent),
-                &seri.id,
-                "over",
-            );
-            handle_bifurcation(
-                &mut cmd,
-                oplist_ent,
-                &seri.bifunder,
-                &oplist_map,
-                &is_root,
-                &mut |ent| oplist.bifurcation_under = Some(ent),
-                &seri.id,
-                "under",
-            );
+
+            for (i, seri_bifurcation) in seri.bifs.iter().enumerate() {
+                let bifurcation_str = seri_bifurcation.0.trim();
+                if bifurcation_str.is_empty() { continue; }
+
+                let Ok(bifurcation_ent) = oplist_map.0.get(&bifurcation_str.to_string()) else {
+                    error!(
+                        "bifurcation entity with id '{}' not found in OpListEntityMap",
+                        bifurcation_str
+                    );
+                    continue;
+                };
+                if oplist_ent == bifurcation_ent {
+                    error!("bifurcation entity with id '{}' would make parent diverge into itself ", bifurcation_str);
+                    continue;
+                }
+                if is_root.get(bifurcation_ent).is_ok() {
+                    error!("bifurcation entity with id '{}' must not be a root oplist", bifurcation_str);
+                    continue;
+                } else {
+                    cmd.entity(bifurcation_ent).insert(ChildOf(oplist_ent));
+                    oplist.bifurcations[i].oplist = Some(bifurcation_ent);
+                }
+            }
         }
     }
     Ok(())

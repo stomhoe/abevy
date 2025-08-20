@@ -1,19 +1,19 @@
 (
     id: "ow_root2",
     operation_operands: [
-        ("-", ["conti", "0.5"], 1),
-        ("-", ["conti2", "0.5"], 2),
+        ("-", ["conti", "0.2"], 1),
+        ("-", ["conti2", "0.2"], 2),
         ("*opo", ["$1", "$2"], 3),
         ("*opo", ["$2", "$1"], 4),
-        ("max", ["$3", "$4"], 0),
+        ("idxmax", ["$3", "$4", "0.5"], 0),
 
     ],
    
-    bifover: "nase",
-    tiles_over: [],
-    split: 0.3,
-    bifunder: "",
-    tiles_under: ["ocean"],
+    bifs: [
+        ("", ["tempgrass"]),
+        ("", ["black"]),
+        ("", ["ocean"])
+    ],
     root_in_dimensions: ["ow"],
     size: Some((1, 1)),
 

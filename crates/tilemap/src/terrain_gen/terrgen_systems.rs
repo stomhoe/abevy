@@ -10,9 +10,9 @@ use debug_unwraps::DebugUnwrapExt;
 use dimension::dimension_components::{DimensionRef, MultipleDimensionRefs};
 use player::player_components::{HostPlayer, OfSelf, Player};
 
-use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_resources::* }, tile::tile_components::* , };
+use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_oplist_components::*, terrgen_resources::* }, tile::tile_components::* , };
 
-use std::mem::take;
+use std::{cmp::max, f32::NEG_INFINITY, mem::take};
 
 // HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
 
@@ -108,9 +108,9 @@ pub fn produce_tiles(mut cmd: Commands,
 
         for ((operation, operands, stackarr_out_i)) in oplist.trunk.iter() {
             let mut operation_acc_val = 0.0;
+            let mut selected_operand_i = 0; 
 
-            for operand in operands.iter() 
-            {
+            for (i, operand) in operands.iter().enumerate() {
                 let curr_operand_val = match operand {
                     Operand::StackArray(i) => variables[*i],
                     Operand::Value(val) => *val,
@@ -127,10 +127,11 @@ pub fn produce_tiles(mut cmd: Commands,
                 };
 
                 let is_first = operand == operands.first().unwrap_unchecked();
+                let is_last = operand == operands.last().unwrap_unchecked();
 
                 let prev_value = operation_acc_val;
 
-                match (operation, is_first) {
+                match (operation, is_first,) {
                     (Operation::ClearArray, _) => {for v in variables.0.iter_mut() { *v = 0.0; }; break;},
                     (Operation::Add, false) => operation_acc_val += curr_operand_val,
                     (Operation::Subtract, false) => operation_acc_val -= curr_operand_val,
@@ -146,7 +147,14 @@ pub fn produce_tiles(mut cmd: Commands,
                     (Operation::MultiplyNormalized, false) => operation_acc_val *= (curr_operand_val - 0.5) * 2.,
                     (Operation::MultiplyNormalizedAbs, false) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
                     (Operation::Abs, _) => operation_acc_val = operation_acc_val.abs(),
+                    (Operation::i_Max, true) => { operation_acc_val = curr_operand_val; }
+                    (Operation::i_Max, _) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = i; }}
                     (Operation::Assign, _) | (_, true) => {operation_acc_val = curr_operand_val;},
+                }
+
+                match (operation, is_last){
+                    (Operation::i_Max, true) => { operation_acc_val = selected_operand_i as f32;},
+                    _ => {}
                 }
 
                 trace!(
@@ -164,20 +172,15 @@ pub fn produce_tiles(mut cmd: Commands,
             variables[*stackarr_out_i] = operation_acc_val;
 
         }
-        let acc_val = variables[0];
+        let destination_i = (variables[0] as usize).min(oplist.bifurcations.len() - 1).max(0);
+        trace!("Destination index for bifurcation: {}", destination_i);
 
-        if acc_val > oplist.split {
-            chunk_tiles.insert_clonespawned_with_pos(&oplist.tiles_over, &mut cmd, global_tile_pos, pos_within_chunk, 
-                &weight_maps, &tile_query, &gen_settings, my_oplist_size, DimensionRef(child_of.parent()), is_host);
-            if let Some(bifover_ent) = oplist.bifurcation_over {
-                pending_ops_count.0 += spawn_bifurcation(&mut cmd, &oplist_query, bifover_ent, take(&mut variables), &chunk_ref, global_tile_pos, my_oplist_size);
-            }
-        } else {
-            chunk_tiles.insert_clonespawned_with_pos(&oplist.tiles_under, &mut cmd, global_tile_pos, pos_within_chunk, 
-                &weight_maps, &tile_query, &gen_settings, my_oplist_size, DimensionRef(child_of.parent()), is_host);
-            if let Some(bifunder_ent) = oplist.bifurcation_under {
-                pending_ops_count.0 += spawn_bifurcation(&mut cmd, &oplist_query, bifunder_ent, take(&mut variables), &chunk_ref, global_tile_pos, my_oplist_size);
-            }
+        let bifurcation = oplist.bifurcations.get_unchecked(destination_i);
+
+        chunk_tiles.insert_clonespawned_with_pos(&bifurcation.tiles, &mut cmd, global_tile_pos, pos_within_chunk, 
+            &weight_maps, &tile_query, &gen_settings, my_oplist_size, DimensionRef(child_of.parent()), is_host);
+        if let Some(oplist) = bifurcation.oplist {
+            pending_ops_count.0 += spawn_bifurcation_oplists(&mut cmd, &oplist_query, oplist, take(&mut variables), &chunk_ref, global_tile_pos, my_oplist_size);
         }
 
         pending_ops_count.0 -= 1;
@@ -192,7 +195,7 @@ pub fn produce_tiles(mut cmd: Commands,
 }
 
 
-fn spawn_bifurcation(
+fn spawn_bifurcation_oplists(
     cmd: &mut Commands,
     oplist_query: &Query<(&OperationList, &OplistSize), ()>,
     bif_ent: Entity,

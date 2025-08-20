@@ -5,7 +5,7 @@ use common::{common_components::StrId, common_resources::ImageSizeMap};
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::MyZ;
 
-use crate::{chunking_components::*, terrain_gen::terrgen_components::OplistSize, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
+use crate::{chunking_components::*, terrain_gen::terrgen_oplist_components::OplistSize, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
 
 
 
