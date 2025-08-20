@@ -40,8 +40,8 @@ pub fn plugin(app: &mut App) {
             .chain(),).in_set(TerrainGenSystems)
         )
 
-        .init_resource::<GlobalGenSettings>()
-        .register_type::<GlobalGenSettings>()
+        .init_resource::<AaGlobalGenSettings>()
+        .register_type::<AaGlobalGenSettings>()
  
 
         .add_plugins((
@@ -50,7 +50,7 @@ pub fn plugin(app: &mut App) {
 
         ))
         
-        .register_type::<GlobalGenSettings>()
+        .register_type::<AaGlobalGenSettings>()
         .register_type::<NoiseSerisHandles>()
         .register_type::<NoiseSerialization>()
         .register_type::<OpListSerisHandles>()

@@ -8,14 +8,14 @@ use bevy_ecs_tilemap::tiles::TileFlip;
 use common::common_components::{HashId, StrId};
 use game_common::game_common_components::MyZ;
 use player::player_components::{HostPlayer, OfSelf, Player};
-use crate::{terrain_gen::terrgen_resources::GlobalGenSettings, tile::{tile_components::*, tile_resources::*}};
+use crate::{terrain_gen::terrgen_resources::AaGlobalGenSettings, tile::{tile_components::*, tile_resources::*}};
 
 
 
 
 #[allow(unused_parens)]
 pub fn update_tile_hash_value(
-    settings: Res<GlobalGenSettings>,
+    settings: Res<AaGlobalGenSettings>,
     mut query: Query<(&GlobalTilePos, &mut TileposHashRand),(Added<GlobalTilePos>)>) {
     for (pos, mut hash) in query.iter_mut() {
         let mut hasher = DefaultHasher::new();

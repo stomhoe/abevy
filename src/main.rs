@@ -22,7 +22,7 @@ concat!(
     "offset_allocator=warn,",
     "bevy_asset_loader=warn,",
 
-    "tilemap::terrain_gen::terrgen_systems=warn,",
+    "tilemap::terrain_gen::terrgen_systems=info,",
     "zlevel=warn,",
     "movement=warn,",
     "sprite_animation=warn,",

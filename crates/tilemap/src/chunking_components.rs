@@ -8,7 +8,7 @@ use superstate::{SuperstateInfo};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
 
-use crate::{terrain_gen::{terrgen_oplist_components::OplistSize, terrgen_resources::GlobalGenSettings}, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, InitialPos, Tile, TileRef, TilemapChild},};
+use crate::{terrain_gen::{terrgen_oplist_components::OplistSize, terrgen_resources::AaGlobalGenSettings}, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, InitialPos, Tile, TileRef, TilemapChild},};
 
 
 use common::{common_components::*, };
@@ -17,7 +17,7 @@ use common::{common_components::*, };
 #[require(SuperstateInfo<ChunkInitState>, SessionScoped, )]
 pub struct ChunkInitState;
 impl ChunkInitState {
-    pub const SIZE: UVec2 = UVec2 { x: 12, y: 12 };
+    pub const SIZE: UVec2 = UVec2 { x: 6, y: 6 };//NORMALMENTE 12X12
 }
 
 #[derive(Component, Debug, Default, )]
@@ -63,7 +63,7 @@ impl ProducedTiles {
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
         tilemap_child: &Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>)>,//NO MUTAR
-        gen_settings: &GlobalGenSettings,
+        gen_settings: &AaGlobalGenSettings,
         oplist_size: OplistSize,
         dimension_ref: DimensionRef,
         is_server: bool,
@@ -116,7 +116,7 @@ impl ProducedTiles {
         pos_within_chunk: TilePos,
         weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
         tilemap_child: &Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>)>,
-        gen_settings: &GlobalGenSettings,
+        gen_settings: &AaGlobalGenSettings,
         oplist_size: OplistSize,
         dimension_ref: DimensionRef,
         is_server: bool

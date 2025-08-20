@@ -1,18 +1,17 @@
 (
-    id: "s2laker",
-    frequency: Some(0.01),
-    noise_type: Some(0),
-    fractal_type: Some(0),
-    octaves: Some(3),
+    id: "beachsmol",
+    frequency: Some(0.44),
+    noise_type: Some(1),
+    fractal_type: Some(1),
+    octaves: Some(5),
     lacunarity: Some(2.0),
     gain: Some(0.5),
     weighted_strength: Some(0.0),
-    ping_pong_strength: Some(2.0),
 
+    ping_pong_strength: None,
     cellular_distance_function: None,
     cellular_return_type: None,
     cellular_jitter: None,
-
     domain_warp_type: None,
     domain_warp_amp: None,
 )

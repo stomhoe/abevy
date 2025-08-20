@@ -1,13 +1,13 @@
-(//mysticalness
-    id: "myst",
-    frequency: Some(0.005),
-    noise_type: Some(4),
-    fractal_type: Some(0),
-    octaves: Some(2),
+(
+    id: "lakesmol",
+    frequency: Some(1.76),
+    noise_type: Some(1),
+    fractal_type: Some(1),
+    octaves: Some(5),
     lacunarity: Some(2.0),
     gain: Some(0.5),
-    weighted_strength: Some(1.0),
-    ping_pong_strength: Some(2.0),
+    weighted_strength: Some(0.0),
+    ping_pong_strength: None,
 
     cellular_distance_function: None,
     cellular_return_type: None,

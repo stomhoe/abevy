@@ -1,0 +1,6 @@
+(
+    id: "sand",
+    img_path: "texture/world/terrain/sand.png",
+    scale: 1e-2,
+    mask_color: (255., 0, 0, 255.),
+)

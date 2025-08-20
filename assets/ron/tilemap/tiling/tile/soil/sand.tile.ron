@@ -1,10 +1,10 @@
 (
-    id: "tempgrass",//todo hacer q se recolorice automáticamente según los valores de los noises en su posición
-    name: "Temp grass",
+    id: "sand",
+    name: "Sand",
     img_paths: {
         "default": "texture/world/white.png"
     },
-    shader: "tempgrass",
+    shader: "sand",
     sprite: false,
     offset: (0.0, 0.0),
     z: 10,

@@ -77,11 +77,12 @@ pub fn init_oplists_from_assets(
                     "max" => Operation::Max,
                     "pow" => Operation::Pow,
                     "=" => Operation::Assign,
-                    "mean" => Operation::Mean,
+                    "avg" => Operation::Average,
                     "abs" => Operation::Abs,
                     "*nm" => Operation::MultiplyNormalized,
                     "*nmabs" => Operation::MultiplyNormalizedAbs,
                     "idxmax" => Operation::i_Max,
+                    "exp" => Operation::Exp,
                     _ => {
                         error!("Unknown operation: {}", operation);
                         continue;
@@ -113,7 +114,7 @@ pub fn init_oplists_from_assets(
                             }
                         }
                     } else if let Some(seed_str) = operand.strip_prefix("hp") {
-                        let seed = seed_str.parse::<u64>().unwrap_or(0);
+                        let seed = seed_str.parse::<u64>().unwrap_or(1000);
                         Operand::HashPos(seed)    
                     } else if let Some(pd_str) = operand.strip_prefix("pd") {
                           // Parse PoissonDisk operand: "pd{min_dist}{seed}"

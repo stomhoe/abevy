@@ -1,12 +1,12 @@
 (
-    id: "tvar",
-    frequency: Some(0.001),
-    noise_type: Some(4),
+    id: "conti2",
+    frequency: Some(0.01),
+    noise_type: Some(0),
     fractal_type: Some(1),
-    octaves: Some(2),
-    lacunarity: Some(2.0),
+    octaves: Some(5),
+    lacunarity: Some(2.9),
     gain: Some(0.5),
-    weighted_strength: Some(1.0),
+    weighted_strength: Some(0.5),
     ping_pong_strength: None,
 
     cellular_distance_function: None,

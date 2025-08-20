@@ -1,0 +1,21 @@
+(
+    id: "2normal",
+    operation_operands: [
+        ("max", ["lakesmol", "lakebig"], 2),
+        ("*", ["$2", "$3"], 2),
+        ("*opo", ["$2", "$1"], 1),
+        ("idxmax", ["0.3", "$1"], 0),
+
+    ],
+   
+    bifs: [
+        ("", ["tempgrass"]),
+        ("", ["lake"]),
+        ("", [""])
+    ],
+    root_in_dimensions: [""],
+    size: Some((1, 1)),
+
+)
+
+//max(a*(1-b+b_t), b*(1-a+)) > ocean threshold

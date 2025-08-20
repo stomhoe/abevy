@@ -1,0 +1,22 @@
+(
+    id: "1normal",
+    operation_operands: [
+        ("avg", ["beachbig","0.5", "0.5", "0.5", "0.5"], 1),
+
+        ("exp", ["$3", "185", "-2e-27", "1"], 2),
+        ("*", ["$1", "$2"], 1),
+        ("idxmax", ["0.5", "$1"], 0),
+
+    ],
+   
+    bifs: [
+        ("2normal", [""]),
+        ("", ["sand"]),
+        ("", [""])
+    ],
+    root_in_dimensions: [""],
+    size: Some((1, 1)),
+
+)
+
+//max(a*(1-b+b_t), b*(1-a+)) > ocean threshold

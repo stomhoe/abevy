@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 
-use crate::terrain_gen::terrgen_resources::GlobalGenSettings;
+use crate::terrain_gen::terrgen_resources::AaGlobalGenSettings;
 use crate::tile::tile_components::*;
 
 use {common::common_components::*, };
@@ -28,7 +28,7 @@ impl PoissonDisk {
         }
         Ok(Self { min_distance, seed }) 
     }
-    pub fn sample(&self, settings: &GlobalGenSettings, tile_pos: GlobalTilePos, oplist_size: OplistSize) -> f32 {
+    pub fn sample(&self, settings: &AaGlobalGenSettings, tile_pos: GlobalTilePos, oplist_size: OplistSize) -> f32 {
 
         let val = tile_pos.normalized_hash_value(settings, self.seed);
         let added_sample_distance_x = oplist_size.x() as i32;
@@ -123,7 +123,7 @@ impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 // #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 // pub struct RootOpList;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct VariablesArray(pub [f32; Self::SIZE as usize]);
 
 impl VariablesArray {
@@ -143,10 +143,33 @@ impl IndexMut<u8> for VariablesArray {
     }
 }
 
+
+// #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect, )]
+// pub struct ExponentFraction {
+//     pub exponent: f32,
+//     pub divisor: f32,
+//     pub added: f32,
+// }
+// impl ExponentFraction {
+//     pub fn attempt_parse<S: AsRef<str>>(string: S) -> Result<Self, BevyError> {
+//         let parts: Vec<&str> = string.as_ref().split(',').collect();
+//         if parts.len() != 3 {
+//             return Err(BevyError::from("Expected format: exponent,divisor,added"));
+//         }
+//         let exponent = parts[0].trim().parse::<f32>().map_err(|_| BevyError::from("Invalid exponent"))?;
+//         let divisor = parts[1].trim().parse::<f32>().map_err(|_| BevyError::from("Invalid divisor"))?;
+//         let added = parts[2].trim().parse::<f32>().map_err(|_| BevyError::from("Invalid added"))?;
+//         Ok(Self { exponent, divisor, added })
+//     }
+//     pub fn sample(&self, value: f32) -> f32 {
+//         (value.powf(self.exponent) / self.divisor) + self.added
+//     }
+// }
+
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect, AsRefStr, Display, )]
 #[allow(non_camel_case_types)]
 pub enum Operation {
-    Add, Subtract, Multiply, MultiplyOpo, Divide, Modulo, Log, Min, Max, Pow, Assign, Mean, Abs, MultiplyNormalized, MultiplyNormalizedAbs, ClearArray, i_Max
+    Add, Subtract, Multiply, MultiplyOpo, Divide, Modulo, Log, Min, Max, Pow, Assign, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, ClearArray, i_Max, Exp
 }
 
 

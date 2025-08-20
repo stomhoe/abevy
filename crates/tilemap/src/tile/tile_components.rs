@@ -11,7 +11,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
 use crate::terrain_gen::terrgen_oplist_components::OplistSize;
-use crate::{chunking_components::ChunkPos, terrain_gen::terrgen_resources::GlobalGenSettings, };
+use crate::{chunking_components::ChunkPos, terrain_gen::terrgen_resources::AaGlobalGenSettings, };
 use crate::{tile::{tile_materials::*}, };
 
 
@@ -67,7 +67,7 @@ impl GlobalTilePos {
     }
     pub fn x(&self) -> i32 { self.0.x } pub fn y(&self) -> i32 { self.0.y }
 
-    pub fn hash_value(&self, settings: &GlobalGenSettings, seed: u64) -> u64 {
+    pub fn hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();
         // Mix coordinates with a unique constant and the seed
         self.hash(&mut hasher);
@@ -75,7 +75,7 @@ impl GlobalTilePos {
         seed.hash(&mut hasher);
         hasher.finish()
     }
-    pub fn hash_for_weight_maps(&self, settings: &GlobalGenSettings,) -> u64 {
+    pub fn hash_for_weight_maps(&self, settings: &AaGlobalGenSettings,) -> u64 {
         let mut hasher = DefaultHasher::new();
         // Use a different mixing and constants
         self.hash(&mut hasher);
@@ -83,7 +83,7 @@ impl GlobalTilePos {
         49.hash(&mut hasher); 
         hasher.finish()
     }
-    pub fn normalized_hash_value(&self, settings: &GlobalGenSettings, seed: u64) -> f32 {
+    pub fn normalized_hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> f32 {
         self.hash_value(settings, seed) as f32 / u64::MAX as f32
     }
     pub const TYPE_NAME: &'static str = "G-TilePos";
@@ -140,7 +140,7 @@ impl HashPosEntiWeightedSampler {
             total_weight,
         }
     }
-    pub fn sample(&self, settings: &GlobalGenSettings, pos: GlobalTilePos) -> Option<Entity> {
+    pub fn sample(&self, settings: &AaGlobalGenSettings, pos: GlobalTilePos) -> Option<Entity> {
         if self.entities.is_empty() {return None;}
         let hash_used_to_sample = pos.hash_for_weight_maps(settings);
         let mut rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
@@ -202,7 +202,7 @@ impl<T: Clone + Serialize> HashPosWeightedSampler<T> {
             total_weight,
         }
     }
-    pub fn sample(&self, settings: &GlobalGenSettings, pos: GlobalTilePos) -> Option<T> {
+    pub fn sample(&self, settings: &AaGlobalGenSettings, pos: GlobalTilePos) -> Option<T> {
         if self.choices_and_weights.is_empty() {
             return None;
         }

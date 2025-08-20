@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 
-use crate::terrain_gen::terrgen_resources::GlobalGenSettings;
+use crate::terrain_gen::terrgen_resources::AaGlobalGenSettings;
 use crate::tile::tile_components::*;
 
 use {common::common_components::*, };
@@ -60,11 +60,11 @@ impl FnlNoise {
 
         Self {innate_freq, noise, offset: IVec2::ZERO, }
     }
-    pub fn adjust2world_settings(&mut self, settings: &GlobalGenSettings){
+    pub fn adjust2world_settings(&mut self, settings: &AaGlobalGenSettings){
         self.noise.seed += settings.seed;
-        if self.innate_freq * settings.world_freq < FnlNoise::FREQUENCY_MIN {
-            warn!("World scale is too small (< {})", FnlNoise::FREQUENCY_MIN);
-        }
+        // if self.innate_freq * settings.world_freq < FnlNoise::FREQUENCY_MIN {
+        //     warn!("World scale is too small (< {})", FnlNoise::FREQUENCY_MIN);
+        // }
 
         self.noise.frequency = self.innate_freq * settings.world_freq;
     }

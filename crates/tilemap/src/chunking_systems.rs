@@ -12,7 +12,7 @@ pub fn visit_chunks_around_activators(
     mut commands: Commands, 
     mut query: Query<(&Transform, &mut ActivatingChunks, &DimensionRef), >,//TODO HACER Q HAY ACTIVATO
     mut loaded_chunks: ResMut<LoadedChunks>,
-    tilemap_settings: Res<ChunkRangeSettings>,
+    tilemap_settings: Res<AaChunkRangeSettings>,
 ) {
     let cnt = tilemap_settings.chunk_show_range as i32;   
     for (transform, mut activates_chunks, &dimension_ref) in query.iter_mut() {
@@ -47,7 +47,7 @@ pub fn visit_chunks_around_activators(
 pub fn rem_outofrange_chunks_from_activators(
     mut activator_query: Query<(&DimensionRef, &Transform, &mut ActivatingChunks, ), >,
     mut chunks_query: Query<(&ChildOf, Entity, &ChunkPos, &Transform, ), >,
-    tilemap_settings: Res<ChunkRangeSettings>,
+    tilemap_settings: Res<AaChunkRangeSettings>,
 ) {
     for (dimension_ref, act_transform, mut activate_chunks) in activator_query.iter_mut() {
 
@@ -101,7 +101,7 @@ pub fn show_chunks_around_camera(
     camera_query: Single<(&DimensionRef, &Transform), (With<CameraTarget>)>,
     mut chunks_query: Query<&mut Visibility, (With<InitializedChunk>)>,
     loaded_chunks: Res<LoadedChunks>,
-    tilemap_settings: Res<ChunkRangeSettings>,
+    tilemap_settings: Res<AaChunkRangeSettings>,
 ) {
     let (&cam_dimension_ref, camera_transform) = *camera_query;
     let cnt = tilemap_settings.chunk_show_range as i32;
@@ -125,7 +125,7 @@ pub fn show_chunks_around_camera(
 pub fn hide_outofrange_chunks(
     camera_query: Single<(&Transform), (With<CameraTarget>)>,
     mut chunks_query: Query<(&Transform, &mut Visibility), With<InitializedChunk>>,
-    tilemap_settings: Res<ChunkRangeSettings>,
+    tilemap_settings: Res<AaChunkRangeSettings>,
 ) {
     let camera_transform = *camera_query;
     for (chunk_transform, mut visibility) in chunks_query.iter_mut() {
