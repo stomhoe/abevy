@@ -1,16 +1,13 @@
 
 
-use core::panic;
 
 use bevy::prelude::*;
 
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use dimension::dimension_components::MultipleDimensionStringRefs;
-use fastnoise_lite::FastNoiseLite;
 
 use common::common_components::{DisplayName, EntityPrefix, StrId};
 
-use crate::{chunking_components::*, terrain_gen::{terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_samplers_resources::TileWeightedSamplersMap}};
+use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoise, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_samplers_resources::TileWeightedSamplersMap}};
 
 use std::mem::take;
 
@@ -62,45 +59,37 @@ pub fn init_oplists_from_assets(
                     continue;
                 }
 
-
-                let operation = match operation.as_str().trim() {
-                    "" => continue,
-                    "CLEAR" => Operation::ClearArray,
-                    "+" => Operation::Add,
-                    "-" => Operation::Subtract,
-                    "*" => Operation::Multiply,
-                    "*opo" => Operation::MultiplyOpo,
-                    "/" => Operation::Divide,
-                    "mod" => Operation::Modulo,
-                    "log" => Operation::Log,
-                    "min" => Operation::Min,
-                    "max" => Operation::Max,
-                    "pow" => Operation::Pow,
-                    "=" => Operation::Assign,
-                    "avg" => Operation::Average,
-                    "abs" => Operation::Abs,
-                    "*nm" => Operation::MultiplyNormalized,
-                    "*nmabs" => Operation::MultiplyNormalizedAbs,
-                    "idxmax" => Operation::i_Max,
-                    "exp" => Operation::Exp,
-                    _ => {
-                        error!("Unknown operation: {}", operation);
-                        continue;
-                    },
-                };
                 let mut operands = Vec::new();
                 for operand in str_operands {
                     let operand = operand.trim();    
-                    match (&operation, operand) {
-                        (Operation::Abs, "") => {}
-                        (Operation::Abs, _) => {warn!("{} has no effect on Abs operation", operand);}
-                        (_, "") => { continue; }
-                    _ => {}
+                    if operand.is_empty() {
+                        continue;
                     }
 
                     let operand = if let Ok(value) = operand.parse::<f32>() {
                         Operand::Value(value)
-                    } else if let Some(var_i) = operand.strip_prefix("$") {
+                    } else if let Some(tuple_str) = operand.strip_prefix("(") {
+                        // Try to parse a tuple of f32, e.g. "(1.0,2.0)"
+                        if let Some(end_idx) = tuple_str.find(')') {
+                            let inner = &tuple_str[..end_idx];
+                            let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
+                            if parts.len() == 2 {
+                                if let (Ok(a), Ok(b)) = (parts[0].parse::<f32>(), parts[1].parse::<f32>()) {
+                                    Operand::Pair(a, b)
+                                } else {
+                                    warn!("Failed to parse tuple operand: '{}'", operand);
+                                    continue;
+                                }
+                            } else {
+                                warn!("Tuple operand does not have 2 elements: '{}'", operand);
+                                continue;
+                            }
+                        } else {
+                            warn!("Malformed tuple operand: '{}'", operand);
+                            continue;
+                        }
+                    }
+                    else if let Some(var_i) = operand.strip_prefix("$") {
                         match var_i.parse::<u8>() {
                             Ok(var_i) => {
                                 if var_i >= VariablesArray::SIZE {
@@ -141,26 +130,87 @@ pub fn init_oplists_from_assets(
                                      continue;
                                 }
                           }
-                    } else {
-                        // Handle entity operand, possibly with '*' prefix for "opposited"
-                        let (complement, operand_str) = if let Some(stripped) = operand.strip_prefix("COMP") {
+                    } else if let Some(ent_str) = operand.strip_prefix("fnl.") {
+                        // Handle entity operand, possibly with 'COMP' prefix for complement
+                        let (complement, ent_str) = if let Some(stripped) = ent_str.strip_prefix("^.") {
                             (true, stripped)
                         } else {
-                            (false, operand)
+                            (false, ent_str)
                         };
 
-                        match terr_gen_map.0.get(&operand_str.to_string()) {
-                            Ok(ent) => Operand::Entity(ent, complement as u64),
-                            Err(_) => {
-                                warn!("Entity not found in TerrGenEntityMap: {}", operand_str);
-                                continue;
-                            }
-                        }
+                        // If the operand_str ends with ".s" followed by a number, use it as seed
+                        let (base_str, extra_seed) = if let Some(idx) = ent_str.rfind(".s") {
+                            let (base, seed_str) = ent_str.split_at(idx);
+                            let seed = seed_str[2..].parse::<i32>().unwrap_or(0);
+                            (base, seed)
+                        } else {
+                            (ent_str, 0)
+                        };
+                        let Ok(ent) = terr_gen_map.0.get(&base_str.to_string()) else {
+                            warn!("Entity not found in TerrGenEntityMap: {}", base_str);
+                            continue;
+                        };
+                     
+
+                        Operand::NoiseEntity(ent, fnl::NoiseSampleRange::ZeroToOne, complement, extra_seed)
+                    } else {
+                        error!("Unknown operand: {}", operand);
+                        continue;
                     };
 
                     operands.push(operand);
                 };
+
+                let operation = match operation.as_str().trim() {
+                    "" => continue,
+                    "+" => Operation::Add,
+                    "-" => Operation::Subtract,
+                    "*" => Operation::Multiply,
+                    "*opo" => Operation::MultiplyOpo,
+                    "/" => Operation::Divide,
+                    "min" => Operation::Min,
+                    "max" => Operation::Max,
+                    "pow" => Operation::Pow,
+                    "avg" => Operation::Average,
+                    "abs" => Operation::Abs,
+                    "*nm" => Operation::MultiplyNormalized,
+                    "*nmabs" => Operation::MultiplyNormalizedAbs,
+                    "idxmax" => Operation::i_Max,
+                    "lin" => Operation::Linear,
+                    "spline" => {
+                        let mut spline_vec: Vec<Vec2> = Vec::new();
+                        while operands.len() > 1 {
+                            let operand = operands.remove(0);
+                            if let Operand::Pair(x, y) = operand {
+                                spline_vec.push(Vec2::new(x, y));
+                            } else {
+                                error!("Expected Pair operand for Spline operation, got {:?}", operand);
+                            }
+                        }    
+
+                    
+                        if let Some(Operand::Pair(_, _)) = operands.last() {
+                            error!("Expected single operand for sampling Spline, got {:?}", operands.last());
+                            continue;
+                        } else {
+
+                            let Ok(curve) = CubicCardinalSpline::new(1.0, spline_vec).to_curve() else{
+                                error!("Failed to create curve from spline points");
+                                continue;
+                            };
+                            //let positions: Vec<_> = curve.iter_positions(100).collect();
+                            Operation::Curve(curve)
+                        }
+                    },
+                    _ => {
+                        error!("Unknown operation: {}", operation);
+                        continue;
+                    },
+                };
+
                 oplist.trunk.push((operation, operands, *out));    
+                
+          
                     
             }
             oplist.bifurcations = Vec::with_capacity(seri.bifs.len());

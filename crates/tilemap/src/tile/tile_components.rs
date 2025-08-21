@@ -50,12 +50,14 @@ pub enum TileShader{
 }
 
 
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
+pub struct InitialPos(pub GlobalTilePos);
+
+
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
 pub struct GlobalTilePos(pub IVec2);
 
-#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
-pub struct InitialPos(pub GlobalTilePos);
 
 
 impl GlobalTilePos {
@@ -107,6 +109,11 @@ impl From<Vec2> for GlobalTilePos {
 impl Into<Vec2> for GlobalTilePos {
     fn into(self) -> Vec2 {
         self.0.as_vec2() * Tile::PIXELS.as_vec2()
+    }
+}
+impl Into<IVec2> for GlobalTilePos {
+    fn into(self) -> IVec2 {
+        self.0
     }
 }
 impl From<IVec2> for GlobalTilePos {

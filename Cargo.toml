@@ -37,7 +37,6 @@ bevy_replicon = "0.34.4"
 bevy_replicon_renet = { git = "https://github.com/projectharmonia/bevy_replicon_renet.git" }
 serde = { version = "1.0.219", features = ["derive"] }
 bevy_common_assets = { version = "0.13.0", features = ["ron"]}
-fastnoise-lite={ path = "aother/fnl" }
 
 bevy_simple_subsecond_system = "0.2.0" #IMPORTANTE PARA HOTPATCHEAR SISTEMAS
 bevy-ui-gradients = "0.4.0"

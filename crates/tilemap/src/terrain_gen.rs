@@ -3,7 +3,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
-use fastnoise_lite::FastNoiseLite;
+use fnl::FastNoiseLite;
 
 use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, };
 
@@ -25,7 +25,6 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             (spawn_terrain_operations, produce_tiles).in_set(TerrainGenSystems),
             (add_noises_to_map, add_oplists_to_map, ).run_if(not(server_or_singleplayer)),
-            (adjust_changed_terrgens_to_settings, adjust_terrgens_on_settings_changed).run_if(in_state(AssetsLoadingState::ReplicatedFinished).and(server_or_singleplayer)),
         ))
     
         .add_systems(
@@ -45,7 +44,8 @@ pub fn plugin(app: &mut App) {
  
 
         .add_plugins((
-            RonAssetPlugin::<NoiseSerialization>::new(&["noise.ron"]),
+            RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),
+
             RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
 
         ))
@@ -57,9 +57,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<OpListSerialization>()
         .register_type::<FnlNoise>()
         .register_type::<FastNoiseLite>()
-        .register_type::<OperationList>()
-        .register_type::<Operand>()
-        .register_type::<Operation>()
+        .register_type::<OperationList>().register_type::<Operation>().register_type::<Operand>()
         .register_type::<TerrGenEntityMap>()
         .register_type::<OpListEntityMap>()
         .register_type::<OplistSize>()

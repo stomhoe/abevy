@@ -2,17 +2,11 @@
 
 
 use bevy::{ecs::entity_disabling::Disabled, math::ops::exp, prelude::*};
-use bevy_ecs_tilemap::tiles::TilePos;
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use bevy_replicon_renet::renet::RenetServer;
 use common::{common_components::StrId, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
 use dimension::dimension_components::{DimensionRef, MultipleDimensionRefs};
-use player::player_components::{HostPlayer, OfSelf, Player};
-
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_oplist_components::*, terrgen_resources::* }, tile::tile_components::* , };
-
-use std::{cmp::max, f32::NEG_INFINITY, mem::take};
+use std::mem::take;
 
 // HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
 
@@ -85,14 +79,13 @@ pub fn produce_tiles(mut cmd: Commands,
     gen_settings: Res<AaGlobalGenSettings>,
     oplist_query: Query<(&StrId, &OperationList, &OplistSize ), ( )>,
     mut instantiated_oplist_query: Query<(Entity, &mut VariablesArray, &OplistRef, &ChunkRef, &GlobalTilePos), ()>, 
-    terrgens: Query<(Option<&FnlNoise>, ), ( )>,
+    fnl_noises: Query<&FnlNoise,>,
     mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, &ChildOf), ()>,
     weight_maps: Query<(&HashPosEntiWeightedSampler, ), ( )>,
     tile_query: Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
     state : Res<State<GameSetupType>>,
 ) -> Result {
     let is_host = state.get() != &GameSetupType::AsJoiner;
-
 
     for (enti, mut variables, &oplist_ref, &chunk_ref, &global_tile_pos) in instantiated_oplist_query.iter_mut() {
         cmd.entity(enti).despawn();//NO PONER ABAJO
@@ -107,16 +100,16 @@ pub fn produce_tiles(mut cmd: Commands,
         unsafe{
 
         for ((operation, operands, stackarr_out_i)) in oplist.trunk.iter() {
-            let mut operation_acc_val = 0.0;
+            let mut operation_acc_val: f32 = 0.0;
             let mut selected_operand_i = 0; 
 
             for (operand_i, operand) in operands.iter().enumerate() {
                 let curr_operand_val = match operand {
                     Operand::StackArray(i) => variables[*i],
                     Operand::Value(val) => *val,
-                    Operand::Entity(ent, terrgen_settings,) => {
-                        if let Ok((Some(noise),)) = terrgens.get(*ent) {
-                            noise.sample(global_tile_pos, *terrgen_settings)
+                    Operand::NoiseEntity(ent, sample_range, compl, seed) => {
+                        if let Ok(noise) = fnl_noises.get(*ent) {
+                            noise.sample(global_tile_pos, *sample_range, *compl, *seed, &gen_settings)
                         } else {
                             error!("Entity {} not found in terrgens", ent);
                             continue;
@@ -124,46 +117,43 @@ pub fn produce_tiles(mut cmd: Commands,
                     },
                     Operand::HashPos(seed) => global_tile_pos.normalized_hash_value(&gen_settings, *seed),
                     Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos, my_oplist_size),
+                    Operand::Pair(_, _) => 0.0,
                 };
 
                 let is_last = operand_i == operands.len() - 1;
 
                 let prev_value = operation_acc_val;
 
-                match (operation, operand_i,) {
-                    (Operation::ClearArray, _) => {for v in variables.0.iter_mut() { *v = 0.0; }; break;},
-                    (Operation::Add, 1..) => operation_acc_val += curr_operand_val,
-                    (Operation::Subtract, 1..) => operation_acc_val -= curr_operand_val,
-                    (Operation::Multiply, 1..) => operation_acc_val *= curr_operand_val,
-                    (Operation::MultiplyOpo, 1..) => operation_acc_val *= (1.0 - curr_operand_val),
-                    (Operation::Divide, 1..) => if curr_operand_val != 0.0 { operation_acc_val /= curr_operand_val },
-                    (Operation::Min, 1..) => operation_acc_val = operation_acc_val.min(curr_operand_val),
-                    (Operation::Max, 1..) => operation_acc_val = operation_acc_val.max(curr_operand_val),
-                    (Operation::Pow, 1..) => if operation_acc_val >= 0.0 || curr_operand_val.fract() == 0.0 { operation_acc_val = operation_acc_val.powf(curr_operand_val) },
-                    (Operation::Modulo, 1..) => if curr_operand_val != 0.0 { operation_acc_val = operation_acc_val % curr_operand_val },
-                    (Operation::Log, 1..) => if operation_acc_val > 0.0 && curr_operand_val > 0.0 && curr_operand_val != 1.0 { operation_acc_val = operation_acc_val.log(curr_operand_val) },
-                    (Operation::Average, 1..) => {
-                        // Average over all operands seen so far (including the current one)
-                        operation_acc_val = (operation_acc_val * operand_i as f32 + curr_operand_val) / (operand_i as f32 + 1.0);
-                    },      
-                    (Operation::MultiplyNormalized, 1..) => operation_acc_val *= (curr_operand_val - 0.5) * 2.,
-                    (Operation::MultiplyNormalizedAbs, 1..) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
-                    (Operation::Abs, _) => operation_acc_val = operation_acc_val.abs(),
-                    (Operation::i_Max, 0) => { operation_acc_val = curr_operand_val; }
-                    (Operation::i_Max, _) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}
-                    (Operation::Exp, 0) => { operation_acc_val = exp(curr_operand_val); info!("noise: {}", curr_operand_val); },
-                    (Operation::Exp, 1) => { operation_acc_val = operation_acc_val.powf(curr_operand_val); },
-                    (Operation::Exp, 2) => { operation_acc_val = operation_acc_val * curr_operand_val; },
-                    (Operation::Exp, 3) => { operation_acc_val = operation_acc_val + curr_operand_val; 
-                        info!("Exp: {}", operation_acc_val);
-                    },
-                    (Operation::Exp, _) => { },
-                    (Operation::Assign, _) | (_, 0) => {operation_acc_val = curr_operand_val;},
-                }
+                match (operation, operand_i, is_last) {
+                    (Operation::Add, 1.., _) => operation_acc_val += curr_operand_val,
+                    (Operation::Subtract, 1.., _) => operation_acc_val -= curr_operand_val,
+                    (Operation::Multiply, 1.., _) => operation_acc_val *= curr_operand_val,
+                    (Operation::MultiplyOpo, 1.., _) => operation_acc_val *= (1.0 - curr_operand_val),
+                    (Operation::Divide, 1.., _) => if curr_operand_val != 0.0 { operation_acc_val /= curr_operand_val },
+                    (Operation::Min, 1.., _) => operation_acc_val = operation_acc_val.min(curr_operand_val),
+                    (Operation::Max, 1.., _) => operation_acc_val = operation_acc_val.max(curr_operand_val),
+                    (Operation::Pow, 1.., _) => if operation_acc_val >= 0.0 || curr_operand_val.fract() == 0.0 { operation_acc_val = operation_acc_val.powf(curr_operand_val) },
+                    (Operation::Average, _, false) => {operation_acc_val += curr_operand_val;},
+                    (Operation::Average, _, true) => {operation_acc_val += curr_operand_val; operation_acc_val /= operands.len() as f32;},
+                    (Operation::Linear, 0, _) => {operation_acc_val = curr_operand_val; trace!("conti: {}", curr_operand_val)},
+                    (Operation::Linear, 1, _) => {operation_acc_val *= curr_operand_val; trace!("beach: {}", curr_operand_val)},
+                    (Operation::Linear, 2, _) => {operation_acc_val += curr_operand_val;},
+                    (Operation::Linear, 3.., _) => {operation_acc_val *= curr_operand_val; trace!("res: {}", operation_acc_val); },
+                    (Operation::MultiplyNormalized, 1.., _) => operation_acc_val *= (curr_operand_val - 0.5) * 2.,
+                    (Operation::MultiplyNormalizedAbs, 1.., _) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
+                    (Operation::Abs, _, _) => {operation_acc_val = operation_acc_val.abs(); break;},
+                    (Operation::i_Max, 0, _) => { operation_acc_val = curr_operand_val; }
+                    (Operation::i_Max, _, false) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}
+                    (Operation::i_Max, _, true) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32;}
+       
+                    (Operation::Curve(curve), _, _) => {
+                        operation_acc_val = curve.position(curr_operand_val).y;
 
-                match (operation, is_last){
-                    (Operation::i_Max, true) => { operation_acc_val = selected_operand_i as f32;},
-                    _ => {}
+                        trace!("Spline at {}: {}", curr_operand_val, curve.position(curr_operand_val));
+                        break;
+                    },
+
+                    (_, 0, _) => {operation_acc_val = curr_operand_val;},
                 }
 
                 trace!(
@@ -234,24 +224,13 @@ fn spawn_bifurcation_oplists(
     }
 }
 
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
 #[allow(unused_parens)]
-pub fn adjust_changed_terrgens_to_settings( 
-    settings: Res<AaGlobalGenSettings>,
-    mut changed_noises: Query<(&mut FnlNoise,), (Changed<FnlNoise>,)>,
+pub fn plot_spline(mut cmd: Commands, 
+    mut query: Query<(&OperationList,),()>
 ) {
-    for (mut noise,) in changed_noises.iter_mut() {
-        noise.adjust2world_settings(&settings);
-    }
-}
-
-#[allow(unused_parens)]
-pub fn adjust_terrgens_on_settings_changed(
-    settings: Res<AaGlobalGenSettings>,
-    mut all_noises: Query<(&mut FnlNoise,), ()>,
-) {
-    if settings.is_changed() {
-        for (mut noise,) in all_noises.iter_mut() {
-            noise.adjust2world_settings(&settings);
-        }
+    for mut item in query.iter_mut() {
+        
     }
 }

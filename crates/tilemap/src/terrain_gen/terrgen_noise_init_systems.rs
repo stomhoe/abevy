@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fastnoise_lite::FastNoiseLite;
+use fnl::*;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
 use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*};
 use std::mem::take;
@@ -28,7 +28,7 @@ pub fn init_noises(
             }    
         };
 
-        let mut noise = FastNoiseLite::new();
+        let mut noise = FastNoiseLite::new(str_id.clone());
 
         
         if let Some(frequency) = seri.frequency {
@@ -40,12 +40,12 @@ pub fn init_noises(
 
         if let Some(noise_type) = seri.noise_type {
             noise.set_noise_type(Some(match noise_type {
-                0 => fastnoise_lite::NoiseType::OpenSimplex2,
-                1 => fastnoise_lite::NoiseType::OpenSimplex2S,
-                2 => fastnoise_lite::NoiseType::Cellular,
-                3 => fastnoise_lite::NoiseType::Perlin,
-                4 => fastnoise_lite::NoiseType::ValueCubic,
-                5 => fastnoise_lite::NoiseType::Value,
+                0 => NoiseType::OpenSimplex2,
+                1 => NoiseType::OpenSimplex2S,
+                2 => NoiseType::Cellular,
+                3 => NoiseType::Perlin,
+                4 => NoiseType::ValueCubic,
+                5 => NoiseType::Value,
                 _ => {
                     error!("Unknown noise type: {} for noise {}", noise_type, seri.id);
                     continue;
@@ -54,12 +54,12 @@ pub fn init_noises(
         }
         if let Some(fractal_type) = seri.fractal_type {
             noise.set_fractal_type(Some(match fractal_type {
-                0 => fastnoise_lite::FractalType::None,
-                1 => fastnoise_lite::FractalType::FBm,
-                2 => fastnoise_lite::FractalType::Ridged,
-                3 => fastnoise_lite::FractalType::PingPong,
-                4 => fastnoise_lite::FractalType::DomainWarpProgressive,
-                5 => fastnoise_lite::FractalType::DomainWarpIndependent,
+                0 => FractalType::None,
+                1 => FractalType::FBm,
+                2 => FractalType::Ridged,
+                3 => FractalType::PingPong,
+                4 => FractalType::DomainWarpProgressive,
+                5 => FractalType::DomainWarpIndependent,
                 _ => {
                     error!("Unknown fractal type: {} for noise {}", fractal_type, seri.id);
                     continue;
@@ -73,10 +73,10 @@ pub fn init_noises(
         noise.set_fractal_ping_pong_strength(seri.ping_pong_strength);
         if let Some(cellular_distance_function) = seri.cellular_distance_function {
             noise.set_cellular_distance_function(Some(match cellular_distance_function {
-                0 => fastnoise_lite::CellularDistanceFunction::Euclidean,
-                1 => fastnoise_lite::CellularDistanceFunction::EuclideanSq,
-                2 => fastnoise_lite::CellularDistanceFunction::Manhattan,
-                3 => fastnoise_lite::CellularDistanceFunction::Hybrid,
+                0 => CellularDistanceFunction::Euclidean,
+                1 => CellularDistanceFunction::EuclideanSq,
+                2 => CellularDistanceFunction::Manhattan,
+                3 => CellularDistanceFunction::Hybrid,
                 _ => {
                     error!("Unknown cellular distance function: {} for noise {}", cellular_distance_function, seri.id);
                     continue;
@@ -86,13 +86,13 @@ pub fn init_noises(
         
         if let Some(cellular_return_type) = seri.cellular_return_type {
             noise.set_cellular_return_type(Some(match cellular_return_type {
-                0 => fastnoise_lite::CellularReturnType::CellValue,
-                1 => fastnoise_lite::CellularReturnType::Distance,
-                2 => fastnoise_lite::CellularReturnType::Distance2,
-                3 => fastnoise_lite::CellularReturnType::Distance2Add,
-                4 => fastnoise_lite::CellularReturnType::Distance2Sub,
-                5 => fastnoise_lite::CellularReturnType::Distance2Mul,
-                6 => fastnoise_lite::CellularReturnType::Distance2Div,
+                0 => CellularReturnType::CellValue,
+                1 => CellularReturnType::Distance,
+                2 => CellularReturnType::Distance2,
+                3 => CellularReturnType::Distance2Add,
+                4 => CellularReturnType::Distance2Sub,
+                5 => CellularReturnType::Distance2Mul,
+                6 => CellularReturnType::Distance2Div,
                 _ => {
                     error!("Unknown cellular return type: {} for noise {}", cellular_return_type, seri.id);   
                     continue;
@@ -101,9 +101,9 @@ pub fn init_noises(
         }
         if let Some(domain_warp_type) = seri.domain_warp_type {
             noise.set_domain_warp_type(Some(match domain_warp_type {
-                0 => fastnoise_lite::DomainWarpType::OpenSimplex2,
-                1 => fastnoise_lite::DomainWarpType::OpenSimplex2Reduced,
-                2 => fastnoise_lite::DomainWarpType::BasicGrid,
+                0 => DomainWarpType::OpenSimplex2,
+                1 => DomainWarpType::OpenSimplex2Reduced,
+                2 => DomainWarpType::BasicGrid,
                 _ => {
                     error!("Unknown domain warp type: {} for noise {}", domain_warp_type, seri.id);
                     continue;
@@ -116,7 +116,7 @@ pub fn init_noises(
         cmd.spawn((
             str_id.clone(),
             DisplayName::new(seri.id.clone()),
-            FnlNoise::new(noise, str_id),
+            FnlNoise(noise),
         ));
 
     }

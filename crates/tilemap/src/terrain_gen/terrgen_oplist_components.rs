@@ -2,7 +2,7 @@
 use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use fastnoise_lite::FastNoiseLite;
+use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use noiz::DynamicConfigurableSampleable;
 use serde::{Deserialize, Serialize};
@@ -72,9 +72,6 @@ pub struct Bifurcation{pub oplist: Option<Entity>, pub tiles: Vec<Entity>,}
 pub struct OperationList {
 
     pub trunk: Vec<(Operation, Vec<Operand>, u8)>,
-    pub split: f32,
-    // pub bifurcation_over: Option<Entity>,
-    // pub bifurcation_under: Option<Entity>,
     pub bifurcations: Vec<Bifurcation>,
 }
 
@@ -82,7 +79,7 @@ impl MapEntities for OperationList {
     fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
         for (_, operands, _) in self.trunk.iter_mut() {
             for operand in operands.iter_mut() {
-                if let Operand::Entity(ent, _) = operand {
+                if let Operand::NoiseEntity(ent, _, _, _) = operand {
                     *ent = entity_mapper.get_mapped(*ent);
                 }
             }
@@ -120,10 +117,8 @@ impl OplistSize {
 }
 impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 
-// #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-// pub struct RootOpList;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect )]
 pub struct VariablesArray(pub [f32; Self::SIZE as usize]);
 
 impl VariablesArray {
@@ -143,42 +138,19 @@ impl IndexMut<u8> for VariablesArray {
     }
 }
 
-
-// #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect, )]
-// pub struct ExponentFraction {
-//     pub exponent: f32,
-//     pub divisor: f32,
-//     pub added: f32,
-// }
-// impl ExponentFraction {
-//     pub fn attempt_parse<S: AsRef<str>>(string: S) -> Result<Self, BevyError> {
-//         let parts: Vec<&str> = string.as_ref().split(',').collect();
-//         if parts.len() != 3 {
-//             return Err(BevyError::from("Expected format: exponent,divisor,added"));
-//         }
-//         let exponent = parts[0].trim().parse::<f32>().map_err(|_| BevyError::from("Invalid exponent"))?;
-//         let divisor = parts[1].trim().parse::<f32>().map_err(|_| BevyError::from("Invalid divisor"))?;
-//         let added = parts[2].trim().parse::<f32>().map_err(|_| BevyError::from("Invalid added"))?;
-//         Ok(Self { exponent, divisor, added })
-//     }
-//     pub fn sample(&self, value: f32) -> f32 {
-//         (value.powf(self.exponent) / self.divisor) + self.added
-//     }
-// }
-
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect, AsRefStr, Display, )]
+#[derive(Debug, Deserialize, Serialize, Clone, AsRefStr, Display, PartialEq, Reflect, )]
 #[allow(non_camel_case_types)]
 pub enum Operation {
-    Add, Subtract, Multiply, MultiplyOpo, Divide, Modulo, Log, Min, Max, Pow, Assign, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, ClearArray, i_Max, Exp
+    Add, Subtract, Multiply, MultiplyOpo, Divide, Min, Max, Pow, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, i_Max, Curve(CubicCurve<Vec2>), Linear
 }
-
 
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
 pub enum Operand {
     StackArray(u8),
     Value(f32),
-    Entity(Entity, u64,),
+    Pair(f32, f32),
+    NoiseEntity(Entity, NoiseSampleRange, bool, i32),
     HashPos(u64),
     PoissonDisk(PoissonDisk),
 }

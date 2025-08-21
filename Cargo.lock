@@ -2868,15 +2868,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fastnoise-lite"
-version = "1.1.1"
-dependencies = [
- "bevy_reflect",
- "num-traits",
- "serde",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2905,6 +2896,16 @@ checksum = "4a3d7db9596fecd151c5f638c0ee5d5bd487b6e0ea232e5dc96d5250f6f94b1d"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
+]
+
+[[package]]
+name = "fnl"
+version = "1.1.1"
+dependencies = [
+ "bevy",
+ "common",
+ "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -5717,7 +5718,7 @@ dependencies = [
  "debug_unwraps",
  "delegate",
  "dimension",
- "fastnoise-lite",
+ "fnl",
  "game_common",
  "indexmap",
  "noiz",

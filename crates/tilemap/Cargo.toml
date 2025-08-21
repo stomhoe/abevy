@@ -9,6 +9,8 @@ game_common = { path = "../agame_common" }
 dimension = { path = "../dimension" }
 camera = { path = "../camera" }
 player = { path = "../player" }
+fnl ={ path = "../fnl" }
+
 
 bevy = { workspace = true }
 serde = { workspace = true }
@@ -34,5 +36,4 @@ bevy-inspector-egui = { workspace = true }
 
 noiz = { workspace = true }
 
-fastnoise-lite = { workspace = true }
 
