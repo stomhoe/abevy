@@ -23,6 +23,7 @@ concat!(
     "bevy_asset_loader=warn,",
 
     "tilemap::terrain_gen::terrgen_systems=info,",
+    "tilemap::tile::tile_init_systems=info,",
     "zlevel=warn,",
     "movement=warn,",
     "sprite_animation=warn,",
@@ -35,6 +36,7 @@ concat!(
     "control=debug,",
     "being=debug,",
     "faction=debug,",
+    "zsort=trace,",
 );
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
@@ -94,6 +96,12 @@ Log Levels
     Warn
     Error
     None (you turned off logging)
+
+
+Get-ChildItem target\debug -Recurse -File |
+    Where-Object { $_.Name -like "tilemap*" -or $_.Name -like "libtilemap*" -or $_.Name -like "argentum_coop*" } |
+    Remove-Item -Force
+
 */
 
 

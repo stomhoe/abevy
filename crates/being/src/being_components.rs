@@ -2,7 +2,7 @@ use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 
 use dimension::dimension_components::*;
-use game_common::game_common_components::{FacingDirection, MyZ};
+use game_common::game_common_components::{FacingDirection, MyZ, YSortOrigin};
 use modifier::modifier_components::AppliedModifiers;
 use movement::movement_components::InputMoveVector;
 use serde::{Deserialize, Serialize};
@@ -13,20 +13,20 @@ use superstate::{SuperstateInfo};
 
 
 #[derive(Component, Debug, Deserialize, Serialize)]
-#[require(InputMoveVector, MyZ(Being::MINZ_I32), Replicated, MoveAnimActive,
+#[require(InputMoveVector, MyZ(Being::Z_LEVEL), Replicated, MoveAnimActive,
 BeingAltitude, Visibility, FacingDirection, AppliedModifiers, Transform,
-EntityPrefix::new("BEING"), DimensionStrIdRef::overworld(),
+EntityPrefix::new("BEING"), DimensionStrIdRef::overworld(), YSortOrigin(10.)
 )]
 pub struct Being;
 impl Being {
 
-    /// max Z (clothes included)
-    pub const MAX_Z: MyZ = MyZ(1_000_000_000);
+    // /// max Z (clothes included)
+    // pub const MAX_Z: MyZ = MyZ(1_000_000_000);
 
-    /// lowest z allowed for either clothes or body sprites
-    pub const MIN_Z: MyZ = MyZ(Self::MINZ_I32);
+    // /// lowest z allowed for either clothes or body sprites
+    // pub const MIN_Z: MyZ = MyZ(Self::MINZ_I32);
 
-    pub const MINZ_I32: i32 = 1_000;
+    pub const Z_LEVEL: i32 = 1_000;
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]

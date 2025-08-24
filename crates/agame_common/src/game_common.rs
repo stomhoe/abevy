@@ -1,4 +1,6 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use bevy_replicon::prelude::*;
@@ -28,7 +30,6 @@ pub struct ModifierSystems;
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
 
-    let sets = 
 
     app
     .add_plugins((
@@ -36,7 +37,8 @@ pub fn plugin(app: &mut App) {
     .add_systems(OnEnter(AppState::NoSession), (reset_states))
 
     .add_systems(Update, (
-        (toggle_simulation, update_transform_z).in_set(GameplaySystems),
+        (z_sort_system, ).in_set(StatefulSessionSystems),
+        (toggle_simulation, update_transform_z, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems)
     ))
     .configure_sets(Update, (
@@ -78,6 +80,7 @@ pub fn plugin(app: &mut App) {
     .init_state::<GameSetupScreen>()
     .init_state::<SimulationState>()
     .register_type::<MyZ>()
+    .register_type::<YSortOrigin>()
     .register_type::<Description>()
     .register_type::<FacingDirection>()
 

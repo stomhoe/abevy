@@ -1,6 +1,7 @@
 use bevy::input::ButtonInput;
 
 use bevy::prelude::*;
+use common::common_components::EntityPrefix;
 use common::common_states::ConnectionAttempt;
 use common::common_states::GamePhase;
 
@@ -47,7 +48,22 @@ pub fn update_transform_z(mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>
         }
     }
 }
+#[bevy_simple_subsecond_system::hot]
+#[allow(unused_parens, )]
+pub fn z_sort_system(mut query: Query<(&mut Transform, &GlobalTransform, &YSortOrigin, &MyZ, &DimensionRef), 
+Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>
+) {
 
+    for (mut transform, global_transform, ysort_origin, z_index, _dimension) in query.iter_mut() {
+        let y_pos = global_transform.translation().y - ysort_origin.0;
+        let target_z = z_index.as_float() - y_pos * YSortOrigin::Y_SORT_DIV;
+
+        if (transform.translation.z - target_z).abs() > f32::EPSILON { 
+            transform.translation.z = target_z;
+            debug!(target: "zlevel", "Z-Sorting entity to z-index {}", target_z);
+        }
+    }
+}
 
 pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<(&mut TimeBasedMultiplier, Option<&TickMultFactor>, Option<&TickMultFactors>)>) {
     for (mut multiplier, tick_mult_factor, tick_mult_factors) in query.iter_mut() {

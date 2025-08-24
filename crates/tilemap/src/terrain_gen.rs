@@ -3,6 +3,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
+use dimension::dimension_components::MultipleDimensionRefs;
 use fnl::FastNoiseLite;
 
 use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, };
@@ -24,7 +25,7 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
             (spawn_terrain_operations, produce_tiles).in_set(TerrainGenSystems),
-            (add_noises_to_map, add_oplists_to_map, ).run_if(not(server_or_singleplayer)),
+            (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities).run_if(not(server_or_singleplayer)),
         ))
     
         .add_systems(
@@ -58,6 +59,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<FnlNoise>()
         .register_type::<FastNoiseLite>()
         .register_type::<OperationList>().register_type::<Operation>().register_type::<Operand>()
+        .register_type::<OplistRef>()
         .register_type::<TerrGenEntityMap>()
         .register_type::<OpListEntityMap>()
         .register_type::<OplistSize>()
@@ -65,17 +67,9 @@ pub fn plugin(app: &mut App) {
         .register_type::<ChunkRef>()
 
         
-        .replicate::<OplistSize>()
-        .replicate::<FnlNoise>()
-        //.replicate::<ProducedTiles>()
-        .replicate_with((
-            RuleFns::<ProducedTiles>::default(),
-            (RuleFns::<OperationList>::default(), SendRate::Once),
-        ))
-      
-    ;
+        .replicate::<OplistSize>().replicate::<FnlNoise>()
+        .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>();
 }
-
 
 
 

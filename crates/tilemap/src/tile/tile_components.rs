@@ -21,6 +21,8 @@ pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
     pub const PIXELS: UVec2 = UVec2 { x: 64, y: 64 };
+    // for non-sprite tiles
+    pub const MAX_Z: MyZ = MyZ(1_000);
 }
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
@@ -31,11 +33,16 @@ pub struct TilemapChild;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct TileRef(#[entities] pub Entity);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct TileposHashRand(pub f32);
+
+
+pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSettings) -> f32 {
+    let mut hasher = DefaultHasher::new();
+    initial_pos.hash(&mut hasher);
+    settings.seed.hash(&mut hasher);
+    (hasher.finish() as f64 / u64::MAX as f64).abs() as f32
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(TileposHashRand)]
 pub struct FlipAlongX;
 
 #[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash, Reflect)]

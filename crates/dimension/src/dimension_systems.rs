@@ -2,6 +2,7 @@ use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
+use game_common::game_common_components::{Dimension, DimensionRef};
 use crate::{
     dimension_components::*,
     dimension_resources::*,

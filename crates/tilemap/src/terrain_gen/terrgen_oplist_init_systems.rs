@@ -62,74 +62,36 @@ pub fn init_oplists_from_assets(
                 let mut operands = Vec::new();
                 for operand in str_operands {
                     let operand = operand.trim();    
-                    if operand.is_empty() {
-                        continue;
-                    }
+                    if operand.is_empty() { continue; }
 
                     let operand = if let Ok(value) = operand.parse::<f32>() {
                         Operand::Value(value)
-                    } else if let Some(tuple_str) = operand.strip_prefix("(") {
-                        // Try to parse a tuple of f32, e.g. "(1.0,2.0)"
-                        if let Some(end_idx) = tuple_str.find(')') {
-                            let inner = &tuple_str[..end_idx];
-                            let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
-                            if parts.len() == 2 {
-                                if let (Ok(a), Ok(b)) = (parts[0].parse::<f32>(), parts[1].parse::<f32>()) {
-                                    Operand::Pair(a, b)
-                                } else {
-                                    warn!("Failed to parse tuple operand: '{}'", operand);
-                                    continue;
-                                }
-                            } else {
-                                warn!("Tuple operand does not have 2 elements: '{}'", operand);
-                                continue;
-                            }
-                        } else {
-                            warn!("Malformed tuple operand: '{}'", operand);
-                            continue;
-                        }
                     }
                     else if let Some(var_i) = operand.strip_prefix("$") {
-                        match var_i.parse::<u8>() {
-                            Ok(var_i) => {
-                                if var_i >= VariablesArray::SIZE {
-                                    warn!("Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
-                                }
-                                Operand::StackArray(var_i)
-                            }
-                            Err(_) => {
-                                warn!("Failed to parse Stack array index from '{}'", operand);
-                                continue;
-                            }
+                        let Ok(var_i) = var_i.parse::<u8>() else {
+                            warn!("Failed to parse Stack array index from '{}'", operand);
+                            continue;
+                        };
+                        if var_i >= VariablesArray::SIZE {
+                            warn!("Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
                         }
+                        Operand::StackArray(var_i)
                     } else if let Some(seed_str) = operand.strip_prefix("hp") {
                         let seed = seed_str.parse::<u64>().unwrap_or(1000);
                         Operand::HashPos(seed)    
                     } else if let Some(pd_str) = operand.strip_prefix("pd") {
-                          // Parse PoissonDisk operand: "pd{min_dist}{seed}"
-                          // Example: "pd3123" -> min_dist = 3, seed = 123
-                          let (min_dist_str, seed_str) = pd_str.split_at(1);
-                          let min_dist = match min_dist_str.parse::<u8>() {
-                                Ok(val) => val,
-                                Err(_) => {
-                                     warn!("Invalid PoissonDisk min_dist: '{}'", min_dist_str);
-                                     continue;
-                                }
-                          };
-                          let seed = match seed_str.parse::<u64>() {
-                                Ok(seed) => seed,
-                                Err(_) => {
-                                     warn!("Invalid PoissonDisk seed: '{}'", seed_str);
-                                     0
-                                }
-                          };
-                          match Operand::new_poisson_disk(min_dist, seed) {
-                                Ok(op) => op,
-                                Err(e) => {
-                                     warn!("Failed to create PoissonDisk operand: {}", e);
-                                     continue;
-                                }
-                          }
+                        // Parse PoissonDisk operand: "pd{min_dist}{seed}"
+                        // Example: "pd3123" -> min_dist = 3, seed = 123
+                        let (min_dist_str, seed_str) = pd_str.split_at(1);
+                        let (Ok(min_dist), Ok(seed)) = (min_dist_str.parse::<u8>(), seed_str.parse::<u64>()) else {
+                            warn!("Invalid PoissonDisk min_dist ('{}') or seed ('{}')", min_dist_str, seed_str);
+                            continue;
+                        };
+                        let Ok(op) = Operand::new_poisson_disk(min_dist, seed) else {
+                            warn!("Failed to create PoissonDisk operand with min_dist {} and seed {}", min_dist, seed);
+                            continue;
+                        };
+                        op      
                     } else if let Some(ent_str) = operand.strip_prefix("fnl.") {
                         // Handle entity operand, possibly with 'COMP' prefix for complement
                         let (complement, ent_str) = if let Some(stripped) = ent_str.strip_prefix("^.") {
@@ -170,38 +132,12 @@ pub fn init_oplists_from_assets(
                     "/" => Operation::Divide,
                     "min" => Operation::Min,
                     "max" => Operation::Max,
-                    "pow" => Operation::Pow,
                     "avg" => Operation::Average,
                     "abs" => Operation::Abs,
                     "*nm" => Operation::MultiplyNormalized,
                     "*nmabs" => Operation::MultiplyNormalizedAbs,
                     "idxmax" => Operation::i_Max,
                     "lin" => Operation::Linear,
-                    "spline" => {
-                        let mut spline_vec: Vec<Vec2> = Vec::new();
-                        while operands.len() > 1 {
-                            let operand = operands.remove(0);
-                            if let Operand::Pair(x, y) = operand {
-                                spline_vec.push(Vec2::new(x, y));
-                            } else {
-                                error!("Expected Pair operand for Spline operation, got {:?}", operand);
-                            }
-                        }    
-
-                    
-                        if let Some(Operand::Pair(_, _)) = operands.last() {
-                            error!("Expected single operand for sampling Spline, got {:?}", operands.last());
-                            continue;
-                        } else {
-
-                            let Ok(curve) = CubicCardinalSpline::new(1.0, spline_vec).to_curve() else{
-                                error!("Failed to create curve from spline points");
-                                continue;
-                            };
-                            //let positions: Vec<_> = curve.iter_positions(100).collect();
-                            Operation::Curve(curve)
-                        }
-                    },
                     _ => {
                         error!("Unknown operation: {}", operation);
                         continue;
@@ -305,3 +241,22 @@ pub fn init_oplists_bifurcations(
 
 
  
+//  #[allow(unused_parens, )]
+// pub fn client_fix_bifurs(
+//     trigger: Trigger<TileEntitiesMap>, 
+//     server: Option<Res<RenetServer>>,
+//     mut entis_map: ResMut<ServerEntityMap>, own_map: Res<TileEntitiesMap>,
+// ) {
+//     if server.is_some() { return; }
+
+//     let TileEntitiesMap(received_map) = trigger.event().clone();
+//     for (hash_id, &server_entity) in received_map.0.iter() {
+//         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
+
+//             debug!("Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
+//             entis_map.insert(server_entity, client_entity);
+//         } else {
+//             error!("Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
+//         }
+//     }
+// }

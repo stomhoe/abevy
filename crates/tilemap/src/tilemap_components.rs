@@ -36,7 +36,7 @@ impl TilemapConfig {
 }
 
 
-#[derive(Component, Debug, Clone, Default,)]
+#[derive(Component, Debug, Clone, Default, Reflect)]
 pub struct TmapHashIdtoTextureIndex(pub HashIdMap<TileTextureIndex>);
 
 

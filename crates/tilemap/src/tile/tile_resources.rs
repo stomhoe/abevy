@@ -39,6 +39,7 @@ pub struct TileSeri {
     pub spawns: Vec<String>,
     pub spawns_children: Vec<String>,
     pub somecomp_present: Option<bool>,
+    pub ysort: Option<f32>,
     pub tmapchild: bool,
 }
 

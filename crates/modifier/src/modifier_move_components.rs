@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::modifier_components::ModifierCategories;
+use crate::modifier_components::{ModifierCategories, OperationType};
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -10,7 +10,7 @@ use crate::modifier_components::ModifierCategories;
 pub struct MovementModifier;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(ModifierCategories, MovementModifier)]
+#[require(ModifierCategories, MovementModifier,)]
 pub struct Speed;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]

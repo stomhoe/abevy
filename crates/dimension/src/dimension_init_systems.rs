@@ -9,6 +9,7 @@ use crate::{
     dimension_layout::*,
 */
 };
+use game_common::game_common_components::{Dimension, DimensionRef};
 
 #[allow(unused_parens)]
 pub fn init_dimensions(

@@ -157,7 +157,7 @@ impl std::fmt::Debug for HashId {
 }
 
 
-#[derive(Component, Default, Deserialize, Serialize, Clone, Debug)]
+#[derive(Component, Default, Deserialize, Serialize, Clone, Debug, Reflect)]
 pub struct HashIdMap<T>(pub HashMap<HashId, T>);
 impl<T> HashIdMap<T> {
     pub fn new() -> Self { Self(HashMap::new()) }

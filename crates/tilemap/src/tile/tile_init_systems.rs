@@ -4,9 +4,9 @@ use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use bevy_replicon_renet::renet::RenetClient;
+use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
-use game_common::{game_common_components::MyZ, };
+use game_common::game_common_components::{MyZ, YSortOrigin};
 use bevy_ecs_tilemap::tiles::TilePos;
 
 use crate::{tile::{tile_components::*, tile_resources::*, tile_materials::*}, };
@@ -122,10 +122,7 @@ pub fn init_tiles(
                     }
                 };
 
-                cmd.entity(enti).insert((
-                    TileColor::from(color),
-                    tile_handles,
-                ));
+                cmd.entity(enti).insert((TileColor::from(color), tile_handles,));
                 if seri.shader.len() > 2 {
                     match shader_map.0.get(&seri.shader) {
                         Ok(shader_ent) => {
@@ -149,6 +146,7 @@ pub fn init_tiles(
                         continue;
                     }
                 };
+                let offset = Vec2::from_array(seri.offset);
 
                 cmd.entity(enti).insert((
                     Sprite{
@@ -157,10 +155,13 @@ pub fn init_tiles(
                         ..Default::default()
                     },
                     map,
-                    Transform::from_translation(Vec2::from_array(seri.offset).extend(my_z.as_float())),
+                    Transform::from_translation(offset.extend(my_z.as_float())),
                 ));
                 if ! seri.shader.is_empty() {
                     warn!("Tile {} tilemap shaders ('{}') are not compatible with sprite=true, ignoring", str_id, seri.shader);
+                }
+                if let Some(y_sort_origin) = seri.ysort {
+                    cmd.entity(enti).insert(YSortOrigin(offset.y + y_sort_origin));
                 }
             }
 
@@ -193,10 +194,10 @@ pub fn add_tiles_to_map(
 #[allow(unused_parens, )]
 pub fn client_map_server_tiling(
     trigger: Trigger<TileEntitiesMap>, 
-    client: Option<Res<RenetClient>>,
+    server: Option<Res<RenetServer>>,
     mut entis_map: ResMut<ServerEntityMap>, own_map: Res<TileEntitiesMap>,
 ) {
-    if client.is_none() { return; }
+    if server.is_some() { return; }
 
     let TileEntitiesMap(received_map) = trigger.event().clone();
     for (hash_id, &server_entity) in received_map.0.iter() {

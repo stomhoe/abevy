@@ -1,6 +1,6 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use bevy_inspector_egui::prelude::*;
-use dimension::dimension_components::DimensionRef;
+use game_common::game_common_components::DimensionRef;
 
 use crate::chunking_components::ChunkPos;
 

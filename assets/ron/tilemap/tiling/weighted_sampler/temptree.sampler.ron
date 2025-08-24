@@ -1,0 +1,12 @@
+(
+    id: "temptree_sampler",
+    weights: {
+        "golden_sprig": 10.0,
+        "pine": 10.0,
+        "poplar0": 10.0,
+        "poplar1": 10.0,
+        "slender_sapling": 10.0,
+    },
+)
+
+

@@ -9,16 +9,3 @@ temp_variation //añadido sobre el frio que da la coordenada .y al acercarse a l
 corruption
 noiseespecial1
 noiseespecial2
-
-se pueden agregar todos los noises q hagan falta y desp priorizar la generacion de uno respecto a otro si los dos superan el split
-
-desp hacer un match q te lleva a un biome generator u otro dependiendo del valor de los noises especiales
-
-
-locales a cada biome generator:
-peninsuler
-beaches
-montañas
-
-
-para q no hayan dos biomas distintos en una misma isla o continente

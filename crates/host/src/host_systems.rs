@@ -77,7 +77,7 @@ pub fn host_on_player_added(mut cmd: Commands,
                 CharacterCreatedBy { player: player_ent },
 
                 BelongsToFaction(host_faction.clone()),
-                Transform::default(),
+                Transform::from_translation(Vec3::new(-5400.0, 250.0, 0.0)),
                 SpriteConfigStrIds::new(["humanhe0", "humanbo0"])?,
                 
             ));

@@ -1,0 +1,18 @@
+(
+    id: "poplar0",
+    name: "Poplar",
+    img_paths: {
+        "default": "texture/world/tree/poplar0.png"
+    },
+    shader: "",
+    sprite: true,
+    offset: (0.0, 150.0),
+    z: 1000,
+    color: Some((255, 255, 255, 255)),
+    color_map: "",
+    spawns: [],
+    spawns_children: [],
+    somecomp_present: Some(true),
+    tmapchild: false,
+    ysort: Some(0.0),
+)

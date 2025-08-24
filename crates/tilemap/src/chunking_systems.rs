@@ -1,7 +1,7 @@
 
 use bevy::prelude::*;
 use camera::camera_components::CameraTarget;
-use dimension::dimension_components::DimensionRef;
+use game_common::game_common_components::DimensionRef;
 
 use crate::{chunking_components::*, chunking_resources::*};
 

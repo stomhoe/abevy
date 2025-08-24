@@ -137,6 +137,11 @@ pub fn update_facing_dir(mut query: Query<(&InputSpeedVector, &mut FacingDirecti
     }
 }
 
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+
+
+
 //PARA HACER ANTÍDOTOS Q ATACAN SUSTANCIAS ESPECÍFICAS, HACER OTRO SISTEMA Q AFECTE EL POWER DE OTROS EFECTOS
 
 #[allow(unused_parens)]//LO HACE EL CLEINT TMB CON LOS Q CONTROLA EL PARA TENER UNA TRANSFORM Q SE ACTUALIZA PREDECIBLEMENTE SIMILAR AL SERVER
@@ -165,7 +170,7 @@ pub fn process_movement_modifiers(
         
         let mut speed_neg_sum: f32 = 0.0;
         let mut slowdown_mitigators_sum: f32 = 0.0; 
-        let mut speed_sum: f32 = 40000.0;//ESTE 400.0 ES PROVISORIO, DESPUES CAMBIAR A 0.<---------------------
+        let mut speed_sum: f32 = 0.0;//ESTE 400.0 ES PROVISORIO, DESPUES CAMBIAR A 0.<---------------------
 
         let mut invert_sum: f32 = 0.0;
         let mut invert_scale: f32 = 1.0;

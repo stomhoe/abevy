@@ -4,12 +4,12 @@
         ("max", ["fnl.lakesmol", "fnl.lakebig"], 3),
         ("*", ["$3", "$1"], 3),
         ("*opo", ["$3", "$2"], 3),
-        ("idxmax", ["0.3", "$3"], 0),
+        ("idxmax", ["0.5", "$3"], 0),
 
     ],
    
     bifs: [
-        ("", ["tempgrass"]),
+        ("4normal", ["tempgrass"]),
         ("", ["lake"]),
         ("", [""])
     ],

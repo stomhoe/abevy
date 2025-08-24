@@ -2,6 +2,7 @@
 use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use noiz::DynamicConfigurableSampleable;
@@ -64,7 +65,7 @@ impl Default for PoissonDisk { fn default() -> Self { Self { min_distance: 1, se
 pub struct ChunkRef(pub Entity);
 
 #[derive(Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
-pub struct Bifurcation{pub oplist: Option<Entity>, pub tiles: Vec<Entity>,}
+pub struct Bifurcation{#[entities] pub oplist: Option<Entity>, #[entities] pub tiles: Vec<Entity>,}
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
@@ -75,33 +76,29 @@ pub struct OperationList {
     pub bifurcations: Vec<Bifurcation>,
 }
 
-impl MapEntities for OperationList {
-    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
-        for (_, operands, _) in self.trunk.iter_mut() {
-            for operand in operands.iter_mut() {
-                if let Operand::NoiseEntity(ent, _, _, _) = operand {
-                    *ent = entity_mapper.get_mapped(*ent);
-                }
-            }
-        }
-        for bifur in self.bifurcations.iter_mut() {
-            bifur.oplist = bifur.oplist.map(|oplist| entity_mapper.get_mapped(oplist));
+// impl MapEntities for OperationList {
+//     fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
+//         for (_, operands, _) in self.trunk.iter_mut() {
+//             for operand in operands.iter_mut() {
+//                 if let Operand::NoiseEntity(ent, _, _, _) = operand {
+//                     *ent = entity_mapper.get_mapped(*ent);
+//                 }
+//             }
+//         }
+//         for bifur in self.bifurcations.iter_mut() {
+//             bifur.oplist = bifur.oplist.map(|oplist_entity| entity_mapper.get_mapped(oplist_entity));
+//             bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = entity_mapper.get_mapped(*tile_entity));
+//         }
 
-            for tile in bifur.tiles.iter_mut() {
-                *tile = entity_mapper.get_mapped(*tile);
-            }
-        }
-
-    }
-}
+//     }
+// }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
-#[require(EntityPrefix::new("MainComponentName"), )]
 pub struct OplistSize(UVec2);
 
 impl OplistSize {
     pub fn new([x, y]: [u32; 2]) -> Result<Self, BevyError> {
-        if x == 0 || y == 0 {
+        if x <= 0 || y <= 0 {
             return Err(BevyError::from("OplistSize dimensions must be > 0"));
         }
         let max = 4;
@@ -125,32 +122,26 @@ impl VariablesArray {
     pub const SIZE: u8 = 16;
 }
 
-impl Index<u8> for VariablesArray {
-    type Output = f32;
-    fn index(&self, index: u8) -> &Self::Output {
-        unsafe { self.0.get_unchecked(index as usize) }
-    }
+impl Index<u8> for VariablesArray {type Output = f32;
+    fn index(&self, index: u8) -> &Self::Output {unsafe { self.0.get_unchecked(index as usize) }}
 }
 
 impl IndexMut<u8> for VariablesArray {
-    fn index_mut(&mut self, index: u8) -> &mut Self::Output {
-        unsafe { self.0.get_unchecked_mut(index as usize) }
-    }
+    fn index_mut(&mut self, index: u8) -> &mut Self::Output {unsafe { self.0.get_unchecked_mut(index as usize) }}
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, AsRefStr, Display, PartialEq, Reflect, )]
 #[allow(non_camel_case_types)]
 pub enum Operation {
-    Add, Subtract, Multiply, MultiplyOpo, Divide, Min, Max, Pow, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, i_Max, Curve(CubicCurve<Vec2>), Linear
+    Add, Subtract, Multiply, MultiplyOpo, Divide, Min, Max, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, i_Max, Linear
 }
 
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, MapEntities)]
 pub enum Operand {
     StackArray(u8),
     Value(f32),
-    Pair(f32, f32),
-    NoiseEntity(Entity, NoiseSampleRange, bool, i32),
+    NoiseEntity(#[entities]Entity, NoiseSampleRange, bool, i32),
     HashPos(u64),
     PoissonDisk(PoissonDisk),
 }
@@ -166,3 +157,31 @@ impl From<f32> for Operand { fn from(v: f32) -> Self { Self::Value(v) } }
 #[derive(Component, Debug, Clone, Copy, Reflect)]
 #[require(VariablesArray)]
 pub struct OplistRef(pub Entity);
+
+
+
+#[allow(unused_parens)]
+pub fn client_remap_operation_entities(
+    mut query: Query<(&mut OperationList), (Added<OperationList>)>, 
+    mut map: ResMut<ServerEntityMap>,
+)
+{
+    for mut oplist in query.iter_mut() {
+        for bifur in oplist.bifurcations.iter_mut() {
+            if let Some(oplist_entity) = bifur.oplist {
+                match map.server_entry(oplist_entity).get() {
+                    Some(new_ent) => bifur.oplist = Some(new_ent),
+                    None => {
+                        error!(
+                            target: "oplist_loading",
+                            "Failed to remap oplist entity {:?} in Bifurcation: not found in ServerEntityMap",
+                            oplist_entity
+                        );
+                        bifur.oplist = None;
+                    }
+                }
+            }
+            bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = map.server_entry(*tile_entity).get().unwrap_or(*tile_entity));
+        }
+    }
+}

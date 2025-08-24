@@ -1,5 +1,7 @@
 
 use bevy::prelude::*;
+use bevy_replicon::prelude::Replicated;
+use common::common_components::{AssetScoped, EntityPrefix, SessionScoped};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 #[allow(unused_imports)] use bevy::prelude::*;
@@ -10,14 +12,12 @@ use strum_macros::{AsRefStr, Display, };
 pub struct MyZ(pub i32);
 impl MyZ {
     pub fn as_float(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
-    pub const Z_MULTIPLIER: f32 = 1e-16;
+    pub const Z_MULTIPLIER: f32 = 1e-5;
 }
 
 #[allow(unused_parens, dead_code)]
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct Description(pub String);
-
-
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
@@ -63,11 +63,18 @@ pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 #[derive(Component, Debug, Clone, Deserialize, Serialize)]
 pub struct OriginalEntity(pub Entity);
 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+pub struct DimensionRef(#[entities] pub Entity);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+#[require(Replicated, SessionScoped, AssetScoped, EntityPrefix::new("*DIMENSION*") )]
+pub struct Dimension;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
-pub struct YSortOrigin (pub f32);
-
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]
+pub struct YSortOrigin(pub f32);//TAL VEZ ES BUENA IDEA PONERLE ESTO OBLIGATORIAMENTE A TODOS LOS SPRITES, ASÍ TODOS AUMENTAN O DISMINUYEN CONJUNTAMENTE DE Z
+impl YSortOrigin {
+    pub const Y_SORT_DIV: f32 = 1e-6;
+}
 
 
 

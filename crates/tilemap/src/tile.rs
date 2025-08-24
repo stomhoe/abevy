@@ -26,8 +26,8 @@ pub struct TilingSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            update_tile_hash_value, update_tile_name, flip_tile_along_x,
-            //(add_tile_weighted_samplers_to_map, ).run_if(not(server_or_singleplayer)),
+            flip_tile_along_x,
+            (add_tile_weighted_samplers_to_map, ).run_if(not(server_or_singleplayer)),
         ))
 
         .add_systems(OnEnter(AssetsLoadingState::LocalFinished), (
@@ -50,6 +50,8 @@ pub fn plugin(app: &mut App) {
             RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
         ))
         
+        .add_server_trigger::<TileEntitiesMap>(Channel::Unordered)
+        .make_trigger_independent::<TileEntitiesMap>()
         .add_server_trigger::<TileWeightedSamplersMap>(Channel::Unordered)
         .make_trigger_independent::<TileWeightedSamplersMap>()
         
@@ -71,6 +73,7 @@ pub fn plugin(app: &mut App) {
 
 
         .replicate::<HashPosEntiWeightedSampler>()
+        //usar feature
         .add_observer(client_map_server_tiling)
 
 

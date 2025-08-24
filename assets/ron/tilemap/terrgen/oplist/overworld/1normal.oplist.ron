@@ -1,3 +1,4 @@
+
 (
     id: "1normal",
     operation_operands: [
@@ -15,5 +16,3 @@
     size: Some((1, 1)),
 
 )
-
-//max(a*(1-b+b_t), b*(1-a+)) > ocean threshold

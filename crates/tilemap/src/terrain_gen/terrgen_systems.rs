@@ -4,7 +4,8 @@
 use bevy::{ecs::entity_disabling::Disabled, math::ops::exp, prelude::*};
 use common::{common_components::StrId, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
-use dimension::dimension_components::{DimensionRef, MultipleDimensionRefs};
+use dimension::dimension_components::{MultipleDimensionRefs};
+use game_common::game_common_components::DimensionRef;
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_oplist_components::*, terrgen_resources::* }, tile::tile_components::* , };
 use std::mem::take;
 
@@ -64,7 +65,7 @@ pub fn spawn_terrain_operations (
         }
         
         if pending_ops_count <= 0 {      
-            warn!("No operations to spawn for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);      
+            trace!("No operations to spawn for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);      
             continue;
         }
 
@@ -117,7 +118,6 @@ pub fn produce_tiles(mut cmd: Commands,
                     },
                     Operand::HashPos(seed) => global_tile_pos.normalized_hash_value(&gen_settings, *seed),
                     Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos, my_oplist_size),
-                    Operand::Pair(_, _) => 0.0,
                 };
 
                 let is_last = operand_i == operands.len() - 1;
@@ -132,7 +132,6 @@ pub fn produce_tiles(mut cmd: Commands,
                     (Operation::Divide, 1.., _) => if curr_operand_val != 0.0 { operation_acc_val /= curr_operand_val },
                     (Operation::Min, 1.., _) => operation_acc_val = operation_acc_val.min(curr_operand_val),
                     (Operation::Max, 1.., _) => operation_acc_val = operation_acc_val.max(curr_operand_val),
-                    (Operation::Pow, 1.., _) => if operation_acc_val >= 0.0 || curr_operand_val.fract() == 0.0 { operation_acc_val = operation_acc_val.powf(curr_operand_val) },
                     (Operation::Average, _, false) => {operation_acc_val += curr_operand_val;},
                     (Operation::Average, _, true) => {operation_acc_val += curr_operand_val; operation_acc_val /= operands.len() as f32;},
                     (Operation::Linear, 0, _) => {operation_acc_val = curr_operand_val; trace!("conti: {}", curr_operand_val)},
@@ -146,13 +145,6 @@ pub fn produce_tiles(mut cmd: Commands,
                     (Operation::i_Max, _, false) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}
                     (Operation::i_Max, _, true) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32;}
        
-                    (Operation::Curve(curve), _, _) => {
-                        operation_acc_val = curve.position(curr_operand_val).y;
-
-                        trace!("Spline at {}: {}", curr_operand_val, curve.position(curr_operand_val));
-                        break;
-                    },
-
                     (_, 0, _) => {operation_acc_val = curr_operand_val;},
                 }
 
@@ -187,9 +179,7 @@ pub fn produce_tiles(mut cmd: Commands,
         if pending_ops_count.0 <= 0  {
             cmd.entity(chunk_ref.0).try_remove::<PendingOperations>().try_insert(TilesReady);
         }
-        }
-
-    }
+    }}
     Ok(())
 }
 
