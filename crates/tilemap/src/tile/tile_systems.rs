@@ -8,7 +8,8 @@ use bevy_ecs_tilemap::tiles::TileFlip;
 use common::common_components::{HashId, StrId};
 use game_common::game_common_components::MyZ;
 use player::player_components::{HostPlayer, OfSelf, Player};
-use crate::{terrain_gen::terrgen_resources::AaGlobalGenSettings, tile::{tile_components::*, tile_resources::*}};
+use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
+use crate::{ tile::{tile_components::*, tile_resources::*}};
 
 
 
@@ -16,10 +17,16 @@ use crate::{terrain_gen::terrgen_resources::AaGlobalGenSettings, tile::{tile_com
 #[allow(unused_parens)]
 pub fn flip_tile_along_x(
     settings: Res<AaGlobalGenSettings>,
-    mut query: Query<AnyOf<(&mut TileFlip, &mut Sprite)>, (Added<InitialPos>, With<FlipAlongX>)>
+    mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite)>, &GlobalTilePos, /*Option<&HeldSprites>*/), (Added<GlobalTilePos>, With<FlipAlongX>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
-    for (mut flip, mut sprite) in query.iter_mut() {
 
+    for ((tile_flip, sprite), initial_pos) in query.iter_mut() {
+        if let Some(mut flip) = tile_flip{
+            flip.x = initial_pos.hash_true_false(&settings, 0);
+        }
+        else if let Some(mut sprite) = sprite {
+            sprite.flip_x = initial_pos.hash_true_false(&settings, 0);
+        }
     }
 }
 

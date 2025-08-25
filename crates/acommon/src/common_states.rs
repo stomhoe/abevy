@@ -53,6 +53,11 @@ pub enum LoadedAssetsSession {#[default]KeepAlive, DespawnAll,}
 
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
+#[states(scoped_entities,)]
+pub enum ReplicatedAssetsSession {#[default]KeepAlive, DespawnLocalAssets,}
+
+#[allow(unused_parens, dead_code)]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[reflect(State, Default)]
 #[states(scoped_entities,)]
 pub enum TerrainGenHotLoading {#[default]KeepAlive, DespawnAll,}

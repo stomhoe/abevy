@@ -6,10 +6,10 @@ use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use noiz::DynamicConfigurableSampleable;
 use serde::{Deserialize, Serialize};
+use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 
-use crate::terrain_gen::terrgen_resources::AaGlobalGenSettings;
 use crate::tile::tile_components::*;
 
 use {common::common_components::*, };

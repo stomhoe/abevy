@@ -49,21 +49,17 @@ pub fn add_dimensions_to_map(
     mut cmd: Commands, 
     map: Option<ResMut<DimensionEntityMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<Dimension>, )>,
-) -> Result {
-    let mut result: Result = Ok(());
+) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
             cmd.entity(ent).insert(Visibility::Visible);
             if let Err(err) = map.0.insert(str_id, ent, ) {
                 error!(target: "dimension_loading", "{} {} already in DimensionEntityMap : {}", prefix, str_id, err);
-                result = Err(err);
             } else {
                 info!(target: "dimension_loading", "Inserted Dimension'{}' {:?} into DimensionEntityMap  ", str_id, ent);
             }
         }
     } else {
         warn!(target: "dimension_loading", "DimensionEntityMap resource not found, cannot add dimensions to map.");
-        result = Err(BevyError::from("DimensionEntityMap resource not found"));
     }
-    result
 }

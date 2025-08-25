@@ -16,6 +16,7 @@ use tilemap::terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap}
 
 use crate::{client_functions::*, };
 
+use game_common::{color_sampler_resources::ColorWeightedSamplersMap, };
 
 
 pub fn attempt_join(
@@ -130,10 +131,18 @@ pub fn client_cleanup(
 
 
 #[allow(unused_parens)]
-pub fn client_init_resources(mut cmd: Commands, ) {
+pub fn client_init_resources(
+    mut cmd: Commands,
+    mut next_state: ResMut<NextState<ReplicatedAssetsSession>>,
+) {
+
+    //next_state.set(ReplicatedAssetsSession::DespawnLocalAssets);
+
     cmd.init_resource::<TerrGenEntityMap>();
     cmd.init_resource::<OpListEntityMap>();
     cmd.init_resource::<DimensionEntityMap>();
+
+    //next_state.set(ReplicatedAssetsSession::KeepAlive);
 }
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------

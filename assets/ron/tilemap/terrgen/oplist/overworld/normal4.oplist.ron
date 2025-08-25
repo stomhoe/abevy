@@ -1,0 +1,29 @@
+(
+    id: "normal4",
+    operation_operands: [
+        //tree
+        ("idxmax", ["hp81", "0.001"], 4),
+        ("*", ["pd299", "fnl.forest", ], 5),
+        ("max", ["$4", "$5"], 4),
+        ("+", ["$4", "-0.0"], 4),
+
+        //bush
+        ("idxmax", ["hp82", "0.25"], 5),
+        ("*", ["$5", "pd12", ], 5),
+        ("+", ["$5", "-0.0"], 5),
+
+        ("idxmax", ["0.5","$4", "$5"], 0),
+
+    ],
+   
+    bifs: [
+        ("", [""]),
+        ("", ["temptree_sampler"]),
+        ("", ["tempveg_sampler"]),
+    ],
+    root_in_dimensions: [""],
+    size: Some((1, 1)),
+
+)
+
+//max(a*(1-b+b_t), b*(1-a+)) > ocean threshold

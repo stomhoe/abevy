@@ -142,20 +142,16 @@ pub fn add_sprites_to_local_map(
     mut cmd: Commands,
     map: Option<ResMut<SpriteCfgEntityMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
-) -> Result {
-    let mut result: Result = Ok(());
-    if let Some(mut terrgen_map) = map {
-        for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
-                error!(target: "sprite_loading", "{} {} already in SpriteCfgEntityMap : {}", prefix, str_id, err);
-                cmd.entity(ent).despawn();
-                result = Err(err);
-            } else {
-                debug!(target: "sprite_loading", "Inserted sprite '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
-            }
+) {
+    let Some(mut terrgen_map) = map else { return; };
+    for (ent, prefix, str_id) in query.iter() {
+        if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
+            error!(target: "sprite_loading", "{} {} already in SpriteCfgEntityMap : {}", prefix, str_id, err);
+            cmd.entity(ent).despawn();
+        } else {
+            debug!(target: "sprite_loading", "Inserted sprite '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
         }
     }
-    result
 }
 
 #[allow(unused_parens, )]

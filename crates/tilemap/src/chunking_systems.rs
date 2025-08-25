@@ -2,6 +2,7 @@
 use bevy::prelude::*;
 use camera::camera_components::CameraTarget;
 use game_common::game_common_components::DimensionRef;
+use tilemap_shared::ChunkPos;
 
 use crate::{chunking_components::*, chunking_resources::*};
 

@@ -17,6 +17,9 @@ pub type SessionScoped = StateScoped::<AppState>;
 
 pub type AssetScoped = StateScoped::<LoadedAssetsSession>;
 
+//pub type RepliAssetScoped = StateScoped::<ReplicatedAssetsSession>;
+
+
 pub type TgenScoped = StateScoped::<TerrainGenHotLoading>;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Reflect)]
@@ -265,49 +268,49 @@ impl ImageHolderMap {
 
 
 
-pub type EntityWeightedMap = WeightedMap<Entity>;
+// pub type EntityWeightedMap = WeightedMap<Entity>;
 
-#[derive(Debug, Component)]
-pub struct WeightedMap<K> {
-    weights: Vec<u32>, choices: Vec<K>,
-    dist: WeightedAliasIndex<u32>,
-}
-#[allow(unused_parens, dead_code)]
-impl<K: Eq + std::hash::Hash + Clone + Serialize + for<'de> Deserialize<'de>> WeightedMap<K> {
-    pub fn new(weights_map: HashMap<K, u32>) -> Self {
-        let weights: Vec<u32> = weights_map.values().cloned().collect();
-        let choices: Vec<K> = weights_map.keys().cloned().collect();
-        let dist = WeightedAliasIndex::new(weights.clone()).unwrap();
-        Self {weights, choices, dist,}
-    }
-    pub fn rand_weighted<R: Rng>(&self, rng: &mut R) -> Option<&K> {
-        let index = self.dist.sample(rng) as usize;
-        self.choices.get(index)
-    }
+// #[derive(Debug, Component)]
+// pub struct WeightedMap<K> {
+//     weights: Vec<u32>, choices: Vec<K>,
+//     dist: WeightedAliasIndex<u32>,
+// }
+// #[allow(unused_parens, dead_code)]
+// impl<K: Eq + std::hash::Hash + Clone + Serialize + for<'de> Deserialize<'de>> WeightedMap<K> {
+//     pub fn new(weights_map: HashMap<K, u32>) -> Self {
+//         let weights: Vec<u32> = weights_map.values().cloned().collect();
+//         let choices: Vec<K> = weights_map.keys().cloned().collect();
+//         let dist = WeightedAliasIndex::new(weights.clone()).unwrap();
+//         Self {weights, choices, dist,}
+//     }
+//     pub fn rand_weighted<R: Rng>(&self, rng: &mut R) -> Option<&K> {
+//         let index = self.dist.sample(rng) as usize;
+//         self.choices.get(index)
+//     }
 
-    pub fn choices(&self) -> &Vec<K> {&self.choices}
-}
-impl<'de, K: Eq + std::hash::Hash + Clone + Serialize + Deserialize<'de>> Deserialize<'de> for WeightedMap<K> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct Helper<K> { weights: Vec<u32>, choices: Vec<K> }
-        let Helper { weights, choices } = Helper::deserialize(deserializer)?;
-        let dist = WeightedAliasIndex::new(weights.clone()).map_err(serde::de::Error::custom)?;
-        Ok(WeightedMap { weights, choices, dist })
-    }
-}
-impl<K: Eq + std::hash::Hash + Clone + Serialize> Serialize for WeightedMap<K> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: serde::Serializer,
-    {
-        #[derive(Serialize)]
-        struct Helper<'a, K> { weights: &'a Vec<u32>, choices: &'a Vec<K> }
-        let helper = Helper { weights: &self.weights, choices: &self.choices };
-        helper.serialize(serializer)
-    }
-}
+//     pub fn choices(&self) -> &Vec<K> {&self.choices}
+// }
+// impl<'de, K: Eq + std::hash::Hash + Clone + Serialize + Deserialize<'de>> Deserialize<'de> for WeightedMap<K> {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where D: serde::Deserializer<'de>,
+//     {
+//         #[derive(Deserialize)]
+//         struct Helper<K> { weights: Vec<u32>, choices: Vec<K> }
+//         let Helper { weights, choices } = Helper::deserialize(deserializer)?;
+//         let dist = WeightedAliasIndex::new(weights.clone()).map_err(serde::de::Error::custom)?;
+//         Ok(WeightedMap { weights, choices, dist })
+//     }
+// }
+// impl<K: Eq + std::hash::Hash + Clone + Serialize> Serialize for WeightedMap<K> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where S: serde::Serializer,
+//     {
+//         #[derive(Serialize)]
+//         struct Helper<'a, K> { weights: &'a Vec<u32>, choices: &'a Vec<K> }
+//         let helper = Helper { weights: &self.weights, choices: &self.choices };
+//         helper.serialize(serializer)
+//     }
+// }
 
 
 

@@ -1,0 +1,18 @@
+
+(
+    id: "normal1",
+    operation_operands: [
+        ("max", ["fnl.conti","fnl.penin",], 1),
+        ("*", ["$1","$3",], 1),
+        ("idxmax", ["0.3", "$1"], 0),
+
+    ],
+   
+    bifs: [
+        ("", ["blue"]),
+        ("normal2", [""]),
+    ],
+    root_in_dimensions: [""],
+    size: Some((1, 1)),
+
+)

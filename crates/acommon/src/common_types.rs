@@ -9,33 +9,47 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
+use std::fmt::Display;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, Reflect)]
 pub struct HashIdToEntityMap(pub HashMap<HashId, Entity>);
 
+#[derive(Debug, Clone, Copy)]
+pub struct DuplicateKeyError(pub Entity);
+impl Display for DuplicateKeyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Duplicate key error: entity {:?}", self.0)
+    }
+}
+
 impl HashIdToEntityMap {
     pub fn new() -> Self { Self(HashMap::new()) }
 
-    fn try_insert(&mut self, hash_id: HashId, entity: Entity, ) -> Result {
-        if self.0.contains_key(&hash_id) {
-            return Err(BevyError::from(format!(
-                "Failed to insert {} into map, already present", entity,
-            )));
+    fn try_insert(&mut self, hash_id: HashId, entity: Entity) -> Result<(), DuplicateKeyError> {
+        if let Some(existing) = self.0.get(&hash_id).copied() {
+            return Err(DuplicateKeyError(existing));
         }
         self.0.insert(hash_id, entity);
         Ok(())
     }
-
-    pub fn insert<K>(&mut self, id: K, entity: Entity, ) -> Result
+    pub fn force_insert<K>(&mut self, id: K, entity: Entity) -> Option<Entity>
     where
         K: AsRef<str>,
     {
         let hash_id = HashId::from(id.as_ref());
-        self.try_insert(hash_id, entity, )
+        self.0.insert(hash_id, entity)
     }
 
-    pub fn insert_with_hash(&mut self, hash_id: HashId, entity: Entity, ) -> Result {
-        self.try_insert(hash_id, entity, )
+    pub fn insert<K>(&mut self, id: K, entity: Entity) -> Result<(), DuplicateKeyError>
+    where
+        K: AsRef<str>,
+    {
+        let hash_id = HashId::from(id.as_ref());
+        self.try_insert(hash_id, entity)
+    }
+
+    pub fn insert_with_hash(&mut self, hash_id: HashId, entity: Entity) -> Result<(), DuplicateKeyError> {
+        self.try_insert(hash_id, entity)
     }
 
     pub fn get<K>(&self, id: &K) -> Result<Entity, BevyError>

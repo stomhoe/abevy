@@ -3,12 +3,13 @@ use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::prelude::Replicated;
 use bevy_replicon_renet::renet::RenetServer;
 use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
-use game_common::game_common_components::DimensionRef;
+use game_common::{game_common_components::DimensionRef, game_common_components_samplers::EntiWeightedSampler};
 use superstate::{SuperstateInfo};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
+use tilemap_shared::{AaGlobalGenSettings, ChunkPos, GlobalTilePos};
 
-use crate::{terrain_gen::{terrgen_oplist_components::OplistSize, terrgen_resources::AaGlobalGenSettings}, tile::tile_components::{GlobalTilePos, HashPosEntiWeightedSampler, InitialPos, Tile, TileRef, TilemapChild},};
+use crate::{terrain_gen::{terrgen_oplist_components::OplistSize,}, tile::tile_components::{InitialPos, Tile, TileRef, TilemapChild},};
 
 
 use common::{common_components::*, };
@@ -16,9 +17,6 @@ use common::{common_components::*, };
 #[derive(Component, Default)]
 #[require(SuperstateInfo<ChunkInitState>, SessionScoped, )]
 pub struct ChunkInitState;
-impl ChunkInitState {
-    pub const SIZE: UVec2 = UVec2 { x: 6, y: 6 };//NORMALMENTE 12X12
-}
 
 #[derive(Component, Debug, Default, )]
 #[require(ChunkInitState)]
@@ -42,7 +40,7 @@ pub struct ProducedTiles(#[entities] pub Vec<Entity>);
 
 impl ProducedTiles {
     pub fn new_with_chunk_capacity() -> Self {
-        let chunk_area = ChunkInitState::SIZE.element_product();
+        let chunk_area = ChunkPos::CHUNK_SIZE.element_product();
         let cap = chunk_area + chunk_area / 8;//TODO CALCULAR PROMEDIO DE TILES POR CHUNK
         ProducedTiles(Vec::with_capacity(cap as usize))
     }
@@ -61,7 +59,7 @@ impl ProducedTiles {
         cmd: &mut Commands,
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
-        weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
+        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
         tilemap_child: &Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>)>,//NO MUTAR
         gen_settings: &AaGlobalGenSettings,
         oplist_size: OplistSize,
@@ -70,7 +68,7 @@ impl ProducedTiles {
         depth: u32
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
-            if let Some(tiling_ent) = wmap.sample(gen_settings, global_pos) {
+            if let Some(tiling_ent) = wmap.sample_with_pos(gen_settings, global_pos) {
                 //info!("Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
 
                 if depth > 6 {
@@ -114,7 +112,7 @@ impl ProducedTiles {
         cmd: &mut Commands,
         global_pos: GlobalTilePos,
         pos_within_chunk: TilePos,
-        weight_maps: &Query<(&HashPosEntiWeightedSampler,), ()>,
+        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
         tilemap_child: &Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>)>,
         gen_settings: &AaGlobalGenSettings,
         oplist_size: OplistSize,
@@ -141,57 +139,5 @@ pub struct PendingOperations(pub i32);
 #[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
 pub struct ActivatingChunks(#[entities] pub EntityHashSet,);
 
-
-
-#[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, Reflect)]
-pub struct ChunkPos(pub IVec2);
-
-impl ChunkPos {
-    pub fn new(x: i32, y: i32) -> Self { Self(IVec2::new(x, y)) }
-    pub fn x(&self) -> i32 { self.0.x }
-    pub fn y(&self) -> i32 { self.0.y }
-}
-
-impl std::fmt::Debug for ChunkPos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ChunkPos({}, {})", self.0.x, self.0.y)
-    }
-}
-
-impl std::fmt::Display for ChunkPos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.0.x, self.0.y)
-    }
-}
-
-impl ChunkPos {
-    pub fn to_pixelpos(&self) -> Vec2 {
-        self.0.as_vec2() * Tile::PIXELS.as_vec2() * ChunkInitState::SIZE.as_vec2()
-    }
-    pub fn to_tilepos(&self) -> GlobalTilePos {
-        GlobalTilePos(self.0 * ChunkInitState::SIZE.as_ivec2())
-    }
-}
-
-impl From<GlobalTilePos> for ChunkPos {
-    fn from(global_tile_pos: GlobalTilePos) -> Self {
-        ChunkPos(global_tile_pos.0.div_euclid(ChunkInitState::SIZE.as_ivec2()))
-    }
-}
-
-impl From<Vec2> for ChunkPos {
-    fn from(pixel_pos: Vec2) -> Self {
-        ChunkPos(pixel_pos.as_ivec2().div_euclid(Tile::PIXELS.as_ivec2() * ChunkInitState::SIZE.as_ivec2()))
-    }
-}
-
-impl std::ops::Add for ChunkPos {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output { ChunkPos(self.0 + rhs.0) }
-}
-impl std::ops::Sub for ChunkPos {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output { ChunkPos(self.0 - rhs.0) }
-}
 
 

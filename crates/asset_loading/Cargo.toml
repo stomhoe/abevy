@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
+game_common = { path = "../agame_common" }
 tilemap = { path = "../tilemap" }
 sprite_animation = { path = "../sprite_animation" }
 sprite = { path = "../sprite" }

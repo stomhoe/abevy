@@ -10,8 +10,8 @@
     ],
    
     bifs: [
-        ("1normal", [""]),
-        ("", ["black"]),
+        ("normal1", [""]),
+        ("elf1", [""]),
         ("", ["ocean"])
     ],
     root_in_dimensions: ["ow"],

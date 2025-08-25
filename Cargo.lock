@@ -307,6 +307,7 @@ dependencies = [
  "bevy_spritesheet_animation",
  "common",
  "dimension",
+ "game_common",
  "serde",
  "sprite",
  "sprite_animation",
@@ -2063,6 +2064,7 @@ dependencies = [
  "common",
  "debug_unwraps",
  "dimension",
+ "game_common",
  "multiplayer_shared",
  "nano-id",
  "player",
@@ -3090,16 +3092,23 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_asset_loader",
+ "bevy_common_assets",
+ "bevy_ecs_tilemap",
  "bevy_replicon",
  "bevy_simple_subsecond_system",
  "common",
  "delegate",
  "indexmap",
  "nano-id",
+ "rand 0.9.2",
+ "rand_distr 0.5.1",
+ "rand_pcg",
+ "rand_seeder",
  "serde",
  "splines",
  "strum 0.27.2",
  "strum_macros 0.27.2",
+ "tilemap_shared",
  "tracing",
  "tracing-subscriber",
 ]
@@ -5731,8 +5740,24 @@ dependencies = [
  "strum 0.27.2",
  "strum_macros 0.27.2",
  "superstate",
+ "tilemap_shared",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "tilemap_shared"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy-inspector-egui",
+ "bevy_ecs_tilemap",
+ "bevy_replicon",
+ "bevy_replicon_renet",
+ "delegate",
+ "indexmap",
+ "noiz",
+ "serde",
 ]
 
 [[package]]

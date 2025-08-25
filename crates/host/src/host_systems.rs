@@ -9,7 +9,7 @@ use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_state
 use multiplayer_shared::multiplayer_events::SendUsername;
 use player::player_components::{OfSelf, Player};
 use sprite::{sprite_components::SpriteConfigStrIds, sprite_resources::SpriteCfgEntityMap};
-use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_components::HashPosEntiWeightedSampler, tile_resources::{TileEntitiesMap}}};
+use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_resources::{TileEntitiesMap}}};
 
 use crate::host_functions::host_server;
 

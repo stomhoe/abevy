@@ -9,7 +9,7 @@ use tracing::Level;
 
 pub const FILTER: &str = 
 concat!(
-    "warn,",
+    "info,",
     "naga=error,",
     "wgpu_hal=error,",
     "bevy_ecs_tilemap=warn,",

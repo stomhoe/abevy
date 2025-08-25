@@ -1,11 +1,12 @@
 
 
 
-use bevy::{ecs::entity_disabling::Disabled, math::ops::exp, prelude::*};
+use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use common::{common_components::StrId, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
 use dimension::dimension_components::{MultipleDimensionRefs};
-use game_common::game_common_components::DimensionRef;
+use game_common::{game_common_components::DimensionRef, game_common_components_samplers::EntiWeightedSampler};
+use tilemap_shared::{AaGlobalGenSettings, ChunkPos, GlobalTilePos};
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_oplist_components::*, terrgen_resources::* }, tile::tile_components::* , };
 use std::mem::take;
 
@@ -28,7 +29,7 @@ pub fn spawn_terrain_operations (
         //EN ESTE PUNTO SE PODRÍA GENERAR UN CAMINO RANDOM QUE SEA UN VEC DE COORDS, Y DESPUES PASARLO ABAJO Y Q SE OCUPEN?? PA GENERAR DUNGEONS NASE
         let now = std::time::Instant::now();
 
-        let chunk_area = ChunkInitState::SIZE.element_product() as i32;
+        let chunk_area = ChunkPos::CHUNK_SIZE.element_product() as i32;
         let mut pending_ops_count: i32 = 0;
 
         for (oplist_ent, oplist_dim_refs, oplist_size) in oplists.iter() {
@@ -36,8 +37,8 @@ pub fn spawn_terrain_operations (
                 continue;
             }
             let mut batch = Vec::with_capacity(chunk_area as usize);
-            for x in 0..ChunkInitState::SIZE.x / oplist_size.x() {
-                for y in 0..ChunkInitState::SIZE.y / oplist_size.y() {
+            for x in 0..ChunkPos::CHUNK_SIZE.x / oplist_size.x() {
+                for y in 0..ChunkPos::CHUNK_SIZE.y / oplist_size.y() {
                     let pos_within_chunk = IVec2::new(x as i32, y as i32);
                     let global_pos = chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * oplist_size.inner().as_ivec2());
                     trace!(
@@ -58,7 +59,7 @@ pub fn spawn_terrain_operations (
                     
                 }
             }
-            pending_ops_count += (ChunkInitState::SIZE.element_product() / oplist_size.inner().element_product()) as i32;
+            pending_ops_count += (ChunkPos::CHUNK_SIZE.element_product() / oplist_size.inner().element_product()) as i32;
             if commands.get_entity(chunk_ent).is_err() {break 'oplist;}
 
             commands.spawn_batch(batch);
@@ -82,7 +83,7 @@ pub fn produce_tiles(mut cmd: Commands,
     mut instantiated_oplist_query: Query<(Entity, &mut VariablesArray, &OplistRef, &ChunkRef, &GlobalTilePos), ()>, 
     fnl_noises: Query<&FnlNoise,>,
     mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, &ChildOf), ()>,
-    weight_maps: Query<(&HashPosEntiWeightedSampler, ), ( )>,
+    weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
     tile_query: Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
     state : Res<State<GameSetupType>>,
 ) -> Result {
@@ -96,7 +97,7 @@ pub fn produce_tiles(mut cmd: Commands,
 
         let (oplist_id, oplist, &my_oplist_size) = oplist_query.get(oplist_ref.0)?;
 
-        let pos_within_chunk = global_tile_pos.get_pos_within_chunk(chunk_pos, my_oplist_size);
+        let pos_within_chunk = global_tile_pos.get_pos_within_chunk(chunk_pos, my_oplist_size.inner());
 
         unsafe{
 

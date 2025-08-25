@@ -4,9 +4,10 @@ use bevy_replicon::prelude::*;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use dimension::dimension_resources::DimensionSerisHandles;
+use game_common::color_sampler_resources::ColorWeightedSamplerHandles;
 use sprite::sprite_resources::*;
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
-use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_samplers_resources::TileWeightedSamplerHandles}};
+use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerHandles}};
 
 use crate::asset_loading_systems::*;
 
@@ -33,9 +34,11 @@ pub fn plugin(app: &mut App) {
         .add_loading_state(
             LoadingState::new(AssetsLoadingState::LocalInProcess).continue_to_state(AssetsLoadingState::LocalFinished)
             .load_collection::<ShaderRepeatTexSerisHandles>()
+            .load_collection::<ShaderVoronoiSerisHandles>()
             .load_collection::<TileSerisHandles>()
             .load_collection::<AnimSerisHandles>()
             .load_collection::<SpriteSerisHandles>()
+            .load_collection::<ColorWeightedSamplerHandles>()
         )
         .add_loading_state(
             LoadingState::new(AssetsLoadingState::ReplicatedInProcess).continue_to_state(AssetsLoadingState::ReplicatedFinished)

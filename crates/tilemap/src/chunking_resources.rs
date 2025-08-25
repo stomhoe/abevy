@@ -1,8 +1,8 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use bevy_inspector_egui::prelude::*;
 use game_common::game_common_components::DimensionRef;
+use tilemap_shared::ChunkPos;
 
-use crate::chunking_components::ChunkPos;
 
 #[derive(Default, Debug, Resource)]
 pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);

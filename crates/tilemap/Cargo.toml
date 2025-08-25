@@ -10,6 +10,7 @@ dimension = { path = "../dimension" }
 camera = { path = "../camera" }
 player = { path = "../player" }
 fnl ={ path = "../fnl" }
+tilemap_shared ={ path = "../tilemap_shared" }
 
 
 bevy = { workspace = true }

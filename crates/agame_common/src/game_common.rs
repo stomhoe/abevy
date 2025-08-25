@@ -1,11 +1,12 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
+use bevy_common_assets::ron::RonAssetPlugin;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use bevy_replicon::prelude::*;
 
-use crate::{game_common_components::*, game_common_states::*, game_common_systems::* };
+use crate::{color_sampler_systems::*, color_sampler_resources::WeightedColorsSeri, game_common_components::*, game_common_components_samplers::{ColorSampler, EntiWeightedSampler, WeightedSamplerRef}, game_common_states::*, game_common_systems::* };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct StatefulSessionSystems;
@@ -24,6 +25,8 @@ pub struct ModifierSystems;
 
 
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct ColorSamplersInitSystems;
 
 
 
@@ -33,13 +36,19 @@ pub fn plugin(app: &mut App) {
 
     app
     .add_plugins((
+        RonAssetPlugin::<WeightedColorsSeri>::new(&["wcolors.ron"]),
+
     ))
     .add_systems(OnEnter(AppState::NoSession), (reset_states))
 
+    .add_systems(OnEnter(AssetsLoadingState::LocalFinished), (init_color_samplers, add_colorsamplers_to_map).chain().in_set(ColorSamplersInitSystems))
+
     .add_systems(Update, (
-        (z_sort_system, ).in_set(StatefulSessionSystems),
+        (z_sort_system, apply_color).in_set(StatefulSessionSystems),
         (toggle_simulation, update_transform_z, ).in_set(GameplaySystems),
-        (tick_time_based_multipliers).in_set(SimRunningSystems)
+        (tick_time_based_multipliers).in_set(SimRunningSystems),
+        add_colorsamplers_to_map.run_if(not(server_or_singleplayer)),
+        apply_color,
     ))
     .configure_sets(Update, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -83,9 +92,13 @@ pub fn plugin(app: &mut App) {
     .register_type::<YSortOrigin>()
     .register_type::<Description>()
     .register_type::<FacingDirection>()
-
+    .register_type::<WeightedSamplerRef>()
+    
     .replicate::<VisibilityGameState>()    
     .replicate::<FacingDirection>()
     .replicate::<Directionable>()
+    .replicate::<EntiWeightedSampler>()
+    .replicate::<ColorSampler>()
+
     ;
 }

@@ -1,0 +1,18 @@
+
+(
+    id: "elf2",
+    operation_operands: [
+        ("max", ["fnl.beachbig", "fnl.beachsmol",], 2),
+        ("avg", ["$2", "0.5", ], 2),
+        ("lin", ["$1", "-15.8", "5.54", "$2",], 2),        
+        ("idxmax", ["0.4", "$2"], 0),
+    ],
+   
+    bifs: [
+      ("elf3", [""]),
+        ("", ["sand"]),
+    ],
+    root_in_dimensions: [""],
+    size: Some((1, 1)),
+
+)

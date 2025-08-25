@@ -19,6 +19,7 @@ pub fn plugin(app: &mut App) {
         .init_state::<GamePhase>()
         .init_state::<GameSetupType>()
         .init_state::<AssetsLoadingState>()
+        .init_state::<ReplicatedAssetsSession>()
         .init_state::<ConnectionAttempt>()
         .init_state::<LoadedAssetsSession>()
         .init_state::<TerrainGenHotLoading>()

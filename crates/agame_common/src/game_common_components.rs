@@ -1,8 +1,10 @@
 
-use bevy::prelude::*;
+use bevy::{platform::collections::HashMap, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use common::common_components::{AssetScoped, EntityPrefix, SessionScoped};
-use serde::{Deserialize, Serialize};
+use rand::Rng;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 use std::time::Duration;
 #[allow(unused_imports)] use bevy::prelude::*;
 use splines::{Interpolation, Key, Spline};
@@ -12,7 +14,7 @@ use strum_macros::{AsRefStr, Display, };
 pub struct MyZ(pub i32);
 impl MyZ {
     pub fn as_float(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
-    pub const Z_MULTIPLIER: f32 = 1e-5;
+    pub const Z_MULTIPLIER: f32 = 1e-2;
 }
 
 #[allow(unused_parens, dead_code)]
@@ -73,7 +75,7 @@ pub struct Dimension;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]
 pub struct YSortOrigin(pub f32);//TAL VEZ ES BUENA IDEA PONERLE ESTO OBLIGATORIAMENTE A TODOS LOS SPRITES, ASÍ TODOS AUMENTAN O DISMINUYEN CONJUNTAMENTE DE Z
 impl YSortOrigin {
-    pub const Y_SORT_DIV: f32 = 1e-6;
+    pub const Y_SORT_DIV: f32 = 1e-7;
 }
 
 
@@ -174,3 +176,4 @@ impl TickMultFactor {
     pub fn new(value: f32) -> Self { Self(value.max(0.0)) }
     pub fn value(&self) -> f32 { self.0 }
 }
+

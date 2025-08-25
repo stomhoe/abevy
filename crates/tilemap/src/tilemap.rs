@@ -5,6 +5,7 @@ use common::common_states::*;
 use dimension::DimensionSystems;
 use game_common::game_common::GameplaySystems;
 use superstate::superstate_plugin;
+use tilemap_shared::ChunkPos;
 
 use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{self, *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_systems::*};
 

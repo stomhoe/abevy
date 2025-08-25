@@ -5,7 +5,8 @@
         "default": "texture/world/white.png"
     },
     shader: "",
-    sprite: false,
+    sprite: false, 
+    randflipx: false,
     offset: (0.0, 0.0),
     z: 10,
     color: Some((0, 0, 170, 255)),

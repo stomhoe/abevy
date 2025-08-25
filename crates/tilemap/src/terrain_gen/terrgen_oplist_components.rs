@@ -7,10 +7,10 @@ use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use noiz::DynamicConfigurableSampleable;
 use serde::{Deserialize, Serialize};
+use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 
-use crate::terrain_gen::terrgen_resources::AaGlobalGenSettings;
 use crate::tile::tile_components::*;
 
 use {common::common_components::*, };
@@ -160,28 +160,3 @@ pub struct OplistRef(pub Entity);
 
 
 
-#[allow(unused_parens)]
-pub fn client_remap_operation_entities(
-    mut query: Query<(&mut OperationList), (Added<OperationList>)>, 
-    mut map: ResMut<ServerEntityMap>,
-)
-{
-    for mut oplist in query.iter_mut() {
-        for bifur in oplist.bifurcations.iter_mut() {
-            if let Some(oplist_entity) = bifur.oplist {
-                match map.server_entry(oplist_entity).get() {
-                    Some(new_ent) => bifur.oplist = Some(new_ent),
-                    None => {
-                        error!(
-                            target: "oplist_loading",
-                            "Failed to remap oplist entity {:?} in Bifurcation: not found in ServerEntityMap",
-                            oplist_entity
-                        );
-                        bifur.oplist = None;
-                    }
-                }
-            }
-            bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = map.server_entry(*tile_entity).get().unwrap_or(*tile_entity));
-        }
-    }
-}

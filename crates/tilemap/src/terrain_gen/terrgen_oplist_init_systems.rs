@@ -3,11 +3,12 @@
 
 use bevy::prelude::*;
 
+use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use dimension::dimension_components::MultipleDimensionStringRefs;
 
 use common::common_components::{DisplayName, EntityPrefix, StrId};
 
-use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoise, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_samplers_resources::TileWeightedSamplersMap}};
+use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoise, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 
 use std::mem::take;
 
@@ -240,23 +241,62 @@ pub fn init_oplists_bifurcations(
 
 
 
- 
-//  #[allow(unused_parens, )]
-// pub fn client_fix_bifurs(
-//     trigger: Trigger<TileEntitiesMap>, 
-//     server: Option<Res<RenetServer>>,
-//     mut entis_map: ResMut<ServerEntityMap>, own_map: Res<TileEntitiesMap>,
-// ) {
-//     if server.is_some() { return; }
+#[allow(unused_parens)]
+pub fn client_remap_operation_entities(
+    mut query: Query<(&mut OperationList), (Added<OperationList>)>, 
+    mut map: ResMut<ServerEntityMap>,
+)
+{
+    for mut oplist in query.iter_mut() {
 
-//     let TileEntitiesMap(received_map) = trigger.event().clone();
-//     for (hash_id, &server_entity) in received_map.0.iter() {
-//         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
+        for (_, operands, _) in oplist.trunk.iter_mut() {
+            for operand in operands.iter_mut() {
+                if let Operand::NoiseEntity(ent, _, _, _) = operand {
+                    match map.server_entry(*ent).get() {
+                        Some(new_ent) => {
+                            info!(
+                                target: "oplist_loading",
+                                "Remapped noise entity {:?} to {:?} in Operand",
+                                ent,
+                                new_ent
+                            );
+                            *ent = new_ent;
+                        },      
+                        None => {
+                            error!(
+                                target: "oplist_loading",
+                                "Failed to remap noise entity {:?} in Operand: not found in ServerEntityMap",
+                                ent
+                            );
+                        }
+                    }
+                }
+            }
+        }
 
-//             debug!("Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
-//             entis_map.insert(server_entity, client_entity);
-//         } else {
-//             error!("Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
-//         }
-//     }
-// }
+        for bifur in oplist.bifurcations.iter_mut() {
+            if let Some(oplist_entity) = bifur.oplist {
+                match map.server_entry(oplist_entity).get() {
+                    Some(new_ent) => {
+                        info!(
+                            target: "oplist_loading",
+                            "Remapped oplist entity {:?} to {:?} in Bifurcation",
+                            oplist_entity,
+                            new_ent
+                        );
+                        bifur.oplist = Some(new_ent);
+                    },      
+                    None => {
+                        error!(
+                            target: "oplist_loading",
+                            "Failed to remap oplist entity {:?} in Bifurcation: not found in ServerEntityMap",
+                            oplist_entity
+                        );
+                        bifur.oplist = None;
+                    }
+                }
+            }
+            bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = map.server_entry(*tile_entity).get().unwrap_or(*tile_entity));
+        }
+    }
+}

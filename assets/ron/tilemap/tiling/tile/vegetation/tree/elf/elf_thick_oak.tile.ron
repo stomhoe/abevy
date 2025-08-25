@@ -1,0 +1,19 @@
+(
+    id: "elf_thick_oak",
+    name: "Elven Thick Oak",
+    img_paths: {
+        "default": "texture/world/vegetation/elf/elf_thick_oak.png"
+    },
+    shader: "",
+    sprite: true, 
+    randflipx: true,
+    offset: (0.0, 160.0),
+    z: 1000,
+    color: Some((255, 255, 255, 255)),
+    color_map: "",
+    spawns: [],
+    spawns_children: [],
+    somecomp_present: Some(true),
+    tmapchild: true,
+    ysort: Some(0.0),
+)

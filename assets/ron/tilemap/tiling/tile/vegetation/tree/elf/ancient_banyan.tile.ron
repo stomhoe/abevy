@@ -1,0 +1,19 @@
+(
+    id: "ancient_banyan",
+    name: "Ancient Banyan",
+    img_paths: {
+        "default": "texture/world/vegetation/elf/ancient_banyan.png"
+    },
+    shader: "",
+    sprite: true, 
+    randflipx: true,
+    offset: (0.0, 210.0),
+    z: 1000,
+    color: Some((255, 255, 255, 255)),
+    color_map: "",
+    spawns: [],
+    spawns_children: [],
+    somecomp_present: Some(true),
+    tmapchild: true,
+    ysort: Some(0.0),
+)

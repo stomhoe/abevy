@@ -22,7 +22,7 @@ pub struct TileInstancesEntityMap(pub HashIdToEntityMap);
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
 pub struct TileSerisHandles {
-    #[asset(path = "ron/tilemap/tiling/tile" , collection(typed))] 
+    #[asset(path = "ron/tilemap/tiling/tile", collection(typed))] 
     pub handles: Vec<Handle<TileSeri>>,
 }
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
@@ -37,9 +37,10 @@ pub struct TileSeri {
     pub color: Option<[u8; 4]>,
     pub color_map: String,
     pub spawns: Vec<String>,
-    pub spawns_children: Vec<String>,
+    pub spawns_children: Vec<String>,//SPRITECONFIGS SON VÁLIDOS
     pub somecomp_present: Option<bool>,
     pub ysort: Option<f32>,
+    pub randflipx: bool,
     pub tmapchild: bool,
 }
 
@@ -47,7 +48,7 @@ pub struct TileSeri {
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
 pub struct ShaderRepeatTexSerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader" , collection(typed))] 
+    #[asset(path ="ron/tilemap/tiling/shader/rep1" , collection(typed))] 
     pub handles: Vec<Handle<ShaderRepeatTexSeri>>,
 }
 
@@ -60,4 +61,21 @@ pub struct ShaderRepeatTexSeri {
     pub mask_color: [f32; 4],
 }
 
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)] 
+pub struct ShaderVoronoiSerisHandles {
+    #[asset(path ="ron/tilemap/tiling/shader/voro" , collection(typed))] 
+    pub handles: Vec<Handle<ShaderVoronoiSeri>>,
+}
 
+
+#[derive(serde::Deserialize, Asset, Reflect, Default)]
+pub struct ShaderVoronoiSeri {
+    pub id: String,
+    pub img_path: String,
+    pub scale: f32,
+    pub voronoi_scale: f32,
+    pub voronoi_scale_random: f32,
+    pub voronoi_rotation: f32,
+    pub mask_color: [f32; 4],
+}

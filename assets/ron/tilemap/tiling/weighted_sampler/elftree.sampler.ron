@@ -1,0 +1,19 @@
+(
+    id: "elftree_sampler",
+    weights: {
+        "ancient_banyan": 10.0,
+        "banyan": 10.0,
+        "bronze_banyan": 10.0,
+        "dogwood": 10.0,
+        "elf_thick_oak": 10.0,
+        "euca": 10.0,
+        "ghost_birch": 10.0,
+        "hollow_banyan": 10.0,
+        "lush_canopy": 10.0,
+        "pink_blossom": 10.0,
+        "silver_leaf": 10.0,
+        "thick_banyan": 10.0,
+    },
+)
+
+

@@ -4,6 +4,7 @@ use bevy_ecs_tilemap::{map::*, prelude::MaterialTilemapHandle, tiles::*, Materia
 use common::{common_components::StrId, common_resources::ImageSizeMap};
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::MyZ;
+use tilemap_shared::GlobalTilePos;
 
 use crate::{chunking_components::*, terrain_gen::terrgen_oplist_components::OplistSize, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
 
@@ -45,7 +46,6 @@ pub fn produce_tilemaps(
 
             let tile_ent = cmd.entity(tile_ent)
                 .remove::<TilemapChild>()
-                .insert_if_new(TileBundle::default())
                 .remove::<Disabled>()
                 .id();
 
@@ -54,9 +54,12 @@ pub fn produce_tilemaps(
             
             if let Some(mut transform) = transf {//TODO USAR EL IMAGE
 
-                let displacement: Vec2 = Vec2::from(tile_pos) * oplist_size.inner().as_vec2() * Tile::PIXELS.as_vec2();
+                let displacement: Vec2 = Vec2::from(tile_pos) * oplist_size.inner().as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2();
                 transform.translation += displacement.extend(0.0);
-            
+                cmd.entity(tile_ent).insert(ChildOf(chunk_ent));
+                continue;
+            } else{
+                cmd.entity(tile_ent).insert_if_new(TileBundle::default());
             }
 
             let (handles, tile_size) = match tile_handles {
@@ -149,7 +152,8 @@ pub fn fill_tilemaps_data(
     mut commands: Commands,
     mut chunk_query: Query<(Entity, &Children), (Added<LayersReady>)>,
     mut tilemaps_query: Query<(Entity, &mut TileMapHandles, Option<&TileShaderRef>), (With<ChildOf>, )>,
-    mut texture_overley_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
+    mut texture_overlay_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
+    mut voronoi_mat: ResMut<Assets<VoronoiTextureOverlayMat>>,
     shader_query: Query<(&TileShader, ), ( )>,
 ) {
     for (chunk, children) in chunk_query.iter_mut() {
@@ -170,18 +174,24 @@ pub fn fill_tilemaps_data(
                 }
 
                 if let Some(shader) = shader {
-                    let material = match shader {
+                    match shader {
                         TileShader::TexRepeat(handle) => {
-                            MaterialTilemapHandle::from(texture_overley_mat.add(handle.clone()))
+                            commands.entity(tmap_entity).try_insert_if_new(MaterialTilemapBundle {
+                                texture,
+                                material: MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone())),
+                                ..Default::default()
+                            });
+                        }
+                        TileShader::Voronoi(handle) => {
+                            commands.entity(tmap_entity).try_insert_if_new(MaterialTilemapBundle {
+                                texture,
+                                material: MaterialTilemapHandle::from(voronoi_mat.add(handle.clone())),
+                                ..Default::default()
+                            });
                         }
                         TileShader::TwoTexRepeat(handle) => todo!(),
                     };
 
-                    commands.entity(tmap_entity).try_insert_if_new(MaterialTilemapBundle {
-                        texture,
-                        material,
-                        ..Default::default()
-                    });
                 } else {
                     commands.entity(tmap_entity)
                     .try_insert_if_new((TilemapBundle { texture, ..Default::default() }));

@@ -5,6 +5,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
 use dimension::dimension_components::MultipleDimensionRefs;
 use fnl::FastNoiseLite;
+use tilemap_shared::AaGlobalGenSettings;
 
 use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, };
 
@@ -36,12 +37,12 @@ pub fn plugin(app: &mut App) {
                 init_oplists_from_assets,
                 add_oplists_to_map,
                 init_oplists_bifurcations,
-            )
-            .chain(),).in_set(TerrainGenSystems)
+            ).chain(),
+        
+        ).in_set(TerrainGenSystems)
         )
 
-        .init_resource::<AaGlobalGenSettings>()
-        .register_type::<AaGlobalGenSettings>()
+        .init_resource::<AaGlobalGenSettings>().register_type::<AaGlobalGenSettings>()
  
 
         .add_plugins((
@@ -51,7 +52,6 @@ pub fn plugin(app: &mut App) {
 
         ))
         
-        .register_type::<AaGlobalGenSettings>()
         .register_type::<NoiseSerisHandles>()
         .register_type::<NoiseSerialization>()
         .register_type::<OpListSerisHandles>()

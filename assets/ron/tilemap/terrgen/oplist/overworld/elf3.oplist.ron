@@ -1,0 +1,21 @@
+(
+    id: "elf3",
+    operation_operands: [
+        ("max", ["fnl.lakesmol", "fnl.lakebig"], 3),
+        ("*", ["$3", "$1"], 3),
+        ("*opo", ["$3", "$2"], 3),
+        ("idxmax", ["0.5", "$3"], 0),
+
+    ],
+   
+    bifs: [
+        ("elf4", ["tempgrass"]),
+        ("", ["lake"]),
+        ("", [""])
+    ],
+    root_in_dimensions: [""],
+    size: Some((1, 1)),
+
+)
+
+//max(a*(1-b+b_t), b*(1-a+)) > ocean threshold

@@ -40,3 +40,5 @@ rustc*.txt
 *.bak
 *.old
 *.orig
+
+**.lnk

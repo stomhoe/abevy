@@ -1,0 +1,20 @@
+[package]
+name = "tilemap_shared"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+
+bevy = { workspace = true }
+serde = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }
+indexmap = { workspace = true }
+delegate = { workspace = true }
+bevy_ecs_tilemap = { workspace = true }
+bevy-inspector-egui = { workspace = true }
+
+noiz = { workspace = true }
+
+

@@ -1,8 +1,8 @@
 (
     id: "tempveg_sampler",
     weights: {
-        "tempbush0": 10.0,
-        "tempbush1": 10.0,
+        "temp_bush0": 10.0,
+        "temp_bush1": 10.0,
     },
 )
 

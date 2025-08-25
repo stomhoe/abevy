@@ -3,6 +3,7 @@ use bevy::math::U16Vec2;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_states::*};
+use tilemap_shared::{ChunkPos, GlobalTilePos};
 
 
 use crate::{chunking_components::ChunkInitState, terrain_gen::terrgen_oplist_components::OplistSize, tile::tile_components::Tile };
@@ -22,16 +23,16 @@ impl TilemapConfig {
         Self {
             entity_prefix: EntityPrefix::new("Tilemap"),
             tile_size: TilemapTileSize::from(tile_size.as_vec2()),
-            grid_size: TilemapGridSize::from(Tile::PIXELS.as_vec2() * oplist_size_val.as_vec2()),
-            map_size: TilemapSize::from(ChunkInitState::SIZE / oplist_size_val),
+            grid_size: TilemapGridSize::from(GlobalTilePos::TILE_SIZE_PXS.as_vec2() * oplist_size_val.as_vec2()),
+            map_size: TilemapSize::from(ChunkPos::CHUNK_SIZE / oplist_size_val),
             render_settings: TilemapRenderSettings {
-                render_chunk_size: ChunkInitState::SIZE * 2 / oplist_size_val,
+                render_chunk_size: ChunkPos::CHUNK_SIZE * 2 / oplist_size_val,
                 y_sort: false,
             },
         }
     }
     pub fn new_storage(oplist_size: OplistSize) -> TileStorage {
-        TileStorage::empty((ChunkInitState::SIZE/oplist_size.inner()).into())
+        TileStorage::empty((ChunkPos::CHUNK_SIZE / oplist_size.inner()).into())
     }
 }
 
