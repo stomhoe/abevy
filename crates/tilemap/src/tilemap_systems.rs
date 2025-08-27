@@ -1,5 +1,5 @@
 
-use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::{entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::HashMap, prelude::*};
 use bevy_ecs_tilemap::{map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use common::{common_components::StrId, common_resources::ImageSizeMap};
 use debug_unwraps::DebugUnwrapExt;
@@ -31,41 +31,35 @@ type Map = HashMap<MapKey, MapStruct>;
 #[allow(unused_parens)]
 pub fn produce_tilemaps(
     mut cmd: Commands, 
-    mut chunk_query: Query<(Entity, &mut ProducedTiles,), (Without<Children>, Added<TilesReady>, Without<LayersReady>)>,
-    mut tile_comps: Query<(Entity, &StrId, &TilePos, &OplistSize, Option<&TileIdsHandles>, Option<&MyZ>, Option<&TileShaderRef>, Option<&mut Transform>, ),(With<Disabled>, With<TilemapChild>, )>,
+    chunk_query: Query<(Entity, &ProducedTiles,), (With<TilesReady>)>,
+    tile_comps: Query<(Entity, &TilePos, &OplistSize, Option<&TileIdsHandles>, Option<&MyZ>, Option<&TileShaderRef>, ), (With<Disabled>, With<TilemapChild>, Without<Transform>)>,
     image_size_map: Res<ImageSizeMap>,
 ) -> Result {
     let mut layers: Map = HashMap::with_capacity(10);
 
     #[allow(unused_mut)]
-    'chunkfor: for (chunk_ent, mut produced_tiles) in chunk_query.iter_mut() {
-        for &tile_ent in produced_tiles.produced_tiles().iter() {
+    'chunkfor: for (chunk_ent, produced_tiles) in chunk_query.iter() {
+        'tilefor: for &tile_ent in produced_tiles.produced_tiles().iter() {
 
-            let (tile_ent, tile_str_id, &tile_pos, &oplist_size, tile_handles, tile_z_index, shader_ref, transf, ) = tile_comps.get_mut(tile_ent)?;
-            trace!("Producing tile {:?} at pos {:?} in chunk {:?}", tile_str_id, tile_pos, chunk_ent);
+            let Ok((tile_ent, &tile_pos, &oplist_size, tile_handles, tile_z_index, shader_ref, )) = tile_comps.get(tile_ent)
+            else { 
+                continue 'tilefor;
+            };
 
-            let tile_ent = cmd.entity(tile_ent)
-                .remove::<TilemapChild>()
-                .remove::<Disabled>()
-                .id();
+
+            cmd.entity(tile_ent)
+            .try_insert_if_new(TileBundle::default())
+            .try_remove::<(TilemapChild, Disabled)>();
 
             let tile_z_index = tile_z_index.cloned().unwrap_or_default();
 
             
-            if let Some(mut transform) = transf {//TODO USAR EL IMAGE
-
-                let displacement: Vec2 = Vec2::from(tile_pos) * oplist_size.inner().as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-                transform.translation += displacement.extend(0.0);
-                cmd.entity(tile_ent).insert(ChildOf(chunk_ent));
-                continue;
-            } else{
-                cmd.entity(tile_ent).insert_if_new(TileBundle::default());
-            }
+            
 
             let (handles, tile_size) = match tile_handles {
                 Some(handles) => (handles.clone_handles(), image_size_map.0.get(&handles.first_handle()).copied().unwrap_or(U16Vec2::ONE)),
                 None => {
-                    cmd.entity(tile_ent).insert(TileVisible(false));
+                    cmd.entity(tile_ent).try_insert(TileVisible(false));
                     (Vec::new(), U16Vec2::ONE)
                 }
             };
@@ -73,7 +67,7 @@ pub fn produce_tilemaps(
             let map_key = MapKey::new(tile_z_index, oplist_size, tile_size, shader_ref.copied());
 
             if let Some(MapStruct { tmap_ent, handles, storage, tmap_hash_id_map }) = layers.get_mut(&map_key) {
-                cmd.entity(tile_ent).insert((ChildOf(*tmap_ent), TilemapId(*tmap_ent)));
+                cmd.entity(tile_ent).try_insert((ChildOf(*tmap_ent), TilemapId(*tmap_ent)));
 
                 storage.set(&tile_pos, tile_ent);
 
@@ -95,26 +89,22 @@ pub fn produce_tilemaps(
                         first_texture_index = Some(texture_index);
                     }
                 }
-                cmd.entity(tile_ent).insert(first_texture_index.unwrap_or_default());
+                cmd.entity(tile_ent).try_insert(first_texture_index.unwrap_or_default());
                 
             
             } else {
                 let tmap_ent = cmd.spawn((
                    
                     TilemapConfig::new(oplist_size, tile_size),
+                    ChildOf(chunk_ent),
                 ))
                 .id();
-                if cmd.get_entity(chunk_ent).is_ok() {
-                    cmd.entity(chunk_ent).add_child(tmap_ent);
-                }else{
-                    cmd.entity(tmap_ent).try_despawn();
-                    continue 'chunkfor; 
-                }
                 
                 //TODO HACER UN SYSTEM Q BORRE TILEMAPS HUÉRFANOS?
 
             
-                cmd.entity(tile_ent).try_insert((ChildOf(tmap_ent), TilemapId(tmap_ent)));
+                cmd.entity(tile_ent).try_insert((TilemapId(tmap_ent)));
+                
 
                 let mut storage = TilemapConfig::new_storage(oplist_size);
                 storage.set(&tile_pos, tile_ent);
@@ -140,7 +130,7 @@ pub fn produce_tilemaps(
                     cmd.entity(tmap_ent).try_insert(shader_ref);
                 }
             }
-            cmd.entity(chunk_ent).try_remove::<ProducedTiles>().try_insert(LayersReady);
+            cmd.entity(chunk_ent).try_insert(LayersReady);
         }
     }
     Ok(())
@@ -150,8 +140,8 @@ pub fn produce_tilemaps(
 #[allow(unused_parens)]
 pub fn fill_tilemaps_data(
     mut commands: Commands,
-    mut chunk_query: Query<(Entity, &Children), (Added<LayersReady>)>,
-    mut tilemaps_query: Query<(Entity, &mut TileMapHandles, Option<&TileShaderRef>), (With<ChildOf>, )>,
+    mut chunk_query: Query<(Entity, &Children), (With<LayersReady>)>,
+    mut tilemaps_query: Query<(Entity, &mut TileMapHandles, Option<&TileShaderRef>), (With<TilemapGridSize>)>,
     mut texture_overlay_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
     mut voronoi_mat: ResMut<Assets<VoronoiTextureOverlayMat>>,
     shader_query: Query<(&TileShader, ), ( )>,
@@ -206,3 +196,12 @@ pub fn fill_tilemaps_data(
 }
 
 
+
+#[allow(unused_parens)]
+pub fn despawn_orphan_tilemaps(mut cmd: Commands, 
+    mut query: Query<(Entity, ), (Without<ChildOf>, With<TilemapGridSize>)>,
+) {
+    for (tilemap_ent, ) in query.iter_mut() {
+        cmd.entity(tilemap_ent).despawn();
+    }
+}

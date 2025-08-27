@@ -35,7 +35,7 @@ pub fn plugin(app: &mut App) {
 
         .add_systems(
             OnEnter(AssetsLoadingState::LocalFinished), (
-            (init_shaders, add_shaders_to_map, init_tiles, add_tiles_to_map).chain()
+            (init_shaders, add_shaders_to_map, init_tiles, add_tiles_to_map, map_min_dist_tiles).chain()
         ).in_set(TilingSystems))
         .add_systems(
             OnEnter(AssetsLoadingState::ReplicatedFinished), (
@@ -58,7 +58,8 @@ pub fn plugin(app: &mut App) {
         .make_trigger_independent::<TileEntitiesMap>()
         .add_server_trigger::<TileWeightedSamplersMap>(Channel::Unordered)
         .make_trigger_independent::<TileWeightedSamplersMap>()
-        
+
+
         .register_type::<ShaderRepeatTexSerisHandles>()
         .register_type::<ShaderRepeatTexSeri>()
         .register_type::<ShaderVoronoiSerisHandles>()
@@ -77,7 +78,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<MonoRepeatTextureOverlayMat>()
         .register_type::<VoronoiTextureOverlayMat>()
         .register_type::<TwoOverlaysExample>()
-
+        .register_type::<MinDistances>()
 
         //usar feature
         .add_observer(client_map_server_tiling)

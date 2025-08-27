@@ -1,3 +1,4 @@
+use bevy::ecs::entity::EntityHashMap;
 use bevy::math::U8Vec4;
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
@@ -93,3 +94,11 @@ impl TileIdsHandles {
         self.ids.iter().cloned().zip(self.handles.iter())
     }
 }
+
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Reflect, Default)]
+pub struct MinDistances(pub EntityHashMap<u32>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct RegisterPos;

@@ -10,6 +10,7 @@ use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common
 use bevy_ecs_tilemap::tiles::TilePos;
 
 use crate::{tile::{tile_components::*, tile_resources::*, tile_materials::*}, };
+use std::mem::take;
 
 #[allow(unused_parens)]
 pub fn init_tiles(
@@ -23,9 +24,9 @@ pub fn init_tiles(
     if tiling_map.is_some() { return; }
     cmd.insert_resource(TileEntitiesMap::default());
 
-    for handle in seris_handles.handles.drain(..) {
+    for handle in seris_handles.handles.iter() {
         //info!("Loading TileSeri from handle: {:?}", handle);
-        let Some(seri) = assets.remove(&handle) else { continue; };
+        let Some(seri) = assets.get_mut(handle) else { continue; };
 
         let str_id = match StrId::new(seri.id.clone(), Tile::MIN_ID_LENGTH) {
             Ok(id) => id,
@@ -43,7 +44,7 @@ pub fn init_tiles(
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
         let color = Color::srgba_u8(r, g, b, a);
 
-            if ! seri.name.is_empty() {
+        if ! seri.name.is_empty() {
             cmd.entity(enti).insert(DisplayName(seri.name.clone()));
         }
         if seri.tmapchild {
@@ -73,7 +74,7 @@ pub fn init_tiles(
 
         //TODO HACER Q LAS TILES PUEDAN TENER MUCHAS IMÁGENES (PARA IR CAMBIANDO ENTRE ELLAS SEGÚN EL ESTADO, USANDO EL INDEX)
         if ! seri.sprite {
-            let tile_handles = TileIdsHandles::from_paths(&asset_server, seri.img_paths, );
+            let tile_handles = TileIdsHandles::from_paths(&asset_server, take(&mut seri.img_paths), );
 
             let tile_handles = match tile_handles {
                 Ok(tile_handles) => tile_handles,
@@ -98,7 +99,7 @@ pub fn init_tiles(
             }
         }
         else{
-            let map = match ImageHolderMap::from_paths(&asset_server, seri.img_paths) {
+            let map = match ImageHolderMap::from_paths(&asset_server, take(&mut seri.img_paths)) {
                 Ok(map) => map,
                 Err(err) => {
                     error!("Failed to create ImageHolderMap for tile '{}': {}", str_id, err);
@@ -120,7 +121,7 @@ pub fn init_tiles(
                 warn!("Tile {} tilemap shaders ('{}') are not compatible with sprite=true, ignoring", str_id, seri.shader);
             }
             if let Some(y_sort_origin) = seri.ysort {
-                cmd.entity(enti).insert(YSortOrigin(offset.y + y_sort_origin - 15.));
+                cmd.entity(enti).insert(YSortOrigin(offset.y + y_sort_origin - 10.0));
             }
         }
     }
@@ -143,11 +144,44 @@ pub fn add_tiles_to_map(
     }
 }
 
+#[allow(unused_parens)]
+pub fn map_min_dist_tiles(mut cmd: Commands, 
+    mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
+    map: ResMut<TileEntitiesMap>,
+) {
+    for handle in seris_handles.handles.drain(..) {
+        let Some(seri) = assets.remove(&handle) else { continue; };
+
+        let Some(min_distances) = seri.min_distances else { continue; };
+
+        if min_distances.is_empty() { continue; }
+
+        let Ok(tile_ent) = map.0.get(&seri.id) else { continue; };
+
+        let mut min_dists = MinDistances::default();
+
+        for (tile_id, min_dist) in min_distances {
+            let Ok(other_tile_ent) = map.0.get(&tile_id) else {
+                warn!("Tile '{}' min_distances references unknown tile id '{}'", seri.id, tile_id);
+                continue;
+            };
+            cmd.entity(other_tile_ent).insert(RegisterPos);
+            min_dists.0.insert(other_tile_ent, min_dist);
+        }
+
+        if min_dists.0.is_empty() { continue; }
+        
+        cmd.entity(tile_ent).insert(min_dists);
+    }
+}
+
+
 #[allow(unused_parens, )]
 pub fn client_map_server_tiling(
     trigger: Trigger<TileEntitiesMap>, 
     server: Option<Res<RenetServer>>,
-    mut entis_map: ResMut<ServerEntityMap>, own_map: Res<TileEntitiesMap>,
+    mut entis_map: ResMut<ServerEntityMap>, 
+    own_map: Res<TileEntitiesMap>,
 ) {
     if server.is_some() { return; }
 

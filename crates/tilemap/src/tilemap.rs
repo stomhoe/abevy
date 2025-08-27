@@ -20,19 +20,21 @@ pub fn plugin(app: &mut App) {
         bevy_ecs_tilemap::TilemapPlugin, 
         terrain_gen::plugin,
         tile::plugin,
-        superstate_plugin::<ChunkInitState, (UninitializedChunk, TilesReady, LayersReady, InitializedChunk)>
+        superstate_plugin::<ChunkInitState, (UninitializedChunk, TilesInstantiated, TilesReady, LayersReady, InitializedChunk)>
     ))
 
     .add_systems(Update, (
+        despawn_orphan_tilemaps.after(produce_tilemaps),
         despawn_unreferenced_chunks, 
         rem_outofrange_chunks_from_activators, 
         (
             visit_chunks_around_activators, 
             show_chunks_around_camera, 
             hide_outofrange_chunks, 
-            (produce_tilemaps, fill_tilemaps_data,).chain()
+            (produce_tilemaps, fill_tilemaps_data).chain(),
         ).in_set(ChunkSystems).run_if(in_state(TerrainGenHotLoading::KeepAlive))
     ))
+
     .configure_sets(Update, (
         (TerrainGenSystems,
         ChunkSystems).in_set(GameplaySystems).run_if(in_state(LoadedAssetsSession::KeepAlive))

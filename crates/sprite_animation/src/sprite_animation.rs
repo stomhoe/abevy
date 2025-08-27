@@ -1,4 +1,5 @@
 
+use bevy::time::common_conditions::on_timer;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
@@ -21,7 +22,7 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<AnimationSeri>::new(&["anim.ron"]),
     ))
     .add_systems(Update, (
-        (update_animstate, animate_sprite, ).chain(),
+        (update_animstate, animate_sprite, ).chain().run_if(on_timer(std::time::Duration::from_millis(100))),
         update_animstate_for_clients.run_if(server_running)
     ).in_set(AnimationSystems))
 

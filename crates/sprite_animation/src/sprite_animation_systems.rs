@@ -64,7 +64,7 @@ pub fn init_animations(
 //#[bevy_simple_subsecond_system::hot]
 #[allow(unused_parens)]
 pub fn update_animstate(
-    parents_query: Query<(&MoveAnimActive, &BeingAltitude, &HeldSprites), (Or<(Changed<BeingAltitude>, Changed<MoveAnimActive>, Changed<HeldSprites>)>,)>,
+    parents_query: Query<(&MoveAnimActive, &BeingAltitude, &HeldSprites), (Or<(Changed<BeingAltitude>, Changed<MoveAnimActive>, Changed<HeldSprites>)>,) >,
     mut sprite_query: Query<(&StrId, &SpriteConfigRef, &mut AnimationState,), (Without<ExcludedFromBaseAnimPickingSystem>,)>,
     sprite_config_query: Query<(Option<&WalkAnim>, Option<&SwimAnim>, Option<&FlyAnim>, ),(Or<(With<Disabled>, Without<Disabled>)>,)>,
 ) { 
@@ -160,7 +160,7 @@ pub fn update_animstate(
 //#[bevy_simple_subsecond_system::hot]
 
 
-
+//VA A HABER Q REFACTORIZAR, HACER Q SI ESTA BUSCANDO LA ANIMACION IDLE Y NO LA ENCUNTRA, Q SIMPLEMENTE SE PONGA EN EL INDEX 0 E LA BODY ANIM. TAMBIEN CREO Q LAS ANIIMATIONS DEBERIAN GUARDAR SU CONFIG EN ENTITIES REFERENCIADAS
 pub fn animate_sprite(
     mut commands: Commands,
     mut query: Query<(Entity, &SpriteHolderRef, &SpriteConfigRef,
@@ -201,7 +201,7 @@ pub fn animate_sprite(
                     sheet_anim.switch(animation_id);
                     trace!("Switched animation for entity {:?} to '{}'", ent, animation_name);
                 } 
-                sheet_anim.speed_factor = 1.0;//AJUSTAR EN OTRO SISTEMA DISTINTO
+                //sheet_anim.speed_factor = 1.0;//AJUSTAR EN OTRO SISTEMA DISTINTO
             } else {
                 let new_anim = SpritesheetAnimation::from_id(animation_id);
                 commands.entity(ent).insert(new_anim);

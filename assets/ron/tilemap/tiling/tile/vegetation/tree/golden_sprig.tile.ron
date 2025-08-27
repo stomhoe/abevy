@@ -13,7 +13,6 @@
     color_map: "",
     spawns: [],
     spawns_children: [],
-    somecomp_present: Some(true),
     tmapchild: true,
     ysort: Some(0.0),
 )

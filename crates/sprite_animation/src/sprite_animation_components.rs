@@ -11,3 +11,9 @@ pub type MoveAnimActive = sprite_animation_shared::sprite_animation_shared::Move
 pub type AnimationState = sprite_animation_shared::sprite_animation_shared::AnimationState;
 
 pub type AnimationIdPrefix = sprite_animation_shared::sprite_animation_shared::AnimationIdPrefix;
+
+
+// #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+// pub struct AnimationProgresses(
+//     HashMap<Anim
+// );

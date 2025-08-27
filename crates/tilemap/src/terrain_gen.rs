@@ -7,7 +7,7 @@ use dimension::dimension_components::MultipleDimensionRefs;
 use fnl::FastNoiseLite;
 use tilemap_shared::AaGlobalGenSettings;
 
-use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, };
+use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::produce_tilemaps, };
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -25,7 +25,7 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            (spawn_terrain_operations, produce_tiles).in_set(TerrainGenSystems),
+            (spawn_terrain_operations, produce_tiles, process_tiles).in_set(TerrainGenSystems),
             (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities).run_if(not(server_or_singleplayer)),
         ))
     
@@ -43,7 +43,8 @@ pub fn plugin(app: &mut App) {
         )
 
         .init_resource::<AaGlobalGenSettings>().register_type::<AaGlobalGenSettings>()
- 
+        .init_resource::<RegisteredPositions>()
+        
 
         .add_plugins((
             RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),
@@ -65,6 +66,9 @@ pub fn plugin(app: &mut App) {
         .register_type::<OplistSize>()
         .register_type::<PendingOperations>()
         .register_type::<ChunkRef>()
+        
+        .add_server_trigger::<RegisteredPositions>(Channel::Unordered)
+        .make_trigger_independent::<RegisteredPositions>()
 
         
         .replicate::<OplistSize>().replicate::<FnlNoise>()

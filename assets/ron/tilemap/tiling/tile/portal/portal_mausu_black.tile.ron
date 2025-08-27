@@ -1,13 +1,13 @@
 (
-    id: "tree_dead4",
-    name: "Dead tree",
+    id: "portal_mausu_black",
+    name: "Black Mausoleum",
     img_paths: {
-        "default": "texture/world/vegetation/tree_dead4.png"
+        "default": "texture/world/portal/mausublack.png"
     },
     shader: "",
     sprite: true, 
     randflipx: true,
-    offset: (0.0, 120.0),
+    offset: (0.0, 150.0),
     z: 1000,
     color: Some((255, 255, 255, 255)),
     color_map: "",

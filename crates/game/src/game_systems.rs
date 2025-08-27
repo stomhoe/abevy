@@ -37,7 +37,7 @@ pub fn spawn_player_beings(
                 //TargetSpawnPos::new(0.0, 0.0),
                 ActivatingChunks::default(),
             ));
-            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(400.0)));
+            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(40000.0)));
         }
 
         if self_player.is_some() {

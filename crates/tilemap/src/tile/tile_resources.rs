@@ -38,10 +38,10 @@ pub struct TileSeri {
     pub color_map: String,
     pub spawns: Vec<String>,
     pub spawns_children: Vec<String>,//SPRITECONFIGS SON VÁLIDOS
-    pub somecomp_present: Option<bool>,
     pub ysort: Option<f32>,
     pub randflipx: bool,
     pub tmapchild: bool,
+    pub min_distances: Option<HashMap<String, u32>>,
 }
 
 

@@ -35,7 +35,7 @@ impl EntiWeightedSampler {
         let mut weights = Vec::with_capacity(weights_map.len());
         for (&entity, &weight) in weights_map.iter() {
             entities.push(entity);
-            weights.push(weight);
+            weights.push(weight); 
         }
         let mut cumulative_weights = Vec::with_capacity(weights.len());
         let mut acc = 0.0;

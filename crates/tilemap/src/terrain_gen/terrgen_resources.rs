@@ -1,11 +1,12 @@
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
 use bevy_asset_loader::asset_collection::AssetCollection;
 use common::common_types::HashIdToEntityMap;
+use tilemap_shared::GlobalTilePos;
+use serde::{Deserialize, Serialize};
 
-
-
-
-
+#[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone)]
+#[reflect(Resource, Default)]
+pub struct RegisteredPositions(pub EntityHashMap<GlobalTilePos>); 
 
 #[derive(Resource, Debug, Default, Reflect, )]
 #[reflect(Resource, Default)]

@@ -23,6 +23,11 @@ pub struct ChunkInitState;
 #[require(Visibility::Hidden)]
 pub struct UninitializedChunk;
 
+#[derive(Component, Debug, Default,)]
+#[require(ChunkInitState)]
+pub struct TilesInstantiated;
+
+
 #[derive(Component, Debug)]
 #[require(ChunkInitState)]
 pub struct TilesReady;
@@ -52,75 +57,56 @@ impl ProducedTiles {
 
     pub fn push(&mut self, entity: Entity) {self.0.push(entity);}
 
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, Entity> { self.0.iter_mut() }
+
+
     #[allow(unused_parens, )]
     fn insert_tile_recursive(
         &mut self,
-        tiling_ent: Entity,
         cmd: &mut Commands,
+        tiling_ent: Entity,
+        tile_pos: TilePos,
         global_pos: GlobalTilePos,
-        pos_within_chunk: TilePos,
-        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
-        tilemap_child: &Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>)>,//NO MUTAR
-        gen_settings: &AaGlobalGenSettings,
         oplist_size: OplistSize,
-        dimension_ref: DimensionRef,
-        is_server: bool,
+        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
+        gen_settings: &AaGlobalGenSettings,
         depth: u32
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
             if let Some(tiling_ent) = wmap.sample_with_pos(gen_settings, global_pos) {
-                //info!("Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
 
                 if depth > 6 {
-                    warn!("Tile insertion depth exceeded 6, stopping recursion for tile at {:?} with pos within chunk {:?}", global_pos, pos_within_chunk);
+                    warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_ent);
                     return;
                 }
 
-                self.insert_tile_recursive( tiling_ent, cmd, global_pos, pos_within_chunk, weight_maps, 
-                    tilemap_child, gen_settings, oplist_size, dimension_ref, is_server, depth + 1);
+                self.insert_tile_recursive( cmd, tiling_ent, tile_pos, global_pos, oplist_size, weight_maps, gen_settings, depth + 1);
             }
-        } else {//TODO EXTRAER A UN SISTEMA TODAS LAS COSAS DE SPAWNING
-            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn().try_insert(
-                (TileRef(tiling_ent), dimension_ref, InitialPos(global_pos)))
-                .remove::<DisplayName>()
-                .id();
-            unsafe {
-            let (tilemap_child, transform) = tilemap_child.get(tiling_ent).debug_expect_unchecked("asdasda");
+        } else { 
+            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn_with(|builder|{
+                builder.deny::<(/*DisplayName, StrId*/)>();
+            })
+             .try_insert((
+                Disabled, TilemapChild,
+                tile_pos, TileRef(tiling_ent), InitialPos(global_pos), global_pos, oplist_size))
+            .id();
+            self.0.push(tile_ent);
 
-            if tilemap_child {
-                trace!("Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
-                cmd.entity(tile_ent).try_insert((oplist_size, pos_within_chunk, global_pos));
-                self.0.push(tile_ent);
-            } 
-            else if is_server {
-                trace!("Inserting tile {:?} at {:?} with pos within chunk {:?}, but it is not a TilemapChild", tiling_ent, global_pos, pos_within_chunk);
-                cmd.entity(tile_ent).try_insert((Replicated, ChildOf(dimension_ref.0), )).try_remove::<Tile>().try_remove::<Disabled>();
-                let displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
-                info!("Displacement for tile {:?} is {:?}", tile_ent, displacement);
-                if let Some(transform) = transform {
-                    cmd.entity(tile_ent).try_insert(Transform::from_translation( transform.translation + displacement));
-                } 
-            }
-    
-            }
         }
     }
 
-    pub fn insert_clonespawned_with_pos(
+    pub fn insert_as_instanced_tiles(
         &mut self,
-        tiling_ents: &Vec<Entity>,
         cmd: &mut Commands,
-        global_pos: GlobalTilePos,
+        tiling_ents: &Vec<Entity>,
         pos_within_chunk: TilePos,
-        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
-        tilemap_child: &Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>)>,
-        gen_settings: &AaGlobalGenSettings,
+        global_pos: GlobalTilePos,
         oplist_size: OplistSize,
-        dimension_ref: DimensionRef,
-        is_server: bool
+        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
+        gen_settings: &AaGlobalGenSettings,
     ) {
         for tile in tiling_ents.iter().cloned() {
-            self.insert_tile_recursive(tile, cmd, global_pos, pos_within_chunk, weight_maps, tilemap_child, gen_settings, oplist_size, dimension_ref, is_server, 0);
+            self.insert_tile_recursive(cmd, tile, pos_within_chunk, global_pos, oplist_size, weight_maps, gen_settings, 0);
         }
     }
 }
@@ -141,3 +127,23 @@ pub struct ActivatingChunks(#[entities] pub EntityHashSet,);
 
 
 
+
+            // unsafe {
+            // let (tilemap_child, transform) = tilemap_child.get(tiling_ent).debug_expect_unchecked("asdasda");
+
+            // if tilemap_child {
+            //     trace!("Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
+            //     cmd.entity(tile_ent).try_insert((oplist_size, pos_within_chunk, global_pos));
+            //     self.0.push(tile_ent);
+            // } 
+            // else if is_server {
+            //     trace!("Inserting tile {:?} at {:?} with pos within chunk {:?}, but it is not a TilemapChild", tiling_ent, global_pos, pos_within_chunk);
+            //     cmd.entity(tile_ent).try_insert((Replicated, ChildOf(dimension_ref.0), )).try_remove::<Tile>().try_remove::<Disabled>();
+            //     let displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
+            //     info!("Displacement for tile {:?} is {:?}", tile_ent, displacement);
+            //     if let Some(transform) = transform {
+            //         cmd.entity(tile_ent).try_insert(Transform::from_translation( transform.translation + displacement));
+            //     } 
+            // }
+    
+            // }

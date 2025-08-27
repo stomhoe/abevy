@@ -32,7 +32,7 @@ pub fn init_noises(
 
         
         if let Some(frequency) = seri.frequency {
-            if frequency < 0.00000001 {
+            if frequency < 0.00000000001 {
                 error!("Frequency is too small (< 0.0001) for noise {}", seri.id);
             }
         }

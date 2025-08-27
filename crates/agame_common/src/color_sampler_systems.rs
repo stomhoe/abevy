@@ -44,7 +44,7 @@ pub fn init_color_samplers(
     }
 }
 
-
+#[allow(unused_parens, )]
 pub fn add_colorsamplers_to_map(
     mut cmd: Commands,
     map: Option<ResMut<ColorWeightedSamplersMap>>,
@@ -64,17 +64,16 @@ pub fn add_colorsamplers_to_map(
                 info!("Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
             }
         }
-        else{
-            if let Some(prev_ent) = map.0.force_insert(str_id, new_ent, ) {
-                cmd.entity(prev_ent).try_despawn();
+        else if let Some(prev_ent) = map.0.force_insert(str_id, new_ent, ) {
+            cmd.entity(prev_ent).try_despawn();
 
-                refs_to_update.iter_mut().for_each(|mut ref_to_upd| {
-                    if ref_to_upd.0 == prev_ent {
-                        ref_to_upd.0 = new_ent;
-                    }
-                });
-            }
+            refs_to_update.iter_mut().for_each(|mut ref_to_upd| {
+                if ref_to_upd.0 == prev_ent {
+                    ref_to_upd.0 = new_ent;
+                }
+            });
         }
+        
     }
 }
 
@@ -95,6 +94,6 @@ pub fn apply_color(mut cmd: Commands,
                 tile_color.0 = color;
             }
         }
-        cmd.entity(entity).remove::<ColorSamplerRef>();
+        cmd.entity(entity).try_remove::<ColorSamplerRef>();
     }
 }

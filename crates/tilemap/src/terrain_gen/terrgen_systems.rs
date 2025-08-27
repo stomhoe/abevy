@@ -2,7 +2,9 @@
 
 
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
-use common::{common_components::StrId, common_states::GameSetupType};
+use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_replicon::{prelude::Replicated, shared::server_entity_map::ServerEntityMap};
+use common::{common_components::{DisplayName, StrId}, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
 use dimension::dimension_components::{MultipleDimensionRefs};
 use game_common::{game_common_components::DimensionRef, game_common_components_samplers::EntiWeightedSampler};
@@ -79,25 +81,22 @@ pub fn spawn_terrain_operations (
 #[allow(unused_parens)]
 pub fn produce_tiles(mut cmd: Commands, 
     gen_settings: Res<AaGlobalGenSettings>,
-    oplist_query: Query<(&StrId, &OperationList, &OplistSize ), ( )>,
+    oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
     mut instantiated_oplist_query: Query<(Entity, &mut VariablesArray, &OplistRef, &ChunkRef, &GlobalTilePos), ()>, 
     fnl_noises: Query<&FnlNoise,>,
-    mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, &ChildOf), ()>,
+    mut chunk_query: Query<(&mut PendingOperations, &mut ProducedTiles, &ChunkPos, ), ()>,
     weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
-    tile_query: Query<(Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
-    state : Res<State<GameSetupType>>,
 ) -> Result {
-    let is_host = state.get() != &GameSetupType::AsJoiner;
 
-    for (enti, mut variables, &oplist_ref, &chunk_ref, &global_tile_pos) in instantiated_oplist_query.iter_mut() {
-        cmd.entity(enti).despawn();//NO PONER ABAJO
+    for (openti, mut variables, &oplist_ref, &chunk_ref, &global_pos) in instantiated_oplist_query.iter_mut() {
+        cmd.entity(openti).try_despawn();//NO PONER ABAJO
 
-        let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos, child_of)) = chunk_query.get_mut(chunk_ref.0)
+        let Ok((mut pending_ops_count, mut chunk_tiles, &chunk_pos, )) = chunk_query.get_mut(chunk_ref.0)
         else { continue };
 
-        let (oplist_id, oplist, &my_oplist_size) = oplist_query.get(oplist_ref.0)?;
+        let (oplist, &my_oplist_size) = oplist_query.get(oplist_ref.0)?;
 
-        let pos_within_chunk = global_tile_pos.get_pos_within_chunk(chunk_pos, my_oplist_size.inner());
+        let pos_within_chunk = global_pos.get_pos_within_chunk(chunk_pos, my_oplist_size.inner());
 
         unsafe{
 
@@ -111,14 +110,14 @@ pub fn produce_tiles(mut cmd: Commands,
                     Operand::Value(val) => *val,
                     Operand::NoiseEntity(ent, sample_range, compl, seed) => {
                         if let Ok(noise) = fnl_noises.get(*ent) {
-                            noise.sample(global_tile_pos, *sample_range, *compl, *seed, &gen_settings)
+                            noise.sample(global_pos, *sample_range, *compl, *seed, &gen_settings)
                         } else {
                             error!("Entity {} not found in terrgens", ent);
                             continue;
                         }
                     },
-                    Operand::HashPos(seed) => global_tile_pos.normalized_hash_value(&gen_settings, *seed),
-                    Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_tile_pos, my_oplist_size),
+                    Operand::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed),
+                    Operand::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_pos, my_oplist_size),
                 };
 
                 let is_last = operand_i == operands.len() - 1;
@@ -144,7 +143,7 @@ pub fn produce_tiles(mut cmd: Commands,
                     (Operation::Abs, _, _) => {operation_acc_val = operation_acc_val.abs(); break;},
                     (Operation::i_Max, 0, _) => { operation_acc_val = curr_operand_val; }
                     (Operation::i_Max, _, false) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}
-                    (Operation::i_Max, _, true) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32;}
+                    (Operation::i_Max, _, true) => {if curr_operand_val > operation_acc_val { selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32;}
        
                     (_, 0, _) => {operation_acc_val = curr_operand_val;},
                 }
@@ -156,7 +155,7 @@ pub fn produce_tiles(mut cmd: Commands,
                     *stackarr_out_i,
                     prev_value,
                     operation_acc_val,
-                    global_tile_pos,
+                    global_pos,
                     chunk_pos
                 );      
             }
@@ -167,27 +166,70 @@ pub fn produce_tiles(mut cmd: Commands,
         let destination_i = (variables[0] as usize).min(oplist.bifurcations.len() - 1).max(0);
         trace!("Destination index for bifurcation: {}", destination_i);
 
-        let bifurcation = oplist.bifurcations.get_unchecked(destination_i);
+        let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
 
-        chunk_tiles.insert_clonespawned_with_pos(&bifurcation.tiles, &mut cmd, global_tile_pos, pos_within_chunk, 
-            &weight_maps, &tile_query, &gen_settings, my_oplist_size, DimensionRef(child_of.parent()), is_host);
+        chunk_tiles.insert_as_instanced_tiles(&mut cmd, &bifurcation.tiles, pos_within_chunk, global_pos, my_oplist_size, &weight_maps, &gen_settings);
+
         if let Some(oplist) = bifurcation.oplist {
-            pending_ops_count.0 += spawn_bifurcation_oplists(&mut cmd, &oplist_query, oplist, take(&mut variables), &chunk_ref, global_tile_pos, my_oplist_size);
+            pending_ops_count.0 += spawn_bifurcation_oplists(&mut cmd, &oplist_query, oplist, take(&mut variables), &chunk_ref, global_pos, my_oplist_size);
         }
 
         pending_ops_count.0 -= 1;
         
         if pending_ops_count.0 <= 0  {
-            cmd.entity(chunk_ref.0).try_remove::<PendingOperations>().try_insert(TilesReady);
+            cmd.entity(chunk_ref.0).try_remove::<PendingOperations>().try_insert(TilesInstantiated);
         }
     }}
     Ok(())
 }
 
+#[allow(unused_parens)]
+pub fn process_tiles(mut cmd: Commands, 
+    chunk_query: Query<(Entity, &ProducedTiles, &ChildOf), (With<TilesInstantiated>)>,
+    tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
+    state : Res<State<GameSetupType>>,
+) {
+    let is_host = state.get() != &GameSetupType::AsJoiner;
+
+    for (chunk_ent, produced_tiles, child_of) in chunk_query.iter() {
+        for tile_ent in produced_tiles.0.iter() {
+            let Ok((&global_pos, &pos_within_chunk, &oplist_size, tilemap_child, transform, )) = tile_query.get(*tile_ent) 
+            else { continue; };
+
+            cmd.entity(*tile_ent).try_insert((DimensionRef(child_of.parent()), ));
+
+            if tilemap_child {
+                if let Some(transform) = transform {
+                    let displacement: Vec2 = Vec2::from(pos_within_chunk) * oplist_size.inner().as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2();
+                    let displacement = transform.translation + displacement.extend(0.0);
+                    cmd.entity(*tile_ent).try_insert((ChildOf(chunk_ent), Transform::from_translation(displacement))).try_remove::<(TilemapChild, TilePos, Disabled)>();
+                    //SI SE QUIERE SACAR EL CHILDOF CHUNK, HAY Q REAJUSTAR EL TRANSFORM
+                }
+            
+            } else if is_host {
+                let mut displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
+                if let Some(transform) = transform {
+                    displacement += transform.translation;
+                } 
+
+                cmd.entity(*tile_ent)
+                    .try_remove::<(Tile, Disabled, OplistSize, TilePos, GlobalTilePos)>()
+                    .try_insert((Replicated, child_of.clone(), Transform::from_translation(displacement)));
+                
+            } else {
+                cmd.entity(*tile_ent).try_despawn();
+            }
+        }
+        cmd.entity(chunk_ent).try_insert(TilesReady);
+    }
+}
+
+
+
 
 fn spawn_bifurcation_oplists(
     cmd: &mut Commands,
-    oplist_query: &Query<(&StrId, &OperationList, &OplistSize), ()>,
+    oplist_query: &Query<(&OperationList, &OplistSize), ()>,
     bif_ent: Entity,
     variables: VariablesArray,
     chunk_ref: &ChunkRef,
@@ -195,7 +237,7 @@ fn spawn_bifurcation_oplists(
     my_oplist_size: OplistSize,
 ) -> i32 {
     unsafe{
-        let (_, _oplist, &child_oplist_size) = oplist_query.get(bif_ent).debug_expect_unchecked("faltacoso");
+        let (_oplist, &child_oplist_size) = oplist_query.get(bif_ent).debug_expect_unchecked("faltacoso");
         if my_oplist_size != child_oplist_size
             && (global_tile_pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
         {
@@ -218,10 +260,31 @@ fn spawn_bifurcation_oplists(
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^
 #[allow(unused_parens)]
-pub fn plot_spline(mut cmd: Commands, 
-    mut query: Query<(&OperationList,),()>
+pub fn register_position(
+    query: Query<(Entity, &GlobalTilePos),(With<RegisterPos>)>,
+    mut registered_positions: ResMut<RegisteredPositions>,
 ) {
-    for mut item in query.iter_mut() {
-        
+    for (entity, pos) in query.iter() {
+        registered_positions.0.insert(entity, pos.clone());
+    }
+}
+
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn sync_registered_positions(
+    trigger: Trigger<RegisteredPositions>,
+    mut entis_map: ResMut<ServerEntityMap>, 
+    own_map: Res<RegisteredPositions>,
+) {
+    let registered_positions = trigger.event().clone();
+
+    for (&entity, &pos) in registered_positions.0.iter() {
+        let Some(client_entity) = entis_map.server_entry(entity).get() else {
+          error!("Failed to find client entity for registered position: {}", entity);
+          continue;
+        };
+
     }
 }

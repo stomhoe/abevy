@@ -76,11 +76,11 @@ pub fn rem_outofrange_chunks_from_activators(
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,
     activator_query: Query<(&ActivatingChunks, ), >,
-    mut chunks_query: Query<(&ChildOf, Entity, &ChunkPos, &Children), With<ChunkInitState>>,
+    mut chunks_query: Query<(&ChildOf, Entity, &ChunkPos, Option<&ProducedTiles>, &Children), With<ChunkInitState>>,
     mut loaded_chunks: ResMut<LoadedChunks>,
 ) {
 
-    for (child_of, chunk_ent, &chunk_pos, children) in chunks_query.iter_mut() {
+    for (child_of, chunk_ent, &chunk_pos, produced_tiles, children) in chunks_query.iter_mut() {
         let referenced = activator_query.iter().any(|(activates_chunks, )| activates_chunks.0.contains(&chunk_ent));
         
         if !referenced {
@@ -88,10 +88,15 @@ pub fn despawn_unreferenced_chunks(
 
             loaded_chunks.0.remove(&(DimensionRef(child_of.parent()), chunk_pos));
 
+            if let Some(produced_tiles) = produced_tiles {
+                for tile_ent in produced_tiles.0.iter() {
+                    commands.entity(*tile_ent).try_despawn();
+                }
+            }
+
             for child in children.iter() {
                 commands.entity(child).try_despawn();
             }
-
             commands.entity(chunk_ent).try_remove::<ChunkInitState>()
             .try_despawn();//DEJAR EL REMOVE
         }
