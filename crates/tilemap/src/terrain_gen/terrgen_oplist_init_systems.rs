@@ -146,9 +146,6 @@ pub fn init_oplists_from_assets(
                 };
 
                 oplist.trunk.push((operation, operands, *out));    
-                
-          
-                    
             }
             oplist.bifurcations = Vec::with_capacity(seri.bifs.len());
 
@@ -169,10 +166,6 @@ pub fn init_oplists_from_assets(
                 let bifurcation = Bifurcation { oplist: None, tiles };
                 oplist.bifurcations.push(bifurcation);
             }
-
-
-            
-
             let spawned_oplist = cmd.spawn(( str_id, oplist, size)).id();
             if seri.is_root() { cmd.entity(spawned_oplist).insert(MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))); }
 

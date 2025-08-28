@@ -20,10 +20,19 @@ pub struct AaChunkRangeSettings {
 }
 impl Default for AaChunkRangeSettings {
     fn default() -> Self {
-        Self {
-            chunk_visib_max_dist: 1000.0,
-            chunk_active_max_dist: 1000.0,//POSIBLE BUG, SI ESTO ES MÁS BAJO Q EL SHOW RANGE, SE DESPAWNEAN Y RESPAWNEAN CONSTANTEMENTE LOS CHUNKS 
-            chunk_show_range: 1,//no subir mucho o afecta visiualización sprites en movimiento
-        }
+        DEBUG_CHUNK_RANGE_SETTINGS
     }
 }
+
+
+pub const DEBUG_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
+    chunk_visib_max_dist: 300.0,
+    chunk_active_max_dist: 300.0,
+    chunk_show_range: 0,
+};
+
+pub const NORMAL_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
+    chunk_visib_max_dist: 300.0,
+    chunk_active_max_dist: 300.0,
+    chunk_show_range: 2,
+};

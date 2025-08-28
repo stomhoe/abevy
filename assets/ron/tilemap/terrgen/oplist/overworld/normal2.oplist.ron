@@ -10,7 +10,7 @@
    
     bifs: [
         ("normal3", [""]),
-        ("", ["sand"]),
+        ("", ["sandcolor"]),
     ],
     root_in_dimensions: [""],
     size: Some((1, 1)),

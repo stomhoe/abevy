@@ -193,6 +193,7 @@ pub fn extract(
                 Option<&AnimatedTile>,
             ),
             Or<(
+                Changed<TilemapId>,
                 Changed<TilePos>,
                 Changed<TileVisible>,
                 Changed<TileTextureIndex>,

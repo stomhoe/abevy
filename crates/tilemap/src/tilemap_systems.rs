@@ -1,6 +1,5 @@
-
 use bevy::{ecs::{entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::HashMap, prelude::*};
-use bevy_ecs_tilemap::{map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
+use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::*, prelude::MaterialTilemapHandle, tiles::*, MaterialTilemapBundle, TilemapBundle};
 use common::{common_components::StrId, common_resources::ImageSizeMap};
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::MyZ;
@@ -39,6 +38,7 @@ pub fn produce_tilemaps(
 
     #[allow(unused_mut)]
     'chunkfor: for (chunk_ent, produced_tiles) in chunk_query.iter() {
+
         'tilefor: for &tile_ent in produced_tiles.produced_tiles().iter() {
 
             let Ok((tile_ent, &tile_pos, &oplist_size, tile_handles, tile_z_index, shader_ref, )) = tile_comps.get(tile_ent)
@@ -87,6 +87,7 @@ pub fn produce_tilemaps(
                     tmap_hash_id_map.0.insert_with_id(id, texture_index);
                     if first_texture_index.is_none() {
                         first_texture_index = Some(texture_index);
+                        //NO HACER BREAK
                     }
                 }
                 cmd.entity(tile_ent).try_insert(first_texture_index.unwrap_or_default());
@@ -101,17 +102,17 @@ pub fn produce_tilemaps(
                 .id();
                 
                 //TODO HACER UN SYSTEM Q BORRE TILEMAPS HUÉRFANOS?
-
-            
+                
+                
                 cmd.entity(tile_ent).try_insert((TilemapId(tmap_ent)));
                 
-
+                
                 let mut storage = TilemapConfig::new_storage(oplist_size);
                 storage.set(&tile_pos, tile_ent);
                 layers.insert(map_key, MapStruct {
                     tmap_ent,
                     handles: TileMapHandles::new(handles),
-                    storage,
+                        storage,
                     tmap_hash_id_map: TmapHashIdtoTextureIndex::default(),
                 });
             }
@@ -123,14 +124,15 @@ pub fn produce_tilemaps(
             cmd.entity(chunk_ent).try_insert(InitializedChunk);
 
         } else{
+            let layers_size = layers.len();
+            cmd.entity(chunk_ent).try_insert(PendingTilemaps(layers_size as i32));
             for (map_key, MapStruct { tmap_ent, handles, storage, tmap_hash_id_map }) in layers.drain() {//TA BIEN DRAIN
-                cmd.entity(tmap_ent).try_insert((map_key.z_index, handles, storage, tmap_hash_id_map));
-
                 if let Some(shader_ref) = map_key.shader_ref {
                     cmd.entity(tmap_ent).try_insert(shader_ref);
                 }
+                cmd.entity(tmap_ent).try_insert((map_key.z_index, handles, storage, tmap_hash_id_map, ));
+
             }
-            cmd.entity(chunk_ent).try_insert(LayersReady);
         }
     }
     Ok(())
@@ -139,61 +141,67 @@ pub fn produce_tilemaps(
 
 #[allow(unused_parens)]
 pub fn fill_tilemaps_data(
-    mut commands: Commands,
-    mut chunk_query: Query<(Entity, &Children), (With<LayersReady>)>,
-    mut tilemaps_query: Query<(Entity, &mut TileMapHandles, Option<&TileShaderRef>), (With<TilemapGridSize>)>,
+    mut cmd: Commands,
+    mut tilemaps_query: Query<(Entity, &mut TileMapHandles, Option<&TileShaderRef>, &ChildOf), (Without<TilemapAnchor>, )>,
+    mut chunk_query: Query<(Entity, &mut PendingTilemaps), >,
     mut texture_overlay_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
     mut voronoi_mat: ResMut<Assets<VoronoiTextureOverlayMat>>,
     shader_query: Query<(&TileShader, ), ( )>,
 ) {
-    for (chunk, children) in chunk_query.iter_mut() {
         let _now = std::time::Instant::now();
-        commands.entity(chunk).try_remove::<LayersReady>();
 
-        for child in children.iter() {
-            if let Ok((tmap_entity, mut handles, shader_ref)) = tilemaps_query.get_mut(child) {
-                commands.entity(tmap_entity).try_remove::<TileMapHandles>();
+        for (tmap_entity, mut handles, shader_ref, child_of_chunk) in tilemaps_query.iter_mut() {
 
-                let shader = shader_ref
-                    .and_then(|shader_ref| shader_query.get(shader_ref.0).ok())
-                    .map(|(shader,)| shader.clone());
-                let texture = TilemapTexture::Vector(handles.take_handles());
+            cmd.entity(tmap_entity).try_remove::<(TileMapHandles, )>();
 
-                if commands.get_entity(chunk).is_err() {
-                    break;
-                }
+            let shader = if let Some(shader_ref) = shader_ref {
+                shader_query.get(shader_ref.0).ok().map(|(shader,)| shader.clone())
+            } else {
+                None
+            };
+            let texture = TilemapTexture::Vector(handles.take_handles());
 
-                if let Some(shader) = shader {
-                    match shader {
-                        TileShader::TexRepeat(handle) => {
-                            commands.entity(tmap_entity).try_insert_if_new(MaterialTilemapBundle {
-                                texture,
-                                material: MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone())),
-                                ..Default::default()
-                            });
-                        }
-                        TileShader::Voronoi(handle) => {
-                            commands.entity(tmap_entity).try_insert_if_new(MaterialTilemapBundle {
-                                texture,
-                                material: MaterialTilemapHandle::from(voronoi_mat.add(handle.clone())),
-                                ..Default::default()
-                            });
-                        }
-                        TileShader::TwoTexRepeat(handle) => todo!(),
-                    };
+            if let Some(shader) = shader {
+                info!("Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_entity);
+                match shader {
+                    TileShader::TexRepeat(handle) => {
+                        cmd.entity(tmap_entity).try_insert_if_new(MaterialTilemapBundle {
+                            texture,
+                            material: MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone())),
+                            ..Default::default()
+                        });
+                    }
+                    TileShader::Voronoi(handle) => {
+                        cmd.entity(tmap_entity).try_insert_if_new(MaterialTilemapBundle {
+                            texture,
+                            material: MaterialTilemapHandle::from(voronoi_mat.add(handle.clone())),
+                            ..Default::default()
+                        });
+                    }
+                    TileShader::TwoTexRepeat(handle) => todo!(),
+                };
 
-                } else {
-                    commands.entity(tmap_entity)
-                    .try_insert_if_new((TilemapBundle { texture, ..Default::default() }));
-                }
+            } else {
+                info!("Inserting default TilemapBundle for tilemap entity {:?}", tmap_entity);
+                cmd.entity(tmap_entity)
+                .try_insert_if_new((TilemapBundle { texture, ..Default::default() }));
+            }
+
+            let Ok((chunk_ent, mut pending)) = chunk_query.get_mut(child_of_chunk.parent()) else {
+                continue;
+            };
+            pending.0 -= 1;
+            if pending.0 <= 0 {
+                cmd.entity(chunk_ent).try_remove::<PendingTilemaps>()
+                .try_insert(InitializedChunk);
             }
         }
 
-        commands.entity(chunk).try_insert(InitializedChunk);
         
         trace!("Filled tilemaps data in {:?}", _now.elapsed());
-    }
 }
+
+
 
 
 

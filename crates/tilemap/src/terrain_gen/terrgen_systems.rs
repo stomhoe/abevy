@@ -261,11 +261,13 @@ fn spawn_bifurcation_oplists(
 //                                                       ^^^^
 #[allow(unused_parens)]
 pub fn register_position(
-    query: Query<(Entity, &GlobalTilePos),(With<RegisterPos>)>,
+    mut cmd: Commands,
+    query: Query<(Entity, &GlobalTilePos, &TileRef),(With<RegisterPos>)>,
     mut registered_positions: ResMut<RegisteredPositions>,
 ) {
-    for (entity, pos) in query.iter() {
-        registered_positions.0.insert(entity, pos.clone());
+    for (entity, pos, tile_ref) in query.iter() {
+        registered_positions.0.insert(tile_ref.0, pos.clone());
+        cmd.entity(entity).try_remove::<RegisterPos>();
     }
 }
 

@@ -23,7 +23,7 @@ pub struct ColorSamplerRef(#[entities] pub Entity);
 
 
 #[derive(Debug, Clone, Component, Default)]
-#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated, AssetScoped, )]
+#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated, AssetScoped, TgenScoped)]
 pub struct EntiWeightedSampler {
     #[entities]entities: Vec<Entity>, weights: Vec<f32>,
     cumulative_weights: Vec<f32>, total_weight: f32,

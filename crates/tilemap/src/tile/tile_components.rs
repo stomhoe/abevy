@@ -48,9 +48,10 @@ pub struct FlipAlongX;
 
 #[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct TileShaderRef(pub Entity);
+impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
 
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, )]
-#[require(EntityPrefix::new("TileShader"), AssetScoped,)]
+#[require(EntityPrefix::new("TileShader"), AssetScoped, TgenScoped)]
 pub enum TileShader{
     TexRepeat(MonoRepeatTextureOverlayMat),
     TwoTexRepeat(TwoOverlaysExample),

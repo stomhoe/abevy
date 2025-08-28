@@ -68,15 +68,3 @@ pub fn esbozo_add_tile_instances_to_map(mut cmd: Commands,
 - 
 
 */
-
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
-#[allow(unused_parens)]
-pub fn fix_tiles(mut cmd: Commands, 
-    mut query: Query<(Entity, ),(Without<TilemapChild>, With<Tile>)>
-) {
-    for mut item in query.iter_mut() {
-        
-    }
-}

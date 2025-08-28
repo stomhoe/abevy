@@ -40,8 +40,6 @@ impl TilemapConfig {
 #[derive(Component, Debug, Clone, Default, Reflect)]
 pub struct TmapHashIdtoTextureIndex(pub HashIdMap<TileTextureIndex>);
 
-
-
 #[derive(Component, Debug, Default, Clone)]
 pub struct TileMapHandles(Vec<Handle<Image>>);
 
@@ -55,8 +53,10 @@ impl TileMapHandles {
     pub fn first_handle(&self) -> Handle<Image> { self.0.first().cloned().unwrap_or_default() }
     pub fn push_handle(&mut self, handle: Handle<Image>) { self.0.push(handle); }
     pub fn handles_mut(&mut self) -> &mut Vec<Handle<Image>> { &mut self.0 }
+    pub fn handles(&self) -> &Vec<Handle<Image>> { &self.0 }
     pub fn take_handles(&mut self) -> Vec<Handle<Image>> { std::mem::take(&mut self.0) }
 }
+
 impl IntoIterator for TileMapHandles {
     type Item = Handle<Image>;
     type IntoIter = std::vec::IntoIter<Handle<Image>>;
@@ -67,6 +67,4 @@ impl<'a> IntoIterator for &'a mut TileMapHandles {
     type IntoIter = std::slice::IterMut<'a, Handle<Image>>;
     fn into_iter(self) -> Self::IntoIter { self.0.iter_mut() }
 }
-
-
 

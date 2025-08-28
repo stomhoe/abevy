@@ -94,7 +94,7 @@ pub fn despawn_unreferenced_chunks(
                 }
             }
 
-            for child in children.iter() {
+            for child in children.iter() {//HACE FALTA
                 commands.entity(child).try_despawn();
             }
             commands.entity(chunk_ent).try_remove::<ChunkInitState>()
@@ -105,7 +105,7 @@ pub fn despawn_unreferenced_chunks(
 #[allow(unused_parens)]
 pub fn show_chunks_around_camera(
     camera_query: Single<(&DimensionRef, &Transform), (With<CameraTarget>)>,
-    mut chunks_query: Query<&mut Visibility, (With<InitializedChunk>)>,
+    mut chunks_query: Query<&mut Visibility, (With<ChunkInitState>)>,
     loaded_chunks: Res<LoadedChunks>,
     tilemap_settings: Res<AaChunkRangeSettings>,
 ) {
@@ -130,7 +130,7 @@ pub fn show_chunks_around_camera(
 #[allow(unused_parens)]
 pub fn hide_outofrange_chunks(
     camera_query: Single<(&Transform), (With<CameraTarget>)>,
-    mut chunks_query: Query<(&Transform, &mut Visibility), With<InitializedChunk>>,
+    mut chunks_query: Query<(&Transform, &mut Visibility), With<ChunkInitState>>,
     tilemap_settings: Res<AaChunkRangeSettings>,
 ) {
     let camera_transform = *camera_query;

@@ -10,7 +10,7 @@
    
     bifs: [
         ("normal4", ["tempgrass"]),
-        ("", ["lake"]),
+        ("", ["pink"]),
         ("", [""])
     ],
     root_in_dimensions: [""],

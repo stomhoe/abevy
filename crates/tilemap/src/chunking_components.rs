@@ -34,7 +34,7 @@ pub struct TilesReady;
 
 #[derive(Component, Debug, Default, )]
 #[require(ChunkInitState)]
-pub struct LayersReady;
+pub struct PendingTilemaps(pub i32);
 
 #[derive(Component, Debug, Default,)]
 #[require(ChunkInitState)]
