@@ -1,4 +1,5 @@
 use bevy::ecs::entity::EntityHashMap;
+use bevy::ecs::entity_disabling::Disabled;
 use bevy::math::U8Vec4;
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
@@ -14,6 +15,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
 use crate::terrain_gen::terrgen_oplist_components::OplistSize;
+use crate::terrain_gen::terrgen_resources::RegisteredPositions;
 use crate::{tile::{tile_materials::*}, };
 
 
@@ -33,6 +35,7 @@ pub struct TilemapChild;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct TileRef(#[entities] pub Entity);
+
 
 
 
@@ -67,16 +70,16 @@ pub struct InitialPos(pub GlobalTilePos);
 
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct TileIdsHandles { ids: Vec<HashId>, handles: Vec<Handle<Image>>,}
+pub struct TileHidsHandles { ids: Vec<HashId>, handles: Vec<Handle<Image>>,}
 
-impl TileIdsHandles {
+impl TileHidsHandles {
     pub fn from_paths(asset_server: &AssetServer, img_paths: HashMap<String, String>, ) -> Result<Self, BevyError> {
 
         if img_paths.is_empty() {
             return Err(BevyError::from("TileImgsMap cannot be created with an empty image paths map"));
         }
-        let mut ids = Vec::new();
-        let mut handles = Vec::new();
+        let mut ids = Vec::with_capacity(img_paths.len());
+        let mut handles = Vec::with_capacity(img_paths.len());
         for (key, path) in img_paths {
             let image_holder = ImageHolder::new(asset_server, &path)?;
             ids.push(HashId::from(key));
@@ -89,7 +92,8 @@ impl TileIdsHandles {
         self.handles.first().cloned().unwrap_or_else(|| Handle::default())
     }
 
-    pub fn clone_handles(&self) -> Vec<Handle<Image>> { self.handles.clone() }
+    // NO HACER take() porque lo necesitan multiples isntancias de tiles
+    pub fn handles(&self) -> &Vec<Handle<Image>> { &self.handles }
 
     pub fn iter(&self) -> impl Iterator<Item = (HashId, &Handle<Image>)> {
         self.ids.iter().cloned().zip(self.handles.iter())
@@ -99,7 +103,18 @@ impl TileIdsHandles {
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Reflect, Default)]
-pub struct MinDistances(pub EntityHashMap<u32>);
+pub struct MinDistancesMap(pub EntityHashMap<u32>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct RegisterPos;
+impl MinDistancesMap {
+    #[allow(unused_parens, )]
+    pub fn check_min_distances(&self, 
+        my_pos: GlobalTilePos, new: (Entity, GlobalTilePos)
+    ) -> bool {
+        self.0.get(&new.0).map_or(true, |&min_dist| {
+            my_pos.distance_squared(&new.1) < min_dist * min_dist
+        })
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);

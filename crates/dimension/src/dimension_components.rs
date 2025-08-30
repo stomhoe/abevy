@@ -13,11 +13,11 @@ use serde::{Deserialize, Serialize};
 pub struct DimensionStrIdRef(pub StrId);
 impl DimensionStrIdRef {
     pub fn new<S: AsRef<str>>(id: S) -> Result<Self, BevyError> {
-        let str_id = StrId::new(id, 2)?;
+        let str_id = StrId::new_with_result(id, 2)?;
         Ok(DimensionStrIdRef(str_id))
     }
     pub fn overworld() -> Self {
-        DimensionStrIdRef(StrId::new("ow", 0).unwrap())
+        DimensionStrIdRef(StrId::new_with_result("ow", 0).unwrap())
     }
 }
 

@@ -1,6 +1,7 @@
 (
     id: "tree_dead4",
     name: "Dead tree",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/tree_dead4.png"
     },

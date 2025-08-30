@@ -34,6 +34,13 @@ impl GlobalTilePos {
     }
     pub fn x(&self) -> i32 { self.0.x } pub fn y(&self) -> i32 { self.0.y }
 
+    pub fn distance(&self, other: &GlobalTilePos) -> f32 {
+        (self.0.distance_squared(other.0) as f32).sqrt()
+    }
+    pub fn distance_squared(&self, other: &GlobalTilePos) -> u32 {
+        self.0.distance_squared(other.0) as u32
+    }
+
     pub fn hash_true_false(&self, settings: &AaGlobalGenSettings, extra_seed: u64) -> bool {
         self.hash_value(settings, extra_seed) % 2 == 0
     }

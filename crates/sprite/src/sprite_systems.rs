@@ -2,11 +2,11 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use game_common::game_common_components::FacingDirection;
+use game_common::game_common_components::{Categories, FacingDirection};
 use player::player_components::*;
 use sprite_animation_shared::sprite_animation_shared::*;
 
-use crate::{sprite_components::*, sprite_resources::SpriteCfgEntityMap};
+use crate::{sprite_components::*, sprite_resources::SpriteCfgEntityMap, sprite_scale_offset_components::*};
 
 
 

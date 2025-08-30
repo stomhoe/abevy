@@ -1,7 +1,8 @@
 (
     id: "temp_bush1",
     name: "Temperate bush 1",
-   img_paths: {
+    cats: [],
+    img_paths: {
         "default": "texture/world/vegetation/bush1.png"
     },
     shader: "",

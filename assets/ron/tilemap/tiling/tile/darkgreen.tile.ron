@@ -2,6 +2,7 @@
 (
     id: "dark_green",
     name: "Dark Green",
+    cats: [],
     img_paths: {
         "default": "texture/world/white.png"
     },
@@ -9,7 +10,7 @@
     sprite: false, 
     randflipx: false,
     offset: (0.0, 0.0),
-    z: 10,
+    z: -1000,
     color: Some((34, 139, 34, 255)),
     color_map: "",
     spawns: [],

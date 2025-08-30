@@ -23,7 +23,7 @@ pub fn init_color_samplers(
     for handle in sampler_handles.handles.drain(..) {
         let Some(seri) = assets.remove(&handle) else { continue; };
 
-        let str_id = match StrId::new(seri.id.clone(), WeightedColorsSeri::MIN_ID_LENGTH) {
+        let str_id = match StrId::new_with_result(seri.id.clone(), WeightedColorsSeri::MIN_ID_LENGTH) {
             Ok(id) => id,
             Err(err) => {
                 error!("Failed to create StrId for color sampler '{}': {}", seri.id, err);

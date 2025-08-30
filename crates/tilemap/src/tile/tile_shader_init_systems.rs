@@ -30,7 +30,7 @@ pub fn init_shaders(
         };
         info!("Loading Shader from handle: {:?}", handle);
 
-        let str_id = match StrId::new(seri.id.clone(), 4) {
+        let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
             Err(err) => {
                 error!("Failed to create StrId for shader '{}': {}", seri.id, err);
@@ -58,7 +58,7 @@ pub fn init_shaders(
         };
         info!("Loading Shader from handle: {:?}", handle);
 
-        let str_id = match StrId::new(seri.id.clone(), 4) {
+        let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
             Err(err) => {
                 error!("Failed to create StrId for shader '{}': {}", seri.id, err);

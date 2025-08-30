@@ -1,12 +1,61 @@
-use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
 use bevy_asset_loader::asset_collection::AssetCollection;
+use bevy_replicon::prelude::*;
 use common::common_types::HashIdToEntityMap;
 use tilemap_shared::GlobalTilePos;
 use serde::{Deserialize, Serialize};
 
+use crate::{terrain_gen::terrgen_systems::NewlyRegPos, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, TileRef}};
+
 #[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone)]
 #[reflect(Resource, Default)]
-pub struct RegisteredPositions(pub EntityHashMap<GlobalTilePos>); 
+pub struct RegisteredPositions(pub EntityHashMap<Vec<GlobalTilePos>>); 
+impl RegisteredPositions {
+    #[allow(unused_parens, )]
+    pub fn check_min_distances(&mut self, 
+        cmd: &mut Commands, is_host: bool,
+        new: (Entity, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+        min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
+    ) -> bool {
+
+
+        let (new_ent, new_pos, new_min_distances, keep_distance) = new;
+
+        if let Some(new_min_distances) = new_min_distances {
+            for (&oritile_ent, min_dist) in new_min_distances.0.iter() {
+                let Some(positions) = self.0.get(&oritile_ent) else { continue };
+                for &prev_pos in positions {
+                    if new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if let Some(keep_distance) = keep_distance {
+            for other_ent in &keep_distance.0 {
+                let Some(positions) = self.0.get(other_ent) else { continue };
+                let Ok(min_dists) = min_dists_query.get(*other_ent) else { continue };
+                for &prev_pos in positions {
+                    if min_dists.check_min_distances(prev_pos, (new_ent, new_pos)) == false {
+                        return false;
+                    }
+                }
+            }
+            self.0.entry(new_ent).or_default().push(new_pos);
+            if is_host {
+                let to_clients = ToClients {
+                    mode: SendMode::Broadcast,
+                    event: NewlyRegPos(new_ent, new_pos),
+                };
+
+                cmd.server_trigger(to_clients);
+            }
+        }
+            
+        true
+    }
+}
 
 #[derive(Resource, Debug, Default, Reflect, )]
 #[reflect(Resource, Default)]

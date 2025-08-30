@@ -1,6 +1,7 @@
 (
     id: "euca",
     name: "Eucalyptus",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/euca.png"
     },

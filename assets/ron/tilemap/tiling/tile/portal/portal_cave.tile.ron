@@ -1,6 +1,7 @@
 (
     id: "portal_cave",
     name: "Cave portal",
+    cats: ["portal"],
     img_paths: {
         "default": "texture/world/portal/cave.png"
     },

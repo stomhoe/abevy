@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
 use tilemap_shared::{AaGlobalGenSettings, ChunkPos, GlobalTilePos};
 
-use crate::{terrain_gen::{terrgen_oplist_components::OplistSize,}, tile::tile_components::{InitialPos, Tile, TileRef, TilemapChild},};
+use crate::{terrain_gen::{terrgen_oplist_components::OplistSize,}, tile::tile_components::*};
 
 
 use common::{common_components::*, };
@@ -84,7 +84,7 @@ impl ProducedTiles {
             }
         } else { 
             let tile_ent = cmd.entity(tiling_ent).clone_and_spawn_with(|builder|{
-                builder.deny::<(/*DisplayName, StrId*/)>();
+                builder.deny::<(MinDistancesMap, KeepDistanceFrom,/*DisplayName, StrId*/)>();
             })
              .try_insert((
                 Disabled, TilemapChild,

@@ -20,7 +20,7 @@ pub fn init_noises(
     for handle in take(&mut seris_handles.handles) {
         let Some(seri) = assets.remove(&handle) else { continue };
 
-        let str_id = match StrId::new(seri.id.clone(), 3) {
+        let str_id = match StrId::new_with_result(seri.id.clone(), 3) {
             Ok(id) => id,
             Err(e) => {
                 error!("Failed to create StrId for noise {}: {}", seri.id, e);

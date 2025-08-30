@@ -69,8 +69,11 @@ pub fn plugin(app: &mut App) {
         
         .add_server_trigger::<RegisteredPositions>(Channel::Unordered)
         .make_trigger_independent::<RegisteredPositions>()
-
         
+        .add_server_trigger::<NewlyRegPos>(Channel::Unordered)
+        .make_trigger_independent::<NewlyRegPos>()
+        .add_observer(sync_register_new_pos)
+
         .replicate::<OplistSize>().replicate::<FnlNoise>()
         .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>();
 }

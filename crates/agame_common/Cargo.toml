@@ -25,4 +25,5 @@ tracing-subscriber = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 rand_seeder = { workspace = true }
+bevy-inspector-egui = { workspace = true }
 rand_pcg = { workspace = true }

@@ -1,6 +1,7 @@
 (
     id: "treebush",
     name: "Treebush",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/treebush.png"
     },

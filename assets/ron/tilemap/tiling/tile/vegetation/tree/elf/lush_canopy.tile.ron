@@ -1,6 +1,7 @@
 (
     id: "lush_canopy",
     name: "Lush Canopy",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/lush_canopy.png"
     },

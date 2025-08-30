@@ -59,7 +59,6 @@ pub fn plugin(app: &mut App) {
         .add_server_trigger::<TileWeightedSamplersMap>(Channel::Unordered)
         .make_trigger_independent::<TileWeightedSamplersMap>()
 
-
         .register_type::<ShaderRepeatTexSerisHandles>()
         .register_type::<ShaderRepeatTexSeri>()
         .register_type::<ShaderVoronoiSerisHandles>()
@@ -78,7 +77,8 @@ pub fn plugin(app: &mut App) {
         .register_type::<MonoRepeatTextureOverlayMat>()
         .register_type::<VoronoiTextureOverlayMat>()
         .register_type::<TwoOverlaysExample>()
-        .register_type::<MinDistances>()
+        .register_type::<MinDistancesMap>()
+        .register_type::<TileCategories>()
 
         //usar feature
         .add_observer(client_map_server_tiling)

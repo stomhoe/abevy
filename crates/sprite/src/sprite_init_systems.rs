@@ -7,10 +7,10 @@ use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::RenetClient;
 use common::common_components::{DisplayName, EntityPrefix, ImageHolder, StrId};
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{Directionable, MyZ};
+use game_common::game_common_components::{Categories, Category, Directionable, MyZ};
 use sprite_animation_shared::sprite_animation_shared::{AnimationIdPrefix, AnimationState};
 
-use crate::{sprite_components::*, sprite_resources::*};
+use crate::{sprite_components::*, sprite_resources::*, sprite_scale_offset_components::*};
 
 
 
@@ -32,7 +32,7 @@ pub fn init_sprite_cfgs(
 
         debug!(target: "sprite_loading", "Loading SpriteDataSeri from handle: {:?}", handle);
         
-        let str_id = match StrId::new(seri.id, 3) {
+        let str_id = match StrId::new_with_result(seri.id, 3) {
             Ok(id) => id,
             Err(e) => {
                 let err = BevyError::from(format!("Failed to create StrId for SpriteConfig: {}", e));
@@ -99,7 +99,7 @@ pub fn init_sprite_cfgs(
         if seri.directionable { cmd.entity(spritecfg_ent).insert(Directionable); }
 
         if ! seri.parent_cat.is_empty() {
-            let to_become_child = BecomeChildOfSpriteWithCategory::new(seri.parent_cat);
+            let to_become_child = BecomeChildOfSpriteWithCategory(Category::new(seri.parent_cat));
             cmd.entity(spritecfg_ent).insert(to_become_child);
         }
 

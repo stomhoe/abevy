@@ -26,7 +26,7 @@ pub fn init_oplists_from_assets(
 
     for handle in seris_handles.handles.iter() {//ESTE VA CON ITER
         if let Some(seri) = assets.get_mut(handle) {
-            let str_id = match StrId::new(seri.id.clone(), 3) {
+            let str_id = match StrId::new_with_result(seri.id.clone(), 3) {
                 Ok(id) => id,
                 Err(_) => {
                     error!("Failed to create StrId for oplist {}", seri.id);

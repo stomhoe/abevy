@@ -1,6 +1,7 @@
 (
     id: "blue",
     name: "Blue",
+    cats: [],
     img_paths: {
         "default": "texture/world/white.png"
     },
@@ -8,7 +9,7 @@
     sprite: false, 
     randflipx: false,
     offset: (0.0, 0.0),
-    z: 10,
+    z: -1000,
     color: Some((0, 0, 255, 255)),
     color_map: "",
     spawns: [],

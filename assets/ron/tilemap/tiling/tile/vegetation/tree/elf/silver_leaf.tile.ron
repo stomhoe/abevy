@@ -1,6 +1,7 @@
 (
     id: "silver_leaf",
     name: "Silver Leaf",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/silver_leaf.png"
     },

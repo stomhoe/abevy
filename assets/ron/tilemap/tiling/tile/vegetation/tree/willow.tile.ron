@@ -1,6 +1,7 @@
 (
     id: "willow",
     name: "Willow",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/willow.png"
     },

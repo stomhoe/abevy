@@ -38,8 +38,9 @@ pub fn toggle_simulation(
         }
     }
 }
-
-pub fn update_transform_z(mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>,)>) {
+#[allow(unused_parens, )]
+pub fn update_transform_z(
+    mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>,)>) {
     for (mut transform, z_index) in query.iter_mut() {
         let new_z = z_index.as_float();
         if transform.translation.z != new_z {

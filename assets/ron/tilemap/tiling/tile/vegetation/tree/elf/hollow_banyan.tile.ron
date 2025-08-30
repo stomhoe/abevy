@@ -1,6 +1,7 @@
 (
     id: "hollow_banyan",
     name: "Hollow Banyan",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/hollow_banyan.png"
     },

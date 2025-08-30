@@ -1,6 +1,7 @@
 (
     id: "poplar1",
     name: "Poplar",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/poplar1.png"
     },

@@ -20,7 +20,7 @@ impl MapKey {
 
 struct MapStruct{
     pub tmap_ent: Entity,
-    pub handles: TileMapHandles,
+    pub tmap_handles: TileMapHandles,
     pub storage: TileStorage,
     pub tmap_hash_id_map: TmapHashIdtoTextureIndex,
 }
@@ -31,7 +31,7 @@ type Map = HashMap<MapKey, MapStruct>;
 pub fn produce_tilemaps(
     mut cmd: Commands, 
     chunk_query: Query<(Entity, &ProducedTiles,), (With<TilesReady>)>,
-    tile_comps: Query<(Entity, &TilePos, &OplistSize, Option<&TileIdsHandles>, Option<&MyZ>, Option<&TileShaderRef>, ), (With<Disabled>, With<TilemapChild>, Without<Transform>)>,
+    tile_comps: Query<(Entity, &TilePos, &OplistSize, Option<&TileHidsHandles>, Option<&MyZ>, Option<&TileShaderRef>, ), (With<Disabled>, With<TilemapChild>, Without<Transform>)>,
     image_size_map: Res<ImageSizeMap>,
 ) -> Result {
     let mut layers: Map = HashMap::with_capacity(10);
@@ -56,17 +56,17 @@ pub fn produce_tilemaps(
             
             
 
-            let (handles, tile_size) = match tile_handles {
-                Some(handles) => (handles.clone_handles(), image_size_map.0.get(&handles.first_handle()).copied().unwrap_or(U16Vec2::ONE)),
+            let tile_size = match tile_handles {
+                Some(handles) => (image_size_map.0.get(&handles.first_handle()).copied().unwrap_or(U16Vec2::ONE)),
                 None => {
                     cmd.entity(tile_ent).try_insert(TileVisible(false));
-                    (Vec::new(), U16Vec2::ONE)
+                    (U16Vec2::ONE)
                 }
             };
 
             let map_key = MapKey::new(tile_z_index, oplist_size, tile_size, shader_ref.copied());
 
-            if let Some(MapStruct { tmap_ent, handles, storage, tmap_hash_id_map }) = layers.get_mut(&map_key) {
+            if let Some(MapStruct { tmap_ent, tmap_handles, storage, tmap_hash_id_map }) = layers.get_mut(&map_key) {
                 cmd.entity(tile_ent).try_insert((ChildOf(*tmap_ent), TilemapId(*tmap_ent)));
 
                 storage.set(&tile_pos, tile_ent);
@@ -76,13 +76,13 @@ pub fn produce_tilemaps(
                 
                 let mut first_texture_index = None;
                 for (id, handle) in tile_handles.iter() {
-                    let texture_index = handles
+                    let texture_index = tmap_handles
                         .into_iter()
                         .position(|x| *x == *handle)
                         .map(|i| TileTextureIndex(i as u32))
                         .unwrap_or_else(|| {
-                            handles.push_handle(handle.clone());
-                            TileTextureIndex((handles.len() - 1) as u32)
+                            tmap_handles.push_handle(handle.clone());
+                            TileTextureIndex((tmap_handles.len() - 1) as u32)
                         });
                     tmap_hash_id_map.0.insert_with_id(id, texture_index);
                     if first_texture_index.is_none() {
@@ -105,15 +105,26 @@ pub fn produce_tilemaps(
                 
                 
                 cmd.entity(tile_ent).try_insert((TilemapId(tmap_ent)));
-                
-                
+
+                let mut tmap_hash_id_map = TmapHashIdtoTextureIndex::default();
+
+                let handles = if let Some(tile_handles) = tile_handles {
+                    for (i, (id, _)) in tile_handles.iter().enumerate() {
+                        tmap_hash_id_map.0.insert_with_id(id, TileTextureIndex(i as u32));
+                    }
+                    tile_handles.handles().clone()
+                } else {
+                    Vec::new()
+                };
+
+
                 let mut storage = TilemapConfig::new_storage(oplist_size);
                 storage.set(&tile_pos, tile_ent);
                 layers.insert(map_key, MapStruct {
                     tmap_ent,
-                    handles: TileMapHandles::new(handles),
-                        storage,
-                    tmap_hash_id_map: TmapHashIdtoTextureIndex::default(),
+                    tmap_handles: TileMapHandles::new(handles),
+                    storage,
+                    tmap_hash_id_map,
                 });
             }
             if cmd.get_entity(chunk_ent).is_err() { continue 'chunkfor; }
@@ -126,7 +137,7 @@ pub fn produce_tilemaps(
         } else{
             let layers_size = layers.len();
             cmd.entity(chunk_ent).try_insert(PendingTilemaps(layers_size as i32));
-            for (map_key, MapStruct { tmap_ent, handles, storage, tmap_hash_id_map }) in layers.drain() {//TA BIEN DRAIN
+            for (map_key, MapStruct { tmap_ent, tmap_handles: handles, storage, tmap_hash_id_map }) in layers.drain() {//TA BIEN DRAIN
                 if let Some(shader_ref) = map_key.shader_ref {
                     cmd.entity(tmap_ent).try_insert(shader_ref);
                 }

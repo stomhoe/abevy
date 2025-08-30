@@ -1,6 +1,7 @@
 (
     id: "ghost_birch",
     name: "Ghost Birch",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/ghost_birch.png"
     },

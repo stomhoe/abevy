@@ -9,7 +9,7 @@ pub struct FactionEntityMap (pub HashIdToEntityMap);
 impl FromWorld for FactionEntityMap {
     fn from_world(world: &mut World) -> Self {
         let mut map = HashIdToEntityMap::default();
-        let str_id = StrId::new("host", 0).expect("Failed to create StrId for host faction");
+        let str_id = StrId::new_with_result("host", 0).expect("Failed to create StrId for host faction");
         let host_faction = (Faction, str_id.clone(), DisplayName::new("Host Faction"), OfSelf);
         let entity = world.spawn(host_faction).id();
         map.insert(str_id, entity, )

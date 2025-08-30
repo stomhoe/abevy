@@ -93,6 +93,8 @@ pub fn plugin(app: &mut App) {
     .register_type::<Description>()
     .register_type::<FacingDirection>()
     .register_type::<WeightedSamplerRef>()
+    .register_type::<Category>()
+    .register_type::<Categories>()
     
     .replicate::<VisibilityGameState>()    
     .replicate::<FacingDirection>()

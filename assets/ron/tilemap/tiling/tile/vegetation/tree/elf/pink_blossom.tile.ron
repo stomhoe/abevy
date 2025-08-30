@@ -1,6 +1,7 @@
 (
     id: "pink_blossom",
     name: "Pink Blossom",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/pink_blossom.png"
     },

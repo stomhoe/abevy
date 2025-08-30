@@ -1,6 +1,7 @@
 (
     id: "ancient_banyan",
     name: "Ancient Banyan",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/ancient_banyan.png"
     },

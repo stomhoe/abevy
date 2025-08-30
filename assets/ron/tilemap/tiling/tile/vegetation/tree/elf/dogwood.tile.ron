@@ -1,6 +1,7 @@
 (
     id: "dogwood",
     name: "Dogwood",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/dogwood.png"
     },

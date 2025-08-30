@@ -1,6 +1,7 @@
 (
     id: "golden_sprig",
     name: "Golden Sprig",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/golden_sprig.png"
     },

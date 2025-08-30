@@ -1,9 +1,14 @@
-use bevy::{math::f32, platform::collections::HashMap};
+use bevy::{math::f32, platform::collections::{HashMap, HashSet}};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
+
+use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
+
+
 use common::common_types::HashIdToEntityMap;
+use game_common::game_common_components::Category;
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Default, Reflect )]
@@ -16,7 +21,13 @@ pub struct TileEntitiesMap(pub HashIdToEntityMap);
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
 #[reflect(Resource, Default)]
+//NO SE USA
 pub struct TileInstancesEntityMap(pub HashIdToEntityMap);
+
+#[derive(Resource, Debug, Reflect, Default)]
+#[reflect(Resource, Default)]
+pub struct TileCategories (pub HashMap<Category, Vec<Entity>>);
+
 
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
@@ -25,9 +36,11 @@ pub struct TileSerisHandles {
     #[asset(path = "ron/tilemap/tiling/tile", collection(typed))] 
     pub handles: Vec<Handle<TileSeri>>,
 }
+
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct TileSeri {
     pub id: String,
+    pub cats: HashSet<String>,
     pub name: String,
     pub img_paths: HashMap<String, String>,
     pub shader: String,

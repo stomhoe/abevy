@@ -91,7 +91,11 @@ impl core::fmt::Debug for DisplayName {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect )]
 pub struct StrId(FixedStr<32>);
 impl StrId {
-    pub fn new<S: AsRef<str>>(id: S, min: u8) -> Result<Self, BevyError> {
+    pub fn new<S: AsRef<str>>(id: S) -> Self {
+        Self(FixedStr::new(id))
+    }
+
+    pub fn new_with_result<S: AsRef<str>>(id: S, min: u8) -> Result<Self, BevyError> {
         let s = id.as_ref();
         if s.len() >= min as usize {
             FixedStr::new_with_result(s).map(Self)

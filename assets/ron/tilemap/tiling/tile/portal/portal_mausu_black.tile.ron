@@ -1,6 +1,7 @@
 (
     id: "portal_mausu_black",
     name: "Black Mausoleum",
+    cats: ["portal"],
     img_paths: {
         "default": "texture/world/portal/mausublack.png"
     },

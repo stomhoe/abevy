@@ -1,6 +1,7 @@
 (
     id: "bronze_banyan",
     name: "Bronze Banyan",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf/bronze_banyan.png"
     },

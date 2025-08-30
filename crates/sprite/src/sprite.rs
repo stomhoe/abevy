@@ -6,7 +6,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use common::common_states::{AssetsLoadingState, };
 use game_common::{game_common::GameplaySystems, StatefulSessionSystems, };
 
-use crate::{sprite_components::*, sprite_init_systems::*, sprite_resources::*, sprite_systems::*};
+use crate::{sprite_components::*, sprite_init_systems::*, sprite_resources::*, sprite_scale_offset_components::*, sprite_systems::*};
 
 #[allow(unused_imports)] use {bevy::prelude::*,};
 
@@ -53,9 +53,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<SpriteCfgEntityMap>()
     .register_type::<SpriteHolderRef>()
     .register_type::<SpriteConfigRef>()
-    .register_type::<Offset2D>()
-    .register_type::<OffsetUpDown>()
-    .register_type::<OffsetDown>()
+    .register_type::<Offset2D>().register_type::<OffsetUpDown>().register_type::<OffsetDown>()
     .register_type::<OffsetUp>()
     .register_type::<OffsetSideways>()
     .register_type::<Scale2D>()

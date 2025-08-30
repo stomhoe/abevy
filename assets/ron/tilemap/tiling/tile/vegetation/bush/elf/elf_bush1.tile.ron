@@ -1,6 +1,7 @@
 (
     id: "elf_bush1",
     name: "Elven Bush 1",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/elf_bush1.png"
     },

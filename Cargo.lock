@@ -3091,6 +3091,7 @@ name = "game_common"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy-inspector-egui",
  "bevy_asset_loader",
  "bevy_common_assets",
  "bevy_ecs_tilemap",

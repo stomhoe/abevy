@@ -1,7 +1,7 @@
 
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_replicon::prelude::Replicated;
-use common::common_components::{AssetScoped, EntityPrefix, SessionScoped};
+use common::{common_components::{AssetScoped, EntityPrefix, SessionScoped, StrId}, common_types::FixedStr};
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
@@ -9,6 +9,7 @@ use std::time::Duration;
 #[allow(unused_imports)] use bevy::prelude::*;
 use splines::{Interpolation, Key, Spline};
 use strum_macros::{AsRefStr, Display, };
+use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Copy, Reflect)]
 pub struct MyZ(pub i32);
@@ -79,7 +80,62 @@ impl YSortOrigin {
 }
 
 
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq, Hash, Reflect, )]
+pub struct Category(StrId);
 
+impl Category {
+    pub fn new<S: AsRef<str>>(id: S) -> Self {
+        if id.as_ref().len() > Self::STR_SIZE {
+            warn!("Category str too long: {}, omitting chars beyond i={} -> {}", id.as_ref(), (Self::STR_SIZE - 1), &id.as_ref()[..Self::STR_SIZE]);
+        }
+
+        Self(StrId::new(id))
+    }
+
+    const STR_SIZE: usize = 32;
+}
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl InspectorPrimitive for Category {
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _: &dyn std::any::Any,
+        _: egui::Id,
+        _: InspectorUi<'_, '_>,
+    ) -> bool {
+        let mut s = self.0.as_str().to_string();
+        let mut changed = false;
+        if ui.text_edit_singleline(&mut s).changed() {
+            *self = Category::new(&s);
+            changed = true;
+        }
+        changed
+    }
+
+    fn ui_readonly(
+        &self,
+        ui: &mut egui::Ui,
+        _: &dyn std::any::Any,
+        _: egui::Id,
+        _: InspectorUi<'_, '_>,
+    ) {
+        ui.label(self.0.as_str());
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct Categories(pub HashSet<Category>);
+
+impl Categories {
+    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
+        let set = ids.into_iter().map(Category::new).collect();
+        Self(set)
+    }
+}
 
 #[derive( Debug, Default, Deserialize, Serialize, Clone, )]
 pub enum FunctionType {#[default] OneOnFinishZero, ZeroOnFinishOne, Curve(Spline<f32, f32>),}

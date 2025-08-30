@@ -1,7 +1,7 @@
 
 
 
-use bevy::{ecs::entity_disabling::Disabled, prelude::*};
+use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, prelude::*};
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::{prelude::Replicated, shared::server_entity_map::ServerEntityMap};
 use common::{common_components::{DisplayName, StrId}, common_states::GameSetupType};
@@ -186,15 +186,26 @@ pub fn produce_tiles(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn process_tiles(mut cmd: Commands, 
     chunk_query: Query<(Entity, &ProducedTiles, &ChildOf), (With<TilesInstantiated>)>,
-    tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<TilemapChild>, Option<&Transform>), (With<Tile>, With<Disabled>, )>,
-    state : Res<State<GameSetupType>>,
+    tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<TilemapChild>, Option<&Transform>, &TileRef), (With<Tile>, With<Disabled>, )>,
+    oritile_query: Query<(Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
+    min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
+    mut regpos_map: ResMut<RegisteredPositions>,
+    state: Res<State<GameSetupType>>,
 ) {
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
     for (chunk_ent, produced_tiles, child_of) in chunk_query.iter() {
         for tile_ent in produced_tiles.0.iter() {
-            let Ok((&global_pos, &pos_within_chunk, &oplist_size, tilemap_child, transform, )) = tile_query.get(*tile_ent) 
-            else { continue; };
+            let Ok((&global_pos, &pos_within_chunk, &oplist_size, tilemap_child, transform, &tile_ref)) = tile_query.get(*tile_ent)
+            else { cmd.entity(*tile_ent).try_despawn(); continue; };
+
+         
+            let Ok((oritile_min_dists, register_pos)) = oritile_query.get(tile_ref.0)
+            else { cmd.entity(*tile_ent).try_despawn(); continue; };
+
+            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ref.0, global_pos, oritile_min_dists, register_pos), min_dists_query) {
+                cmd.entity(*tile_ent).try_despawn(); continue;
+            }
 
             cmd.entity(*tile_ent).try_insert((DimensionRef(child_of.parent()), ));
 
@@ -257,36 +268,27 @@ fn spawn_bifurcation_oplists(
     }
 }
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
-#[allow(unused_parens)]
-pub fn register_position(
-    mut cmd: Commands,
-    query: Query<(Entity, &GlobalTilePos, &TileRef),(With<RegisterPos>)>,
-    mut registered_positions: ResMut<RegisteredPositions>,
-) {
-    for (entity, pos, tile_ref) in query.iter() {
-        registered_positions.0.insert(tile_ref.0, pos.clone());
-        cmd.entity(entity).try_remove::<RegisterPos>();
-    }
-}
 
+#[derive(serde::Deserialize, Event, serde::Serialize, Clone, MapEntities)]
+pub struct NewlyRegPos (#[entities] pub Entity, pub GlobalTilePos);
+
+// No olvidarse de agregarlo al Plugin del módulo
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^
 #[allow(unused_parens)]
-pub fn sync_registered_positions(
-    trigger: Trigger<RegisteredPositions>,
-    mut entis_map: ResMut<ServerEntityMap>, 
-    own_map: Res<RegisteredPositions>,
+pub fn sync_register_new_pos(
+    trigger: Trigger<NewlyRegPos>,
+    mut own_map: ResMut<RegisteredPositions>,
+    state: Res<State<GameSetupType>>,
+
 ) {
+    let is_host = state.get() != &GameSetupType::AsJoiner;
+
+    if is_host { return; }
+
     let registered_positions = trigger.event().clone();
 
-    for (&entity, &pos) in registered_positions.0.iter() {
-        let Some(client_entity) = entis_map.server_entry(entity).get() else {
-          error!("Failed to find client entity for registered position: {}", entity);
-          continue;
-        };
-
-    }
+    own_map.0.entry(registered_positions.0).or_default().push(registered_positions.1);
+    
 }

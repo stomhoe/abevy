@@ -1,6 +1,7 @@
 (
     id: "slender_sapling",
     name: "Slender Sapling",
+    cats: [],
     img_paths: {
         "default": "texture/world/vegetation/slender_sapling.png"
     },

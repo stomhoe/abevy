@@ -22,7 +22,7 @@ pub fn init_tile_weighted_samplers(
         if let Some(seri) = assets.get(handle) {
             //info!("Loading TileWeightedSamplerSeri from handle: {:?}", handle);
 
-            if let Ok(str_id) = StrId::new(seri.id.clone(), 4) {
+            if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
                 cmd.spawn((str_id, EntiWeightedSampler::default(), ));
             }
         }
