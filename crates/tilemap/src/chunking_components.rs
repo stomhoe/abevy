@@ -15,111 +15,31 @@ use crate::{terrain_gen::{terrgen_oplist_components::OplistSize,}, tile::tile_co
 use common::{common_components::*, };
 
 #[derive(Component, Default)]
-#[require(SuperstateInfo<ChunkInitState>, SessionScoped, )]
-pub struct ChunkInitState;
-
-#[derive(Component, Debug, Default, )]
-#[require(ChunkInitState)]
-#[require(Visibility::Hidden)]
-pub struct UninitializedChunk;
-
-#[derive(Component, Debug, Default,)]
-#[require(ChunkInitState)]
-pub struct TilesInstantiated;
+#[require(Visibility::Hidden, SessionScoped, LayersMap)]
+pub struct Chunk;
 
 
-#[derive(Component, Debug)]
-#[require(ChunkInitState)]
-pub struct TilesReady;
-
-#[derive(Component, Debug, Default, )]
-#[require(ChunkInitState)]
-pub struct PendingTilemaps(pub i32);
-
-#[derive(Component, Debug, Default,)]
-#[require(ChunkInitState)]
-pub struct InitializedChunk;
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect, Default, )]
-pub struct ProducedTiles(#[entities] pub Vec<Entity>);
-
-impl ProducedTiles {
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect, )]
+pub struct Tiles (pub Vec<Entity>);
+impl Tiles {
     pub fn new_with_chunk_capacity() -> Self {
         let chunk_area = ChunkPos::CHUNK_SIZE.element_product();
-        let cap = chunk_area + chunk_area / 8;//TODO CALCULAR PROMEDIO DE TILES POR CHUNK
-        ProducedTiles(Vec::with_capacity(cap as usize))
-    }
-    pub fn new<I>(entities: I) -> Self where I: IntoIterator, I::Item: Into<Entity>, {
-        ProducedTiles(entities.into_iter().map(Into::into).collect())
+        let cap = chunk_area;//TODO CALCULAR PROMEDIO DE TILES POR CHUNK
+        Tiles (Vec::with_capacity(cap as usize))
     }
 
-    pub fn produced_tiles(&self) -> &[Entity] { &self.0 }
-
-    pub fn push(&mut self, entity: Entity) {self.0.push(entity);}
-
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, Entity> { self.0.iter_mut() }
-
-
-    #[allow(unused_parens, )]
-    fn insert_tile_recursive(
-        &mut self,
-        cmd: &mut Commands,
-        tiling_ent: Entity,
-        tile_pos: TilePos,
-        global_pos: GlobalTilePos,
-        oplist_size: OplistSize,
-        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
-        gen_settings: &AaGlobalGenSettings,
-        depth: u32
-    ) {
-        if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
-            if let Some(tiling_ent) = wmap.sample_with_pos(gen_settings, global_pos) {
-
-                if depth > 6 {
-                    warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_ent);
-                    return;
-                }
-
-                self.insert_tile_recursive( cmd, tiling_ent, tile_pos, global_pos, oplist_size, weight_maps, gen_settings, depth + 1);
-            }
-        } else { 
-            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn_with(|builder|{
-                builder.deny::<(MinDistancesMap, KeepDistanceFrom,/*DisplayName, StrId*/)>();
-            })
-             .try_insert((
-                Disabled, TilemapChild,
-                tile_pos, TileRef(tiling_ent), InitialPos(global_pos), global_pos, oplist_size))
-            .id();
-            self.0.push(tile_ent);
-
-        }
-    }
-
-    pub fn insert_as_instanced_tiles(
-        &mut self,
-        cmd: &mut Commands,
-        tiling_ents: &Vec<Entity>,
-        pos_within_chunk: TilePos,
-        global_pos: GlobalTilePos,
-        oplist_size: OplistSize,
-        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
-        gen_settings: &AaGlobalGenSettings,
-    ) {
-        for tile in tiling_ents.iter().cloned() {
-            self.insert_tile_recursive(cmd, tile, pos_within_chunk, global_pos, oplist_size, weight_maps, gen_settings, 0);
-        }
-    }
 }
 
 
 
 
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct PendingOperations(pub i32);
+pub struct PendingOps(pub i32);
 
+use crate::tilemap_systems::{MapKey, MapStruct};
 
-
+#[derive(Component, Default, Clone, Reflect, )]
+pub struct LayersMap(pub HashMap<MapKey, MapStruct>);
 
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]

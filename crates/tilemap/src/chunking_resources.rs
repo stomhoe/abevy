@@ -24,6 +24,15 @@ impl Default for AaChunkRangeSettings {
     }
 }
 
+impl AaChunkRangeSettings {
+    pub fn approximate_number_of_tiles(&self) -> usize {
+        let ret =
+        (self.chunk_show_range as usize + 1).pow(2) * ChunkPos::CHUNK_SIZE.element_product() as usize;
+        //info!("Approximate number of tiles per chunk range settings: {}", ret);
+        ret
+    }
+}
+
 
 pub const DEBUG_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
     chunk_visib_max_dist: 300.0,
@@ -32,7 +41,7 @@ pub const DEBUG_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSetting
 };
 
 pub const NORMAL_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
-    chunk_visib_max_dist: 300.0,
-    chunk_active_max_dist: 300.0,
-    chunk_show_range: 2,
+    chunk_visib_max_dist: 5000.0,
+    chunk_active_max_dist: 5000.0,
+    chunk_show_range: 5,
 };

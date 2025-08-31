@@ -6,26 +6,39 @@ use tilemap_shared::GlobalTilePos;
 use serde::{Deserialize, Serialize};
 
 use crate::{terrain_gen::terrgen_systems::NewlyRegPos, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, TileRef}};
+use game_common::game_common_components::DimensionRef;
 
 #[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone)]
 #[reflect(Resource, Default)]
-pub struct RegisteredPositions(pub EntityHashMap<Vec<GlobalTilePos>>); 
+pub struct RegisteredPositions(pub EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>); 
 impl RegisteredPositions {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, 
         cmd: &mut Commands, is_host: bool,
-        new: (Entity, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+        new: (Entity, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
         min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     ) -> bool {
 
 
-        let (new_ent, new_pos, new_min_distances, keep_distance) = new;
+        let (new_ent_ref, new_dim, new_pos, new_min_distances, keep_distance) = new;
+
+        if let Some(positions) = self.0.get(&new_ent_ref) {
+            for &(prev_dim, prev_pos) in positions {
+                if prev_dim == new_dim && new_pos == prev_pos {
+                    return true;
+                }
+            }
+
+        }
+        if !is_host {
+            return false;
+        }
 
         if let Some(new_min_distances) = new_min_distances {
             for (&oritile_ent, min_dist) in new_min_distances.0.iter() {
-                let Some(positions) = self.0.get(&oritile_ent) else { continue };
-                for &prev_pos in positions {
-                    if new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
+                let Some(previous_positions) = self.0.get(&oritile_ent) else { continue };
+                for &(prev_dim, prev_pos) in previous_positions {
+                    if prev_dim == new_dim && new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
                         return false;
                     }
                 }
@@ -37,16 +50,16 @@ impl RegisteredPositions {
                 let Some(positions) = self.0.get(other_ent) else { continue };
                 let Ok(min_dists) = min_dists_query.get(*other_ent) else { continue };
                 for &prev_pos in positions {
-                    if min_dists.check_min_distances(prev_pos, (new_ent, new_pos)) == false {
+                    if min_dists.check_min_distances(prev_pos, (new_ent_ref, new_dim, new_pos)) == false {
                         return false;
                     }
                 }
             }
-            self.0.entry(new_ent).or_default().push(new_pos);
             if is_host {
+                self.0.entry(new_ent_ref).or_default().push((new_dim, new_pos));
                 let to_clients = ToClients {
                     mode: SendMode::Broadcast,
-                    event: NewlyRegPos(new_ent, new_pos),
+                    event: NewlyRegPos(new_ent_ref, (new_dim, new_pos)),
                 };
 
                 cmd.server_trigger(to_clients);
@@ -125,3 +138,7 @@ impl OpListSerialization {
         self.root_in_dimensions.iter().any(|s| !s.is_empty())
     }
 }
+
+
+
+

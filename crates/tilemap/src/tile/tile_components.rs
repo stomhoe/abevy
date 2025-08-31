@@ -7,7 +7,7 @@ use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
-use game_common::game_common_components::MyZ;
+use game_common::game_common_components::{DimensionRef, MyZ};
 use rand::Rng;
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 
@@ -36,7 +36,10 @@ pub struct TilemapChild;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct TileRef(#[entities] pub Entity);
 
-
+#[derive(Bundle)]
+pub struct BundleToDenyOnTileClone(
+    MinDistancesMap, KeepDistanceFrom, Disabled/*DisplayName, StrId*/
+);
 
 
 pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSettings) -> f32 {
@@ -108,10 +111,10 @@ pub struct MinDistancesMap(pub EntityHashMap<u32>);
 impl MinDistancesMap {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&self, 
-        my_pos: GlobalTilePos, new: (Entity, GlobalTilePos)
+        my_pos: (DimensionRef, GlobalTilePos), new: (Entity, DimensionRef, GlobalTilePos)
     ) -> bool {
         self.0.get(&new.0).map_or(true, |&min_dist| {
-            my_pos.distance_squared(&new.1) < min_dist * min_dist
+            my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist
         })
     }
 }

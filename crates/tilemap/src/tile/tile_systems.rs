@@ -8,7 +8,7 @@ use bevy_ecs_tilemap::tiles::TileFlip;
 use common::common_components::{HashId, StrId};
 use game_common::game_common_components::MyZ;
 use player::player_components::{HostPlayer, OfSelf, Player};
-use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
+use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, HashablePosVec};
 use crate::{ tile::{tile_components::*, tile_resources::*}};
 
 
@@ -29,6 +29,8 @@ pub fn flip_tile_along_x(
         }
     }
 }
+
+//sys
 
 #[derive(serde::Deserialize, Event, serde::Serialize, Clone, MapEntities)]
 pub struct SyncTilesToServer {

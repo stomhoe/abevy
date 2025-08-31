@@ -18,8 +18,8 @@
    
     bifs: [
         ("", [""]),
-        ("", ["temptree_sampler"]),
-        ("", ["tempveg_sampler"]),
+        ("", ["portal_cave", "pink"]),//temptree_sampler
+        ("", ["tempveg_sampler", ""]),
     ],
     root_in_dimensions: [""],
     size: Some((1, 1)),

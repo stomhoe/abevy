@@ -30,6 +30,6 @@ pub fn plugin(app: &mut App) {
         
         .register_type::<InputMoveVector>()
         .register_type::<InputSpeedVector>()
-        .replicate_once::<Transform>()
+        //.replicate_once::<GlobalTransform>()
     ;
 }

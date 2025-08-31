@@ -14,6 +14,7 @@ pub struct AaGlobalGenSettings {
     pub seed: i32,
     pub world_freq: f32,
 }
+
 impl Default for AaGlobalGenSettings {
     fn default() -> Self {
         Self { 
@@ -23,8 +24,47 @@ impl Default for AaGlobalGenSettings {
     }
 }
 
+pub trait HashablePosVec: Hash {
+    fn hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        settings.seed.hash(&mut hasher);
+        seed.hash(&mut hasher);
+        hasher.finish()
+    }
+    fn hash_true_false(&self, settings: &AaGlobalGenSettings, extra_seed: u64) -> bool {
+        self.hash_value(settings, extra_seed) % 2 == 0
+    }
+    fn hash_for_weight_maps(&self, settings: &AaGlobalGenSettings) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        settings.seed.hash(&mut hasher);
+        49.hash(&mut hasher);
+        hasher.finish()
+    }
+    fn normalized_hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> f32 {
+        self.hash_value(settings, seed) as f32 / u64::MAX as f32
+    }
+
+    fn x(&self) -> i32;
+    fn y(&self) -> i32;
+}
+
+// Macro to implement HashedPosition for types that derive Hash and have x() and y()
+macro_rules! impl_hashed_position {
+    ($t:ty) => {
+        impl HashablePosVec for $t {
+            fn x(&self) -> i32 { self.x() }
+            fn y(&self) -> i32 { self.y() }
+        }
+    };
+}
+
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
 pub struct GlobalTilePos(pub IVec2);
+
+impl_hashed_position!(GlobalTilePos);
+
 impl GlobalTilePos {
     pub fn new(x: i32, y: i32) -> Self {GlobalTilePos(IVec2::new(x, y))}
 
@@ -41,29 +81,6 @@ impl GlobalTilePos {
         self.0.distance_squared(other.0) as u32
     }
 
-    pub fn hash_true_false(&self, settings: &AaGlobalGenSettings, extra_seed: u64) -> bool {
-        self.hash_value(settings, extra_seed) % 2 == 0
-    }
-
-    pub fn hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        // Mix coordinates with a unique constant and the seed
-        self.hash(&mut hasher);
-        settings.seed.hash(&mut hasher);
-        seed.hash(&mut hasher);
-        hasher.finish()
-    }
-    pub fn hash_for_weight_maps(&self, settings: &AaGlobalGenSettings,) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        // Use a different mixing and constants
-        self.hash(&mut hasher);
-        settings.seed.hash(&mut hasher);
-        49.hash(&mut hasher); 
-        hasher.finish()
-    }
-    pub fn normalized_hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> f32 {
-        self.hash_value(settings, seed) as f32 / u64::MAX as f32
-    }
     pub const TYPE_NAME: &'static str = "G-TilePos";
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
 }
@@ -103,12 +120,24 @@ impl std::ops::Sub for GlobalTilePos {type Output = Self; fn sub(self, other: Se
 
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, Reflect)]
 pub struct ChunkPos(pub IVec2);
+impl_hashed_position!(ChunkPos);
 
 impl ChunkPos {
     pub fn new(x: i32, y: i32) -> Self { Self(IVec2::new(x, y)) }
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
     pub const CHUNK_SIZE: UVec2 = UVec2 { x: 6, y: 6 };//NORMALMENTE 12X12
+    pub fn hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        // Mix coordinates with a unique constant and the seed
+        self.hash(&mut hasher);
+        settings.seed.hash(&mut hasher);
+        seed.hash(&mut hasher);
+        hasher.finish()
+    }
+    pub fn normalized_hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> f32 {
+        self.hash_value(settings, seed) as f32 / u64::MAX as f32
+    }
 }
 
 impl std::fmt::Debug for ChunkPos {

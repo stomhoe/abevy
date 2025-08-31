@@ -79,6 +79,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<TwoOverlaysExample>()
         .register_type::<MinDistancesMap>()
         .register_type::<TileCategories>()
+        .register_type::<KeepDistanceFrom>()
 
         //usar feature
         .add_observer(client_map_server_tiling)

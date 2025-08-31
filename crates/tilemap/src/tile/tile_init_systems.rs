@@ -177,12 +177,16 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 
                 for entity in entities {
                     min_dists.0.insert(*entity, min_dist);
-                    keep_away.entry(*entity).or_default().insert(tile_ent);
+                    if entity != &tile_ent {
+                        keep_away.entry(*entity).or_default().insert(tile_ent);
+                    }
                 }
             }
             else if let Ok(other_tile_ent) = map.0.get(&tile_id) {
                 min_dists.0.insert(other_tile_ent, min_dist);
-                keep_away.entry(other_tile_ent).or_default().insert(tile_ent);
+                if other_tile_ent != tile_ent {
+                    keep_away.entry(other_tile_ent).or_default().insert(tile_ent);
+                }
             } else {
                 warn!("Tile '{}' min_distances references unknown tile id '{}'", seri.id, tile_id);
                 continue;

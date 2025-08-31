@@ -4,7 +4,7 @@ use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
+use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, HashablePosVec};
 use std::time::Duration;
 #[allow(unused_imports)] use bevy::prelude::*;
 use splines::{Interpolation, Key, Spline};

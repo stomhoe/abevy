@@ -1,20 +1,33 @@
-use bevy::math::U16Vec2;
+use bevy::{math::U16Vec2, render::sync_world::SyncToRenderWorld};
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::{FrustumCulling, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_states::*};
+use game_common::game_common_components::YSortOrigin;
 use tilemap_shared::{ChunkPos, GlobalTilePos};
 
 
-use crate::{chunking_components::ChunkInitState, terrain_gen::terrgen_oplist_components::OplistSize, tile::tile_components::Tile };
+use crate::{chunking_components::Chunk, terrain_gen::terrgen_oplist_components::OplistSize, tile::tile_components::Tile };
 
 #[derive(Bundle, Debug, Default)]
 pub struct TilemapConfig {
-    pub entity_prefix: EntityPrefix,
+    entity_prefix: EntityPrefix,
     pub tile_size: TilemapTileSize,
-    pub grid_size: TilemapGridSize,
-    pub map_size: TilemapSize,
-    pub render_settings: TilemapRenderSettings,
+    grid_size: TilemapGridSize,
+    map_size: TilemapSize,
+    render_settings: TilemapRenderSettings,
+    y_sort: YSortOrigin,
+    /*
+    spacing: TilemapSpacing,
+    transform: Transform,
+    global_transform: GlobalTransform,
+    visibility: Visibility,
+    inherited_visibility: InheritedVisibility,
+    view_visibility: ViewVisibility,
+    frustum_culling: FrustumCulling,
+    sync: SyncToRenderWorld,
+    anchor: TilemapAnchor,
+*/
 }
 
 impl TilemapConfig {
@@ -29,6 +42,7 @@ impl TilemapConfig {
                 render_chunk_size: ChunkPos::CHUNK_SIZE * 2 / oplist_size_val,
                 y_sort: false,
             },
+            ..Default::default()
         }
     }
     pub fn new_storage(oplist_size: OplistSize) -> TileStorage {
@@ -39,32 +53,3 @@ impl TilemapConfig {
 
 #[derive(Component, Debug, Clone, Default, Reflect)]
 pub struct TmapHashIdtoTextureIndex(pub HashIdMap<TileTextureIndex>);
-
-#[derive(Component, Debug, Default, Clone)]
-pub struct TileMapHandles(Vec<Handle<Image>>);
-
-impl TileMapHandles {
-    pub fn new(handles: Vec<Handle<Image>>) -> Self {
-        if handles.is_empty() {
-            Self(vec![Handle::<Image>::default()])
-        } else { Self(handles) }
-    }
-    pub fn len(&self) -> usize { self.0.len() }
-    pub fn first_handle(&self) -> Handle<Image> { self.0.first().cloned().unwrap_or_default() }
-    pub fn push_handle(&mut self, handle: Handle<Image>) { self.0.push(handle); }
-    pub fn handles_mut(&mut self) -> &mut Vec<Handle<Image>> { &mut self.0 }
-    pub fn handles(&self) -> &Vec<Handle<Image>> { &self.0 }
-    pub fn take_handles(&mut self) -> Vec<Handle<Image>> { std::mem::take(&mut self.0) }
-}
-
-impl IntoIterator for TileMapHandles {
-    type Item = Handle<Image>;
-    type IntoIter = std::vec::IntoIter<Handle<Image>>;
-    fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
-}
-impl<'a> IntoIterator for &'a mut TileMapHandles {
-    type Item = &'a mut Handle<Image>;
-    type IntoIter = std::slice::IterMut<'a, Handle<Image>>;
-    fn into_iter(self) -> Self::IntoIter { self.0.iter_mut() }
-}
-

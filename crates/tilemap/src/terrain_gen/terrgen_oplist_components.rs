@@ -2,15 +2,11 @@
 use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use fnl::{FastNoiseLite, NoiseSampleRange};
 
-use noiz::DynamicConfigurableSampleable;
 use serde::{Deserialize, Serialize};
-use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
+use tilemap_shared::{AaGlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec};
 use std::hash::{Hasher, Hash};
-use std::collections::hash_map::DefaultHasher;
-
 use crate::tile::tile_components::*;
 
 use {common::common_components::*, };
@@ -21,15 +17,18 @@ use std::ops::{Index, IndexMut};
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
 pub struct PoissonDisk { pub min_distance: u8, pub seed: u64, }
 impl PoissonDisk {
-    pub fn new(min_distance: u8, seed: u64) -> Result<Self, BevyError> { 
-        if min_distance > 5 {
-            return Err(BevyError::from("min_distance must be <= 5"));
+    pub fn new(min_distance: u8, seed: u64) -> Result<Self, BevyError> {
+
+        let max = 5;
+
+        if min_distance > max {
+            return Err(BevyError::from(format!("min_distance must be <= {}", max)));
         } else if min_distance == 0 {
             return Err(BevyError::from("min_distance must be > 0"));
         }
-        Ok(Self { min_distance, seed }) 
+        Ok(Self { min_distance, seed })
     }
-    pub fn sample(&self, settings: &AaGlobalGenSettings, tile_pos: GlobalTilePos, oplist_size: OplistSize) -> f32 {
+    pub fn sample<T: HashablePosVec>(&self, settings: &AaGlobalGenSettings, tile_pos: T, oplist_size: OplistSize) -> f32 {
 
         let val = tile_pos.normalized_hash_value(settings, self.seed);
         let added_sample_distance_x = oplist_size.x() as i32;
@@ -45,8 +44,8 @@ impl PoissonDisk {
                     continue;
                 }
                 // Calculate the neighbor's position by offsetting the current tile position
-                let neighbor_x = tile_pos.0.x + dx + added_sample_distance_x;
-                let neighbor_y = tile_pos.0.y + dy + added_sample_distance_y;
+                let neighbor_x = tile_pos.x() + dx + added_sample_distance_x;
+                let neighbor_y = tile_pos.y() + dy + added_sample_distance_y;
                 let neighbor_pos = GlobalTilePos(IVec2::new(neighbor_x, neighbor_y));
                 let neighbor_val = neighbor_pos.normalized_hash_value(settings, self.seed);
                 if neighbor_val > val {
@@ -152,11 +151,5 @@ impl Operand {
 }
 impl Default for Operand { fn default() -> Self { Self::Value(0.0) } }
 impl From<f32> for Operand { fn from(v: f32) -> Self { Self::Value(v) } }
-
-
-#[derive(Component, Debug, Clone, Copy, Reflect)]
-#[require(VariablesArray)]
-pub struct OplistRef(pub Entity);
-
 
 

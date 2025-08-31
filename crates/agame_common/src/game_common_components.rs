@@ -70,7 +70,7 @@ pub struct OriginalEntity(pub Entity);
 pub struct DimensionRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, SessionScoped, AssetScoped, EntityPrefix::new("*DIMENSION*") )]
+#[require(Replicated, SessionScoped, AssetScoped, EntityPrefix::new("DDDDDDDDDDDDDDDDDDDDD") )]
 pub struct Dimension;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]

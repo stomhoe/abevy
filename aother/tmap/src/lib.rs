@@ -141,6 +141,29 @@ pub struct MaterialTilemapBundle<M: MaterialTilemap> {
     pub anchor: TilemapAnchor,
 }
 
+#[cfg(feature = "render")]
+pub type TilemapPartialBundle = MaterialTilemapPartialBundle<StandardTilemapMaterial>;
+
+#[cfg(feature = "render")]
+/// The default tilemap bundle. All of the components within are required.
+#[derive(Bundle, Debug, Default, Clone)]
+pub struct MaterialTilemapPartialBundle<M: MaterialTilemap> {
+    pub texture: TilemapTexture,
+    pub transform: Transform,
+    pub global_transform: GlobalTransform,
+    /// User indication of whether an entity is visible
+    pub visibility: Visibility,
+    /// Algorithmically-computed indication of whether an entity is visible and should be extracted
+    /// for rendering
+    pub inherited_visibility: InheritedVisibility,
+    pub view_visibility: ViewVisibility,
+    /// User indication of whether tilemap should be frustum culled.
+    pub frustum_culling: FrustumCulling,
+    pub material: MaterialTilemapHandle<M>,
+    pub sync: SyncToRenderWorld,
+    pub anchor: TilemapAnchor,
+}
+
 #[cfg(not(feature = "render"))]
 /// The default tilemap bundle. All of the components within are required.
 #[derive(Bundle, Debug, Default, Clone)]
@@ -170,6 +193,11 @@ pub struct StandardTilemapBundle {
 pub mod prelude {
     #[cfg(feature = "render")]
     pub use crate::MaterialTilemapBundle;
+    #[cfg(feature = "render")]
+    pub use crate::MaterialTilemapPartialBundle;
+    #[cfg(feature = "render")]
+    pub use crate::TilemapPartialBundle;
+
     #[cfg(feature = "render")]
     pub use crate::TilemapBundle;
     pub use crate::TilemapPlugin;

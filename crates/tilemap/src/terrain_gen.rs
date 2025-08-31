@@ -7,7 +7,7 @@ use dimension::dimension_components::MultipleDimensionRefs;
 use fnl::FastNoiseLite;
 use tilemap_shared::AaGlobalGenSettings;
 
-use crate::{chunking_components::{PendingOperations, ProducedTiles}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::produce_tilemaps, };
+use crate::{chunking_components::{PendingOps,}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::produce_tilemaps, };
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -60,13 +60,14 @@ pub fn plugin(app: &mut App) {
         .register_type::<FnlNoise>()
         .register_type::<FastNoiseLite>()
         .register_type::<OperationList>().register_type::<Operation>().register_type::<Operand>()
-        .register_type::<OplistRef>()
         .register_type::<TerrGenEntityMap>()
         .register_type::<OpListEntityMap>()
         .register_type::<OplistSize>()
-        .register_type::<PendingOperations>()
+        .register_type::<PendingOps>()
         .register_type::<ChunkRef>()
-        
+        .register_type::<RegisteredPositions>()
+        .register_type::<NewlyRegPos>()
+
         .add_server_trigger::<RegisteredPositions>(Channel::Unordered)
         .make_trigger_independent::<RegisteredPositions>()
         
@@ -75,7 +76,14 @@ pub fn plugin(app: &mut App) {
         .add_observer(sync_register_new_pos)
 
         .replicate::<OplistSize>().replicate::<FnlNoise>()
-        .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>();
+        .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>()
+        .add_event::<PendingOp>()
+        .add_event::<InstantiatedTiles>()
+        .add_event::<ProcessedTiles>()
+        .init_resource::<Events<PendingOp>>()
+        ;
+
+        
 }
 
 

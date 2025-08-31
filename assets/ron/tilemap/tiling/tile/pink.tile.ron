@@ -9,7 +9,7 @@
     sprite: false, 
     randflipx: false,
     offset: (0.0, 0.0),
-    z: -1000,
+    z: -500,
     color: Some((255, 192, 203, 255)),
     color_map: "",
     spawns: [],
