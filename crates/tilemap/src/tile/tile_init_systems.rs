@@ -50,7 +50,7 @@ pub fn init_tiles(
             cmd.entity(enti).insert(DisplayName(seri.name.clone()));
         }
         if seri.tmapchild {
-            cmd.entity(enti).insert(TilemapChild);
+            cmd.entity(enti).insert(ChunkOrTilemapChild);
         }
 
 
@@ -173,12 +173,12 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 
         for (tile_id, min_dist) in min_distances {
 
-            if let Some(cat) = tile_id.strip_prefix("c.") && let Some(entities) = tile_cats.0.get(&Category::new(cat)) {
+            if let Some(cat) = tile_id.strip_prefix("c.") && let Some(cat_entities) = tile_cats.0.get(&Category::new(cat)) {
 
-                for entity in entities {
-                    min_dists.0.insert(*entity, min_dist);
-                    if entity != &tile_ent {
-                        keep_away.entry(*entity).or_default().insert(tile_ent);
+                for cat_tile_ent in cat_entities {
+                    min_dists.0.insert(*cat_tile_ent, min_dist);
+                    if cat_tile_ent != &tile_ent {
+                        keep_away.entry(*cat_tile_ent).or_default().insert(tile_ent);
                     }
                 }
             }

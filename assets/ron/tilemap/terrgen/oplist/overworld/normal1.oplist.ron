@@ -8,7 +8,7 @@
 
     ],
    
-    bifs: [
+    bifs: [//TODO PONERLE EL OPLIST SIZE A CADA BIFURCATION
         ("", ["blue"]),
         ("normal2", [""]),
     ],

@@ -9,6 +9,7 @@ use dimension::dimension_components::MultipleDimensionStringRefs;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
 
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoise, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
+use ::tilemap_shared::*;
 
 use std::mem::take;
 

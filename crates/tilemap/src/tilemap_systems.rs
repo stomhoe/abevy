@@ -1,13 +1,10 @@
 use bevy::{ecs::{entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
-use bevy_inspector_egui::egui::layers;
 use common::{common_components::StrId, common_resources::ImageSizeMap};
-use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::MyZ;
-use tilemap_shared::GlobalTilePos;
+use ::tilemap_shared::*;
 
-use crate::{chunking_components::*, terrain_gen::{terrgen_oplist_components::OplistSize, terrgen_systems::ProcessedTiles}, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
-
+use crate::{chunking_components::*, terrain_gen::{terrgen_events::ProcessedTiles}, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
 
 
 
@@ -46,7 +43,7 @@ pub fn produce_tilemaps(
     mut ereader_prodtiles: EventReader<ProcessedTiles>,
     mut chunk_query: Query<(&mut LayersMap), ()>,
     tile_comps: Query<(Entity, &TilePos, &OplistSize, Option<&TileHidsHandles>, Option<&MyZ>, Option<&TileShaderRef>, ), 
-    (Without<Disabled>, With<TilemapChild>, Without<Transform>)>,
+    (Without<Disabled>, With<ChunkOrTilemapChild>, Without<Transform>)>,
     //mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
     image_size_map: Res<ImageSizeMap>,
 
@@ -61,7 +58,7 @@ pub fn produce_tilemaps(
 
     #[allow(unused_mut)]
     'eventsfor: for ev in ereader_prodtiles.read() {
-        // Try to get a mutable reference to LayersMap from the chunk entity, or use a local variable if not present
+        trace!("Processing event for chunk {:?}", ev.chunk);
 
         let Ok(mut layers) = chunk_query.get_mut(ev.chunk) else {
             error!("Failed to get layers for chunk {:?}", ev.chunk);
@@ -79,7 +76,7 @@ pub fn produce_tilemaps(
 
             cmd.entity(tile_ent)
             .try_insert_if_new(TileBundle::default())
-            .try_remove::<(TilemapChild, Disabled)>();
+            .try_remove::<(ChunkOrTilemapChild, Disabled)>();
 
             let tile_z_index = tile_z_index.cloned().unwrap_or_default();
 
@@ -110,7 +107,7 @@ pub fn produce_tilemaps(
                         let MapStruct { texture: tmap_handles, storage, tmap_hash_id_map, .. } = mapstruct;
                         (tmap_handles, storage, tmap_hash_id_map)
                     };
-                let (Vector(tmap_handles)) = tmap_handles else { info!("Failed to get tilemap handles for {:?}", tmap_ent); continue; };
+                let (Vector(tmap_handles)) = tmap_handles else { error!("Failed to get tilemap handles for {:?}", tmap_ent); continue; };
 
 
 
@@ -208,8 +205,8 @@ pub fn produce_tilemaps(
             tmap_hash_id_map,
             storage,
         ));
-
-
+        
+        
         if let Some(shader) = shader {
             trace!("Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
             match shader {
@@ -217,20 +214,24 @@ pub fn produce_tilemaps(
                     let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone()));
                     cmd.entity(tmap_ent).try_insert_if_new((
                         MaterialTilemapBundle{
-                            texture,
                             material,
+                            texture,
                             ..Default::default()
-                        }
+                            }
+                        /* 
+                        */
                     ));
                 }
                 TileShader::Voronoi(handle) => {
                     let material = MaterialTilemapHandle::from(voronoi_mat.add(handle.clone()));
                     cmd.entity(tmap_ent).try_insert_if_new((
                         MaterialTilemapBundle{
-                            texture,
                             material,
+                            texture,
                             ..Default::default()
                         }
+                        /*
+                        */
                     ));
                 }
                 TileShader::TwoTexRepeat(handle) => todo!(),

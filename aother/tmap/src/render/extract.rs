@@ -176,7 +176,7 @@ impl ExtractedFrustum {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn extract(
+pub fn extract(//TODO EXPONER UN EVENTO
     mut commands: Commands,
     default_image_settings: Res<DefaultSampler>,
     changed_tiles_query: Extract<

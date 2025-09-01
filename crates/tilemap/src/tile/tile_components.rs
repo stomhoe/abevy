@@ -1,21 +1,16 @@
 use bevy::ecs::entity::EntityHashMap;
 use bevy::ecs::entity_disabling::Disabled;
-use bevy::math::U8Vec4;
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
 use game_common::game_common_components::{DimensionRef, MyZ};
-use rand::Rng;
-use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use ::tilemap_shared::*;
 
-use crate::terrain_gen::terrgen_oplist_components::OplistSize;
-use crate::terrain_gen::terrgen_resources::RegisteredPositions;
 use crate::{tile::{tile_materials::*}, };
 
 
@@ -31,7 +26,7 @@ impl Tile {
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-pub struct TilemapChild;
+pub struct ChunkOrTilemapChild;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct TileRef(#[entities] pub Entity);

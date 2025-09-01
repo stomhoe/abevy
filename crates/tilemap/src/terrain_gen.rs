@@ -5,9 +5,8 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
 use dimension::dimension_components::MultipleDimensionRefs;
 use fnl::FastNoiseLite;
-use tilemap_shared::AaGlobalGenSettings;
-
-use crate::{chunking_components::{PendingOps,}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::produce_tilemaps, };
+use ::tilemap_shared::*;
+use crate::{chunking_components::{PendingOps,}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*, terrgen_events::*}, tilemap_systems::produce_tilemaps, };
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -15,6 +14,7 @@ mod terrgen_noise_init_systems;
 pub mod terrgen_components;
 pub mod terrgen_oplist_components;
 pub mod terrgen_resources;
+pub mod terrgen_events;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TerrainGenSystems;
@@ -66,7 +66,6 @@ pub fn plugin(app: &mut App) {
         .register_type::<PendingOps>()
         .register_type::<ChunkRef>()
         .register_type::<RegisteredPositions>()
-        .register_type::<NewlyRegPos>()
 
         .add_server_trigger::<RegisteredPositions>(Channel::Unordered)
         .make_trigger_independent::<RegisteredPositions>()

@@ -5,7 +5,7 @@ use bevy_replicon::prelude::*;
 use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use serde::{Deserialize, Serialize};
-use tilemap_shared::{AaGlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec};
+use ::tilemap_shared::*;
 use std::hash::{Hasher, Hash};
 use crate::tile::tile_components::*;
 
@@ -92,26 +92,7 @@ pub struct OperationList {
 //     }
 // }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
-pub struct OplistSize(UVec2);
 
-impl OplistSize {
-    pub fn new([x, y]: [u32; 2]) -> Result<Self, BevyError> {
-        if x <= 0 || y <= 0 {
-            return Err(BevyError::from("OplistSize dimensions must be > 0"));
-        }
-        let max = 4;
-        if x > max || y > max {
-            return Err(BevyError::from(format!("OplistSize dimensions must be <= {}", max)));
-        }
-        Ok(Self(UVec2::new(x, y)))
-    }
-    pub fn x(&self) -> u32 { self.0.x }
-    pub fn y(&self) -> u32 { self.0.y }
-    pub fn inner(&self) -> UVec2 { self.0 }
-    pub fn size(&self) -> usize { (self.x() * self.y()) as usize }
-}
-impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect )]

@@ -4,10 +4,9 @@ use bevy_ecs_tilemap::{FrustumCulling, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_states::*};
 use game_common::game_common_components::YSortOrigin;
-use tilemap_shared::{ChunkPos, GlobalTilePos};
+use ::tilemap_shared::*;
 
-
-use crate::{chunking_components::Chunk, terrain_gen::terrgen_oplist_components::OplistSize, tile::tile_components::Tile };
+use crate::{chunking_components::Chunk, tile::tile_components::Tile };
 
 #[derive(Bundle, Debug, Default)]
 pub struct TilemapConfig {
@@ -17,13 +16,13 @@ pub struct TilemapConfig {
     map_size: TilemapSize,
     render_settings: TilemapRenderSettings,
     y_sort: YSortOrigin,
-    /*
     spacing: TilemapSpacing,
     transform: Transform,
     global_transform: GlobalTransform,
     visibility: Visibility,
     inherited_visibility: InheritedVisibility,
     view_visibility: ViewVisibility,
+    /*
     frustum_culling: FrustumCulling,
     sync: SyncToRenderWorld,
     anchor: TilemapAnchor,

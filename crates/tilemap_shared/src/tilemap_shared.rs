@@ -83,6 +83,12 @@ impl GlobalTilePos {
 
     pub const TYPE_NAME: &'static str = "G-TilePos";
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
+
+    pub fn to_tilepos(&self, oplist_size: OplistSize) -> TilePos {
+        let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
+        let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) / oplist_size.inner().as_ivec2();
+        TilePos::from(ivec2.as_uvec2())
+    }
 }
 
 impl std::fmt::Display for GlobalTilePos {
@@ -110,6 +116,8 @@ impl Into<IVec2> for GlobalTilePos {
         self.0
     }
 }
+
+
 impl From<IVec2> for GlobalTilePos {
     fn from(ivec2: IVec2) -> Self {
         GlobalTilePos(ivec2)
@@ -183,3 +191,24 @@ impl std::ops::Sub for ChunkPos {
 }
 
 
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
+pub struct OplistSize(UVec2);
+
+impl OplistSize {
+    pub fn new([x, y]: [u32; 2]) -> Result<Self, BevyError> {
+        if x <= 0 || y <= 0 {
+            return Err(BevyError::from("OplistSize dimensions must be > 0"));
+        }
+        let max = 4;
+        if x > max || y > max {
+            return Err(BevyError::from(format!("OplistSize dimensions must be <= {}", max)));
+        }
+        Ok(Self(UVec2::new(x, y)))
+    }
+    pub fn x(&self) -> u32 { self.0.x }
+    pub fn y(&self) -> u32 { self.0.y }
+    pub fn inner(&self) -> UVec2 { self.0 }
+    pub fn size(&self) -> usize { (self.x() * self.y()) as usize }
+}
+impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }

@@ -7,7 +7,7 @@ use game_common::game_common::GameplaySystems;
 use superstate::superstate_plugin;
 use tilemap_shared::ChunkPos;
 
-use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{self, terrgen_systems::{InstantiatedTiles, process_tiles}, *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_systems::*};
+use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{self, terrgen_systems::{process_tiles}, *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -52,7 +52,6 @@ pub fn plugin(app: &mut App) {
     )
     .register_type::<LayersMap>()
     .register_type::<ActivatingChunks>()
-    .register_type::<InstantiatedTiles>()
     .register_type::<ChunkPos>()
     .register_type::<AaChunkRangeSettings>()
     .register_type::<TmapHashIdtoTextureIndex>()

@@ -5,7 +5,7 @@ use common::common_types::HashIdToEntityMap;
 use tilemap_shared::GlobalTilePos;
 use serde::{Deserialize, Serialize};
 
-use crate::{terrain_gen::terrgen_systems::NewlyRegPos, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, TileRef}};
+use crate::{terrain_gen::terrgen_events::NewlyRegPos, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, TileRef}};
 use game_common::game_common_components::DimensionRef;
 
 #[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone)]
@@ -30,7 +30,7 @@ impl RegisteredPositions {
             }
 
         }
-        if !is_host {
+        if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
             return false;
         }
 
@@ -55,17 +55,15 @@ impl RegisteredPositions {
                     }
                 }
             }
-            if is_host {
-                self.0.entry(new_ent_ref).or_default().push((new_dim, new_pos));
-                let to_clients = ToClients {
-                    mode: SendMode::Broadcast,
-                    event: NewlyRegPos(new_ent_ref, (new_dim, new_pos)),
-                };
-
-                cmd.server_trigger(to_clients);
-            }
         }
-            
+        self.0.entry(new_ent_ref).or_default().push((new_dim, new_pos));
+        let to_clients = ToClients {
+            mode: SendMode::Broadcast,
+            event: NewlyRegPos(new_ent_ref, (new_dim, new_pos)),
+        };
+
+        cmd.server_trigger(to_clients);
+        
         true
     }
 }

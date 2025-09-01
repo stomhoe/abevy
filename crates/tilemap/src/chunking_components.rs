@@ -7,9 +7,9 @@ use game_common::{game_common_components::DimensionRef, game_common_components_s
 use superstate::{SuperstateInfo};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
-use tilemap_shared::{AaGlobalGenSettings, ChunkPos, GlobalTilePos};
 
-use crate::{terrain_gen::{terrgen_oplist_components::OplistSize,}, tile::tile_components::*};
+use crate::{tile::tile_components::*};
+use ::tilemap_shared::*;
 
 
 use common::{common_components::*, };
