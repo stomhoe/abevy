@@ -246,7 +246,6 @@ pub fn process_tiles(mut cmd: Commands,
     mut er_instantiated_tiles: EventMutator<InstantiatedTiles>,
     mut ew_processed_tiles: EventWriter<ProcessedTiles>,
     chunk_query: Query<(&ChildOf), ()>,
-    //entity_query: Query<Entity, Or<(With<Disabled>, Without<Disabled>)>>,
     tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<ChunkOrTilemapChild>, Option<&Transform>, &TileRef), (With<Tile>, Without<Disabled>, )>,
     oritile_query: Query<(Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
     min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
@@ -309,7 +308,7 @@ pub fn process_tiles(mut cmd: Commands,
                     let displacement: Vec2 = Vec2::from(pos_within_chunk) * oplist_size.inner().as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2();
                     let displacement = transform.translation + displacement.extend(0.0);
                     cmd.entity(*tile_ent).try_insert((ChildOf(ev.chunk), Transform::from_translation(displacement))).try_remove::<(ChunkOrTilemapChild, TilePos, Disabled)>();
-                    info!("Inserted tile {:?} as child of chunk {:?} at local pos {:?}, global pos {:?}, displacement {:?}", tile_ent, ev.chunk, pos_within_chunk, global_pos, displacement);
+                    trace!("Inserted tile {:?} as child of chunk {:?} at local pos {:?}, global pos {:?}, displacement {:?}", tile_ent, ev.chunk, pos_within_chunk, global_pos, displacement);
                     //SI SE QUIERE SACAR EL CHILDOF CHUNK, HAY Q REAJUSTAR EL TRANSFORM
                 }
             
@@ -324,7 +323,7 @@ pub fn process_tiles(mut cmd: Commands,
                     .try_insert((Replicated, child_of.clone(), Transform::from_translation(displacement)));
                 
             } else {
-                error!("Tile {:?} at {:?} with pos within chunk {:?} is not a TilemapChild, despawning on client", tile_ent, global_pos, pos_within_chunk);
+                trace!("Tile {:?} at {:?} with pos within chunk {:?} is not a TilemapChild, despawning on client", tile_ent, global_pos, pos_within_chunk);
                 cmd.entity(*tile_ent).try_despawn();
                 *tile_ent = Entity::PLACEHOLDER;
             }

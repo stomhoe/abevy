@@ -1,4 +1,4 @@
-use bevy::{ecs::entity::MapEntities, prelude::*};
+use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, prelude::*};
 use ::tilemap_shared::*;
 use std::mem::take;
 use game_common::{game_common_components::*, game_common_components_samplers::EntiWeightedSampler};
@@ -90,6 +90,10 @@ pub struct PendingOp {pub oplist: Entity, pub chunk: Entity, pub pos: GlobalTile
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Event, )]
 pub struct InstantiatedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles }
 
+#[derive(Bundle)]
+pub struct BundleToDenyOnTileClone(///EN EL FUTURO DEJAR EL DISABLED EN LOS CLONES, POR AHORA DENYEAR PARA DEBUGGEAR TILES ORFANAS
+    MinDistancesMap, KeepDistanceFrom, Disabled, /*DisplayName, StrId*/
+);
 
 impl InstantiatedTiles {
     #[allow(unused_parens, )]

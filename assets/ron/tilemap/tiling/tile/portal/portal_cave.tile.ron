@@ -15,7 +15,7 @@
     spawns: [],
     spawns_children: [],
     min_distances: Some({
-        "c.portal": 20,
+        "c.portal": 300,
     }),
     tmapchild: true,
     ysort: Some(0.0),

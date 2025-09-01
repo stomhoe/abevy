@@ -10,6 +10,7 @@ pub fn reload_assets_ingame(
     mut chunks_query: Query<&mut ActivatingChunks>,
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
     mut hot_loading: ResMut<NextState<TerrainGenHotLoading>>,
+    mut regpos: ResMut<RegisteredPositions>,
 ) {
     
     if keys.pressed(KeyCode::KeyR) {
@@ -30,6 +31,8 @@ pub fn reload_assets_ingame(
         
         cmd.remove_resource::<OpListEntityMap>();
         cmd.remove_resource::<TerrGenEntityMap>();
+        cmd.remove_resource::<RegisteredPositions>();
+        regpos.0.clear();
     
         //cmd.remove_resource::<SpriteCfgEntityMap>();
         loading_state.set(AssetsLoadingState::LocalInProcess);

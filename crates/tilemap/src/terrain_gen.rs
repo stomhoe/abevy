@@ -3,10 +3,9 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
-use dimension::dimension_components::MultipleDimensionRefs;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking_components::{PendingOps,}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*, terrgen_events::*}, tilemap_systems::produce_tilemaps, };
+use crate::{chunking_components::{PendingOps,}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*, terrgen_events::*},};
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -25,7 +24,7 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            (spawn_terrain_operations, (produce_tiles, process_tiles)).in_set(TerrainGenSystems),
+            (spawn_terrain_operations, produce_tiles, process_tiles).in_set(TerrainGenSystems),
             (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities).run_if(not(server_or_singleplayer)),
         ))
     

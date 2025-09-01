@@ -15,12 +15,12 @@ pub struct AaChunkRangeSettings {
     pub chunk_visib_max_dist: f32,
     #[inspector(min = 0., max = 10000.)]
     pub chunk_active_max_dist: f32,
-    #[inspector(min = 0, max = 6)]
+    #[inspector(min = 0, max = 15)]
     pub chunk_show_range: u8,
 }
 impl Default for AaChunkRangeSettings {
     fn default() -> Self {
-        NORMAL_CHUNK_RANGE_SETTINGS
+        EXTRA_RANGE_SETTINGS
     }
 }
 
@@ -41,7 +41,13 @@ pub const DEBUG_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSetting
 };
 
 pub const NORMAL_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
-    chunk_visib_max_dist: 5000.0,
-    chunk_active_max_dist: 5000.0,
-    chunk_show_range: 5,
+    chunk_visib_max_dist: 6000.0,
+    chunk_active_max_dist: 6000.0,
+    chunk_show_range: 4,
+};
+
+pub const EXTRA_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
+    chunk_visib_max_dist: 14000.0,
+    chunk_active_max_dist: 14000.0,
+    chunk_show_range: 8,
 };

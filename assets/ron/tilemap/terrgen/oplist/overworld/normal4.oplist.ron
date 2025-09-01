@@ -1,24 +1,32 @@
 (
     id: "normal4",
     operation_operands: [
+        //shared disk
+        ("+", ["pd299", ], 8),
+
         //tree
-        ("idxmax", ["hp81", "0.001"], 4),
-        ("*", ["pd299", "fnl.forest", ], 5),
-        ("max", ["$4", "$5"], 4),
-        ("+", ["$4", "-0.0"], 4),
+        ("idxmax", ["hp81", "0.05"], 4),
+        ("max", ["fnl.forest", "$4"], 4),
+        ("*", ["$4", "$8", ], 4),
+
+        //cave portal
+        ("idxmax", ["hp81", "0.001"],5),
+
+        ("*", ["$5", "pd399", "2"], 5),
 
         //bush
-        ("idxmax", ["hp82", "0.25"], 5),
-        ("*", ["$5", "pd12", ], 5),
-        ("+", ["$5", "-0.0"], 5),
+        ("idxmax", ["hp82", "0.25"], 7),
+        ("*", ["$5", "pd12", ], 7),
+        ("+", ["$5", "-0.0"], 7),
 
-        ("idxmax", ["0.5","$4", "$5"], 0),
+        ("idxmax", ["0.5","$4", "$5", "$7"], 0),
 
     ],
    
     bifs: [
         ("", [""]),
-        ("", ["portal_cave", "pink"]),//temptree_sampler
+        ("", ["temptree_sampler", ""]),//temptree_sampler
+        ("", ["portal_cave", "cyan"]),//
         ("", ["tempveg_sampler", ""]),
     ],
     root_in_dimensions: [""],

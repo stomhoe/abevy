@@ -81,7 +81,7 @@ impl GlobalTilePos {
         self.0.distance_squared(other.0) as u32
     }
 
-    pub const TYPE_NAME: &'static str = "G-TilePos";
+    pub const TYPE_NAME: &'static str = "Gpos";
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
 
     pub fn to_tilepos(&self, oplist_size: OplistSize) -> TilePos {
@@ -134,7 +134,7 @@ impl ChunkPos {
     pub fn new(x: i32, y: i32) -> Self { Self(IVec2::new(x, y)) }
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
-    pub const CHUNK_SIZE: UVec2 = UVec2 { x: 6, y: 6 };//NORMALMENTE 12X12
+    pub const CHUNK_SIZE: UVec2 = UVec2 { x: 12, y: 12 };//NORMALMENTE 12X12
     pub fn hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();
         // Mix coordinates with a unique constant and the seed

@@ -31,8 +31,8 @@ impl PoissonDisk {
     pub fn sample<T: HashablePosVec>(&self, settings: &AaGlobalGenSettings, tile_pos: T, oplist_size: OplistSize) -> f32 {
 
         let val = tile_pos.normalized_hash_value(settings, self.seed);
-        let added_sample_distance_x = oplist_size.x() as i32;
-        let added_sample_distance_y = oplist_size.y() as i32;
+        let added_sample_distance_x = oplist_size.x() as i32 - 1;
+        let added_sample_distance_y = oplist_size.y() as i32 - 1;
 
         for dy in -(self.min_distance as i32)..=(self.min_distance as i32) {
             for dx in -(self.min_distance as i32)..=(self.min_distance as i32) {
@@ -53,7 +53,7 @@ impl PoissonDisk {
                 }
             }
         }
-        val 
+        val
     }
 }
 impl Default for PoissonDisk { fn default() -> Self { Self { min_distance: 1, seed: 0 } } }

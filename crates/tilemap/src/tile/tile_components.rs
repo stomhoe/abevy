@@ -31,10 +31,7 @@ pub struct ChunkOrTilemapChild;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct TileRef(#[entities] pub Entity);
 
-#[derive(Bundle)]
-pub struct BundleToDenyOnTileClone(
-    MinDistancesMap, KeepDistanceFrom, Disabled/*DisplayName, StrId*/
-);
+
 
 
 pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSettings) -> f32 {
