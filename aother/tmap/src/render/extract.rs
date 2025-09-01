@@ -303,8 +303,8 @@ pub fn extract(//TODO EXPONER UN EVENTO
         ));
     }
 
-    for event in event_reader.read() {
-        if let Ok(data) = tilemap_query.get(event.0) {
+    for draw_event in event_reader.read() {
+        if let Ok(data) = tilemap_query.get(draw_event.0) {
             extracted_tilemaps.insert(
                 data.0.id(),
                 (

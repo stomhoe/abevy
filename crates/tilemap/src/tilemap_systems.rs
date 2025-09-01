@@ -17,6 +17,7 @@ impl MapKey {
 }
 
 #[derive(Debug, Clone, Reflect)]
+/// NO BORRAR ESTE STRUCT, DENTRO DE UNA INSTANCIA DE EJECUCIÓN DE FUNCIÓN LAS QUERIES NO SE ACTUALIZAN HASTA Q SE SALE DE LA FUNCIÓN. HACE FALTA ESTO
 pub struct MapStruct{
     pub tmap_ent: Entity,
     pub texture: TilemapTexture,
@@ -189,6 +190,8 @@ pub fn produce_tilemaps(
         let Ok(mut layers) = chunk_query.get_mut(*chunk_ent) else {
             continue ;
         };
+
+        //DEJAR EN GET_MUT, CON REMOVE SE PIERDE LA TMAP ENTITY USADA ARRIBA
         let Some(mapstruct) = layers.0.get_mut(mapkey) else {
             continue ;
         };
@@ -217,25 +220,11 @@ pub fn produce_tilemaps(
             match shader {
                 TileShader::TexRepeat(handle) => {
                     let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone()));
-                    cmd.entity(tmap_ent).try_insert_if_new((
-                        MaterialTilemapBundle{
-                            material,
-                            ..Default::default()
-                            }
-                        /* 
-                        */
-                    ));
+                    cmd.entity(tmap_ent).try_insert(material);
                 }
                 TileShader::Voronoi(handle) => {
                     let material = MaterialTilemapHandle::from(voronoi_mat.add(handle.clone()));
-                    cmd.entity(tmap_ent).try_insert_if_new((
-                        MaterialTilemapBundle{
-                            material,
-                            ..Default::default()
-                        }
-                        /*
-                        */
-                    ));
+                    cmd.entity(tmap_ent).try_insert(material);
                 }
                 TileShader::TwoTexRepeat(handle) => todo!(),
             };
@@ -243,9 +232,7 @@ pub fn produce_tilemaps(
         } else {
             trace!("Inserting default TilemapBundle for tilemap entity {:?}", tmap_ent);
             cmd.entity(tmap_ent)
-            .try_insert_if_new((TilemapBundle{
-                ..Default::default()
-            }, ));
+            .try_insert(MaterialTilemapHandle::<StandardTilemapMaterial>::default());
         }
     }
         //CLONES PROVISORIOS
