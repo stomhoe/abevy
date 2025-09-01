@@ -84,7 +84,7 @@ pub fn despawn_unreferenced_chunks(
         let referenced = activator_query.iter().any(|(activates_chunks, )| activates_chunks.0.contains(&chunk_ent));
         
         if !referenced {
-            info!("Despawning chunk {:?} at pos: {:?}", chunk_ent, chunk_pos);
+            trace!("Despawning chunk {:?} at pos: {:?}", chunk_ent, chunk_pos);
 
             loaded_chunks.0.remove(&(DimensionRef(child_of.parent()), chunk_pos));
 

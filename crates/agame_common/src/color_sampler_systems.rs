@@ -86,7 +86,7 @@ pub fn apply_color(mut cmd: Commands,
     let Some(gen_settings) = gen_settings else { return; };
     for (entity, color_sampler, global_tile_pos, (sprite, tile_color)) in query.iter_mut() {
         if let Ok(sampler) = samplers.get(color_sampler.0) {
-            let color = sampler.sample_with_pos(&gen_settings, *global_tile_pos).unwrap_or([255, 255, 255, 255]);
+            let color = sampler.0.sample_with_pos(&gen_settings, *global_tile_pos).unwrap_or([255, 255, 255, 255]);
             let color: Color = Color::srgba_u8(color[0], color[1], color[2], color[3]);
             if let Some(mut sprite) = sprite {
                 sprite.color = color;

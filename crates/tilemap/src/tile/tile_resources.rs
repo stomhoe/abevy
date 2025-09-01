@@ -55,6 +55,8 @@ pub struct TileSeri {
     pub randflipx: bool,
     pub tmapchild: bool,
     pub min_distances: Option<HashMap<String, u32>>,
+    /// destination dimension, destination portal-tile, destination searched terrain
+    pub portal: Option<(String, String, String)>,
 }
 
 

@@ -5,7 +5,9 @@ use bevy::platform::collections::HashMap;
 use common::common_components::{EntityPrefix, StrId};
 use game_common::game_common_components_samplers::EntiWeightedSampler;
 
-use crate::tile::{tile_components::*, tile_resources::*, tile_sampler_resources::*};
+use crate::{tile::{tile_components::*, tile_resources::*, tile_sampler_resources::*}};
+
+
 
 
 #[allow(unused_parens)]
@@ -17,13 +19,14 @@ pub fn init_tile_weighted_samplers(
 ) {
     if map.is_some() { return; }
     cmd.insert_resource(TileWeightedSamplersMap::default());
+    let holder = cmd.spawn((TileSamplerHolder, )).id();
 
     for handle in seris_handles.handles.iter() {
         if let Some(seri) = assets.get(handle) {
             //info!("Loading TileWeightedSamplerSeri from handle: {:?}", handle);
 
             if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
-                cmd.spawn((str_id, EntiWeightedSampler::default(), ));
+                cmd.spawn((str_id, EntiWeightedSampler::default(), ChildOf(holder),));
             }
         }
     }
@@ -100,7 +103,7 @@ pub fn init_tile_weighted_samplers_weights(
             continue;
         }
 
-        cmd.entity(wmap_ent).insert(EntiWeightedSampler::new(&weights));
+        cmd.entity(wmap_ent).insert(EntiWeightedSampler::new(&weights),);
 
     }
 }

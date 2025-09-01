@@ -139,6 +139,7 @@ pub fn init_oplists_from_assets(
                     "*nm" => Operation::MultiplyNormalized,
                     "*nmabs" => Operation::MultiplyNormalizedAbs,
                     "idxmax" => Operation::i_Max,
+                    "idxnorm" => Operation::i_Norm,
                     "lin" => Operation::Linear,
                     _ => {
                         error!("Unknown operation: {}", operation);

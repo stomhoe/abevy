@@ -11,7 +11,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
-use crate::{tile::{tile_materials::*}, };
+use crate::{terrain_gen::terrgen_components::Terrgen, tile::tile_materials::* };
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -31,7 +31,13 @@ pub struct ChunkOrTilemapChild;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct TileRef(#[entities] pub Entity);
 
+    //    .replicate::<Portal>()
+    //    .register_type::<Portal>()
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+pub struct Portal { #[entities]pub dimension: Entity, #[entities] pub portal_tile: Entity, #[entities] pub searched_terrain: Entity }
 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+pub struct PortalInstance { #[entities]pub dimension: Entity, destination: GlobalTilePos }
 
 
 pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSettings) -> f32 {
@@ -49,7 +55,7 @@ pub struct TileShaderRef(pub Entity);
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
 
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, )]
-#[require(EntityPrefix::new("TileShader"), AssetScoped, TgenScoped)]
+#[require(EntityPrefix::new("TileShader"), AssetScoped)]
 pub enum TileShader{
     TexRepeat(MonoRepeatTextureOverlayMat),
     TwoTexRepeat(TwoOverlaysExample),
@@ -113,3 +119,7 @@ impl MinDistancesMap {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(Terrgen, EntityPrefix::new("TileSamplers"), )]
+pub struct TileSamplerHolder;

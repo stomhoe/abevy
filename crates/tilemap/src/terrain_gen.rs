@@ -5,7 +5,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking_components::{PendingOps,}, terrain_gen::{terrgen_components::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*, terrgen_events::*},};
+use crate::{chunking_components::PendingOps, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tile::tile_components::TileSamplerHolder,};
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -73,12 +73,14 @@ pub fn plugin(app: &mut App) {
         .make_trigger_independent::<NewlyRegPos>()
         .add_observer(sync_register_new_pos)
 
-        .replicate::<OplistSize>().replicate::<FnlNoise>()
+        .replicate_bundle::<(FnlNoise, ChildOf)>()
+        .replicate::<OplistSize>()
         .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>()
+        .replicate::<NoiseHolder>()
         .add_event::<PendingOp>()
         .add_event::<InstantiatedTiles>()
+        .add_event::<SampledValue>()
         .add_event::<ProcessedTiles>()
-        .init_resource::<Events<PendingOp>>()
         ;
 
         

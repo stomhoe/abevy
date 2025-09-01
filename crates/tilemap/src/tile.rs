@@ -2,7 +2,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::{AssetsLoadingState, };
 use bevy_ecs_tilemap::prelude::*;
-use game_common::ColorSamplersInitSystems;
+use game_common::{ColorSamplersInitSystems, game_common_components_samplers::EntiWeightedSampler};
 use tilemap_shared::GlobalTilePos;
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
@@ -80,6 +80,9 @@ pub fn plugin(app: &mut App) {
         .register_type::<MinDistancesMap>()
         .register_type::<TileCategories>()
         .register_type::<KeepDistanceFrom>()
+
+        .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()
+        .replicate::<TileSamplerHolder>()
 
         //usar feature
         .add_observer(client_map_server_tiling)

@@ -10,10 +10,15 @@ use std::time::Duration;
 use splines::{Interpolation, Key, Spline};
 
 
-
-pub type ColorSampler = WeightedSampler<[u8; 4]>;
-
-
+#[derive(Component, Debug, Deserialize, Serialize, )]
+#[require(EntityPrefix::new("ColorWSampler"), AssetScoped, )]
+pub struct ColorSampler(pub WeightedSampler<[u8; 4]>);
+impl ColorSampler {
+    pub fn new(weights: &HashMap<[u8; 4], f32>) -> Self {
+        let weighted_sampler = WeightedSampler::new(weights);
+        Self(weighted_sampler)
+    }
+}
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct WeightedSamplerRef(#[entities] pub Entity);
@@ -101,8 +106,7 @@ impl<'de> Deserialize<'de> for EntiWeightedSampler {
     }
 }
 
-#[derive(Debug, Clone, Component, )]
-#[require(EntityPrefix::new("WSampler"), Replicated, AssetScoped, )]
+#[derive(Debug, Clone, )]
 pub struct WeightedSampler<T: Clone + Serialize> {
     choices_and_weights: Vec<(T, f32)>, cumulative_weights: Vec<f32>, total_weight: f32,
 }

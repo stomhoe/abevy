@@ -5,7 +5,7 @@ use bevy::{ecs::entity_disabling::Disabled, platform::collections::HashSet, rend
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::RenetClient;
-use common::common_components::{DisplayName, EntityPrefix, ImageHolder, StrId};
+use common::common_components::{AssetScoped, DisplayName, EntityPrefix, ImageHolder, StrId};
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{Categories, Category, Directionable, MyZ};
 use sprite_animation_shared::sprite_animation_shared::{AnimationIdPrefix, AnimationState};
@@ -13,6 +13,10 @@ use sprite_animation_shared::sprite_animation_shared::{AnimationIdPrefix, Animat
 use crate::{sprite_components::*, sprite_resources::*, sprite_scale_offset_components::*};
 
 
+
+#[derive(Component, Debug, Default, )]
+#[require(AssetScoped, EntityPrefix::new("SpriteConfigs"), )]
+struct SpriteConfigsHolder;
 
 #[allow(unused_parens)]
 pub fn init_sprite_cfgs(
@@ -24,6 +28,7 @@ pub fn init_sprite_cfgs(
 ) -> Result {
     if map.is_some(){ return Ok(());}
     cmd.init_resource::<SpriteCfgEntityMap>();
+    let holder = cmd.spawn((SpriteConfigsHolder, )).id();
 
     let mut result: Result = Ok(());
 
@@ -82,8 +87,10 @@ pub fn init_sprite_cfgs(
             OffsetDown::from(seri.offset_down.unwrap_or_default()),
             OffsetUp::from(seri.offset_up.unwrap_or_default()),
             OffsetSideways::from(seri.offset_sideways.unwrap_or_default()),
-
             Sprite::from_atlas_image(img_holder.0, atlas),
+        )).insert((
+            ChildOf(holder),
+
         )).id();
         
 

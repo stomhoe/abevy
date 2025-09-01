@@ -63,7 +63,7 @@ pub fn spawn_terrain_operations (
                         oplist: oplist_ent,
                         chunk: chunk_ent,
                         pos: global_pos,
-                        variables: VariablesArray::default(),
+                        ..Default::default()
                     });
 
                 }
@@ -94,9 +94,9 @@ pub fn produce_tiles(mut cmd: Commands,
     oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
     mut pending_ops_events: ResMut<Events<PendingOp>>,
     fnl_noises: Query<&FnlNoise,>,
-    mut chunk_query: Query<&ChunkPos>,
     weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
-    mut ewriter_produced_tiles: EventWriter<InstantiatedTiles>,
+    mut ewriter_instantiated_tiles: EventWriter<InstantiatedTiles>,
+    mut ewriter_sampled_value: EventWriter<SampledValue>,
 ) -> Result {
 
     if pending_ops_events.is_empty() { return Ok(()); }
@@ -105,19 +105,16 @@ pub fn produce_tiles(mut cmd: Commands,
 
     let mut new_pending_ops_events = Vec::with_capacity(chunk_area);
     let mut produced_tiles_events = Vec::with_capacity(chunk_area);
+    let mut sampled_value_events = Vec::new();
 
-    for mut ev in pending_ops_events.drain() {
-
-        let Ok(&chunk_pos) = chunk_query.get_mut(ev.chunk)
-        else { continue };
-        
-
+    'eventfor: for mut ev in pending_ops_events.drain() {
+   
         let (oplist, &my_oplist_size) = oplist_query.get(ev.oplist)?;
         let global_pos = ev.pos;
 
         unsafe{
 
-        for ((operation, operands, stackarr_out_i)) in oplist.trunk.iter() {
+        for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
             let mut operation_acc_val: f32 = 0.0;
             let mut selected_operand_i = 0; 
 
@@ -163,21 +160,30 @@ pub fn produce_tiles(mut cmd: Commands,
                     (Operation::i_Max, 0, _) => { operation_acc_val = curr_operand_val; }
                     (Operation::i_Max, _, false) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}
                     (Operation::i_Max, _, true) => {if curr_operand_val > operation_acc_val { selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32;}
+                    (Operation::i_Norm, 0, false) => { operation_acc_val = curr_operand_val; }
+                    (Operation::i_Norm, 0, true) => { operation_acc_val = curr_operand_val * (oplist.bifurcations.len() - 1) as f32; }
+                    (Operation::i_Norm, _, false) => { operation_acc_val *= curr_operand_val; }
+                    (Operation::i_Norm, 1.., true) => { operation_acc_val *= curr_operand_val * (oplist.bifurcations.len() - 1) as f32; }
        
                     (_, 0, _) => {operation_acc_val = curr_operand_val;},
                 }
 
                 trace!(
-                    "{} with operand {:?} at stack array index {}: prev_value: {}, curr_value: {}, {:?}, {:?}",
+                    "{} with operand {:?} at stack array index {}: prev_value: {}, curr_value: {}, {:?},",
                     operation,
                     operand,
                     *stackarr_out_i,
                     prev_value,
                     operation_acc_val,
                     global_pos,
-                    chunk_pos
                 );      
             }
+
+            if  ev.sampled_oplist == ev.oplist && (op_i == ev.sampled_opi as usize || (op_i == oplist.trunk.len() - 1 && ev.sampled_opi <= -1)) { 
+                sampled_value_events.push(SampledValue { oplist: ev.oplist, val: operation_acc_val, pos: ev.pos, op_i: ev.sampled_opi });
+                continue 'eventfor;
+            }
+
             trace!("Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
             ev.variables[*stackarr_out_i] = operation_acc_val;
 
@@ -191,14 +197,15 @@ pub fn produce_tiles(mut cmd: Commands,
             spawn_bifurcation_oplists(&mut ev, &oplist_query, &mut new_pending_ops_events, oplist, my_oplist_size);
         }
 
-        if bifurcation.tiles.len() > 0 {
+        if bifurcation.tiles.len() > 0 && ev.sampled_oplist == Entity::PLACEHOLDER {
             let tiles = InstantiatedTiles::from_op(&mut cmd, &ev, &bifurcation.tiles, my_oplist_size, &weight_maps, &gen_settings);
             produced_tiles_events.push(tiles);
         }
 
 
     }}
-    pending_ops_events.send_batch(new_pending_ops_events); ewriter_produced_tiles.write_batch(produced_tiles_events);
+    pending_ops_events.send_batch(new_pending_ops_events); ewriter_instantiated_tiles.write_batch(produced_tiles_events);
+    ewriter_sampled_value.write_batch(sampled_value_events);
 
     Ok(())
 }
@@ -207,35 +214,39 @@ pub fn produce_tiles(mut cmd: Commands,
 
 
 fn spawn_bifurcation_oplists(
-    event: &mut PendingOp,
+    ev: &mut PendingOp,
     oplist_query: &Query<(&OperationList, &OplistSize), ()>,
     new_pending_ops: &mut Vec<PendingOp>,
-    bif_ent: Entity,
+    oplist: Entity,
     my_oplist_size: OplistSize,
 ) {
     unsafe{
-        let (_oplist, &child_oplist_size) = oplist_query.get(bif_ent).debug_expect_unchecked("faltacoso");
+        let (_, &child_oplist_size) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
+        let (chunk, pos, sampled_oplist, sampled_opi) = (ev.chunk, ev.pos, ev.sampled_oplist, ev.sampled_opi);
+
         if my_oplist_size != child_oplist_size
-            && (event.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
+        && (ev.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
+        && sampled_oplist == Entity::PLACEHOLDER
         {
             let x_end = child_oplist_size.x() as i32; let y_end = child_oplist_size.y() as i32;
             for x in 0..x_end {
                 for y in 0..y_end {
-                    let pos = event.pos + GlobalTilePos::new(x, y);
+                    let pos = pos + GlobalTilePos::new(x, y);
 
                     let variables = if x == x_end - 1 && y == y_end - 1 {
-                        take(&mut event.variables)
+                        take(&mut ev.variables)
                     } else {
-                        event.variables.clone()
+                        ev.variables.clone()
                     };
 
-                    let new_event = PendingOp{ oplist: bif_ent, chunk: event.chunk, pos, variables };
+                    let new_event = PendingOp{ oplist, chunk, pos, variables, sampled_oplist, sampled_opi };
                     new_pending_ops.push(new_event);
                 }
             }
          
         } else {
-            new_pending_ops.push(PendingOp{ oplist: bif_ent, chunk: event.chunk, pos: event.pos, variables: take(&mut event.variables) });
+            new_pending_ops.push(PendingOp{ oplist, chunk, pos, variables: take(&mut ev.variables), 
+                sampled_oplist, sampled_opi });
         }
     }
 }

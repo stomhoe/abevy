@@ -18,10 +18,10 @@ use std::ops::{Index, IndexMut};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 #[require(Replicated, SessionScoped, AssetScoped, TgenScoped, )]
-pub struct TerrGen;
+pub struct Terrgen;
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize, PartialEq, Debug, Clone)]
-#[require(TerrGen, EntityPrefix::new("Noise"), )]
+#[require(Terrgen, EntityPrefix::new("Noise"), )]
 pub struct FnlNoise(pub FastNoiseLite);
 impl FnlNoise {
     pub fn new(id: StrId) -> Self {
@@ -37,3 +37,7 @@ impl FnlNoise {
 #[derive(Component, )]
 pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sync >);
 
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(Replicated, Terrgen, EntityPrefix::new("Noises"), )]
+pub struct NoiseHolder;

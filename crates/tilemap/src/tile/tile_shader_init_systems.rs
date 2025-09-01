@@ -5,12 +5,17 @@ use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
-use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
+use common::common_components::{AssetScoped, DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
 use game_common::game_common_components::{MyZ, YSortOrigin};
 use bevy_ecs_tilemap::tiles::TilePos;
 
 use crate::{tile::{tile_components::*, tile_resources::*, tile_materials::*}, };
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Component, Debug, Default, )]
+#[require(AssetScoped, EntityPrefix::new("TileShaders"), )]
+struct TileShaderHolder;
 
 #[allow(unused_parens)]
 pub fn init_shaders(
@@ -23,7 +28,8 @@ pub fn init_shaders(
 ) {
     if tileshader_map.is_some(){ return; }
     cmd.insert_resource(TileShaderEntityMap::default());
-    
+    let holder = cmd.spawn((TileShaderHolder, )).id();
+
     for handle in repeat_tex_handles.handles.drain(..) {
         let Some(seri) = repeat_assets.remove(&handle) else {
           continue;
@@ -45,6 +51,7 @@ pub fn init_shaders(
                     TileShader::TexRepeat(MonoRepeatTextureOverlayMat::new(
                         img_holder, seri.mask_color.into(), seri.scale,
                     )),
+                    ChildOf(holder),
                 ));
             },
             Err(err) => {
@@ -73,6 +80,7 @@ pub fn init_shaders(
                     TileShader::Voronoi(VoronoiTextureOverlayMat::new(
                         img_holder, seri.mask_color.into(), seri.scale, seri.voronoi_scale, seri.voronoi_scale_random, seri.voronoi_rotation
                     )),
+                    ChildOf(holder),
                 ));
             },
             Err(err) => {

@@ -16,6 +16,8 @@ pub fn init_noises(
     if terrgen_map.is_some() { return; }
     cmd.insert_resource(TerrGenEntityMap::default());
 
+    let holder = cmd.spawn((NoiseHolder,)).id();
+
 
     for handle in take(&mut seris_handles.handles) {
         let Some(seri) = assets.remove(&handle) else { continue };
@@ -117,6 +119,7 @@ pub fn init_noises(
             str_id.clone(),
             DisplayName::new(seri.id.clone()),
             FnlNoise(noise),
+            ChildOf(holder),
         ));
 
     }

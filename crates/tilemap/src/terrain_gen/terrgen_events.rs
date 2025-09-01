@@ -85,10 +85,19 @@ impl<'a> Iterator for OplistCollectedTilesIter<'a> {
 impl Default for OplistCollectedTiles { fn default() -> Self { Self::Array([Entity::PLACEHOLDER; 4]) } }
 
 #[derive(Event, Debug)]
-pub struct PendingOp {pub oplist: Entity, pub chunk: Entity, pub pos: GlobalTilePos, pub variables: VariablesArray}
+pub struct PendingOp {pub oplist: Entity, pub chunk: Entity, pub pos: GlobalTilePos, pub variables: VariablesArray, 
+    pub sampled_oplist: Entity, pub sampled_opi: i8}
+impl Default for PendingOp {
+    fn default() -> Self {
+        Self { oplist: Entity::PLACEHOLDER, chunk: Entity::PLACEHOLDER, pos: GlobalTilePos(IVec2::ZERO), variables: VariablesArray::default(), sampled_oplist: Entity::PLACEHOLDER, sampled_opi: -1 }
+    }
+}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Event, )]
 pub struct InstantiatedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles }
+
+#[derive(Debug, Clone, Event, )]
+pub struct SampledValue {  pub oplist: Entity, pub val: f32, pub pos: GlobalTilePos, pub op_i: i8}
 
 #[derive(Bundle)]
 pub struct BundleToDenyOnTileClone(///EN EL FUTURO DEJAR EL DISABLED EN LOS CLONES, POR AHORA DENYEAR PARA DEBUGGEAR TILES ORFANAS
