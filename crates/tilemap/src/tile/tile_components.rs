@@ -106,9 +106,9 @@ pub struct MinDistancesMap(pub EntityHashMap<u32>);
 impl MinDistancesMap {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&self, 
-        my_pos: (DimensionRef, GlobalTilePos), new: (Entity, DimensionRef, GlobalTilePos)
+        my_pos: (DimensionRef, GlobalTilePos), new: (TileRef, DimensionRef, GlobalTilePos)
     ) -> bool {
-        self.0.get(&new.0).map_or(true, |&min_dist| {
+        self.0.get(&new.0.0).map_or(true, |&min_dist| {
             my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist
         })
     }

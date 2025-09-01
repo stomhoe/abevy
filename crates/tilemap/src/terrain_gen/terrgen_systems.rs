@@ -259,37 +259,46 @@ pub fn process_tiles(mut cmd: Commands,
     if er_instantiated_tiles.is_empty() { return; }
 
     let mut processed_tiles_events = Vec::with_capacity(er_instantiated_tiles.len());
-    for ev in er_instantiated_tiles.read() {
-        let Ok((child_of)) = chunk_query.get(ev.chunk) else { continue; };
+    'eventfor: for ev in er_instantiated_tiles.read() {
 
-        for mut tile_ent in ev.tiles.iter_mut() {
+        let len = ev.tiles.len();
 
-            // let Ok(entity) = entity_query.get(*tile_ent) else { 
-            //     error!("PROCESSTILES Tile entity {:?} does not exist", tile_ent);
-            //     *tile_ent = Entity::PLACEHOLDER;
-            //     continue; 
-            // };
+        'tilefor: for (i, tile_ent) in ev.tiles.iter_mut().enumerate() {
+            let Ok((child_of)) = chunk_query.get(ev.chunk) else {
+                cmd.entity(*tile_ent).try_despawn(); 
+                *tile_ent = Entity::PLACEHOLDER;
+                
+                if i == len - 1 { continue 'eventfor; }
+                if i == 0{
+                    trace!("PROCESSTILES Failed to get chunk's ChildOf for chunk {:?}", ev.chunk);
+                }
+                
+                continue 'tilefor; 
+            };
 
             let Ok((&global_pos, &pos_within_chunk, &oplist_size, tilemap_child, transform, &tile_ref)) = tile_query.get(*tile_ent)
             else { 
                 error!("PROCESSTILES Failed to get components for tile entity {:?}", tile_ent);
+                cmd.entity(*tile_ent).try_despawn(); 
                 *tile_ent = Entity::PLACEHOLDER;
-                cmd.entity(*tile_ent).try_despawn(); continue; };
+                continue 'tilefor; 
+            };
 
-            // Process tile
             let Ok((min_dists, keep_distance_from)) = oritile_query.get(tile_ref.0)
             else { 
-                error!("PROCESSTILES Failed to get original tile components for tile entity {:?}", tile_ent);
-                *tile_ent = Entity::PLACEHOLDER;
+                error!("Tile entity {:?} does not exist", tile_ent);
                 cmd.entity(*tile_ent).try_despawn(); 
-                continue; 
+                *tile_ent = Entity::PLACEHOLDER;
+                continue 'tilefor; 
             };
 
             let dimref = DimensionRef(child_of.parent());
 
-            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ref.0, dimref, global_pos, oplist_size, min_dists, keep_distance_from), min_dists_query) {
+            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ref, dimref, global_pos, oplist_size, min_dists, keep_distance_from), min_dists_query) {
+                trace!("Tile {:?} at {:?} with pos within chunk {:?} violates min distance constraints, despawning", tile_ent, global_pos, pos_within_chunk);
+                cmd.entity(*tile_ent).try_despawn(); 
                 *tile_ent = Entity::PLACEHOLDER;
-                cmd.entity(*tile_ent).try_despawn(); continue;
+                continue 'tilefor; 
             }
 
             cmd.entity(*tile_ent).try_insert((dimref, ));
@@ -316,8 +325,8 @@ pub fn process_tiles(mut cmd: Commands,
                 
             } else {
                 error!("Tile {:?} at {:?} with pos within chunk {:?} is not a TilemapChild, despawning on client", tile_ent, global_pos, pos_within_chunk);
-                *tile_ent = Entity::PLACEHOLDER;
                 cmd.entity(*tile_ent).try_despawn();
+                *tile_ent = Entity::PLACEHOLDER;
             }
         }
         let protiles = ProcessedTiles { chunk: ev.chunk, tiles: ev.take_tiles() };
@@ -344,6 +353,7 @@ pub fn sync_register_new_pos(
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
     if is_host { return; }
+    info!("Client received NewlyRegPos event from server");
 
     let regpos = trigger.event();//.map_entities(entis_map.to_client());
 

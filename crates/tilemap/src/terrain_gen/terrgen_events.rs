@@ -30,6 +30,12 @@ impl OplistCollectedTiles {
             OplistCollectedTiles::Batch(vec) => OplistCollectedTilesIterMut::Batch { vec: vec.as_mut_slice(), idx: 0 },
         }
     }
+    pub fn len(&self) -> usize {
+        match self {
+            OplistCollectedTiles::Array(arr) => arr.iter().filter(|e| **e != Entity::PLACEHOLDER).count(),
+            OplistCollectedTiles::Batch(vec) => vec.len(),
+        }
+    }
 }
 pub enum OplistCollectedTilesIterMut<'a> { Array { arr: &'a mut [Entity], idx: usize }, Batch { vec: &'a mut [Entity], idx: usize }, }
 impl<'a> Iterator for OplistCollectedTilesIterMut<'a> {
@@ -84,6 +90,7 @@ pub struct PendingOp {pub oplist: Entity, pub chunk: Entity, pub pos: GlobalTile
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Event, )]
 pub struct InstantiatedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles }
 
+
 impl InstantiatedTiles {
     #[allow(unused_parens, )]
     fn insert_tile_recursive(
@@ -111,7 +118,7 @@ impl InstantiatedTiles {
                 builder.deny::<BundleToDenyOnTileClone>();
             })
             .try_insert((
-                ChunkOrTilemapChild,
+                ChunkOrTilemapChild, 
                 global_pos.to_tilepos(oplist_size), TileRef(tiling_ent), InitialPos(global_pos), global_pos, oplist_size))
             .id();
 

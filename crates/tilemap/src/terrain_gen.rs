@@ -25,7 +25,7 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            (spawn_terrain_operations, produce_tiles, process_tiles).in_set(TerrainGenSystems),
+            (spawn_terrain_operations, (produce_tiles, process_tiles)).in_set(TerrainGenSystems),
             (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities).run_if(not(server_or_singleplayer)),
         ))
     
