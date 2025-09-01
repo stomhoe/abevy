@@ -287,7 +287,7 @@ pub fn process_tiles(mut cmd: Commands,
 
             let dimref = DimensionRef(child_of.parent());
 
-            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ref.0, dimref, global_pos, min_dists, keep_distance_from), min_dists_query) {
+            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ref.0, dimref, global_pos, oplist_size, min_dists, keep_distance_from), min_dists_query) {
                 *tile_ent = Entity::PLACEHOLDER;
                 cmd.entity(*tile_ent).try_despawn(); continue;
             }
@@ -300,6 +300,7 @@ pub fn process_tiles(mut cmd: Commands,
                     let displacement: Vec2 = Vec2::from(pos_within_chunk) * oplist_size.inner().as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2();
                     let displacement = transform.translation + displacement.extend(0.0);
                     cmd.entity(*tile_ent).try_insert((ChildOf(ev.chunk), Transform::from_translation(displacement))).try_remove::<(ChunkOrTilemapChild, TilePos, Disabled)>();
+                    info!("Inserted tile {:?} as child of chunk {:?} at local pos {:?}, global pos {:?}, displacement {:?}", tile_ent, ev.chunk, pos_within_chunk, global_pos, displacement);
                     //SI SE QUIERE SACAR EL CHILDOF CHUNK, HAY Q REAJUSTAR EL TRANSFORM
                 }
             
@@ -331,25 +332,44 @@ pub fn process_tiles(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn sync_register_new_pos(
     trigger: Trigger<NewlyRegPos>,
+    mut cmd: Commands, 
     mut own_map: ResMut<RegisteredPositions>,
     loaded_chunks: Res<LoadedChunks>,
     state: Res<State<GameSetupType>>,
+    mut entis_map: ResMut<ServerEntityMap>, 
+
+    mut ewriter: EventWriter<InstantiatedTiles>
 
 ) {
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
     if is_host { return; }
 
-    let registered_positions = trigger.event().clone();
+    let regpos = trigger.event();//.map_entities(entis_map.to_client());
 
-    let (dim, glob_pos) = registered_positions.1;
+    let (dim, global_pos) = regpos.2;
 
-    own_map.0.entry(registered_positions.0).or_default().push((dim, glob_pos));
+    let Some(dim) = entis_map.server_entry(dim.0).get() else {
+        warn!("Received server's tileref entity could not be mapped to a client one");
+        return;
+    };
+    let dim = DimensionRef(dim);
 
-    let chunk_pos: ChunkPos = glob_pos.into();
+    own_map.0.entry(regpos.0).or_default().push((dim, global_pos));
 
-    if let Some(loaded) = loaded_chunks.0.get(&(dim, chunk_pos)) {
-        
-    } 
+    let chunk_pos: ChunkPos = global_pos.into();
+
+    let Some(tileref) = entis_map.server_entry(regpos.0).get() else {
+        warn!("Received server's tileref entity could not be mapped to a client one");
+        return;
+    };
+    let tileref = TileRef(tileref);
+    
+
+
+    if let Some(&chunk) = loaded_chunks.0.get(&(dim, chunk_pos)) {
+        let ev = InstantiatedTiles::from_tile(&mut cmd, chunk, tileref, global_pos, regpos.1);
+        ewriter.write(ev);
+    }
 
 }

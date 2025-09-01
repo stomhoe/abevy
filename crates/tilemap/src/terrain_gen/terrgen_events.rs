@@ -142,21 +142,22 @@ impl InstantiatedTiles {
         }
         instance
     }
-    pub fn from_tile(cmd: &mut Commands, chunk: Entity, tile_ref: TileRef, global_pos: GlobalTilePos, oplist_size: Option<OplistSize>) -> Self {
-        
-        let tile_pos = global_pos.to_tilepos(oplist_size.unwrap_or_default());
-        
+    pub fn from_tile(cmd: &mut Commands, chunk: Entity, tile_ref: TileRef, global_pos: GlobalTilePos, oplist_size: OplistSize) -> Self {
+        if tile_ref.0 == Entity::PLACEHOLDER {
+            warn!("Tried to instantiate tile with placeholder entity");
+            return Self { chunk, tiles: OplistCollectedTiles::default() };
+        }
+
+        let tile_pos = global_pos.to_tilepos(oplist_size);
+
         let tile_ent = cmd.entity(tile_ref.0).clone_and_spawn_with(|builder|{
             builder.deny::<BundleToDenyOnTileClone>();
         })
         .try_insert((
             ChunkOrTilemapChild,
-            tile_pos, tile_ref, InitialPos(global_pos), global_pos, ))
-        .id();
+            tile_pos, tile_ref, InitialPos(global_pos), global_pos, oplist_size))
 
-        if let Some(oplist_size) = oplist_size {
-            cmd.entity(tile_ent).insert(oplist_size);
-        }
+        .id();
 
         Self { chunk, tiles: OplistCollectedTiles::new(tile_ent) }
     }
@@ -170,5 +171,13 @@ impl InstantiatedTiles {
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Reflect, Event, )]
 pub struct ProcessedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles }
 
-#[derive(Deserialize, Event, Serialize, MapEntities, )]
-pub struct NewlyRegPos (#[entities] pub Entity, pub (DimensionRef, GlobalTilePos));
+#[derive(Deserialize, Event, Serialize, )]
+pub struct NewlyRegPos (pub Entity, pub OplistSize, pub (DimensionRef, GlobalTilePos));
+
+impl MapEntities for NewlyRegPos {
+    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
+        self.0 = entity_mapper.get_mapped(self.0);
+
+        self.2.0 = DimensionRef(entity_mapper.get_mapped(self.2.0.0));
+    }
+}

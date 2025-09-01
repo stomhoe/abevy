@@ -16,7 +16,7 @@
 //! - Can `Anchor` tilemap like a sprite.
 
 use bevy::{
-    ecs::schedule::IntoScheduleConfigs,
+    ecs::{entity::Entity, event::Event, schedule::IntoScheduleConfigs},
     prelude::{
         Bundle, Changed, Component, Deref, First, GlobalTransform, InheritedVisibility, Plugin,
         Query, Reflect, ReflectComponent, SystemSet, Transform, ViewVisibility, Visibility,
@@ -57,6 +57,9 @@ pub(crate) mod render;
 /// A module which contains tile components.
 pub mod tiles;
 
+#[derive(Event, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DrawTilemap(pub Entity);
+
 /// A bevy tilemap plugin. This must be included in order for everything to be rendered.
 /// But is not necessary if you are running without a renderer.
 pub struct TilemapPlugin;
@@ -76,10 +79,11 @@ impl Plugin for TilemapPlugin {
         }
 
         app.register_type::<FrustumCulling>()
-            .register_type::<TilemapId>()
-            .register_type::<TilemapSize>()
-            .register_type::<TilemapTexture>()
-            .register_type::<TilemapTileSize>()
+        .add_event::<DrawTilemap>()
+        .register_type::<TilemapId>()
+        .register_type::<TilemapSize>()
+        .register_type::<TilemapTexture>()
+        .register_type::<TilemapTileSize>()
             .register_type::<TilemapGridSize>()
             .register_type::<TilemapSpacing>()
             .register_type::<TilemapTextureSize>()
@@ -197,6 +201,9 @@ pub mod prelude {
     pub use crate::MaterialTilemapPartialBundle;
     #[cfg(feature = "render")]
     pub use crate::TilemapPartialBundle;
+
+    #[cfg(feature = "render")]
+    pub use crate::DrawTilemap;
 
     #[cfg(feature = "render")]
     pub use crate::TilemapBundle;

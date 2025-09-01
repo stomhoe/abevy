@@ -22,10 +22,10 @@ pub struct TilemapConfig {
     visibility: Visibility,
     inherited_visibility: InheritedVisibility,
     view_visibility: ViewVisibility,
-    /*
     frustum_culling: FrustumCulling,
     sync: SyncToRenderWorld,
     anchor: TilemapAnchor,
+    /*
 */
 }
 

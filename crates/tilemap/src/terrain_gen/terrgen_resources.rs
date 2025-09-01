@@ -2,7 +2,7 @@ use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::c
 use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_replicon::prelude::*;
 use common::common_types::HashIdToEntityMap;
-use tilemap_shared::GlobalTilePos;
+use tilemap_shared::{GlobalTilePos, OplistSize};
 use serde::{Deserialize, Serialize};
 
 use crate::{terrain_gen::terrgen_events::NewlyRegPos, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, TileRef}};
@@ -15,12 +15,12 @@ impl RegisteredPositions {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, 
         cmd: &mut Commands, is_host: bool,
-        new: (Entity, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+        new: (Entity, DimensionRef, GlobalTilePos, OplistSize, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
         min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     ) -> bool {
 
 
-        let (new_ent_ref, new_dim, new_pos, new_min_distances, keep_distance) = new;
+        let (new_ent_ref, new_dim, new_pos, oplist_size, new_min_distances, keep_distance) = new;
 
         if let Some(positions) = self.0.get(&new_ent_ref) {
             for &(prev_dim, prev_pos) in positions {
@@ -32,6 +32,9 @@ impl RegisteredPositions {
         }
         if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
             return false;
+        }
+        if keep_distance.is_none() && new_min_distances.is_none() {
+            return true;
         }
 
         if let Some(new_min_distances) = new_min_distances {
@@ -59,7 +62,7 @@ impl RegisteredPositions {
         self.0.entry(new_ent_ref).or_default().push((new_dim, new_pos));
         let to_clients = ToClients {
             mode: SendMode::Broadcast,
-            event: NewlyRegPos(new_ent_ref, (new_dim, new_pos)),
+            event: NewlyRegPos(new_ent_ref, oplist_size, (new_dim, new_pos)),
         };
 
         cmd.server_trigger(to_clients);

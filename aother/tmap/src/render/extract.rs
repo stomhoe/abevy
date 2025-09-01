@@ -8,7 +8,7 @@ use bevy::{
     render::sync_world::RenderEntity,
 };
 
-use crate::anchor::TilemapAnchor;
+use crate::{DrawTilemap, anchor::TilemapAnchor};
 use crate::prelude::TilemapGridSize;
 use crate::prelude::TilemapRenderSettings;
 use crate::render::DefaultSampler;
@@ -219,25 +219,8 @@ pub fn extract(//TODO EXPONER UN EVENTO
             &TilemapAnchor,
         )>,
     >,
-    changed_tilemap_query: Extract<
-        Query<
-            Entity,
-            Or<(
-                Added<TilemapType>,
-                Changed<TilemapType>,
-                Changed<GlobalTransform>,
-                Changed<TilemapTexture>,
-                Changed<TilemapTileSize>,
-                Changed<TilemapSpacing>,
-                Changed<TilemapGridSize>,
-                Changed<TilemapSize>,
-                Changed<InheritedVisibility>,
-                Changed<FrustumCulling>,
-                Changed<TilemapRenderSettings>,
-                Changed<TilemapAnchor>,
-            )>,
-        >,
-    >,
+    mut event_reader: Extract<EventReader<DrawTilemap>>,
+
     camera_query: Extract<Query<(&RenderEntity, &Frustum), With<Camera>>>,
     images: Extract<Res<Assets<Image>>>,
 ) {
@@ -320,8 +303,8 @@ pub fn extract(//TODO EXPONER UN EVENTO
         ));
     }
 
-    for tilemap_entity in changed_tilemap_query.iter() {
-        if let Ok(data) = tilemap_query.get(tilemap_entity) {
+    for event in event_reader.read() {
+        if let Ok(data) = tilemap_query.get(event.0) {
             extracted_tilemaps.insert(
                 data.0.id(),
                 (

@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
 use common::{common_components::StrId, common_resources::ImageSizeMap};
 use game_common::game_common_components::MyZ;
@@ -44,17 +44,19 @@ pub fn produce_tilemaps(
     mut chunk_query: Query<(&mut LayersMap), ()>,
     tile_comps: Query<(Entity, &TilePos, &OplistSize, Option<&TileHidsHandles>, Option<&MyZ>, Option<&TileShaderRef>, ), 
     (Without<Disabled>, With<ChunkOrTilemapChild>, Without<Transform>)>,
-    //mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
+    mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
     image_size_map: Res<ImageSizeMap>,
 
     mut texture_overlay_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
     mut voronoi_mat: ResMut<Assets<VoronoiTextureOverlayMat>>,
+    mut event_writer: EventWriter<DrawTilemap>,
     shader_query: Query<(&TileShader, ), ( )>,
 ) -> Result {
 
     //let mut changed_tilemaps = HashSet::new();
 
-    let mut changed: HashSet<(Entity, MapKey)> = HashSet::new();
+    let mut changed_structs: HashSet<(Entity, MapKey)> = HashSet::new();
+    let mut to_draw = HashSet::new();
 
     #[allow(unused_mut)]
     'eventsfor: for ev in ereader_prodtiles.read() {
@@ -93,17 +95,17 @@ pub fn produce_tilemaps(
             let map_key = MapKey::new(tile_z_index, oplist_size, tile_size, shader_ref.copied());
             trace!("Changed tilemap {:?} in chunk {:?}", map_key, ev.chunk);
 
-            changed.insert((ev.chunk, map_key.clone()));
-
+            
             if let Some(mapstruct) = layers.0.get_mut(&map_key) {
                 let tmap_ent = mapstruct.tmap_ent;
-                //changed_tilemaps.insert(TilemapChanged(tmap_ent));
-
+                to_draw.insert(DrawTilemap(tmap_ent));
+                
                 let (tmap_handles, storage, tmap_hash_id_map) =
-                    // if let Ok((mut tmap_handles, mut storage, mut tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent) {
-                    //     (tmap_handles.into_inner(), storage.into_inner(), tmap_hash_id_map.into_inner())
-                    // } else 
+                    if let Ok((mut tmap_handles, mut storage, mut tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent) {
+                        (tmap_handles.into_inner(), storage.into_inner(), tmap_hash_id_map.into_inner())
+                    } else 
                     {
+                        changed_structs.insert((ev.chunk, map_key.clone()));
                         let MapStruct { texture: tmap_handles, storage, tmap_hash_id_map, .. } = mapstruct;
                         (tmap_handles, storage, tmap_hash_id_map)
                     };
@@ -141,6 +143,8 @@ pub fn produce_tilemaps(
             
             } else {
                 let mut tmap_hash_id_map = TmapHashIdtoTextureIndex::default();
+                changed_structs.insert((ev.chunk, map_key.clone()));
+
 
                 let handles = if let Some(tile_handles) = tile_handles {
                     for (i, (id, _)) in tile_handles.iter().enumerate() {
@@ -157,8 +161,8 @@ pub fn produce_tilemaps(
                     map_key.z_index,
                 ))
                 .id();
+                to_draw.insert(DrawTilemap(tmap_ent));
 
-                //changed_tilemaps.insert(TilemapChanged(tmap_ent));
 
                 //TODO HACER UN SYSTEM Q BORRE TILEMAPS HUÉRFANOS?
                 
@@ -179,7 +183,7 @@ pub fn produce_tilemaps(
    
 
     }
-    for (chunk_ent, mapkey) in changed.iter() {
+    for (chunk_ent, mapkey) in changed_structs.iter() {
         trace!("Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
 
         let Ok(mut layers) = chunk_query.get_mut(*chunk_ent) else {
@@ -191,9 +195,9 @@ pub fn produce_tilemaps(
         let tmap_ent = mapstruct.tmap_ent;
 
         let (texture, storage, tmap_hash_id_map) = (
-            mapstruct.texture.clone(),
-            mapstruct.storage.clone(),
-            mapstruct.tmap_hash_id_map.clone(),
+            mapstruct.take_texture(),
+            mapstruct.take_storage(),
+            mapstruct.take_hash_id_map(),
         );
 
         let shader = if let Some(shader_ref) = mapkey.shader_ref {
@@ -204,6 +208,7 @@ pub fn produce_tilemaps(
         cmd.entity(tmap_ent).insert((
             tmap_hash_id_map,
             storage,
+            texture,
         ));
         
         
@@ -215,7 +220,6 @@ pub fn produce_tilemaps(
                     cmd.entity(tmap_ent).try_insert_if_new((
                         MaterialTilemapBundle{
                             material,
-                            texture,
                             ..Default::default()
                             }
                         /* 
@@ -227,7 +231,6 @@ pub fn produce_tilemaps(
                     cmd.entity(tmap_ent).try_insert_if_new((
                         MaterialTilemapBundle{
                             material,
-                            texture,
                             ..Default::default()
                         }
                         /*
@@ -241,12 +244,12 @@ pub fn produce_tilemaps(
             trace!("Inserting default TilemapBundle for tilemap entity {:?}", tmap_ent);
             cmd.entity(tmap_ent)
             .try_insert_if_new((TilemapBundle{
-                texture,
                 ..Default::default()
             }, ));
         }
     }
         //CLONES PROVISORIOS
+    event_writer.write_batch(to_draw);
 
 
     Ok(())
