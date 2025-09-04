@@ -22,13 +22,13 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(Update, (
-        //despawn_unreferenced_chunks, 
+        despawn_unreferenced_chunks, 
         rem_outofrange_chunks_from_activators, 
         (
             visit_chunks_around_activators, 
             show_chunks_around_camera, 
             hide_outofrange_chunks, 
-            produce_tilemaps/* .before(despawn_unreferenced_chunks)*/.after(process_tiles)//NO TOCAR
+            produce_tilemaps.before(despawn_unreferenced_chunks)//NO TOCAR
         ).in_set(ChunkSystems).run_if(in_state(TerrainGenHotLoading::KeepAlive))
     ))
 

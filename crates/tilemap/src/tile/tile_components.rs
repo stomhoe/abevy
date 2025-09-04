@@ -36,7 +36,7 @@ pub struct TileRef(#[entities] pub Entity);
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-pub struct PortalTemplate { #[entities]pub root_oplist: Entity, #[entities] pub oe_portal_tile: Entity, 
+pub struct PortalTemplate { #[entities]pub dest_dimension: Entity,#[entities]pub root_oplist: Entity, #[entities] pub oe_portal_tile: Entity, 
     #[entities] pub checked_oplist: Entity, pub op_i: i8, pub lim_below: f32, pub lim_above: f32 }
 impl PortalTemplate {
     pub fn to_studied_op(&self, start_pos: GlobalTilePos) -> StudiedOp {
@@ -53,15 +53,19 @@ impl PortalTemplate {
 
 impl Default for PortalTemplate {
     fn default() -> Self {
-        Self { root_oplist: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, checked_oplist: Entity::PLACEHOLDER, op_i: -1, lim_below: 0.0, lim_above: 0.0 }
+        Self { dest_dimension: Entity::PLACEHOLDER, root_oplist: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, checked_oplist: Entity::PLACEHOLDER, op_i: -1, lim_below: 0.0, lim_above: 0.0 }
     }
 }
 
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-pub struct PortalInstance { #[entities]pub dest_dimension: Entity, dest_pos: GlobalTilePos }
-
+pub struct PortalInstance { #[entities]pub dest_dimension: Entity, pub dest_pos: GlobalTilePos }
+impl PortalInstance {
+    pub fn new(dest_dimension: Entity, dest_pos: GlobalTilePos) -> Self {
+        Self { dest_dimension, dest_pos }
+    }
+}
 
 pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSettings) -> f32 {
     let mut hasher = DefaultHasher::new();

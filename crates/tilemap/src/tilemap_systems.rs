@@ -41,10 +41,10 @@ use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 #[allow(unused_parens, )]
 pub fn produce_tilemaps(
     mut cmd: Commands, 
-    mut ereader_prodtiles: EventReader<ProcessedTiles>,
-    mut chunk_query: Query<(&mut LayersMap), ()>,
+    mut ereader_processed_tiles: EventReader<ProcessedTiles>,
     tile_comps: Query<(Entity, &TilePos, &OplistSize, Option<&TileHidsHandles>, Option<&MyZ>, Option<&TileShaderRef>, ), 
-    (Without<Disabled>, With<ChunkOrTilemapChild>, Without<Transform>)>,
+    (Or<(With<Disabled>, Without<Disabled>)>, With<ChunkOrTilemapChild>, Without<Transform>)>,
+    mut chunk_query: Query<(&mut LayersMap), ()>,
     mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
     image_size_map: Res<ImageSizeMap>,
 
@@ -60,7 +60,7 @@ pub fn produce_tilemaps(
     let mut to_draw = HashSet::new();
 
     #[allow(unused_mut)]
-    'eventsfor: for ev in ereader_prodtiles.read() {
+    'eventsfor: for ev in ereader_processed_tiles.read() {
         trace!("Processing event for chunk {:?}", ev.chunk);
 
         let Ok(mut layers) = chunk_query.get_mut(ev.chunk) else {
@@ -82,9 +82,6 @@ pub fn produce_tilemaps(
             .try_remove::<(ChunkOrTilemapChild, Disabled)>();
 
             let tile_z_index = tile_z_index.cloned().unwrap_or_default();
-
-            
-            
 
             let tile_size = match tile_handles {
                 Some(handles) => (image_size_map.0.get(&handles.first_handle()).copied().unwrap_or(U16Vec2::ONE)),

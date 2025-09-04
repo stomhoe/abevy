@@ -6,12 +6,12 @@ use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::{HashId, StrId};
-use dimension_shared::DimensionRootOplist;
+use dimension_shared::{DimensionRef, DimensionRootOplist};
 use game_common::game_common_components::*;
 use player::player_components::{HostPlayer, OfSelf, Player};
 use rand_distr::StudentT;
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, HashablePosVec};
-use crate::{ terrain_gen::terrgen_events::{PendingOp, PosSearch, SearchFailed, StudiedOp, SuitablePosFound}, tile::{tile_components::*, tile_resources::*}};
+use crate::{ terrain_gen::{terrgen_events::{PendingOp, PosSearch, SearchFailed, StudiedOp, SuitablePosFound}, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*}};
 
 
 
@@ -77,22 +77,23 @@ pub fn esbozo_add_tile_instances_to_map(mut cmd: Commands,
 //                                                       ^^^^
 #[allow(unused_parens)]
 pub fn instantiate_portal(mut cmd: Commands,
-    new_portals: Query<(Entity, &StrId, &PortalTemplate, &GlobalTilePos),(Or<(With<Disabled>, Without<Disabled>)>, Without<SearchingForSuitablePos>)>,
-    pending_search: Query<(Entity, &StrId, &PortalTemplate, &GlobalTilePos),(Or<(With<Disabled>, Without<Disabled>)>, With<SearchingForSuitablePos>)>,
+    new_portals: Query<(Entity, &StrId, &PortalTemplate, &GlobalTilePos),(Without<SearchingForSuitablePos>)>,
+    pending_search: Query<(Entity, &StrId, &PortalTemplate, &GlobalTilePos),(With<SearchingForSuitablePos>)>,
     mut ew_pending_ops: EventWriter<PosSearch>,
     mut ereader_search_failed: EventReader<SearchFailed>,
     mut ereader_search_successful: EventReader<SuitablePosFound>,
+    mut register_pos: ResMut<RegisteredPositions>
 
 ) {
     let mut started_searches: HashMap<StudiedOp, Entity> = HashMap::new();
 
-    for (ent, str_id, portal_template, &global_pos) in new_portals.iter() {
+    for (portal_ent, str_id, portal_template, &global_pos) in new_portals.iter() {
 
         let studied_op = portal_template.to_studied_op(global_pos);
         let pos_search = PosSearch::portal_pos_search(studied_op.clone());
-        cmd.entity(ent).insert(SearchingForSuitablePos);
+        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos);
         ew_pending_ops.write(pos_search);
-        started_searches.insert(studied_op, ent);
+        started_searches.insert(studied_op, portal_ent);
     }
 
 
@@ -105,16 +106,23 @@ pub fn instantiate_portal(mut cmd: Commands,
         }
 
         if let Some(ent) = started_searches.remove(&studied_op) {
+            let Ok((_, str_id, portal_template, _)) = new_portals.get(ent) else {
+                continue 'successful_searches;
+            };
             cmd.entity(ent).remove::<(SearchingForSuitablePos, PortalTemplate)>();
             successful_searches.insert(studied_op);
+            register_pos.0.entry(portal_template.oe_portal_tile).or_default().push((DimensionRef(portal_template.dest_dimension), search_successful_ev.found_pos));
+            cmd.entity(ent).insert(PortalInstance::new(portal_template.dest_dimension, search_successful_ev.found_pos));
             continue 'successful_searches;
         }
 
         for (ent, str_id, portal_template, &global_pos) in pending_search.iter() {
             if studied_op == portal_template.to_studied_op(global_pos) {
                 info!("Found suitable pos for portal tile {}", str_id);
-                successful_searches.insert(studied_op);
                 cmd.entity(ent).remove::<(SearchingForSuitablePos, PortalTemplate)>();
+                successful_searches.insert(studied_op);
+                register_pos.0.entry(portal_template.oe_portal_tile).or_default().push((DimensionRef(portal_template.dest_dimension), search_successful_ev.found_pos));
+                cmd.entity(ent).insert(PortalInstance::new(portal_template.dest_dimension, search_successful_ev.found_pos));
                 continue 'successful_searches;
             }
         }

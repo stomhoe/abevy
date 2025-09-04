@@ -46,6 +46,8 @@ pub fn dim_replace_string_ref_by_entity_ref(
             error!(target: "dimension_loading", "Portal tile '{}' does not have a corresponding Dimension entity in the map.", ent_str_id);
             continue;
         };
+        portal_template.dest_dimension = dimension_entity;
+
         let Ok(root_oplist) = dimension_query.get(dimension_entity) else {
             error!(target: "dimension_loading", "PortalTemplate {} references a Dimension that doesn't exist: {:?}", ent_str_id, portal_template.root_oplist);
             continue;

@@ -233,6 +233,7 @@ pub fn map_portal_tiles(mut cmd: Commands,
         };
         info!("Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
         cmd.entity(ent).insert(PortalTemplate{
+            dest_dimension: Entity::PLACEHOLDER,
             root_oplist: Entity::PLACEHOLDER, //SETEARLO DESPUÉS
             oe_portal_tile: tile_ent,
             checked_oplist: Entity::PLACEHOLDER, //SETEARLO DESPUÉS

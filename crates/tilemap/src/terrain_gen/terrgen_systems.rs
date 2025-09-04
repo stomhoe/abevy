@@ -256,10 +256,10 @@ fn spawn_bifurcation_oplists(
 
 #[allow(unused_parens)]
 pub fn process_tiles(mut cmd: Commands, 
-    mut er_instantiated_tiles: EventMutator<InstantiatedTiles>,
+    mut er_instantiated_tiles: ResMut<Events<InstantiatedTiles>>,
     mut ew_processed_tiles: EventWriter<ProcessedTiles>,
     chunk_query: Query<(&ChildOf), ()>,
-    tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<ChunkOrTilemapChild>, Option<&Transform>, &TileRef), (With<Tile>, Without<Disabled>, )>,
+    tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<ChunkOrTilemapChild>, Option<&Transform>, &TileRef), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
     oritile_query: Query<(Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
     min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     mut regpos_map: ResMut<RegisteredPositions>,
@@ -268,20 +268,22 @@ pub fn process_tiles(mut cmd: Commands,
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
 
+
     if er_instantiated_tiles.is_empty() { return; }
 
+    let mut instantiated_tiles_events_to_retransmit = Vec::with_capacity(er_instantiated_tiles.len());
     let mut processed_tiles_events = Vec::with_capacity(er_instantiated_tiles.len());
-    'eventfor: for ev in er_instantiated_tiles.read() {
+    'eventfor: for mut ev in er_instantiated_tiles.drain() {
 
         let len = ev.tiles.len();
 
-        'tilefor: for (i, tile_ent) in ev.tiles.iter_mut().enumerate() {
+        'tilefor: for (tile_i, tile_ent) in ev.tiles.iter_mut().enumerate() {
             let Ok((child_of)) = chunk_query.get(ev.chunk) else {
                 cmd.entity(*tile_ent).try_despawn(); 
                 *tile_ent = Entity::PLACEHOLDER;
                 
-                if i == len - 1 { continue 'eventfor; }
-                if i == 0{
+                if tile_i == len - 1 { continue 'eventfor; }
+                if tile_i == 0{
                     trace!("PROCESSTILES Failed to get chunk's ChildOf for chunk {:?}", ev.chunk);
                 }
                 
@@ -290,10 +292,13 @@ pub fn process_tiles(mut cmd: Commands,
 
             let Ok((&global_pos, &pos_within_chunk, &oplist_size, tilemap_child, transform, &tile_ref)) = tile_query.get(*tile_ent)
             else { 
-                error!("PROCESSTILES Failed to get components for tile entity {:?}", tile_ent);
-                cmd.entity(*tile_ent).try_despawn(); 
-                *tile_ent = Entity::PLACEHOLDER;
-                continue 'tilefor; 
+                ev.retransmission_count += 1;
+                if ev.retransmission_count == 1000 {
+                    error!("Tile entity {:?} in instantiated tiles event for chunk {:?} does not exist or isn't a Tile", tile_ent, ev.chunk);
+                }else{
+                    instantiated_tiles_events_to_retransmit.push(ev);
+                }
+                continue 'eventfor; 
             };
 
             let Ok((min_dists, keep_distance_from)) = oritile_query.get(tile_ref.0)
@@ -346,6 +351,7 @@ pub fn process_tiles(mut cmd: Commands,
         
     }
     ew_processed_tiles.write_batch(processed_tiles_events);
+    er_instantiated_tiles.send_batch(instantiated_tiles_events_to_retransmit);
 }
 
 
@@ -482,7 +488,7 @@ pub fn search_suitable_position(
             SearchPattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turns) => {
             // Spiral search: move in a direction for curr_length_in_dir steps, then turn 90°, increase length every two turns
 
-                info!("Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
+                trace!("Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
                     pos, dir_vec, curr_length_in_dir, turns);
 
                 for _ in 0..iterations_per_batch {
@@ -504,11 +510,10 @@ pub fn search_suitable_position(
                         curr_length_in_dir += turns as u32;
                         turns = !turns;
                     }
-
-                    if curr_iteration_batch_i == 0 && steps_taken < 10 && curr_length_in_dir < 6 {
-                        info!("Spiral search step {} at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
-                            (steps_taken), pos, dir_vec, curr_length_in_dir, turns);
-                    }
+                    // if curr_iteration_batch_i == 0 && steps_taken < 10 && curr_length_in_dir < 6 {
+                    //     info!("Spiral search step {} at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
+                    //         (steps_taken), pos, dir_vec, curr_length_in_dir, turns);
+                    // }
 
                 }
                 if curr_iteration_batch_i + 1 < max_batches {

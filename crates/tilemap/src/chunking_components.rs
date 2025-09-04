@@ -46,24 +46,3 @@ pub struct LayersMap(pub HashMap<MapKey, MapStruct>);
 pub struct ActivatingChunks(#[entities] pub EntityHashSet,);
 
 
-
-
-            // unsafe {
-            // let (tilemap_child, transform) = tilemap_child.get(tiling_ent).debug_expect_unchecked("asdasda");
-
-            // if tilemap_child {
-            //     trace!("Inserting tile {:?} at {:?} with pos within chunk {:?}", tiling_ent, global_pos, pos_within_chunk);
-            //     cmd.entity(tile_ent).try_insert((oplist_size, pos_within_chunk, global_pos));
-            //     self.0.push(tile_ent);
-            // } 
-            // else if is_server {
-            //     trace!("Inserting tile {:?} at {:?} with pos within chunk {:?}, but it is not a TilemapChild", tiling_ent, global_pos, pos_within_chunk);
-            //     cmd.entity(tile_ent).try_insert((Replicated, ChildOf(dimension_ref.0), )).try_remove::<Tile>().try_remove::<Disabled>();
-            //     let displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
-            //     info!("Displacement for tile {:?} is {:?}", tile_ent, displacement);
-            //     if let Some(transform) = transform {
-            //         cmd.entity(tile_ent).try_insert(Transform::from_translation( transform.translation + displacement));
-            //     } 
-            // }
-    
-            // }

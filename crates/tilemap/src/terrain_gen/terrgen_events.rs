@@ -161,20 +161,7 @@ impl PartialEq for StudiedOp {
 impl Eq for StudiedOp {}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Event, )]
-pub struct InstantiatedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles }
-
-#[derive(Debug, Clone, Event, )]
-pub struct SuitablePosFound { pub studied_op: StudiedOp, pub val: f32, pub found_pos: GlobalTilePos, }
-
-
-#[derive(Debug, Clone, Event, )]
-pub struct SearchFailed (pub StudiedOp);
-
-#[derive(Bundle)]
-pub struct BundleToDenyOnTileClone(///EN EL FUTURO DEJAR EL DISABLED EN LOS CLONES, POR AHORA DENYEAR PARA DEBUGGEAR TILES HUERFANAS
-    MinDistancesMap, KeepDistanceFrom, ChildOf, Disabled, /*DisplayName, StrId*/
-);
-
+pub struct InstantiatedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles, pub retransmission_count: u16 }
 impl InstantiatedTiles {
     #[allow(unused_parens, )]
     fn insert_tile_recursive(
@@ -225,7 +212,7 @@ impl InstantiatedTiles {
     pub fn from_op(cmd: &mut Commands, precursor: &PendingOp,  tiling_ents: &Vec<Entity>, oplist_size: OplistSize,
         weight_maps: &Query<(&EntiWeightedSampler,), ()>, gen_settings: &AaGlobalGenSettings,
     ) -> Self {
-        let mut instance = Self { chunk: precursor.chunk_ent, tiles: OplistCollectedTiles::default() };
+        let mut instance = Self { chunk: precursor.chunk_ent, ..Default::default() };
         for tile in tiling_ents.iter().cloned() {
             instance.insert_tile_recursive(cmd, tile, precursor.pos, oplist_size, weight_maps, gen_settings, 0);
         }
@@ -234,7 +221,7 @@ impl InstantiatedTiles {
     pub fn from_tile(cmd: &mut Commands, chunk: Entity, tile_ref: TileRef, global_pos: GlobalTilePos, oplist_size: OplistSize) -> Self {
         if tile_ref.0 == Entity::PLACEHOLDER {
             warn!("Tried to instantiate tile with placeholder entity");
-            return Self { chunk, tiles: OplistCollectedTiles::default() };
+            return Self { chunk, ..Default::default() };
         }
 
         let tile_pos = global_pos.to_tilepos(oplist_size);
@@ -248,13 +235,14 @@ impl InstantiatedTiles {
 
         .id();
 
-        Self { chunk, tiles: OplistCollectedTiles::new(tile_ent) }
+        Self { chunk, tiles: OplistCollectedTiles::new(tile_ent), ..Default::default() }
     }
 
 
     pub fn take_tiles(&mut self) -> OplistCollectedTiles {take(&mut self.tiles)}
 
 }
+impl Default for InstantiatedTiles { fn default() -> Self { Self { chunk: Entity::PLACEHOLDER, tiles: OplistCollectedTiles::default(), retransmission_count: 0 } } }
 
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Reflect, Event, )]
@@ -270,3 +258,15 @@ impl MapEntities for NewlyRegPos {
         self.2.0 = DimensionRef(entity_mapper.get_mapped(self.2.0.0));
     }
 }
+
+#[derive(Debug, Clone, Event, )]
+pub struct SuitablePosFound { pub studied_op: StudiedOp, pub val: f32, pub found_pos: GlobalTilePos, }
+
+
+#[derive(Debug, Clone, Event, )]
+pub struct SearchFailed (pub StudiedOp);
+
+#[derive(Bundle)]
+pub struct BundleToDenyOnTileClone(///EN EL FUTURO DEJAR EL DISABLED EN LOS CLONES, POR AHORA DENYEAR PARA DEBUGGEAR TILES HUERFANAS
+    MinDistancesMap, KeepDistanceFrom, ChildOf, /*DisplayName, StrId*/
+);
