@@ -20,7 +20,7 @@ pub struct ColorWeightedSamplerHandles {
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct WeightedColorsSeri {
     pub id: String,
-    pub weights: HashMap<[u8; 4], f32>,
+    pub weights: Vec<([u8; 4], f32)>,
 }
 impl WeightedColorsSeri {
     pub const MIN_ID_LENGTH: u8 = 3;

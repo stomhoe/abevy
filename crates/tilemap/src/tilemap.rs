@@ -2,9 +2,8 @@ use bevy::prelude::*;
 
 
 use common::common_states::*;
-use dimension::DimensionSystems;
+use dimension_shared::DimensionSystems;
 use game_common::game_common::GameplaySystems;
-use superstate::superstate_plugin;
 use tilemap_shared::ChunkPos;
 
 use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{self, terrgen_systems::{process_tiles}, *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_systems::*};
@@ -23,20 +22,19 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(Update, (
-        despawn_unreferenced_chunks, 
         //despawn_unreferenced_chunks, 
         rem_outofrange_chunks_from_activators, 
         (
             visit_chunks_around_activators, 
             show_chunks_around_camera, 
             hide_outofrange_chunks, 
-            produce_tilemaps.before(despawn_unreferenced_chunks).after(process_tiles)//NO TOCAR
+            produce_tilemaps/* .before(despawn_unreferenced_chunks)*/.after(process_tiles)//NO TOCAR
         ).in_set(ChunkSystems).run_if(in_state(TerrainGenHotLoading::KeepAlive))
     ))
 
     .configure_sets(Update, (
         (TerrainGenSystems,
-        ChunkSystems).in_set(GameplaySystems).run_if(in_state(LoadedAssetsSession::KeepAlive))
+        ChunkSystems).in_set(GameplaySystems).run_if(in_state(LocallyLoadedAssetsSession::KeepAlive))
     ))
     .configure_sets(
         OnEnter(AssetsLoadingState::LocalFinished), (

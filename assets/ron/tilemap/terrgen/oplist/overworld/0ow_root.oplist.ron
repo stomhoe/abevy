@@ -14,7 +14,7 @@
         ("elf1", [""]),
         ("", ["ocean"])
     ],
-    root_in_dimensions: ["ow"],
+    root_in_dimensions: ["ow", "cave"],
     size: Some((1, 1)),
 
 )

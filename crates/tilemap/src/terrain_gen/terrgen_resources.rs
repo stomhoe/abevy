@@ -6,7 +6,8 @@ use tilemap_shared::{GlobalTilePos, OplistSize};
 use serde::{Deserialize, Serialize};
 
 use crate::{terrain_gen::terrgen_events::NewlyRegPos, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, TileRef}};
-use game_common::game_common_components::DimensionRef;
+use dimension_shared::DimensionRef
+;
 
 #[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone)]
 #[reflect(Resource, Default)]

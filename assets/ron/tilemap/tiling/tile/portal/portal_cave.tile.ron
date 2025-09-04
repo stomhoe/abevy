@@ -17,6 +17,16 @@
     min_distances: Some({
         "c.portal": 300,
     }),
+    portal: Some(
+        (
+            dest_dimension: "cave",
+            oe_tile: "portal_cave",//reconfigurarle el portal component para q te devuelva a la dimension de antes
+            oplist: "normal3",
+            op_i: -1,
+            lim_below: 0.0,
+            lim_above: 0.1,
+        )
+    ),
     tmapchild: true,
     ysort: Some(0.0),
 )

@@ -31,7 +31,7 @@ pub fn apply_scales(
             if let Ok(base_direction) = baseholder_query.get(spriteholder.base) {
     
                 match base_direction {
-                    FacingDirection::Left => {
+                    FacingDirection::West => {
                         total_scale *= ref_scale_sideways * scale_look_sideways.copied().unwrap_or_default();
                         
                         if let Some(&flip_horiz) = ref_flip_horiz_if_dir {
@@ -40,7 +40,7 @@ pub fn apply_scales(
                             };
                         }
                     },
-                    FacingDirection::Right => {
+                    FacingDirection::East => {
                         total_scale *= ref_scale_sideways * scale_look_sideways.copied().unwrap_or_default();
 
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
@@ -49,7 +49,7 @@ pub fn apply_scales(
                             };
                         }
                     },
-                    FacingDirection::Up => {
+                    FacingDirection::North => {
                         total_scale *= ref_scale_updown * scale_look_up_down.copied().unwrap_or_default();
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -57,7 +57,7 @@ pub fn apply_scales(
                             };
                         }
                     },
-                    FacingDirection::Down => {
+                    FacingDirection::South => {
                         total_scale *= ref_scale_updown * scale_look_up_down.copied().unwrap_or_default();
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -112,17 +112,17 @@ pub fn apply_offsets(
 
         if let Ok(direction) = base_query.get(baseholder.base) {
             match direction {
-                FacingDirection::Left => {
+                FacingDirection::West => {
                     total_offset += offset_sideways;
                 },
-                FacingDirection::Right => {
+                FacingDirection::East => {
                     total_offset += offset_sideways;
                 },
-                FacingDirection::Up => {
+                FacingDirection::North => {
                     total_offset += offset_updown;
                     total_offset += offset_up;
                 },
-                FacingDirection::Down => {
+                FacingDirection::South => {
                     total_offset += offset_updown;
                     total_offset += offset_down;
                 }

@@ -1,14 +1,11 @@
 [package]
-name = "dimension"
+name = "dimension_shared"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
-dimension_shared = { path = "../dimension_shared" }
-tilemap = { path = "../tilemap" }
-tilemap_shared = { path = "../tilemap_shared" }
 
 bevy = { workspace = true }
 debug_unwraps = { workspace = true }

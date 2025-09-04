@@ -1,7 +1,7 @@
 (
-    id: "_body_walk_down",
+    id: "_body_idle_south",
     sheet_rows_cols: (4, 6),
     target: 0,
     is_row: true,
-    partial: None,
+    partial: Some((0, 0)),
 )

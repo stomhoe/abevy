@@ -10,6 +10,7 @@ tilemap = { path = "../tilemap" }
 sprite_animation = { path = "../sprite_animation" }
 sprite = { path = "../sprite" }
 dimension = { path = "../dimension" }
+dimension_shared = { path = "../dimension_shared" }
 
 
 bevy = { workspace = true }

@@ -1,6 +1,7 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use bevy_inspector_egui::prelude::*;
-use game_common::game_common_components::DimensionRef;
+use dimension_shared::DimensionRef
+;
 use tilemap_shared::ChunkPos;
 
 

@@ -1,7 +1,8 @@
 
 use bevy::prelude::*;
 use camera::camera_components::CameraTarget;
-use game_common::game_common_components::DimensionRef;
+use dimension_shared::DimensionRef
+;
 use tilemap_shared::ChunkPos;
 
 use crate::{chunking_components::*, chunking_resources::*};
@@ -27,14 +28,16 @@ pub fn visit_chunks_around_activators(
 
                 if ! loaded_chunks.0.contains_key(&(dimension_ref, chunk_pos)) {
 
-                    let chunk_ent = commands.spawn((
-                        Name::new(format!("Chunk ({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
+                    let chunk_ent = commands.spawn_empty().id();
+                    activates_chunks.0.insert(chunk_ent);
+                    commands.entity(chunk_ent).insert((
                         Chunk,
+                        Name::new(format!("Chunk ({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
                         Transform::from_translation((chunk_pos.to_pixelpos()).extend(0.0)),
                         chunk_pos,
                         ChildOf(dimension_ref.0)
-                    )).id();
-                    activates_chunks.0.insert(chunk_ent);
+
+                    ));
                     loaded_chunks.0.insert((dimension_ref, chunk_pos), chunk_ent);
                 }
                 else {
@@ -72,6 +75,8 @@ pub fn rem_outofrange_chunks_from_activators(
         }
     }
 }
+//TODO REHACER CON EVENTOS Y PONER UN HASHSET DE ENTITIES EN EL CHUNK
+
 #[allow(unused_parens)]
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,

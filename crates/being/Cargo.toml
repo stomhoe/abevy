@@ -11,7 +11,7 @@ faction = { path = "../faction" }
 tilemap = { path = "../tilemap" }
 camera = { path = "../camera" }
 movement = { path = "../movement" }
-dimension = { path = "../dimension" }
+dimension_shared = { path = "../dimension_shared" }
 being_shared = { path = "../being_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 modifier = { path = "../modifier" }

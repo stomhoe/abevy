@@ -2,14 +2,13 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
 use crate::{
-    dimension_components::*,
     dimension_resources::*,
 /*
     dimension_events::*,
     dimension_layout::*,
 */
 };
-use game_common::game_common_components::{Dimension, DimensionRef};
+use dimension_shared::{Dimension, DimensionRef};
 
 #[allow(unused_parens)]
 pub fn init_dimensions(

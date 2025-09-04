@@ -1,12 +1,12 @@
 (
     id: "deadtree_sampler",
-    weights: {
-        "tree_dead0": 10.0,
-        "tree_dead1": 10.0,
-        "tree_dead2": 10.0,
-        "tree_dead3": 10.0,
-        "tree_dead4": 10.0,
-    },
+    weights: [
+        ("tree_dead0", 10.0),
+        ("tree_dead1", 10.0),
+        ("tree_dead2", 10.0),
+        ("tree_dead3", 10.0),
+        ("tree_dead4", 10.0),
+    ],
 )
 
 

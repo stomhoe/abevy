@@ -17,7 +17,7 @@ use strum_macros::{AsRefStr, Display, };
 use std::ops::{Index, IndexMut};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, SessionScoped, AssetScoped, TgenScoped, )]
+#[require(Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped, )]
 pub struct Terrgen;
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize, PartialEq, Debug, Clone)]

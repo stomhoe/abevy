@@ -4,10 +4,28 @@ use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct DimensionSystems;
 
 //            .replicate::<MainComponentNameRef>()
 
- 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+pub struct DimensionRef(#[entities] pub Entity);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+#[require(Replicated, TgenHotLoadingScoped, SessionScoped, EntityPrefix::new("DDDDDDDDDDDDDDDDDDDDD") )]
+pub struct Dimension;
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[relationship(relationship_target = RootInDimensions)]
+pub struct DimensionRootOplist(#[relationship]#[entities]pub Entity);
+
+#[derive(Component, Debug, Reflect)]
+#[relationship_target(relationship = DimensionRootOplist)]
+pub struct RootInDimensions(EntityHashSet);
+impl RootInDimensions { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
+
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct DimensionStrIdRef(pub StrId);
@@ -16,7 +34,8 @@ impl DimensionStrIdRef {
         let str_id = StrId::new_with_result(id, 2)?;
         Ok(DimensionStrIdRef(str_id))
     }
-    pub fn overworld() -> Self {
+    pub fn overworld_fallback() -> Self {
+        warn!("Using overworld fallback for DimensionStrIdRef");
         DimensionStrIdRef(StrId::new_with_result("ow", 0).unwrap())
     }
 }

@@ -1,5 +1,5 @@
 (
-    id: "_head_idle_down",
+    id: "_head_idle_south",
     sheet_rows_cols: (1, 4),
     target: 0,
     is_row: false,

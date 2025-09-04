@@ -24,7 +24,7 @@ pub struct TileWeightedSamplerHandles {
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct TileWeightedSamplerSeri {
     pub id: String,
-    pub weights: HashMap<String, f32>,
+    pub weights: Vec<(String, f32)>,
 }
 
 

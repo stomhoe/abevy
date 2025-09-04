@@ -1,5 +1,6 @@
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use common::common_states::*;
+use dimension_shared::DimensionRootOplist;
 use tilemap::{chunking_components::{ActivatingChunks, }, terrain_gen::{terrgen_components::{Terrgen}, terrgen_resources::*}, tile::{tile_components::*, tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 
 
@@ -7,7 +8,9 @@ use tilemap::{chunking_components::{ActivatingChunks, }, terrain_gen::{terrgen_c
 pub fn reload_assets_ingame(
     mut cmd: Commands, 
     keys: Res<ButtonInput<KeyCode>>,
+    mut dimensions_query: Query<(Entity,), (With<DimensionRootOplist>, )>,
     mut chunks_query: Query<&mut ActivatingChunks>,
+
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
     mut hot_loading: ResMut<NextState<TerrainGenHotLoading>>,
     mut regpos: ResMut<RegisteredPositions>,

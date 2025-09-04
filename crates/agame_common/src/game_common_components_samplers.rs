@@ -14,7 +14,7 @@ use splines::{Interpolation, Key, Spline};
 #[require(EntityPrefix::new("ColorWSampler"), AssetScoped, )]
 pub struct ColorSampler(pub WeightedSampler<[u8; 4]>);
 impl ColorSampler {
-    pub fn new(weights: &HashMap<[u8; 4], f32>) -> Self {
+    pub fn new(weights: &Vec<([u8; 4], f32)>) -> Self {
         let weighted_sampler = WeightedSampler::new(weights);
         Self(weighted_sampler)
     }
@@ -28,7 +28,7 @@ pub struct ColorSamplerRef(#[entities] pub Entity);
 
 
 #[derive(Debug, Clone, Component, Default)]
-#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated, AssetScoped, TgenScoped)]
+#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated, AssetScoped, TgenHotLoadingScoped)]
 pub struct EntiWeightedSampler {
     #[entities]entities: Vec<Entity>, weights: Vec<f32>,
     cumulative_weights: Vec<f32>, total_weight: f32,
@@ -107,13 +107,22 @@ impl<'de> Deserialize<'de> for EntiWeightedSampler {
 }
 
 #[derive(Debug, Clone, )]
-pub struct WeightedSampler<T: Clone + Serialize> {
+pub struct WeightedSampler<T: Clone + Serialize + Eq + std::hash::Hash + std::fmt::Debug> {
     choices_and_weights: Vec<(T, f32)>, cumulative_weights: Vec<f32>, total_weight: f32,
 }
-impl<T: Clone + Serialize> WeightedSampler<T> {
-    pub fn new(weights_map: &HashMap<T, f32>) -> Self {
-        let mut choices_and_weights = Vec::with_capacity(weights_map.len());
-        for (choice, weight) in weights_map.iter() {
+impl<T: Clone + Serialize + Eq + std::hash::Hash + std::fmt::Debug> WeightedSampler<T> {
+    pub fn new(weights: &Vec<(T, f32)>) -> Self {
+        let mut choices_and_weights = Vec::with_capacity(weights.len());
+        let mut seen = std::collections::HashSet::new();
+        for (choice, weight) in weights.iter() {
+            if *weight < 0.0 {
+                error!("Negative weight ({}) for choice {:?}, skipping.", weight, choice);
+                continue;
+            }
+            if !seen.insert(choice) {
+                error!("Duplicate choice ({:?}) found, skipping.", choice);
+                continue;
+            }
             choices_and_weights.push((choice.clone(), *weight));
         }
         let mut cumulative_weights = Vec::with_capacity(choices_and_weights.len());
@@ -160,18 +169,18 @@ impl MapEntities for WeightedSampler<Entity> {
         }
     }
 }
-impl<T: Clone + Serialize + for<'de> Deserialize<'de>> Default for WeightedSampler<T> {
+impl<T: Clone + Serialize + Eq + std::hash::Hash + std::fmt::Debug + for<'de> Deserialize<'de>> Default for WeightedSampler<T> {
     fn default() -> Self { Self { choices_and_weights: Vec::new(), cumulative_weights: Vec::new(), total_weight: 0.0 } }
 }
 
-impl<T: Clone + Serialize + for<'de> Deserialize<'de>> Serialize for WeightedSampler<T> {
+impl<T: Clone + Serialize + Eq + std::hash::Hash + std::fmt::Debug + for<'de> Deserialize<'de>> Serialize for WeightedSampler<T> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         (&self.choices_and_weights).serialize(serializer)
     }
 }
 impl<'de, T> Deserialize<'de> for WeightedSampler<T>
 where
-    T: Clone + Serialize + Deserialize<'de>,
+    T: Clone + Serialize + Eq + std::hash::Hash + std::fmt::Debug + Deserialize<'de>,
 {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let choices_and_weights: Vec<(T, f32)> = Deserialize::deserialize(deserializer)?;

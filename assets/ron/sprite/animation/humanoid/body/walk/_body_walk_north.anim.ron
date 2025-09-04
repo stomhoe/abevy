@@ -1,5 +1,5 @@
 (
-    id: "_body_walk_up",
+    id: "_body_walk_north",
     sheet_rows_cols: (4, 6),
     target: 1,
     is_row: true,

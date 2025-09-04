@@ -1,15 +1,15 @@
 (
     id: "temptree_sampler",
-    weights: {
-        "golden_sprig": 10.0,
-        "maple": 10.0,
-        "poplar0": 10.0,
-        "poplar1": 10.0,
-        "slender_sapling": 10.0,
-        "willow": 10.0,
-        "treebush": 10.0,
-        "willow_orange": 10.0,
-    },
+    weights: [
+        ("golden_sprig", 10.0),
+        ("maple", 10.0),
+        ("poplar0", 10.0),
+        ("poplar1", 10.0),
+        ("slender_sapling", 10.0),
+        ("willow", 10.0),
+        ("treebush", 10.0),
+        ("willow_orange", 10.0),
+    ],
 )
 
 

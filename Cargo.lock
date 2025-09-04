@@ -307,6 +307,7 @@ dependencies = [
  "bevy_spritesheet_animation",
  "common",
  "dimension",
+ "dimension_shared",
  "game_common",
  "serde",
  "sprite",
@@ -439,7 +440,7 @@ dependencies = [
  "camera",
  "common",
  "delegate",
- "dimension",
+ "dimension_shared",
  "faction",
  "game_common",
  "indexmap",
@@ -1962,7 +1963,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "common",
- "dimension",
+ "dimension_shared",
  "game_common",
  "sprite",
 ]
@@ -2515,6 +2516,28 @@ dependencies = [
 
 [[package]]
 name = "dimension"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_asset_loader",
+ "bevy_common_assets",
+ "bevy_replicon",
+ "bevy_replicon_renet",
+ "bevy_simple_subsecond_system",
+ "common",
+ "debug_unwraps",
+ "delegate",
+ "dimension_shared",
+ "game_common",
+ "serde",
+ "tilemap",
+ "tilemap_shared",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "dimension_shared"
 version = "0.1.0"
 dependencies = [
  "bevy",
@@ -5727,7 +5750,7 @@ dependencies = [
  "common",
  "debug_unwraps",
  "delegate",
- "dimension",
+ "dimension_shared",
  "fnl",
  "game_common",
  "indexmap",

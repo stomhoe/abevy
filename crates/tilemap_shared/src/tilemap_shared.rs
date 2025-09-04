@@ -1,4 +1,4 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
+use std::{hash::{DefaultHasher, Hash, Hasher}, ops::Add};
 
 use bevy::math::U8Vec4;
 use bevy::platform::collections::HashMap;
@@ -88,6 +88,12 @@ impl GlobalTilePos {
         let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
         let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) / oplist_size.inner().as_ivec2();
         TilePos::from(ivec2.as_uvec2())
+    }
+}
+impl Add<IVec2> for GlobalTilePos {
+    type Output = Self;
+    fn add(self, rhs: IVec2) -> Self::Output {
+        GlobalTilePos(self.0 + rhs)
     }
 }
 

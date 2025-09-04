@@ -36,8 +36,17 @@ pub struct TileSerisHandles {
     #[asset(path = "ron/tilemap/tiling/tile", collection(typed))] 
     pub handles: Vec<Handle<TileSeri>>,
 }
+#[derive(Component, Deserialize, Reflect, Default)]
+pub struct PortalSeri{
+    pub dest_dimension: String,
+    pub oe_tile: String,
+    pub oplist: String,
+    pub op_i: i8,
+    pub lim_below: f32,
+    pub lim_above: f32,
+}
 
-#[derive(serde::Deserialize, Asset, Reflect, Default)]
+#[derive(Deserialize, Asset, Reflect, Default)]
 pub struct TileSeri {
     pub id: String,
     pub cats: HashSet<String>,
@@ -55,8 +64,7 @@ pub struct TileSeri {
     pub randflipx: bool,
     pub tmapchild: bool,
     pub min_distances: Option<HashMap<String, u32>>,
-    /// destination dimension, destination portal-tile, destination searched terrain
-    pub portal: Option<(String, String, String)>,
+    pub portal: Option<PortalSeri>,
 }
 
 

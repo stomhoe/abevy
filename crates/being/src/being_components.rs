@@ -1,7 +1,7 @@
 use bevy::{platform::{collections::HashMap}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 
-use dimension::dimension_components::*;
+use dimension_shared::DimensionStrIdRef;
 use game_common::game_common_components::{FacingDirection, MyZ, YSortOrigin};
 use modifier::modifier_components::AppliedModifiers;
 use movement::movement_components::InputMoveVector;
@@ -15,7 +15,7 @@ use superstate::{SuperstateInfo};
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[require(InputMoveVector, MyZ(Being::Z_LEVEL), Replicated, MoveAnimActive,
 BeingAltitude, Visibility, FacingDirection, AppliedModifiers, Transform,
-EntityPrefix::new("BEING"), DimensionStrIdRef::overworld(), YSortOrigin(10.)
+EntityPrefix::new("BEING"), DimensionStrIdRef::overworld_fallback(), YSortOrigin(10.)
 )]
 pub struct Being;
 impl Being {

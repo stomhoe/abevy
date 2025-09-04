@@ -2,15 +2,14 @@ use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
+use ::dimension_shared::*;
 use game_common::{GameplaySystems, StatefulSessionSystems};
-use game_common::game_common_components::{Dimension, DimensionRef};
 use crate::{
-    dimension_components::*, dimension_resources::*, dimension_systems::*, dimension_init_systems::*
+    dimension_resources::*, dimension_systems::*, dimension_init_systems::*
 //    dimension_events::*,
 };
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct DimensionSystems;
+
 
 pub fn plugin(app: &mut App) {
     app

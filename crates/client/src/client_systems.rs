@@ -138,9 +138,9 @@ pub fn client_init_resources(
 
     //next_state.set(ReplicatedAssetsSession::DespawnLocalAssets);
 
-    cmd.init_resource::<TerrGenEntityMap>();
-    cmd.init_resource::<OpListEntityMap>();
-    cmd.init_resource::<DimensionEntityMap>();
+    cmd.insert_resource(TerrGenEntityMap::default());
+    cmd.insert_resource(OpListEntityMap::default());
+    cmd.insert_resource(DimensionEntityMap::default());
 
     //next_state.set(ReplicatedAssetsSession::KeepAlive);
 }

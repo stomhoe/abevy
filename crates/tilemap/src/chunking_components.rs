@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::prelude::Replicated;
 use bevy_replicon_renet::renet::RenetServer;
 use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
-use game_common::{game_common_components::DimensionRef, game_common_components_samplers::EntiWeightedSampler};
+use game_common::{game_common_components_samplers::EntiWeightedSampler};
 use superstate::{SuperstateInfo};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
@@ -34,7 +34,7 @@ impl Tiles {
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct PendingOps(pub i32);
+pub struct OperationsLaunched;
 
 use crate::tilemap_systems::{MapKey, MapStruct};
 

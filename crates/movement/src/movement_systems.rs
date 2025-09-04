@@ -130,9 +130,9 @@ pub fn update_facing_dir(mut query: Query<(&InputSpeedVector, &mut FacingDirecti
         if dir_vec.xy() == Vec2::ZERO {continue;}
         
         *facing_dir = if dir_vec.x.abs() > dir_vec.y.abs() {
-            if dir_vec.x < 0.0 {FacingDirection::Left} else {FacingDirection::Right}
+            if dir_vec.x < 0.0 {FacingDirection::West} else {FacingDirection::East}
         } else {
-            if dir_vec.y <= 0.0 {FacingDirection::Down} else {FacingDirection::Up}
+            if dir_vec.y <= 0.0 {FacingDirection::South} else {FacingDirection::North}
         };
     }
 }

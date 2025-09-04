@@ -22,6 +22,8 @@ impl MyZ {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct Description(pub String);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct SearchingForSuitablePos;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
@@ -29,7 +31,26 @@ pub struct Directionable;
 #[allow(unused_parens, )]
 #[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, )]
 #[strum(serialize_all = "lowercase")]
-pub enum FacingDirection { #[default] Down, Left, Right, Up, }//PARA CAMBIAR ALEATORIAMENTE AL SPAWNEAR, HACER UN SISTEMA PARA BEINGS ADDED Q USE BEVY_RAND
+pub enum FacingDirection { #[default] South, West, East, North, }
+impl FacingDirection {
+    pub fn next_clockwise(&self) -> FacingDirection {
+        match self {
+            FacingDirection::South => FacingDirection::West,
+            FacingDirection::West => FacingDirection::North,
+            FacingDirection::North => FacingDirection::East,
+            FacingDirection::East => FacingDirection::South,
+        }
+    }
+    pub fn to_dir_vec(&self) -> IVec2 {
+        match self {
+            FacingDirection::South => IVec2::new(0, 1),
+            FacingDirection::West => IVec2::new(-1, 0),
+            FacingDirection::North => IVec2::new(0, -1),
+            FacingDirection::East => IVec2::new(1, 0),
+        }
+    }
+}
+
 
 #[derive(Component, Debug, )]
 pub struct SourceDest{
@@ -66,12 +87,7 @@ pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 #[derive(Component, Debug, Clone, Deserialize, Serialize)]
 pub struct OriginalEntity(pub Entity);
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
-pub struct DimensionRef(#[entities] pub Entity);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, SessionScoped, AssetScoped, EntityPrefix::new("DDDDDDDDDDDDDDDDDDDDD") )]
-pub struct Dimension;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]
 pub struct YSortOrigin(pub f32);//TAL VEZ ES BUENA IDEA PONERLE ESTO OBLIGATORIAMENTE A TODOS LOS SPRITES, ASÍ TODOS AUMENTAN O DISMINUYEN CONJUNTAMENTE DE Z

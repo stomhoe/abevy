@@ -73,7 +73,6 @@ pub fn add_colorsamplers_to_map(
                 }
             });
         }
-        
     }
 }
 

@@ -21,7 +21,7 @@ pub fn plugin(app: &mut App) {
         .init_state::<AssetsLoadingState>()
         .init_state::<ReplicatedAssetsSession>()
         .init_state::<ConnectionAttempt>()
-        .init_state::<LoadedAssetsSession>()
+        .init_state::<LocallyLoadedAssetsSession>()
         .init_state::<TerrainGenHotLoading>()
 
 

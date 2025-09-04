@@ -1,12 +1,12 @@
 
 
 
-use bevy::prelude::*;
+use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use dimension::dimension_components::MultipleDimensionStringRefs;
 
 use common::common_components::{DisplayName, EntityPrefix, StrId};
+use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoise, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
@@ -224,14 +224,115 @@ pub fn init_oplists_bifurcations(
                 if is_root.get(bifurcation_ent).is_ok() {
                     error!("bifurcation entity with id '{}' must not be a root oplist", bifurcation_str);
                     continue;
-                } else {
-                    cmd.entity(bifurcation_ent).insert(ChildOf(oplist_ent));
-                    oplist.bifurcations[i].oplist = Some(bifurcation_ent);
                 }
-            }
+
+                cmd.entity(bifurcation_ent).insert(ChildOf(oplist_ent));
+                oplist.bifurcations[i].oplist = Some(bifurcation_ent);
+            }   
         }
     }
     Ok(())
+}
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn cycle_detection(
+    query: Query<(Entity, &OperationList, Option<&ChildOf>, Has<MultipleDimensionStringRefs>)>,
+) {
+    // Helper function for cycle detection
+    fn has_cycle(
+        entity: Entity,
+        query: &Query<(Entity, &OperationList, Option<&ChildOf>, Has<MultipleDimensionStringRefs>)>,
+        stack: &mut Vec<Entity>,
+        global_visited: &mut std::collections::HashSet<Entity>,
+    ) -> bool {
+        if stack.contains(&entity) {
+            return true;
+        }
+        if global_visited.contains(&entity) {
+            return false;
+        }
+        stack.push(entity);
+        global_visited.insert(entity); // Mark as visited before recursion
+        let mut found_cycle = false;
+        if let Ok((_, oplist, child_of, _)) = query.get(entity) {
+            for bifur in &oplist.bifurcations {
+                if let Some(child_ent) = bifur.oplist {
+                    if has_cycle(child_ent, query, stack, global_visited) {
+                        found_cycle = true;
+                        break;
+                    }
+                }
+            }
+            if !found_cycle {
+                if let Some(child_of) = child_of {
+                    if query.get(child_of.0).is_ok() {
+                        if has_cycle(child_of.0, query, stack, global_visited) {
+                            found_cycle = true;
+                        }
+                    }
+                }
+            }
+        }
+        stack.pop();
+        found_cycle
+    }
+
+    let mut global_visited = std::collections::HashSet::new();
+    // Only start from root nodes (Has<MultipleDimensionStringRefs> == true)
+    for (entity, _, _, is_root) in query.iter() {
+        if is_root && !global_visited.contains(&entity) {
+            let mut stack = Vec::new();
+            if has_cycle(entity, &query, &mut stack, &mut global_visited) {
+                error!("Cycle detected in OperationList entity graph at entity {:?}", entity);
+            }
+        }
+    }
+}
+
+
+#[allow(unused_parens)]
+pub fn oplist_init_dim_refs(mut cmd: Commands, 
+    oplist_query: Query<(Entity, &StrId, &MultipleDimensionRefs),(With<OperationList>, )>,
+    dimension_query: Query<(&StrId, Option<&DimensionRootOplist>), With<Dimension>>,
+) {
+    let mut assignments: EntityHashMap<Entity> = EntityHashMap::new();
+    
+    for (ent, my_str_id, dim_refs) in oplist_query.iter() {
+        for &dim_ent in dim_refs.0.iter() {
+            let Ok((dim_str_id, root_op_list)) = dimension_query.get(dim_ent) else {
+                error!(target: "dimension_loading", "Dimension entity '{}' referenced by DimensionEntityMap is not spawned in world", dim_ent);
+                continue;
+            };
+
+            match (assignments.get(&dim_ent), root_op_list) {
+                (Some(&other_ent), _) => {
+                    if other_ent == ent { warn!("self is already dimoplist"); continue; }
+                    let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
+                        continue;
+                    };
+                    error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_str_id);
+                    continue;
+                },
+                (_, Some(&DimensionRootOplist(other_ent))) => {
+                    if other_ent == ent { warn!("self is already dimoplist"); continue; }
+
+                    let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
+                        continue;
+                    };
+                    error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_str_id);
+                continue;
+                },
+                (None, None) => {
+                    assignments.insert(dim_ent, ent);
+                    cmd.entity(dim_ent).insert(DimensionRootOplist(ent));
+                    cmd.entity(ent).insert(ChildOf(dim_ent));
+                },
+            }
+        }
+        cmd.entity(ent).remove::<MultipleDimensionRefs>();
+    }
 }
 
 

@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, )]
 #[require(AssetScoped, EntityPrefix::new("TileShaders"), )]
-struct TileShaderHolder;
+struct EguiTileShaderHolder;
 
 #[allow(unused_parens)]
 pub fn init_shaders(
@@ -28,7 +28,7 @@ pub fn init_shaders(
 ) {
     if tileshader_map.is_some(){ return; }
     cmd.insert_resource(TileShaderEntityMap::default());
-    let holder = cmd.spawn((TileShaderHolder, )).id();
+    let holder = cmd.spawn((EguiTileShaderHolder, )).id();
 
     for handle in repeat_tex_handles.handles.drain(..) {
         let Some(seri) = repeat_assets.remove(&handle) else {

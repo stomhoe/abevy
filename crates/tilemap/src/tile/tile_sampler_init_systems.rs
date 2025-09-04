@@ -76,13 +76,17 @@ pub fn init_tile_weighted_samplers_weights(
 
         let mut weights: HashMap<Entity, f32> = HashMap::new();
 
-        for (tile_id, weight) in seri.weights.drain() {
+        for (tile_id, weight) in seri.weights.drain(..) {
             if weight < 0.0 {
                 error!("TileWeightedSampler {:?} has negative weight {}, skipping this weighted entry", str_id, weight);
                 continue;
             }
             if !tile_id.ends_with("*") {
                 if let Ok(ent) = tile_ents_map.0.get(&tile_id) {
+                    if weights.contains_key(&ent) {
+                        error!("TileWeightedSampler {:?} already contains tile entity {:?} for id {:?}, skipping duplicate", str_id, ent, tile_id);
+                        continue;
+                    }
                     weights.insert(ent.clone(), weight);
                 } else {
                     error!("TileWeightedSampler {:?} references non-existent tile id {:?}, skipping this weighted entry", str_id, tile_id);
@@ -91,6 +95,10 @@ pub fn init_tile_weighted_samplers_weights(
             } else {
                 let sampler_id_trimmed = tile_id.trim_end_matches('*');
                 if let Ok(ent) = hashpos_weighted_map.0.get(&sampler_id_trimmed.to_string()) {
+                    if weights.contains_key(&ent) {
+                        error!("TileWeightedSampler {:?} already contains sampler entity {:?} for id {:?}, skipping duplicate", str_id, ent, sampler_id_trimmed);
+                        continue;
+                    }
                     weights.insert(ent.clone(), weight);
                 } else {
                     error!("TileWeightedSampler {:?} references non-existent tile id {:?}, skipping this weighted entry", str_id, tile_id);

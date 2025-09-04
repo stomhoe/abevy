@@ -5,12 +5,20 @@ use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
-use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
+use common::common_components::{AssetScoped, DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
 use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{Category, MyZ, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
 
 use crate::{tile::{tile_components::*, tile_resources::*, tile_materials::*}, };
 use std::mem::take;
+
+#[derive(Component, Debug, Default, )]
+#[require(AssetScoped, EntityPrefix::new("Tiles' Templates"), Transform, Visibility)]
+struct EguiTileTemplatesHolder;
+
+#[derive(Component, Debug, Default, )]
+#[require(AssetScoped, EntityPrefix::new("Portal tiles"), Transform, Visibility)]
+struct EguiPortalTileTemplatesHolder;
 
 #[allow(unused_parens)]
 pub fn init_tiles(
@@ -23,12 +31,14 @@ pub fn init_tiles(
 ) {
     if tiling_map.is_some() { return; }
     cmd.insert_resource(TileEntitiesMap::default());
+    let holder = cmd.spawn((EguiTileTemplatesHolder, )).id();
+    let portal_holder = cmd.spawn((EguiPortalTileTemplatesHolder, ChildOf(holder))).id();
 
     let mut tile_cats = TileCategories::default();
 
     for handle in seris_handles.handles.iter() {
         //info!("Loading TileSeri from handle: {:?}", handle);
-        let Some(seri) = assets.get_mut(handle) else { continue; };
+        let Some(mut seri) = assets.get_mut(handle) else { continue; };
 
         let str_id = match StrId::new_with_result(seri.id.clone(), Tile::MIN_ID_LENGTH) {
             Ok(id) => id,
@@ -41,6 +51,7 @@ pub fn init_tiles(
         let enti = cmd.spawn((
             Tile, str_id.clone(), Disabled,
             my_z.clone(),
+            ChildOf(holder),
         )).id();
 
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
@@ -73,8 +84,12 @@ pub fn init_tiles(
             cmd.entity(enti).insert(FlipAlongX);
         }
 
+        if let Some(portal) = &mut seri.portal { 
+            cmd.entity(enti).insert((take(portal), ChildOf(portal_holder))); 
+        }
+
         //TODO HACER Q LAS TILES PUEDAN TENER MUCHAS IMÁGENES (PARA IR CAMBIANDO ENTRE ELLAS SEGÚN EL ESTADO, USANDO EL INDEX)
-        if ! seri.sprite {
+        if ! seri.sprite && seri.tmapchild {
             let tile_handles = TileHidsHandles::from_paths(&asset_server, take(&mut seri.img_paths), );
 
             if let Ok(tile_handles) = tile_handles {
@@ -155,7 +170,7 @@ pub fn add_tiles_to_map(
 #[allow(unused_parens)]
 pub fn map_min_dist_tiles(mut cmd: Commands, 
     mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
-    map: ResMut<TileEntitiesMap>,
+    tiles_map: Res<TileEntitiesMap>,
     tile_cats: Res<TileCategories>,
 ) {
     let mut keep_away: EntityHashMap<HashSet<Entity>> = EntityHashMap::default();
@@ -167,7 +182,7 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 
         if min_distances.is_empty() { continue; }
 
-        let Ok(tile_ent) = map.0.get(&seri.id) else { continue; };
+        let Ok(tile_ent) = tiles_map.0.get(&seri.id) else { continue; };
 
         let mut min_dists = MinDistancesMap::default();
 
@@ -182,7 +197,7 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
                     }
                 }
             }
-            else if let Ok(other_tile_ent) = map.0.get(&tile_id) {
+            else if let Ok(other_tile_ent) = tiles_map.0.get(&tile_id) {
                 min_dists.0.insert(other_tile_ent, min_dist);
                 if other_tile_ent != tile_ent {
                     keep_away.entry(other_tile_ent).or_default().insert(tile_ent);
@@ -203,10 +218,37 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
     }
 }
 
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn map_portal_tiles(mut cmd: Commands, 
+    query: Query<(Entity, &StrId, &PortalSeri, ),(With<Disabled>)>,
+    tiles_map: Res<TileEntitiesMap>,
+) {
+    info!("Mapping portal tiles");
+    for (ent, str_id, portal_seri) in query.iter() {
+        let Ok(tile_ent) = tiles_map.0.get(&portal_seri.oe_tile) else { 
+            error!("Portal tile {} to '{}' references unknown oe_tile '{}'", str_id, portal_seri.dest_dimension, portal_seri.oe_tile);
+            continue; 
+        };
+        info!("Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
+        cmd.entity(ent).insert(PortalTemplate{
+            root_oplist: Entity::PLACEHOLDER, //SETEARLO DESPUÉS
+            oe_portal_tile: tile_ent,
+            checked_oplist: Entity::PLACEHOLDER, //SETEARLO DESPUÉS
+            op_i: portal_seri.op_i,
+            lim_below: portal_seri.lim_below,
+            lim_above: portal_seri.lim_above,
+        });
+    }
+}
+
+
 
 #[allow(unused_parens, )]
 pub fn client_map_server_tiling(
     trigger: Trigger<TileEntitiesMap>, 
+    mut cmd: Commands, 
     server: Option<Res<RenetServer>>,
     mut entis_map: ResMut<ServerEntityMap>, 
     own_map: Res<TileEntitiesMap>,
@@ -215,8 +257,13 @@ pub fn client_map_server_tiling(
 
     let TileEntitiesMap(received_map) = trigger.event().clone();
     for (hash_id, &server_entity) in received_map.0.iter() {
+        
         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
-
+            if let Some(prev_client_entity) = entis_map.server_entry(server_entity).get() 
+                && client_entity != prev_client_entity 
+            {
+                cmd.entity(prev_client_entity).try_despawn();
+            }
             debug!("Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
             entis_map.insert(server_entity, client_entity);
         } else {

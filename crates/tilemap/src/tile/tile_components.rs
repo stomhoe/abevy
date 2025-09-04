@@ -5,17 +5,18 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
-use game_common::game_common_components::{DimensionRef, MyZ};
+use dimension_shared::DimensionRef;
+use game_common::game_common_components::{MyZ};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
-use crate::{terrain_gen::terrgen_components::Terrgen, tile::tile_materials::* };
+use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::StudiedOp}, tile::tile_materials::* };
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(MyZ, EntityPrefix::new("Tile"), AssetScoped,)]
+#[require(MyZ, EntityPrefix::new("Tile"), AssetScoped, Replicated)]
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
@@ -28,16 +29,38 @@ impl Tile {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 pub struct ChunkOrTilemapChild;
 
+
+
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct TileRef(#[entities] pub Entity);
 
-    //    .replicate::<Portal>()
-    //    .register_type::<Portal>()
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
-pub struct Portal { #[entities]pub dimension: Entity, #[entities] pub portal_tile: Entity, #[entities] pub searched_terrain: Entity }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
-pub struct PortalInstance { #[entities]pub dimension: Entity, destination: GlobalTilePos }
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+pub struct PortalTemplate { #[entities]pub root_oplist: Entity, #[entities] pub oe_portal_tile: Entity, 
+    #[entities] pub checked_oplist: Entity, pub op_i: i8, pub lim_below: f32, pub lim_above: f32 }
+impl PortalTemplate {
+    pub fn to_studied_op(&self, start_pos: GlobalTilePos) -> StudiedOp {
+        StudiedOp {
+            root_oplist: self.root_oplist,
+            checked_oplist: self.checked_oplist,
+            op_i: self.op_i,
+            lim_below: self.lim_below,
+            lim_above: self.lim_above,
+            search_start_pos: start_pos,
+        }
+    }
+}
+
+impl Default for PortalTemplate {
+    fn default() -> Self {
+        Self { root_oplist: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, checked_oplist: Entity::PLACEHOLDER, op_i: -1, lim_below: 0.0, lim_above: 0.0 }
+    }
+}
+
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+pub struct PortalInstance { #[entities]pub dest_dimension: Entity, dest_pos: GlobalTilePos }
 
 
 pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSettings) -> f32 {

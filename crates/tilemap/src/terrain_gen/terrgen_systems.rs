@@ -1,15 +1,15 @@
 
 
 
-use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, prelude::*};
+use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::{prelude::Replicated, shared::server_entity_map::ServerEntityMap};
 use common::{common_components::{DisplayName, StrId}, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
-use dimension::dimension_components::{MultipleDimensionRefs};
-use game_common::{game_common_components::DimensionRef, game_common_components_samplers::EntiWeightedSampler};
+use dimension_shared::{DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
+use game_common::{game_common_components::{FacingDirection, }, game_common_components_samplers::EntiWeightedSampler};
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_oplist_components::*, terrgen_resources::*, terrgen_events::*}, tile::tile_components::* };
-use std::mem::take;
+use std::{f32::consts::PI, mem::take};
 use ::tilemap_shared::*;
 
 
@@ -22,8 +22,9 @@ use ::tilemap_shared::*;
 pub fn spawn_terrain_operations (
     mut commands: Commands, 
     res_chunk: Res<AaChunkRangeSettings>,
-    chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<PendingOps>, )>, 
-    oplists: Query<(Entity, &MultipleDimensionRefs, &OplistSize), (With<OperationList>, )>,
+    chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<OperationsLaunched>, )>, 
+    dim_root_op_list: Query<(&DimensionRootOplist), ()>,
+    oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut ew_pending_ops: EventWriter<PendingOp>,
 
 ) -> Result {
@@ -31,53 +32,45 @@ pub fn spawn_terrain_operations (
 
     let chunk_area = res_chunk.approximate_number_of_tiles() * 4;
     let mut batch = Vec::with_capacity(chunk_area * 4);
-    'oplist: for (chunk_ent, chunk_pos, dim_ref) in chunks_query.iter() {
+    'chunk_for: for (chunk_ent, chunk_pos, dim_ref) in chunks_query.iter() {
         //SE LES PODRÍA AGREGAR MARKER COMPONENTS A LOS CHUNKS PARA POR EJEMPLO ESPECIFICAR SI ES UN DUNGEON
 
 //PONER MARKERS A TODAS LAS POSICIONES SUITABLE, DESPUES HACER UNA QUERY Q COMPARA LAS TILESMARCADAS COMO Q YA GENERARON UNA ESTRUCTURA NO PROCEDURAL CON LAS Q NO. SI LA DISTANCIA ES SUFICIENTE, SPAWNEAR UNA EN LA SIGUIENTE
         //EN ESTE PUNTO SE PODRÍA GENERAR UN CAMINO RANDOM QUE SEA UN VEC DE COORDS, Y DESPUES PASARLO ABAJO Y Q SE OCUPEN?? PA GENERAR DUNGEONS NASE
         let now = std::time::Instant::now();
 
-        let mut pending_ops_count: i32 = 0;
 
-        for (oplist_ent, oplist_dim_refs, oplist_size) in oplists.iter() {
-            if !oplist_dim_refs.0.contains(&dim_ref.0) {
-                continue;
-            }
-            for x in 0..ChunkPos::CHUNK_SIZE.x / oplist_size.x() {
-                for y in 0..ChunkPos::CHUNK_SIZE.y / oplist_size.y() {
-                    let pos_within_chunk = IVec2::new(x as i32, y as i32);
-                    let global_pos = chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * oplist_size.inner().as_ivec2());
-                    trace!(
-                        "Spawning terrain operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
-                        oplist_ent,
-                        global_pos,
-                        chunk_ent,
-                        pos_within_chunk,
-                        oplist_size
-                    );
-                    if commands.get_entity(chunk_ent).is_err() {
-                        break 'oplist;
-                    }
-                    batch.push(PendingOp {
-                        oplist: oplist_ent,
-                        chunk: chunk_ent,
-                        pos: global_pos,
-                        ..Default::default()
-                    });
-
-                }
-            }
-            pending_ops_count += (ChunkPos::CHUNK_SIZE.element_product() / oplist_size.inner().element_product()) as i32;
-            if commands.get_entity(chunk_ent).is_err() {break 'oplist;}
-
-        }
-        
-        if pending_ops_count <= 0 {      
-            trace!("No operations to spawn for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);      
+        let Ok(dim_root_op_list) = dim_root_op_list.get(dim_ref.0) else {
+            error!("No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);      
             continue;
+        };
+
+        let Ok((oplist, oplist_size)) = oplists.get(dim_root_op_list.0) else {
+            error!("Dimension references non-existent root operation list {:?}", dim_root_op_list);
+            continue;
+        };
+
+        for x in 0..ChunkPos::CHUNK_SIZE.x / oplist_size.x() {
+            for y in 0..ChunkPos::CHUNK_SIZE.y / oplist_size.y() {
+                let pos_within_chunk = IVec2::new(x as i32, y as i32);
+                let global_pos = chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * oplist_size.inner().as_ivec2());
+                trace!(
+                    "Spawning terrain operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
+                    oplist,
+                    global_pos,
+                    chunk_ent,
+                    pos_within_chunk,
+                    oplist_size
+                );
+                if commands.get_entity(chunk_ent).is_err() {
+                    continue 'chunk_for;
+                }
+                batch.push(PendingOp {oplist, chunk_ent, pos: global_pos, ..Default::default()});
+            }
         }
-        commands.entity(chunk_ent).try_insert(PendingOps(pending_ops_count));
+        if commands.get_entity(chunk_ent).is_err() {continue 'chunk_for;}
+
+        commands.entity(chunk_ent).try_insert(OperationsLaunched);
 
         trace!("Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
     }
@@ -96,7 +89,7 @@ pub fn produce_tiles(mut cmd: Commands,
     fnl_noises: Query<&FnlNoise,>,
     weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
     mut ewriter_instantiated_tiles: EventWriter<InstantiatedTiles>,
-    mut ewriter_sampled_value: EventWriter<SampledValue>,
+    mut ewriter_sampled_value: EventWriter<SuitablePosFound>,
 ) -> Result {
 
     if pending_ops_events.is_empty() { return Ok(()); }
@@ -179,9 +172,19 @@ pub fn produce_tiles(mut cmd: Commands,
                 );      
             }
 
-            if  ev.sampled_oplist == ev.oplist && (op_i == ev.sampled_opi as usize || (op_i == oplist.trunk.len() - 1 && ev.sampled_opi <= -1)) { 
-                sampled_value_events.push(SampledValue { oplist: ev.oplist, val: operation_acc_val, pos: ev.pos, op_i: ev.sampled_opi });
-                continue 'eventfor;
+            if let Some(ref mut sop) = ev.studied_op {
+                if  sop.checked_oplist == ev.oplist && (op_i == sop.op_i as usize || (sop.op_i <= -1 && op_i == oplist.trunk.len() - 1))
+                {    
+                    if (sop.lim_below <= operation_acc_val && operation_acc_val <= sop.lim_above)
+                    {
+                        sampled_value_events.push(SuitablePosFound {
+                            studied_op: sop.clone(),
+                            val: operation_acc_val,
+                            found_pos: ev.pos,
+                        });
+                    }
+                    continue 'eventfor;
+                }
             }
 
             trace!("Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
@@ -197,7 +200,7 @@ pub fn produce_tiles(mut cmd: Commands,
             spawn_bifurcation_oplists(&mut ev, &oplist_query, &mut new_pending_ops_events, oplist, my_oplist_size);
         }
 
-        if bifurcation.tiles.len() > 0 && ev.sampled_oplist == Entity::PLACEHOLDER {
+        if bifurcation.tiles.len() > 0 && ev.studied_op.is_none() {
             let tiles = InstantiatedTiles::from_op(&mut cmd, &ev, &bifurcation.tiles, my_oplist_size, &weight_maps, &gen_settings);
             produced_tiles_events.push(tiles);
         }
@@ -222,31 +225,30 @@ fn spawn_bifurcation_oplists(
 ) {
     unsafe{
         let (_, &child_oplist_size) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
-        let (chunk, pos, sampled_oplist, sampled_opi) = (ev.chunk, ev.pos, ev.sampled_oplist, ev.sampled_opi);
+        let (chunk, pos, mut variables, mut studied_op) = (ev.chunk_ent, ev.pos, take(&mut ev.variables), take(&mut ev.studied_op));
 
         if my_oplist_size != child_oplist_size
         && (ev.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
-        && sampled_oplist == Entity::PLACEHOLDER
+        && studied_op.is_none()
         {
             let x_end = child_oplist_size.x() as i32; let y_end = child_oplist_size.y() as i32;
             for x in 0..x_end {
                 for y in 0..y_end {
                     let pos = pos + GlobalTilePos::new(x, y);
 
-                    let variables = if x == x_end - 1 && y == y_end - 1 {
-                        take(&mut ev.variables)
+                    let (variables, studied_op) = if x == x_end - 1 && y == y_end - 1 {
+                        (take(&mut variables), take(&mut studied_op))
                     } else {
-                        ev.variables.clone()
+                        (variables.clone(), studied_op.clone())
                     };
 
-                    let new_event = PendingOp{ oplist, chunk, pos, variables, sampled_oplist, sampled_opi };
+                    let new_event = PendingOp{ oplist, chunk_ent: chunk, pos, variables, studied_op };
                     new_pending_ops.push(new_event);
                 }
             }
          
         } else {
-            new_pending_ops.push(PendingOp{ oplist, chunk, pos, variables: take(&mut ev.variables), 
-                sampled_oplist, sampled_opi });
+            new_pending_ops.push(PendingOp{ oplist, chunk_ent: chunk, pos, variables, studied_op });
         }
     }
 }
@@ -296,7 +298,7 @@ pub fn process_tiles(mut cmd: Commands,
 
             let Ok((min_dists, keep_distance_from)) = oritile_query.get(tile_ref.0)
             else { 
-                error!("Tile entity {:?} does not exist", tile_ent);
+                error!("{:?}'s tileref{:?} does not exist or isn't disabled", tile_ent, tile_ref.0);
                 cmd.entity(*tile_ent).try_despawn(); 
                 *tile_ent = Entity::PLACEHOLDER;
                 continue 'tilefor; 
@@ -393,3 +395,141 @@ pub fn sync_register_new_pos(
     }
 
 }
+
+
+#[allow(unused_parens)]
+pub fn search_suitable_position(
+    mut events_pos_search: ResMut<Events<PosSearch>>, mut ewriter_search_failed: EventWriter<SearchFailed>,
+    mut ewriter_pending_ops: EventWriter<PendingOp>, mut ereader_suitable_pos_found: EventReader<SuitablePosFound>,
+) {
+    let mut new_pending_ops = Vec::new();
+    let mut new_pos_searches = Vec::new();
+    let mut search_failed_evs = Vec::new();
+    let mut found_suitable_positions = HashSet::<StudiedOp>::new();
+
+
+    for found_ev in ereader_suitable_pos_found.read() {
+        found_suitable_positions.insert(found_ev.studied_op.clone());
+    }
+    
+    for pos_search in events_pos_search.drain() {
+
+        if found_suitable_positions.contains(&pos_search.studied_op) {
+            info!("Found suitable position for {:?}", pos_search.studied_op);
+            continue;
+        }
+
+        let (studied_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches) = 
+        (pos_search.studied_op.clone(), pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches);
+
+        match pos_search.search_pattern {
+            SearchPattern::Radial(explore_angle) => {
+
+            let calculate_pos = |i_within_batch: u32, probe_direction: f32| -> GlobalTilePos {
+                let global_i = (curr_iteration_batch_i * iterations_per_batch + i_within_batch) as f32 * step_size as f32;
+                studied_op.search_start_pos + GlobalTilePos::from(IVec2::new(
+                (global_i * probe_direction.cos()) as i32, (global_i * probe_direction.sin()) as i32,
+                ))
+            };
+
+            if let Some(explore_angle) = explore_angle {
+
+                let start_i_within_batch = (curr_iteration_batch_i == 0) as u32;
+
+                for i_within_batch in start_i_within_batch..iterations_per_batch {
+                   
+                new_pending_ops.push(PendingOp {
+                    oplist: studied_op.root_oplist,
+                    chunk_ent: Entity::PLACEHOLDER,
+                    pos: calculate_pos(i_within_batch, explore_angle),
+                    variables: VariablesArray::default(),
+                    studied_op: Some(studied_op.clone()),
+                });
+                }
+                if curr_iteration_batch_i + 1 < max_batches {
+                new_pos_searches.push(PosSearch{
+                    studied_op,
+                    step_size,
+                    curr_iteration_batch_i: curr_iteration_batch_i + 1,
+                    max_batches,
+                    iterations_per_batch,
+                    search_pattern: SearchPattern::Radial(Some(explore_angle)),
+                });
+                } else {
+                    error!("No more batches to search for {:?}", studied_op);
+                    search_failed_evs.push(SearchFailed(studied_op));
+                }
+            }
+            else{
+                if curr_iteration_batch_i >= max_batches {
+                    error!("curr No more batches to search for {:?}", pos_search);
+                    continue;
+                }
+                let divisions = 8;
+                for i in 0..divisions {
+                    let angle = 2.0 * PI * (i as f32) / (divisions as f32);
+                    new_pos_searches.push(PosSearch{
+                        studied_op: studied_op.clone(),
+                        step_size,
+                        curr_iteration_batch_i,
+                        max_batches,
+                        iterations_per_batch,
+                        search_pattern: SearchPattern::Radial(Some(angle)),
+                    });
+                }   
+            }
+            }
+            SearchPattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turns) => {
+            // Spiral search: move in a direction for curr_length_in_dir steps, then turn 90°, increase length every two turns
+
+                info!("Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
+                    pos, dir_vec, curr_length_in_dir, turns);
+
+                for _ in 0..iterations_per_batch {
+                    pos = pos + GlobalTilePos(dir_vec * step_size as i32);
+
+                    new_pending_ops.push(PendingOp {
+                        oplist: studied_op.root_oplist,
+                        chunk_ent: Entity::PLACEHOLDER,
+                        pos,
+                        variables: VariablesArray::default(),
+                        studied_op: Some(studied_op.clone()),
+                    });
+
+                    steps_taken += 1;
+                    if steps_taken >= curr_length_in_dir {
+                        steps_taken = 0;
+                        
+                        dir_vec = dir_vec.perp();
+                        curr_length_in_dir += turns as u32;
+                        turns = !turns;
+                    }
+
+                    if curr_iteration_batch_i == 0 && steps_taken < 10 && curr_length_in_dir < 6 {
+                        info!("Spiral search step {} at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
+                            (steps_taken), pos, dir_vec, curr_length_in_dir, turns);
+                    }
+
+                }
+                if curr_iteration_batch_i + 1 < max_batches {
+                    new_pos_searches.push(PosSearch{
+                    studied_op: studied_op.clone(),
+                    step_size,
+                    curr_iteration_batch_i: curr_iteration_batch_i + 1,
+                    max_batches,
+                    iterations_per_batch,
+                    search_pattern: SearchPattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turns),
+                    });
+                } else {
+                    error!("No more batches to search for {:?}", studied_op);
+                    search_failed_evs.push(SearchFailed(studied_op));
+                }
+            },   
+        }
+    }
+    ewriter_pending_ops.write_batch(new_pending_ops);
+    events_pos_search.send_batch(new_pos_searches);
+    ewriter_search_failed.write_batch(search_failed_evs);
+}
+
+

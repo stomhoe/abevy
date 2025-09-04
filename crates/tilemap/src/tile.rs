@@ -31,11 +31,13 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             flip_tile_along_x,
             (add_tile_weighted_samplers_to_map, ).run_if(not(server_or_singleplayer)),
+
+            instantiate_portal.run_if(server_or_singleplayer)
         ))
 
         .add_systems(
             OnEnter(AssetsLoadingState::LocalFinished), (
-            (init_shaders, add_shaders_to_map, init_tiles, add_tiles_to_map, map_min_dist_tiles).chain()
+            (init_shaders, add_shaders_to_map, init_tiles, add_tiles_to_map, map_min_dist_tiles, map_portal_tiles).chain()
         ).in_set(TilingSystems))
         .add_systems(
             OnEnter(AssetsLoadingState::ReplicatedFinished), (
@@ -80,9 +82,11 @@ pub fn plugin(app: &mut App) {
         .register_type::<MinDistancesMap>()
         .register_type::<TileCategories>()
         .register_type::<KeepDistanceFrom>()
+        .register_type::<PortalTemplate>()
 
-        .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()
         .replicate::<TileSamplerHolder>()
+        .replicate::<PortalTemplate>()
+        .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()
 
         //usar feature
         .add_observer(client_map_server_tiling)

@@ -55,7 +55,7 @@ pub fn plugin(app: &mut App) {
         (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
-            .and(in_state(LoadedAssetsSession::KeepAlive))
+            .and(in_state(LocallyLoadedAssetsSession::KeepAlive))
             .and(
                 in_state(AssetsLoadingState::LocalFinished).and(not(server_or_singleplayer))
                 .or(in_state(AssetsLoadingState::ReplicatedFinished).and(server_or_singleplayer))
@@ -72,7 +72,7 @@ pub fn plugin(app: &mut App) {
         (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
-            .and(in_state(LoadedAssetsSession::KeepAlive))
+            .and(in_state(LocallyLoadedAssetsSession::KeepAlive))
             .and(
                 in_state(AssetsLoadingState::LocalFinished).and(not(server_or_singleplayer))
                 .or(in_state(AssetsLoadingState::ReplicatedFinished).and(server_or_singleplayer))

@@ -67,7 +67,7 @@ pub struct Bifurcation{#[entities] pub oplist: Option<Entity>, #[entities] pub t
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(EntityPrefix::new("OpList"), Replicated, SessionScoped, AssetScoped, TgenScoped)]
+#[require(EntityPrefix::new("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped)]
 pub struct OperationList {
 
     pub trunk: Vec<(Operation, Vec<Operand>, u8)>,

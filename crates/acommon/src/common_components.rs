@@ -15,12 +15,12 @@ use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, refl
 
 pub type SessionScoped = StateScoped::<AppState>;
 
-pub type AssetScoped = StateScoped::<LoadedAssetsSession>;
+pub type AssetScoped = StateScoped::<LocallyLoadedAssetsSession>;
 
 //pub type RepliAssetScoped = StateScoped::<ReplicatedAssetsSession>;
 
 
-pub type TgenScoped = StateScoped::<TerrainGenHotLoading>;
+pub type TgenHotLoadingScoped = StateScoped::<TerrainGenHotLoading>;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct EntityPrefix(pub FixedStr<20>);

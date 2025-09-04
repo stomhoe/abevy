@@ -158,10 +158,19 @@ pub fn produce_tilemaps(
 
                 let tmap_ent = cmd.spawn((
                     TilemapConfig::new(oplist_size, tile_size),
-                    ChildOf(ev.chunk),
                     map_key.z_index,
+                    ChildOf(ev.chunk),
                 ))
                 .id();
+
+                // if let Ok(mut chunk) = cmd.get_entity(ev.chunk) {
+                //     chunk.add_child(tmap_ent);
+                // } else {
+                //     cmd.entity(tmap_ent).try_despawn();
+                //     cmd.entity(tile_ent).try_despawn();
+                //     continue 'eventsfor;
+                // }
+
                 to_draw.insert(DrawTilemap(tmap_ent));
 
 
