@@ -8,7 +8,7 @@ use tilemap_shared::GlobalTilePos;
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::tile::{
-    tile_components::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_init_systems::*, tile_systems::*
+    tile_components::*, tile_events::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_init_systems::*, tile_systems::*
 };
 mod tile_systems;
 mod tile_init_systems;
@@ -18,6 +18,7 @@ pub mod tile_components;
 pub mod tile_resources;
 pub mod tile_sampler_resources;
 pub mod tile_materials;
+pub mod tile_events;
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -68,7 +69,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<TileSerisHandles>()
         .register_type::<TileSeri>()
         .register_type::<GlobalTilePos>()
-        .register_type::<TileRef>()
+        .register_type::<OriginalRef>()
         .register_type::<TileWeightedSamplerHandles>()
         .register_type::<TileWeightedSamplerSeri>()
         .register_type::<TileEntitiesMap>()
@@ -83,13 +84,16 @@ pub fn plugin(app: &mut App) {
         .register_type::<TileCategories>()
         .register_type::<KeepDistanceFrom>()
         .register_type::<PortalTemplate>()
+        .register_type::<PortalInstance>()
 
         .replicate::<TileSamplerHolder>()
         .replicate::<PortalTemplate>()
+        .replicate::<PortalInstance>()
         .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()
 
         //usar feature
         .add_observer(client_map_server_tiling)
+        .add_event::<SavedTileHadChunkDespawn>()
 
 
     ;

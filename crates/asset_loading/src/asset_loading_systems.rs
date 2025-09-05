@@ -1,6 +1,8 @@
+use being::being_components::Being;
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use common::common_states::*;
-use dimension_shared::DimensionRootOplist;
+use dimension::dimension_resources::DimensionEntityMap;
+use dimension_shared::{DimensionRef, DimensionRootOplist, DimensionStrIdRef};
 use tilemap::{chunking_components::{ActivatingChunks, }, terrain_gen::{terrgen_components::{Terrgen}, terrgen_resources::*}, tile::{tile_components::*, tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 
 
@@ -8,7 +10,7 @@ use tilemap::{chunking_components::{ActivatingChunks, }, terrain_gen::{terrgen_c
 pub fn reload_assets_ingame(
     mut cmd: Commands, 
     keys: Res<ButtonInput<KeyCode>>,
-    mut dimensions_query: Query<(Entity,), (With<DimensionRootOplist>, )>,
+    beings_query: Query<(Entity), (With<Being>,)>,
     mut chunks_query: Query<&mut ActivatingChunks>,
 
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
@@ -18,6 +20,10 @@ pub fn reload_assets_ingame(
     
     if keys.pressed(KeyCode::KeyR) {
         info!(target: "asset_loading", "Reloading assets...");
+
+        for (being_ent) in beings_query.iter() {
+            cmd.entity(being_ent).remove::<(ChildOf,)>();
+        }
 
         for (mut activating_chunks) in chunks_query.iter_mut() {
             activating_chunks.0.clear();
@@ -34,9 +40,9 @@ pub fn reload_assets_ingame(
         
         cmd.remove_resource::<OpListEntityMap>();
         cmd.remove_resource::<TerrGenEntityMap>();
+        cmd.remove_resource::<DimensionEntityMap>();
         regpos.0.clear();
     
-        //cmd.remove_resource::<SpriteCfgEntityMap>();
         loading_state.set(AssetsLoadingState::LocalInProcess);
     }
 }
@@ -52,8 +58,14 @@ pub fn moveon_to_replicated(
 
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(
+    mut cmd: Commands,
     mut hot_loading: ResMut<NextState<TerrainGenHotLoading>>,
+    beings_query: Query<(Entity), (With<Being>, Without<ChildOf>)>,
 ) {
     hot_loading.set(TerrainGenHotLoading::KeepAlive);
+
+    for (being_ent) in beings_query.iter() {
+        cmd.entity(being_ent).insert(DimensionStrIdRef::overworld_fallback());
+    }
 }
 

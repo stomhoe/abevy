@@ -14,15 +14,36 @@ use ::tilemap_shared::*;
 
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::StudiedOp}, tile::tile_materials::* };
 
+#[derive(Bundle)]
+struct ToDenyOnTileClone(Name, DisplayName, MinDistancesMap, KeepDistanceFrom, ChildOf, Replicated, );
+
+#[derive(Bundle)]
+struct ToDenyOnReleaseBuild( EntityPrefix, TileStrId  );
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(MyZ, EntityPrefix::new("Tile"), AssetScoped, Replicated)]
+#[require(MyZ, EntityPrefix::new("Tile"), AssetScoped, )]
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
     // for non-sprite tiles
     pub const MAX_Z: MyZ = MyZ(1_000);
+
+    pub fn spawn_from_ref(
+        cmd: &mut Commands, tile_ref: OriginalRef, global_pos: GlobalTilePos, oplist_size: OplistSize,
+    ) -> Entity {
+        cmd.entity(tile_ref.0).clone_and_spawn_with(|builder|{
+            builder.deny::<ToDenyOnTileClone>();
+            //builder.deny::<BundleToDenyOnReleaseBuild>();
+        })
+        .try_insert((tile_ref, InitialPos(global_pos), global_pos, global_pos.to_tilepos(oplist_size), oplist_size))
+        .id()
+    }
+      
 }
+
+pub type TileStrId = HalfStrId;
+
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
@@ -32,7 +53,7 @@ pub struct ChunkOrTilemapChild;
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
-pub struct TileRef(#[entities] pub Entity);
+pub struct OriginalRef(#[entities] pub Entity);
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
@@ -136,7 +157,7 @@ pub struct MinDistancesMap(pub EntityHashMap<u32>);
 impl MinDistancesMap {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&self, 
-        my_pos: (DimensionRef, GlobalTilePos), new: (TileRef, DimensionRef, GlobalTilePos)
+        my_pos: (DimensionRef, GlobalTilePos), new: (OriginalRef, DimensionRef, GlobalTilePos)
     ) -> bool {
         self.0.get(&new.0.0).map_or(true, |&min_dist| {
             my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist
@@ -150,3 +171,6 @@ pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(Terrgen, EntityPrefix::new("TileSamplers"), )]
 pub struct TileSamplerHolder;
+
+
+

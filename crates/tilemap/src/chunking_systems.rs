@@ -5,7 +5,7 @@ use dimension_shared::DimensionRef
 ;
 use tilemap_shared::ChunkPos;
 
-use crate::{chunking_components::*, chunking_resources::*};
+use crate::{chunking_components::*, chunking_resources::*, tile::tile_events::SavedTileHadChunkDespawn};
 
 
 
@@ -81,11 +81,12 @@ pub fn rem_outofrange_chunks_from_activators(
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,
     activator_query: Query<(&ActivatingChunks, ), >,
-    mut chunks_query: Query<(&ChildOf, Entity, &ChunkPos, &Children), With<Chunk>>,
+    mut chunks_query: Query<(&ChildOf, Entity, &ChunkPos, &Children, &TilesToSave), With<Chunk>>,
     mut loaded_chunks: ResMut<LoadedChunks>,
+    mut event_writer: EventWriter<SavedTileHadChunkDespawn>,
 ) {
-
-    for (child_of, chunk_ent, &chunk_pos, children) in chunks_query.iter_mut() {
+    let mut events = Vec::new();
+    for (child_of, chunk_ent, &chunk_pos, children, tiles_to_save) in chunks_query.iter_mut() {
         let referenced = activator_query.iter().any(|(activates_chunks, )| activates_chunks.0.contains(&chunk_ent));
         
         if !referenced {
@@ -95,13 +96,19 @@ pub fn despawn_unreferenced_chunks(
 
         
 
-            for child in children.iter() {//HACE FALTA
-                commands.entity(child).try_despawn();
+            for child in children.iter() {
+                if tiles_to_save.entities().contains(&child) {
+                    
+                    commands.entity(child).try_remove::<ChildOf>();//TODO reajustar transform (ya no es childof)
+                    events.push(SavedTileHadChunkDespawn(child));
+                } else{//HACE FALTA
+                    commands.entity(child).try_despawn();
+                }
             }
-            commands.entity(chunk_ent).try_remove::<Chunk>()
-            .try_despawn();//DEJAR EL REMOVE
+            commands.entity(chunk_ent).try_despawn();
         }
     }
+    event_writer.write_batch(events);
 }
 #[allow(unused_parens)]
 pub fn show_chunks_around_camera(
@@ -119,9 +126,7 @@ pub fn show_chunks_around_camera(
             let adj_chunk_pos = ChunkPos::new(x, y);
 
             loaded_chunks.0.get(&(cam_dimension_ref, adj_chunk_pos)).map(|ent| {
-                if let Ok(mut visibility) = chunks_query.get_mut(*ent) {
-                    *visibility = Visibility::Inherited;
-                }
+                chunks_query.get_mut(*ent).map(|mut v| *v = Visibility::Inherited);
             });
             
         }

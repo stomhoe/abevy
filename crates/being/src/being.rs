@@ -15,6 +15,7 @@ pub fn plugin(app: &mut App) {
         (
             host_add_activates_chunks.run_if(server_or_singleplayer),
             on_control_change,
+            cross_portal,
         ).in_set(GameplaySystems),
     ))
 

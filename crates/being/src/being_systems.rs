@@ -3,9 +3,10 @@
 
 use bevy::{prelude::*};
 use camera::camera_components::CameraTarget;
+use dimension_shared::DimensionRef;
 use faction::faction_components::*;
 use player::player_components::*;
-use tilemap::chunking_components::ActivatingChunks;
+use tilemap::{chunking_components::ActivatingChunks, tile::tile_components::{PortalInstance, Tile}};
 
 use crate::{being_components::*,};
 
@@ -61,4 +62,41 @@ pub fn on_control_change(
         }
     }
 
+}
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn cross_portal(mut cmd: Commands, 
+    portal_query: Query<(Entity, &DimensionRef, &PortalInstance, &GlobalTransform), (Without<Being>)>,
+    mut being_query: Query<(Entity, &mut DimensionRef, &mut Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
+) {
+    for (being_entity, mut being_dimension_ref, mut being_transform, being_global_transform, touching_portal) in being_query.iter_mut() {
+        //let mut touching_portal = fla
+        for (portal_ent, dimension_ref, portal_instance, global_transform) in portal_query.iter() {
+            if being_dimension_ref.0 == dimension_ref.0 {
+                let distance = being_global_transform.translation().distance(global_transform.translation());
+                match (touching_portal, distance < 50.0) {
+                    (None, false) => {},
+                    (Some(&TouchingPortal(currently_touched)), false) => {
+                        if portal_ent == currently_touched {
+                            cmd.entity(being_entity).try_remove::<TouchingPortal>();
+                        }
+                    },
+                    (Some(&TouchingPortal(currently_touched)), true) => {
+                        if portal_ent != currently_touched {
+                            cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
+                        }
+
+                    },
+                    (None, true) => {
+                        cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
+                        being_dimension_ref.0 = portal_instance.dest_dimension;
+                        let dest_vec2: Vec2 = portal_instance.dest_pos.into();
+                        being_transform.translation = dest_vec2.extend(being_transform.translation.z);
+                    },
+                }
+            }
+        }
+    }
 }

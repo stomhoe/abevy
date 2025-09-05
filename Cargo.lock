@@ -298,6 +298,7 @@ dependencies = [
 name = "asset_loading"
 version = "0.1.0"
 dependencies = [
+ "being",
  "bevy",
  "bevy_asset_loader",
  "bevy_common_assets",
@@ -5738,6 +5739,7 @@ dependencies = [
 name = "tilemap"
 version = "0.1.0"
 dependencies = [
+ "being_shared",
  "bevy",
  "bevy-inspector-egui",
  "bevy_asset_loader",

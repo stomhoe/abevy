@@ -5,7 +5,7 @@ use common::common_types::HashIdToEntityMap;
 use tilemap_shared::{GlobalTilePos, OplistSize};
 use serde::{Deserialize, Serialize};
 
-use crate::{terrain_gen::terrgen_events::NewlyRegPos, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, TileRef}};
+use crate::{terrain_gen::terrgen_events::ClientSpawnTile, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, OriginalRef}};
 use dimension_shared::DimensionRef
 ;
 
@@ -16,21 +16,20 @@ impl RegisteredPositions {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, 
         cmd: &mut Commands, is_host: bool,
-        new: (TileRef, DimensionRef, GlobalTilePos, OplistSize, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+        new: (OriginalRef, DimensionRef, GlobalTilePos, OplistSize, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
         min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     ) -> bool {
 
 
         let (new_ent_ref, new_dim, new_pos, oplist_size, new_min_distances, keep_distance) = new;
 
-        if let Some(positions) = self.0.get(&new_ent_ref.0) {
-            for &(prev_dim, prev_pos) in positions {
-                if prev_dim == new_dim && new_pos == prev_pos {
-                    return true;
-                }
-            }
-
-        }
+        // if let Some(positions) = self.0.get(&new_ent_ref.0) {
+        //     for &(prev_dim, prev_pos) in positions {
+        //         if prev_dim == new_dim && new_pos == prev_pos {
+        //             return false;
+        //         }
+        //     }
+        // }
         if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
             return false;
         }
@@ -63,7 +62,7 @@ impl RegisteredPositions {
         self.0.entry(new_ent_ref.0).or_default().push((new_dim, new_pos));
         let to_clients = ToClients {
             mode: SendMode::Broadcast,
-            event: NewlyRegPos(new_ent_ref.0, oplist_size, (new_dim, new_pos)),
+            event: ClientSpawnTile::new(new_ent_ref.0, oplist_size, new_dim, new_pos),
         };
 
         cmd.server_trigger(to_clients);

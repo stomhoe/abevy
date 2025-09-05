@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct DimensionSystems;
 
-//            .replicate::<MainComponentNameRef>()
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct DimensionRef(#[entities] pub Entity);
@@ -57,3 +56,6 @@ impl MultipleDimensionStringRefs {
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
 pub struct MultipleDimensionRefs(#[entities] pub EntityHashSet,);
+
+#[derive(Debug, Event)]
+pub struct ReassignDimensionToEntity (pub Entity);

@@ -1,4 +1,5 @@
 use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, prelude::*};
+use common::common_components::HashId;
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
 use std::mem::take;
@@ -100,6 +101,7 @@ impl SearchPattern {
 
 #[derive(Event, Debug, Clone)]
 pub struct PosSearch {
+    pub dimension_hash_id: i32,
     pub studied_op: StudiedOp,
     pub step_size: u32,
     pub curr_iteration_batch_i: u32,//se puede cambiar a otra cosa para empezar alejado del centro
@@ -108,8 +110,9 @@ pub struct PosSearch {
     pub search_pattern: SearchPattern,
 }
 impl PosSearch{
-    pub fn portal_pos_search(studied_op: StudiedOp) -> PosSearch {
+    pub fn portal_pos_search(dimension_hash_id: HashId, studied_op: StudiedOp) -> PosSearch {
         PosSearch {
+            dimension_hash_id: dimension_hash_id.into_i32(),
             step_size: 1,
             curr_iteration_batch_i: 0,
             max_batches: 100,
@@ -123,14 +126,10 @@ impl PosSearch{
 
 
 #[derive(Event, Debug)]
-pub struct PendingOp {pub oplist: Entity, pub chunk_ent: Entity, pub pos: GlobalTilePos, 
+pub struct PendingOp {pub oplist: Entity, pub chunk_ent: Entity, pub pos: GlobalTilePos, pub dimension_hash_id: i32,
     pub variables: VariablesArray, pub studied_op: Option<StudiedOp>
 }
-impl Default for PendingOp {
-    fn default() -> Self {
-        Self { oplist: Entity::PLACEHOLDER, chunk_ent: Entity::PLACEHOLDER, pos: GlobalTilePos(IVec2::ZERO), variables: VariablesArray::default(), studied_op: None}
-    }
-}
+
 #[derive(Debug, Clone, )]
 pub struct StudiedOp{
     pub root_oplist: Entity,
@@ -161,7 +160,7 @@ impl PartialEq for StudiedOp {
 impl Eq for StudiedOp {}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Event, )]
-pub struct InstantiatedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles, pub retransmission_count: u16 }
+pub struct InstantiatedTiles { pub chunk_or_dim: Entity, pub tiles: OplistCollectedTiles, pub retransmission_count: u16 }
 impl InstantiatedTiles {
     #[allow(unused_parens, )]
     fn insert_tile_recursive(
@@ -185,13 +184,7 @@ impl InstantiatedTiles {
             }
         } else {
 
-            let tile_ent = cmd.entity(tiling_ent).clone_and_spawn_with(|builder|{
-                builder.deny::<BundleToDenyOnTileClone>();
-            })
-            .try_insert((
-                ChunkOrTilemapChild, 
-                global_pos.to_tilepos(oplist_size), TileRef(tiling_ent), InitialPos(global_pos), global_pos, oplist_size))
-            .id();
+            let tile_ent = Tile::spawn_from_ref(cmd, OriginalRef(tiling_ent), global_pos, oplist_size);
 
             // Insert into the array if there's space, otherwise switch to Batch
             match &mut self.tiles {
@@ -212,52 +205,38 @@ impl InstantiatedTiles {
     pub fn from_op(cmd: &mut Commands, precursor: &PendingOp,  tiling_ents: &Vec<Entity>, oplist_size: OplistSize,
         weight_maps: &Query<(&EntiWeightedSampler,), ()>, gen_settings: &AaGlobalGenSettings,
     ) -> Self {
-        let mut instance = Self { chunk: precursor.chunk_ent, ..Default::default() };
+        let mut instance = Self { chunk_or_dim: precursor.chunk_ent, ..Default::default() };
         for tile in tiling_ents.iter().cloned() {
             instance.insert_tile_recursive(cmd, tile, precursor.pos, oplist_size, weight_maps, gen_settings, 0);
         }
         instance
     }
-    pub fn from_tile(cmd: &mut Commands, chunk: Entity, tile_ref: TileRef, global_pos: GlobalTilePos, oplist_size: OplistSize) -> Self {
-        if tile_ref.0 == Entity::PLACEHOLDER {
-            warn!("Tried to instantiate tile with placeholder entity");
-            return Self { chunk, ..Default::default() };
+    pub fn from_tile(tile: Entity, chunk_or_dim: Entity, ) -> Self {
+        if tile == Entity::PLACEHOLDER {
+            return Self { chunk_or_dim, ..Default::default() };
         }
-
-        let tile_pos = global_pos.to_tilepos(oplist_size);
-
-        let tile_ent = cmd.entity(tile_ref.0).clone_and_spawn_with(|builder|{
-            builder.deny::<BundleToDenyOnTileClone>();
-        })
-        .try_insert((
-            ChunkOrTilemapChild,
-            tile_pos, tile_ref, InitialPos(global_pos), global_pos, oplist_size))
-
-        .id();
-
-        Self { chunk, tiles: OplistCollectedTiles::new(tile_ent), ..Default::default() }
+        
+        Self { chunk_or_dim, tiles: OplistCollectedTiles::new(tile), ..Default::default() }
     }
 
 
     pub fn take_tiles(&mut self) -> OplistCollectedTiles {take(&mut self.tiles)}
 
 }
-impl Default for InstantiatedTiles { fn default() -> Self { Self { chunk: Entity::PLACEHOLDER, tiles: OplistCollectedTiles::default(), retransmission_count: 0 } } }
+impl Default for InstantiatedTiles { fn default() -> Self { Self { chunk_or_dim: Entity::PLACEHOLDER, tiles: OplistCollectedTiles::default(), retransmission_count: 0 } } }
 
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Reflect, Event, )]
 pub struct ProcessedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles }
 
 #[derive(Deserialize, Event, Serialize, )]
-pub struct NewlyRegPos (pub Entity, pub OplistSize, pub (DimensionRef, GlobalTilePos));
-
-impl MapEntities for NewlyRegPos {
-    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
-        self.0 = entity_mapper.get_mapped(self.0);
-
-        self.2.0 = DimensionRef(entity_mapper.get_mapped(self.2.0.0));
+pub struct ClientSpawnTile  { pub orig_ref: Entity, pub oplist_size: OplistSize, pub dim: DimensionRef, pub global_pos: GlobalTilePos }
+impl ClientSpawnTile {
+    pub fn new(orig_ref: Entity, oplist_size: OplistSize, dim: DimensionRef, global_pos: GlobalTilePos) -> Self {
+        Self { orig_ref, oplist_size, dim, global_pos }
     }
 }
+
 
 #[derive(Debug, Clone, Event, )]
 pub struct SuitablePosFound { pub studied_op: StudiedOp, pub val: f32, pub found_pos: GlobalTilePos, }
@@ -266,7 +245,3 @@ pub struct SuitablePosFound { pub studied_op: StudiedOp, pub val: f32, pub found
 #[derive(Debug, Clone, Event, )]
 pub struct SearchFailed (pub StudiedOp);
 
-#[derive(Bundle)]
-pub struct BundleToDenyOnTileClone(///EN EL FUTURO DEJAR EL DISABLED EN LOS CLONES, POR AHORA DENYEAR PARA DEBUGGEAR TILES HUERFANAS
-    MinDistancesMap, KeepDistanceFrom, ChildOf, /*DisplayName, StrId*/
-);

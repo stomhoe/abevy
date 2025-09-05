@@ -11,6 +11,7 @@ sprite_animation = { path = "../sprite_animation" }
 sprite = { path = "../sprite" }
 dimension = { path = "../dimension" }
 dimension_shared = { path = "../dimension_shared" }
+being = { path = "../being" }
 
 
 bevy = { workspace = true }

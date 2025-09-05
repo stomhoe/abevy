@@ -64,7 +64,6 @@ pub fn produce_tilemaps(
         trace!("Processing event for chunk {:?}", ev.chunk);
 
         let Ok(mut layers) = chunk_query.get_mut(ev.chunk) else {
-            error!("Failed to get layers for chunk {:?}", ev.chunk);
             continue 'eventsfor;
         };
 

@@ -54,7 +54,7 @@ pub enum LocallyLoadedAssetsSession {#[default]KeepAlive, DespawnAll,}
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities,)]
-pub enum ReplicatedAssetsSession {#[default]KeepAlive, DespawnLocalAssets,}
+pub enum ReplicatedAssetsSession {#[default]KeepAlive, DespawnAll,}
 
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]

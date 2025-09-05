@@ -115,21 +115,27 @@ pub enum Operation {
     Add, Subtract, Multiply, MultiplyOpo, Divide, Min, Max, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, i_Max, Linear, i_Norm
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, MapEntities)]
+pub struct Operand {
+    pub complement: bool,
+    pub element: OperandElement,
+}
+
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, MapEntities)]
-pub enum Operand {
+pub enum OperandElement {
     StackArray(u8),
     Value(f32),
     NoiseEntity(#[entities]Entity, NoiseSampleRange, bool, i32),
     HashPos(u64),
     PoissonDisk(PoissonDisk),
 }
-impl Operand {
+impl OperandElement {
     pub fn new_poisson_disk(min_distance: u8, seed: u64) -> Result<Self, BevyError> {
         PoissonDisk::new(min_distance, seed).map(Self::PoissonDisk)
     }
 }
-impl Default for Operand { fn default() -> Self { Self::Value(0.0) } }
-impl From<f32> for Operand { fn from(v: f32) -> Self { Self::Value(v) } }
+impl Default for OperandElement { fn default() -> Self { Self::Value(0.0) } }
+impl From<f32> for OperandElement { fn from(v: f32) -> Self { Self::Value(v) } }
 
 

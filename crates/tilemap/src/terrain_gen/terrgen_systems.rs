@@ -4,9 +4,9 @@
 use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::{prelude::Replicated, shared::server_entity_map::ServerEntityMap};
-use common::{common_components::{DisplayName, StrId}, common_states::GameSetupType};
+use common::{common_components::{DisplayName, HashId, StrId}, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
-use dimension_shared::{DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
+use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
 use game_common::{game_common_components::{FacingDirection, }, game_common_components_samplers::EntiWeightedSampler};
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_oplist_components::*, terrgen_resources::*, terrgen_events::*}, tile::tile_components::* };
 use std::{f32::consts::PI, mem::take};
@@ -23,7 +23,7 @@ pub fn spawn_terrain_operations (
     mut commands: Commands, 
     res_chunk: Res<AaChunkRangeSettings>,
     chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<OperationsLaunched>, )>, 
-    dim_root_op_list: Query<(&DimensionRootOplist), ()>,
+    dimension_query: Query<(&DimensionRootOplist, &HashId), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut ew_pending_ops: EventWriter<PendingOp>,
 
@@ -40,8 +40,8 @@ pub fn spawn_terrain_operations (
         let now = std::time::Instant::now();
 
 
-        let Ok(dim_root_op_list) = dim_root_op_list.get(dim_ref.0) else {
-            error!("No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);      
+        let Ok((dim_root_op_list, hash_id)) = dimension_query.get(dim_ref.0) else {
+            error!("No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
             continue;
         };
 
@@ -65,7 +65,9 @@ pub fn spawn_terrain_operations (
                 if commands.get_entity(chunk_ent).is_err() {
                     continue 'chunk_for;
                 }
-                batch.push(PendingOp {oplist, chunk_ent, pos: global_pos, ..Default::default()});
+                batch.push(PendingOp {
+                    oplist, chunk_ent, pos: global_pos, dimension_hash_id: hash_id.into_i32(), studied_op: None, variables: VariablesArray::default() 
+                });
             }
         }
         if commands.get_entity(chunk_ent).is_err() {continue 'chunk_for;}
@@ -112,25 +114,27 @@ pub fn produce_tiles(mut cmd: Commands,
             let mut selected_operand_i = 0; 
 
             for (operand_i, operand) in operands.iter().enumerate() {
-                let curr_operand_val = match operand {
-                    Operand::StackArray(i) => ev.variables[*i],
-                    Operand::Value(val) => *val,
-                    Operand::NoiseEntity(ent, sample_range, compl, seed) => {
-                        if let Ok(noise) = fnl_noises.get(*ent) {
-                            noise.sample(global_pos, *sample_range, *compl, *seed, &gen_settings)
-                        } else {
-                            error!("Entity {} not found in terrgens", ent);
-                            continue;
+                let mut curr_operand_val = match &operand.element {
+                    OperandElement::StackArray(i) => ev.variables[*i],
+                    OperandElement::Value(val) => *val,
+                    OperandElement::NoiseEntity(ent, sample_range, compl, operand_seed) => {
+                        match fnl_noises.get(*ent) {
+                            Ok(noise) => noise.sample(global_pos, *sample_range, *compl, *operand_seed + ev.dimension_hash_id, &gen_settings),
+                            Err(_) => {
+                                error!("Entity {} not found in terrgens", ent);
+                                continue;
+                            }
                         }
                     },
-                    Operand::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed),
-                    Operand::PoissonDisk(poisson_disk) => {
-                        poisson_disk.sample(&gen_settings, global_pos, my_oplist_size)
-                    },
+                    OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed),
+                    OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_pos, my_oplist_size),
                 };
 
-                let is_last = operand_i == operands.len() - 1;
+                if operand.complement && !matches!(operand.element, OperandElement::NoiseEntity(_, _, _, _)) {
+                    curr_operand_val = 1.0 - curr_operand_val;
+                }
 
+                let is_last = operand_i == operands.len() - 1;   
                 let prev_value = operation_acc_val;
 
                 match (operation, operand_i, is_last) {
@@ -225,7 +229,7 @@ fn spawn_bifurcation_oplists(
 ) {
     unsafe{
         let (_, &child_oplist_size) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
-        let (chunk, pos, mut variables, mut studied_op) = (ev.chunk_ent, ev.pos, take(&mut ev.variables), take(&mut ev.studied_op));
+        let (chunk_ent, pos, dimension_hash_id, mut variables, mut studied_op, ) = (ev.chunk_ent, ev.pos, ev.dimension_hash_id, take(&mut ev.variables), take(&mut ev.studied_op));
 
         if my_oplist_size != child_oplist_size
         && (ev.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
@@ -242,13 +246,13 @@ fn spawn_bifurcation_oplists(
                         (variables.clone(), studied_op.clone())
                     };
 
-                    let new_event = PendingOp{ oplist, chunk_ent: chunk, pos, variables, studied_op };
+                    let new_event = PendingOp{ oplist, chunk_ent, dimension_hash_id, pos, variables, studied_op,  };
                     new_pending_ops.push(new_event);
                 }
             }
          
         } else {
-            new_pending_ops.push(PendingOp{ oplist, chunk_ent: chunk, pos, variables, studied_op });
+            new_pending_ops.push(PendingOp{ oplist, chunk_ent, dimension_hash_id, pos, variables, studied_op, });
         }
     }
 }
@@ -259,7 +263,8 @@ pub fn process_tiles(mut cmd: Commands,
     mut er_instantiated_tiles: ResMut<Events<InstantiatedTiles>>,
     mut ew_processed_tiles: EventWriter<ProcessedTiles>,
     chunk_query: Query<(&ChildOf), ()>,
-    tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<ChunkOrTilemapChild>, Option<&Transform>, &TileRef), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
+    dimension_query: Query<(Entity), (With<Dimension>, )>,
+    tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<ChunkOrTilemapChild>, Option<&Transform>, &OriginalRef), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
     oritile_query: Query<(Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
     min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     mut regpos_map: ResMut<RegisteredPositions>,
@@ -275,41 +280,62 @@ pub fn process_tiles(mut cmd: Commands,
     let mut processed_tiles_events = Vec::with_capacity(er_instantiated_tiles.len());
     'eventfor: for mut ev in er_instantiated_tiles.drain() {
 
-        let len = ev.tiles.len();
+        let tiles_len = ev.tiles.len();
 
         'tilefor: for (tile_i, tile_ent) in ev.tiles.iter_mut().enumerate() {
-            let Ok((child_of)) = chunk_query.get(ev.chunk) else {
-                cmd.entity(*tile_ent).try_despawn(); 
-                *tile_ent = Entity::PLACEHOLDER;
-                
-                if tile_i == len - 1 { continue 'eventfor; }
-                if tile_i == 0{
-                    trace!("PROCESSTILES Failed to get chunk's ChildOf for chunk {:?}", ev.chunk);
-                }
-                
-                continue 'tilefor; 
-            };
-
-            let Ok((&global_pos, &pos_within_chunk, &oplist_size, tilemap_child, transform, &tile_ref)) = tile_query.get(*tile_ent)
+            
+            let Ok((&global_pos, &pos_within_chunk, &oplist_size, chunk_child, transform, &tile_ref)) = tile_query.get(*tile_ent)
             else { 
                 ev.retransmission_count += 1;
-                if ev.retransmission_count == 1000 {
-                    error!("Tile entity {:?} in instantiated tiles event for chunk {:?} does not exist or isn't a Tile", tile_ent, ev.chunk);
+                if ev.retransmission_count >= u8::MAX as u16 {
+                    error!("Tile entity {:?} in instantiated tiles event for chunk or dim {:?} does not exist or isn't a Tile", tile_ent, ev.chunk_or_dim);
                 }else{
                     instantiated_tiles_events_to_retransmit.push(ev);
                 }
                 continue 'eventfor; 
             };
+            let dim_ent = if let Ok((chunk_childof)) = chunk_query.get(ev.chunk_or_dim) { 
+                if (chunk_child == false) {
+                    trace!("Got chunk's ChildOf for chunk {:?} for tile {:?}: {:?}", ev.chunk_or_dim, tile_ent, chunk_childof.parent());
+                }
+                chunk_childof.parent() 
+            } 
+            else if (chunk_child == false){
+                let Ok(dim_ent) = dimension_query.get(ev.chunk_or_dim) else {
+                    error!("Failed to get dimension {:?} for orphan tile {:?}", ev.chunk_or_dim, tile_ent);
+                    cmd.entity(*tile_ent).try_despawn(); 
+                    *tile_ent = Entity::PLACEHOLDER;
+                    if tile_i == tiles_len - 1 { continue 'eventfor; }
+                    if tile_i == 0{
+                        trace!("PROCESSTILES Failed to get chunk's ChildOf for chunk {:?}", ev.chunk_or_dim);
+                    }
+                    continue 'tilefor; 
+                };
+                info!("Got dimension {:?} for orphan tile {:?}", ev.chunk_or_dim, tile_ent);
+                dim_ent
+            } else{
+                cmd.entity(*tile_ent).try_despawn(); 
+                *tile_ent = Entity::PLACEHOLDER;
+                
+                if tile_i == tiles_len - 1 { continue 'eventfor; }
+                if tile_i == 0{
+                    trace!("PROCESSTILES Failed to get chunk's ChildOf for chunk {:?}", ev.chunk_or_dim);
+                }
+                
+                continue 'tilefor; 
 
+            };
+  
+            
             let Ok((min_dists, keep_distance_from)) = oritile_query.get(tile_ref.0)
             else { 
-                error!("{:?}'s tileref{:?} does not exist or isn't disabled", tile_ent, tile_ref.0);
+                error!("{:?}'s Tileref{:?} does not exist or doesnt't have Disabled component", tile_ent, tile_ref.0);
                 cmd.entity(*tile_ent).try_despawn(); 
                 *tile_ent = Entity::PLACEHOLDER;
                 continue 'tilefor; 
             };
 
-            let dimref = DimensionRef(child_of.parent());
+            let dimref = DimensionRef(dim_ent);
 
             if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ref, dimref, global_pos, oplist_size, min_dists, keep_distance_from), min_dists_query) {
                 trace!("Tile {:?} at {:?} with pos within chunk {:?} violates min distance constraints, despawning", tile_ent, global_pos, pos_within_chunk);
@@ -321,15 +347,14 @@ pub fn process_tiles(mut cmd: Commands,
             cmd.entity(*tile_ent).try_insert((dimref, ));
             trace!("Spawned tile {:?} at global pos {:?} in dimension {:?}", tile_ent, global_pos, dimref);
 
-            if tilemap_child {
+            if chunk_child {
                 if let Some(transform) = transform {
                     let displacement: Vec2 = Vec2::from(pos_within_chunk) * oplist_size.inner().as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2();
                     let displacement = transform.translation + displacement.extend(0.0);
-                    cmd.entity(*tile_ent).try_insert((ChildOf(ev.chunk), Transform::from_translation(displacement))).try_remove::<(ChunkOrTilemapChild, TilePos, Disabled)>();
-                    trace!("Inserted tile {:?} as child of chunk {:?} at local pos {:?}, global pos {:?}, displacement {:?}", tile_ent, ev.chunk, pos_within_chunk, global_pos, displacement);
-                    //SI SE QUIERE SACAR EL CHILDOF CHUNK, HAY Q REAJUSTAR EL TRANSFORM
+                    cmd.entity(*tile_ent).try_insert((ChildOf(ev.chunk_or_dim), Transform::from_translation(displacement)))
+                    .try_remove::<(TilePos, Disabled)>();
+                    trace!("Inserted tile {:?} as child of chunk {:?} at local pos {:?}, global pos {:?}, displacement {:?}", tile_ent, ev.chunk_or_dim, pos_within_chunk, global_pos, displacement);
                 }
-            
             } else if is_host {
                 let mut displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
                 if let Some(transform) = transform {
@@ -337,16 +362,16 @@ pub fn process_tiles(mut cmd: Commands,
                 } 
 
                 cmd.entity(*tile_ent)
-                    .try_remove::<(Tile, Disabled, OplistSize, TilePos, GlobalTilePos)>()
-                    .try_insert((Replicated, child_of.clone(), Transform::from_translation(displacement)));
-                
+                    .try_remove::<(Tile, Disabled, OplistSize, TilePos, )>()
+                    .try_insert((Replicated, ChildOf(dim_ent), Transform::from_translation(displacement)));
+
             } else {
                 trace!("Tile {:?} at {:?} with pos within chunk {:?} is not a TilemapChild, despawning on client", tile_ent, global_pos, pos_within_chunk);
                 cmd.entity(*tile_ent).try_despawn();
                 *tile_ent = Entity::PLACEHOLDER;
             }
         }
-        let protiles = ProcessedTiles { chunk: ev.chunk, tiles: ev.take_tiles() };
+        let protiles = ProcessedTiles { chunk: ev.chunk_or_dim, tiles: ev.take_tiles() };
         processed_tiles_events.push(protiles);
         
     }
@@ -357,10 +382,9 @@ pub fn process_tiles(mut cmd: Commands,
 
 
 #[allow(unused_parens)]
-pub fn sync_register_new_pos(
-    trigger: Trigger<NewlyRegPos>,
+pub fn client_sync_spawn_tile(
+    trigger: Trigger<ClientSpawnTile>,
     mut cmd: Commands, 
-    mut own_map: ResMut<RegisteredPositions>,
     loaded_chunks: Res<LoadedChunks>,
     state: Res<State<GameSetupType>>,
     mut entis_map: ResMut<ServerEntityMap>, 
@@ -375,7 +399,7 @@ pub fn sync_register_new_pos(
 
     let regpos = trigger.event();//.map_entities(entis_map.to_client());
 
-    let (dim, global_pos) = regpos.2;
+    let (dim, global_pos) = (regpos.dim, regpos.global_pos);
 
     let Some(dim) = entis_map.server_entry(dim.0).get() else {
         warn!("Received server's tileref entity could not be mapped to a client one");
@@ -383,20 +407,20 @@ pub fn sync_register_new_pos(
     };
     let dim = DimensionRef(dim);
 
-    own_map.0.entry(regpos.0).or_default().push((dim, global_pos));
 
     let chunk_pos: ChunkPos = global_pos.into();
 
-    let Some(tileref) = entis_map.server_entry(regpos.0).get() else {
+    let Some(tileref) = entis_map.server_entry(regpos.orig_ref).get() else {
         warn!("Received server's tileref entity could not be mapped to a client one");
         return;
     };
-    let tileref = TileRef(tileref);
+    let tileref = OriginalRef(tileref);
     
 
 
     if let Some(&chunk) = loaded_chunks.0.get(&(dim, chunk_pos)) {
-        let ev = InstantiatedTiles::from_tile(&mut cmd, chunk, tileref, global_pos, regpos.1);
+        let tile = Tile::spawn_from_ref(&mut cmd, tileref, global_pos, regpos.oplist_size);
+        let ev = InstantiatedTiles::from_tile(tile, chunk);
         ewriter.write(ev);
     }
 
@@ -425,8 +449,8 @@ pub fn search_suitable_position(
             continue;
         }
 
-        let (studied_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches) = 
-        (pos_search.studied_op.clone(), pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches);
+        let (studied_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_hash_id) = 
+        (pos_search.studied_op.clone(), pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_hash_id);
 
         match pos_search.search_pattern {
             SearchPattern::Radial(explore_angle) => {
@@ -446,20 +470,19 @@ pub fn search_suitable_position(
                    
                 new_pending_ops.push(PendingOp {
                     oplist: studied_op.root_oplist,
-                    chunk_ent: Entity::PLACEHOLDER,
+                    dimension_hash_id,
                     pos: calculate_pos(i_within_batch, explore_angle),
-                    variables: VariablesArray::default(),
                     studied_op: Some(studied_op.clone()),
+                    variables: VariablesArray::default(),
+                    chunk_ent: Entity::PLACEHOLDER,
                 });
                 }
                 if curr_iteration_batch_i + 1 < max_batches {
                 new_pos_searches.push(PosSearch{
-                    studied_op,
-                    step_size,
+
                     curr_iteration_batch_i: curr_iteration_batch_i + 1,
-                    max_batches,
-                    iterations_per_batch,
                     search_pattern: SearchPattern::Radial(Some(explore_angle)),
+                    ..pos_search
                 });
                 } else {
                     error!("No more batches to search for {:?}", studied_op);
@@ -476,11 +499,9 @@ pub fn search_suitable_position(
                     let angle = 2.0 * PI * (i as f32) / (divisions as f32);
                     new_pos_searches.push(PosSearch{
                         studied_op: studied_op.clone(),
-                        step_size,
-                        curr_iteration_batch_i,
-                        max_batches,
-                        iterations_per_batch,
+                        
                         search_pattern: SearchPattern::Radial(Some(angle)),
+                        ..pos_search
                     });
                 }   
             }
@@ -495,6 +516,7 @@ pub fn search_suitable_position(
                     pos = pos + GlobalTilePos(dir_vec * step_size as i32);
 
                     new_pending_ops.push(PendingOp {
+                        dimension_hash_id,
                         oplist: studied_op.root_oplist,
                         chunk_ent: Entity::PLACEHOLDER,
                         pos,
@@ -518,12 +540,9 @@ pub fn search_suitable_position(
                 }
                 if curr_iteration_batch_i + 1 < max_batches {
                     new_pos_searches.push(PosSearch{
-                    studied_op: studied_op.clone(),
-                    step_size,
-                    curr_iteration_batch_i: curr_iteration_batch_i + 1,
-                    max_batches,
-                    iterations_per_batch,
-                    search_pattern: SearchPattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turns),
+                        curr_iteration_batch_i: curr_iteration_batch_i + 1,
+                        search_pattern: SearchPattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turns),
+                        ..pos_search
                     });
                 } else {
                     error!("No more batches to search for {:?}", studied_op);

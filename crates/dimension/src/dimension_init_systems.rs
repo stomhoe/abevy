@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{DisplayName, EntityPrefix, StrId};
+use common::common_components::{DisplayName, EntityPrefix, HashId, StrId};
 use crate::{
     dimension_resources::*,
 /*
@@ -33,6 +33,7 @@ pub fn init_dimensions(
 
         info!(target: "dimension_loading", "Spawning dimension '{}' with id '{}' ", seri.name, str_id);
         cmd.spawn((
+            HashId::from(str_id.as_ref()),
             str_id,
             Transform::default(),
             DisplayName::new(seri.name),

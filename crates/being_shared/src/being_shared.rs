@@ -8,6 +8,7 @@ pub struct ControlledLocally;
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 
 
+
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 pub struct HumanControlled(pub bool);
 

@@ -1,9 +1,12 @@
 (
     id: "normal2",
     operation_operands: [
+        //WATER PROXIMITY
+        ("lin", ["$1", "-15.8", "5.54", ], 8),        
+
         ("max", ["fnl.beachbig", "fnl.beachsmol",], 2),
         ("avg", ["$2", "0.5", ], 2),
-        ("lin", ["$1", "-15.8", "5.54", "$2",], 2),        
+        ("*", ["$2", "$8", ], 2),
         ("idxmax", ["0.4", "$2"], 0),
 
     ],
@@ -11,6 +14,7 @@
     bifs: [
         ("normal3", [""]),
         ("", ["sand"]),
+        ("", [""]),//TODO PONER GRAVEL DONDE
     ],
     root_in_dimensions: [""],
     size: Some((1, 1)),

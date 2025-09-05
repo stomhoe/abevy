@@ -38,6 +38,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<EntityPrefix>()
         .replicate::<StrId>()
         .replicate::<DisplayName>()
+        .replicate::<HashId>()
 
     ;
 }

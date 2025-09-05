@@ -12,6 +12,7 @@ use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoise, 
 use ::tilemap_shared::*;
 
 use std::mem::take;
+use std::collections::HashSet;
 
 #[allow(unused_parens)]
 pub fn init_oplists_from_assets(
@@ -66,8 +67,14 @@ pub fn init_oplists_from_assets(
                     let operand = operand.trim();    
                     if operand.is_empty() { continue; }
 
-                    let operand = if let Ok(value) = operand.parse::<f32>() {
-                        Operand::Value(value)
+                    let (operand, complement) = if let Some(operand) = operand.strip_prefix("COMP") {
+                        (operand.trim(), true)
+                    } else {
+                        (operand, false)
+                    };
+
+                    let element = if let Ok(value) = operand.parse::<f32>() {
+                        OperandElement::Value(value)
                     }
                     else if let Some(var_i) = operand.strip_prefix("$") {
                         let Ok(var_i) = var_i.parse::<u8>() else {
@@ -77,10 +84,10 @@ pub fn init_oplists_from_assets(
                         if var_i >= VariablesArray::SIZE {
                             warn!("Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
                         }
-                        Operand::StackArray(var_i)
+                        OperandElement::StackArray(var_i)
                     } else if let Some(seed_str) = operand.strip_prefix("hp") {
                         let seed = seed_str.parse::<u64>().unwrap_or(1000);
-                        Operand::HashPos(seed)    
+                        OperandElement::HashPos(seed)    
                     } else if let Some(pd_str) = operand.strip_prefix("pd") {
                         // Parse PoissonDisk operand: "pd{min_dist}{seed}"
                         // Example: "pd3123" -> min_dist = 3, seed = 123
@@ -89,17 +96,17 @@ pub fn init_oplists_from_assets(
                             warn!("Invalid PoissonDisk min_dist ('{}') or seed ('{}')", min_dist_str, seed_str);
                             continue;
                         };
-                        let Ok(op) = Operand::new_poisson_disk(min_dist, seed) else {
+                        let Ok(op) = OperandElement::new_poisson_disk(min_dist, seed) else {
                             warn!("Failed to create PoissonDisk operand with min_dist {} and seed {}", min_dist, seed);
                             continue;
                         };
                         op      
                     } else if let Some(ent_str) = operand.strip_prefix("fnl.") {
                         // Handle entity operand, possibly with 'COMP' prefix for complement
-                        let (complement, ent_str) = if let Some(stripped) = ent_str.strip_prefix("^.") {
-                            (true, stripped)
+                        let (noise_sample_range, ent_str) = if let Some(stripped) = ent_str.strip_prefix("1-1.") {
+                            (fnl::NoiseSampleRange::NegOneToOne, stripped)
                         } else {
-                            (false, ent_str)
+                            (fnl::NoiseSampleRange::ZeroToOne, ent_str)
                         };
 
                         // If the operand_str ends with ".s" followed by a number, use it as seed
@@ -114,13 +121,14 @@ pub fn init_oplists_from_assets(
                             warn!("Entity not found in TerrGenEntityMap: {}", base_str);
                             continue;
                         };
-                     
 
-                        Operand::NoiseEntity(ent, fnl::NoiseSampleRange::ZeroToOne, complement, extra_seed)
+                        OperandElement::NoiseEntity(ent, noise_sample_range, complement, extra_seed)
                     } else {
                         error!("Unknown operand: {}", operand);
                         continue;
                     };
+
+                    let operand = Operand { complement, element, };
 
                     operands.push(operand);
                 };
@@ -234,59 +242,52 @@ pub fn init_oplists_bifurcations(
     Ok(())
 }
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn cycle_detection(
-    query: Query<(Entity, &OperationList, Option<&ChildOf>, Has<MultipleDimensionStringRefs>)>,
+    query: Query<(Entity, &OperationList, Has<MultipleDimensionStringRefs>)>,
 ) {
-    // Helper function for cycle detection
-    fn has_cycle(
-        entity: Entity,
-        query: &Query<(Entity, &OperationList, Option<&ChildOf>, Has<MultipleDimensionStringRefs>)>,
+    let roots: Vec<Entity> = query
+        .iter()
+        .filter_map(|(ent, _, is_root)| if is_root { Some(ent) } else { None })
+        .collect();
+
+    // Helper closure for DFS cycle detection
+    fn dfs(
+        query: &Query<(Entity, &OperationList, Has<MultipleDimensionStringRefs>)>,
+        current: Entity,
+        visited: &mut HashSet<Entity>,
         stack: &mut Vec<Entity>,
-        global_visited: &mut std::collections::HashSet<Entity>,
     ) -> bool {
-        if stack.contains(&entity) {
+        if stack.contains(&current) {
+            error!("Cycle detected, caused by oplist entity {:?}'s bifurcations", current);
             return true;
         }
-        if global_visited.contains(&entity) {
-            return false;
+        if !visited.insert(current) {
+            return false; 
         }
-        stack.push(entity);
-        global_visited.insert(entity); // Mark as visited before recursion
-        let mut found_cycle = false;
-        if let Ok((_, oplist, child_of, _)) = query.get(entity) {
-            for bifur in &oplist.bifurcations {
-                if let Some(child_ent) = bifur.oplist {
-                    if has_cycle(child_ent, query, stack, global_visited) {
-                        found_cycle = true;
-                        break;
-                    }
-                }
-            }
-            if !found_cycle {
-                if let Some(child_of) = child_of {
-                    if query.get(child_of.0).is_ok() {
-                        if has_cycle(child_of.0, query, stack, global_visited) {
-                            found_cycle = true;
-                        }
-                    }
+        stack.push(current);
+
+        let Ok((_, oplist, _)) = query.get(current) else {
+            stack.pop();
+            return false;
+        };
+
+        for bifur in &oplist.bifurcations {
+            if let Some(child) = bifur.oplist {
+                if dfs(query, child, visited, stack) {
+                    return true;
                 }
             }
         }
         stack.pop();
-        found_cycle
+        false
     }
 
-    let mut global_visited = std::collections::HashSet::new();
-    // Only start from root nodes (Has<MultipleDimensionStringRefs> == true)
-    for (entity, _, _, is_root) in query.iter() {
-        if is_root && !global_visited.contains(&entity) {
-            let mut stack = Vec::new();
-            if has_cycle(entity, &query, &mut stack, &mut global_visited) {
-                error!("Cycle detected in OperationList entity graph at entity {:?}", entity);
-            }
+    for root in roots {
+        let mut visited = HashSet::new();
+        let mut stack = Vec::new();
+        if dfs(&query, root, &mut visited, &mut stack) {
+            error!("Cycle detected starting from root oplist {:?}", root);
         }
     }
 }
@@ -327,7 +328,6 @@ pub fn oplist_init_dim_refs(mut cmd: Commands,
                 (None, None) => {
                     assignments.insert(dim_ent, ent);
                     cmd.entity(dim_ent).insert(DimensionRootOplist(ent));
-                    cmd.entity(ent).insert(ChildOf(dim_ent));
                 },
             }
         }
@@ -347,12 +347,12 @@ pub fn client_remap_operation_entities(
 
         for (_, operands, _) in oplist.trunk.iter_mut() {
             for operand in operands.iter_mut() {
-                if let Operand::NoiseEntity(ent, _, _, _) = operand {
+                if let OperandElement::NoiseEntity(ent, _, _, _) = &mut operand.element {
                     match map.server_entry(*ent).get() {
                         Some(new_ent) => {
                             info!(
                                 target: "oplist_loading",
-                                "Remapped noise entity {:?} to {:?} in Operand",
+                                "Remapped noise entity {:?} to {:?} in OperandElement",
                                 ent,
                                 new_ent
                             );
@@ -361,7 +361,7 @@ pub fn client_remap_operation_entities(
                         None => {
                             error!(
                                 target: "oplist_loading",
-                                "Failed to remap noise entity {:?} in Operand: not found in ServerEntityMap",
+                                "Failed to remap noise entity {:?} in OperandElement: not found in ServerEntityMap",
                                 ent
                             );
                         }
@@ -369,7 +369,6 @@ pub fn client_remap_operation_entities(
                 }
             }
         }
-
         for bifur in oplist.bifurcations.iter_mut() {
             if let Some(oplist_entity) = bifur.oplist {
                 match map.server_entry(oplist_entity).get() {

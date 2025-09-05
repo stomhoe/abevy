@@ -30,16 +30,16 @@ pub fn plugin(app: &mut App) {
             (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities).run_if(not(server_or_singleplayer)),
             oplist_init_dim_refs,
         ))
-    
+        
         .add_systems(
             OnEnter(AssetsLoadingState::ReplicatedFinished), (
-            (
-                init_noises,
-                add_noises_to_map,
-                init_oplists_from_assets,
-                add_oplists_to_map,
-                init_oplists_bifurcations,
-                cycle_detection,
+                (
+                    init_noises,
+                    add_noises_to_map,
+                    init_oplists_from_assets,
+                    add_oplists_to_map,
+                    init_oplists_bifurcations,
+                    cycle_detection,
                 
             ).chain(),
         
@@ -75,9 +75,9 @@ pub fn plugin(app: &mut App) {
         .add_server_trigger::<RegisteredPositions>(Channel::Unordered)
         .make_trigger_independent::<RegisteredPositions>()
         
-        .add_server_trigger::<NewlyRegPos>(Channel::Unordered)
-        .make_trigger_independent::<NewlyRegPos>()
-        .add_observer(sync_register_new_pos)
+        .add_server_trigger::<ClientSpawnTile>(Channel::Unordered)
+        .make_trigger_independent::<ClientSpawnTile>()
+        .add_observer(client_sync_spawn_tile)
 
         .replicate_bundle::<(FnlNoise, ChildOf)>()
         .replicate::<OplistSize>()

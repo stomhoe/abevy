@@ -57,6 +57,10 @@ pub struct PlayerDirectControllable;
 pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si es de la misma facción antes de intentar tomar control
 
 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct TouchingPortal(#[entities] pub Entity);
+
+
 pub type ControlledLocally = being_shared::ControlledLocally;
 pub type HumanControlled = being_shared::HumanControlled;
 
@@ -65,10 +69,7 @@ pub type DirControlledBy = being_shared::ControlledBy;
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
 #[relationship(relationship_target = Followers)]
-pub struct FollowerOf {
-    #[relationship] #[entities]
-    pub master: Entity,
-}
+pub struct FollowerOf {#[relationship] #[entities] pub master: Entity,}
 
 #[derive(Component, Debug, Reflect)]
 #[relationship_target(relationship = FollowerOf)]

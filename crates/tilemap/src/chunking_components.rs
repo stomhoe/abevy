@@ -1,12 +1,10 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
-use bevy_replicon::prelude::Replicated;
-use bevy_replicon_renet::renet::RenetServer;
+use bevy_replicon::client::event;
 use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
 use game_common::{game_common_components_samplers::EntiWeightedSampler};
-use superstate::{SuperstateInfo};
 use serde::{Deserialize, Serialize};
-use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 
 use crate::{tile::tile_components::*};
 use ::tilemap_shared::*;
@@ -15,20 +13,25 @@ use ::tilemap_shared::*;
 use common::{common_components::*, };
 
 #[derive(Component, Default)]
-#[require(Visibility::Hidden, SessionScoped, LayersMap)]
+#[require(Visibility::Hidden, SessionScoped, LayersMap, TilesToSave, )]
 pub struct Chunk;
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect, )]
-pub struct Tiles (pub Vec<Entity>);
-impl Tiles {
-    pub fn new_with_chunk_capacity() -> Self {
-        let chunk_area = ChunkPos::CHUNK_SIZE.element_product();
-        let cap = chunk_area;//TODO CALCULAR PROMEDIO DE TILES POR CHUNK
-        Tiles (Vec::with_capacity(cap as usize))
-    }
-
+/*
+           .replicate::<FollowerOf>()
+           .register_type::<FollowerOf>()
+           .register_type::<TilesToSave>()
+*/
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+pub struct SaveTile {
+    pub chunk_pos: ChunkPos,//NO HACE FALTA PORQ EL CHUNKPOS SE PUEDE CALCULAR A PARTIR DE GLOBAL POS
 }
+
+
+
+#[derive(Component, Debug, Reflect, Default,)]
+pub struct TilesToSave(pub EntityHashSet);
+impl TilesToSave { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
+
 
 
 
