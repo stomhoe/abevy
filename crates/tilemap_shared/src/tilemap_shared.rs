@@ -157,6 +157,7 @@ impl ChunkPos {
     pub fn normalized_hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> f32 {
         self.hash_value(settings, seed) as f32 / u64::MAX as f32
     }
+    
 }
 
 impl std::fmt::Debug for ChunkPos {

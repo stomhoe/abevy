@@ -62,14 +62,14 @@ pub fn produce_tilemaps(
 
     if ereader_processed_tiles.is_empty() { return Ok(()); }
 
-    let reserved = chunkrange.approximate_number_of_chunks() / 2;
+    let reserved = chunkrange.approximate_number_of_chunks() / 15;
 
     let mut changed_structs: HashSet<(Entity, MapKey)> = HashSet::with_capacity(reserved);
 
     info!("Producing tilemaps for {} tile events, reserving space for {} chunks", ereader_processed_tiles.len(), reserved);
 
 
-    let mut to_draw = HashSet::new();
+    let mut to_draw = Vec::new();
 
     let mut tilemap_bundles = Vec::new();
 
@@ -117,8 +117,10 @@ pub fn produce_tilemaps(
             
             if let Some(mapstruct) = layers.0.get_mut(&map_key) {
                 let tmap_ent = mapstruct.tmap_ent;
-                to_draw.insert(DrawTilemap(tmap_ent));
-                
+                if to_draw.iter().all(|e: &DrawTilemap| e.0 != tmap_ent) {
+                    to_draw.push(DrawTilemap(tmap_ent));
+                }
+
                 let (tmap_handles, storage, tmap_hash_id_map) =
                     if let Ok((mut tmap_handles, mut storage, mut tmap_hash_id_map)) = 
                     tilemaps.get_mut(tmap_ent) {
@@ -132,7 +134,6 @@ pub fn produce_tilemaps(
                 let (Vector(tmap_handles)) = tmap_handles else 
                 { error!("Failed to get tilemap handles for {:?}", tmap_ent); continue; };
 
-                //cmd.entity(tile_ent).try_insert(ChildOf(tmap_ent));
                 tilemap_id.0 = tmap_ent;
 
                 storage.set(&tile_pos, tile_ent);
@@ -165,15 +166,12 @@ pub fn produce_tilemaps(
                 let mut tmap_hash_id_map = TmapHashIdtoTextureIndex::default();
                 changed_structs.insert((ev.chunk, map_key.clone()));
 
-
                 let handles = if let Some(tile_handles) = tile_handles {
                     for (i, (id, _)) in tile_handles.iter().enumerate() {
                         tmap_hash_id_map.0.insert_with_id(id, TileTextureIndex(i as u32));
                     }
                     tile_handles.handles().clone()
-                } else {
-                    Vec::new()
-                };
+                } else { Vec::new() };
 
                 let tmap_ent = cmd.spawn(ChildOf(ev.chunk)).id();
 
@@ -188,7 +186,9 @@ pub fn produce_tilemaps(
 
                 tilemap_id.0 = tmap_ent;
 
-                to_draw.insert(DrawTilemap(tmap_ent));
+                if to_draw.iter().all(|e: &DrawTilemap| e.0 != tmap_ent) {
+                    to_draw.push(DrawTilemap(tmap_ent));
+                }
 
                 let mut storage = TilemapConfig::new_storage(oplist_size);
                 storage.set(&tile_pos, tile_ent);
@@ -205,8 +205,8 @@ pub fn produce_tilemaps(
 
     cmd.insert_batch(tilemap_bundles);
 
-    //cmd.insert_batch(child_ofs_for_tiles);
     info!("Producing {} tilemaps", changed_structs.len());
+    info!("Requesting draw for {} tilemaps", to_draw.len());
     
 
     for (chunk_ent, mapkey) in changed_structs.iter() {

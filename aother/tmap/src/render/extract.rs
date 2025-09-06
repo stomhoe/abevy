@@ -1,11 +1,5 @@
 use bevy::{
-    math::Affine3A,
-    platform::collections::HashMap,
-    prelude::*,
-    render::Extract,
-    render::primitives::{Aabb, Frustum},
-    render::render_resource::{FilterMode, TextureFormat},
-    render::sync_world::RenderEntity,
+    ecs::entity::EntityHashSet, math::Affine3A, platform::collections::{HashMap, HashSet}, prelude::*, render::{Extract, primitives::{Aabb, Frustum}, render_resource::{FilterMode, TextureFormat}, sync_world::RenderEntity}
 };
 
 use crate::{DrawTilemap, anchor::TilemapAnchor};
@@ -224,8 +218,13 @@ pub fn extract(//TODO EXPONER UN EVENTO
     camera_query: Extract<Query<(&RenderEntity, &Frustum), With<Camera>>>,
     images: Extract<Res<Assets<Image>>>,
 ) {
-    let mut extracted_tiles = Vec::new();
-    let mut extracted_tilemaps = <HashMap<_, _>>::default();
+    let now = std::time::Instant::now();
+
+    let mut extracted_tiles = Vec::with_capacity(changed_tiles_query.iter().count());
+
+    let mut extracted_tilemaps_keys = EntityHashSet::with_capacity(event_reader.len()); 
+    let mut extracted_tilemaps: Vec<(Entity, ExtractedTilemapBundle)> = Vec::with_capacity(event_reader.len());
+
     let mut extracted_tilemap_textures = Vec::new();
     // Process all tiles
     for (
@@ -266,9 +265,8 @@ pub fn extract(//TODO EXPONER UN EVENTO
 
         let Ok(data) = tilemap_query.get(tilemap_id.0) else { break };
 
-        extracted_tilemaps.insert(
-            data.0.id(),
-            (
+        if extracted_tilemaps_keys.insert(data.0.id()) {
+            extracted_tilemaps.push((
                 data.0.id(),
                 ExtractedTilemapBundle {
                     transform: *data.1,
@@ -285,9 +283,9 @@ pub fn extract(//TODO EXPONER UN EVENTO
                     changed: ChangedInMainWorld,
                     anchor: *data.11,
                 },
-            ),
-        );
-
+            ));
+        }
+        
         extracted_tiles.push((
             render_entity.id(),
             ExtractedTileBundle {
@@ -302,34 +300,34 @@ pub fn extract(//TODO EXPONER UN EVENTO
             },
         ));
     }
-
+    //event number
+    if event_reader.len() > 0 {
+        trace!("Extracted {} draw events", event_reader.len());
+    }
     for draw_event in event_reader.read() {
         if let Ok(data) = tilemap_query.get(draw_event.0) {
-            extracted_tilemaps.insert(
-                data.0.id(),
-                (
+            if extracted_tilemaps_keys.insert(data.0.id()) {
+                extracted_tilemaps.push((
                     data.0.id(),
                     ExtractedTilemapBundle {
                         transform: *data.1,
-                        tile_size: *data.2,
-                        texture_size: TilemapTextureSize::default(),
-                        spacing: *data.3,
-                        grid_size: *data.4,
-                        map_type: *data.5,
-                        texture: data.6.clone_weak(),
-                        map_size: *data.7,
-                        visibility: *data.8,
-                        frustum_culling: *data.9,
-                        render_settings: *data.10,
-                        changed: ChangedInMainWorld,
-                        anchor: *data.11,
-                    },
-                ),
-            );
+                    tile_size: *data.2,
+                    texture_size: TilemapTextureSize::default(),
+                    spacing: *data.3,
+                    grid_size: *data.4,
+                    map_type: *data.5,
+                    texture: data.6.clone_weak(),
+                    map_size: *data.7,
+                    visibility: *data.8,
+                    frustum_culling: *data.9,
+                    render_settings: *data.10,
+                    changed: ChangedInMainWorld,
+                    anchor: *data.11,
+                },
+            ));
+        }
         }
     }
-
-    let extracted_tilemaps: Vec<_> = extracted_tilemaps.drain().map(|(_, val)| val).collect();
 
     // Extracts tilemap textures.
     for (render_entity, _, tile_size, tile_spacing, _, _, texture, _, _, _, _, _) in
@@ -359,6 +357,19 @@ pub fn extract(//TODO EXPONER UN EVENTO
             .insert(ExtractedFrustum { frustum: *frustum });
     }
 
+
+    if ! extracted_tilemaps.is_empty(){
+        let elapsed = now.elapsed();
+        trace!("Extracted {} tilemaps in {:.2?}, ratio: {:.2?}", extracted_tilemaps.len(), elapsed, (extracted_tilemaps.len() * 1000) as f32 / elapsed.as_nanos() as f32);
+    }
+    if ! extracted_tilemap_textures.is_empty(){
+        let elapsed = now.elapsed();
+        trace!("Extracted {} tilemap textures in {:.2?}, ratio: {:.2?}", extracted_tilemap_textures.len(), elapsed, (extracted_tilemap_textures.len() * 1000) as f32 / elapsed.as_nanos() as f32);
+    }
+    if ! extracted_tiles.is_empty(){
+        let elapsed = now.elapsed();
+        trace!("Extracted {} tiles in {:.2?}, ratio: {:.2?}", extracted_tiles.len(), elapsed, (extracted_tiles.len() * 1000) as f32 / elapsed.as_nanos() as f32);
+    }
     commands.try_insert_batch(extracted_tiles);
     commands.try_insert_batch(extracted_tilemaps);
     commands.try_insert_batch(extracted_tilemap_textures);

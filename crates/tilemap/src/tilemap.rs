@@ -27,8 +27,8 @@ pub fn plugin(app: &mut App) {
         rem_outofrange_chunks_from_activators, 
         (
             visit_chunks_around_activators, 
-            show_chunks_around_camera, 
-            hide_outofrange_chunks, 
+            //show_chunks_around_camera, 
+            show_or_hide_chunks, 
             produce_tilemaps.before(despawn_unreferenced_chunks)//NO TOCAR
         ).in_set(ChunkSystems).run_if(in_state(TerrainGenHotLoading::KeepAlive))
     ))
