@@ -23,6 +23,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         despawn_unreferenced_chunks, 
+        assign_child_of,
         rem_outofrange_chunks_from_activators, 
         (
             visit_chunks_around_activators, 
@@ -49,6 +50,7 @@ pub fn plugin(app: &mut App) {
         )
     )
     .register_type::<LayersMap>()
+    .register_type::<LoadedChunks>()
     .register_type::<ActivatingChunks>()
     .register_type::<ChunkPos>()
     .register_type::<AaChunkRangeSettings>()

@@ -1,11 +1,12 @@
-use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_replicon::prelude::*;
 use common::common_types::HashIdToEntityMap;
+use game_common::game_common_components::EntityZero;
 use tilemap_shared::{GlobalTilePos, OplistSize};
 use serde::{Deserialize, Serialize};
 
-use crate::{terrain_gen::terrgen_events::ClientSpawnTile, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, OriginalRef}};
+use crate::tile::{tile_components::{KeepDistanceFrom, MinDistancesMap, }, };
 use dimension_shared::DimensionRef
 ;
 
@@ -14,22 +15,14 @@ use dimension_shared::DimensionRef
 pub struct RegisteredPositions(pub EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>); 
 impl RegisteredPositions {
     #[allow(unused_parens, )]
-    pub fn check_min_distances(&mut self, 
-        cmd: &mut Commands, is_host: bool,
-        new: (OriginalRef, DimensionRef, GlobalTilePos, OplistSize, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+    pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
+        new: (Entity, EntityZero, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
         min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     ) -> bool {
 
 
-        let (new_ent_ref, new_dim, new_pos, oplist_size, new_min_distances, keep_distance) = new;
+        let (new_tile, new_orig_ref, new_dim, new_pos, new_min_distances, keep_distance) = new;
 
-        // if let Some(positions) = self.0.get(&new_ent_ref.0) {
-        //     for &(prev_dim, prev_pos) in positions {
-        //         if prev_dim == new_dim && new_pos == prev_pos {
-        //             return false;
-        //         }
-        //     }
-        // }
         if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
             return false;
         }
@@ -53,20 +46,17 @@ impl RegisteredPositions {
                 let Some(positions) = self.0.get(other_ent) else { continue };
                 let Ok(min_dists) = min_dists_query.get(*other_ent) else { continue };
                 for &prev_pos in positions {
-                    if min_dists.check_min_distances(prev_pos, (new_ent_ref, new_dim, new_pos)) == false {
+                    if min_dists.check_min_distances(prev_pos, (new_orig_ref, new_dim, new_pos)) == false {
                         return false;
                     }
                 }
             }
         }
-        self.0.entry(new_ent_ref.0).or_default().push((new_dim, new_pos));
-        let to_clients = ToClients {
-            mode: SendMode::Broadcast,
-            event: ClientSpawnTile::new(new_ent_ref.0, oplist_size, new_dim, new_pos),
-        };
+        self.0.entry(new_orig_ref.0).or_default().push((new_dim, new_pos));
 
-        cmd.server_trigger(to_clients);
-        
+        cmd.entity(new_tile).try_insert(Replicated);
+
+ 
         true
     }
 }

@@ -3,12 +3,12 @@
 
 use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::tiles::TilePos;
-use bevy_replicon::{prelude::Replicated, shared::server_entity_map::ServerEntityMap};
+use bevy_replicon::{prelude::{Replicated, SendMode, ToClients}, shared::server_entity_map::ServerEntityMap};
 use common::{common_components::{DisplayName, HashId, StrId}, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
-use game_common::{game_common_components::{FacingDirection, }, game_common_components_samplers::EntiWeightedSampler};
-use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_oplist_components::*, terrgen_resources::*, terrgen_events::*}, tile::tile_components::* };
+use game_common::{game_common_components::{EntityZero, FacingDirection }, game_common_components_samplers::EntiWeightedSampler};
+use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
 use std::{f32::consts::PI, mem::take};
 use ::tilemap_shared::*;
 
@@ -211,7 +211,8 @@ pub fn produce_tiles(mut cmd: Commands,
 
 
     }}
-    pending_ops_events.send_batch(new_pending_ops_events); ewriter_instantiated_tiles.write_batch(produced_tiles_events);
+    pending_ops_events.send_batch(new_pending_ops_events); 
+    ewriter_instantiated_tiles.write_batch(produced_tiles_events);
     ewriter_sampled_value.write_batch(sampled_value_events);
 
     Ok(())
@@ -221,71 +222,71 @@ pub fn produce_tiles(mut cmd: Commands,
 
 
 fn spawn_bifurcation_oplists(
-    ev: &mut PendingOp,
-    oplist_query: &Query<(&OperationList, &OplistSize), ()>,
-    new_pending_ops: &mut Vec<PendingOp>,
-    oplist: Entity,
-    my_oplist_size: OplistSize,
-) {
-    unsafe{
-        let (_, &child_oplist_size) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
-        let (chunk_ent, pos, dimension_hash_id, mut variables, mut studied_op, ) = (ev.chunk_ent, ev.pos, ev.dimension_hash_id, take(&mut ev.variables), take(&mut ev.studied_op));
+    ev: &mut PendingOp, oplist_query: &Query<(&OperationList, &OplistSize), ()>,
+    new_pending_ops: &mut Vec<PendingOp>, oplist: Entity, my_oplist_size: OplistSize,
+) {unsafe{
+    let (_, &child_oplist_size) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
+    let (chunk_ent, pos, dimension_hash_id, mut variables, mut studied_op, ) = (ev.chunk_ent, ev.pos, ev.dimension_hash_id, take(&mut ev.variables), take(&mut ev.studied_op));
 
-        if my_oplist_size != child_oplist_size
-        && (ev.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
-        && studied_op.is_none()
-        {
-            let x_end = child_oplist_size.x() as i32; let y_end = child_oplist_size.y() as i32;
-            for x in 0..x_end {
-                for y in 0..y_end {
-                    let pos = pos + GlobalTilePos::new(x, y);
+    if my_oplist_size != child_oplist_size
+    && (ev.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
+    && studied_op.is_none()
+    {
+        let x_end = child_oplist_size.x() as i32; let y_end = child_oplist_size.y() as i32;
+        for x in 0..x_end {
+            for y in 0..y_end {
+                let pos = pos + GlobalTilePos::new(x, y);
 
-                    let (variables, studied_op) = if x == x_end - 1 && y == y_end - 1 {
-                        (take(&mut variables), take(&mut studied_op))
-                    } else {
-                        (variables.clone(), studied_op.clone())
-                    };
+                let (variables, studied_op) = if x == x_end - 1 && y == y_end - 1 {
+                    (take(&mut variables), take(&mut studied_op))
+                } else {
+                    (variables.clone(), studied_op.clone())
+                };
 
-                    let new_event = PendingOp{ oplist, chunk_ent, dimension_hash_id, pos, variables, studied_op,  };
-                    new_pending_ops.push(new_event);
-                }
+                new_pending_ops.push(PendingOp{ oplist, chunk_ent, dimension_hash_id, pos, variables, studied_op,  });
             }
-         
-        } else {
-            new_pending_ops.push(PendingOp{ oplist, chunk_ent, dimension_hash_id, pos, variables, studied_op, });
         }
+    } else {
+        new_pending_ops.push(PendingOp{ oplist, chunk_ent, dimension_hash_id, pos, variables, studied_op, });
     }
-}
+}}
 
 
 #[allow(unused_parens)]
 pub fn process_tiles(mut cmd: Commands, 
-    mut er_instantiated_tiles: ResMut<Events<InstantiatedTiles>>,
-    mut ew_processed_tiles: EventWriter<ProcessedTiles>,
+    mut events_instantiated_tiles: ResMut<Events<InstantiatedTiles>>,
+    mut ewriter_processed_tiles: EventWriter<Tiles2TmapProcess>,
     chunk_query: Query<(&ChildOf), ()>,
     dimension_query: Query<(Entity), (With<Dimension>, )>,
-    tile_query: Query<(&GlobalTilePos, &TilePos, &OplistSize, Has<ChunkOrTilemapChild>, Option<&Transform>, &OriginalRef), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
-    oritile_query: Query<(Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
+    mut tile_query: Query<(&GlobalTilePos, &mut DimensionRef, &TilePos, &OplistSize, Option<&mut Transform>, &EntityZero), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
+
+    oritile_query: Query<(Has<ChunkOrTilemapChild>, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
     min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     mut regpos_map: ResMut<RegisteredPositions>,
+
     state: Res<State<GameSetupType>>,
 ) {
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
+    //TODO: insert_with_bundle vec<entity, bundle> en vez de ir insertando uno por uno
+    
+    if events_instantiated_tiles.is_empty() { return; }
 
+    let child_ofs_capacity = events_instantiated_tiles.len() /100;
+    let mut child_ofs_to_insert: Vec<(Entity, ChildOf)> = Vec::with_capacity(child_ofs_capacity);
+    info!("Processing {} instantiated tiles events, reserving space for {} ChildOf components", events_instantiated_tiles.len(), child_ofs_capacity);
+    //TODO HACER EVENTOS ESPECIALES?
 
-    if er_instantiated_tiles.is_empty() { return; }
-
-    let mut instantiated_tiles_events_to_retransmit = Vec::with_capacity(er_instantiated_tiles.len());
-    let mut processed_tiles_events = Vec::with_capacity(er_instantiated_tiles.len());
-    'eventfor: for mut ev in er_instantiated_tiles.drain() {
+    let mut instantiated_tiles_events_to_retransmit = Vec::with_capacity(events_instantiated_tiles.len());
+    let mut processed_tiles_events = Vec::with_capacity(events_instantiated_tiles.len());
+    'eventfor: for mut ev in events_instantiated_tiles.drain() {
 
         let tiles_len = ev.tiles.len();
 
         'tilefor: for (tile_i, tile_ent) in ev.tiles.iter_mut().enumerate() {
-            
-            let Ok((&global_pos, &pos_within_chunk, &oplist_size, chunk_child, transform, &tile_ref)) = tile_query.get(*tile_ent)
-            else { 
+
+            let Ok((&global_pos, mut placeholder_dim_ref, &pos_within_chunk, &oplist_size, transform, &ori_ref)) = tile_query.get_mut(*tile_ent)
+            else {
                 ev.retransmission_count += 1;
                 if ev.retransmission_count >= u8::MAX as u16 {
                     error!("Tile entity {:?} in instantiated tiles event for chunk or dim {:?} does not exist or isn't a Tile", tile_ent, ev.chunk_or_dim);
@@ -294,6 +295,15 @@ pub fn process_tiles(mut cmd: Commands,
                 }
                 continue 'eventfor; 
             };
+
+            let Ok((chunk_child, min_dists, keep_distance_from)) = oritile_query.get(ori_ref.0)
+            else { 
+                error!("{:?}'s Tileref{:?} does not exist or doesnt't have Disabled component", tile_ent, ori_ref.0);
+                cmd.entity(*tile_ent).try_despawn(); 
+                *tile_ent = Entity::PLACEHOLDER;
+                continue 'tilefor; 
+            };
+
             let dim_ent = if let Ok((chunk_childof)) = chunk_query.get(ev.chunk_or_dim) { 
                 if (chunk_child == false) {
                     trace!("Got chunk's ChildOf for chunk {:?} for tile {:?}: {:?}", ev.chunk_or_dim, tile_ent, chunk_childof.parent());
@@ -325,106 +335,59 @@ pub fn process_tiles(mut cmd: Commands,
                 continue 'tilefor; 
 
             };
-  
-            
-            let Ok((min_dists, keep_distance_from)) = oritile_query.get(tile_ref.0)
-            else { 
-                error!("{:?}'s Tileref{:?} does not exist or doesnt't have Disabled component", tile_ent, tile_ref.0);
-                cmd.entity(*tile_ent).try_despawn(); 
-                *tile_ent = Entity::PLACEHOLDER;
-                continue 'tilefor; 
-            };
+            let dimref = DimensionRef(dim_ent); *placeholder_dim_ref = dimref;
 
-            let dimref = DimensionRef(dim_ent);
-
-            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ref, dimref, global_pos, oplist_size, min_dists, keep_distance_from), min_dists_query) {
+            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent.clone(), ori_ref, dimref, global_pos, min_dists, keep_distance_from), min_dists_query) {
                 trace!("Tile {:?} at {:?} with pos within chunk {:?} violates min distance constraints, despawning", tile_ent, global_pos, pos_within_chunk);
                 cmd.entity(*tile_ent).try_despawn(); 
                 *tile_ent = Entity::PLACEHOLDER;
                 continue 'tilefor; 
             }
-
-            cmd.entity(*tile_ent).try_insert((dimref, ));
+            
             trace!("Spawned tile {:?} at global pos {:?} in dimension {:?}", tile_ent, global_pos, dimref);
-
+            
             if chunk_child {
-                if let Some(transform) = transform {
+                if let Some(mut transform) = transform {//TODO q se haga en otro sistema
                     let displacement: Vec2 = Vec2::from(pos_within_chunk) * oplist_size.inner().as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-                    let displacement = transform.translation + displacement.extend(0.0);
-                    cmd.entity(*tile_ent).try_insert((ChildOf(ev.chunk_or_dim), Transform::from_translation(displacement)))
-                    .try_remove::<(TilePos, Disabled)>();
+                    transform.translation += displacement.extend(0.0);
+                    child_ofs_to_insert.push((*tile_ent, ChildOf(ev.chunk_or_dim)));
                     trace!("Inserted tile {:?} as child of chunk {:?} at local pos {:?}, global pos {:?}, displacement {:?}", tile_ent, ev.chunk_or_dim, pos_within_chunk, global_pos, displacement);
                 }
             } else if is_host {
-                let mut displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
-                if let Some(transform) = transform {
-                    displacement += transform.translation;
-                } 
+                let displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
 
-                cmd.entity(*tile_ent)
-                    .try_remove::<(Tile, Disabled, OplistSize, TilePos, )>()
-                    .try_insert((Replicated, ChildOf(dim_ent), Transform::from_translation(displacement)));
+                if let Some(mut transform) = transform {
+                    transform.translation += displacement;
+                }
 
+                child_ofs_to_insert.push((*tile_ent, ChildOf(dim_ent)));
+
+                cmd.entity(*tile_ent).try_insert((Replicated, ));
+                    
             } else {
                 trace!("Tile {:?} at {:?} with pos within chunk {:?} is not a TilemapChild, despawning on client", tile_ent, global_pos, pos_within_chunk);
                 cmd.entity(*tile_ent).try_despawn();
                 *tile_ent = Entity::PLACEHOLDER;
             }
+                
         }
-        let protiles = ProcessedTiles { chunk: ev.chunk_or_dim, tiles: ev.take_tiles() };
+        let protiles = Tiles2TmapProcess { chunk: ev.chunk_or_dim, tiles: ev.take_tiles() };
         processed_tiles_events.push(protiles);
         
     }
-    ew_processed_tiles.write_batch(processed_tiles_events);
-    er_instantiated_tiles.send_batch(instantiated_tiles_events_to_retransmit);
-}
-
-
-
-#[allow(unused_parens)]
-pub fn client_sync_spawn_tile(
-    trigger: Trigger<ClientSpawnTile>,
-    mut cmd: Commands, 
-    loaded_chunks: Res<LoadedChunks>,
-    state: Res<State<GameSetupType>>,
-    mut entis_map: ResMut<ServerEntityMap>, 
-
-    mut ewriter: EventWriter<InstantiatedTiles>
-
-) {
-    let is_host = state.get() != &GameSetupType::AsJoiner;
-
-    if is_host { return; }
-    info!("Client received NewlyRegPos event from server");
-
-    let regpos = trigger.event();//.map_entities(entis_map.to_client());
-
-    let (dim, global_pos) = (regpos.dim, regpos.global_pos);
-
-    let Some(dim) = entis_map.server_entry(dim.0).get() else {
-        warn!("Received server's tileref entity could not be mapped to a client one");
-        return;
-    };
-    let dim = DimensionRef(dim);
-
-
-    let chunk_pos: ChunkPos = global_pos.into();
-
-    let Some(tileref) = entis_map.server_entry(regpos.orig_ref).get() else {
-        warn!("Received server's tileref entity could not be mapped to a client one");
-        return;
-    };
-    let tileref = OriginalRef(tileref);
-    
-
-
-    if let Some(&chunk) = loaded_chunks.0.get(&(dim, chunk_pos)) {
-        let tile = Tile::spawn_from_ref(&mut cmd, tileref, global_pos, regpos.oplist_size);
-        let ev = InstantiatedTiles::from_tile(tile, chunk);
-        ewriter.write(ev);
+    for (tile_ent, _) in child_ofs_to_insert.iter() {
+        cmd.entity(*tile_ent).try_remove::<(Disabled, TilePos, OplistSize)>();
     }
+    info!("Inserting {} ChildOf components for tiles", child_ofs_to_insert.len());
 
+    cmd.try_insert_batch(child_ofs_to_insert);
+
+    ewriter_processed_tiles.write_batch(processed_tiles_events);
+    events_instantiated_tiles.send_batch(instantiated_tiles_events_to_retransmit);
 }
+
+
+
 
 
 #[allow(unused_parens)]

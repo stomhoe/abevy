@@ -1,9 +1,11 @@
+use bevy::render::sync_world::SyncToRenderWorld;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::{AssetsLoadingState, };
 use bevy_ecs_tilemap::prelude::*;
-use game_common::{ColorSamplersInitSystems, game_common_components_samplers::EntiWeightedSampler};
-use tilemap_shared::GlobalTilePos;
+use dimension_shared::DimensionRef;
+use game_common::{ColorSamplersInitSystems, game_common_components::EntityZero, game_common_components_samplers::EntiWeightedSampler};
+use tilemap_shared::{GlobalTilePos, OplistSize};
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
@@ -31,7 +33,7 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
             flip_tile_along_x,
-            (add_tile_weighted_samplers_to_map, ).run_if(not(server_or_singleplayer)),
+            (add_tile_weighted_samplers_to_map, client_sync_tile ).run_if(not(server_or_singleplayer)),
 
             instantiate_portal.run_if(server_or_singleplayer)
         ))
@@ -62,6 +64,7 @@ pub fn plugin(app: &mut App) {
         .add_server_trigger::<TileWeightedSamplersMap>(Channel::Unordered)
         .make_trigger_independent::<TileWeightedSamplersMap>()
 
+
         .register_type::<ShaderRepeatTexSerisHandles>()
         .register_type::<ShaderRepeatTexSeri>()
         .register_type::<ShaderVoronoiSerisHandles>()
@@ -69,7 +72,6 @@ pub fn plugin(app: &mut App) {
         .register_type::<TileSerisHandles>()
         .register_type::<TileSeri>()
         .register_type::<GlobalTilePos>()
-        .register_type::<OriginalRef>()
         .register_type::<TileWeightedSamplerHandles>()
         .register_type::<TileWeightedSamplerSeri>()
         .register_type::<TileEntitiesMap>()
@@ -86,8 +88,16 @@ pub fn plugin(app: &mut App) {
         .register_type::<PortalTemplate>()
         .register_type::<PortalInstance>()
 
+
+        .replicate::<Tile>()
         .replicate::<TileSamplerHolder>()
-        .replicate::<PortalTemplate>()
+        .replicate::<TileStrId>()
+        .replicate::<InitialPos>()
+        .replicate::<TileShaderRef>()
+        .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TilemapId, TileVisible, TileColor, TilePosOld, )>()
+        .replicate::<ChunkOrTilemapChild>()
+        .replicate_bundle::<(GlobalTilePos, EntityZero)>()
+        .replicate_bundle::<(Tile, GlobalTilePos, Transform)>()
         .replicate::<PortalInstance>()
         .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()
 

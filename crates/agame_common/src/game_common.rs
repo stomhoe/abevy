@@ -45,7 +45,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         (z_sort_system, apply_color).in_set(StatefulSessionSystems),
-        (toggle_simulation, update_transform_z, ).in_set(GameplaySystems),
+        (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
         add_colorsamplers_to_map.run_if(not(server_or_singleplayer)),
         apply_color,
@@ -95,12 +95,17 @@ pub fn plugin(app: &mut App) {
     .register_type::<WeightedSamplerRef>()
     .register_type::<Category>()
     .register_type::<Categories>()
+    .register_type::<EntityZero>()
     
     .replicate::<VisibilityGameState>()    
     .replicate::<FacingDirection>()
     .replicate::<Directionable>()
     .replicate::<EntiWeightedSampler>()
     .replicate::<ColorSampler>()
-
+    .replicate::<MyZ>()
+    .replicate::<YSortOrigin>()
+    .replicate::<Description>()
+    .replicate::<FacingDirection>()
+    .replicate::<EntityZero>()
     ;
 }

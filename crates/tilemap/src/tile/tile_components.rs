@@ -2,11 +2,12 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{MyZ};
+use game_common::game_common_components::{EntityZero, MyZ, YSortOrigin};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
@@ -15,14 +16,21 @@ use ::tilemap_shared::*;
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::StudiedOp}, tile::tile_materials::* };
 
 #[derive(Bundle)]
-struct ToDenyOnTileClone(Name, DisplayName, MinDistancesMap, KeepDistanceFrom, ChildOf, Replicated, );
+struct ToDenyOnTileClone(Name, DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, );
 
 #[derive(Bundle)]
 struct ToDenyOnReleaseBuild( EntityPrefix, TileStrId  );
 
+#[derive(Bundle, Debug, Default)]
+pub struct ToAddToTile{
+    pub initial_pos: InitialPos,
+    pub global_pos: GlobalTilePos,
+    pub tile_pos: TilePos,
+    pub oplist_size: OplistSize,
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(MyZ, EntityPrefix::new("Tile"), AssetScoped, )]
+#[require(EntityPrefix::new("Tile"), AssetScoped, )]
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
@@ -30,7 +38,7 @@ impl Tile {
     pub const MAX_Z: MyZ = MyZ(1_000);
 
     pub fn spawn_from_ref(
-        cmd: &mut Commands, tile_ref: OriginalRef, global_pos: GlobalTilePos, oplist_size: OplistSize,
+        cmd: &mut Commands, tile_ref: EntityZero, global_pos: GlobalTilePos, oplist_size: OplistSize,
     ) -> Entity {
         cmd.entity(tile_ref.0).clone_and_spawn_with(|builder|{
             builder.deny::<ToDenyOnTileClone>();
@@ -39,21 +47,36 @@ impl Tile {
         .try_insert((tile_ref, InitialPos(global_pos), global_pos, global_pos.to_tilepos(oplist_size), oplist_size))
         .id()
     }
+
+    pub fn clonespawn_many(
+        cmd: &mut Commands, mut tile_refs: Vec<(Entity, (GlobalTilePos, OplistSize))>, 
+    ) -> Vec<Entity> {
+        let mut new_entities = Vec::with_capacity(tile_refs.len());
+        for (entity, _) in tile_refs.iter_mut() {
+            *entity = cmd.entity(*entity).clone_and_spawn_with(|builder|{
+                builder.deny::<ToDenyOnTileClone>();
+                //builder.deny::<BundleToDenyOnReleaseBuild>();
+            }).id();
+            new_entities.push(*entity);
+        }
+        cmd.insert_batch(tile_refs);
+        new_entities
+    }
+    
       
 }
 
-pub type TileStrId = HalfStrId;
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct TileInstancesHolder;
+
+
+pub type TileStrId = StrId20B;
 
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 pub struct ChunkOrTilemapChild;
-
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
-pub struct OriginalRef(#[entities] pub Entity);
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
@@ -112,7 +135,7 @@ pub enum TileShader{
 }
 
 
-#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug)]
 pub struct InitialPos(pub GlobalTilePos);
 
 
@@ -157,7 +180,7 @@ pub struct MinDistancesMap(pub EntityHashMap<u32>);
 impl MinDistancesMap {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&self, 
-        my_pos: (DimensionRef, GlobalTilePos), new: (OriginalRef, DimensionRef, GlobalTilePos)
+        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZero, DimensionRef, GlobalTilePos)
     ) -> bool {
         self.0.get(&new.0.0).map_or(true, |&min_dist| {
             my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist

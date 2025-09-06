@@ -6,6 +6,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use crate::{common_types::*};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use std::fmt::{Debug, Display};
@@ -13,9 +14,7 @@ use std::fmt::{Debug, Display};
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect )]
 pub struct StrId(FixedStr<32>);
 impl StrId {
-    pub fn new<S: AsRef<str>>(id: S) -> Self {
-        Self(FixedStr::new(id))
-    }
+    pub fn new<S: AsRef<str>>(id: S) -> Self { Self(FixedStr::new(id)) }
 
     pub fn new_with_result<S: AsRef<str>>(id: S, min: u8) -> Result<Self, BevyError> {
         let s = id.as_ref();
@@ -34,11 +33,9 @@ impl InspectorPrimitive for StrId {
         let mut changed = false;
         if ui.text_edit_singleline(&mut s).changed() {
             if let Ok(fixed) = FixedStr::new_with_result(&s) {
-                self.0 = fixed;
-                changed = true;
+                self.0 = fixed; changed = true;
             }
-        }
-        changed
+        }changed
     }
     fn ui_readonly(&self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) {
         ui.label(self.0.as_str());
@@ -46,13 +43,8 @@ impl InspectorPrimitive for StrId {
 }
 impl Debug for StrId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.0.is_empty() {
-            write!(f, "")
-        } else {
-            write!(f, "Id({})", self.0)
-        }
+        if self.0.is_empty() {write!(f, "")} else {write!(f, "Id({})", self.0)}
     }
-    
 }
 impl Display for StrId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -61,76 +53,55 @@ impl Display for StrId {
 }
 impl AsRef<str> for StrId {fn as_ref(&self) -> &str {&self.0.as_str() }}
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect )]
-pub struct HalfStrId(FixedStr<16>);
+pub struct StrId20B(FixedStr<20>);
 
-impl HalfStrId {
-    pub fn new<S: AsRef<str>>(id: S) -> Self {
-        Self(FixedStr::new(id))
-    }
+impl StrId20B {
+    pub fn new<S: AsRef<str>>(id: S) -> Self {Self(FixedStr::new(id))}
 
     pub fn new_with_result<S: AsRef<str>>(id: S, min: u8) -> Result<Self, BevyError> {
         let s = id.as_ref();
-        if s.len() >= min as usize {
-            FixedStr::new_with_result(s).map(Self)
-        } else {
-            Err(BevyError::from(format!("HalfStrId '{}' must be at least {} characters long", s, min)))
-        }
+        if s.len() >= min as usize { FixedStr::new_with_result(s).map(Self)} 
+        else {Err(BevyError::from(format!("StrId20B '{}' must be at least {} characters long", s, min)))}
     }
     pub fn as_str(&self) -> &str { self.0.as_str() }
     pub fn is_empty(&self) -> bool { self.0.is_empty() }
 }
-impl InspectorPrimitive for HalfStrId {
+impl InspectorPrimitive for StrId20B {
     fn ui(&mut self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) -> bool {
-        let mut s = self.0.as_str().to_string();
-        let mut changed = false;
+        let mut s = self.0.as_str().to_string(); let mut changed = false;
         if ui.text_edit_singleline(&mut s).changed() {
             if let Ok(fixed) = FixedStr::new_with_result(&s) {
-                self.0 = fixed;
-                changed = true;
+                self.0 = fixed;changed = true;
             }
-        }
-        changed
+        }changed
     }
     fn ui_readonly(&self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) {
         ui.label(self.0.as_str());
     }
 }
-impl Debug for HalfStrId {
+impl Debug for StrId20B {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.0.is_empty() {
-            write!(f, "")
-        } else {
-            write!(f, "Id({})", self.0)
-        }
+        if self.0.is_empty() {write!(f, "")} else {write!(f, "Id({})", self.0)}
     }
 }
-impl Display for HalfStrId {
+impl Display for StrId20B {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.0.is_empty() {
-            write!(f, "")
-        } else {
-            write!(f, "Id({})", self.0)
-        }
+        if self.0.is_empty() {write!(f, "")} else {write!(f, "Id({})", self.0)}
     }
 }
-impl AsRef<str> for HalfStrId {fn as_ref(&self) -> &str {&self.0.as_str() }}
+impl AsRef<str> for StrId20B {fn as_ref(&self) -> &str {&self.0.as_str() }}
 
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect, )]
 pub struct HashId(u64);
 impl HashId {
-    pub fn new(id: u64) -> Self {
-        HashId(id)
-    }
+    pub fn new(id: u64) -> Self {HashId(id)}
     pub fn into_i32(self) -> i32 {self.0 as i32}
 }
 impl<S: AsRef<str>> From<S> for HashId {
     fn from(id: S) -> Self {
-        let s = id.as_ref();
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        use std::hash::{Hash, Hasher};
-        s.hash(&mut hasher);
-        Self((&hasher).finish())
+        let s = id.as_ref(); let mut hasher = DefaultHasher::new();
+        s.hash(&mut hasher); Self((&hasher).finish())
     }
 }
 
@@ -171,9 +142,7 @@ impl<T> HashIdIndexMap<T> {
     pub fn insert<S: AsRef<str>>(&mut self, key: S, value: T) -> Option<T> { self.0.insert(HashId::from(key), value) }
     pub fn get<S: AsRef<str>>(&self, key: S) -> Option<&T> { self.0.get(&HashId::from(key)) }
     pub fn get_mut<S: AsRef<str>>(&mut self, key: S) -> Option<&mut T> { self.0.get_mut(&HashId::from(key)) }
-    pub fn first(&self) -> Option<&T> {
-        self.0.values().next()
-    }
+    pub fn first(&self) -> Option<&T> {self.0.values().next()}
     pub fn contains_key<S: AsRef<str>>(&self, key: S) -> bool {self.0.contains_key(&HashId::from(key))}
     delegate! {
         to self.0 {
@@ -211,15 +180,12 @@ impl Display for EntityPrefix {
 }
 impl InspectorPrimitive for EntityPrefix {
     fn ui(&mut self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) -> bool {
-        let mut s = self.0.as_str().to_string();
-        let mut changed = false;
+        let mut s = self.0.as_str().to_string(); let mut changed = false;
         if ui.text_edit_singleline(&mut s).changed() {
             if let Ok(fixed) = FixedStr::new_with_result(&s) {
-                self.0 = fixed;
-                changed = true;
+                self.0 = fixed;changed = true;
             }
-        }
-        changed
+        }changed
     }
     fn ui_readonly(&self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) {
         ui.label(self.0.as_str());

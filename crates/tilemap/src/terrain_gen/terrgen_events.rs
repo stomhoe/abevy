@@ -184,7 +184,7 @@ impl InstantiatedTiles {
             }
         } else {
 
-            let tile_ent = Tile::spawn_from_ref(cmd, OriginalRef(tiling_ent), global_pos, oplist_size);
+            let tile_ent = Tile::spawn_from_ref(cmd, EntityZero(tiling_ent), global_pos, oplist_size);
 
             // Insert into the array if there's space, otherwise switch to Batch
             match &mut self.tiles {
@@ -211,6 +211,7 @@ impl InstantiatedTiles {
         }
         instance
     }
+    
     pub fn from_tile(tile: Entity, chunk_or_dim: Entity, ) -> Self {
         if tile == Entity::PLACEHOLDER {
             return Self { chunk_or_dim, ..Default::default() };
@@ -227,15 +228,13 @@ impl Default for InstantiatedTiles { fn default() -> Self { Self { chunk_or_dim:
 
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Reflect, Event, )]
-pub struct ProcessedTiles { pub chunk: Entity, pub tiles: OplistCollectedTiles }
+pub struct Tiles2TmapProcess { pub chunk: Entity, pub tiles: OplistCollectedTiles }
 
-#[derive(Deserialize, Event, Serialize, )]
-pub struct ClientSpawnTile  { pub orig_ref: Entity, pub oplist_size: OplistSize, pub dim: DimensionRef, pub global_pos: GlobalTilePos }
-impl ClientSpawnTile {
-    pub fn new(orig_ref: Entity, oplist_size: OplistSize, dim: DimensionRef, global_pos: GlobalTilePos) -> Self {
-        Self { orig_ref, oplist_size, dim, global_pos }
-    }
-}
+
+
+/*
+mut event_writer: EventWriter<ToClients<ClientSpawnTile>>,
+*/
 
 
 #[derive(Debug, Clone, Event, )]

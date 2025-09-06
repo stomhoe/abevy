@@ -1,3 +1,4 @@
+use bevy::ecs::entity_disabling::Disabled;
 use bevy::input::ButtonInput;
 
 use bevy::prelude::*;
@@ -38,24 +39,54 @@ pub fn toggle_simulation(
         }
     }
 }
-#[allow(unused_parens, )]
-pub fn update_transform_z(
-    mut query: Query<(&mut Transform, &MyZ), (Changed<MyZ>,)>) {
-    for (mut transform, z_index) in query.iter_mut() {
-        let new_z = z_index.as_float();
-        if transform.translation.z != new_z {
-            debug!(target: "zlevel", "Updating transform z-index to {}", new_z);
-            transform.translation.z = new_z;
-        }
-    }
-}
+// #[allow(unused_parens, )]
+// pub fn update_transform_z(
+//     ori_query: Query<(&MyZ), (Or<(With<Disabled>, Without<Disabled>)>,)>,
+//     mut with_own_z_query: Query<(&mut Transform, &MyZ, ), (Changed<MyZ>,)>,
+//     mut with_entityzero: Query<(&mut Transform, &EntityZero), (Changed<EntityZero>, Without<MyZ>,)>,
+// )
+// {
+//     for (mut transform, z_index, ) in with_own_z_query.iter_mut() {
+//         let new_z = z_index.as_float();
+//         if transform.translation.z != new_z {
+//             debug!(target: "zlevel", "Updating transform z-index to {}", new_z);
+//             transform.translation.z = new_z;
+//         }
+//     }
+//     for (mut transform, original_ref) in with_entityzero.iter_mut() {
+//         let Ok((z_index)) = ori_query.get(original_ref.0) else { continue };
+
+//         let new_z = z_index.as_float();
+//         if transform.translation.z != new_z {
+//             debug!(target: "zlevel", "Updating transform z-index to {}", new_z);
+//             transform.translation.z = new_z;
+//         }
+//     }
+// }
 #[bevy_simple_subsecond_system::hot]
 #[allow(unused_parens, )]
-pub fn z_sort_system(mut query: Query<(&mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, ), 
-Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>
+pub fn z_sort_system(
+    ori_query: Query<(&MyZ, Option<&YSortOrigin>), (Or<(With<Disabled>, Without<Disabled>)>,)>,
+
+    mut with_own_z_query: Query<(&mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, ), 
+    Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>,
+    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZero), (Or<(Changed<EntityZero>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
+
+
 ) {
 
-    for (mut transform, global_transform, ysort_origin, z_index) in query.iter_mut() {
+    for (mut transform, global_transform, ysort_origin, z_index) in with_own_z_query.iter_mut() {
+        let y_pos = global_transform.translation().y - ysort_origin.cloned().unwrap_or_default().0;
+        let target_z = z_index.as_float() - y_pos * YSortOrigin::Y_SORT_DIV;
+
+        if (transform.translation.z - target_z).abs() > f32::EPSILON { 
+            transform.translation.z = target_z;
+            debug!(target: "zlevel", "Z-Sorting entity to z-index {}", target_z);
+        }
+    }
+    for (mut transform, global_transform, original_ref) in with_entityzero.iter_mut() {
+        let Ok((z_index, ysort_origin)) = ori_query.get(original_ref.0) else { continue };
+
         let y_pos = global_transform.translation().y - ysort_origin.cloned().unwrap_or_default().0;
         let target_z = z_index.as_float() - y_pos * YSortOrigin::Y_SORT_DIV;
 

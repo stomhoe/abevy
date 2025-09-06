@@ -27,7 +27,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             (spawn_terrain_operations, (produce_tiles, process_tiles)).in_set(TerrainGenSystems),
             search_suitable_position.run_if(server_or_singleplayer),
-            (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities).run_if(not(server_or_singleplayer)),
+            (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities, ).run_if(not(server_or_singleplayer)),
             oplist_init_dim_refs,
         ))
         
@@ -57,12 +57,9 @@ pub fn plugin(app: &mut App) {
 
         ))
         
-        .register_type::<NoiseSerisHandles>()
-        .register_type::<NoiseSerialization>()
-        .register_type::<OpListSerisHandles>()
-        .register_type::<OpListSerialization>()
-        .register_type::<FnlNoise>()
-        .register_type::<FastNoiseLite>()
+        .register_type::<NoiseSerisHandles>().register_type::<NoiseSerialization>()
+        .register_type::<OpListSerisHandles>().register_type::<OpListSerialization>()
+        .register_type::<FnlNoise>().register_type::<FastNoiseLite>()
         .register_type::<OperationList>().register_type::<Operation>().register_type::<Operand>()
         .register_type::<TerrGenEntityMap>()
         .register_type::<OpListEntityMap>()
@@ -75,16 +72,15 @@ pub fn plugin(app: &mut App) {
         .add_server_trigger::<RegisteredPositions>(Channel::Unordered)
         .make_trigger_independent::<RegisteredPositions>()
         
-        .add_server_trigger::<ClientSpawnTile>(Channel::Unordered)
-        .make_trigger_independent::<ClientSpawnTile>()
-        .add_observer(client_sync_spawn_tile)
+        
 
         .replicate_bundle::<(FnlNoise, ChildOf)>()
-        .replicate::<OplistSize>()
+        .replicate_bundle::<(OperationList, OplistSize)>()
+        .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
         .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>()
         .replicate::<NoiseHolder>()
         .add_event::<PendingOp>()
-        .add_event::<InstantiatedTiles>().add_event::<ProcessedTiles>()
+        .add_event::<InstantiatedTiles>().add_event::<Tiles2TmapProcess>()
         .add_event::<PosSearch>().add_event::<SuitablePosFound>().add_event::<SearchFailed>()
         ;
 

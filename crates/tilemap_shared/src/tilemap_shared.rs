@@ -204,6 +204,7 @@ impl std::ops::Sub for ChunkPos {
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
+/// IMPORTANTE: va asociado a cada tile instance, no a la tile original
 pub struct OplistSize(UVec2);
 
 impl OplistSize {
