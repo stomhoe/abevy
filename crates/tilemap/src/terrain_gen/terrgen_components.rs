@@ -1,5 +1,4 @@
 
-use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use fnl::{FastNoiseLite, NoiseSampleRange};
@@ -8,13 +7,8 @@ use noiz::DynamicConfigurableSampleable;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 use std::hash::{Hasher, Hash};
-use std::collections::hash_map::DefaultHasher;
-
-use crate::tile::tile_components::*;
 
 use {common::common_components::*, };
-use strum_macros::{AsRefStr, Display, };
-use std::ops::{Index, IndexMut};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 #[require(Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped, )]

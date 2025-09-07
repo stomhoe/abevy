@@ -102,7 +102,7 @@ impl SearchPattern {
 #[derive(Event, Debug, Clone)]
 pub struct PosSearch {
     pub dimension_hash_id: i32,
-    pub studied_op: StudiedOp,
+    pub studied_op_ent: Entity,
     pub step_size: u32,
     pub curr_iteration_batch_i: u32,//se puede cambiar a otra cosa para empezar alejado del centro
     pub max_batches: u32,
@@ -110,27 +110,28 @@ pub struct PosSearch {
     pub search_pattern: SearchPattern,
 }
 impl PosSearch{
-    pub fn portal_pos_search(dimension_hash_id: HashId, studied_op: StudiedOp) -> PosSearch {
+    pub fn portal_pos_search(dimension_hash_id: HashId, studied_op: Entity, search_start_pos: GlobalTilePos) -> PosSearch {
         PosSearch {
             dimension_hash_id: dimension_hash_id.into_i32(),
             step_size: 1,
             curr_iteration_batch_i: 0,
             max_batches: 100,
             iterations_per_batch: 1000,
-            search_pattern: SearchPattern::new_spiral(studied_op.search_start_pos),
-            studied_op,
+            search_pattern: SearchPattern::new_spiral(search_start_pos),
+            studied_op_ent: studied_op,
         }
     }
 }
 
 
 
-#[derive(Event, Debug)]
+#[derive(Event, Debug, Clone)]
 pub struct PendingOp {pub oplist: Entity, pub chunk_ent: Entity, pub pos: GlobalTilePos, pub dimension_hash_id: i32,
-    pub variables: VariablesArray, pub studied_op: Option<StudiedOp>
+    pub variables: VariablesArray, pub studied_op_ent: Entity//TODO: HACER LAS StudiedOp ENTITIES? (Y PONER StudiedOpRef en su lugar)
 }
 
-#[derive(Debug, Clone, )]
+
+#[derive(Debug, Clone, Component)]
 pub struct StudiedOp{
     pub root_oplist: Entity,
     pub checked_oplist: Entity,
@@ -238,9 +239,9 @@ mut event_writer: EventWriter<ToClients<ClientSpawnTile>>,
 
 
 #[derive(Debug, Clone, Event, )]
-pub struct SuitablePosFound { pub studied_op: StudiedOp, pub val: f32, pub found_pos: GlobalTilePos, }
+pub struct SuitablePosFound { pub studied_op_ent: Entity, pub val: f32, pub found_pos: GlobalTilePos, }
 
 
 #[derive(Debug, Clone, Event, )]
-pub struct SearchFailed (pub StudiedOp);
+pub struct SearchFailed (pub Entity);
 

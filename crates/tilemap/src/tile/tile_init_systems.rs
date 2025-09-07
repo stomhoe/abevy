@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, render::sync_world::SyncToRenderWorld};
+use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, render::sync_world::SyncToRenderWorld};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -279,14 +279,15 @@ pub fn client_map_server_tiling(
 pub fn instantiate_portal(mut cmd: Commands,
     ori_tile_str_id_query: Query<&TileStrId, (With<Disabled>)>,
     new_portals: Query<(Entity, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZero),(Without<SearchingForSuitablePos>, )>,
-    pending_search: Query<(Entity, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZero),(With<SearchingForSuitablePos>)>,
+    pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZero),()>,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
     mut ew_pending_ops: EventWriter<PosSearch>, mut ewriter_tiles: EventWriter<InstantiatedTiles>,
-    mut ereader_search_failed: EventReader<SearchFailed>, mut ereader_search_successful: EventReader<SuitablePosFound>,
+    mut ereader_search_successful: EventReader<SuitablePosFound>,
+    mut ereader_search_failed: EventReader<SearchFailed>, 
     mut register_pos: ResMut<RegisteredPositions>
 
 ) {
-    let mut started_searches: HashMap<StudiedOp, Entity> = HashMap::new();
+    let mut started_searches: EntityHashMap<Entity> = EntityHashMap::new();
 
     for (portal_ent, portal_template, &global_pos, dim_ref, tile_ref) in new_portals.iter() {
 
@@ -302,13 +303,16 @@ pub fn instantiate_portal(mut cmd: Commands,
             continue;
         };
 
-        let pos_search = PosSearch::portal_pos_search(dimension_hash_id, studied_op.clone());
-        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos);
+
+        let studied_op_ent = cmd.spawn((studied_op.clone(), )).id();
+
+        let pos_search = PosSearch::portal_pos_search(dimension_hash_id, studied_op_ent, global_pos);
+        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos{ studied_op_ent });
         ew_pending_ops.write(pos_search);
-        started_searches.insert(studied_op, portal_ent);
+        started_searches.insert(studied_op_ent, portal_ent);
     }
 
-    let mut successful_searches: HashSet<StudiedOp> = HashSet::new();
+    let mut successful_searches: EntityHashSet = EntityHashSet::new();
 
     let mut handle_success = |ent: Entity, portal_template: &PortalTemplate, my_pos: GlobalTilePos, 
         found_pos: GlobalTilePos, my_dim_ref: DimensionRef, my_orig_tile_ref: EntityZero| 
@@ -333,27 +337,27 @@ pub fn instantiate_portal(mut cmd: Commands,
     };
 
     'successful_searches: for search_successful_ev in ereader_search_successful.read() {
-        let studied_op = search_successful_ev.studied_op.clone();
-        if successful_searches.contains(&studied_op) {
+        let studied_op_ent = search_successful_ev.studied_op_ent;
+        if successful_searches.contains(&studied_op_ent) {
             continue 'successful_searches;
         }
 
-        if let Some(portal_ent) = started_searches.remove(&studied_op) {
+        if let Some(portal_ent) = started_searches.remove(&studied_op_ent) {
             let Ok((_, portal_template, &my_pos, &dim_ref, &orig_tile_ref)) = new_portals.get(portal_ent) else {
                 continue 'successful_searches;
             };
-            successful_searches.insert(studied_op.clone());
+            successful_searches.insert(studied_op_ent.clone());
             handle_success(portal_ent, portal_template, my_pos, search_successful_ev.found_pos.clone(), dim_ref, orig_tile_ref);
             continue 'successful_searches;
         }
 
-        for (ent, portal_template, &my_pos, &dim_ref, &orig_tile_ref) in pending_search.iter() {
-            if studied_op == portal_template.to_studied_op(my_pos) {
+        for (ent, searching_for, portal_template, &my_pos, &dim_ref, &orig_tile_ref) in pending_search.iter() {
+            if studied_op_ent == searching_for.studied_op_ent {
                 let str_id = ori_tile_str_id_query.get(orig_tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
                 info!(
                     "Found suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}, found pos: {:?}", str_id, ent, dim_ref.0, my_pos, portal_template.dest_dimension, search_successful_ev.found_pos
                 );
-                successful_searches.insert(studied_op.clone());
+                successful_searches.insert(studied_op_ent.clone());
                 handle_success(ent, portal_template, my_pos, search_successful_ev.found_pos.clone(), dim_ref, orig_tile_ref);
                 continue 'successful_searches;
             }
@@ -368,9 +372,9 @@ pub fn instantiate_portal(mut cmd: Commands,
             continue;
         }
 
-        for (ent, portal_template, &global_pos, dim_ref, tile_ref) in pending_search.iter() {
+        for (ent, searching_for, portal_template, &global_pos, dim_ref, tile_ref) in pending_search.iter() {
             let str_id = ori_tile_str_id_query.get(tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
-            if ev.0 == portal_template.to_studied_op(global_pos) {
+            if ev.0 == searching_for.studied_op_ent {
                 error!(
                     "Failed to find suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}", str_id, ent, dim_ref.0, global_pos, portal_template.dest_dimension
                 );
@@ -379,71 +383,6 @@ pub fn instantiate_portal(mut cmd: Commands,
         }
     }
 }
-
-/*
-#[allow(unused_parens)]
-pub fn client_sync_spawn_tile(
-    mut cmd: Commands, 
-    mut entis_map: ResMut<ServerEntityMap>, 
-    ori_query: Query<(&TileStrId, Has<ChunkOrTilemapChild>), (With<Disabled>)>,
-    loaded_chunks: Res<LoadedChunks>,
-    mut ewriter_inst_tiles: EventWriter<InstantiatedTiles>
-) {
-    let mut tiles_to_instantiate = Vec::new();
-    
-    for ev in sync_event_reader.read() {
-        info !("Received SpawnSyncTile event from server: {:?}", ev);
-
-        if let Some(prev_repli_tile) = entis_map.server_entry(ev.serv_tile_ent).get(){
-            continue;
-            if false {
-                info!("Despawning previously replicated tile {:?} for server entity {:?}", prev_repli_tile, ev.serv_tile_ent);
-                cmd.entity(prev_repli_tile).try_despawn();
-            }
-        }
-
-        let (dim, global_pos) = (ev.dim, ev.global_pos);
-    
-        let Some(dim) = entis_map.server_entry(dim.0).get() else {
-            error!("Received server's tileref entity could not be mapped to a client one");
-            continue;
-        };
-        let dim = DimensionRef(dim);
-    
-    
-        let chunk_pos: ChunkPos = global_pos.into();
-    
-        let Some(tileref) = entis_map.server_entry(ev.orig_ref).get() else {
-            error!("Received server's tileref entity could not be mapped to a client one");
-            continue;
-        };
-        let Ok((tile_strid, is_child)) = ori_query.get(tileref) else{
-            error!("Original tile entity {} is despawned", tileref);
-            continue;
-        };
-
-        let tileref = EntityZero(tileref);
-        
-        fn insert_replicated(cmd: &mut Commands, entis_map: &mut ServerEntityMap, serv_tile_ent: Entity, tile: Entity) {
-            entis_map.insert(serv_tile_ent, tile); cmd.entity(tile).try_insert(Replicated); 
-        }
-        
-        if !is_child{
-            let tile = Tile::spawn_from_ref(&mut cmd, tileref, global_pos, ev.oplist_size);
-            insert_replicated(&mut cmd, &mut entis_map, ev.serv_tile_ent, tile);
-            tiles_to_instantiate.push(InstantiatedTiles::from_tile(tile, dim.0));
-        }
-        else if let Some(&chunk) = loaded_chunks.0.get(&(dim, chunk_pos)) {
-            let tile = Tile::spawn_from_ref(&mut cmd, tileref, global_pos, ev.oplist_size);
-            insert_replicated(&mut cmd, &mut entis_map, ev.serv_tile_ent, tile);
-            tiles_to_instantiate.push(InstantiatedTiles::from_tile(tile, chunk));
-        }  
-    }
-    ewriter_inst_tiles.write_batch(tiles_to_instantiate);
-
-
-}
- */
 
 #[allow(unused_parens)]
 pub fn client_sync_tile(

@@ -23,9 +23,8 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         clear_chunks_on_dim_change,
-        despawn_unreferenced_chunks, 
+        (rem_outofrange_chunks_from_activators, despawn_unreferenced_chunks), 
         assign_child_of,
-        rem_outofrange_chunks_from_activators, 
         (
             visit_chunks_around_activators, 
             show_or_hide_chunks, 

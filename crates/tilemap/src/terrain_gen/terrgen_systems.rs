@@ -1,7 +1,7 @@
 
 
 
-use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::{entity::{EntityHashSet, MapEntities}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_replicon::{prelude::{Replicated, SendMode, ToClients}, shared::server_entity_map::ServerEntityMap};
 use common::{common_components::{DisplayName, HashId, StrId}, common_states::GameSetupType};
@@ -65,7 +65,7 @@ pub fn spawn_terrain_operations (
                     continue 'chunk_for;
                 }
                 batch.push(PendingOp {
-                    oplist, chunk_ent, pos: global_pos, dimension_hash_id: hash_id.into_i32(), variables: VariablesArray::default(), studied_op: None,
+                    oplist, chunk_ent, pos: global_pos, dimension_hash_id: hash_id.into_i32(), variables: VariablesArray::default(), studied_op_ent: Entity::PLACEHOLDER,
                 });
             }
         }
@@ -87,6 +87,7 @@ pub fn produce_tiles(mut cmd: Commands,
     oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
     mut pending_ops_events: ResMut<Events<PendingOp>>,
     fnl_noises: Query<&FnlNoise,>,
+    studied_ops: Query<&StudiedOp,>,
     weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
     mut ewriter_instantiated_tiles: EventWriter<InstantiatedTiles>,
     mut ewriter_sampled_value: EventWriter<SuitablePosFound>,
@@ -100,12 +101,11 @@ pub fn produce_tiles(mut cmd: Commands,
     let mut produced_tiles_events = Vec::with_capacity(chunk_area);
     let mut sampled_value_events = Vec::new();
 
-    'eventfor: for mut ev in pending_ops_events.drain() {
+    'eventfor: for mut ev in pending_ops_events.drain() {unsafe{
    
         let (oplist, &my_oplist_size) = oplist_query.get(ev.oplist)?;
         let global_pos = ev.pos;
-
-        unsafe{
+        
 
         for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
             let mut operation_acc_val: f32 = 0.0;
@@ -153,8 +153,10 @@ pub fn produce_tiles(mut cmd: Commands,
                     (Operation::MultiplyNormalizedAbs, 1.., _) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
                     (Operation::Abs, _, _) => {operation_acc_val = operation_acc_val.abs(); break;},
                     (Operation::i_Max, 0, _) => { operation_acc_val = curr_operand_val; }
-                    (Operation::i_Max, _, false) => {if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}
-                    (Operation::i_Max, _, true) => {if curr_operand_val > operation_acc_val { selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32;}
+                    (Operation::i_Max, _, false) => {if curr_operand_val > operation_acc_val 
+                        { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}
+                    (Operation::i_Max, _, true) => {if curr_operand_val > operation_acc_val
+                        { selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32;}
                     (Operation::i_Norm, 0, false) => { operation_acc_val = curr_operand_val; }
                     (Operation::i_Norm, 0, true) => { operation_acc_val = curr_operand_val * (oplist.bifurcations.len() - 1) as f32; }
                     (Operation::i_Norm, _, false) => { operation_acc_val *= curr_operand_val; }
@@ -170,22 +172,17 @@ pub fn produce_tiles(mut cmd: Commands,
 
                 trace!(
                     "{} with operand {:?} at stack array index {}: prev_value: {}, curr_value: {}, {:?},",
-                    operation,
-                    operand,
-                    *stackarr_out_i,
-                    prev_value,
-                    operation_acc_val,
-                    global_pos,
+                    operation, operand, *stackarr_out_i, prev_value, operation_acc_val, global_pos,
                 );      
             }
 
-            if let Some(ref mut sop) = ev.studied_op {
+            if let Ok(ref mut sop) = studied_ops.get(ev.studied_op_ent) {
                 if  sop.checked_oplist == ev.oplist && (op_i == sop.op_i as usize || (sop.op_i <= -1 && op_i == oplist.trunk.len() - 1))
                 {    
                     if (sop.lim_below <= operation_acc_val && operation_acc_val <= sop.lim_above)
                     {
                         sampled_value_events.push(SuitablePosFound {
-                            studied_op: sop.clone(),
+                            studied_op_ent: ev.studied_op_ent,
                             val: operation_acc_val,
                             found_pos: ev.pos,
                         });
@@ -193,7 +190,6 @@ pub fn produce_tiles(mut cmd: Commands,
                     continue 'eventfor;
                 }
             }
-
             trace!("Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
             ev.variables[*stackarr_out_i] = operation_acc_val;
 
@@ -207,12 +203,10 @@ pub fn produce_tiles(mut cmd: Commands,
             spawn_bifurcation_oplists(&mut ev, &oplist_query, &mut new_pending_ops_events, oplist, my_oplist_size);
         }
 
-        if bifurcation.tiles.len() > 0 && ev.studied_op.is_none() {
+        if bifurcation.tiles.len() > 0 && ev.studied_op_ent == Entity::PLACEHOLDER {
             let tiles = InstantiatedTiles::from_op(&mut cmd, &ev, &bifurcation.tiles, my_oplist_size, &weight_maps, &gen_settings);
             produced_tiles_events.push(tiles);
         }
-
-
     }}
     pending_ops_events.send_batch(new_pending_ops_events); 
     ewriter_instantiated_tiles.write_batch(produced_tiles_events);
@@ -229,29 +223,20 @@ fn spawn_bifurcation_oplists(
     new_pending_ops: &mut Vec<PendingOp>, oplist: Entity, my_oplist_size: OplistSize,
 ) {unsafe{
     let (_, &child_oplist_size) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
-    let (chunk_ent, pos, dimension_hash_id, mut variables, mut studied_op, ) = (ev.chunk_ent, ev.pos, ev.dimension_hash_id, take(&mut ev.variables), take(&mut ev.studied_op));
 
     if my_oplist_size != child_oplist_size
     && (ev.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
-    && studied_op.is_none()
+    && ev.studied_op_ent == Entity::PLACEHOLDER
     {
         let x_end = child_oplist_size.x() as i32; let y_end = child_oplist_size.y() as i32;
         for x in 0..x_end {
             for y in 0..y_end {
-                let pos = pos + GlobalTilePos::new(x, y);
+                let pos = ev.pos + GlobalTilePos::new(x, y);
 
-                let (variables, studied_op) = if x == x_end - 1 && y == y_end - 1 {
-                    (take(&mut variables), take(&mut studied_op))
-                } else {
-                    (variables.clone(), studied_op.clone())
-                };
-
-                new_pending_ops.push(PendingOp{ oplist, chunk_ent, dimension_hash_id, pos, variables, studied_op,  });
+                new_pending_ops.push(PendingOp{ oplist, pos, ..(*ev).clone()  });
             }
         }
-    } else {
-        new_pending_ops.push(PendingOp{ oplist, chunk_ent, dimension_hash_id, pos, variables, studied_op, });
-    }
+    } else {new_pending_ops.push(PendingOp{ oplist, ..(*ev).clone() });}
 }}
 
 
@@ -276,7 +261,7 @@ pub fn process_tiles(mut cmd: Commands,
     if events_instantiated_tiles.is_empty() { return; }
 
     let child_ofs_capacity = events_instantiated_tiles.len() /100;
-    info!("Processing {} instantiated tiles events, reserving space for {} ChildOf components", events_instantiated_tiles.len(), child_ofs_capacity);
+    trace!("Processing {} instantiated tiles events, reserving space for {} ChildOf components", events_instantiated_tiles.len(), child_ofs_capacity);
     //TODO HACER EVENTOS ESPECIALES?
 
     let mut instantiated_tiles_events_to_retransmit = Vec::with_capacity(events_instantiated_tiles.len());
@@ -378,28 +363,34 @@ pub fn process_tiles(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn search_suitable_position(
+    mut cmd: Commands,
     mut events_pos_search: ResMut<Events<PosSearch>>, mut ewriter_search_failed: EventWriter<SearchFailed>,
     mut ewriter_pending_ops: EventWriter<PendingOp>, mut ereader_suitable_pos_found: EventReader<SuitablePosFound>,
+    studied_ops: Query<&StudiedOp, ( )>,
 ) {
     let mut new_pending_ops = Vec::new();
     let mut new_pos_searches = Vec::new();
     let mut search_failed_evs = Vec::new();
-    let mut found_suitable_positions = HashSet::<StudiedOp>::new();
+    let mut found_suitable_positions = EntityHashSet::new();
 
 
     for found_ev in ereader_suitable_pos_found.read() {
-        found_suitable_positions.insert(found_ev.studied_op.clone());
+        found_suitable_positions.insert(found_ev.studied_op_ent);
     }
     
     for pos_search in events_pos_search.drain() {
 
-        if found_suitable_positions.contains(&pos_search.studied_op) {
-            info!("Found suitable position for {:?}", pos_search.studied_op);
+        if found_suitable_positions.contains(&pos_search.studied_op_ent) {
+            info!("Found suitable position for {:?}", pos_search.studied_op_ent);
             continue;
         }
 
-        let (studied_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_hash_id) = 
-        (pos_search.studied_op.clone(), pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_hash_id);
+        let (studied_op_ent, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_hash_id) = 
+        (pos_search.studied_op_ent, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_hash_id);
+
+        let Ok(studied_op) = studied_ops.get(studied_op_ent) else {
+            continue;
+        };
 
         match pos_search.search_pattern {
             SearchPattern::Radial(explore_angle) => {
@@ -421,7 +412,7 @@ pub fn search_suitable_position(
                     oplist: studied_op.root_oplist,
                     dimension_hash_id,
                     pos: calculate_pos(i_within_batch, explore_angle),
-                    studied_op: Some(studied_op.clone()),
+                    studied_op_ent,
                     variables: VariablesArray::default(),
                     chunk_ent: Entity::PLACEHOLDER,
                 });
@@ -435,7 +426,7 @@ pub fn search_suitable_position(
                 });
                 } else {
                     error!("No more batches to search for {:?}", studied_op);
-                    search_failed_evs.push(SearchFailed(studied_op));
+                    search_failed_evs.push(SearchFailed(studied_op_ent));
                 }
             }
             else{
@@ -447,8 +438,7 @@ pub fn search_suitable_position(
                 for i in 0..divisions {
                     let angle = 2.0 * PI * (i as f32) / (divisions as f32);
                     new_pos_searches.push(PosSearch{
-                        studied_op: studied_op.clone(),
-                        
+                        studied_op_ent,
                         search_pattern: SearchPattern::Radial(Some(angle)),
                         ..pos_search
                     });
@@ -470,7 +460,7 @@ pub fn search_suitable_position(
                         chunk_ent: Entity::PLACEHOLDER,
                         pos,
                         variables: VariablesArray::default(),
-                        studied_op: Some(studied_op.clone()),
+                        studied_op_ent,
                     });
 
                     steps_taken += 1;
@@ -481,11 +471,6 @@ pub fn search_suitable_position(
                         curr_length_in_dir += turns as u32;
                         turns = !turns;
                     }
-                    // if curr_iteration_batch_i == 0 && steps_taken < 10 && curr_length_in_dir < 6 {
-                    //     info!("Spiral search step {} at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
-                    //         (steps_taken), pos, dir_vec, curr_length_in_dir, turns);
-                    // }
-
                 }
                 if curr_iteration_batch_i + 1 < max_batches {
                     new_pos_searches.push(PosSearch{
@@ -495,7 +480,8 @@ pub fn search_suitable_position(
                     });
                 } else {
                     error!("No more batches to search for {:?}", studied_op);
-                    search_failed_evs.push(SearchFailed(studied_op));
+                    //cmd.entity(studied_op_ent).try_despawn();
+                    search_failed_evs.push(SearchFailed(studied_op_ent));
                 }
             },   
         }

@@ -15,7 +15,7 @@
         ("*", ["$4", "$9", "$2"], 4),
 
         //cave portal
-        ("idxmax", ["hp81", "0.0001"],5),//0.0001 para freq /10, 0.001 para demostraciones
+        ("idxmax", ["hp81", "0.001"],5),//0.0001 para freq /10, 0.001 para demostraciones
 
         ("*", ["$5", "$8", "2"], 5),
 
@@ -38,5 +38,3 @@
     size: Some((1, 1)),
 
 )
-
-//max(a*(1-b+b_t), b*(1-a+)) > ocean threshold

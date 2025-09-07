@@ -22,4 +22,3 @@
 
 )
 
-//max(a*(1-b+b_t), b*(1-a+)) > ocean threshold

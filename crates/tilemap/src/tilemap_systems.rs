@@ -66,7 +66,7 @@ pub fn produce_tilemaps(
 
     let mut changed_structs: HashSet<(Entity, MapKey)> = HashSet::with_capacity(reserved);
 
-    info!("Producing tilemaps for {} tile events, reserving space for {} chunks", ereader_processed_tiles.len(), reserved);
+    trace!("Producing tilemaps for {} tile events, reserving space for {} chunks", ereader_processed_tiles.len(), reserved);
 
 
     let mut to_draw = Vec::new();
@@ -96,7 +96,7 @@ pub fn produce_tilemaps(
                 continue 'tilefor;
             };
             if ! is_child{
-                info!("Original tile entity {} is not a ChunkOrTilemapChild", orig_ref.0);
+                trace!("Original tile entity {} is not a ChunkOrTilemapChild", orig_ref.0);
                 continue 'tilefor;
             }
 

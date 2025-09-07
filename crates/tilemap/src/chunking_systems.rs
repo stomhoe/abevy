@@ -20,7 +20,6 @@ pub fn visit_chunks_around_activators(
     tilemap_settings: Res<AaChunkRangeSettings>,
 ) {
     let cnt = tilemap_settings.discovery_range as i32;   
-
     let mut to_insert = Vec::new();
 
     for (transform, mut activates_chunks, &dimension_ref) in query.iter_mut() {
@@ -62,16 +61,23 @@ pub fn rem_outofrange_chunks_from_activators(
     let mut to_despawn = Vec::new();
     for (act_transform, mut activate_chunks) in activator_query.iter_mut() {
         let act_chunk_pos = ChunkPos::from(act_transform.translation().xy());
-
-        activate_chunks.0.retain(|&entity| {
-            if let Ok((&chunk_pos)) = chunks_query.get(entity) {
-                !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos) &&
-                  chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos))
+        let mut i = 0;
+        while i < activate_chunks.0.len() {
+            let chunk_ent = activate_chunks.0[i];
+            if let Ok((&chunk_pos)) = chunks_query.get(chunk_ent) {
+                let keep = !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos) &&
+                    chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos));
+                if keep {
+                    i += 1;
+                } else {
+                    activate_chunks.0.swap_remove(i);
+                    to_despawn.push(CheckChunkDespawn(chunk_ent, 0));
+                }
             } else {
-                to_despawn.push(CheckChunkDespawn(entity));
-                false
+                activate_chunks.0.swap_remove(i);
+                to_despawn.push(CheckChunkDespawn(chunk_ent, 0));
             }
-        });
+        }
     }
     ewriter.write_batch(to_despawn);
 }
@@ -82,18 +88,18 @@ pub fn clear_chunks_on_dim_change(
     mut activator_query: Query<(&mut ActivatingChunks), (Changed<DimensionRef>, )>,
     mut ewriter: EventWriter<CheckChunkDespawn>,
 ) {
-    let mut to_despawn = Vec::new();
+    let mut check_if_despawn = Vec::new();
     for (mut activate_chunks) in activator_query.iter_mut() { 
         for &entity in activate_chunks.0.iter() {
-            to_despawn.push(CheckChunkDespawn(entity));
+            check_if_despawn.push(CheckChunkDespawn(entity, 0));
         }
         activate_chunks.0.clear();
     }
-    ewriter.write_batch(to_despawn);
+    ewriter.write_batch(check_if_despawn);
 }
 
 #[derive(Debug, Event)]
-pub struct CheckChunkDespawn (pub Entity);
+pub struct CheckChunkDespawn (pub Entity, pub u8,);//u8 = retransmission count
 
 
 #[allow(unused_parens)]
@@ -103,18 +109,23 @@ pub fn despawn_unreferenced_chunks(
     chunks_query: Query<(&ChildOf, &ChunkPos, &Children, &TilesToSave), >,
     tmaps: Query<&TileStorage>,
     mut loaded_chunks: ResMut<LoadedChunks>,
-    mut despawn_event_reader: EventReader<CheckChunkDespawn>,
-    mut event_writer: EventWriter<SavedTileHadChunkDespawn>,
+    mut despawn_events: ResMut<Events<CheckChunkDespawn>>,
+    mut tosave_event_writer: EventWriter<SavedTileHadChunkDespawn>,
 ) {
-    let mut events = Vec::new();
+    let mut tosave_events = Vec::new();
+    let mut despawn_retransmitted_events = Vec::new();
 
-    for &CheckChunkDespawn(chunk_ent) in despawn_event_reader.read() {
-        let Ok((child_of, &chunk_pos, children, tiles_to_save)) = chunks_query.get(chunk_ent) else { continue; };
-
+    for CheckChunkDespawn(chunk_ent, retransmission_count) in despawn_events.drain() {
+        let Ok((child_of, &chunk_pos, children, tiles_to_save)) = chunks_query.get(chunk_ent) else {
+            if retransmission_count < 3 {
+                despawn_retransmitted_events.push(CheckChunkDespawn(chunk_ent, retransmission_count + 1));
+            }
+            else{error!("Chunk entity {:?} to despawn does not exist after {} retransmissions, giving up", chunk_ent, retransmission_count);}
+            continue; 
+        };
         let referenced = activator_query.iter().any(|(activates_chunks, )| activates_chunks.0.contains(&chunk_ent));
         
         if !referenced {
-
             loaded_chunks.0.remove(&(DimensionRef(child_of.parent()), chunk_pos));
 
             for child in children.iter() {
@@ -132,7 +143,7 @@ pub fn despawn_unreferenced_chunks(
                 if tiles_to_save.entities().contains(&child) {
                     
                     commands.entity(child).try_remove::<ChildOf>();//TODO reajustar transform (ya no es childof)
-                    events.push(SavedTileHadChunkDespawn(child));
+                    tosave_events.push(SavedTileHadChunkDespawn(child));
                 } else{//HACE FALTA
                     commands.entity(child).try_despawn();
                 }
@@ -140,7 +151,8 @@ pub fn despawn_unreferenced_chunks(
             commands.entity(chunk_ent).try_despawn();
         }
     }
-    event_writer.write_batch(events);
+    tosave_event_writer.write_batch(tosave_events);
+    despawn_events.send_batch(despawn_retransmitted_events);
 }
 
 
@@ -155,7 +167,6 @@ pub fn show_or_hide_chunks(
 
     let camera_chunk_pos = ChunkPos::from(camera_transform.translation().xy());
     let mut to_draw = Vec::new();
-
 
     for (mut visibility, &chunk_pos, children) in chunks_query.iter_mut() {
 

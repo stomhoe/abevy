@@ -22,8 +22,8 @@ impl MyZ {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct Description(pub String);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct SearchingForSuitablePos;
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct SearchingForSuitablePos{ pub studied_op_ent: Entity, }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
