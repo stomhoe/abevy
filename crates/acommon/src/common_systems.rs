@@ -16,16 +16,13 @@ use crate::{
 #[allow(unused_parens)]
 pub fn set_entity_name(//DESACTIVAR EN RELEASE BUILDS
     mut cmd: Commands,
-    mut query: Query<(Entity, Option<&mut Name>, &EntityPrefix, Option<&StrId>, Option<&StrId20B>, Option<&DisplayName>), (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>, Or<(With<Disabled>, Without<Disabled>)>)>, )>,
+    mut query: Query<(Entity, &mut Name, Option<&EntityPrefix>, Option<&StrId>, Option<&StrId20B>, Option<&DisplayName>), (Or<(Added<EntityPrefix>, Added<StrId>, Changed<DisplayName>, Or<(With<Disabled>, Without<Disabled>)>)>, )>,
 ) {
-    for (ent, name, prefix, str_id, half_str_id, disp_name) in query.iter_mut() {
-        let new_name = format!("{} {}{} {:?}", prefix, str_id.cloned().unwrap_or_default(),half_str_id.cloned().unwrap_or_default(), disp_name.cloned().unwrap_or_default());
+    for (ent, mut name, prefix, str_id, half_str_id, disp_name) in query.iter_mut() {
+        let new_name = format!("{} {}{} {:?}", prefix.cloned().unwrap_or_default(), str_id.cloned().unwrap_or_default(), half_str_id.cloned().unwrap_or_default(), disp_name.cloned().unwrap_or_default());
 
-        if let Some(mut name) = name {
-            name.set(new_name);
-        } else {
-            cmd.entity(ent).try_insert(Name::new(new_name));
-        }
+        name.set(new_name);
+        
     }
 }
 

@@ -15,11 +15,11 @@ use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_events::{Ins
 use std::mem::take;
 
 #[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new("Tiles' Templates"), Transform, Visibility)]
+#[require(AssetScoped, EntityPrefix::new("Tiles' Templates"), Name, Transform, Visibility)]
 struct EguiTileTemplatesHolder;
 
 #[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new("Portal tiles"), Transform, Visibility)]
+#[require(AssetScoped, EntityPrefix::new("Portal tiles"), Name, Transform, Visibility)]
 struct EguiPortalTileTemplatesHolder;
 
 #[allow(unused_parens)]
@@ -54,6 +54,7 @@ pub fn init_tiles(
         let my_z = MyZ(seri.z);
         let enti = cmd.spawn((
             Tile, str_id.clone(), Disabled,
+            EntityPrefix::new("Tile"), Name::default(),
             my_z.clone(),
             ChildOf(holder),
             DimensionRef(Entity::PLACEHOLDER), 

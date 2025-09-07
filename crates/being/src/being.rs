@@ -23,7 +23,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<PlayerDirectControllable>()
    
     .replicate::<CharacterCreatedBy>()
-    .replicate::<HumanControlled>()
+    .replicate::<IsHumanControlled>()
     .replicate::<Being>()
     .replicate::<DirControlledBy>()
     .replicate::<BeingAltitude>()
@@ -37,7 +37,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<Followers>()
     .register_type::<CharacterCreatedBy>()
     .register_type::<CreatedCharacters>()
-    .register_type::<HumanControlled>()
+    .register_type::<IsHumanControlled>()
 
     .replicate_with((
     RuleFns::<Being>::default(),

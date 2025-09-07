@@ -62,7 +62,7 @@ pub fn produce_tilemaps(
 
     if ereader_processed_tiles.is_empty() { return Ok(()); }
 
-    let reserved = chunkrange.approximate_number_of_chunks() / 15;
+    let reserved = chunkrange.approximate_number_of_chunks(0.06);
 
     let mut changed_structs: HashSet<(Entity, MapKey)> = HashSet::with_capacity(reserved);
 
@@ -71,7 +71,7 @@ pub fn produce_tilemaps(
 
     let mut to_draw = Vec::new();
 
-    let mut tilemap_bundles = Vec::new();
+    let mut tilemap_bundles = Vec::new();//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
 
 
     #[allow(unused_mut)]
@@ -205,9 +205,9 @@ pub fn produce_tilemaps(
 
     cmd.insert_batch(tilemap_bundles);
 
-    info!("Producing {} tilemaps", changed_structs.len());
-    info!("Requesting draw for {} tilemaps", to_draw.len());
-    
+    //info!("Producing {} tilemaps", changed_structs.len());
+    //info!("Requesting draw for {} tilemaps", to_draw.len());
+    //info!("Producing tilemaps for {} changed structs", changed_structs.len());
 
     for (chunk_ent, mapkey) in changed_structs.iter() {
         trace!("Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
@@ -255,7 +255,6 @@ pub fn produce_tilemaps(
             };
 
         } else {
-            trace!("Inserting default TilemapBundle for tilemap entity {:?}", tmap_ent);
             cmd.entity(tmap_ent)
             .try_insert(MaterialTilemapHandle::<StandardTilemapMaterial>::default());
         }

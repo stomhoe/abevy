@@ -6,7 +6,7 @@ use game_common::{game_common_components_samplers::EntiWeightedSampler};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 
-use crate::{tile::tile_components::*};
+use crate::{chunking_resources::AaChunkRangeSettings, tile::tile_components::*};
 use ::tilemap_shared::*;
 
 
@@ -16,11 +16,7 @@ use common::{common_components::*, };
 #[require(Visibility::Hidden, SessionScoped, LayersMap, TilesToSave, )]
 pub struct Chunk;
 
-/*
-           .replicate::<FollowerOf>()
-           .register_type::<FollowerOf>()
-           .register_type::<TilesToSave>()
-*/
+
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct SaveTile {
     pub chunk_pos: ChunkPos,//NO HACE FALTA PORQ EL CHUNKPOS SE PUEDE CALCULAR A PARTIR DE GLOBAL POS
@@ -45,7 +41,12 @@ use crate::tilemap_systems::{MapKey, MapStruct};
 pub struct LayersMap(pub HashMap<MapKey, MapStruct>);
 
 
-#[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
-pub struct ActivatingChunks(#[entities] pub EntityHashSet,);
+#[derive(Component, Debug, Reflect)]
+pub struct ActivatingChunks(pub Vec<Entity>,);
 
+impl ActivatingChunks {
+    pub fn new(chunkrange: &AaChunkRangeSettings) -> Self { 
+        Self(Vec::with_capacity((chunkrange.approximate_number_of_chunks(1.2)) as usize)) 
+    }
 
+}

@@ -7,7 +7,7 @@ use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{EntityZero, MyZ, YSortOrigin};
+use game_common::game_common_components::{Description, EntityZero, MyZ, YSortOrigin};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
@@ -16,10 +16,17 @@ use ::tilemap_shared::*;
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::StudiedOp}, tile::tile_materials::* };
 
 #[derive(Bundle)]
-struct ToDenyOnTileClone(Name, DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, );
+struct ToDenyOnTileClone(
+    DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, 
+    TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, 
+    ToDenyOnReleaseBuild,
+/*
+     
+*/ 
+);
 
 #[derive(Bundle)]
-struct ToDenyOnReleaseBuild( EntityPrefix, TileStrId  );
+struct ToDenyOnReleaseBuild( Name, EntityPrefix, TileStrId  );
 
 #[derive(Bundle, Debug, Default)]
 pub struct ToAddToTile{
@@ -30,7 +37,8 @@ pub struct ToAddToTile{
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(EntityPrefix::new("Tile"), AssetScoped, )]
+//NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
+#[require(AssetScoped, )]
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
@@ -67,8 +75,22 @@ impl Tile {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(EntityPrefix::new("Tile Instances"), Name, Transform )]
 pub struct TileInstancesHolder;
 
+/*
+           .replicate::<TileChildOf>()
+           .register_type::<TileChildOf>()
+           .register_type::<ChildrenTiles>()
+*/
+// #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+// #[relationship(relationship_target = ChildrenTiles)]
+// pub struct TileChildOf(#[relationship]#[entities]pub Entity);
+
+// #[derive(Component, Debug, Reflect)]
+// #[relationship_target(relationship = TileChildOf)]
+// pub struct ChildrenTiles(Vec<Entity>);
+// impl ChildrenTiles { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 pub type TileStrId = StrId20B;
 

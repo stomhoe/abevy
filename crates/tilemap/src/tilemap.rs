@@ -22,12 +22,12 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(Update, (
+        clear_chunks_on_dim_change,
         despawn_unreferenced_chunks, 
         assign_child_of,
         rem_outofrange_chunks_from_activators, 
         (
             visit_chunks_around_activators, 
-            //show_chunks_around_camera, 
             show_or_hide_chunks, 
             produce_tilemaps.before(despawn_unreferenced_chunks)//NO TOCAR
         ).in_set(ChunkSystems).run_if(in_state(TerrainGenHotLoading::KeepAlive))
@@ -58,6 +58,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadedChunks>()
     .init_resource::<AaChunkRangeSettings>()
     .add_event::<TilemapChanged>()
+    .add_event::<CheckChunkDespawn>()
     
-    ;
-}
+
+;}

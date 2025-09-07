@@ -37,7 +37,6 @@ pub fn spawn_terrain_operations (
 
 //PONER MARKERS A TODAS LAS POSICIONES SUITABLE, DESPUES HACER UNA QUERY Q COMPARA LAS TILESMARCADAS COMO Q YA GENERARON UNA ESTRUCTURA NO PROCEDURAL CON LAS Q NO. SI LA DISTANCIA ES SUFICIENTE, SPAWNEAR UNA EN LA SIGUIENTE
         //EN ESTE PUNTO SE PODRÍA GENERAR UN CAMINO RANDOM QUE SEA UN VEC DE COORDS, Y DESPUES PASARLO ABAJO Y Q SE OCUPEN?? PA GENERAR DUNGEONS NASE
-        let now = std::time::Instant::now();
 
 
         let Ok((dim_root_op_list, hash_id)) = dimension_query.get(dim_ref.0) else {
@@ -66,7 +65,7 @@ pub fn spawn_terrain_operations (
                     continue 'chunk_for;
                 }
                 batch.push(PendingOp {
-                    oplist, chunk_ent, pos: global_pos, dimension_hash_id: hash_id.into_i32(), studied_op: None, variables: VariablesArray::default() 
+                    oplist, chunk_ent, pos: global_pos, dimension_hash_id: hash_id.into_i32(), variables: VariablesArray::default(), studied_op: None,
                 });
             }
         }
@@ -74,7 +73,6 @@ pub fn spawn_terrain_operations (
 
         commands.entity(chunk_ent).try_insert(OperationsLaunched);
 
-        trace!("Spawned terrain operations for chunk {:?} in {:?}", chunk_pos, now.elapsed());
     }
     ew_pending_ops.write_batch(batch);
     Ok(())
@@ -161,6 +159,11 @@ pub fn produce_tiles(mut cmd: Commands,
                     (Operation::i_Norm, 0, true) => { operation_acc_val = curr_operand_val * (oplist.bifurcations.len() - 1) as f32; }
                     (Operation::i_Norm, _, false) => { operation_acc_val *= curr_operand_val; }
                     (Operation::i_Norm, 1.., true) => { operation_acc_val *= curr_operand_val * (oplist.bifurcations.len() - 1) as f32; }
+                    (Operation::Clamp, 0, true) => {operation_acc_val = curr_operand_val.max(0.0).min(1.0);},
+                    (Operation::Clamp, 0, _) => {operation_acc_val = curr_operand_val;},
+                    (Operation::Clamp, 1, false) => {operation_acc_val = curr_operand_val.max(operation_acc_val);},
+                    (Operation::Clamp, 1, true) => {operation_acc_val = curr_operand_val.max(operation_acc_val).min(1.0);},
+                    (Operation::Clamp, 2.., _) => {operation_acc_val = curr_operand_val.min(operation_acc_val);},
        
                     (_, 0, _) => {operation_acc_val = curr_operand_val;},
                 }
@@ -258,7 +261,7 @@ pub fn process_tiles(mut cmd: Commands,
     mut ewriter_processed_tiles: EventWriter<Tiles2TmapProcess>,
     chunk_query: Query<(&ChildOf), ()>,
     dimension_query: Query<(Entity), (With<Dimension>, )>,
-    mut tile_query: Query<(&GlobalTilePos, &mut DimensionRef, &TilePos, &OplistSize, Option<&mut Transform>, &EntityZero), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
+    mut tile_query: Query<(&EntityZero, &GlobalTilePos, &mut DimensionRef, Option<&mut Transform>, ), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
 
     oritile_query: Query<(Has<ChunkOrTilemapChild>, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
     min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
@@ -273,7 +276,6 @@ pub fn process_tiles(mut cmd: Commands,
     if events_instantiated_tiles.is_empty() { return; }
 
     let child_ofs_capacity = events_instantiated_tiles.len() /100;
-    let mut child_ofs_to_insert: Vec<(Entity, ChildOf)> = Vec::with_capacity(child_ofs_capacity);
     info!("Processing {} instantiated tiles events, reserving space for {} ChildOf components", events_instantiated_tiles.len(), child_ofs_capacity);
     //TODO HACER EVENTOS ESPECIALES?
 
@@ -285,7 +287,7 @@ pub fn process_tiles(mut cmd: Commands,
 
         'tilefor: for (tile_i, tile_ent) in ev.tiles.iter_mut().enumerate() {
 
-            let Ok((&global_pos, mut placeholder_dim_ref, &pos_within_chunk, &oplist_size, transform, &ori_ref)) = tile_query.get_mut(*tile_ent)
+            let Ok((&ezero, &global_pos, mut placeholder_dim_ref, transform, )) = tile_query.get_mut(*tile_ent)
             else {
                 ev.retransmission_count += 1;
                 if ev.retransmission_count >= u8::MAX as u16 {
@@ -296,9 +298,9 @@ pub fn process_tiles(mut cmd: Commands,
                 continue 'eventfor; 
             };
 
-            let Ok((chunk_child, min_dists, keep_distance_from)) = oritile_query.get(ori_ref.0)
+            let Ok((chunk_child, min_dists, keep_distance_from)) = oritile_query.get(ezero.0)
             else { 
-                error!("{:?}'s Tileref{:?} does not exist or doesnt't have Disabled component", tile_ent, ori_ref.0);
+                error!("{:?}'s Tileref{:?} does not exist or doesnt't have Disabled component", tile_ent, ezero.0);
                 cmd.entity(*tile_ent).try_despawn(); 
                 *tile_ent = Entity::PLACEHOLDER;
                 continue 'tilefor; 
@@ -337,50 +339,34 @@ pub fn process_tiles(mut cmd: Commands,
             };
             let dimref = DimensionRef(dim_ent); *placeholder_dim_ref = dimref;
 
-            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent.clone(), ori_ref, dimref, global_pos, min_dists, keep_distance_from), min_dists_query) {
-                trace!("Tile {:?} at {:?} with pos within chunk {:?} violates min distance constraints, despawning", tile_ent, global_pos, pos_within_chunk);
+            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent.clone(), ezero, dimref, global_pos, min_dists, keep_distance_from), min_dists_query) {
                 cmd.entity(*tile_ent).try_despawn(); 
                 *tile_ent = Entity::PLACEHOLDER;
                 continue 'tilefor; 
             }
             
             trace!("Spawned tile {:?} at global pos {:?} in dimension {:?}", tile_ent, global_pos, dimref);
-            
-            if chunk_child {
-                if let Some(mut transform) = transform {//TODO q se haga en otro sistema
-                    let displacement: Vec2 = Vec2::from(pos_within_chunk) * oplist_size.inner().as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-                    transform.translation += displacement.extend(0.0);
-                    child_ofs_to_insert.push((*tile_ent, ChildOf(ev.chunk_or_dim)));
-                    trace!("Inserted tile {:?} as child of chunk {:?} at local pos {:?}, global pos {:?}, displacement {:?}", tile_ent, ev.chunk_or_dim, pos_within_chunk, global_pos, displacement);
-                }
-            } else if is_host {
-                let displacement: Vec3 = Into::<Vec2>::into(global_pos).extend(0.0);
 
-                if let Some(mut transform) = transform {
-                    transform.translation += displacement;
-                }
-
-                child_ofs_to_insert.push((*tile_ent, ChildOf(dim_ent)));
-
-                cmd.entity(*tile_ent).try_insert((Replicated, ));
-                    
-            } else {
-                trace!("Tile {:?} at {:?} with pos within chunk {:?} is not a TilemapChild, despawning on client", tile_ent, global_pos, pos_within_chunk);
-                cmd.entity(*tile_ent).try_despawn();
-                *tile_ent = Entity::PLACEHOLDER;
+            if transform.is_some() {
+                cmd.entity(*tile_ent).try_remove::<(Disabled, TilePos, OplistSize, )>()
+                .try_insert(ChildOf(ev.chunk_or_dim));
             }
+            
+            if ! chunk_child  {
+                if is_host {
+                    cmd.entity(*tile_ent).try_insert((Replicated, ));
+                }
+                else{
+                    cmd.entity(*tile_ent).try_despawn();
+                    *tile_ent = Entity::PLACEHOLDER;
+                }
+            } 
                 
         }
         let protiles = Tiles2TmapProcess { chunk: ev.chunk_or_dim, tiles: ev.take_tiles() };
         processed_tiles_events.push(protiles);
         
     }
-    for (tile_ent, _) in child_ofs_to_insert.iter() {
-        cmd.entity(*tile_ent).try_remove::<(Disabled, TilePos, OplistSize)>();
-    }
-    info!("Inserting {} ChildOf components for tiles", child_ofs_to_insert.len());
-
-    cmd.try_insert_batch(child_ofs_to_insert);
 
     ewriter_processed_tiles.write_batch(processed_tiles_events);
     events_instantiated_tiles.send_batch(instantiated_tiles_events_to_retransmit);

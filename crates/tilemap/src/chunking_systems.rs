@@ -2,18 +2,20 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{DrawTilemap, tiles::TileStorage};
 use camera::camera_components::CameraTarget;
+use common::common_components::{StrId, StrId20B};
 use dimension_shared::DimensionRef
 ;
 use tilemap_shared::ChunkPos;
 
-use crate::{chunking_components::*, chunking_resources::*, tile::tile_events::SavedTileHadChunkDespawn};
+use crate::{chunking_components::*, chunking_resources::*, tile::{tile_events::SavedTileHadChunkDespawn}};
 
-
+//TODO HACERLO MÁS EVENT-DRIVEN
 
 #[allow(unused_parens, )]
 pub fn visit_chunks_around_activators(
     mut cmd: Commands, 
-    mut query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), >,//TODO HACER Q HAY ACTIVATO
+    mut query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), 
+    (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>)>, )>,//TODO USAR EVENTOS?
     mut loaded_chunks: ResMut<LoadedChunks>,
     tilemap_settings: Res<AaChunkRangeSettings>,
 ) {
@@ -31,10 +33,10 @@ pub fn visit_chunks_around_activators(
                 let chunk_pos = ChunkPos::new(x, y);
                 let key = (dimension_ref, chunk_pos);
                 let chunk_ent = loaded_chunks.0.get(&key).copied().unwrap_or_else(|| {
-                    let ent = cmd.spawn_empty().id();
+                    let ent = cmd.spawn_empty().id();//TODO lanzar un evento desde aca q spawnee los oplists?
                     to_insert.push((ent, (
                         Chunk,
-                        Name::new(format!("Chunk ({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
+                        StrId20B::new(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
                         Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
                         chunk_pos,
                         ChildOf(dimension_ref.0),
@@ -42,7 +44,9 @@ pub fn visit_chunks_around_activators(
                     loaded_chunks.0.insert(key, ent);
                     ent
                 });
-                activates_chunks.0.insert(chunk_ent);
+                if !activates_chunks.0.contains(&chunk_ent) {
+                    activates_chunks.0.push(chunk_ent);
+                }
             }
         }
     }
@@ -50,44 +54,66 @@ pub fn visit_chunks_around_activators(
 }
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
-    mut activator_query: Query<(&DimensionRef, &GlobalTransform, &mut ActivatingChunks, ), >,
-    mut chunks_query: Query<(&ChildOf, Entity, &ChunkPos, ), >,
+    mut activator_query: Query<(&GlobalTransform, &mut ActivatingChunks), (Or<(Changed<GlobalTransform>, )>, )>,
+    chunks_query: Query<(&ChunkPos), >,
     chunkrange_settings: Res<AaChunkRangeSettings>,
+    mut ewriter: EventWriter<CheckChunkDespawn>,
 ) {
-    for (dimension_ref, act_transform, mut activate_chunks) in activator_query.iter_mut() {
-
+    let mut to_despawn = Vec::new();
+    for (act_transform, mut activate_chunks) in activator_query.iter_mut() {
         let act_chunk_pos = ChunkPos::from(act_transform.translation().xy());
 
-        for (chunk_dimension_ref, entity, &chunk_pos, ) in chunks_query.iter_mut() {
-            if chunk_dimension_ref.parent() != dimension_ref.0 {
-                activate_chunks.0.remove(&entity);
-                continue;
+        activate_chunks.0.retain(|&entity| {
+            if let Ok((&chunk_pos)) = chunks_query.get(entity) {
+                !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos) &&
+                  chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos))
+            } else {
+                to_despawn.push(CheckChunkDespawn(entity));
+                false
             }
-
-            if chunkrange_settings.out_of_active_range(act_transform, chunk_pos) && chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos) {
-                activate_chunks.0.remove(&entity);
-                //info!("Removed chunk {:?} (pos: {:?}) from activator", entity, chunk_pos, );
-            }
-        }
+        });
     }
+    ewriter.write_batch(to_despawn);
 }
-//TODO REHACER CON EVENTOS Y PONER UN HASHSET DE ENTITIES EN EL CHUNK
+
+
+#[allow(unused_parens, )]
+pub fn clear_chunks_on_dim_change(
+    mut activator_query: Query<(&mut ActivatingChunks), (Changed<DimensionRef>, )>,
+    mut ewriter: EventWriter<CheckChunkDespawn>,
+) {
+    let mut to_despawn = Vec::new();
+    for (mut activate_chunks) in activator_query.iter_mut() { 
+        for &entity in activate_chunks.0.iter() {
+            to_despawn.push(CheckChunkDespawn(entity));
+        }
+        activate_chunks.0.clear();
+    }
+    ewriter.write_batch(to_despawn);
+}
+
+#[derive(Debug, Event)]
+pub struct CheckChunkDespawn (pub Entity);
+
 
 #[allow(unused_parens)]
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,
     activator_query: Query<(&ActivatingChunks, ), >,
-    mut chunks_query: Query<(&ChildOf, Entity, &ChunkPos, &Children, &TilesToSave), With<Chunk>>,
+    chunks_query: Query<(&ChildOf, &ChunkPos, &Children, &TilesToSave), >,
     tmaps: Query<&TileStorage>,
     mut loaded_chunks: ResMut<LoadedChunks>,
+    mut despawn_event_reader: EventReader<CheckChunkDespawn>,
     mut event_writer: EventWriter<SavedTileHadChunkDespawn>,
 ) {
     let mut events = Vec::new();
-    for (child_of, chunk_ent, &chunk_pos, children, tiles_to_save) in chunks_query.iter_mut() {
+
+    for &CheckChunkDespawn(chunk_ent) in despawn_event_reader.read() {
+        let Ok((child_of, &chunk_pos, children, tiles_to_save)) = chunks_query.get(chunk_ent) else { continue; };
+
         let referenced = activator_query.iter().any(|(activates_chunks, )| activates_chunks.0.contains(&chunk_ent));
         
         if !referenced {
-            trace!("Despawning chunk {:?} at pos: {:?}", chunk_ent, chunk_pos);
 
             loaded_chunks.0.remove(&(DimensionRef(child_of.parent()), chunk_pos));
 
@@ -103,8 +129,6 @@ pub fn despawn_unreferenced_chunks(
                         }
                     }
                 }
-
-
                 if tiles_to_save.entities().contains(&child) {
                     
                     commands.entity(child).try_remove::<ChildOf>();//TODO reajustar transform (ya no es childof)
@@ -122,7 +146,7 @@ pub fn despawn_unreferenced_chunks(
 
 #[allow(unused_parens)]
 pub fn show_or_hide_chunks(
-    camera_query: Single<(&GlobalTransform), (With<CameraTarget>, Or<(Changed<GlobalTransform>, Added<CameraTarget>)>)>,
+    camera_query: Single<(&GlobalTransform), (With<CameraTarget>, Or<(Changed<GlobalTransform>, Added<CameraTarget>, Changed<DimensionRef>, )>, )>,
     mut chunks_query: Query<(&mut Visibility, &ChunkPos, &Children), With<Chunk>>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
     mut event_writer: EventWriter<DrawTilemap>,
@@ -151,5 +175,4 @@ pub fn show_or_hide_chunks(
     }
     event_writer.write_batch(to_draw);
 }
-
 

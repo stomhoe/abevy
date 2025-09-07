@@ -112,7 +112,7 @@ impl IndexMut<u8> for VariablesArray {
 #[derive(Debug, Deserialize, Serialize, Clone, AsRefStr, Display, PartialEq, Reflect, )]
 #[allow(non_camel_case_types)]
 pub enum Operation {
-    Add, Subtract, Multiply, MultiplyOpo, Divide, Min, Max, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, i_Max, Linear, i_Norm
+    Add, Subtract, Multiply, MultiplyOpo, Divide, Min, Max, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, i_Max, Linear, i_Norm, Clamp
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, MapEntities)]

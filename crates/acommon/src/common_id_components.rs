@@ -12,6 +12,7 @@ use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, refl
 use std::fmt::{Debug, Display};
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect )]
+#[require(Name)]
 pub struct StrId(FixedStr<32>);
 impl StrId {
     pub fn new<S: AsRef<str>>(id: S) -> Self { Self(FixedStr::new(id)) }
@@ -53,6 +54,7 @@ impl Display for StrId {
 }
 impl AsRef<str> for StrId {fn as_ref(&self) -> &str {&self.0.as_str() }}
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect )]
+#[require(Name)]
 pub struct StrId20B(FixedStr<20>);
 
 impl StrId20B {
@@ -86,7 +88,7 @@ impl Debug for StrId20B {
 }
 impl Display for StrId20B {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.0.is_empty() {write!(f, "")} else {write!(f, "Id({})", self.0)}
+        if self.0.is_empty() {write!(f, "")} else {write!(f, "{}", self.0)}
     }
 }
 impl AsRef<str> for StrId20B {fn as_ref(&self) -> &str {&self.0.as_str() }}
@@ -161,6 +163,7 @@ impl<T> HashIdIndexMap<T> {
 }
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Reflect)]
+#[require(Name)]
 pub struct EntityPrefix(pub FixedStr<20>);
 impl EntityPrefix {
     pub fn new<S: AsRef<str>>(id: S) -> Self { Self(FixedStr::new(id)) }
@@ -169,7 +172,7 @@ impl EntityPrefix {
 impl Debug for EntityPrefix {
     #[inline(always)]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "EntityPrefix({})", self.as_str())
+        write!(f, "EntPref({})", self.as_str())
     }
 }
 impl Display for EntityPrefix {

@@ -6,11 +6,9 @@ use camera::camera_components::CameraTarget;
 use dimension_shared::DimensionRef;
 use faction::faction_components::*;
 use player::player_components::*;
-use tilemap::{chunking_components::ActivatingChunks, tile::tile_components::{PortalInstance, Tile}};
+use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalInstance, Tile}};
 
 use crate::{being_components::*,};
-
-
 
 
 #[allow(unused_parens)]
@@ -18,26 +16,20 @@ use crate::{being_components::*,};
 pub fn host_add_activates_chunks(mut cmd: Commands, 
     query: Query<(Entity),(With<Being>, Added<BelongsToAPlayerFaction>)>,
     mut removed: RemovedComponents<BelongsToAPlayerFaction>,
+    chunk_range: Res<AaChunkRangeSettings>,
 ) {
-    
-    for ent in query.iter() {
-        cmd.entity(ent).try_insert(ActivatingChunks::default());
-        debug!("Adding ActivatingChunks to entity {:?}", ent);    
-    }
-    for ent in removed.read() {
-        cmd.entity(ent).try_remove::<ActivatingChunks>();
-    }
+    for ent in query.iter() { cmd.entity(ent).try_insert_if_new(ActivatingChunks::new(&chunk_range)); }
+    for ent in removed.read() { cmd.entity(ent).try_remove::<ActivatingChunks>(); }
 }
-
-
 
 #[allow(unused_parens)]
 pub fn on_control_change(
     mut commands: Commands, 
     self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<OfSelf>)>,
 
-    query: Query<(Entity, &DirControlledBy, &HumanControlled, Has<CameraTarget>),(Or<(Changed<DirControlledBy>, Changed<HumanControlled>)>)>,
+    query: Query<(Entity, &DirControlledBy, &IsHumanControlled, Has<CameraTarget>),(Or<(Changed<DirControlledBy>, Changed<IsHumanControlled>)>)>,
     mut removed: RemovedComponents<DirControlledBy>,
+    chunk_range: Res<AaChunkRangeSettings>,
 ) {
     for ent in removed.read() {
         commands.entity(ent).remove::<ControlledLocally>();
@@ -46,7 +38,7 @@ pub fn on_control_change(
     for (ent, controlled_by, human_controlled, is_camera_target) in query.iter() {
         if controlled_by.client == self_entity {
             info!("debug {:?} is now controlled locally by self", ent);
-            commands.entity(ent).try_insert((ControlledLocally::default(), ActivatingChunks::default()));
+            commands.entity(ent).try_insert_if_new((ControlledLocally::default(), ActivatingChunks::new(&chunk_range)));
             if human_controlled.0 {//PROVISORIO
                 debug!("Entity {:?} is now a CameraTarget", ent);
                 commands.entity(ent).try_insert(CameraTarget);
@@ -71,20 +63,20 @@ pub fn cross_portal(mut cmd: Commands,
     portal_query: Query<(Entity, &DimensionRef, &PortalInstance, &GlobalTransform), (Without<Being>)>,
     mut being_query: Query<(Entity, &mut DimensionRef, &mut Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
 ) {
-    for (being_entity, mut being_dimension_ref, mut being_transform, being_global_transform, touching_portal) in being_query.iter_mut() {
-        //let mut touching_portal = fla
-        for (portal_ent, dimension_ref, portal_instance, global_transform) in portal_query.iter() {
+    for (being_entity, mut being_dimension_ref, mut being_transform, being_globtransform, touching_portal) 
+    in being_query.iter_mut() {
+        for (portal_ent, dimension_ref, portal_instance, portal_transform) in portal_query.iter() {
             if being_dimension_ref.0 == dimension_ref.0 {
-                let distance = being_global_transform.translation().distance(global_transform.translation());
+                let distance = being_globtransform.translation().distance(portal_transform.translation());
                 match (touching_portal, distance < 50.0) {
                     (None, false) => {},
-                    (Some(&TouchingPortal(currently_touched)), false) => {
-                        if portal_ent == currently_touched {
+                    (Some(&TouchingPortal(touching_portal)), false) => {
+                        if portal_ent == touching_portal {
                             cmd.entity(being_entity).try_remove::<TouchingPortal>();
                         }
                     },
-                    (Some(&TouchingPortal(currently_touched)), true) => {
-                        if portal_ent != currently_touched {
+                    (Some(&TouchingPortal(touching_portal)), true) => {
+                        if portal_ent != touching_portal {
                             cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
                         }
 

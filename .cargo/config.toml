@@ -1,7 +1,27 @@
 [target.x86_64-pc-windows-msvc]
  # Use LLD Linker
 rustflags = [
-  "-Zshare-generics=off", # (Nightly) Nightly-only feature that disables sharing of monomorphized generic code.
+  "-Zshare-generics=n", # (Nightly) Nightly-only feature that disables sharing of monomorphized generic code.
   # Can improve compilation speed for large projects like Bevy games. Trades slightly larger binary size for faster compile times
   "-Zthreads=0",        # (Nightly) Use improved multithreading with the recommended amount of threads.
 ]#CAMBIAR ALGO DE ESTO ES EQUIVALENTE A HACER CARGO CLEAN!!!!
+
+
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = [
+    "-Clink-arg=-fuse-ld=mold",
+    "-Zshare-generics=y",
+    "-Zthreads=0",
+]
+
+
+[unstable]
+codegen-backend = true
+
+[profile.dev]
+codegen-backend = "cranelift"
+
+[profile.dev.package."*"]
+codegen-backend = "llvm"

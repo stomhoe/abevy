@@ -48,7 +48,6 @@ pub type BeingAltitude = being_shared::BeingAltitude;
 pub struct RaceRef(#[entities] pub Entity);
 
 #[derive(Component, Default, Deserialize, Serialize)]
-#[require(ActivatingChunks)]//PROVISORIO, HACER UN SISTEMA Q AGREGUE ActivatingChunks automaticamente al being cuando sea de nuestra faccion
 pub struct PlayerDirectControllable;
 
 #[derive(Component)]
@@ -62,7 +61,7 @@ pub struct TouchingPortal(#[entities] pub Entity);
 
 
 pub type ControlledLocally = being_shared::ControlledLocally;
-pub type HumanControlled = being_shared::HumanControlled;
+pub type IsHumanControlled = being_shared::HumanControlled;
 
 pub type Controls = being_shared::Controls;
 pub type DirControlledBy = being_shared::ControlledBy;
