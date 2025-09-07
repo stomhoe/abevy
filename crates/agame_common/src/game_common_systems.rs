@@ -2,6 +2,7 @@ use bevy::ecs::entity_disabling::Disabled;
 use bevy::input::ButtonInput;
 
 use bevy::prelude::*;
+use bevy_ecs_tilemap::anchor::TilemapAnchor;
 use common::common_components::EntityPrefix;
 use common::common_states::ConnectionAttempt;
 use common::common_states::GamePhase;
@@ -63,25 +64,33 @@ pub fn toggle_simulation(
 //         }
 //     }
 // }
+
+use bevy_ecs_tilemap::DrawTilemap;
+
 #[bevy_simple_subsecond_system::hot]
 #[allow(unused_parens, )]
 pub fn z_sort_system(
     ori_query: Query<(&MyZ, Option<&YSortOrigin>), (Or<(With<Disabled>, Without<Disabled>)>,)>,
 
-    mut with_own_z_query: Query<(&mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, ), 
+    mut with_own_z_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, Has<TilemapAnchor>), 
     Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>,
-    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZero), (Or<(Changed<EntityZero>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
+    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntiZeroRef), (Or<(Changed<EntiZeroRef>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
 
+    mut event_writer: EventWriter<DrawTilemap>,
 
-) {
+) {//TODO MEJORAR
+    let mut to_draw = Vec::new();
 
-    for (mut transform, global_transform, ysort_origin, z_index) in with_own_z_query.iter_mut() {
+    for (ent, mut transform, global_transform, ysort_origin, z_index, is_tilemap) in with_own_z_query.iter_mut() {
         let y_pos = global_transform.translation().y - ysort_origin.cloned().unwrap_or_default().0;
         let target_z = z_index.as_float() - y_pos * YSortOrigin::Y_SORT_DIV;
 
         if (transform.translation.z - target_z).abs() > f32::EPSILON { 
             transform.translation.z = target_z;
             debug!(target: "zlevel", "Z-Sorting entity to z-index {}", target_z);
+            if is_tilemap{
+                to_draw.push(DrawTilemap(ent));
+            }
         }
     }
     for (mut transform, global_transform, original_ref) in with_entityzero.iter_mut() {
@@ -95,6 +104,7 @@ pub fn z_sort_system(
             debug!(target: "zlevel", "Z-Sorting entity to z-index {}", target_z);
         }
     }
+    event_writer.write_batch(to_draw);
 }
 
 pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<(&mut TimeBasedMultiplier, Option<&TickMultFactor>, Option<&TickMultFactors>)>) {

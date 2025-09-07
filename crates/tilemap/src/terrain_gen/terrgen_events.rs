@@ -103,10 +103,10 @@ impl SearchPattern {
 pub struct PosSearch {
     pub dimension_hash_id: i32,
     pub studied_op_ent: Entity,
-    pub step_size: u32,
-    pub curr_iteration_batch_i: u32,//se puede cambiar a otra cosa para empezar alejado del centro
-    pub max_batches: u32,
-    pub iterations_per_batch: u32,
+    pub step_size: u16,
+    pub curr_iteration_batch_i: i16,//se puede cambiar a otra cosa para empezar alejado del centro
+    pub max_batches: u16,
+    pub iterations_per_batch: u16,
     pub search_pattern: SearchPattern,
 }
 impl PosSearch{
@@ -185,7 +185,7 @@ impl InstantiatedTiles {
             }
         } else {
 
-            let tile_ent = Tile::spawn_from_ref(cmd, EntityZero(tiling_ent), global_pos, oplist_size);
+            let tile_ent = Tile::spawn_from_ref(cmd, EntiZeroRef(tiling_ent), global_pos, oplist_size);
 
             // Insert into the array if there's space, otherwise switch to Batch
             match &mut self.tiles {

@@ -7,7 +7,7 @@ use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 use common::common_components::{AssetScoped, DisplayName, EntityPrefix, HashId, ImageHolder, ImageHolderMap, StrId};
 use ::dimension_shared::*;
-use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{Category, EntityZero, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
+use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{Category, EntiZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
 use ::tilemap_shared::*;
 
@@ -159,7 +159,7 @@ pub fn init_tiles(
 pub fn add_tiles_to_map(
     mut cmd: Commands,
     map: Option<ResMut<TileEntitiesMap>>,
-    query: Query<(Entity, &EntityPrefix, &TileStrId), (Added<Tile>, Added<Disabled>, Without<TilePos>, Without<EntityZero>)>,
+    query: Query<(Entity, &EntityPrefix, &TileStrId), (Added<Tile>, Added<Disabled>, Without<TilePos>, Without<EntiZeroRef>)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
@@ -278,16 +278,18 @@ pub fn client_map_server_tiling(
 #[allow(unused_parens)]
 pub fn instantiate_portal(mut cmd: Commands,
     ori_tile_str_id_query: Query<&TileStrId, (With<Disabled>)>,
-    new_portals: Query<(Entity, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZero),(Without<SearchingForSuitablePos>, )>,
-    pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZero),()>,
+    new_portals: Query<(Entity, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntiZeroRef),(Without<SearchingForSuitablePos>, )>,
+    pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntiZeroRef),()>,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
-    mut ew_pending_ops: EventWriter<PosSearch>, mut ewriter_tiles: EventWriter<InstantiatedTiles>,
+    mut ew_pos_search: EventWriter<PosSearch>, 
+    mut ewriter_tiles: EventWriter<InstantiatedTiles>,
     mut ereader_search_successful: EventReader<SuitablePosFound>,
     mut ereader_search_failed: EventReader<SearchFailed>, 
     mut register_pos: ResMut<RegisteredPositions>
 
 ) {
     let mut started_searches: EntityHashMap<Entity> = EntityHashMap::new();
+    let mut pos_searches = Vec::new();
 
     for (portal_ent, portal_template, &global_pos, dim_ref, tile_ref) in new_portals.iter() {
 
@@ -306,16 +308,16 @@ pub fn instantiate_portal(mut cmd: Commands,
 
         let studied_op_ent = cmd.spawn((studied_op.clone(), )).id();
 
-        let pos_search = PosSearch::portal_pos_search(dimension_hash_id, studied_op_ent, global_pos);
         cmd.entity(portal_ent).try_insert(SearchingForSuitablePos{ studied_op_ent });
-        ew_pending_ops.write(pos_search);
+
+        pos_searches.push(PosSearch::portal_pos_search(dimension_hash_id, studied_op_ent, global_pos));
         started_searches.insert(studied_op_ent, portal_ent);
     }
 
     let mut successful_searches: EntityHashSet = EntityHashSet::new();
 
     let mut handle_success = |ent: Entity, portal_template: &PortalTemplate, my_pos: GlobalTilePos, 
-        found_pos: GlobalTilePos, my_dim_ref: DimensionRef, my_orig_tile_ref: EntityZero| 
+        found_pos: GlobalTilePos, my_dim_ref: DimensionRef, my_orig_tile_ref: EntiZeroRef| 
     {
         cmd.entity(ent).remove::<(SearchingForSuitablePos, PortalTemplate)>();
         register_pos.0.entry(portal_template.oe_portal_tile)
@@ -326,7 +328,7 @@ pub fn instantiate_portal(mut cmd: Commands,
         let oe_portal_tileref = if portal_template.oe_portal_tile == ent {
             my_orig_tile_ref
         } else {
-            EntityZero(portal_template.oe_portal_tile)
+            EntiZeroRef(portal_template.oe_portal_tile)
         };
 
         let oe_portal = Tile::spawn_from_ref(&mut cmd, oe_portal_tileref, found_pos, OplistSize::default());
@@ -382,12 +384,13 @@ pub fn instantiate_portal(mut cmd: Commands,
             }
         }
     }
+    ew_pos_search.write_batch(pos_searches);
 }
 
 #[allow(unused_parens)]
 pub fn client_sync_tile(
     mut cmd: Commands, 
-    query: Query<(Entity, &EntityZero, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>)>,
+    query: Query<(Entity, &EntiZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>)>,
     ori_query: Query<(&TileStrId, Has<ChunkOrTilemapChild>, Option<&Sprite>), (With<Disabled>)>,
     loaded_chunks: Res<LoadedChunks>,
     mut ewriter_tmap_process: EventWriter<Tiles2TmapProcess>

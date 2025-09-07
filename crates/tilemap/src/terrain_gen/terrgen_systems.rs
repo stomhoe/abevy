@@ -7,7 +7,7 @@ use bevy_replicon::{prelude::{Replicated, SendMode, ToClients}, shared::server_e
 use common::{common_components::{DisplayName, HashId, StrId}, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
-use game_common::{game_common_components::{EntityZero, FacingDirection }, game_common_components_samplers::EntiWeightedSampler};
+use game_common::{game_common_components::{EntiZeroRef, FacingDirection }, game_common_components_samplers::EntiWeightedSampler};
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
 use std::{f32::consts::PI, mem::take};
 use ::tilemap_shared::*;
@@ -65,7 +65,8 @@ pub fn spawn_terrain_operations (
                     continue 'chunk_for;
                 }
                 batch.push(PendingOp {
-                    oplist, chunk_ent, pos: global_pos, dimension_hash_id: hash_id.into_i32(), variables: VariablesArray::default(), studied_op_ent: Entity::PLACEHOLDER,
+                    oplist, chunk_ent, pos: global_pos, dimension_hash_id: hash_id.into_i32(), 
+                    variables: VariablesArray::default(), studied_op_ent: Entity::PLACEHOLDER,
                 });
             }
         }
@@ -246,7 +247,7 @@ pub fn process_tiles(mut cmd: Commands,
     mut ewriter_processed_tiles: EventWriter<Tiles2TmapProcess>,
     chunk_query: Query<(&ChildOf), ()>,
     dimension_query: Query<(Entity), (With<Dimension>, )>,
-    mut tile_query: Query<(&EntityZero, &GlobalTilePos, &mut DimensionRef, Option<&mut Transform>, ), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
+    mut tile_query: Query<(&EntiZeroRef, &GlobalTilePos, &mut DimensionRef, Option<&mut Transform>, ), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
 
     oritile_query: Query<(Has<ChunkOrTilemapChild>, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
     min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
@@ -333,13 +334,16 @@ pub fn process_tiles(mut cmd: Commands,
             trace!("Spawned tile {:?} at global pos {:?} in dimension {:?}", tile_ent, global_pos, dimref);
 
             if transform.is_some() {
-                cmd.entity(*tile_ent).try_remove::<(Disabled, TilePos, OplistSize, )>()
-                .try_insert(ChildOf(ev.chunk_or_dim));
+                cmd.entity(*tile_ent).try_remove::<(Disabled, TilePos, OplistSize, )>();
+                
+                if chunk_child  {
+                    cmd.entity(*tile_ent).try_insert((ChildOf(ev.chunk_or_dim), ));
+                }
             }
             
             if ! chunk_child  {
                 if is_host {
-                    cmd.entity(*tile_ent).try_insert((Replicated, ));
+                    cmd.entity(*tile_ent).try_insert((Replicated, ChildOf(dim_ent)));
                 }
                 else{
                     cmd.entity(*tile_ent).try_despawn();
@@ -388,63 +392,70 @@ pub fn search_suitable_position(
         let (studied_op_ent, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_hash_id) = 
         (pos_search.studied_op_ent, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_hash_id);
 
-        let Ok(studied_op) = studied_ops.get(studied_op_ent) else {
+        let Ok(studied_op) = studied_ops.get(studied_op_ent) else {//ERRROR: ENTTIY NO SPAWNEÓ TODAVÍA
+            if curr_iteration_batch_i == 0 {
+                // If we want to retry, push a new PosSearch with decremented batch index
+                let mut new_search = pos_search;
+                new_search.curr_iteration_batch_i -= 1;
+                new_pos_searches.push(new_search);
+            } else if curr_iteration_batch_i == -2 {
+                error!("StudiedOp entity {:?} not found in search_suitable_position, giving up", studied_op_ent);
+                search_failed_evs.push(SearchFailed(studied_op_ent));
+            }
             continue;
         };
+        let curr_iteration_batch_i = curr_iteration_batch_i.max(0);
 
         match pos_search.search_pattern {
             SearchPattern::Radial(explore_angle) => {
 
-            let calculate_pos = |i_within_batch: u32, probe_direction: f32| -> GlobalTilePos {
-                let global_i = (curr_iteration_batch_i * iterations_per_batch + i_within_batch) as f32 * step_size as f32;
-                studied_op.search_start_pos + GlobalTilePos::from(IVec2::new(
-                (global_i * probe_direction.cos()) as i32, (global_i * probe_direction.sin()) as i32,
-                ))
-            };
+                let calculate_pos = |i_within_batch: u16, probe_direction: f32| -> GlobalTilePos {
+                    let global_i = (curr_iteration_batch_i as u16 * iterations_per_batch as u16 + i_within_batch) as f32 * step_size as f32;
+                    studied_op.search_start_pos + GlobalTilePos::from(IVec2::new(
+                    (global_i * probe_direction.cos()) as i32, (global_i * probe_direction.sin()) as i32,
+                    ))
+                };
 
-            if let Some(explore_angle) = explore_angle {
+                if let Some(explore_angle) = explore_angle {
 
-                let start_i_within_batch = (curr_iteration_batch_i == 0) as u32;
+                    let start_i_within_batch = (curr_iteration_batch_i == 0) as u16;
 
-                for i_within_batch in start_i_within_batch..iterations_per_batch {
-                   
-                new_pending_ops.push(PendingOp {
-                    oplist: studied_op.root_oplist,
-                    dimension_hash_id,
-                    pos: calculate_pos(i_within_batch, explore_angle),
-                    studied_op_ent,
-                    variables: VariablesArray::default(),
-                    chunk_ent: Entity::PLACEHOLDER,
-                });
-                }
-                if curr_iteration_batch_i + 1 < max_batches {
-                new_pos_searches.push(PosSearch{
-
-                    curr_iteration_batch_i: curr_iteration_batch_i + 1,
-                    search_pattern: SearchPattern::Radial(Some(explore_angle)),
-                    ..pos_search
-                });
+                    for i_within_batch in start_i_within_batch..iterations_per_batch {
+                        new_pending_ops.push(PendingOp {
+                            oplist: studied_op.root_oplist,
+                            dimension_hash_id,
+                            pos: calculate_pos(i_within_batch, explore_angle),
+                            studied_op_ent,
+                            variables: VariablesArray::default(),
+                            chunk_ent: Entity::PLACEHOLDER,
+                        });
+                    }
+                    if curr_iteration_batch_i as u16 + 1 < max_batches {
+                        new_pos_searches.push(PosSearch {
+                            curr_iteration_batch_i: curr_iteration_batch_i + 1,
+                            search_pattern: SearchPattern::Radial(Some(explore_angle)),
+                            ..pos_search
+                        });
+                    } else {
+                        error!("No more batches to search for {:?}", studied_op);
+                        search_failed_evs.push(SearchFailed(studied_op_ent));
+                    }
                 } else {
-                    error!("No more batches to search for {:?}", studied_op);
-                    search_failed_evs.push(SearchFailed(studied_op_ent));
+                    if curr_iteration_batch_i as u16 >= max_batches {
+                        error!("curr No more batches to search for {:?}", pos_search);
+                        continue;
+                    }
+                    let divisions = 8;
+                    for i in 0..divisions {
+                        let angle = 2.0 * PI * (i as f32) / (divisions as f32);
+                        new_pos_searches.push(PosSearch{
+                            search_pattern: SearchPattern::Radial(Some(angle)),
+                            ..pos_search
+                        });
+                    }
                 }
             }
-            else{
-                if curr_iteration_batch_i >= max_batches {
-                    error!("curr No more batches to search for {:?}", pos_search);
-                    continue;
-                }
-                let divisions = 8;
-                for i in 0..divisions {
-                    let angle = 2.0 * PI * (i as f32) / (divisions as f32);
-                    new_pos_searches.push(PosSearch{
-                        studied_op_ent,
-                        search_pattern: SearchPattern::Radial(Some(angle)),
-                        ..pos_search
-                    });
-                }   
-            }
-            }
+            
             SearchPattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turns) => {
             // Spiral search: move in a direction for curr_length_in_dir steps, then turn 90°, increase length every two turns
 
@@ -472,7 +483,7 @@ pub fn search_suitable_position(
                         turns = !turns;
                     }
                 }
-                if curr_iteration_batch_i + 1 < max_batches {
+                if curr_iteration_batch_i as u16 + 1 < max_batches {
                     new_pos_searches.push(PosSearch{
                         curr_iteration_batch_i: curr_iteration_batch_i + 1,
                         search_pattern: SearchPattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turns),

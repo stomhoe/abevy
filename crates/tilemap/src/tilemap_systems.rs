@@ -1,7 +1,7 @@
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
 use common::{common_components::StrId, common_resources::ImageSizeMap};
-use game_common::game_common_components::{EntityZero, MyZ};
+use game_common::game_common_components::{EntiZeroRef, MyZ};
 use ::tilemap_shared::*;
 
 use crate::{chunking_components::*, chunking_resources::AaChunkRangeSettings, terrain_gen::terrgen_events::Tiles2TmapProcess, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
@@ -44,7 +44,7 @@ pub fn produce_tilemaps(
     mut ereader_processed_tiles: EventReader<Tiles2TmapProcess>,
     oritile_query: Query<(&TileStrId, Has<ChunkOrTilemapChild>, Option<&MyZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, ), 
     (With<Disabled>)>,
-    mut tile_comps: Query<(Entity, &TilePos, &OplistSize, &EntityZero, &mut TilemapId, &mut TileTextureIndex, &mut TileVisible), (
+    mut tile_comps: Query<(Entity, &TilePos, &OplistSize, &EntiZeroRef, &mut TilemapId, &mut TileTextureIndex, &mut TileVisible), (
     (Or<(With<Disabled>, Without<Disabled>)>, Without<Transform>))>,
 
 

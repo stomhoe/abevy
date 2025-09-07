@@ -15,7 +15,7 @@ use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, refl
 pub struct MyZ(pub i32);
 impl MyZ {
     pub fn as_float(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
-    pub const Z_MULTIPLIER: f32 = 1e-2;
+    pub const Z_MULTIPLIER: f32 = 1e-5;
 }
 
 #[allow(unused_parens, dead_code)]
@@ -85,7 +85,7 @@ pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 
 
 #[derive(Component, Debug, Clone, Deserialize, Serialize, Reflect, Copy, PartialEq, Eq, Hash)]
-pub struct EntityZero(pub Entity);
+pub struct EntiZeroRef(pub Entity);
 
 
 

@@ -46,9 +46,9 @@ pub fn flip_tile_along_x(
 #[allow(unused_parens)]
 pub fn tile_readjust_transform(
     parent_query: Query<(&GlobalTransform, ), ()>,
-    mut query: Query<(&mut Transform, &GlobalTilePos, Option<&ChildOf>, &EntityZero),(With<Tile>, Added<GlobalTilePos>, Or<(Without<Disabled>, With<Disabled>)>)>,
+    mut query: Query<(&mut Transform, &GlobalTilePos, Option<&ChildOf>, ),(With<Tile>, Added<GlobalTilePos>, Or<(Without<Disabled>, With<Disabled>, With<EntiZeroRef>)>)>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
-    for (mut transform, global_pos, child_of, original_ref) in query.iter_mut() {
+    for (mut transform, global_pos, child_of, ) in query.iter_mut() {
         let transl_from_global_pos = global_pos.to_translation(transform.translation.z);
         if let Some(child_of) = child_of {
             if let Ok((parent_global_transform, )) = parent_query.get(child_of.parent()) {
