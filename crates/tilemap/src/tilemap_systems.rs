@@ -2,6 +2,7 @@ use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled, world::OnDes
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::Replicated;
 use common::{common_components::StrId, common_resources::ImageSizeMap, common_states::GameSetupType};
+use dimension_shared::DimensionRef;
 use game_common::game_common_components::{EntityZeroRef, MyZ};
 use ::tilemap_shared::*;
 
@@ -40,13 +41,13 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 
 #[allow(unused_parens, )]//TODO: USAR try_insert_bundle
-pub fn process_tiles(
+pub fn process_tiles_pre(
     mut cmd: Commands, 
 
-    mut ereader_mass_collected_tiles: ResMut<Events<MassCollectedTiles>>,
+    mut ereader_mass_collected_tiles: ResMut<MassCollectedTiles>,
 
     oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<ChunkOrTilemapChild>, 
-        Option<&MyZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&mut Transform>,), (With<Disabled>)>,
+        Option<&MyZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&mut Transform>, Option<&TileColor>), (With<Disabled>)>,
 
     mut chunk_query: Query<(&mut LayersMap), ()>,
     mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
@@ -65,14 +66,14 @@ pub fn process_tiles(
 
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
-    if ereader_mass_collected_tiles.is_empty() { return Ok(()); }
+    if ereader_mass_collected_tiles.0.is_empty() { return Ok(()); }
 
     let reserved = chunkrange.approximate_number_of_chunks(0.06);
 
     let mut changed_structs: HashSet<(Entity, MapKey)> = HashSet::with_capacity(reserved);
 
 
-    let mut to_draw = Vec::with_capacity(ereader_mass_collected_tiles.len());
+    let mut to_draw = Vec::with_capacity(ereader_mass_collected_tiles.0.len());
 
     let mut tilemap_bundles = Vec::new();//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
 
@@ -80,32 +81,44 @@ pub fn process_tiles(
     let mut to_remove_tile_bundle_and_oplist: Vec<Entity> = Vec::new();
 
 
-    #[allow(unused_mut)]
-    'eventsfor: for mut ev in ereader_mass_collected_tiles.drain() {
+    // Closure capturing the environment
+    let mut asd = |tile_ent: Entity, ezero: EntityZeroRef, global_pos: GlobalTilePos, chunk: Entity, dim_ref: DimensionRef, oplist_size: OplistSize| {
+        // You can access variables from the outer scope here
+        // Example usage:
+        // cmd, regpos_map, is_host, min_dists_query, etc. are accessible
 
-        for &mut (tile_ent, TileHelperStruct {
+        // Add your logic here
+    };
+
+    #[allow(unused_mut)]
+    'eventsfor: for mut ev in ereader_mass_collected_tiles.0.iter_mut() {
+
+        let &mut (tile_ent, TileHelperStruct {
             ezero, global_pos, chunk, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos: _,
-        }) in ev.0.iter_mut() {
-            info!("Producing tilemap for tile entity {:?} at global pos {:?} in chunk {:?} dim {:?}", tile_ent, global_pos, chunk, dim_ref);
+        })  = ev; 
+
+            //TODO EXTRAER ESTA PARTE A UNA FUNCIÓN PARA Q SE PUEDAN ADMITIR EVENTOS EN OTRO FORMATO
     
+            
 
             let Ok(mut layers) = chunk_query.get_mut(chunk.0) else {
                 continue 'eventsfor;
             };
 
-            let Ok((tile_strid, min_dists, keep_distance_from, is_child, tile_z_index, tile_handles, shader_ref, transform))
+            let Ok((tile_strid, min_dists, keep_distance_from, is_child, tile_z_index, tile_handles, shader_ref, transform, color))
             = oritile_query.get(ezero.0) else{
                 error!("Original tile entity {} is despawned", ezero.0);
                 continue;
             };
-        
 
+            
+            
             if false == regpos_map.check_min_distances(&mut cmd, is_host, 
                 (tile_ent, ezero, dim_ref, global_pos, min_dists, keep_distance_from), min_dists_query) {
-                cmd.entity(tile_ent).try_despawn(); 
+                    cmd.entity(tile_ent).try_despawn(); 
                 continue; 
             }
-
+            
             
             if !is_child {
                 if is_host {
@@ -117,7 +130,7 @@ pub fn process_tiles(
                     continue;
                 }
             }
-
+            
             cmd.entity(tile_ent).try_remove::<(Disabled, )>();
 
             if transform.is_some() {
@@ -128,7 +141,8 @@ pub fn process_tiles(
                 }
                 continue;
             }
-
+            bundle.color = color.cloned().unwrap_or_default();
+            
             process_tilemaps(
                 &mut cmd,
                 tile_ent,
@@ -150,20 +164,20 @@ pub fn process_tiles(
             );
 
             
+        
+
+            
         }
-
-        cmd.insert_batch_if_new(ev.0);
-
-    }
+    cmd.try_insert_batch(take(&mut ereader_mass_collected_tiles.0));
 
     for tile_ent in to_remove_tile_bundle_and_oplist.drain(..) {
         cmd.entity(tile_ent).try_remove::<(TileBundle, OplistSize)>();
     }
 
-    cmd.insert_batch(to_insert_replicated);
+    cmd.try_insert_batch(to_insert_replicated);
 
 
-    cmd.insert_batch(tilemap_bundles);
+    cmd.try_insert_batch(tilemap_bundles);
 
     for (chunk_ent, mapkey) in changed_structs.iter() {
         trace!("Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
@@ -339,7 +353,7 @@ fn process_tilemaps(
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^
 #[allow(unused_parens)]
-pub fn assign_child_of(mut cmd: Commands, 
+pub fn tile_assign_child_of(mut cmd: Commands, 
     tile_instances_holder_query: Single<Entity, With<TileInstancesHolder>>,
     mut query: Query<(Entity, ),(Without<ChildOf>, With<TilePos>, With<TileTextureIndex>)>,
 ) {
@@ -348,7 +362,7 @@ pub fn assign_child_of(mut cmd: Commands,
     let parent = tile_instances_holder_query.into_inner();
 
     for (tile_ent,) in query.iter_mut() {
-
+        //info!("Assigning ChildOf to tile entity {:?}", tile_ent);
         child_ofs_for_tiles.push((tile_ent, ChildOf(parent.clone())));//TODO HACER EN EL MOMENTO Q SE LE METEN LAS COSAS A LAS TILES
     }
 

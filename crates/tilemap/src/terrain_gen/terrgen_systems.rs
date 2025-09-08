@@ -92,7 +92,7 @@ pub fn produce_tiles(mut cmd: Commands,
     fnl_noises: Query<&FnlNoise,>,
     studied_ops: Query<&StudiedOp,>,
     weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
-    mut ewriter_mass_collected_tiles: EventWriter<MassCollectedTiles>,
+    mut collected: ResMut<MassCollectedTiles>,
     mut ewriter_sampled_value: EventWriter<SuitablePosFound>,
 ) -> Result {
 
@@ -103,7 +103,7 @@ pub fn produce_tiles(mut cmd: Commands,
     let mut sampled_value_events = Vec::new();
 
 
-    let mut collected = MassCollectedTiles::new(pending_ops_events.len());
+    //let mut collected = MassCollectedTiles::new(pending_ops_events.len());
 
     'eventfor: for mut ev in pending_ops_events.drain() {unsafe{
    
@@ -208,13 +208,14 @@ pub fn produce_tiles(mut cmd: Commands,
         }
 
         if bifurcation.tiles.len() > 0 && ev.studied_op_ent == Entity::PLACEHOLDER {
-            let dim_ref = DimensionRef(chunk_query.get(ev.chunk_ent).debug_unwrap_unchecked().0.clone());
-
+            let Ok(dim_ref) = chunk_query.get(ev.chunk_ent).map(|c| DimensionRef(c.0.clone())) else {
+                continue;
+            };   
             collected.collect_tiles(&mut cmd, &bifurcation.tiles, &ev, dim_ref, my_oplist_size, &weight_maps, &gen_settings);
         }
     }}
 
-    ewriter_mass_collected_tiles.write(collected);
+    //ewriter_mass_collected_tiles.write(collected);
 
     pending_ops_events.send_batch(new_pending_ops_events); 
     ewriter_sampled_value.write_batch(sampled_value_events);

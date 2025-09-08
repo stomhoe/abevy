@@ -17,7 +17,7 @@ mut event_writer: EventWriter<TestEvent>,
 mut event_reader: EventReader<TestEvent>,
 */
 
-#[derive(Bundle, Debug, Clone, )]
+#[derive(Bundle, Debug, Clone, Reflect)]
 pub struct TileHelperStruct{
     pub ezero: EntityZeroRef,
     pub global_pos: GlobalTilePos,
@@ -30,7 +30,8 @@ pub struct TileHelperStruct{
 
 pub type CollectedTiles = Vec<(Entity, TileHelperStruct)>;
 
-#[derive(Debug, Event, Clone, Resource, Default)]
+#[derive(Debug, Event, Clone, Resource, Default, Reflect)]
+#[reflect(Resource, Default)]
 pub struct MassCollectedTiles  (pub CollectedTiles);
 impl MassCollectedTiles {
 

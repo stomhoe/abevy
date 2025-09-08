@@ -282,7 +282,7 @@ pub fn instantiate_portal(mut cmd: Commands,
     pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
     mut ew_pos_search: EventWriter<PosSearch>, 
-    mut ewriter_tiles: EventWriter<MassCollectedTiles>,
+    //mut ewriter_tiles: EventWriter<MassCollectedTiles>,
     mut ereader_search_successful: EventReader<SuitablePosFound>,
     mut ereader_search_failed: EventReader<SearchFailed>, 
     mut register_pos: ResMut<RegisteredPositions>
@@ -396,10 +396,10 @@ pub fn client_sync_tile(
     query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>)>,
     ori_query: Query<(&TileStrId, Has<ChunkOrTilemapChild>, Option<&Sprite>), (With<Disabled>)>,
     loaded_chunks: Res<LoadedChunks>,
-    mut ewriter_tmap_process: EventWriter<MassCollectedTiles>
+    //mut ewriter_tmap_process: EventWriter<MassCollectedTiles>
 
 ) {
-    let mut tiles_to_tmap_process = Vec::new();
+    //let mut tiles_to_tmap_process = Vec::new();
     for (tile_ent, &orig_ref, &global_pos, &dim_ref, ) in query.iter() {
         let Ok((tile_strid, is_child, sprite)) = ori_query.get(orig_ref.0) else{
             error!("Original tile entity {} is despawned", orig_ref.0);
@@ -422,6 +422,6 @@ pub fn client_sync_tile(
             cmd.entity(tile_ent).try_insert(ChildOf(dim_ref.0));
         }
     }
-    ewriter_tmap_process.write_batch(tiles_to_tmap_process);
+    //ewriter_tmap_process.write_batch(tiles_to_tmap_process);
 
 }

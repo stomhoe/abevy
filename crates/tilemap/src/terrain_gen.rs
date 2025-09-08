@@ -68,6 +68,8 @@ pub fn plugin(app: &mut App) {
         .register_type::<ChunkRef>()
         .register_type::<RegisteredPositions>()
         .register_type::<RootInDimensions>()
+        .register_type::<MassCollectedTiles>()
+        .register_type::<TileHelperStruct>()
 
         .add_server_trigger::<RegisteredPositions>(Channel::Unordered)
         .make_trigger_independent::<RegisteredPositions>()
@@ -80,7 +82,8 @@ pub fn plugin(app: &mut App) {
         .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>()
         .replicate::<NoiseHolder>()
         .add_event::<PendingOp>()
-        .add_event::<MassCollectedTiles>()
+        //.add_event::<MassCollectedTiles>()
+        .init_resource::<MassCollectedTiles>()
         .add_event::<PosSearch>().add_event::<SuitablePosFound>().add_event::<SearchFailed>()
         ;
 

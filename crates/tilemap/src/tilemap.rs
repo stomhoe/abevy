@@ -24,11 +24,11 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         clear_chunks_on_dim_change,
         (rem_outofrange_chunks_from_activators, despawn_unreferenced_chunks), 
-        assign_child_of,
+        tile_assign_child_of,
         (
             visit_chunks_around_activators, 
             show_or_hide_chunks, 
-            process_tiles.before(despawn_unreferenced_chunks)//NO TOCAR
+            process_tiles_pre.before(despawn_unreferenced_chunks)//NO TOCAR
         ).in_set(ChunkSystems).run_if(in_state(TerrainGenHotLoading::KeepAlive))
     ))
 
