@@ -7,16 +7,16 @@ use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{Description, EntiZeroRef, MyZ, YSortOrigin};
+use game_common::game_common_components::{Description, EntityZeroRef, MyZ, YSortOrigin};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
-use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::StudiedOp}, tile::tile_materials::* };
+use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::{CollectedTiles, StudiedOp},}, tile::tile_materials::* };
 
 #[derive(Bundle)]
-struct ToDenyOnTileClone(
+pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, 
     TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, 
     
@@ -46,7 +46,7 @@ impl Tile {
     pub const MAX_Z: MyZ = MyZ(1_000);
 
     pub fn spawn_from_ref(
-        cmd: &mut Commands, tile_ref: EntiZeroRef, global_pos: GlobalTilePos, oplist_size: OplistSize,
+        cmd: &mut Commands, tile_ref: EntityZeroRef, global_pos: GlobalTilePos, oplist_size: OplistSize,
     ) -> Entity {
         cmd.entity(tile_ref.0).clone_and_spawn_with(|builder|{
             builder.deny::<ToDenyOnTileClone>();
@@ -55,24 +55,12 @@ impl Tile {
         .try_insert((tile_ref, InitialPos(global_pos), global_pos, global_pos.to_tilepos(oplist_size), oplist_size))
         .id()
     }
-
-    pub fn clonespawn_many(
-        cmd: &mut Commands, mut tile_refs: Vec<(Entity, (GlobalTilePos, OplistSize))>, 
-    ) -> Vec<Entity> {
-        let mut new_entities = Vec::with_capacity(tile_refs.len());
-        for (entity, _) in tile_refs.iter_mut() {
-            *entity = cmd.entity(*entity).clone_and_spawn_with(|builder|{
-                builder.deny::<ToDenyOnTileClone>();
-                //builder.deny::<BundleToDenyOnReleaseBuild>();
-            }).id();
-            new_entities.push(*entity);
-        }
-        cmd.insert_batch(tile_refs);
-        new_entities
-    }
     
       
 }
+
+#[derive(Component, Debug, Copy, Clone, Hash, Reflect)]
+pub struct LocalChunkRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(EntityPrefix::new("Tile Instances"), Name, Transform )]
@@ -202,7 +190,7 @@ pub struct MinDistancesMap(pub EntityHashMap<u32>);
 impl MinDistancesMap {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&self, 
-        my_pos: (DimensionRef, GlobalTilePos), new: (EntiZeroRef, DimensionRef, GlobalTilePos)
+        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZeroRef, DimensionRef, GlobalTilePos)
     ) -> bool {
         self.0.get(&new.0.0).map_or(true, |&min_dist| {
             my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist

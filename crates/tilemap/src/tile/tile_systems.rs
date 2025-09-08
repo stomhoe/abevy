@@ -9,7 +9,7 @@ use common::common_components::{HashId, };
 use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist};
 use game_common::game_common_components::*;
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize};
-use crate::{ terrain_gen::{terrgen_events::{InstantiatedTiles, PendingOp, PosSearch, SearchFailed, StudiedOp, SuitablePosFound}, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*}};
+use crate::{ terrain_gen::{terrgen_events::{ PendingOp, PosSearch, SearchFailed, StudiedOp, SuitablePosFound}, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*}};
 
 
 
@@ -46,7 +46,7 @@ pub fn flip_tile_along_x(
 #[allow(unused_parens)]
 pub fn tile_readjust_transform(
     parent_query: Query<(&GlobalTransform, ), ()>,
-    mut query: Query<(&mut Transform, &GlobalTilePos, Option<&ChildOf>, ),(With<Tile>, Added<GlobalTilePos>, Or<(Without<Disabled>, With<Disabled>, With<EntiZeroRef>)>)>,
+    mut query: Query<(&mut Transform, &GlobalTilePos, Option<&ChildOf>, ),(With<Tile>, Added<GlobalTilePos>, Or<(Without<Disabled>, With<Disabled>, With<EntityZeroRef>)>)>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
     for (mut transform, global_pos, child_of, ) in query.iter_mut() {
         let transl_from_global_pos = global_pos.to_translation(transform.translation.z);

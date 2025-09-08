@@ -4,7 +4,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::{AssetsLoadingState, };
 use bevy_ecs_tilemap::prelude::*;
 use dimension_shared::DimensionRef;
-use game_common::{ColorSamplersInitSystems, game_common_components::EntiZeroRef, game_common_components_samplers::EntiWeightedSampler};
+use game_common::{ColorSamplersInitSystems, game_common_components::EntityZeroRef, game_common_components_samplers::EntiWeightedSampler};
 use tilemap_shared::{GlobalTilePos, OplistSize};
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
@@ -96,7 +96,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<TileShaderRef>()
         .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TilemapId, TileVisible, TileColor, TilePosOld, )>()
         .replicate::<ChunkOrTilemapChild>()
-        .replicate_bundle::<(GlobalTilePos, EntiZeroRef)>()
+        .replicate_bundle::<(GlobalTilePos, EntityZeroRef)>()
         .replicate_bundle::<(Tile, GlobalTilePos, Transform)>()
         .replicate::<PortalInstance>()
         .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()

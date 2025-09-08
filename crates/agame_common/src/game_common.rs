@@ -95,7 +95,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<WeightedSamplerRef>()
     .register_type::<Category>()
     .register_type::<Categories>()
-    .register_type::<EntiZeroRef>()
+    .register_type::<EntityZeroRef>()
     
     .replicate::<VisibilityGameState>()    
     .replicate::<FacingDirection>()
@@ -106,6 +106,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<YSortOrigin>()
     .replicate::<Description>()
     .replicate::<FacingDirection>()
-    .replicate::<EntiZeroRef>()
+    .replicate::<EntityZeroRef>()
     ;
 }

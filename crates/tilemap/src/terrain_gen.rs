@@ -25,7 +25,7 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            (spawn_terrain_operations, (produce_tiles, process_tiles)).in_set(TerrainGenSystems),
+            (spawn_terrain_operations, (produce_tiles,)).in_set(TerrainGenSystems),
             search_suitable_position.run_if(server_or_singleplayer),
             (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities, ).run_if(not(server_or_singleplayer)),
             oplist_init_dim_refs,
@@ -80,7 +80,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>()
         .replicate::<NoiseHolder>()
         .add_event::<PendingOp>()
-        .add_event::<InstantiatedTiles>().add_event::<Tiles2TmapProcess>()
+        .add_event::<MassCollectedTiles>()
         .add_event::<PosSearch>().add_event::<SuitablePosFound>().add_event::<SearchFailed>()
         ;
 

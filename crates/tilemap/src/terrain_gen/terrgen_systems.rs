@@ -7,9 +7,9 @@ use bevy_replicon::{prelude::{Replicated, SendMode, ToClients}, shared::server_e
 use common::{common_components::{DisplayName, HashId, StrId}, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
-use game_common::{game_common_components::{EntiZeroRef, FacingDirection }, game_common_components_samplers::EntiWeightedSampler};
+use game_common::{game_common_components::{EntityZeroRef, FacingDirection }, game_common_components_samplers::EntiWeightedSampler};
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
-use std::{f32::consts::PI, mem::take};
+use std::{f32::consts::PI, iter::zip, mem::take};
 use ::tilemap_shared::*;
 
 
@@ -81,26 +81,29 @@ pub fn spawn_terrain_operations (
 
 
 
+
 #[allow(unused_parens)]
 pub fn produce_tiles(mut cmd: Commands, 
     gen_settings: Res<AaGlobalGenSettings>,
     res_chunk: Res<AaChunkRangeSettings>,
     oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
+    chunk_query: Query<(&ChildOf), (With<Chunk> )>,
     mut pending_ops_events: ResMut<Events<PendingOp>>,
     fnl_noises: Query<&FnlNoise,>,
     studied_ops: Query<&StudiedOp,>,
     weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
-    mut ewriter_instantiated_tiles: EventWriter<InstantiatedTiles>,
+    mut ewriter_mass_collected_tiles: EventWriter<MassCollectedTiles>,
     mut ewriter_sampled_value: EventWriter<SuitablePosFound>,
 ) -> Result {
 
     if pending_ops_events.is_empty() { return Ok(()); }
 
-    let chunk_area = res_chunk.approximate_number_of_tiles() * 2;
 
-    let mut new_pending_ops_events = Vec::with_capacity(chunk_area);
-    let mut produced_tiles_events = Vec::with_capacity(chunk_area);
+    let mut new_pending_ops_events = Vec::with_capacity(pending_ops_events.len() * 2);
     let mut sampled_value_events = Vec::new();
+
+
+    let mut collected = MassCollectedTiles::new(pending_ops_events.len());
 
     'eventfor: for mut ev in pending_ops_events.drain() {unsafe{
    
@@ -205,19 +208,19 @@ pub fn produce_tiles(mut cmd: Commands,
         }
 
         if bifurcation.tiles.len() > 0 && ev.studied_op_ent == Entity::PLACEHOLDER {
-            let tiles = InstantiatedTiles::from_op(&mut cmd, &ev, &bifurcation.tiles, my_oplist_size, &weight_maps, &gen_settings);
-            produced_tiles_events.push(tiles);
+            let dim_ref = DimensionRef(chunk_query.get(ev.chunk_ent).debug_unwrap_unchecked().0.clone());
+
+            collected.collect_tiles(&mut cmd, &bifurcation.tiles, &ev, dim_ref, my_oplist_size, &weight_maps, &gen_settings);
         }
     }}
+
+    ewriter_mass_collected_tiles.write(collected);
+
     pending_ops_events.send_batch(new_pending_ops_events); 
-    ewriter_instantiated_tiles.write_batch(produced_tiles_events);
     ewriter_sampled_value.write_batch(sampled_value_events);
 
     Ok(())
 }
-
-
-
 
 fn spawn_bifurcation_oplists(
     ev: &mut PendingOp, oplist_query: &Query<(&OperationList, &OplistSize), ()>,
@@ -239,134 +242,6 @@ fn spawn_bifurcation_oplists(
         }
     } else {new_pending_ops.push(PendingOp{ oplist, ..(*ev).clone() });}
 }}
-
-
-#[allow(unused_parens)]
-pub fn process_tiles(mut cmd: Commands, 
-    mut events_instantiated_tiles: ResMut<Events<InstantiatedTiles>>,
-    mut ewriter_processed_tiles: EventWriter<Tiles2TmapProcess>,
-    chunk_query: Query<(&ChildOf), ()>,
-    dimension_query: Query<(Entity), (With<Dimension>, )>,
-    mut tile_query: Query<(&EntiZeroRef, &GlobalTilePos, &mut DimensionRef, Option<&mut Transform>, ), (With<Tile>, Or<(With<Disabled>, Without<Disabled>)>, )>,
-
-    oritile_query: Query<(Has<ChunkOrTilemapChild>, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), (With<Disabled>)>,
-    min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
-    mut regpos_map: ResMut<RegisteredPositions>,
-
-    state: Res<State<GameSetupType>>,
-) {
-    let is_host = state.get() != &GameSetupType::AsJoiner;
-
-    //TODO: insert_with_bundle vec<entity, bundle> en vez de ir insertando uno por uno
-    
-    if events_instantiated_tiles.is_empty() { return; }
-
-    let child_ofs_capacity = events_instantiated_tiles.len() /100;
-    trace!("Processing {} instantiated tiles events, reserving space for {} ChildOf components", events_instantiated_tiles.len(), child_ofs_capacity);
-    //TODO HACER EVENTOS ESPECIALES?
-
-    let mut instantiated_tiles_events_to_retransmit = Vec::with_capacity(events_instantiated_tiles.len());
-    let mut processed_tiles_events = Vec::with_capacity(events_instantiated_tiles.len());
-    let mut to_insert_replicated = Vec::new();
-
-
-    'eventfor: for mut ev in events_instantiated_tiles.drain() {
-
-        let tiles_len = ev.tiles.len();
-
-        'tilefor: for (tile_i, tile_ent) in ev.tiles.iter_mut().enumerate() {
-
-            let Ok((&ezero, &global_pos, mut placeholder_dim_ref, transform, )) = tile_query.get_mut(*tile_ent)
-            else {
-                ev.retransmission_count += 1;
-                if ev.retransmission_count >= 10 as u16 {
-                    error!("Tile entity {:?} in instantiated tiles event for chunk or dim {:?} does not exist or isn't a Tile", tile_ent, ev.chunk_or_dim);
-                }else{
-                    instantiated_tiles_events_to_retransmit.push(ev);
-                }
-                continue 'eventfor; 
-            };
-
-            let Ok((chunk_child, min_dists, keep_distance_from)) = oritile_query.get(ezero.0)
-            else { 
-                error!("{:?}'s Tileref{:?} does not exist or doesnt't have Disabled component", tile_ent, ezero.0);
-                cmd.entity(*tile_ent).try_despawn(); 
-                *tile_ent = Entity::PLACEHOLDER;
-                continue 'tilefor; 
-            };
-
-            let dim_ent = if let Ok((chunk_childof)) = chunk_query.get(ev.chunk_or_dim) { 
-                if (chunk_child == false) {
-                    trace!("Got chunk's ChildOf for chunk {:?} for tile {:?}: {:?}", ev.chunk_or_dim, tile_ent, chunk_childof.parent());
-                }
-                chunk_childof.parent() 
-            } 
-            else if (chunk_child == false){
-                let Ok(dim_ent) = dimension_query.get(ev.chunk_or_dim) else {
-                    error!("Failed to get dimension {:?} for orphan tile {:?}", ev.chunk_or_dim, tile_ent);
-                    cmd.entity(*tile_ent).try_despawn(); 
-                    *tile_ent = Entity::PLACEHOLDER;
-                    if tile_i == tiles_len - 1 { continue 'eventfor; }
-                    if tile_i == 0{
-                        trace!("PROCESSTILES Failed to get chunk's ChildOf for chunk {:?}", ev.chunk_or_dim);
-                    }
-                    continue 'tilefor; 
-                };
-                info!("Got dimension {:?} for orphan tile {:?}", ev.chunk_or_dim, tile_ent);
-                dim_ent
-            } else{
-                cmd.entity(*tile_ent).try_despawn(); 
-                *tile_ent = Entity::PLACEHOLDER;
-                
-                if tile_i == tiles_len - 1 { continue 'eventfor; }
-                if tile_i == 0{
-                    trace!("PROCESSTILES Failed to get chunk's ChildOf for chunk {:?}", ev.chunk_or_dim);
-                }
-                
-                continue 'tilefor; 
-
-            };
-            let dimref = DimensionRef(dim_ent); *placeholder_dim_ref = dimref;
-
-            if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent.clone(), ezero, dimref, global_pos, min_dists, keep_distance_from), min_dists_query) {
-                cmd.entity(*tile_ent).try_despawn(); 
-                *tile_ent = Entity::PLACEHOLDER;
-                continue 'tilefor; 
-            }
-            
-            trace!("Spawned tile {:?} at global pos {:?} in dimension {:?}", tile_ent, global_pos, dimref);
-
-            if transform.is_some() {
-                cmd.entity(*tile_ent).try_remove::<(Disabled, TilePos, OplistSize, )>();
-                
-                if chunk_child  {
-                    cmd.entity(*tile_ent).try_insert((ChildOf(ev.chunk_or_dim), ));
-                }
-            }
-            
-            if ! chunk_child  {
-                if is_host {
-                    cmd.entity(*tile_ent).try_insert((ChildOf(dim_ent)));
-                    to_insert_replicated.push((*tile_ent, Replicated));
-                }
-                else{
-                    cmd.entity(*tile_ent).try_despawn();
-                    *tile_ent = Entity::PLACEHOLDER;
-                }
-            } 
-                
-        }
-        let protiles = Tiles2TmapProcess { chunk: ev.chunk_or_dim, tiles: ev.take_tiles() };
-        processed_tiles_events.push(protiles);
-        
-    }
-    cmd.insert_batch(to_insert_replicated);
-
-    ewriter_processed_tiles.write_batch(processed_tiles_events);
-    events_instantiated_tiles.send_batch(instantiated_tiles_events_to_retransmit);
-}
-
-
 
 
 
@@ -496,7 +371,7 @@ pub fn search_suitable_position(
                     });
                 } else {
                     error!("No more batches to search for {:?}", studied_op);
-                    //cmd.entity(studied_op_ent).try_despawn();
+                    cmd.entity(studied_op_ent).try_despawn();
                     search_failed_evs.push(SearchFailed(studied_op_ent));
                 }
             },   

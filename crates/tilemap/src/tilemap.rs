@@ -6,7 +6,7 @@ use dimension_shared::DimensionSystems;
 use game_common::game_common::GameplaySystems;
 use tilemap_shared::ChunkPos;
 
-use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{self, terrgen_systems::{process_tiles}, *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_systems::*};
+use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{self,  *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -28,7 +28,7 @@ pub fn plugin(app: &mut App) {
         (
             visit_chunks_around_activators, 
             show_or_hide_chunks, 
-            produce_tilemaps.before(despawn_unreferenced_chunks)//NO TOCAR
+            process_tiles.before(despawn_unreferenced_chunks)//NO TOCAR
         ).in_set(ChunkSystems).run_if(in_state(TerrainGenHotLoading::KeepAlive))
     ))
 

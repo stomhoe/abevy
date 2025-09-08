@@ -1,4 +1,5 @@
 use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, prelude::*};
+use bevy_ecs_tilemap::tiles::{TileBundle, TilePos};
 use common::common_components::HashId;
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
@@ -7,84 +8,88 @@ use game_common::{game_common_components::*, game_common_components_samplers::En
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
-use crate::{terrain_gen::terrgen_oplist_components::VariablesArray, tile::tile_components::*};
+use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, tile::tile_components::*};
+    
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Reflect, )]
-pub enum OplistCollectedTiles {
-    Array([Entity; 4]), Batch(Vec<Entity>),
+#[derive(Bundle, Debug, Clone)]
+pub struct TileHelperStruct{
+    pub ezero: EntityZeroRef,
+    pub global_pos: GlobalTilePos,
+    pub chunk: LocalChunkRef,
+    pub dim_ref: DimensionRef,
+    pub oplist_size: OplistSize,
+    pub tile_bundle: TileBundle,
+    pub initial_pos: InitialPos,
 }
-impl OplistCollectedTiles {
-    pub fn new(tile:Entity) -> Self {
-        let mut arr = [Entity::PLACEHOLDER; 4];
-        arr[0] = tile;
-        Self::Array(arr)   
+
+pub type CollectedTiles = Vec<(Entity, TileHelperStruct)>;
+
+#[derive(Debug, Event, Clone)]
+pub struct MassCollectedTiles  (pub CollectedTiles);
+impl MassCollectedTiles {
+
+    pub fn new(pending_ops_len: usize) -> Self {
+        Self(Vec::with_capacity((pending_ops_len as f32 * 1.5) as usize))
+    }
+    pub fn new_from_entzero(pending_ops: impl IntoIterator<Item = EntityZeroRef>) -> Self {
+        let pending_ops_iter = pending_ops.into_iter();
+        let (lower, _) = pending_ops_iter.size_hint();
+        Self(Vec::with_capacity((lower) as usize))
     }
 
-    pub fn iter(&self) -> OplistCollectedTilesIter<'_> {
-        match self {
-            OplistCollectedTiles::Array(arr) => OplistCollectedTilesIter::Array { arr, idx: 0 },
-            OplistCollectedTiles::Batch(vec) => OplistCollectedTilesIter::Batch { vec, idx: 0 },
-        }
-    }
-    pub fn iter_mut(&mut self) -> OplistCollectedTilesIterMut<'_> {
-        match self {
-            OplistCollectedTiles::Array(arr) => OplistCollectedTilesIterMut::Array { arr: arr.as_mut_slice(), idx: 0 },
-            OplistCollectedTiles::Batch(vec) => OplistCollectedTilesIterMut::Batch { vec: vec.as_mut_slice(), idx: 0 },
-        }
-    }
-    pub fn len(&self) -> usize {
-        match self {
-            OplistCollectedTiles::Array(arr) => arr.iter().filter(|e| **e != Entity::PLACEHOLDER).count(),
-            OplistCollectedTiles::Batch(vec) => vec.len(),
-        }
-    }
-}
-pub enum OplistCollectedTilesIterMut<'a> { Array { arr: &'a mut [Entity], idx: usize }, Batch { vec: &'a mut [Entity], idx: usize }, }
-impl<'a> Iterator for OplistCollectedTilesIterMut<'a> {
-    type Item = &'a mut Entity;
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            OplistCollectedTilesIterMut::Array { arr, idx } => {
-                while *idx < arr.len() {
-                    let i = *idx; *idx += 1;
-                    let ptr = &mut arr[i] as *mut Entity;
-                    unsafe { if *ptr != Entity::PLACEHOLDER { return Some(&mut *ptr); } }
+    fn collect_tiles_rec(
+        &mut self,
+        cmd: &mut Commands,
+        tiling_ent: Entity,
+        global_pos: GlobalTilePos,
+        chunk: Entity,
+        dim_ref: DimensionRef,
+        oplist_size: OplistSize,
+        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
+        gen_settings: &AaGlobalGenSettings,
+        depth: u32
+    ) {
+        if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
+            if let Some(tiling_ent) = wmap.sample_with_pos(gen_settings, global_pos) {
+                if depth > 6 {
+                    warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_ent);
+                    return;
                 }
-                None
+                self.collect_tiles_rec(cmd, tiling_ent, global_pos, chunk, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
             }
-            OplistCollectedTilesIterMut::Batch { vec, idx } => {
-                if *idx < vec.len() {
-                    let i = *idx; *idx += 1;
-                    let ptr = &mut vec[i] as *mut Entity;
-                    unsafe { Some(&mut *ptr) }
-                } else { None }
-            }
+        } else {
+            let tile_instance = cmd.entity(tiling_ent).clone_and_spawn_with(|builder|{
+                builder.deny::<ToDenyOnTileClone>();
+                //builder.deny::<BundleToDenyOnReleaseBuild>();
+            }).id();
+            let tile_bundle = TileBundle {
+                position: global_pos.to_tilepos(oplist_size), ..Default::default()
+            };
+            let helper = TileHelperStruct {
+                ezero: EntityZeroRef(tiling_ent),
+                global_pos,
+                chunk: LocalChunkRef(chunk),
+                dim_ref,
+                oplist_size,
+                tile_bundle,
+                initial_pos: InitialPos(global_pos),
+            };
+            self.0.push((tile_instance, helper));
         }
     }
-}
-pub enum OplistCollectedTilesIter<'a> { Array { arr: &'a [Entity; 4], idx: usize }, Batch { vec: &'a Vec<Entity>, idx: usize },}
-
-impl<'a> Iterator for OplistCollectedTilesIter<'a> {
-    type Item = Entity;
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            OplistCollectedTilesIter::Array { arr, idx } => {
-                while *idx < arr.len() {
-                    let ent = arr[*idx]; *idx += 1;
-                    if ent != Entity::PLACEHOLDER { return Some(ent); }
-                }
-                None
-            }
-            OplistCollectedTilesIter::Batch { vec, idx } => {
-                if *idx < vec.len() {
-                    let ent = vec[*idx]; *idx += 1; Some(ent)
-                } else { None }
-            }
+    pub fn collect_tiles(&mut self, 
+        cmd: &mut Commands,
+        bif_tiles: &Vec<Entity>, ev: &PendingOp,
+        dim_ref: DimensionRef, oplist_size: OplistSize, weight_maps: &Query<(&EntiWeightedSampler,), ()>, gen_settings: &AaGlobalGenSettings,
+    )  {
+        for tile in bif_tiles.iter().cloned() {
+            self.collect_tiles_rec(cmd, tile, ev.pos, ev.chunk_ent, dim_ref, oplist_size, weight_maps, gen_settings, 0);
         }
     }
+
 }
 
-impl Default for OplistCollectedTiles { fn default() -> Self { Self::Array([Entity::PLACEHOLDER; 4]) } }
+
 
 #[derive(Debug, Clone)]
 pub enum SearchPattern {
@@ -98,6 +103,9 @@ impl SearchPattern {
         SearchPattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
     }
 }
+
+
+
 
 #[derive(Event, Debug, Clone)]
 pub struct PosSearch {
@@ -159,79 +167,6 @@ impl PartialEq for StudiedOp {
     }
 }
 impl Eq for StudiedOp {}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Event, )]
-pub struct InstantiatedTiles { pub chunk_or_dim: Entity, pub tiles: OplistCollectedTiles, pub retransmission_count: u16 }
-impl InstantiatedTiles {
-    #[allow(unused_parens, )]
-    fn insert_tile_recursive(
-        &mut self,
-        cmd: &mut Commands,
-        tiling_ent: Entity,
-        global_pos: GlobalTilePos,
-        oplist_size: OplistSize,
-        weight_maps: &Query<(&EntiWeightedSampler,), ()>,
-        gen_settings: &AaGlobalGenSettings,
-        depth: u32
-    ) {
-        if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
-            if let Some(tiling_ent) = wmap.sample_with_pos(gen_settings, global_pos) {
-
-                if depth > 6 {
-                    warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_ent);
-                    return;
-                }
-                self.insert_tile_recursive( cmd, tiling_ent, global_pos, oplist_size, weight_maps, gen_settings, depth + 1);
-            }
-        } else {
-
-            let tile_ent = Tile::spawn_from_ref(cmd, EntiZeroRef(tiling_ent), global_pos, oplist_size);
-
-            // Insert into the array if there's space, otherwise switch to Batch
-            match &mut self.tiles {
-                OplistCollectedTiles::Array(arr) => {
-                    if let Some(slot) = arr.iter_mut().find(|e| **e == Entity::PLACEHOLDER) {
-                        *slot = tile_ent;
-                    } else {
-                        // No space left, convert to Batch
-                        let mut batch = arr.iter().cloned().filter(|e| *e != Entity::PLACEHOLDER).collect::<Vec<_>>();
-                        batch.push(tile_ent);
-                        self.tiles = OplistCollectedTiles::Batch(batch);
-                    }
-                }
-                OplistCollectedTiles::Batch(vec) => { vec.push(tile_ent); }
-            }
-        }
-    }
-    pub fn from_op(cmd: &mut Commands, precursor: &PendingOp,  tiling_ents: &Vec<Entity>, oplist_size: OplistSize,
-        weight_maps: &Query<(&EntiWeightedSampler,), ()>, gen_settings: &AaGlobalGenSettings,
-    ) -> Self {
-        let mut instance = Self { chunk_or_dim: precursor.chunk_ent, ..Default::default() };
-        for tile in tiling_ents.iter().cloned() {
-            instance.insert_tile_recursive(cmd, tile, precursor.pos, oplist_size, weight_maps, gen_settings, 0);
-        }
-        instance
-    }
-    
-    pub fn from_tile(tile: Entity, chunk_or_dim: Entity, ) -> Self {
-        if tile == Entity::PLACEHOLDER {
-            return Self { chunk_or_dim, ..Default::default() };
-        }
-        
-        Self { chunk_or_dim, tiles: OplistCollectedTiles::new(tile), ..Default::default() }
-    }
-
-
-    pub fn take_tiles(&mut self) -> OplistCollectedTiles {take(&mut self.tiles)}
-
-}
-impl Default for InstantiatedTiles { fn default() -> Self { Self { chunk_or_dim: Entity::PLACEHOLDER, tiles: OplistCollectedTiles::default(), retransmission_count: 0 } } }
-
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Reflect, Event, )]
-pub struct Tiles2TmapProcess { pub chunk: Entity, pub tiles: OplistCollectedTiles }
-
-
 
 /*
 mut event_writer: EventWriter<ToClients<ClientSpawnTile>>,

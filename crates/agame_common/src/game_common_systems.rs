@@ -50,7 +50,7 @@ pub fn z_sort_system(
 
     mut with_own_z_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, Has<TilemapAnchor>), 
     Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>,
-    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntiZeroRef), (Or<(Changed<EntiZeroRef>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
+    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZeroRef), (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
 
     mut event_writer: EventWriter<DrawTilemap>,
 

@@ -7,11 +7,11 @@ use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 use common::common_components::{AssetScoped, DisplayName, EntityPrefix, HashId, ImageHolder, ImageHolderMap, StrId};
 use ::dimension_shared::*;
-use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{Category, EntiZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
+use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{Category, EntityZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
 use ::tilemap_shared::*;
 
-use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_events::{InstantiatedTiles, OplistCollectedTiles, PosSearch, SearchFailed, StudiedOp, SuitablePosFound, Tiles2TmapProcess}, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*} };
+use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_events::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*} };
 use std::mem::take;
 
 #[derive(Component, Debug, Default, )]
@@ -116,7 +116,7 @@ pub fn init_tiles(
                 warn!("Tile {} shader {} is too short for a shader", str_id, seri.shader);
             }
 
-            cmd.entity(enti).insert_if_new((TileColor::from(color), TilePosOld::default(), SyncToRenderWorld, TileFlip::default(), TilemapId::default(), TileTextureIndex::default(), TileVisible::default()));
+            cmd.entity(enti).insert_if_new((TileColor::from(color), ));
         }
         else{
             let map = match ImageHolderMap::from_paths(&asset_server, take(&mut seri.img_paths)) {
@@ -159,7 +159,7 @@ pub fn init_tiles(
 pub fn add_tiles_to_map(
     mut cmd: Commands,
     map: Option<ResMut<TileEntitiesMap>>,
-    query: Query<(Entity, &EntityPrefix, &TileStrId), (Added<Tile>, Added<Disabled>, Without<TilePos>, Without<EntiZeroRef>)>,
+    query: Query<(Entity, &EntityPrefix, &TileStrId), (Added<Tile>, Added<Disabled>, Without<TilePos>, Without<EntityZeroRef>)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
@@ -278,11 +278,11 @@ pub fn client_map_server_tiling(
 #[allow(unused_parens)]
 pub fn instantiate_portal(mut cmd: Commands,
     ori_tile_str_id_query: Query<&TileStrId, (With<Disabled>)>,
-    new_portals: Query<(Entity, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntiZeroRef),(Without<SearchingForSuitablePos>, )>,
-    pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntiZeroRef),()>,
+    new_portals: Query<(Entity, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(Without<SearchingForSuitablePos>, )>,
+    pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
     mut ew_pos_search: EventWriter<PosSearch>, 
-    mut ewriter_tiles: EventWriter<InstantiatedTiles>,
+    mut ewriter_tiles: EventWriter<MassCollectedTiles>,
     mut ereader_search_successful: EventReader<SuitablePosFound>,
     mut ereader_search_failed: EventReader<SearchFailed>, 
     mut register_pos: ResMut<RegisteredPositions>
@@ -317,7 +317,7 @@ pub fn instantiate_portal(mut cmd: Commands,
     let mut successful_searches: EntityHashSet = EntityHashSet::new();
 
     let mut handle_success = |ent: Entity, portal_template: &PortalTemplate, my_pos: GlobalTilePos, 
-        found_pos: GlobalTilePos, my_dim_ref: DimensionRef, my_orig_tile_ref: EntiZeroRef| 
+        found_pos: GlobalTilePos, my_dim_ref: DimensionRef, my_orig_tile_ref: EntityZeroRef| 
     {
         cmd.entity(ent).remove::<(SearchingForSuitablePos, PortalTemplate)>();
         register_pos.0.entry(portal_template.oe_portal_tile)
@@ -328,14 +328,17 @@ pub fn instantiate_portal(mut cmd: Commands,
         let oe_portal_tileref = if portal_template.oe_portal_tile == ent {
             my_orig_tile_ref
         } else {
-            EntiZeroRef(portal_template.oe_portal_tile)
+            EntityZeroRef(portal_template.oe_portal_tile)
         };
 
         let oe_portal = Tile::spawn_from_ref(&mut cmd, oe_portal_tileref, found_pos, OplistSize::default());
         info!("Instantiated portal tile '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
 
         cmd.entity(oe_portal).remove::<PortalTemplate>().insert(PortalInstance::new(my_dim_ref.0, my_pos));
-        ewriter_tiles.write(InstantiatedTiles::from_tile(oe_portal, portal_template.dest_dimension, ));
+        let mut collected = MassCollectedTiles::new(1);
+        // collected.collect_tiles(&mut cmd, oe_portal, ) ;
+
+        // ewriter_tiles.write(MassCollectedTiles(oe_portal, portal_template.dest_dimension, ));
     };
 
     'successful_searches: for search_successful_ev in ereader_search_successful.read() {
@@ -390,10 +393,10 @@ pub fn instantiate_portal(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn client_sync_tile(
     mut cmd: Commands, 
-    query: Query<(Entity, &EntiZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>)>,
+    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>)>,
     ori_query: Query<(&TileStrId, Has<ChunkOrTilemapChild>, Option<&Sprite>), (With<Disabled>)>,
     loaded_chunks: Res<LoadedChunks>,
-    mut ewriter_tmap_process: EventWriter<Tiles2TmapProcess>
+    mut ewriter_tmap_process: EventWriter<MassCollectedTiles>
 
 ) {
     let mut tiles_to_tmap_process = Vec::new();
@@ -411,8 +414,8 @@ pub fn client_sync_tile(
 
         
         if is_child && let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) {
-            let tiles = OplistCollectedTiles::new(tile_ent, );
-            tiles_to_tmap_process.push(Tiles2TmapProcess{tiles, chunk,});
+            //let tiles = OplistCollectedTiles::new(tile_ent, );
+            //tiles_to_tmap_process.push(Tiles2TmapProcess{tiles, chunk,});
             cmd.entity(tile_ent).try_insert((ChildOf(chunk), SyncToRenderWorld));
             
         } else{

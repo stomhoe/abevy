@@ -2,7 +2,7 @@ use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::c
 use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_replicon::prelude::*;
 use common::common_types::HashIdToEntityMap;
-use game_common::game_common_components::EntiZeroRef;
+use game_common::game_common_components::EntityZeroRef;
 use tilemap_shared::{GlobalTilePos, OplistSize};
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +16,7 @@ pub struct RegisteredPositions(pub EntityHashMap<Vec<(DimensionRef, GlobalTilePo
 impl RegisteredPositions {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
-        new: (Entity, EntiZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+        new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
         min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     ) -> bool {
 
