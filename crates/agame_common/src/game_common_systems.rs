@@ -40,30 +40,6 @@ pub fn toggle_simulation(
         }
     }
 }
-// #[allow(unused_parens, )]
-// pub fn update_transform_z(
-//     ori_query: Query<(&MyZ), (Or<(With<Disabled>, Without<Disabled>)>,)>,
-//     mut with_own_z_query: Query<(&mut Transform, &MyZ, ), (Changed<MyZ>,)>,
-//     mut with_entityzero: Query<(&mut Transform, &EntityZero), (Changed<EntityZero>, Without<MyZ>,)>,
-// )
-// {
-//     for (mut transform, z_index, ) in with_own_z_query.iter_mut() {
-//         let new_z = z_index.as_float();
-//         if transform.translation.z != new_z {
-//             debug!(target: "zlevel", "Updating transform z-index to {}", new_z);
-//             transform.translation.z = new_z;
-//         }
-//     }
-//     for (mut transform, original_ref) in with_entityzero.iter_mut() {
-//         let Ok((z_index)) = ori_query.get(original_ref.0) else { continue };
-
-//         let new_z = z_index.as_float();
-//         if transform.translation.z != new_z {
-//             debug!(target: "zlevel", "Updating transform z-index to {}", new_z);
-//             transform.translation.z = new_z;
-//         }
-//     }
-// }
 
 use bevy_ecs_tilemap::DrawTilemap;
 

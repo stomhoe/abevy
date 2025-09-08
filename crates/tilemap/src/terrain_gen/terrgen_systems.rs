@@ -267,6 +267,9 @@ pub fn process_tiles(mut cmd: Commands,
 
     let mut instantiated_tiles_events_to_retransmit = Vec::with_capacity(events_instantiated_tiles.len());
     let mut processed_tiles_events = Vec::with_capacity(events_instantiated_tiles.len());
+    let mut to_insert_replicated = Vec::new();
+
+
     'eventfor: for mut ev in events_instantiated_tiles.drain() {
 
         let tiles_len = ev.tiles.len();
@@ -276,7 +279,7 @@ pub fn process_tiles(mut cmd: Commands,
             let Ok((&ezero, &global_pos, mut placeholder_dim_ref, transform, )) = tile_query.get_mut(*tile_ent)
             else {
                 ev.retransmission_count += 1;
-                if ev.retransmission_count >= u8::MAX as u16 {
+                if ev.retransmission_count >= 10 as u16 {
                     error!("Tile entity {:?} in instantiated tiles event for chunk or dim {:?} does not exist or isn't a Tile", tile_ent, ev.chunk_or_dim);
                 }else{
                     instantiated_tiles_events_to_retransmit.push(ev);
@@ -343,7 +346,8 @@ pub fn process_tiles(mut cmd: Commands,
             
             if ! chunk_child  {
                 if is_host {
-                    cmd.entity(*tile_ent).try_insert((Replicated, ChildOf(dim_ent)));
+                    cmd.entity(*tile_ent).try_insert((ChildOf(dim_ent)));
+                    to_insert_replicated.push((*tile_ent, Replicated));
                 }
                 else{
                     cmd.entity(*tile_ent).try_despawn();
@@ -356,6 +360,7 @@ pub fn process_tiles(mut cmd: Commands,
         processed_tiles_events.push(protiles);
         
     }
+    cmd.insert_batch(to_insert_replicated);
 
     ewriter_processed_tiles.write_batch(processed_tiles_events);
     events_instantiated_tiles.send_batch(instantiated_tiles_events_to_retransmit);
