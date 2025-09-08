@@ -75,7 +75,6 @@ pub fn rem_outofrange_chunks_from_activators(
                 }
             } else {
                 activate_chunks.0.swap_remove(i);
-                to_despawn.push(CheckChunkDespawn(chunk_ent, 0));
             }
         }
     }

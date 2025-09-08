@@ -11,7 +11,13 @@ use std::hash::Hash;
 use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, tile::tile_components::*};
     
 
-#[derive(Bundle, Debug, Clone)]
+/*
+.add_event::<TestEvent>(),
+mut event_writer: EventWriter<TestEvent>,
+mut event_reader: EventReader<TestEvent>,
+*/
+
+#[derive(Bundle, Debug, Clone, )]
 pub struct TileHelperStruct{
     pub ezero: EntityZeroRef,
     pub global_pos: GlobalTilePos,
@@ -24,7 +30,7 @@ pub struct TileHelperStruct{
 
 pub type CollectedTiles = Vec<(Entity, TileHelperStruct)>;
 
-#[derive(Debug, Event, Clone)]
+#[derive(Debug, Event, Clone, Resource, Default)]
 pub struct MassCollectedTiles  (pub CollectedTiles);
 impl MassCollectedTiles {
 
@@ -32,9 +38,34 @@ impl MassCollectedTiles {
         Self(Vec::with_capacity((pending_ops_len as f32 * 1.5) as usize))
     }
     pub fn new_from_entzero(pending_ops: impl IntoIterator<Item = EntityZeroRef>) -> Self {
-        let pending_ops_iter = pending_ops.into_iter();
-        let (lower, _) = pending_ops_iter.size_hint();
-        Self(Vec::with_capacity((lower) as usize))
+        todo!()
+    }
+    fn clonespawn_and_push_tile(
+        &mut self,
+        cmd: &mut Commands,
+        ezero: EntityZeroRef,
+        global_pos: GlobalTilePos,
+        chunk: Entity,
+        dim_ref: DimensionRef,
+        oplist_size: OplistSize,
+    ) {
+        let tile_instance = cmd.entity(ezero.0).clone_and_spawn_with(|builder|{
+            builder.deny::<ToDenyOnTileClone>();
+            //builder.deny::<BundleToDenyOnReleaseBuild>();
+        }).id();
+        let tile_bundle = TileBundle {
+            position: global_pos.to_tilepos(oplist_size), ..Default::default()
+        };
+        let helper = TileHelperStruct {
+            ezero,
+            global_pos,
+            chunk: LocalChunkRef(chunk),
+            dim_ref,
+            oplist_size,
+            tile_bundle,
+            initial_pos: InitialPos(global_pos),
+        };
+        self.0.push((tile_instance, helper));
     }
 
     fn collect_tiles_rec(
@@ -58,23 +89,7 @@ impl MassCollectedTiles {
                 self.collect_tiles_rec(cmd, tiling_ent, global_pos, chunk, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
             }
         } else {
-            let tile_instance = cmd.entity(tiling_ent).clone_and_spawn_with(|builder|{
-                builder.deny::<ToDenyOnTileClone>();
-                //builder.deny::<BundleToDenyOnReleaseBuild>();
-            }).id();
-            let tile_bundle = TileBundle {
-                position: global_pos.to_tilepos(oplist_size), ..Default::default()
-            };
-            let helper = TileHelperStruct {
-                ezero: EntityZeroRef(tiling_ent),
-                global_pos,
-                chunk: LocalChunkRef(chunk),
-                dim_ref,
-                oplist_size,
-                tile_bundle,
-                initial_pos: InitialPos(global_pos),
-            };
-            self.0.push((tile_instance, helper));
+            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, chunk, dim_ref, oplist_size);
         }
     }
     pub fn collect_tiles(&mut self, 
