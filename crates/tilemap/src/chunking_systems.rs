@@ -5,7 +5,7 @@ use camera::camera_components::CameraTarget;
 use common::common_components::{StrId, StrId20B};
 use dimension_shared::DimensionRef
 ;
-use tilemap_shared::ChunkPos;
+use tilemap_shared::{ChunkPos, GlobalTilePos};
 
 use crate::{chunking_components::*, chunking_resources::*, tile::{tile_events::SavedTileHadChunkDespawn}};
 
@@ -29,6 +29,7 @@ pub fn visit_chunks_around_activators(
         for y in (center_chunk_pos.y() - cnt + 1)..(center_chunk_pos.y() + cnt) {
             for x in (center_chunk_pos.x() - cnt + 1)..(center_chunk_pos.x() + cnt) {
 
+                
                 let chunk_pos = ChunkPos::new(x, y);
                 let key = (dimension_ref, chunk_pos);
                 let chunk_ent = loaded_chunks.0.get(&key).copied().unwrap_or_else(|| {
@@ -54,7 +55,7 @@ pub fn visit_chunks_around_activators(
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
     mut activator_query: Query<(&GlobalTransform, &mut ActivatingChunks), (Or<(Changed<GlobalTransform>, )>, )>,
-    chunks_query: Query<(&ChunkPos), >,
+    chunks_query: Query<(&ChunkPos), With<Chunk>>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
     mut ewriter: EventWriter<CheckChunkDespawn>,
 ) {

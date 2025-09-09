@@ -22,7 +22,7 @@ use ::tilemap_shared::*;
 pub fn spawn_terrain_operations (
     mut commands: Commands, 
     res_chunk: Res<AaChunkRangeSettings>,
-    chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<OperationsLaunched>, )>, 
+    chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<OperationsLaunched>, With<Chunk>)>, 
     dimension_query: Query<(&DimensionRootOplist, &HashId), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut ew_pending_ops: EventWriter<PendingOp>,

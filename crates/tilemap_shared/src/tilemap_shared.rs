@@ -1,7 +1,5 @@
 use std::{hash::{DefaultHasher, Hash, Hasher}, ops::Add};
 
-use bevy::math::U8Vec4;
-use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -68,10 +66,6 @@ impl_hashed_position!(GlobalTilePos);
 impl GlobalTilePos {
     pub fn new(x: i32, y: i32) -> Self {GlobalTilePos(IVec2::new(x, y))}
 
-    pub fn get_pos_within_chunk(self, chunk_pos: ChunkPos, oplist_size: UVec2) -> TilePos {
-        let pos_within_chunk = (self.0 - chunk_pos.to_tilepos().0) / oplist_size.as_ivec2();
-        TilePos::from(pos_within_chunk.as_uvec2())
-    }
     pub fn x(&self) -> i32 { self.0.x } pub fn y(&self) -> i32 { self.0.y }
 
     pub fn distance(&self, other: &GlobalTilePos) -> f32 {
@@ -88,6 +82,14 @@ impl GlobalTilePos {
         let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
         let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) / oplist_size.inner().as_ivec2();
         TilePos::from(ivec2.as_uvec2())
+    }
+    pub fn to_chunkpos(&self) -> ChunkPos {
+        let self_vec2 = self.0;
+        let asd = self_vec2 / ChunkPos::CHUNK_SIZE.as_ivec2();
+//TODO: ARREGLAR, HAY Q HACER Q LA DIVISIÓN SE REDONDEE HACIA ABAJO, CONVERTIR CADA COMPONENTE A FLOAT Y USAR FLOOR EN EL RESULTADO
+
+
+        ChunkPos((Into::<IVec2>::into(*self) / ChunkPos::CHUNK_SIZE.as_ivec2()))
     }
 
     pub fn to_translation(&self, prev_transform_z: f32) -> Vec3 {
@@ -165,7 +167,6 @@ impl std::fmt::Debug for ChunkPos {
         write!(f, "ChunkPos({}, {})", self.0.x, self.0.y)
     }
 }
-
 impl std::fmt::Display for ChunkPos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.0.x, self.0.y)
@@ -192,6 +193,13 @@ impl From<Vec2> for ChunkPos {
         ChunkPos(pixel_pos.as_ivec2().div_euclid(GlobalTilePos::TILE_SIZE_PXS.as_ivec2() * Self::CHUNK_SIZE.as_ivec2()))
     }
 }
+
+impl From<Vec3> for ChunkPos {
+    fn from(translation: Vec3) -> Self {
+        ChunkPos::from(translation.xy())
+    }
+}
+
 
 impl std::ops::Add for ChunkPos {
     type Output = Self;

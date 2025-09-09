@@ -90,7 +90,7 @@ pub fn process_tiles_pre(
 
         let &mut (tile_ent, TileHelperStruct {
             ezero, global_pos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos: _,
-        })  = ev; 
+        }) = ev; 
 
         
         
@@ -112,7 +112,7 @@ pub fn process_tiles_pre(
             
         if !is_child {
             if is_host {
-                cmd.entity(tile_ent).try_insert((ChildOf(dim_ref.0), ));
+                //cmd.entity(tile_ent).try_insert((ChildOf(dim_ref.0), ));
                 to_insert_replicated.push((tile_ent, Replicated));
             }
             else{

@@ -85,6 +85,7 @@ pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 
 
 #[derive(Component, Debug, Clone, Deserialize, Serialize, Reflect, Copy, PartialEq, Eq, Hash)]
+/// DON'T FORGET TO ADD <DISABLED> TO THE QUERY 
 pub struct EntityZeroRef(pub Entity);
 
 

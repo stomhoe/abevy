@@ -400,7 +400,7 @@ pub fn client_sync_tile(
     query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>)>,
     ori_query: Query<(&TileStrId, Has<ChunkOrTilemapChild>, Option<&Sprite>), (With<Disabled>)>,
     loaded_chunks: Res<LoadedChunks>,
-    mut collected: Res<MassCollectedTiles>
+    mut collected: Res<MassCollectedTiles>//TODO synquear tiles de tilemaps si es posible
 
 ) {
     //let mut tiles_to_tmap_process = Vec::new();
@@ -418,9 +418,7 @@ pub fn client_sync_tile(
 
         
         if is_child && let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) {
-            //let tiles = OplistCollectedTiles::new(tile_ent, );
-            //tiles_to_tmap_process.push(Tiles2TmapProcess{tiles, chunk,});
-            cmd.entity(tile_ent).try_insert((ChildOf(chunk), SyncToRenderWorld));
+         
             
         } else{
             cmd.entity(tile_ent).try_insert(ChildOf(dim_ref.0));
@@ -436,20 +434,24 @@ pub fn client_sync_tile(
 #[allow(unused_parens)]
 pub fn make_child_of_chunk(mut cmd: Commands, 
 
-    ezero_query: Query<&ChunkOrTilemapChild>,
+    ezero_query: Query<&ChunkOrTilemapChild, With<Disabled>>,
     query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef), (With<Tile>, With<Transform>, Without<ChildOf>, Without<TilePos>)>,
     loaded_chunks: Res<LoadedChunks>,
 ) {
+    let mut child_ofs = Vec::new();
     for (ent, &ezero, &global_pos, &dim_ref) in query.iter() {
 
         let chunk_pos: ChunkPos = global_pos.into();
 
-        
         let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) 
         else {warn!("Chunk not found for tile {} in dimension {:?}, chunkpos {:?}", ent, dim_ref, chunk_pos); continue;};
 
-        let Ok(_) = ezero_query.get(ezero.0) else { continue; };
+        let Ok(_) = ezero_query.get(ezero.0) else { 
+            child_ofs.push((ent, ChildOf(dim_ref.0)));
+            continue; 
+        };
 
-        cmd.entity(ent).try_insert((ChildOf(chunk), SyncToRenderWorld));
+        child_ofs.push((ent, ChildOf(chunk)));
     }
+    cmd.insert_batch(child_ofs);
 }
