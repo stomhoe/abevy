@@ -35,7 +35,8 @@ pub fn plugin(app: &mut App) {
             flip_tile_along_x,
             (add_tile_weighted_samplers_to_map, client_sync_tile ).run_if(not(server_or_singleplayer)),
             tile_readjust_transform,
-            instantiate_portal.run_if(server_or_singleplayer)
+            instantiate_portal.run_if(server_or_singleplayer),
+            make_child_of_chunk,
         ))
 
         .add_systems(

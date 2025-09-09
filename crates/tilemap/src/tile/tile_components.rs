@@ -2,7 +2,7 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_ecs_tilemap::tiles::{TileColor, TilePos};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
@@ -18,7 +18,7 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::{Collecte
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, 
-    TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, 
+    TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, TileColor
     
 /*
      
@@ -44,19 +44,6 @@ impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
     // for non-sprite tiles
     pub const MAX_Z: MyZ = MyZ(1_000);
-
-    pub fn spawn_from_ref(
-        cmd: &mut Commands, tile_ref: EntityZeroRef, global_pos: GlobalTilePos, oplist_size: OplistSize,
-    ) -> Entity {
-        cmd.entity(tile_ref.0).clone_and_spawn_with(|builder|{
-            builder.deny::<ToDenyOnTileClone>();
-            //builder.deny::<BundleToDenyOnReleaseBuild>();
-        })
-        .try_insert((tile_ref, InitialPos(global_pos), global_pos, global_pos.to_tilepos(oplist_size), oplist_size))
-        .id()
-    }
-    
-      
 }
 
 #[derive(Component, Debug, Copy, Clone, Hash, Reflect)]
@@ -114,10 +101,10 @@ impl Default for PortalTemplate {
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-pub struct PortalInstance { #[entities]pub dest_dimension: Entity, pub dest_pos: GlobalTilePos }
+pub struct PortalInstance { #[entities]pub dest_portal: Entity, }
 impl PortalInstance {
-    pub fn new(dest_dimension: Entity, dest_pos: GlobalTilePos) -> Self {
-        Self { dest_dimension, dest_pos }
+    pub fn new(dest_portal: Entity) -> Self {
+        Self { dest_portal }
     }
 }
 

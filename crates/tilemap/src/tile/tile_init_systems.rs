@@ -57,7 +57,6 @@ pub fn init_tiles(
             EntityPrefix::new("Tile"), Name::default(),
             my_z.clone(),
             ChildOf(holder),
-            DimensionRef(Entity::PLACEHOLDER), 
         )).id();
 
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
@@ -282,7 +281,7 @@ pub fn instantiate_portal(mut cmd: Commands,
     pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
     mut ew_pos_search: EventWriter<PosSearch>, 
-    //mut ewriter_tiles: EventWriter<MassCollectedTiles>,
+    mut mass_collected: ResMut<MassCollectedTiles>,
     mut ereader_search_successful: EventReader<SuitablePosFound>,
     mut ereader_search_failed: EventReader<SearchFailed>, 
     mut register_pos: ResMut<RegisteredPositions>
@@ -316,29 +315,34 @@ pub fn instantiate_portal(mut cmd: Commands,
 
     let mut successful_searches: EntityHashSet = EntityHashSet::new();
 
-    let mut handle_success = |ent: Entity, portal_template: &PortalTemplate, my_pos: GlobalTilePos, 
-        found_pos: GlobalTilePos, my_dim_ref: DimensionRef, my_orig_tile_ref: EntityZeroRef| 
+    let mut handle_success = |thisend_portal: Entity, portal_template: &PortalTemplate, 
+        found_pos: GlobalTilePos, my_orig_tile_ref: EntityZeroRef| 
     {
-        cmd.entity(ent).remove::<(SearchingForSuitablePos, PortalTemplate)>();
+        cmd.entity(thisend_portal).remove::<(SearchingForSuitablePos, PortalTemplate)>();
+        let oe_dim_ref = DimensionRef(portal_template.dest_dimension);
+        
         register_pos.0.entry(portal_template.oe_portal_tile)
             .or_default()
-            .push((DimensionRef(portal_template.dest_dimension), found_pos));
-        cmd.entity(ent).insert(PortalInstance::new(portal_template.dest_dimension, found_pos));
+            .push((oe_dim_ref, found_pos));
 
-        let oe_portal_tileref = if portal_template.oe_portal_tile == ent {
+        let oe_portal_tileref = if portal_template.oe_portal_tile == thisend_portal {
             my_orig_tile_ref
         } else {
             EntityZeroRef(portal_template.oe_portal_tile)
         };
 
-        let oe_portal = Tile::spawn_from_ref(&mut cmd, oe_portal_tileref, found_pos, OplistSize::default());
+        
+        
+        let oe_portal = 
+        mass_collected
+        .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default());
+
+        cmd.entity(thisend_portal).insert(PortalInstance::new(oe_portal));
+    
+        cmd.entity(oe_portal).remove::<PortalTemplate>().insert(PortalInstance::new(thisend_portal))
+        ;
         info!("Instantiated portal tile '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
 
-        cmd.entity(oe_portal).remove::<PortalTemplate>().insert(PortalInstance::new(my_dim_ref.0, my_pos));
-        let mut collected = MassCollectedTiles::new(1);
-        // collected.collect_tiles(&mut cmd, oe_portal, ) ;
-
-        // ewriter_tiles.write(MassCollectedTiles(oe_portal, portal_template.dest_dimension, ));
     };
 
     'successful_searches: for search_successful_ev in ereader_search_successful.read() {
@@ -348,11 +352,11 @@ pub fn instantiate_portal(mut cmd: Commands,
         }
 
         if let Some(portal_ent) = started_searches.remove(&studied_op_ent) {
-            let Ok((_, portal_template, &my_pos, &dim_ref, &orig_tile_ref)) = new_portals.get(portal_ent) else {
+            let Ok((_, portal_template, &_my_pos, &_dim_ref, &orig_tile_ref)) = new_portals.get(portal_ent) else {
                 continue 'successful_searches;
             };
             successful_searches.insert(studied_op_ent.clone());
-            handle_success(portal_ent, portal_template, my_pos, search_successful_ev.found_pos.clone(), dim_ref, orig_tile_ref);
+            handle_success(portal_ent, portal_template, search_successful_ev.found_pos.clone(), orig_tile_ref);
             continue 'successful_searches;
         }
 
@@ -363,7 +367,7 @@ pub fn instantiate_portal(mut cmd: Commands,
                     "Found suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}, found pos: {:?}", str_id, ent, dim_ref.0, my_pos, portal_template.dest_dimension, search_successful_ev.found_pos
                 );
                 successful_searches.insert(studied_op_ent.clone());
-                handle_success(ent, portal_template, my_pos, search_successful_ev.found_pos.clone(), dim_ref, orig_tile_ref);
+                handle_success(ent, portal_template, search_successful_ev.found_pos.clone(), orig_tile_ref);
                 continue 'successful_searches;
             }
         }
@@ -396,7 +400,7 @@ pub fn client_sync_tile(
     query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>)>,
     ori_query: Query<(&TileStrId, Has<ChunkOrTilemapChild>, Option<&Sprite>), (With<Disabled>)>,
     loaded_chunks: Res<LoadedChunks>,
-    //mut ewriter_tmap_process: EventWriter<MassCollectedTiles>
+    mut collected: Res<MassCollectedTiles>
 
 ) {
     //let mut tiles_to_tmap_process = Vec::new();
@@ -424,4 +428,28 @@ pub fn client_sync_tile(
     }
     //ewriter_tmap_process.write_batch(tiles_to_tmap_process);
 
+}
+
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn make_child_of_chunk(mut cmd: Commands, 
+
+    ezero_query: Query<&ChunkOrTilemapChild>,
+    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef), (With<Tile>, With<Transform>, Without<ChildOf>, Without<TilePos>)>,
+    loaded_chunks: Res<LoadedChunks>,
+) {
+    for (ent, &ezero, &global_pos, &dim_ref) in query.iter() {
+
+        let chunk_pos: ChunkPos = global_pos.into();
+
+        
+        let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) 
+        else {warn!("Chunk not found for tile {} in dimension {:?}, chunkpos {:?}", ent, dim_ref, chunk_pos); continue;};
+
+        let Ok(_) = ezero_query.get(ezero.0) else { continue; };
+
+        cmd.entity(ent).try_insert((ChildOf(chunk), SyncToRenderWorld));
+    }
 }

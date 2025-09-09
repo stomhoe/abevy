@@ -1,5 +1,5 @@
 use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, prelude::*};
-use bevy_ecs_tilemap::tiles::{TileBundle, TilePos};
+use bevy_ecs_tilemap::tiles::{TileBundle, TileColor, TilePos};
 use common::common_components::HashId;
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
@@ -21,7 +21,6 @@ mut event_reader: EventReader<TestEvent>,
 pub struct TileHelperStruct{
     pub ezero: EntityZeroRef,
     pub global_pos: GlobalTilePos,
-    pub chunk: LocalChunkRef,
     pub dim_ref: DimensionRef,
     pub oplist_size: OplistSize,
     pub tile_bundle: TileBundle,
@@ -35,21 +34,29 @@ pub type CollectedTiles = Vec<(Entity, TileHelperStruct)>;
 pub struct MassCollectedTiles  (pub CollectedTiles);
 impl MassCollectedTiles {
 
-    pub fn new(pending_ops_len: usize) -> Self {
-        Self(Vec::with_capacity((pending_ops_len as f32 * 1.5) as usize))
+    pub fn add_tiles_from_ezeros(
+        &mut self,
+        cmd: &mut Commands,
+        ezeros: impl IntoIterator<Item = EntityZeroRef>,
+        global_pos: GlobalTilePos,
+        dim_ref: DimensionRef,
+        oplist_size: OplistSize,
+    ) -> Vec<Entity> {
+        let ezeros_iter = ezeros.into_iter();
+        let mut spawned = Vec::with_capacity(ezeros_iter.size_hint().0);
+        spawned.extend(ezeros_iter.map(|ezero| {
+            self.clonespawn_and_push_tile(cmd, ezero, global_pos, dim_ref, oplist_size)
+        }));
+        spawned
     }
-    pub fn new_from_entzero(pending_ops: impl IntoIterator<Item = EntityZeroRef>) -> Self {
-        todo!()
-    }
-    fn clonespawn_and_push_tile(
+    pub fn clonespawn_and_push_tile(
         &mut self,
         cmd: &mut Commands,
         ezero: EntityZeroRef,
         global_pos: GlobalTilePos,
-        chunk: Entity,
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
-    ) {
+    ) -> Entity {
         let tile_instance = cmd.entity(ezero.0).clone_and_spawn_with(|builder|{
             builder.deny::<ToDenyOnTileClone>();
             //builder.deny::<BundleToDenyOnReleaseBuild>();
@@ -60,13 +67,13 @@ impl MassCollectedTiles {
         let helper = TileHelperStruct {
             ezero,
             global_pos,
-            chunk: LocalChunkRef(chunk),
             dim_ref,
             oplist_size,
             tile_bundle,
             initial_pos: InitialPos(global_pos),
         };
         self.0.push((tile_instance, helper));
+        tile_instance
     }
 
     fn collect_tiles_rec(
@@ -74,7 +81,6 @@ impl MassCollectedTiles {
         cmd: &mut Commands,
         tiling_ent: Entity,
         global_pos: GlobalTilePos,
-        chunk: Entity,
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
         weight_maps: &Query<(&EntiWeightedSampler,), ()>,
@@ -87,19 +93,18 @@ impl MassCollectedTiles {
                     warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_ent);
                     return;
                 }
-                self.collect_tiles_rec(cmd, tiling_ent, global_pos, chunk, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
+                self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
             }
         } else {
-            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, chunk, dim_ref, oplist_size);
+            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, oplist_size);
         }
     }
     pub fn collect_tiles(&mut self, 
         cmd: &mut Commands,
-        bif_tiles: &Vec<Entity>, ev: &PendingOp,
-        dim_ref: DimensionRef, oplist_size: OplistSize, weight_maps: &Query<(&EntiWeightedSampler,), ()>, gen_settings: &AaGlobalGenSettings,
+        bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntiWeightedSampler,), ()>, gen_settings: &AaGlobalGenSettings,
     )  {
         for tile in bif_tiles.iter().cloned() {
-            self.collect_tiles_rec(cmd, tile, ev.pos, ev.chunk_ent, dim_ref, oplist_size, weight_maps, gen_settings, 0);
+            self.collect_tiles_rec(cmd, tile, ev.pos, ev.dim_ref, oplist_size, weight_maps, gen_settings, 0);
         }
     }
 
@@ -150,7 +155,7 @@ impl PosSearch{
 
 
 #[derive(Event, Debug, Clone)]
-pub struct PendingOp {pub oplist: Entity, pub chunk_ent: Entity, pub pos: GlobalTilePos, pub dimension_hash_id: i32,
+pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub pos: GlobalTilePos, pub dimension_hash_id: i32,
     pub variables: VariablesArray, pub studied_op_ent: Entity//TODO: HACER LAS StudiedOp ENTITIES? (Y PONER StudiedOpRef en su lugar)
 }
 

@@ -65,8 +65,8 @@ pub fn cross_portal(mut cmd: Commands,
 ) {
     for (being_entity, mut being_dimension_ref, mut being_transform, being_globtransform, touching_portal) 
     in being_query.iter_mut() {
-        for (portal_ent, dimension_ref, portal_instance, portal_transform) in portal_query.iter() {
-            if being_dimension_ref.0 == dimension_ref.0 {
+        for (portal_ent, &dimension_ref, portal_instance, portal_transform) in portal_query.iter() {
+            if being_dimension_ref.clone() == dimension_ref {
                 let distance = being_globtransform.translation().distance(portal_transform.translation());
                 match (touching_portal, distance < 50.0) {
                     (None, false) => {},
@@ -83,9 +83,14 @@ pub fn cross_portal(mut cmd: Commands,
                     },
                     (None, true) => {
                         cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
-                        being_dimension_ref.0 = portal_instance.dest_dimension;
-                        let dest_vec2: Vec2 = portal_instance.dest_pos.into();
-                        being_transform.translation = dest_vec2.extend(being_transform.translation.z);
+
+                        let Ok((ent, &oe_dim_ref, _portal_instance, portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
+                            error!("Portal entity {:?} not found in portal query", portal_ent);
+                            continue;
+                        };
+
+                        being_dimension_ref.0 = oe_dim_ref.0;
+                        being_transform.translation = portal_transform.translation().xy().extend(being_transform.translation.z);
                     },
                 }
             }

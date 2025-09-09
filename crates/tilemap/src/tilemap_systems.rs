@@ -6,7 +6,7 @@ use dimension_shared::DimensionRef;
 use game_common::game_common_components::{EntityZeroRef, MyZ};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::*, chunking_resources::AaChunkRangeSettings, terrain_gen::{terrgen_events::{MassCollectedTiles, TileHelperStruct,  }, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
+use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_events::{MassCollectedTiles, TileHelperStruct,  }, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
 
 
 
@@ -44,7 +44,7 @@ use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 pub fn process_tiles_pre(
     mut cmd: Commands, 
 
-    mut ereader_mass_collected_tiles: ResMut<MassCollectedTiles>,
+    mut collected_tiles: ResMut<MassCollectedTiles>,
 
     oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<ChunkOrTilemapChild>, 
         Option<&MyZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&mut Transform>, Option<&TileColor>), (With<Disabled>)>,
@@ -61,19 +61,21 @@ pub fn process_tiles_pre(
     min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     mut regpos_map: ResMut<RegisteredPositions>,
     shader_query: Query<(&TileShader, ), ( )>,
+
+    loaded_chunks: Res<LoadedChunks>,
     state: Res<State<GameSetupType>>,
 ) -> Result {unsafe{
 
     let is_host = state.get() != &GameSetupType::AsJoiner;
 
-    if ereader_mass_collected_tiles.0.is_empty() { return Ok(()); }
+    if collected_tiles.0.is_empty() { return Ok(()); }
 
     let reserved = chunkrange.approximate_number_of_chunks(0.06);
 
     let mut changed_structs: HashSet<(Entity, MapKey)> = HashSet::with_capacity(reserved);
 
 
-    let mut to_draw = Vec::with_capacity(ereader_mass_collected_tiles.0.len());
+    let mut to_draw = Vec::with_capacity(collected_tiles.0.len());
 
     let mut tilemap_bundles = Vec::new();//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
 
@@ -81,94 +83,95 @@ pub fn process_tiles_pre(
     let mut to_remove_tile_bundle_and_oplist: Vec<Entity> = Vec::new();
 
 
-    // Closure capturing the environment
-    let mut asd = |tile_ent: Entity, ezero: EntityZeroRef, global_pos: GlobalTilePos, chunk: Entity, dim_ref: DimensionRef, oplist_size: OplistSize| {
-        // You can access variables from the outer scope here
-        // Example usage:
-        // cmd, regpos_map, is_host, min_dists_query, etc. are accessible
-
-        // Add your logic here
-    };
-
     #[allow(unused_mut)]
-    'eventsfor: for mut ev in ereader_mass_collected_tiles.0.iter_mut() {
+    let mut i = 0;
+    'eventsfor: while i < collected_tiles.0.len() {
+        let ev = &mut collected_tiles.0[i];
 
         let &mut (tile_ent, TileHelperStruct {
-            ezero, global_pos, chunk, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos: _,
+            ezero, global_pos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos: _,
         })  = ev; 
 
-            //TODO EXTRAER ESTA PARTE A UNA FUNCIÓN PARA Q SE PUEDAN ADMITIR EVENTOS EN OTRO FORMATO
-    
-            
+        
+        
+        let Ok((tile_strid, min_dists, keep_distance_from, is_child, tile_z_index, tile_handles, shader_ref, transform, color))
+        = oritile_query.get(ezero.0) else{
+            error!("Original tile entity {} is despawned", ezero.0);
+            continue;
+        };
 
-            let Ok(mut layers) = chunk_query.get_mut(chunk.0) else {
-                continue 'eventsfor;
-            };
-
-            let Ok((tile_strid, min_dists, keep_distance_from, is_child, tile_z_index, tile_handles, shader_ref, transform, color))
-            = oritile_query.get(ezero.0) else{
-                error!("Original tile entity {} is despawned", ezero.0);
-                continue;
-            };
-
+        
+        
+        
+        if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent, ezero, dim_ref, global_pos, min_dists, keep_distance_from), min_dists_query) {
+            
+            collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
+            continue; 
+        }
             
             
-            if false == regpos_map.check_min_distances(&mut cmd, is_host, 
-                (tile_ent, ezero, dim_ref, global_pos, min_dists, keep_distance_from), min_dists_query) {
-                    cmd.entity(tile_ent).try_despawn(); 
-                continue; 
+        if !is_child {
+            if is_host {
+                cmd.entity(tile_ent).try_insert((ChildOf(dim_ref.0), ));
+                to_insert_replicated.push((tile_ent, Replicated));
             }
-            
-            
-            if !is_child {
-                if is_host {
-                    cmd.entity(tile_ent).try_insert((ChildOf(dim_ref.0), ));
-                    to_insert_replicated.push((tile_ent, Replicated));
-                }
-                else{
-                    cmd.entity(tile_ent).try_despawn();
-                    continue;
-                }
-            }
-            
-            cmd.entity(tile_ent).try_remove::<(Disabled, )>();
+            else{
+                collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
 
-            if transform.is_some() {
-                to_remove_tile_bundle_and_oplist.push(tile_ent);
-                
-                if is_child  {
-                    cmd.entity(tile_ent).try_insert((ChildOf(chunk.0), ));
-                }
                 continue;
             }
-            bundle.color = color.cloned().unwrap_or_default();
+        }
+        
+        cmd.entity(tile_ent).try_remove::<(Disabled, )>();
+        
+        if transform.is_some() {
+            to_remove_tile_bundle_and_oplist.push(tile_ent);
             
-            process_tilemaps(
-                &mut cmd,
-                tile_ent,
-                &mut bundle.visible,
-                &mut bundle.texture_index,
-                &mut bundle.tilemap_id,
-                oplist_size,
-                bundle.position,
-                tile_z_index.cloned().unwrap_or_default(),
-                tile_handles,
-                shader_ref,
-                &image_size_map,
-                &mut layers,
-                chunk.0,
-                &mut tilemaps,
-                &mut changed_structs,
-                &mut tilemap_bundles,
-                &mut to_draw,
-            );
+            // if is_child  {
+            //     cmd.entity(tile_ent).try_insert((ChildOf(chunk), ));
+            // }
+            i += 1;
+            continue;
+        }
 
-            
+
+
+        bundle.color = color.cloned().unwrap_or_default();
+        
+        
+        let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, global_pos.into())) else {
+            collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
+            continue 'eventsfor;
+        };
         
 
-            
-        }
-    cmd.try_insert_batch(take(&mut ereader_mass_collected_tiles.0));
+        let Ok(mut layers) = chunk_query.get_mut(chunk) else {
+             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
+            continue 'eventsfor;
+        };
+        
+        process_tilemaps(
+            &mut cmd,
+            tile_ent,
+            &mut bundle.visible,
+            &mut bundle.texture_index,
+            &mut bundle.tilemap_id,
+            oplist_size,
+            bundle.position,
+            tile_z_index.cloned().unwrap_or_default(),
+            tile_handles,
+            shader_ref,
+            &image_size_map,
+            &mut layers,
+            chunk,
+            &mut tilemaps,
+            &mut changed_structs,
+            &mut tilemap_bundles,
+            &mut to_draw,
+        );
+        i += 1;
+    }
+    cmd.try_insert_batch_if_new(take(&mut collected_tiles.0));
 
     for tile_ent in to_remove_tile_bundle_and_oplist.drain(..) {
         cmd.entity(tile_ent).try_remove::<(TileBundle, OplistSize)>();

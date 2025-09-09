@@ -65,7 +65,7 @@ pub fn spawn_terrain_operations (
                     continue 'chunk_for;
                 }
                 batch.push(PendingOp {
-                    oplist, chunk_ent, pos: global_pos, dimension_hash_id: hash_id.into_i32(), 
+                    oplist, dim_ref: DimensionRef(dim_ref.parent()), pos: global_pos, dimension_hash_id: hash_id.into_i32(), 
                     variables: VariablesArray::default(), studied_op_ent: Entity::PLACEHOLDER,
                 });
             }
@@ -99,7 +99,7 @@ pub fn produce_tiles(mut cmd: Commands,
     if pending_ops_events.is_empty() { return Ok(()); }
 
 
-    let mut new_pending_ops_events = Vec::with_capacity(pending_ops_events.len() * 2);
+    let mut new_pending_ops_events = Vec::with_capacity(pending_ops_events.len());
     let mut sampled_value_events = Vec::new();
 
 
@@ -208,14 +208,9 @@ pub fn produce_tiles(mut cmd: Commands,
         }
 
         if bifurcation.tiles.len() > 0 && ev.studied_op_ent == Entity::PLACEHOLDER {
-            let Ok(dim_ref) = chunk_query.get(ev.chunk_ent).map(|c| DimensionRef(c.0.clone())) else {
-                continue;
-            };   
-            collected.collect_tiles(&mut cmd, &bifurcation.tiles, &ev, dim_ref, my_oplist_size, &weight_maps, &gen_settings);
+            collected.collect_tiles(&mut cmd, &bifurcation.tiles, &ev, my_oplist_size, &weight_maps, &gen_settings);
         }
     }}
-
-    //ewriter_mass_collected_tiles.write(collected);
 
     pending_ops_events.send_batch(new_pending_ops_events); 
     ewriter_sampled_value.write_batch(sampled_value_events);
@@ -308,7 +303,7 @@ pub fn search_suitable_position(
                             pos: calculate_pos(i_within_batch, explore_angle),
                             studied_op_ent,
                             variables: VariablesArray::default(),
-                            chunk_ent: Entity::PLACEHOLDER,
+                            dim_ref: DimensionRef(Entity::PLACEHOLDER),
                         });
                     }
                     if curr_iteration_batch_i as u16 + 1 < max_batches {
@@ -338,7 +333,6 @@ pub fn search_suitable_position(
             }
             
             SearchPattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turns) => {
-            // Spiral search: move in a direction for curr_length_in_dir steps, then turn 90°, increase length every two turns
 
                 trace!("Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
                     pos, dir_vec, curr_length_in_dir, turns);
@@ -349,7 +343,7 @@ pub fn search_suitable_position(
                     new_pending_ops.push(PendingOp {
                         dimension_hash_id,
                         oplist: studied_op.root_oplist,
-                        chunk_ent: Entity::PLACEHOLDER,
+                        dim_ref: DimensionRef(Entity::PLACEHOLDER),
                         pos,
                         variables: VariablesArray::default(),
                         studied_op_ent,
