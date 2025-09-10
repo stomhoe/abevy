@@ -12,6 +12,8 @@ use bevy_ecs_tilemap::tiles::TilePos;
 use ::tilemap_shared::*;
 
 use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_events::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*} };
+use crate::terrain_gen::terrgen_resources::MassCollectedTiles;
+
 use std::mem::take;
 
 #[derive(Component, Debug, Default, )]
@@ -243,6 +245,7 @@ pub fn map_portal_tiles(mut cmd: Commands,
             op_i: portal_seri.op_i,
             lim_below: portal_seri.lim_below,
             lim_above: portal_seri.lim_above,
+            one_way: portal_seri.one_way,
         });
     }
 }
@@ -315,32 +318,37 @@ pub fn instantiate_portal(mut cmd: Commands,
 
     let mut successful_searches: EntityHashSet = EntityHashSet::new();
 
-    let mut handle_success = |thisend_portal: Entity, portal_template: &PortalTemplate, 
+    let mut handle_success = |this_end_portal: Entity, portal_template: &PortalTemplate, 
         found_pos: GlobalTilePos, my_orig_tile_ref: EntityZeroRef| 
     {
-        cmd.entity(thisend_portal).remove::<(SearchingForSuitablePos, PortalTemplate)>();
+        cmd.entity(this_end_portal).remove::<(SearchingForSuitablePos, PortalTemplate)>();
         let oe_dim_ref = DimensionRef(portal_template.dest_dimension);
         
         register_pos.0.entry(portal_template.oe_portal_tile)
             .or_default()
             .push((oe_dim_ref, found_pos));
 
-        let oe_portal_tileref = if portal_template.oe_portal_tile == thisend_portal {
+        let oe_portal_tileref = if portal_template.oe_portal_tile == this_end_portal {
             my_orig_tile_ref
         } else {
             EntityZeroRef(portal_template.oe_portal_tile)
         };
 
-        
-        
+        //oe portal tileref
+        info!("OE Portal TileRef: {:?}", oe_portal_tileref);
+
         let oe_portal = 
         mass_collected
         .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default());
 
-        cmd.entity(thisend_portal).insert(PortalInstance::new(oe_portal));
-    
-        cmd.entity(oe_portal).remove::<PortalTemplate>().insert(PortalInstance::new(thisend_portal))
-        ;
+        cmd.entity(this_end_portal).insert(PortalInstance::new(oe_portal));
+
+        cmd.entity(oe_portal).remove::<PortalTemplate>();
+
+        if portal_template.one_way {return;}
+
+        cmd.entity(oe_portal).insert(PortalInstance::new(this_end_portal));
+
         info!("Instantiated portal tile '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
 
     };
@@ -443,12 +451,15 @@ pub fn make_child_of_chunk(mut cmd: Commands,
 
         let chunk_pos: ChunkPos = global_pos.into();
 
-        let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) 
-        else {warn!("Chunk not found for tile {} in dimension {:?}, chunkpos {:?}", ent, dim_ref, chunk_pos); continue;};
-
         let Ok(_) = ezero_query.get(ezero.0) else { 
             child_ofs.push((ent, ChildOf(dim_ref.0)));
             continue; 
+        };
+
+        let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) 
+        else {
+            cmd.entity(ent).try_despawn();
+            continue;
         };
 
         child_ofs.push((ent, ChildOf(chunk)));

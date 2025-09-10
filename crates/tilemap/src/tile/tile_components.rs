@@ -1,8 +1,8 @@
-use bevy::ecs::entity::EntityHashMap;
+use bevy::{ecs::entity::EntityHashMap, render::sync_world::SyncToRenderWorld};
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::{TileColor, TilePos};
+pub use bevy_ecs_tilemap::tiles::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
@@ -13,28 +13,19 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
-use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::{CollectedTiles, StudiedOp},}, tile::tile_materials::* };
+use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::{StudiedOp},}, tile::tile_materials::* };
 
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, 
-    TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, TileColor
-    
-/*
-     
-*/ 
+    TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, SyncToRenderWorld, TileColor, 
 );
 
 #[derive(Bundle)]
 struct ToDenyOnReleaseBuild( Name, EntityPrefix, TileStrId  );
 
-#[derive(Bundle, Debug, Default)]
-pub struct ToAddToTile{
-    pub initial_pos: InitialPos,
-    pub global_pos: GlobalTilePos,
-    pub tile_pos: TilePos,
-    pub oplist_size: OplistSize,
-}
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 //NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
@@ -78,7 +69,7 @@ pub struct ChunkOrTilemapChild;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
 pub struct PortalTemplate { #[entities]pub dest_dimension: Entity,#[entities]pub root_oplist: Entity, #[entities] pub oe_portal_tile: Entity, 
-    #[entities] pub checked_oplist: Entity, pub op_i: i8, pub lim_below: f32, pub lim_above: f32 }
+    #[entities] pub checked_oplist: Entity, pub op_i: i8, pub lim_below: f32, pub lim_above: f32, pub one_way: bool, }
 impl PortalTemplate {
     pub fn to_studied_op(&self, start_pos: GlobalTilePos) -> StudiedOp {
         StudiedOp {
@@ -94,7 +85,7 @@ impl PortalTemplate {
 
 impl Default for PortalTemplate {
     fn default() -> Self {
-        Self { dest_dimension: Entity::PLACEHOLDER, root_oplist: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, checked_oplist: Entity::PLACEHOLDER, op_i: -1, lim_below: 0.0, lim_above: 0.0 }
+        Self { dest_dimension: Entity::PLACEHOLDER, root_oplist: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, checked_oplist: Entity::PLACEHOLDER, op_i: -1, lim_below: 0.0, lim_above: 0.0, one_way: false}
     }
 }
 

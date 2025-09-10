@@ -44,6 +44,7 @@ pub struct PortalSeri{
     pub op_i: i8,
     pub lim_below: f32,
     pub lim_above: f32,
+    pub one_way: bool,
 }
 
 #[derive(Deserialize, Asset, Reflect, Default)]

@@ -84,13 +84,13 @@ pub fn cross_portal(mut cmd: Commands,
                     (None, true) => {
                         cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
 
-                        let Ok((ent, &oe_dim_ref, _portal_instance, portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
-                            error!("Portal entity {:?} not found in portal query", portal_ent);
+                        let Ok((ent, &oe_dim_ref, _oe_portal_instance, oe_portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
+                            error!("Portal entity {:?} not found in portal query", portal_instance.dest_portal);//TA DISABLED POR ALGUNA RAZÓN
                             continue;
                         };
 
                         being_dimension_ref.0 = oe_dim_ref.0;
-                        being_transform.translation = portal_transform.translation().xy().extend(being_transform.translation.z);
+                        being_transform.translation = oe_portal_transform.translation().xy().extend(being_transform.translation.z);
                     },
                 }
             }

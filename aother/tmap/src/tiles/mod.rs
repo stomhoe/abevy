@@ -123,6 +123,18 @@ pub struct TileBundle {
     pub sync: SyncToRenderWorld,
 }
 
+#[derive(Bundle, Default, Clone, Copy, Debug, Reflect)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TileBundleNoSync {
+    pub position: TilePos,
+    pub texture_index: TileTextureIndex,
+    pub tilemap_id: TilemapId,
+    pub visible: TileVisible,
+    pub flip: TileFlip,
+    pub color: TileColor,
+    pub old_position: TilePosOld,
+}
+
 #[derive(Component, Reflect, Default, Clone, Copy, Debug)]
 #[reflect(Component)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

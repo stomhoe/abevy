@@ -117,10 +117,6 @@ pub fn despawn_unreferenced_chunks(
 
     for CheckChunkDespawn(chunk_ent, retransmission_count) in despawn_events.drain() {
         let Ok((child_of, &chunk_pos, children, tiles_to_save)) = chunks_query.get(chunk_ent) else {
-            if retransmission_count < 3 {
-                despawn_retransmitted_events.push(CheckChunkDespawn(chunk_ent, retransmission_count + 1));
-            }
-            else{error!("Chunk entity {:?} to despawn does not exist after {} retransmissions, giving up", chunk_ent, retransmission_count);}
             continue; 
         };
 
@@ -181,6 +177,8 @@ pub fn show_or_hide_chunks(
         if out_of_visible && out_of_discovery {
             if *visibility != Visibility::Hidden {
                 *visibility = Visibility::Hidden;
+                //TODO HACER TILES Q ESTEN EN ESA POS DEL CHUNK PERO NO SEAN CHILD SE VUELVAN OCULTAS TAMBIEN, VA A HABER Q REGISTRARLAS EN UN MAPA<CHUNKPOS, VEC<ENTITY>>
+                //MUCHAS COSAS PARA DIBUJAR PUEDEN LAGGEAR AUNQUE NO SE VEAN
             }
         } else if *visibility == Visibility::Hidden {
             *visibility = Visibility::Inherited;

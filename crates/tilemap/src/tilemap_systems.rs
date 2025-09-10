@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::Replicated;
 use common::{common_components::StrId, common_resources::ImageSizeMap, common_states::GameSetupType};
@@ -6,7 +6,7 @@ use dimension_shared::DimensionRef;
 use game_common::game_common_components::{EntityZeroRef, MyZ};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_events::{MassCollectedTiles, TileHelperStruct,  }, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
+use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_resources::*}, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
 
 
 
@@ -34,8 +34,8 @@ impl MapStruct {
 }
 
 
-
-use bevy::ecs::entity::EntityHashMap;
+//ESTRATEGIA PERSISTENCIA: DEJAR TODAS LAS TILES MODIFICADAS EN WORLD (COMO ENTITIES), MARCARLAS CON ALGO. 
+//NO SE PUEDEN GUARDAR EN ESTRUCTURAS DE DATOS POR LA INFINIDAD DE COMBINACIONES POSIBLES DE COMPONENTES
 
 
 use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
@@ -80,76 +80,68 @@ pub fn process_tiles_pre(
     let mut tilemap_bundles = Vec::new();//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
 
     let mut to_insert_replicated = Vec::new();
-    let mut to_remove_tile_bundle_and_oplist: Vec<Entity> = Vec::new();
+    let mut to_insert_pos_and_dim_ref = Vec::new();
 
 
     #[allow(unused_mut)]
     let mut i = 0;
-    'eventsfor: while i < collected_tiles.0.len() {
-        let ev = &mut collected_tiles.0[i];
+    while i < collected_tiles.0.len() {
+        let ev = collected_tiles.0.get_unchecked_mut(i);
 
         let &mut (tile_ent, TileHelperStruct {
-            ezero, global_pos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos: _,
+            ezero, global_pos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos,
         }) = ev; 
 
-        
-        
         let Ok((tile_strid, min_dists, keep_distance_from, is_child, tile_z_index, tile_handles, shader_ref, transform, color))
         = oritile_query.get(ezero.0) else{
             error!("Original tile entity {} is despawned", ezero.0);
             continue;
         };
 
-        
-        
-        
         if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent, ezero, dim_ref, global_pos, min_dists, keep_distance_from), min_dists_query) {
             
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
             continue; 
         }
             
+
             
         if !is_child {
             if is_host {
-                //cmd.entity(tile_ent).try_insert((ChildOf(dim_ref.0), ));
                 to_insert_replicated.push((tile_ent, Replicated));
             }
             else{
                 collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
-
                 continue;
             }
         }
-        
-        cmd.entity(tile_ent).try_remove::<(Disabled, )>();
+      
         
         if transform.is_some() {
-            to_remove_tile_bundle_and_oplist.push(tile_ent);
+            to_insert_pos_and_dim_ref.push((tile_ent, (ezero, global_pos, dim_ref, initial_pos, SyncToRenderWorld::default())));
+            collected_tiles.0.swap_remove(i);
             
-            // if is_child  {
-            //     cmd.entity(tile_ent).try_insert((ChildOf(chunk), ));
-            // }
-            i += 1;
             continue;
         }
-
-
-
+        
+        
+        
         bundle.color = color.cloned().unwrap_or_default();
         
         
         let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, global_pos.into())) else {
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
-            continue 'eventsfor;
+            continue;
         };
         
 
         let Ok(mut layers) = chunk_query.get_mut(chunk) else {
-             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
-            continue 'eventsfor;
+            collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
+            continue;
         };
         
+        cmd.entity(tile_ent).try_remove::<(Disabled, )>();
+
         process_tilemaps(
             &mut cmd,
             tile_ent,
@@ -173,9 +165,7 @@ pub fn process_tiles_pre(
     }
     cmd.try_insert_batch_if_new(take(&mut collected_tiles.0));
 
-    for tile_ent in to_remove_tile_bundle_and_oplist.drain(..) {
-        cmd.entity(tile_ent).try_remove::<(TileBundle, OplistSize)>();
-    }
+    cmd.try_insert_batch(to_insert_pos_and_dim_ref);
 
     cmd.try_insert_batch(to_insert_replicated);
 

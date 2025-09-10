@@ -5,7 +5,7 @@ use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, platform::col
 use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{HashId, };
+use common::{common_components::HashId, common_states::GameSetupType};
 use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist};
 use game_common::game_common_components::*;
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize};
@@ -31,32 +31,38 @@ pub fn flip_tile_along_x(
 }
 
 
-/*
-- HACER Q NINGUNA TILE SEA REPLICATED POR DEFECTO, PERO Q SE PUEDA SYNQUEAR CON UN EVENTO MANDADO DESDE EL CLIENTE, Q LE PASA EL HASH TE LA TILE. EL SERVER LA BUSCA EN SU TileInstancesEntityMap DEL CHUNK (EL CLIENTE NO DEBE ACTUALIZAR RELLENAR LOS TileInstancesEntityMap DEL CHUNK), Y LE RESPONDE AL CLIENTE CON UN EVENTO Q CONTIENE LA ENTIDAD, EL CLIENTE LA MAPEA. HACERLO UN SISTEMA ON-DEMAND
-- HACER Q TODOS LOS SISTEMAS STATEFUL DE TILES SE EJECUTEN SERVER-SIDE ONLY (TRAMPAS P. EJ), EL CLIENTE NO EJECUTA ESTOS SISTEMAS ASÍ Q NO LE IMPORTA EL ESTADO INTERNO DE LAS TILES, EL CLIENTE SOLO LE MANDA INPUTS P EJ CUANDO LA ATACA Y EL SERVER RECIBE EL INPUT Y ACTUALIZA EL ESTADO.
-- 
 
-*/
-
-
-
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
+/// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn tile_readjust_transform(
+    mut cmd: Commands,
+    ezero_query: Query<&Transform, (With<Disabled>, Without<EntityZeroRef>)>,
     parent_query: Query<(&GlobalTransform, ), ()>,
-    mut query: Query<(&mut Transform, &GlobalTilePos, Option<&ChildOf>, ),(With<Tile>, Added<GlobalTilePos>, Or<(Without<Disabled>, With<Disabled>, With<EntityZeroRef>)>)>,
+    mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>),(With<Tile>, Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, Or<(Without<Disabled>, With<Disabled>, )>)>,
+    //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
+    state: Res<State<GameSetupType>>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
-    for (mut transform, global_pos, child_of, ) in query.iter_mut() {
+    let is_host = state.get() != &GameSetupType::AsJoiner;
+
+
+    for (ent, mut transform, global_pos, child_of, ezero_ref, replicated, keep_disabled) in query.iter_mut() {
         let transl_from_global_pos = global_pos.to_translation(transform.translation.z);
-        if let Some(child_of) = child_of {
+
+        let ezero_transform = ezero_query.get(ezero_ref.0).ok().cloned().unwrap_or_default();
+
+        if let Some(child_of) = child_of && (is_host || !replicated) {
             if let Ok((parent_global_transform, )) = parent_query.get(child_of.parent()) {
-                transform.translation += transl_from_global_pos - parent_global_transform.translation();
+
+                transform.translation = transl_from_global_pos - parent_global_transform.translation() + ezero_transform.translation;
             }
-        } else {
-            transform.translation += transl_from_global_pos;
+        } else if is_host || !replicated {
+            transform.translation = transl_from_global_pos + ezero_transform.translation;
         }
+
+        if false == keep_disabled {
+             cmd.entity(ent).try_remove::<(Disabled, )>();
+        }
+       
     }
 }
 
