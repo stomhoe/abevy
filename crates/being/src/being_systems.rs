@@ -2,9 +2,11 @@
 
 
 use bevy::{prelude::*};
+use bevy_replicon::prelude::{SendMode, ToClients};
 use camera::camera_components::CameraTarget;
 use dimension_shared::DimensionRef;
 use faction::faction_components::*;
+use movement::movement_events::TransformFromServer;
 use player::player_components::*;
 use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalInstance, Tile}};
 
@@ -60,9 +62,11 @@ pub fn on_control_change(
 //                                                       ^^^^
 #[allow(unused_parens)]
 pub fn cross_portal(mut cmd: Commands, 
+    mut ewriter: EventWriter<ToClients<TransformFromServer>>,
     portal_query: Query<(Entity, &DimensionRef, &PortalInstance, &GlobalTransform), (Without<Being>)>,
     mut being_query: Query<(Entity, &mut DimensionRef, &mut Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
 ) {
+    let mut to_write = Vec::new();
     for (being_entity, mut being_dimension_ref, mut being_transform, being_globtransform, touching_portal) 
     in being_query.iter_mut() {
         for (portal_ent, &dimension_ref, portal_instance, portal_transform) in portal_query.iter() {
@@ -91,9 +95,16 @@ pub fn cross_portal(mut cmd: Commands,
 
                         being_dimension_ref.0 = oe_dim_ref.0;
                         being_transform.translation = oe_portal_transform.translation().xy().extend(being_transform.translation.z);
+
+                        let to_clients = ToClients { 
+                            mode: SendMode::Broadcast, 
+                            event: TransformFromServer::new(being_entity, being_transform.clone(), false),
+                        };
+                        to_write.push(to_clients);
                     },
                 }
             }
         }
     }
+    ewriter.write_batch(to_write);
 }

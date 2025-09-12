@@ -163,6 +163,7 @@ pub fn process_tiles_pre(
         );
         i += 1;
     }
+    //DEJAR CON IF NEW ASÍ TILES DE TILEMAP PUEDEN SER REPLICADAS 
     cmd.try_insert_batch_if_new(take(&mut collected_tiles.0));
 
     cmd.try_insert_batch(to_insert_pos_and_dim_ref);

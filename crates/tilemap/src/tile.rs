@@ -33,7 +33,7 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
             flip_tile_along_x,
-            (add_tile_weighted_samplers_to_map, client_sync_tile ).run_if(not(server_or_singleplayer)),
+            (add_tile_weighted_samplers_to_map, client_sync_tile, client_add_sprite ).run_if(not(server_or_singleplayer)),
             tile_readjust_transform,
             instantiate_portal.run_if(server_or_singleplayer),
             make_child_of_chunk,
@@ -95,11 +95,10 @@ pub fn plugin(app: &mut App) {
         .replicate::<TileStrId>()
         .replicate::<InitialPos>()
         .replicate::<TileShaderRef>()
-        .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TilemapId, TileVisible, TileColor, TilePosOld, )>()
+        .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
         .replicate::<ChunkOrTilemapChild>()
         .replicate_bundle::<(GlobalTilePos, EntityZeroRef)>()
-        .replicate_bundle::<(Tile, GlobalTilePos, Transform)>()
-        .replicate::<PortalInstance>()
+        .replicate_bundle::<(Tile, Transform, )>()
         .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()
 
         //usar feature

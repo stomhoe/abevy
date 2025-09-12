@@ -27,161 +27,161 @@ pub fn init_oplists_from_assets(
     cmd.init_resource::<OpListEntityMap>();
 
     for handle in seris_handles.handles.iter() {//ESTE VA CON ITER
-        if let Some(seri) = assets.get_mut(handle) {
-            let str_id = match StrId::new_with_result(seri.id.clone(), 3) {
-                Ok(id) => id,
-                Err(_) => {
-                    error!("Failed to create StrId for oplist {}", seri.id);
+        let Some(seri) = assets.get_mut(handle) else {
+            continue;
+        };
+        let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 3)
+        else {
+            error!("Failed to create StrId for oplist {}", seri.id);
+            continue;
+        };   
+        if seri.is_root() && seri.operation_operands.is_empty() {
+            error!("root OpListSeri has no operations");
+            continue;
+        }
+        let size =
+            if let Some(size) = seri.size {
+                if let Ok(size) = OplistSize::new(size) {
+                    size
+                } else {
+                    error!("Invalid oplist_size for {}, must be in [1,4] for each vec component", seri.id);
                     continue;
                 }
+            } else{
+                OplistSize::default()
             };
-            if seri.is_root() && seri.operation_operands.is_empty() {
-                error!("root OpListSeri has no operations");
+
+        let mut oplist = OperationList::default();
+
+        //define a mutable array of 16 f64s here
+
+        for (operation, str_operands, out) in seri.operation_operands.iter() {
+
+            if *out >= VariablesArray::SIZE {
+                error!("Output index {} out of bounds for OperationList", out);
                 continue;
             }
-            let size =
-                if let Some(size) = seri.size {
-                    if let Ok(size) = OplistSize::new(size) {
-                        size
-                    } else {
-                        error!("Invalid oplist_size for {}, must be in [1,4] for each vec component", seri.id);
-                        continue;
-                    }
-                } else{
-                    OplistSize::default()
+
+            let mut operands = Vec::new();
+            for operand in str_operands {
+                let operand = operand.trim();    
+                if operand.is_empty() { continue; }
+
+                let (operand, complement) = if let Some(operand) = operand.strip_prefix("COMP") {
+                    (operand.trim(), true)
+                } else {
+                    (operand, false)
                 };
 
-            let mut oplist = OperationList::default();
-
-            //define a mutable array of 16 f64s here
-
-            for (operation, str_operands, out) in seri.operation_operands.iter() {
-
-                if *out >= VariablesArray::SIZE {
-                    error!("Output index {} out of bounds for OperationList", out);
-                    continue;
+                let element = if let Ok(value) = operand.parse::<f32>() {
+                    OperandElement::Value(value)
                 }
-
-                let mut operands = Vec::new();
-                for operand in str_operands {
-                    let operand = operand.trim();    
-                    if operand.is_empty() { continue; }
-
-                    let (operand, complement) = if let Some(operand) = operand.strip_prefix("COMP") {
-                        (operand.trim(), true)
+                else if let Some(var_i) = operand.strip_prefix("$") {
+                    let Ok(var_i) = var_i.parse::<u8>() else {
+                        warn!("Failed to parse Stack array index from '{}'", operand);
+                        continue;
+                    };
+                    if var_i >= VariablesArray::SIZE {
+                        warn!("Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
+                    }
+                    OperandElement::StackArray(var_i)
+                } else if let Some(seed_str) = operand.strip_prefix("hp") {
+                    let seed = seed_str.parse::<u64>().unwrap_or(1000);
+                    OperandElement::HashPos(seed)    
+                } else if let Some(pd_str) = operand.strip_prefix("pd") {
+                    // Parse PoissonDisk operand: "pd{min_dist}{seed}"
+                    // Example: "pd3123" -> min_dist = 3, seed = 123
+                    let (min_dist_str, seed_str) = pd_str.split_at(1);
+                    let (Ok(min_dist), Ok(seed)) = (min_dist_str.parse::<u8>(), seed_str.parse::<u64>()) else {
+                        warn!("Invalid PoissonDisk min_dist ('{}') or seed ('{}')", min_dist_str, seed_str);
+                        continue;
+                    };
+                    let Ok(op) = OperandElement::new_poisson_disk(min_dist, seed) else {
+                        warn!("Failed to create PoissonDisk operand with min_dist {} and seed {}", min_dist, seed);
+                        continue;
+                    };
+                    op      
+                } else if let Some(ent_str) = operand.strip_prefix("fnl.") {
+                    // Handle entity operand, possibly with 'COMP' prefix for complement
+                    let (noise_sample_range, ent_str) = if let Some(stripped) = ent_str.strip_prefix("1-1.") {
+                        (fnl::NoiseSampleRange::NegOneToOne, stripped)
                     } else {
-                        (operand, false)
+                        (fnl::NoiseSampleRange::ZeroToOne, ent_str)
                     };
 
-                    let element = if let Ok(value) = operand.parse::<f32>() {
-                        OperandElement::Value(value)
-                    }
-                    else if let Some(var_i) = operand.strip_prefix("$") {
-                        let Ok(var_i) = var_i.parse::<u8>() else {
-                            warn!("Failed to parse Stack array index from '{}'", operand);
-                            continue;
-                        };
-                        if var_i >= VariablesArray::SIZE {
-                            warn!("Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
-                        }
-                        OperandElement::StackArray(var_i)
-                    } else if let Some(seed_str) = operand.strip_prefix("hp") {
-                        let seed = seed_str.parse::<u64>().unwrap_or(1000);
-                        OperandElement::HashPos(seed)    
-                    } else if let Some(pd_str) = operand.strip_prefix("pd") {
-                        // Parse PoissonDisk operand: "pd{min_dist}{seed}"
-                        // Example: "pd3123" -> min_dist = 3, seed = 123
-                        let (min_dist_str, seed_str) = pd_str.split_at(1);
-                        let (Ok(min_dist), Ok(seed)) = (min_dist_str.parse::<u8>(), seed_str.parse::<u64>()) else {
-                            warn!("Invalid PoissonDisk min_dist ('{}') or seed ('{}')", min_dist_str, seed_str);
-                            continue;
-                        };
-                        let Ok(op) = OperandElement::new_poisson_disk(min_dist, seed) else {
-                            warn!("Failed to create PoissonDisk operand with min_dist {} and seed {}", min_dist, seed);
-                            continue;
-                        };
-                        op      
-                    } else if let Some(ent_str) = operand.strip_prefix("fnl.") {
-                        // Handle entity operand, possibly with 'COMP' prefix for complement
-                        let (noise_sample_range, ent_str) = if let Some(stripped) = ent_str.strip_prefix("1-1.") {
-                            (fnl::NoiseSampleRange::NegOneToOne, stripped)
-                        } else {
-                            (fnl::NoiseSampleRange::ZeroToOne, ent_str)
-                        };
-
-                        // If the operand_str ends with ".s" followed by a number, use it as seed
-                        let (base_str, extra_seed) = if let Some(idx) = ent_str.rfind(".s") {
-                            let (base, seed_str) = ent_str.split_at(idx);
-                            let seed = seed_str[2..].parse::<i32>().unwrap_or(0);
-                            (base, seed)
-                        } else {
-                            (ent_str, 0)
-                        };
-                        let Ok(ent) = terr_gen_map.0.get(&base_str.to_string()) else {
-                            warn!("Entity not found in TerrGenEntityMap: {}", base_str);
-                            continue;
-                        };
-
-                        OperandElement::NoiseEntity(ent, noise_sample_range, complement, extra_seed)
+                    // If the operand_str ends with ".s" followed by a number, use it as seed
+                    let (base_str, extra_seed) = if let Some(idx) = ent_str.rfind(".s") {
+                        let (base, seed_str) = ent_str.split_at(idx);
+                        let seed = seed_str[2..].parse::<i32>().unwrap_or(0);
+                        (base, seed)
                     } else {
-                        error!("Unknown operand: {}", operand);
+                        (ent_str, 0)
+                    };
+                    let Ok(ent) = terr_gen_map.0.get(&base_str.to_string()) else {
+                        warn!("Entity not found in TerrGenEntityMap: {}", base_str);
                         continue;
                     };
 
-                    let operand = Operand { complement, element, };
-
-                    operands.push(operand);
+                    OperandElement::NoiseEntity(ent, noise_sample_range, complement, extra_seed)
+                } else {
+                    error!("Unknown operand: {}", operand);
+                    continue;
                 };
 
-                let operation = match operation.as_str().trim() {
-                    "" => continue,
-                    "+" => Operation::Add,
-                    "-" => Operation::Subtract,
-                    "*" => Operation::Multiply,
-                    "*opo" => Operation::MultiplyOpo,
-                    "/" => Operation::Divide,
-                    "min" => Operation::Min,
-                    "max" => Operation::Max,
-                    "avg" => Operation::Average,
-                    "abs" => Operation::Abs,
-                    "*nm" => Operation::MultiplyNormalized,
-                    "*nmabs" => Operation::MultiplyNormalizedAbs,
-                    "idxmax" => Operation::i_Max,
-                    "idxnorm" => Operation::i_Norm,
-                    "lin" => Operation::Linear,
-                    "clamp" => Operation::Clamp,
-                    _ => {
-                        error!("Unknown operation: {}", operation);
-                        continue;
-                    },
-                };
+                let operand = Operand { complement, element, };
 
-                oplist.trunk.push((operation, operands, *out));    
-            }
-            oplist.bifurcations = Vec::with_capacity(seri.bifs.len());
+                operands.push(operand);
+            };
 
-            for (_oplist, tiles) in seri.bifs.iter() {
-                let tiles = tiles
-                .iter().filter(|tile_str| !tile_str.is_empty())
-                .filter_map(|tile_str| {
-                    if let Ok(sampler_ent) = samplers_map.0.get(tile_str) {
-                        Some(sampler_ent)
-                    } else if let Ok(tile_ent) = tiles_map.0.get(tile_str) {
-                        Some(tile_ent)
-                    } else {
-                        warn!("Tile {} not found in TilingEntityMap or TileWeightedSamplersMap", tile_str);
-                        None
-                    }
-                }).collect::<Vec<Entity>>();
+            let operation = match operation.as_str().trim() {
+                "" => continue,
+                "+" => Operation::Add,
+                "-" => Operation::Subtract,
+                "*" => Operation::Multiply,
+                "*opo" => Operation::MultiplyOpo,
+                "/" => Operation::Divide,
+                "min" => Operation::Min,
+                "max" => Operation::Max,
+                "avg" => Operation::Average,
+                "abs" => Operation::Abs,
+                "*nm" => Operation::MultiplyNormalized,
+                "*nmabs" => Operation::MultiplyNormalizedAbs,
+                "idxmax" => Operation::i_Max,
+                "idxnorm" => Operation::i_Norm,
+                "lin" => Operation::Linear,
+                "clamp" => Operation::Clamp,
+                _ => {
+                    error!("Unknown operation: {}", operation);
+                    continue;
+                },
+            };
 
-                let bifurcation = Bifurcation { oplist: None, tiles };
-                oplist.bifurcations.push(bifurcation);
-            }
-            let spawned_oplist = cmd.spawn(( str_id, oplist, size)).id();
-            if seri.is_root() { cmd.entity(spawned_oplist).insert(MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))); }
+            oplist.trunk.push((operation, operands, *out));    
+        }
+        oplist.bifurcations = Vec::with_capacity(seri.bifs.len());
 
-        } 
-    }
+        for (_oplist, tiles) in seri.bifs.iter() {
+            let tiles = tiles
+            .iter().filter(|tile_str| !tile_str.is_empty())
+            .filter_map(|tile_str| {
+                if let Ok(sampler_ent) = samplers_map.0.get(tile_str) {
+                    Some(sampler_ent)
+                } else if let Ok(tile_ent) = tiles_map.0.get(tile_str) {
+                    Some(tile_ent)
+                } else {
+                    warn!("Tile {} not found in TilingEntityMap or TileWeightedSamplersMap", tile_str);
+                    None
+                }
+            }).collect::<Vec<Entity>>();
+
+            let bifurcation = Bifurcation { oplist: None, tiles };
+            oplist.bifurcations.push(bifurcation);
+        }
+        let spawned_oplist = cmd.spawn(( str_id, oplist, size)).id();
+        if seri.is_root() { cmd.entity(spawned_oplist).insert(MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))); }
+
+    } 
+    
 } 
 
 #[allow(unused_parens)]

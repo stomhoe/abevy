@@ -35,56 +35,44 @@ pub fn update_human_move_input(
     }
 }
 
-#[allow(unused_parens)]
-// pub fn update_jump_duck_inputs(
-//     mut cmd: Commands, 
-//     query: Query<(Entity, &HumanControlled),(With<ControlledLocally>, )>,
-//     keys: Res<ButtonInput<KeyCode>>,
-//     input_mappings: Res<KeyboardInputMappings>,) 
-
-
-// {
-//     if keys.pressed(input_mappings.jump_or_fly) {//TODO USAR BEVY ENHANCED INPUT
-//         for ent in query.iter() {cmd.entity(ent).insert(InputJump);}
-//     } else {
-//         for ent in query.iter() {cmd.entity(ent).remove::<InputJump>();}
-//     }
-//     if keys.pressed(input_mappings.duck) {
-//         for ent in query.iter() {cmd.entity(ent).insert(InputDuck);}//MEJOR HACER Q HOLDEE UN BOOLEANO?
-//     } else {
-//         for ent in query.iter() {cmd.entity(ent).remove::<InputDuck>();}
-//     }
-// }
-
 
 #[allow(unused_parens, )]
 pub fn send_move_input_to_server(
-    mut cmd: Commands,  move_input: Query<(Entity, &InputMoveVector), (Changed<InputMoveVector>, With<ControlledLocally>)>,
+    mut event_writer: EventWriter<SendMoveInput>,
+    move_input: Query<(Entity, &InputMoveVector), (Changed<InputMoveVector>, With<ControlledLocally>)>,
 ) {
+    let mut to_write = Vec::new();
     for (being_ent, move_vec) in move_input.iter() {
         trace!(target: "movement", "Sending move input for entity {:?} with vector {:?}", being_ent, move_vec);
-        cmd.client_trigger( SendMoveInput { being_ent, vec: move_vec.clone(), } );
+        to_write.push( SendMoveInput { being_ent, vec: move_vec.clone(), } );
     }
+    event_writer.write_batch(to_write);
 
 }
 
 #[allow(unused_parens, )]
 pub fn receive_move_input_from_client(
-    trigger: Trigger<FromClient<SendMoveInput>>,
+    mut events: EventReader<FromClient<SendMoveInput>>,
     mut controlled_beings_query: Query<(&mut InputMoveVector, &ControlledBy, ), ()>,
 
 ) -> Result {
-    let SendMoveInput { vec: new_vec, being_ent } = trigger.event.clone();
-    
-    if let Ok((mut input_vec, controlled_by, )) = controlled_beings_query.get_mut(being_ent) {
-        if controlled_by.client == trigger.client_entity {
-            if input_vec.0 != new_vec.0 { input_vec.0 = new_vec.0; }
-            //debug!(target: "movement", "Received move input for entity {:?} with vector {:?}", being_ent, new_vec);
+    for from_client in events.read() {
+        let SendMoveInput { vec: new_vec, being_ent } = from_client.event.clone();
+
+        if let Ok((mut input_vec, controlled_by, )) = controlled_beings_query.get_mut(being_ent) {
+            if controlled_by.client == from_client.client_entity {
+                if input_vec.0 != new_vec.0 { input_vec.0 = new_vec.0; }
+                //debug!(target: "movement", "Received move input for entity {:?} with vector {:?}", being_ent, new_vec);
+            } else {
+
+                warn!(
+                    "Client tried to control a being not controlled by them: {} (controlled_by.client: {:?}, from_client.client_entity: {:?})",
+                    being_ent, controlled_by.client, from_client.client_entity
+                );
+            }
         } else {
-            warn!("Client tried to control a being not controlled by them: {}", being_ent);
+            warn!("Client tried to control a being that does not exist in server or is not controllable {}", being_ent);
         }
-    } else {
-        warn!("Client tried to control a being that does not exist in server or is not controllable {}", being_ent);
     }
     
     Ok(())
@@ -92,13 +80,15 @@ pub fn receive_move_input_from_client(
 
 #[allow(unused_parens, )]
 pub fn apply_movement(
-    mut cmd: Commands, time: Res<Time>, 
+    mut ewriter: EventWriter<ToClients<TransformFromServer>>,
+    time: Res<Time>,
     state : Res<State<GameSetupType>>,
     server: Option<Res<RenetServer>>,
     
-    mut query: Query<(Entity, &InputSpeedVector, &mut Transform, &mut MoveAnimActive, Has<ControlledLocally>), >,
+    mut query: Query<(Entity, &ProcessedInputVector, &mut Transform, &mut MoveAnimActive, Has<ControlledLocally>), >,
 ) {
-    for (being_ent, InputSpeedVector(speed_vec), mut transform, mut move_anim, controlled_locally) in query.iter_mut() {
+    let mut to_write = Vec::new();
+    for (being_ent, ProcessedInputVector(speed_vec), mut transform, mut move_anim, controlled_locally) in query.iter_mut() {
 
         if *state.get() == GameSetupType::AsJoiner && !controlled_locally { continue;}
 
@@ -113,20 +103,21 @@ pub fn apply_movement(
                     mode: SendMode::Broadcast, 
                     event: TransformFromServer::new(being_ent, transform.clone(), true),
                 };
-                cmd.server_trigger(to_clients);
+                to_write.push(to_clients);
             }
             
             if !move_anim.0 { move_anim.0 = true; }
         } 
         else if move_anim.0 { move_anim.0 = false; }
     }
+    ewriter.write_batch(to_write);   
 }
 
 
 
 #[allow(unused_parens)]
-pub fn update_facing_dir(mut query: Query<(&InputSpeedVector, &mut FacingDirection), >) {
-    for (InputSpeedVector(dir_vec), mut facing_dir) in query.iter_mut() {
+pub fn update_facing_dir(mut query: Query<(&ProcessedInputVector, &mut FacingDirection), >) {
+    for (ProcessedInputVector(dir_vec), mut facing_dir) in query.iter_mut() {
         if dir_vec.xy() == Vec2::ZERO {continue;}
         
         *facing_dir = if dir_vec.x.abs() > dir_vec.y.abs() {
@@ -148,7 +139,7 @@ pub fn update_facing_dir(mut query: Query<(&InputSpeedVector, &mut FacingDirecti
 pub fn process_movement_modifiers(
     //TODO: ACELERACIÓN Y FRICCIÓN? P. EJ, PARA TENER CABALLOS CON INERCIA. USAR BEVY RAPIER DESP
     state : Res<State<GameSetupType>>,
-    mut being_query: Query<(&AppliedModifiers, &InputMoveVector, &mut InputSpeedVector, Has<ControlledLocally>), >,
+    mut being_query: Query<(&AppliedModifiers, &InputMoveVector, &mut ProcessedInputVector, Has<ControlledLocally>), >,
     speed_query: Query<(
         &EffectiveValue,
         &OperationType,
@@ -204,7 +195,6 @@ pub fn process_movement_modifiers(
                         speed_max = speed_max.min(val).max(0.0); 
                     },
                 }
-                
             }
         }
         speed_sum += (speed_neg_sum + slowdown_mitigators_sum);
@@ -222,24 +212,28 @@ pub fn process_movement_modifiers(
 //#[cfg(not(feature = "headless_server"))]
 #[allow(unused_parens)]
 pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE DE INTERPOLATION/PREDICTION/ROLLBACK/LOQSEA
-    trigger: Trigger<TransformFromServer>, client: Option<Res<RenetClient>>,
+    mut transforms: EventReader<TransformFromServer>, 
+    client: Option<Res<RenetClient>>,
     mut being_query: Query<(&mut Transform, &ControlledBy, &HumanControlled)>,
     selfplayer: Single<(Entity), (With<OfSelf>, With<Player>)>,
 ) -> Result {
-    let TransformFromServer { being: entity, trans: transform, interpolate } = trigger.event().clone();
+    let selfplayer = selfplayer.into_inner();
 
-    if client.is_none() {return Ok(());}
+    for ev in transforms.read() {
 
-    let Ok((mut transf, controller, human_controlled)) = being_query.get_mut(entity) else {
-        let err = Err(BevyError::from(format!("Received transform for entity that does not exist: {:?}", entity)));
-        return err;
-    };
-    
-    //debug!("Applying transform to entity: {:?}", entity);
-    if controller.client == selfplayer.into_inner() && interpolate && human_controlled.0 {
-        transf.translation = transf.translation.lerp(transform.translation, 0.5);
-    } else {
-        *transf = transform;
+        // if client.is_none() {return Ok(());}
+
+        // let Ok((mut transf, controller, human_controlled)) = being_query.get_mut(ev.being) else {
+        //     let err = Err(BevyError::from(format!("Received transform for entity that does not exist: {:?}", ev.being)));
+        //     return err;
+        // };
+        
+        // //debug!("Applying transform to entity: {:?}", entity);
+        // if controller.client == selfplayer && ev.interpolate && human_controlled.0 {
+        //     transf.translation = transf.translation.lerp(ev.trans.translation, 0.5);
+        // } else {
+        //     *transf = ev.trans;
+        // }
     }
     
    Ok(())

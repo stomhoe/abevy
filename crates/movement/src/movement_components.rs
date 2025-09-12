@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-#[require(InputSpeedVector, )]
+#[require(ProcessedInputVector, )]
 pub struct InputMoveVector(pub Vec2);//USADO TMB POR BOTS
 //no se incluye la coordenada z de agacharse o saltar porq esto se debe mandar reliably ya q no se spammea tanto
 
@@ -16,7 +16,7 @@ pub struct InputJump;
 pub struct InputDuck;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct InputSpeedVector(pub Vec2);
+pub struct ProcessedInputVector(pub Vec2);
 
 
 

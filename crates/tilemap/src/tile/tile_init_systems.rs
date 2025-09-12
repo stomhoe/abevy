@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, render::sync_world::SyncToRenderWorld};
+use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, identifier::error}, platform::collections::{HashMap, HashSet}, render::{sync_world::SyncToRenderWorld, view::VisibilityClass}};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -405,36 +405,51 @@ pub fn instantiate_portal(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn client_sync_tile(
     mut cmd: Commands, 
-    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>)>,
-    ori_query: Query<(&TileStrId, Has<ChunkOrTilemapChild>, Option<&Sprite>), (With<Disabled>)>,
+    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>, Or<(Without<Disabled>, With<Disabled>)>)>,
     loaded_chunks: Res<LoadedChunks>,
     mut collected: Res<MassCollectedTiles>//TODO synquear tiles de tilemaps si es posible
 
 ) {
     //let mut tiles_to_tmap_process = Vec::new();
-    for (tile_ent, &orig_ref, &global_pos, &dim_ref, ) in query.iter() {
-        let Ok((tile_strid, is_child, sprite)) = ori_query.get(orig_ref.0) else{
-            error!("Original tile entity {} is despawned", orig_ref.0);
+    // for (tile_ent, &orig_ref, &global_pos, &dim_ref, ) in query.iter() {
+    //     let Ok((tile_strid, is_child, sprite)) = ori_query.get(orig_ref.0) else{
+    //         error!("Original tile entity {} is despawned", orig_ref.0);
+    //         continue;
+    //     };
+    //     info!("Client instantiated replicated tile '{}' at position {:?} in dimension {:?}", tile_strid, global_pos, dim_ref.0);
+
+    //     let chunk_pos: ChunkPos = global_pos.into();
+
+        
+    //     if is_child && let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) {
+         
+            
+    //     } 
+    // }
+    //ewriter_tmap_process.write_batch(tiles_to_tmap_process);
+
+}
+
+#[allow(unused_parens)]
+pub fn client_add_sprite(mut cmd: Commands, 
+    ori_query: Query<(&TileStrId, Option<&Sprite>), (With<Disabled>)>,
+    mut query: Query<(Entity, &EntityZeroRef), (With<Tile>, With<Transform>, Without<Sprite>, Or<(Without<Disabled>, With<Disabled>)>)>,
+) {
+    for (ent, &ezero) in query.iter_mut() {
+        let Ok((tile_strid, sprite)) = ori_query.get(ezero.0) else{
+            error!("Original tile entity {} is despawned", ezero.0);
             continue;
         };
 
         if let Some(sprite) = sprite {
-            cmd.entity(tile_ent).try_insert(sprite.clone());
-        }
-
-        let chunk_pos: ChunkPos = global_pos.into();
-
-        
-        if is_child && let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) {
-         
-            
+            cmd.entity(ent).insert((sprite.clone(), SyncToRenderWorld, Visibility::default(), VisibilityClass::default(), ) );
+            info!("Added sprite to tile '{}' entity {:?}", tile_strid, ent);
         } else{
-            cmd.entity(tile_ent).try_insert(ChildOf(dim_ref.0));
+            error!("Tile '{}' has no sprite to add", tile_strid);
         }
     }
-    //ewriter_tmap_process.write_batch(tiles_to_tmap_process);
-
 }
+
 
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
