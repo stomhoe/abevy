@@ -47,7 +47,7 @@ pub fn process_tiles_pre(
     mut collected_tiles: ResMut<MassCollectedTiles>,
 
     oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<ChunkOrTilemapChild>, 
-        Option<&MyZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&mut Transform>, Option<&TileColor>), (With<Disabled>)>,
+        Option<&MyZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>), (With<Disabled>)>,
 
     mut chunk_query: Query<(&mut LayersMap), ()>,
     mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
@@ -83,7 +83,6 @@ pub fn process_tiles_pre(
     let mut to_insert_pos_and_dim_ref = Vec::new();
 
 
-    #[allow(unused_mut)]
     let mut i = 0;
     while i < collected_tiles.0.len() {
         let ev = collected_tiles.0.get_unchecked_mut(i);
@@ -344,8 +343,6 @@ fn process_tilemaps(
     }
 }
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn tile_assign_child_of(mut cmd: Commands, 
     tile_instances_holder_query: Single<Entity, With<TileInstancesHolder>>,
@@ -357,15 +354,15 @@ pub fn tile_assign_child_of(mut cmd: Commands,
 
     for (tile_ent,) in query.iter_mut() {
         //info!("Assigning ChildOf to tile entity {:?}", tile_ent);
-        child_ofs_for_tiles.push((tile_ent, ChildOf(parent.clone())));//TODO HACER EN EL MOMENTO Q SE LE METEN LAS COSAS A LAS TILES
+        //cmd.entity(tile_ent).try_insert(ChildOf(parent));
+        child_ofs_for_tiles.push((tile_ent, ChildOf(parent)));
     }
 
     cmd.try_insert_batch(child_ofs_for_tiles);
 }
 
 
-#[derive(Event, Eq, PartialEq, Hash)]
-pub struct TilemapChanged (pub Entity);
+
 
 #[allow(unused_parens)]
 pub fn despawn_orphan_tilemaps(mut cmd: Commands, 

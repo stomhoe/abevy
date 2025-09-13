@@ -85,9 +85,7 @@ pub fn spawn_terrain_operations (
 #[allow(unused_parens)]
 pub fn produce_tiles(mut cmd: Commands, 
     gen_settings: Res<AaGlobalGenSettings>,
-    res_chunk: Res<AaChunkRangeSettings>,
     oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
-    chunk_query: Query<(&ChildOf), (With<Chunk> )>,
     mut pending_ops_events: ResMut<Events<PendingOp>>,
     fnl_noises: Query<&FnlNoise,>,
     studied_ops: Query<&StudiedOp,>,
@@ -120,13 +118,11 @@ pub fn produce_tiles(mut cmd: Commands,
                     OperandElement::StackArray(i) => ev.variables[*i],
                     OperandElement::Value(val) => *val,
                     OperandElement::NoiseEntity(ent, sample_range, compl, operand_seed) => {
-                        match fnl_noises.get(*ent) {
-                            Ok(noise) => noise.sample(global_pos, *sample_range, *compl, *operand_seed + ev.dimension_hash_id, &gen_settings),
-                            Err(_) => {
-                                error!("Entity {} not found in terrgens", ent);
-                                continue;
-                            }
-                        }
+                        let Ok(noise) = fnl_noises.get(*ent) else {
+                            error!("Entity {} not found in terrgens", ent);
+                            continue;
+                        };
+                        noise.sample(global_pos, *sample_range, *compl, *operand_seed + ev.dimension_hash_id, &gen_settings)   
                     },
                     OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed),
                     OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_pos, my_oplist_size),

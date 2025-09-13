@@ -6,7 +6,7 @@ use common::common_states::AssetsLoadingState;
 use dimension_shared::RootInDimensions;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking_components::OperationsLaunched, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tile::tile_components::TileSamplerHolder,};
+use crate::{chunking_components::OperationsLaunched, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tile::tile_components::TileSamplerHolder, tilemap_systems::process_tiles_pre,};
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -25,7 +25,7 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            (spawn_terrain_operations, (produce_tiles,)).in_set(TerrainGenSystems),
+            (spawn_terrain_operations, (produce_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
             search_suitable_position.run_if(server_or_singleplayer),
             (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities, ).run_if(not(server_or_singleplayer)),
             oplist_init_dim_refs,

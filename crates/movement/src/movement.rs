@@ -33,6 +33,5 @@ pub fn plugin(app: &mut App) {
 
         .register_type::<InputMoveVector>()
         .register_type::<ProcessedInputVector>()
-        //.replicate_once::<GlobalTransform>()
     ;
 }

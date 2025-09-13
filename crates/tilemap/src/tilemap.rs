@@ -56,7 +56,6 @@ pub fn plugin(app: &mut App) {
     .register_type::<TmapHashIdtoTextureIndex>()
     .init_resource::<LoadedChunks>()
     .init_resource::<AaChunkRangeSettings>()
-    .add_event::<TilemapChanged>()
     .add_event::<CheckChunkDespawn>()
     
 

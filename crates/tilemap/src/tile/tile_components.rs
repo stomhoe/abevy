@@ -18,7 +18,7 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::{StudiedO
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, 
-    TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, SyncToRenderWorld, TileColor, 
+    TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, TileColor, 
 );
 
 #[derive(Bundle)]

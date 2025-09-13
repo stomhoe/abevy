@@ -45,6 +45,8 @@ pub struct PortalSeri{
     pub lim_below: f32,
     pub lim_above: f32,
     pub one_way: bool,
+    /// NASE
+    pub dungeon: String,
 }
 
 #[derive(Deserialize, Asset, Reflect, Default)]

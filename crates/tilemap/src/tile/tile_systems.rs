@@ -36,7 +36,7 @@ pub fn flip_tile_along_x(
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn tile_readjust_transform(
     mut cmd: Commands,
-    ezero_query: Query<&Transform, (With<Disabled>, Without<EntityZeroRef>)>,
+    ezero_query: Query<&Transform, (With<Disabled>, Without<EntityZeroRef>, Without<GlobalTilePos>)>,
     parent_query: Query<(&GlobalTransform, ), ()>,
     mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>),(With<Tile>, Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, Or<(Without<Disabled>, With<Disabled>, )>)>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
