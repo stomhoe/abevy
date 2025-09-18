@@ -26,8 +26,17 @@ impl FnlNoise {
     }
 }
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct ComponentName{
+    seed: i32,
+}
+impl ComponentName {
+    pub fn new(id: HashId) -> Self {
+        Self{ seed: id.into_i32()}
+    }
+}
 
-//            .replicate::<NoizRef>()
+//             .replicate::<NoizRef>()
 #[derive(Component, )]
 pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sync >);
 

@@ -50,7 +50,6 @@ impl RegisteredPositions {
                 }
             }
         }
-
         if let Some(keep_distance) = keep_distance {
             for other_ent in &keep_distance.0 {
                 let Some(positions) = self.0.get(other_ent) else { continue };
