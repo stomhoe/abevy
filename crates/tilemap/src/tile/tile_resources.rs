@@ -36,18 +36,7 @@ pub struct TileSerisHandles {
     #[asset(path = "ron/tilemap/tiling/tile", collection(typed))] 
     pub handles: Vec<Handle<TileSeri>>,
 }
-#[derive(Component, Deserialize, Reflect, Default)]
-pub struct PortalSeri{
-    pub dest_dimension: String,
-    pub oe_tile: String,
-    pub oplist: String,
-    pub op_i: i8,
-    pub lim_below: f32,
-    pub lim_above: f32,
-    pub one_way: bool,
-    /// NASE
-    pub dungeon: String,
-}
+
 
 #[derive(Deserialize, Asset, Reflect, Default)]
 pub struct TileSeri {
@@ -70,6 +59,25 @@ pub struct TileSeri {
     pub portal: Option<PortalSeri>,
 }
 
+#[derive(Component, Deserialize, Reflect, Default)]
+pub struct PortalSeri{
+    pub dest_dimension: String,
+    pub oe_tile: String,
+    pub oplist: String,
+    pub op_i: i8,
+    pub lim_below: f32,
+    pub lim_above: f32,
+    pub one_way: bool,
+    /// NASE
+    pub dungeon: String,
+}
+
+#[derive(Deserialize, Asset, Reflect, )]
+pub struct DungeonSeri {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
