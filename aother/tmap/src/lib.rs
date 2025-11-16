@@ -16,13 +16,13 @@
 //! - Can `Anchor` tilemap like a sprite.
 
 use bevy::{
-    ecs::{entity::Entity, event::Event, schedule::IntoScheduleConfigs},
+    ecs::{entity::Entity, message::Message, schedule::IntoScheduleConfigs},
     prelude::{
         Bundle, Changed, Component, Deref, First, GlobalTransform, InheritedVisibility, Plugin,
         Query, Reflect, ReflectComponent, SystemSet, Transform, ViewVisibility, Visibility,
     },
     render::sync_world::SyncToRenderWorld,
-    time::TimeSystem,
+    time::TimeSystems,
 };
 
 #[cfg(feature = "render")]
@@ -57,7 +57,7 @@ pub(crate) mod render;
 /// A module which contains tile components.
 pub mod tiles;
 
-#[derive(Event, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DrawTilemap(pub Entity);
 
 /// A bevy tilemap plugin. This must be included in order for everything to be rendered.
@@ -79,11 +79,11 @@ impl Plugin for TilemapPlugin {
         }
 
         app.register_type::<FrustumCulling>()
-        .add_event::<DrawTilemap>()
-        .register_type::<TilemapId>()
-        .register_type::<TilemapSize>()
-        .register_type::<TilemapTexture>()
-        .register_type::<TilemapTileSize>()
+            .add_message::<DrawTilemap>()
+            .register_type::<TilemapId>()
+            .register_type::<TilemapSize>()
+            .register_type::<TilemapTexture>()
+            .register_type::<TilemapTileSize>()
             .register_type::<TilemapGridSize>()
             .register_type::<TilemapSpacing>()
             .register_type::<TilemapTextureSize>()
@@ -97,7 +97,7 @@ impl Plugin for TilemapPlugin {
             .register_type::<TileStorage>()
             .register_type::<TilePosOld>()
             .register_type::<AnimatedTile>()
-            .configure_sets(First, TilemapFirstSet.after(TimeSystem));
+            .configure_sets(First, TilemapFirstSet.after(TimeSystems));
     }
 }
 
@@ -145,29 +145,6 @@ pub struct MaterialTilemapBundle<M: MaterialTilemap> {
     pub anchor: TilemapAnchor,
 }
 
-#[cfg(feature = "render")]
-pub type TilemapPartialBundle = MaterialTilemapPartialBundle<StandardTilemapMaterial>;
-
-#[cfg(feature = "render")]
-/// The default tilemap bundle. All of the components within are required.
-#[derive(Bundle, Debug, Default, Clone)]
-pub struct MaterialTilemapPartialBundle<M: MaterialTilemap> {
-    pub texture: TilemapTexture,
-    pub transform: Transform,
-    pub global_transform: GlobalTransform,
-    /// User indication of whether an entity is visible
-    pub visibility: Visibility,
-    /// Algorithmically-computed indication of whether an entity is visible and should be extracted
-    /// for rendering
-    pub inherited_visibility: InheritedVisibility,
-    pub view_visibility: ViewVisibility,
-    /// User indication of whether tilemap should be frustum culled.
-    pub frustum_culling: FrustumCulling,
-    pub material: MaterialTilemapHandle<M>,
-    pub sync: SyncToRenderWorld,
-    pub anchor: TilemapAnchor,
-}
-
 #[cfg(not(feature = "render"))]
 /// The default tilemap bundle. All of the components within are required.
 #[derive(Bundle, Debug, Default, Clone)]
@@ -197,16 +174,14 @@ pub struct StandardTilemapBundle {
 pub mod prelude {
     #[cfg(feature = "render")]
     pub use crate::MaterialTilemapBundle;
-    #[cfg(feature = "render")]
-    pub use crate::MaterialTilemapPartialBundle;
-    #[cfg(feature = "render")]
-    pub use crate::TilemapPartialBundle;
 
     #[cfg(feature = "render")]
     pub use crate::DrawTilemap;
 
     #[cfg(feature = "render")]
     pub use crate::TilemapBundle;
+
+
     pub use crate::TilemapPlugin;
     pub use crate::anchor::TilemapAnchor;
     #[cfg(all(not(feature = "atlas"), feature = "render"))]

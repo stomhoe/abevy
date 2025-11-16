@@ -296,7 +296,7 @@ pub fn become_child_of_sprite_with_category(
 #[allow(unused_parens, )]
 
 pub fn client_map_server_sprite_cfgs(
-    trigger: Trigger<SpriteCfgEntityMap>,
+    trigger: On<SpriteCfgEntityMap>,
     client: Option<Res<RenetClient>>,
     mut entis_map: ResMut<ServerEntityMap>,
     own_map: Res<SpriteCfgEntityMap>,

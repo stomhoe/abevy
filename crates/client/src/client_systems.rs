@@ -99,7 +99,7 @@ pub fn client_on_disconnect(
 }
 
 #[allow(unused_parens)]
-pub fn client_on_game_started(trigger: Trigger<HostStartedGame>, mut state: ResMut<NextState<GamePhase>>, 
+pub fn client_on_game_started(trigger: On<HostStartedGame>, mut state: ResMut<NextState<GamePhase>>, 
     client: Option<Res<RenetClient>>) {
     if client.is_none() {
         return;

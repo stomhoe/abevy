@@ -29,7 +29,7 @@ pub fn attempt_host(
 
 
 #[allow(unused_parens, )]
-pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>, 
+pub fn host_on_player_connect(trigger: On<Add, ConnectedClient>, 
     mut cmd: Commands, host_faction: Single<(Entity ), (With<Faction>, With<OfSelf>)>,
     own_tiles_map: Res<TileEntitiesMap>,
     own_sprite_cfg_map: Res<SpriteCfgEntityMap>,
@@ -40,17 +40,17 @@ pub fn host_on_player_connect(trigger: Trigger<OnAdd, ConnectedClient>,
 
 
 
-    let sync_tiles = ToClients { mode: SendMode::Direct(client_entity), event: own_tiles_map.clone(), };
+    let sync_tiles = ToClients { mode: SendMode::Direct(client_entity), message: own_tiles_map.clone(), };
     cmd.server_trigger(sync_tiles);
 
-    let sync_sprite_cfgs = ToClients { mode: SendMode::Direct(client_entity), event: own_sprite_cfg_map.clone(),};
+    let sync_sprite_cfgs = ToClients { mode: SendMode::Direct(client_entity), message: own_sprite_cfg_map.clone(),};
     cmd.server_trigger(sync_sprite_cfgs);
         // TA BIEN, TODOS LOS JOINERS POR DEFECTO SON DE LA FACTION DEL HOST, SI NO ES ASÍ, AL CARGAR LA SAVEGAME SE CAMBIA?
     Ok(())
 }
 
 #[allow(unused_parens)]
-pub fn host_receive_client_name(mut trigger: Trigger<FromClient<SendUsername>>, 
+pub fn host_receive_client_name(mut trigger: On<FromClient<SendUsername>>, 
     mut cmd: Commands, 
 ) {
     let username = mem::take(&mut trigger.event_mut().0);

@@ -38,7 +38,7 @@ pub fn update_human_move_input(
 
 #[allow(unused_parens, )]
 pub fn send_move_input_to_server(
-    mut event_writer: EventWriter<SendMoveInput>,
+    mut event_writer: MessageWriter<SendMoveInput>,
     move_input: Query<(Entity, &InputMoveVector), (Changed<InputMoveVector>, With<ControlledLocally>)>,
 ) {
     let mut to_write = Vec::new();
@@ -52,7 +52,7 @@ pub fn send_move_input_to_server(
 
 #[allow(unused_parens, )]
 pub fn receive_move_input_from_client(
-    mut events: EventReader<FromClient<SendMoveInput>>,
+    mut events: MessageReader<FromClient<SendMoveInput>>,
     mut controlled_beings_query: Query<(&mut InputMoveVector, &ControlledBy, ), ()>,
 
 ) -> Result {
@@ -80,7 +80,7 @@ pub fn receive_move_input_from_client(
 
 #[allow(unused_parens, )]
 pub fn apply_movement(
-    mut ewriter: EventWriter<ToClients<TransformFromServer>>,
+    mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
     time: Res<Time>,
     state : Res<State<GameSetupType>>,
     server: Option<Res<RenetServer>>,
@@ -101,7 +101,7 @@ pub fn apply_movement(
                 //info!("Sending transform for being: {:?}", being_ent);
                 let to_clients = ToClients { 
                     mode: SendMode::Broadcast, 
-                    event: TransformFromServer::new(being_ent, transform.clone(), true),
+                    message: TransformFromServer::new(being_ent, transform.clone(), true),
                 };
                 to_write.push(to_clients);
             }
@@ -212,7 +212,7 @@ pub fn process_movement_modifiers(
 //#[cfg(not(feature = "headless_server"))]
 #[allow(unused_parens)]
 pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE DE INTERPOLATION/PREDICTION/ROLLBACK/LOQSEA
-    mut transforms: EventReader<TransformFromServer>, 
+    mut transforms: MessageReader<TransformFromServer>, 
     client: Option<Res<RenetClient>>,
     mut being_query: Query<(&mut Transform, &ControlledBy, &HumanControlled)>,
     selfplayer: Single<(Entity), (With<OfSelf>, With<Player>)>,

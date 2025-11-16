@@ -103,7 +103,7 @@ pub fn plugin(app: &mut App) {
 
         //usar feature
         .add_observer(client_map_server_tiling)
-        .add_event::<SavedTileHadChunkDespawn>()
+        .add_message::<SavedTileHadChunkDespawn>()
 
 
     ;

@@ -85,7 +85,7 @@ pub struct NoiseSerisHandles {
     #[asset(path = "ron/tilemap/terrgen/noise", collection(typed))]
     pub handles: Vec<Handle<NoiseSerialization>>,
 }
-#[derive(serde::Deserialize, Asset, Reflect, )]
+#[derive(Deserialize, Asset, Reflect, )]
 pub struct NoiseSerialization {
     pub id: String,
     /// Default is 0.01
@@ -115,6 +115,14 @@ pub struct NoiseSerialization {
     /// Default is 1.0
     pub domain_warp_amp: Option<f32>,
 }
+
+#[derive(Deserialize, Asset, Reflect, )]
+pub struct DungeonSeri {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
+
 
 
 #[derive(AssetCollection, Resource, Default, Reflect)]

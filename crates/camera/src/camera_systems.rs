@@ -30,7 +30,7 @@ pub fn camera_follow_target(
 }
 
 pub fn camera_zoom_system(
-    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut mouse_wheel_events: MessageReader<MouseWheel>,
     mut camera_query: Query<&mut Transform, With<Camera>>,
 ) {
     let zoom_speed = 0.1; let min_zoom = 0.0001; let max_zoom = 100.0; 

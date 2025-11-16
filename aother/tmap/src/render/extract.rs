@@ -1,5 +1,9 @@
 use bevy::{
-    ecs::entity::EntityHashSet, math::Affine3A, platform::collections::{HashMap, HashSet}, prelude::*, render::{Extract, primitives::{Aabb, Frustum}, render_resource::{FilterMode, TextureFormat}, sync_world::RenderEntity}
+    camera::primitives::{Aabb, Frustum}, ecs::entity::EntityHashSet, math::Affine3A, platform::collections::HashMap, prelude::*, render::{
+        Extract,
+        render_resource::{FilterMode, TextureFormat},
+        sync_world::RenderEntity,
+    }
 };
 
 use crate::{DrawTilemap, anchor::TilemapAnchor};
@@ -213,7 +217,7 @@ pub fn extract(//TODO EXPONER UN EVENTO
             &TilemapAnchor,
         )>,
     >,
-    mut event_reader: Extract<EventReader<DrawTilemap>>,
+    mut event_reader: Extract<MessageReader<DrawTilemap>>,
 
     camera_query: Extract<Query<(&RenderEntity, &Frustum), With<Camera>>>,
     images: Extract<Res<Assets<Image>>>,
@@ -275,7 +279,7 @@ pub fn extract(//TODO EXPONER UN EVENTO
                     spacing: *data.3,
                     grid_size: *data.4,
                     map_type: *data.5,
-                    texture: data.6.clone_weak(),
+                    texture: data.6.clone(),
                     map_size: *data.7,
                     visibility: *data.8,
                     frustum_culling: *data.9,
@@ -311,21 +315,21 @@ pub fn extract(//TODO EXPONER UN EVENTO
                     data.0.id(),
                     ExtractedTilemapBundle {
                         transform: *data.1,
-                    tile_size: *data.2,
-                    texture_size: TilemapTextureSize::default(),
-                    spacing: *data.3,
-                    grid_size: *data.4,
-                    map_type: *data.5,
-                    texture: data.6.clone_weak(),
-                    map_size: *data.7,
-                    visibility: *data.8,
-                    frustum_culling: *data.9,
-                    render_settings: *data.10,
-                    changed: ChangedInMainWorld,
-                    anchor: *data.11,
-                },
-            ));
-        }
+                        tile_size: *data.2,
+                        texture_size: TilemapTextureSize::default(),
+                        spacing: *data.3,
+                        grid_size: *data.4,
+                        map_type: *data.5,
+                        texture: data.6.clone(),
+                        map_size: *data.7,
+                        visibility: *data.8,
+                        frustum_culling: *data.9,
+                        render_settings: *data.10,
+                        changed: ChangedInMainWorld,
+                        anchor: *data.11,
+                    },
+                ));
+            }
         }
     }
 
@@ -339,7 +343,7 @@ pub fn extract(//TODO EXPONER UN EVENTO
                 ExtractedTilemapTextureBundle {
                     data: ExtractedTilemapTexture::new(
                         render_entity.id(),
-                        texture.clone_weak(),
+                        texture.clone(),
                         *tile_size,
                         *tile_spacing,
                         default_image_settings.0.min_filter.into(),

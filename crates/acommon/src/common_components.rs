@@ -79,14 +79,17 @@ impl From<ImagePathHolder> for bevy::asset::AssetPath<'_> {
 pub struct ImageHolder(pub Handle<Image>);
 impl ImageHolder {
 
-    pub fn new<S: AsRef<str>>(asset_server: &AssetServer, path: S) -> Result<Self, BevyError> {
+    pub fn new<S>(asset_server: &AssetServer, path: S) -> Result<Self, BevyError>
+    where
+        S: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
+    {
         let img_path = format!("assets/{}", path.as_ref());
         if !std::path::Path::new(&img_path).exists() {
             let err = BevyError::from(format!("Image path does not exist: {}", img_path));
             error!(target: "image_loading", "{}", err);
             return Err(err);
         }
-        Ok(Self(asset_server.load(path.as_ref())))
+        Ok(Self(asset_server.load(path)))
     }
 }
 
@@ -100,7 +103,7 @@ impl ImageHolderMap {
     ) -> Result<Self, BevyError> {
         let mut map = HashIdIndexMap::default();
         for (key, path) in img_paths {
-            let image_holder = ImageHolder::new(asset_server, &path)?;
+            let image_holder = ImageHolder::new(asset_server, path)?;
             map.insert(key, image_holder.0);
         }
         Ok(Self(map))

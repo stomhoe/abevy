@@ -57,7 +57,7 @@ pub fn rem_outofrange_chunks_from_activators(
     mut activator_query: Query<(&GlobalTransform, &mut ActivatingChunks), (Or<(Changed<GlobalTransform>, )>, )>,
     chunks_query: Query<(&ChunkPos), With<Chunk>>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
-    mut ewriter: EventWriter<CheckChunkDespawn>,
+    mut ewriter: MessageWriter<CheckChunkDespawn>,
 ) {
     let mut to_despawn = Vec::new();
     for (act_transform, mut activate_chunks) in activator_query.iter_mut() {
@@ -86,7 +86,7 @@ pub fn rem_outofrange_chunks_from_activators(
 #[allow(unused_parens, )]
 pub fn clear_chunks_on_dim_change(
     mut activator_query: Query<(&mut ActivatingChunks), (Changed<DimensionRef>, )>,
-    mut ewriter: EventWriter<CheckChunkDespawn>,
+    mut ewriter: MessageWriter<CheckChunkDespawn>,
 ) {
     let mut check_if_despawn = Vec::new();
     for (mut activate_chunks) in activator_query.iter_mut() { 
@@ -110,7 +110,7 @@ pub fn despawn_unreferenced_chunks(
     tmaps: Query<&TileStorage>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut despawn_events: ResMut<Events<CheckChunkDespawn>>,
-    mut tosave_event_writer: EventWriter<SavedTileHadChunkDespawn>,
+    mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
 ) {
     let mut tosave_events = Vec::new();
     let mut despawn_retransmitted_events = Vec::new();
@@ -162,7 +162,7 @@ pub fn show_or_hide_chunks(
     camera_query: Single<(&GlobalTransform), (With<CameraTarget>, Or<(Changed<GlobalTransform>, Added<CameraTarget>, Changed<DimensionRef>, )>, )>,
     mut chunks_query: Query<(&mut Visibility, &ChunkPos, &Children), With<Chunk>>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
-    mut event_writer: EventWriter<DrawTilemap>,
+    mut event_writer: MessageWriter<DrawTilemap>,
 ) {
     let camera_transform = *camera_query;
 

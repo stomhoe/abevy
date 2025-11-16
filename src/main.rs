@@ -40,9 +40,9 @@ concat!(
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
 fn main() {
-    GLOBAL_ERROR_HANDLER.set(warn).expect("Error handler can only be set once, globally.");
     
     App::new()
+        .set_error_handler(warn)
         .add_plugins((
             DefaultPlugins
             .set(//https://bevy-logging.github.io/chapter_5.html

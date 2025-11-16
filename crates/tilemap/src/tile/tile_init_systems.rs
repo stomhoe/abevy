@@ -252,7 +252,7 @@ pub fn map_portal_tiles(mut cmd: Commands,
 
 #[allow(unused_parens, )]
 pub fn client_map_server_tiling(
-    trigger: Trigger<TileEntitiesMap>, 
+    trigger: On<TileEntitiesMap>, 
     mut cmd: Commands, 
     server: Option<Res<RenetServer>>,
     mut entis_map: ResMut<ServerEntityMap>, 
@@ -264,7 +264,7 @@ pub fn client_map_server_tiling(
     for (hash_id, &server_entity) in received_map.0.iter() {
         
         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
-            if let Some(prev_client_entity) = entis_map.server_entry(server_entity).get() 
+            if let Some(prev_client_entity) = entis_map.to_client().get(server_entity)
                 && client_entity != prev_client_entity 
             {
                 cmd.entity(prev_client_entity).try_despawn();
@@ -283,10 +283,10 @@ pub fn instantiate_portal(mut cmd: Commands,
     new_portals: Query<(Entity, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(Without<SearchingForSuitablePos>, )>,
     pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
-    mut ew_pos_search: EventWriter<PosSearch>, 
+    mut ew_pos_search: MessageWriter<PosSearch>, 
     mut mass_collected: ResMut<MassCollectedTiles>,
-    mut ereader_search_successful: EventReader<SuitablePosFound>,
-    mut ereader_search_failed: EventReader<SearchFailed>, 
+    mut ereader_search_successful: MessageReader<SuitablePosFound>,
+    mut ereader_search_failed: MessageReader<SearchFailed>, 
     mut register_pos: ResMut<RegisteredPositions>
 
 ) {

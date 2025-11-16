@@ -6,7 +6,7 @@ use crate::common_components::StrId;
 
 
 #[derive(Resource, Default)]
-pub struct ImageSizeMap(pub HashMap<Handle<Image>, U16Vec2>);
+pub struct ImageSizeMap(pub HashMap<AssetId<Image>, U16Vec2>);
 
 #[derive(Resource, Debug, Default )]
 pub struct GlobalEntityMap(pub HashMap<String, Entity>);

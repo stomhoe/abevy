@@ -11,8 +11,7 @@ edition = "2024"
 default = []
 
 [workspace.dependencies]
-bevy = { version = "0.16.1", features = [
-    "configurable_error_handler",
+bevy = { version = "0.17.2", features = [
     "dynamic_linking",
     "track_location",
     "serialize",
@@ -32,23 +31,23 @@ rand_pcg = "*"
 bevy_ecs_tilemap = { path = "aother/tmap", features = ["serde"] }
 superstate = { git = "https://github.com/KurlykovDanila/Superstate.git" }
 bevy_simple_scroll_view = "0.4.0"
-bevy_ui_text_input = "0.5.2"
-bevy_replicon = "0.34.4"
+bevy_ui_text_input = "0.6.0"
+bevy_replicon = "0.36.1"
 bevy_replicon_renet = { git = "https://github.com/projectharmonia/bevy_replicon_renet.git" }
-serde = { version = "1.0.219", features = ["derive"] }
-bevy_common_assets = { version = "0.13.0", features = ["ron"]}
+serde = { version = "1.0.228", features = ["derive"] }
+bevy_common_assets = { version = "0.14.0", features = ["ron"]}
 
 bevy_simple_subsecond_system = "0.2.0" #IMPORTANTE PARA HOTPATCHEAR SISTEMAS
 bevy-ui-gradients = "0.4.0"
-bevy_spritesheet_animation = "3.0.0"
+bevy_spritesheet_animation = "5.0.0"
 bevy_asset_loader = "0.23.0"
-bevy-inspector-egui = "0.33.1"
+bevy-inspector-egui = "0.35.0"
 splines = { version = "5.0.0", features = ["serde"] }
-indexmap = "2.11.0"
+indexmap = "2.12.0"
 delegate = "0.13.4"
 tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
-noiz = "0.2.0"
+tracing-subscriber = "0.3.20"
+noiz = "0.3.0"
 
 #bevy_save = "1.0.0"
 #bevy_rapier2d = "0.31.0"

@@ -232,12 +232,12 @@ pub fn update_animstate_for_clients(
         if let Ok(controller) = controller.get(being_ent) {
             cmd.server_trigger(ToClients {
                 mode: SendMode::BroadcastExcept(controller.client),
-                event: event_data,
+                message: event_data,
             });
             info!(target: "sprite_animation", "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client);
         }
         else {
-            cmd.server_trigger(ToClients { mode: SendMode::Broadcast, event: event_data, });
+            cmd.server_trigger(ToClients { mode: SendMode::Broadcast, message: event_data, });
             info!(target: "sprite_animation", "Sending moving {} for entity {:?} to all clients", moving, being_ent);
         }
     }
@@ -246,7 +246,7 @@ pub fn update_animstate_for_clients(
 //#[cfg(not(feature = "headless_server"))]
 #[allow(unused_parens, )]
 pub fn client_receive_moving_anim(
-    trigger: Trigger<MoveStateUpdated>, mut query: Query<&mut MoveAnimActive>,
+    trigger: On<MoveStateUpdated>, mut query: Query<&mut MoveAnimActive>,
     client: Option<Res<RenetClient>>,
 ) {
     if client.is_none() {return;}

@@ -81,10 +81,10 @@ pub fn plugin(app: &mut App) {
         .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
         .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>()
         .replicate::<NoiseHolder>()
-        .add_event::<PendingOp>()
-        //.add_event::<MassCollectedTiles>()
+        .add_message::<PendingOp>()
+        //.add_message::<MassCollectedTiles>()
         .init_resource::<MassCollectedTiles>()
-        .add_event::<PosSearch>().add_event::<SuitablePosFound>().add_event::<SearchFailed>()
+        .add_message::<PosSearch>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
         ;
 
         

@@ -11,7 +11,7 @@ use crate::TilemapSize;
 use crate::map::TilemapId;
 
 /// A tile position in the tilemap grid.
-#[derive(Component, Reflect, Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, )]
+#[derive(Component, Reflect, Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[reflect(Component)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TilePos {
@@ -109,7 +109,7 @@ pub struct TileFlip {
 }
 
 /// This an optional tile bundle with default components.
-#[derive(Bundle, Default, Clone, Copy, Debug, Reflect)]
+#[derive(Bundle, Default, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TileBundle {
     pub position: TilePos,
@@ -121,18 +121,6 @@ pub struct TileBundle {
     pub old_position: TilePosOld,
     #[cfg_attr(feature = "serde", serde(skip))]
     pub sync: SyncToRenderWorld,
-}
-
-#[derive(Bundle, Default, Clone, Copy, Debug, Reflect)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct TileBundleNoSync {
-    pub position: TilePos,
-    pub texture_index: TileTextureIndex,
-    pub tilemap_id: TilemapId,
-    pub visible: TileVisible,
-    pub flip: TileFlip,
-    pub color: TileColor,
-    pub old_position: TilePosOld,
 }
 
 #[derive(Component, Reflect, Default, Clone, Copy, Debug)]

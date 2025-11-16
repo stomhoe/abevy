@@ -27,14 +27,14 @@ pub fn set_entity_name(//DESACTIVAR EN RELEASE BUILDS
     }
 }
 
-pub fn update_img_sizes_on_load(mut events: EventReader<AssetEvent<Image>>, assets: Res<Assets<Image>>, 
+pub fn update_img_sizes_on_load(mut events: MessageReader<AssetEvent<Image>>, assets: Res<Assets<Image>>, 
     mut map: ResMut<ImageSizeMap>,) {
     for ev in events.read() {
         match ev {
             AssetEvent::Added { id } => {
                 if let Some(img) = assets.get(*id) {
                     let img_size = UVec2::new(img.texture_descriptor.size.width, img.texture_descriptor.size.height);
-                    map.0.insert(Handle::Weak(id.clone()), img_size.as_u16vec2());
+                    map.0.insert(id.clone(), img_size.as_u16vec2());
                 }
             },
             _ => {}

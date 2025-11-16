@@ -52,7 +52,7 @@ pub fn z_sort_system(
     Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>,
     mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZeroRef), (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
 
-    mut event_writer: EventWriter<DrawTilemap>,
+    mut event_writer: MessageWriter<DrawTilemap>,
 
 ) {//TODO MEJORAR
     let mut to_draw = Vec::new();

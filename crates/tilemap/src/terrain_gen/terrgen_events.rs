@@ -12,9 +12,9 @@ use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, tile::ti
     
 
 /*
-.add_event::<TestEvent>(),
-mut event_writer: EventWriter<TestEvent>,
-mut event_reader: EventReader<TestEvent>,
+.add_message::<TestEvent>(),
+mut event_writer: MessageWriter<TestEvent>,
+mut event_reader: MessageReader<TestEvent>,
 */
 
 
@@ -98,7 +98,7 @@ impl PartialEq for StudiedOp {
 impl Eq for StudiedOp {}
 
 /*
-mut event_writer: EventWriter<ToClients<ClientSpawnTile>>,
+mut event_writer: MessageWriter<ToClients<ClientSpawnTile>>,
 */
 
 

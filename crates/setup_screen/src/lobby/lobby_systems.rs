@@ -58,7 +58,7 @@ pub fn lobby_button_interaction(
                     game_phase.set(GamePhase::ActiveGame);
                     cmd.server_trigger(ToClients {
                         mode: SendMode::Broadcast,
-                        event: HostStartedGame,
+                        message: HostStartedGame,
                     });
                 },
                 LobbyButtonId::CreateCharacter => {
@@ -72,7 +72,7 @@ pub fn lobby_button_interaction(
 }
 
 pub fn on_player_disconnect(
-    trigger: Trigger<OnDespawn, Player>,
+    trigger: On<Despawn, Player>,
     //state:
     //created_character_query: Query<(&CreatedCharacter, ), ()>, 
     players: Query<(&StrId, &LobbyPlayerUiNode), With<Player>>,

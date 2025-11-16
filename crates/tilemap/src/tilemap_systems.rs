@@ -55,7 +55,7 @@ pub fn process_tiles_pre(
 
     mut texture_overlay_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
     mut voronoi_mat: ResMut<Assets<VoronoiTextureOverlayMat>>,
-    mut event_writer: EventWriter<DrawTilemap>,
+    mut event_writer: MessageWriter<DrawTilemap>,
     chunkrange: Res<AaChunkRangeSettings>,
 
     min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,

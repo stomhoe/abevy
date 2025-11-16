@@ -62,7 +62,7 @@ pub fn on_control_change(
 //                                                       ^^^^
 #[allow(unused_parens)]
 pub fn cross_portal(mut cmd: Commands, 
-    mut ewriter: EventWriter<ToClients<TransformFromServer>>,
+    mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
     portal_query: Query<(Entity, &DimensionRef, &PortalInstance, &GlobalTransform), (Without<Being>)>,
     mut being_query: Query<(Entity, &mut DimensionRef, &mut Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
 ) {
@@ -98,7 +98,7 @@ pub fn cross_portal(mut cmd: Commands,
 
                         let to_clients = ToClients { 
                             mode: SendMode::Broadcast, 
-                            event: TransformFromServer::new(being_entity, being_transform.clone(), false),
+                            message: TransformFromServer::new(being_entity, being_transform.clone(), false),
                         };
                         to_write.push(to_clients);
                     },

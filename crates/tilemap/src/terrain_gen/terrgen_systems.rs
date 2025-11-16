@@ -25,7 +25,7 @@ pub fn spawn_terrain_operations (
     chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<OperationsLaunched>, With<Chunk>)>, 
     dimension_query: Query<(&DimensionRootOplist, &HashId), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
-    mut ew_pending_ops: EventWriter<PendingOp>,
+    mut ew_pending_ops: MessageWriter<PendingOp>,
 
 ) -> Result {
     if chunks_query.is_empty() { return Ok(()); }
@@ -91,7 +91,7 @@ pub fn produce_tiles(mut cmd: Commands,
     studied_ops: Query<&StudiedOp,>,
     weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
     mut collected: ResMut<MassCollectedTiles>,
-    mut ewriter_sampled_value: EventWriter<SuitablePosFound>,
+    mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
 ) -> Result {
 
     if pending_ops_events.is_empty() { return Ok(()); }
@@ -240,8 +240,8 @@ fn spawn_bifurcation_oplists(
 #[allow(unused_parens)]
 pub fn search_suitable_position(
     mut cmd: Commands,
-    mut events_pos_search: ResMut<Events<PosSearch>>, mut ewriter_search_failed: EventWriter<SearchFailed>,
-    mut ewriter_pending_ops: EventWriter<PendingOp>, mut ereader_suitable_pos_found: EventReader<SuitablePosFound>,
+    mut events_pos_search: ResMut<Events<PosSearch>>, mut ewriter_search_failed: MessageWriter<SearchFailed>,
+    mut ewriter_pending_ops: MessageWriter<PendingOp>, mut ereader_suitable_pos_found: MessageReader<SuitablePosFound>,
     studied_ops: Query<&StudiedOp, ( )>,
 ) {
     let mut new_pending_ops = Vec::new();

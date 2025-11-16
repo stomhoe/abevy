@@ -51,7 +51,7 @@ pub fn menu_button_interaction(
 
 pub fn handle_line_edits_interaction(
     mut cmd: Commands, 
-    mut events: EventReader<TextSubmitEvent>,
+    mut events: MessageReader<TextSubmitEvent>,
     mut line_edit_query: Query<(&mut CurrentText, &mut TextInputPrompt, &mut Outline), With<MainMenuIpLineEdit>>,
 
 ) {
