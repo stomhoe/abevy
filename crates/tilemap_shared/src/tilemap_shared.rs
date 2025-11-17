@@ -89,7 +89,7 @@ impl GlobalTilePos {
 //TODO: ARREGLAR, HAY Q HACER Q LA DIVISIÓN SE REDONDEE HACIA ABAJO, CONVERTIR CADA COMPONENTE A FLOAT Y USAR FLOOR EN EL RESULTADO
 
 
-        ChunkPos((Into::<IVec2>::into(*self) / ChunkPos::CHUNK_SIZE.as_ivec2()))
+        ChunkPos(Into::<IVec2>::into(*self) / ChunkPos::CHUNK_SIZE.as_ivec2())
     }
 
     pub fn to_translation(&self, prev_transform_z: f32) -> Vec3 {

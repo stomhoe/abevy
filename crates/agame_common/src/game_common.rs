@@ -47,7 +47,7 @@ pub fn plugin(app: &mut App) {
         (z_sort_system, apply_color).in_set(StatefulSessionSystems),
         (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
-        add_colorsamplers_to_map.run_if(not(server_or_singleplayer)),
+        add_colorsamplers_to_map.run_if(not(in_state(ClientState::Disconnected))),
         apply_color,
     ))
     .configure_sets(Update, (
@@ -57,8 +57,8 @@ pub fn plugin(app: &mut App) {
             in_state(GamePhase::ActiveGame)
             .and(in_state(LocallyLoadedAssetsSession::KeepAlive))
             .and(
-                in_state(AssetsLoadingState::LocalFinished).and(not(server_or_singleplayer))
-                .or(in_state(AssetsLoadingState::ReplicatedFinished).and(server_or_singleplayer))
+                in_state(AssetsLoadingState::LocalFinished).and(not(in_state(ClientState::Disconnected)))
+                .or(in_state(AssetsLoadingState::ReplicatedFinished).and(in_state(ClientState::Disconnected)))
             )
         )
         .in_set(StatefulSessionSystems),
@@ -74,8 +74,8 @@ pub fn plugin(app: &mut App) {
             in_state(GamePhase::ActiveGame)
             .and(in_state(LocallyLoadedAssetsSession::KeepAlive))
             .and(
-                in_state(AssetsLoadingState::LocalFinished).and(not(server_or_singleplayer))
-                .or(in_state(AssetsLoadingState::ReplicatedFinished).and(server_or_singleplayer))
+                in_state(AssetsLoadingState::LocalFinished).and(not(in_state(ClientState::Disconnected)))
+                .or(in_state(AssetsLoadingState::ReplicatedFinished).and(in_state(ClientState::Disconnected)))
             )
         )
         .in_set(StatefulSessionSystems),

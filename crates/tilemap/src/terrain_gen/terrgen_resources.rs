@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 
 
-#[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone)]
+#[derive(Resource, Debug, Reflect, Default, Message, Deserialize, Serialize, Clone)]
 #[reflect(Resource, Default)]
 pub struct RegisteredPositions(pub EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>); 
 impl RegisteredPositions {

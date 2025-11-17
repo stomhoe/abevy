@@ -98,7 +98,7 @@ pub fn clear_chunks_on_dim_change(
     ewriter.write_batch(check_if_despawn);
 }
 
-#[derive(Debug, Event)]
+#[derive(Debug, Message)]
 pub struct CheckChunkDespawn (pub Entity, pub u8,);//u8 = retransmission count
 
 

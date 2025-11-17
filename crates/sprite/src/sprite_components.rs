@@ -14,7 +14,8 @@ use crate::sprite_scale_offset_components::Offset2D;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(EntityPrefix::new("SpriteConfig"), AssetScoped,)]
 pub struct SpriteConfig;
-
+//todo agregarle path_to_sprite y hacer q si no hay un sprite component en la entity q lo instancie
+//de esta forma no hay q pre-spawnear los spriteconfig en los clients y se pueden replicar normalmente
 
 
 

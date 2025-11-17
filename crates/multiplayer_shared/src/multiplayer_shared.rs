@@ -36,11 +36,11 @@ pub fn plugin(app: &mut App) {
     ))
     .configure_sets(Update, (
         HostSystems.run_if(in_state(GameSetupType::AsHost).or(server_running)),
-        ClientSystems.run_if(in_state(GameSetupType::AsJoiner).or(not(server_or_singleplayer))),
+        ClientSystems.run_if(in_state(GameSetupType::AsJoiner).or(not(in_state(ClientState::Disconnected)))),
     ))
     .configure_sets(FixedUpdate, (
         HostSystems.run_if(in_state(GameSetupType::AsHost).or(server_running)),
-        ClientSystems.run_if(in_state(GameSetupType::AsJoiner).or(not(server_or_singleplayer))),
+        ClientSystems.run_if(in_state(GameSetupType::AsJoiner).or(not(in_state(ClientState::Disconnected)))),
     ))
     .add_systems(OnExit(AppState::StatefulGameSession), (
         all_clean_resources
@@ -63,6 +63,6 @@ pub fn plugin(app: &mut App) {
     
  .replicate_with((
         RuleFns::<Being>::default(),
-        (RuleFns::<Transform>::default(), SendRate::Once),
+        (RuleFns::<Transform>::default(), ReplicationMode::Once),
     ))
 */

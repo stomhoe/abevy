@@ -57,5 +57,5 @@ impl MultipleDimensionStringRefs {
 #[derive(Component, Debug, Default, Serialize, Deserialize, Reflect)]
 pub struct MultipleDimensionRefs(#[entities] pub EntityHashSet,);
 
-#[derive(Debug, Event)]
+#[derive(Debug, Message)]
 pub struct ReassignDimensionToEntity (pub Entity);

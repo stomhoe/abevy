@@ -21,8 +21,8 @@ pub fn plugin(app: &mut App) {
         ))
         .add_systems(Update, (
             update_child_of,
-            add_dimensions_to_map.run_if(not(server_or_singleplayer)),
-            (replace_multiple_string_refs_by_entity_refs, dim_replace_string_ref_by_entity_ref).run_if(server_or_singleplayer.and(in_state(AssetsLoadingState::ReplicatedFinished))),
+            add_dimensions_to_map.run_if(not(in_state(ClientState::Disconnected))),
+            (replace_multiple_string_refs_by_entity_refs, dim_replace_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected).and(in_state(AssetsLoadingState::ReplicatedFinished))),
 
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
@@ -30,7 +30,7 @@ pub fn plugin(app: &mut App) {
         .replicate_with((
             RuleFns::<Dimension>::default(),
             RuleFns::<Transform>::default(),
-            (RuleFns::<GlobalTransform>::default(), SendRate::Once),
+            (RuleFns::<GlobalTransform>::default(), ReplicationMode::Once),
         ))
         .replicate::<DimensionRef>()
         .replicate::<MultipleDimensionRefs>()

@@ -13,7 +13,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         (
-            (host_add_activates_chunks, cross_portal).run_if(server_or_singleplayer),
+            (host_add_activates_chunks, cross_portal).run_if(in_state(ClientState::Disconnected)),
             on_control_change,
         ).in_set(GameplaySystems),
     ))
@@ -41,7 +41,7 @@ pub fn plugin(app: &mut App) {
     .replicate_with((
     RuleFns::<Being>::default(),
     RuleFns::<ChildOf>::default(),
-    (RuleFns::<Transform>::default(), SendRate::EveryTick),
+    (RuleFns::<Transform>::default(), ReplicationMode::OnChange),
     ))
     
 

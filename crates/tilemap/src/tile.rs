@@ -33,9 +33,9 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
             flip_tile_along_x,
-            (add_tile_weighted_samplers_to_map, client_sync_tile, client_add_sprite ).run_if(not(server_or_singleplayer)),
+            (add_tile_weighted_samplers_to_map, client_sync_tile, client_add_sprite ).run_if(not(in_state(ClientState::Disconnected))),
             tile_readjust_transform,
-            instantiate_portal.run_if(server_or_singleplayer),
+            instantiate_portal.run_if(in_state(ClientState::Disconnected)),
             make_child_of_chunk,
         ))
 
@@ -46,7 +46,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             OnEnter(AssetsLoadingState::ReplicatedFinished), (
                 (init_tile_weighted_samplers, add_tile_weighted_samplers_to_map, init_tile_weighted_samplers_weights, )
-                .chain().run_if(server_or_singleplayer),
+                .chain().run_if(in_state(ClientState::Disconnected)),
         ).in_set(TilingSystems))
 
         .configure_sets(OnEnter(AssetsLoadingState::LocalFinished), ColorSamplersInitSystems.before(TilingSystems))

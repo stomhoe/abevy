@@ -13,11 +13,11 @@ use crate::tile::tile_components::*;
 
 use {common::common_components::*, };
 
-#[derive(Debug, Event)]
+#[derive(Debug, Message)]
 pub struct SavedTileHadChunkDespawn (pub Entity);
 
 
-// #[derive(Debug, Deserialize, Event, Serialize, MapEntities, Hash, PartialEq, Eq, Clone)]
+// #[derive(Debug, Deserialize, Message, Serialize, MapEntities, Hash, PartialEq, Eq, Clone)]
 // pub struct SpawnSyncTile  { 
 //     #[entities] pub orig_ref: Entity, pub oplist_size: OplistSize, pub dim: DimensionRef, pub global_pos: GlobalTilePos, pub serv_tile_ent: Entity 
 // }

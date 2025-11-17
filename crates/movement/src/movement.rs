@@ -15,8 +15,8 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(MOVEMENT_SCHEDULE, (
             (process_movement_modifiers, update_facing_dir, apply_movement, update_human_move_input,
-                (send_move_input_to_server, on_receive_transf_from_server).run_if(not(server_or_singleplayer)),
-                receive_move_input_from_client.run_if(server_or_singleplayer)
+                (send_move_input_to_server, ).run_if(in_state(ClientState::Connected)),
+                receive_move_input_from_client.run_if(in_state(ClientState::Disconnected))
             ).in_set(MovementSystems),
         ))
         .configure_sets(FixedUpdate, 
@@ -27,9 +27,9 @@ pub fn plugin(app: &mut App) {
         )
 
 
-        .add_mapped_client_event::<SendMoveInput>(Channel::Unreliable)
+        .add_mapped_client_message::<SendMoveInput>(Channel::Unreliable)
 
-        .add_mapped_server_event::<TransformFromServer>(Channel::Unreliable)
+        .add_mapped_server_message::<TransformFromServer>(Channel::Unreliable)
 
         .register_type::<InputMoveVector>()
         .register_type::<ProcessedInputVector>()

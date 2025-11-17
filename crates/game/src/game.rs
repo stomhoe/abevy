@@ -12,10 +12,10 @@ pub fn plugin(app: &mut App) {
     app
 
     .add_systems(OnEnter(AppState::StatefulGameSession), (
-        (server_or_singleplayer_setup,).run_if(server_or_singleplayer),
+        (server_or_singleplayer_setup,).run_if(in_state(ClientState::Disconnected)),
     ))
     .add_systems(OnEnter(GamePhase::ActiveGame), (
-        (spawn_player_beings,).run_if(server_or_singleplayer),
+        (spawn_player_beings,).run_if(in_state(ClientState::Disconnected)),
     ))
     //.add_systems(Update, ())
 

@@ -40,7 +40,7 @@ bevy_common_assets = { version = "0.14.0", features = ["ron"]}
 bevy_simple_subsecond_system = "0.2.0" #IMPORTANTE PARA HOTPATCHEAR SISTEMAS
 bevy-ui-gradients = "0.4.0"
 bevy_spritesheet_animation = "5.0.0"
-bevy_asset_loader = "0.23.0"
+bevy_asset_loader = { git = "https://github.com/NiklasEi/bevy_asset_loader.git", branch = "bevy_main" }
 bevy-inspector-egui = "0.35.0"
 splines = { version = "5.0.0", features = ["serde"] }
 indexmap = "2.12.0"

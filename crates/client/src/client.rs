@@ -54,6 +54,6 @@ pub fn plugin(app: &mut App) {
     
  .replicate_with((
         RuleFns::<Being>::default(),
-        (RuleFns::<Transform>::default(), SendRate::Once),
+        (RuleFns::<Transform>::default(), ReplicationMode::Once),
     ))
 */

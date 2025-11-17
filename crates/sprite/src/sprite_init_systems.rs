@@ -293,25 +293,26 @@ pub fn become_child_of_sprite_with_category(
 }
 
 
-#[allow(unused_parens, )]
+// TODO replicar los spritecfgs normalmente en vez de hacer esto
+// #[allow(unused_parens, )]
 
-pub fn client_map_server_sprite_cfgs(
-    trigger: On<SpriteCfgEntityMap>,
-    client: Option<Res<RenetClient>>,
-    mut entis_map: ResMut<ServerEntityMap>,
-    own_map: Res<SpriteCfgEntityMap>,
-) {
-    if client.is_none() { return; }
+// pub fn client_map_server_sprite_cfgs(
+//     trigger: On<SpriteCfgEntityMap>,
+//     client: Option<Res<RenetClient>>,
+//     mut entis_map: ResMut<ServerEntityMap>,
+//     own_map: Res<SpriteCfgEntityMap>,
+// ) {
+//     if client.is_none() { return; }
 
 
-    let SpriteCfgEntityMap(received_map) = trigger.event().clone();
-    for (hash_id, &server_entity) in received_map.0.iter() {
-        if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
-            debug!(target: "sprite_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
-            entis_map.insert(server_entity, client_entity);
-        } else {
-            error!(target: "sprite_loading", "Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
-        }
-    }
-}
+//     let SpriteCfgEntityMap(received_map) = trigger.event().clone();
+//     for (hash_id, &server_entity) in received_map.0.iter() {
+//         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
+//             debug!(target: "sprite_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
+//             entis_map.insert(server_entity, client_entity);
+//         } else {
+//             error!(target: "sprite_loading", "Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
+//         }
+//     }
+// }
 

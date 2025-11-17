@@ -5,18 +5,19 @@ use bevy::{math::f32, platform::collections::HashMap};
 use common::common_types::HashIdToEntityMap;
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
+#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Message, Reflect)]
 #[reflect(Resource, Default)]
 pub struct ColorWeightedSamplersMap(pub HashIdToEntityMap);
 
 
-
 #[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
+#[reflect(Resource, Default)]
 pub struct ColorWeightedSamplerHandles {
     #[asset(path = "ron/color_sampler", collection(typed))] 
     pub handles: Vec<Handle<WeightedColorsSeri>>,
 }
+
+
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct WeightedColorsSeri {
     pub id: String,

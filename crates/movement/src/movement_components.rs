@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 pub struct InputMoveVector(pub Vec2);//USADO TMB POR BOTS
 //no se incluye la coordenada z de agacharse o saltar porq esto se debe mandar reliably ya q no se spammea tanto
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Event)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Message)]
 pub struct InputJump;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Event)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Message)]
 pub struct InputDuck;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]

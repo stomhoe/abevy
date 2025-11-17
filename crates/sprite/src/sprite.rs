@@ -23,10 +23,10 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<SpriteConfigSeri>::new(&["sprite.ron"]),
     ))
     .add_systems(SPRITES_SCHEDULE, (
-        (apply_offsets, apply_scales, (become_child_of_sprite_with_category.run_if(server_or_singleplayer), 
+        (apply_offsets, apply_scales, (become_child_of_sprite_with_category.run_if(in_state(ClientState::Disconnected)), 
             insert_sprite_to_instance,).chain()),
 
-        (replace_string_ids_by_entities, add_spritechildren_and_comps, ).run_if(server_or_singleplayer)
+        (replace_string_ids_by_entities, add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected))
     ).in_set(SpriteSystems))
     .configure_sets(SPRITES_SCHEDULE, SpriteSystems.in_set(StatefulSessionSystems))
     
@@ -35,15 +35,15 @@ pub fn plugin(app: &mut App) {
     ).in_set(SpriteSystems)) 
 
     .replicate_with((
-        (RuleFns::<ChildOf>::default(), SendRate::EveryTick),
-        (RuleFns::<Transform>::default(), SendRate::Once),
-        (RuleFns::<SpriteHolderRef>::default(), SendRate::EveryTick),
-        (RuleFns::<SpriteConfigRef>::default(), SendRate::EveryTick),
+        (RuleFns::<ChildOf>::default(), ReplicationMode::OnChange),
+        (RuleFns::<Transform>::default(), ReplicationMode::Once),
+        (RuleFns::<SpriteHolderRef>::default(), ReplicationMode::OnChange),
+        (RuleFns::<SpriteConfigRef>::default(), ReplicationMode::OnChange),
     ))
 
     // .replicate_with((
-    //     (RuleFns::<SpriteHolderRef>::default(), SendRate::EveryTick),
-    //     (RuleFns::<ChildOf>::default(), SendRate::EveryTick),
+    //     (RuleFns::<SpriteHolderRef>::default(), ReplicationMode::OnChange),
+    //     (RuleFns::<ChildOf>::default(), ReplicationMode::OnChange),
     // ))
 
     .register_type::<SpriteHolderRef>()
@@ -61,9 +61,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<ScaleLookDown>()
     .register_type::<ScaleLookUpDown>()
     .register_type::<ScaleSideways>()
-    .add_server_trigger::<SpriteCfgEntityMap>(Channel::Unordered)
-    .make_trigger_independent::<SpriteCfgEntityMap>()
-    .add_observer(client_map_server_sprite_cfgs)
+    //.add_server_event::<SpriteCfgEntityMap>(Channel::Unordered).make_event_independent::<SpriteCfgEntityMap>().add_observer(client_map_server_sprite_cfgs)
 
    
     ;

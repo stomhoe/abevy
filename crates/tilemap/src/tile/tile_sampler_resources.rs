@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::terrain_gen::terrgen_components::Terrgen;
 
 
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
+#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Message, Reflect)]
 #[reflect(Resource, Default)]
 pub struct TileWeightedSamplersMap(pub HashIdToEntityMap);
 

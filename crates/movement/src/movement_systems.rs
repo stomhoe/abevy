@@ -57,17 +57,20 @@ pub fn receive_move_input_from_client(
 
 ) -> Result {
     for from_client in events.read() {
-        let SendMoveInput { vec: new_vec, being_ent } = from_client.event.clone();
+        let SendMoveInput { vec: new_vec, being_ent } = from_client.message.clone();
 
         if let Ok((mut input_vec, controlled_by, )) = controlled_beings_query.get_mut(being_ent) {
-            if controlled_by.client == from_client.client_entity {
+
+            let Some(client_entity) = from_client.client_id.entity() else { continue; };
+            
+            if controlled_by.client == client_entity {
                 if input_vec.0 != new_vec.0 { input_vec.0 = new_vec.0; }
                 //debug!(target: "movement", "Received move input for entity {:?} with vector {:?}", being_ent, new_vec);
             } else {
 
                 warn!(
                     "Client tried to control a being not controlled by them: {} (controlled_by.client: {:?}, from_client.client_entity: {:?})",
-                    being_ent, controlled_by.client, from_client.client_entity
+                    being_ent, controlled_by.client, client_entity
                 );
             }
         } else {
@@ -83,7 +86,7 @@ pub fn apply_movement(
     mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
     time: Res<Time>,
     state : Res<State<GameSetupType>>,
-    server: Option<Res<RenetServer>>,
+    server: Res<State<ServerState>>,
     
     mut query: Query<(Entity, &ProcessedInputVector, &mut Transform, &mut MoveAnimActive, Has<ControlledLocally>), >,
 ) {
@@ -97,7 +100,7 @@ pub fn apply_movement(
 
         if movement != Vec2::ZERO {
             transform.translation += movement.extend(0.0);
-            if server.is_some() {
+            if server.get() == &ServerState::Running {
                 //info!("Sending transform for being: {:?}", being_ent);
                 let to_clients = ToClients { 
                     mode: SendMode::Broadcast, 
@@ -209,32 +212,3 @@ pub fn process_movement_modifiers(
 }
 
 
-//#[cfg(not(feature = "headless_server"))]
-#[allow(unused_parens)]
-pub fn on_receive_transf_from_server(//TODO REHACER TODO ESTO CON ALGUNA CRATE DE INTERPOLATION/PREDICTION/ROLLBACK/LOQSEA
-    mut transforms: MessageReader<TransformFromServer>, 
-    client: Option<Res<RenetClient>>,
-    mut being_query: Query<(&mut Transform, &ControlledBy, &HumanControlled)>,
-    selfplayer: Single<(Entity), (With<OfSelf>, With<Player>)>,
-) -> Result {
-    let selfplayer = selfplayer.into_inner();
-
-    for ev in transforms.read() {
-
-        // if client.is_none() {return Ok(());}
-
-        // let Ok((mut transf, controller, human_controlled)) = being_query.get_mut(ev.being) else {
-        //     let err = Err(BevyError::from(format!("Received transform for entity that does not exist: {:?}", ev.being)));
-        //     return err;
-        // };
-        
-        // //debug!("Applying transform to entity: {:?}", entity);
-        // if controller.client == selfplayer && ev.interpolate && human_controlled.0 {
-        //     transf.translation = transf.translation.lerp(ev.trans.translation, 0.5);
-        // } else {
-        //     *transf = ev.trans;
-        // }
-    }
-    
-   Ok(())
-}

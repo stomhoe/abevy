@@ -36,7 +36,7 @@ impl SearchPattern {
 
 
 
-#[derive(Event, Debug, Clone)]
+#[derive(Message, Debug, Clone)]
 pub struct PosSearch {
     pub dimension_hash_id: i32,
     pub studied_op_ent: Entity,
@@ -62,7 +62,7 @@ impl PosSearch{
 
 
 
-#[derive(Event, Debug, Clone)]
+#[derive(Message, Debug, Clone)]
 pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub pos: GlobalTilePos, pub dimension_hash_id: i32,
     pub variables: VariablesArray, pub studied_op_ent: Entity//TODO: HACER LAS StudiedOp ENTITIES? (Y PONER StudiedOpRef en su lugar)
 }
@@ -102,10 +102,10 @@ mut event_writer: MessageWriter<ToClients<ClientSpawnTile>>,
 */
 
 
-#[derive(Debug, Clone, Event, )]
+#[derive(Debug, Clone, Message, )]
 pub struct SuitablePosFound { pub studied_op_ent: Entity, pub val: f32, pub found_pos: GlobalTilePos, }
 
 
-#[derive(Debug, Clone, Event, )]
+#[derive(Debug, Clone, Message, )]
 pub struct SearchFailed (pub Entity);
 

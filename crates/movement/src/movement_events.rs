@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::movement_components::*;
 
-#[derive(Deserialize, Event, Serialize, Clone, MapEntities)]
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
 pub struct SendMoveInput {
     #[entities]pub being_ent: Entity, pub vec: InputMoveVector,
 }
 
-#[derive(Deserialize, Event, Serialize, Clone, MapEntities)]
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
 pub struct TransformFromServer {
     #[entities]
     pub being: Entity,
