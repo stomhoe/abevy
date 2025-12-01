@@ -13,6 +13,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
+use crate::tile::tile_resources::TileImagePaths;
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::{StudiedOp},}, tile::tile_materials::* };
 
 #[derive(Bundle)]
@@ -41,7 +42,7 @@ impl Tile {
 pub struct LocalChunkRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(EntityPrefix::new("Tile Instances"), Name, Transform )]
+#[require(EntityPrefix::new_truncated("Tile Instances"), Name, Transform )]
 pub struct TileInstancesHolder;
 
 /*
@@ -114,7 +115,7 @@ pub struct TileShaderRef(pub Entity);
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
 
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, )]
-#[require(EntityPrefix::new("TileShader"), AssetScoped)]
+#[require(EntityPrefix::new_truncated("TileShader"), AssetScoped)]
 pub enum TileShader{
     TexRepeat(MonoRepeatTextureOverlayMat),
     TwoTexRepeat(TwoOverlaysExample),
@@ -133,7 +134,7 @@ pub struct InitialPos(pub GlobalTilePos);
 pub struct TileHidsHandles { ids: Vec<HashId>, handles: Vec<Handle<Image>>,}
 
 impl TileHidsHandles {
-    pub fn from_paths(asset_server: &AssetServer, img_paths: HashMap<String, String>, ) -> Result<Self, BevyError> {
+    pub fn from_paths(asset_server: &AssetServer, img_paths: TileImagePaths, ) -> Result<Self, BevyError> {
 
         if img_paths.is_empty() {
             return Err(BevyError::from("TileImgsMap cannot be created with an empty image paths map"));
@@ -141,7 +142,7 @@ impl TileHidsHandles {
         let mut ids = Vec::with_capacity(img_paths.len());
         let mut handles = Vec::with_capacity(img_paths.len());
         for (key, path) in img_paths {
-            let image_holder = ImageHolder::new(asset_server, &path)?;
+            let image_holder = ImageHolder::new(asset_server, path.clone())?;
             ids.push(HashId::from(key));
             handles.push(image_holder.0);
         }
@@ -180,7 +181,7 @@ impl MinDistancesMap {
 pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Terrgen, EntityPrefix::new("TileSamplers"), )]
+#[require(Terrgen, EntityPrefix::new_truncated("TileSamplers"), )]
 pub struct TileSamplerHolder;
 
 

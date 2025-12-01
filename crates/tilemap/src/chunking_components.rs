@@ -1,6 +1,5 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
-use bevy_replicon::client::event;
 use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
 use game_common::{game_common_components_samplers::EntiWeightedSampler};
 use serde::{Deserialize, Serialize};

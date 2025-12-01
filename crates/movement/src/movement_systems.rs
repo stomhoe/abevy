@@ -85,7 +85,7 @@ pub fn receive_move_input_from_client(
 pub fn apply_movement(
     mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
     time: Res<Time>,
-    state : Res<State<GameSetupType>>,
+    state : Res<State<ClientState>>,
     server: Res<State<ServerState>>,
     
     mut query: Query<(Entity, &ProcessedInputVector, &mut Transform, &mut MoveAnimActive, Has<ControlledLocally>), >,
@@ -93,7 +93,7 @@ pub fn apply_movement(
     let mut to_write = Vec::new();
     for (being_ent, ProcessedInputVector(speed_vec), mut transform, mut move_anim, controlled_locally) in query.iter_mut() {
 
-        if *state.get() == GameSetupType::AsJoiner && !controlled_locally { continue;}
+        if *state.get() != ClientState::Disconnected && !controlled_locally { continue;}
 
         let delta = time.delta_secs();
         let movement = speed_vec  * delta;
@@ -103,7 +103,7 @@ pub fn apply_movement(
             if server.get() == &ServerState::Running {
                 //info!("Sending transform for being: {:?}", being_ent);
                 let to_clients = ToClients { 
-                    mode: SendMode::Broadcast, 
+                    mode: SendMode::BroadcastExcept(ClientId::Server), 
                     message: TransformFromServer::new(being_ent, transform.clone(), true),
                 };
                 to_write.push(to_clients);

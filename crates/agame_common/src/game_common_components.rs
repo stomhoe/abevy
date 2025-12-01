@@ -29,7 +29,7 @@ pub struct SearchingForSuitablePos{ pub studied_op_ent: Entity, }
 pub struct Directionable;
 
 #[allow(unused_parens, )]
-#[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, )]
+#[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, Eq, PartialEq, Hash, Clone, Copy)]
 #[strum(serialize_all = "lowercase")]
 pub enum FacingDirection { #[default] South, West, East, North, }
 impl FacingDirection {
@@ -47,6 +47,18 @@ impl FacingDirection {
             FacingDirection::West => IVec2::new(-1, 0),
             FacingDirection::North => IVec2::new(0, -1),
             FacingDirection::East => IVec2::new(1, 0),
+        }
+    }
+}
+
+impl From<u8> for FacingDirection {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => FacingDirection::South,
+            1 => FacingDirection::West,
+            2 => FacingDirection::East,
+            3 => FacingDirection::North,
+            _ => FacingDirection::South, // unreachable, but for completeness
         }
     }
 }
@@ -106,7 +118,7 @@ impl Category {
             warn!("Category str too long: {}, omitting chars beyond i={} -> {}", id.as_ref(), (Self::STR_SIZE - 1), &id.as_ref()[..Self::STR_SIZE]);
         }
 
-        Self(StrId::new(id))
+        Self(StrId::new_truncated(id))
     }
 
     const STR_SIZE: usize = 32;

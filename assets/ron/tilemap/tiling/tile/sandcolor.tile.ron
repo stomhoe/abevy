@@ -2,9 +2,9 @@
     id: "sandcolor",
     name: "Sand Color",
     cats: [],
-    img_paths: {
-        "default": "texture/world/white.png"
-    },
+    img_paths: [
+        ("default", "texture/world/white.png"),
+    ],
     shader: "",
     sprite: false, 
     randflipx: false,

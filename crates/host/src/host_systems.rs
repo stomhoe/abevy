@@ -34,18 +34,12 @@ pub fn host_on_player_connect(trigger: On<Add, ConnectedClient>,
     own_tiles_map: Res<TileEntitiesMap>,
     own_sprite_cfg_map: Res<SpriteCfgEntityMap>,
 ) -> Result {
-    let client_entity = trigger.target();
-    cmd.entity(client_entity).insert((Player, BelongsToFaction(host_faction.into_inner())));
-    info!("(HOST) `{}` connected", client_entity);
+    
+    cmd.entity(trigger.entity).insert((Player, BelongsToFaction(host_faction.into_inner())));
+    info!("(HOST) `{}` connected", trigger.entity);
 
 
 
-    let sync_tiles = ToClients { mode: SendMode::Direct(client_entity), message: own_tiles_map.clone(), };
-    cmd.server_trigger(sync_tiles);
-
-    let sync_sprite_cfgs = ToClients { mode: SendMode::Direct(client_entity), message: own_sprite_cfg_map.clone(),};
-    cmd.server_trigger(sync_sprite_cfgs);
-        // TA BIEN, TODOS LOS JOINERS POR DEFECTO SON DE LA FACTION DEL HOST, SI NO ES ASÍ, AL CARGAR LA SAVEGAME SE CAMBIA?
     Ok(())
 }
 
@@ -54,7 +48,13 @@ pub fn host_receive_client_name(mut trigger: On<FromClient<SendUsername>>,
     mut cmd: Commands, 
 ) {
     let username = mem::take(&mut trigger.event_mut().0);
-    cmd.entity(trigger.client_entity).insert(username.clone());
+
+    let Some(entity) = trigger.client_id.entity() else {
+        warn!(target: "host_systems", "Received username from server {:?}", trigger.client_id);
+        return;
+    };
+
+    cmd.entity(entity).insert(username.clone());
     //TODO chequear el estado actual de la partida (new game o loaded (cargar su character si ya tiene)) y los Res<State<GamePhase>> antes de hacer esto
    
 }
@@ -78,7 +78,7 @@ pub fn host_on_player_added(mut cmd: Commands,
 
                 BelongsToFaction(host_faction.clone()),
                 Transform::from_translation(Vec3::new(-400.0, 250.0, 0.0)),
-                SpriteConfigStrIds::new(["humanhe0", "humanbo0"])?,
+                SpriteConfigStrIds::new(["humanhe0", "humanbo0"]),
                 
             ));
 

@@ -67,29 +67,29 @@ pub struct Bifurcation{#[entities] pub oplist: Option<Entity>, #[entities] pub t
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(EntityPrefix::new("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped)]
+#[require(EntityPrefix::new_truncated("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped)]
 pub struct OperationList {
 
     pub trunk: Vec<(Operation, Vec<Operand>, u8)>,
     pub bifurcations: Vec<Bifurcation>,
 }
 
-// impl MapEntities for OperationList {
-//     fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
-//         for (_, operands, _) in self.trunk.iter_mut() {
-//             for operand in operands.iter_mut() {
-//                 if let Operand::NoiseEntity(ent, _, _, _) = operand {
-//                     *ent = entity_mapper.get_mapped(*ent);
-//                 }
-//             }
-//         }
-//         for bifur in self.bifurcations.iter_mut() {
-//             bifur.oplist = bifur.oplist.map(|oplist_entity| entity_mapper.get_mapped(oplist_entity));
-//             bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = entity_mapper.get_mapped(*tile_entity));
-//         }
+impl MapEntities for OperationList {
+    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
+        for (_, operands, _) in self.trunk.iter_mut() {
+            for operand in operands.iter_mut() {
+                if let OperandElement::NoiseEntity(ref mut ent, _, _, _) = operand.element {
+                    *ent = entity_mapper.get_mapped(*ent);
+                }
+            }
+        }
+        for bifur in self.bifurcations.iter_mut() {
+            bifur.oplist = bifur.oplist.map(|oplist_entity| entity_mapper.get_mapped(oplist_entity));
+            bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = entity_mapper.get_mapped(*tile_entity));
+        }
 
-//     }
-// }
+    }
+}
 
 
 

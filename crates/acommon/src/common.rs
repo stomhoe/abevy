@@ -39,6 +39,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<StrId>()
         .replicate::<DisplayName>()
         .replicate::<HashId>()
+        .replicate::<ImagePathHolder>()
 
     ;
 }

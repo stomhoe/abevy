@@ -11,7 +11,7 @@ use splines::{Interpolation, Key, Spline};
 
 
 #[derive(Component, Debug, Deserialize, Serialize, )]
-#[require(EntityPrefix::new("ColorWSampler"), AssetScoped, )]
+#[require(EntityPrefix::new_truncated("ColorWSampler"), AssetScoped, )]
 pub struct ColorSampler(pub WeightedSampler<[u8; 4]>);
 impl ColorSampler {
     pub fn new(weights: &Vec<([u8; 4], f32)>) -> Self {
@@ -28,7 +28,7 @@ pub struct ColorSamplerRef(#[entities] pub Entity);
 
 
 #[derive(Debug, Clone, Component, Default)]
-#[require(EntityPrefix::new("HashPosEntWSampler"), Replicated, AssetScoped, TgenHotLoadingScoped)]
+#[require(EntityPrefix::new_truncated("HashPosEntWSampler"), Replicated, AssetScoped, TgenHotLoadingScoped)]
 pub struct EntiWeightedSampler {
     #[entities]entities: Vec<Entity>, weights: Vec<f32>,
     cumulative_weights: Vec<f32>, total_weight: f32,

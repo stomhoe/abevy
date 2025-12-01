@@ -2,9 +2,9 @@
     id: "elf_thick_oak",
     name: "Elven Thick Oak",
     cats: [],
-    img_paths: {
-        "default": "texture/world/vegetation/elf/elf_thick_oak.png"
-    },
+    img_paths: [
+        ("default", "texture/world/vegetation/elf/elf_thick_oak.png")
+    ],
     shader: "",
     sprite: true, 
     randflipx: true,
@@ -15,5 +15,5 @@
     spawns: [],
     spawns_children: [],
     tmapchild: true,
-    ysort: Some(0.0),
+
 )

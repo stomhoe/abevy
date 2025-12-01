@@ -1,5 +1,5 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy::render::render_resource::AsBindGroup;
+use bevy::{render::render_resource::AsBindGroup, shader::ShaderRef};
 use bevy_ecs_tilemap::prelude::MaterialTilemap;
 use common::common_components::{ ImageHolder, };
 use bevy_inspector_egui::prelude::*;
@@ -58,7 +58,7 @@ impl PartialEq for VoronoiTextureOverlayMat {
     }
 }
 impl MaterialTilemap for VoronoiTextureOverlayMat {
-    fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
+    fn fragment_shader() -> ShaderRef {
         "shader/voronoi.wgsl".into()
     }
 }
@@ -104,7 +104,7 @@ impl Default for MonoRepeatTextureOverlayMat {
 }
 
 impl MaterialTilemap for MonoRepeatTextureOverlayMat {
-    fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
+    fn fragment_shader() -> ShaderRef {
         "shader/textured_tile.wgsl".into()
     }
 }
@@ -123,7 +123,7 @@ pub struct TwoOverlaysExample {
 }
 
 impl MaterialTilemap for TwoOverlaysExample {
-    fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
+    fn fragment_shader() -> ShaderRef {
         "shader/textured_tile_dual.wgsl".into()
     }
 }

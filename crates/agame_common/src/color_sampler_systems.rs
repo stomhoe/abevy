@@ -50,9 +50,9 @@ pub fn add_colorsamplers_to_map(
     map: Option<ResMut<ColorWeightedSamplersMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<ColorSampler>, )>,
     mut refs_to_update: Query<(&mut ColorSamplerRef), (Or<(With<Disabled>, Without<Disabled>)>, )>,
-    state : Res<State<GameSetupType>>,
+    state : Res<State<ClientState>>,
 ) {
-    let is_host = state.get() != &GameSetupType::AsJoiner;
+    let is_host = *state.get() == ClientState::Disconnected;
 
     let Some(mut map) = map else { return; };
     for (new_ent, prefix, str_id) in query.iter() {

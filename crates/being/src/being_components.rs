@@ -14,8 +14,8 @@ use superstate::{SuperstateInfo};
 
 #[derive(Component, Debug, Deserialize, Serialize)]
 #[require(InputMoveVector, MyZ(Being::Z_LEVEL), Replicated, MoveAnimActive,
-BeingAltitude, Visibility, FacingDirection, AppliedModifiers, Transform,
-EntityPrefix::new("BEING"), DimensionStrIdRef::overworld_fallback(), YSortOrigin(10.)
+Grounding, Visibility, FacingDirection, AppliedModifiers, Transform,
+EntityPrefix::new_truncated("BEING"), DimensionStrIdRef::overworld_fallback(), YSortOrigin(10.)
 )]
 pub struct Being;
 impl Being {
@@ -35,7 +35,7 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
 pub struct InfiniteMorale;
 
-pub type BeingAltitude = being_shared::BeingAltitude;
+pub type Grounding = being_shared::Grounding;
 
 
 // #[derive(Component)]

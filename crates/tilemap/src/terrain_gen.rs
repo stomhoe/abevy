@@ -27,7 +27,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             (spawn_terrain_operations, (produce_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
             search_suitable_position.run_if(in_state(ClientState::Disconnected)),
-            (add_noises_to_map, add_oplists_to_map, client_remap_operation_entities, ).run_if(not(in_state(ClientState::Disconnected))),
+            (add_noises_to_map, add_oplists_to_map, /*client_remap_operation_entities,*/ ).run_if(not(in_state(ClientState::Disconnected))),
             oplist_init_dim_refs,
         ))
         
@@ -71,8 +71,8 @@ pub fn plugin(app: &mut App) {
         .register_type::<MassCollectedTiles>()
         .register_type::<TileHelperStruct>()
 
-        .add_server_trigger::<RegisteredPositions>(Channel::Unordered)
-        .make_trigger_independent::<RegisteredPositions>()
+        .add_server_event::<RegisteredPositions>(Channel::Unordered)
+        .make_event_independent::<RegisteredPositions>()
         
         
 

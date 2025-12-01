@@ -59,11 +59,6 @@ pub fn plugin(app: &mut App) {
             RonAssetPlugin::<TileSeri>::new(&["tile.ron"]),
             RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
         ))
-        
-        .add_server_trigger::<TileEntitiesMap>(Channel::Unordered)
-        .make_trigger_independent::<TileEntitiesMap>()
-        .add_server_trigger::<TileWeightedSamplersMap>(Channel::Unordered)
-        .make_trigger_independent::<TileWeightedSamplersMap>()
 
 
         .register_type::<ShaderRepeatTexSerisHandles>()
@@ -91,6 +86,8 @@ pub fn plugin(app: &mut App) {
 
 
         .replicate::<Tile>()
+        .replicate::<TileColor>()
+        .replicate::<TileImagePaths>()
         .replicate::<TileSamplerHolder>()
         .replicate::<TileStrId>()
         .replicate::<InitialPos>()
@@ -102,7 +99,6 @@ pub fn plugin(app: &mut App) {
         .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()
 
         //usar feature
-        .add_observer(client_map_server_tiling)
         .add_message::<SavedTileHadChunkDespawn>()
 
 

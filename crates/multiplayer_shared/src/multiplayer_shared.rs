@@ -35,11 +35,11 @@ pub fn plugin(app: &mut App) {
         ClientSystems.run_if(in_state(GameSetupType::AsJoiner)),
     ))
     .configure_sets(Update, (
-        HostSystems.run_if(in_state(GameSetupType::AsHost).or(server_running)),
+        HostSystems.run_if(in_state(GameSetupType::AsHost).or(in_state(ServerState::Running))),
         ClientSystems.run_if(in_state(GameSetupType::AsJoiner).or(not(in_state(ClientState::Disconnected)))),
     ))
     .configure_sets(FixedUpdate, (
-        HostSystems.run_if(in_state(GameSetupType::AsHost).or(server_running)),
+        HostSystems.run_if(in_state(GameSetupType::AsHost).or(in_state(ServerState::Running))),
         ClientSystems.run_if(in_state(GameSetupType::AsJoiner).or(not(in_state(ClientState::Disconnected)))),
     ))
     .add_systems(OnExit(AppState::StatefulGameSession), (
@@ -48,9 +48,9 @@ pub fn plugin(app: &mut App) {
 
     .init_resource::<TargetJoinServer>()
 
-    .add_server_trigger::<HostStartedGame>(Channel::Unordered)
+    .add_server_event::<HostStartedGame>(Channel::Unordered)
     
-    .add_client_trigger::<SendUsername>(Channel::Ordered)
+    .add_client_event::<SendUsername>(Channel::Ordered)
 
 
     //.replicate_once::<ActivatingChunks>()

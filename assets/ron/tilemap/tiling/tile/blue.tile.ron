@@ -2,9 +2,9 @@
     id: "blue",
     name: "Blue",
     cats: [],
-    img_paths: {
-        "default": "texture/world/white.png"
-    },
+    img_paths: [
+        ("default", "texture/world/white.png"),
+    ],
     shader: "",
     sprite: false, 
     randflipx: false,

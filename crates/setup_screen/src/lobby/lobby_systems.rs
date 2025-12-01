@@ -1,6 +1,6 @@
 
 
-use bevy::{ecs::world::OnDespawn, prelude::*};
+use bevy::{prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 use common::{common_components::StrId, common_states::*};
@@ -13,13 +13,7 @@ pub fn host_setup(cmd: Commands, ) {
 
 }
 
-#[allow(unused_parens, dead_code)]
-pub fn host_on_server_start_successful(
-    cmd: Commands, 
-) {
-    
 
-}
 
 #[allow(unused_parens, dead_code)]
 pub fn host_on_server_start_failed(commands: Commands){
@@ -78,17 +72,16 @@ pub fn on_player_disconnect(
     players: Query<(&StrId, &LobbyPlayerUiNode), With<Player>>,
     mut commands: Commands)
 {
-    let result = players.get(trigger.target());
-    //let created_character = created_character_query.get(trigger.target());
+    //let created_character = created_character_query.get(trigger.event());
 
-    if let Ok((player_name, player_name_entry)) = result {
+    if let Ok((player_name, player_name_entry)) = players.get(trigger.entity) {
         info!("Client `{}` disconnected", player_name);
         commands.entity(player_name_entry.0).despawn();
     
         //TODO MARCAR SU BEING PARA DESPAWN PARA CUANDO EMPEIZA LA PARTIDA
         //ASI SI SE REUNE PUEDE RECUPERARLO EN SU ESTADO ORIGINAL
     } else {
-        info!("Failed to get player name for disconnected client: {}", trigger.target());
+        info!("Failed to get player name for disconnected client: {}", trigger.entity);
         return;
     }
 
@@ -117,7 +110,7 @@ pub fn all_on_player_added(mut cmd: Commands,
                 ..default()
             },
             Text::new(username.to_string()),
-            TextLayout::new_with_justify(JustifyText::Center),
+            TextLayout::new_with_justify(Justify::Center),
         )).id();
 
 

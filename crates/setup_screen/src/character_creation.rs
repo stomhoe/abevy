@@ -18,10 +18,10 @@ pub fn plugin(app: &mut App) {
         // SomePlugin, 
         // superstate_plugin::<SuperState, (Substate1, Substate2)>
         ))
-        .add_client_trigger::<NameSelected>(Channel::Ordered)
-        .add_client_trigger::<RaceSelected>(Channel::Ordered)
-        .add_client_trigger::<HeadSelected>(Channel::Ordered)
-        .add_client_trigger::<ClassSelected>(Channel::Ordered)
-        .add_client_trigger::<FollowerSelected>(Channel::Ordered)
+        .add_client_message::<NameSelected>(Channel::Ordered)
+        .add_client_message::<RaceSelected>(Channel::Ordered)
+        .add_client_message::<HeadSelected>(Channel::Ordered)
+        .add_client_message::<ClassSelected>(Channel::Ordered)
+        .add_client_message::<FollowerSelected>(Channel::Ordered)
     ;
 }

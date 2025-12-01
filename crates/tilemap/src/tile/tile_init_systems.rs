@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, identifier::error}, platform::collections::{HashMap, HashSet}, render::{sync_world::SyncToRenderWorld, view::VisibilityClass}};
+use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, }, platform::collections::{HashMap, HashSet}, render::{sync_world::SyncToRenderWorld, }};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -9,6 +9,7 @@ use common::common_components::{AssetScoped, DisplayName, EntityPrefix, HashId, 
 use ::dimension_shared::*;
 use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{Category, EntityZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
+use sprite::sprite_components::SpriteConfigStrIds;
 use ::tilemap_shared::*;
 
 use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_events::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*} };
@@ -17,11 +18,11 @@ use crate::terrain_gen::terrgen_resources::MassCollectedTiles;
 use std::mem::take;
 
 #[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new("Tiles' Templates"), Name, Transform, Visibility)]
+#[require(AssetScoped, EntityPrefix::new_truncated("Tiles' Templates"), Name, Transform, Visibility)]
 struct EguiTileTemplatesHolder;
 
 #[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new("Portal tiles"), Name, Transform, Visibility)]
+#[require(AssetScoped, EntityPrefix::new_truncated("Portal tiles"), Name, Transform, Visibility)]
 struct EguiPortalTileTemplatesHolder;
 
 #[allow(unused_parens)]
@@ -56,7 +57,7 @@ pub fn init_tiles(
         let my_z = MyZ(seri.z);
         let enti = cmd.spawn((
             Tile, str_id.clone(), Disabled,
-            EntityPrefix::new("Tile"), Name::default(),
+            EntityPrefix::new_truncated("Tile"), Name::default(),
             my_z.clone(),
             ChildOf(holder),
         )).id();
@@ -96,13 +97,7 @@ pub fn init_tiles(
         }
 
         if ! seri.sprite && seri.tmapchild {
-            let tile_handles = TileHidsHandles::from_paths(&asset_server, take(&mut seri.img_paths), );
-
-            if let Ok(tile_handles) = tile_handles {
-                cmd.entity(enti).insert(tile_handles);
-            } else{
-                error!("Failed to create TileHandles for tile '{}'", str_id);
-            }
+            
 
             if seri.shader.len() > 2 {
                 match shader_map.0.get(&seri.shader) {
@@ -120,29 +115,19 @@ pub fn init_tiles(
             cmd.entity(enti).insert_if_new((TileColor::from(color), ));
         }
         else{
-            let map = match ImageHolderMap::from_paths(&asset_server, take(&mut seri.img_paths)) {
-                Ok(map) => map,
-                Err(err) => {
-                    error!("Failed to create ImageHolderMap for tile '{}': {}", str_id, err);
-                    continue;
-                }
-            };
-            let offset = Vec2::from_array(seri.offset);
+            let sprite_cfgs = SpriteConfigStrIds::new(
+                seri.img_paths.iter_mut().map(|(key, _path)| take(key)).collect::<Vec<_>>()
+            );
 
             cmd.entity(enti).insert((
-                Sprite{
-                    image: map.first_handle(),
-                    color,
-                    ..Default::default()
-                },
-                map,
-                Transform::from_translation(offset.extend(my_z.as_float())),
+                sprite_cfgs,
+                Transform::from_translation(Vec2::ZERO.extend(my_z.as_float())),
             ));
             if ! seri.shader.is_empty() {
                 warn!("Tile {} tilemap shaders ('{}') are not compatible with sprite=true, ignoring", str_id, seri.shader);
             }
             if let Some(y_sort_origin) = seri.ysort {
-                cmd.entity(enti).insert(YSortOrigin(offset.y + y_sort_origin - 10.0));
+                cmd.entity(enti).insert(YSortOrigin(y_sort_origin - 10.0));
             }
         }
         if !seri.cats.is_empty() {
@@ -156,6 +141,24 @@ pub fn init_tiles(
     cmd.insert_resource(tile_cats);
 
 } 
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn add_handles(  
+    mut cmd: Commands,  asset_server: Res<AssetServer>,
+    query: Query<(Entity, &StrId, &TileImagePaths),(Changed<TileImagePaths>)>,
+) {
+    for (enti, str_id, tile_image_paths) in query.iter() {
+        let tile_handles = TileHidsHandles::from_paths(&asset_server, tile_image_paths.clone(), );
+
+        if let Ok(tile_handles) = tile_handles {
+            cmd.entity(enti).insert(tile_handles);
+        } else{
+            error!("Failed to create TileHandles for tile '{}'", str_id);
+        }
+    }
+}
+
 
 pub fn add_tiles_to_map(
     mut cmd: Commands,
@@ -250,32 +253,32 @@ pub fn map_portal_tiles(mut cmd: Commands,
     }
 }
 
-#[allow(unused_parens, )]
-pub fn client_map_server_tiling(
-    trigger: On<TileEntitiesMap>, 
-    mut cmd: Commands, 
-    server: Option<Res<RenetServer>>,
-    mut entis_map: ResMut<ServerEntityMap>, 
-    own_map: Res<TileEntitiesMap>,
-) {
-    if server.is_some() { return; }
+// #[allow(unused_parens, )]
+// pub fn client_map_server_tiling(
+//     trigger: On<TileEntitiesMap>, 
+//     mut cmd: Commands, 
+//     client: Res<State<ClientState>>,
+//     mut entis_map: ResMut<ServerEntityMap>, 
+//     own_map: Res<TileEntitiesMap>,
+// ) {
+//     if *client.into_inner().get() == ClientState::Disconnected { return; }
 
-    let TileEntitiesMap(received_map) = trigger.event().clone();
-    for (hash_id, &server_entity) in received_map.0.iter() {
+//     let TileEntitiesMap(received_map) = trigger.event().clone();
+//     for (hash_id, &server_entity) in received_map.0.iter() {
         
-        if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
-            if let Some(prev_client_entity) = entis_map.to_client().get(server_entity)
-                && client_entity != prev_client_entity 
-            {
-                cmd.entity(prev_client_entity).try_despawn();
-            }
-            debug!("Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
-            entis_map.insert(server_entity, client_entity);
-        } else {
-            error!("Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
-        }
-    }
-}
+//         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
+//             if let Some(prev_client_entity) = entis_map.to_client().get(server_entity)
+//                 && client_entity != prev_client_entity 
+//             {
+//                 cmd.entity(prev_client_entity).try_despawn();
+//             }
+//             debug!("Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
+//             entis_map.insert(server_entity, client_entity);
+//         } else {
+//             error!("Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
+//         }
+//     }
+// }
 
 #[allow(unused_parens)]
 pub fn instantiate_portal(mut cmd: Commands,
@@ -442,7 +445,7 @@ pub fn client_add_sprite(mut cmd: Commands,
         };
 
         if let Some(sprite) = sprite {
-            cmd.entity(ent).insert((sprite.clone(), SyncToRenderWorld, Visibility::default(), VisibilityClass::default(), ) );
+            cmd.entity(ent).insert((sprite.clone(), SyncToRenderWorld, Visibility::default(), ) );
             info!("Added sprite to tile '{}' entity {:?}", tile_strid, ent);
         } else{
             error!("Tile '{}' has no sprite to add", tile_strid);

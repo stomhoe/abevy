@@ -1,6 +1,6 @@
-use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled, world::OnDespawn}, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*, render::sync_world::SyncToRenderWorld};
+use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled, }, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
-use bevy_replicon::prelude::Replicated;
+use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::StrId, common_resources::ImageSizeMap, common_states::GameSetupType};
 use dimension_shared::DimensionRef;
 use game_common::game_common_components::{EntityZeroRef, MyZ};
@@ -63,10 +63,10 @@ pub fn process_tiles_pre(
     shader_query: Query<(&TileShader, ), ( )>,
 
     loaded_chunks: Res<LoadedChunks>,
-    state: Res<State<GameSetupType>>,
+    state: Res<State<ClientState>>,
 ) -> Result {unsafe{
 
-    let is_host = state.get() != &GameSetupType::AsJoiner;
+    let is_host = *state.get() == ClientState::Disconnected;
 
     if collected_tiles.0.is_empty() { return Ok(()); }
 
@@ -252,7 +252,8 @@ fn process_tilemaps(
 ) {
 
     let tile_size = match tile_handles {
-        Some(handles) => (image_size_map.0.get(&handles.first_handle()).copied().unwrap_or(U16Vec2::ONE)),
+        Some(handles) => image_size_map.0.get(&handles.first_handle().id()).copied()
+        .unwrap_or(U16Vec2::ONE) ,
         None => {
             tile_visible.0 = false; U16Vec2::ONE
         }

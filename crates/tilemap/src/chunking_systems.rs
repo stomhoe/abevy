@@ -36,7 +36,7 @@ pub fn visit_chunks_around_activators(
                     let ent = cmd.spawn_empty().id();//TODO lanzar un evento desde aca q spawnee los oplists?
                     to_insert.push((ent, (
                         Chunk,
-                        StrId20B::new(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
+                        StrId20B::new_truncated(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
                         Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
                         chunk_pos,
                         ChildOf(dimension_ref.0),

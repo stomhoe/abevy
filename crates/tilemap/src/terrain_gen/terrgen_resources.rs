@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 
 
-#[derive(Resource, Debug, Reflect, Default, Message, Deserialize, Serialize, Clone)]
+#[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone, )]
 #[reflect(Resource, Default)]
 pub struct RegisteredPositions(pub EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>); 
 impl RegisteredPositions {
@@ -189,7 +189,7 @@ impl MassCollectedTiles {
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
     ) -> Entity {
-        let tile_instance = cmd.entity(ezero.0).clone_and_spawn_with(|builder|{
+        let tile_instance = cmd.entity(ezero.0).clone_and_spawn_with_opt_out(|builder|{
             builder.deny::<ToDenyOnTileClone>();
             //builder.deny::<BundleToDenyOnReleaseBuild>();
         }).id();

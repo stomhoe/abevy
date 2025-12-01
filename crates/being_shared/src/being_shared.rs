@@ -27,7 +27,17 @@ pub struct ControlledBy  {
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, )]
-pub enum BeingAltitude{
-    #[default] OnGround, Swimming, Floating,
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Eq, Clone, Copy, Hash, PartialEq)]
+pub enum Grounding{
+    #[default] Grounded, Swimming, Floating,
+}
+impl From<u8> for Grounding {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Grounding::Grounded,
+            1 => Grounding::Swimming,
+            2 => Grounding::Floating,
+            _ => Grounding::Grounded, // unreachable, but for completeness
+        }
+    }
 }

@@ -12,7 +12,7 @@ pub struct DimensionSystems;
 pub struct DimensionRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, TgenHotLoadingScoped, SessionScoped, EntityPrefix::new("DDDDDDDDDDDDDDDDDDDDD") )]
+#[require(Replicated, TgenHotLoadingScoped, SessionScoped, EntityPrefix::new_truncated("DDDDDDDDDDDDDDDDDDDDD") )]
 pub struct Dimension;
 
 
@@ -30,7 +30,7 @@ impl RootInDimensions { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 pub struct DimensionStrIdRef(pub StrId);
 impl DimensionStrIdRef {
     pub fn new<S: AsRef<str>>(id: S) -> Result<Self, BevyError> {
-        let str_id = StrId::new_with_result(id, 2)?;
+        let str_id = StrId::new_with_result(id, 2).map_err(|e| BevyError::from(e.to_string()))?;
         Ok(DimensionStrIdRef(str_id))
     }
     pub fn overworld_fallback() -> Self {

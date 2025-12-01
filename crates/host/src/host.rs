@@ -11,7 +11,7 @@ use crate::host_systems::*;
 pub fn plugin(app: &mut App) {
     app
 
-    .add_plugins((ServerPlugin::default(), ServerEventPlugin, RepliconRenetServerPlugin, ))
+    .add_plugins((ServerPlugin::default(), RepliconRenetServerPlugin, ))
             
     .add_observer(host_on_player_connect)
     .add_observer(host_receive_client_name)

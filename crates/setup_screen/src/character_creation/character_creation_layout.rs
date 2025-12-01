@@ -3,7 +3,7 @@
 use bevy_ui_gradients::ColorStop;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 use game_common::game_common_states::GameSetupScreen;
-use ui_shared::{ui_components::*, ui_functions::{produce_gradient_border, BorderBundle}};
+use ui_shared::{ui_components::*, ui_functions::*, };
 
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
@@ -20,10 +20,10 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
         ImageNode::new(asset_server.load("apocalypse.jpg")),
-        StateScoped(GameSetupScreen::CharacterCreation),
+        DespawnOnExit(GameSetupScreen::CharacterCreation),
     )).id();
     
-    let borders = produce_grayish_border(18.0);
+    //let borders = produce_grayish_border(18.0);
     // Use absolute positioning for overlapping borders
     let center_rect_node = commands.spawn((
         ChildOf(base_node),
@@ -37,12 +37,12 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             position_type: PositionType::Relative,
             ..default()
         },
-        children![
-            borders[0].clone(),
-            borders[1].clone(),
-            borders[2].clone(),
-            borders[3].clone(),
-        ],
+        // children![
+        //     // borders[0].clone(),
+        //     //borders[1].clone(),
+        //     // borders[2].clone(),
+        //     // borders[3].clone(),
+        //],
         BackgroundColor(Color::srgba(0.28, 0.25, 0.17, 0.29)),
     )).id();
 
@@ -94,7 +94,7 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             color: Color::srgb(0.99, 0.1, 0.1).into(),
             offset: Vec2::new(0.0, 0.0),
         },
-        TextLayout::new_with_justify(JustifyText::Center)
+        TextLayout::new_with_justify(Justify::Center)
     )).id();
 
     let lineedit_control = commands.spawn((
@@ -125,14 +125,14 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let charname_font_size = 25.0; 
 
-    let colorstops = vec![
-        ColorStop::new(Color::srgba(0.46, 0.0, 0.0, 0.9), Val::Percent(0.)),
-        ColorStop::new(Color::srgba(0.0, 0.0, 0.0, 0.0), Val::Px(7.)),
-    ];
+    // let colorstops = vec![
+    //     ColorStop::new(Color::srgba(0.46, 0.0, 0.0, 0.9), Val::Percent(0.)),
+    //     ColorStop::new(Color::srgba(0.0, 0.0, 0.0, 0.0), Val::Px(7.)),
+    // ];
 
-    let borders = produce_gradient_border(7., 
-        colorstops.clone(), colorstops
-    );
+    // let borders = produce_gradient_border(7., 
+    //     colorstops.clone(), colorstops
+    // );
 
     let _charname_lineedit = commands.spawn((
         ChildOf(charname_box),
@@ -150,7 +150,7 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             clear_on_submit: false,
             unfocus_on_submit: true,
             max_chars: Some(28),
-            justification: JustifyText::Center,
+            justification: Justify::Center,
             ..Default::default()
         },
         LineEdit,
@@ -160,7 +160,7 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
         TextColor(Color::srgba(0.72, 0.71, 0.43, 1.)),
-        TextLayout::new_with_justify(JustifyText::Center),
+        TextLayout::new_with_justify(Justify::Center),
         CurrentText::new(""),
     )).id();
 
@@ -212,7 +212,7 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
         right: Val::Px(15.), bottom: Val::Px(10.),
     };
     
-    let borders = produce_grayish_border(8.0,);
+    //let borders = produce_grayish_border(8.0,);
 
     let make_squares_node = || (
         Node {
@@ -223,12 +223,12 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             flex_direction: FlexDirection::Column,
             ..default()
         },
-        children![
-            borders[0].clone(),
-            borders[1].clone(),
-            borders[2].clone(),
-            borders[3].clone(),
-        ]
+        // children![
+        //     borders[0].clone(),
+        //     borders[1].clone(),
+        //     borders[2].clone(),
+        //     borders[3].clone(),
+        // ]
     );
 
     // Helper closure to spawn a square node under a given parent
@@ -249,21 +249,21 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
     let bottom_square_right = spawn_square(&mut commands, right_vbox);
 
 
-    let _borders = produce_grayish_border(8.0);
+    //let _borders = produce_grayish_border(8.0);
 }
 
-pub fn produce_grayish_border(
-    thickness: f32,
-) -> [BorderBundle; 4] {
-    produce_gradient_border(
-        thickness, 
-        vec![
-            ColorStop::new(Color::srgba(0.8, 0.8, 0.8, 0.10), Val::Percent(0.)),
-            ColorStop::new(Color::srgba(0.36, 0.37, 0.3, 0.0), Val::Px(thickness)),
-        ],
-        vec![
-            ColorStop::new(Color::srgba(0., 0., 0., 0.6), Val::Percent(0.)),
-            ColorStop::new(Color::NONE, Val::Px(thickness)),
-        ]
-    )
-}
+// pub fn produce_grayish_border(
+//     thickness: f32,
+// ) -> [BorderBundle; 4] {
+//     produce_gradient_border(
+//         thickness, 
+//         vec![
+//             ColorStop::new(Color::srgba(0.8, 0.8, 0.8, 0.10), Val::Percent(0.)),
+//             ColorStop::new(Color::srgba(0.36, 0.37, 0.3, 0.0), Val::Px(thickness)),
+//         ],
+//         vec![
+//             ColorStop::new(Color::srgba(0., 0., 0., 0.6), Val::Percent(0.)),
+//             ColorStop::new(Color::NONE, Val::Px(thickness)),
+//         ]
+//     )
+// }

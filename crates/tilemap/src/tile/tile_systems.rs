@@ -40,9 +40,9 @@ pub fn tile_readjust_transform(
     parent_query: Query<(&GlobalTransform, ), ()>,
     mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>),(With<Tile>, Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, Or<(Without<Disabled>, With<Disabled>, )>)>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
-    state: Res<State<GameSetupType>>,
+    state: Res<State<ClientState>>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
-    let is_host = state.get() != &GameSetupType::AsJoiner;
+    let is_host = *state.get() == ClientState::Disconnected;
 
 
     for (ent, mut transform, global_pos, child_of, ezero_ref, replicated, keep_disabled) in query.iter_mut() {

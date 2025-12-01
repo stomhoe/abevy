@@ -15,5 +15,5 @@
     spawns: [],
     spawns_children: [],
     tmapchild: true,
-    ysort: Some(0.0),
+
 )

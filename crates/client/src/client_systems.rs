@@ -4,7 +4,7 @@ use being_shared::{ControlledBy, ControlledLocally, HumanControlled};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::*}, renet::RenetClient};
+use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::{self, *}}, renet::RenetClient};
 use common::{common_states::*};
 use dimension::dimension_resources::DimensionEntityMap;
 use multiplayer_shared::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, };
@@ -80,7 +80,7 @@ pub fn client_on_disconnect(
             {
                 info!("Client (self) has disconnected with reason: {:?}", reason);
                 match reason{
-                    DisconnectedByClient => {
+                    NetcodeDisconnectReason::DisconnectedByClient => {
                         app_state.set(AppState::NoSession);
                     },//LO DEJÉ ASÍ POR SI SE QUIERE VOLVER A INTENTAR CONECTAR A LA IP EN NETCODECLIENTTRANSPORT
                     // ConnectTokenExpired => todo!(),
@@ -99,11 +99,8 @@ pub fn client_on_disconnect(
 }
 
 #[allow(unused_parens)]
-pub fn client_on_game_started(trigger: On<HostStartedGame>, mut state: ResMut<NextState<GamePhase>>, 
-    client: Option<Res<RenetClient>>) {
-    if client.is_none() {
-        return;
-    }
+pub fn client_on_game_started(trigger: On<HostStartedGame>, mut state: ResMut<NextState<GamePhase>>, ) {
+
     info!(target: "lobby", "Host started game event received, transitioning to GamePhase::ActiveGame");
     state.set(GamePhase::ActiveGame);
 

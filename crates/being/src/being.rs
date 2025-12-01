@@ -25,11 +25,11 @@ pub fn plugin(app: &mut App) {
     .replicate::<IsHumanControlled>()
     .replicate::<Being>()
     .replicate::<DirControlledBy>()
-    .replicate::<BeingAltitude>()
+    .replicate::<Grounding>()
     .replicate::<FollowerOf>()
 
     .register_type::<DirControlledBy>()
-    .register_type::<BeingAltitude>()
+    .register_type::<Grounding>()
     .register_type::<Controls>()
 
     .register_type::<FollowerOf>()

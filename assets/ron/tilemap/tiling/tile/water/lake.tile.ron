@@ -2,9 +2,9 @@
     id: "lake",
     name: "Lake",
     cats: [],
-    img_paths: {
-        "default": "texture/world/white.png"
-    },
+    img_paths: [
+        ("default", "texture/world/white.png"),
+    ],
     shader: "lake",
     sprite: false, 
     randflipx: false,

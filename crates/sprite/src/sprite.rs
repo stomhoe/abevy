@@ -63,7 +63,9 @@ pub fn plugin(app: &mut App) {
     .register_type::<ScaleSideways>()
     //.add_server_event::<SpriteCfgEntityMap>(Channel::Unordered).make_event_independent::<SpriteCfgEntityMap>().add_observer(client_map_server_sprite_cfgs)
 
-   
+    .replicate::<ReplicatedAnimationsMap>()
+    .replicate::<MovementBased>()
+    .replicate::<GroundingBased>()
     ;
 }
 

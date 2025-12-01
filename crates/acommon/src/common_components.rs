@@ -10,13 +10,13 @@ use std::fmt::{Debug, Display};
 
 pub use crate::common_id_components::*;
 
-pub type SessionScoped = StateScoped::<AppState>;
+pub type SessionScoped = DespawnOnExit::<AppState>;
 
-pub type AssetScoped = StateScoped::<LocallyLoadedAssetsSession>;
+pub type AssetScoped = DespawnOnExit::<LocallyLoadedAssetsSession>;
 
-//pub type RepliAssetScoped = StateScoped::<ReplicatedAssetsSession>;
+//pub type RepliAssetScoped = DespawnOnExit::<ReplicatedAssetsSession>;
 
-pub type TgenHotLoadingScoped = StateScoped::<TerrainGenHotLoading>;
+pub type TgenHotLoadingScoped = DespawnOnExit::<TerrainGenHotLoading>;
 
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
@@ -51,21 +51,26 @@ impl core::fmt::Debug for DisplayName {
 
 
 
-
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct ImagePathHolder(String);
+pub struct ImagePathHolder(bevy::asset::AssetPath<'static>);
+
 impl ImagePathHolder {
-    pub fn new<S: AsRef<str>>(path: S) -> Result<Self, BevyError> {
+    pub fn new<S>(path: S) -> Result<Self, BevyError>
+    where
+        S: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
+    {
         let img_path = format!("assets/{}", path.as_ref());
         if !std::path::Path::new(&img_path).exists() {
             let err = BevyError::from(format!("Image path does not exist: {}", img_path));
             error!(target: "image_loading", "{}", err);
             return Err(err);
         }
-        Ok(Self(path.as_ref().to_string()))
+        Ok(Self(path.into()))
     }
-    pub fn path(&self) -> &str { &self.0 }
+
+    pub fn path(&self) -> &bevy::asset::AssetPath<'static> {
+        &self.0
+    }
 }
 impl std::fmt::Display for ImagePathHolder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
@@ -90,6 +95,9 @@ impl ImageHolder {
             return Err(err);
         }
         Ok(Self(asset_server.load(path)))
+    }
+    pub fn handle(&self) -> &Handle<Image> {
+        &self.0
     }
 }
 

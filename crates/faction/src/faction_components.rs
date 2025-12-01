@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Reflect)]
-#[require(Replicated, EntityPrefix::new("Faction"))]
+#[require(Replicated, EntityPrefix::new_truncated("Faction"))]
 pub struct Faction;
 
 

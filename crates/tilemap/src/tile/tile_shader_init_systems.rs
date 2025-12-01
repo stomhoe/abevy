@@ -14,7 +14,7 @@ use crate::{tile::{tile_components::*, tile_resources::*, tile_materials::*}, };
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new("TileShaders"), )]
+#[require(AssetScoped, EntityPrefix::new_truncated("TileShaders"), )]
 struct EguiTileShaderHolder;
 
 #[allow(unused_parens)]
@@ -84,7 +84,7 @@ pub fn init_shaders(
                 ));
             },
             Err(err) => {
-                error!("Failed to create ImagePathHolder for shader '{}': {}", str_id, err);
+                error!("Failed to find image path for shader '{}': {}", str_id, err);
             }
         }
     }

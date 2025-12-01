@@ -5,7 +5,7 @@ use bevy_inspector_egui::{
 };
 use bevy_simple_subsecond_system::SimpleSubsecondPlugin;
 use tracing::Level;
-#[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, GLOBAL_ERROR_HANDLER, };
+#[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, };
 
 pub const FILTER: &str = 
 concat!(
@@ -54,7 +54,7 @@ fn main() {
             .set(ImagePlugin::default_nearest(),),
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
-            SimpleSubsecondPlugin::default(),
+            //SimpleSubsecondPlugin::default(),
         ))
         .add_plugins((
             multiplayer_shared::plugin, //VA ARRIBA    

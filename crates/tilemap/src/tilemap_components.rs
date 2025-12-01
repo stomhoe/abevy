@@ -34,7 +34,7 @@ impl TilemapConfig {
     pub fn new(oplist_size: OplistSize, tile_size: U16Vec2) -> Self {
         let oplist_size_val = oplist_size.inner();
         Self {
-            entity_prefix: EntityPrefix::new("Tilemap"),
+            entity_prefix: EntityPrefix::new_truncated("Tilemap"),
             tile_size: TilemapTileSize::from(tile_size.as_vec2()),
             grid_size: TilemapGridSize::from(GlobalTilePos::TILE_SIZE_PXS.as_vec2() * oplist_size_val.as_vec2()),
             map_size: TilemapSize::from(ChunkPos::CHUNK_SIZE / oplist_size_val),

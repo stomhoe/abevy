@@ -12,7 +12,7 @@ use crate::client_systems::*;
 #[allow(unused_parens, path_statements)]
 pub fn plugin(app: &mut App) {
     app
-    .add_plugins((ClientPlugin, ClientEventPlugin, RepliconRenetClientPlugin, ))
+    .add_plugins((ClientPlugin,  ))
     
 
     .add_systems(
@@ -28,15 +28,15 @@ pub fn plugin(app: &mut App) {
             client_cleanup,
         ).in_set(ClientSystems),
     )
+    .add_systems(OnEnter(ClientState::Connected), (client_on_connect_succesful)) 
+    .add_systems(OnEnter(ClientState::Disconnected), (client_on_disconnect)) 
     .add_systems(Update,(
-        client_on_connect_succesful.run_if(client_just_connected),
         (client_on_connect_failed).run_if(
             in_state(GameSetupType::AsJoiner)
             .and(in_state(ConnectionAttempt::PostAttempt))
-            .and(not(client_connecting))
-            .and(not(client_connected))
+            .and(not(in_state(ClientState::Connected)))
+            .and(not(in_state(ClientState::Connecting)))
         ),
-        client_on_disconnect.run_if((client_just_disconnected),),
 
         // (
         // )

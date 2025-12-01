@@ -17,8 +17,8 @@ pub fn layout(mut commands: Commands){
             row_gap: Val::Px(10.),
             ..default()
         },
-        StateScoped(PreGameState::MainMenu),
-        StateScoped(AppState::NoSession),
+        DespawnOnExit(PreGameState::MainMenu),
+        DespawnOnExit(AppState::NoSession),
 
         children![
             main_menu_button(MainMenuButton::QuickStart, "Quick start", None),

@@ -1,6 +1,5 @@
 
 use bevy::prelude::*;
-use bevy_replicon::prelude::server_just_started;
 use common::common_states::{AppState, ConnectionAttempt, GamePhase, GameSetupType};
 use multiplayer_shared::multiplayer_shared::{ClientSystems, HostSystems};
 
@@ -39,7 +38,6 @@ pub fn plugin(app: &mut App) {
             (lobby_button_interaction, all_on_player_added,
             ).run_if(in_state(GamePhase::Setup).and(in_state(AppState::StatefulGameSession)).and(not(in_state(GameSetupType::Singleplayer)))),
             
-            (host_on_server_start_successful).run_if(server_just_started)
             
         ))
 

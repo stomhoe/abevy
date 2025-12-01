@@ -34,8 +34,8 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             //row_gap: Val::Px(10.),
             ..default()
         },
-        StateScoped(GamePhase::Setup),
-        StateScoped(AppState::StatefulGameSession),
+        DespawnOnExit(GamePhase::Setup),
+        DespawnOnExit(AppState::StatefulGameSession),
     )).id();
 
     let top_hbox_container = commands.spawn((
@@ -86,7 +86,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             max_chars: Some(50),
             clear_on_submit: false,
             unfocus_on_submit: true,
-            justification: JustifyText::Center,
+            justification: Justify::Center,
             ..Default::default()
         },
         TextInputPrompt::new("Lobby name"),
@@ -115,9 +115,9 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             height: Val::Percent(100.),
             ..default()
         },
-        ScrollableContent {
-            ..default()
-        },
+        // ScrollableContent {
+        //     ..default()
+        // },
     )).id();
 
     let rightsplit_vbox = commands.spawn((
@@ -152,9 +152,9 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             height: Val::Percent(100.),
             ..default()
         },
-        ScrollableContent {
-            ..default()
-        },
+        // ScrollableContent {
+        //     ..default()
+        // },
         BackgroundColor(LIGHT_GOLDENROD_YELLOW.into()),
     )).id();
 

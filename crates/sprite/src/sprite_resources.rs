@@ -6,7 +6,7 @@ use bevy::platform::collections::HashMap;
 use common::common_types::HashIdToEntityMap;
 use::serde::{Deserialize, Serialize};
 
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect, )]
+#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Reflect, )]
 #[reflect(Resource, Default)]
 pub struct SpriteCfgEntityMap(pub HashIdToEntityMap);
 
@@ -19,11 +19,12 @@ pub struct SpriteSerisHandles {
 }
 
 
+
+
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,
-    pub img_path: String,
     pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
     pub categories: Vec<String>,
     pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
@@ -33,15 +34,25 @@ pub struct SpriteConfigSeri {
     pub offset: [f32; 2],
     pub z: i32,
     pub directionable: bool,
-    pub walk_anim: bool,
-    pub swim_anim: bool,
-    pub swim_anim_still: bool,
-    pub fly_anim: bool,
-    pub fly_anim_still: bool,
+    pub movement_based: bool,
+    pub grounding_based: bool,
+    
+    //PARA NO TENER Q HACER LO DE PRIORIZAR LA SWIM_ANIM SOBRE LA FLY_ANIM POR EJ, SIMPLEMENTE ASIGNARLE LA ANIM_ID TMB A LA COSA Q SEA
+    //anim_type, img_anim_id (human0_walk, etc). 
+    pub anims: HashMap<(u8, bool, u8, String), String>, 
+    /*
+
+        north/south/east/west 
+        _ -> separator
+        idle/move 
+        _
+        ground/water/air
+     */
+
+    //use fly animation when standing still
     pub flip_horiz: u8, //0: none, 1: any, 2: if looking left, 3: if looking right
-    pub anim_prefix: String,
     pub visibility: u8, //0: inherited, 1: visible, 2: invisible
-    pub offset4children: HashMap<String, [f32; 2]>,//category, offset
+    pub offset4children: HashMap<String, ([f32; 2], String)>,//k:category, v:(offset, direction(s)) in which it is applied
     pub offset_down: Option<[f32; 2]>,
     pub offset_up: Option<[f32; 2]>,
     pub offset_sideways: Option<[f32; 2]>,

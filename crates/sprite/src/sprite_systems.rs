@@ -131,7 +131,7 @@ pub fn apply_offsets(
                 if let Ok((
                     _, _, _, _, _, _, offset_for_children
                 )) = sprite_config_query.get(*ent) {
-                    for (cat, &offset) in offset_for_children.0.iter() {
+                    for (cat, &(offset, dir)) in offset_for_children.0.iter() {
                         if my_cats.0.contains(cat) {
                             total_offset += offset;
                         }

@@ -2,9 +2,9 @@
     id: "banyan",
     name: "Banyan",
     cats: [],
-    img_paths: {
-        "default": "texture/world/vegetation/elf/banyan.png"
-    },
+    img_paths: [
+        ("default", "texture/world/vegetation/elf/banyan.png")
+    ],
     shader: "",
     sprite: true, 
     randflipx: true,
@@ -15,5 +15,5 @@
     spawns: [],
     spawns_children: [],
     tmapchild: true,
-    ysort: Some(0.0),
+
 )

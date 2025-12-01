@@ -105,7 +105,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<MyZ>()
     .replicate::<YSortOrigin>()
     .replicate::<Description>()
-    .replicate::<FacingDirection>()
     .replicate::<EntityZeroRef>()
     ;
 }

@@ -1,5 +1,5 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
-use bevy_replicon::prelude::server_or_singleplayer;
+use bevy_replicon::prelude::{ClientState, };
 use common::common_states::{AppState, GamePhase};
 use game_common::game_common::{GameplaySystems, StatefulSessionSystems};
 

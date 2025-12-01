@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[reflect(Resource, Default)]
 pub struct TileShaderEntityMap(pub HashIdToEntityMap);
 
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Message, Reflect)]
+#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
 #[reflect(Resource, Default)]
 pub struct TileEntitiesMap(pub HashIdToEntityMap);
 
@@ -36,23 +36,70 @@ pub struct TileSerisHandles {
     #[asset(path = "ron/tilemap/tiling/tile", collection(typed))] 
     pub handles: Vec<Handle<TileSeri>>,
 }
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct TileImagePaths(
+    pub Vec<(String, String)>, //key, path
+);
+
+impl TileImagePaths {
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, (String, String)> {
+        self.0.iter_mut()
+    }
+    pub fn iter(&self) -> std::slice::Iter<'_, (String, String)> {
+        self.0.iter()
+    }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+// Implement IntoIterator for &TileImagePaths
+impl<'a> IntoIterator for &'a TileImagePaths {
+    type Item = &'a (String, String);
+    type IntoIter = std::slice::Iter<'a, (String, String)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+// Implement IntoIterator for &mut TileImagePaths
+impl<'a> IntoIterator for &'a mut TileImagePaths {
+    type Item = &'a mut (String, String);
+    type IntoIter = std::slice::IterMut<'a, (String, String)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter_mut()
+    }
+}
+
+// Implement IntoIterator for TileImagePaths (by value)
+impl IntoIterator for TileImagePaths {
+    type Item = (String, String);
+    type IntoIter = std::vec::IntoIter<(String, String)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 
-#[derive(Deserialize, Asset, Reflect, Default)]
+#[derive(Deserialize, Asset, Reflect, Default, Component)]
 pub struct TileSeri {
     pub id: String,
     pub cats: HashSet<String>,
     pub name: String,
-    pub img_paths: HashMap<String, String>,
+    pub img_paths: TileImagePaths,
     pub shader: String,
     pub sprite: bool,
-    pub offset: [f32; 2],
     pub z: i32,
     pub color: Option<[u8; 4]>,
     pub color_map: String,
     pub spawns: Vec<String>,
-    pub spawns_children: Vec<String>,//SPRITECONFIGS SON VÁLIDOS
-    pub ysort: Option<f32>,
+    pub spawns_children: Vec<String>,
     pub randflipx: bool,
     pub tmapchild: bool,
     pub min_distances: Option<HashMap<String, u32>>,
