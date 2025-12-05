@@ -1,46 +1,80 @@
 
 
 use bevy_replicon::prelude::*;
-use being_shared::{Grounding, ControlledBy};
-use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon_renet::renet::RenetClient;
 use bevy_spritesheet_animation::prelude::*;
-use common::{common_components::{ImageHolder, StrId}, common_states::GameSetupType};
-use game_common::game_common_components::{Directionable, FacingDirection};
-use player::player_components::*;
-use sprite::sprite_components::*;
-use sprite_animation_shared::AnimationLibrary;
+use common::{common_components::{AssetScoped, EntityPrefix, ImageHolder, ImagePathHolder, StrId}, common_states::GameSetupType};
+use game_common::game_common_components::{Directionable, FacingDirection, MyZ, YSortOrigin};
+use sprite::{sprite_components::*, sprite_scale_offset_components::{Offset2D, Scale2D}};
+use ::sprite_animation_shared::*;
 
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
 
+#[derive(Component, Debug, Default, )]
+#[require(AssetScoped, EntityPrefix::new_truncated("Animations"), )]
+struct AnimationsHolder;
 
 #[allow(unused_parens)]
 pub fn init_animations(
     mut cmd: Commands,
     mut anim_handles: ResMut<AnimSerisHandles>,
     mut seris_assets: ResMut<Assets<AnimationSeri>>,
-    mut animation_assets: ResMut<Assets<Animation>>,
     mut library: ResMut<AnimationLibrary>,
-    asset_server: Res<AssetServer>, 
     //usar state
 ) {
     use std::mem::take;
 
+    if !library.0.is_empty() {
+        return;
+    }
+
+    let holder = cmd.spawn((AnimationsHolder, )).id();
+
 
     for handle in take(&mut anim_handles.handles) {
-        let Some(seri) = seris_assets.remove(&handle) else { continue };
+        let Some(mut seri) = seris_assets.remove(&handle) else { continue };
 
-        let img_holder = match ImageHolder::new(&asset_server, seri.img_path) {
-            Ok(holder) => holder,
-            Err(e) => {
-                let err = BevyError::from(format!("Failed to load image for Animation {}: {}", seri.id, e));
-                error!(target: "sprite_loading", "{}", err);
-                continue;
-            }
+        let Ok(_) = ImagePathHolder::new(seri.img_path.clone()) else {
+            let err = BevyError::from(format!("Failed to find image for Animation {}: {}", seri.id, "invalid image path"));
+            error!(target: "sprite_init", "{}", err);
+            continue;
         };
-        let sheet = Spritesheet::new(img_holder.handle(), seri.rows_cols.1, seri.rows_cols.0,);
 
+        let str_id = StrId::new_truncated(take(&mut seri.id));
+        if !library.0.contains_key(&str_id) {
+
+            let y_sort = seri.y_sort.clone();
+
+            let ent = cmd.spawn((AnimationMain, str_id.clone(), seri, ChildOf(holder))).id();
+
+            if let Some(y_sort) = y_sort {
+                cmd.entity(ent).insert(YSortOrigin(y_sort));
+            }
+
+            debug!(target: "sprite_animation", "Inserting animation '{}' into library.", str_id);
+            library.0.insert(str_id, ent);//NO SÉ SI MOVER A OTRO LUGAR
+        } else {
+            error!(target: "sprite_animation", "Animation with id '{}' already present in library, skipping insert.", str_id);
+            continue;
+        }
+    }
+}
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn init_animation_sheet_and_handle(mut cmd: Commands, 
+    asset_server: Res<AssetServer>,
+    mut animation_assets: ResMut<Assets<Animation>>,
+    mut query: Query<(Entity, &StrId, &AnimationSeri),(Added<AnimationSeri>, )>,
+) {
+    for (entity, str_id, seri) in query.iter_mut() {
+        let image_handle = asset_server.load(&seri.img_path);
+
+        let (rows, cols) = seri.rows_cols.unwrap_or((1, 1));
+        let (rows, cols) = (rows.max(1), cols.max(1));
+
+        let sheet = Spritesheet::new(&image_handle, cols, rows);
         let mut animation = sheet
             .create_animation()
             .set_repetitions(
@@ -66,44 +100,58 @@ pub fn init_animations(
             );
 
         let clips_len = seri.clips.len();
-        for (i, cfg) in seri.clips.into_iter().enumerate() {
-            animation = if cfg.is_row {
-                match cfg.partial {
-                    Some((start, end)) => animation.add_partial_row(cfg.target, start..end),
-                    None => animation.add_row(cfg.target),
+
+        if clips_len == 0 {
+            animation = animation.add_row(0);
+        }
+        else {
+            for (i, cfg) in seri.clips.clone().into_iter().enumerate() {
+                animation = if cfg.is_row {
+                    match cfg.partial {
+                        Some((start, end)) => animation.add_partial_row(cfg.target, start..end),
+                        None => animation.add_row(cfg.target),
+                    }
+                } else {
+                    match cfg.partial {
+                        Some((start, end)) => animation.add_partial_column(cfg.target, start..end),
+                        None => animation.add_column(cfg.target),
+                    }    
+                };
+                animation = match cfg.dir {
+                    None => animation.set_direction(AnimationDirection::Forwards),
+                    Some(true) => animation.set_direction(AnimationDirection::Backwards),
+                    Some(false) => animation.set_direction(AnimationDirection::PingPong),
+                };
+                animation = match cfg.reps {
+                    None => animation.set_repetitions(AnimationRepeat::Loop),
+                    Some(n) => animation.set_repetitions(AnimationRepeat::Times(n)),
+                };
+                animation = match (cfg.dur_frame, cfg.dur_rep) {
+                    (None, None) => animation,
+                    (None, Some(rep_dur)) => animation.set_duration(AnimationDuration::PerRepetition(rep_dur)),
+                    (Some(frame_dur), None) => animation.set_duration(AnimationDuration::PerFrame(frame_dur)),
+                    (Some(frame_dur), Some(_rep_dur)) => animation.set_duration(AnimationDuration::PerFrame(frame_dur)),
+                };
+                if i < clips_len - 1 {
+                    animation = animation.start_clip();
                 }
-            } else {
-                match cfg.partial {
-                    Some((start, end)) => animation.add_partial_column(cfg.target, start..end),
-                    None => animation.add_column(cfg.target),
-                }
-            };
-            animation = match cfg.dir {
-                None => animation.set_direction(AnimationDirection::Forwards),
-                Some(true) => animation.set_direction(AnimationDirection::Backwards),
-                Some(false) => animation.set_direction(AnimationDirection::PingPong),
-            };
-            animation = match cfg.reps {
-                None => animation.set_repetitions(AnimationRepeat::Loop),
-                Some(n) => animation.set_repetitions(AnimationRepeat::Times(n)),
-            };
-            animation = match (cfg.dur_frame, cfg.dur_rep) {
-                (None, None) => animation,
-                (None, Some(rep_dur)) => animation.set_duration(AnimationDuration::PerRepetition(rep_dur)),
-                (Some(frame_dur), None) => animation.set_duration(AnimationDuration::PerFrame(frame_dur)),
-                (Some(frame_dur), Some(_rep_dur)) => animation.set_duration(AnimationDuration::PerFrame(frame_dur)),
-            };
-            if i < clips_len - 1 {
-                animation = animation.start_clip();
             }
         }
         let handle: Handle<Animation> = animation_assets.add(animation.build());
+        cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet), ));
 
-        if !library.0.contains_key(&StrId::new_truncated(&seri.id)) {
-            debug!(target: "sprite_animation", "Inserting animation '{}' into library.", seri.id);
-            library.0.insert(StrId::new_truncated(&seri.id), (sheet, handle.clone()));
-        } else {
-            error!(target: "sprite_animation", "Animation with name '{}' already present in library, skipping insert.", seri.id);
+        if let Some(offset) = seri.offset {
+            cmd.entity(entity).insert(Offset2D::from(offset));
         }
+        if let Some(scale) = seri.scale {
+            cmd.entity(entity).insert(Scale2D::from(scale));
+        }
+
+        if let Some(color) = seri.color {
+            let (red, green, blue, alpha) = color.into();
+            cmd.entity(entity).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
+        }
+
+        cmd.entity(entity).insert(MyZ(seri.z));
     }
 }

@@ -1,22 +1,15 @@
 (
     id: "portal_mausu_black",
     name: "Black Mausoleum",
-    cats: ["portal"],
-    img_paths: {
-        "default": "texture/world/portal/mausublack.png"
-    },
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 150.0),
+    cats: Some(["portal"]),
+    img_paths: [
+        ("default", "texture/world/portal/mausublack.png"),
+    ],
+    sprite: Some(true),
+    randflipx: Some(true),
+    offset: Some((0.0, 150.0)),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
     min_distances: Some({
         "c.portal": 300,
     }),
-    tmapchild: true,
-
 )

@@ -1,19 +1,14 @@
 (
     id: "dogwood",
     name: "Dogwood",
-    cats: [],
     img_paths: [
-        ("default", "texture/world/vegetation/elf/dogwood.png")
+        ("default", "texture/world/vegetation/tree/elf/dogwood.png")
     ],
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 135.0),
+    sprite: Some(true), 
+    randflipx: Some(true), 
+    offset: Some((0.0, 135.0)),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
+
     tmapchild: true,
 
 )

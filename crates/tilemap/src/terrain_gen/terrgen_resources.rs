@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::tiles::*;
 use bevy_replicon::prelude::*;
 use common::common_types::HashIdToEntityMap;
 
-use crate::{terrain_gen::terrgen_events::PendingOp, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, }};
+use crate::{terrain_gen::terrgen_messages::PendingOp, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, }};
 use dimension_shared::DimensionRef;
 use crate::tile::tile_components::*;
 

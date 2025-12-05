@@ -8,6 +8,7 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 tilemap = { path = "../tilemap" }
 sprite_animation = { path = "../sprite_animation" }
+sprite_animation_shared = { path = "../sprite_animation_shared" }
 sprite = { path = "../sprite" }
 dimension = { path = "../dimension" }
 dimension_shared = { path = "../dimension_shared" }

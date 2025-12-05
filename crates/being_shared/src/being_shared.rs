@@ -28,9 +28,13 @@ pub struct ControlledBy  {
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Eq, Clone, Copy, Hash, PartialEq)]
-pub enum Grounding{
-    #[default] Grounded, Swimming, Floating,
+pub enum Grounding {
+    #[default]
+    Grounded,
+    Swimming,
+    Floating,
 }
+
 impl From<u8> for Grounding {
     fn from(value: u8) -> Self {
         match value {
@@ -38,6 +42,22 @@ impl From<u8> for Grounding {
             1 => Grounding::Swimming,
             2 => Grounding::Floating,
             _ => Grounding::Grounded, // unreachable, but for completeness
+        }
+    }
+}
+
+impl From<String> for Grounding {
+    fn from(s: String) -> Self {
+        Grounding::from(s.as_str())
+    }
+}
+
+impl From<&str> for Grounding {
+    fn from(s: &str) -> Self {
+        match s.trim().to_lowercase().as_str() {
+            "swimming" | "swim" | "s" | "1" => Grounding::Swimming,
+            "floating" | "float" | "f" | "2" => Grounding::Floating,
+            _ => Grounding::Grounded,
         }
     }
 }

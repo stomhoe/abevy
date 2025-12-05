@@ -26,6 +26,9 @@ impl DisplayName {
     pub fn new<S: AsRef<str>>(name: S) -> Self {
         DisplayName(name.as_ref().to_string())
     }
+    pub fn new_trimmed<S: AsRef<str>>(name: S) -> Self {
+        DisplayName(name.as_ref().trim().to_string())
+    }
 
     pub fn insert_name_if_non_empty<S: AsRef<str>>(name: S, entity: &mut EntityCommands) {
         let name_str = name.as_ref();
@@ -66,6 +69,9 @@ impl ImagePathHolder {
             return Err(err);
         }
         Ok(Self(path.into()))
+    }
+    pub fn into_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
+        asset_server.load(&self.0)
     }
 
     pub fn path(&self) -> &bevy::asset::AssetPath<'static> {

@@ -18,8 +18,6 @@ mut event_reader: MessageReader<TestEvent>,
 */
 
 
-
-
 #[derive(Debug, Clone)]
 pub enum SearchPattern {
     ///Probe direction
@@ -32,8 +30,6 @@ impl SearchPattern {
         SearchPattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
     }
 }
-
-
 
 
 #[derive(Message, Debug, Clone)]

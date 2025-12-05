@@ -1,0 +1,12 @@
+(
+    id: "body_east_idle",
+    rows_cols: Some((4, 6)),
+    img_path: "texture/being/body/human/male.png",
+    clips: [
+        (
+            target: 3,
+            is_row: true,
+        )
+    ],
+    z: 100000,
+)

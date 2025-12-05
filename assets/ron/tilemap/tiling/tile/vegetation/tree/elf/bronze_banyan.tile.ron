@@ -1,19 +1,14 @@
 (
     id: "bronze_banyan",
     name: "Bronze Banyan",
-    cats: [],
     img_paths: [
-        ("default", "texture/world/vegetation/elf/bronze_banyan.png")
+        ("default", "texture/world/vegetation/tree/elf/bronze_banyan.png")
     ],
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 200.0),
+    sprite: Some(true), 
+    randflipx: Some(true), 
+    offset: Some((0.0, 200.0)),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
+
     tmapchild: true,
 
 )

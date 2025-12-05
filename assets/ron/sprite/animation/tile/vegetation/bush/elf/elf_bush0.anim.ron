@@ -1,0 +1,7 @@
+(
+    id: "elf_bush0",
+    img_path: "texture/world/vegetation/bush/elf/elf_bush0.png",
+    clips: [],
+    z: 1000,
+
+)

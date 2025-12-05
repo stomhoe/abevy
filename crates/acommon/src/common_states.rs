@@ -39,9 +39,13 @@ pub enum ConnectionAttempt {#[default]Not, Triggered, PostAttempt,}
 pub enum AssetsLoadingState {
     NotStarted,//HACER EL DEFAULT ESTE SI SE QUIERE HACER ALGO ANTES DE CARGAR LOS ASSETS
     #[default]
+    //asset loading is triggered
     LocalInProcess,
+    //init systems are executed
     LocalFinished,
+    //asset loading is triggered
     ReplicatedInProcess,
+    //init systems are executed
     ReplicatedFinished,
 }
 

@@ -1,0 +1,6 @@
+(
+    id: "temp_bush0",
+    img_path: "texture/world/vegetation/bush/bush0.png",
+    clips: [],
+    z: 100000,
+)

@@ -26,7 +26,7 @@ concat!(
     "zlevel=warn,",
     "movement=warn,",
     "sprite_animation=warn,",
-    "sprite_loading=trace,",
+    "sprite_init=trace,",
     "sprite_building=trace,",
     "sprite_systems=debug,",
     "asset_loading=warn,",

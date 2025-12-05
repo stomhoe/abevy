@@ -5,31 +5,30 @@ use common::{common_components::StrId, common_types::*};
 use serde::{Deserialize, Serialize};
 
 
+#[allow(unused_imports)] use {bevy::prelude::*, };
+
+pub fn plugin(app: &mut App) {
+
+}
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, Hash, PartialEq, Eq, Default)]
 pub struct MoveAnimActive(pub bool);
-
-pub const DOWN: &str = "down";
-pub const LEFT: &str = "left";
-pub const UP: &str = "up";
-pub const RIGHT: &str = "right";
-pub const IDLE: &str = "idle";
-pub const WALK: &str = "walk";
-pub const SWIM : &str = "swim";
-pub const FLY: &str = "fly";
-
+impl From<&str> for MoveAnimActive {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "true" | "1" | "yes" | "move" | "walk"=> MoveAnimActive(true),
+            _ => MoveAnimActive(false),
+        }
+    }
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, PartialEq, Eq, Hash)]
 //NO VA REPLICATED, SE HACE LOCALMENTE EN CADA PC SEGÚN LOS INPUTS RECIBIDOS DE OTROS PLAYERS
 pub struct AnimationState(pub StrId);
 impl AnimationState {
-    // pub fn new_idle() -> Self { Self(IDLE.into()) }
-    // pub fn set_idle(&mut self) { self.0 = IDLE.into(); }
-    // pub fn set_walk(&mut self) { self.0 = WALK.into(); }
-    // pub fn set_swim(&mut self) { self.0 = SWIM.into(); }
-    // pub fn set_fly(&mut self) { self.0 = FLY.into(); }
+
     pub fn new<S: AsRef<str>>(state: S) -> Self {
         Self(StrId::new_truncated(state.as_ref()))
     }
@@ -39,10 +38,13 @@ fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     }
 }
 
+#[derive(Component, Debug, Default, Clone, Reflect)]
+pub struct AnimationHandle(pub Handle<Animation>,);
 
-#[derive(Resource, Debug, Default, )]
-/// Global Animation Library
-pub struct AnimationLibrary (
-    pub HashMap<StrId, (Spritesheet, Handle<Animation>)>,
-);
+#[derive(Component, Debug, Clone, )]
+pub struct AnimationSheet(pub Spritesheet,);
 
+
+#[derive(Resource, Debug, Reflect, Default)]
+#[reflect(Resource, Default)]
+pub struct AnimationLibrary ( pub HashMap<StrId, Entity>, );

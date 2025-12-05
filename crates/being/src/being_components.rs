@@ -78,10 +78,6 @@ impl Followers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
 #[derive(Component, Debug)]
 pub struct LearningMultiplier(pub HashMap<Entity, f32>);
 
-#[derive(Component, Debug)]
-pub struct LearnableSkill {
-    pub nid: u32,
-}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct TargetSpawnPos(pub Vec2);//NO SÉ SI PONERLE UN FIELD Q SEA LA DIMENSIÓN

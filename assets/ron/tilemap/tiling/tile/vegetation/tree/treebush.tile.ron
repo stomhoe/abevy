@@ -1,19 +1,14 @@
 (
     id: "treebush",
     name: "Treebush",
-    cats: [],
-    img_paths: {
-        "default": "texture/world/vegetation/treebush.png"
-    },
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 120.0),
+    img_paths: [
+        ("default", "texture/world/vegetation/tree/treebush.png")
+    ],
+    sprite: Some(true), 
+    randflipx: Some(true), 
+    offset: Some((0.0, 120.0)),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
+
     tmapchild: true,
 
 )

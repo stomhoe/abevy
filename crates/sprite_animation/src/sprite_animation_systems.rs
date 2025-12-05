@@ -10,6 +10,7 @@ use common::{common_components::StrId, common_states::GameSetupType};
 use game_common::game_common_components::{Directionable, FacingDirection};
 use player::player_components::*;
 use sprite::sprite_components::*;
+use sprite_animation_shared::{AnimationState, MoveAnimActive};
 
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
 
@@ -30,11 +31,6 @@ pub fn propagate_holder_state(
 
                 let Ok(sprite_cfg_animations_map) = sprite_config_query.get(sprite_config_ref.0) 
                 else { continue };
-
-                
-
-                
-            
         }
     }
 }
@@ -45,7 +41,7 @@ pub fn propagate_holder_state(
 pub fn animate_sprite(
     mut commands: Commands,
     
-    mut sprites_query: Query<(Entity, &SpriteHolderRef, &SpriteConfigRef, Option<&AnimationState>,
+    mut sprites_query: Query<(Entity, &SpriteBaseHolderRef, &SpriteConfigRef, Option<&AnimationState>,
     ), (Or<(Changed<AnimationState>, Changed<FacingDirection>)>)>,
     
     spriteconfig: Query<(&SpriteCfgAnimationsMap, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>,)>,
@@ -70,12 +66,12 @@ pub fn animate_sprite(
         
         let anim_type = AnimType {
             direction: if directionable { direction.copied().unwrap_or_default() } else { FacingDirection::default() },
-            moving: if movement_based { moving.map_or(false, |m| m.0) } else { false },
+            moving: if movement_based { moving.copied().unwrap_or_default() } else { MoveAnimActive::default() },
             grounding: if grounding_based { grounding } else { Grounding::default() },
             state_id: state_id.cloned(),
         };
 
-        let Some((sheet, anim_handle)) = sprite_cfg_animations_map.0.get(&anim_type) else {
+        let Some(ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
             warn!(target: "sprite_animation", "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?}", anim_type, ent);
             continue;
         };

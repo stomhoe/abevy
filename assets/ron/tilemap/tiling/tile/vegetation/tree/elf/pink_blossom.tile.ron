@@ -1,19 +1,14 @@
 (
     id: "pink_blossom",
     name: "Pink Blossom",
-    cats: [],
-    img_paths: {
-        "default": "texture/world/vegetation/elf/pink_blossom.png"
-    },
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 90.0),
+    img_paths: [
+        ("default", "texture/world/vegetation/tree/elf/pink_blossom.png"),
+    ],
+    sprite: Some(true), 
+    randflipx: Some(true), 
+    offset: Some((0.0, 90.0)),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
+
     tmapchild: true,
 
 )

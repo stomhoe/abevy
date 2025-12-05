@@ -1,19 +1,14 @@
 (
     id: "poplar0",
     name: "Poplar",
-    cats: [],
-    img_paths: {
-        "default": "texture/world/vegetation/poplar0.png"
-    },
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 150.0),
+    img_paths: [
+        ("default", "texture/world/vegetation/tree/poplar0.png"),
+    ],
+    sprite: Some(true), 
+    randflipx: Some(true), 
+    offset: Some((0.0, 150.0)),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
+
     tmapchild: true,
 
 )

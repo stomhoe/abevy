@@ -1,19 +1,14 @@
 (
     id: "thick_banyan",
     name: "Thick Banyan",
-    cats: [],
-    img_paths: {
-        "default": "texture/world/vegetation/elf/thick_banyan.png"
-    },
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 160.0),
+    img_paths: [
+        ("default", "texture/world/vegetation/tree/elf/thick_banyan.png"),
+    ],
+    sprite: Some(true), 
+    randflipx: Some(true), 
+    offset: Some((0.0, 160.0)),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
+
     tmapchild: true,
 
 )

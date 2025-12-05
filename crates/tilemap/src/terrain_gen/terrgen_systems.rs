@@ -8,7 +8,7 @@ use common::{common_components::{DisplayName, HashId, StrId}, common_states::Gam
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
 use game_common::{game_common_components::{EntityZeroRef, FacingDirection }, game_common_components_samplers::EntiWeightedSampler};
-use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
+use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
 use std::{f32::consts::PI, iter::zip, mem::take};
 use ::tilemap_shared::*;
 

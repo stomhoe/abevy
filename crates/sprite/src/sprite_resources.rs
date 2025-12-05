@@ -1,4 +1,4 @@
-use bevy::platform::collections::HashMap;
+use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
@@ -25,42 +25,18 @@ pub struct SpriteSerisHandles {
 pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,
-    pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this category
-    pub categories: Vec<String>,
-    pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
-    pub shares_category: Vec<bool>,//asignar un componente
-    pub rows_cols: [u32; 2], 
-    pub frame_size: [u32; 2],
-    pub offset: [f32; 2],
-    pub z: i32,
-    pub directionable: bool,
-    pub movement_based: bool,
-    pub grounding_based: bool,
+    pub anims: HashMap<(String, String, String, String), String>, 
+    pub parent_cat: Option<String>, //adds ChildOf referencing other brother entity sprite possessing this category
+    pub categories: Option<HashSet<String>>,
+    pub shares_category: Option<Vec<bool>>,//asignar un componente
+    pub children_sprites: Option<Vec<String>>,// these will get spawned as children of the entity that has this sprite data
+    pub directionable: Option<bool>,
+    pub movement_based: Option<bool>,
+    pub grounding_based: Option<bool>,
     
-    //PARA NO TENER Q HACER LO DE PRIORIZAR LA SWIM_ANIM SOBRE LA FLY_ANIM POR EJ, SIMPLEMENTE ASIGNARLE LA ANIM_ID TMB A LA COSA Q SEA
-    //anim_type, img_anim_id (human0_walk, etc). 
-    pub anims: HashMap<(u8, bool, u8, String), String>, 
-    /*
-
-        north/south/east/west 
-        _ -> separator
-        idle/move 
-        _
-        ground/water/air
-     */
-
     //use fly animation when standing still
-    pub flip_horiz: u8, //0: none, 1: any, 2: if looking left, 3: if looking right
-    pub visibility: u8, //0: inherited, 1: visible, 2: invisible
-    pub offset4children: HashMap<String, ([f32; 2], String)>,//k:category, v:(offset, direction(s)) in which it is applied
-    pub offset_down: Option<[f32; 2]>,
-    pub offset_up: Option<[f32; 2]>,
-    pub offset_sideways: Option<[f32; 2]>,
-    pub offset_up_down: Option<[f32; 2]>,
-    pub scale: Option<[f32; 2]>,
-    pub scale_up_down: Option<[f32; 2]>,
-    pub scale_sideways: Option<[f32; 2]>,
-    pub color: Option<[u8; 4]>, 
+    pub visibility: Option<u8>, //0: inherited, 1: visible, 2: invisible
+    pub offset4children: Option<HashMap<String, (f32, f32, String)>>,//k:category, v:(offset, direction(s)) in which it is applied
     pub exclude_from_sys: Option<bool>,
 }
 // PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)

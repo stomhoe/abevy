@@ -6,7 +6,7 @@ use common::common_states::AssetsLoadingState;
 use dimension_shared::RootInDimensions;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking_components::OperationsLaunched, terrain_gen::{terrgen_components::*, terrgen_events::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tile::tile_components::TileSamplerHolder, tilemap_systems::process_tiles_pre,};
+use crate::{chunking_components::OperationsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tile::tile_components::TileSamplerHolder, tilemap_systems::process_tiles_pre,};
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -14,7 +14,7 @@ mod terrgen_noise_init_systems;
 pub mod terrgen_components;
 pub mod terrgen_oplist_components;
 pub mod terrgen_resources;
-pub mod terrgen_events;
+pub mod terrgen_messages;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TerrainGenSystems;

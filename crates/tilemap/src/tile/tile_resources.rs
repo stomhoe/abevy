@@ -1,4 +1,4 @@
-use bevy::{math::f32, platform::collections::{HashMap, HashSet}};
+use bevy::{ecs::entity::EntityHashSet, math::f32, platform::collections::{HashMap, HashSet}};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
@@ -7,8 +7,7 @@ use bevy::{math::f32, platform::collections::{HashMap, HashSet}};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 
 
-use common::common_types::HashIdToEntityMap;
-use game_common::game_common_components::Category;
+use common::{common_components::Category, common_types::HashIdToEntityMap};
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Default, Reflect )]
@@ -26,7 +25,7 @@ pub struct TileInstancesEntityMap(pub HashIdToEntityMap);
 
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]
-pub struct TileCategories (pub HashMap<Category, Vec<Entity>>);
+pub struct TileCategories (pub HashMap<Category, EntityHashSet>);
 
 
 
@@ -90,20 +89,23 @@ impl IntoIterator for TileImagePaths {
 #[derive(Deserialize, Asset, Reflect, Default, Component)]
 pub struct TileSeri {
     pub id: String,
-    pub cats: HashSet<String>,
     pub name: String,
-    pub img_paths: TileImagePaths,
-    pub shader: String,
-    pub sprite: bool,
     pub z: i32,
+    pub img_paths: Vec<(String, String)>,
+    pub cats: Option<HashSet<String>>,
+    pub persisted: Option<bool>,
+    pub shader: Option<String>,
+    pub sprite: Option<bool>,
     pub color: Option<[u8; 4]>,
-    pub color_map: String,
-    pub spawns: Vec<String>,
-    pub spawns_children: Vec<String>,
-    pub randflipx: bool,
-    pub tmapchild: bool,
+    pub color_map: Option<String>,
+    pub spawns: Option<Vec<String>>,
+    pub spawns_children: Option<Vec<String>>,
+    pub randflipx: Option<bool>,
     pub min_distances: Option<HashMap<String, u32>>,
     pub portal: Option<PortalSeri>,
+    pub offset: Option<(f32, f32)>,
+    pub y_sort: Option<f32>,
+
 }
 
 #[derive(Component, Deserialize, Reflect, Default)]

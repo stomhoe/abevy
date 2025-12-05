@@ -370,6 +370,7 @@ dependencies = [
  "serde",
  "sprite",
  "sprite_animation",
+ "sprite_animation_shared",
  "superstate",
  "tilemap",
  "tracing",

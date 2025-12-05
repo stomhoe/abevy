@@ -1,7 +1,7 @@
 
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_replicon::prelude::Replicated;
-use common::{common_components::{AssetScoped, EntityPrefix, SessionScoped, StrId}, common_types::FixedStr};
+use common::{common_components::{AssetScoped, Category, EntityPrefix, SessionScoped, StrId}, common_types::FixedStr};
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
@@ -63,6 +63,24 @@ impl From<u8> for FacingDirection {
     }
 }
 
+impl From<&str> for FacingDirection {
+    fn from(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "south" | "down" | "sur" | "s" => FacingDirection::South,
+            "west" | "left" | "lef" | "w" => FacingDirection::West,
+            "east" | "right" | "rig" | "e" => FacingDirection::East,
+            "north" | "up"  | "n" => FacingDirection::North,
+            _ => FacingDirection::South,
+        }
+    }
+}
+
+impl From<String> for FacingDirection {
+    fn from(s: String) -> Self {
+        FacingDirection::from(s.as_str())
+    }
+}
+
 
 #[derive(Component, Debug, )]
 pub struct SourceDest{
@@ -108,60 +126,12 @@ impl YSortOrigin {
     pub const Y_SORT_DIV: f32 = 1e-7;
 }
 
-
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq, Hash, Reflect, )]
-pub struct Category(StrId);
-
-impl Category {
-    pub fn new<S: AsRef<str>>(id: S) -> Self {
-        if id.as_ref().len() > Self::STR_SIZE {
-            warn!("Category str too long: {}, omitting chars beyond i={} -> {}", id.as_ref(), (Self::STR_SIZE - 1), &id.as_ref()[..Self::STR_SIZE]);
-        }
-
-        Self(StrId::new_truncated(id))
-    }
-
-    const STR_SIZE: usize = 32;
-}
-impl std::fmt::Display for Category {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl InspectorPrimitive for Category {
-    fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) -> bool {
-        let mut s = self.0.as_str().to_string();
-        let mut changed = false;
-        if ui.text_edit_singleline(&mut s).changed() {
-            *self = Category::new(&s);
-            changed = true;
-        }
-        changed
-    }
-
-    fn ui_readonly(
-        &self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) {
-        ui.label(self.0.as_str());
-    }
-}
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct Categories(pub HashSet<Category>);
 
 impl Categories {
     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-        let set = ids.into_iter().map(Category::new).collect();
+        let set = ids.into_iter().map(Category::new_truncated).collect();
         Self(set)
     }
 }
@@ -206,7 +176,7 @@ impl TimeBasedMultiplier {
         }
     }
     pub fn sample(&self) -> f32 {
-        if self.timer.finished() {
+        if self.timer.is_finished() {
             match self.function {
                 FunctionType::OneOnFinishZero => 0.0,
                 FunctionType::ZeroOnFinishOne => 1.0,

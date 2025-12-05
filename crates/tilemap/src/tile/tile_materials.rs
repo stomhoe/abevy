@@ -8,27 +8,22 @@ use bevy_inspector_egui::prelude::*;
 #[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions)]
 #[reflect(Default, InspectorOptions)] 
 pub struct VoronoiTextureOverlayMat {
-    #[texture(1)]
-    #[sampler(2)]
+    #[texture(1)]#[sampler(2)]
     pub texture_overlay: Handle<Image>,
 
     #[uniform(3)]
     pub mask_color: Vec4,
 
-    #[uniform(4)]
-    #[inspector(min = 1e-5, max = 1e2)]
+    #[uniform(4)]#[inspector(min = 1e-5, max = 1e2)]
     pub scale: f32,
 
-    #[uniform(5)]
-    #[inspector(min = 1e-5, max = 1e2)]
+    #[uniform(5)]#[inspector(min = 1e-5, max = 1e2)]
     pub voronoi_scale: f32,
 
-    #[uniform(6)]
-    #[inspector(min = 0.0, max = 1.0)]
+    #[uniform(6)]#[inspector(min = 0.0, max = 1.0)]
     pub voronoi_scale_random: f32,
 
-    #[uniform(7)]
-    #[inspector(min = 0.0, max = 6.28319)]
+    #[uniform(7)]#[inspector(min = 0.0, max = 6.28319)]
     pub voronoi_rotation: f32,
 }
 impl VoronoiTextureOverlayMat {

@@ -3,9 +3,7 @@ use bevy::ecs::entity_disabling::Disabled;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
-use common::{common_states::GameSetupType};
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 
 use crate::{color_sampler_resources::*, game_common_components_samplers::{ColorSampler, ColorSamplerRef, WeightedSampler}};
@@ -80,7 +78,7 @@ pub fn add_colorsamplers_to_map(
 pub fn apply_color(mut cmd: Commands, 
     gen_settings: Option<Res<AaGlobalGenSettings>>,
     samplers: Query<&ColorSampler>,
-    mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, AnyOf<(&mut Sprite, &mut TileColor)>)>,
+    mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, AnyOf<(&mut Sprite, &mut TileColor)>), (Or<(Changed<ColorSamplerRef>, Added<Sprite> )>, )>,
 ) {
     let Some(gen_settings) = gen_settings else { return; };
     for (entity, color_sampler, global_tile_pos, (sprite, tile_color)) in query.iter_mut() {

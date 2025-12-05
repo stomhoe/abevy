@@ -1,18 +1,18 @@
 use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, }, platform::collections::{HashMap, HashSet}, render::{sync_world::SyncToRenderWorld, }};
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::{helpers::hex_grid::offset, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
-use common::common_components::{AssetScoped, DisplayName, EntityPrefix, HashId, ImageHolder, ImageHolderMap, StrId};
+use common::common_components::{AssetScoped, Category, DisplayName, EntityPrefix, HashId, ImageHolder, ImageHolderMap, ImagePathHolder, StrId};
 use ::dimension_shared::*;
-use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{Category, EntityZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
+use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
-use sprite::sprite_components::SpriteConfigStrIds;
+use sprite::{sprite_components::{SpriteBaseHolderRef, SpriteConfigStrIds}, sprite_scale_offset_components::Offset2D};
 use ::tilemap_shared::*;
 
-use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_events::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*} };
+use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*} };
 use crate::terrain_gen::terrgen_resources::MassCollectedTiles;
 
 use std::mem::take;
@@ -41,7 +41,7 @@ pub fn init_tiles(
 
     let egui_portal_holder = cmd.spawn((EguiPortalTileTemplatesHolder, ChildOf(holder))).id();
 
-    let mut tile_cats = TileCategories::default();
+    let mut res_tile_cats = TileCategories::default();
 
     for handle in seris_handles.handles.iter() {
         //info!("Loading TileSeri from handle: {:?}", handle);
@@ -55,7 +55,7 @@ pub fn init_tiles(
             }
         };
         let my_z = MyZ(seri.z);
-        let enti = cmd.spawn((
+        let tile_enti = cmd.spawn((
             Tile, str_id.clone(), Disabled,
             EntityPrefix::new_truncated("Tile"), Name::default(),
             my_z.clone(),
@@ -66,79 +66,105 @@ pub fn init_tiles(
         let color = Color::srgba_u8(r, g, b, a);
 
         if ! seri.name.is_empty() {
-            cmd.entity(enti).insert(DisplayName(seri.name.clone()));
+            cmd.entity(tile_enti).insert(DisplayName(seri.name.clone()));
         }
-        if seri.tmapchild && seri.portal.is_none() {
-            cmd.entity(enti).insert(ChunkOrTilemapChild);
+        if seri.persisted != Some(true) && seri.portal.is_none() {
+            cmd.entity(tile_enti).insert(ChunkOrTilemapChild);
         }
 
 
         if seri.img_paths.is_empty() {
-            warn!("Tile '{}' has no images", str_id);
+            warn!("Tile '{}' has no img_paths entries", str_id);
         }
 
-        if ! seri.color_map.is_empty() {
-            match color_map.0.get(&seri.color_map) {
-                Ok(color_sampler_ent) => {
-                    cmd.entity(enti).insert(ColorSamplerRef(color_sampler_ent));
-                }
-                Err(err) => {
-                    error!("Tile '{}': Weighted color sampler with id '{}' not found: {}", str_id, seri.color_map, err);
+        if let Some(ref color_map_str) = seri.color_map {
+            if !color_map_str.is_empty() {
+                match color_map.0.get(color_map_str) {
+                    Ok(color_sampler_ent) => {
+                        cmd.entity(tile_enti).insert(ColorSamplerRef(color_sampler_ent));
+                    }
+                    Err(err) => {
+                        error!("Tile '{}': Weighted color sampler with id '{}' not found: {}", str_id, color_map_str, err);
+                    }
                 }
             }
         }
 
-        if seri.randflipx {
-            cmd.entity(enti).insert(FlipAlongX);
+        if seri.randflipx == Some(true) {
+            cmd.entity(tile_enti).insert(FlipAlongX);
         }
 
         if let Some(portal) = &mut seri.portal { 
-            cmd.entity(enti).insert((take(portal), ChildOf(egui_portal_holder))); 
+            cmd.entity(tile_enti).insert((take(portal), ChildOf(egui_portal_holder))); 
         }
 
-        if ! seri.sprite && seri.tmapchild {
+        if seri.sprite != Some(true) && seri.persisted != Some(true) {
             
+            cmd.entity(tile_enti).insert(TileImagePaths(take(&mut seri.img_paths)));
 
-            if seri.shader.len() > 2 {
-                match shader_map.0.get(&seri.shader) {
-                    Ok(shader_ent) => {
-                        cmd.entity(enti).insert(TileShaderRef(shader_ent));
+            if let Some(shader_str) = &seri.shader {
+                if shader_str.len() > 2 {
+                    match shader_map.0.get(shader_str) {
+                        Ok(shader_ent) => {
+                            cmd.entity(tile_enti).insert(TileShaderRef(shader_ent));
+                        }
+                        Err(err) => {
+                            warn!("Tile '{}' references missing shader '{}': {}", str_id, shader_str, err);
+                        }
                     }
-                    Err(err) => {
-                        warn!("Tile '{}' references missing shader '{}': {}", str_id, seri.shader, err);
-                    }
+                } else if shader_str.len() > 0 {
+                    warn!("Tile {} shader {} is too short for a shader", str_id, shader_str);
                 }
-            } else if seri.shader.len() > 0 {
-                warn!("Tile {} shader {} is too short for a shader", str_id, seri.shader);
             }
 
-            cmd.entity(enti).insert_if_new((TileColor::from(color), ));
+            cmd.entity(tile_enti).insert_if_new((TileColor::from(color), ));
         }
         else{
-            let sprite_cfgs = SpriteConfigStrIds::new(
-                seri.img_paths.iter_mut().map(|(key, _path)| take(key)).collect::<Vec<_>>()
-            );
+            let mut sprite_cfgs = Vec::new();
+            for (key, path) in seri.img_paths.iter_mut() {
+                let path_holder = ImagePathHolder::new(take(path));
+                if  path.trim().is_empty() || path_holder.is_err() {
+                    sprite_cfgs.push(take(key));
+                } else{
+                    let child_sprite = cmd.spawn((
+                        Sprite{
+                            image: path_holder.unwrap().into_handle(&asset_server),
+                            ..Default::default()
+                        },
+                        ChildOf(tile_enti),
+                        SpriteBaseHolderRef{ base: tile_enti },
+                        my_z.clone(),
 
-            cmd.entity(enti).insert((
-                sprite_cfgs,
-                Transform::from_translation(Vec2::ZERO.extend(my_z.as_float())),
+                    )).id();
+                    
+                    if let Some(offset) = seri.offset {
+                        cmd.entity(child_sprite).insert(Offset2D::from(offset));
+                    }
+                    if let Some(y_sort_origin) = seri.y_sort {
+                        cmd.entity(child_sprite).insert(YSortOrigin(seri.offset.unwrap_or_default().1 + y_sort_origin - 10.0));
+                    }
+                    break;
+                }
+            }
+            if !sprite_cfgs.is_empty() {
+                let sprite_cfgs = SpriteConfigStrIds::new(sprite_cfgs);
+                cmd.entity(tile_enti).insert(sprite_cfgs);
+            }
+
+            cmd.entity(tile_enti).insert((
+                Transform::default(),
             ));
-            if ! seri.shader.is_empty() {
-                warn!("Tile {} tilemap shaders ('{}') are not compatible with sprite=true, ignoring", str_id, seri.shader);
-            }
-            if let Some(y_sort_origin) = seri.ysort {
-                cmd.entity(enti).insert(YSortOrigin(y_sort_origin - 10.0));
-            }
+
         }
-        if !seri.cats.is_empty() {
-            for cat in seri.cats.iter() {
-                if cat.is_empty() { continue; }
-                tile_cats.0.entry(Category::new(cat)).or_default().push(enti);
+        if let Some(cats) = &seri.cats {
+            for cat in cats.iter() {
+                if cat.trim().is_empty() { continue; }
+                res_tile_cats.0.entry(Category::new_truncated(cat.trim())).or_default().insert(tile_enti);
             }
         }
     }
     
-    cmd.insert_resource(tile_cats);
+    cmd.insert_resource(res_tile_cats);
 
 } 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
@@ -152,6 +178,7 @@ pub fn add_handles(
         let tile_handles = TileHidsHandles::from_paths(&asset_server, tile_image_paths.clone(), );
 
         if let Ok(tile_handles) = tile_handles {
+            trace!("Adding TileHandles for tile '{}'", str_id);
             cmd.entity(enti).insert(tile_handles);
         } else{
             error!("Failed to create TileHandles for tile '{}'", str_id);
@@ -198,7 +225,7 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 
         for (tile_id, min_dist) in min_distances {
 
-            if let Some(cat) = tile_id.strip_prefix("c.") && let Some(cat_entities) = tile_cats.0.get(&Category::new(cat)) {
+            if let Some(cat) = tile_id.strip_prefix("c.") && let Some(cat_entities) = tile_cats.0.get(&Category::new_truncated(cat)) {
 
                 for cat_tile_ent in cat_entities {
                     min_dists.0.insert(*cat_tile_ent, min_dist);
@@ -252,33 +279,6 @@ pub fn map_portal_tiles(mut cmd: Commands,
         });
     }
 }
-
-// #[allow(unused_parens, )]
-// pub fn client_map_server_tiling(
-//     trigger: On<TileEntitiesMap>, 
-//     mut cmd: Commands, 
-//     client: Res<State<ClientState>>,
-//     mut entis_map: ResMut<ServerEntityMap>, 
-//     own_map: Res<TileEntitiesMap>,
-// ) {
-//     if *client.into_inner().get() == ClientState::Disconnected { return; }
-
-//     let TileEntitiesMap(received_map) = trigger.event().clone();
-//     for (hash_id, &server_entity) in received_map.0.iter() {
-        
-//         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
-//             if let Some(prev_client_entity) = entis_map.to_client().get(server_entity)
-//                 && client_entity != prev_client_entity 
-//             {
-//                 cmd.entity(prev_client_entity).try_despawn();
-//             }
-//             debug!("Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
-//             entis_map.insert(server_entity, client_entity);
-//         } else {
-//             error!("Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
-//         }
-//     }
-// }
 
 #[allow(unused_parens)]
 pub fn instantiate_portal(mut cmd: Commands,
@@ -425,7 +425,7 @@ pub fn client_sync_tile(
 
         
     //     if is_child && let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) {
-         
+                //despawn prev tile if at same pos
             
     //     } 
     // }
@@ -433,25 +433,25 @@ pub fn client_sync_tile(
 
 }
 
-#[allow(unused_parens)]
-pub fn client_add_sprite(mut cmd: Commands, 
-    ori_query: Query<(&TileStrId, Option<&Sprite>), (With<Disabled>)>,
-    mut query: Query<(Entity, &EntityZeroRef), (With<Tile>, With<Transform>, Without<Sprite>, Or<(Without<Disabled>, With<Disabled>)>)>,
-) {
-    for (ent, &ezero) in query.iter_mut() {
-        let Ok((tile_strid, sprite)) = ori_query.get(ezero.0) else{
-            error!("Original tile entity {} is despawned", ezero.0);
-            continue;
-        };
+// #[allow(unused_parens)]
+// pub fn client_add_sprite(mut cmd: Commands, 
+//     ori_query: Query<(&TileStrId, Option<&Sprite>), (With<Disabled>)>,
+//     mut query: Query<(Entity, &EntityZeroRef), (With<Tile>, With<Transform>, Without<Sprite>, Or<(Without<Disabled>, With<Disabled>)>)>,
+// ) {
+//     for (ent, &ezero) in query.iter_mut() {
+//         let Ok((tile_strid, sprite)) = ori_query.get(ezero.0) else{
+//             error!("Original tile entity {} is despawned", ezero.0);
+//             continue;
+//         };
 
-        if let Some(sprite) = sprite {
-            cmd.entity(ent).insert((sprite.clone(), SyncToRenderWorld, Visibility::default(), ) );
-            info!("Added sprite to tile '{}' entity {:?}", tile_strid, ent);
-        } else{
-            error!("Tile '{}' has no sprite to add", tile_strid);
-        }
-    }
-}
+//         if let Some(sprite) = sprite {
+//             cmd.entity(ent).insert((sprite.clone(), SyncToRenderWorld, Visibility::default(), ) );
+//             info!("Added sprite to tile '{}' entity {:?}", tile_strid, ent);
+//         } else{
+//             error!("Tile '{}' has no sprite to add", tile_strid);
+//         }
+//     }
+// }
 
 
 

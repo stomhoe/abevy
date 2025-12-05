@@ -33,10 +33,12 @@ pub fn plugin(app: &mut App) {
         .register_type::<DisplayName>()
         .register_type::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
         .register_type::<HashIdToEntityMap>()
+        .register_type::<Category>().register_type_data::<Category, InspectorEguiImpl>()
         
         .replicate::<Name>()
         .replicate::<EntityPrefix>()
         .replicate::<StrId>()
+        .replicate::<Category>()
         .replicate::<DisplayName>()
         .replicate::<HashId>()
         .replicate::<ImagePathHolder>()

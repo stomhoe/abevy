@@ -5,13 +5,11 @@ use common::common_components::*;
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, HashablePosVec};
-use std::time::Duration;
 #[allow(unused_imports)] use bevy::prelude::*;
-use splines::{Interpolation, Key, Spline};
 
 
-#[derive(Component, Debug, Deserialize, Serialize, )]
-#[require(EntityPrefix::new_truncated("ColorWSampler"), AssetScoped, )]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect)]
+#[require(EntityPrefix::new_truncated("ColorWSampler"), AssetScoped, Replicated)]
 pub struct ColorSampler(pub WeightedSampler<[u8; 4]>);
 impl ColorSampler {
     pub fn new(weights: &Vec<([u8; 4], f32)>) -> Self {
@@ -106,7 +104,7 @@ impl<'de> Deserialize<'de> for EntiWeightedSampler {
     }
 }
 
-#[derive(Debug, Clone, )]
+#[derive(Debug, Clone, Reflect, Default)]
 pub struct WeightedSampler<T: Clone + Serialize + Eq + std::hash::Hash + std::fmt::Debug> {
     choices_and_weights: Vec<(T, f32)>, cumulative_weights: Vec<f32>, total_weight: f32,
 }
@@ -168,9 +166,6 @@ impl MapEntities for WeightedSampler<Entity> {
             *ent = entity_mapper.get_mapped(*ent);
         }
     }
-}
-impl<T: Clone + Serialize + Eq + std::hash::Hash + std::fmt::Debug + for<'de> Deserialize<'de>> Default for WeightedSampler<T> {
-    fn default() -> Self { Self { choices_and_weights: Vec::new(), cumulative_weights: Vec::new(), total_weight: 0.0 } }
 }
 
 impl<T: Clone + Serialize + Eq + std::hash::Hash + std::fmt::Debug + for<'de> Deserialize<'de>> Serialize for WeightedSampler<T> {

@@ -3,6 +3,7 @@ use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use common::common_states::*;
 use dimension::dimension_resources::DimensionEntityMap;
 use dimension_shared::{DimensionRef, DimensionRootOplist, DimensionStrIdRef};
+use sprite_animation_shared::AnimationLibrary;
 use tilemap::{chunking_components::{ActivatingChunks, }, terrain_gen::{terrgen_components::{Terrgen}, terrgen_resources::*}, tile::{tile_components::*, tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 
 
@@ -16,6 +17,8 @@ pub fn reload_assets_ingame(
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
     mut hot_loading: ResMut<NextState<TerrainGenHotLoading>>,
     mut regpos: ResMut<RegisteredPositions>,
+    mut library: ResMut<AnimationLibrary>,
+
 ) {
     
     if keys.pressed(KeyCode::KeyR) {
@@ -41,6 +44,7 @@ pub fn reload_assets_ingame(
         cmd.remove_resource::<OpListEntityMap>();
         cmd.remove_resource::<TerrGenEntityMap>();
         cmd.remove_resource::<DimensionEntityMap>();
+        library.0.clear();
         regpos.0.clear();
     
         loading_state.set(AssetsLoadingState::LocalInProcess);

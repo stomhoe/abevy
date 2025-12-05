@@ -6,10 +6,10 @@ use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, Has
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::RenetClient;
 use bevy_spritesheet_animation::prelude::Animation;
-use common::common_components::{AssetScoped, DisplayName, EntityPrefix, ImageHolder, ImagePathHolder, StrId};
+use common::common_components::{AssetScoped, Category, DisplayName, EntityPrefix, ImageHolder, ImagePathHolder, StrId};
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{Categories, Category, Directionable, MyZ};
-use sprite_animation_shared::{AnimationLibrary, sprite_animation_shared::{AnimationState}};
+use game_common::game_common_components::{Categories, Directionable, MyZ};
+use sprite_animation_shared::{AnimationLibrary, sprite_animation_shared::AnimationState};
 
 use crate::{sprite_components::*, sprite_resources::*, sprite_scale_offset_components::*};
 
@@ -25,6 +25,7 @@ pub fn init_sprite_cfgs(
 
     mut seris_handles: ResMut<SpriteSerisHandles>,
     mut assets: ResMut<Assets<SpriteConfigSeri>>,
+    library: Res<AnimationLibrary>,
 ) {
     if map.is_some(){ return; }
 
@@ -36,41 +37,44 @@ pub fn init_sprite_cfgs(
     for handle in take(&mut seris_handles.handles) {
         let Some(mut seri) = assets.remove(&handle) else {continue;};
 
-        debug!(target: "sprite_loading", "Loading SpriteDataSeri from handle: {:?}", handle);
+        debug!(target: "sprite_init", "Loading SpriteDataSeri from handle: {:?}", handle);
         
         let str_id = match StrId::new_with_result(seri.id, 3) {
             Ok(id) => id,
             Err(e) => {
                 let err = BevyError::from(format!("Failed to create StrId for SpriteConfig: {}", e));
-                    error!(target: "sprite_loading", "{}", err);
+                    error!(target: "sprite_init", "{}", err);
                     continue;
                 }
             };
-
         
-        //let atlas = AtlasLayoutData::new(seri.rows_cols, seri.frame_size);
-        //let atlas: TextureAtlas = atlas.into_texture_atlas(&mut atlas_layouts);
-
         let visib = match seri.visibility {
-            0 => Visibility::Inherited, 1 => Visibility::Visible, 2 => Visibility::Hidden,    
-            _ => {
-                warn!(target: "sprite_loading", "Invalid visibility value: {} for SpriteConfig '{}', falling back to inherited", seri.visibility, str_id);
+            Some(0) => Visibility::Inherited,
+            Some(1) => Visibility::Visible,
+            Some(2) => Visibility::Hidden,
+            Some(v) => {
+                warn!(target: "sprite_init", "Invalid visibility value: {} for SpriteConfig '{}', falling back to inherited", v, str_id);
                 Visibility::default()
             },
+            None => Visibility::Inherited,
         };
 
         let mut offset4children_cats = OffsetForChildren::default();
-        for (cat, offset_arr) in take(&mut seri.offset4children) {
-            offset4children_cats.0.insert(Category::new(cat), (Offset2D::from(offset_arr.0), AppliesOnSpriteDirection::from(offset_arr.1)));
+        if let Some(offset4children) = seri.offset4children.as_mut() {
+            for (cat, (offset_x, offset_y, direction)) in take(offset4children) {
+                offset4children_cats.0.insert(Category::new_truncated(cat), 
+                (Offset2D::from((offset_x, offset_y)), AppliesOnSpriteDirection::from(direction)));
+            }
         }
         
         let spritecfg_ent = cmd.spawn((
             str_id.clone(), 
             SpriteConfig,
-            Categories::new(seri.categories),
+            Categories::new(seri.categories.unwrap_or_default()),
             visib,
             offset4children_cats,
-            MyZ(seri.z),
+            //poner esto de vuelta por si se quieren reescalar las animations globalmente
+            /*
             Scale2D::from(seri.scale.unwrap_or([1.0, 1.0])),
             ScaleLookUpDown::from(seri.scale_up_down.unwrap_or([1.0, 1.0])),
             ScaleSideways::from(seri.scale_sideways.unwrap_or([1.0, 1.0])),
@@ -79,109 +83,72 @@ pub fn init_sprite_cfgs(
             OffsetDown::from(seri.offset_down.unwrap_or_default()),
             OffsetUp::from(seri.offset_up.unwrap_or_default()),
             OffsetSideways::from(seri.offset_sideways.unwrap_or_default()),
+            */
         )).insert((
             ChildOf(holder),
-
         )).id();
 
-
-        if seri.name.is_empty() {
-            warn!(target: "sprite_loading", "SpriteConfig name is empty for SpriteConfig '{}', using StrId as name", str_id);
-            cmd.entity(spritecfg_ent).insert(DisplayName(str_id.to_string()));
+        if seri.name.trim().is_empty() {
+            warn!(target: "sprite_init", "SpriteConfig name is empty for SpriteConfig '{}', using StrId as name", str_id);
+            cmd.entity(spritecfg_ent).insert(DisplayName::new_trimmed(str_id.as_str()));
         } else {
-            let disp_name = DisplayName::new(seri.name);
+            let disp_name = DisplayName::new_trimmed(seri.name);
             cmd.entity(spritecfg_ent).insert(disp_name);
         }
         //if seri.exclusive { comps_to_build.exclusive = Some(Exclusive); }
 
-        if seri.directionable { cmd.entity(spritecfg_ent).insert(Directionable); }
+        if seri.directionable == Some(true) { cmd.entity(spritecfg_ent).insert(Directionable); }
 
-        if seri.movement_based { cmd.entity(spritecfg_ent).insert(MovementBased); }
+        if seri.movement_based == Some(true) { cmd.entity(spritecfg_ent).insert(MovementBased); }
 
-        if seri.grounding_based { cmd.entity(spritecfg_ent).insert(GroundingBased); }
-
-        if ! seri.parent_cat.is_empty() {
-            let to_become_child = BecomeChildOfSpriteWithCategory(Category::new(seri.parent_cat));
+        if seri.grounding_based == Some(true) { cmd.entity(spritecfg_ent).insert(GroundingBased); }
+        if let Some(parent_cat) = seri.parent_cat.as_ref().filter(|s| !s.trim().is_empty()) {
+            let to_become_child = BecomeChildOfSpriteWithCategory(Category::new_truncated(parent_cat.trim()));
             cmd.entity(spritecfg_ent).insert(to_become_child);
         }
 
         if ! seri.anims.is_empty() {
-            let mut new_map = HashMap::default();
+            let mut anims_map = SpriteCfgAnimationsMap::default();
             for (anim_type, anim_id) in seri.anims {
                 let anim_type = AnimType::from_tuple(anim_type);
-
-                let anim_id = match StrId::new_with_result(&anim_id, 3) {
-                    Ok(anim_id) => { anim_id }
-                    Err(e) => {
-                        error!("SpriteConfig '{}' has invalid img_anim_pair_id string in ReplicatedAnimationsMap: {} ({})", str_id, anim_id, e);
-                        continue;
-                    }
+                let anim_id = StrId::new_truncated(anim_id);
+                let Some(&anim_ent) = library.0.get(&anim_id) else {
+                    error!(target: "sprite_init", "SpriteConfig {}: AnimationLibrary does not contain: {} ", str_id, anim_id);
+                    continue;
                 };
-                new_map.insert(anim_type, anim_id);
+                anims_map.0.insert(anim_type, anim_ent);
+                
             }
-            if new_map.is_empty() {
-                error!(target: "sprite_loading", "SpriteConfig '{}' animations map has no valid entries", str_id);
+            if anims_map.0.is_empty() {
+                error!(target: "sprite_init", "SpriteConfig '{}' animations map has no valid entries", str_id);
             }
             else {
-                cmd.entity(spritecfg_ent).insert(ReplicatedAnimationsMap(new_map));
+               cmd.entity(spritecfg_ent).insert(anims_map);
             }
         }
         else {
-            error!(target: "sprite_loading", "SpriteConfig '{}' was given an empty animations map", str_id);
+            error!(target: "sprite_init", "SpriteConfig '{}' was given an empty animations map", str_id);
         }
 
-        if ! seri.children_sprites.is_empty(){
-            #[allow(irrefutable_let_patterns, )]
-            if let ids = SpriteConfigStrIds::new(seri.children_sprites){
+        if let Some(children_sprites) = seri.children_sprites.as_ref() {
+            if !children_sprites.is_empty() {
+                let ids = SpriteConfigStrIds::new(children_sprites.clone());
                 cmd.entity(spritecfg_ent).insert(ids);
-            }
-            else {
-                error!(target: "sprite_loading", "Failed to create SpriteConfigStrIds for SpriteConfig '{}'", str_id);
+            
             }
         }
-        
-        if let Some(color) = seri.color {
-            let (red, green, blue, alpha) = color.into();
-            cmd.entity(spritecfg_ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
-        }
 
-
-
+        /*
         match seri.flip_horiz {
             1 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Any); },
             2 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Left); },
             3 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Right); },
             _ => {},
         };
+        */
         
     }
 } 
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
-#[allow(unused_parens)]
-pub fn instantiate_anim_map(mut cmd: Commands, 
-    query: Query<(Entity, &StrId, &ReplicatedAnimationsMap),(Changed<ReplicatedAnimationsMap>, With<SpriteConfig>,)>,
-    library: Res<AnimationLibrary>,
-) {
-    for (ent, str_id, repli_map) in query.iter() {
-        
-        let mut anims_map = SpriteCfgAnimationsMap::default();
-        for (anim_type, anim_id) in &repli_map.0 {
-            let anim_handle = match library.0.get(anim_id) {
-                Some(handle) => handle,
-                None => {
-                    error!(target: "sprite_loading", "SpriteConfig {}: AnimationLibrary does not contain animation id: {} for ", str_id, anim_id);
-                    continue;
-                }
-            };
-            anims_map.0.insert(anim_type.clone(), anim_handle.clone());
-        }
-        cmd.entity(ent).insert(anims_map);
-    }
-}
-
-
 
 pub fn add_sprites_to_local_map(
     mut cmd: Commands,
@@ -191,10 +158,10 @@ pub fn add_sprites_to_local_map(
     let Some(mut terrgen_map) = map else { return; };
     for (ent, prefix, str_id) in query.iter() {
         if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
-            error!(target: "sprite_loading", "{} {} already in SpriteCfgEntityMap : {}", prefix, str_id, err);
+            error!(target: "sprite_init", "{} {} already in SpriteCfgEntityMap : {}", prefix, str_id, err);
             cmd.entity(ent).despawn();
         } else {
-            debug!(target: "sprite_loading", "Inserted sprite '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
+            debug!(target: "sprite_init", "Inserted sprite '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
         }
     }
 }
@@ -202,11 +169,11 @@ pub fn add_sprites_to_local_map(
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
     mut cmd: Commands,
-    mut query: Query<(Entity, &SpriteConfigStrIds, ), (Added<SpriteConfigStrIds>,)>,
+    mut query: Query<(Entity, &SpriteConfigStrIds, ), (/*Added<SpriteConfigStrIds>,*/)>,
     map: Option<Res<SpriteCfgEntityMap>>,
 ) {
     let Some(map) = map else {
-        error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
+        //error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
         return;
     };
 
@@ -218,7 +185,7 @@ pub fn replace_string_ids_by_entities(
                 info!(target: "sprite_building", "Replacing string id '{}' with entity {:?}", id, sprite_ent);
                 entities_to_build.insert(sprite_ent);
             } else {
-                error!(target: "sprite_building", "SpriteConfigEntityMap does not contain entity for id: {}", id);
+                error!(target: "sprite_building", "ekf SpriteConfigEntityMap does not contain entity for id: {}", id);
             }
         }
         if ! entities_to_build.is_empty() {
@@ -229,27 +196,10 @@ pub fn replace_string_ids_by_entities(
     }
 }
 
-//LO HACEN TODOS
-#[allow(unused_parens)]
-pub fn insert_sprite_to_instance(mut cmd: Commands, 
-    instance_query: Query<(Entity, &SpriteConfigRef, /*&BecomeChildOf*/),( Changed<SpriteHolderRef>, Without<SpriteConfig>, )>,
-    spritecfgs_query: Query<(&Sprite, &Visibility), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
-    
-) {
-    for (ent, sprite_config_ref, /*become_child_of*/) in instance_query.iter() {
-        if let Ok((sprite, visibility)) = spritecfgs_query.get(sprite_config_ref.0) {
-            cmd.entity(ent).insert((SyncToRenderWorld, sprite.clone(), visibility.clone(), /*ChildOf(become_child_of.0)*/));
-        } else {
-            warn!(target: "sprite_building", "SpriteConfigRef {:?} does not have a Sprite component", sprite_config_ref.0);
-        }
-    }
-}
-
-
 #[allow(unused_parens)]
 pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     mut cmd: Commands,
-    mut father_query: Query<(Entity, &mut SpriteCfgsToBuild, Option<&SpriteHolderRef>,), 
+    mut father_query: Query<(Entity, &mut SpriteCfgsToBuild, Option<&SpriteBaseHolderRef>,), 
     (Without<SpriteConfig>, Changed<SpriteCfgsToBuild>,)>,
     spritecfgs_query: Query<(&StrId, Option<&SpriteCfgsToBuild>), 
     (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
@@ -264,19 +214,14 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
                 let child_sprite = cmd.spawn((
                     str_id.clone(),
                     SpriteConfigRef(spritecfg_ent),
-                    Transform::default(),
                     ChildOf(father_to_sprite),
-                    Visibility::Inherited,
                 )).id();
 
                 if let Some(spriteholder_ref) = spriteholder_ref {
                     cmd.entity(child_sprite).insert(spriteholder_ref.clone());
                 } else {
-                    cmd.entity(child_sprite).insert(SpriteHolderRef{ base: father_to_sprite });
+                    cmd.entity(child_sprite).insert(SpriteBaseHolderRef{ base: father_to_sprite });
                 }
-                // if has_anim {
-                //     cmd.entity(child_sprite).insert(AnimationState::default());
-                // }
 
                 if let Some(sprite_cfgs_to_build) = sprite_cfgs_to_build {
                     cmd.entity(child_sprite).insert(sprite_cfgs_to_build.clone());
@@ -291,13 +236,14 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
             }
         }
         //cmd.entity(father_to_sprite).remove::<SpriteCfgsToBuild>();
+        //NO HACER ESO PORQ HACE FALTA PARA LA REPLICACIÓN ^^
     }
 }
 
 #[allow(unused_parens)]
 pub fn become_child_of_sprite_with_category(
     mut cmd: Commands,
-    new_sprites: Query<(Entity, &SpriteHolderRef, &SpriteConfigRef), (Without<SpriteConfig>, Changed<SpriteConfigRef>,)>,
+    new_sprites: Query<(Entity, &SpriteBaseHolderRef, &SpriteConfigRef), (Without<SpriteConfig>, Changed<SpriteConfigRef>,)>,
     sprite_holder: Query<&HeldSprites>,
     other_sprites: Query<(Entity, &SpriteConfigRef), (Without<SpriteConfig>, )>,
     becomes: Query<(&BecomeChildOfSpriteWithCategory), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
@@ -329,28 +275,3 @@ pub fn become_child_of_sprite_with_category(
     }
     result
 }
-
-
-// TODO replicar los spritecfgs normalmente en vez de hacer esto
-// #[allow(unused_parens, )]
-
-// pub fn client_map_server_sprite_cfgs(
-//     trigger: On<SpriteCfgEntityMap>,
-//     client: Option<Res<RenetClient>>,
-//     mut entis_map: ResMut<ServerEntityMap>,
-//     own_map: Res<SpriteCfgEntityMap>,
-// ) {
-//     if client.is_none() { return; }
-
-
-//     let SpriteCfgEntityMap(received_map) = trigger.event().clone();
-//     for (hash_id, &server_entity) in received_map.0.iter() {
-//         if let Ok(client_entity) = own_map.0.get_with_hash(hash_id) {
-//             debug!(target: "sprite_loading", "Mapping server entity {:?} to local entity {:?}", server_entity, client_entity);
-//             entis_map.insert(server_entity, client_entity);
-//         } else {
-//             error!(target: "sprite_loading", "Received entity {:?} with hash id {:?} not found in own map", server_entity, hash_id);
-//         }
-//     }
-// }
-

@@ -19,9 +19,13 @@ macro_rules! define_fixedstr_id {
         #[require(Name)]
         pub struct $ty(FixedStr<$len>);
         impl $ty {
-            pub fn new_truncated<S: AsRef<str>>(id: S) -> Self { Self(FixedStr::<$len>::new_truncated(id)) }
+            pub const SIZE: usize = $len;
+
+            pub fn new_truncated<S: AsRef<str>>(id: S) -> Self { 
+                Self(FixedStr::<$len>::new_truncated(id.as_ref().trim())) 
+            }
             pub fn new_with_result<S: AsRef<str>>(id: S, min_length: u8) -> Result<Self, StringLengthError> {
-                FixedStr::<$len>::new_with_result(id.as_ref(), min_length).map(Self)
+                FixedStr::<$len>::new_with_result(id.as_ref().trim(), min_length).map(Self)
             }
 
             /// Custom error for ID creation
@@ -29,7 +33,7 @@ macro_rules! define_fixedstr_id {
             pub fn is_empty(&self) -> bool { self.0.is_empty() }
             /// Compare with a string (flexible equality)
             pub fn eq_str<S: AsRef<str>>(&self, other: S) -> bool {
-                self.0.as_str() == other.as_ref()
+                self.0.as_str() == other.as_ref().trim()
             }
         }
         impl std::fmt::Debug for $ty {
@@ -39,7 +43,7 @@ macro_rules! define_fixedstr_id {
         }
         impl std::fmt::Display for $ty {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                if self.0.is_empty() { write!(f, "") } else { write!(f, "Id({})", self.0) }
+                if self.0.is_empty() { write!(f, "") } else { write!(f, "{}", self.0) }
             }
         }
         impl InspectorPrimitive for $ty {
@@ -65,9 +69,20 @@ macro_rules! define_fixedstr_id {
                 self.0.as_str() == *other
             }
         }
+        impl From<&str> for $ty {
+            fn from(s: &str) -> Self {
+                Self(FixedStr::<$len>::new_truncated(s.trim()))
+            }
+        }
+        impl From<String> for $ty {
+            fn from(s: String) -> Self {
+                Self(FixedStr::<$len>::new_truncated(s.trim()))
+            }
+        }
     };
 }
 define_fixedstr_id!(StrId20B, 20);
+define_fixedstr_id!(Category, 32);
 define_fixedstr_id!(StrId, 32);
 
 define_fixedstr_id!(EntityPrefix, 20);

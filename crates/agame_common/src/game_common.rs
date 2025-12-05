@@ -52,6 +52,8 @@ pub fn plugin(app: &mut App) {
     ))
     .configure_sets(Update, (
         (ModifierSystems, ).in_set(SimRunningSystems),
+        SimRunningSystems.run_if(in_state(SimulationState::Running)),
+        SimPausedSystems.run_if(in_state(SimulationState::Paused)),
         (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
@@ -60,12 +62,9 @@ pub fn plugin(app: &mut App) {
                 in_state(AssetsLoadingState::LocalFinished).and(not(in_state(ClientState::Disconnected)))
                 .or(in_state(AssetsLoadingState::ReplicatedFinished).and(in_state(ClientState::Disconnected)))
             )
-        )
-        .in_set(StatefulSessionSystems),
+        ).in_set(StatefulSessionSystems),
         
         StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
-        SimRunningSystems.run_if(in_state(SimulationState::Running)),
-        SimPausedSystems.run_if(in_state(SimulationState::Paused)),
     ))
     .configure_sets(FixedUpdate, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -93,9 +92,9 @@ pub fn plugin(app: &mut App) {
     .register_type::<Description>()
     .register_type::<FacingDirection>()
     .register_type::<WeightedSamplerRef>()
-    .register_type::<Category>()
     .register_type::<Categories>()
     .register_type::<EntityZeroRef>()
+    .register_type::<ColorSampler>()
     
     .replicate::<VisibilityGameState>()    
     .replicate::<FacingDirection>()

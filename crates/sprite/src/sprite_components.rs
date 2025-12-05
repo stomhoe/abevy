@@ -1,4 +1,5 @@
 use being_shared::Grounding;
+use bevy::ecs::entity::MapEntities;
 use bevy::math::{Vec2, UVec2};
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
@@ -6,15 +7,15 @@ use bevy::platform::collections::{HashMap, HashSet};
 use bevy_spritesheet_animation::prelude::{Animation, Spritesheet};
 use common::common_components::*;
 use common::common_types::*;
-use game_common::game_common_components::{Category, FacingDirection};
+use game_common::game_common_components::{FacingDirection};
 use serde::{Deserialize, Serialize};
-use sprite_animation_shared::AnimationState;
+use sprite_animation_shared::{AnimationState, MoveAnimActive};
 
 use crate::sprite_scale_offset_components::Offset2D;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(EntityPrefix::new_truncated("SpriteConfig"), AssetScoped,)]
+#[require(EntityPrefix::new_truncated("SpriteConfig"), AssetScoped, Replicated)]
 pub struct SpriteConfig;
 
 //todo agregarle path_to_sprite y hacer q si no hay un sprite component en la entity q lo instancie
@@ -31,43 +32,36 @@ pub struct GroundingBased;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[relationship(relationship_target = HeldSprites)]
 #[require(EntityPrefix::new_truncated("Sprite"), Replicated,)]
-pub struct SpriteHolderRef {#[relationship]#[entities]pub base: Entity, }
+pub struct SpriteBaseHolderRef {#[relationship]#[entities]pub base: Entity, }
 
 #[derive(Component, Debug, Reflect)]
-#[relationship_target(relationship = SpriteHolderRef)]
+#[relationship_target(relationship = SpriteBaseHolderRef)]
 pub struct HeldSprites(Vec<Entity>);
 impl HeldSprites {pub fn sprite_ents(&self) -> &Vec<Entity> { &self.0 }}
 
-
-#[derive(Component, Default, Deserialize, Serialize, Debug, Reflect)]
-pub struct ReplicatedAnimationsMap (
-    // anim_type - used anim_id
-    pub HashMap<AnimType, StrId>
-);
-
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Deserialize, Serialize, Debug, Reflect, MapEntities)]
 pub struct SpriteCfgAnimationsMap (
     // anim_type - used anim
     //defaultear a usar FacingDirection::South si no es directionable
     //defaultear a usar Grounding::Grounded si no importa la altitud actual
     //Option<StrId> para guardar animaciones para estados específicos
-    pub HashMap<AnimType, (Spritesheet, Handle<Animation>)>
+    #[entities]pub HashMap<AnimType, Entity>
 );
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, Reflect)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, Reflect, MapEntities)]
 pub struct AnimType {
     pub direction: FacingDirection,
-    pub moving: bool,
+    pub moving: MoveAnimActive,
     pub grounding: Grounding,
     pub state_id: Option<AnimationState>,
 }
 
 impl AnimType {
-    pub fn from_tuple(tuple: (u8, bool, u8, String)) -> Self {
+    pub fn from_tuple(tuple: (String, String, String, String)) -> Self {
         let (direction, moving, grounding, state_id) = tuple;
         AnimType {
             direction: FacingDirection::from(direction),
-            moving,
+            moving: MoveAnimActive::from(moving.as_str()),
             grounding: Grounding::from(grounding),
             state_id: if !state_id.is_empty() {
                 Some(AnimationState::new(&state_id))
@@ -76,6 +70,7 @@ impl AnimType {
             },
         }
     }
+    
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
@@ -90,6 +85,7 @@ pub enum FlipHorizIfDir{Left, Right, Any,}
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
+#[require(Transform, Visibility)]
 pub struct SpriteConfigRef(#[entities] pub Entity);
 
 
@@ -123,7 +119,7 @@ impl AppliesOnSpriteDirection {
             "right" | "east" => AppliesOnSpriteDirection::Right,
             "up_down" | "updown" | "north_south" | "northsouth"  => AppliesOnSpriteDirection::UpDown,
             "sideways" | "west_east" | "westeast" | "east_west" | "eastwest" | "sideway" => AppliesOnSpriteDirection::Sideways,
-            "no" | "none" => AppliesOnSpriteDirection::None,
+            "no" | "none" | "false" => AppliesOnSpriteDirection::None,
             _ => AppliesOnSpriteDirection::Any,
         }
     }

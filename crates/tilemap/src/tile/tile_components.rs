@@ -14,7 +14,7 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
 use crate::tile::tile_resources::TileImagePaths;
-use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_events::{StudiedOp},}, tile::tile_materials::* };
+use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{StudiedOp},}, tile::tile_materials::* };
 
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
@@ -142,7 +142,10 @@ impl TileHidsHandles {
         let mut ids = Vec::with_capacity(img_paths.len());
         let mut handles = Vec::with_capacity(img_paths.len());
         for (key, path) in img_paths {
-            let image_holder = ImageHolder::new(asset_server, path.clone())?;
+            let Ok(image_holder) = ImageHolder::new(asset_server, path.clone())
+            else {
+                return Err(BevyError::from("Failed to find image file for key ".to_string() + &key + " at path: " + &path));
+            };
             ids.push(HashId::from(key));
             handles.push(image_holder.0);
         }

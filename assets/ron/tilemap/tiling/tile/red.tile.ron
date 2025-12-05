@@ -1,18 +1,9 @@
-(
+TileSeri(
     id: "red",
     name: "Red",
-    cats: [],
-    img_paths: [
-        ("default", "texture/world/white.png"),
-    ],
-    shader: "",
-    sprite: false, 
-    randflipx: false,
-    offset: (0.0, 0.0),
     z: -900,
+    img_paths: [
+        ("", "texture/world/white.png"),
+    ],
     color: Some((255, 0, 0, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
-    tmapchild: true,
 )

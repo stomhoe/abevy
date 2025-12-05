@@ -1,19 +1,14 @@
 (
     id: "hollow_banyan",
     name: "Hollow Banyan",
-    cats: [],
-    img_paths: {
-        "default": "texture/world/vegetation/elf/hollow_banyan.png"
-    },
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 180.0),
+    img_paths: [
+        ("default", "texture/world/vegetation/tree/elf/hollow_banyan.png"),
+    ],
+    sprite: Some(true), 
+    randflipx: Some(true), 
+    offset: Some((0.0, 180.0)),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
+
     tmapchild: true,
 
 )

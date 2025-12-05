@@ -9,7 +9,7 @@ use common::{common_components::HashId, common_states::GameSetupType};
 use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist};
 use game_common::game_common_components::*;
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize};
-use crate::{ terrain_gen::{terrgen_events::{ PendingOp, PosSearch, SearchFailed, StudiedOp, SuitablePosFound}, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*}};
+use crate::{ terrain_gen::{terrgen_messages::{ PendingOp, PosSearch, SearchFailed, StudiedOp, SuitablePosFound}, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*}};
 
 
 

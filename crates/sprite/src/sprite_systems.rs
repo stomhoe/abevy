@@ -12,7 +12,7 @@ use crate::{sprite_components::*, sprite_resources::SpriteCfgEntityMap, sprite_s
 
 #[allow(unused_parens)]
 pub fn apply_scales(
-    mut sprite_que: Query<(&SpriteHolderRef, &mut Sprite, &SpriteConfigRef, &mut Transform,
+    mut sprite_que: Query<(&SpriteBaseHolderRef, &mut Sprite, &SpriteConfigRef, &mut Transform,
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
     ),>, 
     sprite_config_query: Query<(Option<&FlipHorizIfDir>, &Scale2D, &ScaleLookUpDown, &ScaleSideways,),
@@ -80,68 +80,74 @@ pub fn apply_scales(
 #[allow(unused_parens, )]
 pub fn apply_offsets(
     mut sprite_que: Query<(
-        &SpriteHolderRef, &ChildOf,
-        &SpriteConfigRef,
+        &SpriteBaseHolderRef, 
+        &ChildOf,
+        Option<&SpriteConfigRef>,
         &mut Transform,
         Option<&Offset2D>, 
     ),>,
     sprite_config_query: Query<(
         &Categories,
-        &Offset2D,
-        &OffsetSideways,
-        &OffsetUpDown, &OffsetUp, &OffsetDown, 
-        &OffsetForChildren,
+        Option<&Offset2D>,
+        Option<&OffsetSideways>,
+        Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>, 
+        Option<&OffsetForChildren>,
     ),(With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>, 
     parent_sprite_query: Query<&SpriteConfigRef>,
     base_query: Query<&FacingDirection>,
 ) {
     for (
-        &baseholder, child_of, &SpriteConfigRef(sprite_config), mut transform, 
+        baseholder, child_of, sprite_config_ref, mut transform, 
         offset, 
     ) in sprite_que.iter_mut() {
 
         let mut total_offset = offset.cloned().unwrap_or_default();
 
-        let Ok((my_cats, &offset, &offset_sideways, &offset_updown, &offset_up, &offset_down, &_)) = sprite_config_query.get(sprite_config) 
-        else {
-            error!("Failed to get sprite config for entity {:?}", sprite_config);
-            continue;
-        };
+        if let Some(SpriteConfigRef(sprite_config)) = sprite_config_ref.cloned() {
+            let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _offset4children)) = sprite_config_query.get(sprite_config) 
+            else {
+                error!("Failed to get sprite config for entity {:?}", sprite_config);
+                transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
+                continue;
+            };
 
-        total_offset += offset;
 
-        if let Ok(direction) = base_query.get(baseholder.base) {
-            match direction {
-                FacingDirection::West => {
-                    total_offset += offset_sideways;
-                },
-                FacingDirection::East => {
-                    total_offset += offset_sideways;
-                },
-                FacingDirection::North => {
-                    total_offset += offset_updown;
-                    total_offset += offset_up;
-                },
-                FacingDirection::South => {
-                    total_offset += offset_updown;
-                    total_offset += offset_down;
-                }
-            }
-            if let Ok(SpriteConfigRef(ent)) = parent_sprite_query.get(child_of.parent()) {
-                if let Ok((
-                    _, _, _, _, _, _, offset_for_children
-                )) = sprite_config_query.get(*ent) {
-                    for (cat, &(offset, dir)) in offset_for_children.0.iter() {
-                        if my_cats.0.contains(cat) {
-                            total_offset += offset;
-                        }
+            total_offset += offset.cloned().unwrap_or_default();
+
+            if let Ok(direction) = base_query.get(baseholder.base) {
+                match direction {
+                    FacingDirection::West => {
+                        total_offset += offset_sideways.cloned().unwrap_or_default();
+                    },
+                    FacingDirection::East => {
+                        total_offset += offset_sideways.cloned().unwrap_or_default();
+                    },
+                    FacingDirection::North => {
+                        total_offset += offset_updown.cloned().unwrap_or_default();
+                        total_offset += offset_up.cloned().unwrap_or_default();
+                    },
+                    FacingDirection::South => {
+                        total_offset += offset_updown.cloned().unwrap_or_default();
+                        total_offset += offset_down.cloned().unwrap_or_default();
                     }
                 }
-                
+                if let Ok(SpriteConfigRef(ent)) = parent_sprite_query.get(child_of.parent()) {
+                    if let Ok((//TA BIEN
+                        _, _, _, _, _, _, offset_for_children
+                    )) = sprite_config_query.get(*ent) {
+                        if let Some(offset_for_children) = offset_for_children {
+                            for (offset_cat, &(offset, dir)) in offset_for_children.0.iter() {
+                                if my_cats.0.contains(offset_cat) {
+                                    total_offset += offset;
+                                }
+                            }
+                        }
+                    }
+                    
+                }
             }
-            transform.translation.x = total_offset.0.x;
-            transform.translation.y = total_offset.0.y;
         }
+        transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
     }
 }
 

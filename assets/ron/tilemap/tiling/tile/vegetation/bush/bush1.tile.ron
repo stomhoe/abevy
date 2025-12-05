@@ -1,19 +1,12 @@
-(
+TileSeri(
     id: "temp_bush1",
     name: "Temperate bush 1",
-    cats: [],
-    img_paths: {
-        "default": "texture/world/vegetation/bush1.png"
-    },
-    shader: "",
-    sprite: true, 
-    randflipx: true,
-    offset: (0.0, 0.0),
     z: 1000,
-    color: Some((255, 255, 255, 255)),
-    color_map: "nase",
-    spawns: [],
-    spawns_children: [],
-    tmapchild: true,
-    ysort: Some(10.0),
+    img_paths: [
+        ("default", "texture/world/vegetation/bush/bush1.png"),
+    ],
+    sprite: Some(true),
+    randflipx: Some(true),
+    color_map: Some("nase"),
+    y_sort: Some(10.0),
 )

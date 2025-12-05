@@ -1,18 +1,10 @@
-(
+TileSeri(
     id: "sand",
     name: "Sand",
-    cats: [],
+    z: -1000,
     img_paths: [
         ("default", "texture/world/white.png"),
     ],
-    shader: "sand",
-    sprite: false, 
-    randflipx: false,
-    offset: (0.0, 0.0),
-    z: -1000,
+    shader: Some("sand"),
     color: Some((255, 0, 0, 255)),
-    color_map: "",
-    spawns: [],
-    spawns_children: [],
-    tmapchild: true,
 )

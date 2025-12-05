@@ -75,12 +75,14 @@ macro_rules! define_offset2d_type {
         pub struct $name(pub Vec2);
         impl From<Vec2> for $name { fn from(v: Vec2) -> Self { $name(v) } }
         impl From<[f32; 2]> for $name { fn from(v: [f32; 2]) -> Self { $name(Vec2::from(v)) } }
+        impl From<(f32, f32)> for $name { fn from(v: (f32, f32)) -> Self { $name(Vec2::new(v.0, v.1)) } }
         impl std::ops::Add for $name { type Output = Self; fn add(self, rhs: Self) -> Self { $name(self.0 + rhs.0) } }
         impl std::ops::AddAssign for $name { fn add_assign(&mut self, rhs: Self) { self.0 += rhs.0; } }
     };
 }
 
 define_offset2d_type!(Offset2D); define_offset2d_type!(OffsetUpDown); define_offset2d_type!(OffsetDown); define_offset2d_type!(OffsetUp); define_offset2d_type!(OffsetSideways);
+define_offset2d_type!(OffsetAsChild);
 
 macro_rules! impl_cross_sum {
     ($A:ty, $B:ty) => {
@@ -112,3 +114,4 @@ impl_cross_sum!(OffsetUpDown, OffsetSideways);
 impl_cross_sum!(OffsetDown, OffsetUp);
 impl_cross_sum!(OffsetDown, OffsetSideways);
 impl_cross_sum!(OffsetUp, OffsetSideways);
+impl_cross_sum!(OffsetAsChild, Offset2D);
