@@ -1,4 +1,5 @@
 
+use bevy::ecs::entity_disabling::Disabled;
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 
@@ -35,13 +36,12 @@ pub fn plugin(app: &mut App) {
         .register_type::<HashIdToEntityMap>()
         .register_type::<Category>().register_type_data::<Category, InspectorEguiImpl>()
         
-        .replicate::<Name>()
-        .replicate::<EntityPrefix>()
-        .replicate::<StrId>()
-        .replicate::<Category>()
-        .replicate::<DisplayName>()
-        .replicate::<HashId>()
-        .replicate::<ImagePathHolder>()
-
+        .replicate_filtered::<Name, Or<(Without<Disabled>, With<Disabled>, )>>()
+        .replicate_filtered::<EntityPrefix, Or<(Without<Disabled>, With<Disabled>, )>>()
+        .replicate_filtered::<StrId, Or<(Without<Disabled>, With<Disabled>, )>>()
+        .replicate_filtered::<Category, Or<(Without<Disabled>, With<Disabled>, )>>()
+        .replicate_filtered::<DisplayName, Or<(Without<Disabled>, With<Disabled>, )>>()
+        .replicate_filtered::<HashId, Or<(Without<Disabled>, With<Disabled>, )>>()
+        .replicate_filtered::<ImagePathHolder, Or<(Without<Disabled>, With<Disabled>, )>>()
     ;
 }

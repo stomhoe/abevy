@@ -59,8 +59,9 @@ pub fn plugin(app: &mut App) {
         
         .register_type::<NoiseSerisHandles>().register_type::<NoiseSerialization>()
         .register_type::<OpListSerisHandles>().register_type::<OpListSerialization>()
-        .register_type::<FnlNoise>().register_type::<FastNoiseLite>()
-        .register_type::<OperationList>().register_type::<Operation>().register_type::<Operand>()
+        .register_type::<FnlNoiseComp>().register_type::<FastNoiseLite>()
+        .register_type::<OperationList>().register_type::<Operation>()
+        .register_type::<Operand>()
         .register_type::<TerrGenEntityMap>()
         .register_type::<OpListEntityMap>()
         .register_type::<OplistSize>()
@@ -80,8 +81,10 @@ pub fn plugin(app: &mut App) {
         .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
         
         .replicate::<OperationList>()
+        .replicate::<FnlNoiseComp>()
+
         .replicate_filtered::<ChildOf, With<OperationList>>()
-        .replicate_filtered::<ChildOf, With<FnlNoise>>()
+        .replicate_filtered::<ChildOf, With<FnlNoiseComp>>()
         .replicate_filtered::<OplistSize, With<OperationList>>()
         
         .replicate::<NoiseHolder>()

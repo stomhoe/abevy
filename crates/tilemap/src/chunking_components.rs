@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
 use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
-use game_common::{game_common_components_samplers::EntiWeightedSampler};
+use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 

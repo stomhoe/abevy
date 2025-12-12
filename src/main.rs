@@ -25,10 +25,12 @@ concat!(
     "tilemap::tile::tile_init_systems=info,",
     "zlevel=warn,",
     "movement=warn,",
-    "sprite_animation=warn,",
     "sprite_init=trace,",
     "sprite_building=trace,",
     "sprite_systems=debug,",
+    
+    "sprite_animation_init=trace,",
+    "sprite_animation=warn,",
 
     "tile_init=debug,",
     "asset_loading=warn,",

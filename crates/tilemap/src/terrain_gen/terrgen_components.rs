@@ -16,8 +16,8 @@ pub struct Terrgen;
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[require(Terrgen, EntityPrefix::new_truncated("Noise"), )]
-pub struct FnlNoise(pub FastNoiseLite);
-impl FnlNoise {
+pub struct FnlNoiseComp(pub FastNoiseLite);
+impl FnlNoiseComp {
     pub fn new(id: StrId) -> Self {
         Self(FastNoiseLite::new(id))
     }

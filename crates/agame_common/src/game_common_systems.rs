@@ -39,6 +39,17 @@ pub fn toggle_simulation(
     }
 }
 
+#[allow(unused_parens)]
+pub fn disable_ezeros(mut cmd: Commands, 
+    query: Query<(Entity),(With<EntityZero>, Without<Disabled>)>,
+) {
+    let mut batch = Vec::with_capacity(query.iter().count());
+    for ent in query.iter() { 
+        batch.push((ent, Disabled, ));
+    }
+    cmd.insert_batch(batch);
+}
+
 use bevy_ecs_tilemap::DrawTilemap;
 
 #[bevy_simple_subsecond_system::hot]
@@ -48,7 +59,7 @@ pub fn z_sort_system(
 
     mut with_own_z_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, Has<TilemapAnchor>), 
     Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>,
-    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZero), (Or<(Changed<EntityZero>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
+    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZeroRef), (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
 
     mut event_writer: MessageWriter<DrawTilemap>,
 
@@ -95,8 +106,8 @@ pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<(&mut TimeB
 
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 
-    mut query: Query<(Entity, &EntityZero, ),
-    (Changed<EntityZero>, Or<(Without<Disabled>, With<Disabled>)>)>,
+    mut query: Query<(Entity, &EntityZeroRef, ),
+    (Changed<EntityZeroRef>, Or<(Without<Disabled>, With<Disabled>)>)>,
 
     ezero: Query<(&Children),(Or<(Without<Disabled>, With<Disabled>)>)>
 ) {

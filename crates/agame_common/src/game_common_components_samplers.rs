@@ -27,35 +27,33 @@ pub struct ColorSamplerRef(#[entities] pub Entity);
 
 #[derive(Debug, Clone, Component, Default)]
 #[require(EntityPrefix::new_truncated("HashPosEntWSampler"), Replicated, AssetScoped, TgenHotLoadingScoped)]
-pub struct EntiWeightedSampler {
-    #[entities]entities: Vec<Entity>, weights: Vec<f32>,
+#[component(map_entities)]
+pub struct EntityWeightedSampler {
+    entities_weights: Vec<(Entity, f32)>,
     cumulative_weights: Vec<f32>, total_weight: f32,
 }
-impl EntiWeightedSampler {
+impl EntityWeightedSampler {
     //PROBLEMA, PUEDE Q LAS ENTITIES DE ESTE HASHMAP NO SE GUARDEN EN EL MISMO ORDEN ENTRE CADA CARGADA, POR LO Q HAY Q GUARDARLO EN LA SAVE TMB
-    pub fn new(weights_map: &HashMap<Entity, f32>) -> Self {
-        let mut entities = Vec::with_capacity(weights_map.len());
-        let mut weights = Vec::with_capacity(weights_map.len());
-        for (&entity, &weight) in weights_map.iter() {
-            entities.push(entity);
-            weights.push(weight); 
+    pub fn new(weights_map: &Vec<(Entity, f32)>) -> Self {
+        let mut entities_weights = Vec::with_capacity(weights_map.len());
+        for (entity, weight) in weights_map.iter().cloned() {
+            entities_weights.push((entity, weight));
         }
-        let mut cumulative_weights = Vec::with_capacity(weights.len());
+        let mut cumulative_weights = Vec::with_capacity(entities_weights.len());
         let mut acc = 0.0;
-        for &w in &weights {
+        for &(_, w) in &entities_weights {
             acc += w;
             cumulative_weights.push(acc);
         }
         let total_weight = acc;
         Self {
-            entities,
-            weights,
+            entities_weights,
             cumulative_weights,
             total_weight,
         }
     }
     fn sample_index(&self, rng_val: f32) -> Option<usize> {
-        if self.entities.is_empty() {
+        if self.entities_weights.is_empty() {
             return None;
         }
         let mut rng_val = rng_val;
@@ -65,42 +63,46 @@ impl EntiWeightedSampler {
             Ok(idx) | Err(idx) => Some(idx),
         }
     }
-
     pub fn sample_with_pos(&self, settings: &AaGlobalGenSettings, pos: GlobalTilePos) -> Option<Entity> {
         let hash_used_to_sample = pos.hash_for_weight_maps(settings);
         let rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
         self.sample_index(rng_val)
-            .and_then(|idx| self.entities.get(idx).map(|e| *e))
+            .and_then(|idx| self.entities_weights.get(idx).map(|(e, _)| *e))
     }
     pub fn sample_with_rng(&self, rng: &mut impl Rng) -> Option<Entity> {
-        if self.entities.is_empty() {return None;}
+        if self.entities_weights.is_empty() {return None;}
         let rng_val = rng.random_range(0.0..=1.0);
         self.sample_index(rng_val)
-            .and_then(|idx| self.entities.get(idx).map(|e| *e))
+            .and_then(|idx| self.entities_weights.get(idx).map(|(e, _)| *e))
     }
 }
-impl Serialize for EntiWeightedSampler {
+impl Serialize for EntityWeightedSampler {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        (&self.entities, &self.weights).serialize(serializer)
+        self.entities_weights.serialize(serializer)
     }
 }
-impl<'de> Deserialize<'de> for EntiWeightedSampler {
+impl<'de> Deserialize<'de> for EntityWeightedSampler {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let (entities, weights): (Vec<Entity>, Vec<f32>) = Deserialize::deserialize(deserializer)?;
-        // Recompute cumulative_weights and total_weight
-        let mut cumulative_weights = Vec::with_capacity(weights.len());
+        let entities_weights: Vec<(Entity, f32)> = Deserialize::deserialize(deserializer)?;
+        let mut cumulative_weights = Vec::with_capacity(entities_weights.len());
         let mut acc = 0.0;
-        for &w in &weights {
+        for &(_, w) in &entities_weights {
             acc += w;
             cumulative_weights.push(acc);
         }
         let total_weight = acc;
-        Ok(EntiWeightedSampler {
-            entities,
-            weights,
+        Ok(EntityWeightedSampler {
+            entities_weights,
             cumulative_weights,
             total_weight,
         })
+    }
+}
+impl MapEntities for EntityWeightedSampler {
+    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
+        for (ent, _) in &mut self.entities_weights {
+            *ent = entity_mapper.get_mapped(*ent);
+        }
     }
 }
 

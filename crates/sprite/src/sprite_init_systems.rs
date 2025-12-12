@@ -6,7 +6,7 @@ use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, Has
 use bevy_spritesheet_animation::prelude::Animation;
 use common::common_components::{AssetScoped, Category, DisplayName, EntityPrefix, ImageHolder, ImagePathHolder, StrId};
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{Categories, Directionable, MyZ};
+use game_common::game_common_components::{Categories, Directionable, EntityZero, MyZ};
 use sprite_animation_shared::{AnimationLibrary, sprite_animation_shared::AnimationState};
 
 use crate::{sprite_components::*, sprite_resources::*, sprite_scale_offset_components::*};
@@ -69,6 +69,7 @@ pub fn init_sprite_cfgs(
             Categories::new(seri.categories.unwrap_or_default()),
             visib,
             offset4children_cats,
+            EntityZero,
             //poner esto de vuelta por si se quieren reescalar las animations globalmente
             /*
             Scale2D::from(seri.scale.unwrap_or([1.0, 1.0])),
@@ -200,27 +201,27 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     spritecfgs_query: Query<(&StrId, Option<&SpriteCfgsToBuild>), 
     (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
-    for (father_to_sprite, mut to_build, spriteholder_ref,) in father_query.iter_mut() {
+    for (father_to_sprite, mut to_build, baseholder_ref,) in father_query.iter_mut() {
 
         for spritecfg_ent in to_build.0.drain() {
-            if let Ok((str_id, sprite_cfgs_to_build)) = spritecfgs_query.get(spritecfg_ent) {
+            if let Ok((str_id, extra_to_build)) = spritecfgs_query.get(spritecfg_ent) {
 
                 info!(target: "sprite_building", "Building sprite {}", str_id);
 
-                let child_sprite = cmd.spawn((
+                let sprite = cmd.spawn((
                     str_id.clone(),
                     SpriteConfigRef(spritecfg_ent),
                     ChildOf(father_to_sprite),
                 )).id();
 
-                if let Some(spriteholder_ref) = spriteholder_ref {
-                    cmd.entity(child_sprite).insert(spriteholder_ref.clone());
+                if let Some(baseholder_ref) = baseholder_ref {
+                    cmd.entity(sprite).insert(baseholder_ref.clone());
                 } else {
-                    cmd.entity(child_sprite).insert(BaseHolderRef{ base: father_to_sprite });
+                    cmd.entity(sprite).insert(BaseHolderRef{ base: father_to_sprite });
                 }
 
-                if let Some(sprite_cfgs_to_build) = sprite_cfgs_to_build {
-                    cmd.entity(child_sprite).insert(sprite_cfgs_to_build.clone());
+                if let Some(extra_to_build) = extra_to_build {
+                    cmd.entity(sprite).insert(extra_to_build.clone());
                     // NO HACE FALTA PONER UN SpriteCfgsBuiltSoFar EN ESTO PORQ LOS CHILDREN FALTANTES SE VAN A AUTOCONSTRUIR CON LA PRESENCIA DE ESTE
                 }
  
@@ -244,8 +245,7 @@ pub fn become_child_of_sprite_with_category(
     other_sprites: Query<(Entity, &SpriteConfigRef), (Without<SpriteConfig>, )>,
     becomes: Query<(&BecomeChildOfSpriteWithCategory), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
     other_cats: Query<&Categories, (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
-) -> Result {
-    let mut result: Result = Ok(());
+) {
     for (new_ent, &sprite_holder_ref, &new_sprite_cfg_ref) in new_sprites.iter(){
         if let Ok(becomes_child_of_sprite_with_cat) = becomes.get(new_sprite_cfg_ref.0) {unsafe {
             let held_sprites = sprite_holder.get(sprite_holder_ref.base).debug_expect_unchecked("SpriteHolderRef should have a HeldSprites component");
@@ -257,7 +257,6 @@ pub fn become_child_of_sprite_with_category(
                     Ok(cats) => cats,
                     Err(e) => {
                         error!(target: "sprite_building", "Entity {:?} does not have Categories: {}", o_spritecfg_ref.0, e);
-                        result = Err(e.into());
                         break;
                     },
                 };
@@ -269,5 +268,4 @@ pub fn become_child_of_sprite_with_category(
             }
         }}
     }
-    result
 }

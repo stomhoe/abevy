@@ -1,12 +1,12 @@
 use std::time::Duration;
 
-use bevy::{prelude::*, time::common_conditions::on_timer};
+use bevy::{ecs::entity_disabling::Disabled, prelude::*, time::common_conditions::on_timer};
 use bevy_common_assets::ron::RonAssetPlugin;
-use common::common_states::*;
+use common::{common_states::*, common_types::SerializableVisibility};
 use bevy_asset_loader::prelude::*;
 use bevy_replicon::prelude::*;
 
-use crate::{color_sampler_systems::*, color_sampler_resources::WeightedColorsSeri, game_common_components::*, game_common_components_samplers::{ColorSampler, EntiWeightedSampler, WeightedSamplerRef}, game_common_states::*, game_common_systems::* };
+use crate::{color_sampler_systems::*, color_sampler_resources::WeightedColorsSeri, game_common_components::*, game_common_components_samplers::{ColorSampler, EntityWeightedSampler, WeightedSamplerRef}, game_common_states::*, game_common_systems::* };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct StatefulSessionSystems;
@@ -50,6 +50,7 @@ pub fn plugin(app: &mut App) {
         add_colorsamplers_to_map.run_if(not(in_state(ClientState::Disconnected))),
         apply_color,
         clone_ezero_children_ents,
+        disable_ezeros,
     ))
     .configure_sets(Update, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -94,17 +95,22 @@ pub fn plugin(app: &mut App) {
     .register_type::<FacingDirection>()
     .register_type::<WeightedSamplerRef>()
     .register_type::<Categories>()
-    .register_type::<EntityZero>()
+    .register_type::<EntityZeroRef>()
     .register_type::<ColorSampler>()
     
     .replicate::<VisibilityGameState>()    
     .replicate::<FacingDirection>()
     .replicate::<Directionable>()
-    .replicate::<EntiWeightedSampler>()
+    .replicate::<EntityWeightedSampler>()
     .replicate::<ColorSampler>()
     .replicate::<MyZ>()
     .replicate::<YSortOrigin>()
     .replicate::<Description>()
-    .replicate::<EntityZero>()
+    .replicate_once::<GlobalTransform>()
+    .replicate::<Categories>()
+    .replicate_filtered::<EntityZero, Or<(With<Disabled>, Without<Disabled>)>>()
+    .replicate_filtered_as::<Visibility, SerializableVisibility, (With<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>)>()
+
+    //.replicate::<EntityZeroRef>()
     ;
 }

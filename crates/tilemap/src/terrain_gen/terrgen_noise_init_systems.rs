@@ -118,7 +118,7 @@ pub fn init_noises(
         cmd.spawn((
             str_id.clone(),
             DisplayName::new(seri.id.clone()),
-            FnlNoise(noise),
+            FnlNoiseComp(noise),
             ChildOf(holder),
         ));
 
@@ -129,7 +129,7 @@ pub fn init_noises(
 pub fn add_noises_to_map(
     mut cmd: Commands, 
     terrgen_map: Option<ResMut<TerrGenEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<StrId>, With<FnlNoise>)>,
+    query: Query<(Entity, &EntityPrefix, &StrId), (Added<StrId>, With<FnlNoiseComp>)>,
 ) {
     let Some(mut terrgen_map) = terrgen_map else {
         return;

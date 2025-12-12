@@ -34,7 +34,7 @@ pub fn init_animations(
 
         let Ok(_) = ImagePathHolder::new(seri.img_path.clone()) else {
             let err = BevyError::from(format!("Failed to find image for Animation {}: {}", seri.id, "invalid image path"));
-            error!(target: "sprite_init", "{}", err);
+            error!(target: "sprite_animation_init", "{}", err);
             continue;
         };
 
@@ -49,10 +49,10 @@ pub fn init_animations(
                 cmd.entity(ent).insert(YSortOrigin(y_sort));
             }
 
-            debug!(target: "sprite_animation", "Inserting animation '{}' into library.", str_id);
+            debug!(target: "sprite_animation_init", "Inserting animation '{}' into library.", str_id);
             library.0.insert(str_id, ent);//NO SÉ SI MOVER A OTRO LUGAR
         } else {
-            error!(target: "sprite_animation", "Animation with id '{}' already present in library, skipping insert.", str_id);
+            error!(target: "sprite_animation_init", "Animation with id '{}' already present in library, skipping insert.", str_id);
             continue;
         }
     }
@@ -64,13 +64,39 @@ pub fn init_animations(
 pub fn init_animation_sheet_and_handle(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
     mut animation_assets: ResMut<Assets<Animation>>,
-    mut query: Query<(Entity, &StrId, &AnimationSerialization),(Added<AnimationSerialization>, )>,
+    query: Query<(Entity, &StrId, &AnimationSerialization),(With<AnimationSerialization>, Without<AnimationHandle>)>,
 ) {
-    for (entity, str_id, seri) in query.iter_mut() {
+    //trace!(target: "sprite_animation_init", "Initializing animation sheets and handles...");
+    for (entity, str_id, seri) in query.iter() {
+        debug!(
+            target: "sprite_animation_init",
+            "Initializing sheet and handle for {:?}, {:?}, {}",
+            entity, str_id, seri.img_path
+        );
         let image_handle = asset_server.load(&seri.img_path);
 
         let (rows, cols) = seri.rows_cols.unwrap_or((1, 1));
-        let (rows, cols) = (rows.max(1), cols.max(1));
+        if rows < 1 || cols < 1 {
+            if rows < 1 && cols < 1 {
+                error!(
+                    target: "sprite_animation_init",
+                    "Invalid rows ({}) and cols ({}) for animation '{}', setting both to minimum 1.",
+                    rows, cols, str_id
+                );
+            } else if rows < 1 {
+                error!(
+                    target: "sprite_animation_init",
+                    "Invalid rows ({}) for animation '{}', setting to minimum 1.",
+                    rows, str_id
+                );
+            } else {
+                error!(
+                    target: "sprite_animation_init",
+                    "Invalid cols ({}) for animation '{}', setting to minimum 1.",
+                    cols, str_id
+                );
+            }
+        }    let (rows, cols) = (rows.max(1), cols.max(1));
 
         let sheet = Spritesheet::new(&image_handle, cols, rows);
         let mut animation = sheet
@@ -136,7 +162,7 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
             }
         }
         let handle: Handle<Animation> = animation_assets.add(animation.build());
-        cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet), ));
+        cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet)));
 
         if let Some(offset) = seri.offset {
             cmd.entity(entity).insert(Offset2D::from(offset));

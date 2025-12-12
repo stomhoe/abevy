@@ -1,10 +1,10 @@
-use bevy::render::sync_world::SyncToRenderWorld;
+use bevy::ecs::entity_disabling::Disabled;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::{AssetsLoadingState, };
 use bevy_ecs_tilemap::prelude::*;
 use dimension_shared::DimensionRef;
-use game_common::{ColorSamplersInitSystems, game_common_components::EntityZero, game_common_components_samplers::EntiWeightedSampler};
+use game_common::{ColorSamplersInitSystems, game_common_components::EntityZeroRef, game_common_components_samplers::EntityWeightedSampler};
 use sprite::SpriteSystems;
 use tilemap_shared::{GlobalTilePos, OplistSize};
 
@@ -58,7 +58,7 @@ pub fn plugin(app: &mut App) {
             MaterialTilemapPlugin::<VoronoiTextureOverlayMat>::default(),
             RonAssetPlugin::<ShaderRepeatTexSeri>::new(&["rep1shader.ron"]),
             RonAssetPlugin::<ShaderVoronoiSeri>::new(&["voro.ron"]),
-            RonAssetPlugin::<TileSeri>::new(&["tile.ron"]),
+            RonAssetPlugin::<TileSerialization>::new(&["tile.ron"]),
             RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
         ))
 
@@ -68,7 +68,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<ShaderVoronoiSerisHandles>()
         .register_type::<ShaderVoronoiSeri>()
         .register_type::<TileSerisHandles>()
-        .register_type::<TileSeri>()
+        .register_type::<TileSerialization>()
         .register_type::<GlobalTilePos>()
         .register_type::<TileWeightedSamplerHandles>()
         .register_type::<TileWeightedSamplerSeri>()
@@ -83,7 +83,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<MinDistancesMap>()
         .register_type::<TileCategories>()
         .register_type::<KeepDistanceFrom>()
-        .register_type::<PortalTemplate>()
+        .register_type::<PortalRecipe>()
         .register_type::<PortalInstance>()
 
 
@@ -93,13 +93,20 @@ pub fn plugin(app: &mut App) {
         .replicate::<TileColor>()
         .replicate::<TileSamplerHolder>()
         .replicate::<InitialPos>()
+        .replicate::<PortalsZeroEguiHolder>()
+        .replicate::<TileInstancesHolder>()
         .replicate::<TileShaderRef>()
         .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
-        .replicate::<ChunkOrTilemapChild>()
-        .replicate_bundle::<(GlobalTilePos, EntityZero)>()
-
         .replicate_filtered::<Transform, With<Tile>>()
-        .replicate_filtered::<ChildOf, With<EntiWeightedSampler>>()
+        .replicate::<ChunkOrTilemapChild>()
+        .replicate_bundle::<(GlobalTilePos, EntityZeroRef)>()
+
+        .replicate_filtered::<Transform, With<TilesEguiHolder>>()
+        .replicate_filtered::<Transform, With<PortalsZeroEguiHolder>>()
+        .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilePos>, With<Disabled>)>>()
+
+
+        .replicate_filtered::<ChildOf, With<EntityWeightedSampler>>()
 
         //usar feature
         .add_message::<SavedTileHadChunkDespawn>()

@@ -4,7 +4,7 @@ use common::common_components::HashId;
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
 use std::mem::take;
-use game_common::{game_common_components::*, game_common_components_samplers::EntiWeightedSampler};
+use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 

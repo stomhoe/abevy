@@ -8,7 +8,7 @@ use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
 use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
-use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoise, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
+use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoiseComp, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
 
 use std::mem::take;

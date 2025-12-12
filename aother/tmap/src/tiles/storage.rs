@@ -14,6 +14,7 @@ use super::TilePos;
 /// Tile entities are stored in a grid. The grid is always filled with None.
 #[derive(Component, Reflect, Default, Debug, Clone)]
 #[reflect(Component, MapEntities)]
+#[component(map_entities)]
 pub struct TileStorage {
     tiles: Vec<Option<Entity>>,
     pub size: TilemapSize,

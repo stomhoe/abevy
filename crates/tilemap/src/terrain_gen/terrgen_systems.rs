@@ -7,7 +7,7 @@ use bevy_replicon::{prelude::{Replicated, SendMode, ToClients}, shared::server_e
 use common::{common_components::{DisplayName, HashId, StrId}, common_states::GameSetupType};
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
-use game_common::{game_common_components::{EntityZero, FacingDirection }, game_common_components_samplers::EntiWeightedSampler};
+use game_common::{game_common_components::{EntityZeroRef, FacingDirection }, game_common_components_samplers::EntityWeightedSampler};
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
 use std::{f32::consts::PI, iter::zip, mem::take};
 use ::tilemap_shared::*;
@@ -86,10 +86,10 @@ pub fn spawn_terrain_operations (
 pub fn produce_tiles(mut cmd: Commands, 
     gen_settings: Res<AaGlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
-    mut pending_ops_events: ResMut<Events<PendingOp>>,
-    fnl_noises: Query<&FnlNoise,>,
+    mut pending_ops_events: ResMut<Messages<PendingOp>>,
+    fnl_noises: Query<&FnlNoiseComp,>,
     studied_ops: Query<&StudiedOp,>,
-    weight_maps: Query<(&EntiWeightedSampler, ), ( )>,
+    weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
     mut collected: ResMut<MassCollectedTiles>,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
 ) -> Result {
@@ -240,7 +240,7 @@ fn spawn_bifurcation_oplists(
 #[allow(unused_parens)]
 pub fn search_suitable_position(
     mut cmd: Commands,
-    mut events_pos_search: ResMut<Events<PosSearch>>, mut ewriter_search_failed: MessageWriter<SearchFailed>,
+    mut events_pos_search: ResMut<Messages<PosSearch>>, mut ewriter_search_failed: MessageWriter<SearchFailed>,
     mut ewriter_pending_ops: MessageWriter<PendingOp>, mut ereader_suitable_pos_found: MessageReader<SuitablePosFound>,
     studied_ops: Query<&StudiedOp, ( )>,
 ) {

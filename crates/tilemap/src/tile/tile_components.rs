@@ -7,7 +7,7 @@ pub use bevy_ecs_tilemap::tiles::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{Description, EntityZero, MyZ, YSortOrigin};
+use game_common::game_common_components::{Description, EntityZero, EntityZeroRef, MyZ, YSortOrigin};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
@@ -21,7 +21,7 @@ pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, 
     TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, TileColor, 
     //children entities don't get cloned
-    Children,
+    Children, EntityZero
 );//Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]
@@ -32,7 +32,7 @@ pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 //NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
-#[require(AssetScoped, )]
+#[require(AssetScoped, Replicated, )]
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
@@ -44,22 +44,19 @@ impl Tile {
 pub struct LocalChunkRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(EntityPrefix::new_truncated("Tile Instances"), Name, Transform )]
+#[require(Replicated, AssetScoped, EntityPrefix::new_truncated("Tiling"), Name, Transform, Visibility)]
+pub struct TilesEguiHolder;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(EntityPrefix::new_truncated("Tile instances"), Name, Transform, Replicated)]
 pub struct TileInstancesHolder;
 
-/*
-           .replicate::<TileChildOf>()
-           .register_type::<TileChildOf>()
-           .register_type::<ChildrenTiles>()
-*/
-// #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
-// #[relationship(relationship_target = ChildrenTiles)]
-// pub struct TileChildOf(#[relationship]#[entities]pub Entity);
 
-// #[derive(Component, Debug, Reflect)]
-// #[relationship_target(relationship = TileChildOf)]
-// pub struct ChildrenTiles(Vec<Entity>);
-// impl ChildrenTiles { pub fn entities(&self) -> &[Entity] { &self.0 } }
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(Replicated, AssetScoped, EntityPrefix::new_truncated("PortalsZero"), Name, Transform, Visibility, )]
+pub struct PortalsZeroEguiHolder;
+
+
 
 pub type TileStrId = StrId20B;
 
@@ -71,9 +68,9 @@ pub struct ChunkOrTilemapChild;
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-pub struct PortalTemplate { #[entities]pub dest_dimension: Entity,#[entities]pub root_oplist: Entity, #[entities] pub oe_portal_tile: Entity, 
+pub struct PortalRecipe { #[entities]pub dest_dimension: Entity,#[entities]pub root_oplist: Entity, #[entities] pub oe_portal_tile: Entity, 
     #[entities] pub checked_oplist: Entity, pub op_i: i8, pub lim_below: f32, pub lim_above: f32, pub one_way: bool, }
-impl PortalTemplate {
+impl PortalRecipe {
     pub fn to_studied_op(&self, start_pos: GlobalTilePos) -> StudiedOp {
         StudiedOp {
             root_oplist: self.root_oplist,
@@ -86,7 +83,7 @@ impl PortalTemplate {
     }
 }
 
-impl Default for PortalTemplate {
+impl Default for PortalRecipe {
     fn default() -> Self {
         Self { dest_dimension: Entity::PLACEHOLDER, root_oplist: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, checked_oplist: Entity::PLACEHOLDER, op_i: -1, lim_below: 0.0, lim_above: 0.0, one_way: false}
     }
@@ -174,7 +171,7 @@ pub struct MinDistancesMap(pub EntityHashMap<u32>);
 impl MinDistancesMap {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&self, 
-        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZero, DimensionRef, GlobalTilePos)
+        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZeroRef, DimensionRef, GlobalTilePos)
     ) -> bool {
         self.0.get(&new.0.0).map_or(true, |&min_dist| {
             my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist

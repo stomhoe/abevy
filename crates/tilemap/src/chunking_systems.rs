@@ -109,7 +109,7 @@ pub fn despawn_unreferenced_chunks(
     chunks_query: Query<(&ChildOf, &ChunkPos, &Children, &TilesToSave), >,
     tmaps: Query<&TileStorage>,
     mut loaded_chunks: ResMut<LoadedChunks>,
-    mut despawn_events: ResMut<Events<CheckChunkDespawn>>,
+    mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
 ) {
     let mut tosave_events = Vec::new();

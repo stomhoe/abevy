@@ -42,9 +42,12 @@ pub fn plugin(app: &mut App) {
     .register_type::<SpriteConfigSeri>()
     .register_type::<SpriteCfgEntityMap>()
     .register_type::<SpriteConfigRef>()
-    .register_type::<Offset2D>().register_type::<OffsetUpDown>().register_type::<OffsetDown>()
+    .register_type::<Offset2D>()
+    .register_type::<OffsetUpDown>()
+    .register_type::<OffsetDown>()
     .register_type::<OffsetUp>()
     .register_type::<OffsetSideways>()
+    .register_type::<OffsetForChildren>()
     .register_type::<Scale2D>()
     .register_type::<ScaleLookUp>()
     .register_type::<ScaleLookDown>()
@@ -60,14 +63,23 @@ pub fn plugin(app: &mut App) {
     .replicate::<SpriteCfgAnimationsMap>()
     .replicate::<MovementBased>()
     .replicate::<GroundingBased>()
+    .replicate::<SpriteConfigRef>()
+    .replicate::<BaseHolderRef>()
     .replicate_filtered::<ChildOf, Or<(With<SpriteConfig>, With<BaseHolderRef>, With<SpriteConfigRef>)>>()
-    .replicate_filtered::<ChildOf, With<SpriteConfig>>()
+    .replicate_once_filtered::<Transform, Or<(With<SpriteConfig>, With<BaseHolderRef>, With<SpriteConfigRef>)>>()
     .replicate::<SpriteConfigsHolder>()
-    .replicate_with((
-        (RuleFns::<Transform>::default(), ReplicationMode::Once),
-        (RuleFns::<BaseHolderRef>::default(), ReplicationMode::OnChange),
-        (RuleFns::<SpriteConfigRef>::default(), ReplicationMode::OnChange),
-    ))
+    .replicate::<Offset2D>()
+    .replicate::<OffsetUpDown>()
+    .replicate::<OffsetDown>()
+    .replicate::<OffsetUp>()
+    .replicate::<OffsetSideways>()
+    .replicate::<OffsetForChildren>()
+    .replicate::<Scale2D>()
+    .replicate::<ScaleLookUp>()
+    .replicate::<ScaleLookDown>()
+    .replicate::<ScaleLookUpDown>()
+    .replicate::<ScaleSideways>()
+    
     ;
 }
 

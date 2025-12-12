@@ -28,6 +28,9 @@ pub struct SearchingForSuitablePos{ pub studied_op_ent: Entity, }
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct EntityZero;
+
 #[allow(unused_parens, )]
 #[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, Eq, PartialEq, Hash, Clone, Copy)]
 #[strum(serialize_all = "lowercase")]
@@ -116,7 +119,7 @@ pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 
 #[derive(Component, Debug, Clone, Deserialize, Serialize, Reflect, Copy, PartialEq, Eq, Hash)]
 /// DON'T FORGET TO ADD <DISABLED> TO THE QUERY 
-pub struct EntityZero(pub Entity);
+pub struct EntityZeroRef(pub Entity);
 
 
 

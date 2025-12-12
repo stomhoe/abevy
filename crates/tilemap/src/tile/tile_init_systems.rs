@@ -7,7 +7,7 @@ use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 use common::common_components::{AssetScoped, Category, DisplayName, EntityPrefix, HashId, ImageHolder, ImageHolderMap, ImagePathHolder, StrId};
 use ::dimension_shared::*;
-use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
+use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, EntityZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
 use sprite::{sprite_components::{BaseHolderRef, SpriteConfigStrIds}, sprite_scale_offset_components::Offset2D};
 use ::tilemap_shared::*;
@@ -17,19 +17,12 @@ use crate::terrain_gen::terrgen_resources::MassCollectedTiles;
 
 use std::mem::take;
 
-#[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new_truncated("Tiles' Templates"), Name, Transform, Visibility)]
-struct EguiTileTemplatesHolder;
-
-#[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new_truncated("Portal tiles"), Name, Transform, Visibility)]
-struct EguiPortalTileTemplatesHolder;
 
 
 #[allow(unused_parens)]
 pub fn init_tiles(
     mut cmd: Commands,  asset_server: Res<AssetServer>,
-    seris_handles: Res<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
+    seris_handles: Res<TileSerisHandles>, mut assets: ResMut<Assets<TileSerialization>>,
     shader_map: Res<TileShaderEntityMap>,
     tiling_map: Option<Res<TileEntitiesMap>>,
     color_map: Res<ColorWeightedSamplersMap>,
@@ -37,10 +30,10 @@ pub fn init_tiles(
 ) {
     if tiling_map.is_some() { return; }
     cmd.insert_resource(TileEntitiesMap::default());
-    let holder = cmd.spawn((EguiTileTemplatesHolder, )).id();
+    let holder = cmd.spawn((TilesEguiHolder, )).id();
     cmd.spawn((TileInstancesHolder, ChildOf(holder)));
 
-    let egui_portal_holder = cmd.spawn((EguiPortalTileTemplatesHolder, ChildOf(holder))).id();
+    let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();
 
     let mut res_tile_cats = TileCategories::default();
 
@@ -58,8 +51,9 @@ pub fn init_tiles(
         let my_z = MyZ(seri.z);
         let tile_enti = cmd.spawn((
             Tile, str_id.clone(), Disabled,
-            EntityPrefix::new_truncated("Tile"), Name::default(),
+            EntityPrefix::new_truncated("Tile"), 
             my_z.clone(),
+            EntityZero,
             ChildOf(holder),
         )).id();
 
@@ -171,6 +165,9 @@ pub fn init_tiles(
 
 } 
 
+
+
+
 #[allow(unused_parens)]
 pub fn add_handles(  
     mut cmd: Commands,  asset_server: Res<AssetServer>,
@@ -192,7 +189,7 @@ pub fn add_handles(
 pub fn add_tiles_to_map(
     mut cmd: Commands,
     map: Option<ResMut<TileEntitiesMap>>,
-    query: Query<(Entity, &EntityPrefix, &TileStrId), (Added<Tile>, Added<Disabled>, Without<TilePos>, Without<EntityZero>)>,
+    query: Query<(Entity, &EntityPrefix, &TileStrId), (Added<Tile>, Added<Disabled>, Without<TilePos>, Without<EntityZeroRef>)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
@@ -208,7 +205,7 @@ pub fn add_tiles_to_map(
 
 #[allow(unused_parens)]
 pub fn map_min_dist_tiles(mut cmd: Commands, 
-    mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSeri>>,
+    mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSerialization>>,
     tiles_map: Res<TileEntitiesMap>,
     tile_cats: Res<TileCategories>,
 ) {
@@ -269,7 +266,7 @@ pub fn map_portal_tiles(mut cmd: Commands,
             continue; 
         };
         info!("Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
-        cmd.entity(ent).insert(PortalTemplate{
+        cmd.entity(ent).insert(PortalRecipe{
             dest_dimension: Entity::PLACEHOLDER,
             root_oplist: Entity::PLACEHOLDER, //SETEARLO DESPUÉS
             oe_portal_tile: tile_ent,
@@ -285,8 +282,8 @@ pub fn map_portal_tiles(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn instantiate_portal(mut cmd: Commands,
     ori_tile_str_id_query: Query<&TileStrId, (With<Disabled>)>,
-    new_portals: Query<(Entity, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZero),(Without<SearchingForSuitablePos>, )>,
-    pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalTemplate, &GlobalTilePos, &DimensionRef, &EntityZero),()>,
+    new_portals: Query<(Entity, &PortalRecipe, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(Without<SearchingForSuitablePos>, )>,
+    pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalRecipe, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
     mut ew_pos_search: MessageWriter<PosSearch>, 
     mut mass_collected: ResMut<MassCollectedTiles>,
@@ -306,9 +303,9 @@ pub fn instantiate_portal(mut cmd: Commands,
 
         let Ok(&dimension_hash_id) = dimension_query.get(portal_template.dest_dimension) else {
             error!(
-                "PortalTemplate {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_template.dest_dimension, dim_ref.0, global_pos,
+                "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_template.dest_dimension, dim_ref.0, global_pos,
             );
-            cmd.entity(portal_ent).remove::<PortalTemplate>();
+            cmd.entity(portal_ent).remove::<PortalRecipe>();
             continue;
         };
 
@@ -323,10 +320,10 @@ pub fn instantiate_portal(mut cmd: Commands,
 
     let mut successful_searches: EntityHashSet = EntityHashSet::new();
 
-    let mut handle_success = |this_end_portal: Entity, portal_template: &PortalTemplate, 
-        found_pos: GlobalTilePos, my_orig_tile_ref: EntityZero| 
+    let mut handle_success = |this_end_portal: Entity, portal_template: &PortalRecipe, 
+        found_pos: GlobalTilePos, my_orig_tile_ref: EntityZeroRef| 
     {
-        cmd.entity(this_end_portal).remove::<(SearchingForSuitablePos, PortalTemplate)>();
+        cmd.entity(this_end_portal).remove::<(SearchingForSuitablePos, PortalRecipe)>();
         let oe_dim_ref = DimensionRef(portal_template.dest_dimension);
         
         register_pos.0.entry(portal_template.oe_portal_tile)
@@ -336,11 +333,10 @@ pub fn instantiate_portal(mut cmd: Commands,
         let oe_portal_tileref = if portal_template.oe_portal_tile == this_end_portal {
             my_orig_tile_ref
         } else {
-            EntityZero(portal_template.oe_portal_tile)
+            EntityZeroRef(portal_template.oe_portal_tile)
         };
 
-        //oe portal tileref
-        info!("OE Portal TileRef: {:?}", oe_portal_tileref);
+        debug!("OE Portal TileRef: {:?}", oe_portal_tileref);
 
         let oe_portal = 
         mass_collected
@@ -348,13 +344,13 @@ pub fn instantiate_portal(mut cmd: Commands,
 
         cmd.entity(this_end_portal).insert(PortalInstance::new(oe_portal));
 
-        cmd.entity(oe_portal).remove::<PortalTemplate>();
+        cmd.entity(oe_portal).remove::<PortalRecipe>();
 
         if portal_template.one_way {return;}
 
         cmd.entity(oe_portal).insert(PortalInstance::new(this_end_portal));
 
-        info!("Instantiated portal tile '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
+        debug!("Instantiated portal tile '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
 
     };
 
@@ -410,7 +406,7 @@ pub fn instantiate_portal(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn client_sync_tile(
     mut cmd: Commands, 
-    query: Query<(Entity, &EntityZero, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>, Or<(Without<Disabled>, With<Disabled>)>)>,
+    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>, Or<(Without<Disabled>, With<Disabled>)>)>,
     loaded_chunks: Res<LoadedChunks>,
     mut collected: Res<MassCollectedTiles>//TODO synquear tiles de tilemaps si es posible
 
@@ -463,7 +459,7 @@ pub fn client_sync_tile(
 pub fn make_child_of_chunk(mut cmd: Commands, 
 
     ezero_query: Query<&ChunkOrTilemapChild, With<Disabled>>,
-    query: Query<(Entity, &EntityZero, &GlobalTilePos, &DimensionRef), (With<Tile>, With<Transform>, Without<ChildOf>, Without<TilePos>)>,
+    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef), (With<Tile>, With<Transform>, Without<ChildOf>, Without<TilePos>)>,
     loaded_chunks: Res<LoadedChunks>,
 ) {
     let mut child_ofs = Vec::new();

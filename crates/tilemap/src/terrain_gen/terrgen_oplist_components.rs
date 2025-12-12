@@ -68,6 +68,7 @@ pub struct Bifurcation{#[entities] pub oplist: Option<Entity>, #[entities] pub t
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 #[require(EntityPrefix::new_truncated("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped)]
+#[component(map_entities)]
 pub struct OperationList {
 
     pub trunk: Vec<(Operation, Vec<Operand>, u8)>,
@@ -90,9 +91,6 @@ impl MapEntities for OperationList {
 
     }
 }
-//TODO avergiuar como hacer para que mapentities funcione, usar replicate_as
-
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect )]
 pub struct VariablesArray(pub [f32; Self::SIZE as usize]);

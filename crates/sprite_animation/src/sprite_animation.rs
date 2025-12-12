@@ -13,32 +13,36 @@ use ::sprite_animation_shared::*;
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*, sprite_animation_init_systems::*, sprite_animation_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct SpriteAnimSystems;
+pub struct SpriteAnimationSystems;
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        SpritesheetAnimationPlugin::default(), 
+        SpritesheetAnimationPlugin, 
         RonAssetPlugin::<AnimationSerialization>::new(&["anim.ron"]),
     ))
-    .add_systems(Update, (
-        (animate_sprite, ).chain().run_if(on_timer(std::time::Duration::from_millis(100))),
-        update_animstate_for_clients.run_if(in_state(ServerState::Running)),
-        
-        init_animation_sheet_and_handle,
-    ).in_set(SpriteAnimSystems))
+    .add_systems(Update, ((
+            (animate_sprite, ).chain().run_if(on_timer(std::time::Duration::from_millis(100))),
+            update_animstate_for_clients.run_if(in_state(ServerState::Running)),     
+        ).in_set(SpriteAnimationSystems),
 
-    .configure_sets(Update, (        
-        SpriteAnimSystems.in_set(SimRunningSystems),
     ))
+
+    .add_systems(FixedUpdate, ((//está en fixed update para q no le afecte lo de SimRunningSystems
+            init_animation_sheet_and_handle,
+        ).in_set(SpriteAnimationSystems),
+    ))
+
+    .configure_sets(Update, ( SpriteAnimationSystems.in_set(SimRunningSystems),))
+    
     .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (        
-        SpriteAnimSystems.before(SpriteSystems)
+        SpriteAnimationSystems.before(SpriteSystems)
     ))
 
     .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
-        (init_animations, init_animation_sheet_and_handle).chain()
-    ).in_set(SpriteAnimSystems)) 
+        (init_animations, ).chain()
+    ).in_set(SpriteAnimationSystems)) 
 
     .add_mapped_server_event::<MoveStateUpdated>(Channel::Unordered)
     //.add_observer(client_receive_moving_anim)

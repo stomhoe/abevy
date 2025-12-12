@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use game_common::game_common_components::{Categories, FacingDirection};
+use game_common::game_common_components::{Categories, EntityZero, FacingDirection};
 use player::player_components::*;
 use sprite_animation_shared::sprite_animation_shared::*;
 
@@ -79,13 +79,13 @@ pub fn apply_scales(
 
 #[allow(unused_parens, )]
 pub fn apply_offsets(
-    mut sprite_que: Query<(
+    mut sprite_query: Query<(
         &BaseHolderRef, 
         &ChildOf,
         Option<&SpriteConfigRef>,
         &mut Transform,
         Option<&Offset2D>, 
-    ),>,
+    ), (Without<EntityZero>, )>,
     sprite_config_query: Query<(
         &Categories,
         Option<&Offset2D>,
@@ -99,7 +99,7 @@ pub fn apply_offsets(
     for (
         baseholder, child_of, sprite_config_ref, mut transform, 
         offset, 
-    ) in sprite_que.iter_mut() {
+    ) in sprite_query.iter_mut() {
 
         let mut total_offset = offset.cloned().unwrap_or_default();
 

@@ -3,7 +3,7 @@ use bevy::ecs::{entity::EntityHashSet, entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
 use ::dimension_shared::*;
-use tilemap::{terrain_gen::{terrgen_oplist_components::OperationList, terrgen_resources::OpListEntityMap}, tile::{tile_components::{PortalTemplate, TileStrId}, tile_resources::PortalSeri}};
+use tilemap::{terrain_gen::{terrgen_oplist_components::OperationList, terrgen_resources::OpListEntityMap}, tile::{tile_components::{PortalRecipe, TileStrId}, tile_resources::PortalSeri}};
 use crate::{
     dimension_resources::*,
 /*
@@ -19,7 +19,7 @@ pub fn dim_replace_string_ref_by_entity_ref(
     dimension_entity_map: Res<DimensionEntityMap>,
     dimension_query: Query<Option<&DimensionRootOplist>>,
     dimension_strid_query: Query<(Entity, Option<&StrId>, &DimensionStrIdRef, Option<&ChildOf>),>,
-    mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalTemplate),(With<Disabled>)>,
+    mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(With<Disabled>)>,
     oplist_map: Res<OpListEntityMap>,
 ) {
     for (thing_ent, ent_strid, dimension_strid, child_of) in dimension_strid_query.iter() {

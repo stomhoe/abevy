@@ -33,7 +33,7 @@ pub struct TileCategories (pub HashMap<Category, EntityHashSet>);
 #[reflect(Resource, Default)] 
 pub struct TileSerisHandles {
     #[asset(path = "ron/tilemap/tiling/tile", collection(typed))] 
-    pub handles: Vec<Handle<TileSeri>>,
+    pub handles: Vec<Handle<TileSerialization>>,
 }
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct TileImagePaths(
@@ -87,7 +87,7 @@ impl IntoIterator for TileImagePaths {
 
 
 #[derive(Deserialize, Asset, Reflect, Default, Component)]
-pub struct TileSeri {
+pub struct TileSerialization {
     pub id: String,
     pub name: String,
     pub z: i32,

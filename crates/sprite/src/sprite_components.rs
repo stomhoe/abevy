@@ -83,10 +83,6 @@ pub struct ExcludedFromBaseAnimPickingSystem;
 #[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
 pub enum FlipHorizIfDir{Left, Right, Any,}
 
-
-
-
-
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect, MapEntities)]
 #[require(Transform, Visibility)]
 pub struct SpriteConfigRef(#[entities] pub Entity);
@@ -95,11 +91,11 @@ pub struct SpriteConfigRef(#[entities] pub Entity);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct ColorHolder(pub Color);//NO HACER PARTE DE SpriteDataBundle
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct OffsetForChildren(pub HashMap<Category, (Offset2D, AppliesOnSpriteDirection)>);
 
 
-#[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
+#[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy, Reflect)]
 pub enum AppliesOnSpriteDirection{None, Up, Down, UpDown, Left, Right, Sideways, Any,}
 impl From<&str> for AppliesOnSpriteDirection {
     fn from(s: &str) -> Self {

@@ -197,3 +197,39 @@ impl<'de, const N: usize> serde::Deserialize<'de> for FixedStr<N> { fn deseriali
 impl<const N: usize> From<&str> for FixedStr<N> { fn from(s: &str) -> Self { FixedStr::new_truncated(s) } }
 impl<const N: usize> From<String> for FixedStr<N> { fn from(s: String) -> Self { FixedStr::new_truncated(s) } }
 impl<const N: usize> AsRef<str> for FixedStr<N> { fn as_ref(&self) -> &str { self.as_str() } }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, )]
+pub enum SerializableVisibility {
+    #[default]
+    Inherited,
+    Visible,
+    Hidden,
+}
+impl From<Option<u8>> for SerializableVisibility {
+    fn from(opt: Option<u8>) -> Self {
+        match opt {
+            Some(0) => SerializableVisibility::Inherited,
+            Some(1) => SerializableVisibility::Visible,
+            Some(2) => SerializableVisibility::Hidden,
+            _ => SerializableVisibility::Inherited,
+        }
+    }
+}
+impl From<Visibility> for SerializableVisibility {
+    fn from(vis: Visibility) -> Self {
+        match vis {
+            Visibility::Inherited => SerializableVisibility::Inherited,
+            Visibility::Visible => SerializableVisibility::Visible,
+            Visibility::Hidden => SerializableVisibility::Hidden,
+        }
+    }
+}
+impl From<SerializableVisibility> for Visibility {
+    fn from(rvis: SerializableVisibility) -> Self {
+        match rvis {
+            SerializableVisibility::Inherited => Visibility::Inherited,
+            SerializableVisibility::Visible => Visibility::Visible,
+            SerializableVisibility::Hidden => Visibility::Hidden,
+        }
+    }
+}

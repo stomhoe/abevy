@@ -28,12 +28,7 @@ pub fn plugin(app: &mut App) {
 
         .replicate_filtered::<Transform, With<Dimension>>()
 
-
-        .replicate_with((
-            RuleFns::<Dimension>::default(),
-            RuleFns::<Transform>::default(),
-            (RuleFns::<GlobalTransform>::default(), ReplicationMode::Once),
-        ))
+        .replicate::<Dimension>()
         .replicate::<DimensionRef>()
         .replicate::<MultipleDimensionRefs>()
         .replicate::<DimensionRootOplist>()
