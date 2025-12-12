@@ -3,7 +3,7 @@ TileSeri(
     name: "Elven Bush 1",
     z: 1000,
     img_paths: [
-        ("default", "texture/world/vegetation/bush/elf/elf_bush1.png"),
+        ("", "texture/world/vegetation/bush/elf/elf_bush1.png"),
     ],
     sprite: Some(true),
     randflipx: Some(true),

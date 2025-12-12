@@ -3,7 +3,7 @@ TileSeri(
     name: "Dark Blue",
     z: -900,
     img_paths: [
-        ("default", "texture/world/white.png"),
+        ("", "texture/world/white.png"),
     ],
     sprite: Some(false),
     randflipx: Some(false),

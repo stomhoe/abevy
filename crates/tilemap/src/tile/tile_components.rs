@@ -7,7 +7,7 @@ pub use bevy_ecs_tilemap::tiles::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{Description, EntityZeroRef, MyZ, YSortOrigin};
+use game_common::game_common_components::{Description, EntityZero, MyZ, YSortOrigin};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
@@ -20,7 +20,9 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{Studie
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, 
     TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, TileColor, 
-);
+    //children entities don't get cloned
+    Children,
+);//Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]
 struct ToDenyOnReleaseBuild( Name, EntityPrefix, TileStrId  );
@@ -172,7 +174,7 @@ pub struct MinDistancesMap(pub EntityHashMap<u32>);
 impl MinDistancesMap {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&self, 
-        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZeroRef, DimensionRef, GlobalTilePos)
+        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZero, DimensionRef, GlobalTilePos)
     ) -> bool {
         self.0.get(&new.0.0).map_or(true, |&min_dist| {
             my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist

@@ -49,6 +49,7 @@ pub fn plugin(app: &mut App) {
         (tick_time_based_multipliers).in_set(SimRunningSystems),
         add_colorsamplers_to_map.run_if(not(in_state(ClientState::Disconnected))),
         apply_color,
+        clone_ezero_children_ents,
     ))
     .configure_sets(Update, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -93,7 +94,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<FacingDirection>()
     .register_type::<WeightedSamplerRef>()
     .register_type::<Categories>()
-    .register_type::<EntityZeroRef>()
+    .register_type::<EntityZero>()
     .register_type::<ColorSampler>()
     
     .replicate::<VisibilityGameState>()    
@@ -104,6 +105,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<MyZ>()
     .replicate::<YSortOrigin>()
     .replicate::<Description>()
-    .replicate::<EntityZeroRef>()
+    .replicate::<EntityZero>()
     ;
 }

@@ -10,15 +10,13 @@ use ::sprite_animation_shared::*;
 
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
 
-#[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new_truncated("Animations"), )]
-struct AnimationsHolder;
+
 
 #[allow(unused_parens)]
 pub fn init_animations(
     mut cmd: Commands,
     mut anim_handles: ResMut<AnimSerisHandles>,
-    mut seris_assets: ResMut<Assets<AnimationSeri>>,
+    mut seris_assets: ResMut<Assets<AnimationSerialization>>,
     mut library: ResMut<AnimationLibrary>,
     //usar state
 ) {
@@ -66,7 +64,7 @@ pub fn init_animations(
 pub fn init_animation_sheet_and_handle(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
     mut animation_assets: ResMut<Assets<Animation>>,
-    mut query: Query<(Entity, &StrId, &AnimationSeri),(Added<AnimationSeri>, )>,
+    mut query: Query<(Entity, &StrId, &AnimationSerialization),(Added<AnimationSerialization>, )>,
 ) {
     for (entity, str_id, seri) in query.iter_mut() {
         let image_handle = asset_server.load(&seri.img_path);

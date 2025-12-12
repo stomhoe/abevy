@@ -11,8 +11,6 @@ use crate::game_common_components::*;
 use crate::game_common_states::*;
 
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn reset_states(
     mut connection: ResMut<NextState<ConnectionAttempt>>,
@@ -50,7 +48,7 @@ pub fn z_sort_system(
 
     mut with_own_z_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, Has<TilemapAnchor>), 
     Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>,
-    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZeroRef), (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
+    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZero), (Or<(Changed<EntityZero>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
 
     mut event_writer: MessageWriter<DrawTilemap>,
 
@@ -94,3 +92,23 @@ pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<(&mut TimeB
 }
 
 
+
+#[allow(unused_parens)]
+pub fn clone_ezero_children_ents(mut cmd: Commands, 
+    mut query: Query<(Entity, &EntityZero, ),
+    (Changed<EntityZero>, Or<(Without<Disabled>, With<Disabled>)>)>,
+
+    ezero: Query<(&Children),(Or<(Without<Disabled>, With<Disabled>)>)>
+) {
+    for (ent, ezero_ref, ) in query.iter_mut() {
+        let Ok(ezero_children) = ezero.get(ezero_ref.0) else { continue };
+
+        for child in ezero_children.iter() {//TODO lidiar con heldsprites
+            let cloned = cmd.entity(child).clone_and_spawn_with_opt_out(
+                |builder|{ builder.deny::<Disabled>();}
+            ).id();
+            cmd.entity(cloned).insert(ChildOf(ent));
+            info!(target: "entity_zero", "Cloned child entity {:?} for EntityZero {:?}", cloned, ezero_ref.0);
+        }
+    }
+}

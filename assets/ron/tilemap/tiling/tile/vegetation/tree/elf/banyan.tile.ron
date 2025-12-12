@@ -2,7 +2,7 @@
     id: "banyan",
     name: "Banyan",
     img_paths: [
-        ("default", "texture/world/vegetation/tree/elf/banyan.png")
+        ("", "texture/world/vegetation/tree/elf/banyan.png")
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

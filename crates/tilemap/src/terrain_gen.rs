@@ -76,10 +76,14 @@ pub fn plugin(app: &mut App) {
         
         
 
-        .replicate_bundle::<(FnlNoise, ChildOf)>()
-        .replicate_bundle::<(OperationList, OplistSize)>()
+        
         .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
-        .replicate::<OperationList>().replicate_bundle::<(OperationList, ChildOf)>()
+        
+        .replicate::<OperationList>()
+        .replicate_filtered::<ChildOf, With<OperationList>>()
+        .replicate_filtered::<ChildOf, With<FnlNoise>>()
+        .replicate_filtered::<OplistSize, With<OperationList>>()
+        
         .replicate::<NoiseHolder>()
         .add_message::<PendingOp>()
         //.add_message::<MassCollectedTiles>()

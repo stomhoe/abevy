@@ -26,7 +26,9 @@ pub fn plugin(app: &mut App) {
 
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
-        .replicate_bundle::<(Dimension, Transform, GlobalTransform)>()
+        .replicate_filtered::<Transform, With<Dimension>>()
+
+
         .replicate_with((
             RuleFns::<Dimension>::default(),
             RuleFns::<Transform>::default(),

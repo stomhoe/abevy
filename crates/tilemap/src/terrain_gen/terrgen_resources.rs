@@ -26,7 +26,7 @@ pub struct RegisteredPositions(pub EntityHashMap<Vec<(DimensionRef, GlobalTilePo
 impl RegisteredPositions {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
-        new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+        new: (Entity, EntityZero, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
         min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
     ) -> bool {
 
@@ -152,7 +152,7 @@ impl OpListSerialization {
 
 #[derive(Bundle, Debug, Clone, Reflect)]
 pub struct TileHelperStruct{
-    pub ezero: EntityZeroRef,
+    pub ezero: EntityZero,
     pub global_pos: GlobalTilePos,
     pub dim_ref: DimensionRef,
     pub oplist_size: OplistSize,
@@ -169,7 +169,7 @@ impl MassCollectedTiles {
     pub fn add_tiles_from_ezeros(
         &mut self,
         cmd: &mut Commands,
-        ezeros: impl IntoIterator<Item = EntityZeroRef>,
+        ezeros: impl IntoIterator<Item = EntityZero>,
         global_pos: GlobalTilePos,
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
@@ -184,7 +184,7 @@ impl MassCollectedTiles {
     pub fn clonespawn_and_push_tile(
         &mut self,
         cmd: &mut Commands,
-        ezero: EntityZeroRef,
+        ezero: EntityZero,
         global_pos: GlobalTilePos,
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
@@ -228,7 +228,7 @@ impl MassCollectedTiles {
                 self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
             }
         } else {
-            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, oplist_size);
+            self.clonespawn_and_push_tile(cmd, EntityZero(tiling_ent), global_pos, dim_ref, oplist_size);
         }
     }
     pub fn collect_tiles(&mut self, 

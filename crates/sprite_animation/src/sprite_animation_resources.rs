@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[reflect(Resource, Default)]
 pub struct AnimSerisHandles {
     #[asset(path = "ron/sprite/animation", collection(typed))]
-    pub handles: Vec<Handle<AnimationSeri>>,
+    pub handles: Vec<Handle<AnimationSerialization>>,
 }
 
 
@@ -16,7 +16,7 @@ pub struct AnimSerisHandles {
 // TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld. hacer un mapa color-algo 
 
 #[derive(Component, Deserialize, Serialize, Asset, Reflect, Default, )]
-pub struct AnimationSeri {
+pub struct AnimationSerialization {
     pub id: String,
     pub img_path: String,
     pub clips: Vec<ClipConfig>,

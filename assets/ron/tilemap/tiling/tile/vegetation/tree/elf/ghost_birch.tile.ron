@@ -2,7 +2,7 @@
     id: "ghost_birch",
     name: "Ghost Birch",
     img_paths: [
-        ("default", "texture/world/vegetation/tree/elf/ghost_birch.png"),
+        ("", "texture/world/vegetation/tree/elf/ghost_birch.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

@@ -3,7 +3,7 @@
     name: "Black Mausoleum",
     cats: Some(["portal"]),
     img_paths: [
-        ("default", "texture/world/portal/mausublack.png"),
+        ("", "texture/world/portal/mausublack.png"),
     ],
     sprite: Some(true),
     randflipx: Some(true),

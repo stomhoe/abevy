@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::StrId, common_resources::ImageSizeMap, common_states::GameSetupType};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{EntityZeroRef, MyZ};
+use game_common::game_common_components::{EntityZero, MyZ};
 use ::tilemap_shared::*;
 
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_resources::*}, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};

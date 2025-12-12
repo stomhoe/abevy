@@ -19,5 +19,6 @@ pub fn plugin(app: &mut App) {
         .register_type::<HandlingCapability>()
 
         .replicate::<ModifierTarget>()
-        .replicate_bundle::<(ModifierTarget, ChildOf)>();
+        .replicate_filtered::<ChildOf, With<ModifierTarget>>()
+    ;
 }

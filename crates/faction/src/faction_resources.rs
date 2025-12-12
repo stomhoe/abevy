@@ -4,16 +4,5 @@ use player::player_components::OfSelf;
 
 use crate::{faction_components::Faction, };
 
-#[derive(Resource, Reflect, )]
+#[derive(Resource, Reflect, Default)]
 pub struct FactionEntityMap (pub HashIdToEntityMap);
-impl FromWorld for FactionEntityMap {
-    fn from_world(world: &mut World) -> Self {
-        let mut map = HashIdToEntityMap::default();
-        let str_id = StrId::new_with_result("host", 0).expect("Failed to create StrId for host faction");
-        let host_faction = (Faction, str_id.clone(), DisplayName::new("Host Faction"), OfSelf);
-        let entity = world.spawn(host_faction).id();
-        map.insert(str_id, entity, )
-        .expect("Failed to insert host faction into FactionEntityMap");
-        FactionEntityMap(map)
-    }
-}

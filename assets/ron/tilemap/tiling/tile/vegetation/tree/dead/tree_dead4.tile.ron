@@ -2,7 +2,7 @@
     id: "tree_dead4",
     name: "Dead tree",
     img_paths: [
-        ("default", "texture/world/vegetation/tree/dead/tree_dead4.png"),
+        ("", "texture/world/vegetation/tree/dead/tree_dead4.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

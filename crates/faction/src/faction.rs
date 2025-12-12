@@ -10,7 +10,7 @@ use crate::{faction_resources::*, faction_systems::*, faction_components::*};
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
-    .init_resource::<FactionEntityMap>()
+    .init_resource::<FactionEntityMap>()//TODO meter la host faction
 
     .add_systems(Update, (
         (set_stuff_as_self_faction, update_ofself_faction, update_as_belonging_to_player_faction, set_player_of_faction, 

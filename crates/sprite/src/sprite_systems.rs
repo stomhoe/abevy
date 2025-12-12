@@ -12,7 +12,7 @@ use crate::{sprite_components::*, sprite_resources::SpriteCfgEntityMap, sprite_s
 
 #[allow(unused_parens)]
 pub fn apply_scales(
-    mut sprite_que: Query<(&SpriteBaseHolderRef, &mut Sprite, &SpriteConfigRef, &mut Transform,
+    mut sprite_que: Query<(&BaseHolderRef, &mut Sprite, &SpriteConfigRef, &mut Transform,
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
     ),>, 
     sprite_config_query: Query<(Option<&FlipHorizIfDir>, &Scale2D, &ScaleLookUpDown, &ScaleSideways,),
@@ -80,7 +80,7 @@ pub fn apply_scales(
 #[allow(unused_parens, )]
 pub fn apply_offsets(
     mut sprite_que: Query<(
-        &SpriteBaseHolderRef, 
+        &BaseHolderRef, 
         &ChildOf,
         Option<&SpriteConfigRef>,
         &mut Transform,
@@ -152,3 +152,22 @@ pub fn apply_offsets(
 }
 
 
+#[allow(unused_parens)]
+pub fn disable_children_sprites_of_disabled(mut cmd: Commands, 
+    bases: Query<(&HeldSprites, Has<Disabled>),(Or<(With<Disabled>, Without<Disabled>)>)>,
+) {
+    for (held_sprites, is_disabled) in bases.iter() {
+        if is_disabled {
+            for &sprite_ent in held_sprites.sprite_ents() {
+                cmd.entity(sprite_ent).try_insert(Disabled);
+            }
+        }
+        else{
+            for &sprite_ent in held_sprites.sprite_ents() {
+                cmd.entity(sprite_ent).try_remove::<Disabled>();
+            }
+        }
+    }
+}
+
+//hay que corregir BaseHolderRef para tiles hacer de forma simple

@@ -1,6 +1,6 @@
 use being::being_components::CreatedCharacters;
 use common::{common_components::{ StrId}, common_states::AssetsLoadingState};
-use faction::faction_components::*;
+use faction::{faction_components::*, faction_resources::FactionEntityMap};
 use modifier::{modifier_components::*, modifier_move_components::Speed};
 use player::player_components::*;
 use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings};
@@ -12,14 +12,24 @@ use bevy::prelude::*;
 pub fn server_or_singleplayer_setup(mut cmd: Commands, 
     curr_assets_loading_state: Res<State<AssetsLoadingState>>,
     mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
-    faction: Single<(Entity), (With<Faction>, With<OfSelf>)>,
+    mut map: ResMut<FactionEntityMap>,
 ) -> Result
 {
     assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
+
+    let host_faction_id = StrId::new_truncated("host");
+    let host_faction = cmd.spawn((Faction, host_faction_id.clone(), OfSelf)).id();
+
+    let Ok(_) = map.0.insert(host_faction_id, host_faction)
+    else {
+        let err = BevyError::from("Failed to insert host faction into FactionEntityMap: duplicate id");
+        return Err(err);
+    };
+
     cmd.spawn((
         OfSelf, HostPlayer,
         StrId::new_truncated("HOOOOOST"),
-        BelongsToFaction(faction.into_inner()),
+        BelongsToFaction(host_faction),
     ));
     Ok(())
 }

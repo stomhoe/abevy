@@ -1,10 +1,8 @@
 use std::mem::take;
 
-use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, HashSet}, render::sync_world::SyncToRenderWorld};
+use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, HashSet}, };
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use bevy_replicon_renet::renet::RenetClient;
 use bevy_spritesheet_animation::prelude::Animation;
 use common::common_components::{AssetScoped, Category, DisplayName, EntityPrefix, ImageHolder, ImagePathHolder, StrId};
 use debug_unwraps::DebugUnwrapExt;
@@ -15,9 +13,7 @@ use crate::{sprite_components::*, sprite_resources::*, sprite_scale_offset_compo
 
 
 
-#[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new_truncated("SpriteConfigs"), )]
-struct SpriteConfigsHolder;
+
 
 #[allow(unused_parens)]
 pub fn init_sprite_cfgs(
@@ -199,7 +195,7 @@ pub fn replace_string_ids_by_entities(
 #[allow(unused_parens)]
 pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     mut cmd: Commands,
-    mut father_query: Query<(Entity, &mut SpriteCfgsToBuild, Option<&SpriteBaseHolderRef>,), 
+    mut father_query: Query<(Entity, &mut SpriteCfgsToBuild, Option<&BaseHolderRef>,), 
     (Without<SpriteConfig>, Changed<SpriteCfgsToBuild>,)>,
     spritecfgs_query: Query<(&StrId, Option<&SpriteCfgsToBuild>), 
     (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
@@ -220,7 +216,7 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
                 if let Some(spriteholder_ref) = spriteholder_ref {
                     cmd.entity(child_sprite).insert(spriteholder_ref.clone());
                 } else {
-                    cmd.entity(child_sprite).insert(SpriteBaseHolderRef{ base: father_to_sprite });
+                    cmd.entity(child_sprite).insert(BaseHolderRef{ base: father_to_sprite });
                 }
 
                 if let Some(sprite_cfgs_to_build) = sprite_cfgs_to_build {
@@ -243,7 +239,7 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
 #[allow(unused_parens)]
 pub fn become_child_of_sprite_with_category(
     mut cmd: Commands,
-    new_sprites: Query<(Entity, &SpriteBaseHolderRef, &SpriteConfigRef), (Without<SpriteConfig>, Changed<SpriteConfigRef>,)>,
+    new_sprites: Query<(Entity, &BaseHolderRef, &SpriteConfigRef), (Without<SpriteConfig>, Changed<SpriteConfigRef>,)>,
     sprite_holder: Query<&HeldSprites>,
     other_sprites: Query<(Entity, &SpriteConfigRef), (Without<SpriteConfig>, )>,
     becomes: Query<(&BecomeChildOfSpriteWithCategory), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,

@@ -23,8 +23,12 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<SpriteConfigSeri>::new(&["sprite.ron"]),
     ))
     .add_systems(SPRITES_SCHEDULE, (
+        disable_children_sprites_of_disabled,
         (apply_offsets, apply_scales, ).chain(),
-        (become_child_of_sprite_with_category, replace_string_ids_by_entities, add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected))
+
+        // server only
+        (become_child_of_sprite_with_category, replace_string_ids_by_entities, 
+            add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected))
     ).in_set(SpriteSystems))
     .configure_sets(SPRITES_SCHEDULE, SpriteSystems.in_set(StatefulSessionSystems))
     
@@ -32,24 +36,11 @@ pub fn plugin(app: &mut App) {
         (init_sprite_cfgs, add_sprites_to_local_map).chain(),
     ).in_set(SpriteSystems)) 
 
-    .replicate_with((
-        (RuleFns::<ChildOf>::default(), ReplicationMode::OnChange),
-        (RuleFns::<Transform>::default(), ReplicationMode::Once),
-        (RuleFns::<SpriteBaseHolderRef>::default(), ReplicationMode::OnChange),
-        (RuleFns::<SpriteConfigRef>::default(), ReplicationMode::OnChange),
-    ))
-
-    // .replicate_with((
-    //     (RuleFns::<SpriteHolderRef>::default(), ReplicationMode::OnChange),
-    //     (RuleFns::<ChildOf>::default(), ReplicationMode::OnChange),
-    // ))
-
-    .register_type::<SpriteBaseHolderRef>()
+    .register_type::<BaseHolderRef>()
     .register_type::<HeldSprites>()
     .register_type::<SpriteSerisHandles>()
     .register_type::<SpriteConfigSeri>()
     .register_type::<SpriteCfgEntityMap>()
-    .register_type::<SpriteBaseHolderRef>()
     .register_type::<SpriteConfigRef>()
     .register_type::<Offset2D>().register_type::<OffsetUpDown>().register_type::<OffsetDown>()
     .register_type::<OffsetUp>()
@@ -60,12 +51,23 @@ pub fn plugin(app: &mut App) {
     .register_type::<ScaleLookUpDown>()
     .register_type::<ScaleSideways>()
     .register_type::<SpriteCfgAnimationsMap>()
+    .register_type::<SpriteConfigStrIds>()
+    .register_type::<SpriteConfigsHolder>()
+    
     //.add_server_event::<SpriteCfgEntityMap>(Channel::Unordered).make_event_independent::<SpriteCfgEntityMap>().add_observer(client_map_server_sprite_cfgs)
 
     .replicate::<SpriteConfig>()
     .replicate::<SpriteCfgAnimationsMap>()
     .replicate::<MovementBased>()
     .replicate::<GroundingBased>()
+    .replicate_filtered::<ChildOf, Or<(With<SpriteConfig>, With<BaseHolderRef>, With<SpriteConfigRef>)>>()
+    .replicate_filtered::<ChildOf, With<SpriteConfig>>()
+    .replicate::<SpriteConfigsHolder>()
+    .replicate_with((
+        (RuleFns::<Transform>::default(), ReplicationMode::Once),
+        (RuleFns::<BaseHolderRef>::default(), ReplicationMode::OnChange),
+        (RuleFns::<SpriteConfigRef>::default(), ReplicationMode::OnChange),
+    ))
     ;
 }
 

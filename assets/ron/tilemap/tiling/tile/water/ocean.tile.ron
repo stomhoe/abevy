@@ -3,6 +3,6 @@ TileSeri(
     name: "Ocean",
     z: -1000,
     img_paths: [
-        ("default", "texture/world/terrain/water/water0.png"),
+        ("", "texture/world/terrain/water/water0.png"),
     ],
 )

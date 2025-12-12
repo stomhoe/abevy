@@ -90,7 +90,7 @@ impl MapEntities for OperationList {
 
     }
 }
-
+//TODO avergiuar como hacer para que mapentities funcione, usar replicate_as
 
 
 

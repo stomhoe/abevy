@@ -13,6 +13,9 @@ use sprite_animation_shared::{AnimationState, MoveAnimActive};
 
 use crate::sprite_scale_offset_components::Offset2D;
 
+#[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Reflect)]
+#[require(Replicated, AssetScoped, EntityPrefix::new_truncated("SpriteConfigs"), )]
+pub struct SpriteConfigsHolder;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(EntityPrefix::new_truncated("SpriteConfig"), AssetScoped, Replicated)]
@@ -32,10 +35,10 @@ pub struct GroundingBased;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[relationship(relationship_target = HeldSprites)]
 #[require(EntityPrefix::new_truncated("Sprite"), Replicated,)]
-pub struct SpriteBaseHolderRef {#[relationship]#[entities]pub base: Entity, }
+pub struct BaseHolderRef {#[relationship]#[entities]pub base: Entity, }
 
 #[derive(Component, Debug, Reflect)]
-#[relationship_target(relationship = SpriteBaseHolderRef)]
+#[relationship_target(relationship = BaseHolderRef)]
 pub struct HeldSprites(Vec<Entity>);
 impl HeldSprites {pub fn sprite_ents(&self) -> &Vec<Entity> { &self.0 }}
 
@@ -84,7 +87,7 @@ pub enum FlipHorizIfDir{Left, Right, Any,}
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect, MapEntities)]
 #[require(Transform, Visibility)]
 pub struct SpriteConfigRef(#[entities] pub Entity);
 
@@ -144,7 +147,7 @@ pub struct Exclusive;
 pub struct BecomeChildOfSpriteWithCategory (pub Category);
 
 // NO USAR ESTOS DOS PARA BEINGS
-#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
 /// DON'T REPLICATE
 pub struct SpriteConfigStrIds(Vec<StrId>);
 impl SpriteConfigStrIds {

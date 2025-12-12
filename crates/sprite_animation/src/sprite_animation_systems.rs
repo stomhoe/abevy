@@ -41,7 +41,7 @@ pub fn propagate_holder_state(
 pub fn animate_sprite(
     mut commands: Commands,
     
-    mut sprites_query: Query<(Entity, &SpriteBaseHolderRef, &SpriteConfigRef, Option<&AnimationState>,
+    mut sprites_query: Query<(Entity, &BaseHolderRef, &SpriteConfigRef, Option<&AnimationState>,
     ), (Or<(Changed<AnimationState>, Changed<FacingDirection>)>)>,
     
     spriteconfig: Query<(&SpriteCfgAnimationsMap, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>,)>,

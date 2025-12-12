@@ -29,6 +29,8 @@ concat!(
     "sprite_init=trace,",
     "sprite_building=trace,",
     "sprite_systems=debug,",
+
+    "tile_init=debug,",
     "asset_loading=warn,",
     "tiling_loading=debug,",
     "dimension_loading=debug,",

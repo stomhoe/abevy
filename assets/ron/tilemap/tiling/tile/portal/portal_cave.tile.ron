@@ -4,7 +4,7 @@
     cats: Some(["portal"]),
     name: "Cave portal",
     img_paths: [
-        ("default", "texture/world/portal/cave.png"),
+        ("", "texture/world/portal/cave.png"),
     ],
     sprite: Some(true),
     randflipx: Some(true),

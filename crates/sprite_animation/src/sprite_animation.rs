@@ -20,7 +20,7 @@ pub fn plugin(app: &mut App) {
     app
     .add_plugins((
         SpritesheetAnimationPlugin::default(), 
-        RonAssetPlugin::<AnimationSeri>::new(&["anim.ron"]),
+        RonAssetPlugin::<AnimationSerialization>::new(&["anim.ron"]),
     ))
     .add_systems(Update, (
         (animate_sprite, ).chain().run_if(on_timer(std::time::Duration::from_millis(100))),
@@ -46,12 +46,15 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<AnimationState>()
     .replicate_once::<MoveAnimActive>()
     .replicate::<AnimationMain>()
-    .replicate::<AnimationSeri>()
+    .replicate::<AnimationSerialization>()
+    .replicate::<AnimationsHolder>()
+    .replicate_filtered::<ChildOf, With<AnimationMain>>()
+
 
     .register_type::<AnimationState>()
     .register_type::<MoveAnimActive>()
     .register_type::<AnimSerisHandles>()
-    .register_type::<AnimationSeri>()
+    .register_type::<AnimationSerialization>()
     .register_type::<AnimationHandle>()
     
     .register_type::<AnimationLibrary>()

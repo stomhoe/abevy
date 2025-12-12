@@ -4,7 +4,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::{AssetsLoadingState, };
 use bevy_ecs_tilemap::prelude::*;
 use dimension_shared::DimensionRef;
-use game_common::{ColorSamplersInitSystems, game_common_components::EntityZeroRef, game_common_components_samplers::EntiWeightedSampler};
+use game_common::{ColorSamplersInitSystems, game_common_components::EntityZero, game_common_components_samplers::EntiWeightedSampler};
 use sprite::SpriteSystems;
 use tilemap_shared::{GlobalTilePos, OplistSize};
 
@@ -88,17 +88,18 @@ pub fn plugin(app: &mut App) {
 
 
         .replicate::<Tile>()
-        .replicate::<TileColor>()
-        .replicate::<TileImagePaths>()
-        .replicate::<TileSamplerHolder>()
         .replicate::<TileStrId>()
+        .replicate::<TileImagePaths>()
+        .replicate::<TileColor>()
+        .replicate::<TileSamplerHolder>()
         .replicate::<InitialPos>()
         .replicate::<TileShaderRef>()
         .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
         .replicate::<ChunkOrTilemapChild>()
-        .replicate_bundle::<(GlobalTilePos, EntityZeroRef)>()
-        .replicate_bundle::<(Tile, Transform, )>()
-        .replicate_bundle::<(EntiWeightedSampler, ChildOf)>()
+        .replicate_bundle::<(GlobalTilePos, EntityZero)>()
+
+        .replicate_filtered::<Transform, With<Tile>>()
+        .replicate_filtered::<ChildOf, With<EntiWeightedSampler>>()
 
         //usar feature
         .add_message::<SavedTileHadChunkDespawn>()

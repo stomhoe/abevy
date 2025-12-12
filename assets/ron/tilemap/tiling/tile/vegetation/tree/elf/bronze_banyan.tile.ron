@@ -2,7 +2,7 @@
     id: "bronze_banyan",
     name: "Bronze Banyan",
     img_paths: [
-        ("default", "texture/world/vegetation/tree/elf/bronze_banyan.png")
+        ("", "texture/world/vegetation/tree/elf/bronze_banyan.png")
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

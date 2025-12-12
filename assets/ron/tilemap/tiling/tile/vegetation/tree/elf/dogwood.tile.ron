@@ -2,7 +2,7 @@
     id: "dogwood",
     name: "Dogwood",
     img_paths: [
-        ("default", "texture/world/vegetation/tree/elf/dogwood.png")
+        ("", "texture/world/vegetation/tree/elf/dogwood.png")
     ],
     sprite: Some(true), 
     randflipx: Some(true), 
