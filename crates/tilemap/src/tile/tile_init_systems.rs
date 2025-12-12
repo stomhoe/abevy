@@ -66,12 +66,9 @@ pub fn init_tiles(
         if seri.persisted != Some(true) && seri.portal.is_none() {
             cmd.entity(tile_enti).insert(ChunkOrTilemapChild);
         }
-
-
         if seri.img_paths.is_empty() {
             warn!("Tile '{}' has no img_paths entries", str_id);
         }
-
         if let Some(ref color_map_str) = seri.color_map {
             if !color_map_str.is_empty() {
                 match color_map.0.get(color_map_str) {
@@ -84,16 +81,13 @@ pub fn init_tiles(
                 }
             }
         }
-
         if seri.randflipx == Some(true) {
             cmd.entity(tile_enti).insert(FlipAlongX);
         }
-
         if let Some(portal) = &mut seri.portal { 
             cmd.entity(tile_enti).insert((take(portal), ChildOf(egui_portal_holder))); 
         }
-
-        if seri.sprite != Some(true) && seri.persisted != Some(true) {
+        if seri.sprite != Some(true) && seri.persisted != Some(true) {//todo hacer q se puedan persistir tilemap tiles
             
             cmd.entity(tile_enti).insert(TileImagePaths(take(&mut seri.img_paths)));
 
@@ -114,7 +108,7 @@ pub fn init_tiles(
 
             cmd.entity(tile_enti).insert_if_new((TileColor::from(color), ));
         }
-        else{
+        else{// sprite tile
              cmd.entity(tile_enti).insert((
                 Transform::default(),
                 Visibility::default(),
@@ -149,9 +143,6 @@ pub fn init_tiles(
                 let sprite_cfgs = SpriteConfigStrIds::new(sprite_cfgs);
                 cmd.entity(tile_enti).insert(sprite_cfgs);
             }
-
-           
-
         }
         if let Some(cats) = &seri.cats {
             for cat in cats.iter() {
@@ -160,32 +151,29 @@ pub fn init_tiles(
             }
         }
     }
-    
     cmd.insert_resource(res_tile_cats);
-
-} 
-
-
+}
 
 
 #[allow(unused_parens)]
 pub fn add_handles(  
     mut cmd: Commands,  asset_server: Res<AssetServer>,
-    query: Query<(Entity, &TileStrId, &TileImagePaths),(Changed<TileImagePaths>, With<Disabled>, Without<TilePos>)>,
+    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TilePos>, Without<TileHidsHandles>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     for (enti, str_id, tile_image_paths) in query.iter() {
         let tile_handles = TileHidsHandles::from_paths(&asset_server, tile_image_paths.clone(), );
 
-        if let Ok(tile_handles) = tile_handles {
-            debug!(target: "tile_init", "Adding TileHandles for tile '{}'", str_id);
-            cmd.entity(enti).insert(tile_handles);
-        } else{
-            error!(target: "tile_init", "Failed to create TileHandles for tile '{}'", str_id);
+        match tile_handles {
+            Ok(tile_handles) => {
+                debug!(target: "tile_init", "Adding TileHandles for tile '{}'", str_id);
+                cmd.entity(enti).insert(tile_handles);
+            }
+            Err(err) => {
+                error!(target: "tile_init", "Failed to create TileHandles for tile '{}': {:?}", str_id, err);
+            }
         }
     }
 }
-
-
 pub fn add_tiles_to_map(
     mut cmd: Commands,
     map: Option<ResMut<TileEntitiesMap>>,
@@ -202,7 +190,6 @@ pub fn add_tiles_to_map(
         }
     }
 }
-
 #[allow(unused_parens)]
 pub fn map_min_dist_tiles(mut cmd: Commands, 
     mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSerialization>>,

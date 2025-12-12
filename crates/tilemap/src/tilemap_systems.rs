@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled, }, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*, render::sync_world::SyncToRenderWorld};
+use bevy::{asset::ron::error, ecs::{entity::EntityHashSet, entity_disabling::Disabled, }, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::StrId, common_resources::ImageSizeMap, common_states::GameSetupType};
@@ -74,8 +74,7 @@ pub fn process_tiles_pre(
 
     let mut changed_structs: HashSet<(Entity, MapKey)> = HashSet::with_capacity(reserved);
 
-
-    let mut to_draw = Vec::with_capacity(collected_tiles.0.len());
+    let mut tmaps_to_draw = Vec::with_capacity(collected_tiles.0.len());
 
     let mut tilemap_bundles = Vec::new();//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
 
@@ -88,23 +87,20 @@ pub fn process_tiles_pre(
         let ev = collected_tiles.0.get_unchecked_mut(i);
 
         let &mut (tile_ent, TileHelperStruct {
-            ezero, global_pos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos,
+            ezero: ezero_ref, global_pos: gpos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos,
         }) = ev; 
 
         let Ok((tile_strid, min_dists, keep_distance_from, is_child, tile_z_index, tile_handles, shader_ref, transform, color))
-        = oritile_query.get(ezero.0) else{
-            error!("Original tile entity {} is despawned", ezero.0);
+        = oritile_query.get(ezero_ref.0) else{
+            error!("Original tile entity {} is despawned", ezero_ref.0);
             continue;
         };
 
-        if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent, ezero, dim_ref, global_pos, min_dists, keep_distance_from), min_dists_query) {
+        if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent, ezero_ref, dim_ref, gpos, min_dists, keep_distance_from), min_dists_query) {
             
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
             continue; 
         }
-            
-
-            
         if !is_child {
             if is_host {
                 to_insert_replicated.push((tile_ent, Replicated));
@@ -114,34 +110,24 @@ pub fn process_tiles_pre(
                 continue;
             }
         }
-      
-        
         if transform.is_some() {
-            to_insert_pos_and_dim_ref.push((tile_ent, (ezero, global_pos, dim_ref, initial_pos, SyncToRenderWorld::default())));
+            to_insert_pos_and_dim_ref.push((tile_ent, (ezero_ref, gpos, dim_ref, initial_pos, SyncToRenderWorld::default())));
             collected_tiles.0.swap_remove(i);
-            
-            continue;
+            continue;//is sprite tile
         }
-        
-        
-        
         bundle.color = color.cloned().unwrap_or_default();
         
-        
-        let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, global_pos.into())) else {
+        let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, gpos.into())) else {
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
-            continue;
+            continue;//chunk not loaded
         };
-        
-
         let Ok(mut layers) = chunk_query.get_mut(chunk) else {
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
-            continue;
+            continue;//chunk entity not found
         };
-        
         cmd.entity(tile_ent).try_remove::<(Disabled, )>();
 
-        process_tilemaps(
+        func_process_tilemaps(
             &mut cmd,
             tile_ent,
             &mut bundle.visible,
@@ -158,7 +144,7 @@ pub fn process_tiles_pre(
             &mut tilemaps,
             &mut changed_structs,
             &mut tilemap_bundles,
-            &mut to_draw,
+            &mut tmaps_to_draw,
         );
         i += 1;
     }
@@ -168,7 +154,6 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch(to_insert_pos_and_dim_ref);
 
     cmd.try_insert_batch(to_insert_replicated);
-
 
     cmd.try_insert_batch(tilemap_bundles);
 
@@ -221,17 +206,13 @@ pub fn process_tiles_pre(
             .try_insert(MaterialTilemapHandle::<StandardTilemapMaterial>::default());
         }
     }
-
-
-        //CLONES PROVISORIOS
-    event_writer.write_batch(to_draw);
-
+    event_writer.write_batch(tmaps_to_draw);
 
     Ok(())
 }}
 
 #[allow(clippy::too_many_arguments)]
-fn process_tilemaps(
+fn func_process_tilemaps(
     cmd: &mut Commands,
     tile_ent: Entity,
     tile_visible: &mut TileVisible,
@@ -255,10 +236,12 @@ fn process_tilemaps(
         Some(handles) => image_size_map.0.get(&handles.first_handle().id()).copied()
         .unwrap_or(U16Vec2::ONE) ,
         None => {
-            tile_visible.0 = false; U16Vec2::ONE
+            tile_visible.0 = false; 
+            error!("Tile entity {:?} has no TileHidsHandles", tile_ent);
+            return;
+            U16Vec2::ONE
         }
     };
-
     let map_key = MapKey::new(tile_z_index, oplist_size, tile_size, shader_ref.copied());
 
     if let Some(mapstruct) = layers.0.get_mut(&map_key) {
@@ -317,7 +300,6 @@ fn process_tilemaps(
         } else {
             Vec::new()
         };
-
         let tmap_ent = cmd.spawn(ChildOf(chunk)).id();
 
         tilemap_bundles.push(

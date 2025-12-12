@@ -29,9 +29,6 @@ pub fn flip_tile_along_x(
         }
     }
 }
-
-
-
 #[allow(unused_parens)]
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn tile_readjust_transform(

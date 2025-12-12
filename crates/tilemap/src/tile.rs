@@ -47,7 +47,7 @@ pub fn plugin(app: &mut App) {
         ).in_set(TilingSystems))
         .add_systems(
             OnEnter(AssetsLoadingState::ReplicatedFinished), (
-                (init_tiles, add_tiles_to_map, add_handles, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, add_tile_weighted_samplers_to_map, init_tile_weighted_samplers_weights, )
+                (init_tiles, add_tiles_to_map, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, add_tile_weighted_samplers_to_map, init_tile_weighted_samplers_weights, )
                 .chain().run_if(in_state(ClientState::Disconnected)),
         ).in_set(TilingSystems))
 
