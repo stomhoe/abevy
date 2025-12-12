@@ -6,7 +6,7 @@ use bevy_ecs_tilemap::tiles::TileColor;
 use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 
-use crate::{color_sampler_resources::*, game_common_components_samplers::{ColorSampler, ColorSamplerRef, WeightedSampler}};
+use crate::{color_sampler_resources::*, game_common_components_samplers::{ColorSampler, ColorSamplerRef, }};
 
 #[allow(unused_parens)]
 pub fn init_color_samplers(
@@ -19,7 +19,7 @@ pub fn init_color_samplers(
     cmd.insert_resource(ColorWeightedSamplersMap::default());
 
     for handle in sampler_handles.handles.drain(..) {
-        let Some(seri) = assets.remove(&handle) else { continue; };
+        let Some(mut seri) = assets.remove(&handle) else { continue; };
 
         let str_id = match StrId::new_with_result(seri.id.clone(), WeightedColorsSeri::MIN_ID_LENGTH) {
             Ok(id) => id,
@@ -28,9 +28,21 @@ pub fn init_color_samplers(
                 continue;
             }
         };
-
         if seri.weights.is_empty() {
             warn!("Color sampler '{}' has no weights", str_id);
+        }
+        let mut i = 0;
+        while i < seri.weights.len() {
+            if seri.weights[i].1 < 0.0 {
+            error!(
+                "Invalid color sampler '{}': negative weight detected at index {} (color value: {:?}, weight: {}). Removing this entry.",
+                str_id, i, seri.weights[i].0, seri.weights[i].1
+            );
+            seri.weights.swap_remove(i);
+            // Do not increment i, as swap_remove puts a new element at i
+            } else {
+                i += 1;
+            }
         }
 
         let wmap = ColorSampler::new(&seri.weights);
@@ -47,35 +59,20 @@ pub fn add_colorsamplers_to_map(
     mut cmd: Commands,
     map: Option<ResMut<ColorWeightedSamplersMap>>,
     query: Query<(Entity, &EntityPrefix, &StrId), (Added<ColorSampler>, )>,
-    mut refs_to_update: Query<(&mut ColorSamplerRef), (Or<(With<Disabled>, Without<Disabled>)>, )>,
-    state : Res<State<ClientState>>,
 ) {
-    let is_host = *state.get() == ClientState::Disconnected;
-
     let Some(mut map) = map else { return; };
     for (new_ent, prefix, str_id) in query.iter() {
-        if is_host {
-            if let Err(err) = map.0.insert(str_id, new_ent, ) {
-                error!("{} {} already in ColorWeightedSamplersMap : {}", prefix, str_id, err);
-                cmd.entity(new_ent).despawn();
-            } else {
-                info!("Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
-            }
-        }
-        else if let Some(prev_ent) = map.0.force_insert(str_id, new_ent, ) {
-            cmd.entity(prev_ent).try_despawn();
-
-            refs_to_update.iter_mut().for_each(|mut ref_to_upd| {
-                if ref_to_upd.0 == prev_ent {
-                    ref_to_upd.0 = new_ent;
-                }
-            });
+        if let Err(err) = map.0.insert(str_id, new_ent, ) {
+            error!("{} {} already in ColorWeightedSamplersMap : {}", prefix, str_id, err);
+            cmd.entity(new_ent).despawn();
+        } else {
+            info!("Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
         }
     }
 }
 
 #[allow(unused_parens)]
-pub fn apply_color(mut cmd: Commands, 
+pub fn apply_pos_sampled_color(mut cmd: Commands, 
     gen_settings: Option<Res<AaGlobalGenSettings>>,
     samplers: Query<&ColorSampler>,
     mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, AnyOf<(&mut Sprite, &mut TileColor)>), (Or<(Changed<ColorSamplerRef>, Added<Sprite> )>, )>,
@@ -83,7 +80,7 @@ pub fn apply_color(mut cmd: Commands,
     let Some(gen_settings) = gen_settings else { return; };
     for (entity, color_sampler, global_tile_pos, (sprite, tile_color)) in query.iter_mut() {
         if let Ok(sampler) = samplers.get(color_sampler.0) {
-            let color = sampler.0.sample_with_pos(&gen_settings, *global_tile_pos).unwrap_or([255, 255, 255, 255]);
+            let color = sampler.sample_with_pos(&gen_settings, *global_tile_pos).unwrap_or([255, 255, 255, 255]);
             let color: Color = Color::srgba_u8(color[0], color[1], color[2], color[3]);
             if let Some(mut sprite) = sprite {
                 sprite.color = color;

@@ -41,14 +41,14 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(OnEnter(AppState::NoSession), (reset_states))
 
-    .add_systems(OnEnter(AssetsLoadingState::LocalFinished), (init_color_samplers, add_colorsamplers_to_map).chain().in_set(ColorSamplersInitSystems))
+    .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (init_color_samplers, add_colorsamplers_to_map).chain().in_set(ColorSamplersInitSystems))
 
     .add_systems(Update, (
-        (z_sort_system, apply_color).in_set(StatefulSessionSystems),
+        (z_sort_system, apply_pos_sampled_color).in_set(StatefulSessionSystems),
         (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
-        add_colorsamplers_to_map.run_if(not(in_state(ClientState::Disconnected))),
-        apply_color,
+        add_colorsamplers_to_map.run_if(in_state(ClientState::Disconnected)),
+        apply_pos_sampled_color,
         clone_ezero_children_ents,
         disable_ezeros,
     ))
