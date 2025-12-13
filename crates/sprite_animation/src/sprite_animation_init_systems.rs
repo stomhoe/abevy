@@ -3,7 +3,7 @@
 use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
-use common::{common_components::{AssetScoped, EntityPrefix, ImageHolder, ImagePathHolder, StrId}, common_states::GameSetupType};
+use common::{common_components::{EntityPrefix, ImageHolder, ImagePathHolder, StrId}, common_states::GameSetupType};
 use game_common::game_common_components::{Directionable, FacingDirection, MyZ, YSortOrigin};
 use sprite::{sprite_components::*, sprite_scale_offset_components::{Offset2D, Scale2D}};
 use ::sprite_animation_shared::*;
@@ -43,7 +43,7 @@ pub fn init_animations(
 
             let y_sort = seri.y_sort.clone();
 
-            let ent = cmd.spawn((AnimationMain, str_id.clone(), seri, ChildOf(holder))).id();
+            let ent = cmd.spawn((AnimationMain, str_id.clone(), seri, ChildOf(holder), )).id();
 
             if let Some(y_sort) = y_sort {
                 cmd.entity(ent).insert(YSortOrigin(y_sort));
@@ -58,8 +58,7 @@ pub fn init_animations(
     }
 }
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
+
 #[allow(unused_parens)]
 pub fn init_animation_sheet_and_handle(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
@@ -162,7 +161,7 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
             }
         }
         let handle: Handle<Animation> = animation_assets.add(animation.build());
-        cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet)));
+        cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet), ));
 
         if let Some(offset) = seri.offset {
             cmd.entity(entity).insert(Offset2D::from(offset));

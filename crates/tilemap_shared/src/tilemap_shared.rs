@@ -47,8 +47,6 @@ pub trait HashablePosVec: Hash {
     fn x(&self) -> i32;
     fn y(&self) -> i32;
 }
-
-// Macro to implement HashedPosition for types that derive Hash and have x() and y()
 macro_rules! impl_hashed_position {
     ($t:ty) => {
         impl HashablePosVec for $t {
@@ -85,9 +83,6 @@ impl GlobalTilePos {
     }
     pub fn to_chunkpos(&self) -> ChunkPos {
         let self_vec2 = self.0;
-        let asd = self_vec2 / ChunkPos::CHUNK_SIZE.as_ivec2();
-//TODO: ARREGLAR, HAY Q HACER Q LA DIVISIÓN SE REDONDEE HACIA ABAJO, CONVERTIR CADA COMPONENTE A FLOAT Y USAR FLOOR EN EL RESULTADO
-
 
         ChunkPos(Into::<IVec2>::into(*self) / ChunkPos::CHUNK_SIZE.as_ivec2())
     }

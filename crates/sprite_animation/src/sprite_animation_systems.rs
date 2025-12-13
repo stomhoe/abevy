@@ -6,77 +6,109 @@ use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon_renet::renet::RenetClient;
 use bevy_spritesheet_animation::prelude::*;
-use common::{common_components::StrId, common_states::GameSetupType};
+use common::{common_components::{ImageHolder, StrId}, common_states::GameSetupType};
 use game_common::game_common_components::{Directionable, FacingDirection};
 use player::player_components::*;
 use sprite::sprite_components::*;
-use sprite_animation_shared::{AnimationState, MoveAnimActive};
+use sprite_animation_shared::{AnimationHandle, AnimationSheet, AnimationState, MoveAnimActive};
 
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
 
 
-#[bevy_simple_subsecond_system::hot]
-#[allow(unused_parens)]
-pub fn propagate_holder_state(
-    bases_query: Query<(&FacingDirection, &MoveAnimActive, &Grounding, &HeldSprites), (Or<(Changed<Grounding>, Changed<MoveAnimActive>, Changed<FacingDirection>, Changed<HeldSprites>)>,) >,
-    mut sprite_query: Query<(&StrId, &SpriteConfigRef, &mut AnimationState,), (Without<ExcludedFromBaseAnimPickingSystem>,)>,
-    sprite_config_query: Query<(&SpriteCfgAnimationsMap),(Or<(With<Disabled>, Without<Disabled>)>,)>,
-) { 
-        for (facing_direction, move_anim_active, grounding, held_sprites) in bases_query.iter() {
-            let moving = move_anim_active.0;
-            info !(target: "sprite_animation", "Updating animation state for held sprites: {:?}", held_sprites.sprite_ents());
-            for held_sprite in held_sprites.sprite_ents() {
-                let Ok((_str_id, sprite_config_ref, mut anim_state)) = sprite_query.get_mut(*held_sprite) 
-                else { continue };
-
-                let Ok(sprite_cfg_animations_map) = sprite_config_query.get(sprite_config_ref.0) 
-                else { continue };
-        }
-    }
-}
-
-//#[bevy_simple_subsecond_system::hot]
 
 #[allow(unused_parens, )]
 pub fn animate_sprite(
-    mut commands: Commands,
+    mut cmd: Commands,
     
-    mut sprites_query: Query<(Entity, &BaseHolderRef, &SpriteConfigRef, Option<&AnimationState>,
+    base: Query<(&HeldSprites, Option<&FacingDirection>, Option<&MoveAnimActive>, &Grounding, ), (
+        Or<(
+            Changed<HeldSprites>, 
+            Changed<FacingDirection>, 
+            Changed<MoveAnimActive>, 
+            Changed<Grounding>,
+        )>,
+    )>,
+
+    mut sprites_query: Query<(Entity, &SpriteConfigRef, Option<&AnimationState>,//poner la play speed
     ), (Or<(Changed<AnimationState>, Changed<FacingDirection>)>)>,
     
     spriteconfig: Query<(&SpriteCfgAnimationsMap, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>,)>,
     
-    spriteholder: Query<(Option<&FacingDirection>, Option<&MoveAnimActive>, &Grounding, )>,
+    query: Query<(&StrId, &AnimationHandle, &AnimationSheet, ),()>,
     
     aserver: Res<AssetServer>, mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    images: Res<Assets<Image>>, 
 ) {
-    for (ent, spriteholder_ref, sprite_cfg_ref, state_id, ) in sprites_query.iter_mut() {
-        
-        let Ok((direction, moving, &grounding)) = spriteholder.get(spriteholder_ref.base)
-        else {
-            error!("Failed to get SpriteHolderRef base entity {:?}", spriteholder_ref.base);
-            continue;
-        };
 
-        let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, )) = spriteconfig.get(sprite_cfg_ref.0)
-        else {
-            error!("Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0);
-            continue;
-        };
-        
-        let anim_type = AnimType {
-            direction: if directionable { direction.copied().unwrap_or_default() } else { FacingDirection::default() },
-            moving: if movement_based { moving.copied().unwrap_or_default() } else { MoveAnimActive::default() },
-            grounding: if grounding_based { grounding } else { Grounding::default() },
-            state_id: state_id.cloned(),
-        };
+    for (held_sprites, direction, moving, grounding) in base.iter() {
+        for held_sprite in held_sprites.sprite_ents() {
+            let Ok((ent, sprite_cfg_ref, state_id, )) = sprites_query.get_mut(*held_sprite) 
+            else { continue };
 
-        let Some(ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
-            warn!(target: "sprite_animation", "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?}", anim_type, ent);
-            continue;
-        };
+            let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, )) = spriteconfig.get(sprite_cfg_ref.0)
+            else { continue };
 
+            let anim_type = AnimType {
+                direction: if directionable { direction.copied().unwrap_or_default() } else { FacingDirection::default() },
+                moving: if movement_based { moving.copied().unwrap_or_default() } else { MoveAnimActive::default() },
+                grounding: if grounding_based { *grounding } else { Grounding::default() },
+                state_id: state_id.cloned(),
+            };
+
+            let Some(anim_ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
+                warn!(target: "sprite_animation", "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?}", anim_type, ent);
+                continue;
+            };
+
+            let Ok((_, anim_handle, anim_sheet, )) = query.get(*anim_ent) else {
+                error!(target: "sprite_animation", "Failed to get animation data for animation entity {:?}", anim_ent);
+                continue;
+            };
+
+            let sprite = anim_sheet.0.with_loaded_image(&images);
+
+            let Some(sprite) = sprite else {
+                error!(target: "sprite_animation", "Failed to create sprite for animation entity {:?} because image is not loaded yet.", anim_ent);
+                continue;
+            };
+
+            cmd.entity(ent).insert((
+                sprite.sprite(&mut atlas_layouts),
+                SpritesheetAnimation::new(anim_handle.0.clone()),
+            ));
+                
+
+        }
     }
+
+
+    // for (ent, spriteholder_ref, sprite_cfg_ref, state_id, ) in sprites_query.iter_mut() {
+        
+    //     let Ok((held_sprites, direction, moving, &grounding)) = base.get(spriteholder_ref.base)
+    //     else {
+    //         error!("Failed to get SpriteHolderRef base entity {:?}", spriteholder_ref.base);
+    //         continue;
+    //     };
+
+    //     let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, )) = spriteconfig.get(sprite_cfg_ref.0)
+    //     else {
+    //         error!("Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0);
+    //         continue;
+    //     };
+        
+    //     let anim_type = AnimType {
+    //         direction: if directionable { direction.copied().unwrap_or_default() } else { FacingDirection::default() },
+    //         moving: if movement_based { moving.copied().unwrap_or_default() } else { MoveAnimActive::default() },
+    //         grounding: if grounding_based { grounding } else { Grounding::default() },
+    //         state_id: state_id.cloned(),
+    //     };
+
+    //     let Some(ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
+    //         warn!(target: "sprite_animation", "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?}", anim_type, ent);
+    //         continue;
+    //     };
+
+    // }
 }
 
 

@@ -4,7 +4,7 @@ use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, Has
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::Animation;
-use common::common_components::{AssetScoped, Category, DisplayName, EntityPrefix, ImageHolder, ImagePathHolder, StrId};
+use common::common_components::*;
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{Categories, Directionable, EntityZero, MyZ};
 use sprite_animation_shared::{AnimationLibrary, sprite_animation_shared::AnimationState};

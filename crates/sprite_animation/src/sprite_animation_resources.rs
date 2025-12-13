@@ -54,9 +54,3 @@ pub struct ClipConfig {
     pub dur_rep: Option<u32>,
 }
 
-
-
-
-
-// No olvidarse de agregarlo al Plugin del módulo
-// .add_client_trigger::<AnimStateUpdated>(Channel::Ordered)
