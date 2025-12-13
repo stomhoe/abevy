@@ -95,7 +95,8 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
                     cols, str_id
                 );
             }
-        }    let (rows, cols) = (rows.max(1), cols.max(1));
+        }    
+        let (rows, cols) = (rows.max(1), cols.max(1));
 
         let sheet = Spritesheet::new(&image_handle, cols, rows);
         let mut animation = sheet
@@ -126,19 +127,18 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
 
         if clips_len == 0 {
             animation = animation.add_row(0);
-        }
-        else {
-            for (i, cfg) in seri.clips.clone().into_iter().enumerate() {
+        } else {
+            for (i, cfg) in seri.clips.iter().enumerate() {
                 animation = if cfg.is_row {
                     match cfg.partial {
-                        Some((start, end)) => animation.add_partial_row(cfg.target, start..end),
+                        Some((start, end)) => animation.add_partial_row(cfg.target, start..=end),
                         None => animation.add_row(cfg.target),
                     }
                 } else {
                     match cfg.partial {
-                        Some((start, end)) => animation.add_partial_column(cfg.target, start..end),
+                        Some((start, end)) => animation.add_partial_column(cfg.target, start..=end),
                         None => animation.add_column(cfg.target),
-                    }    
+                    }
                 };
                 animation = match cfg.dir {
                     None => animation.set_direction(AnimationDirection::Forwards),

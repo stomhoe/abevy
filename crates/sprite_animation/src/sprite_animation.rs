@@ -22,12 +22,12 @@ pub fn plugin(app: &mut App) {
         SpritesheetAnimationPlugin, 
         RonAssetPlugin::<AnimationSerialization>::new(&["anim.ron"]),
     ))
-    .add_systems(Update, ((
-            (animate_sprite, ).chain().run_if(on_timer(std::time::Duration::from_millis(100))),
-            update_animstate_for_clients.run_if(in_state(ServerState::Running)),     
+    .add_systems(Update, (
+           animate_sprite, 
+           //update_animstate_for_clients.run_if(in_state(ServerState::Running)),     
         ).in_set(SpriteAnimationSystems),
 
-    ))
+    )
 
     .add_systems(FixedUpdate, ((//está en fixed update para q no le afecte lo de SimRunningSystems
             init_animation_sheet_and_handle,

@@ -6,6 +6,7 @@
         (
             target: 3,
             is_row: true,
+            partial: Some((0, 4)),
         )
     ],
     z: 100000,
