@@ -25,15 +25,23 @@ pub struct ProcessedInputVector(pub Vec2);
 //PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
 //UTIL PARA RAZAS DE IGUANAS O ARAÑAS
 
-#[derive(Component)]
-pub struct WallPhaser;//HACER ATACABLE POR MODIFIERS PARA DEFENDERSE/ESCAPAR DE FANTASMAS
 
-#[derive(Component, Default)] pub struct InnateMovementCapability;//NO SACARSELO SOLO PORQ ESTÉ ULTRAHERIDO
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct WallPhaser;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct InnateMovementCapability;//NO SACARSELO SOLO PORQ ESTÉ ULTRAHERIDO
 
 
 // NO SON EXLUSIVOS ASÍ Q NO ES SUPERSTATE
-#[derive(Component)] #[require(InnateMovementCapability)] pub struct LandWalker;
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(InnateMovementCapability)] 
+pub struct LandWalker;
 
-#[derive(Component)] #[require(InnateMovementCapability)] pub struct Swimmer;
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(InnateMovementCapability)] 
+pub struct Swimmer;
 
-#[derive(Component)] #[require(InnateMovementCapability)] pub struct Flier;
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(InnateMovementCapability)] 
+pub struct Flier;

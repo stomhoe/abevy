@@ -24,7 +24,8 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(Update, (
            animate_sprite, 
-           //update_animstate_for_clients.run_if(in_state(ServerState::Running)),     
+           update_animstate_for_clients.run_if(in_state(ServerState::Running)),  
+           client_receive_moving_anim.run_if(in_state(ClientState::Connected)),   
         ).in_set(SpriteAnimationSystems),
 
     )
@@ -44,7 +45,7 @@ pub fn plugin(app: &mut App) {
         (init_animations, ).chain()
     ).in_set(SpriteAnimationSystems)) 
 
-    .add_mapped_server_event::<MoveStateUpdated>(Channel::Unordered)
+    .add_mapped_server_message::<MoveStateUpdated>(Channel::Unordered)
     //.add_observer(client_receive_moving_anim)
 
     .replicate_once::<AnimationState>()

@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{asset::processor::Process, prelude::*};
 use bevy_replicon::prelude::*;
 use game_common::game_common::{GameplaySystems, SimRunningSystems};
 
@@ -33,5 +33,10 @@ pub fn plugin(app: &mut App) {
 
         .register_type::<InputMoveVector>()
         .register_type::<ProcessedInputVector>()
+
+        .replicate::<WallPhaser>()
+        .replicate::<LandWalker>()
+        .replicate::<Swimmer>()
+        .replicate::<Flier>()
     ;
 }

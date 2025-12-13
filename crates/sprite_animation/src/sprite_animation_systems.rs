@@ -5,7 +5,7 @@ use being_shared::{Grounding, ControlledBy};
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon_renet::renet::RenetClient;
-use bevy_spritesheet_animation::prelude::*;
+use bevy_spritesheet_animation::{prelude::*, spritesheet};
 use common::{common_components::{ImageHolder, StrId}, common_states::GameSetupType};
 use game_common::game_common_components::{Directionable, FacingDirection};
 use player::player_components::*;
@@ -21,15 +21,12 @@ pub fn animate_sprite(
     mut cmd: Commands,
     base: Query<(&HeldSprites, Option<&FacingDirection>, Option<&MoveAnimActive>, &Grounding, ), (
         Or<(
-            Changed<HeldSprites>, 
-            Changed<FacingDirection>, 
-            Changed<MoveAnimActive>, 
-            Changed<Grounding>,
+            Changed<HeldSprites>, Changed<FacingDirection>, 
+            Changed<MoveAnimActive>, Changed<Grounding>,
         )>,
     )>,
-
-    mut sprites_query: Query<(Entity, Option<&Sprite>, Option<&SpritesheetAnimation>, &SpriteConfigRef, Option<&AnimationState>,/*poner Option para la play speed, aca no en animation*/
-), >,
+    mut sprites_query: Query<(Entity, Option<&SpritesheetAnimation>, &SpriteConfigRef, 
+        Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AnimationProgresses>), >,
     
     spriteconfig: Query<(&SpriteCfgAnimationsMap, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>,)>,
     
@@ -41,7 +38,7 @@ pub fn animate_sprite(
 
     for (held_sprites, direction, moving, grounding) in base.iter() {
         for held_sprite in held_sprites.sprite_ents() {
-            let Ok((ent, prev_sprite, prev_animation, sprite_cfg_ref, state_id, )) = sprites_query.get_mut(*held_sprite) 
+            let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses)) = sprites_query.get_mut(*held_sprite) 
             else { error!(target: "sprite_animation", "Failed to get sprite entity {:?}", held_sprite); continue };
 
             let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, )) = spriteconfig.get(sprite_cfg_ref.0)
@@ -71,20 +68,38 @@ pub fn animate_sprite(
             };
             let sprite = sprite.sprite(&mut atlas_layouts);
 
-            // if let Some(prev_sprite) = prev_sprite {
-            //     if prev_sprite.image != sprite.image {
-            //         cmd.entity(ent).try_insert((sprite,));
-            //     }
-                
-            // } else {
-            // }
-            
+            let mut spritesheet_animation = 
+            SpritesheetAnimation{
+                animation: anim_handle.0.clone(),
+                progress: AnimationProgress {
+                    frame: 0,
+                    repetition: 0,
+                },
+                playing: true,
+                speed_factor: playing_speed.cloned().unwrap_or_default().0,
+            };
+
             if let Some(prev_animation) = prev_animation {
                 if prev_animation.animation != anim_handle.0 {
-                    cmd.entity(ent).try_insert((sprite, SpritesheetAnimation::new(anim_handle.0.clone())));
+                    
+                    if let Some(mut anim_progresses) = animation_progresses {
+                        if let Some(stored_progress) = anim_progresses.0.get_mut(&prev_animation.animation) {
+                            *stored_progress = prev_animation.progress;
+                        }
+                        if let Some(stored_progress) = anim_progresses.0.get(&anim_handle.0) {
+                            spritesheet_animation.progress = *stored_progress;
+                        }
+                    }
+
+                    cmd.entity(ent).try_insert((sprite, spritesheet_animation,));
                 }
             } else {
-                cmd.entity(ent).try_insert((sprite, SpritesheetAnimation::new(anim_handle.0.clone())));
+                if let Some(anim_progresses) = animation_progresses {
+                    if let Some(stored_progress) = anim_progresses.0.get(&anim_handle.0) {
+                        spritesheet_animation.progress = *stored_progress;
+                    }
+                }
+                cmd.entity(ent).try_insert((sprite, spritesheet_animation, ));
             }
         }
     }
@@ -93,44 +108,58 @@ pub fn animate_sprite(
 
 #[allow(unused_parens)]
 pub fn update_animstate_for_clients(
-    mut cmd: Commands,
     connected: Query<&Player, Without<OfSelf>>,
-    started_query: Query<(Entity, &MoveAnimActive, Option<&StrId>), (Changed<MoveAnimActive>)>,
+    started_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&FacingDirection>, Option<&StrId>), 
+    Or<(Changed<MoveAnimActive>, Changed<Grounding>, Changed<FacingDirection>, )>,>,
     controller: Query<&ControlledBy>,
+    mut mwriter: MessageWriter<ToClients<MoveStateUpdated>>,
 ){
     if connected.is_empty() { return; }
 
-    for (being_ent, &moving, id) in started_query.iter() {
+    let mut messages_to_send = Vec::new();
+
+    for (being_ent, &moving, grounding, direction, id) in started_query.iter() {
         let moving = moving.0;
-        let event_data = MoveStateUpdated {being_ent, moving};
+        let event_data = MoveStateUpdated {being_ent, moving, grounding: grounding.cloned(), direction: direction.cloned()};
         if let Ok(controller) = controller.get(being_ent) {
-            cmd.server_trigger(ToClients {
+            messages_to_send.push(ToClients {
                 mode: SendMode::BroadcastExcept(bevy_replicon::prelude::ClientId::Client(controller.client)),
                 message: event_data,
             });
-            info!(target: "sprite_animation", "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client);
+            trace!(target: "sprite_animation", "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client);
         }
         else {
-            cmd.server_trigger(ToClients { mode: SendMode::Broadcast, message: event_data, });
-            info!(target: "sprite_animation", "Sending moving {} for entity {:?} to all clients", moving, being_ent);
+            messages_to_send.push(ToClients { mode: SendMode::Broadcast, message: event_data, });
+            trace!(target: "sprite_animation", "Sending moving {} for entity {:?} to all clients", moving, being_ent);
         }
     }
+    mwriter.write_batch(messages_to_send);
 }
 
 // //#[cfg(not(feature = "headless_server"))]
-// #[allow(unused_parens, )]
-// pub fn client_receive_moving_anim(
-//     trigger: On<MoveStateUpdated>, mut query: Query<&mut MoveAnimActive>,
-//     client: Option<Res<RenetClient>>,
-// ) {
-//     if client.is_none() {return;}
-    
-//     let MoveStateUpdated { being_ent, moving } = trigger.event().clone();
-//     info!(target: "sprite_animation", "Received moving {} for entity {:?}", moving, being_ent);
+#[allow(unused_parens, )]
+pub fn client_receive_moving_anim(
+    mut mreader: MessageReader<MoveStateUpdated>,
 
-//     if let Ok(mut move_anim) = query.get_mut(being_ent) {
-//         move_anim.0 = moving;
-//     } else {
-//         warn!("Received moving state for entity {:?} that does not exist in this client.", being_ent);
-//     }
-// }
+    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut FacingDirection)>,
+) {
+
+    for message in mreader.par_read() {
+        let MoveStateUpdated { being_ent, moving, grounding, direction } = message.0;
+        trace!(target: "sprite_animation", "Received moving {} for entity {:?}", moving, being_ent);
+    
+        if let Ok((mut move_anim, mut grounding_comp, mut direction_comp)) = query.get_mut(*being_ent) {
+            move_anim.0 = *moving;
+            if let Some(grounding) = grounding {
+                *grounding_comp = *grounding;
+            }
+            if let Some(direction) = direction {
+                *direction_comp = *direction;
+            }
+        } else {
+            warn!("Received moving state for entity {:?} that does not exist in this client.", being_ent);
+        }
+
+    }
+
+}

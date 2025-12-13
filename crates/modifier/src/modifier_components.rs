@@ -2,6 +2,7 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+use game_common::game_common_components::Categories;
 use serde::{Deserialize, Serialize};
 
 //USAR Name
@@ -10,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 #[relationship(relationship_target = AppliedModifiers)]
-#[require(OperationType::Offsetting)]
+#[require(Replicated, ApplyMode::Offsetting)]
 pub struct ModifierTarget(#[relationship]#[entities]pub Entity);
 
 
@@ -24,13 +25,10 @@ impl AppliedModifiers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
 /*TO-DO ¡IMPORTANTE! NO OLVIDARSE DE AGREGAR: 
 superstate_plugin::<Modifier, (Walking, Flying)>,
  EN EL Plugin DEL MÓDULO */
-#[derive(Component, Default, Reflect, )]
-pub struct ModifierCategories(
-    /*categorías/tipo de sustancia/familia de sustancia a las q pertenece: fentanyl, race_modifier, narcan 
-     (así se pueden identificar sustancias origen y hacer sistemas de antidotos q contrarresten sustancias específicas)
-    */
-    pub Vec<String>
-);
+pub type ModifierCategories = Categories;
+/*categorías/tipo de sustancia/familia de sustancia a las q pertenece: race_modifier,  
+    (así se pueden identificar sustancias origen y hacer sistemas de antidotos q contrarresten sustancias específicas)
+*/
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
@@ -65,7 +63,7 @@ pub struct ConvertsDamageOnNonPenetration(pub HashMap<String, String>);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub enum OperationType {
+pub enum ApplyMode {
     #[default] Offsetting, 
     Min, Max,
     /// solo [0, ...] permitido NO RECOMENDADO USAR, MUCHO MÁS DIFÍCIL DE BALANCEAR 

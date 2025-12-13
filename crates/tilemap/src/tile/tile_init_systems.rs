@@ -273,8 +273,8 @@ pub fn instantiate_portal(mut cmd: Commands,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
     mut ew_pos_search: MessageWriter<PosSearch>, 
     mut mass_collected: ResMut<MassCollectedTiles>,
-    mut ereader_search_successful: MessageReader<SuitablePosFound>,
-    mut ereader_search_failed: MessageReader<SearchFailed>, 
+    mut mreader_search_successful: MessageReader<SuitablePosFound>,
+    mut mreader_search_failed: MessageReader<SearchFailed>, 
     mut register_pos: ResMut<RegisteredPositions>
 
 ) {
@@ -340,7 +340,7 @@ pub fn instantiate_portal(mut cmd: Commands,
 
     };
 
-    'successful_searches: for search_successful_ev in ereader_search_successful.read() {
+    'successful_searches: for search_successful_ev in mreader_search_successful.read() {
         let studied_op_ent = search_successful_ev.studied_op_ent;
         if successful_searches.contains(&studied_op_ent) {
             continue 'successful_searches;
@@ -368,17 +368,17 @@ pub fn instantiate_portal(mut cmd: Commands,
         }
     }
 
-    for ev in ereader_search_failed.read() {
-        if successful_searches.contains(&ev.0) { continue; }
+    for failed_search in mreader_search_failed.read() {
+        if successful_searches.contains(&failed_search.0) { continue; }
 
-        if started_searches.remove(&ev.0).is_some() {
-            error!("Failed to find suitable pos for a portal tile, {:?}", ev.0);
+        if started_searches.remove(&failed_search.0).is_some() {
+            error!("Failed to find suitable pos for a portal tile, {:?}", failed_search.0);
             continue;
         }
 
         for (ent, searching_for, portal_template, &global_pos, dim_ref, tile_ref) in pending_search.iter() {
             let str_id = ori_tile_str_id_query.get(tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
-            if ev.0 == searching_for.studied_op_ent {
+            if failed_search.0 == searching_for.studied_op_ent {
                 error!(
                     "Failed to find suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}", str_id, ent, dim_ref.0, global_pos, portal_template.dest_dimension
                 );

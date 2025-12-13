@@ -20,6 +20,9 @@ pub struct AnimationSerialization {
     pub id: String,
     pub img_path: String,
     pub clips: Vec<ClipConfig>,
+
+    //optional in case you want to reuse a predefined animation format
+    pub anim_format_id: Option<String>, 
     pub rows_cols: Option<(usize, usize)>, //rows, cols
     //None: forward, Some(true): backward, Some(false): ping-pong
     pub dir: Option<bool>, 

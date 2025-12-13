@@ -99,7 +99,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<ColorSampler>()
     
     .replicate::<VisibilityGameState>()    
-    .replicate::<FacingDirection>()
+    .replicate_once::<FacingDirection>()
     .replicate::<Directionable>()
     .replicate::<EntityWeightedSampler>()
     .replicate::<ColorSampler>()

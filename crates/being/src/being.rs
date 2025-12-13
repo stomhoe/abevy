@@ -25,7 +25,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<IsHumanControlled>()
     .replicate::<Being>()
     .replicate::<DirControlledBy>()
-    .replicate::<Grounding>()
+    .replicate_once::<Grounding>()
     .replicate::<FollowerOf>()
 
     .register_type::<DirControlledBy>()
