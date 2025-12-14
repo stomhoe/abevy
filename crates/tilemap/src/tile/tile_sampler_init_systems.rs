@@ -51,7 +51,7 @@ pub fn add_tile_weighted_samplers_to_map(
 }
 
 #[allow(unused_parens)]
-pub fn init_tile_weighted_samplers_weights(
+pub fn init_tile_weighted_samplers_refs(
     mut cmd: Commands, 
     mut seris_handles: ResMut<TileWeightedSamplerHandles>,
     mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,

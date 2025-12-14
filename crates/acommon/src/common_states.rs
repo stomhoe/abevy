@@ -1,13 +1,9 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities)]
 pub enum AppState {NoSession, #[default]StatefulGameSession, }
-
-
-
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[source(AppState = AppState::NoSession)]
@@ -17,7 +13,6 @@ pub enum PreGameState {
     MainMenu,
     Settings
 }
-
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[source(AppState = AppState::StatefulGameSession)]

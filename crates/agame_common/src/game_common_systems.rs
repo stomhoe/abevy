@@ -1,15 +1,14 @@
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::input::ButtonInput;
-
 use bevy::prelude::*;
+use bevy::render::sync_world::RenderEntity;
 use bevy_ecs_tilemap::anchor::TilemapAnchor;
-use common::common_components::EntityPrefix;
 use common::common_states::ConnectionAttempt;
 use common::common_states::GamePhase;
-
+use ::sprite_shared::*;
 use crate::game_common_components::*;
 use crate::game_common_states::*;
-
+use bevy_ecs_tilemap::DrawTilemap;
 
 #[allow(unused_parens)]
 pub fn reset_states(
@@ -19,7 +18,6 @@ pub fn reset_states(
     state.set(GamePhase::default());
     connection.set(ConnectionAttempt::default());
 }
-
 
 pub fn toggle_simulation(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -39,18 +37,6 @@ pub fn toggle_simulation(
     }
 }
 
-#[allow(unused_parens)]
-pub fn disable_ezeros(mut cmd: Commands, 
-    query: Query<(Entity),(With<EntityZero>, Without<Disabled>)>,
-) {
-    let mut batch = Vec::with_capacity(query.iter().count());
-    for ent in query.iter() { 
-        batch.push((ent, Disabled, ));
-    }
-    cmd.insert_batch(batch);
-}
-
-use bevy_ecs_tilemap::DrawTilemap;
 
 #[bevy_simple_subsecond_system::hot]
 #[allow(unused_parens, )]
@@ -102,24 +88,46 @@ pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<(&mut TimeB
     }
 }
 
-
+#[allow(unused_parens)]
+pub fn disable_ezeros(mut cmd: Commands, 
+    query: Query<(Entity),(With<EntityZero>, Without<Disabled>)>,
+) {
+    let mut batch = Vec::with_capacity(query.iter().count());
+    for ent in query.iter() { 
+        batch.push((ent, Disabled, ));
+    }
+    cmd.insert_batch(batch);
+}
 
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 
-    mut query: Query<(Entity, &EntityZeroRef, ),
+    query: Query<(Entity, &EntityZeroRef, ),
     (Changed<EntityZeroRef>, Or<(Without<Disabled>, With<Disabled>)>)>,
 
-    ezero: Query<(&Children),(Or<(Without<Disabled>, With<Disabled>)>)>
+    ezero: Query<(&Children, Option<&HeldSprites>),(Or<(Without<Disabled>, With<Disabled>)>)>,
 ) {
-    for (ent, ezero_ref, ) in query.iter_mut() {
-        let Ok(ezero_children) = ezero.get(ezero_ref.0) else { continue };
 
-        for child in ezero_children.iter() {//TODO lidiar con heldsprites
-            let cloned = cmd.entity(child).clone_and_spawn_with_opt_out(
-                |builder|{ builder.deny::<Disabled>();}
+    let mut new_child_of = Vec::new();
+    let mut new_base_holder_ref = Vec::new();
+
+    for (new_ent, ezero_ref, ) in query.iter() {
+        let Ok((ezero_children, ezero_held_sprites)) = ezero.get(ezero_ref.0) else { continue };
+
+        for child_to_clone in ezero_children.iter() {//TODO lidiar con heldsprites
+            let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
+                |builder|{ builder.deny::<(RenderEntity, EntityZero, BaseHolderRef, Disabled)>();}
             ).id();
-            cmd.entity(cloned).insert(ChildOf(ent));
-            info!(target: "entity_zero", "Cloned child entity {:?} for EntityZero {:?}", cloned, ezero_ref.0);
+            new_child_of.push((cloned_child, ChildOf(new_ent), ));
+
+            debug!(target: "entity_zero", "Cloned child {:?} of EntityZero {:?} as child of {:?}", cloned_child, ezero_ref.0, new_ent);
+
+            if let Some(ezero_held_sprites) = ezero_held_sprites {
+                if ezero_held_sprites.entities().contains(&child_to_clone) {
+                    new_base_holder_ref.push((cloned_child, BaseHolderRef { base: new_ent,  }, ));
+                }
+            }
         }
     }
+    cmd.insert_batch(new_child_of);
+    cmd.insert_batch(new_base_holder_ref);
 }

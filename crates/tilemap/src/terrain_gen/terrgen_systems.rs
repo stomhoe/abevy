@@ -207,7 +207,7 @@ pub fn produce_tiles(mut cmd: Commands,
         }
     }}
 
-    pending_ops_events.send_batch(new_pending_ops_events); 
+    pending_ops_events.write_batch(new_pending_ops_events); 
     ewriter_sampled_value.write_batch(sampled_value_events);
 
     Ok(())
@@ -368,7 +368,7 @@ pub fn search_suitable_position(
         }
     }
     ewriter_pending_ops.write_batch(new_pending_ops);
-    events_pos_search.send_batch(new_pos_searches);
+    events_pos_search.write_batch(new_pos_searches);
     ewriter_search_failed.write_batch(search_failed_evs);
 }
 

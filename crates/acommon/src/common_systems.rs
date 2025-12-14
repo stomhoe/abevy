@@ -9,18 +9,19 @@ use crate::{
 //    common_events::*,
 };
 
-
-
-
-
 #[allow(unused_parens)]
 pub fn set_entity_name(//DESACTIVAR EN RELEASE BUILDS
-    mut cmd: Commands,
-    mut query: Query<(Entity, &mut Name, AnyOf<(&EntityPrefix, &StrId, &StrId20B, &DisplayName)>), 
+    mut query: Query<(&mut Name, AnyOf<(&EntityPrefix, &StrId, &StrId20B, &DisplayName)>), 
     (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>, Or<(With<Disabled>, Without<Disabled>)>)>, )>,
 ) {
-    for (ent, mut name, any_of) in query.iter_mut() {
-        let new_name = format!("{} {}{} {:?}", any_of.0.cloned().unwrap_or_default(), any_of.1.cloned().unwrap_or_default(), any_of.2.cloned().unwrap_or_default(), any_of.3.cloned().unwrap_or_default());
+    for (mut name, (e_prefix, strid, strid20b, display_name)) in query.iter_mut() {
+        let display_name = if let Some(display_name) = display_name {
+            format!(" {:?}", display_name.0.as_str())
+        } else {
+            "".to_string()
+        };
+
+        let new_name = format!("{} {}{}{}", e_prefix.cloned().unwrap_or_default(), strid.cloned().unwrap_or_default(), strid20b.cloned().unwrap_or_default(), display_name);
 
         name.set(new_name);
         

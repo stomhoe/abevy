@@ -10,7 +10,6 @@ use bevy::prelude::*;
 
 #[allow(unused_parens, )]
 pub fn server_or_singleplayer_setup(mut cmd: Commands, 
-    curr_assets_loading_state: Res<State<AssetsLoadingState>>,
     mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
     mut map: ResMut<FactionEntityMap>,
 ) -> Result

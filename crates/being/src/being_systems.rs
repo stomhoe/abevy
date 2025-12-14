@@ -58,8 +58,6 @@ pub fn on_control_change(
 
 }
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn cross_portal(mut cmd: Commands, 
     mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
@@ -88,7 +86,7 @@ pub fn cross_portal(mut cmd: Commands,
                     (None, true) => {
                         cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
 
-                        let Ok((ent, &oe_dim_ref, _oe_portal_instance, oe_portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
+                        let Ok((_, &oe_dim_ref, _oe_portal_instance, oe_portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
                             error!("Portal entity {:?} not found in portal query", portal_instance.dest_portal);//TA DISABLED POR ALGUNA RAZÓN
                             continue;
                         };

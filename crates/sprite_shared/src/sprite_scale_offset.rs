@@ -1,6 +1,37 @@
 
+use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_replicon::prelude::*;
+use common::common_components::Category;
 use serde::{Deserialize, Serialize};
+
+
+pub fn plugin(app: &mut App) {
+    app
+        .register_type::<Offset2D>()
+        .register_type::<OffsetUpDown>()
+        .register_type::<OffsetDown>()
+        .register_type::<OffsetUp>()
+        .register_type::<OffsetSideways>()
+        .register_type::<Scale2D>()
+        .register_type::<ScaleLookUp>()
+        .register_type::<ScaleLookDown>()
+        .register_type::<ScaleLookUpDown>()
+        .register_type::<ScaleSideways>()
+
+        .replicate::<Offset2D>()
+        .replicate::<OffsetUpDown>()
+        .replicate::<OffsetDown>()
+        .replicate::<OffsetUp>()
+        .replicate::<OffsetSideways>()
+        .replicate::<Scale2D>()
+        .replicate::<ScaleLookUp>()
+        .replicate::<ScaleLookDown>()
+        .replicate::<ScaleLookUpDown>()
+        .replicate::<ScaleSideways>()
+
+    ;
+}
 
 pub trait Scale2DComponent: Sized {
     fn new(scale: Vec2) -> Self;
@@ -115,3 +146,5 @@ impl_cross_sum!(OffsetDown, OffsetUp);
 impl_cross_sum!(OffsetDown, OffsetSideways);
 impl_cross_sum!(OffsetUp, OffsetSideways);
 impl_cross_sum!(OffsetAsChild, Offset2D);
+
+

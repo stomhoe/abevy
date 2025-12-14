@@ -15,20 +15,7 @@ pub struct AnimationsHolder;
 #[require(EntityPrefix::new_truncated("Animation"), Replicated, )]
 pub struct AnimationMain;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, )]
-pub struct PlayingSpeed(pub f32);
 
-impl PlayingSpeed {
-    pub fn new(speed: f32) -> Self {
-        Self(speed)
-    }
-}
-
-impl Default for PlayingSpeed {
-    fn default() -> Self {
-        PlayingSpeed(1.0)
-    }
-}
 
 #[derive(Component, Debug, Default, Clone, Reflect)]
 pub struct AnimationProgresses(

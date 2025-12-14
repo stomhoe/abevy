@@ -1,5 +1,4 @@
-use bevy::{ecs::entity::EntityHashMap, render::sync_world::SyncToRenderWorld};
-use bevy::ecs::entity_disabling::Disabled;
+use bevy::{ecs::entity::EntityHashMap, };
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 pub use bevy_ecs_tilemap::tiles::*;
@@ -14,6 +13,7 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
 use crate::tile::tile_resources::TileImagePaths;
+use crate::tile::tile_shader_components::*;
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{StudiedOp},}, tile::tile_materials::* };
 
 #[derive(Bundle)]
@@ -109,24 +109,9 @@ pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSetting
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct FlipAlongX;
 
-#[derive(Component, Debug,  Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash, Reflect)]
-pub struct TileShaderRef(pub Entity);
-impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
-
-#[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, )]
-#[require(EntityPrefix::new_truncated("TileShader"), AssetScoped)]
-pub enum TileShader{
-    TexRepeat(MonoRepeatTextureOverlayMat),
-    TwoTexRepeat(TwoOverlaysExample),
-    Voronoi(VoronoiTextureOverlayMat),
-    //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
-}
-
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug)]
 pub struct InitialPos(pub GlobalTilePos);
-
-
 
 
 #[derive(Component, Debug, Clone, Default)]

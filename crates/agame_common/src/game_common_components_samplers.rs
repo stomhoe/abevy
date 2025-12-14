@@ -117,7 +117,7 @@ pub struct ColorSamplerRef(#[entities] pub Entity);
 
 
 
-#[derive(Debug, Clone, Component, Default)]
+#[derive(Debug, Clone, Component, Default, Reflect)]
 #[require(EntityPrefix::new_truncated("HashPosEntWSampler"), Replicated, AssetScoped, TgenHotLoadingScoped)]
 #[component(map_entities)]
 pub struct EntityWeightedSampler {

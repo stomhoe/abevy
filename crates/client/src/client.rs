@@ -30,21 +30,9 @@ pub fn plugin(app: &mut App) {
     .add_systems(OnEnter(ClientState::Connected), (client_on_connect_succesful)) 
     .add_systems(OnEnter(ClientState::Disconnected), (client_on_disconnect)) 
 
-        // (
-        // )
-        // .in_set(ClientSystems),
-   
+
 
     .add_observer(client_on_game_started)
 
     ;
 }
-
-/*
-    https://docs.rs/bevy_replicon/latest/bevy_replicon/shared/replication/replication_rules/trait.AppRuleExt.html#method.replicate_with
-    
- .replicate_with((
-        RuleFns::<Being>::default(),
-        (RuleFns::<Transform>::default(), ReplicationMode::Once),
-    ))
-*/

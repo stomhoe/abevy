@@ -26,6 +26,8 @@ pub fn init_oplists_from_assets(
     if oplist_map.is_some() { return ; }
     cmd.init_resource::<OpListEntityMap>();
 
+    let egui_oplist_holder_ent = cmd.spawn(EguiOplistHolder).id();
+
     for handle in seris_handles.handles.iter() {//ESTE VA CON ITER
         let Some(seri) = assets.get_mut(handle) else {
             continue;
@@ -177,7 +179,7 @@ pub fn init_oplists_from_assets(
             let bifurcation = Bifurcation { oplist: None, tiles };
             oplist.bifurcations.push(bifurcation);
         }
-        let spawned_oplist = cmd.spawn(( str_id, oplist, size)).id();
+        let spawned_oplist = cmd.spawn(( str_id, oplist, size, ChildOf(egui_oplist_holder_ent))).id();
         if seri.is_root() { cmd.entity(spawned_oplist).insert(MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))); }
 
     } 

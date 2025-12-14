@@ -1,7 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_components::EntityPrefix;
-use superstate::{SuperstateInfo};
 
 use serde::{Deserialize, Serialize};
 

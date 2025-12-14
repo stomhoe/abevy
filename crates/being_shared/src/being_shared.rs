@@ -7,8 +7,6 @@ pub struct ControlledLocally;
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 
-
-
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 pub struct HumanControlled(pub bool);
 
@@ -24,8 +22,6 @@ pub struct ControlledBy  {
     #[relationship] #[entities]
     pub client: Entity 
 }
-
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Eq, Clone, Copy, Hash, PartialEq)]
 pub enum Grounding {

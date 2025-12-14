@@ -1,7 +1,6 @@
 
 use bevy::{input::mouse::MouseWheel, prelude::*};
 use dimension_shared::{Dimension, DimensionRef};
-use sprite::sprite_components::BaseHolderRef;
 
 use crate::camera_components::*;
 

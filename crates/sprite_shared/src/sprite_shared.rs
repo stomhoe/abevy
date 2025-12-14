@@ -1,0 +1,78 @@
+use bevy::platform::collections::HashMap;
+#[allow(unused_imports)] use bevy::prelude::*;
+use bevy_replicon::prelude::*;
+use common::{common_components::*, common_types::*};
+use serde::{Deserialize, Serialize};
+
+use crate::sprite_scale_offset::{self, *};
+
+#[allow(unused_imports)] use {bevy::prelude::*, };
+
+pub fn plugin(app: &mut App) {
+    app
+        .register_type::<SpriteConfigStrIds>()
+        .register_type::<BaseHolderRef>()
+        .register_type::<HeldSprites>()
+
+        .replicate::<BaseHolderRef>()
+
+        .replicate_once_filtered::<Transform, With<BaseHolderRef>>()
+        .replicate_once_filtered::<ChildOf, With<BaseHolderRef>>()
+        .replicate::<MovementBased>()
+        .replicate::<GroundingBased>()
+
+    ;
+    sprite_scale_offset::plugin(app);
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct MovementBased;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct GroundingBased;
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[relationship(relationship_target = HeldSprites)]
+#[require(EntityPrefix::new_truncated("Sprite"), Replicated,)]
+pub struct BaseHolderRef {#[relationship]#[entities]pub base: Entity, }
+
+#[derive(Component, Debug, Reflect)]
+#[relationship_target(relationship = BaseHolderRef)]
+pub struct HeldSprites(Vec<Entity>);
+
+impl HeldSprites {
+    pub fn entities(&self) -> &Vec<Entity> {
+        &self.0
+    }
+}
+impl std::ops::Deref for HeldSprites {
+    type Target = [Entity];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl IntoIterator for HeldSprites {
+    type Item = Entity;
+    type IntoIter = std::vec::IntoIter<Entity>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+impl<'a> IntoIterator for &'a HeldSprites {
+    type Item = &'a Entity;
+    type IntoIter = std::slice::Iter<'a, Entity>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+/// DON'T REPLICATE
+pub struct SpriteConfigStrIds(Vec<StrId>);
+impl SpriteConfigStrIds {
+    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
+        Self(ids.into_iter().map(|s| StrId::new_truncated(s)).collect())
+    }
+    pub fn ids(&self) -> &Vec<StrId> { &self.0 }
+}

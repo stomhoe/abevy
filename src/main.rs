@@ -23,14 +23,15 @@ concat!(
 
     "tilemap::terrain_gen::terrgen_systems=info,",
     "tilemap::tile::tile_init_systems=info,",
+    "tilemap_systems=trace,",
     "zlevel=warn,",
     "movement=warn,",
     "sprite_init=trace,",
     "sprite_building=trace,",
-    "sprite_systems=debug,",
+    "sprite_systems=trace,",
     
-    "sprite_animation_init=trace,",
-    "sprite_animation=debug,",
+    "sprite_animation_init=warn,",
+    "sprite_animation=warn,",
 
     "tile_init=debug,",
     "asset_loading=warn,",
@@ -70,6 +71,7 @@ fn main() {
             common::plugin,
             game_common::plugin,
             ui_shared::plugin,
+            sprite_shared::plugin,
         ))
         .add_plugins((
             game::plugin,

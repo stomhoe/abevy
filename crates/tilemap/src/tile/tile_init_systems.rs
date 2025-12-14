@@ -8,10 +8,10 @@ use common::common_components::*;
 use ::dimension_shared::*;
 use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, EntityZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
-use sprite::{sprite_components::{BaseHolderRef, SpriteConfigStrIds}, sprite_scale_offset_components::Offset2D};
+use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
-use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*} };
+use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*, tile_shader_components::TileShaderRef} };
 use crate::terrain_gen::terrgen_resources::MassCollectedTiles;
 
 use std::mem::take;
@@ -417,30 +417,6 @@ pub fn client_sync_tile(
 
 }
 
-// #[allow(unused_parens)]
-// pub fn client_add_sprite(mut cmd: Commands, 
-//     ori_query: Query<(&TileStrId, Option<&Sprite>), (With<Disabled>)>,
-//     mut query: Query<(Entity, &EntityZeroRef), (With<Tile>, With<Transform>, Without<Sprite>, Or<(Without<Disabled>, With<Disabled>)>)>,
-// ) {
-//     for (ent, &ezero) in query.iter_mut() {
-//         let Ok((tile_strid, sprite)) = ori_query.get(ezero.0) else{
-//             error!("Original tile entity {} is despawned", ezero.0);
-//             continue;
-//         };
-
-//         if let Some(sprite) = sprite {
-//             cmd.entity(ent).insert((sprite.clone(), SyncToRenderWorld, Visibility::default(), ) );
-//             info!("Added sprite to tile '{}' entity {:?}", tile_strid, ent);
-//         } else{
-//             error!("Tile '{}' has no sprite to add", tile_strid);
-//         }
-//     }
-// }
-
-
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn make_child_of_chunk(mut cmd: Commands, 
 

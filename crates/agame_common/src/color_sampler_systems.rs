@@ -3,7 +3,7 @@ use bevy::ecs::entity_disabling::Disabled;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
+use common::common_components::{EntityPrefix, StrId};
 use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 
 use crate::{color_sampler_resources::*, game_common_components_samplers::{ColorSampler, ColorSamplerRef, }};
@@ -34,12 +34,12 @@ pub fn init_color_samplers(
         let mut i = 0;
         while i < seri.weights.len() {
             if seri.weights[i].1 < 0.0 {
-            error!(
-                "Invalid color sampler '{}': negative weight detected at index {} (color value: {:?}, weight: {}). Removing this entry.",
-                str_id, i, seri.weights[i].0, seri.weights[i].1
-            );
-            seri.weights.swap_remove(i);
-            // Do not increment i, as swap_remove puts a new element at i
+                error!(
+                    "Invalid color sampler '{}': negative weight detected at index {} (color value: {:?}, weight: {}). Removing this entry.",
+                    str_id, i, seri.weights[i].0, seri.weights[i].1
+                );
+                seri.weights.swap_remove(i);
+                // Do not increment i, as swap_remove puts a new element at i
             } else {
                 i += 1;
             }

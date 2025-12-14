@@ -3,9 +3,9 @@
 use bevy::ecs::entity_disabling::Disabled;
 use game_common::game_common_components::{Categories, EntityZero, FacingDirection};
 use player::player_components::*;
-use sprite_animation_shared::sprite_animation_shared::*;
+use ::sprite_shared::{sprite_scale_offset::*, *};
 
-use crate::{sprite_components::*, sprite_resources::SpriteCfgEntityMap, sprite_scale_offset_components::*};
+use crate::{sprite_components::*, sprite_resources::SpriteCfgEntityMap, };
 
 #[allow(unused_parens)]
 pub fn apply_scales(
@@ -150,20 +150,23 @@ pub fn apply_offsets(
 
 #[allow(unused_parens)]
 pub fn disable_children_sprites_of_disabled(mut cmd: Commands, 
-    bases: Query<(&HeldSprites, Has<Disabled>),(Or<(With<Disabled>, Without<Disabled>)>)>,
+    ezero_bases: Query<(&HeldSprites),(With<EntityZero>, Added<Disabled>)>,
+    non_ezero_bases: Query<(&HeldSprites),(Without<EntityZero>,)>,
+    mut removed: RemovedComponents<Disabled>,
 ) {
-    for (held_sprites, is_disabled) in bases.iter() {
-        if is_disabled {
-            for &sprite_ent in held_sprites.sprite_ents() {
-                cmd.entity(sprite_ent).try_insert(Disabled);
-            }
+    for (held_sprites) in ezero_bases.iter() {
+        for &sprite_ent in held_sprites.entities() {
+            cmd.entity(sprite_ent).try_insert(Disabled);
+            trace!(target:"sprite_systems", "Disabled sprite entity {:?} as its base entity was disabled", sprite_ent);
         }
-        else{
-            for &sprite_ent in held_sprites.sprite_ents() {
+    }
+    for ent in removed.read() {
+        if let Ok((held_sprites)) = non_ezero_bases.get(ent) {
+            for &sprite_ent in held_sprites.entities() {
                 cmd.entity(sprite_ent).try_remove::<Disabled>();
+                trace!(target:"sprite_systems","Re-enabled sprite entity {:?} as its base entity {:?} was re-enabled", sprite_ent, ent);
             }
         }
     }
 }
 
-//hay que corregir BaseHolderRef para tiles hacer de forma simple

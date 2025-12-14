@@ -1,6 +1,5 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 use bevy_replicon::prelude::*;
-use common::common_states::{AppState, GamePhase};
 use game_common::{game_common::{GameplaySystems, StatefulSessionSystems}, };
 
 use crate::{being_resources::*, being_systems::*, being_components::*};
@@ -18,16 +17,7 @@ pub fn plugin(app: &mut App) {
         ).in_set(GameplaySystems),
     ))
 
-
-    .replicate::<PlayerDirectControllable>()
-   
-    .replicate::<CharacterCreatedBy>()
-    .replicate::<IsHumanControlled>()
-    .replicate::<Being>()
-    .replicate::<DirControlledBy>()
-    .replicate_once::<Grounding>()
-    .replicate::<FollowerOf>()
-
+    
     .register_type::<DirControlledBy>()
     .register_type::<Grounding>()
     .register_type::<Controls>()
@@ -37,14 +27,18 @@ pub fn plugin(app: &mut App) {
     .register_type::<CharacterCreatedBy>()
     .register_type::<CreatedCharacters>()
     .register_type::<IsHumanControlled>()
-
-    .replicate_with((
-    RuleFns::<Being>::default(),
-    RuleFns::<ChildOf>::default(),
-    (RuleFns::<Transform>::default(), ReplicationMode::OnChange),
-    ))
     
+    .replicate::<PlayerDirectControllable>()
+    
+    .replicate::<CharacterCreatedBy>()
+    .replicate::<IsHumanControlled>()
+    .replicate::<Being>()
+    .replicate::<DirControlledBy>()
+    .replicate_once::<Grounding>()
+    .replicate::<FollowerOf>()
 
+    .replicate_filtered::<ChildOf, With<Being>>()
+    .replicate_filtered::<Transform, With<Being>>()
     ;
 }
 

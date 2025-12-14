@@ -6,7 +6,6 @@ use common::{common_components::*, common_states::*};
 use game_common::game_common_components::YSortOrigin;
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::Chunk, tile::tile_components::Tile };
 
 #[derive(Bundle, Debug, Default)]
 pub struct TilemapConfig {

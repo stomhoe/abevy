@@ -7,9 +7,10 @@ use bevy_spritesheet_animation::prelude::Animation;
 use common::common_components::*;
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{Categories, Directionable, EntityZero, MyZ};
-use sprite_animation_shared::{AnimationLibrary, sprite_animation_shared::AnimationState};
+use sprite_animation_shared::{AnimationLibrary, sprite_animation_shared::AnimationState, };
+use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 
-use crate::{sprite_components::*, sprite_resources::*, sprite_scale_offset_components::*};
+use crate::{sprite_components::*, sprite_resources::*, };
 
 
 
@@ -250,7 +251,7 @@ pub fn become_child_of_sprite_with_category(
         if let Ok(becomes_child_of_sprite_with_cat) = becomes.get(new_sprite_cfg_ref.0) {unsafe {
             let held_sprites = sprite_holder.get(sprite_holder_ref.base).debug_expect_unchecked("SpriteHolderRef should have a HeldSprites component");
 
-            for (other_ent, o_spritecfg_ref) in other_sprites.iter_many(held_sprites.sprite_ents()) {
+            for (other_ent, o_spritecfg_ref) in other_sprites.iter_many(held_sprites.entities()) {
                 if new_ent == other_ent { continue; }
 
                 let other_cats = match other_cats.get(o_spritecfg_ref.0) {

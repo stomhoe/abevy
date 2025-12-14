@@ -10,8 +10,8 @@ use common::common_types::*;
 use game_common::game_common_components::{FacingDirection};
 use serde::{Deserialize, Serialize};
 use sprite_animation_shared::{AnimationState, MoveAnimActive};
+use sprite_shared::sprite_scale_offset::Offset2D;
 
-use crate::sprite_scale_offset_components::Offset2D;
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Reflect)]
 #[require(Replicated, AssetScoped, EntityPrefix::new_truncated("SpriteConfigs"), )]
@@ -21,33 +21,9 @@ pub struct SpriteConfigsHolder;
 #[require(EntityPrefix::new_truncated("SpriteConfig"), AssetScoped, Replicated)]
 pub struct SpriteConfig;
 
-//todo agregarle path_to_sprite y hacer q si no hay un sprite component en la entity q lo instancie
-//de esta forma no hay q pre-spawnear los spriteconfig en los clients y se pueden replicar normalmente
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct MovementBased;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct GroundingBased;
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[relationship(relationship_target = HeldSprites)]
-#[require(EntityPrefix::new_truncated("Sprite"), Replicated,)]
-pub struct BaseHolderRef {#[relationship]#[entities]pub base: Entity, }
-
-#[derive(Component, Debug, Reflect)]
-#[relationship_target(relationship = BaseHolderRef)]
-pub struct HeldSprites(Vec<Entity>);
-impl HeldSprites {pub fn sprite_ents(&self) -> &Vec<Entity> { &self.0 }}
 
 #[derive(Component, Default, Deserialize, Serialize, Debug, Reflect, MapEntities)]
 pub struct SpriteCfgAnimationsMap (
-    // anim_type - used anim
-    //defaultear a usar FacingDirection::South si no es directionable
-    //defaultear a usar Grounding::Grounded si no importa la altitud actual
-    //Option<StrId> para guardar animaciones para estados específicos
     #[entities]pub HashMap<AnimType, Entity>
 );
 
@@ -89,7 +65,21 @@ pub struct SpriteConfigRef(#[entities] pub Entity);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct ColorHolder(pub Color);//NO HACER PARTE DE SpriteDataBundle
+pub struct ColorHolder(pub Color);
+
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct Exclusive;
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct BecomeChildOfSpriteWithCategory (pub Category);
+
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone )]
+pub struct SpriteCfgsToBuild(#[entities] pub HashSet<Entity>);
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct OffsetForChildren(pub HashMap<Category, (Offset2D, AppliesOnSpriteDirection)>);
@@ -135,31 +125,3 @@ impl AppliesOnSpriteDirection {
         }
     }
 }
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct Exclusive;
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct BecomeChildOfSpriteWithCategory (pub Category);
-
-// NO USAR ESTOS DOS PARA BEINGS
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-/// DON'T REPLICATE
-pub struct SpriteConfigStrIds(Vec<StrId>);
-impl SpriteConfigStrIds {
-    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-        Self(ids.into_iter().map(|s| StrId::new_truncated(s)).collect())
-    }
-    pub fn ids(&self) -> &Vec<StrId> { &self.0 }
-}
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone )]
-pub struct SpriteCfgsToBuild(#[entities] pub HashSet<Entity>);
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy )]
-pub struct BecomeChildOf(#[entities] pub Entity);
-
-
-
-

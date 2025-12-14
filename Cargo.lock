@@ -307,6 +307,7 @@ dependencies = [
  "sprite",
  "sprite_animation",
  "sprite_animation_shared",
+ "sprite_shared",
  "tilemap",
  "tracing",
  "tracing-subscriber",
@@ -4559,6 +4560,7 @@ dependencies = [
  "rand_seeder",
  "serde",
  "splines",
+ "sprite_shared",
  "strum 0.27.2",
  "strum_macros 0.27.2",
  "tilemap_shared",
@@ -4936,7 +4938,7 @@ dependencies = [
  "nano-id",
  "player",
  "serde",
- "sprite",
+ "sprite_shared",
  "superstate",
  "tilemap",
  "tracing",
@@ -7145,7 +7147,6 @@ dependencies = [
  "bevy_asset_loader",
  "bevy_common_assets",
  "bevy_replicon",
- "bevy_replicon_renet",
  "bevy_simple_subsecond_system",
  "bevy_spritesheet_animation",
  "common",
@@ -7155,6 +7156,7 @@ dependencies = [
  "player",
  "serde",
  "sprite_animation_shared",
+ "sprite_shared",
  "tracing",
  "tracing-subscriber",
 ]
@@ -7179,6 +7181,7 @@ dependencies = [
  "serde",
  "sprite",
  "sprite_animation_shared",
+ "sprite_shared",
  "tracing",
  "tracing-subscriber",
 ]
@@ -7189,6 +7192,16 @@ version = "0.1.0"
 dependencies = [
  "bevy 0.17.3",
  "bevy_spritesheet_animation",
+ "common",
+ "serde",
+]
+
+[[package]]
+name = "sprite_shared"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.17.3",
+ "bevy_replicon",
  "common",
  "serde",
 ]
@@ -7507,6 +7520,7 @@ dependencies = [
  "rand_seeder",
  "serde",
  "sprite",
+ "sprite_shared",
  "strum 0.27.2",
  "strum_macros 0.27.2",
  "superstate",

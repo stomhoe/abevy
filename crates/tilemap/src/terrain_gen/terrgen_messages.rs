@@ -1,23 +1,11 @@
-use bevy::{ecs::{entity::MapEntities, entity_disabling::Disabled}, prelude::*};
-use bevy_ecs_tilemap::tiles::{TileBundle, TileColor, TilePos};
+use bevy::{prelude::*};
 use common::common_components::HashId;
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
-use std::mem::take;
-use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
-use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
-use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, tile::tile_components::*};
+use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, };
     
-
-/*
-.add_message::<TestEvent>(),
-mut event_writer: MessageWriter<TestEvent>,
-mut event_reader: MessageReader<TestEvent>,
-*/
-
-
 #[derive(Debug, Clone)]
 pub enum SearchPattern {
     ///Probe direction
@@ -30,8 +18,6 @@ impl SearchPattern {
         SearchPattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
     }
 }
-
-
 #[derive(Message, Debug, Clone)]
 pub struct PosSearch {
     pub dimension_hash_id: i32,
@@ -56,11 +42,9 @@ impl PosSearch{
     }
 }
 
-
-
 #[derive(Message, Debug, Clone)]
 pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub pos: GlobalTilePos, pub dimension_hash_id: i32,
-    pub variables: VariablesArray, pub studied_op_ent: Entity//TODO: HACER LAS StudiedOp ENTITIES? (Y PONER StudiedOpRef en su lugar)
+    pub variables: VariablesArray, pub studied_op_ent: Entity
 }
 
 
@@ -92,11 +76,6 @@ impl PartialEq for StudiedOp {
     }
 }
 impl Eq for StudiedOp {}
-
-/*
-mut event_writer: MessageWriter<ToClients<ClientSpawnTile>>,
-*/
-
 
 #[derive(Debug, Clone, Message, )]
 pub struct SuitablePosFound { pub studied_op_ent: Entity, pub val: f32, pub found_pos: GlobalTilePos, }

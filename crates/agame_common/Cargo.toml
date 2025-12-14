@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 tilemap_shared = { path = "../tilemap_shared" }
+sprite_shared = { path = "../sprite_shared" }
 
 bevy = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }

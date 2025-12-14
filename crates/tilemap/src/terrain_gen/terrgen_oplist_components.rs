@@ -12,6 +12,8 @@ use {common::common_components::*, };
 use strum_macros::{AsRefStr, Display, };
 use std::ops::{Index, IndexMut};
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct EguiOplistHolder;
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
 pub struct PoissonDisk { pub min_distance: u8, pub seed: u64, }

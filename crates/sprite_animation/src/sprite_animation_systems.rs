@@ -10,7 +10,8 @@ use common::{common_components::{ImageHolder, StrId}, common_states::GameSetupTy
 use game_common::game_common_components::{Directionable, FacingDirection};
 use player::player_components::*;
 use sprite::sprite_components::*;
-use sprite_animation_shared::{AnimationHandle, AnimationSheet, AnimationState, MoveAnimActive};
+use ::sprite_animation_shared::*;
+use ::sprite_shared::*;
 
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
 
@@ -37,7 +38,7 @@ pub fn animate_sprite(
 ) {
 
     for (held_sprites, direction, moving, grounding) in base.iter() {
-        for held_sprite in held_sprites.sprite_ents() {
+        for held_sprite in held_sprites.entities() {
             let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses)) = sprites_query.get_mut(*held_sprite) 
             else { error!(target: "sprite_animation", "Failed to get sprite entity {:?}", held_sprite); continue };
 

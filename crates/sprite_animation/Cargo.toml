@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 sprite = { path = "../sprite" }
+sprite_shared = { path = "../sprite_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 game_common = { path = "../agame_common" }
 being_shared = { path = "../being_shared" }

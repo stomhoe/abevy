@@ -1,21 +1,8 @@
-use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 use common::common_components::{AssetScoped, DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, StrId};
-use game_common::game_common_components::{MyZ, YSortOrigin};
-use bevy_ecs_tilemap::tiles::TilePos;
-
-use crate::{tile::{tile_components::*, tile_resources::*, tile_materials::*}, };
-
-use serde::{Deserialize, Serialize};
-
-#[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new_truncated("TileShaders"), )]
-struct EguiTileShaderHolder;
+use crate::tile::{tile_materials::*, tile_resources::*, tile_shader_components::*};
 
 #[allow(unused_parens)]
 pub fn init_shaders(

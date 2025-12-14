@@ -1,12 +1,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
-use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetsLoadingState;
 use dimension_shared::RootInDimensions;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking_components::OperationsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tile::tile_components::TileSamplerHolder, tilemap_systems::process_tiles_pre,};
+use crate::{chunking_components::OperationsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::process_tiles_pre,};
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -52,11 +51,9 @@ pub fn plugin(app: &mut App) {
 
         .add_plugins((
             RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),
-
             RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
 
         ))
-        
         .register_type::<NoiseSerisHandles>().register_type::<NoiseSerialization>()
         .register_type::<OpListSerisHandles>().register_type::<OpListSerialization>()
         .register_type::<FnlNoiseComp>().register_type::<FastNoiseLite>()
@@ -75,9 +72,6 @@ pub fn plugin(app: &mut App) {
         .add_server_event::<RegisteredPositions>(Channel::Unordered)
         .make_event_independent::<RegisteredPositions>()
         
-        
-
-        
         .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
         
         .replicate::<OperationList>()
@@ -89,7 +83,6 @@ pub fn plugin(app: &mut App) {
         
         .replicate::<NoiseHolder>()
         .add_message::<PendingOp>()
-        //.add_message::<MassCollectedTiles>()
         .init_resource::<MassCollectedTiles>()
         .add_message::<PosSearch>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
         ;

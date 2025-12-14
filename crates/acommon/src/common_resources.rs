@@ -2,9 +2,6 @@ use bevy::math::U16Vec2;
 #[allow(unused_imports)] use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use crate::common_components::StrId;
-
-
 #[derive(Resource, Default)]
 pub struct ImageSizeMap(pub HashMap<AssetId<Image>, U16Vec2>);
 

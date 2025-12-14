@@ -1,22 +1,18 @@
 
-use being_shared::{ControlledBy, ControlledLocally, HumanControlled};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::{self, *}}, renet::RenetClient};
 use common::{common_states::*};
 use dimension::dimension_resources::DimensionEntityMap;
 use multiplayer_shared::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, };
 use player::{player_components::*, player_resources::PlayerData};
-use sprite::sprite_resources::SpriteCfgEntityMap;
 
 // Import CameraTarget if it exists in your project, adjust the path as necessary
 use tilemap::terrain_gen::terrgen_resources::{OpListEntityMap, TerrGenEntityMap};
 
 use crate::{client_functions::*, };
 
-use game_common::{color_sampler_resources::ColorWeightedSamplersMap, };
 
 
 pub fn attempt_join(
@@ -24,7 +20,6 @@ pub fn attempt_join(
     channels: Res<RepliconChannels>,
     mut lobby_state: ResMut<NextState<ConnectionAttempt>>,
     target_join_server: Option<Res<TargetJoinServer>>,
-    //line_edit_query: Single<&CurrentText, With<MainMenuIpLineEdit>>,
 ) -> Result {
 
     let Some(joined_server) = target_join_server else {
@@ -58,8 +53,6 @@ pub fn client_on_connect_succesful(
 pub fn client_on_connect_failed(
     mut commands: Commands,
     mut app_state: ResMut<NextState<AppState>>,
-
-    //client: Res<RenetClient>,
 ) {
     app_state.set(AppState::NoSession);
 

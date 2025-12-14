@@ -6,7 +6,7 @@ use dimension_shared::DimensionRef;
 use game_common::game_common_components::{EntityZeroRef, MyZ};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_resources::*}, tile::{tile_components::*, tile_materials::*}, tilemap_components::*};
+use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*};
 
 
 
@@ -35,7 +35,7 @@ impl MapStruct {
 
 
 //ESTRATEGIA PERSISTENCIA: DEJAR TODAS LAS TILES MODIFICADAS EN WORLD (COMO ENTITIES), MARCARLAS CON ALGO. 
-//NO SE PUEDEN GUARDAR EN ESTRUCTURAS DE DATOS POR LA INFINIDAD DE COMBINACIONES POSIBLES DE COMPONENTES
+//NO SE PUEDEN GUARDAR EN ESTRUCTURAS DE DATOS COMO HASHMAPS POR LA INFINIDAD DE COMBINACIONES POSIBLES DE COMPONENTES
 
 
 use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
@@ -95,7 +95,7 @@ pub fn process_tiles_pre(
             error!("Original tile entity {} is despawned", ezero_ref.0);
             continue;
         };
-
+        
         if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent, ezero_ref, dim_ref, gpos, min_dists, keep_distance_from), min_dists_query) {
             
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
@@ -111,8 +111,11 @@ pub fn process_tiles_pre(
             }
         }
         if transform.is_some() {
+            trace!(target: "tilemap_systems", "Processing tile entity {:?} with strid {:?}", tile_ent, tile_strid);
             to_insert_pos_and_dim_ref.push((tile_ent, (ezero_ref, gpos, dim_ref, initial_pos, SyncToRenderWorld::default())));
             collected_tiles.0.swap_remove(i);
+            // EL Disabled se saca en tile_readjust_transform
+
             continue;//is sprite tile
         }
         bundle.color = color.cloned().unwrap_or_default();
@@ -239,7 +242,6 @@ fn func_process_tilemaps(
             tile_visible.0 = false; 
             error!("Tile entity {:?} has no TileHidsHandles", tile_ent);
             return;
-            U16Vec2::ONE
         }
     };
     let map_key = MapKey::new(tile_z_index, oplist_size, tile_size, shader_ref.copied());

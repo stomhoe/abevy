@@ -82,8 +82,6 @@ impl GlobalTilePos {
         TilePos::from(ivec2.as_uvec2())
     }
     pub fn to_chunkpos(&self) -> ChunkPos {
-        let self_vec2 = self.0;
-
         ChunkPos(Into::<IVec2>::into(*self) / ChunkPos::CHUNK_SIZE.as_ivec2())
     }
 

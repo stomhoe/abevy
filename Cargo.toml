@@ -68,6 +68,7 @@ movement = { path = "crates/movement" }
 camera = { path = "crates/camera" }
 dimension = { path = "crates/dimension" }
 sprite_animation_shared = { path = "crates/sprite_animation_shared" }
+sprite_shared = { path = "crates/sprite_shared" }
 sprite_animation = { path = "crates/sprite_animation" }
 sprite = { path = "crates/sprite" } 
 tilemap = { path = "crates/tilemap" }

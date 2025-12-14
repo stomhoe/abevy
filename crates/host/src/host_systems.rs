@@ -8,8 +8,7 @@ use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTranspo
 use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_states::ConnectionAttempt};
 use multiplayer_shared::multiplayer_events::SendUsername;
 use player::player_components::{OfSelf, Player};
-use sprite::{sprite_components::SpriteConfigStrIds, sprite_resources::SpriteCfgEntityMap};
-use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_resources::{TileEntitiesMap}}};
+use sprite_shared::SpriteConfigStrIds;
 
 use crate::host_functions::host_server;
 
@@ -31,8 +30,6 @@ pub fn attempt_host(
 #[allow(unused_parens, )]
 pub fn host_on_player_connect(trigger: On<Add, ConnectedClient>, 
     mut cmd: Commands, host_faction: Single<(Entity ), (With<Faction>, With<OfSelf>)>,
-    own_tiles_map: Res<TileEntitiesMap>,
-    own_sprite_cfg_map: Res<SpriteCfgEntityMap>,
 ) -> Result {
     
     cmd.entity(trigger.entity).insert((Player, BelongsToFaction(host_faction.into_inner())));

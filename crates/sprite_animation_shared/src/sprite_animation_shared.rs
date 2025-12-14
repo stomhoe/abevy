@@ -8,10 +8,21 @@ use serde::{Deserialize, Serialize};
 #[allow(unused_imports)] use {bevy::prelude::*, };
 
 pub fn plugin(app: &mut App) {
-
+    
 }
 
-
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, )]
+pub struct PlayingSpeed(pub f32);
+impl PlayingSpeed {
+    pub fn new(speed: f32) -> Self {
+        Self(speed)
+    }
+}
+impl Default for PlayingSpeed {
+    fn default() -> Self {
+        PlayingSpeed(1.0)
+    }
+}
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, Hash, PartialEq, Eq, Default)]
 pub struct MoveAnimActive(pub bool);
@@ -28,12 +39,13 @@ impl From<&str> for MoveAnimActive {
 //NO VA REPLICATED, SE HACE LOCALMENTE EN CADA PC SEGÚN LOS INPUTS RECIBIDOS DE OTROS PLAYERS
 pub struct AnimationState(pub StrId);
 impl AnimationState {
-
+    
     pub fn new<S: AsRef<str>>(state: S) -> Self {
         Self(StrId::new_truncated(state.as_ref()))
     }
-}impl std::fmt::Display for AnimationState {
-fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+}
+impl std::fmt::Display for AnimationState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }

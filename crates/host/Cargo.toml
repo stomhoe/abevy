@@ -8,10 +8,10 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 game = { path = "../game" }
 multiplayer_shared = { path = "../multiplayer_shared" }
+sprite_shared = { path = "../sprite_shared" }
 tilemap = { path = "../tilemap" }
 faction = { path = "../faction" }
 player = { path = "../player" }
-sprite = { path = "../sprite" }
 being = { path = "../being" }
 
 bevy = { workspace = true }

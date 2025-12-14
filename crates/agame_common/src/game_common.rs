@@ -1,9 +1,6 @@
-use std::time::Duration;
-
-use bevy::{ecs::entity_disabling::Disabled, prelude::*, time::common_conditions::on_timer};
+use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_common_assets::ron::RonAssetPlugin;
 use common::{common_states::*, common_types::SerializableVisibility};
-use bevy_asset_loader::prelude::*;
 use bevy_replicon::prelude::*;
 
 use crate::{color_sampler_systems::*, color_sampler_resources::WeightedColorsSeri, game_common_components::*, game_common_components_samplers::{ColorSampler, EntityWeightedSampler, WeightedSamplerRef}, game_common_states::*, game_common_systems::* };
@@ -23,8 +20,6 @@ pub struct SimPausedSystems;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ModifierSystems;
 
-
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ColorSamplersInitSystems;
 
@@ -33,7 +28,6 @@ pub struct ColorSamplersInitSystems;
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
 
-
     app
     .add_plugins((
         RonAssetPlugin::<WeightedColorsSeri>::new(&["wcolors.ron"]),
@@ -41,13 +35,13 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(OnEnter(AppState::NoSession), (reset_states))
 
-    .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (init_color_samplers, add_colorsamplers_to_map).chain().in_set(ColorSamplersInitSystems))
+    .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (init_color_samplers, ).chain().in_set(ColorSamplersInitSystems))
 
     .add_systems(Update, (
         (z_sort_system, apply_pos_sampled_color).in_set(StatefulSessionSystems),
         (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
-        add_colorsamplers_to_map.run_if(in_state(ClientState::Disconnected)),
+        add_colorsamplers_to_map,
         apply_pos_sampled_color,
         clone_ezero_children_ents,
         disable_ezeros,
@@ -96,6 +90,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<WeightedSamplerRef>()
     .register_type::<Categories>()
     .register_type::<EntityZeroRef>()
+    .register_type::<EntityWeightedSampler>()
     .register_type::<ColorSampler>()
     
     .replicate::<VisibilityGameState>()    
