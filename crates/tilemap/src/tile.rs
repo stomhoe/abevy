@@ -38,6 +38,7 @@ pub fn plugin(app: &mut App) {
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
         make_child_of_chunk,
         add_handles,
+        init_tile_sprite,
     ))
 
     .add_systems(
@@ -97,7 +98,8 @@ pub fn plugin(app: &mut App) {
     .replicate::<TileShaderRef>()
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()
-    .replicate_bundle::<(GlobalTilePos, EntityZeroRef)>()
+    .replicate_filtered::<EntityZeroRef, With<Tile>>()
+    .replicate_filtered::<GlobalTilePos, With<Tile>>()
 
     .replicate_filtered::<Transform, With<TilesEguiHolder>>()
     .replicate_filtered::<Transform, With<PortalsZeroEguiHolder>>()

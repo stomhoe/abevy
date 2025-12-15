@@ -33,7 +33,7 @@ pub fn init_animations(
     for handle in take(&mut anim_handles.handles) {
         let Some(mut seri) = seris_assets.remove(&handle) else { continue };
 
-        let Ok(_) = ImagePathHolder::new(seri.img_path.clone()) else {
+        let Ok(_) = ImagePathHolder::validate_path_exists(seri.img_path.clone()) else {
             let err = BevyError::from(format!("Failed to find image for Animation {}: {}", seri.id, "invalid image path"));
             error!(target: "sprite_animation_init", "{}", err);
             continue;
@@ -44,7 +44,7 @@ pub fn init_animations(
 
             let y_sort = seri.y_sort.clone();
 
-            let ent = cmd.spawn((AnimationMain, str_id.clone(), seri, ChildOf(holder), )).id();
+            let ent = cmd.spawn((AnimationComp, str_id.clone(), seri, ChildOf(holder), )).id();
 
             if let Some(y_sort) = y_sort {
                 cmd.entity(ent).insert(YSortOrigin(y_sort));

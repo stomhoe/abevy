@@ -67,6 +67,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<RegisteredPositions>()
         .register_type::<RootInDimensions>()
         .register_type::<MassCollectedTiles>()
+        .register_type::<StudiedOp>()
         .register_type::<TileHelperStruct>()
 
         .add_server_event::<RegisteredPositions>(Channel::Unordered)

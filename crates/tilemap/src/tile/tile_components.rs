@@ -19,7 +19,7 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{Studie
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
-    TileShaderRef, MyZ, YSortOrigin, ChildOf, Description, TileColor, 
+    TileShaderRef, MyZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
     //children entities don't get cloned
     Children, EntityZero
 );//Disabled no porque se elimina posteriormente

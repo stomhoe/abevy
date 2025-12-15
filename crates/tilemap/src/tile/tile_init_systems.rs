@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, }, platform::collections::{HashMap, HashSet}, render::{sync_world::SyncToRenderWorld, }};
+use bevy::{asset, ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, }, platform::collections::{HashMap, HashSet}, render::sync_world::SyncToRenderWorld};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::{helpers::hex_grid::offset, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -8,10 +8,11 @@ use common::common_components::*;
 use ::dimension_shared::*;
 use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, EntityZeroRef, MyZ, Persisted, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
+use sprite::sprite_components::SpriteConfigRef;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
-use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*, tile_shader_components::TileShaderRef} };
+use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*, tile_shader_components::{TileShader, TileShaderRef}} };
 use crate::terrain_gen::terrgen_resources::MassCollectedTiles;
 
 use std::mem::take;
@@ -118,15 +119,14 @@ pub fn init_tiles(
                 if  (path.trim().is_empty() || path_holder.is_err()) && !key.trim().is_empty() {
                     sprite_cfgs.push(take(key));
                 } else{
+                    let path_holder = path_holder.unwrap();
+
                     let child_sprite = cmd.spawn((
-                        Sprite{
-                            image: path_holder.unwrap().into_handle(&asset_server),
-                            ..Default::default()
-                        },
+                        Replicated,
+                        path_holder,
                         ChildOf(tile_enti),
                         BaseHolderRef{ base: tile_enti },
                         my_z.clone(),
-
                     )).id();
                     
                     if let Some(offset) = seri.offset {
@@ -151,6 +151,35 @@ pub fn init_tiles(
         }
     }
     cmd.insert_resource(res_tile_cats);
+}
+
+#[allow(unused_parens)]
+pub fn init_tile_sprite(mut cmd: Commands, 
+    asset_server: Res<AssetServer>,
+    img_holder: Query<&ImagePathHolder, (Without<EntityZeroRef>, )>,
+    query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<SpriteConfigRef>, 
+        Without<EntityZeroRef>, Without<Sprite>, Without<TileShader>, Added<ImagePathHolder>, Or<(With<Disabled>, Without<Disabled>)>)>,
+) {
+    let mut to_insert = Vec::new();
+    for (entity, (image_path_holder, ezero_ref)) in query.iter() {
+
+        if let Some(img_path_holder) = image_path_holder {
+            to_insert.push((entity, Sprite{
+                image: asset_server.load(img_path_holder.path()),
+                ..Default::default()
+            }));
+            continue;
+        }
+        if let Some(ezero_ref) = ezero_ref {
+            if let Ok(img_path_holder) = img_holder.get(ezero_ref.0) {
+                to_insert.push((entity, Sprite{
+                    image: asset_server.load(img_path_holder.path()),
+                    ..Default::default()
+                }));
+            }
+        }
+    }
+    cmd.insert_batch(to_insert);
 }
 
 

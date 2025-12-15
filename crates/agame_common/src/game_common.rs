@@ -1,6 +1,6 @@
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_common_assets::ron::RonAssetPlugin;
-use common::{common_states::*, common_types::*};
+use common::{common_components::ImagePathHolder, common_states::*, common_types::*};
 use bevy_replicon::prelude::*;
 
 use crate::{color_sampler_systems::*, color_sampler_resources::WeightedColorsSeri, game_common_components::*, game_common_components_samplers::{ColorSampler, EntityWeightedSampler, WeightedSamplerRef}, game_common_states::*, game_common_systems::* };
@@ -108,6 +108,6 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<EntityZero, Or<(With<Disabled>, Without<Disabled>)>>()
     .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>)>()
 
-    //.replicate::<EntityZeroRef>()
+    .replicate::<EntityZeroRef>()
     ;
 }

@@ -11,10 +11,7 @@ use {bevy::prelude::*,};
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (set_entity_name, update_img_sizes_on_load))
-
-        .add_plugins((
-
-        ))
+        .add_plugins(())
         .insert_state::<AppState>(AppState::NoSession)
         .init_state::<PreGameState>()
         .init_state::<GamePhase>()
@@ -24,24 +21,22 @@ pub fn plugin(app: &mut App) {
         .init_state::<ConnectionAttempt>()
         .init_state::<LocallyLoadedAssetsSession>()
         .init_state::<TerrainGenHotLoading>()
-
-
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
         
         .register_type::<EntityPrefix>().register_type_data::<EntityPrefix, InspectorEguiImpl>()
-        
         .register_type::<DisplayName>()
         .register_type::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
         .register_type::<HashIdToEntityMap>()
         .register_type::<Category>().register_type_data::<Category, InspectorEguiImpl>()
-        
-        .replicate_filtered::<Name, Or<(Without<Disabled>, With<Disabled>, )>>()
-        .replicate_filtered::<EntityPrefix, Or<(Without<Disabled>, With<Disabled>, )>>()
-        .replicate_filtered::<StrId, Or<(Without<Disabled>, With<Disabled>, )>>()
-        .replicate_filtered::<Category, Or<(Without<Disabled>, With<Disabled>, )>>()
-        .replicate_filtered::<DisplayName, Or<(Without<Disabled>, With<Disabled>, )>>()
-        .replicate_filtered::<HashId, Or<(Without<Disabled>, With<Disabled>, )>>()
-        .replicate_filtered::<ImagePathHolder, Or<(Without<Disabled>, With<Disabled>, )>>()
+        .register_type::<ImagePathHolder>()
+
+        .replicate::<Name>()
+        .replicate::<EntityPrefix>()
+        .replicate::<StrId>()
+        .replicate::<Category>()
+        .replicate::<DisplayName>()
+        .replicate::<HashId>()
+        .replicate::<ImagePathHolder>()
     ;
 }

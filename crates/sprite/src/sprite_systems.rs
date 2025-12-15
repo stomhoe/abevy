@@ -82,7 +82,7 @@ pub fn apply_offsets(
         Option<&SpriteConfigRef>,
         &mut Transform,
         Option<&Offset2D>, 
-    ), (Without<EntityZero>, )>,
+    ), (Or<(With<Disabled>, Without<Disabled>)>, Without<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>)>,
     sprite_config_query: Query<(
         &Categories,
         Option<&Offset2D>,
@@ -129,7 +129,7 @@ pub fn apply_offsets(
                     }
                 }
                 if let Ok(SpriteConfigRef(ent)) = parent_sprite_query.get(child_of.parent()) {
-                    if let Ok((//TA BIEN
+                    if let Ok((//TA BIEN DE ESTA FORMA REBUSCADA, OffsetAsChild NO SIRVE POR EL ORDEN DE APLICACION INDETERMINISTA. ES MUCHO MAS BUG PRONE CON CHANGE DETECTION
                         _, _, _, _, _, _, offset_for_children
                     )) = sprite_config_query.get(*ent) {
                         if let Some(offset_for_children) = offset_for_children {

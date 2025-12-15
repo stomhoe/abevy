@@ -53,7 +53,7 @@ impl core::fmt::Debug for DisplayName {
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct ImagePathHolder(bevy::asset::AssetPath<'static>);
 
 impl ImagePathHolder {
@@ -61,18 +61,19 @@ impl ImagePathHolder {
     where
         S: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
     {
+        ImagePathHolder::validate_path_exists(path.as_ref())?;
+        let asset_path: bevy::asset::AssetPath<'static> = path.into();
+        Ok(ImagePathHolder(asset_path))
+    }
+    pub fn validate_path_exists<S: AsRef<str>>(path: S) -> Result<(), BevyError> {
         let img_path = format!("assets/{}", path.as_ref());
         if !std::path::Path::new(&img_path).exists() {
             let err = BevyError::from(format!("Image path does not exist: {}", img_path));
             error!(target: "image_loading", "{}", err);
             return Err(err);
         }
-        Ok(Self(path.into()))
+        Ok(())
     }
-    pub fn into_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
-        asset_server.load(&self.0)
-    }
-
     pub fn path(&self) -> &bevy::asset::AssetPath<'static> {
         &self.0
     }

@@ -1,8 +1,12 @@
+use bevy::ecs::bundle;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
 use bevy::render::sync_world::RenderEntity;
 use bevy_ecs_tilemap::anchor::TilemapAnchor;
+use bevy_replicon::prelude::ClientState;
+use bevy_replicon::prelude::Replicated;
+use common::common_components::ImagePathHolder;
 use common::common_states::ConnectionAttempt;
 use common::common_states::GamePhase;
 use ::sprite_shared::*;
@@ -99,26 +103,43 @@ pub fn disable_ezeros(mut cmd: Commands,
     cmd.insert_batch(batch);
 }
 
+
+#[derive(Bundle)]
+struct BaseDeny( EntityZero, BaseHolderRef, Disabled, ImagePathHolder);
+
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 
-    query: Query<(Entity, &EntityZeroRef, ),
+    query: Query<(Entity, &EntityZeroRef, Has<Replicated>, Has<Persisted>),
     (Changed<EntityZeroRef>, Or<(Without<Disabled>, With<Disabled>)>)>,
 
-    ezero: Query<(&Children, Option<&HeldSprites>),(Or<(Without<Disabled>, With<Disabled>)>)>,
-
+    ezero: Query<(&Children, Option<&HeldSprites>, ),(Or<(Without<Disabled>, With<Disabled>)>)>,
+    client_state: Res<State<ClientState>>,
 ) {
     let mut new_child_of = Vec::new();
     let mut new_base_holder_ref = Vec::new();
 
-    for (new_ent, ezero_ref, ) in query.iter() {
-        let Ok((ezero_children, ezero_held_sprites)) = ezero.get(ezero_ref.0) else { continue };
+    let is_client = *client_state.get() != ClientState::Disconnected;
+
+    for (new_ent, ezero_ref, is_replicated, is_persisted) in query.iter() {
+        let Ok((ezero_children, ezero_held_sprites)) = ezero.get(ezero_ref.0) 
+        else { continue };
+
+        let is_replicated = (is_replicated || is_persisted);
+
+        if is_client && is_replicated {
+            continue;
+        }
 
         for child_to_clone in ezero_children.iter() {
             let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
-                |builder|{ builder.deny::<(EntityZero, BaseHolderRef, Disabled)>();}
+                move |builder|{ builder.deny::<(EntityZero, BaseHolderRef, Disabled, ImagePathHolder)>();
+                    if ! is_replicated{
+                        builder.deny::<Replicated>();
+                    }
+                }
             ).id();
-            new_child_of.push((cloned_child, ChildOf(new_ent), ));
-           
+            new_child_of.push((cloned_child, (ChildOf(new_ent), EntityZeroRef(child_to_clone))));
+
 
             debug!(target: "entity_zero", "Cloned child {:?} of EntityZero {:?} as child of {:?}", cloned_child, ezero_ref.0, new_ent);
 
@@ -129,6 +150,6 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
             }
         }
     }
-    cmd.insert_batch(new_child_of);
-    cmd.insert_batch(new_base_holder_ref);
+    cmd.try_insert_batch(new_child_of);
+    cmd.try_insert_batch(new_base_holder_ref);
 }

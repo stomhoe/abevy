@@ -34,7 +34,7 @@ pub struct GroundingBased;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[relationship(relationship_target = HeldSprites)]
-#[require(EntityPrefix::new_truncated("Sprite"), Replicated,)]
+#[require(EntityPrefix::new_truncated("Sprite"), )]
 pub struct BaseHolderRef {#[relationship]#[entities]pub base: Entity, }
 
 #[derive(Component, Debug, Reflect)]

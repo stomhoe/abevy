@@ -29,9 +29,10 @@ concat!(
     "sprite_init=trace,",
     "sprite_building=trace,",
     "sprite_systems=trace,",
+    "sprite_systems=trace,",
     
     "sprite_animation_init=warn,",
-    "sprite_animation=warn,",
+    "entity_zero=trace,",
 
     "tile_init=debug,",
     "asset_loading=warn,",

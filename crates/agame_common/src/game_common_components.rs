@@ -33,7 +33,7 @@ pub struct EntityZero;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-/// this component shouldn't be added preemptively to trees, only if their state was altered
+/// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state
 pub struct Persisted;
 
 #[allow(unused_parens, )]
@@ -139,7 +139,7 @@ pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 
 #[derive(Component, Debug, Clone, Deserialize, Serialize, Reflect, Copy, PartialEq, Eq, Hash)]
 /// DON'T FORGET TO ADD <DISABLED> TO THE QUERY 
-pub struct EntityZeroRef(pub Entity);
+pub struct EntityZeroRef(#[entities] pub Entity);
 
 
 

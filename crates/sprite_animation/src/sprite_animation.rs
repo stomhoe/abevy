@@ -50,10 +50,10 @@ pub fn plugin(app: &mut App) {
 
     .replicate_once::<AnimationState>()
     .replicate_once::<MoveAnimActive>()
-    .replicate::<AnimationMain>()
+    .replicate::<AnimationComp>()
     .replicate::<AnimationSerialization>()
     .replicate::<AnimationsHolder>()
-    .replicate_filtered::<ChildOf, With<AnimationMain>>()
+    .replicate_filtered::<ChildOf, With<AnimationComp>>()
 
 
     .register_type::<AnimationState>()

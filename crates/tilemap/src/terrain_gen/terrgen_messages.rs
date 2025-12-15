@@ -48,7 +48,7 @@ pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub pos: Gl
 }
 
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone, Component, Reflect)]
 pub struct StudiedOp{
     pub root_oplist: Entity,
     pub checked_oplist: Entity,

@@ -13,7 +13,7 @@ pub struct AnimationsHolder;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect)]
 #[require(EntityPrefix::new_truncated("Animation"), Replicated, )]
-pub struct AnimationMain;
+pub struct AnimationComp;
 
 
 

@@ -213,6 +213,7 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
                     str_id.clone(),
                     SpriteConfigRef(spritecfg_ent),
                     ChildOf(father_to_sprite),
+                    Replicated,
                 )).id();
 
                 if let Some(baseholder_ref) = baseholder_ref {
@@ -270,3 +271,4 @@ pub fn become_child_of_sprite_with_category(
         }}
     }
 }
+
