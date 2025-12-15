@@ -9,6 +9,5 @@
     offset: Some((0.0, 150.0)),
     z: 1000,
 
-    tmapchild: true,
 
 )

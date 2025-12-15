@@ -6,7 +6,7 @@ use bevy_ecs_tilemap::{helpers::hex_grid::offset, prelude::*};
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 use common::common_components::*;
 use ::dimension_shared::*;
-use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, EntityZeroRef, MyZ, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
+use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, EntityZeroRef, MyZ, Persisted, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
@@ -49,7 +49,7 @@ pub fn init_tiles(
         };
         let my_z = MyZ(seri.z);
         let tile_enti = cmd.spawn((
-            Tile, str_id.clone(), Disabled,
+            Tile, Replicated, str_id.clone(), Disabled,
             EntityPrefix::new_truncated("Tile"), 
             my_z.clone(),
             EntityZero,
@@ -62,8 +62,8 @@ pub fn init_tiles(
         if ! seri.name.is_empty() {
             cmd.entity(tile_enti).insert(DisplayName(seri.name.clone()));
         }
-        if seri.persisted != Some(true) && seri.portal.is_none() {
-            cmd.entity(tile_enti).insert(ChunkOrTilemapChild);
+        if seri.portal.is_some() {
+            cmd.entity(tile_enti).insert(Persisted);
         }
         if seri.img_paths.is_empty() {
             warn!("Tile '{}' has no img_paths entries", str_id);
@@ -86,7 +86,7 @@ pub fn init_tiles(
         if let Some(portal) = &mut seri.portal { 
             cmd.entity(tile_enti).insert((take(portal), ChildOf(egui_portal_holder))); 
         }
-        if seri.sprite != Some(true) && seri.persisted != Some(true) {//todo hacer q se puedan persistir tilemap tiles
+        if seri.sprite != Some(true) {//todo hacer q se puedan persistir tilemap tiles
             
             cmd.entity(tile_enti).insert(TileImagePaths(take(&mut seri.img_paths)));
 
@@ -420,27 +420,29 @@ pub fn client_sync_tile(
 #[allow(unused_parens)]
 pub fn make_child_of_chunk(mut cmd: Commands, 
 
-    ezero_query: Query<&ChunkOrTilemapChild, With<Disabled>>,
-    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef), (With<Tile>, With<Transform>, Without<ChildOf>, Without<TilePos>)>,
+    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilePos>, Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, Or<(Without<Disabled>, With<Disabled>)>)>,
     loaded_chunks: Res<LoadedChunks>,
 ) {
     let mut child_ofs = Vec::new();
-    for (ent, &ezero, &global_pos, &dim_ref) in query.iter() {
+    for (ent, &ezero, &global_pos, &dim_ref, to_persist) in query.iter() {
 
         let chunk_pos: ChunkPos = global_pos.into();
 
-        let Ok(_) = ezero_query.get(ezero.0) else { 
+        
+        if to_persist {
             child_ofs.push((ent, ChildOf(dim_ref.0)));
-            continue; 
-        };
-
-        let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) 
-        else {
-            cmd.entity(ent).try_despawn();
             continue;
-        };
+        }
+        else{
+            let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) 
+            else {
+                cmd.entity(ent).try_despawn();
+                continue;
+            };
+    
+            child_ofs.push((ent, ChildOf(chunk)));
+        }
 
-        child_ofs.push((ent, ChildOf(chunk)));
     }
-    cmd.insert_batch(child_ofs);
+    cmd.try_insert_batch(child_ofs);
 }

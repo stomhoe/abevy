@@ -31,6 +31,11 @@ pub struct Directionable;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct EntityZero;
 
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+/// this component shouldn't be added preemptively to trees, only if their state was altered
+pub struct Persisted;
+
 #[allow(unused_parens, )]
 #[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, Eq, PartialEq, Hash, Clone, Copy)]
 #[strum(serialize_all = "lowercase")]
@@ -53,7 +58,6 @@ impl FacingDirection {
         }
     }
 }
-
 impl From<u8> for FacingDirection {
     fn from(value: u8) -> Self {
         match value {
@@ -65,7 +69,6 @@ impl From<u8> for FacingDirection {
         }
     }
 }
-
 impl From<&str> for FacingDirection {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
@@ -77,7 +80,6 @@ impl From<&str> for FacingDirection {
         }
     }
 }
-
 impl From<String> for FacingDirection {
     fn from(s: String) -> Self {
         FacingDirection::from(s.as_str())
@@ -107,6 +109,24 @@ pub enum VisibilityGameState {
     Inherited,
     Visible,
     Hidden,
+}
+impl From<Visibility> for VisibilityGameState {
+    fn from(vis: Visibility) -> Self {
+        match vis {
+            Visibility::Inherited => VisibilityGameState::Inherited,
+            Visibility::Visible => VisibilityGameState::Visible,
+            Visibility::Hidden => VisibilityGameState::Hidden,
+        }
+    }
+}
+impl From<VisibilityGameState> for Visibility {
+    fn from(rvis: VisibilityGameState) -> Self {
+        match rvis {
+            VisibilityGameState::Inherited => Visibility::Inherited,
+            VisibilityGameState::Visible => Visibility::Visible,
+            VisibilityGameState::Hidden => Visibility::Hidden,
+        }
+    }
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]

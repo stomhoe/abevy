@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::StrId, common_resources::ImageSizeMap, common_states::GameSetupType};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{EntityZeroRef, MyZ};
+use game_common::game_common_components::{EntityZeroRef, MyZ, Persisted};
 use ::tilemap_shared::*;
 
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*};
@@ -46,7 +46,7 @@ pub fn process_tiles_pre(
 
     mut collected_tiles: ResMut<MassCollectedTiles>,
 
-    oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<ChunkOrTilemapChild>, 
+    oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
         Option<&MyZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>), (With<Disabled>)>,
 
     mut chunk_query: Query<(&mut LayersMap), ()>,
@@ -90,7 +90,7 @@ pub fn process_tiles_pre(
             ezero: ezero_ref, global_pos: gpos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos,
         }) = ev; 
 
-        let Ok((tile_strid, min_dists, keep_distance_from, is_child, tile_z_index, tile_handles, shader_ref, transform, color))
+        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color))
         = oritile_query.get(ezero_ref.0) else{
             error!("Original tile entity {} is despawned", ezero_ref.0);
             continue;
@@ -101,7 +101,7 @@ pub fn process_tiles_pre(
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
             continue; 
         }
-        if !is_child {
+        if to_persist {
             if is_host {
                 to_insert_replicated.push((tile_ent, Replicated));
             }
@@ -114,7 +114,7 @@ pub fn process_tiles_pre(
             trace!(target: "tilemap_systems", "Processing tile entity {:?} with strid {:?}", tile_ent, tile_strid);
             to_insert_pos_and_dim_ref.push((tile_ent, (ezero_ref, gpos, dim_ref, initial_pos, SyncToRenderWorld::default())));
             collected_tiles.0.swap_remove(i);
-            // EL Disabled se saca en tile_readjust_transform
+            // El Disabled se saca en tile_readjust_transform
 
             continue;//is sprite tile
         }

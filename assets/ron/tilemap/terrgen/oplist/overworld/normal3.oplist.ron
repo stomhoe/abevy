@@ -9,7 +9,7 @@
     ],
    
     bifs: [
-        ("normal4", ["treebush"]),//tempgrass
+        ("normal4", ["tempgrass"]),//tempgrass
         ("", ["lake"]),
         ("", [""])
     ],

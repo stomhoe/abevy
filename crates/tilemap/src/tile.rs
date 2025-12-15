@@ -34,7 +34,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         flip_tile_along_x,
         (add_tile_weighted_samplers_to_map, client_sync_tile, ).run_if(in_state(ClientState::Connected)),
-        tile_readjust_transform,
+        sprite_tile_readjust_transform,
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
         make_child_of_chunk,
         add_handles,
@@ -97,7 +97,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<TileShaderRef>()
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()
-    .replicate::<ChunkOrTilemapChild>()
     .replicate_bundle::<(GlobalTilePos, EntityZeroRef)>()
 
     .replicate_filtered::<Transform, With<TilesEguiHolder>>()

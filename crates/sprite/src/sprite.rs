@@ -1,3 +1,6 @@
+use std::time::Duration;
+
+use bevy::time::common_conditions::on_timer;
 use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -23,7 +26,7 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(SPRITES_SCHEDULE, (
         disable_children_sprites_of_disabled,
-        (apply_offsets, apply_scales, ).chain(),
+        (apply_offsets, apply_scales, ).chain().run_if(on_timer(Duration::from_millis(500))),
 
         // server only
         (become_child_of_sprite_with_category, replace_string_ids_by_entities, 

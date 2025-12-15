@@ -18,8 +18,8 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{Studie
 
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
-    DisplayName, MinDistancesMap, KeepDistanceFrom, Replicated, TileHidsHandles, 
-    TileShaderRef, MyZ, YSortOrigin, ChunkOrTilemapChild, ChildOf, Description, TileColor, 
+    DisplayName, MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
+    TileShaderRef, MyZ, YSortOrigin, ChildOf, Description, TileColor, 
     //children entities don't get cloned
     Children, EntityZero
 );//Disabled no porque se elimina posteriormente
@@ -32,7 +32,7 @@ pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 //NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
-#[require(AssetScoped, Replicated, )]
+#[require(AssetScoped, )]//no poner Replicated acá, sino el deny de Replicated quita el Tile
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
@@ -63,8 +63,6 @@ pub type TileStrId = StrId20B;
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-pub struct ChunkOrTilemapChild;
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
@@ -128,11 +126,16 @@ impl TileHidsHandles {
         for (key, path) in img_paths {
             let Ok(image_holder) = ImageHolder::new(asset_server, path.clone())
             else {
-                return Err(BevyError::from("Failed to find image file for key ".to_string() + &key + " at path: " + &path));
+                error!("Failed to find image file for key {} at path: {}", key, path);
+                continue;
             };
             ids.push(HashId::from(key));
             handles.push(image_holder.0);
         }
+        if ids.is_empty() {
+            return Err(BevyError::from("No valid entries"));
+        }
+
         Ok(Self { ids, handles, })
     }
 
