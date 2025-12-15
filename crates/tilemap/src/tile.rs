@@ -3,7 +3,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::{AssetsLoadingState, };
 use bevy_ecs_tilemap::prelude::*;
-use game_common::{ColorSamplersInitSystems, game_common_components::EntityZeroRef, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{ColorSamplersInitSystems, game_common_components::{EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
 use sprite::SpriteSystems;
 use tilemap_shared::{GlobalTilePos, OplistSize};
 
@@ -104,7 +104,7 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<Transform, With<TilesEguiHolder>>()
     .replicate_filtered::<Transform, With<PortalsZeroEguiHolder>>()
     .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilePos>, With<Disabled>)>>()
-
+    
 
     .replicate_filtered::<ChildOf, With<EntityWeightedSampler>>()
 

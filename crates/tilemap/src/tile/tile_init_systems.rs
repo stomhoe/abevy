@@ -156,30 +156,33 @@ pub fn init_tiles(
 #[allow(unused_parens)]
 pub fn init_tile_sprite(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
-    img_holder: Query<&ImagePathHolder, (Without<EntityZeroRef>, )>,
+    img_holder: Query<&ImagePathHolder, (Without<EntityZeroRef>, Or<(With<Disabled>, Without<Disabled>)>)>,
     query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<SpriteConfigRef>, 
-        Without<EntityZeroRef>, Without<Sprite>, Without<TileShader>, Added<ImagePathHolder>, Or<(With<Disabled>, Without<Disabled>)>)>,
+        Without<Sprite>, Without<TilePos>, Without<Children>, Without<TileShader>, Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     let mut to_insert = Vec::new();
     for (entity, (image_path_holder, ezero_ref)) in query.iter() {
-
         if let Some(img_path_holder) = image_path_holder {
+            trace!(target: "init_tile_sprite","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
             to_insert.push((entity, Sprite{
                 image: asset_server.load(img_path_holder.path()),
                 ..Default::default()
             }));
-            continue;
         }
-        if let Some(ezero_ref) = ezero_ref {
-            if let Ok(img_path_holder) = img_holder.get(ezero_ref.0) {
-                to_insert.push((entity, Sprite{
-                    image: asset_server.load(img_path_holder.path()),
-                    ..Default::default()
-                }));
-            }
+        else if let Some(ezero_ref) = ezero_ref {
+            let Ok(img_path_holder) = img_holder.get(ezero_ref.0) else {
+                continue;
+            };
+            trace!(target: "init_tile_sprite","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
+            to_insert.push((entity, Sprite{
+                image: asset_server.load(img_path_holder.path()),
+                ..Default::default()
+            }));
+        } else {
+            error!(target: "init_tile_sprite","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
         }
     }
-    cmd.insert_batch(to_insert);
+    cmd.insert_batch(to_insert);;
 }
 
 

@@ -105,7 +105,7 @@ pub fn disable_ezeros(mut cmd: Commands,
 
 
 #[derive(Bundle)]
-struct BaseDeny( EntityZero, BaseHolderRef, Disabled, ImagePathHolder);
+struct CloneEntityZeroChildDeny( EntityZero, BaseHolderRef, Disabled, ImagePathHolder);
 
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 
@@ -132,14 +132,13 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
 
         for child_to_clone in ezero_children.iter() {
             let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
-                move |builder|{ builder.deny::<(EntityZero, BaseHolderRef, Disabled, ImagePathHolder)>();
+                move |builder|{ builder.deny::<CloneEntityZeroChildDeny>();
                     if ! is_replicated{
                         builder.deny::<Replicated>();
                     }
                 }
             ).id();
             new_child_of.push((cloned_child, (ChildOf(new_ent), EntityZeroRef(child_to_clone))));
-
 
             debug!(target: "entity_zero", "Cloned child {:?} of EntityZero {:?} as child of {:?}", cloned_child, ezero_ref.0, new_ent);
 
@@ -152,4 +151,13 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
     }
     cmd.try_insert_batch(new_child_of);
     cmd.try_insert_batch(new_base_holder_ref);
+}
+
+#[allow(unused_parens)]
+pub fn delete_sprites_without_childof(mut cmd: Commands, 
+    query: Query<(Entity),(With<Sprite>, Without<ChildOf>, Or<(With<Disabled>, Without<Disabled>)>)>,
+) {
+    for sprite_ent in query.iter() {
+        cmd.entity(sprite_ent).try_despawn()
+    }
 }

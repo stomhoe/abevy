@@ -23,7 +23,7 @@ pub fn plugin(app: &mut App) {
         .init_state::<TerrainGenHotLoading>()
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
-        
+
         .register_type::<EntityPrefix>().register_type_data::<EntityPrefix, InspectorEguiImpl>()
         .register_type::<DisplayName>()
         .register_type::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
@@ -38,5 +38,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<DisplayName>()
         .replicate::<HashId>()
         .replicate::<ImagePathHolder>()
+     
+
     ;
 }

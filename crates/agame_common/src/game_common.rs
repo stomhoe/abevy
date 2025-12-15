@@ -45,6 +45,7 @@ pub fn plugin(app: &mut App) {
         apply_pos_sampled_color,
         clone_ezero_children_ents,
         disable_ezeros,
+        delete_sprites_without_childof,
     ))
     .configure_sets(Update, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -107,6 +108,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<Categories>()
     .replicate_filtered::<EntityZero, Or<(With<Disabled>, Without<Disabled>)>>()
     .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>)>()
+    .replicate_once_filtered_as::<Visibility, VisibilityGameState, (Or<(With<Disabled>, Without<Disabled>)>)>()
 
     .replicate::<EntityZeroRef>()
     ;

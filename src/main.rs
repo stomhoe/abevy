@@ -30,6 +30,7 @@ concat!(
     "sprite_building=trace,",
     "sprite_systems=trace,",
     "sprite_systems=trace,",
+    "init_tile_sprite=trace,",
     
     "sprite_animation_init=warn,",
     "entity_zero=trace,",
