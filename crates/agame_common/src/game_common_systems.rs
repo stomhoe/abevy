@@ -105,19 +105,20 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
     (Changed<EntityZeroRef>, Or<(Without<Disabled>, With<Disabled>)>)>,
 
     ezero: Query<(&Children, Option<&HeldSprites>),(Or<(Without<Disabled>, With<Disabled>)>)>,
-) {
 
+) {
     let mut new_child_of = Vec::new();
     let mut new_base_holder_ref = Vec::new();
 
     for (new_ent, ezero_ref, ) in query.iter() {
         let Ok((ezero_children, ezero_held_sprites)) = ezero.get(ezero_ref.0) else { continue };
 
-        for child_to_clone in ezero_children.iter() {//TODO lidiar con heldsprites
+        for child_to_clone in ezero_children.iter() {
             let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
-                |builder|{ builder.deny::<(RenderEntity, EntityZero, BaseHolderRef, Disabled)>();}
+                |builder|{ builder.deny::<(EntityZero, BaseHolderRef, Disabled)>();}
             ).id();
             new_child_of.push((cloned_child, ChildOf(new_ent), ));
+           
 
             debug!(target: "entity_zero", "Cloned child {:?} of EntityZero {:?} as child of {:?}", cloned_child, ezero_ref.0, new_ent);
 

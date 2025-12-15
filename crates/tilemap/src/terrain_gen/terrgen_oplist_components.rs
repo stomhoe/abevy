@@ -6,13 +6,13 @@ use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use serde::{Deserialize, Serialize};
 use ::tilemap_shared::*;
-use crate::tile::tile_components::*;
 
 use {common::common_components::*, };
 use strum_macros::{AsRefStr, Display, };
 use std::ops::{Index, IndexMut};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(AssetScoped, EntityPrefix::new_truncated("EguiOplistHolder"), Replicated, SessionScoped, TgenHotLoadingScoped)]
 pub struct EguiOplistHolder;
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
