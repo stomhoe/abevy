@@ -197,7 +197,7 @@ pub fn add_oplists_to_map(
             if let Err(err) = oplist_map.0.insert(str_id, ent, ) {
 
                 error!("{} {} already in OpListEntityMap : {}", prefix, str_id, err);
-                cmd.entity(ent).despawn();
+                cmd.entity(ent).try_despawn();
             }
         }
     }

@@ -64,7 +64,7 @@ pub fn add_colorsamplers_to_map(
     for (new_ent, prefix, str_id) in query.iter() {
         if let Err(err) = map.0.insert(str_id, new_ent, ) {
             error!("{} {} already in ColorWeightedSamplersMap : {}", prefix, str_id, err);
-            cmd.entity(new_ent).despawn();
+            cmd.entity(new_ent).try_despawn();
         } else {
             info!("Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
         }

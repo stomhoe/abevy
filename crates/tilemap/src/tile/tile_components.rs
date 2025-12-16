@@ -32,12 +32,12 @@ pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 //NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
-#[require(AssetScoped, )]//no poner Replicated acá, sino el deny de Replicated quita el Tile
+#[require(AssetScoped, TgenHotLoadingScoped)]//no poner Replicated acá, sino el deny de Replicated quita el Tile
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
     // for non-sprite tiles
-    pub const MAX_Z: MyZ = MyZ(1_000);
+    pub const MAX_Z: MyZ = MyZ(1_000.);
 }
 
 #[derive(Component, Debug, Copy, Clone, Hash, Reflect)]

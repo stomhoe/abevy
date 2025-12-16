@@ -27,8 +27,8 @@ pub struct VoronoiTextureOverlayMat {
     pub voronoi_rotation: f32,
 }
 impl VoronoiTextureOverlayMat {
-    pub fn new(texture_overlay: ImageHolder, mask_color: Vec4, base_scale: f32, voronoi_scale: f32, voronoi_scale_random: f32, voronoi_rotation: f32) -> Self {
-        Self { texture_overlay: texture_overlay.0, mask_color: mask_color / 255.0, scale: base_scale, voronoi_scale, voronoi_scale_random, voronoi_rotation }
+    pub fn new(texture_overlay: Handle<Image>, mask_color: Vec4, base_scale: f32, voronoi_scale: f32, voronoi_scale_random: f32, voronoi_rotation: f32) -> Self {
+        Self { texture_overlay, mask_color: mask_color / 255.0, scale: base_scale, voronoi_scale, voronoi_scale_random, voronoi_rotation }
     }
 }
 
@@ -73,8 +73,8 @@ pub struct MonoRepeatTextureOverlayMat {
 }
 
 impl MonoRepeatTextureOverlayMat {
-    pub fn new(texture_overlay: ImageHolder, mask_color: Vec4, scale: f32) -> Self {
-        Self { texture_overlay: texture_overlay.0, mask_color: mask_color / 255.0, scale }
+    pub fn new(texture_overlay: Handle<Image>, mask_color: Vec4, scale: f32) -> Self {
+        Self { texture_overlay, mask_color: mask_color / 255.0, scale }
     }
 }
 //https://docs.rs/bevy-inspector-egui/latest/bevy_inspector_egui/struct.InspectorOptions.html

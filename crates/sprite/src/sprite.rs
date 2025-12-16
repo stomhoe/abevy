@@ -26,7 +26,7 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(SPRITES_SCHEDULE, (
         disable_children_sprites_of_disabled,
-        (apply_offsets, apply_scales, ).chain().run_if(on_timer(Duration::from_millis(10))),
+        (apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(10))),
 
         // server only
         (become_child_of_sprite_with_category, replace_string_ids_by_entities, 
@@ -46,9 +46,11 @@ pub fn plugin(app: &mut App) {
     .register_type::<SpriteCfgAnimationsMap>()
     .register_type::<SpriteConfigsHolder>()
     .register_type::<OffsetForChildren>()
+    .register_type::<SpriteConfigNotFound>()
     
 
     .replicate::<SpriteConfig>()
+    .replicate::<SpriteConfigNotFound>()
     .replicate::<SpriteCfgAnimationsMap>()
 
     .replicate::<SpriteConfigRef>()

@@ -41,7 +41,7 @@ pub fn add_tile_weighted_samplers_to_map(
     if let Some(mut tiling_map) = tiling_map {
         for (ent, prefix, str_id) in query.iter() {
             if let Err(err) = tiling_map.0.insert(str_id, ent, ) {
-                cmd.entity(ent).despawn();
+                cmd.entity(ent).try_despawn();
                 error!("{} {} already in HashPosWeightedSamplersMap : {}", prefix, str_id, err);
             } else {
                 info!("Inserted tile weighted sampler '{}' into HashPosWeightedSamplersMap with entity {:?}", str_id, ent);

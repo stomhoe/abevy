@@ -52,6 +52,9 @@ impl AnimType {
     
 }
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct SpriteConfigNotFound;
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct ExcludedFromBaseAnimPickingSystem;
 

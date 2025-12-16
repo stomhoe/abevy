@@ -1,9 +1,8 @@
 use bevy::{asset, ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, }, platform::collections::{HashMap, HashSet}, render::sync_world::SyncToRenderWorld};
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::{helpers::hex_grid::offset, prelude::*};
+use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use bevy_replicon_renet::renet::{RenetClient, RenetServer};
 use common::common_components::*;
 use ::dimension_shared::*;
 use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, EntityZeroRef, MyZ, Persisted, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
@@ -21,7 +20,7 @@ use std::mem::take;
 
 #[allow(unused_parens)]
 pub fn init_tiles(
-    mut cmd: Commands,  asset_server: Res<AssetServer>,
+    mut cmd: Commands, 
     seris_handles: Res<TileSerisHandles>, mut assets: ResMut<Assets<TileSerialization>>,
     shader_map: Res<TileShaderEntityMap>,
     tiling_map: Option<Res<TileEntitiesMap>>,
@@ -214,7 +213,7 @@ pub fn add_tiles_to_map(
         for (ent, prefix, str_id) in query.iter() {
             if let Err(err) = map.0.insert(str_id, ent, ) {
                 error!("{} {} already in TilingEntityMap : {}", prefix, str_id, err);
-                cmd.entity(ent).despawn();
+                cmd.entity(ent).try_despawn();
             } else {
                 info!("Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
             }

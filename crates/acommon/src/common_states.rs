@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[states(scoped_entities)]
+#[states(scoped_entities)]//el default es para que el despawnonexit se active al salir de ese estado, cambiar el estado inicial en .insert_state::<AppState>
 pub enum AppState {NoSession, #[default]StatefulGameSession, }
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
@@ -32,8 +32,7 @@ pub enum ConnectionAttempt {#[default]Not, Triggered, PostAttempt,}
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities,)]
 pub enum AssetsLoadingState {
-    NotStarted,//HACER EL DEFAULT ESTE SI SE QUIERE HACER ALGO ANTES DE CARGAR LOS ASSETS
-    #[default]
+    NotStarted,
     //asset loading is triggered
     LocalInProcess,
     //init systems are executed
@@ -41,23 +40,21 @@ pub enum AssetsLoadingState {
     //asset loading is triggered
     ReplicatedInProcess,
     //init systems are executed
+    #[default]//el default es para que el despawnonexit se active al salir de ese estado, cambiar el estado inicial en .insert_state::<AssetsLoadingState>
     ReplicatedFinished,
 }
 
 
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
+#[reflect(State, Default)]
 #[states(scoped_entities,)]
-pub enum LocallyLoadedAssetsSession {#[default]KeepAlive, DespawnAll,}
-
-#[allow(unused_parens, dead_code)]
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[states(scoped_entities,)]
+/// usar esto para el despawnonexit porque el client no tiene el state en replicatedfinished
 pub enum ReplicatedAssetsSession {#[default]KeepAlive, DespawnAll,}
 
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[reflect(State, Default)]
 #[states(scoped_entities,)]
-pub enum TerrainGenHotLoading {#[default]KeepAlive, DespawnAll,}
+pub enum TerrainHotReloading {#[default]KeepAlive, DespawnAll,}
 

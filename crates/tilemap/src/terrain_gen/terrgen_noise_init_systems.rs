@@ -137,7 +137,7 @@ pub fn add_noises_to_map(
     for (ent, prefix, str_id) in query.iter() {
         if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
             error!("{} {} already in TerrGenEntityMap : {}", prefix, str_id, err);
-            cmd.entity(ent).despawn();
+            cmd.entity(ent).try_despawn();
         }
     }
     

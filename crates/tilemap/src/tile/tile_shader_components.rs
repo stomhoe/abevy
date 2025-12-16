@@ -24,3 +24,12 @@ pub enum TileShader{
     Voronoi(VoronoiTextureOverlayMat),
     //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
 }
+impl TileShader {
+    pub fn set_image_handle(&mut self, handle: Handle<Image>) {
+        match self {
+            TileShader::TexRepeat(mat) => { mat.texture_overlay = handle; }
+            TileShader::TwoTexRepeat(mat) => { mat.texture_overlay = handle.clone(); mat.texture_overlay_2 = handle; }
+            TileShader::Voronoi(mat) => { mat.texture_overlay = handle; }
+        }
+    }
+}

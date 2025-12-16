@@ -11,6 +11,7 @@ sprite_animation_shared = { path = "../sprite_animation_shared" }
 sprite = { path = "../sprite" }
 sprite_animation = { path = "../sprite_animation" }
 tilemap = { path = "../tilemap" }
+tilemap_shared = { path = "../tilemap_shared" }
 modifier = { path = "../modifier" }
 dimension = { path = "../dimension" }
 faction = { path = "../faction" }

@@ -26,7 +26,7 @@ impl Being {
     // /// lowest z allowed for either clothes or body sprites
     // pub const MIN_Z: MyZ = MyZ(Self::MINZ_I32);
 
-    pub const Z_LEVEL: i32 = 1_000;
+    pub const Z_LEVEL: f32 = 1_000.;
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]

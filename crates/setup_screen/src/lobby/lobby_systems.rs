@@ -76,7 +76,7 @@ pub fn on_player_disconnect(
 
     if let Ok((player_name, player_name_entry)) = players.get(trigger.entity) {
         info!("Client `{}` disconnected", player_name);
-        commands.entity(player_name_entry.0).despawn();
+        commands.entity(player_name_entry.0).try_despawn();
     
         //TODO MARCAR SU BEING PARA DESPAWN PARA CUANDO EMPEIZA LA PARTIDA
         //ASI SI SE REUNE PUEDE RECUPERARLO EN SU ESTADO ORIGINAL

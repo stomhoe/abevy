@@ -27,7 +27,7 @@ pub fn animate_sprite(
         )>,
     )>,
     mut sprites_query: Query<(Entity, Option<&SpritesheetAnimation>, &SpriteConfigRef, 
-        Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AnimationProgresses>), >,
+        Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
     
     spriteconfig: Query<(&SpriteCfgAnimationsMap, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>,)>,
     
@@ -39,8 +39,12 @@ pub fn animate_sprite(
 
     for (held_sprites, direction, moving, grounding) in base.iter() {
         for held_sprite in held_sprites.entities() {
-            let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses)) = sprites_query.get_mut(*held_sprite) 
+            let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses, has_sprite_config_not_found)) = sprites_query.get_mut(*held_sprite) 
             else { error!(target: "sprite_animation", "Failed to get sprite entity {:?}", held_sprite); continue };
+
+            if has_sprite_config_not_found {
+                continue;
+            }
 
             let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, )) = spriteconfig.get(sprite_cfg_ref.0)
             else { error!(target: "sprite_animation", "Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0); continue };

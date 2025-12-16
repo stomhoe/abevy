@@ -25,23 +25,23 @@ pub fn plugin(app: &mut App) {
             reload_assets_ingame,
         ))
         .add_systems(OnEnter(AssetsLoadingState::LocalFinished), 
-            moveon_to_replicated.run_if(in_state(TerrainGenHotLoading::DespawnAll))
+            moveon_to_replicated.run_if(in_state(TerrainHotReloading::DespawnAll))
         )
         .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
             on_assets_loaded,
-        ).run_if(in_state(TerrainGenHotLoading::DespawnAll))
+        ).run_if(in_state(TerrainHotReloading::DespawnAll))
         )
         .add_loading_state(
             LoadingState::new(AssetsLoadingState::LocalInProcess).continue_to_state(AssetsLoadingState::LocalFinished)
+        )
+        .add_loading_state(
+            LoadingState::new(AssetsLoadingState::ReplicatedInProcess).continue_to_state(AssetsLoadingState::ReplicatedFinished)
             .load_collection::<ShaderRepeatTexSerisHandles>()
             .load_collection::<ShaderVoronoiSerisHandles>()
             .load_collection::<TileSerisHandles>()
             .load_collection::<AnimSerisHandles>()
             .load_collection::<SpriteSerisHandles>()
             .load_collection::<ColorWeightedSamplerHandles>()
-        )
-        .add_loading_state(
-            LoadingState::new(AssetsLoadingState::ReplicatedInProcess).continue_to_state(AssetsLoadingState::ReplicatedFinished)
             .load_collection::<TileWeightedSamplerHandles>()
             .load_collection::<NoiseSerisHandles>()
             .load_collection::<OpListSerisHandles>()

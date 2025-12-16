@@ -13,9 +13,9 @@ pub use crate::common_id_components::*;
 pub type SessionScoped = DespawnOnExit::<AppState>;
 
 ///used for hot reloading assets
-pub type AssetScoped = DespawnOnExit::<ReplicatedAssetsSession>;
+pub type AssetScoped = DespawnOnExit::<AssetsLoadingState>;
 
-pub type TgenHotLoadingScoped = DespawnOnExit::<TerrainGenHotLoading>;
+pub type TgenHotLoadingScoped = DespawnOnExit::<TerrainHotReloading>;
 
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
@@ -83,6 +83,26 @@ impl std::fmt::Display for ImagePathHolder {
 }
 impl From<ImagePathHolder> for bevy::asset::AssetPath<'_> {
     fn from(holder: ImagePathHolder) -> Self { bevy::asset::AssetPath::from(holder.0) }
+}
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct MultipleImagePathHolder(Vec<bevy::asset::AssetPath<'static>>);
+impl MultipleImagePathHolder {
+    pub fn new<S, I>(paths: I) -> Result<Self, BevyError>
+    where
+        S: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
+        I: IntoIterator<Item = S>,
+    {
+        let mut path_vec = Vec::new();
+        for path in paths {
+            ImagePathHolder::validate_path_exists(path.as_ref())?;
+            let asset_path: bevy::asset::AssetPath<'static> = path.into();
+            path_vec.push(asset_path);
+        }
+        Ok(MultipleImagePathHolder(path_vec))
+    }
+    pub fn paths(&self) -> &Vec<bevy::asset::AssetPath<'static>> {
+        &self.0
+    }
 }
 
 

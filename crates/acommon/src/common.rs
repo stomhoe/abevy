@@ -1,9 +1,7 @@
-
-use bevy::ecs::entity_disabling::Disabled;
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 
-use crate::{common_components::*, common_resources::*, common_states::*, common_systems::*, common_types::{FixedStr, HashIdToEntityMap}};
+use crate::{common_components::*, common_resources::*, common_states::*, common_systems::*, common_types::*};
 
 use {bevy::prelude::*,};
 
@@ -16,11 +14,11 @@ pub fn plugin(app: &mut App) {
         .init_state::<PreGameState>()
         .init_state::<GamePhase>()
         .init_state::<GameSetupType>()
-        .init_state::<AssetsLoadingState>()
+        
+        .insert_state::<AssetsLoadingState>(AssetsLoadingState::LocalInProcess)
         .init_state::<ReplicatedAssetsSession>()
         .init_state::<ConnectionAttempt>()
-        .init_state::<LocallyLoadedAssetsSession>()
-        .init_state::<TerrainGenHotLoading>()
+        .init_state::<TerrainHotReloading>()
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
 

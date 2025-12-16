@@ -3,6 +3,7 @@ use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use common::common_states::*;
 use dimension::dimension_resources::DimensionEntityMap;
 use dimension_shared::{DimensionRef, DimensionRootOplist, DimensionStrIdRef};
+use sprite::sprite_resources::SpriteCfgEntityMap;
 use sprite_animation_shared::AnimationLibrary;
 use tilemap::{chunking_components::{ActivatingChunks, }, terrain_gen::{terrgen_components::{Terrgen}, terrgen_resources::*}, tile::{tile_components::*, tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 
@@ -15,7 +16,7 @@ pub fn reload_assets_ingame(
     mut chunks_query: Query<&mut ActivatingChunks>,
 
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
-    mut hot_loading: ResMut<NextState<TerrainGenHotLoading>>,
+    mut hot_loading: ResMut<NextState<TerrainHotReloading>>,
     mut regpos: ResMut<RegisteredPositions>,
     mut library: ResMut<AnimationLibrary>,
 
@@ -31,15 +32,15 @@ pub fn reload_assets_ingame(
         for (mut activating_chunks) in chunks_query.iter_mut() {
             activating_chunks.0.clear();
         }
-        hot_loading.set(TerrainGenHotLoading::DespawnAll);
+        hot_loading.set(TerrainHotReloading::DespawnAll);
 
         //cmd.insert_resource(AnimationLibrary::default());
         
-        //cmd.remove_resource::<SpriteCfgEntityMap>();
 
         cmd.remove_resource::<TileWeightedSamplersMap>();
         cmd.remove_resource::<TileShaderEntityMap>();
         cmd.remove_resource::<TileEntitiesMap>();
+        cmd.remove_resource::<SpriteCfgEntityMap>();
         
         cmd.remove_resource::<OpListEntityMap>();
         cmd.remove_resource::<TerrGenEntityMap>();
@@ -63,10 +64,10 @@ pub fn moveon_to_replicated(
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(
     mut cmd: Commands,
-    mut hot_loading: ResMut<NextState<TerrainGenHotLoading>>,
+    mut hot_loading: ResMut<NextState<TerrainHotReloading>>,
     beings_query: Query<(Entity), (With<Being>, Without<ChildOf>)>,
 ) {
-    hot_loading.set(TerrainGenHotLoading::KeepAlive);
+    hot_loading.set(TerrainHotReloading::KeepAlive);
 
     for (being_ent) in beings_query.iter() {
         cmd.entity(being_ent).insert(DimensionStrIdRef::overworld_fallback());

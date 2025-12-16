@@ -6,14 +6,17 @@ use player::player_components::*;
 use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings};
 
 use bevy::prelude::*;
+use tilemap_shared::AaGlobalGenSettings;
 
 
 #[allow(unused_parens, )]
 pub fn server_or_singleplayer_setup(mut cmd: Commands, 
     mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
     mut map: ResMut<FactionEntityMap>,
+    mut settings: ResMut<AaGlobalGenSettings>,
 ) -> Result
 {
+    settings.seed = 420;
     assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
 
     let host_faction_id = StrId::new_truncated("host");
@@ -24,6 +27,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
         let err = BevyError::from("Failed to insert host faction into FactionEntityMap: duplicate id");
         return Err(err);
     };
+
 
     cmd.spawn((
         OfSelf, HostPlayer,
@@ -47,7 +51,7 @@ pub fn spawn_player_beings(
                 //TargetSpawnPos::new(0.0, 0.0),
                 ActivatingChunks::new(&chunk_range),
             ));
-            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(1500.0)));
+            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(500.0)));
         }
 
         if self_player.is_some() {

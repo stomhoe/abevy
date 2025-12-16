@@ -2,10 +2,9 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use game_common::game_common_components::{Categories, EntityZero, FacingDirection};
-use player::player_components::*;
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
-use crate::{sprite_components::*, sprite_resources::SpriteCfgEntityMap, };
+use crate::sprite_components::*;
 
 #[allow(unused_parens)]
 pub fn apply_scales(
@@ -76,13 +75,16 @@ pub fn apply_scales(
 
 #[allow(unused_parens, )]
 pub fn apply_offsets(
+    mut cmd: Commands,
     mut sprite_query: Query<(
+        Entity,
         &BaseHolderRef, 
         &ChildOf,
         Option<&SpriteConfigRef>,
         &mut Transform,
         Option<&Offset2D>, 
-    ), (Or<(With<Disabled>, Without<Disabled>)>, Without<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>)>,
+        Has<SpriteConfigNotFound>,
+    ), (Or<(With<Disabled>, Without<Disabled>)>, Without<EntityZero>, )>,
     sprite_config_query: Query<(
         &Categories,
         Option<&Offset2D>,
@@ -94,8 +96,8 @@ pub fn apply_offsets(
     base_query: Query<&FacingDirection>,
 ) {
     for (
-        baseholder, child_of, sprite_config_ref, mut transform, 
-        offset, 
+        sprite_entity, baseholder, child_of, sprite_config_ref, mut transform, 
+        offset, has_sprite_config_not_found
     ) in sprite_query.iter_mut() {
 
         let mut total_offset = offset.cloned().unwrap_or_default();
@@ -103,11 +105,16 @@ pub fn apply_offsets(
         if let Some(SpriteConfigRef(sprite_config)) = sprite_config_ref.cloned() {
             let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _offset4children)) = sprite_config_query.get(sprite_config) 
             else {
-                error!("Failed to get sprite config for entity {:?}", sprite_config);
+                if !has_sprite_config_not_found {
+                    error!("Failed to get sprite config for entity {:?}", sprite_config);
+                    cmd.entity(sprite_entity).try_insert(SpriteConfigNotFound);
+                }
                 transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
                 continue;
             };
-
+            if has_sprite_config_not_found {
+                cmd.entity(sprite_entity).try_remove::<SpriteConfigNotFound>();
+            }
 
             total_offset += offset.cloned().unwrap_or_default();
 

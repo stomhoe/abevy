@@ -355,6 +355,6 @@ pub fn despawn_orphan_tilemaps(mut cmd: Commands,
 ) {
     for (tilemap_ent, ) in query.iter_mut() {
         info!("Despawning orphan tilemap entity {:?}", tilemap_ent);
-        cmd.entity(tilemap_ent).despawn();
+        cmd.entity(tilemap_ent).try_despawn();
     }
 }

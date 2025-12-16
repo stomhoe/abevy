@@ -2,20 +2,33 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
-use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
 use std::time::Duration;
 #[allow(unused_imports)] use bevy::prelude::*;
 use splines::{Interpolation, Key, Spline};
 use strum_macros::{AsRefStr, Display, };
-use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Copy, Reflect)]
-pub struct MyZ(pub i32);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+pub struct MyZ(pub f32);
+
 impl MyZ {
+    pub fn new(z: f32) -> Self { Self(z) }
+    pub fn value(&self) -> f32 { self.0 }
     pub fn as_float(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
     pub const Z_MULTIPLIER: f32 = 1e-5;
+}
+
+impl PartialEq for MyZ {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_bits() == other.0.to_bits()
+    }
+}
+impl Eq for MyZ {}
+
+impl std::hash::Hash for MyZ {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_bits().hash(state)
+    }
 }
 
 #[allow(unused_parens, dead_code)]

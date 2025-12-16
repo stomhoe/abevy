@@ -32,7 +32,7 @@ pub struct AnimationSerialization {
     pub offset: Option<[f32; 2]>,
     pub scale: Option<[f32; 2]>,
     pub y_sort: Option<f32>,
-    pub z: i32,
+    pub z: f32,
     pub color: Option<[u8; 4]>, 
 }
 

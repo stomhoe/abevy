@@ -26,7 +26,6 @@ pub fn init_sprite_cfgs(
 ) {
     if map.is_some(){ return; }
 
-
     cmd.init_resource::<SpriteCfgEntityMap>();
     let holder = cmd.spawn((SpriteConfigsHolder, )).id();
 
@@ -157,7 +156,7 @@ pub fn add_sprites_to_local_map(
     for (ent, prefix, str_id) in query.iter() {
         if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
             error!(target: "sprite_init", "{} {} already in SpriteCfgEntityMap : {}", prefix, str_id, err);
-            cmd.entity(ent).despawn();
+            cmd.entity(ent).try_despawn();
         } else {
             debug!(target: "sprite_init", "Inserted sprite '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
         }

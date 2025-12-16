@@ -90,7 +90,7 @@ impl IntoIterator for TileImagePaths {
 pub struct TileSerialization {
     pub id: String,
     pub name: String,
-    pub z: i32,
+    pub z: f32,
     pub img_paths: Vec<(String, String)>,
     pub cats: Option<HashSet<String>>,
     /// persisted on state change

@@ -29,12 +29,12 @@ pub fn plugin(app: &mut App) {
             visit_chunks_around_activators, 
             show_or_hide_chunks, 
             process_tiles_pre.before(despawn_unreferenced_chunks)//NO TOCAR
-        ).in_set(ChunkSystems).run_if(in_state(TerrainGenHotLoading::KeepAlive))
+        ).in_set(ChunkSystems).run_if(in_state(TerrainHotReloading::KeepAlive))
     ))
 
     .configure_sets(Update, (
         (TerrainGenSystems,
-        ChunkSystems).in_set(GameplaySystems).run_if(in_state(LocallyLoadedAssetsSession::KeepAlive))
+        ChunkSystems).in_set(GameplaySystems).run_if(in_state(ReplicatedAssetsSession::KeepAlive))
     ))
     .configure_sets(
         OnEnter(AssetsLoadingState::LocalFinished), (
