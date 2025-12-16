@@ -4,7 +4,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::{AssetsLoadingState, };
 use bevy_ecs_tilemap::prelude::*;
 use game_common::{ColorSamplersInitSystems, game_common_components::{EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
-use sprite::SpriteSystems;
+use sprite::AcSpriteSystems;
 use tilemap_shared::{GlobalTilePos, OplistSize};
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
@@ -54,7 +54,7 @@ pub fn plugin(app: &mut App) {
             .chain().run_if(in_state(ClientState::Disconnected)),
     ).in_set(TilingSystems))
 
-    .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (ColorSamplersInitSystems.before(TilingSystems), SpriteSystems.before(TilingSystems)))
+    .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (ColorSamplersInitSystems.before(TilingSystems), AcSpriteSystems.before(TilingSystems)))
 
     .add_plugins((
         MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),

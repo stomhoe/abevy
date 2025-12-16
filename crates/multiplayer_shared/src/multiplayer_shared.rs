@@ -3,7 +3,6 @@
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::{prelude::*, shared::RepliconSharedPlugin};
-use bevy_replicon_renet::RepliconRenetPlugins;
 use common::{common_components::*, common_states::*};
 use crate::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, multiplayer_shared_systems::*};
 
@@ -24,24 +23,24 @@ pub fn plugin(app: &mut App) {
   
 
     .configure_sets(OnEnter(ConnectionAttempt::Triggered), (
-        HostSystems.run_if(in_state(GameSetupType::AsHost)),
-        ClientSystems.run_if(in_state(GameSetupType::AsJoiner)),
+        HostSystems.run_if(in_state(ClientState::Disconnected)),
+        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
     ))
     .configure_sets(OnEnter(AppState::StatefulGameSession), (
-        HostSystems.run_if(in_state(GameSetupType::AsHost)),
-        ClientSystems.run_if(in_state(GameSetupType::AsJoiner)),
+        HostSystems.run_if(in_state(ClientState::Disconnected)),
+        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
     ))
     .configure_sets(OnExit(AppState::StatefulGameSession), (
-        HostSystems.run_if(in_state(GameSetupType::AsHost)),
-        ClientSystems.run_if(in_state(GameSetupType::AsJoiner)),
+        HostSystems.run_if(in_state(ClientState::Disconnected)),
+        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
     ))
     .configure_sets(Update, (
-        HostSystems.run_if(in_state(GameSetupType::AsHost).or(in_state(ServerState::Running))),
-        ClientSystems.run_if(in_state(GameSetupType::AsJoiner).or(not(in_state(ClientState::Disconnected)))),
+        HostSystems.run_if(in_state(ClientState::Disconnected).or(in_state(ServerState::Running))),
+        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
     ))
     .configure_sets(FixedUpdate, (
-        HostSystems.run_if(in_state(GameSetupType::AsHost).or(in_state(ServerState::Running))),
-        ClientSystems.run_if(in_state(GameSetupType::AsJoiner).or(not(in_state(ClientState::Disconnected)))),
+        HostSystems.run_if(in_state(ClientState::Disconnected).or(in_state(ServerState::Running))),
+        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
     ))
     .add_systems(OnExit(AppState::StatefulGameSession), (
         all_clean_resources

@@ -1,13 +1,13 @@
 (
     id: "tree_dead0",
     name: "Dead tree",
+    z: 1000,
     img_paths: [
         ("", "texture/world/vegetation/tree/dead/tree_dead0.png")
     ],
     sprite: Some(true), 
     randflipx: Some(true), 
     offset: Some((0.0, 120.0)),
-    z: 1000,
 
 
 )

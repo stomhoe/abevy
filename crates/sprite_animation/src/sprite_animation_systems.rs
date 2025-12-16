@@ -6,7 +6,7 @@ use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon_renet::renet::RenetClient;
 use bevy_spritesheet_animation::{prelude::*, spritesheet};
-use common::{common_components::{ImageHolder, StrId}, common_states::GameSetupType};
+use common::{common_components::{ImageHolder, StrId}, };
 use game_common::game_common_components::{Directionable, FacingDirection};
 use player::player_components::*;
 use sprite::sprite_components::*;

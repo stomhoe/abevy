@@ -14,14 +14,11 @@ pub fn reload_assets_ingame(
     keys: Res<ButtonInput<KeyCode>>,
     beings_query: Query<(Entity), (With<Being>,)>,
     mut chunks_query: Query<&mut ActivatingChunks>,
-
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
     mut hot_loading: ResMut<NextState<TerrainHotReloading>>,
     mut regpos: ResMut<RegisteredPositions>,
     mut library: ResMut<AnimationLibrary>,
-
 ) {
-    
     if keys.pressed(KeyCode::KeyR) {
         info!(target: "asset_loading", "Reloading assets...");
 
@@ -51,16 +48,12 @@ pub fn reload_assets_ingame(
         loading_state.set(AssetsLoadingState::LocalInProcess);
     }
 }
-
-
-
 #[allow(unused_parens, )]
 pub fn moveon_to_replicated(
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
 ) {
     loading_state.set(AssetsLoadingState::ReplicatedInProcess);
 }
-
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(
     mut cmd: Commands,

@@ -7,4 +7,5 @@
     ],
     sprite: Some(true),
     randflipx: Some(true),
+    y_sort: Some(10.0),
 )

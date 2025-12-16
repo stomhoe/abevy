@@ -1,13 +1,13 @@
 (
     id: "euca",
     name: "Eucalyptus",
+    z: 1000,
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/euca.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 
     offset: Some((0.0, 140.0)),
-    z: 1000,
 
 
 )

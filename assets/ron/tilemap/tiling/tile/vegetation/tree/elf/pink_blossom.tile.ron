@@ -1,6 +1,6 @@
 (
     id: "pink_blossom",
-    name: "Pink Blossom",
+    name: "Pink blossom",
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/pink_blossom.png"),
     ],

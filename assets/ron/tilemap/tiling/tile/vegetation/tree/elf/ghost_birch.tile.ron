@@ -1,13 +1,11 @@
 (
     id: "ghost_birch",
-    name: "Ghost Birch",
+    name: "Ghost birch",
+    z: 1000,
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/ghost_birch.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 
     offset: Some((0.0, 140.0)),
-    z: 1000,
-
-
 )

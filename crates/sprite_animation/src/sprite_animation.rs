@@ -6,7 +6,7 @@ use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::common_states::AssetsLoadingState;
 use game_common::game_common::SimRunningSystems;
-use sprite::SpriteSystems;
+use sprite::AcSpriteSystems;
 use ::sprite_animation_shared::*;
 
 
@@ -38,7 +38,7 @@ pub fn plugin(app: &mut App) {
     .configure_sets(Update, ( SpriteAnimationSystems.in_set(SimRunningSystems),))
     
     .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (        
-        SpriteAnimationSystems.before(SpriteSystems)
+        SpriteAnimationSystems.before(AcSpriteSystems)
     ))
 
     .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (

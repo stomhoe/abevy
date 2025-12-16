@@ -6,7 +6,7 @@
 pub enum AppState {NoSession, #[default]StatefulGameSession, }
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[source(AppState = AppState::NoSession)]
+#[source(AssetsLoadingState = AssetsLoadingState::LocalFinished)]
 #[states(scoped_entities)]
 pub enum PreGameState {
     #[default]
@@ -18,11 +18,6 @@ pub enum PreGameState {
 #[source(AppState = AppState::StatefulGameSession)]
 #[states(scoped_entities)]
 pub enum GamePhase {#[default]Setup, ActiveGame,}
-
-#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[source(GamePhase = GamePhase::Setup)]
-#[states(scoped_entities)]
-pub enum GameSetupType {#[default]Singleplayer, AsHost, AsJoiner,}
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities)]

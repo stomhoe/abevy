@@ -1,13 +1,13 @@
 (
     id: "golden_sprig",
     name: "Golden Sprig",
+    z: 1000,
     img_paths: [
         ("", "texture/world/vegetation/tree/golden_sprig.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 
     offset: Some((0.0, 148.0)),
-    z: 1000,
 
 
 )

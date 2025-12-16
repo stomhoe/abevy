@@ -1,15 +1,14 @@
 
 
-use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
-use common::{common_components::{EntityPrefix, ImageHolder, ImagePathHolder, StrId}, common_states::GameSetupType};
-use game_common::game_common_components::{Directionable, FacingDirection, MyZ, YSortOrigin};
+use common::common_components::{ImagePathHolder, StrId};
+use game_common::game_common_components::{MyZ, YSortOrigin};
 use sprite::{sprite_components::*, };
 use ::sprite_animation_shared::*;
 use sprite_shared::sprite_scale_offset::*;
 
-use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
+use crate::{sprite_animation_components::*, sprite_animation_resources::*};
 
 
 

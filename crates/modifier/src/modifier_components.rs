@@ -2,6 +2,7 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+use common::common_components::EntityPrefix;
 use game_common::game_common_components::Categories;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 #[relationship(relationship_target = AppliedModifiers)]
-#[require(Replicated, ApplyMode::Offsetting)]
+#[require(Replicated, ApplyMode::Offsetting, EntityPrefix::new_truncated("Modifier"), )]
 pub struct ModifierTarget(#[relationship]#[entities]pub Entity);
 
 

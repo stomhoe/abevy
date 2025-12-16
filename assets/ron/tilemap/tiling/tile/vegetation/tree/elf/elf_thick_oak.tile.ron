@@ -1,6 +1,6 @@
 (
     id: "elf_thick_oak",
-    name: "Elven Thick Oak",
+    name: "Elven thick oak",
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/elf_thick_oak.png")
     ],

@@ -1,13 +1,13 @@
 (
     id: "bronze_banyan",
-    name: "Bronze Banyan",
+    name: "Bronze banyan",
+    z: 1000,
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/bronze_banyan.png")
     ],
     sprite: Some(true), 
     randflipx: Some(true), 
     offset: Some((0.0, 200.0)),
-    z: 1000,
 
 
 )

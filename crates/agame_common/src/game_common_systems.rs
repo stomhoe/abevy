@@ -105,7 +105,7 @@ pub fn disable_ezeros(mut cmd: Commands,
 
 
 #[derive(Bundle)]
-struct CloneEntityZeroChildDeny( EntityZero, BaseHolderRef, Disabled, ImagePathHolder);
+struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, ImagePathHolder);
 
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 
@@ -132,7 +132,7 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
 
         for child_to_clone in ezero_children.iter() {
             let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
-                move |builder|{ builder.deny::<CloneEntityZeroChildDeny>();
+                move |builder|{ builder.deny::<DenyForClonedEntityZeroChildren>();
                     if ! is_replicated{
                         builder.deny::<Replicated>();
                     }

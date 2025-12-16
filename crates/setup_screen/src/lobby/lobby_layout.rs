@@ -3,6 +3,7 @@ use bevy::{color::palettes::css::LIGHT_GOLDENROD_YELLOW};
 use bevy_simple_scroll_view::ScrollableContent;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 use common::common_states::{AppState, GamePhase};
+use multiplayer_shared::multiplayer_events::StartServer;
 use ui_shared::ui_components::LineEdit;
 use ui_shared::ui_functions::text_button;
 
@@ -231,7 +232,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
 }
 
 
-pub fn layout_for_host(mut commands: Commands) {
+pub fn layout_for_host(start_server: On<StartServer>, mut commands: Commands) {
     let shared_layout = do_base_layout(&mut commands);
     
     let _vbox_container = shared_layout.vbox_container;

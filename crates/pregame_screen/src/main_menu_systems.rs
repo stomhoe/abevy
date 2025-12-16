@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_ui_text_input::{*,
 };
 use common::common_states::*;
-use multiplayer_shared::multiplayer_resources::TargetJoinServer;
+use multiplayer_shared::{multiplayer_events::StartServer, multiplayer_resources::TargetJoinServer};
 use ui_shared::ui_components::CurrentText;
 
 use crate::main_menu_components::{MainMenuButton, MainMenuIpLineEdit};
@@ -14,31 +14,36 @@ use crate::main_menu_components::{MainMenuButton, MainMenuIpLineEdit};
 
 
 pub fn menu_button_interaction(
+    mut cmd: Commands,
     interaction_query: Query<(&Interaction, &MainMenuButton),
     Changed<Interaction>,>,
     
     mut pregame_state: ResMut<NextState<PreGameState>>,
-    mut app_state: ResMut<NextState<AppState>>,
     mut lobby_state: ResMut<NextState<ConnectionAttempt>>,
     mut game_phase: ResMut<NextState<GamePhase>>,
-    mut game_setup_type: ResMut<NextState<GameSetupType>>,
+    mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
      
 ) {
     for (interaction, menu_button_action) in &interaction_query {
         if *interaction == Interaction::Pressed {
             match menu_button_action {
                 MainMenuButton::QuickStart => {
-                    app_state.set(AppState::StatefulGameSession);
+                    assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
+
                 }
                 MainMenuButton::Host => {
-                    game_setup_type.set(GameSetupType::AsHost);
+                    cmd.trigger(StartServer::default());
+
                     game_phase.set(GamePhase::Setup);
+                    assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
+
                     lobby_state.set(ConnectionAttempt::Triggered);//TODO mover esto a algún botón del lobby para el host
-                    app_state.set(AppState::StatefulGameSession);
                 }
                 MainMenuButton::Join => {
-                    game_setup_type.set(GameSetupType::AsJoiner);
+                    cmd.trigger(StartServer::default());
                     game_phase.set(GamePhase::Setup);
+                    assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
+
                     lobby_state.set(ConnectionAttempt::Triggered);
                 }
                 MainMenuButton::Settings => {
@@ -51,7 +56,7 @@ pub fn menu_button_interaction(
 
 pub fn handle_line_edits_interaction(
     mut cmd: Commands, 
-    mut events: MessageReader<TextSubmitEvent>,
+    mut events: MessageReader<SubmitText>,
     mut line_edit_query: Query<(&mut CurrentText, &mut TextInputPrompt, &mut Outline), With<MainMenuIpLineEdit>>,
 
 ) {

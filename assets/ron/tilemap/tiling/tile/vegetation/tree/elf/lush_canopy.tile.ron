@@ -1,13 +1,13 @@
 (
     id: "lush_canopy",
-    name: "Lush Canopy",
+    name: "Lush canopy",
+    z: 1000,
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/lush_canopy.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 
     offset: Some((0.0, 90.0)),
-    z: 1000,
 
 
 )

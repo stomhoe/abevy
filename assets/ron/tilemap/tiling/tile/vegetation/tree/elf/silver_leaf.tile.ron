@@ -1,13 +1,13 @@
 (
     id: "silver_leaf",
-    name: "Silver Leaf",
+    name: "Silver leaf",
+    z: 1000,
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/silver_leaf.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 
     offset: Some((0.0, 130.0)),
-    z: 1000,
 
 
 )

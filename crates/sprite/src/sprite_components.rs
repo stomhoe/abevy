@@ -34,7 +34,6 @@ pub struct AnimType {
     pub grounding: Grounding,
     pub state_id: Option<AnimationState>,
 }
-
 impl AnimType {
     pub fn from_tuple(tuple: (String, String, String, String)) -> Self {
         let (direction, moving, grounding, state_id) = tuple;
@@ -49,9 +48,7 @@ impl AnimType {
             },
         }
     }
-    
 }
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct SpriteConfigNotFound;
 
@@ -62,9 +59,19 @@ pub struct ExcludedFromBaseAnimPickingSystem;
 #[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
 pub enum FlipHorizIfDir{Left, Right, Any,}
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect, MapEntities)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
 #[require(Transform, Visibility)]
-pub struct SpriteConfigRef(#[entities] pub Entity);
+/*
+*/
+#[relationship(relationship_target = SpriteConfigUsages)]
+pub struct SpriteConfigRef(#[relationship] #[entities] pub Entity);
+
+#[derive(Component, Debug, Reflect)]
+/*
+*/
+#[relationship_target(relationship = SpriteConfigRef)]
+pub struct SpriteConfigUsages(Vec<Entity>);
+impl SpriteConfigUsages { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]

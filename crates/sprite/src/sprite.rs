@@ -13,12 +13,12 @@ use crate::{sprite_components::*, sprite_init_systems::*, sprite_resources::*, s
 #[allow(unused_imports)] use {bevy::prelude::*,};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct SpriteSystems;
+pub struct AcSpriteSystems;
 
 
 const SPRITES_SCHEDULE: Update = Update;
 
-
+#[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
@@ -31,12 +31,16 @@ pub fn plugin(app: &mut App) {
         // server only
         (become_child_of_sprite_with_category, replace_string_ids_by_entities, 
             add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected))
-    ).in_set(SpriteSystems))
-    .configure_sets(SPRITES_SCHEDULE, SpriteSystems.in_set(StatefulSessionSystems))
+    ).in_set(AcSpriteSystems))
+    .configure_sets(SPRITES_SCHEDULE, AcSpriteSystems.in_set(StatefulSessionSystems))
     
     .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
         (init_sprite_cfgs, add_sprites_to_local_map).chain(),
-    ).in_set(SpriteSystems)) 
+    ).in_set(AcSpriteSystems)) 
+
+    .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (
+       GameplaySystems.after(AcSpriteSystems)
+    ))
 
     
     .register_type::<SpriteSerisHandles>()
@@ -47,6 +51,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<SpriteConfigsHolder>()
     .register_type::<OffsetForChildren>()
     .register_type::<SpriteConfigNotFound>()
+    .register_type::<SpriteConfigUsages>()
     
 
     .replicate::<SpriteConfig>()

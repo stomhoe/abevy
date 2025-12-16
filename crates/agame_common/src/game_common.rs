@@ -33,7 +33,7 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<WeightedColorsSeri>::new(&["wcolors.ron"]),
 
     ))
-    .add_systems(OnEnter(AppState::NoSession), (reset_states))
+    .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (reset_states))
 
     .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (init_color_samplers, ).chain().in_set(ColorSamplersInitSystems))
 
@@ -61,7 +61,7 @@ pub fn plugin(app: &mut App) {
             )
         ).in_set(StatefulSessionSystems),
         
-        StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
+        StatefulSessionSystems.run_if(in_state(AssetsLoadingState::ReplicatedFinished)),
     ))
     .configure_sets(FixedUpdate, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -76,10 +76,12 @@ pub fn plugin(app: &mut App) {
         )
         .in_set(StatefulSessionSystems),
 
-        StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
+        StatefulSessionSystems.run_if(in_state(AssetsLoadingState::ReplicatedFinished)),
         SimRunningSystems.run_if(in_state(SimulationState::Running)),
         SimPausedSystems.run_if(in_state(SimulationState::Paused)),
     ))
+
+
 
 
     .init_state::<GameSetupScreen>()

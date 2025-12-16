@@ -12,7 +12,7 @@ pub struct DimensionSystems;
 pub struct DimensionRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, TgenHotLoadingScoped, SessionScoped, EntityPrefix::new_truncated("DDDDDDDDDDDDDDDDDDDDD") )]
+#[require(Replicated, TgenHotLoadingScoped, AssetScoped, EntityPrefix::new_truncated("DDDDDDDDDDDDDDDDDDDDD") )]
 pub struct Dimension;
 
 

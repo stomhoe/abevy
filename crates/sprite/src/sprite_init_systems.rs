@@ -3,7 +3,6 @@ use std::mem::take;
 use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, HashSet}, };
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_spritesheet_animation::prelude::Animation;
 use common::common_components::*;
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{Categories, Directionable, EntityZero, MyZ};
@@ -166,11 +165,11 @@ pub fn add_sprites_to_local_map(
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
     mut cmd: Commands,
-    mut query: Query<(Entity, &SpriteConfigStrIds, ), (/*Added<SpriteConfigStrIds>,*/)>,
+    mut query: Query<(Entity, &SpriteConfigStrIds, ), (Changed<SpriteConfigStrIds>,)>,
     map: Option<Res<SpriteCfgEntityMap>>,
 ) {
     let Some(map) = map else {
-        //error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
+        error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
         return;
     };
 
@@ -187,27 +186,43 @@ pub fn replace_string_ids_by_entities(
         }
         if ! entities_to_build.is_empty() {
           
-            cmd.entity(ent).insert(SpriteCfgsToBuild(entities_to_build));
+            cmd.entity(ent).try_insert(SpriteCfgsToBuild(entities_to_build));
         }
-        cmd.entity(ent).remove::<SpriteConfigStrIds>();
     }
 }
 
 #[allow(unused_parens)]
 pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     mut cmd: Commands,
-    mut father_query: Query<(Entity, &mut SpriteCfgsToBuild, Option<&BaseHolderRef>,), 
+    father_query: Query<(Entity, &SpriteCfgsToBuild, Option<&BaseHolderRef>,), 
     (Without<SpriteConfig>, Changed<SpriteCfgsToBuild>,)>,
     spritecfgs_query: Query<(&StrId, Option<&SpriteCfgsToBuild>), 
     (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    held_sprites_query: Query<&HeldSprites, Or<(With<Disabled>, Without<Disabled>)>>,
+    sprite_config_ref_query: Query<&SpriteConfigRef, Or<(With<Disabled>, Without<Disabled>)>>,
 ) {
-    for (father_to_sprite, mut to_build, baseholder_ref,) in father_query.iter_mut() {
+    for (father_to_sprite, to_build, baseholder_ref,) in father_query.iter() {
 
-        for spritecfg_ent in to_build.0.drain() {
+        'sprite_cfg_for :for &spritecfg_ent in to_build.0.iter() {
             if let Ok((str_id, extra_to_build)) = spritecfgs_query.get(spritecfg_ent) {
 
                 info!(target: "sprite_building", "Building sprite {}", str_id);
 
+                let baseholder_ref = if let Some(baseholder_ref) = baseholder_ref {
+                    baseholder_ref.clone()
+                } else {
+                    BaseHolderRef{ base: father_to_sprite }
+                };
+                if let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) {
+                    for &sprite_ent in held_sprites.entities() {
+                        if let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) {
+                            if sprite_cfg_ref.0 == spritecfg_ent {
+                                warn!(target: "sprite_building", "SpriteConfig '{}' already present in HeldSprites of base holder {:?}, skipping.", str_id, baseholder_ref.base);
+                                continue 'sprite_cfg_for;
+                            }
+                        }
+                    }
+                } 
                 let sprite = cmd.spawn((
                     str_id.clone(),
                     SpriteConfigRef(spritecfg_ent),
@@ -215,14 +230,10 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
                     Replicated,
                 )).id();
 
-                if let Some(baseholder_ref) = baseholder_ref {
-                    cmd.entity(sprite).insert(baseholder_ref.clone());
-                } else {
-                    cmd.entity(sprite).insert(BaseHolderRef{ base: father_to_sprite });
-                }
+                cmd.entity(sprite).try_insert(baseholder_ref);
 
                 if let Some(extra_to_build) = extra_to_build {
-                    cmd.entity(sprite).insert(extra_to_build.clone());
+                    cmd.entity(sprite).try_insert(extra_to_build.clone());
                     // NO HACE FALTA PONER UN SpriteCfgsBuiltSoFar EN ESTO PORQ LOS CHILDREN FALTANTES SE VAN A AUTOCONSTRUIR CON LA PRESENCIA DE ESTE
                 }
  

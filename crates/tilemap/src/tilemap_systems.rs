@@ -1,7 +1,7 @@
 use bevy::{asset::ron::error, ecs::{entity::EntityHashSet, entity_disabling::Disabled, }, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
-use common::{common_components::StrId, common_resources::ImageSizeMap, common_states::GameSetupType};
+use common::{common_components::StrId, common_resources::ImageSizeMap, };
 use dimension_shared::DimensionRef;
 use game_common::game_common_components::{EntityZeroRef, MyZ, Persisted};
 use ::tilemap_shared::*;

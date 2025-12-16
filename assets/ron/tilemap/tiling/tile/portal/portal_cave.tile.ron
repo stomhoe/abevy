@@ -3,12 +3,12 @@
     id: "portal_cave",
     cats: Some(["portal"]),
     name: "Cave portal",
+    z: 1000,
     img_paths: [
         ("", "texture/world/portal/cave.png"),
     ],
     sprite: Some(true),
     randflipx: Some(true),
-    z: 1000,
     min_distances: Some({
         "c.portal": 300,
     }),

@@ -6,34 +6,33 @@ use faction::faction_components::{BelongsToFaction, Faction};
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
 use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_states::ConnectionAttempt};
-use multiplayer_shared::multiplayer_events::SendUsername;
+use multiplayer_shared::multiplayer_events::{SendUsername, StartServer};
 use player::player_components::{OfSelf, Player};
 use sprite_shared::SpriteConfigStrIds;
 
 use crate::host_functions::host_server;
 
 
-
 pub fn attempt_host(
-    mut commands: Commands, 
+    start_server: On<StartServer>,
+    mut cmd: Commands, 
     channels: Res<RepliconChannels>,
-    
 ) -> Result {
-    host_server(&mut commands, channels, None, 3)?;
-    commands.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
+
+    host_server(&mut cmd, channels, start_server.event().clone(), 3)?;
+    cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
     Ok(())
 }
 
 
 
-
 #[allow(unused_parens, )]
-pub fn host_on_player_connect(trigger: On<Add, ConnectedClient>, 
+pub fn host_on_player_connect(on_connected_client: On<Add, ConnectedClient>, 
     mut cmd: Commands, host_faction: Single<(Entity ), (With<Faction>, With<OfSelf>)>,
 ) -> Result {
     
-    cmd.entity(trigger.entity).insert((Player, BelongsToFaction(host_faction.into_inner())));
-    info!("(HOST) `{}` connected", trigger.entity);
+    cmd.entity(on_connected_client.entity).insert((Player, BelongsToFaction(host_faction.into_inner())));
+    info!("(HOST) `{}` connected", on_connected_client.entity);
 
 
 
@@ -41,13 +40,13 @@ pub fn host_on_player_connect(trigger: On<Add, ConnectedClient>,
 }
 
 #[allow(unused_parens)]
-pub fn host_receive_client_name(mut trigger: On<FromClient<SendUsername>>, 
+pub fn host_receive_client_name(mut on_receive_username: On<FromClient<SendUsername>>, 
     mut cmd: Commands, 
 ) {
-    let username = mem::take(&mut trigger.event_mut().0);
+    let username = mem::take(&mut on_receive_username.event_mut().0);
 
-    let Some(entity) = trigger.client_id.entity() else {
-        warn!(target: "host_systems", "Received username from server {:?}", trigger.client_id);
+    let Some(entity) = on_receive_username.client_id.entity() else {
+        warn!(target: "host_systems", "Received username from server {:?}", on_receive_username.client_id);
         return;
     };
 
@@ -85,9 +84,6 @@ pub fn host_on_player_added(mut cmd: Commands,
     }
     Ok(())
 }
-
-
-
 
 
 

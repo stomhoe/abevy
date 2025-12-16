@@ -13,7 +13,6 @@ pub fn plugin(app: &mut App) {
         .insert_state::<AppState>(AppState::NoSession)
         .init_state::<PreGameState>()
         .init_state::<GamePhase>()
-        .init_state::<GameSetupType>()
         
         .insert_state::<AssetsLoadingState>(AssetsLoadingState::LocalInProcess)
         .init_state::<ReplicatedAssetsSession>()

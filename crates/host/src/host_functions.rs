@@ -11,20 +11,20 @@ use bevy_replicon_renet::{
     },
     renet::{ConnectionConfig, RenetServer},
 };
-use multiplayer_shared::multiplayer_shared::PROTOCOL_ID;
+use multiplayer_shared::{multiplayer_events::StartServer, multiplayer_shared::PROTOCOL_ID};
 
 
 pub fn host_server(
     commands: &mut Commands,
     channels: Res<RepliconChannels>,
-    port: Option<u16>,
+    start_server: StartServer,
     max_clients: u8,
 ) -> Result {
     let server_channels_config = channels.server_configs();
     let client_channels_config = channels.client_configs();
 
-    let port = port.unwrap_or(5000);
-
+    let port = start_server.port.unwrap_or(5000);
+    
     let server = RenetServer::new(ConnectionConfig {
         server_channels_config,
         client_channels_config,

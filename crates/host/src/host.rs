@@ -15,6 +15,8 @@ pub fn plugin(app: &mut App) {
             
     .add_observer(host_on_player_connect)
     .add_observer(host_receive_client_name)
+    .add_observer(attempt_host)
+    
     
 
     .add_systems(Update, (
@@ -27,12 +29,7 @@ pub fn plugin(app: &mut App) {
             server_cleanup,
         ).in_set(HostSystems),
     )
-    .add_systems(
-        OnEnter(ConnectionAttempt::Triggered),
-        (
-            (attempt_host,).in_set(HostSystems),
-        ),
-    )
+
 
     ;
 }

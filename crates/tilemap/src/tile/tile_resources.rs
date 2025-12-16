@@ -93,7 +93,7 @@ pub struct TileSerialization {
     pub z: f32,
     pub img_paths: Vec<(String, String)>,
     pub cats: Option<HashSet<String>>,
-    /// persisted on state change
+    /// persisted only when state gets altered from starting state
     pub persisted: Option<bool>,
     pub shader: Option<String>,
     pub sprite: Option<bool>,

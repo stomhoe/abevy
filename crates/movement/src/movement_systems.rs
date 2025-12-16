@@ -5,7 +5,6 @@ use being_shared::{ControlledBy, ControlledLocally, HumanControlled};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
-use common::common_states::GameSetupType;
 use game_common::game_common_components::FacingDirection;
 use modifier::{modifier_components::*, modifier_move_components::*};
 use player::{player_components::*, player_resources::KeyboardInputMappings};
@@ -141,7 +140,7 @@ pub fn update_facing_dir(mut query: Query<(&ProcessedInputVector, &mut FacingDir
 #[allow(unused_parens)]//LO HACE EL CLEINT TMB CON LOS Q CONTROLA EL PARA TENER UNA TRANSFORM Q SE ACTUALIZA PREDECIBLEMENTE SIMILAR AL SERVER
 pub fn process_movement_modifiers(
     //TODO: ACELERACIÓN Y FRICCIÓN? P. EJ, PARA TENER CABALLOS CON INERCIA. USAR BEVY RAPIER DESP
-    state : Res<State<GameSetupType>>,
+    state : Res<State<ClientState>>,
     mut being_query: Query<(&AppliedModifiers, &InputMoveVector, &mut ProcessedInputVector, Has<ControlledLocally>), >,
     speed_query: Query<(
         &EffectiveValue,
@@ -152,7 +151,7 @@ pub fn process_movement_modifiers(
     ), ( )>, 
 ) {
     for (applied, InputMoveVector(inp_vec), mut final_vec, controlled_locally) in being_query.iter_mut() {
-        let is_client = state.get() == &GameSetupType::AsJoiner;
+        let is_client = state.get() != &ClientState::Disconnected;
         if is_client && !controlled_locally { continue;}
 
         final_vec.0 = *inp_vec;

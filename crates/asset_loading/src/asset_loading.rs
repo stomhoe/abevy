@@ -4,7 +4,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use dimension::dimension_resources::DimensionSerisHandles;
-use game_common::color_sampler_resources::ColorWeightedSamplerHandles;
+use game_common::{GameplaySystems, color_sampler_resources::ColorWeightedSamplerHandles};
 use sprite::sprite_resources::*;
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
 use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerHandles}};
@@ -15,7 +15,8 @@ use crate::asset_loading_systems::*;
 
 
 
-
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct AssetHotReloading;
 
 
 #[allow(unused_parens, path_statements, )]
@@ -25,12 +26,20 @@ pub fn plugin(app: &mut App) {
             reload_assets_ingame,
         ))
         .add_systems(OnEnter(AssetsLoadingState::LocalFinished), 
-            moveon_to_replicated.run_if(in_state(TerrainHotReloading::DespawnAll))
+            moveon_to_replicated.in_set(AssetHotReloading)
         )
         .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
-            on_assets_loaded,
-        ).run_if(in_state(TerrainHotReloading::DespawnAll))
-        )
+            on_assets_loaded.in_set(AssetHotReloading)
+        ))
+
+        .configure_sets(OnEnter(AssetsLoadingState::LocalFinished), (
+            AssetHotReloading.run_if(in_state(TerrainHotReloading::DespawnAll))
+        ))
+
+        .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (
+            AssetHotReloading.run_if(in_state(TerrainHotReloading::DespawnAll)).after(GameplaySystems)
+        ))
+
         .add_loading_state(
             LoadingState::new(AssetsLoadingState::LocalInProcess).continue_to_state(AssetsLoadingState::LocalFinished)
         )
