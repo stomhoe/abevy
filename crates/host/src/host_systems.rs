@@ -1,14 +1,12 @@
 use std::{mem, };
 
-use being::being_components::{Being, CharacterCreatedBy, DirControlledBy, CreatedCharacters};
 use faction::faction_components::{BelongsToFaction, Faction};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
-use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_states::{AssetsLoadingState, GamePhase}, };
+use bevy_replicon_renet::{netcode::{NetcodeServerTransport}, renet::{RenetServer}};
+use common::common_states::{AssetsLoadingState, GamePhase} ;
 use multiplayer_shared::multiplayer_events::{SendUsername, HostServer, StartServerFailed};
 use player::player_components::{OfSelf, Player};
-use sprite_shared::SpriteConfigStrIds;
 
 use crate::host_functions::host_server;
 
@@ -26,12 +24,15 @@ pub fn attempt_host(
 }
 
 pub fn on_server_start_successful(
+    mut cmd: Commands,
     mut game_phase: ResMut<NextState<GamePhase>>,
     mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
 ) {
     game_phase.set(GamePhase::Setup);
     assets_loading_state.set(AssetsLoadingState::LoadingReplicatedCollections);
 
+    cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
+    cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
  
 }
 
@@ -39,15 +40,18 @@ pub fn on_server_start_successful(
 
 #[allow(unused_parens, )]
 pub fn host_on_player_connect(on_connected_client: On<Add, ConnectedClient>, 
-    mut cmd: Commands, host_faction: Single<(Entity ), (With<Faction>, With<OfSelf>)>,
-) -> Result {
+    mut cmd: Commands, host_faction: Query<(Entity ), (With<Faction>, With<OfSelf>)>,
+) {
     
-    cmd.entity(on_connected_client.entity).insert((Player, BelongsToFaction(host_faction.into_inner())));
-    info!("(HOST) `{}` connected", on_connected_client.entity);
+    let Ok(host_faction) = host_faction.single()
+    else {
+        error!(target: "host_systems", "Failed to get host faction for assigning to connected client");
+        return;
+    };
 
+    cmd.entity(on_connected_client.entity).insert((Player, BelongsToFaction(host_faction)));
+    info!(target: "host_systems", "(HOST) `{}` connected", on_connected_client.entity);
 
-
-    Ok(())
 }
 
 #[allow(unused_parens)]

@@ -26,6 +26,7 @@ pub fn init_oplists_from_assets(
     if oplist_map.is_some() { return ; }
     cmd.init_resource::<OpListEntityMap>();
 
+
     let egui_oplist_holder_ent = cmd.spawn(EguiOplistHolder).id();
 
     for handle in seris_handles.handles.iter() {//ESTE VA CON ITER

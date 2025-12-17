@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use fnl::*;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
+use tilemap_shared::AaGlobalGenSettings;
 use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*};
 use std::mem::take;
 use std::hash::{Hash, Hasher};
@@ -15,6 +16,9 @@ pub fn init_noises(
 ) {
     if terrgen_map.is_some() { return; }
     cmd.insert_resource(TerrGenEntityMap::default());
+    
+    cmd.spawn((AaGlobalGenSettings::default(), EntityPrefix::new_truncated("AA_GLOBAL_GEN_SETTINGS")));
+    info!("Spawning Global Gen Settings entity");
 
     let holder = cmd.spawn((NoiseHolder,)).id();
 

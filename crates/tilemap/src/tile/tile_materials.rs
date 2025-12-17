@@ -2,6 +2,8 @@
 use bevy::{render::render_resource::AsBindGroup, shader::ShaderRef};
 use bevy_ecs_tilemap::prelude::MaterialTilemap;
 use common::common_components::{ ImageHolder, };
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
+use serde::ser::SerializeStruct;
 use bevy_inspector_egui::prelude::*;
 
 
@@ -25,6 +27,43 @@ pub struct VoronoiTextureOverlayMat {
 
     #[uniform(7)]#[inspector(min = 0.0, max = 6.28319)]
     pub voronoi_rotation: f32,
+}
+
+// Manual Serialize/Deserialize implementations
+impl Serialize for VoronoiTextureOverlayMat {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+        let mut state = serializer.serialize_struct("VoronoiTextureOverlayMat", 5)?;
+        state.serialize_field("mask_color", &self.mask_color)?;
+        state.serialize_field("scale", &self.scale)?;
+        state.serialize_field("voronoi_scale", &self.voronoi_scale)?;
+        state.serialize_field("voronoi_scale_random", &self.voronoi_scale_random)?;
+        state.serialize_field("voronoi_rotation", &self.voronoi_rotation)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for VoronoiTextureOverlayMat {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: Deserializer<'de> {
+        #[derive(Deserialize)]
+        struct VoronoiTextureOverlayMatData {
+            mask_color: Vec4,
+            scale: f32,
+            voronoi_scale: f32,
+            voronoi_scale_random: f32,
+            voronoi_rotation: f32,
+        }
+        let data = VoronoiTextureOverlayMatData::deserialize(deserializer)?;
+        Ok(VoronoiTextureOverlayMat {
+            texture_overlay: Handle::default(),
+            mask_color: data.mask_color,
+            scale: data.scale,
+            voronoi_scale: data.voronoi_scale,
+            voronoi_scale_random: data.voronoi_scale_random,
+            voronoi_rotation: data.voronoi_rotation,
+        })
+    }
 }
 impl VoronoiTextureOverlayMat {
     pub fn new(texture_overlay: Handle<Image>, mask_color: Vec4, base_scale: f32, voronoi_scale: f32, voronoi_scale_random: f32, voronoi_rotation: f32) -> Self {
@@ -77,6 +116,31 @@ impl MonoRepeatTextureOverlayMat {
         Self { texture_overlay, mask_color: mask_color / 255.0, scale }
     }
 }
+impl Serialize for MonoRepeatTextureOverlayMat {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+        let mut state = serializer.serialize_struct("MonoRepeatTextureOverlayMat", 3)?;
+        state.serialize_field("mask_color", &self.mask_color)?;
+        state.serialize_field("scale", &self.scale)?;
+        state.end()
+    }
+}
+impl<'de> Deserialize<'de> for MonoRepeatTextureOverlayMat {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: Deserializer<'de> {
+        #[derive(Deserialize)]
+        struct MonoRepeatTextureOverlayMatData {
+            mask_color: Vec4,
+            scale: f32,
+        }
+        let data = MonoRepeatTextureOverlayMatData::deserialize(deserializer)?;
+        Ok(MonoRepeatTextureOverlayMat {
+            texture_overlay: Handle::default(),
+            mask_color: data.mask_color,
+            scale: data.scale,
+        })
+    }
+}
 //https://docs.rs/bevy-inspector-egui/latest/bevy_inspector_egui/struct.InspectorOptions.html
 impl PartialEq for MonoRepeatTextureOverlayMat {
     fn eq(&self, other: &Self) -> bool {
@@ -104,7 +168,6 @@ impl MaterialTilemap for MonoRepeatTextureOverlayMat {
     }
 }
 
-
 #[derive(AsBindGroup, Debug, Clone, Asset, Reflect, Component, Default)]
 #[reflect(Default)] 
 pub struct TwoOverlaysExample {
@@ -130,4 +193,24 @@ impl PartialEq for TwoOverlaysExample {
 }
 impl Eq for TwoOverlaysExample {}
 
+// Manual Serialize/Deserialize implementations
 
+impl Serialize for TwoOverlaysExample {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+        // Don't serialize handles, just use default
+        serializer.serialize_unit_struct("TwoOverlaysExample")
+    }
+}
+
+impl<'de> Deserialize<'de> for TwoOverlaysExample {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: Deserializer<'de> {
+        // Ignore input, always return default
+        let _ = <()>::deserialize(deserializer)?;
+        Ok(TwoOverlaysExample {
+            texture_overlay: Handle::default(),
+            texture_overlay_2: Handle::default(),
+        })
+    }
+}

@@ -31,6 +31,8 @@ concat!(
     "sprite_systems=trace,",
     "sprite_systems=trace,",
     "init_tile_sprite=trace,",
+
+    "game_init_systems=info,",
     
     "sprite_animation_init=warn,",
     "entity_zero=trace,",

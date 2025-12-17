@@ -8,16 +8,16 @@ use serde::{Serialize, Deserialize};
 use crate::tile::tile_materials::*;
 
 
-#[derive(Component, Debug, Default, )]
-#[require(AssetScoped, EntityPrefix::new_truncated("TileShaders"), )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[require(AssetScoped, EntityPrefix::new_truncated("TileShaders"), Replicated)]
 pub struct EguiTileShaderHolder;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct TileShaderRef(pub Entity);
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
 
-#[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, )]
-#[require(EntityPrefix::new_truncated("TileShader"), AssetScoped)]
+#[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, Deserialize, Serialize)]
+#[require(EntityPrefix::new_truncated("TileShader"), AssetScoped, Replicated)]
 pub enum TileShader{
     TexRepeat(MonoRepeatTextureOverlayMat),
     TwoTexRepeat(TwoOverlaysExample),

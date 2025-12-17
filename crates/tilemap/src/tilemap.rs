@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use common::common_states::*;
 use dimension_shared::DimensionSystems;
 use game_common::game_common::GameplaySystems;
-use tilemap_shared::ChunkPos;
+use tilemap_shared::{AaGlobalGenSettings, ChunkPos};
 
 use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, terrain_gen::{self,  *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_systems::*};
 
@@ -46,6 +46,7 @@ pub fn plugin(app: &mut App) {
         OnEnter(AssetsLoadingState::InitReplicatedEntities), (
             TilingSystems.before(TerrainGenSystems),
             DimensionSystems.before(TerrainGenSystems),
+            TerrainGenSystems.before(GameplaySystems),
         )
     )
     .register_type::<LayersMap>()
@@ -58,5 +59,5 @@ pub fn plugin(app: &mut App) {
     .init_resource::<AaChunkRangeSettings>()
     .add_message::<CheckChunkDespawn>()
     
-
-;}
+;
+}

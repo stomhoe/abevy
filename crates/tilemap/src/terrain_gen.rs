@@ -29,22 +29,20 @@ pub fn plugin(app: &mut App) {
             oplist_init_dim_refs,
         ))
         
-        .add_systems(
-            OnEnter(AssetsLoadingState::InitReplicatedEntities), (
-                (
-                    init_noises,
-                    add_noises_to_map,
-                    init_oplists_from_assets,
-                    add_oplists_to_map,
-                    init_oplists_bifurcations,
-                    cycle_detection,
-                
+        .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+            (
+                init_noises,
+                add_noises_to_map,
+                init_oplists_from_assets,
+                add_oplists_to_map,
+                init_oplists_bifurcations,
+                cycle_detection,
+            
             ).chain(),
-        
-        ).in_set(TerrainGenSystems)
+            ).in_set(TerrainGenSystems)
         )
 
-        .init_resource::<AaGlobalGenSettings>().register_type::<AaGlobalGenSettings>()
+        .register_type::<AaGlobalGenSettings>()
         .init_resource::<RegisteredPositions>()
         
 
@@ -82,6 +80,8 @@ pub fn plugin(app: &mut App) {
         .replicate_filtered::<OplistSize, With<OperationList>>()
         
         .replicate::<NoiseHolder>()
+        .replicate::<AaGlobalGenSettings>()
+
         .add_message::<PendingOp>()
         .init_resource::<MassCollectedTiles>()
         .add_message::<PosSearch>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()

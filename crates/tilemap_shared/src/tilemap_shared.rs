@@ -5,9 +5,9 @@ use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Debug, Reflect)]
-#[reflect(Resource, Default)]
-pub struct AaGlobalGenSettings {
+#[derive(Component, Debug, Reflect, Deserialize, Serialize, Clone, )]
+#[require(Replicated, )]
+pub struct AaGlobalGenSettings {//TODO cambiar esto por un entity para synquear seed
     
     pub seed: i32,
     pub world_freq: f32,

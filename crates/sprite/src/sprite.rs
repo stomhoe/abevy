@@ -39,7 +39,7 @@ pub fn plugin(app: &mut App) {
     ).in_set(AcSpriteSystems)) 
 
     .configure_sets(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
-       GameplaySystems.after(AcSpriteSystems)
+       AcSpriteSystems.before(GameplaySystems)
     ))
 
     

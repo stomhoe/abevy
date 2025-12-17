@@ -82,7 +82,7 @@ pub fn spawn_terrain_operations (
 
 #[allow(unused_parens)]
 pub fn produce_tiles(mut cmd: Commands, 
-    gen_settings: Res<AaGlobalGenSettings>,
+    gen_settings: Single<&AaGlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
     fnl_noises: Query<&FnlNoiseComp,>,

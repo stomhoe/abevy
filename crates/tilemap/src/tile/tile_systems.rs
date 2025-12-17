@@ -11,7 +11,7 @@ use crate:: tile::tile_components::*;
 
 #[allow(unused_parens)]
 pub fn flip_tile_along_x(
-    settings: Res<AaGlobalGenSettings>,
+    settings: Single<&AaGlobalGenSettings>,
     mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>, &InitialPos, ), (Changed<InitialPos>, With<FlipAlongX>, Or<(With<Disabled>, Without<Disabled>)>)>,
     mut sprites_query: Query<(&mut Sprite), (Or<(With<Disabled>, Without<Disabled>,)>,  Without<InitialPos>, )>,
 ) {

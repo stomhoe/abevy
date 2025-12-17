@@ -1,5 +1,5 @@
 use being::being_components::*;
-use common::{common_components::StrId, common_states::{AppState, AssetsLoadingState}};
+use common::{common_components::StrId, common_states::AppState};
 use faction::{faction_components::*, faction_resources::FactionEntityMap};
 use modifier::{modifier_components::*, modifier_move_components::Speed};
 use player::player_components::*;
@@ -13,11 +13,17 @@ use sprite_shared::SpriteConfigStrIds;
 #[allow(unused_parens, )]
 pub fn server_or_singleplayer_setup(mut cmd: Commands, 
     mut map: ResMut<FactionEntityMap>,
-    mut settings: ResMut<AaGlobalGenSettings>,
+    mut settings: Query<&mut AaGlobalGenSettings>,
     mut app_state: ResMut<NextState<AppState>>,
-) -> Result
+) 
 {
-    cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
+    info!("game");
+    let Ok(mut settings) = settings.single_mut()
+    else {
+        error!(target: "game_init_systems", "Failed to get AaGlobalGenSettings");
+        return;
+    };
+    
 
     settings.seed = 123;
     
@@ -26,8 +32,8 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     
     let Ok(_) = map.0.insert(host_faction_id, host_faction)
     else {
-        let err = BevyError::from("Failed to insert host faction into FactionEntityMap: duplicate id");
-        return Err(err);
+        error!(target: "game_init_systems", "Failed to insert host faction into FactionEntityMap: duplicate id");
+        return;
     };
     
     cmd.spawn((
@@ -36,7 +42,6 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
         BelongsToFaction(host_faction),
     ));
     app_state.set(AppState::StatefulGameSession);
-    Ok(())
 }
 
 #[allow(unused_parens)]

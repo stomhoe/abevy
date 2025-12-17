@@ -88,6 +88,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<KeepDistanceFrom>()
     .register_type::<PortalRecipe>()
     .register_type::<PortalInstance>()
+    .register_type::<EguiTileShaderHolder>()
 
 
     .replicate::<Tile>()
@@ -98,7 +99,9 @@ pub fn plugin(app: &mut App) {
     .replicate::<InitialPos>()
     .replicate::<PortalsZeroEguiHolder>()
     .replicate::<TileInstancesHolder>()
+    .replicate::<TileShader>()
     .replicate::<TileShaderRef>()
+    .replicate::<EguiTileShaderHolder>()
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()
     .replicate_filtered::<EntityZeroRef, With<Tile>>()
