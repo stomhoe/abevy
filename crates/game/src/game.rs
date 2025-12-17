@@ -12,7 +12,7 @@ pub fn plugin(app: &mut App) {
     app
 
     .add_systems(
-        OnEnter(AssetsLoadingState::ReplicatedFinished),
+        OnEnter(AssetsLoadingState::InitReplicatedEntities),
         (server_or_singleplayer_setup,)
         .run_if(
             in_state(ClientState::Disconnected)
@@ -20,9 +20,12 @@ pub fn plugin(app: &mut App) {
         )
         .in_set(GameplaySystems)
     )
+    .add_systems(Update, (
+        host_on_player_added.run_if(in_state(ClientState::Disconnected)),
+    ))
     .add_systems(
         OnEnter(GamePhase::ActiveGame),
-        (spawn_player_beings,)
+        (put_player_beings_on_map,)
         .run_if(in_state(ClientState::Disconnected))
         .in_set(GameplaySystems)
     )

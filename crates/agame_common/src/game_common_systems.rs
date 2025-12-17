@@ -7,7 +7,6 @@ use bevy_ecs_tilemap::anchor::TilemapAnchor;
 use bevy_replicon::prelude::ClientState;
 use bevy_replicon::prelude::Replicated;
 use common::common_components::ImagePathHolder;
-use common::common_states::ConnectionAttempt;
 use common::common_states::GamePhase;
 use ::sprite_shared::*;
 use crate::game_common_components::*;
@@ -16,11 +15,9 @@ use bevy_ecs_tilemap::DrawTilemap;
 
 #[allow(unused_parens)]
 pub fn reset_states(
-    mut connection: ResMut<NextState<ConnectionAttempt>>,
     mut state: ResMut<NextState<GamePhase>>
 ) {
     state.set(GamePhase::default());
-    connection.set(ConnectionAttempt::default());
 }
 
 pub fn toggle_simulation(

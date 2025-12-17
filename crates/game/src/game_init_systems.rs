@@ -1,4 +1,4 @@
-use being::being_components::CreatedCharacters;
+use being::being_components::*;
 use common::{common_components::StrId, common_states::{AppState, AssetsLoadingState}};
 use faction::{faction_components::*, faction_resources::FactionEntityMap};
 use modifier::{modifier_components::*, modifier_move_components::Speed};
@@ -7,6 +7,7 @@ use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunk
 
 use bevy::prelude::*;
 use tilemap_shared::AaGlobalGenSettings;
+use sprite_shared::SpriteConfigStrIds;
 
 
 #[allow(unused_parens, )]
@@ -16,6 +17,8 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     mut app_state: ResMut<NextState<AppState>>,
 ) -> Result
 {
+    cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
+
     settings.seed = 123;
     
     let host_faction_id = StrId::new_truncated("host");
@@ -36,8 +39,38 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     Ok(())
 }
 
+#[allow(unused_parens)]
+pub fn host_on_player_added(mut cmd: Commands, 
+    query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>,
+    player_query: Query<(&CreatedCharacters)>,
+
+    host_faction: Single<(Entity), (With<Faction>, With<OfSelf>)>,
+) -> Result {
+    let host_faction = host_faction.into_inner();
+    for (player_ent, username) in query.iter() {
+
+        if player_query.get(player_ent).is_err() {
+
+
+            cmd.spawn((Being, username.clone(), 
+                DirControlledBy { client: player_ent }, 
+                CharacterCreatedBy { player: player_ent },
+
+                BelongsToFaction(host_faction.clone()),
+                Transform::from_translation(Vec3::new(-400.0, 250.0, 0.0)),
+                SpriteConfigStrIds::new(["humanhe0", "humanbo0"]),
+                
+            ));
+
+        }else{
+            //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER
+        }
+    }
+    Ok(())
+}
+
 #[allow(unused_parens, )]
-pub fn spawn_player_beings(
+pub fn put_player_beings_on_map(
     mut cmd: Commands,
     players: Query<(Entity, &CreatedCharacters, Option<&OfSelf>), (With<Player>)>,
     chunk_range: Res<AaChunkRangeSettings>,

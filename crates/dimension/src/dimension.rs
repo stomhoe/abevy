@@ -16,13 +16,12 @@ pub fn plugin(app: &mut App) {
         .add_plugins((
             RonAssetPlugin::<DimensionSeri>::new(&["dimension.ron"]),
         ))
-        .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
+        .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
             (init_dimensions, add_dimensions_to_map).chain(),
         ))
         .add_systems(Update, (
             update_child_of,
-            add_dimensions_to_map.run_if(not(in_state(ClientState::Disconnected))),
-            (replace_multiple_string_refs_by_entity_refs, dim_replace_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected).and(in_state(AssetsLoadingState::ReplicatedFinished))),
+            (replace_multiple_string_refs_by_entity_refs, dim_replace_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected).and(in_state(AssetsLoadingState::InitReplicatedEntities))),
 
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 

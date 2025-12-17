@@ -16,7 +16,6 @@ pub fn plugin(app: &mut App) {
         
         .insert_state::<AssetsLoadingState>(AssetsLoadingState::LocalInProcess)
         .init_state::<ReplicatedAssetsSession>()
-        .init_state::<ConnectionAttempt>()
         .init_state::<TerrainHotReloading>()
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()

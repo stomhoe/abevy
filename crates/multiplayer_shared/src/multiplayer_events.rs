@@ -2,15 +2,20 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 use common::common_components::{StrId};
 use serde::{Deserialize, Serialize};
 
+#[derive(Event, Clone, Copy, Default)]
+pub struct HostServer { pub port: Option<u16> } 
+
+#[derive(Event, )]
+pub struct StartServerFailed { pub reason: BevyError, } 
+
+#[derive(Event, Clone, Copy, Default)]
+pub struct JoinServer { } 
+
 #[derive(Event, Deserialize, Serialize, Clone)]
-pub struct HostStartedGame;
+pub struct HostStartedGameplay;
 
 #[derive(Event, Deserialize, Serialize, Clone)]
 pub struct SendUsername(pub StrId);
-
-#[derive(Event, Deserialize, Serialize, Clone, Copy, Default)]
-pub struct StartServer { pub port: Option<u16> } 
-
 
 
 #[derive(Message, Deserialize, Serialize, Clone, MapEntities)]

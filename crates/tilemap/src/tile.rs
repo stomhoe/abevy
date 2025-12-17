@@ -47,14 +47,14 @@ pub fn plugin(app: &mut App) {
         ().chain()
     ).in_set(TilingSystems))*/
     .add_systems(
-        OnEnter(AssetsLoadingState::ReplicatedFinished), (
+        OnEnter(AssetsLoadingState::InitReplicatedEntities), (
             (   
                 init_shaders, add_shaders_to_map, 
                 init_tiles, add_tiles_to_map, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, add_tile_weighted_samplers_to_map, init_tile_weighted_samplers_refs, )
             .chain().run_if(in_state(ClientState::Disconnected)),
     ).in_set(TilingSystems))
 
-    .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (ColorSamplersInitSystems.before(TilingSystems), AcSpriteSystems.before(TilingSystems)))
+    .configure_sets(OnEnter(AssetsLoadingState::InitReplicatedEntities), (ColorSamplersInitSystems.before(TilingSystems), AcSpriteSystems.before(TilingSystems)))
 
     .add_plugins((
         MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),

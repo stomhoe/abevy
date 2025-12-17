@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_ui_text_input::{*,
 };
 use common::common_states::*;
-use multiplayer_shared::{multiplayer_events::StartServer, multiplayer_resources::TargetJoinServer};
+use multiplayer_shared::{multiplayer_events::{HostServer, JoinServer}, multiplayer_resources::TargetJoinServer};
 use ui_shared::ui_components::CurrentText;
 
 use crate::main_menu_components::{MainMenuButton, MainMenuIpLineEdit};
@@ -19,32 +19,24 @@ pub fn menu_button_interaction(
     Changed<Interaction>,>,
     
     mut pregame_state: ResMut<NextState<PreGameState>>,
-    mut lobby_state: ResMut<NextState<ConnectionAttempt>>,
     mut game_phase: ResMut<NextState<GamePhase>>,
     mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
-     
 ) {
     for (interaction, menu_button_action) in &interaction_query {
         if *interaction == Interaction::Pressed {
             match menu_button_action {
                 MainMenuButton::QuickStart => {
-                    assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
+                    //assets_loading_state.set(AssetsLoadingState::LoadingReplicatedCollections);
+                    //game_phase.set(GamePhase::Setup);
+
 
                 }
                 MainMenuButton::Host => {
-                    cmd.trigger(StartServer::default());
-
-                    game_phase.set(GamePhase::Setup);
-                    assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
-
-                    lobby_state.set(ConnectionAttempt::Triggered);//TODO mover esto a algún botón del lobby para el host
+                    cmd.trigger(HostServer::default());
                 }
                 MainMenuButton::Join => {
-                    cmd.trigger(StartServer::default());
-                    game_phase.set(GamePhase::Setup);
-                    assets_loading_state.set(AssetsLoadingState::ReplicatedInProcess);
+                    cmd.trigger(JoinServer::default());
 
-                    lobby_state.set(ConnectionAttempt::Triggered);
                 }
                 MainMenuButton::Settings => {
                     pregame_state.set(PreGameState::Settings);

@@ -16,11 +16,12 @@ use crate::{client_functions::*, };
 
 
 pub fn attempt_join(
+    event: On<JoinServer>,
     mut cmd: Commands, 
     channels: Res<RepliconChannels>,
-    mut lobby_state: ResMut<NextState<ConnectionAttempt>>,
     target_join_server: Option<Res<TargetJoinServer>>,
 ) -> Result {
+
 
     let Some(joined_server) = target_join_server else {
         error!("No address was specified for joining, aborting attempt_join");
@@ -30,7 +31,6 @@ pub fn attempt_join(
 
     join_server(&mut cmd, channels, joined_server.ip(), joined_server.port())?;
 
-    lobby_state.set(ConnectionAttempt::PostAttempt);
 
     Ok(())
 }
@@ -39,12 +39,16 @@ pub fn client_on_connect_succesful(
     mut cmd: Commands, 
     mut app_state: ResMut<NextState<AppState>>,
     player_data: Res<PlayerData>,
+    mut game_phase: ResMut<NextState<GamePhase>>,
+
     
 ) {
 
     app_state.set(AppState::StatefulGameSession);
     let name = player_data.username.clone();
     info!("connected as Client {name}");
+    game_phase.set(GamePhase::Setup);
+
 
     cmd.client_trigger(SendUsername(name));
 
@@ -92,7 +96,7 @@ pub fn client_on_disconnect(
 }
 
 #[allow(unused_parens)]
-pub fn client_on_game_started(trigger: On<HostStartedGame>, mut state: ResMut<NextState<GamePhase>>, ) {
+pub fn client_on_game_started(trigger: On<HostStartedGameplay>, mut state: ResMut<NextState<GamePhase>>, ) {
 
     info!(target: "lobby", "Host started game event received, transitioning to GamePhase::ActiveGame");
     state.set(GamePhase::ActiveGame);
@@ -119,21 +123,6 @@ pub fn client_cleanup(
 
 
 
-
-#[allow(unused_parens)]
-pub fn client_init_resources(
-    mut cmd: Commands,
-    mut next_state: ResMut<NextState<ReplicatedAssetsSession>>,
-) {
-
-    //next_state.set(ReplicatedAssetsSession::DespawnLocalAssets);
-
-    cmd.insert_resource(TerrGenEntityMap::default());
-    cmd.insert_resource(OpListEntityMap::default());
-    cmd.insert_resource(DimensionEntityMap::default());
-
-    //next_state.set(ReplicatedAssetsSession::KeepAlive);
-}
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^

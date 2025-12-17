@@ -10,50 +10,28 @@ use crate::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, mult
 pub const PROTOCOL_ID: u64 = 7;
 
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct HostSystems;
+// #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+// pub struct HostSystems;
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct ClientSystems;
+// #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+// pub struct ClientSystems;
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((RepliconSharedPlugin::default(), ))
-  
 
-    .configure_sets(OnEnter(ConnectionAttempt::Triggered), (
-        HostSystems.run_if(in_state(ClientState::Disconnected)),
-        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
-    ))
-    .configure_sets(OnEnter(AppState::StatefulGameSession), (
-        HostSystems.run_if(in_state(ClientState::Disconnected)),
-        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
-    ))
-    .configure_sets(OnExit(AppState::StatefulGameSession), (
-        HostSystems.run_if(in_state(ClientState::Disconnected)),
-        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
-    ))
-    .configure_sets(Update, (
-        HostSystems.run_if(in_state(ClientState::Disconnected).or(in_state(ServerState::Running))),
-        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
-    ))
-    .configure_sets(FixedUpdate, (
-        HostSystems.run_if(in_state(ClientState::Disconnected).or(in_state(ServerState::Running))),
-        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
-    ))
     .add_systems(OnExit(AppState::StatefulGameSession), (
         all_clean_resources
     ))
 
     .init_resource::<TargetJoinServer>()
 
-    .add_server_event::<HostStartedGame>(Channel::Unordered)
+    .add_server_event::<HostStartedGameplay>(Channel::Unordered)
     
-    .add_client_event::<SendUsername>(Channel::Ordered)
+    .add_client_event::<SendUsername>(Channel::Unordered)
 
 
-    //.replicate_once::<ActivatingChunks>()
 
     ;
 }

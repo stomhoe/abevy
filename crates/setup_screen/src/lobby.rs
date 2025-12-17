@@ -2,7 +2,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::{AppState, GamePhase, };
-use multiplayer_shared::multiplayer_shared::{ClientSystems, HostSystems};
 
 use crate::lobby::{lobby_layout::*, lobby_systems::*};
 
@@ -26,9 +25,9 @@ pub fn plugin(app: &mut App) {
             ),
         )
         .add_systems(
-            OnEnter(AppState::StatefulGameSession),
+            OnEnter(ClientState::Connected),
             (
-                (layout_for_client, ).in_set(ClientSystems),
+                (layout_for_client, ).run_if(in_state(GamePhase::Setup)),
             ),
         )
         .add_systems(
@@ -40,8 +39,8 @@ pub fn plugin(app: &mut App) {
                 in_state(GamePhase::Setup)
                 .and(in_state(AppState::StatefulGameSession))
                 .and(
-                    in_state(ClientState::Connected)
-                    .or(in_state(ServerState::Running))
+                    not(in_state(ClientState::Disconnected))//is client
+                    .or(in_state(ServerState::Running))//is host
                 ),
             ),
         )

@@ -1,9 +1,8 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_replicon_renet::RepliconRenetServerPlugin;
-use common::common_states::{AppState, ConnectionAttempt};
+use common::common_states::{AppState, };
 use game_common::game_common::GameplaySystems;
-use multiplayer_shared::multiplayer_shared::HostSystems;
 
 use crate::host_systems::*;
 
@@ -19,15 +18,20 @@ pub fn plugin(app: &mut App) {
     
     
 
-    .add_systems(Update, (
-        host_on_player_added.in_set(HostSystems),
-    ))
+
+
+    .add_systems(
+        OnEnter(ServerState::Running),
+        (
+            on_server_start_successful,
+        ),
+    )
    
    .add_systems(
         OnExit(AppState::StatefulGameSession),
         (
             server_cleanup,
-        ).in_set(HostSystems),
+        ).run_if(in_state(ServerState::Running)),
     )
 
 

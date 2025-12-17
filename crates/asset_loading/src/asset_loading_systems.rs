@@ -52,7 +52,7 @@ pub fn reload_assets_ingame(
 pub fn moveon_to_replicated(
     mut loading_state: ResMut<NextState<AssetsLoadingState>>,
 ) {
-    loading_state.set(AssetsLoadingState::ReplicatedInProcess);
+    loading_state.set(AssetsLoadingState::LoadingReplicatedCollections);
 }
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(

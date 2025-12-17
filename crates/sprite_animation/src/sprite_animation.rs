@@ -37,11 +37,11 @@ pub fn plugin(app: &mut App) {
 
     .configure_sets(Update, ( SpriteAnimationSystems.in_set(SimRunningSystems),))
     
-    .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (        
+    .configure_sets(OnEnter(AssetsLoadingState::InitReplicatedEntities), (        
         SpriteAnimationSystems.before(AcSpriteSystems)
     ))
 
-    .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
+    .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
         (init_animations, ).chain()
     ).in_set(SpriteAnimationSystems)) 
 

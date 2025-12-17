@@ -5,8 +5,8 @@ use faction::faction_components::{BelongsToFaction, Faction};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{RenetClient, RenetServer}};
-use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_states::ConnectionAttempt};
-use multiplayer_shared::multiplayer_events::{SendUsername, StartServer};
+use common::{common_components::{DisplayName, EntityPrefix, StrId}, common_states::{AssetsLoadingState, GamePhase}, };
+use multiplayer_shared::multiplayer_events::{SendUsername, HostServer, StartServerFailed};
 use player::player_components::{OfSelf, Player};
 use sprite_shared::SpriteConfigStrIds;
 
@@ -14,14 +14,25 @@ use crate::host_functions::host_server;
 
 
 pub fn attempt_host(
-    start_server: On<StartServer>,
+    start_server: On<HostServer>,
     mut cmd: Commands, 
     channels: Res<RepliconChannels>,
-) -> Result {
+) {
 
-    host_server(&mut cmd, channels, start_server.event().clone(), 3)?;
-    cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
-    Ok(())
+    if let Err(err) = host_server(&mut cmd, channels, start_server.event().clone(), 3) {
+        error!("Failed to start host server: {}", err);
+        cmd.trigger(StartServerFailed { reason: err });
+    }
+}
+
+pub fn on_server_start_successful(
+    mut game_phase: ResMut<NextState<GamePhase>>,
+    mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
+) {
+    game_phase.set(GamePhase::Setup);
+    assets_loading_state.set(AssetsLoadingState::LoadingReplicatedCollections);
+
+ 
 }
 
 
@@ -55,35 +66,6 @@ pub fn host_receive_client_name(mut on_receive_username: On<FromClient<SendUsern
    
 }
 
-#[allow(unused_parens)]
-pub fn host_on_player_added(mut cmd: Commands, 
-    query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>,
-    player_query: Query<(&CreatedCharacters)>,
-
-    host_faction: Single<(Entity), (With<Faction>, With<OfSelf>)>,
-) -> Result {
-    let host_faction = host_faction.into_inner();
-    for (player_ent, username) in query.iter() {
-
-        if player_query.get(player_ent).is_err() {
-
-
-            cmd.spawn((Being, username.clone(), 
-                DirControlledBy { client: player_ent }, 
-                CharacterCreatedBy { player: player_ent },
-
-                BelongsToFaction(host_faction.clone()),
-                Transform::from_translation(Vec3::new(-400.0, 250.0, 0.0)),
-                SpriteConfigStrIds::new(["humanhe0", "humanbo0"]),
-                
-            ));
-
-        }else{
-            //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER
-        }
-    }
-    Ok(())
-}
 
 
 

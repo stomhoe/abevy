@@ -34,11 +34,11 @@ pub fn plugin(app: &mut App) {
     ).in_set(AcSpriteSystems))
     .configure_sets(SPRITES_SCHEDULE, AcSpriteSystems.in_set(StatefulSessionSystems))
     
-    .add_systems(OnEnter(AssetsLoadingState::ReplicatedFinished), (
+    .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
         (init_sprite_cfgs, add_sprites_to_local_map).chain(),
     ).in_set(AcSpriteSystems)) 
 
-    .configure_sets(OnEnter(AssetsLoadingState::ReplicatedFinished), (
+    .configure_sets(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
        GameplaySystems.after(AcSpriteSystems)
     ))
 
@@ -61,9 +61,9 @@ pub fn plugin(app: &mut App) {
     .replicate::<SpriteConfigRef>()
     .replicate::<OffsetForChildren>()
 
-    .replicate_once_filtered::<ChildOf, With<SpriteConfig>>()
+    .replicate_filtered::<ChildOf, With<SpriteConfig>>()
 
-    .replicate_once_filtered::<Transform, With<SpriteConfig>>()
+    .replicate_filtered::<Transform, With<SpriteConfig>>()
 
     .replicate::<SpriteConfigsHolder>()
 

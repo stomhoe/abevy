@@ -5,11 +5,11 @@ use bevy::{prelude::*};
 
 use common::{common_components::StrId, common_states::*};
 use game_common::game_common_states::GameSetupScreen;
-use multiplayer_shared::multiplayer_events::{HostStartedGame, StartServer};
+use multiplayer_shared::multiplayer_events::{HostStartedGameplay, HostServer};
 use player::{player_components::*, player_resources::PlayerData};
 use crate::lobby::lobby_components::*;
 
-pub fn host_setup(start_server: On<StartServer>, cmd: Commands, ) {
+pub fn host_setup(start_server: On<HostServer>, cmd: Commands, ) {
 
 }
 
@@ -52,7 +52,7 @@ pub fn lobby_button_interaction(
                     game_phase.set(GamePhase::ActiveGame);
                     cmd.server_trigger(ToClients {
                         mode: SendMode::Broadcast,
-                        message: HostStartedGame,
+                        message: HostStartedGameplay,
                     });
                 },
                 LobbyButtonId::CreateCharacter => {
