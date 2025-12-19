@@ -25,7 +25,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     };
     
 
-    settings.seed = 123;
+    settings.seed = 0;
     
     let host_faction_id = StrId::new_truncated("host");
     let host_faction = cmd.spawn((Faction, host_faction_id.clone(), OfSelf)).id();
@@ -56,13 +56,13 @@ pub fn host_on_player_added(mut cmd: Commands,
 
         if player_query.get(player_ent).is_err() {
 
-
-            cmd.spawn((Being, username.clone(), 
+            //USAR EL DEFAULT ASE Q SE DESPAWNEE
+            cmd.spawn((Being::default(), username.clone(), 
                 DirControlledBy { client: player_ent }, 
                 CharacterCreatedBy { player: player_ent },
 
                 BelongsToFaction(host_faction.clone()),
-                Transform::from_translation(Vec3::new(-400.0, 250.0, 0.0)),
+                Transform::from_translation(Vec3::new(5900.0, 900.0, 0.0)),
                 SpriteConfigStrIds::new(["humanhe0", "humanbo0"]),
                 
             ));

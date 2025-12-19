@@ -42,22 +42,35 @@ pub fn toggle_simulation(
 #[bevy_simple_subsecond_system::hot]
 #[allow(unused_parens, )]
 pub fn z_sort_system(
-    ori_query: Query<(&MyZ, Option<&YSortOrigin>), (Or<(With<Disabled>, Without<Disabled>)>,)>,
+    ezero_query: Query<(&MyZ, Option<&YSortOrigin>), (Or<(With<Disabled>, Without<Disabled>)>,)>,
 
-    mut with_own_z_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, Has<TilemapAnchor>), 
-    Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>)>>,
-    mut with_entityzero: Query<(&mut Transform, &GlobalTransform, &EntityZeroRef), (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>)>, Without<MyZ>,)>,
+    mut with_own_z_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>, &MyZ, Has<TilemapAnchor>, &ChildOf, ), 
+    (Or<(Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<MyZ>, Changed<ChildOf>,)>, Or<(With<Sprite>, With<TilemapAnchor>, )>)>,
+
+    mut with_ezero_ref: Query<(&mut Transform, &GlobalTransform, &EntityZeroRef, &ChildOf, ), (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>, Changed<ChildOf>,)>, Or<(With<Sprite>, With<TilemapAnchor>,)>,
+    
+    Without<MyZ>,)>,
+
+    parent_global_transform: Query<&Sprite, (Or<(With<Disabled>, Without<Disabled>)>,)>,
 
     mut event_writer: MessageWriter<DrawTilemap>,
 
 ) {//TODO MEJORAR
     let mut to_draw = Vec::new();
 
-    for (ent, mut transform, global_transform, ysort_origin, z_index, is_tilemap) in with_own_z_query.iter_mut() {
-        let y_pos = global_transform.translation().y - ysort_origin.cloned().unwrap_or_default().0;
-        let target_z = z_index.as_float() - y_pos * YSortOrigin::Y_SORT_DIV;
+    for (ent, mut transform, global_transform, ysort_origin, z_index, is_tilemap, child_of) in with_own_z_query.iter_mut() {
 
-        if (transform.translation.z - target_z).abs() > f32::EPSILON { 
+        if let Ok(_parent_sprite) = parent_global_transform.get(child_of.0) {
+            debug!(target: "zlevel", "Skipping z-sort for entity {:?} as it has a parent sprite", ent);
+            continue;
+        }
+
+        let y_pos = global_transform.translation().y - ysort_origin.cloned().unwrap_or_default().0;
+
+        let target_z = z_index.as_float() - y_pos * YSortOrigin::Y_SORT_DIV ;
+
+        
+        if (transform.translation.z - target_z).abs() > f32::EPSILON { // NO TOCAR
             transform.translation.z = target_z;
             debug!(target: "zlevel", "Z-Sorting entity to z-index {}", target_z);
             if is_tilemap{
@@ -65,15 +78,20 @@ pub fn z_sort_system(
             }
         }
     }
-    for (mut transform, global_transform, original_ref) in with_entityzero.iter_mut() {
-        let Ok((z_index, ysort_origin)) = ori_query.get(original_ref.0) else { continue };
+    for (mut transform, global_transform, original_ref, child_of) in with_ezero_ref.iter_mut() {
+        let Ok((z_index, ysort_origin)) = ezero_query.get(original_ref.0) else { continue };
+
+        if let Ok(_parent_sprite) = parent_global_transform.get(child_of.0) {
+            continue;
+        }
 
         let y_pos = global_transform.translation().y - ysort_origin.cloned().unwrap_or_default().0;
         let target_z = z_index.as_float() - y_pos * YSortOrigin::Y_SORT_DIV;
 
-        if (transform.translation.z - target_z).abs() > f32::EPSILON { 
+        
+        if (transform.translation.z - target_z).abs() > f32::EPSILON { // NO TOCAR
             transform.translation.z = target_z;
-            debug!(target: "zlevel", "Z-Sorting entity to z-index {}", target_z);
+            debug!(target: "zlevel", "ezero Z-Sorting entity to z-index {}", target_z);
         }
     }
     event_writer.write_batch(to_draw);
@@ -102,7 +120,7 @@ pub fn disable_ezeros(mut cmd: Commands,
 
 
 #[derive(Bundle)]
-struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, ImagePathHolder);
+struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, ImagePathHolder, MyZ, YSortOrigin);
 
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 

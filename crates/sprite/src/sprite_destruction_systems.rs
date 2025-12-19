@@ -11,15 +11,15 @@ use crate::{sprite_components::*, sprite_resources::*, };
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^
-#[allow(unused_parens)]
-pub fn on_sprite_config_despawn(mut cmd: Commands, 
-    mut removed_configs: RemovedComponents<SpriteConfig>,
-    mut query: Query<(&SpriteConfigUsages),(Or<(With<Disabled>, Without<Disabled>)>,)>,
-) {
-    for ent in removed_configs.read() {
-        if let Ok(usages) = query.get(ent) {
-            for &usage_ent in usages.entities() {
-            }
-        }
-    }
-}
+// #[allow(unused_parens)]
+// pub fn on_sprite_config_despawn(mut cmd: Commands, 
+//     mut removed_configs: RemovedComponents<SpriteConfig>,
+//     mut query: Query<(&SpriteConfigUsages),(Or<(With<Disabled>, Without<Disabled>)>,)>,
+// ) {
+//     for ent in removed_configs.read() {
+//         if let Ok(usages) = query.get(ent) {
+//             for &usage_ent in usages.entities() {
+//             }
+//         }
+//     }
+// }

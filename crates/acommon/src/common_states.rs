@@ -6,7 +6,7 @@
 pub enum AppState {NoSession, #[default]StatefulGameSession, }
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[source(AssetsLoadingState = AssetsLoadingState::InitLocalEntities)]
+#[source(AssetLoading = AssetLoading::InitLocalEntities)]
 #[states(scoped_entities)]
 pub enum PreGameState {
     #[default]
@@ -26,7 +26,7 @@ pub enum GamePhase {#[default]Setup, ActiveGame,}
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
 #[states(scoped_entities,)]
-pub enum AssetsLoadingState {
+pub enum AssetLoading {
     NotStarted,
     //asset loading is triggered
     LocalInProcess,

@@ -25,26 +25,26 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             reload_assets_ingame,
         ))
-        .add_systems(OnEnter(AssetsLoadingState::InitLocalEntities), 
+        .add_systems(OnEnter(AssetLoading::InitLocalEntities), 
             moveon_to_replicated.in_set(AssetHotReloading)
         )
-        .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+        .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
             on_assets_loaded.in_set(AssetHotReloading)
         ))
 
-        .configure_sets(OnEnter(AssetsLoadingState::InitLocalEntities), (
+        .configure_sets(OnEnter(AssetLoading::InitLocalEntities), (
             AssetHotReloading.run_if(in_state(TerrainHotReloading::DespawnAll))
         ))
 
-        .configure_sets(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+        .configure_sets(OnEnter(AssetLoading::InitReplicatedEntities), (
             AssetHotReloading.run_if(in_state(TerrainHotReloading::DespawnAll)).after(GameplaySystems)
         ))
 
         .add_loading_state(
-            LoadingState::new(AssetsLoadingState::LocalInProcess).continue_to_state(AssetsLoadingState::InitLocalEntities)
+            LoadingState::new(AssetLoading::LocalInProcess).continue_to_state(AssetLoading::InitLocalEntities)
         )
         .add_loading_state(
-            LoadingState::new(AssetsLoadingState::LoadingReplicatedCollections).continue_to_state(AssetsLoadingState::InitReplicatedEntities)
+            LoadingState::new(AssetLoading::LoadingReplicatedCollections).continue_to_state(AssetLoading::InitReplicatedEntities)
             .load_collection::<ShaderRepeatTexSerisHandles>()
             .load_collection::<ShaderVoronoiSerisHandles>()
             .load_collection::<TileSerisHandles>()

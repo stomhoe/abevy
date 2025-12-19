@@ -1,22 +1,22 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use game_common::game_common_components::{Categories, EntityZero, FacingDirection};
+use game_common::game_common_components::{Categories, EntityZero, EntityZeroRef, FacingDirection};
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::sprite_components::*;
 
 #[allow(unused_parens)]
 pub fn apply_scales(
-    mut sprite_que: Query<(&BaseHolderRef, &mut Sprite, &SpriteConfigRef, &mut Transform,
+    mut sprite_que: Query<(&BaseHolderRef, &mut Sprite, &EntityZeroRef, &mut Transform,
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
     ),>, 
     sprite_config_query: Query<(Option<&FlipHorizIfDir>, &Scale2D, &ScaleLookUpDown, &ScaleSideways,),
-    (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>, 
+    (Or<(With<Disabled>, Without<Disabled>)>)>, 
     baseholder_query: Query<&FacingDirection>, 
 ) {
     for (
-        spriteholder, mut sprite, &SpriteConfigRef(spritecfg_ent), 
+        spriteholder, mut sprite, &EntityZeroRef(spritecfg_ent), 
         mut transform, scale, scale_look_up_down, scale_look_sideways,
     ) in sprite_que.iter_mut() {
         let mut total_scale = scale.copied().unwrap_or_default();
@@ -80,19 +80,19 @@ pub fn apply_offsets(
         Entity,
         &BaseHolderRef, 
         &ChildOf,
-        Option<&SpriteConfigRef>,
+        Option<&EntityZeroRef>,
         &mut Transform,
         Option<&Offset2D>, 
         Has<SpriteConfigNotFound>,
     ), (Or<(With<Disabled>, Without<Disabled>)>, Without<EntityZero>, )>,
     sprite_config_query: Query<(
-        &Categories,
+        Option<&Categories>,
         Option<&Offset2D>,
         Option<&OffsetSideways>,
         Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>, 
         Option<&OffsetForChildren>,
-    ),(With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>, 
-    parent_sprite_query: Query<&SpriteConfigRef>,
+    ),(Or<(With<Disabled>, Without<Disabled>)>)>, 
+    parent_sprite_query: Query<&EntityZeroRef>,
     base_query: Query<&FacingDirection>,
 ) {
     for (
@@ -102,7 +102,7 @@ pub fn apply_offsets(
 
         let mut total_offset = offset.cloned().unwrap_or_default();
 
-        if let Some(SpriteConfigRef(sprite_config)) = sprite_config_ref.cloned() {
+        if let Some(EntityZeroRef(sprite_config)) = sprite_config_ref.cloned() {
             let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _offset4children)) = sprite_config_query.get(sprite_config) 
             else {
                 if !has_sprite_config_not_found {
@@ -135,14 +135,17 @@ pub fn apply_offsets(
                         total_offset += offset_down.cloned().unwrap_or_default();
                     }
                 }
-                if let Ok(SpriteConfigRef(ent)) = parent_sprite_query.get(child_of.parent()) {
-                    if let Ok((//TA BIEN DE ESTA FORMA REBUSCADA, OffsetAsChild NO SIRVE POR EL ORDEN DE APLICACION INDETERMINISTA. ES MUCHO MAS BUG PRONE CON CHANGE DETECTION
-                        _, _, _, _, _, _, offset_for_children
-                    )) = sprite_config_query.get(*ent) {
-                        if let Some(offset_for_children) = offset_for_children {
-                            for (offset_cat, &(offset, dir)) in offset_for_children.0.iter() {
-                                if my_cats.0.contains(offset_cat) {
-                                    total_offset += offset;
+
+                if let Some(my_cats) = my_cats {
+                    if let Ok(EntityZeroRef(ent)) = parent_sprite_query.get(child_of.parent()) {
+                        if let Ok((//TA BIEN DE ESTA FORMA REBUSCADA, OffsetAsChild NO SIRVE POR EL ORDEN DE APLICACION INDETERMINISTA. ES MUCHO MAS BUG PRONE CON CHANGE DETECTION
+                            _, _, _, _, _, _, offset_for_children
+                        )) = sprite_config_query.get(*ent) {
+                            if let Some(offset_for_children) = offset_for_children {
+                                for (offset_cat, &(offset, dir)) in offset_for_children.0.iter() {
+                                    if my_cats.0.contains(offset_cat) {
+                                        total_offset += offset;
+                                    }
                                 }
                             }
                         }

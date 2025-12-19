@@ -4,10 +4,9 @@ use bevy_replicon::prelude::*;
 use being_shared::{Grounding, ControlledBy};
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon_renet::renet::RenetClient;
 use bevy_spritesheet_animation::{prelude::*, spritesheet};
 use common::{common_components::{ImageHolder, StrId}, };
-use game_common::game_common_components::{Directionable, FacingDirection};
+use game_common::game_common_components::{Directionable, EntityZeroRef, FacingDirection};
 use player::player_components::*;
 use sprite::sprite_components::*;
 use ::sprite_animation_shared::*;
@@ -15,7 +14,7 @@ use ::sprite_shared::*;
 
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
 
-
+//TODO hacer animation speed para walking proporcional a la velocidad real del being 
 
 #[allow(unused_parens, )]
 pub fn animate_sprite(
@@ -26,10 +25,10 @@ pub fn animate_sprite(
             Changed<MoveAnimActive>, Changed<Grounding>,
         )>,
     )>,
-    mut sprites_query: Query<(Entity, Option<&SpritesheetAnimation>, &SpriteConfigRef, 
-        Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
+    mut sprites_query: Query<(Entity, Option<&SpritesheetAnimation>, &EntityZeroRef, 
+        Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AcAnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
     
-    spriteconfig: Query<(&SpriteCfgAnimationsMap, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>,)>,
+    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (Or<(With<Disabled>, Without<Disabled>)>,)>,
     
     query: Query<(&StrId, &AnimationHandle, &AnimationSheet, ),()>,
     
@@ -88,11 +87,11 @@ pub fn animate_sprite(
                 if prev_animation.animation != anim_handle.0 {
                     
                     if let Some(mut anim_progresses) = animation_progresses {
-                        if let Some(stored_progress) = anim_progresses.0.get_mut(&prev_animation.animation) {
-                            *stored_progress = prev_animation.progress;
-                        }
+
+                        anim_progresses.0.insert(prev_animation.animation.clone(), prev_animation.progress);  
+                    
                         if let Some(stored_progress) = anim_progresses.0.get(&anim_handle.0) {
-                            spritesheet_animation.progress = *stored_progress;
+                                spritesheet_animation.progress = *stored_progress;
                         }
                     }
 

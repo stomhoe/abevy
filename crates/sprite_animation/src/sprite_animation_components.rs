@@ -17,7 +17,3 @@ pub struct AnimationComp;
 
 
 
-#[derive(Component, Debug, Default, Clone, Reflect)]
-pub struct AnimationProgresses(
-    pub HashMap<Handle<Animation>, AnimationProgress>,
-);

@@ -4,7 +4,7 @@ use faction::faction_components::{BelongsToFaction, Faction};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{netcode::{NetcodeServerTransport}, renet::{RenetServer}};
-use common::common_states::{AssetsLoadingState, GamePhase} ;
+use common::common_states::{AssetLoading, GamePhase} ;
 use multiplayer_shared::multiplayer_events::{SendUsername, HostServer, StartServerFailed};
 use player::player_components::{OfSelf, Player};
 
@@ -26,10 +26,10 @@ pub fn attempt_host(
 pub fn on_server_start_successful(
     mut cmd: Commands,
     mut game_phase: ResMut<NextState<GamePhase>>,
-    mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
+    mut assets_loading_state: ResMut<NextState<AssetLoading>>,
 ) {
     game_phase.set(GamePhase::Setup);
-    assets_loading_state.set(AssetsLoadingState::LoadingReplicatedCollections);
+    assets_loading_state.set(AssetLoading::LoadingReplicatedCollections);
 
     cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
     cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));

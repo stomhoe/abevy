@@ -20,7 +20,7 @@ pub fn menu_button_interaction(
     
     mut pregame_state: ResMut<NextState<PreGameState>>,
     mut game_phase: ResMut<NextState<GamePhase>>,
-    mut assets_loading_state: ResMut<NextState<AssetsLoadingState>>,
+    mut assets_loading_state: ResMut<NextState<AssetLoading>>,
 ) {
     for (interaction, menu_button_action) in &interaction_query {
         if *interaction == Interaction::Pressed {

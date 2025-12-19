@@ -4,7 +4,7 @@ use bevy::time::common_conditions::on_timer;
 use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_states::{AssetsLoadingState, };
+use common::common_states::{AssetLoading, };
 use game_common::{game_common::GameplaySystems, StatefulSessionSystems, };
 use ::sprite_shared::*;
 
@@ -34,11 +34,11 @@ pub fn plugin(app: &mut App) {
     ).in_set(AcSpriteSystems))
     .configure_sets(SPRITES_SCHEDULE, AcSpriteSystems.in_set(StatefulSessionSystems))
     
-    .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+    .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
         (init_sprite_cfgs, add_sprites_to_local_map).chain(),
     ).in_set(AcSpriteSystems)) 
 
-    .configure_sets(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+    .configure_sets(OnEnter(AssetLoading::InitReplicatedEntities), (
        AcSpriteSystems.before(GameplaySystems)
     ))
 
@@ -46,19 +46,17 @@ pub fn plugin(app: &mut App) {
     .register_type::<SpriteSerisHandles>()
     .register_type::<SpriteConfigSeri>()
     .register_type::<SpriteCfgEntityMap>()
-    .register_type::<SpriteConfigRef>()
-    .register_type::<SpriteCfgAnimationsMap>()
+    .register_type::<MappedAnimations>()
     .register_type::<SpriteConfigsHolder>()
     .register_type::<OffsetForChildren>()
     .register_type::<SpriteConfigNotFound>()
-    .register_type::<SpriteConfigUsages>()
     
 
     .replicate::<SpriteConfig>()
     .replicate::<SpriteConfigNotFound>()
-    .replicate::<SpriteCfgAnimationsMap>()
+    .replicate::<MappedAnimations>()
 
-    .replicate::<SpriteConfigRef>()
+    //.replicate::<SpriteConfigRef>()
     .replicate::<OffsetForChildren>()
 
     .replicate_filtered::<ChildOf, With<SpriteConfig>>()

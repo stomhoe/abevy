@@ -1,7 +1,7 @@
 
 
 
-use bevy::{prelude::*};
+use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_replicon::prelude::{SendMode, ToClients};
 use camera::camera_components::CameraTarget;
 use dimension_shared::DimensionRef;
@@ -11,6 +11,32 @@ use player::player_components::*;
 use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalInstance, Tile}};
 
 use crate::{being_components::*,};
+
+#[allow(unused_parens)]
+pub fn spawn_egui_being_holder(mut cmd: Commands,
+    query: Query<(&EguiBeingHolder, ), ()>, 
+) {
+    if let Ok((_holder, )) = query.single() {
+        return;
+    }
+
+
+    cmd.spawn((EguiBeingHolder::default(), ));
+}
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn add_beings_to_holder(mut cmd: Commands, 
+    holder: Single<(Entity, ), (With<EguiBeingHolder>)>, 
+
+    query: Query<(Entity, ),(Added<Being>, Or<(With<Disabled>, Without<Disabled>)>)>,
+) {
+    for (ent, ) in query.iter() {
+        cmd.entity(ent).try_insert(EguiBeingHolderReference(holder.0));
+    }
+
+}
 
 
 #[allow(unused_parens)]

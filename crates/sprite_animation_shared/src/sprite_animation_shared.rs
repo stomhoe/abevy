@@ -1,6 +1,6 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_spritesheet_animation::prelude::{Animation, Spritesheet};
+use bevy_spritesheet_animation::prelude::{Animation, AnimationProgress, Spritesheet};
 use common::{common_components::StrId, common_types::*};
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +23,12 @@ impl Default for PlayingSpeed {
         PlayingSpeed(1.0)
     }
 }
+
+#[derive(Component, Debug, Default, Clone, Reflect)]
+//va en cada sprite, no en las entities de las animations porque estas son compartidas por multiples sprites
+pub struct AcAnimationProgresses(
+    pub HashMap<Handle<Animation>, AnimationProgress>,
+);
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, Hash, PartialEq, Eq, Default)]
 pub struct MoveAnimActive(pub bool);

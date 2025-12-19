@@ -24,6 +24,7 @@ pub struct AnimationSerialization {
     //optional in case you want to reuse a predefined animation format
     pub anim_format_id: Option<String>, 
     pub rows_cols: Option<(usize, usize)>, //rows, cols
+    pub save_animation_progress: Option<bool>, //default: true
     //None: forward, Some(true): backward, Some(false): ping-pong
     pub dir: Option<bool>, 
     pub reps: Option<usize>, //0: infinite, n>0: n repetitions

@@ -7522,6 +7522,7 @@ dependencies = [
  "rand_seeder",
  "serde",
  "sprite",
+ "sprite_animation_shared",
  "sprite_shared",
  "strum 0.27.2",
  "strum_macros 0.27.2",

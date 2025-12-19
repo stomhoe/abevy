@@ -1,5 +1,7 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
+use being_shared::Grounding;
 use bevy_replicon::prelude::*;
+use common::common_states::AssetLoading;
 use game_common::{game_common::{GameplaySystems, StatefulSessionSystems}, };
 
 use crate::{being_resources::*, being_systems::*, being_components::*};
@@ -15,12 +17,21 @@ pub fn plugin(app: &mut App) {
             (host_add_activates_chunks, cross_portal).run_if(in_state(ClientState::Disconnected)),
             on_control_change,
         ).in_set(GameplaySystems),
+        add_beings_to_holder,
     ))
 
+    .add_systems(OnEnter(AssetLoading::LoadingReplicatedCollections), (
+        (
+           spawn_egui_being_holder
+        ),
+    ))
     
+    .register_type::<Being>()
     .register_type::<DirControlledBy>()
     .register_type::<Grounding>()
     .register_type::<Controls>()
+    .register_type::<EguiBeingHolderReference>()
+    .register_type::<EguiBeingHolder>()
 
     .register_type::<FollowerOf>()
     .register_type::<Followers>()
@@ -34,6 +45,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<IsHumanControlled>()
     .replicate::<Being>()
     .replicate::<DirControlledBy>()
+    .replicate::<EguiBeingHolderReference>()
     .replicate_once::<Grounding>()
     .replicate::<FollowerOf>()
 

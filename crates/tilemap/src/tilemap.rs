@@ -37,13 +37,13 @@ pub fn plugin(app: &mut App) {
         ChunkSystems).in_set(GameplaySystems).run_if(in_state(ReplicatedAssetsSession::KeepAlive))
     ))
     .configure_sets(
-        OnEnter(AssetsLoadingState::InitLocalEntities), (
+        OnEnter(AssetLoading::InitLocalEntities), (
             TilingSystems.before(TerrainGenSystems),
             DimensionSystems.before(TerrainGenSystems),
         )
     )
     .configure_sets(
-        OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+        OnEnter(AssetLoading::InitReplicatedEntities), (
             TilingSystems.before(TerrainGenSystems),
             DimensionSystems.before(TerrainGenSystems),
             TerrainGenSystems.before(GameplaySystems),

@@ -1,10 +1,9 @@
 
-use bevy::time::common_conditions::on_timer;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::common_states::AssetsLoadingState;
+use common::common_states::AssetLoading;
 use game_common::game_common::SimRunningSystems;
 use sprite::AcSpriteSystems;
 use ::sprite_animation_shared::*;
@@ -37,11 +36,11 @@ pub fn plugin(app: &mut App) {
 
     .configure_sets(Update, ( SpriteAnimationSystems.in_set(SimRunningSystems),))
     
-    .configure_sets(OnEnter(AssetsLoadingState::InitReplicatedEntities), (        
+    .configure_sets(OnEnter(AssetLoading::InitReplicatedEntities), (        
         SpriteAnimationSystems.before(AcSpriteSystems)
     ))
 
-    .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+    .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
         (init_animations, ).chain()
     ).in_set(SpriteAnimationSystems)) 
 

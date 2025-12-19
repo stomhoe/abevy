@@ -23,7 +23,7 @@ pub struct SpriteConfig;
 
 
 #[derive(Component, Default, Deserialize, Serialize, Debug, Reflect, MapEntities)]
-pub struct SpriteCfgAnimationsMap (
+pub struct MappedAnimations (
     #[entities]pub HashMap<AnimType, Entity>
 );
 
@@ -59,19 +59,11 @@ pub struct ExcludedFromBaseAnimPickingSystem;
 #[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
 pub enum FlipHorizIfDir{Left, Right, Any,}
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
-#[require(Transform, Visibility)]
-/*
-*/
-#[relationship(relationship_target = SpriteConfigUsages)]
-pub struct SpriteConfigRef(#[relationship] #[entities] pub Entity);
+// #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
+// #[require(Transform, Visibility)]
+// pub struct SpriteConfigRef(#[relationship] #[entities] pub Entity);
 
-#[derive(Component, Debug, Reflect)]
-/*
-*/
-#[relationship_target(relationship = SpriteConfigRef)]
-pub struct SpriteConfigUsages(Vec<Entity>);
-impl SpriteConfigUsages { pub fn entities(&self) -> &[Entity] { &self.0 } }
+
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]

@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
-use common::common_states::AssetsLoadingState;
+use common::common_states::AssetLoading;
 use dimension_shared::RootInDimensions;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
@@ -29,7 +29,7 @@ pub fn plugin(app: &mut App) {
             oplist_init_dim_refs,
         ))
         
-        .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+        .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
             (
                 init_noises,
                 add_noises_to_map,

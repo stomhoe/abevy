@@ -5,8 +5,8 @@ use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, Has
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{Categories, Directionable, EntityZero, MyZ};
-use sprite_animation_shared::{AnimationLibrary, sprite_animation_shared::AnimationState, };
+use game_common::game_common_components::{Categories, Directionable, EntityZero, EntityZeroRef, MyZ};
+use sprite_animation_shared::{AnimationLibrary, AcAnimationProgresses, sprite_animation_shared::AnimationState };
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 
 use crate::{sprite_components::*, sprite_resources::*, };
@@ -53,6 +53,7 @@ pub fn init_sprite_cfgs(
             },
             None => Visibility::Inherited,
         };
+
 
         let mut offset4children_cats = OffsetForChildren::default();
         if let Some(offset4children) = seri.offset4children.as_mut() {
@@ -104,7 +105,7 @@ pub fn init_sprite_cfgs(
         }
 
         if ! seri.anims.is_empty() {
-            let mut anims_map = SpriteCfgAnimationsMap::default();
+            let mut anims_map = MappedAnimations::default();
             for (anim_type, anim_id) in seri.anims {
                 let anim_type = AnimType::from_tuple(anim_type);
                 let anim_id = StrId::new_truncated(anim_id);
@@ -125,6 +126,7 @@ pub fn init_sprite_cfgs(
         else {
             error!(target: "sprite_init", "SpriteConfig '{}' was given an empty animations map", str_id);
         }
+
 
         if let Some(children_sprites) = seri.children_sprites.as_ref() {
             if !children_sprites.is_empty() {
@@ -199,7 +201,7 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     spritecfgs_query: Query<(&StrId, Option<&SpriteCfgsToBuild>), 
     (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
     held_sprites_query: Query<&HeldSprites, Or<(With<Disabled>, Without<Disabled>)>>,
-    sprite_config_ref_query: Query<&SpriteConfigRef, Or<(With<Disabled>, Without<Disabled>)>>,
+    sprite_config_ref_query: Query<&EntityZeroRef, Or<(With<Disabled>, Without<Disabled>)>>,
 ) {
     for (father_to_sprite, to_build, baseholder_ref,) in father_query.iter() {
 
@@ -225,7 +227,11 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
                 } 
                 let sprite = cmd.spawn((
                     str_id.clone(),
-                    SpriteConfigRef(spritecfg_ent),
+                    EntityZeroRef(spritecfg_ent),
+                    Visibility::default(),
+                    Transform::default(),
+                    AcAnimationProgresses::default(),
+
                     ChildOf(father_to_sprite),
                     Replicated,
                 )).id();
@@ -252,11 +258,11 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
 #[allow(unused_parens)]
 pub fn become_child_of_sprite_with_category(
     mut cmd: Commands,
-    new_sprites: Query<(Entity, &BaseHolderRef, &SpriteConfigRef), (Without<SpriteConfig>, Changed<SpriteConfigRef>,)>,
+    new_sprites: Query<(Entity, &BaseHolderRef, &EntityZeroRef), (Without<SpriteConfig>, Changed<EntityZeroRef>,)>,
     sprite_holder: Query<&HeldSprites>,
-    other_sprites: Query<(Entity, &SpriteConfigRef), (Without<SpriteConfig>, )>,
-    becomes: Query<(&BecomeChildOfSpriteWithCategory), (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
-    other_cats: Query<&Categories, (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    other_sprites: Query<(Entity, &EntityZeroRef), (Without<SpriteConfig>, )>,
+    becomes: Query<(&BecomeChildOfSpriteWithCategory), (Or<(With<Disabled>, Without<Disabled>)>)>,
+    other_cats: Query<&Categories, (Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     for (new_ent, &sprite_holder_ref, &new_sprite_cfg_ref) in new_sprites.iter(){
         if let Ok(becomes_child_of_sprite_with_cat) = becomes.get(new_sprite_cfg_ref.0) {unsafe {

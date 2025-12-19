@@ -14,7 +14,7 @@ pub fn reload_assets_ingame(
     keys: Res<ButtonInput<KeyCode>>,
     beings_query: Query<(Entity), (With<Being>,)>,
     mut chunks_query: Query<&mut ActivatingChunks>,
-    mut loading_state: ResMut<NextState<AssetsLoadingState>>,
+    mut loading_state: ResMut<NextState<AssetLoading>>,
     mut hot_loading: ResMut<NextState<TerrainHotReloading>>,
     mut regpos: ResMut<RegisteredPositions>,
     mut library: ResMut<AnimationLibrary>,
@@ -45,14 +45,14 @@ pub fn reload_assets_ingame(
         library.0.clear();
         regpos.0.clear();
     
-        loading_state.set(AssetsLoadingState::LocalInProcess);
+        loading_state.set(AssetLoading::LocalInProcess);
     }
 }
 #[allow(unused_parens, )]
 pub fn moveon_to_replicated(
-    mut loading_state: ResMut<NextState<AssetsLoadingState>>,
+    mut loading_state: ResMut<NextState<AssetLoading>>,
 ) {
-    loading_state.set(AssetsLoadingState::LoadingReplicatedCollections);
+    loading_state.set(AssetLoading::LoadingReplicatedCollections);
 }
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
-use common::common_states::AssetsLoadingState;
+use common::common_states::AssetLoading;
 use ::dimension_shared::*;
 use game_common::{GameplaySystems, StatefulSessionSystems};
 use crate::{
@@ -16,12 +16,12 @@ pub fn plugin(app: &mut App) {
         .add_plugins((
             RonAssetPlugin::<DimensionSeri>::new(&["dimension.ron"]),
         ))
-        .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+        .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
             (init_dimensions, add_dimensions_to_map).chain(),
         ))
         .add_systems(Update, (
             update_child_of,
-            (replace_multiple_string_refs_by_entity_refs, dim_replace_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected).and(in_state(AssetsLoadingState::InitReplicatedEntities))),
+            (replace_multiple_string_refs_by_entity_refs, dim_replace_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected).and(in_state(AssetLoading::InitReplicatedEntities))),
 
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 

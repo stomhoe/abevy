@@ -1,7 +1,7 @@
 use bevy::ecs::entity_disabling::Disabled;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
-use common::common_states::{AssetsLoadingState, };
+use common::common_states::{AssetLoading, };
 use bevy_ecs_tilemap::prelude::*;
 use game_common::{ColorSamplersInitSystems, game_common_components::{EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
 use sprite::AcSpriteSystems;
@@ -47,14 +47,14 @@ pub fn plugin(app: &mut App) {
         ().chain()
     ).in_set(TilingSystems))*/
     .add_systems(
-        OnEnter(AssetsLoadingState::InitReplicatedEntities), (
+        OnEnter(AssetLoading::InitReplicatedEntities), (
             (   
                 init_shaders, add_shaders_to_map, 
                 init_tiles, add_tiles_to_map, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, add_tile_weighted_samplers_to_map, init_tile_weighted_samplers_refs, )
             .chain().run_if(in_state(ClientState::Disconnected)),
     ).in_set(TilingSystems))
 
-    .configure_sets(OnEnter(AssetsLoadingState::InitReplicatedEntities), (ColorSamplersInitSystems.before(TilingSystems), AcSpriteSystems.before(TilingSystems)))
+    .configure_sets(OnEnter(AssetLoading::InitReplicatedEntities), (ColorSamplersInitSystems.before(TilingSystems), AcSpriteSystems.before(TilingSystems)))
 
     .add_plugins((
         MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),

@@ -13,7 +13,7 @@ pub use crate::common_id_components::*;
 pub type SessionScoped = DespawnOnExit::<AppState>;
 
 ///used for hot reloading assets
-pub type AssetScoped = DespawnOnExit::<AssetsLoadingState>;
+pub type AssetScoped = DespawnOnExit::<AssetLoading>;
 
 pub type TgenHotLoadingScoped = DespawnOnExit::<TerrainHotReloading>;
 

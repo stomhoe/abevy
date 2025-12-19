@@ -33,9 +33,9 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<WeightedColorsSeri>::new(&["wcolors.ron"]),
 
     ))
-    .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (reset_states))
+    .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (reset_states))
 
-    .add_systems(OnEnter(AssetsLoadingState::InitReplicatedEntities), (init_color_samplers, ).chain().in_set(ColorSamplersInitSystems))
+    .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (init_color_samplers, ).chain().in_set(ColorSamplersInitSystems))
 
     .add_systems(Update, (
         (z_sort_system, apply_pos_sampled_color).in_set(StatefulSessionSystems),
@@ -56,8 +56,8 @@ pub fn plugin(app: &mut App) {
             in_state(GamePhase::ActiveGame)
             .and(in_state(ReplicatedAssetsSession::KeepAlive))
             .and(
-                in_state(AssetsLoadingState::InitLocalEntities).and(not(in_state(ClientState::Disconnected)))
-                .or(in_state(AssetsLoadingState::InitReplicatedEntities).and(in_state(ClientState::Disconnected)))
+                in_state(AssetLoading::InitLocalEntities).and(not(in_state(ClientState::Disconnected)))
+                .or(in_state(AssetLoading::InitReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         ).in_set(StatefulSessionSystems),
         
@@ -70,8 +70,8 @@ pub fn plugin(app: &mut App) {
             in_state(GamePhase::ActiveGame)
             .and(in_state(ReplicatedAssetsSession::KeepAlive))
             .and(
-                in_state(AssetsLoadingState::InitLocalEntities).and(not(in_state(ClientState::Disconnected)))
-                .or(in_state(AssetsLoadingState::InitReplicatedEntities).and(in_state(ClientState::Disconnected)))
+                in_state(AssetLoading::InitLocalEntities).and(not(in_state(ClientState::Disconnected)))
+                .or(in_state(AssetLoading::InitReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         )
         .in_set(StatefulSessionSystems),

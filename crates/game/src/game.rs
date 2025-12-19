@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 use bevy_replicon::prelude::{ClientState, };
-use common::common_states::{AppState, AssetsLoadingState, GamePhase, TerrainHotReloading};
+use common::common_states::{AppState, AssetLoading, GamePhase, TerrainHotReloading};
 use game_common::game_common::{GameplaySystems, StatefulSessionSystems};
 
 use crate::{game_init_systems::*,};
@@ -12,7 +12,7 @@ pub fn plugin(app: &mut App) {
     app
 
     .add_systems(
-        OnEnter(AssetsLoadingState::InitReplicatedEntities),
+        OnEnter(AssetLoading::InitReplicatedEntities),
         (server_or_singleplayer_setup,)
         .run_if(
             in_state(ClientState::Disconnected)

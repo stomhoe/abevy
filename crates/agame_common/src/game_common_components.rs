@@ -7,6 +7,7 @@ use std::time::Duration;
 #[allow(unused_imports)] use bevy::prelude::*;
 use splines::{Interpolation, Key, Spline};
 use strum_macros::{AsRefStr, Display, };
+use std::hash::Hash;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
 pub struct MyZ(pub f32);
@@ -25,7 +26,7 @@ impl PartialEq for MyZ {
 }
 impl Eq for MyZ {}
 
-impl std::hash::Hash for MyZ {
+impl Hash for MyZ {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.to_bits().hash(state)
     }
@@ -159,7 +160,7 @@ pub struct EntityZeroRef(#[entities] pub Entity);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]
 pub struct YSortOrigin(pub f32);//TAL VEZ ES BUENA IDEA PONERLE ESTO OBLIGATORIAMENTE A TODOS LOS SPRITES, ASÍ TODOS AUMENTAN O DISMINUYEN CONJUNTAMENTE DE Z
 impl YSortOrigin {
-    pub const Y_SORT_DIV: f32 = 1e-7;
+    pub const Y_SORT_DIV: f32 = 1e-7;//-7
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]

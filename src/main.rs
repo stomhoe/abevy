@@ -24,7 +24,7 @@ concat!(
     "tilemap::terrain_gen::terrgen_systems=info,",
     "tilemap::tile::tile_init_systems=info,",
     "tilemap_systems=trace,",
-    "zlevel=warn,",
+    "zlevel=trace,",
     "movement=warn,",
     "sprite_init=trace,",
     "sprite_building=trace,",

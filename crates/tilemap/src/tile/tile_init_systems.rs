@@ -7,7 +7,7 @@ use common::common_components::*;
 use ::dimension_shared::*;
 use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, EntityZeroRef, MyZ, Persisted, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
 use bevy_ecs_tilemap::tiles::TilePos;
-use sprite::sprite_components::SpriteConfigRef;
+use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
@@ -155,8 +155,8 @@ pub fn init_tiles(
 #[allow(unused_parens)]
 pub fn init_tile_sprite(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
-    img_holder: Query<&ImagePathHolder, (Without<EntityZeroRef>, Or<(With<Disabled>, Without<Disabled>)>)>,
-    query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<SpriteConfigRef>, 
+    ezero_img_path: Query<&ImagePathHolder, (Without<EntityZeroRef>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<AcAnimationProgresses>, 
         Without<Sprite>, Without<TilePos>, Without<Children>, Without<TileShader>, Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     let mut to_insert = Vec::new();
@@ -169,7 +169,7 @@ pub fn init_tile_sprite(mut cmd: Commands,
             }));
         }
         else if let Some(ezero_ref) = ezero_ref {
-            let Ok(img_path_holder) = img_holder.get(ezero_ref.0) else {
+            let Ok(img_path_holder) = ezero_img_path.get(ezero_ref.0) else {
                 continue;
             };
             trace!(target: "init_tile_sprite","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
@@ -181,7 +181,7 @@ pub fn init_tile_sprite(mut cmd: Commands,
             error!(target: "init_tile_sprite","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
         }
     }
-    cmd.insert_batch(to_insert);;
+    cmd.insert_batch(to_insert);
 }
 
 
