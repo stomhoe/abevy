@@ -3,7 +3,7 @@ use bevy::{ecs::entity::{EntityHashSet, MapEntities}, platform::collections::Has
 use bevy_replicon::prelude::{ClientState, Replicated};
 
 use dimension_shared::DimensionStrIdRef;
-use game_common::game_common_components::{FacingDirection, MyZ, YSortOrigin};
+use game_common::game_common_components::{FacingDirection, };
 use modifier::modifier_components::AppliedModifiers;
 use movement::movement_components::InputMoveVector;
 use serde::{Deserialize, Serialize};
@@ -13,9 +13,9 @@ use sprite_animation_shared::MoveAnimActive;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities, Default)]
 
-#[require(InputMoveVector, MyZ(Being::Z_LEVEL), Replicated, MoveAnimActive,
+#[require(InputMoveVector, Replicated, MoveAnimActive,
 Grounding, Visibility, FacingDirection, AppliedModifiers, Transform,
-EntityPrefix::new_truncated("BEING"), DimensionStrIdRef::overworld_fallback(), YSortOrigin(10.)
+EntityPrefix::new_truncated("BEING"), DimensionStrIdRef::overworld_fallback(), 
 )]
 pub struct Being;
 impl Being {
@@ -40,7 +40,7 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 pub struct InfiniteMorale;
 
 #[derive(Component, Debug, Reflect, Default)]
-#[require(EntityPrefix::new_truncated("being holder"), DespawnOnExit::<ClientState>, Replicated)]
+#[require(EntityPrefix::new_truncated("World beings"), DespawnOnExit::<ClientState>, Replicated)]
 #[relationship_target(relationship = EguiBeingHolderReference)]
 pub struct EguiBeingHolder(Vec<Entity>);
 impl EguiBeingHolder { pub fn entities(&self) -> &[Entity] { &self.0 } }

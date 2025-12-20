@@ -1,19 +1,19 @@
-use bevy::{asset::ron::error, ecs::{entity::EntityHashSet, entity_disabling::Disabled, }, math::U16Vec2, platform::collections::{HashMap, HashSet}, prelude::*, render::sync_world::SyncToRenderWorld};
+use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::StrId, common_resources::ImageSizeMap, };
-use dimension_shared::DimensionRef;
-use game_common::game_common_components::{EntityZeroRef, MyZ, Persisted};
+use game_common::game_common_components::{EntityZeroRef, Persisted};
+use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*};
+use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*};
 
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
-pub struct MapKey {z_index: MyZ, oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>,}
+pub struct MapKey {z_index: AcZ, oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>,}
 impl MapKey {
-    pub fn new(z_index: MyZ, oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>) -> Self {
+    pub fn new(z_index: AcZ, oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>) -> Self {
         Self { z_index, oplist_size, tile_size, shader_ref }
     }
 }
@@ -47,7 +47,7 @@ pub fn process_tiles_pre(
     mut collected_tiles: ResMut<MassCollectedTiles>,
 
     oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
-        Option<&MyZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>), (With<Disabled>)>,
+        Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>), (With<Disabled>)>,
 
     mut chunk_query: Query<(&mut LayersMap), ()>,
     mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
@@ -223,7 +223,7 @@ fn func_process_tilemaps(
     tilemap_id: &mut TilemapId,
     oplist_size: OplistSize,
     position: TilePos,
-    tile_z_index: MyZ,
+    tile_z_index: AcZ,
     tile_handles: Option<&TileHidsHandles>,
     shader_ref: Option<&TileShaderRef>,
     image_size_map: &ImageSizeMap,
@@ -231,7 +231,7 @@ fn func_process_tilemaps(
     chunk: Entity,
     tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex)>,
     changed_structs: &mut HashSet<(Entity, MapKey)>,
-    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, MyZ, ChildOf))>,
+    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, AcZ, ChildOf))>,
     to_draw: &mut Vec<DrawTilemap>,
 ) {
 

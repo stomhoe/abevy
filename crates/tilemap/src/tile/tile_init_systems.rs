@@ -5,7 +5,7 @@ use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::*;
 use ::dimension_shared::*;
-use game_common::{color_sampler_resources::ColorWeightedSamplersMap, game_common_components::{EntityZero, EntityZeroRef, MyZ, Persisted, SearchingForSuitablePos, YSortOrigin}, game_common_components_samplers::{ColorSamplerRef, WeightedSamplerRef}};
+use ::game_common::{color_sampler_resources::*, game_common_components::*, game_common_components_samplers::*, *};
 use bevy_ecs_tilemap::tiles::TilePos;
 use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
@@ -47,7 +47,7 @@ pub fn init_tiles(
                 continue;
             }
         };
-        let my_z = MyZ(seri.z);
+        let my_z = AcZ(seri.z);
         let tile_enti = cmd.spawn((
             Tile, Replicated, str_id.clone(), Disabled,
             EntityPrefix::new_truncated("Tile"), 

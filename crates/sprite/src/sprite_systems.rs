@@ -1,10 +1,12 @@
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use game_common::game_common_components::{Categories, EntityZero, EntityZeroRef, FacingDirection};
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::sprite_components::*;
+
 
 #[allow(unused_parens)]
 pub fn apply_scales(
@@ -100,7 +102,7 @@ pub fn apply_offsets(
         offset, has_sprite_config_not_found
     ) in sprite_query.iter_mut() {
 
-        let mut total_offset = offset.cloned().unwrap_or_default();
+        let mut total_offset = Offset2D::default();
 
         if let Some(EntityZeroRef(sprite_config)) = sprite_config_ref.cloned() {
             let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _offset4children)) = sprite_config_query.get(sprite_config) 
@@ -152,6 +154,8 @@ pub fn apply_offsets(
                     }
                 }
             }
+        } else{
+            total_offset += offset.cloned().unwrap_or_default();
         }
         transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
     }
@@ -179,4 +183,64 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
         }
     }
 }
+#[allow(unused_parens)]
+pub fn add_sprites_to_holder(mut cmd: Commands, 
+    holder: Single<(Entity, ), (With<EguiSpriteHolder>)>, 
 
+    query: Query<(Entity, ),(With<Sprite>, Without<EguiSpriteHolderReference>, Without<Disabled>)>,
+    added_disabled: Query<(Entity, ),(With<Sprite>, With<EguiSpriteHolderReference>, Added<Disabled>)>,
+) {
+    for (ent, ) in query.iter() {
+        cmd.entity(ent).try_insert(EguiSpriteHolderReference(holder.0));
+    }
+    for (ent, ) in added_disabled.iter() {
+        cmd.entity(ent).try_remove::<EguiSpriteHolderReference>();
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn z_sort_system(
+    
+    mut query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>, 
+        AnyOf<(&AcZ, &EntityZeroRef)>, Has<TilemapAnchor>, &ChildOf, ), 
+        (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>,)>, 
+        Or<(With<Sprite>, With<TilemapAnchor>, )>)>,
+        
+    parent_sprite_query: Query<&Sprite, (Or<(With<Disabled>, Without<Disabled>)>,)>,
+    
+    ezero_query: Query<(&AcZ, Option<&YSortOrigin>), (Or<(With<Disabled>, Without<Disabled>)>,)>,
+
+    mut mw_draw_tmap: MessageWriter<DrawTilemap>,
+
+) {//TODO MEJORAR
+    let mut to_draw = Vec::new();
+
+    for (ent, mut transform, global_transform, ysort_origin, (maybe_z_index, ezero_ref), is_tilemap, child_of) in query.iter_mut() {
+
+        let (maybe_z_index, maybe_ysort_origin) = if let Some(ezero_ref) = ezero_ref
+            && let Ok((ezero_z_index, ezero_ysort_origin)) = ezero_query.get(ezero_ref.0)
+        {
+            (Some(ezero_z_index.clone()), ezero_ysort_origin.cloned())
+        } else if let Some(z_index) = maybe_z_index.cloned() {
+            (Some(z_index), ysort_origin.cloned())
+        } else {
+            (None, None)
+        };
+
+        let y_pos = global_transform.translation().y - maybe_ysort_origin.unwrap_or_default().0;
+
+        let use_y_sort = (maybe_ysort_origin.is_some() && parent_sprite_query.get(child_of.0).is_err()) as i32 as f32;
+
+        let target_z = maybe_z_index.unwrap_or_default().as_float() - use_y_sort * y_pos * YSortOrigin::Y_SORT_DIV;
+
+        if (transform.translation.z - target_z).abs() > f32::EPSILON {//NO TOCAR
+            transform.translation.z = target_z;
+            trace!(target: "zlevel", "Set entity {:?} to z {}", ent, target_z);
+            if is_tilemap {
+                to_draw.push(DrawTilemap(ent));
+            }
+        }
+    }
+
+    mw_draw_tmap.write_batch(to_draw);
+}

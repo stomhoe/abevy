@@ -38,7 +38,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (init_color_samplers, ).chain().in_set(ColorSamplersInitSystems))
 
     .add_systems(Update, (
-        (z_sort_system, apply_pos_sampled_color).in_set(StatefulSessionSystems),
+        (apply_pos_sampled_color).in_set(StatefulSessionSystems),
         (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
         add_colorsamplers_to_map,
@@ -86,8 +86,6 @@ pub fn plugin(app: &mut App) {
 
     .init_state::<GameSetupScreen>()
     .init_state::<SimulationState>()
-    .register_type::<MyZ>()
-    .register_type::<YSortOrigin>()
     .register_type::<Description>()
     .register_type::<FacingDirection>()
     .register_type::<WeightedSamplerRef>()
@@ -103,8 +101,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<Directionable>()
     .replicate::<EntityWeightedSampler>()
     .replicate::<ColorSampler>()
-    .replicate::<MyZ>()
-    .replicate::<YSortOrigin>()
     .replicate::<Description>()
     .replicate_once::<GlobalTransform>()
     .replicate::<Categories>()

@@ -5,15 +5,11 @@ use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, Has
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{Categories, Directionable, EntityZero, EntityZeroRef, MyZ};
+use game_common::game_common_components::*;
 use sprite_animation_shared::{AnimationLibrary, AcAnimationProgresses, sprite_animation_shared::AnimationState };
-use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
+use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::{sprite_components::*, sprite_resources::*, };
-
-
-
-
 
 #[allow(unused_parens)]
 pub fn init_sprite_cfgs(
@@ -22,11 +18,12 @@ pub fn init_sprite_cfgs(
     mut seris_handles: ResMut<SpriteSerisHandles>,
     mut assets: ResMut<Assets<SpriteConfigSeri>>,
     library: Res<AnimationLibrary>,
+    holder: Single<Entity, With<SpriteConfigsHolder>>,
 ) {
     if map.is_some(){ return; }
 
     cmd.init_resource::<SpriteCfgEntityMap>();
-    let holder = cmd.spawn((SpriteConfigsHolder, )).id();
+    cmd.spawn(EguiSpriteHolder::default());
 
 
     for handle in take(&mut seris_handles.handles) {
@@ -66,24 +63,43 @@ pub fn init_sprite_cfgs(
         let spritecfg_ent = cmd.spawn((
             str_id.clone(), 
             SpriteConfig,
-            Categories::new(seri.categories.unwrap_or_default()),
             visib,
             offset4children_cats,
             EntityZero,
-            //poner esto de vuelta por si se quieren reescalar las animations globalmente
-            /*
-            Scale2D::from(seri.scale.unwrap_or([1.0, 1.0])),
-            ScaleLookUpDown::from(seri.scale_up_down.unwrap_or([1.0, 1.0])),
-            ScaleSideways::from(seri.scale_sideways.unwrap_or([1.0, 1.0])),
-            Offset2D::from(seri.offset),
-            OffsetUpDown::from(seri.offset_up_down.unwrap_or_default()),
-            OffsetDown::from(seri.offset_down.unwrap_or_default()),
-            OffsetUp::from(seri.offset_up.unwrap_or_default()),
-            OffsetSideways::from(seri.offset_sideways.unwrap_or_default()),
-            */
-        )).insert((
-            ChildOf(holder),
+            ChildOf(holder.entity()),
         )).id();
+
+        if let Some(categories) = seri.categories.as_ref() {
+            if !categories.is_empty() {
+                cmd.entity(spritecfg_ent).insert(Categories::new(categories));
+            }
+        }
+
+        if let Some(scale_2d) = seri.scale {
+            cmd.entity(spritecfg_ent).insert(Scale2D::from(scale_2d));
+        }
+        if let Some(offset_2d) = seri.offset {
+            cmd.entity(spritecfg_ent).insert(Offset2D::from(offset_2d));
+        }
+        if let Some(scale_look_up_down) = seri.scale_up_down {
+            cmd.entity(spritecfg_ent).insert(ScaleLookUpDown::from(scale_look_up_down));
+        }
+        if let Some(scale_sideways) = seri.scale_sideways {
+            cmd.entity(spritecfg_ent).insert(ScaleSideways::from(scale_sideways));
+        }
+        if let Some(offset_up_down) = seri.offset_up_down {
+            cmd.entity(spritecfg_ent).insert(OffsetUpDown::from(offset_up_down));
+        }
+        if let Some(offset_down) = seri.offset_down {
+            cmd.entity(spritecfg_ent).insert(OffsetDown::from(offset_down));
+        }
+        if let Some(offset_up) = seri.offset_up {
+            cmd.entity(spritecfg_ent).insert(OffsetUp::from(offset_up));
+        }
+        if let Some(offset_sideways) = seri.offset_sideways {
+            cmd.entity(spritecfg_ent).insert(OffsetSideways::from(offset_sideways));
+        }
+
 
         if seri.name.trim().is_empty() {
             warn!(target: "sprite_init", "SpriteConfig name is empty for SpriteConfig '{}', using StrId as name", str_id);
@@ -94,9 +110,11 @@ pub fn init_sprite_cfgs(
         }
         //if seri.exclusive { comps_to_build.exclusive = Some(Exclusive); }
 
-        if seri.directionable == Some(true) { cmd.entity(spritecfg_ent).insert(Directionable); }
+        if seri.directionable == Some(true) 
+        { cmd.entity(spritecfg_ent).insert(Directionable); }
 
-        if seri.movement_based == Some(true) { cmd.entity(spritecfg_ent).insert(MovementBased); }
+        if seri.movement_based == Some(true) 
+        { cmd.entity(spritecfg_ent).insert(MovementBased); }
 
         if seri.grounding_based == Some(true) { cmd.entity(spritecfg_ent).insert(GroundingBased); }
         if let Some(parent_cat) = seri.parent_cat.as_ref().filter(|s| !s.trim().is_empty()) {
@@ -104,9 +122,9 @@ pub fn init_sprite_cfgs(
             cmd.entity(spritecfg_ent).insert(to_become_child);
         }
 
-        if ! seri.anims.is_empty() {
+        if ! seri.mapped_anims.is_empty() {
             let mut anims_map = MappedAnimations::default();
-            for (anim_type, anim_id) in seri.anims {
+            for (anim_type, anim_id) in seri.mapped_anims {
                 let anim_type = AnimType::from_tuple(anim_type);
                 let anim_id = StrId::new_truncated(anim_id);
                 let Some(&anim_ent) = library.0.get(&anim_id) else {
@@ -274,13 +292,12 @@ pub fn become_child_of_sprite_with_category(
                 let other_cats = match other_cats.get(o_spritecfg_ref.0) {
                     Ok(cats) => cats,
                     Err(e) => {
-                        error!(target: "sprite_building", "Entity {:?} does not have Categories: {}", o_spritecfg_ref.0, e);
                         break;
                     },
                 };
                 if other_cats.0.contains(&becomes_child_of_sprite_with_cat.0) {
                     debug!(target: "sprite_building", "Adding ChildOfCategory to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
-                    cmd.entity(new_ent).insert(ChildOf(other_ent));
+                    cmd.entity(new_ent).try_insert(ChildOf(other_ent));
                     break;
                 }
             }

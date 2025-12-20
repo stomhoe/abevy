@@ -22,7 +22,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(OnEnter(AssetLoading::LoadingReplicatedCollections), (
         (
-           spawn_egui_being_holder
+           spawn_egui_being_holder.run_if(in_state(ClientState::Disconnected)),
         ),
     ))
     

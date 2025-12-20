@@ -27,11 +27,13 @@ pub fn plugin(app: &mut App) {
     .add_systems(SPRITES_SCHEDULE, (
         disable_children_sprites_of_disabled,
         (apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(10))),
-
+        z_sort_system,
         // server only
         (become_child_of_sprite_with_category, replace_string_ids_by_entities, 
             add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected))
+            
     ).in_set(AcSpriteSystems))
+    .add_systems(Update, (add_sprites_to_holder,)) 
     .configure_sets(SPRITES_SCHEDULE, AcSpriteSystems.in_set(StatefulSessionSystems))
     
     .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
@@ -41,8 +43,9 @@ pub fn plugin(app: &mut App) {
     .configure_sets(OnEnter(AssetLoading::InitReplicatedEntities), (
        AcSpriteSystems.before(GameplaySystems)
     ))
-
     
+    
+    .register_type::<AcZ>()
     .register_type::<SpriteSerisHandles>()
     .register_type::<SpriteConfigSeri>()
     .register_type::<SpriteCfgEntityMap>()
@@ -50,11 +53,19 @@ pub fn plugin(app: &mut App) {
     .register_type::<SpriteConfigsHolder>()
     .register_type::<OffsetForChildren>()
     .register_type::<SpriteConfigNotFound>()
+    .register_type::<EguiSpriteHolderReference>()
+    .register_type::<WorldSprites>()
+    .register_type::<EguiSpriteHolder>()
+    .replicate::<AcZ>()
     
 
     .replicate::<SpriteConfig>()
     .replicate::<SpriteConfigNotFound>()
     .replicate::<MappedAnimations>()
+    .replicate::<EguiSpriteHolderReference>()
+    .replicate::<EguiSpriteHolder>()
+    .replicate::<YSortOrigin>()
+
 
     //.replicate::<SpriteConfigRef>()
     .replicate::<OffsetForChildren>()

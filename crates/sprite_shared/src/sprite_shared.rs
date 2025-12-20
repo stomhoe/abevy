@@ -3,6 +3,7 @@ use bevy::platform::collections::HashMap;
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_types::*};
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
 
 use crate::sprite_scale_offset::{self, *};
 
@@ -76,4 +77,32 @@ impl SpriteConfigStrIds {
         Self(ids.into_iter().map(|s| StrId::new_truncated(s)).collect())
     }
     pub fn ids(&self) -> &Vec<StrId> { &self.0 }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]
+pub struct YSortOrigin(pub f32);//TAL VEZ ES BUENA IDEA PONERLE ESTO OBLIGATORIAMENTE A TODOS LOS SPRITES, ASÍ TODOS AUMENTAN O DISMINUYEN CONJUNTAMENTE DE Z
+impl YSortOrigin {
+    pub const Y_SORT_DIV: f32 = 1e-7;//-7
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+pub struct AcZ(pub f32);
+
+impl AcZ {
+    pub fn new(z: f32) -> Self { Self(z) }
+    pub fn value(&self) -> f32 { self.0 }
+    pub fn as_float(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
+    pub const Z_MULTIPLIER: f32 = 1e-5;
+}
+
+impl PartialEq for AcZ {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_bits() == other.0.to_bits()
+    }
+}
+impl Eq for AcZ {}
+impl Hash for AcZ {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_bits().hash(state)
+    }
 }

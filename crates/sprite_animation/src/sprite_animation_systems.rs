@@ -30,7 +30,7 @@ pub fn animate_sprite(
     
     spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (Or<(With<Disabled>, Without<Disabled>)>,)>,
     
-    query: Query<(&StrId, &AnimationHandle, &AnimationSheet, ),()>,
+    animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>),()>,
     
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     images: Res<Assets<Image>>, 
@@ -61,7 +61,7 @@ pub fn animate_sprite(
                 continue;
             };
 
-            let Ok((_, anim_handle, anim_sheet, )) = query.get(*anim_ent) else {
+            let Ok((_, anim_handle, anim_sheet, z, y_sort )) = animation_query.get(*anim_ent) else {
                 error!(target: "sprite_animation", "Failed to get animation data for animation entity {:?}", anim_ent);
                 continue;
             };
@@ -83,19 +83,18 @@ pub fn animate_sprite(
                 speed_factor: playing_speed.cloned().unwrap_or_default().0,
             };
 
+            let mut insert_needed = false;
+
             if let Some(prev_animation) = prev_animation {
                 if prev_animation.animation != anim_handle.0 {
-                    
                     if let Some(mut anim_progresses) = animation_progresses {
+                        anim_progresses.0.insert(prev_animation.animation.clone(), prev_animation.progress);
 
-                        anim_progresses.0.insert(prev_animation.animation.clone(), prev_animation.progress);  
-                    
                         if let Some(stored_progress) = anim_progresses.0.get(&anim_handle.0) {
-                                spritesheet_animation.progress = *stored_progress;
+                            spritesheet_animation.progress = *stored_progress;
                         }
                     }
-
-                    cmd.entity(ent).try_insert((sprite, spritesheet_animation,));
+                    insert_needed = true;
                 }
             } else {
                 if let Some(anim_progresses) = animation_progresses {
@@ -103,8 +102,13 @@ pub fn animate_sprite(
                         spritesheet_animation.progress = *stored_progress;
                     }
                 }
-                cmd.entity(ent).try_insert((sprite, spritesheet_animation, ));
+                insert_needed = true;
             }
+
+            if insert_needed {
+                cmd.entity(ent).try_insert((sprite, spritesheet_animation, z.clone(), y_sort.cloned().unwrap_or_default()));
+ 
+            }  
         }
     }
 }

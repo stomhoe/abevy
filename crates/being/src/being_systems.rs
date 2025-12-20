@@ -30,7 +30,7 @@ pub fn spawn_egui_being_holder(mut cmd: Commands,
 pub fn add_beings_to_holder(mut cmd: Commands, 
     holder: Single<(Entity, ), (With<EguiBeingHolder>)>, 
 
-    query: Query<(Entity, ),(Added<Being>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    query: Query<(Entity, ),(With<Being>, Without<EguiBeingHolderReference>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     for (ent, ) in query.iter() {
         cmd.entity(ent).try_insert(EguiBeingHolderReference(holder.0));

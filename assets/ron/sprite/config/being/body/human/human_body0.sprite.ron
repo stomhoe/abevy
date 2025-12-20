@@ -1,7 +1,7 @@
 SpriteConfigSeri(
     id: "humanbo0",
     name: "Human Body 0",
-    anims: {
+    mapped_anims: {
         ("south", "idle", "g", "") : "body_south_idle",
         ("west", "idle", "g", "") : "body_west_idle",
         ("east", "idle", "g", "") : "body_east_idle",

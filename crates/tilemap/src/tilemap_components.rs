@@ -3,14 +3,12 @@ use bevy::{math::U16Vec2, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::{FrustumCulling, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_states::*};
-use game_common::game_common_components::YSortOrigin;
 use ::tilemap_shared::*;
 
 
 #[derive(Bundle, Debug, Default)]
 pub struct TilemapConfig {
     entity_prefix: EntityPrefix,
-    y_sort: YSortOrigin,
     grid_size: TilemapGridSize,
     map_type: TilemapType,
     map_size: TilemapSize,

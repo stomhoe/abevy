@@ -3,10 +3,10 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 use common::common_components::{ImagePathHolder, StrId};
-use game_common::game_common_components::{MyZ, YSortOrigin};
 use sprite::{sprite_components::*, };
 use ::sprite_animation_shared::*;
-use sprite_shared::sprite_scale_offset::*;
+use ::sprite_shared::*;
+use ::sprite_shared::sprite_scale_offset::*;
 
 use crate::{sprite_animation_components::*, sprite_animation_resources::*};
 
@@ -26,7 +26,9 @@ pub fn init_animations(
         return;
     }
 
-    let holder = cmd.spawn((AnimationsHolder, )).id();
+    let holder = cmd.spawn((SpriteConfigsHolder, )).id();
+
+    let holder = cmd.spawn((AnimationsHolder, ChildOf(holder))).id();
 
 
     for handle in take(&mut anim_handles.handles) {
@@ -43,11 +45,25 @@ pub fn init_animations(
 
             let y_sort = seri.y_sort.clone();
 
-            let ent = cmd.spawn((AnimationComp, str_id.clone(), seri, ChildOf(holder), )).id();
+            let ent = cmd.spawn((AnimationComp, str_id.clone(), ChildOf(holder), AcZ(seri.z))).id();
 
             if let Some(y_sort) = y_sort {
                 cmd.entity(ent).insert(YSortOrigin(y_sort));
             }
+            if let Some(offset) = seri.offset {
+                cmd.entity(ent).insert(Offset2D::from(offset));
+            }
+            if let Some(scale) = seri.scale {
+                cmd.entity(ent).insert(Scale2D::from(scale));
+            }
+
+            if let Some(color) = seri.color {
+                let (red, green, blue, alpha) = color.into();
+                cmd.entity(ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
+            }
+
+            cmd.entity(ent).insert(seri);
+
 
             debug!(target: "sprite_animation_init", "Inserting animation '{}' into library.", str_id);
             library.0.insert(str_id, ent);//NO SÉ SI MOVER A OTRO LUGAR
@@ -163,18 +179,6 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
         let handle: Handle<Animation> = animation_assets.add(animation.build());
         cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet), ));
 
-        if let Some(offset) = seri.offset {
-            cmd.entity(entity).insert(Offset2D::from(offset));
-        }
-        if let Some(scale) = seri.scale {
-            cmd.entity(entity).insert(Scale2D::from(scale));
-        }
-
-        if let Some(color) = seri.color {
-            let (red, green, blue, alpha) = color.into();
-            cmd.entity(entity).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
-        }
-
-        cmd.entity(entity).insert(MyZ(seri.z));
+       
     }
 }

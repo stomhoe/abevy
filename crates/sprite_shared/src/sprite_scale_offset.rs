@@ -68,6 +68,7 @@ macro_rules! define_scale2d_type {
         }
         impl From<Vec2> for $name { fn from(v: Vec2) -> Self { Self::new(v) } }
         impl From<[f32; 2]> for $name { fn from(v: [f32; 2]) -> Self { Self::new(Vec2::from(v)) } }
+        impl From<(f32, f32)> for $name { fn from(v: (f32, f32)) -> Self { Self::new(Vec2::new(v.0, v.1)) } }
         impl std::ops::Mul for $name {
             type Output = Self;
             fn mul(self, rhs: Self) -> Self { Self(self.0 * rhs.0) }
@@ -147,4 +148,27 @@ impl_cross_sum!(OffsetDown, OffsetSideways);
 impl_cross_sum!(OffsetUp, OffsetSideways);
 impl_cross_sum!(OffsetAsChild, Offset2D);
 
+#[derive(Bundle, Debug, Default, )]
+pub struct AllOffsets(
+    pub Offset2D,
+    pub OffsetUpDown,
+    pub OffsetDown,
+    pub OffsetUp,
+    pub OffsetSideways,
 
+);
+
+#[derive(Bundle, Debug, Default, )]
+pub struct AllScales(
+    pub Scale2D,
+    pub ScaleLookUp,
+    pub ScaleLookDown,
+    pub ScaleLookUpDown,
+    pub ScaleSideways,
+);
+
+#[derive(Bundle, Debug, Default, )]
+pub struct AllScaleOffsets(
+    pub AllOffsets,
+    pub AllScales,
+);

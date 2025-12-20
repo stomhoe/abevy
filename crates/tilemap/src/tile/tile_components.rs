@@ -6,7 +6,8 @@ pub use bevy_ecs_tilemap::tiles::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{Description, EntityZero, EntityZeroRef, MyZ, YSortOrigin};
+use game_common::game_common_components::*;
+use ::sprite_shared::*;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
@@ -19,7 +20,7 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{Studie
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
-    TileShaderRef, MyZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
+    TileShaderRef, AcZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
     //children entities don't get cloned
     Children, EntityZero
 );//Disabled no porque se elimina posteriormente
@@ -37,7 +38,6 @@ pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
     // for non-sprite tiles
-    pub const MAX_Z: MyZ = MyZ(1_000.);
 }
 
 #[derive(Component, Debug, Copy, Clone, Hash, Reflect)]

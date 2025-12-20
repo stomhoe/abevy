@@ -1,12 +1,9 @@
 use being_shared::Grounding;
 use bevy::ecs::entity::MapEntities;
-use bevy::math::{Vec2, UVec2};
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::Replicated;
-use bevy_spritesheet_animation::prelude::{Animation, Spritesheet};
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use common::common_types::*;
 use game_common::game_common_components::{FacingDirection};
 use serde::{Deserialize, Serialize};
 use sprite_animation_shared::{AnimationState, MoveAnimActive};
@@ -16,6 +13,22 @@ use sprite_shared::sprite_scale_offset::Offset2D;
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Reflect)]
 #[require(Replicated, AssetScoped, EntityPrefix::new_truncated("SpriteConfigs"), )]
 pub struct SpriteConfigsHolder;
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+#[relationship(relationship_target = WorldSprites)]
+pub struct EguiSpriteHolderReference(#[relationship]#[entities]pub Entity);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(EntityPrefix::new_truncated("World sprites"), DespawnOnExit::<ClientState>, Replicated)]
+#[require(WorldSprites)]
+pub struct EguiSpriteHolder;
+
+#[derive(Component, Debug, Reflect, Default)]
+#[relationship_target(relationship = EguiSpriteHolderReference)]
+pub struct WorldSprites(Vec<Entity>);
+impl WorldSprites { pub fn entities(&self) -> &[Entity] { &self.0 } }
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(EntityPrefix::new_truncated("SpriteConfig"), AssetScoped, Replicated)]
@@ -58,13 +71,6 @@ pub struct ExcludedFromBaseAnimPickingSystem;
 
 #[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
 pub enum FlipHorizIfDir{Left, Right, Any,}
-
-// #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
-// #[require(Transform, Visibility)]
-// pub struct SpriteConfigRef(#[relationship] #[entities] pub Entity);
-
-
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct ColorHolder(pub Color);

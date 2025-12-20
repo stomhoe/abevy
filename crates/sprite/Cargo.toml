@@ -13,6 +13,7 @@ sprite_shared = { path = "../sprite_shared" }
 
 bevy_spritesheet_animation = { workspace = true }
 
+bevy_ecs_tilemap = { workspace = true }
 bevy = { workspace = true }
 debug_unwraps = { workspace = true }
 serde = { workspace = true }
