@@ -9,6 +9,6 @@
             partial: Some((0, 0)),
         )
     ],
-    z: 1000,
+    z: 1000.00,
     y_sort: Some(0),
 )

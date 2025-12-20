@@ -92,6 +92,7 @@ pub struct TileSerialization {
     pub name: String,
     pub z: f32,
     pub img_paths: Vec<(String, String)>,
+    pub y_sort: Option<f32>,
     pub cats: Option<HashSet<String>>,
     /// persisted only when state gets altered from starting state
     pub persisted: Option<bool>,
@@ -105,7 +106,6 @@ pub struct TileSerialization {
     pub min_distances: Option<HashMap<String, u32>>,
     pub portal: Option<PortalSeri>,
     pub offset: Option<(f32, f32)>,
-    pub y_sort: Option<f32>,
 
 }
 

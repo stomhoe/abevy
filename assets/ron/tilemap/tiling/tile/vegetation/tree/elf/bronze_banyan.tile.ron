@@ -2,6 +2,7 @@
     id: "bronze_banyan",
     name: "Bronze banyan",
     z: 1000,
+    y_sort: Some(0),
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/bronze_banyan.png")
     ],

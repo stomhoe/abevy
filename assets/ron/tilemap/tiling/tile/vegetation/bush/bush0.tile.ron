@@ -2,11 +2,11 @@
     id: "temp_bush0",
     name: "Temperate bush 0",
     z: 1000,
+    y_sort: Some(10),
     img_paths: [
         ("", "texture/world/vegetation/bush/bush0.png"),
     ],
     sprite: Some(true),
     randflipx: Some(true),
     color_map: Some("nase"),
-    y_sort: Some(10.0),
 )

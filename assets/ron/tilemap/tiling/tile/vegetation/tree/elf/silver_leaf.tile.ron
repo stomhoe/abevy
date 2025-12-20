@@ -2,6 +2,7 @@
     id: "silver_leaf",
     name: "Silver leaf",
     z: 1000,
+    y_sort: Some(0),
     img_paths: [
         ("", "texture/world/vegetation/tree/elf/silver_leaf.png"),
     ],

@@ -4,6 +4,7 @@
     cats: Some(["portal"]),
     name: "Cave portal",
     z: 1000,
+    y_sort: Some(0),
     img_paths: [
         ("", "texture/world/portal/cave.png"),
     ],

@@ -2,6 +2,7 @@
     id: "golden_sprig",
     name: "Golden Sprig",
     z: 1000,
+    y_sort: Some(0),
     img_paths: [
         ("", "texture/world/vegetation/tree/golden_sprig.png"),
     ],
