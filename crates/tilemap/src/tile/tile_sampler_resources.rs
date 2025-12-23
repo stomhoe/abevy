@@ -5,7 +5,7 @@ use bevy::math::f32;
 use common::common_types::HashIdToEntityMap;
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Message, Reflect)]
+#[derive(Resource, Debug, Default, Clone, Reflect)]
 #[reflect(Resource, Default)]
 pub struct TileWeightedSamplersMap(pub HashIdToEntityMap);
 

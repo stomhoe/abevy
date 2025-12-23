@@ -3,12 +3,11 @@
 
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
-use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 
-use common::common_components::{DisplayName, EntityPrefix, StrId};
+use common::common_components::StrId;
 use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
-use crate::{chunking_components::*, terrain_gen::{terrgen_components::FnlNoiseComp, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
+use crate::{terrain_gen::{terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
 
 use std::mem::take;
@@ -24,10 +23,12 @@ pub fn init_oplists_from_assets(
     oplist_map: Option<Res<OpListEntityMap>>,
 ) {
     if oplist_map.is_some() { return ; }
-    cmd.init_resource::<OpListEntityMap>();
-
+    let mut oplist_map = OpListEntityMap::default();
 
     let egui_oplist_holder_ent = cmd.spawn(EguiOplistHolder).id();
+
+    let mut oplist_comps = Vec::new();
+    let mut oplist_multiple_dimension_refs = Vec::new();
 
     for handle in seris_handles.handles.iter() {//ESTE VA CON ITER
         let Some(seri) = assets.get_mut(handle) else {
@@ -64,7 +65,6 @@ pub fn init_oplists_from_assets(
                 error!("Output index {} out of bounds for OperationList", out);
                 continue;
             }
-
             let mut operands = Vec::new();
             for operand in str_operands {
                 let operand = operand.trim();    
@@ -180,29 +180,22 @@ pub fn init_oplists_from_assets(
             let bifurcation = Bifurcation { oplist: None, tiles };
             oplist.bifurcations.push(bifurcation);
         }
-        let spawned_oplist = cmd.spawn(( str_id, oplist, size, ChildOf(egui_oplist_holder_ent))).id();
-        if seri.is_root() { cmd.entity(spawned_oplist).insert(MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))); }
+        if let Ok(ent) = oplist_map.0.get(&str_id) {
+            error!("{} already in OpListEntityMap : {}", str_id, ent);
+            continue;
+        }
+        let spawned_oplist = cmd.spawn_empty().id();
+        oplist_map.0.force_insert(&str_id, spawned_oplist);
+        oplist_comps.push((spawned_oplist, ( str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
+        if seri.is_root() { 
+            oplist_multiple_dimension_refs.push((   spawned_oplist, MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))));
+        }
 
     } 
-    
+    cmd.insert_batch(oplist_comps);
+    cmd.insert_batch(oplist_multiple_dimension_refs);
+    cmd.insert_resource(oplist_map);
 } 
-
-#[allow(unused_parens)]
-pub fn add_oplists_to_map(
-    mut cmd: Commands, 
-    oplist_map: Option<ResMut<OpListEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId, ),(Added<StrId>, With<OperationList>)>,) 
-{
-    if let Some(mut oplist_map) = oplist_map {
-        for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = oplist_map.0.insert(str_id, ent, ) {
-
-                error!("{} {} already in OpListEntityMap : {}", prefix, str_id, err);
-                cmd.entity(ent).try_despawn();
-            }
-        }
-    }
-}
 
 #[allow(unused_parens)]
 pub fn init_oplists_bifurcations(
@@ -254,8 +247,6 @@ pub fn cycle_detection(
         .iter()
         .filter_map(|(ent, _, is_root)| if is_root { Some(ent) } else { None })
         .collect();
-
-    // Helper closure for DFS cycle detection
     fn dfs(
         query: &Query<(Entity, &OperationList, Has<MultipleDimensionStringRefs>)>,
         current: Entity,
@@ -275,7 +266,6 @@ pub fn cycle_detection(
             stack.pop();
             return false;
         };
-
         for bifur in &oplist.bifurcations {
             if let Some(child) = bifur.oplist {
                 if dfs(query, child, visited, stack) {

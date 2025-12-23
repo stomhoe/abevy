@@ -16,7 +16,7 @@ use std::hash::Hash;
 pub struct Description(pub String);
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct SearchingForSuitablePos{ pub studied_op_ent: Entity, }
+pub struct SearchingForSuitablePos{ pub filtered_op_ent: Entity, }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;

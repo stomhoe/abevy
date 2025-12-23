@@ -1,3 +1,4 @@
+use bevy::ecs::entity::MapEntities;
 use bevy::{ecs::entity::EntityHashMap, };
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
@@ -15,7 +16,7 @@ use ::tilemap_shared::*;
 
 use crate::tile::tile_resources::TileImagePaths;
 use crate::tile::tile_shader_components::*;
-use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{StudiedOp},}, tile::tile_materials::* };
+use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilter},}, tile::tile_materials::* };
 
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
@@ -37,7 +38,6 @@ pub struct KeepDisabled;
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
-    // for non-sprite tiles
 }
 
 #[derive(Component, Debug, Copy, Clone, Hash, Reflect)]
@@ -56,7 +56,11 @@ pub struct TileInstancesHolder;
 #[require(Replicated, AssetScoped, EntityPrefix::new_truncated("PortalsZero"), Name, Transform, Visibility, )]
 pub struct PortalsZeroEguiHolder;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct DoNotOverride;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct DeletePrevTilesInSamePos;
 
 pub type TileStrId = StrId20B;
 
@@ -65,17 +69,17 @@ pub type TileStrId = StrId20B;
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
 pub struct PortalRecipe { #[entities]pub dest_dimension: Entity,#[entities]pub root_oplist: Entity, #[entities] pub oe_portal_tile: Entity, 
-    #[entities] pub checked_oplist: Entity, pub op_i: i8, pub lim_below: f32, pub lim_above: f32, pub one_way: bool, }
+    #[entities] pub checked_oplist: Entity, pub op_i: i16, pub lim_below: f32, pub lim_above: f32, pub one_way: bool, }
 impl PortalRecipe {
-    pub fn to_studied_op(&self, start_pos: GlobalTilePos) -> StudiedOp {
-        StudiedOp {
+    pub fn to_op_filter(&self, start_pos: GlobalTilePos) -> OpFilter {
+        OpFilter {
             root_oplist: self.root_oplist,
             checked_oplist: self.checked_oplist,
             op_i: self.op_i,
-            lim_below: self.lim_below,
-            lim_above: self.lim_above,
+            min_val: self.lim_below,
+            max_val: self.lim_above,
             search_start_pos: start_pos,
         }
     }
@@ -89,15 +93,15 @@ impl Default for PortalRecipe {
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-pub struct PortalInstance { #[entities]pub dest_portal: Entity, }
-impl PortalInstance {
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
+pub struct PortalConnection { #[entities]pub dest_portal: Entity, }
+impl PortalConnection {
     pub fn new(dest_portal: Entity) -> Self {
         Self { dest_portal }
     }
 }
 
-pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSettings) -> f32 {
+pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AcGlobalGenSettings) -> f32 {
     let mut hasher = DefaultHasher::new();
     initial_pos.hash(&mut hasher);
     settings.seed.hash(&mut hasher);
@@ -105,7 +109,7 @@ pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AaGlobalGenSetting
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct FlipAlongX;
+pub struct FlipHorizontallyBasedOnHash;
 
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug)]

@@ -47,7 +47,7 @@ pub fn process_tiles_pre(
     mut collected_tiles: ResMut<MassCollectedTiles>,
 
     oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
-        Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>), (With<Disabled>)>,
+        Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>, Has<DeletePrevTilesInSamePos>), (With<Disabled>)>,
 
     mut chunk_query: Query<(&mut LayersMap), ()>,
     mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
@@ -90,7 +90,7 @@ pub fn process_tiles_pre(
             ezero: ezero_ref, global_pos: gpos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos,
         }) = ev; 
 
-        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color))
+        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, delete_prev_tiles))
         = oritile_query.get(ezero_ref.0) else{
             error!("Original tile entity {} is despawned", ezero_ref.0);
             continue;
@@ -130,7 +130,7 @@ pub fn process_tiles_pre(
         };
         cmd.entity(tile_ent).try_remove::<(Disabled, )>();
 
-        func_process_tilemaps(
+        func_process_tile_into_tilemaps(
             &mut cmd,
             tile_ent,
             &mut bundle.visible,
@@ -160,6 +160,8 @@ pub fn process_tiles_pre(
 
     cmd.try_insert_batch(tilemap_bundles);
 
+    let mut to_insert = Vec::with_capacity(changed_structs.len());
+
     for (chunk_ent, mapkey) in changed_structs.iter() {
         trace!("Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
 
@@ -173,22 +175,19 @@ pub fn process_tiles_pre(
         };
         let tmap_ent = mapstruct.tmap_ent;
 
-        let (texture, storage, tmap_hash_id_map) = (
+        let (texture_vec, storage, tmap_hash_id_map) = (
             mapstruct.take_texture(),
             mapstruct.take_storage(),
             mapstruct.take_hash_id_map(),
         );
+        to_insert.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
 
         let shader = if let Some(shader_ref) = mapkey.shader_ref {
             shader_query.get(shader_ref.0).ok().map(|(shader,)| shader.clone())
         } else {
             None
         };
-        cmd.entity(tmap_ent).insert((//TODO: usar try_insert_bundle
-            tmap_hash_id_map,
-            storage,
-            texture,
-        ));
+
         
         if let Some(shader) = shader {
             trace!("Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
@@ -209,13 +208,14 @@ pub fn process_tiles_pre(
             .try_insert(MaterialTilemapHandle::<StandardTilemapMaterial>::default());
         }
     }
+    cmd.try_insert_batch(to_insert);
     event_writer.write_batch(tmaps_to_draw);
 
     Ok(())
 }}
 
 #[allow(clippy::too_many_arguments)]
-fn func_process_tilemaps(
+fn func_process_tile_into_tilemaps(
     cmd: &mut Commands,
     tile_ent: Entity,
     tile_visible: &mut TileVisible,
@@ -302,7 +302,7 @@ fn func_process_tilemaps(
         } else {
             Vec::new()
         };
-        let tmap_ent = cmd.spawn(ChildOf(chunk)).id();
+        let tmap_ent = cmd.spawn_empty().id();
 
         tilemap_bundles.push(
             (tmap_ent,

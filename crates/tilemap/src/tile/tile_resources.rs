@@ -3,16 +3,8 @@ use bevy::{ecs::entity::EntityHashSet, math::f32, platform::collections::{HashMa
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-
-use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
-
-
 use common::{common_components::Category, common_types::HashIdToEntityMap};
 use serde::{Deserialize, Serialize};
-
-#[derive(Resource, Debug, Default, Reflect )]
-#[reflect(Resource, Default)]
-pub struct TileShaderEntityMap(pub HashIdToEntityMap);
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
 #[reflect(Resource, Default)]
@@ -54,28 +46,20 @@ impl TileImagePaths {
         self.0.is_empty()
     }
 }
-
-// Implement IntoIterator for &TileImagePaths
 impl<'a> IntoIterator for &'a TileImagePaths {
     type Item = &'a (String, String);
     type IntoIter = std::slice::Iter<'a, (String, String)>;
-
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
     }
 }
-
-// Implement IntoIterator for &mut TileImagePaths
 impl<'a> IntoIterator for &'a mut TileImagePaths {
     type Item = &'a mut (String, String);
     type IntoIter = std::slice::IterMut<'a, (String, String)>;
-
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter_mut()
     }
 }
-
-// Implement IntoIterator for TileImagePaths (by value)
 impl IntoIterator for TileImagePaths {
     type Item = (String, String);
     type IntoIter = std::vec::IntoIter<(String, String)>;
@@ -108,13 +92,12 @@ pub struct TileSerialization {
     pub offset: Option<(f32, f32)>,
 
 }
-
 #[derive(Component, Deserialize, Reflect, Default)]
 pub struct PortalSeri{
     pub dest_dimension: String,
     pub oe_tile: String,
     pub oplist: String,
-    pub op_i: i8,
+    pub op_i: i16,
     pub lim_below: f32,
     pub lim_above: f32,
     pub one_way: bool,
@@ -127,39 +110,4 @@ pub struct DungeonSeri {
     pub id: String,
     pub name: String,
     pub description: String,
-}
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
-pub struct ShaderRepeatTexSerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader/rep1" , collection(typed))] 
-    pub handles: Vec<Handle<ShaderRepeatTexSeri>>,
-}
-
-
-#[derive(serde::Deserialize, Asset, Reflect, Default)]
-pub struct ShaderRepeatTexSeri {
-    pub id: String,
-    pub img_path: String,
-    pub scale: f32,
-    pub mask_color: [f32; 4],
-}
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
-pub struct ShaderVoronoiSerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader/voro" , collection(typed))] 
-    pub handles: Vec<Handle<ShaderVoronoiSeri>>,
-}
-
-
-#[derive(serde::Deserialize, Asset, Reflect, Default)]
-pub struct ShaderVoronoiSeri {
-    pub id: String,
-    pub img_path: String,
-    pub scale: f32,
-    pub voronoi_scale: f32,
-    pub voronoi_scale_random: f32,
-    pub voronoi_rotation: f32,
-    pub mask_color: [f32; 4],
 }

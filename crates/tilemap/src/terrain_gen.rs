@@ -24,17 +24,15 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            (spawn_terrain_operations, (produce_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
-            search_suitable_position.run_if(in_state(ClientState::Disconnected)),
+            (spawn_terrain_operations, (process_pending_ops_and_collect_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
+            search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
             oplist_init_dim_refs,
         ))
         
         .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
             (
                 init_noises,
-                add_noises_to_map,
                 init_oplists_from_assets,
-                add_oplists_to_map,
                 init_oplists_bifurcations,
                 cycle_detection,
             
@@ -42,7 +40,7 @@ pub fn plugin(app: &mut App) {
             ).in_set(TerrainGenSystems)
         )
 
-        .register_type::<AaGlobalGenSettings>()
+        .register_type::<AcGlobalGenSettings>()
         .init_resource::<RegisteredPositions>()
         
 
@@ -64,7 +62,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<RegisteredPositions>()
         .register_type::<RootInDimensions>()
         .register_type::<MassCollectedTiles>()
-        .register_type::<StudiedOp>()
+        .register_type::<OpFilter>()
         .register_type::<TileHelperStruct>()
 
         .add_server_event::<RegisteredPositions>(Channel::Unordered)
@@ -80,11 +78,11 @@ pub fn plugin(app: &mut App) {
         .replicate_filtered::<OplistSize, With<OperationList>>()
         
         .replicate::<NoiseHolder>()
-        .replicate::<AaGlobalGenSettings>()
+        .replicate::<AcGlobalGenSettings>()
 
         .add_message::<PendingOp>()
         .init_resource::<MassCollectedTiles>()
-        .add_message::<PosSearch>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
+        .add_message::<TerrainProbe>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
         ;
 
         

@@ -11,7 +11,7 @@ use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
-use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*, tile_shader_components::{TileShader, TileShaderRef}} };
+use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*, tile_shader_components::{TileShader, TileShaderRef}, tile_shader_resources::*} };
 use crate::terrain_gen::terrgen_resources::MassCollectedTiles;
 
 use std::mem::take;
@@ -28,7 +28,8 @@ pub fn init_tiles(
 
 ) {
     if tiling_map.is_some() { return; }
-    cmd.insert_resource(TileEntitiesMap::default());
+    let mut tiling_map = TileEntitiesMap::default();
+
     let holder = cmd.spawn((TilesEguiHolder, )).id();
     cmd.spawn((TileInstancesHolder, ChildOf(holder)));
 
@@ -38,7 +39,7 @@ pub fn init_tiles(
 
     for handle in seris_handles.handles.iter() {
         //info!("Loading TileSeri from handle: {:?}", handle);
-        let Some(mut seri) = assets.get_mut(handle) else { continue; };
+        let Some(seri) = assets.get_mut(handle) else { continue; };
 
         let str_id = match TileStrId::new_with_result(seri.id.clone(), Tile::MIN_ID_LENGTH) {
             Ok(id) => id,
@@ -55,6 +56,13 @@ pub fn init_tiles(
             EntityZero,
             ChildOf(holder),
         )).id();
+
+        if let Ok(existing) = tiling_map.0.get(&str_id) {
+            error!("Tile with '{}' already in TilingEntityMap : {:?}", str_id, existing);
+            cmd.entity(tile_enti).try_despawn();
+            continue;
+        }
+        tiling_map.0.force_insert(&str_id, tile_enti);
 
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
         let color = Color::srgba_u8(r, g, b, a);
@@ -81,7 +89,7 @@ pub fn init_tiles(
             }
         }
         if seri.randflipx == Some(true) {
-            cmd.entity(tile_enti).insert(FlipAlongX);
+            cmd.entity(tile_enti).insert(FlipHorizontallyBasedOnHash);
         }
         if let Some(portal) = &mut seri.portal { 
             cmd.entity(tile_enti).insert((take(portal), ChildOf(egui_portal_holder))); 
@@ -150,6 +158,7 @@ pub fn init_tiles(
         }
     }
     cmd.insert_resource(res_tile_cats);
+    cmd.insert_resource(tiling_map);
 }
 
 #[allow(unused_parens)]
@@ -204,22 +213,7 @@ pub fn add_handles(
         }
     }
 }
-pub fn add_tiles_to_map(
-    mut cmd: Commands,
-    map: Option<ResMut<TileEntitiesMap>>,
-    query: Query<(Entity, &EntityPrefix, &TileStrId), (Added<Tile>, Added<Disabled>, Without<TilePos>, Without<EntityZeroRef>)>,
-) {
-    if let Some(mut map) = map {
-        for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = map.0.insert(str_id, ent, ) {
-                error!("{} {} already in TilingEntityMap : {}", prefix, str_id, err);
-                cmd.entity(ent).try_despawn();
-            } else {
-                info!("Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
-            }
-        }
-    }
-}
+
 #[allow(unused_parens)]
 pub fn map_min_dist_tiles(mut cmd: Commands, 
     mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSerialization>>,
@@ -279,10 +273,10 @@ pub fn map_portal_tiles(mut cmd: Commands,
     info!("Mapping portal tiles");
     for (ent, str_id, portal_seri) in query.iter() {
         let Ok(tile_ent) = tiles_map.0.get(&portal_seri.oe_tile) else { 
-            error!("Portal tile {} to '{}' references unknown oe_tile '{}'", str_id, portal_seri.dest_dimension, portal_seri.oe_tile);
+            error!(target:"portal_init", "Portal tile {} to '{}' references unknown oe_tile '{}'", str_id, portal_seri.dest_dimension, portal_seri.oe_tile);
             continue; 
         };
-        info!("Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
+        info!(target:"portal_init", "Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
         cmd.entity(ent).insert(PortalRecipe{
             dest_dimension: Entity::PLACEHOLDER,
             root_oplist: Entity::PLACEHOLDER, //SETEARLO DESPUÉS
@@ -302,7 +296,7 @@ pub fn instantiate_portal(mut cmd: Commands,
     new_portals: Query<(Entity, &PortalRecipe, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(Without<SearchingForSuitablePos>, )>,
     pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalRecipe, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
     dimension_query: Query<&HashId, (With<Dimension>, )>,
-    mut ew_pos_search: MessageWriter<PosSearch>, 
+    mut ew_pos_search: MessageWriter<TerrainProbe>, 
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut mreader_search_successful: MessageReader<SuitablePosFound>,
     mut mreader_search_failed: MessageReader<SearchFailed>, 
@@ -312,36 +306,37 @@ pub fn instantiate_portal(mut cmd: Commands,
     let mut started_searches: EntityHashMap<Entity> = EntityHashMap::new();
     let mut pos_searches = Vec::new();
 
-    for (portal_ent, portal_template, &global_pos, dim_ref, tile_ref) in new_portals.iter() {
+    for (portal_ent, portal_recipe, &global_pos, dim_ref, tile_ref) in new_portals.iter() {
 
-        let studied_op = portal_template.to_studied_op(global_pos);
+        let op_filter = portal_recipe.to_op_filter(global_pos);
 
         let str_id = ori_tile_str_id_query.get(tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
 
-        let Ok(&dimension_hash_id) = dimension_query.get(portal_template.dest_dimension) else {
-            error!(
-                "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_template.dest_dimension, dim_ref.0, global_pos,
+        let Ok(&dimension_hash_id) = dimension_query.get(portal_recipe.dest_dimension) else {
+            error!(target:"portal_init",
+                "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_recipe.dest_dimension, dim_ref.0, global_pos,
             );
             cmd.entity(portal_ent).remove::<PortalRecipe>();
             continue;
         };
 
 
-        let studied_op_ent = cmd.spawn((studied_op.clone(), )).id();
+        let studied_op_ent = cmd.spawn((op_filter.clone(), )).id();
 
-        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos{ studied_op_ent });
+        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos{ filtered_op_ent: studied_op_ent });
 
-        pos_searches.push(PosSearch::portal_pos_search(dimension_hash_id, studied_op_ent, global_pos));
+        pos_searches.push(TerrainProbe::standard_spiral_probe(dimension_hash_id, studied_op_ent, global_pos));
         started_searches.insert(studied_op_ent, portal_ent);
     }
 
     let mut successful_searches: EntityHashSet = EntityHashSet::new();
 
     let mut handle_success = |this_end_portal: Entity, portal_template: &PortalRecipe, 
-        found_pos: GlobalTilePos, my_orig_tile_ref: EntityZeroRef| 
+        found_pos: GlobalTilePos, my_orig_tile_ref: EntityZeroRef, filtered_op_ent: Entity| 
     {
         cmd.entity(this_end_portal).remove::<(SearchingForSuitablePos, PortalRecipe)>();
         let oe_dim_ref = DimensionRef(portal_template.dest_dimension);
+        cmd.entity(filtered_op_ent).try_despawn();
         
         register_pos.0.entry(portal_template.oe_portal_tile)
             .or_default()
@@ -353,67 +348,79 @@ pub fn instantiate_portal(mut cmd: Commands,
             EntityZeroRef(portal_template.oe_portal_tile)
         };
 
-        debug!("OE Portal TileRef: {:?}", oe_portal_tileref);
+        debug!(target:"portal_init", "OE Portal TileRef: {:?}", oe_portal_tileref);
 
         let oe_portal = 
         mass_collected
         .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default());
 
-        cmd.entity(this_end_portal).insert(PortalInstance::new(oe_portal));
+        cmd.entity(this_end_portal).insert(PortalConnection::new(oe_portal));
 
         cmd.entity(oe_portal).remove::<PortalRecipe>();
 
         if portal_template.one_way {return;}
 
-        cmd.entity(oe_portal).insert(PortalInstance::new(this_end_portal));
+        cmd.entity(oe_portal).insert(PortalConnection::new(this_end_portal));
 
-        debug!("Instantiated portal tile '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
+        debug!(target:"portal_init", "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
 
     };
 
-    'successful_searches: for search_successful_ev in mreader_search_successful.read() {
-        let studied_op_ent = search_successful_ev.studied_op_ent;
-        if successful_searches.contains(&studied_op_ent) {
+    'successful_searches: for search_successful_msg in mreader_search_successful.read() {
+        let ss_filtered_op_ent = search_successful_msg.studied_op_ent;
+        if successful_searches.contains(&ss_filtered_op_ent) {
+            trace!(target:"portal_init", "Ignoring duplicate SuitablePosFound for studied_op_ent {:?}", ss_filtered_op_ent);
             continue 'successful_searches;
         }
 
-        if let Some(portal_ent) = started_searches.remove(&studied_op_ent) {
-            let Ok((_, portal_template, &_my_pos, &_dim_ref, &orig_tile_ref)) = new_portals.get(portal_ent) else {
+        if let Some(portal_ent) = started_searches.remove(&ss_filtered_op_ent) {
+            let Ok((_, portal_recipe, &_, &_, &orig_tile_ref)) = new_portals.get(portal_ent) else {
+                error!(target:"portal_init", "SuitablePosFound for studied_op_ent {:?} but portal entity which started the search {:?} is no longer spawned", ss_filtered_op_ent, portal_ent);
                 continue 'successful_searches;
             };
-            successful_searches.insert(studied_op_ent.clone());
-            handle_success(portal_ent, portal_template, search_successful_ev.found_pos.clone(), orig_tile_ref);
+            successful_searches.insert(ss_filtered_op_ent);
+            debug!(target:"portal_init", "added ss_filtered_op_ent {:?} to successful searches", ss_filtered_op_ent);
+            handle_success(portal_ent, portal_recipe, search_successful_msg.found_pos.clone(), orig_tile_ref, ss_filtered_op_ent);
             continue 'successful_searches;
         }
 
         for (ent, searching_for, portal_template, &my_pos, &dim_ref, &orig_tile_ref) in pending_search.iter() {
-            if studied_op_ent == searching_for.studied_op_ent {
-                let str_id = ori_tile_str_id_query.get(orig_tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
-                info!(
-                    "Found suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}, found pos: {:?}", str_id, ent, dim_ref.0, my_pos, portal_template.dest_dimension, search_successful_ev.found_pos
-                );
-                successful_searches.insert(studied_op_ent.clone());
-                handle_success(ent, portal_template, search_successful_ev.found_pos.clone(), orig_tile_ref);
+            if !successful_searches.contains(&ss_filtered_op_ent){
+                if ss_filtered_op_ent == searching_for.filtered_op_ent  {
+                    successful_searches.insert(ss_filtered_op_ent);
+                    let str_id = ori_tile_str_id_query.get(orig_tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
+                    info!(target:"portal_init",
+                        "Found suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}, found pos: {:?}", str_id, ent, dim_ref.0, my_pos, portal_template.dest_dimension, search_successful_msg.found_pos
+                    );
+                    handle_success(ent, portal_template, search_successful_msg.found_pos.clone(), orig_tile_ref, ss_filtered_op_ent);
+                    continue 'successful_searches;
+                }
+            } else {
+                trace!(target:"portal_init", "Ignoring duplicate SuitablePosFound for studied_op_ent {:?} in pending searches", ss_filtered_op_ent);
                 continue 'successful_searches;
             }
         }
     }
 
     for failed_search in mreader_search_failed.read() {
-        if successful_searches.contains(&failed_search.0) { continue; }
+
+        if successful_searches.contains(&failed_search.0) { 
+            continue;//not actually a failed search!
+        }
 
         if started_searches.remove(&failed_search.0).is_some() {
-            error!("Failed to find suitable pos for a portal tile, {:?}", failed_search.0);
+            error!(target:"portal_init", "Failed to find suitable pos for a portal tile, {:?}", failed_search.0);
+            cmd.entity(failed_search.0).try_despawn();
             continue;
         }
 
-        for (ent, searching_for, portal_template, &global_pos, dim_ref, tile_ref) in pending_search.iter() {
+        for (portal_ent, searching_for, portal_template, &global_pos, dim_ref, tile_ref) in pending_search.iter() {
             let str_id = ori_tile_str_id_query.get(tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
-            if failed_search.0 == searching_for.studied_op_ent {
-                error!(
-                    "Failed to find suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}", str_id, ent, dim_ref.0, global_pos, portal_template.dest_dimension
+            if failed_search.0 == searching_for.filtered_op_ent {
+                error!(target:"portal_init",
+                    "Failed to find suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}", str_id, portal_ent, dim_ref.0, global_pos, portal_template.dest_dimension
                 );
-                cmd.entity(ent).remove::<SearchingForSuitablePos>();
+                cmd.entity(portal_ent).remove::<SearchingForSuitablePos>();
             }
         }
     }

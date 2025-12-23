@@ -1,8 +1,8 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{AssetScoped, DisplayName, EntityPrefix, ImageHolder, ImageHolderMap, ImagePathHolder, MultipleImagePathHolder, StrId};
-use crate::tile::{tile_materials::*, tile_resources::*, tile_shader_components::*};
+use common::common_components::*;
+use crate::tile::{tile_materials::*, tile_shader_components::*, tile_shader_resources::*};
 
 #[allow(unused_parens)]
 pub fn init_shaders(
@@ -14,8 +14,9 @@ pub fn init_shaders(
     tileshader_map: Option<Res<TileShaderEntityMap>>,
 ) {
     if tileshader_map.is_some(){ return; }
-    cmd.insert_resource(TileShaderEntityMap::default());
+    let mut tileshader_map = TileShaderEntityMap::default();
     let holder = cmd.spawn((EguiTileShaderHolder, )).id();
+    let mut shader_comps_to_insert = Vec::new();
 
     for handle in repeat_tex_handles.handles.drain(..) {
         let Some(seri) = repeat_assets.remove(&handle) else {
@@ -33,14 +34,22 @@ pub fn init_shaders(
 
         match ImagePathHolder::new(seri.img_path) {
             Ok(path_holder) => {
-                cmd.spawn((
-                    str_id,
+                if let Ok(existing) = tileshader_map.0.get(&str_id) {
+                    error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
+                    continue;
+                }
+                let ent = cmd.spawn_empty().id();
+                
+                shader_comps_to_insert.push((ent, (
+                    str_id.clone(),
                     TileShader::TexRepeat(MonoRepeatTextureOverlayMat::new(
                         Handle::default(), seri.mask_color.into(), seri.scale,
                     )),
                     path_holder,
                     ChildOf(holder),
-                ));
+                )));
+                tileshader_map.0.force_insert(&str_id, ent);
+
             },
             Err(err) => {
                 error!("Failed to create ImagePathHolder for shader '{}': {}", str_id, err);
@@ -63,20 +72,29 @@ pub fn init_shaders(
 
         match ImagePathHolder::new(seri.img_path) {
             Ok(path_holder) => {
-                cmd.spawn((
-                    str_id,
+                if let Ok(existing) = tileshader_map.0.get(&str_id) {
+                    error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
+                    continue;
+                }
+                let ent = cmd.spawn_empty().id();
+                
+                shader_comps_to_insert.push((ent, (
+                    str_id.clone(),
                     TileShader::Voronoi(VoronoiTextureOverlayMat::new(
                         Handle::default(), seri.mask_color.into(), seri.scale, seri.voronoi_scale, seri.voronoi_scale_random, seri.voronoi_rotation
                     )),
                     path_holder,
                     ChildOf(holder),
-                ));
+                )));
+                tileshader_map.0.force_insert(&str_id, ent);
             },
             Err(err) => {
                 error!("Failed to find image path for shader '{}': {}", str_id, err);
             }
         }
     }
+    cmd.insert_resource(tileshader_map);
+    cmd.insert_batch(shader_comps_to_insert);
 }
 
 #[allow(unused_parens)]
@@ -97,24 +115,6 @@ pub fn add_image_handle_to_tile_shader(
             }
             //tile_shader.set_multiple_image_handles(handles);
 
-        }
-    }
-}
-
-
-#[allow(unused_parens)]
-pub fn add_shaders_to_map(
-    mut cmd: Commands,
-    tileshader_map: Option<ResMut<TileShaderEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<TileShader>,)>,
-) {
-    let Some(mut tileshader_map) = tileshader_map else {
-        return;
-    };
-    for (ent, prefix, str_id) in query.iter() {
-        if let Err(err) = tileshader_map.0.insert(str_id, ent, ) {
-            error!("{} {} already in TileShaderEntityMap : {}", prefix, str_id, err);
-            cmd.entity(ent).try_despawn();
         }
     }
 }

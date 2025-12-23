@@ -185,15 +185,17 @@ pub fn add_sprites_to_local_map(
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
     mut cmd: Commands,
-    mut query: Query<(Entity, &SpriteConfigStrIds, ), (Changed<SpriteConfigStrIds>,)>,
+    query: Query<(Entity, &SpriteConfigStrIds, ), (Changed<SpriteConfigStrIds>,)>,
     map: Option<Res<SpriteCfgEntityMap>>,
 ) {
     let Some(map) = map else {
-        error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
+        if ! query.is_empty() {
+            error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
+        }
         return;
     };
 
-    for (ent, str_ids, ) in query.iter_mut() {
+    for (ent, str_ids, ) in query.iter() {
         info!(target: "sprite_building", "Replacing string ids for entity {:?}", ent);
         let mut entities_to_build = HashSet::new();
         for id in str_ids.ids() {

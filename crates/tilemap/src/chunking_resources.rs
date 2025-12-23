@@ -15,8 +15,10 @@ pub struct AaChunkRangeSettings {
     #[inspector(min = 0., max = 100000.)]
     pub chunk_visib_max_dist: f32,
     #[inspector(min = 0., max = 100000.)]
+    /// range in which already generated chunks are kept active
     pub chunk_active_max_dist: f32,
     #[inspector(min = 1, max = 20)]
+    /// half side of square in which chunks get generated (not shown)
     pub discovery_range: u8,
 }
 impl Default for AaChunkRangeSettings {
@@ -41,13 +43,11 @@ impl AaChunkRangeSettings {
         let other_pos = other.to_pixelpos();
         center_pos.distance(other_pos) > self.chunk_active_max_dist
     }
-
     pub fn out_of_visible_range(&self, center: &GlobalTransform, other: ChunkPos) -> bool {
         let center_pos = center.translation().xy();
         let other_pos = other.to_pixelpos();
         center_pos.distance(other_pos) > self.chunk_visib_max_dist
     }
-
     pub fn out_of_discovery_range(&self, center: ChunkPos, other: ChunkPos) -> bool {
         let range = self.discovery_range as i32;
         (other.0.x - center.0.x).abs() >= range || (other.0.y - center.0.y).abs() >= range

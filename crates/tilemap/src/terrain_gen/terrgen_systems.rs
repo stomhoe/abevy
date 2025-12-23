@@ -4,7 +4,7 @@
 use bevy::{ecs::{entity::{EntityHashSet, }, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use common::{common_components::{DisplayName, HashId, StrId}, };
 use debug_unwraps::DebugUnwrapExt;
-use dimension_shared::{Dimension, DimensionRef, DimensionRootOplist, MultipleDimensionRefs, RootInDimensions};
+use dimension_shared::{DimensionRef, DimensionRootOplist};
 use game_common::{game_common_components::{EntityZeroRef,  }, game_common_components_samplers::EntityWeightedSampler};
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
 use std::{f32::consts::PI, };
@@ -81,12 +81,13 @@ pub fn spawn_terrain_operations (
 
 
 #[allow(unused_parens)]
-pub fn produce_tiles(mut cmd: Commands, 
-    gen_settings: Single<&AaGlobalGenSettings>,
-    oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
+/// input: PendingOp messages. output: PendingOp messages (for bifurcations), SuitablePosFound messages
+pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, 
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
+    gen_settings: Single<&AcGlobalGenSettings>,
+    oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
     fnl_noises: Query<&FnlNoiseComp,>,
-    studied_ops: Query<&StudiedOp,>,
+    op_filters: Query<&OpFilter,>,
     weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
     mut collected: ResMut<MassCollectedTiles>,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
@@ -94,12 +95,8 @@ pub fn produce_tiles(mut cmd: Commands,
 
     if pending_ops_events.is_empty() { return Ok(()); }
 
-
     let mut new_pending_ops_events = Vec::with_capacity(pending_ops_events.len());
     let mut sampled_value_events = Vec::new();
-
-
-    //let mut collected = MassCollectedTiles::new(pending_ops_events.len());
 
     'eventfor: for mut ev in pending_ops_events.drain() {unsafe{
    
@@ -174,10 +171,14 @@ pub fn produce_tiles(mut cmd: Commands,
                 );      
             }
 
-            if let Ok(ref mut sop) = studied_ops.get(ev.studied_op_ent) {
-                if  sop.checked_oplist == ev.oplist && (op_i == sop.op_i as usize || (sop.op_i <= -1 && op_i == oplist.trunk.len() - 1))
+            if let Ok(ref mut sop) = op_filters.get(ev.studied_op_ent) {
+
+                let sampling_last_and_is_so = sop.op_i <= -1 && op_i == oplist.trunk.len() - 1;
+
+                if  sop.checked_oplist == ev.oplist && (op_i == sop.op_i as usize 
+                    || sampling_last_and_is_so)
                 {    
-                    if (sop.lim_below <= operation_acc_val && operation_acc_val <= sop.lim_above)
+                    if (sop.min_val <= operation_acc_val && operation_acc_val <= sop.max_val)
                     {
                         sampled_value_events.push(SuitablePosFound {
                             studied_op_ent: ev.studied_op_ent,
@@ -236,33 +237,33 @@ fn spawn_bifurcation_oplists(
 
 
 #[allow(unused_parens)]
-pub fn search_suitable_position(
+//input: PosSearch messages. output: SearchFailed or SuitablePosFound(emitted in produce_tiles) 
+pub fn search_suitable_positions(
     mut cmd: Commands,
-    mut events_pos_search: ResMut<Messages<PosSearch>>, mut ewriter_search_failed: MessageWriter<SearchFailed>,
-    mut ewriter_pending_ops: MessageWriter<PendingOp>, mut ereader_suitable_pos_found: MessageReader<SuitablePosFound>,
-    studied_ops: Query<&StudiedOp, ( )>,
+    mut terrain_probe: ResMut<Messages<TerrainProbe>>, mut mwriter_search_failed: MessageWriter<SearchFailed>,
+    mut mwriter_pending_ops: MessageWriter<PendingOp>, mut mreader_suitable_pos_found: MessageReader<SuitablePosFound>,
+    studied_ops: Query<&OpFilter, ( )>,
 ) {
     let mut new_pending_ops = Vec::new();
     let mut new_pos_searches = Vec::new();
     let mut search_failed_evs = Vec::new();
     let mut found_suitable_positions = EntityHashSet::new();
 
-
-    for found_ev in ereader_suitable_pos_found.read() {
+    for found_ev in mreader_suitable_pos_found.read() {
         found_suitable_positions.insert(found_ev.studied_op_ent);
     }
     
-    for pos_search in events_pos_search.drain() {
+    for pos_search in terrain_probe.drain() {
 
-        if found_suitable_positions.contains(&pos_search.studied_op_ent) {
-            info!("Found suitable position for {:?}", pos_search.studied_op_ent);
+        if found_suitable_positions.contains(&pos_search.operation_filter) {
+            info!("Found suitable position for {:?}", pos_search.operation_filter);
             continue;
         }
 
         let (studied_op_ent, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_hash_id) = 
-        (pos_search.studied_op_ent, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_hash_id);
+        (pos_search.operation_filter, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_hash_id);
 
-        let Ok(studied_op) = studied_ops.get(studied_op_ent) else {//ERRROR: ENTTIY NO SPAWNEÓ TODAVÍA
+        let Ok(opfilter) = studied_ops.get(studied_op_ent) else {//ERRROR: ENTTIY NO SPAWNEÓ TODAVÍA
             if curr_iteration_batch_i == 0 {
                 // If we want to retry, push a new PosSearch with decremented batch index
                 let mut new_search = pos_search;
@@ -276,12 +277,12 @@ pub fn search_suitable_position(
         };
         let curr_iteration_batch_i = curr_iteration_batch_i.max(0);
 
-        match pos_search.search_pattern {
-            SearchPattern::Radial(explore_angle) => {
+        match pos_search.probe_pattern {
+            ProbePattern::Radial(explore_angle) => {
 
                 let calculate_pos = |i_within_batch: u16, probe_direction: f32| -> GlobalTilePos {
                     let global_i = (curr_iteration_batch_i as u16 * iterations_per_batch as u16 + i_within_batch) as f32 * step_size as f32;
-                    studied_op.search_start_pos + GlobalTilePos::from(IVec2::new(
+                    opfilter.search_start_pos + GlobalTilePos::from(IVec2::new(
                     (global_i * probe_direction.cos()) as i32, (global_i * probe_direction.sin()) as i32,
                     ))
                 };
@@ -292,7 +293,7 @@ pub fn search_suitable_position(
 
                     for i_within_batch in start_i_within_batch..iterations_per_batch {
                         new_pending_ops.push(PendingOp {
-                            oplist: studied_op.root_oplist,
+                            oplist: opfilter.root_oplist,
                             dimension_hash_id,
                             pos: calculate_pos(i_within_batch, explore_angle),
                             studied_op_ent,
@@ -301,13 +302,13 @@ pub fn search_suitable_position(
                         });
                     }
                     if curr_iteration_batch_i as u16 + 1 < max_batches {
-                        new_pos_searches.push(PosSearch {
+                        new_pos_searches.push(TerrainProbe {
                             curr_iteration_batch_i: curr_iteration_batch_i + 1,
-                            search_pattern: SearchPattern::Radial(Some(explore_angle)),
+                            probe_pattern: ProbePattern::Radial(Some(explore_angle)),
                             ..pos_search
                         });
                     } else {
-                        error!("No more batches to search for {:?}", studied_op);
+                        error!("No more batches to search for {:?}", opfilter);
                         search_failed_evs.push(SearchFailed(studied_op_ent));
                     }
                 } else {
@@ -318,16 +319,14 @@ pub fn search_suitable_position(
                     let divisions = 8;
                     for i in 0..divisions {
                         let angle = 2.0 * PI * (i as f32) / (divisions as f32);
-                        new_pos_searches.push(PosSearch{
-                            search_pattern: SearchPattern::Radial(Some(angle)),
+                        new_pos_searches.push(TerrainProbe{
+                            probe_pattern: ProbePattern::Radial(Some(angle)),
                             ..pos_search
                         });
                     }
                 }
             }
-            
-            SearchPattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turns) => {
-
+            ProbePattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turns) => {
                 trace!("Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
                     pos, dir_vec, curr_length_in_dir, turns);
 
@@ -336,7 +335,7 @@ pub fn search_suitable_position(
 
                     new_pending_ops.push(PendingOp {
                         dimension_hash_id,
-                        oplist: studied_op.root_oplist,
+                        oplist: opfilter.root_oplist,
                         dim_ref: DimensionRef(Entity::PLACEHOLDER),
                         pos,
                         variables: VariablesArray::default(),
@@ -353,22 +352,22 @@ pub fn search_suitable_position(
                     }
                 }
                 if curr_iteration_batch_i as u16 + 1 < max_batches {
-                    new_pos_searches.push(PosSearch{
+                    new_pos_searches.push(TerrainProbe{
                         curr_iteration_batch_i: curr_iteration_batch_i + 1,
-                        search_pattern: SearchPattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turns),
+                        probe_pattern: ProbePattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turns),
                         ..pos_search
                     });
                 } else {
-                    error!("No more batches to search for {:?}", studied_op);
+                    error!("No more batches to search for {:?}", opfilter);
                     cmd.entity(studied_op_ent).try_despawn();
                     search_failed_evs.push(SearchFailed(studied_op_ent));
                 }
             },   
         }
     }
-    ewriter_pending_ops.write_batch(new_pending_ops);
-    events_pos_search.write_batch(new_pos_searches);
-    ewriter_search_failed.write_batch(search_failed_evs);
+    mwriter_pending_ops.write_batch(new_pending_ops);
+    terrain_probe.write_batch(new_pos_searches);
+    mwriter_search_failed.write_batch(search_failed_evs);
 }
 
 

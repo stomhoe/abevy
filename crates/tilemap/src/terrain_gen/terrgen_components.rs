@@ -5,7 +5,7 @@ use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use noiz::DynamicConfigurableSampleable;
 use serde::{Deserialize, Serialize};
-use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos};
+use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos};
 use std::hash::{Hasher, Hash};
 
 use {common::common_components::*, };
@@ -21,7 +21,7 @@ impl FnlNoiseComp {
     pub fn new(id: StrId) -> Self {
         Self(FastNoiseLite::new(id))
     }
-    pub fn sample(&self, pos: GlobalTilePos, range: NoiseSampleRange, complementary: bool, extra_seed: i32, settings: &AaGlobalGenSettings) -> f32 {
+    pub fn sample(&self, pos: GlobalTilePos, range: NoiseSampleRange, complementary: bool, extra_seed: i32, settings: &AcGlobalGenSettings) -> f32 {
         self.0.sample(pos.into(), range, complementary, extra_seed + settings.seed, settings.world_freq)
     }
 }

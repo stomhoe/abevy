@@ -1,81 +1,88 @@
 use bevy::{prelude::*};
 use common::common_components::HashId;
 use dimension_shared::DimensionRef;
+use serde::Deserialize;
 use ::tilemap_shared::*;
 use std::hash::Hash;
 
 use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, };
-    
-#[derive(Debug, Clone)]
-pub enum SearchPattern {
-    ///Probe direction
-    Radial(Option<f32>),
-    Spiral(u32, u32, IVec2, GlobalTilePos, bool),
+
+
+
+#[derive(Debug, Clone, Component, Reflect)]
+/// when process_pending_ops_and_collect_tiles finds a suitable position within this filter's parameters, it writes out a SuitablePosFound message
+pub struct OpFilter{
+    pub root_oplist: Entity,
+    pub checked_oplist: Entity,
+    pub op_i: i16,
+    pub min_val: f32,
+    pub max_val: f32,
+    pub search_start_pos: GlobalTilePos,
 }
-impl SearchPattern {
-    pub fn new_radial() -> Self { SearchPattern::Radial(None) }
-    pub fn new_spiral(start_pos: GlobalTilePos) -> Self {
-        SearchPattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
+impl Hash for OpFilter {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.root_oplist.hash(state);
+        self.checked_oplist.hash(state);
+        self.op_i.hash(state);
+        self.min_val.to_bits().hash(state);
+        self.max_val.to_bits().hash(state);
     }
 }
+impl PartialEq for OpFilter {
+    fn eq(&self, other: &Self) -> bool {
+        self.root_oplist == other.root_oplist &&
+        self.checked_oplist == other.checked_oplist &&
+        self.op_i == other.op_i &&
+        self.min_val.to_bits() == other.min_val.to_bits() &&
+        self.max_val.to_bits() == other.max_val.to_bits()
+    }
+}
+impl Eq for OpFilter {}
+#[derive(Deserialize, Asset, Reflect, )]
+pub struct OpFilterSerialization {
+    pub id: String,
+    pub oplist_id: String,
+    pub checked_oplist_id: String,
+    pub description: String,
+}
+
 #[derive(Message, Debug, Clone)]
-pub struct PosSearch {
+pub struct TerrainProbe {
     pub dimension_hash_id: i32,
-    pub studied_op_ent: Entity,
+    pub operation_filter: Entity,
     pub step_size: u16,
     pub curr_iteration_batch_i: i16,//se puede cambiar a otra cosa para empezar alejado del centro
     pub max_batches: u16,
     pub iterations_per_batch: u16,
-    pub search_pattern: SearchPattern,
+    pub probe_pattern: ProbePattern,
 }
-impl PosSearch{
-    pub fn portal_pos_search(dimension_hash_id: HashId, studied_op: Entity, search_start_pos: GlobalTilePos) -> PosSearch {
-        PosSearch {
+impl TerrainProbe{
+    pub fn standard_spiral_probe(dimension_hash_id: HashId, operation_filter: Entity, search_start_pos: GlobalTilePos) -> TerrainProbe {
+        TerrainProbe {
             dimension_hash_id: dimension_hash_id.into_i32(),
             step_size: 1,
             curr_iteration_batch_i: 0,
             max_batches: 100,
             iterations_per_batch: 1000,
-            search_pattern: SearchPattern::new_spiral(search_start_pos),
-            studied_op_ent: studied_op,
+            probe_pattern: ProbePattern::new_spiral(search_start_pos),
+            operation_filter,
         }
     }
 }
 
-#[derive(Message, Debug, Clone)]
-pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub pos: GlobalTilePos, pub dimension_hash_id: i32,
-    pub variables: VariablesArray, pub studied_op_ent: Entity
+#[derive(Debug, Clone)]
+pub enum ProbePattern {
+    Radial(Option<f32>),
+    /// curr_length_in_dir, steps_taken, dir_vec, pos, turn parity
+    Spiral(u32, u32, IVec2, GlobalTilePos, bool),
 }
-
-
-#[derive(Debug, Clone, Component, Reflect)]
-pub struct StudiedOp{
-    pub root_oplist: Entity,
-    pub checked_oplist: Entity,
-    pub op_i: i8,
-    pub lim_below: f32,
-    pub lim_above: f32,
-    pub search_start_pos: GlobalTilePos,
-}
-impl Hash for StudiedOp {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.root_oplist.hash(state);
-        self.checked_oplist.hash(state);
-        self.op_i.hash(state);
-        self.lim_below.to_bits().hash(state);
-        self.lim_above.to_bits().hash(state);
+impl ProbePattern {
+    pub fn new_radial() -> Self { ProbePattern::Radial(None) }
+    pub fn new_spiral(start_pos: GlobalTilePos) -> Self {
+        ProbePattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
     }
 }
-impl PartialEq for StudiedOp {
-    fn eq(&self, other: &Self) -> bool {
-        self.root_oplist == other.root_oplist &&
-        self.checked_oplist == other.checked_oplist &&
-        self.op_i == other.op_i &&
-        self.lim_below.to_bits() == other.lim_below.to_bits() &&
-        self.lim_above.to_bits() == other.lim_above.to_bits()
-    }
-}
-impl Eq for StudiedOp {}
+
 
 #[derive(Debug, Clone, Message, )]
 pub struct SuitablePosFound { pub studied_op_ent: Entity, pub val: f32, pub found_pos: GlobalTilePos, }
@@ -84,3 +91,9 @@ pub struct SuitablePosFound { pub studied_op_ent: Entity, pub val: f32, pub foun
 #[derive(Debug, Clone, Message, )]
 pub struct SearchFailed (pub Entity);
 
+#[derive(Message, Debug, Clone)]
+/// internal use only
+pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub pos: GlobalTilePos, 
+    pub dimension_hash_id: i32,
+    pub variables: VariablesArray, pub studied_op_ent: Entity
+}

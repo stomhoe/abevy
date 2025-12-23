@@ -20,11 +20,12 @@ concat!(
     "cosmic_text=warn,",
     "offset_allocator=warn,",
     "bevy_asset_loader=warn,",
+    "portal_init=info,",
 
     "tilemap::terrain_gen::terrgen_systems=info,",
     "tilemap::tile::tile_init_systems=info,",
     "tilemap_systems=trace,",
-    "zlevel=trace,",
+    "zlevel=info,",
     "movement=warn,",
     "sprite_init=trace,",
     "sprite_building=trace,",

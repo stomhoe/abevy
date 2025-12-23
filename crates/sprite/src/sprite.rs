@@ -4,7 +4,7 @@ use bevy::time::common_conditions::on_timer;
 use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_states::{AssetLoading, };
+use common::common_states::{AppState, AssetLoading };
 use game_common::{game_common::GameplaySystems, StatefulSessionSystems, };
 use ::sprite_shared::*;
 
@@ -30,7 +30,7 @@ pub fn plugin(app: &mut App) {
         z_sort_system,
         // server only
         (become_child_of_sprite_with_category, replace_string_ids_by_entities, 
-            add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected))
+            add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected).and(in_state(AppState::StatefulGameSession)))
             
     ).in_set(AcSpriteSystems))
     .add_systems(Update, (add_sprites_to_holder,)) 

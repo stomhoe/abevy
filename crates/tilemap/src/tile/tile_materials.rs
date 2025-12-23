@@ -10,7 +10,8 @@ use bevy_inspector_egui::prelude::*;
 #[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions)]
 #[reflect(Default, InspectorOptions)] 
 pub struct VoronoiTextureOverlayMat {
-    #[texture(1)]#[sampler(2)]
+    #[texture(1)]
+    #[sampler(2)]
     pub texture_overlay: Handle<Image>,
 
     #[uniform(3)]
@@ -29,7 +30,6 @@ pub struct VoronoiTextureOverlayMat {
     pub voronoi_rotation: f32,
 }
 
-// Manual Serialize/Deserialize implementations
 impl Serialize for VoronoiTextureOverlayMat {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer {
@@ -193,7 +193,6 @@ impl PartialEq for TwoOverlaysExample {
 }
 impl Eq for TwoOverlaysExample {}
 
-// Manual Serialize/Deserialize implementations
 
 impl Serialize for TwoOverlaysExample {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

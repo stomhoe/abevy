@@ -7,13 +7,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Reflect, Deserialize, Serialize, Clone, )]
 #[require(Replicated, )]
-pub struct AaGlobalGenSettings {//TODO cambiar esto por un entity para synquear seed
+pub struct AcGlobalGenSettings {//TODO cambiar esto por un entity para synquear seed
     
     pub seed: i32,
     pub world_freq: f32,
 }
 
-impl Default for AaGlobalGenSettings {
+impl Default for AcGlobalGenSettings {
     fn default() -> Self {
         Self { 
             seed: 0,
@@ -21,26 +21,72 @@ impl Default for AaGlobalGenSettings {
         }
     }
 }
+macro_rules! impl_position_conversions {
+    ($t:ty) => {
+        impl Into<IVec2> for $t {
+            fn into(self) -> IVec2 {
+                self.0
+            }
+        }
+        impl From<IVec2> for $t {
+            fn from(ivec2: IVec2) -> Self {
+                Self(ivec2)
+            }
+        }
+    };
+}
+macro_rules! impl_position_ops {
+    ($t:ty) => {
+        impl std::ops::Add for $t {
+            type Output = Self;
+            fn add(self, other: Self) -> Self {
+                Self(self.0 + other.0)
+            }
+        }
+        impl std::ops::Sub for $t {
+            type Output = Self;
+            fn sub(self, other: Self) -> Self {
+                Self(self.0 - other.0)
+            }
+        }
+        impl std::ops::Add<IVec2> for $t {
+            type Output = Self;
+            fn add(self, other: IVec2) -> Self {
+                Self(self.0 + other)
+            }
+        }
+    };
+}
+macro_rules! impl_display_debug {
+    ($t:ty, $name:expr) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}({}, {})", $name, self.0.x, self.0.y)
+            }
+        }
+        impl std::fmt::Debug for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}({}, {})", $name, self.0.x, self.0.y)
+            }
+        }
+    };
+}
 
 pub trait HashablePosVec: Hash {
-    fn hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> u64 {
+    fn hash_value(&self, settings: &AcGlobalGenSettings, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
         settings.seed.hash(&mut hasher);
         seed.hash(&mut hasher);
         hasher.finish()
     }
-    fn hash_true_false(&self, settings: &AaGlobalGenSettings, extra_seed: u64) -> bool {
+    fn hash_true_false(&self, settings: &AcGlobalGenSettings, extra_seed: u64) -> bool {
         self.hash_value(settings, extra_seed) % 2 == 0
     }
-    fn hash_for_weight_maps(&self, settings: &AaGlobalGenSettings) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        settings.seed.hash(&mut hasher);
-        49.hash(&mut hasher);
-        hasher.finish()
+    fn hash_for_weight_maps(&self, settings: &AcGlobalGenSettings) -> u64 {
+        self.hash_value(settings, 53)
     }
-    fn normalized_hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> f32 {
+    fn normalized_hash_value(&self, settings: &AcGlobalGenSettings, seed: u64) -> f32 {
         self.hash_value(settings, seed) as f32 / u64::MAX as f32
     }
 
@@ -50,8 +96,8 @@ pub trait HashablePosVec: Hash {
 macro_rules! impl_hashed_position {
     ($t:ty) => {
         impl HashablePosVec for $t {
-            fn x(&self) -> i32 { self.x() }
-            fn y(&self) -> i32 { self.y() }
+            fn x(&self) -> i32 { self.0.x }
+            fn y(&self) -> i32 { self.0.y }
         }
     };
 }
@@ -60,11 +106,11 @@ macro_rules! impl_hashed_position {
 pub struct GlobalTilePos(pub IVec2);
 
 impl_hashed_position!(GlobalTilePos);
+impl_position_conversions!(GlobalTilePos);
+impl_position_ops!(GlobalTilePos);
 
 impl GlobalTilePos {
     pub fn new(x: i32, y: i32) -> Self {GlobalTilePos(IVec2::new(x, y))}
-
-    pub fn x(&self) -> i32 { self.0.x } pub fn y(&self) -> i32 { self.0.y }
 
     pub fn distance(&self, other: &GlobalTilePos) -> f32 {
         (self.0.distance_squared(other.0) as f32).sqrt()
@@ -72,8 +118,6 @@ impl GlobalTilePos {
     pub fn distance_squared(&self, other: &GlobalTilePos) -> u32 {
         self.0.distance_squared(other.0) as u32
     }
-
-    pub const TYPE_NAME: &'static str = "Gpos";
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
 
     pub fn to_tilepos(&self, oplist_size: OplistSize) -> TilePos {
@@ -90,21 +134,11 @@ impl GlobalTilePos {
         vec2.extend(prev_transform_z)
     }
 }
-impl Add<IVec2> for GlobalTilePos {
-    type Output = Self;
-    fn add(self, rhs: IVec2) -> Self::Output {
-        GlobalTilePos(self.0 + rhs)
-    }
-}
+impl_display_debug!(GlobalTilePos, "Gpos");
 
-impl std::fmt::Display for GlobalTilePos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}({}, {})", Self::TYPE_NAME, self.0.x, self.0.y)
-    }
-}
-impl std::fmt::Debug for GlobalTilePos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}({}, {})", Self::TYPE_NAME, self.0.x, self.0.y)
+impl From<ChunkPos> for GlobalTilePos {
+    fn from(chunk_pos: ChunkPos) -> Self {
+        GlobalTilePos(chunk_pos.0 * ChunkPos::CHUNK_SIZE.as_ivec2())
     }
 }
 impl From<Vec2> for GlobalTilePos {
@@ -117,61 +151,39 @@ impl Into<Vec2> for GlobalTilePos {
         self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2()
     }
 }
-impl Into<IVec2> for GlobalTilePos {
-    fn into(self) -> IVec2 {
-        self.0
-    }
-}
-
-
-impl From<IVec2> for GlobalTilePos {
-    fn from(ivec2: IVec2) -> Self {
-        GlobalTilePos(ivec2)
-    }
-}
-impl std::ops::Add for GlobalTilePos {type Output = Self; fn add(self, other: Self) -> Self {GlobalTilePos(self.0 + other.0)}}
-impl std::ops::Sub for GlobalTilePos {type Output = Self; fn sub(self, other: Self) -> Self {GlobalTilePos(self.0 - other.0)}}
 
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, Reflect)]
 pub struct ChunkPos(pub IVec2);
 impl_hashed_position!(ChunkPos);
+impl_display_debug!(ChunkPos, "Cpos");
+impl_position_ops!(ChunkPos);
+impl_position_conversions!(ChunkPos);
 
 impl ChunkPos {
     pub fn new(x: i32, y: i32) -> Self { Self(IVec2::new(x, y)) }
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
     pub const CHUNK_SIZE: UVec2 = UVec2 { x: 12, y: 12 };//NORMALMENTE 12X12
-    pub fn hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> u64 {
+    pub fn hash_value(&self, settings: &AcGlobalGenSettings, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();
-        // Mix coordinates with a unique constant and the seed
         self.hash(&mut hasher);
         settings.seed.hash(&mut hasher);
         seed.hash(&mut hasher);
         hasher.finish()
     }
-    pub fn normalized_hash_value(&self, settings: &AaGlobalGenSettings, seed: u64) -> f32 {
+    pub fn normalized_hash_value(&self, settings: &AcGlobalGenSettings, seed: u64) -> f32 {
         self.hash_value(settings, seed) as f32 / u64::MAX as f32
     }
-    
 }
-
-impl std::fmt::Debug for ChunkPos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ChunkPos({}, {})", self.0.x, self.0.y)
-    }
-}
-impl std::fmt::Display for ChunkPos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.0.x, self.0.y)
-    }
-}
-
 impl ChunkPos {
     pub fn to_pixelpos(&self) -> Vec2 {
         self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2() * Self::CHUNK_SIZE.as_vec2()
     }
     pub fn to_tilepos(&self) -> GlobalTilePos {
         GlobalTilePos(self.0 * Self::CHUNK_SIZE.as_ivec2())
+    }
+    pub fn to_region_pos(&self) -> RegionPos {
+        RegionPos(self.0.div_euclid(REGION_SIZE_IN_CHUNKS))
     }
 }
 
@@ -191,16 +203,6 @@ impl From<Vec3> for ChunkPos {
     fn from(translation: Vec3) -> Self {
         ChunkPos::from(translation.xy())
     }
-}
-
-
-impl std::ops::Add for ChunkPos {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output { ChunkPos(self.0 + rhs.0) }
-}
-impl std::ops::Sub for ChunkPos {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output { ChunkPos(self.0 - rhs.0) }
 }
 
 
@@ -226,3 +228,29 @@ impl OplistSize {
     pub fn size(&self) -> usize { (self.x() * self.y()) as usize }
 }
 impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
+
+
+pub const REGION_SIZE_IN_CHUNKS: IVec2 = IVec2 { x: 32, y: 32 };
+
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
+pub struct RegionPos(pub IVec2);
+impl_hashed_position!(RegionPos);
+impl_position_ops!(RegionPos);
+impl_position_conversions!(RegionPos);
+impl_display_debug!(RegionPos, "Rpos");
+
+impl RegionPos {
+    pub fn new(x: i32, y: i32) -> Self { Self(IVec2::new(x, y)) }
+    pub fn x(&self) -> i32 { self.0.x }
+    pub fn y(&self) -> i32 { self.0.y }
+
+    pub fn chunk_bounds(&self) -> (ChunkPos, ChunkPos) {
+        let min = ChunkPos(self.0 * REGION_SIZE_IN_CHUNKS);
+        let max = ChunkPos((self.0 + IVec2::ONE) * REGION_SIZE_IN_CHUNKS);
+        (min, max)
+    }
+    pub fn contains_chunkpos(&self, cp: ChunkPos) -> bool {
+        let (min, max) = self.chunk_bounds();
+        cp.x() >= min.x() && cp.y() >= min.y() && cp.x() < max.x() && cp.y() < max.y()
+    }
+}

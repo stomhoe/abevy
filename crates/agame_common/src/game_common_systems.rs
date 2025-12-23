@@ -1,15 +1,11 @@
-use bevy::ecs::bundle;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
-use bevy::render::sync_world::RenderEntity;
-use bevy_ecs_tilemap::anchor::TilemapAnchor;
 use bevy_replicon::prelude::ClientState;
 use bevy_replicon::prelude::Replicated;
 use common::common_components::ImagePathHolder;
 use common::common_states::GamePhase;
-use ::sprite_shared::sprite_scale_offset::AllOffsets;
-use ::sprite_shared::sprite_scale_offset::AllScaleOffsets;
+use ::sprite_shared::sprite_scale_offset::AllScalesAndOffsets;
 use ::sprite_shared::*;
 use crate::game_common_components::*;
 use crate::game_common_states::*;
@@ -38,10 +34,8 @@ pub fn toggle_simulation(
         }
     }
 }
-
-
-
-pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<(&mut TimeBasedMultiplier, Option<&TickMultFactor>, Option<&TickMultFactors>)>) {
+pub fn tick_time_based_multipliers(time: Res<Time>, 
+    mut query: Query<(&mut TimeBasedMultiplier, Option<&TickMultFactor>, Option<&TickMultFactors>)>) {
     for (mut multiplier, tick_mult_factor, tick_mult_factors) in query.iter_mut() {
         let mut factor = tick_mult_factor.map(|f| f.value()).unwrap_or(1.0);
         if let Some(factors) = tick_mult_factors {
@@ -50,7 +44,6 @@ pub fn tick_time_based_multipliers(time: Res<Time>, mut query: Query<(&mut TimeB
         multiplier.timer.tick(time.delta().mul_f32(factor));
     }
 }
-
 #[allow(unused_parens)]
 pub fn disable_ezeros(mut cmd: Commands, 
     query: Query<(Entity),(With<EntityZero>, Without<Disabled>)>,
@@ -64,7 +57,7 @@ pub fn disable_ezeros(mut cmd: Commands,
 
 
 #[derive(Bundle)]
-struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, ImagePathHolder, AcZ, YSortOrigin, AllScaleOffsets, );
+struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, ImagePathHolder, AcZ, YSortOrigin, AllScalesAndOffsets, );
 
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 

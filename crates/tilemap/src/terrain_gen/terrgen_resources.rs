@@ -216,7 +216,7 @@ impl MassCollectedTiles {
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
         weight_maps: &Query<(&EntityWeightedSampler,), ()>,
-        gen_settings: &AaGlobalGenSettings,
+        gen_settings: &AcGlobalGenSettings,
         depth: u32
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
@@ -233,7 +233,7 @@ impl MassCollectedTiles {
     }
     pub fn collect_tiles(&mut self, 
         cmd: &mut Commands,
-        bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &AaGlobalGenSettings,
+        bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &AcGlobalGenSettings,
     )  {
         for tile in bif_tiles.iter().cloned() {
             self.collect_tiles_rec(cmd, tile, ev.pos, ev.dim_ref, oplist_size, weight_maps, gen_settings, 0);

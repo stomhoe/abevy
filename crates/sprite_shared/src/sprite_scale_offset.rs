@@ -168,7 +168,7 @@ pub struct AllScales(
 );
 
 #[derive(Bundle, Debug, Default, )]
-pub struct AllScaleOffsets(
+pub struct AllScalesAndOffsets(
     pub AllOffsets,
     pub AllScales,
 );

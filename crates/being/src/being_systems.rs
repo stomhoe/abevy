@@ -8,7 +8,7 @@ use dimension_shared::DimensionRef;
 use faction::faction_components::*;
 use movement::movement_events::TransformFromServer;
 use player::player_components::*;
-use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalInstance, Tile}};
+use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalConnection, Tile}};
 
 use crate::{being_components::*,};
 
@@ -87,7 +87,7 @@ pub fn on_control_change(
 #[allow(unused_parens)]
 pub fn cross_portal(mut cmd: Commands, 
     mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
-    portal_query: Query<(Entity, &DimensionRef, &PortalInstance, &GlobalTransform), (Without<Being>)>,
+    portal_query: Query<(Entity, &DimensionRef, &PortalConnection, &GlobalTransform), (Without<Being>)>,
     mut being_query: Query<(Entity, &mut DimensionRef, &mut Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
 ) {
     let mut to_write = Vec::new();

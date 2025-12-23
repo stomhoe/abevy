@@ -10,7 +10,7 @@ use tilemap_shared::{GlobalTilePos, OplistSize};
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::tile::{
-    tile_components::*, tile_events::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_systems::*
+    tile_components::*, tile_events::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_systems::*
 };
 mod tile_systems;
 mod tile_init_systems;
@@ -20,6 +20,7 @@ pub mod tile_components;
 pub mod tile_shader_components;
 pub mod tile_resources;
 pub mod tile_sampler_resources;
+pub mod tile_shader_resources;
 pub mod tile_materials;
 pub mod tile_events;
 
@@ -32,9 +33,9 @@ pub struct TilingSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_systems(Update, (
-        flip_tile_along_x,
-        (add_tile_weighted_samplers_to_map, client_sync_tile, ).run_if(in_state(ClientState::Connected)),
-        sprite_tile_readjust_transform,
+        flip_tile_horizontally_based_on_initial_pos_hash,
+        (client_sync_tile, ).run_if(in_state(ClientState::Connected)),
+        spritetile_readjust_transform_to_match_globalpos,
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
         make_child_of_chunk,
         add_handles,
@@ -49,8 +50,8 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         OnEnter(AssetLoading::InitReplicatedEntities), (
             (   
-                init_shaders, add_shaders_to_map, 
-                init_tiles, add_tiles_to_map, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, add_tile_weighted_samplers_to_map, init_tile_weighted_samplers_refs, )
+                init_shaders,  
+                init_tiles, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, init_tile_weighted_samplers_refs, )
             .chain().run_if(in_state(ClientState::Disconnected)),
     ).in_set(TilingSystems))
 
@@ -87,7 +88,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<TileCategories>()
     .register_type::<KeepDistanceFrom>()
     .register_type::<PortalRecipe>()
-    .register_type::<PortalInstance>()
+    .register_type::<PortalConnection>()
     .register_type::<EguiTileShaderHolder>()
 
 

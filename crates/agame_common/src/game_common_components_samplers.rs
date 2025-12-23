@@ -3,7 +3,7 @@ use bevy::{ecs::entity::MapEntities, platform::collections::HashMap, prelude::*}
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, HashablePosVec};
+use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos, HashablePosVec};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[macro_export]
 macro_rules! define_weightedsampler_impl {
@@ -45,7 +45,7 @@ macro_rules! define_weightedsampler_impl {
                     Ok(idx) | Err(idx) => Some(idx),
                 }
             }
-            pub fn sample_with_pos(&self, settings: &AaGlobalGenSettings, pos: GlobalTilePos) -> Option<$inner> {
+            pub fn sample_with_pos(&self, settings: &AcGlobalGenSettings, pos: GlobalTilePos) -> Option<$inner> {
                 let hash_used_to_sample = pos.hash_for_weight_maps(settings);
                 let rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
                 self.sample_index(rng_val)

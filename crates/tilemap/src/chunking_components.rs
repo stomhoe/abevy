@@ -11,9 +11,12 @@ use ::tilemap_shared::*;
 
 use common::{common_components::*, };
 
-#[derive(Component, Default)]
+#[derive(Component, )]
 #[require(Visibility::Hidden, SessionScoped, LayersMap, TilesToSave, )]
-pub struct Chunk;
+pub struct Chunk {
+    #[relationship]
+    pub region_ent: Entity,
+}
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]

@@ -6,14 +6,14 @@ use player::player_components::*;
 use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings};
 
 use bevy::prelude::*;
-use tilemap_shared::AaGlobalGenSettings;
+use tilemap_shared::AcGlobalGenSettings;
 use sprite_shared::SpriteConfigStrIds;
 
 
 #[allow(unused_parens, )]
 pub fn server_or_singleplayer_setup(mut cmd: Commands, 
     mut map: ResMut<FactionEntityMap>,
-    mut settings: Query<&mut AaGlobalGenSettings>,
+    mut settings: Query<&mut AcGlobalGenSettings>,
     mut app_state: ResMut<NextState<AppState>>,
 ) 
 {

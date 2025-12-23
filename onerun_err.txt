@@ -473,7 +473,7 @@ warning: unused import: `rand_distr::StudentT`
 warning: unused import: `PendingOp`
   --> crates/tilemap/src/tile/tile_systems.rs:14:45
    |
-14 | use crate::{ terrain_gen::{terrgen_events::{PendingOp, PosSearch, Search...
+14 | use crate::{ terrain_gen::{terrgen_events::{PendingOp, InitPosSearch, Search...
    |                                             ^^^^^^^^^
 
 warning: unused import: `RenetClient`

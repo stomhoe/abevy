@@ -1,11 +1,9 @@
 use bevy::prelude::*;
 use fnl::*;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
-use tilemap_shared::AaGlobalGenSettings;
+use tilemap_shared::AcGlobalGenSettings;
 use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*};
 use std::mem::take;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
 
 #[allow(unused_parens)]
 pub fn init_noises(
@@ -15,13 +13,14 @@ pub fn init_noises(
     terrgen_map: Option<Res<TerrGenEntityMap>>,
 ) {
     if terrgen_map.is_some() { return; }
-    cmd.insert_resource(TerrGenEntityMap::default());
+
+    let mut terrgen_map = TerrGenEntityMap::default();
+    let mut fnl_comps_to_insert = Vec::new();
     
-    cmd.spawn((AaGlobalGenSettings::default(), EntityPrefix::new_truncated("AA_GLOBAL_GEN_SETTINGS")));
+    cmd.spawn((AcGlobalGenSettings::default(), EntityPrefix::new_truncated("AA_GLOBAL_GEN_SETTINGS")));
     info!("Spawning Global Gen Settings entity");
 
     let holder = cmd.spawn((NoiseHolder,)).id();
-
 
     for handle in take(&mut seris_handles.handles) {
         let Some(seri) = assets.remove(&handle) else { continue };
@@ -33,9 +32,7 @@ pub fn init_noises(
                 continue;
             }    
         };
-
         let mut noise = FastNoiseLite::new(str_id.clone());
-
         
         if let Some(frequency) = seri.frequency {
             if frequency < 0.00000000001 {
@@ -119,33 +116,27 @@ pub fn init_noises(
         noise.set_cellular_jitter(seri.cellular_jitter);
         noise.set_domain_warp_amp(seri.domain_warp_amp);
 
-        cmd.spawn((
-            str_id.clone(),
-            DisplayName::new(seri.id.clone()),
-            FnlNoiseComp(noise),
-            ChildOf(holder),
-        ));
-
-    }
-}
-
-#[allow(unused_parens)]
-pub fn add_noises_to_map(
-    mut cmd: Commands, 
-    terrgen_map: Option<ResMut<TerrGenEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<StrId>, With<FnlNoiseComp>)>,
-) {
-    let Some(mut terrgen_map) = terrgen_map else {
-        return;
-    };
-    for (ent, prefix, str_id) in query.iter() {
-        if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
-            error!("{} {} already in TerrGenEntityMap : {}", prefix, str_id, err);
-            cmd.entity(ent).try_despawn();
+        if let Ok(existing) = terrgen_map.0.get(&str_id) {
+            error!("{} already in TerrGenEntityMap : {:?}", str_id, existing);
+            continue;
         }
+        let noise_ent = cmd.spawn_empty().id();
+        terrgen_map.0.force_insert(&str_id, noise_ent);
+        fnl_comps_to_insert.push((
+            noise_ent,
+            (
+                str_id.clone(),
+                DisplayName::new(seri.id.clone()),
+                FnlNoiseComp(noise),
+                ChildOf(holder),
+            ),
+        ));
     }
-    
+    cmd.insert_resource(terrgen_map);
+    cmd.insert_batch(fnl_comps_to_insert);
 }
+
+
 
  
 

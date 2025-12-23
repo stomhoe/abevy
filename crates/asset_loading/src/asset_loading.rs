@@ -1,13 +1,12 @@
 
 
-use bevy_replicon::prelude::*;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use dimension::dimension_resources::DimensionSerisHandles;
 use game_common::{GameplaySystems, color_sampler_resources::ColorWeightedSamplerHandles};
 use sprite::sprite_resources::*;
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
-use tilemap::{terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerHandles}};
+use tilemap::{regioning_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::*, tile_shader_resources::*}};
 
 use crate::asset_loading_systems::*;
 
@@ -55,6 +54,8 @@ pub fn plugin(app: &mut App) {
             .load_collection::<NoiseSerisHandles>()
             .load_collection::<OpListSerisHandles>()
             .load_collection::<DimensionSerisHandles>()
+            .load_collection::<StructureSerisHandles>()
+
 
         )
 

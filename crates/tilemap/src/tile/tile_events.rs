@@ -5,7 +5,7 @@ use bevy::ecs::entity::MapEntities;
 
 use dimension_shared::DimensionRef;
 use serde::{Deserialize, Serialize};
-use tilemap_shared::{AaGlobalGenSettings, GlobalTilePos, OplistSize};
+use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos, OplistSize};
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 

@@ -7,7 +7,7 @@ use dimension_shared::DimensionRef
 ;
 use tilemap_shared::{ChunkPos, GlobalTilePos};
 
-use crate::{chunking_components::*, chunking_resources::*, tile::{tile_events::SavedTileHadChunkDespawn}};
+use crate::{chunking_components::*, chunking_resources::*, regioning_resources::LoadedRegions, tile::tile_events::SavedTileHadChunkDespawn};
 
 //TODO HACERLO MÁS EVENT-DRIVEN
 
@@ -18,9 +18,11 @@ pub fn visit_chunks_around_activators(
     (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>)>, )>,//TODO USAR EVENTOS?
     mut loaded_chunks: ResMut<LoadedChunks>,
     tilemap_settings: Res<AaChunkRangeSettings>,
+    mut loaded_regions: ResMut<LoadedRegions>,
 ) {
     let cnt = tilemap_settings.discovery_range as i32;   
-    let mut to_insert = Vec::new();
+    let mut comps_for_chunk_ents = Vec::new();
+    let mut comps_for_region_ents = Vec::new();
 
     for (transform, mut activates_chunks, &dimension_ref) in query.iter_mut() {
 
@@ -29,20 +31,35 @@ pub fn visit_chunks_around_activators(
         for y in (center_chunk_pos.y() - cnt + 1)..(center_chunk_pos.y() + cnt) {
             for x in (center_chunk_pos.x() - cnt + 1)..(center_chunk_pos.x() + cnt) {
 
-                
                 let chunk_pos = ChunkPos::new(x, y);
                 let key = (dimension_ref, chunk_pos);
                 let chunk_ent = loaded_chunks.0.get(&key).copied().unwrap_or_else(|| {
-                    let ent = cmd.spawn_empty().id();//TODO lanzar un evento desde aca q spawnee los oplists?
-                    to_insert.push((ent, (
-                        Chunk,
+
+                    let region_ent = {
+                        let region_pos = chunk_pos.to_region_pos();
+                        let region_key = (dimension_ref, region_pos);
+                        loaded_regions.0.entry(region_key).or_insert_with(|| {
+                            let region_ent = cmd.spawn_empty().id();
+                            comps_for_region_ents.push((region_ent, (
+                                region_pos,
+                                StrId20B::new_truncated(format!("Region({}, {})", region_pos.0.x, region_pos.0.y)),
+                                Transform::default(),
+                                ChildOf(dimension_ref.0),
+                            )));
+                            region_ent
+                        }).clone()
+                    };
+
+                    let chunk_ent = cmd.spawn_empty().id();//TODO lanzar un evento desde aca q spawnee los oplists?
+                    comps_for_chunk_ents.push((chunk_ent, (
+                        Chunk { region_ent, },
                         StrId20B::new_truncated(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
                         Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
                         chunk_pos,
                         ChildOf(dimension_ref.0),
                     )));
-                    loaded_chunks.0.insert(key, ent);
-                    ent
+                    loaded_chunks.0.insert(key, chunk_ent);
+                    chunk_ent
                 });
                 if !activates_chunks.0.contains(&chunk_ent) {
                     activates_chunks.0.push(chunk_ent);
@@ -50,7 +67,8 @@ pub fn visit_chunks_around_activators(
             }
         }
     }
-    cmd.insert_batch(to_insert);
+    cmd.insert_batch(comps_for_chunk_ents);
+    cmd.insert_batch(comps_for_region_ents);
 }
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
@@ -143,7 +161,7 @@ pub fn despawn_unreferenced_chunks(
                 }
                 if tiles_to_save.entities().contains(&child) {
                     
-                    commands.entity(child).try_remove::<ChildOf>();//TODO reajustar transform (ya no es childof)
+                    commands.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
                     tosave_events.push(SavedTileHadChunkDespawn(child));
                 } else{//HACE FALTA
                     commands.entity(child).try_despawn();
@@ -153,7 +171,7 @@ pub fn despawn_unreferenced_chunks(
         }
     }
     tosave_event_writer.write_batch(tosave_events);
-    despawn_events.send_batch(despawn_retransmitted_events);
+    despawn_events.write_batch(despawn_retransmitted_events);
 }
 
 
