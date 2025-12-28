@@ -2,7 +2,7 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::common_components::Category;
+use common::common_components::Tag;
 use serde::{Deserialize, Serialize};
 
 

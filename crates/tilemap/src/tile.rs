@@ -9,9 +9,9 @@ use tilemap_shared::{GlobalTilePos, OplistSize};
 
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
-use crate::tile::{
+use crate::{tile::{
     tile_components::*, tile_events::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_systems::*
-};
+}};
 mod tile_systems;
 mod tile_init_systems;
 mod tile_sampler_init_systems;
@@ -42,21 +42,26 @@ pub fn plugin(app: &mut App) {
         init_tile_sprite,
         add_image_handle_to_tile_shader,
     ))
-
-    /* .add_systems(
-        OnEnter(AssetsLoadingState::LocalFinished), (
-        ().chain()
+    
+    /* .add_systems(map_portal_tiles
+    OnEnter(AssetsLoadingState::LocalFinished), (
+    ().chain()
     ).in_set(TilingSystems))*/
     .add_systems(
-        OnEnter(AssetLoading::InitReplicatedEntities), (
-            (   
-                init_shaders,  
-                init_tiles, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, init_tile_weighted_samplers_refs, )
-            .chain().run_if(in_state(ClientState::Disconnected)),
-    ).in_set(TilingSystems))
-
-    .configure_sets(OnEnter(AssetLoading::InitReplicatedEntities), (ColorSamplersInitSystems.before(TilingSystems), AcSpriteSystems.before(TilingSystems)))
-
+        OnEnter(AssetLoading::SpawnReplicatedEntities), 
+        (   
+            init_shaders,  
+            init_tiles, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, init_tile_weighted_samplers_refs, 
+        )
+        .chain().in_set(TilingSystems))
+        
+    .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), 
+        (ColorSamplersInitSystems.before(TilingSystems), 
+        AcSpriteSystems.before(TilingSystems),
+        TilingSystems.run_if(in_state(ClientState::Disconnected)),
+        
+    ))
+    
     .add_plugins((
         MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
         MaterialTilemapPlugin::<VoronoiTextureOverlayMat>::default(),
@@ -65,8 +70,8 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<TileSerialization>::new(&["tile.ron"]),
         RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
     ))
-
-
+    
+    
     .register_type::<ShaderRepeatTexSerisHandles>()
     .register_type::<ShaderRepeatTexSeri>()
     .register_type::<ShaderVoronoiSerisHandles>()
@@ -90,8 +95,8 @@ pub fn plugin(app: &mut App) {
     .register_type::<PortalRecipe>()
     .register_type::<PortalConnection>()
     .register_type::<EguiTileShaderHolder>()
-
-
+    
+    
     .replicate::<Tile>()
     .replicate::<TileStrId>()
     .replicate::<TileImagePaths>()
@@ -107,18 +112,18 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<Transform, With<Tile>>()
     .replicate_filtered::<EntityZeroRef, With<Tile>>()
     .replicate_filtered::<GlobalTilePos, With<Tile>>()
-
+    
     .replicate_filtered::<Transform, With<TilesEguiHolder>>()
     .replicate_filtered::<Transform, With<PortalsZeroEguiHolder>>()
     .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilePos>, With<Disabled>)>>()
     
-
+    
     .replicate_filtered::<ChildOf, With<EntityWeightedSampler>>()
-
+    
     //usar feature
     .add_message::<SavedTileHadChunkDespawn>()
-
-
+    
+    
     ;
 }
 

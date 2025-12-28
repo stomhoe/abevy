@@ -5,7 +5,7 @@ use bevy::{ecs::{entity::{EntityHashSet, }, entity_disabling::Disabled}, platfor
 use common::{common_components::{DisplayName, HashId, StrId}, };
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{DimensionRef, DimensionRootOplist};
-use game_common::{game_common_components::{EntityZeroRef,  }, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
 use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
 use std::{f32::consts::PI, };
 use ::tilemap_shared::*;
@@ -64,7 +64,7 @@ pub fn spawn_terrain_operations (
                 }
                 batch.push(PendingOp {
                     oplist, dim_ref: DimensionRef(dim_ref.parent()), pos: global_pos, dimension_hash_id: hash_id.into_i32(), 
-                    variables: VariablesArray::default(), studied_op_ent: Entity::PLACEHOLDER,
+                    variables: VariablesArray::default(), filtered_op: Entity::PLACEHOLDER,
                 });
             }
         }
@@ -85,7 +85,7 @@ pub fn spawn_terrain_operations (
 pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, 
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
     gen_settings: Single<&AcGlobalGenSettings>,
-    oplist_query: Query<(&OperationList, &OplistSize ), ( )>,
+    oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTags>), ( )>,
     fnl_noises: Query<&FnlNoiseComp,>,
     op_filters: Query<&OpFilter,>,
     weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
@@ -100,11 +100,11 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
 
     'eventfor: for mut ev in pending_ops_events.drain() {unsafe{
    
-        let (oplist, &my_oplist_size) = oplist_query.get(ev.oplist)?;
+        let (oplist, &my_oplist_size, oplist_tags) = oplist_query.get(ev.oplist)?;
         let global_pos = ev.pos;
         
 
-        for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
+        'opsfor: for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
             let mut operation_acc_val: f32 = 0.0;
             let mut selected_operand_i = 0; 
 
@@ -171,27 +171,40 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                 );      
             }
 
-            if let Ok(ref mut sop) = op_filters.get(ev.studied_op_ent) {
-
-                let sampling_last_and_is_so = sop.op_i <= -1 && op_i == oplist.trunk.len() - 1;
-
-                if  sop.checked_oplist == ev.oplist && (op_i == sop.op_i as usize 
-                    || sampling_last_and_is_so)
-                {    
-                    if (sop.min_val <= operation_acc_val && operation_acc_val <= sop.max_val)
-                    {
-                        sampled_value_events.push(SuitablePosFound {
-                            studied_op_ent: ev.studied_op_ent,
-                            val: operation_acc_val,
-                            found_pos: ev.pos,
-                        });
-                    }
-                    continue 'eventfor;
-                }
-            }
             trace!("Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
             ev.variables[*stackarr_out_i] = operation_acc_val;
 
+            if (ev.filtered_op != Entity::PLACEHOLDER)  {
+                if let Ok(ref mut filter) = op_filters.get(ev.filtered_op) {
+
+                    let Some(oplist_tags) = oplist_tags else {
+                        continue 'opsfor;
+                    };
+                    let filter_tags = &filter.tags;
+                    
+                    let sampling_last_and_is_so = filter.op_i <= -1 && op_i == oplist.trunk.len() - 1;
+                    
+
+                    if oplist_tags.intersects(filter_tags) && (op_i == filter.op_i as usize 
+                        || sampling_last_and_is_so)
+                    {    
+                        if (filter.min_val <= operation_acc_val && operation_acc_val <= filter.max_val)
+                        {
+                            sampled_value_events.push(SuitablePosFound {
+                                op_filter_ent: ev.filtered_op,
+                                val: operation_acc_val,
+                                found_pos: ev.pos,
+                            });
+                        }
+                        continue 'eventfor;
+                    } 
+                }
+                else{
+                    trace!(target: "terrgen_process", "Failed to get OpFilter of entity {:?}", ev.filtered_op);
+                    continue 'eventfor;
+                }
+
+            }
         }
         let destination_i = (ev.variables[0] as usize).min(oplist.bifurcations.len() - 1).max(0);
         trace!("Destination index for bifurcation: {}", destination_i);
@@ -202,7 +215,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
             spawn_bifurcation_oplists(&mut ev, &oplist_query, &mut new_pending_ops_events, oplist, my_oplist_size);
         }
 
-        if bifurcation.tiles.len() > 0 && ev.studied_op_ent == Entity::PLACEHOLDER {
+        if bifurcation.tiles.len() > 0 && ev.filtered_op == Entity::PLACEHOLDER {
             collected.collect_tiles(&mut cmd, &bifurcation.tiles, &ev, my_oplist_size, &weight_maps, &gen_settings);
         }
     }}
@@ -214,14 +227,14 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
 }
 
 fn spawn_bifurcation_oplists(
-    ev: &mut PendingOp, oplist_query: &Query<(&OperationList, &OplistSize), ()>,
+    ev: &mut PendingOp, oplist_query: &Query<(&OperationList, &OplistSize, Option<&HashedTags>), ()>,
     new_pending_ops: &mut Vec<PendingOp>, oplist: Entity, my_oplist_size: OplistSize,
 ) {unsafe{
-    let (_, &child_oplist_size) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
+    let (_, &child_oplist_size, _) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
 
     if my_oplist_size != child_oplist_size
     && (ev.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
-    && ev.studied_op_ent == Entity::PLACEHOLDER
+    && ev.filtered_op == Entity::PLACEHOLDER
     {
         let x_end = child_oplist_size.x() as i32; let y_end = child_oplist_size.y() as i32;
         for x in 0..x_end {
@@ -243,6 +256,7 @@ pub fn search_suitable_positions(
     mut terrain_probe: ResMut<Messages<TerrainProbe>>, mut mwriter_search_failed: MessageWriter<SearchFailed>,
     mut mwriter_pending_ops: MessageWriter<PendingOp>, mut mreader_suitable_pos_found: MessageReader<SuitablePosFound>,
     studied_ops: Query<&OpFilter, ( )>,
+    failed_search_oplist_filter_holder: Single<Entity, (With<FailedSearchOplistFilterHolder>)>,
 ) {
     let mut new_pending_ops = Vec::new();
     let mut new_pos_searches = Vec::new();
@@ -250,28 +264,28 @@ pub fn search_suitable_positions(
     let mut found_suitable_positions = EntityHashSet::new();
 
     for found_ev in mreader_suitable_pos_found.read() {
-        found_suitable_positions.insert(found_ev.studied_op_ent);
+        found_suitable_positions.insert(found_ev.op_filter_ent);
     }
     
     for pos_search in terrain_probe.drain() {
 
         if found_suitable_positions.contains(&pos_search.operation_filter) {
-            info!("Found suitable position for {:?}", pos_search.operation_filter);
+            info!(target: "pos_search","Found suitable position for {:?}", pos_search.operation_filter);
             continue;
         }
 
-        let (studied_op_ent, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_hash_id) = 
+        let (filtered_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_hash_id) = 
         (pos_search.operation_filter, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_hash_id);
 
-        let Ok(opfilter) = studied_ops.get(studied_op_ent) else {//ERRROR: ENTTIY NO SPAWNEÓ TODAVÍA
+        let Ok(opfilter) = studied_ops.get(filtered_op) else {//ERRROR: ENTTIY NO SPAWNEÓ TODAVÍA
             if curr_iteration_batch_i == 0 {
                 // If we want to retry, push a new PosSearch with decremented batch index
                 let mut new_search = pos_search;
                 new_search.curr_iteration_batch_i -= 1;
                 new_pos_searches.push(new_search);
             } else if curr_iteration_batch_i == -2 {
-                error!("StudiedOp entity {:?} not found in search_suitable_position, giving up", studied_op_ent);
-                search_failed_evs.push(SearchFailed(studied_op_ent));
+                error!(target: "pos_search", "StudiedOp entity {:?} not found in search_suitable_position, giving up", filtered_op);
+                search_failed_evs.push(SearchFailed(filtered_op));
             }
             continue;
         };
@@ -293,10 +307,10 @@ pub fn search_suitable_positions(
 
                     for i_within_batch in start_i_within_batch..iterations_per_batch {
                         new_pending_ops.push(PendingOp {
-                            oplist: opfilter.root_oplist,
+                            oplist: opfilter.start_oplist,
                             dimension_hash_id,
                             pos: calculate_pos(i_within_batch, explore_angle),
-                            studied_op_ent,
+                            filtered_op,
                             variables: VariablesArray::default(),
                             dim_ref: DimensionRef(Entity::PLACEHOLDER),
                         });
@@ -308,12 +322,12 @@ pub fn search_suitable_positions(
                             ..pos_search
                         });
                     } else {
-                        error!("No more batches to search for {:?}", opfilter);
-                        search_failed_evs.push(SearchFailed(studied_op_ent));
+                        error!(target: "pos_search", "No more batches to search for {:?}", opfilter);
+                        search_failed_evs.push(SearchFailed(filtered_op));
                     }
                 } else {
                     if curr_iteration_batch_i as u16 >= max_batches {
-                        error!("curr No more batches to search for {:?}", pos_search);
+                        error!(target: "pos_search", "curr No more batches to search for {:?}", pos_search);
                         continue;
                     }
                     let divisions = 8;
@@ -327,7 +341,7 @@ pub fn search_suitable_positions(
                 }
             }
             ProbePattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turns) => {
-                trace!("Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
+                trace!(target: "pos_search", "Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
                     pos, dir_vec, curr_length_in_dir, turns);
 
                 for _ in 0..iterations_per_batch {
@@ -335,11 +349,11 @@ pub fn search_suitable_positions(
 
                     new_pending_ops.push(PendingOp {
                         dimension_hash_id,
-                        oplist: opfilter.root_oplist,
+                        oplist: opfilter.start_oplist,
                         dim_ref: DimensionRef(Entity::PLACEHOLDER),
                         pos,
                         variables: VariablesArray::default(),
-                        studied_op_ent,
+                        filtered_op,
                     });
 
                     steps_taken += 1;
@@ -358,9 +372,9 @@ pub fn search_suitable_positions(
                         ..pos_search
                     });
                 } else {
-                    error!("No more batches to search for {:?}", opfilter);
-                    cmd.entity(studied_op_ent).try_despawn();
-                    search_failed_evs.push(SearchFailed(studied_op_ent));
+                    error!(target: "pos_search", "No more batches to search for {:?}", opfilter);
+                    cmd.entity(filtered_op).try_insert(ChildOf(failed_search_oplist_filter_holder.entity()));
+                    search_failed_evs.push(SearchFailed(filtered_op));
                 }
             },   
         }

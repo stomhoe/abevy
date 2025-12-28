@@ -30,7 +30,7 @@ pub fn init_tile_weighted_samplers(
                     continue;
                 }
                 let ent = cmd.spawn_empty().id();
-                map.0.force_insert(&str_id, ent);
+                map.0.overwrite(&str_id, ent);
                 comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), )));
             }
         }

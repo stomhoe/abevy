@@ -25,31 +25,17 @@ impl Display for DuplicateKeyError {
 impl HashIdToEntityMap {
     pub fn new() -> Self { Self(HashMap::new()) }
 
-    fn try_insert(&mut self, hash_id: HashId, entity: Entity) -> Result<(), DuplicateKeyError> {
+    pub fn try_insert<K: Into<HashId>>(&mut self, id: K, entity: Entity) -> Result<(), DuplicateKeyError> {
+        let hash_id = id.into();
         if let Some(existing) = self.0.get(&hash_id).copied() {
             return Err(DuplicateKeyError(existing));
         }
         self.0.insert(hash_id, entity);
         Ok(())
     }
-    pub fn force_insert<K>(&mut self, id: K, entity: Entity) -> Option<Entity>
-    where
-        K: AsRef<str>,
-    {
-        let hash_id = HashId::from(id.as_ref());
-        self.0.insert(hash_id, entity)
-    }
 
-    pub fn insert<K>(&mut self, id: K, entity: Entity) -> Result<(), DuplicateKeyError>
-    where
-        K: AsRef<str>,
-    {
-        let hash_id = HashId::from(id.as_ref());
-        self.try_insert(hash_id, entity)
-    }
-
-    pub fn insert_with_hash(&mut self, hash_id: HashId, entity: Entity) -> Result<(), DuplicateKeyError> {
-        self.try_insert(hash_id, entity)
+    pub fn overwrite<K: Into<HashId>>(&mut self, id: K, entity: Entity) -> Option<Entity> {
+        self.0.insert(id.into(), entity)
     }
 
     pub fn get<K>(&self, id: &K) -> Result<Entity, BevyError>

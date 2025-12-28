@@ -29,18 +29,18 @@ pub fn plugin(app: &mut App) {
         (apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(10))),
         z_sort_system,
         // server only
-        (become_child_of_sprite_with_category, replace_string_ids_by_entities, 
+        (become_child_of_sprite_with_tag, replace_string_ids_by_entities, 
             add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected).and(in_state(AppState::StatefulGameSession)))
             
     ).in_set(AcSpriteSystems))
     .add_systems(Update, (add_sprites_to_holder,)) 
     .configure_sets(SPRITES_SCHEDULE, AcSpriteSystems.in_set(StatefulSessionSystems))
     
-    .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
-        (init_sprite_cfgs, add_sprites_to_local_map).chain(),
+    .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
+        (init_sprite_cfgs, ).chain(),
     ).in_set(AcSpriteSystems)) 
 
-    .configure_sets(OnEnter(AssetLoading::InitReplicatedEntities), (
+    .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
        AcSpriteSystems.before(GameplaySystems)
     ))
     

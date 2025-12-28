@@ -23,6 +23,7 @@ concat!(
     "portal_init=info,",
 
     "tilemap::terrain_gen::terrgen_systems=info,",
+    "terrgen_process=info,",
     "tilemap::tile::tile_init_systems=info,",
     "tilemap_systems=trace,",
     "zlevel=info,",

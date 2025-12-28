@@ -4,7 +4,7 @@ use bevy::{ecs::entity_disabling::Disabled, platform::collections::{HashMap, Has
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::prelude::Animation;
-use game_common::game_common_components::{Categories, Directionable, EntityZero, };
+use game_common::game_common_components::{Tags, Directionable, EntityZero, };
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 
 use crate::{sprite_components::*, sprite_resources::*, };

@@ -27,9 +27,10 @@ pub fn plugin(app: &mut App) {
             (spawn_terrain_operations, (process_pending_ops_and_collect_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
             search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
             oplist_init_dim_refs,
+            set_hashed_tags_for_oplist,
         ))
         
-        .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
+        .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (
                 init_noises,
                 init_oplists_from_assets,

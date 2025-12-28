@@ -8,16 +8,13 @@ use crate::{terrain_gen::terrgen_messages::PendingOp, tile::tile_components::{Ke
 use dimension_shared::DimensionRef;
 use crate::tile::tile_components::*;
 
-
 use bevy::{ecs::{entity::MapEntities, }, prelude::*};
 use ::tilemap_shared::*;
 use std::mem::take;
 use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
 use std::hash::Hash;
 
-
 use serde::{Deserialize, Serialize};
-
 
 
 #[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone, )]
@@ -134,6 +131,7 @@ pub struct OpListSerisHandles {
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct OpListSerialization {
     pub id: String,
+    pub tags: Option<Vec<String>>,
     pub root_in_dimensions: Vec<String>,
     /// input variable index, operation name, operands, ouput variable indexs 
     pub operation_operands: Vec<(String, Vec<String>, u8)>,

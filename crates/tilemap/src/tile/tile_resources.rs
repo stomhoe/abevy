@@ -3,7 +3,7 @@ use bevy::{ecs::entity::EntityHashSet, math::f32, platform::collections::{HashMa
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-use common::{common_components::Category, common_types::HashIdToEntityMap};
+use common::{common_components::Tag, common_types::HashIdToEntityMap};
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
@@ -17,7 +17,7 @@ pub struct TileInstancesEntityMap(pub HashIdToEntityMap);
 
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]
-pub struct TileCategories (pub HashMap<Category, EntityHashSet>);
+pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
 
 
 
@@ -96,7 +96,7 @@ pub struct TileSerialization {
 pub struct PortalSeri{
     pub dest_dimension: String,
     pub oe_tile: String,
-    pub oplist: String,
+    pub oe_tags: Vec<String>,
     pub op_i: i16,
     pub lim_below: f32,
     pub lim_above: f32,

@@ -6,7 +6,7 @@
 pub enum AppState {NoSession, #[default]StatefulGameSession, }
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[source(AssetLoading = AssetLoading::InitLocalEntities)]
+#[source(AssetLoading = AssetLoading::SpawnLocalEntities)]
 #[states(scoped_entities)]
 pub enum PreGameState {
     #[default]
@@ -31,12 +31,12 @@ pub enum AssetLoading {
     //asset loading is triggered
     LocalInProcess,
     //init systems are executed
-    InitLocalEntities,
+    SpawnLocalEntities,
     //asset loading is triggered
     LoadingReplicatedCollections,
     //init systems are executed
     #[default]//el default es para que el despawnonexit se active al salir de ese estado, cambiar el estado inicial en .insert_state::<AssetsLoadingState>
-    InitReplicatedEntities,
+    SpawnReplicatedEntities,
 }
 
 

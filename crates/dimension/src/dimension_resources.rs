@@ -3,8 +3,7 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 use common::common_types::HashIdToEntityMap;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-#[derive(Resource, Debug, Default )]
-pub struct DimensionEntityMap(pub HashIdToEntityMap);
+
 
 #[derive(AssetCollection, Resource)]
 pub struct DimensionSerisHandles {

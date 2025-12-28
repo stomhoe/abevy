@@ -133,6 +133,7 @@ impl GlobalTilePos {
         let vec2: Vec2 = (*self).into();
         vec2.extend(prev_transform_z)
     }
+    
 }
 impl_display_debug!(GlobalTilePos, "Gpos");
 

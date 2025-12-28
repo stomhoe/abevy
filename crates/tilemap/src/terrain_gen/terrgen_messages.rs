@@ -1,6 +1,7 @@
 use bevy::{prelude::*};
 use common::common_components::HashId;
 use dimension_shared::DimensionRef;
+use game_common::game_common_components::{HashedTags, Tags};
 use serde::Deserialize;
 use ::tilemap_shared::*;
 use std::hash::Hash;
@@ -12,8 +13,8 @@ use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, };
 #[derive(Debug, Clone, Component, Reflect)]
 /// when process_pending_ops_and_collect_tiles finds a suitable position within this filter's parameters, it writes out a SuitablePosFound message
 pub struct OpFilter{
-    pub root_oplist: Entity,
-    pub checked_oplist: Entity,
+    pub start_oplist: Entity,
+    pub tags: HashedTags,
     pub op_i: i16,
     pub min_val: f32,
     pub max_val: f32,
@@ -21,8 +22,8 @@ pub struct OpFilter{
 }
 impl Hash for OpFilter {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.root_oplist.hash(state);
-        self.checked_oplist.hash(state);
+        self.start_oplist.hash(state);
+        self.tags.hash(state);
         self.op_i.hash(state);
         self.min_val.to_bits().hash(state);
         self.max_val.to_bits().hash(state);
@@ -30,8 +31,8 @@ impl Hash for OpFilter {
 }
 impl PartialEq for OpFilter {
     fn eq(&self, other: &Self) -> bool {
-        self.root_oplist == other.root_oplist &&
-        self.checked_oplist == other.checked_oplist &&
+        self.start_oplist == other.start_oplist &&
+        self.tags == other.tags &&
         self.op_i == other.op_i &&
         self.min_val.to_bits() == other.min_val.to_bits() &&
         self.max_val.to_bits() == other.max_val.to_bits()
@@ -40,10 +41,11 @@ impl PartialEq for OpFilter {
 impl Eq for OpFilter {}
 #[derive(Deserialize, Asset, Reflect, )]
 pub struct OpFilterSerialization {
-    pub id: String,
-    pub oplist_id: String,
-    pub checked_oplist_id: String,
-    pub description: String,
+    pub root_oplist_id: String,
+    pub tags: Vec<String>,
+    pub op_i: i16,
+    pub min_val: f32,
+    pub max_val: f32,
 }
 
 #[derive(Message, Debug, Clone)]
@@ -85,7 +87,7 @@ impl ProbePattern {
 
 
 #[derive(Debug, Clone, Message, )]
-pub struct SuitablePosFound { pub studied_op_ent: Entity, pub val: f32, pub found_pos: GlobalTilePos, }
+pub struct SuitablePosFound { pub op_filter_ent: Entity, pub val: f32, pub found_pos: GlobalTilePos, }
 
 
 #[derive(Debug, Clone, Message, )]
@@ -95,5 +97,6 @@ pub struct SearchFailed (pub Entity);
 /// internal use only
 pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub pos: GlobalTilePos, 
     pub dimension_hash_id: i32,
-    pub variables: VariablesArray, pub studied_op_ent: Entity
+    pub variables: VariablesArray, pub filtered_op: Entity
 }
+

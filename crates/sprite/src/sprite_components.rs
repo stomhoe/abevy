@@ -81,7 +81,7 @@ pub struct ColorHolder(pub Color);
 pub struct Exclusive;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct BecomeChildOfSpriteWithCategory (pub Category);
+pub struct BecomeChildOfSpriteWithTag (pub Tag);
 
 
 
@@ -90,7 +90,7 @@ pub struct SpriteCfgsToBuild(#[entities] pub HashSet<Entity>);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct OffsetForChildren(pub HashMap<Category, (Offset2D, AppliesOnSpriteDirection)>);
+pub struct OffsetForChildren(pub HashMap<Tag, (Offset2D, AppliesOnSpriteDirection)>);
 
 
 #[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy, Reflect)]

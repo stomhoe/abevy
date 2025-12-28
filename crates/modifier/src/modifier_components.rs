@@ -3,7 +3,7 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::EntityPrefix;
-use game_common::game_common_components::Categories;
+use game_common::game_common_components::Tags;
 use serde::{Deserialize, Serialize};
 
 //USAR Name
@@ -26,7 +26,7 @@ impl AppliedModifiers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
 /*TO-DO ¡IMPORTANTE! NO OLVIDARSE DE AGREGAR: 
 superstate_plugin::<Modifier, (Walking, Flying)>,
  EN EL Plugin DEL MÓDULO */
-pub type ModifierCategories = Categories;
+pub type ModifierCategories = Tags;
 /*categorías/tipo de sustancia/familia de sustancia a las q pertenece: race_modifier,  
     (así se pueden identificar sustancias origen y hacer sistemas de antidotos q contrarresten sustancias específicas)
 */
@@ -46,7 +46,7 @@ pub struct Antidote(pub HashMap<String, f32>);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]//PARA PIERNAS 
-/// offset value for self if other category is present on the same target as us
+/// offset value for self if other tag is present on the same target as us
 pub struct OffsetValForSelf(pub HashMap<String, f32>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]//PARA PIERNAS 

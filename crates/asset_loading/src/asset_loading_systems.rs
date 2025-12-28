@@ -1,8 +1,7 @@
 use being::being_components::Being;
 use bevy::prelude::*;
 use common::common_states::*;
-use dimension::dimension_resources::DimensionEntityMap;
-use dimension_shared::DimensionStrIdRef;
+use dimension_shared::{DimensionEntityMap, DimensionStrIdRef};
 use sprite::sprite_resources::SpriteCfgEntityMap;
 use sprite_animation_shared::AnimationLibrary;
 use tilemap::{chunking_components::ActivatingChunks, terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap, tile_shader_resources::TileShaderEntityMap}};

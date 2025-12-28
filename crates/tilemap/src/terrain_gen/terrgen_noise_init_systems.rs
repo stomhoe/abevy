@@ -121,7 +121,7 @@ pub fn init_noises(
             continue;
         }
         let noise_ent = cmd.spawn_empty().id();
-        terrgen_map.0.force_insert(&str_id, noise_ent);
+        terrgen_map.0.overwrite(&str_id, noise_ent);
         fnl_comps_to_insert.push((
             noise_ent,
             (

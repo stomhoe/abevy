@@ -12,7 +12,7 @@ pub fn plugin(app: &mut App) {
     app
 
     .add_systems(
-        OnEnter(AssetLoading::InitReplicatedEntities),
+        OnEnter(AssetLoading::SpawnReplicatedEntities),
         (server_or_singleplayer_setup,)
         .run_if(
             in_state(ClientState::Disconnected)

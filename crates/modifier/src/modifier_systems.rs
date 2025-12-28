@@ -27,10 +27,10 @@ pub fn apply_antidotes(
     //     }
 
     //     for modif_ent in affected.entities() {
-    //         if let Ok((modifier_categories, mut effective_potency)) = modis_query.get_mut(*modif_ent) {
+    //         if let Ok((modifier_tags, mut effective_potency)) = modis_query.get_mut(*modif_ent) {
     //             let effective_potency =
 
-    //             for cat_str in modifier_categories.0.iter() {
+    //             for cat_str in modifier_tags.0.iter() {
     //                 if let Some(counter_potency) = counters_map.get(cat_str) {
     //                     effective_potency.0 -= counter_potency;
     //                 }

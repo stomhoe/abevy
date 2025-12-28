@@ -82,7 +82,7 @@ macro_rules! define_fixedstr_id {
     };
 }
 define_fixedstr_id!(StrId20B, 20);
-define_fixedstr_id!(Category, 32);
+define_fixedstr_id!(Tag, 32);
 define_fixedstr_id!(StrId, 32);
 
 define_fixedstr_id!(EntityPrefix, 20);
@@ -102,12 +102,12 @@ impl<S: AsRef<str>> From<S> for HashId {
 
 impl Display for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HId({:05})", self.0 & 0xFFFFF)
+        write!(f, "HId({:05})", self.0)
     }
 }
 impl Debug for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HId({:05})", self.0 & 0xFFFFF)
+        write!(f, "HId({:05})", self.0)
     }
 }
 

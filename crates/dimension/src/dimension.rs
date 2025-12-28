@@ -9,31 +9,31 @@ use crate::{
 //    dimension_events::*,
 };
 
-
-
 pub fn plugin(app: &mut App) {
     app
         .add_plugins((
             RonAssetPlugin::<DimensionSeri>::new(&["dimension.ron"]),
         ))
-        .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (
-            (init_dimensions, add_dimensions_to_map).chain(),
+        .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
+            (init_dimensions, add_dimensions_to_map).chain().in_set(DimensionSystems),
         ))
         .add_systems(Update, (
-            update_child_of,
-            (replace_multiple_string_refs_by_entity_refs, dim_replace_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected).and(in_state(AssetLoading::InitReplicatedEntities))),
+            (replace_multiple_string_refs_by_entity_refs, replace_dim_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected)
+            .and(in_state(AssetLoading::SpawnReplicatedEntities))),
 
+            readjust_childof_to_new_dim_if_parent_was_dimension,
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
-        .replicate_filtered::<Transform, With<Dimension>>()
+        .register_type::<DimensionRef>()
+        .register_type::<MultipleDimensionRefs>()
+        .register_type::<DimensionRootOplist>()
+        .register_type::<RootInDimensions>()
+
+        .replicate_once_filtered::<Transform, With<Dimension>>()
 
         .replicate::<Dimension>()
         .replicate::<DimensionRef>()
         .replicate::<MultipleDimensionRefs>()
         .replicate::<DimensionRootOplist>()
-        .register_type::<DimensionRef>()
-        .register_type::<MultipleDimensionRefs>()
-        .register_type::<DimensionRootOplist>()
-        .register_type::<RootInDimensions>()
     ;
 }

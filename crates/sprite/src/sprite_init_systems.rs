@@ -22,9 +22,11 @@ pub fn init_sprite_cfgs(
 ) {
     if map.is_some(){ return; }
 
-    cmd.init_resource::<SpriteCfgEntityMap>();
+    let mut map = SpriteCfgEntityMap::default();
+
     cmd.spawn(EguiSpriteHolder::default());
 
+    let mut comps_to_insert = Vec::new();
 
     for handle in take(&mut seris_handles.handles) {
         let Some(mut seri) = assets.remove(&handle) else {continue;};
@@ -39,6 +41,13 @@ pub fn init_sprite_cfgs(
                     continue;
                 }
             };
+
+        if let Ok(_existing_ent) = map.0.get(&str_id) {
+            error!(target: "sprite_init", "Duplicate SpriteConfig StrId found: '{}', skipping duplicate.", str_id);
+            continue;
+        }
+        let spritecfg_ent = cmd.spawn_empty().id();
+        map.0.overwrite(str_id.clone(), spritecfg_ent);
         
         let visib = match seri.visibility {
             Some(0) => Visibility::Inherited,
@@ -50,31 +59,28 @@ pub fn init_sprite_cfgs(
             },
             None => Visibility::Inherited,
         };
-
-
+        
+        
         let mut offset4children_cats = OffsetForChildren::default();
         if let Some(offset4children) = seri.offset4children.as_mut() {
             for (cat, (offset_x, offset_y, direction)) in take(offset4children) {
-                offset4children_cats.0.insert(Category::new_truncated(cat), 
+                offset4children_cats.0.insert(Tag::new_truncated(cat), 
                 (Offset2D::from((offset_x, offset_y)), AppliesOnSpriteDirection::from(direction)));
             }
         }
-        
-        let spritecfg_ent = cmd.spawn((
+        comps_to_insert.push((spritecfg_ent, ( 
             str_id.clone(), 
             SpriteConfig,
             visib,
             offset4children_cats,
             EntityZero,
             ChildOf(holder.entity()),
-        )).id();
-
-        if let Some(categories) = seri.categories.as_ref() {
-            if !categories.is_empty() {
-                cmd.entity(spritecfg_ent).insert(Categories::new(categories));
+        )));
+        if let Some(tags) = seri.tags.as_ref() {
+            if !tags.is_empty() {
+                cmd.entity(spritecfg_ent).insert(Tags::new(tags));
             }
         }
-
         if let Some(scale_2d) = seri.scale {
             cmd.entity(spritecfg_ent).insert(Scale2D::from(scale_2d));
         }
@@ -100,7 +106,6 @@ pub fn init_sprite_cfgs(
             cmd.entity(spritecfg_ent).insert(OffsetSideways::from(offset_sideways));
         }
 
-
         if seri.name.trim().is_empty() {
             warn!(target: "sprite_init", "SpriteConfig name is empty for SpriteConfig '{}', using StrId as name", str_id);
             cmd.entity(spritecfg_ent).insert(DisplayName::new_trimmed(str_id.as_str()));
@@ -118,7 +123,7 @@ pub fn init_sprite_cfgs(
 
         if seri.grounding_based == Some(true) { cmd.entity(spritecfg_ent).insert(GroundingBased); }
         if let Some(parent_cat) = seri.parent_cat.as_ref().filter(|s| !s.trim().is_empty()) {
-            let to_become_child = BecomeChildOfSpriteWithCategory(Category::new_truncated(parent_cat.trim()));
+            let to_become_child = BecomeChildOfSpriteWithTag(Tag::new_truncated(parent_cat.trim()));
             cmd.entity(spritecfg_ent).insert(to_become_child);
         }
 
@@ -164,23 +169,10 @@ pub fn init_sprite_cfgs(
         */
         
     }
+    cmd.insert_resource(map);
+    cmd.insert_batch(comps_to_insert);  
 } 
 
-pub fn add_sprites_to_local_map(
-    mut cmd: Commands,
-    map: Option<ResMut<SpriteCfgEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
-) {
-    let Some(mut terrgen_map) = map else { return; };
-    for (ent, prefix, str_id) in query.iter() {
-        if let Err(err) = terrgen_map.0.insert(str_id, ent, ) {
-            error!(target: "sprite_init", "{} {} already in SpriteCfgEntityMap : {}", prefix, str_id, err);
-            cmd.entity(ent).try_despawn();
-        } else {
-            debug!(target: "sprite_init", "Inserted sprite '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
-        }
-    }
-}
 
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
@@ -276,13 +268,13 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
 }
 
 #[allow(unused_parens)]
-pub fn become_child_of_sprite_with_category(
+pub fn become_child_of_sprite_with_tag(
     mut cmd: Commands,
     new_sprites: Query<(Entity, &BaseHolderRef, &EntityZeroRef), (Without<SpriteConfig>, Changed<EntityZeroRef>,)>,
     sprite_holder: Query<&HeldSprites>,
     other_sprites: Query<(Entity, &EntityZeroRef), (Without<SpriteConfig>, )>,
-    becomes: Query<(&BecomeChildOfSpriteWithCategory), (Or<(With<Disabled>, Without<Disabled>)>)>,
-    other_cats: Query<&Categories, (Or<(With<Disabled>, Without<Disabled>)>)>,
+    becomes: Query<(&BecomeChildOfSpriteWithTag), (Or<(With<Disabled>, Without<Disabled>)>)>,
+    other_cats: Query<&Tags, (Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     for (new_ent, &sprite_holder_ref, &new_sprite_cfg_ref) in new_sprites.iter(){
         if let Ok(becomes_child_of_sprite_with_cat) = becomes.get(new_sprite_cfg_ref.0) {unsafe {
@@ -298,7 +290,7 @@ pub fn become_child_of_sprite_with_category(
                     },
                 };
                 if other_cats.0.contains(&becomes_child_of_sprite_with_cat.0) {
-                    debug!(target: "sprite_building", "Adding ChildOfCategory to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
+                    debug!(target: "sprite_building", "Adding ChildOfTag to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
                     cmd.entity(new_ent).try_insert(ChildOf(other_ent));
                     break;
                 }

@@ -2,7 +2,7 @@
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use game_common::game_common_components::{Categories, EntityZero, EntityZeroRef, FacingDirection};
+use game_common::game_common_components::{Tags, EntityZero, EntityZeroRef, FacingDirection};
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::sprite_components::*;
@@ -88,7 +88,7 @@ pub fn apply_offsets(
         Has<SpriteConfigNotFound>,
     ), (Or<(With<Disabled>, Without<Disabled>)>, Without<EntityZero>, )>,
     sprite_config_query: Query<(
-        Option<&Categories>,
+        Option<&Tags>,
         Option<&Offset2D>,
         Option<&OffsetSideways>,
         Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>, 

@@ -33,15 +33,14 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<WeightedColorsSeri>::new(&["wcolors.ron"]),
 
     ))
-    .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (reset_states))
+    .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (reset_states))
 
-    .add_systems(OnEnter(AssetLoading::InitReplicatedEntities), (init_color_samplers, ).chain().in_set(ColorSamplersInitSystems))
+    .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (init_color_samplers, ).chain().in_set(ColorSamplersInitSystems))
 
     .add_systems(Update, (
         (apply_pos_sampled_color).in_set(StatefulSessionSystems),
         (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
-        add_colorsamplers_to_map,
         apply_pos_sampled_color,
         clone_ezero_children_ents,
         disable_ezeros,
@@ -56,8 +55,8 @@ pub fn plugin(app: &mut App) {
             in_state(GamePhase::ActiveGame)
             .and(in_state(ReplicatedAssetsSession::KeepAlive))
             .and(
-                in_state(AssetLoading::InitLocalEntities).and(not(in_state(ClientState::Disconnected)))
-                .or(in_state(AssetLoading::InitReplicatedEntities).and(in_state(ClientState::Disconnected)))
+                in_state(AssetLoading::SpawnLocalEntities).and(not(in_state(ClientState::Disconnected)))
+                .or(in_state(AssetLoading::SpawnReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         ).in_set(StatefulSessionSystems),
         
@@ -70,8 +69,8 @@ pub fn plugin(app: &mut App) {
             in_state(GamePhase::ActiveGame)
             .and(in_state(ReplicatedAssetsSession::KeepAlive))
             .and(
-                in_state(AssetLoading::InitLocalEntities).and(not(in_state(ClientState::Disconnected)))
-                .or(in_state(AssetLoading::InitReplicatedEntities).and(in_state(ClientState::Disconnected)))
+                in_state(AssetLoading::SpawnLocalEntities).and(not(in_state(ClientState::Disconnected)))
+                .or(in_state(AssetLoading::SpawnReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         )
         .in_set(StatefulSessionSystems),
@@ -89,7 +88,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<Description>()
     .register_type::<FacingDirection>()
     .register_type::<WeightedSamplerRef>()
-    .register_type::<Categories>()
+    .register_type::<Tags>()
     .register_type::<EntityZeroRef>()
     .register_type::<EntityWeightedSampler>()
     .register_type::<ColorSampler>()
@@ -103,7 +102,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<ColorSampler>()
     .replicate::<Description>()
     .replicate_once::<GlobalTransform>()
-    .replicate::<Categories>()
+    .replicate::<Tags>()
     .replicate_filtered::<EntityZero, Or<(With<Disabled>, Without<Disabled>)>>()
     .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>)>()
     .replicate_once_filtered_as::<Visibility, VisibilityGameState, (Or<(With<Disabled>, Without<Disabled>)>)>()

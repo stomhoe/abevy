@@ -6,15 +6,7 @@ license = "MIT"
 description = "FastNoise Lite is an extremely portable open source noise generation library with a large selection of noise algorithms"
 repository = "https://github.com/Auburn/FastNoiseLite"
 readme = "README.md"
-authors = ["Jordan Peck", "Keavon Chambers"]
-categories = [
-	"algorithms",
-	"game-development",
-	"graphics",
-	"multimedia::images",
-	"rendering",
-]
-keywords = ["noise", "simplex", "perlin", "procedural", "terrain"]
+
 
 [features]
 default = ["std"]

@@ -62,7 +62,7 @@ pub fn init_tiles(
             cmd.entity(tile_enti).try_despawn();
             continue;
         }
-        tiling_map.0.force_insert(&str_id, tile_enti);
+        tiling_map.0.overwrite(&str_id, tile_enti);
 
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
         let color = Color::srgba_u8(r, g, b, a);
@@ -153,7 +153,7 @@ pub fn init_tiles(
         if let Some(cats) = &seri.cats {
             for cat in cats.iter() {
                 if cat.trim().is_empty() { continue; }
-                res_tile_cats.0.entry(Category::new_truncated(cat)).or_default().insert(tile_enti);
+                res_tile_cats.0.entry(Tag::new_truncated(cat)).or_default().insert(tile_enti);
             }
         }
     }
@@ -235,7 +235,7 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 
         for (tile_id, min_dist) in min_distances {
 
-            if let Some(cat) = tile_id.strip_prefix("c.") && let Some(cat_entities) = tile_cats.0.get(&Category::new_truncated(cat)) {
+            if let Some(cat) = tile_id.strip_prefix("c.") && let Some(cat_entities) = tile_cats.0.get(&Tag::new_truncated(cat)) {
 
                 for cat_tile_ent in cat_entities {
                     min_dists.0.insert(*cat_tile_ent, min_dist);
@@ -267,11 +267,11 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn map_portal_tiles(mut cmd: Commands, 
-    query: Query<(Entity, &TileStrId, &PortalSeri, ),(With<Disabled>)>,
+    mut query: Query<(Entity, &TileStrId, &mut PortalSeri, ),(With<Disabled>)>,
     tiles_map: Res<TileEntitiesMap>,
 ) {
     info!("Mapping portal tiles");
-    for (ent, str_id, portal_seri) in query.iter() {
+    for (ent, str_id, mut portal_seri) in query.iter_mut() {
         let Ok(tile_ent) = tiles_map.0.get(&portal_seri.oe_tile) else { 
             error!(target:"portal_init", "Portal tile {} to '{}' references unknown oe_tile '{}'", str_id, portal_seri.dest_dimension, portal_seri.oe_tile);
             continue; 
@@ -279,12 +279,11 @@ pub fn map_portal_tiles(mut cmd: Commands,
         info!(target:"portal_init", "Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
         cmd.entity(ent).insert(PortalRecipe{
             dest_dimension: Entity::PLACEHOLDER,
-            root_oplist: Entity::PLACEHOLDER, //SETEARLO DESPUÉS
             oe_portal_tile: tile_ent,
-            checked_oplist: Entity::PLACEHOLDER, //SETEARLO DESPUÉS
+            tags: Tags::new(take(&mut portal_seri.oe_tags)), //SETEARLO DESPUÉS
             op_i: portal_seri.op_i,
-            lim_below: portal_seri.lim_below,
-            lim_above: portal_seri.lim_above,
+            min_val: portal_seri.lim_below,
+            max_val: portal_seri.lim_above,
             one_way: portal_seri.one_way,
         });
     }
@@ -295,7 +294,7 @@ pub fn instantiate_portal(mut cmd: Commands,
     ori_tile_str_id_query: Query<&TileStrId, (With<Disabled>)>,
     new_portals: Query<(Entity, &PortalRecipe, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(Without<SearchingForSuitablePos>, )>,
     pending_search: Query<(Entity, &SearchingForSuitablePos, &PortalRecipe, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
-    dimension_query: Query<&HashId, (With<Dimension>, )>,
+    dimension_query: Query<(&HashId, &DimensionRootOplist), ()>,
     mut ew_pos_search: MessageWriter<TerrainProbe>, 
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut mreader_search_successful: MessageReader<SuitablePosFound>,
@@ -308,25 +307,26 @@ pub fn instantiate_portal(mut cmd: Commands,
 
     for (portal_ent, portal_recipe, &global_pos, dim_ref, tile_ref) in new_portals.iter() {
 
-        let op_filter = portal_recipe.to_op_filter(global_pos);
-
+        
         let str_id = ori_tile_str_id_query.get(tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
-
-        let Ok(&dimension_hash_id) = dimension_query.get(portal_recipe.dest_dimension) else {
-            error!(target:"portal_init",
+        
+        let Ok((&dimension_hash_id, &dimension_root_oplist)) = dimension_query.get(portal_recipe.dest_dimension) 
+        else {
+                error!(target:"portal_init",
                 "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_recipe.dest_dimension, dim_ref.0, global_pos,
             );
             cmd.entity(portal_ent).remove::<PortalRecipe>();
             continue;
         };
+        let op_filter = portal_recipe.to_op_filter(global_pos, dimension_root_oplist.0);
 
 
-        let studied_op_ent = cmd.spawn((op_filter.clone(), )).id();
+        let op_filter_ent = cmd.spawn((op_filter)).id();
 
-        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos{ filtered_op_ent: studied_op_ent });
+        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos{ filtered_op_ent: op_filter_ent });
 
-        pos_searches.push(TerrainProbe::standard_spiral_probe(dimension_hash_id, studied_op_ent, global_pos));
-        started_searches.insert(studied_op_ent, portal_ent);
+        pos_searches.push(TerrainProbe::standard_spiral_probe(dimension_hash_id, op_filter_ent, global_pos));
+        started_searches.insert(op_filter_ent, portal_ent);
     }
 
     let mut successful_searches: EntityHashSet = EntityHashSet::new();
@@ -367,7 +367,7 @@ pub fn instantiate_portal(mut cmd: Commands,
     };
 
     'successful_searches: for search_successful_msg in mreader_search_successful.read() {
-        let ss_filtered_op_ent = search_successful_msg.studied_op_ent;
+        let ss_filtered_op_ent = search_successful_msg.op_filter_ent;
         if successful_searches.contains(&ss_filtered_op_ent) {
             trace!(target:"portal_init", "Ignoring duplicate SuitablePosFound for studied_op_ent {:?}", ss_filtered_op_ent);
             continue 'successful_searches;
@@ -411,6 +411,7 @@ pub fn instantiate_portal(mut cmd: Commands,
         if started_searches.remove(&failed_search.0).is_some() {
             error!(target:"portal_init", "Failed to find suitable pos for a portal tile, {:?}", failed_search.0);
             cmd.entity(failed_search.0).try_despawn();
+
             continue;
         }
 
@@ -420,7 +421,6 @@ pub fn instantiate_portal(mut cmd: Commands,
                 error!(target:"portal_init",
                     "Failed to find suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}", str_id, portal_ent, dim_ref.0, global_pos, portal_template.dest_dimension
                 );
-                cmd.entity(portal_ent).remove::<SearchingForSuitablePos>();
             }
         }
     }

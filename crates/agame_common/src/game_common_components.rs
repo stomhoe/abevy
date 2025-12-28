@@ -1,5 +1,5 @@
 
-use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::entity::MapEntities, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -138,15 +138,69 @@ pub struct EntityZeroRef(#[entities] pub Entity);
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct Categories(pub HashSet<Category>);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+pub struct Tags(pub HashSet<Tag>);
 
-impl Categories {
+impl Tags {
     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-        let set = ids.into_iter().map(Category::new_truncated).collect();
+        let set = ids.into_iter()
+        .filter_map(|id| {
+            let tag = Tag::new_truncated(id.as_ref().trim());
+            if tag.is_empty() { None } else { Some(tag) }
+        })
+        .collect();
         Self(set)
     }
+    pub fn empty() -> Self {
+        Self(HashSet::new())
+    }
+    
 }
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, Hash, PartialEq, Eq, )]
+pub struct HashedTags(pub Vec<HashId>);
+impl HashedTags {
+    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
+        let set = ids.into_iter()
+        .filter_map(|id| {
+            let id_str = id.as_ref().trim();
+            if id_str.is_empty() { None } else { Some(HashId::from(id_str)) }
+         
+        })
+        .collect();
+        Self(set)
+        }
+
+        pub fn try_new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Result<Self, ()> {
+            let vec: Vec<HashId> = ids.into_iter()
+            .filter_map(|id| {
+                let id_str = id.as_ref().trim();
+                if id_str.is_empty() { None } else { Some(HashId::from(id_str)) }
+             
+            })
+            .collect();
+            if vec.is_empty() {
+                Err(())
+            } else {
+                Ok(Self(vec))
+            }
+        }
+    pub fn intersects(&self, other: &HashedTags) -> bool {
+        for h in &self.0 {
+            if other.0.contains(h) {
+                return true;
+            }
+        }
+        false
+    }
+}
+impl From<&Tags> for HashedTags {
+    fn from(tags: &Tags) -> Self {
+        let vec = tags.0.iter().map(|tag| HashId::from(tag.as_ref().trim())).collect();
+        Self(vec)
+    }
+}
+
+
 
 #[derive( Debug, Default, Deserialize, Serialize, Clone, )]
 pub enum FunctionType {#[default] OneOnFinishZero, ZeroOnFinishOne, Curve(Spline<f32, f32>),}
@@ -161,17 +215,17 @@ impl TimeBasedMultiplier {
     /// A typical drug blood concentration falloff curve: rapid rise, peak, then slow falloff to zero.
     pub fn drug_curve(duration: Duration) -> Self {
         let keys = vec![
-            Key::new(0.0, 0.0, Interpolation::Bezier(0.2)),   // Start at 0, quick rise
-            Key::new(0.1, 1.0, Interpolation::Bezier(0.8)),   // Peak quickly
-            Key::new(0.5, 0.7, Interpolation::Bezier(0.5)),   // Begin to fall
-            Key::new(1.0, 0.0, Interpolation::Bezier(0.2)),   // End at 0
+        Key::new(0.0, 0.0, Interpolation::Bezier(0.2)),   // Start at 0, quick rise
+        Key::new(0.1, 1.0, Interpolation::Bezier(0.8)),   // Peak quickly
+        Key::new(0.5, 0.7, Interpolation::Bezier(0.5)),   // Begin to fall
+        Key::new(1.0, 0.0, Interpolation::Bezier(0.2)),   // End at 0
         ];
         Self { function: FunctionType::Curve(Spline::from_vec(keys)), timer: Timer::new(duration, TimerMode::Once) }
     }
     pub fn linear_wean(duration: Duration) -> Self {
         let keys = vec![
-            Key::new(0.0, 1.0, Interpolation::Linear), // Start at 1
-            Key::new(1.0, 0.0, Interpolation::Linear), // End at 0
+        Key::new(0.0, 1.0, Interpolation::Linear), // Start at 1
+        Key::new(1.0, 0.0, Interpolation::Linear), // End at 0
         ];
         Self { function: FunctionType::Curve(Spline::from_vec(keys)), timer: Timer::new(duration, TimerMode::Once) }
     }

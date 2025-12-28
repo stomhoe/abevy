@@ -30,7 +30,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     let host_faction_id = StrId::new_truncated("host");
     let host_faction = cmd.spawn((Faction, host_faction_id.clone(), OfSelf)).id();
     
-    let Ok(_) = map.0.insert(host_faction_id, host_faction)
+    let Ok(_) = map.0.try_insert(host_faction_id, host_faction)
     else {
         error!(target: "game_init_systems", "Failed to insert host faction into FactionEntityMap: duplicate id");
         return;

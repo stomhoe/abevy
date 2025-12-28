@@ -11,16 +11,13 @@ use crate::{
 */
 };
 
-
-
 #[allow(unused_parens)]
-pub fn dim_replace_string_ref_by_entity_ref(
+pub fn replace_dim_string_ref_by_entity_ref(
     mut cmd: Commands, 
     dimension_entity_map: Res<DimensionEntityMap>,
     dimension_query: Query<Option<&DimensionRootOplist>>,
     dimension_strid_query: Query<(Entity, Option<&StrId>, &DimensionStrIdRef, Option<&ChildOf>),>,
     mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(With<Disabled>)>,
-    oplist_map: Res<OpListEntityMap>,
 ) {
     for (thing_ent, ent_strid, dimension_strid, child_of) in dimension_strid_query.iter() {
 
@@ -48,22 +45,6 @@ pub fn dim_replace_string_ref_by_entity_ref(
         };
         portal_template.dest_dimension = dimension_entity;
 
-        let Ok(root_oplist) = dimension_query.get(dimension_entity) else {
-            error!(target: "dimension_loading", "PortalTemplate {} references a Dimension that doesn't exist: {:?}", ent_str_id, portal_template.root_oplist);
-            continue;
-        };
-        let Some(root_oplist) = root_oplist else {
-            continue;
-        };
-
-        portal_template.root_oplist = root_oplist.0;
-
-        let Ok(oplist_ent) = oplist_map.0.get(&portal_seri.oplist) else {
-            error!(target: "dimension_loading", "Portal tile '{}' does not have a corresponding OperationList entity in the map.", ent_str_id);
-            continue;
-        };
-
-        portal_template.checked_oplist = oplist_ent;
         cmd.entity(ent).remove::<PortalSeri>();
     }
 
@@ -92,7 +73,7 @@ pub fn replace_multiple_string_refs_by_entity_refs(
     }
 }
 #[allow(unused_parens)]
-pub fn update_child_of(mut cmd: Commands, 
+pub fn readjust_childof_to_new_dim_if_parent_was_dimension(mut cmd: Commands, 
     dimension_query: Query<(Entity),(With<Dimension>)>,
     query: Query<(Entity, &DimensionRef, &ChildOf),(Changed<DimensionRef>, )>,
 ) {

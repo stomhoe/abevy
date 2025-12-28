@@ -1,4 +1,4 @@
-use bevy::ecs::entity_disabling::Disabled;
+use bevy::{color, ecs::entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -16,7 +16,9 @@ pub fn init_color_samplers(
     color_map: Option<Res<ColorWeightedSamplersMap>>,
 ) {
     if color_map.is_some() { return; }
-    cmd.insert_resource(ColorWeightedSamplersMap::default());
+
+    let mut wmap_to_insert = Vec::new();
+    let mut color_map = ColorWeightedSamplersMap::default();
 
     for handle in sampler_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue; };
@@ -28,6 +30,11 @@ pub fn init_color_samplers(
                 continue;
             }
         };
+        if let Ok(_) = color_map.0.get(&str_id) {
+            error!("Duplicate color sampler id used: '{}'. Skipping spawning this sampler.", str_id);
+            continue;
+        }
+
         if seri.weights.is_empty() {
             warn!("Color sampler '{}' has no weights", str_id);
         }
@@ -44,16 +51,18 @@ pub fn init_color_samplers(
                 i += 1;
             }
         }
-
         let wmap = ColorSampler::new(&seri.weights);
 
-        cmd.spawn((
-            str_id.clone(),
-            wmap,
-        ));
-    }
-}
+        let ent = cmd.spawn_empty().id(); 
+        color_map.0.overwrite(&str_id, ent);
 
+        wmap_to_insert.push((ent, (str_id, wmap.clone())));
+
+    }
+    cmd.insert_resource(color_map);
+    cmd.insert_batch(wmap_to_insert);
+}
+/*
 #[allow(unused_parens, )]
 pub fn add_colorsamplers_to_map(
     mut cmd: Commands,
@@ -62,7 +71,7 @@ pub fn add_colorsamplers_to_map(
 ) {
     let Some(mut map) = map else { return; };
     for (new_ent, prefix, str_id) in query.iter() {
-        if let Err(err) = map.0.insert(str_id, new_ent, ) {
+        if let Err(err) = map.0.try_insert(str_id, new_ent, ) {
             error!("{} {} already in ColorWeightedSamplersMap : {}", prefix, str_id, err);
             cmd.entity(new_ent).try_despawn();
         } else {
@@ -70,6 +79,7 @@ pub fn add_colorsamplers_to_map(
         }
     }
 }
+*/
 
 #[allow(unused_parens)]
 pub fn apply_pos_sampled_color(mut cmd: Commands, 

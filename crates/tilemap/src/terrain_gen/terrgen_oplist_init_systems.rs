@@ -6,8 +6,9 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 use common::common_components::StrId;
 use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
+use game_common::game_common_components::{HashedTags, Tags};
 
-use crate::{terrain_gen::{terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
+use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
 
 use std::mem::take;
@@ -26,9 +27,11 @@ pub fn init_oplists_from_assets(
     let mut oplist_map = OpListEntityMap::default();
 
     let egui_oplist_holder_ent = cmd.spawn(EguiOplistHolder).id();
+    cmd.spawn((FailedSearchOplistFilterHolder, ChildOf(egui_oplist_holder_ent)));
 
     let mut oplist_comps = Vec::new();
     let mut oplist_multiple_dimension_refs = Vec::new();
+    let mut tags_to_insert = Vec::new();
 
     for handle in seris_handles.handles.iter() {//ESTE VA CON ITER
         let Some(seri) = assets.get_mut(handle) else {
@@ -54,6 +57,7 @@ pub fn init_oplists_from_assets(
             } else{
                 OplistSize::default()
             };
+
 
         let mut oplist = OperationList::default();
 
@@ -185,17 +189,43 @@ pub fn init_oplists_from_assets(
             continue;
         }
         let spawned_oplist = cmd.spawn_empty().id();
-        oplist_map.0.force_insert(&str_id, spawned_oplist);
+        oplist_map.0.overwrite(&str_id, spawned_oplist);
         oplist_comps.push((spawned_oplist, ( str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
         if seri.is_root() { 
             oplist_multiple_dimension_refs.push((   spawned_oplist, MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))));
         }
 
+
+        if let Some(tags) = &seri.tags {
+            tags_to_insert.push((spawned_oplist, Tags::new(tags)));
+        }
+
+
     } 
     cmd.insert_batch(oplist_comps);
     cmd.insert_batch(oplist_multiple_dimension_refs);
+    cmd.insert_batch(tags_to_insert);
     cmd.insert_resource(oplist_map);
 } 
+
+#[allow(unused_parens)]
+pub fn set_hashed_tags_for_oplist(mut cmd: Commands, 
+    query: Query<(Entity, &Tags),(Changed<Tags>, With<OperationList>)>,
+    mut removed: RemovedComponents<Tags>,
+) {
+    let mut tags_to_add = Vec::new();
+    for (ent, tags) in query.iter() {
+        let hashed_tags = HashedTags::from(tags);
+        tags_to_add.push((ent, hashed_tags));  
+    }
+    for ent in removed.read() {
+        if let Ok((_, _)) = query.get(ent) {
+            cmd.entity(ent).try_remove::<HashedTags>();
+        }
+    }
+    cmd.insert_batch(tags_to_add);
+}
+
 
 #[allow(unused_parens)]
 pub fn init_oplists_bifurcations(

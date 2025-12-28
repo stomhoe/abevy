@@ -26,9 +26,9 @@ pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,
     pub mapped_anims: HashMap<(String, String, String, String), String>, 
-    pub parent_cat: Option<String>, //adds ChildOf referencing other brother entity sprite possessing this category
-    pub categories: Option<HashSet<String>>,
-    pub shares_category: Option<Vec<bool>>,//asignar un componente
+    pub parent_cat: Option<String>, //adds ChildOf referencing other brother entity sprite possessing this tag
+    pub tags: Option<HashSet<String>>,
+    pub shares_tag: Option<Vec<bool>>,//asignar un componente
     pub children_sprites: Option<Vec<String>>,// these will get spawned as children of the entity that has this sprite data
     pub directionable: Option<bool>,
     pub movement_based: Option<bool>,
@@ -36,7 +36,7 @@ pub struct SpriteConfigSeri {
     
     //use fly animation when standing still
     pub visibility: Option<u8>, //0: inherited, 1: visible, 2: invisible
-    pub offset4children: Option<HashMap<String, (f32, f32, String)>>,//k:category, v:(offset, direction(s)) in which it is applied
+    pub offset4children: Option<HashMap<String, (f32, f32, String)>>,//k:tag, v:(offset, direction(s)) in which it is applied
     pub exclude_from_sys: Option<bool>,
 
     pub offset: Option<(f32, f32)>,

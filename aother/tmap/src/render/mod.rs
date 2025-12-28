@@ -335,7 +335,6 @@ fn clear_removed(
     for entity in removed_query.iter() {
         commands.entity(entity).despawn();
     }
-
     for entity in removed_map_query.iter() {
         commands.entity(entity).despawn();
     }

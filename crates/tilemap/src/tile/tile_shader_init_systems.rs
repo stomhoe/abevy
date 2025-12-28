@@ -48,7 +48,7 @@ pub fn init_shaders(
                     path_holder,
                     ChildOf(holder),
                 )));
-                tileshader_map.0.force_insert(&str_id, ent);
+                tileshader_map.0.overwrite(&str_id, ent);
 
             },
             Err(err) => {
@@ -86,7 +86,7 @@ pub fn init_shaders(
                     path_holder,
                     ChildOf(holder),
                 )));
-                tileshader_map.0.force_insert(&str_id, ent);
+                tileshader_map.0.overwrite(&str_id, ent);
             },
             Err(err) => {
                 error!("Failed to find image path for shader '{}': {}", str_id, err);
