@@ -5,7 +5,7 @@ use common::common_states::AssetLoading;
 use dimension_shared::RootInDimensions;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking_components::OperationsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::process_tiles_pre,};
+use crate::{chunking_components::TerrGenOpsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::process_tiles_pre,};
 
 pub mod terrgen_systems;
 mod terrgen_oplist_init_systems;
@@ -27,7 +27,6 @@ pub fn plugin(app: &mut App) {
             (spawn_terrain_operations, (process_pending_ops_and_collect_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
             search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
             oplist_init_dim_refs,
-            set_hashed_tags_for_oplist,
         ))
         
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
@@ -58,7 +57,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<TerrGenEntityMap>()
         .register_type::<OpListEntityMap>()
         .register_type::<OplistSize>()
-        .register_type::<OperationsLaunched>()
+        .register_type::<TerrGenOpsLaunched>()
         .register_type::<ChunkRef>()
         .register_type::<RegisteredPositions>()
         .register_type::<RootInDimensions>()

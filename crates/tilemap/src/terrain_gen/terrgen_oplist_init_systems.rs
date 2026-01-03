@@ -6,7 +6,7 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 use common::common_components::StrId;
 use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
-use game_common::game_common_components::{HashedTags, Tags};
+use game_common::game_common_components::{HashedTags, TagHashSet};
 
 use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
@@ -197,7 +197,7 @@ pub fn init_oplists_from_assets(
 
 
         if let Some(tags) = &seri.tags {
-            tags_to_insert.push((spawned_oplist, Tags::new(tags)));
+            tags_to_insert.push((spawned_oplist, TagHashSet::new(tags)));
         }
 
 
@@ -207,25 +207,6 @@ pub fn init_oplists_from_assets(
     cmd.insert_batch(tags_to_insert);
     cmd.insert_resource(oplist_map);
 } 
-
-#[allow(unused_parens)]
-pub fn set_hashed_tags_for_oplist(mut cmd: Commands, 
-    query: Query<(Entity, &Tags),(Changed<Tags>, With<OperationList>)>,
-    mut removed: RemovedComponents<Tags>,
-) {
-    let mut tags_to_add = Vec::new();
-    for (ent, tags) in query.iter() {
-        let hashed_tags = HashedTags::from(tags);
-        tags_to_add.push((ent, hashed_tags));  
-    }
-    for ent in removed.read() {
-        if let Ok((_, _)) = query.get(ent) {
-            cmd.entity(ent).try_remove::<HashedTags>();
-        }
-    }
-    cmd.insert_batch(tags_to_add);
-}
-
 
 #[allow(unused_parens)]
 pub fn init_oplists_bifurcations(

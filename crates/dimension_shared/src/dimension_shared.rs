@@ -1,3 +1,4 @@
+use bevy::platform::collections::HashSet;
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::*};
 use bevy::{ecs::entity::MapEntities, prelude::*};
 
@@ -14,7 +15,7 @@ pub struct DimensionSystems;
 pub struct DimensionRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, TgenHotLoadingScoped, AssetScoped, EntityPrefix::new_truncated("DDDDDDDDDDDDDDDDDDDDD") )]
+#[require(Replicated, TgenHotLoadingScoped, AssetScoped, EntityPrefix::new_truncated("DIMENSION") )]
 pub struct Dimension;
 
 #[derive(Resource, Debug, Default )]
@@ -61,3 +62,11 @@ pub struct MultipleDimensionRefs(#[entities] pub EntityHashSet,);
 
 #[derive(Debug, Message)]
 pub struct ReassignDimensionToEntity (pub Entity);
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+pub struct WhitelistedStructureGenTags(pub HashSet<Tag>);
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+pub struct BlacklistedStructureGenTags(pub HashSet<Tag>);

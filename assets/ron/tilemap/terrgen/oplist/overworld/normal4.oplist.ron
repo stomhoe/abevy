@@ -1,5 +1,6 @@
 (
     id: "normal4",
+    tags: Some(["portal"]),
     operation_operands: [
 
         //(sandy) beach farness

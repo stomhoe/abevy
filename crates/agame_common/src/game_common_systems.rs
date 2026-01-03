@@ -113,3 +113,20 @@ pub fn delete_sprites_without_childof(mut cmd: Commands,
         cmd.entity(sprite_ent).try_despawn()
     }
 }
+#[allow(unused_parens)]
+pub fn add_hashed_tags(mut cmd: Commands, 
+    query: Query<(Entity, &TagHashSet),(Changed<TagHashSet>, With<AddSameHashedTags>)>,
+    mut removed: RemovedComponents<TagHashSet>,
+) {
+    let mut tags_to_add = Vec::new();
+    for (ent, tags) in query.iter() {
+        let hashed_tags = HashedTags::from(tags);
+        tags_to_add.push((ent, hashed_tags));  
+    }
+    for ent in removed.read() {
+        if let Ok((_, _)) = query.get(ent) {
+            cmd.entity(ent).try_remove::<HashedTags>();
+        }
+    }
+    cmd.insert_batch(tags_to_add);
+}

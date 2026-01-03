@@ -1,6 +1,5 @@
 (
     id: "normal3",
-    tags: Some(["portal"]),
     operation_operands: [
         ("max", ["fnl.lakesmol", "fnl.lakebig"], 3),
         ("*", ["$3", "$1", "0.5"], 3),

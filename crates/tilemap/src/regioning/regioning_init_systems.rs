@@ -4,11 +4,11 @@ use camera::camera_components::CameraTarget;
 use common::common_components::{StrId, StrId20B};
 use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
 ;
-use game_common::game_common_components::HashedTags;
+use game_common::{game_common_components::HashedTags, game_common_components_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
 use tilemap_shared::{AcGlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec, RegionPos};
 
-use crate::{regioning::{regioning_components::WhitelistedFilterOf, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
+use crate::{regioning::{regioning_components::{StructuredGenConfigWeightedMap, WhitelistedFilterOf}, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
 
 
 
@@ -20,11 +20,14 @@ pub fn init_structured_gen_configs (
     map: Option<Res<StructuredGenConfigEntityMap>>,
     mut seris_handles: ResMut<StructureSerisHandles>,
     mut assets: ResMut<Assets<StructuredGenConfig>>,
-    oplist_map: Res<OpListEntityMap>,
     dimension_entity_map: Res<DimensionEntityMap>,
 
 ) {
     if map.is_some(){ return;}
+
+
+
+    let mut ent_w_sampler = EntityWeightedSampler::default();
 
     let mut opfilters_to_spawn = Vec::new();
     let mut dimension_refs_to_insert = Vec::new();
@@ -32,10 +35,10 @@ pub fn init_structured_gen_configs (
     let mut map = StructuredGenConfigEntityMap::default();
     for handle in std::mem::take(&mut seris_handles.handles) {
         let Some(structured_gen_seri) = assets.remove(&handle) else {
-            warn!(target: "structure_loading", "Failed to load StructureSeri from handle: {:?}", handle);
+            warn!(target: "structure_spawn", "Failed to load StructureSeri from handle: {:?}", handle);
             continue;
         };
-        info!(target: "structure_loading", "Loading StructureSeri from handle: {:?}", handle);
+        info!(target: "structure_spawn", "Loading StructureSeri from handle: {:?}", handle);
 
         let main_ent = cmd.spawn_empty().id();
 
@@ -43,19 +46,14 @@ pub fn init_structured_gen_configs (
             if ! whitelisted_filters.is_empty(){
 
                 for opfilter_seri in whitelisted_filters {
-                    let Ok(root_oplist) = oplist_map.0.get(&opfilter_seri.root_oplist_id)
-                    else {
-                        error!(target: "structure_loading", "Failed to find OpListEntity for OpFilterSerialization with root_oplist_id: {}", opfilter_seri.root_oplist_id);
-                        continue;
-                    };
 
                     let Ok(tags) = HashedTags::try_new(opfilter_seri.tags) else {
-                        error!(target: "structure_loading", "OpFilterSerialization within {} has no tags.", structured_gen_seri.id);
+                        error!(target: "structure_spawn", "OpFilterSerialization within {} has no tags.", structured_gen_seri.id);
                         continue;
                     };
 
                     let opfilter = OpFilter {
-                        start_oplist: root_oplist,
+                        start_oplist: Entity::PLACEHOLDER,
                         tags,
                         op_i: opfilter_seri.op_i,
                         min_val: opfilter_seri.min_val,
@@ -71,18 +69,23 @@ pub fn init_structured_gen_configs (
                 let mut dim_refs = MultipleDimensionRefs::default();
                 for dim_strid in active_in_dimensions {
                     let Ok(dim_ent) = dimension_entity_map.0.get(&dim_strid) else {
-                        error!(target: "structure_loading", "Failed to find Dimension with StrId: {}", dim_strid);
+                        error!(target: "structure_spawn", "Failed to find Dimension with StrId: {}", dim_strid);
                         continue;
                     };
                     dim_refs.0.insert(dim_ent);
                 }
                 if dim_refs.0.is_empty(){
-                    error!(target: "structure_loading", "StructureSeri with id: {} has no valid dimension references.", structured_gen_seri.id);
+                    error!(target: "structure_spawn", "StructureSeri with id: {} has no valid dimension references.", structured_gen_seri.id);
                     continue;
                 }
                 dimension_refs_to_insert.push((main_ent, dim_refs));
             }
         }
+        let Ok(()) = ent_w_sampler.insert(main_ent, structured_gen_seri.weight)
+        else {
+            error!(target: "structure_spawn", "StructureSeri with id: {} has negative weight: {}, skipping this structured gen config.", structured_gen_seri.id, structured_gen_seri.weight);
+            continue;
+        };
 
         map.0.overwrite(structured_gen_seri.id.clone(), main_ent);
 
@@ -90,4 +93,6 @@ pub fn init_structured_gen_configs (
     cmd.insert_resource(map);
     cmd.spawn_batch(opfilters_to_spawn);
     cmd.insert_batch(dimension_refs_to_insert);
+
+    cmd.spawn((StructuredGenConfigWeightedMap, ent_w_sampler, ));
 }

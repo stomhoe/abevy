@@ -73,7 +73,7 @@ pub type TileStrId = StrId20B;
 pub struct PortalRecipe { 
     #[entities]pub dest_dimension: Entity,
     #[entities]pub oe_portal_tile: Entity, 
-    pub tags: Tags,
+    pub tags: TagHashSet,
     pub op_i: i16,
     pub min_val: f32,
     pub max_val: f32,
@@ -93,7 +93,7 @@ pub struct PortalRecipe {
     }
     impl Default for PortalRecipe {
         fn default() -> Self {
-            Self { dest_dimension: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, tags: Tags::empty(), op_i: -1, min_val: 0.0, max_val: 0.0, one_way: false}
+            Self { dest_dimension: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, tags: TagHashSet::default(), op_i: -1, min_val: 0.0, max_val: 0.0, one_way: false}
         }
     }
     

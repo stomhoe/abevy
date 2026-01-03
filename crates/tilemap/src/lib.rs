@@ -1,4 +1,3 @@
-use bevy::prelude::*;
 
 pub use tilemap::*;
 pub mod tilemap;
@@ -10,10 +9,6 @@ pub mod chunking_components;
 pub mod chunking_resources;
 
 pub mod regioning;
-/*
- */
-
 pub mod tile;
-
 pub mod terrain_gen;
 

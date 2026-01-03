@@ -6,7 +6,7 @@ use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
-use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize};
+use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos, HashablePosVec};
 use crate:: tile::tile_components::*;
 
 #[allow(unused_parens)]

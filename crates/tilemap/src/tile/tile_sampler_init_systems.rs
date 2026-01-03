@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{EntityPrefix, StrId};
+use common::common_components::{EntityPrefix, StrId, TgenHotLoadingScoped};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 
 use crate::{tile::{tile_components::*, tile_resources::*, tile_sampler_resources::*}};
@@ -31,7 +31,7 @@ pub fn init_tile_weighted_samplers(
                 }
                 let ent = cmd.spawn_empty().id();
                 map.0.overwrite(&str_id, ent);
-                comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), )));
+                comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), Replicated, EntityPrefix::new_truncated("TileWSampler"), ), ));
             }
         }
     }

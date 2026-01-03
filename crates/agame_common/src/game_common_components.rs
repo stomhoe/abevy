@@ -129,84 +129,127 @@ pub struct ClonedSpawned(pub Vec<Entity>);
 pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 
 
-
 #[derive(Component, Debug, Clone, Deserialize, Serialize, Reflect, Copy, PartialEq, Eq, Hash)]
 /// DON'T FORGET TO ADD <DISABLED> TO THE QUERY 
 pub struct EntityZeroRef(#[entities] pub Entity);
 
 
-
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct Tags(pub HashSet<Tag>);
-
-impl Tags {
-    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-        let set = ids.into_iter()
-        .filter_map(|id| {
-            let tag = Tag::new_truncated(id.as_ref().trim());
-            if tag.is_empty() { None } else { Some(tag) }
-        })
-        .collect();
-        Self(set)
-    }
-    pub fn empty() -> Self {
-        Self(HashSet::new())
-    }
-    
+macro_rules! impl_tags_common_methods {
+    ($collection_type_name:ty, $tag_type:ty, $collection_kind:ident) => {
+        impl $collection_type_name {
+            pub fn try_new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Result<Self, ()> {
+                let collection: $collection_kind<$tag_type> = ids.into_iter()
+                .filter_map(|id| {
+                    let id_str = id.as_ref().trim();
+                    if id_str.is_empty() { None } else { Some(<$tag_type>::from(id_str)) }
+                    
+                })
+                .collect();
+                if collection.is_empty() {
+                    Err(())
+                } else {
+                    Ok(Self(collection))
+                }
+            }
+            pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
+                let collection: $collection_kind<$tag_type> = ids.into_iter()
+                .filter_map(|id| {
+                    let id_str = id.as_ref().trim();
+                    if id_str.is_empty() { None } else { Some(<$tag_type>::from(id_str)) }
+                    
+                })
+                .collect();
+                Self(collection)
+            }
+            pub fn is_empty(&self) -> bool {
+                self.0.is_empty()
+            }
+            pub fn len(&self) -> usize {
+                self.0.len()
+            }
+            pub fn iter(&self) -> impl Iterator<Item = &$tag_type> {
+                self.0.iter()
+            }
+            pub fn intersects(&self, other: &$collection_type_name) -> bool {
+                for tag in &self.0 {
+                    if other.0.iter().any(|t| t == tag) {
+                        return true;
+                    }
+                }
+                false
+            }
+        }
+    };
 }
+macro_rules! impl_tag_vec_methods {
+    ($collection_type_name:ty, $tag_type:ty) => {
+        impl $collection_type_name {
+            pub fn contains(&self, tag: &$tag_type) -> bool {
+                self.0.iter().any(|t| t == tag)
+            }
+            pub fn insert(&mut self, tag: $tag_type) {
+                if !self.contains(&tag) {
+                    self.0.push(tag);
+                }
+            }
+            pub fn remove(&mut self, tag: &$tag_type) {
+                self.0.retain(|t| t != tag);
+            }
+        }
+        impl_tags_common_methods!($collection_type_name, $tag_type, Vec);
+    };
+}
+macro_rules! impl_tag_hashset_methods {
+    ($collection_type_name:ty, $tag_type:ty) => {
+        impl $collection_type_name {
+            pub fn contains(&self, tag: &$tag_type) -> bool {
+                self.0.contains(tag)
+            }
+            pub fn insert(&mut self, tag: $tag_type) -> bool {
+                self.0.insert(tag)
+            }
+            pub fn remove(&mut self, tag: &$tag_type) -> bool {
+                self.0.remove(tag)
+            }
+        }
+        impl_tags_common_methods!($collection_type_name, $tag_type, HashSet);
+    };
+}
+macro_rules! define_tag_hashset_and_impl_methods {
+    ($name:ident, $tag_type:ty) => {
+        #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, Default, PartialEq, Eq)]
+        pub struct $name(pub HashSet<$tag_type>);
+        impl_tag_hashset_methods!($name, $tag_type);
+    };
+}
+macro_rules! define_tag_vec_and_impl_methods {
+    ($name:ident, $tag_type:ty) => {
+        #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, Default, PartialEq, Eq)]
+        pub struct $name(pub Vec<$tag_type>);
+        impl_tag_vec_methods!($name, $tag_type);
+    };
+}
+
+define_tag_hashset_and_impl_methods!(TagHashSet, Tag);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct AddSameHashedTags;
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, Hash, PartialEq, Eq, )]
 pub struct HashedTags(pub Vec<HashId>);
-impl HashedTags {
-    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-        let set = ids.into_iter()
-        .filter_map(|id| {
-            let id_str = id.as_ref().trim();
-            if id_str.is_empty() { None } else { Some(HashId::from(id_str)) }
-         
-        })
-        .collect();
-        Self(set)
-        }
+impl_tag_vec_methods!(HashedTags, HashId);
 
-        pub fn try_new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Result<Self, ()> {
-            let vec: Vec<HashId> = ids.into_iter()
-            .filter_map(|id| {
-                let id_str = id.as_ref().trim();
-                if id_str.is_empty() { None } else { Some(HashId::from(id_str)) }
-             
-            })
-            .collect();
-            if vec.is_empty() {
-                Err(())
-            } else {
-                Ok(Self(vec))
-            }
-        }
-    pub fn intersects(&self, other: &HashedTags) -> bool {
-        for h in &self.0 {
-            if other.0.contains(h) {
-                return true;
-            }
-        }
-        false
+impl From<&TagHashSet> for HashedTags {
+    fn from(tag: &TagHashSet) -> Self {
+        Self(tag.0.iter().map(|t| HashId::from(t)).collect())
     }
 }
-impl From<&Tags> for HashedTags {
-    fn from(tags: &Tags) -> Self {
-        let vec = tags.0.iter().map(|tag| HashId::from(tag.as_ref().trim())).collect();
-        Self(vec)
-    }
-}
-
-
 
 #[derive( Debug, Default, Deserialize, Serialize, Clone, )]
-pub enum FunctionType {#[default] OneOnFinishZero, ZeroOnFinishOne, Curve(Spline<f32, f32>),}
+pub enum FunctionType {#[default] LineOneToZero, LinealZeroToOne, Curve(Spline<f32, f32>),}
 
 #[derive(Debug, Default, Component, Deserialize, Serialize, Clone, )]
-//ES FINITO PERO ES MEJOR, SIMPLEMENTE PONES UNA DURACIÓN ASTRONÓMICA PARA EL TIMER Y PODES SEGUIR USANDO CURVAS BEZIER, CON INFINITO NO SE PUEDE USAR CURVA BEZIER
+//ES FINITO PERO ES MEJOR, SIMPLEMENTE PONES UNA DURACIÓN ASTRONÓMICA PARA EL TIMER Y PODES SEGUIR USANDO CURVAS BEZIER, CON INFINITO NO SE PUEDE USAR NINGUNA CURVA BEZIER
 pub struct TimeBasedMultiplier { pub timer: Timer, pub function: FunctionType, }
 impl TimeBasedMultiplier {
     pub fn new(timer: Timer, spline: Spline<f32, f32>) -> Self {
@@ -231,21 +274,21 @@ impl TimeBasedMultiplier {
     }
     pub fn zero_on_finish_one(duration: Duration) -> Self {
         Self { 
-            function: FunctionType::ZeroOnFinishOne, 
+            function: FunctionType::LinealZeroToOne, 
             timer: Timer::new(duration, TimerMode::Once) 
         }
     }
     pub fn one_on_finish_zero(duration: Duration) -> Self {
         Self { 
-            function: FunctionType::OneOnFinishZero, 
+            function: FunctionType::LineOneToZero, 
             timer: Timer::new(duration, TimerMode::Once) 
         }
     }
     pub fn sample(&self) -> f32 {
         if self.timer.is_finished() {
             match self.function {
-                FunctionType::OneOnFinishZero => 0.0,
-                FunctionType::ZeroOnFinishOne => 1.0,
+                FunctionType::LineOneToZero => 0.0,
+                FunctionType::LinealZeroToOne => 1.0,
                 FunctionType::Curve(ref spline) => {
                     match spline.clamped_sample(1.0) {
                         Some(value) => value,
@@ -258,8 +301,8 @@ impl TimeBasedMultiplier {
             }
         } else {
             match self.function {
-                FunctionType::OneOnFinishZero => 1.0,
-                FunctionType::ZeroOnFinishOne => 0.0,
+                FunctionType::LineOneToZero => 1.0,
+                FunctionType::LinealZeroToOne => 0.0,
                 FunctionType::Curve(ref spline) => {
                     let passed_time_ratio = self.timer.elapsed_secs() / self.timer.duration().as_secs_f32();
                     match spline.clamped_sample(passed_time_ratio) {

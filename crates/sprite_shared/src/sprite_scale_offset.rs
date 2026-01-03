@@ -98,6 +98,7 @@ macro_rules! impl_cross_mul {
         }
     };
 }
+
 impl_cross_mul!(Scale2D, ScaleLookUp); impl_cross_mul!(Scale2D, ScaleLookDown); impl_cross_mul!(Scale2D, ScaleLookUpDown); impl_cross_mul!(Scale2D, ScaleSideways); impl_cross_mul!(ScaleLookUp, ScaleLookDown); impl_cross_mul!(ScaleLookUp, ScaleLookUpDown);
 impl_cross_mul!(ScaleLookUp, ScaleSideways); impl_cross_mul!(ScaleLookDown, ScaleLookUpDown); impl_cross_mul!(ScaleLookDown, ScaleSideways); impl_cross_mul!(ScaleLookUpDown, ScaleSideways);
 

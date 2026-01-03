@@ -20,7 +20,7 @@ use ::tilemap_shared::*;
 pub fn spawn_terrain_operations (
     mut commands: Commands, 
     res_chunk: Res<AaChunkRangeSettings>,
-    chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<OperationsLaunched>, With<Chunk>)>, 
+    chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<TerrGenOpsLaunched>, With<Chunk>)>, 
     dimension_query: Query<(&DimensionRootOplist, &HashId), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut ew_pending_ops: MessageWriter<PendingOp>,
@@ -31,22 +31,15 @@ pub fn spawn_terrain_operations (
     let chunk_area = res_chunk.approximate_number_of_tiles() * 4;
     let mut batch = Vec::with_capacity(chunk_area * 4);
     'chunk_for: for (chunk_ent, chunk_pos, dim_ref) in chunks_query.iter() {
-        //SE LES PODRÍA AGREGAR MARKER COMPONENTS A LOS CHUNKS PARA POR EJEMPLO ESPECIFICAR SI ES UN DUNGEON
-
-//PONER MARKERS A TODAS LAS POSICIONES SUITABLE, DESPUES HACER UNA QUERY Q COMPARA LAS TILESMARCADAS COMO Q YA GENERARON UNA ESTRUCTURA NO PROCEDURAL CON LAS Q NO. SI LA DISTANCIA ES SUFICIENTE, SPAWNEAR UNA EN LA SIGUIENTE
-        //EN ESTE PUNTO SE PODRÍA GENERAR UN CAMINO RANDOM QUE SEA UN VEC DE COORDS, Y DESPUES PASARLO ABAJO Y Q SE OCUPEN?? PA GENERAR DUNGEONS NASE
-
 
         let Ok((dim_root_op_list, hash_id)) = dimension_query.get(dim_ref.0) else {
             error!("No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
             continue;
         };
-
         let Ok((oplist, oplist_size)) = oplists.get(dim_root_op_list.0) else {
             error!("Dimension references non-existent root operation list {:?}", dim_root_op_list);
             continue;
         };
-
         for x in 0..ChunkPos::CHUNK_SIZE.x / oplist_size.x() {
             for y in 0..ChunkPos::CHUNK_SIZE.y / oplist_size.y() {
                 let pos_within_chunk = IVec2::new(x as i32, y as i32);
@@ -70,16 +63,12 @@ pub fn spawn_terrain_operations (
         }
         if commands.get_entity(chunk_ent).is_err() {continue 'chunk_for;}
 
-        commands.entity(chunk_ent).try_insert(OperationsLaunched);
+        commands.entity(chunk_ent).try_insert(TerrGenOpsLaunched);
 
     }
     ew_pending_ops.write_batch(batch);
     Ok(())
 }
-
-
-
-
 #[allow(unused_parens)]
 /// input: PendingOp messages. output: PendingOp messages (for bifurcations), SuitablePosFound messages
 pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, 
@@ -91,19 +80,21 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
     mut collected: ResMut<MassCollectedTiles>,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
-) -> Result {
-
-    if pending_ops_events.is_empty() { return Ok(()); }
+) {
+    if pending_ops_events.is_empty() { return; }
 
     let mut new_pending_ops_events = Vec::with_capacity(pending_ops_events.len());
     let mut sampled_value_events = Vec::new();
 
     'eventfor: for mut ev in pending_ops_events.drain() {unsafe{
    
-        let (oplist, &my_oplist_size, oplist_tags) = oplist_query.get(ev.oplist)?;
+        let Ok((oplist, &my_oplist_size, oplist_tags)) = oplist_query.get(ev.oplist)
+        else {
+            error!("Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
+            continue;
+        };
         let global_pos = ev.pos;
         
-
         'opsfor: for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
             let mut operation_acc_val: f32 = 0.0;
             let mut selected_operand_i = 0; 
@@ -114,7 +105,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     OperandElement::Value(val) => *val,
                     OperandElement::NoiseEntity(ent, sample_range, compl, operand_seed) => {
                         let Ok(noise) = fnl_noises.get(*ent) else {
-                            error!("Entity {} not found in terrgens", ent);
+                            error!("Noise entity {} not found", ent);
                             continue;
                         };
                         noise.sample(global_pos, *sample_range, *compl, *operand_seed + ev.dimension_hash_id, &gen_settings)   
@@ -122,11 +113,9 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed),
                     OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_pos, my_oplist_size),
                 };
-
                 if operand.complement && !matches!(operand.element, OperandElement::NoiseEntity(_, _, _, _)) {
                     curr_operand_val = 1.0 - curr_operand_val;
                 }
-
                 let is_last = operand_i == operands.len() - 1;   
                 let prev_value = operation_acc_val;
 
@@ -203,7 +192,6 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     trace!(target: "terrgen_process", "Failed to get OpFilter of entity {:?}", ev.filtered_op);
                     continue 'eventfor;
                 }
-
             }
         }
         let destination_i = (ev.variables[0] as usize).min(oplist.bifurcations.len() - 1).max(0);
@@ -219,11 +207,8 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
             collected.collect_tiles(&mut cmd, &bifurcation.tiles, &ev, my_oplist_size, &weight_maps, &gen_settings);
         }
     }}
-
     pending_ops_events.write_batch(new_pending_ops_events); 
     ewriter_sampled_value.write_batch(sampled_value_events);
-
-    Ok(())
 }
 
 fn spawn_bifurcation_oplists(

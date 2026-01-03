@@ -280,7 +280,7 @@ pub fn map_portal_tiles(mut cmd: Commands,
         cmd.entity(ent).insert(PortalRecipe{
             dest_dimension: Entity::PLACEHOLDER,
             oe_portal_tile: tile_ent,
-            tags: Tags::new(take(&mut portal_seri.oe_tags)), //SETEARLO DESPUÉS
+            tags: TagHashSet::new(take(&mut portal_seri.oe_tags)), //SETEARLO DESPUÉS
             op_i: portal_seri.op_i,
             min_val: portal_seri.lim_below,
             max_val: portal_seri.lim_above,

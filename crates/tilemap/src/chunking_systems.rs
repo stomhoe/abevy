@@ -50,7 +50,7 @@ pub fn visit_chunks_around_activators(
                         }).clone()
                     };
 
-                    let chunk_ent = cmd.spawn_empty().id();//TODO lanzar un evento desde aca q spawnee los oplists?
+                    let chunk_ent = cmd.spawn_empty().id();
                     comps_for_chunk_ents.push((chunk_ent, (
                         Chunk { region_ent, },
                         StrId20B::new_truncated(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),

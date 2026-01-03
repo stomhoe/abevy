@@ -164,7 +164,7 @@ impl ChunkPos {
     pub fn new(x: i32, y: i32) -> Self { Self(IVec2::new(x, y)) }
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
-    pub const CHUNK_SIZE: UVec2 = UVec2 { x: 12, y: 12 };//NORMALMENTE 12X12
+    pub const CHUNK_SIZE: UVec2 = UVec2 { x: 12, y: 12 };//NORMALMENTE 12X12. 60x60?
     pub fn hash_value(&self, settings: &AcGlobalGenSettings, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);

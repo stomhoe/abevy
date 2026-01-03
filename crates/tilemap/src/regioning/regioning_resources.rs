@@ -28,8 +28,12 @@ pub struct StructureSerisHandles {
 #[derive(Deserialize, Asset, Reflect, )]
 pub struct StructuredGenConfig {
     pub id: String,
-    pub structure_id: String, pub args: Vec<String>,
-    pub weight: i32,//
+    /// village, cave, dungeon, fort, etc
+    pub structure_id: String, 
+    /// extra arguments given to structure generation
+    pub args: Vec<String>,
+    /// weight in weighted map of structured gens for region. (more weight= likely for this structure to be generated first within the map of valid generations for that region)
+    pub weight: f32,
     
     //expected terrain conditions for spawning
     pub whitelisted_filters: Option<Vec<OpFilterSerialization>>,
@@ -37,12 +41,12 @@ pub struct StructuredGenConfig {
     //para evitar adyacencia con chunk fronterizo de otra region, comparar hash del chunkpos con adyacentes y que se quede si es el más grande?
     pub min_dists_from_other_structures: Option<HashMap<String, u8>>,//in chunks
     
-    //si está vacío, está activo en todas las dimensiones
+    //if empty, active in all dimensions (but that dimension must have a matcfhing tag)
     pub active_in_dimensions: Option<Vec<String>>,
 
     pub min_used_chunks: Option<u8>,//structure's own minimum chunk usage takes priority over this one
     pub max_used_chunks: Option<u8>,
-    pub occupy_chunk_strat: Option<String>,//drunk walk or rectangle. structure's own strategy takes priority over this one
+    pub occupy_chunk_strat: Option<String>,//drunk walk or rectangle. StructuredGen's own strategy takes priority over this one
     pub min_per_region: Option<u8>,
     pub max_per_region: Option<u8>,
 

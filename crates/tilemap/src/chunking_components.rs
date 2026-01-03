@@ -5,13 +5,15 @@ use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 
-use crate::{chunking_resources::AaChunkRangeSettings, tile::tile_components::*};
+use crate::{chunking_resources::AaChunkRangeSettings, regioning::regioning_components::ChunksActiveInRegion, tile::tile_components::*};
 use ::tilemap_shared::*;
 
 
 use common::{common_components::*, };
 
-#[derive(Component, )]
+#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
+#[relationship(relationship_target = ChunksActiveInRegion)]
+
 #[require(Visibility::Hidden, SessionScoped, LayersMap, TilesToSave, )]
 pub struct Chunk {
     #[relationship]
@@ -35,7 +37,7 @@ impl TilesToSave { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct OperationsLaunched;
+pub struct TerrGenOpsLaunched;
 
 use crate::tilemap_systems::{MapKey, MapStruct};
 

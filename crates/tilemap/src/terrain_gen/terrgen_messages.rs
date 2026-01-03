@@ -1,7 +1,7 @@
 use bevy::{prelude::*};
 use common::common_components::HashId;
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{HashedTags, Tags};
+use game_common::game_common_components::{HashedTags, TagHashSet};
 use serde::Deserialize;
 use ::tilemap_shared::*;
 use std::hash::Hash;
@@ -41,7 +41,6 @@ impl PartialEq for OpFilter {
 impl Eq for OpFilter {}
 #[derive(Deserialize, Asset, Reflect, )]
 pub struct OpFilterSerialization {
-    pub root_oplist_id: String,
     pub tags: Vec<String>,
     pub op_i: i16,
     pub min_val: f32,

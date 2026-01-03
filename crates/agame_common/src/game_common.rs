@@ -45,6 +45,7 @@ pub fn plugin(app: &mut App) {
         clone_ezero_children_ents,
         disable_ezeros,
         delete_sprites_without_childof,
+        add_hashed_tags,
     ))
     .configure_sets(Update, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -88,7 +89,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<Description>()
     .register_type::<FacingDirection>()
     .register_type::<WeightedSamplerRef>()
-    .register_type::<Tags>()
+    .register_type::<TagHashSet>()
     .register_type::<EntityZeroRef>()
     .register_type::<EntityWeightedSampler>()
     .register_type::<ColorSampler>()
@@ -102,7 +103,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<ColorSampler>()
     .replicate::<Description>()
     .replicate_once::<GlobalTransform>()
-    .replicate::<Tags>()
+    .replicate::<TagHashSet>()
     .replicate_filtered::<EntityZero, Or<(With<Disabled>, Without<Disabled>)>>()
     .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>)>()
     .replicate_once_filtered_as::<Visibility, VisibilityGameState, (Or<(With<Disabled>, Without<Disabled>)>)>()

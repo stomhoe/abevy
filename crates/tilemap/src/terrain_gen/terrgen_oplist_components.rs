@@ -4,6 +4,7 @@ use bevy::ecs::entity::MapEntities;
 use bevy_replicon::prelude::*;
 use fnl::{FastNoiseLite, NoiseSampleRange};
 
+use game_common::game_common_components::AddSameHashedTags;
 use serde::{Deserialize, Serialize};
 use ::tilemap_shared::*;
 
@@ -69,7 +70,7 @@ pub struct Bifurcation{#[entities] pub oplist: Option<Entity>, #[entities] pub t
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(EntityPrefix::new_truncated("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped)]
+#[require(EntityPrefix::new_truncated("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped, AddSameHashedTags)]
 #[component(map_entities)]
 pub struct OperationList {
 

@@ -1,6 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::{DisplayName, EntityPrefix, HashId, StrId};
+use game_common::game_common_components::TagHashSet;
 use crate::{
     dimension_resources::*,
 /*
@@ -34,27 +35,31 @@ pub fn init_dimensions(
 
         info!(target: "dimension_loading", "Spawning dimension '{}' with id '{}' ", seri.name, str_id);
 
-        to_spawn.push((
+        let dim_ent = cmd.spawn_empty().id();
+
+        if let Some(tags) = seri.tags {
+            cmd.entity(dim_ent).try_insert(TagHashSet::new(tags));
+        }
+
+        to_spawn.push((dim_ent, (
             HashId::from(str_id.as_ref()),
             str_id,
             Transform::default(),
             DisplayName::new(seri.name),
             Dimension,
             Visibility::Visible,
-        ))
+        )))
     }
-    cmd.spawn_batch(to_spawn);
+    cmd.insert_batch(to_spawn);
 }
 
 
 pub fn add_dimensions_to_map(
-    mut cmd: Commands, 
     map: Option<ResMut<DimensionEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<Dimension>, )>,
+    query: Query<(Entity, &EntityPrefix, &StrId), (With<Dimension>, Added<StrId>)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
-            cmd.entity(ent).insert(Visibility::Visible);
             if let Err(err) = map.0.try_insert(str_id, ent, ) {
                 error!(target: "dimension_loading", "{} {} already in DimensionEntityMap : {}", prefix, str_id, err);
             } else {

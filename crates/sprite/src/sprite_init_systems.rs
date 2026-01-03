@@ -78,7 +78,7 @@ pub fn init_sprite_cfgs(
         )));
         if let Some(tags) = seri.tags.as_ref() {
             if !tags.is_empty() {
-                cmd.entity(spritecfg_ent).insert(Tags::new(tags));
+                cmd.entity(spritecfg_ent).insert(TagHashSet::new(tags));
             }
         }
         if let Some(scale_2d) = seri.scale {
@@ -274,7 +274,7 @@ pub fn become_child_of_sprite_with_tag(
     sprite_holder: Query<&HeldSprites>,
     other_sprites: Query<(Entity, &EntityZeroRef), (Without<SpriteConfig>, )>,
     becomes: Query<(&BecomeChildOfSpriteWithTag), (Or<(With<Disabled>, Without<Disabled>)>)>,
-    other_cats: Query<&Tags, (Or<(With<Disabled>, Without<Disabled>)>)>,
+    other_cats: Query<&TagHashSet, (Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     for (new_ent, &sprite_holder_ref, &new_sprite_cfg_ref) in new_sprites.iter(){
         if let Ok(becomes_child_of_sprite_with_cat) = becomes.get(new_sprite_cfg_ref.0) {unsafe {

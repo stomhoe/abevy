@@ -1,5 +1,5 @@
 
-use bevy::{ecs::entity::MapEntities, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -34,6 +34,20 @@ macro_rules! define_weightedsampler_impl {
                     total_weight,
                 }
             }
+            pub fn insert(&mut self, item: $inner, weight: f32) -> Result<(), ()>  {
+                if weight < 0.0 {
+                    error!(
+                        "Negative weight ({}) encountered in WeightedSampler for value {:?}, skipping entry.",
+                        weight, item
+                    );
+                    return Err(());
+                }
+                self.weights.push((item, weight));
+                self.total_weight += weight;
+                self.cumulative_weights.push(self.total_weight);
+                Ok(())
+            }
+
             fn sample_index(&self, rng_val: f32) -> Option<usize> {
                 if self.weights.is_empty() {
                     return None;
@@ -107,18 +121,17 @@ macro_rules! define_weightedsampler {
     };
 }
 
-define_weightedsampler!(ColorSampler, [u8; 4], "ColorWeightedSampler");
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
 pub struct WeightedSamplerRef(#[entities] pub Entity);
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+define_weightedsampler!(ColorSampler, [u8; 4], "ColorWeightedSampler");
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
 pub struct ColorSamplerRef(#[entities] pub Entity);
 
 
 
 #[derive(Debug, Clone, Component, Default, Reflect)]
-#[require(EntityPrefix::new_truncated("HashPosEntWSampler"), Replicated, AssetScoped, TgenHotLoadingScoped)]
 #[component(map_entities)]
 pub struct EntityWeightedSampler {
     weights: Vec<(Entity, f32)>,
