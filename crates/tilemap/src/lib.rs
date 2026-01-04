@@ -5,6 +5,7 @@ pub mod tilemap;
 mod tilemap_systems;
 mod chunking_systems;
 pub mod tilemap_components;
+pub mod tilemap_resources;
 pub mod chunking_components;
 pub mod chunking_resources;
 

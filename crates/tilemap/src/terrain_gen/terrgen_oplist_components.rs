@@ -16,49 +16,7 @@ use std::ops::{Index, IndexMut};
 #[require(AssetScoped, EntityPrefix::new_truncated("EguiOplistHolder"), Replicated, SessionScoped, TgenHotLoadingScoped)]
 pub struct EguiOplistHolder;
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, )]
-pub struct PoissonDisk { pub min_distance: u8, pub seed: u64, }
-impl PoissonDisk {
-    pub fn new(min_distance: u8, seed: u64) -> Result<Self, BevyError> {
 
-        let max = 5;
-
-        if min_distance > max {
-            return Err(BevyError::from(format!("min_distance must be <= {}", max)));
-        } else if min_distance == 0 {
-            return Err(BevyError::from("min_distance must be > 0"));
-        }
-        Ok(Self { min_distance, seed })
-    }
-    pub fn sample<T: HashablePosVec>(&self, settings: &AcGlobalGenSettings, tile_pos: T, oplist_size: OplistSize) -> f32 {
-
-        let val = tile_pos.normalized_hash_value(settings, self.seed);
-        let added_sample_distance_x = oplist_size.x() as i32 - 1;
-        let added_sample_distance_y = oplist_size.y() as i32 - 1;
-
-        for dy in -(self.min_distance as i32)..=(self.min_distance as i32) {
-            for dx in -(self.min_distance as i32)..=(self.min_distance as i32) {
-                if dx == 0 && dy == 0 {
-                    continue;
-                }
-                // Only check within circle of radius min_distance
-                if dx * dx + dy * dy > (self.min_distance as i32).pow(2) {
-                    continue;
-                }
-                // Calculate the neighbor's position by offsetting the current tile position
-                let neighbor_x = tile_pos.x() + dx + added_sample_distance_x;
-                let neighbor_y = tile_pos.y() + dy + added_sample_distance_y;
-                let neighbor_pos = GlobalTilePos(IVec2::new(neighbor_x, neighbor_y));
-                let neighbor_val = neighbor_pos.normalized_hash_value(settings, self.seed);
-                if neighbor_val > val {
-                    return 0.0;
-                }
-            }
-        }
-        val
-    }
-}
-impl Default for PoissonDisk { fn default() -> Self { Self { min_distance: 1, seed: 0 } } }
 
 
 

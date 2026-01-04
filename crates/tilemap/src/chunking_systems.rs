@@ -7,7 +7,7 @@ use dimension_shared::DimensionRef
 ;
 use tilemap_shared::{ChunkPos, GlobalTilePos};
 
-use crate::{chunking_components::*, chunking_resources::*, regioning::regioning_resources::LoadedRegions, tile::tile_events::SavedTileHadChunkDespawn};
+use crate::{chunking_components::*, chunking_resources::*, regioning::regioning_resources::LoadedRegions, tile::tile_messages::SavedTileHadChunkDespawn};
 
 //TODO HACERLO MÁS EVENT-DRIVEN
 

@@ -56,11 +56,6 @@ pub struct TileInstancesHolder;
 #[require(Replicated, AssetScoped, EntityPrefix::new_truncated("PortalsZero"), Name, Transform, Visibility, )]
 pub struct PortalsZeroEguiHolder;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct DoNotOverride;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct DeletePrevTilesInSamePos;
 
 pub type TileStrId = StrId20B;
 
@@ -82,7 +77,7 @@ pub struct PortalRecipe {
     impl PortalRecipe {
         pub fn to_op_filter(&self, start_pos: GlobalTilePos, oe_rootoplist: Entity) -> OpFilter {
             OpFilter {
-                tags: HashedTags::from(&self.tags),
+                tags: HashedTagsVec::from(&self.tags),
                 start_oplist: oe_rootoplist,
                 op_i: self.op_i,
                 min_val: self.min_val,

@@ -1,7 +1,7 @@
 use bevy::{prelude::*};
 use common::common_components::HashId;
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{HashedTags, TagHashSet};
+use game_common::game_common_components::{HashedTagsVec, TagHashSet};
 use serde::Deserialize;
 use ::tilemap_shared::*;
 use std::hash::Hash;
@@ -14,7 +14,7 @@ use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, };
 /// when process_pending_ops_and_collect_tiles finds a suitable position within this filter's parameters, it writes out a SuitablePosFound message
 pub struct OpFilter{
     pub start_oplist: Entity,
-    pub tags: HashedTags,
+    pub tags: HashedTagsVec,
     pub op_i: i16,
     pub min_val: f32,
     pub max_val: f32,

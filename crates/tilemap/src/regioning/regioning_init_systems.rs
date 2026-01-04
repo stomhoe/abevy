@@ -4,11 +4,11 @@ use camera::camera_components::CameraTarget;
 use common::common_components::{StrId, StrId20B};
 use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
 ;
-use game_common::{game_common_components::HashedTags, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::HashedTagsVec, game_common_components_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
-use tilemap_shared::{AcGlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec, RegionPos};
+use tilemap_shared::{AcGlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec, PoissonDisk, RegionPos};
 
-use crate::{regioning::{regioning_components::{StructuredGenConfigWeightedMap, WhitelistedFilterOf}, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
+use crate::{regioning::{regioning_components::{StructuredGenConfig, StructuredGenConfigWeightedMap, WhitelistedFilterOf}, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
 
 
 
@@ -19,7 +19,7 @@ pub fn init_structured_gen_configs (
     mut cmd: Commands, 
     map: Option<Res<StructuredGenConfigEntityMap>>,
     mut seris_handles: ResMut<StructureSerisHandles>,
-    mut assets: ResMut<Assets<StructuredGenConfig>>,
+    mut assets: ResMut<Assets<StructuredGenConfigSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,
 
 ) {
@@ -40,14 +40,14 @@ pub fn init_structured_gen_configs (
         };
         info!(target: "structure_spawn", "Loading StructureSeri from handle: {:?}", handle);
 
-        let main_ent = cmd.spawn_empty().id();
+        let main_ent = cmd.spawn(StructuredGenConfig).id();
 
         if let Some(whitelisted_filters) = structured_gen_seri.whitelisted_filters{
             if ! whitelisted_filters.is_empty(){
 
                 for opfilter_seri in whitelisted_filters {
 
-                    let Ok(tags) = HashedTags::try_new(opfilter_seri.tags) else {
+                    let Ok(tags) = HashedTagsVec::try_new(opfilter_seri.tags) else {
                         error!(target: "structure_spawn", "OpFilterSerialization within {} has no tags.", structured_gen_seri.id);
                         continue;
                     };
@@ -64,7 +64,7 @@ pub fn init_structured_gen_configs (
                 }
             }
         }
-        if let Some(active_in_dimensions) = structured_gen_seri.active_in_dimensions{
+        if let Some(active_in_dimensions) = structured_gen_seri.exclusive_for_dimensions{
             if ! active_in_dimensions.is_empty(){
                 let mut dim_refs = MultipleDimensionRefs::default();
                 for dim_strid in active_in_dimensions {
@@ -81,6 +81,19 @@ pub fn init_structured_gen_configs (
                 dimension_refs_to_insert.push((main_ent, dim_refs));
             }
         }
+
+        if let Some(pdisk_mindist_seed_vec) = structured_gen_seri.pdisk_mindist_and_tag {
+
+
+            let Ok(poisson_disk) = PoissonDisk::multiple_tagged(pdisk_mindist_seed_vec, 3, 16)
+            else {
+                error!(target: "structure_spawn", "Failed to create PoissonDisk for StructureSeri with id: {}, skipping PoissonDisk creation.", structured_gen_seri.id);
+                continue;
+            };
+
+            cmd.entity(main_ent).insert(poisson_disk);
+        }
+
         let Ok(()) = ent_w_sampler.insert(main_ent, structured_gen_seri.weight)
         else {
             error!(target: "structure_spawn", "StructureSeri with id: {} has negative weight: {}, skipping this structured gen config.", structured_gen_seri.id, structured_gen_seri.weight);

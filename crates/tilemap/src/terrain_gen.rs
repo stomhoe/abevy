@@ -61,9 +61,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<ChunkRef>()
         .register_type::<RegisteredPositions>()
         .register_type::<RootInDimensions>()
-        .register_type::<MassCollectedTiles>()
         .register_type::<OpFilter>()
-        .register_type::<TileHelperStruct>()
 
         .add_server_event::<RegisteredPositions>(Channel::Unordered)
         .make_event_independent::<RegisteredPositions>()
@@ -81,7 +79,6 @@ pub fn plugin(app: &mut App) {
         .replicate::<AcGlobalGenSettings>()
 
         .add_message::<PendingOp>()
-        .init_resource::<MassCollectedTiles>()
         .add_message::<TerrainProbe>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
         ;
 

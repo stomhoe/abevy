@@ -6,16 +6,19 @@ use game_common::game_common_components::{EntityZeroRef, Persisted};
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*};
+use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*, tilemap_resources::{DeleteOthersExceptZLevels, MassCollectedTiles, TileMassSpawnBundle}};
 
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
-pub struct MapKey {z_index: AcZ, oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>,}
+pub struct MapKey {oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>,}
 impl MapKey {
-    pub fn new(z_index: AcZ, oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>) -> Self {
-        Self { z_index, oplist_size, tile_size, shader_ref }
+    pub fn new(oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>) -> Self {
+        Self { oplist_size, tile_size, shader_ref }
     }
+    pub fn oplist_size(&self) -> OplistSize {self.oplist_size}
+    pub fn tile_size(&self) -> U16Vec2 {self.tile_size}
+    pub fn shader_ref(&self) -> Option<TileShaderRef> {self.shader_ref}
 }
 
 #[derive(Debug, Clone, Reflect)]
@@ -47,7 +50,7 @@ pub fn process_tiles_pre(
     mut collected_tiles: ResMut<MassCollectedTiles>,
 
     oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
-        Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>, Has<DeletePrevTilesInSamePos>), (With<Disabled>)>,
+        Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>, ), (With<Disabled>)>,
 
     mut chunk_query: Query<(&mut LayersMap), ()>,
     mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
@@ -72,25 +75,24 @@ pub fn process_tiles_pre(
 
     let reserved = chunkrange.approximate_number_of_chunks(0.06);
 
-    let mut changed_structs: HashSet<(Entity, MapKey)> = HashSet::with_capacity(reserved);
+    let mut changed_structs: HashSet<(Entity, AcZ, MapKey)> = HashSet::with_capacity(reserved);
 
     let mut tmaps_to_draw = Vec::with_capacity(collected_tiles.0.len());
 
     let mut tilemap_bundles = Vec::new();//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
 
     let mut to_insert_replicated = Vec::new();
-    let mut to_insert_pos_and_dim_ref = Vec::new();
-
+    let mut spritetiles_to_insert_pos_and_dim_ref = Vec::new();
 
     let mut i = 0;
     while i < collected_tiles.0.len() {
         let ev = collected_tiles.0.get_unchecked_mut(i);
 
-        let &mut (tile_ent, TileHelperStruct {
-            ezero: ezero_ref, global_pos: gpos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos,
-        }) = ev; 
+        let &mut (tile_ent, TileMassSpawnBundle {
+            ezero_ref, gpos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos, delete_others_excp: _, prev_gpos: _, prev_dim_ref: _,
+        }) = ev;
 
-        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, delete_prev_tiles))
+        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, ))
         = oritile_query.get(ezero_ref.0) else{
             error!("Original tile entity {} is despawned", ezero_ref.0);
             continue;
@@ -107,12 +109,12 @@ pub fn process_tiles_pre(
             }
             else{
                 collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
-                continue;
+                continue;//client shouldn't spawn this
             }
         }
         if transform.is_some() {
             trace!(target: "tilemap_systems", "Processing tile entity {:?} with strid {:?}", tile_ent, tile_strid);
-            to_insert_pos_and_dim_ref.push((tile_ent, (ezero_ref, gpos, dim_ref, initial_pos, SyncToRenderWorld::default())));
+            spritetiles_to_insert_pos_and_dim_ref.push((tile_ent, (ezero_ref, gpos, bundle.position, dim_ref, initial_pos, SyncToRenderWorld::default())));
             collected_tiles.0.swap_remove(i);
             // El Disabled se saca en tile_readjust_transform
 
@@ -154,15 +156,15 @@ pub fn process_tiles_pre(
     //DEJAR CON IF NEW ASÍ TILES DE TILEMAP PUEDEN SER REPLICADAS 
     cmd.try_insert_batch_if_new(take(&mut collected_tiles.0));
 
-    cmd.try_insert_batch(to_insert_pos_and_dim_ref);
+    cmd.try_insert_batch(spritetiles_to_insert_pos_and_dim_ref);
 
     cmd.try_insert_batch(to_insert_replicated);
 
     cmd.try_insert_batch(tilemap_bundles);
 
-    let mut to_insert = Vec::with_capacity(changed_structs.len());
+    let mut tmaps_to_insert = Vec::with_capacity(changed_structs.len());
 
-    for (chunk_ent, mapkey) in changed_structs.iter() {
+    for (chunk_ent, z, mapkey) in changed_structs.iter() {
         trace!("Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
 
         let Ok(mut layers) = chunk_query.get_mut(*chunk_ent) else {
@@ -170,9 +172,13 @@ pub fn process_tiles_pre(
         };
 
         //DEJAR EN GET_MUT, CON REMOVE SE PIERDE LA TMAP ENTITY USADA ARRIBA
-        let Some(mapstruct) = layers.0.get_mut(mapkey) else {
+        let Some(inner_hmap) = layers.0.get_mut(z) else {
             continue ;
         };
+        let Some(mapstruct) = inner_hmap.get_mut(mapkey) else{
+            continue ;
+        };
+
         let tmap_ent = mapstruct.tmap_ent;
 
         let (texture_vec, storage, tmap_hash_id_map) = (
@@ -180,7 +186,7 @@ pub fn process_tiles_pre(
             mapstruct.take_storage(),
             mapstruct.take_hash_id_map(),
         );
-        to_insert.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
+        tmaps_to_insert.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
 
         let shader = if let Some(shader_ref) = mapkey.shader_ref {
             shader_query.get(shader_ref.0).ok().map(|(shader,)| shader.clone())
@@ -208,7 +214,7 @@ pub fn process_tiles_pre(
             .try_insert(MaterialTilemapHandle::<StandardTilemapMaterial>::default());
         }
     }
-    cmd.try_insert_batch(to_insert);
+    cmd.try_insert_batch(tmaps_to_insert);
     event_writer.write_batch(tmaps_to_draw);
 
     Ok(())
@@ -230,7 +236,7 @@ fn func_process_tile_into_tilemaps(
     layers: &mut LayersMap,
     chunk: Entity,
     tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex)>,
-    changed_structs: &mut HashSet<(Entity, MapKey)>,
+    changed_structs: &mut HashSet<(Entity, AcZ, MapKey)>,
     tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, AcZ, ChildOf))>,
     to_draw: &mut Vec<DrawTilemap>,
 ) {
@@ -244,22 +250,29 @@ fn func_process_tile_into_tilemaps(
             return;
         }
     };
-    let map_key = MapKey::new(tile_z_index, oplist_size, tile_size, shader_ref.copied());
+    let map_key = MapKey::new(oplist_size, tile_size, shader_ref.copied());
 
-    if let Some(mapstruct) = layers.0.get_mut(&map_key) {
+    if let Some(mapstruct) = layers.0.get_mut(&tile_z_index) && let Some(mapstruct) = mapstruct.get(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;
         if to_draw.iter().all(|e: &DrawTilemap| e.0 != tmap_ent) {
             to_draw.push(DrawTilemap(tmap_ent));
         }
 
+        let mut tmap_handles_owned;
+        let mut storage_owned;
+        let mut tmap_hash_id_map_owned;
+        
         let (tmap_handles, storage, tmap_hash_id_map) =
             if let Ok((tmap_handles, storage, tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent)
             {
                 (tmap_handles.into_inner(), storage.into_inner(), tmap_hash_id_map.into_inner())
             } else {
-                changed_structs.insert((chunk, map_key.clone()));
-                let MapStruct { texture: tmap_handles, storage, tmap_hash_id_map, .. } = mapstruct;
-                (tmap_handles, storage, tmap_hash_id_map)
+                changed_structs.insert((chunk, tile_z_index, map_key.clone()));
+                let MapStruct { texture: tmap_handles, storage, tmap_hash_id_map, .. } = mapstruct.clone();
+                tmap_handles_owned = tmap_handles;
+                storage_owned = storage;
+                tmap_hash_id_map_owned = tmap_hash_id_map;
+                (&mut tmap_handles_owned, &mut storage_owned, &mut tmap_hash_id_map_owned)
             };
         let Vector(tmap_handles) = tmap_handles else {
             error!("Failed to get tilemap handles for {:?}", tmap_ent);
@@ -292,7 +305,7 @@ fn func_process_tile_into_tilemaps(
 
     } else {
         let mut tmap_hash_id_map = TmapHashIdtoTextureIndex::default();
-        changed_structs.insert((chunk, map_key.clone()));
+        changed_structs.insert((chunk, tile_z_index, map_key.clone()));
 
         let handles = if let Some(tile_handles) = tile_handles {
             for (i, (id, _)) in tile_handles.iter().enumerate() {
@@ -308,7 +321,7 @@ fn func_process_tile_into_tilemaps(
             (tmap_ent,
             (
                 TilemapConfig::new(oplist_size, tile_size),
-                map_key.z_index,
+                tile_z_index,
                 ChildOf(chunk),
             ))
         );
@@ -319,19 +332,21 @@ fn func_process_tile_into_tilemaps(
 
         let mut storage = TilemapConfig::new_storage(oplist_size);
         storage.set(&position, tile_ent);
-        layers.0.insert(map_key, MapStruct {
+        layers.0.entry(tile_z_index)
+            .or_insert_with(Default::default)
+            .insert(map_key, MapStruct {
             tmap_ent,
             texture: TilemapTexture::Vector(handles),
             storage,
             tmap_hash_id_map,
-        });
+            });
     }
 }
 
 #[allow(unused_parens)]
 pub fn tile_assign_child_of(mut cmd: Commands, 
     tile_instances_holder_query: Single<Entity, With<TileInstancesHolder>>,
-    mut query: Query<(Entity, ),(Without<ChildOf>, With<TilePos>, With<TileTextureIndex>)>,
+    mut query: Query<(Entity, ),(Without<ChildOf>, With<TilemapId>, With<TileTextureIndex>)>,
 ) {
     let query_len = query.iter().count();
     let mut child_ofs_for_tiles: Vec<(Entity, ChildOf)> = Vec::with_capacity(query_len);

@@ -23,10 +23,10 @@ pub struct StructuredGenConfigEntityMap(pub HashIdToEntityMap);
 #[reflect(Resource, Default)]
 pub struct StructureSerisHandles {
     #[asset(path = "ron/tilemap/region/structures", collection(typed))]
-    pub handles: Vec<Handle<StructuredGenConfig>>,
+    pub handles: Vec<Handle<StructuredGenConfigSeri>>,
 }
 #[derive(Deserialize, Asset, Reflect, )]
-pub struct StructuredGenConfig {
+pub struct StructuredGenConfigSeri {
     pub id: String,
     /// village, cave, dungeon, fort, etc
     pub structure_id: String, 
@@ -37,12 +37,14 @@ pub struct StructuredGenConfig {
     
     //expected terrain conditions for spawning
     pub whitelisted_filters: Option<Vec<OpFilterSerialization>>,
-    pub whitelisted_biomes: Option<Vec<String>>,
+    
+    pub pdisk_mindist_and_tag: Option<Vec<(Option<u8>, String)>>,
+    
     //para evitar adyacencia con chunk fronterizo de otra region, comparar hash del chunkpos con adyacentes y que se quede si es el más grande?
     pub min_dists_from_other_structures: Option<HashMap<String, u8>>,//in chunks
     
     //if empty, active in all dimensions (but that dimension must have a matcfhing tag)
-    pub active_in_dimensions: Option<Vec<String>>,
+    pub exclusive_for_dimensions: Option<Vec<String>>,//tag
 
     pub min_used_chunks: Option<u8>,//structure's own minimum chunk usage takes priority over this one
     pub max_used_chunks: Option<u8>,

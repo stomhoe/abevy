@@ -14,6 +14,9 @@ pub struct DimensionSystems;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct DimensionRef(#[entities] pub Entity);
 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+pub struct PrevDimensionRef(#[entities] pub Entity);
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 #[require(Replicated, TgenHotLoadingScoped, AssetScoped, EntityPrefix::new_truncated("DIMENSION") )]
 pub struct Dimension;

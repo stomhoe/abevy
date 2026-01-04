@@ -25,7 +25,7 @@ concat!(
     "tilemap::terrain_gen::terrgen_systems=info,",
     "terrgen_process=info,",
     "tilemap::tile::tile_init_systems=info,",
-    "tilemap_systems=trace,",
+    "tilemap_systems=info,",
     "zlevel=info,",
     "movement=warn,",
     "sprite_init=trace,",
@@ -37,7 +37,7 @@ concat!(
     "game_init_systems=info,",
     
     "sprite_animation_init=warn,",
-    "entity_zero=trace,",
+    "entity_zero=info,",
 
     "tile_init=debug,",
     "asset_loading=warn,",

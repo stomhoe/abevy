@@ -11,8 +11,7 @@ use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
-use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*, tile_shader_components::{TileShader, TileShaderRef}, tile_shader_resources::*} };
-use crate::terrain_gen::terrgen_resources::MassCollectedTiles;
+use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*, tile_shader_components::{TileShader, TileShaderRef}, tile_shader_resources::*}, tilemap_resources::MassCollectedTiles };
 
 use std::mem::take;
 
@@ -23,12 +22,12 @@ pub fn init_tiles(
     mut cmd: Commands, 
     seris_handles: Res<TileSerisHandles>, mut assets: ResMut<Assets<TileSerialization>>,
     shader_map: Res<TileShaderEntityMap>,
-    tiling_map: Option<Res<TileEntitiesMap>>,
+    tiling_map: Option<Res<TileEzerosMap>>,
     color_map: Res<ColorWeightedSamplersMap>,
 
 ) {
     if tiling_map.is_some() { return; }
-    let mut tiling_map = TileEntitiesMap::default();
+    let mut tiling_map = TileEzerosMap::default();
 
     let holder = cmd.spawn((TilesEguiHolder, )).id();
     cmd.spawn((TileInstancesHolder, ChildOf(holder)));
@@ -197,7 +196,7 @@ pub fn init_tile_sprite(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn add_handles(  
     mut cmd: Commands,  asset_server: Res<AssetServer>,
-    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TilePos>, Without<TileHidsHandles>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, Or<(With<Disabled>, Without<Disabled>)>)>,
 ) {
     for (enti, str_id, tile_image_paths) in query.iter() {
         let tile_handles = TileHidsHandles::from_paths(&asset_server, tile_image_paths.clone(), );
@@ -217,7 +216,7 @@ pub fn add_handles(
 #[allow(unused_parens)]
 pub fn map_min_dist_tiles(mut cmd: Commands, 
     mut seris_handles: ResMut<TileSerisHandles>, mut assets: ResMut<Assets<TileSerialization>>,
-    tiles_map: Res<TileEntitiesMap>,
+    tiles_map: Res<TileEzerosMap>,
     tile_cats: Res<TileCategories>,
 ) {
     let mut keep_away: EntityHashMap<HashSet<Entity>> = EntityHashMap::default();
@@ -268,7 +267,7 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn map_portal_tiles(mut cmd: Commands, 
     mut query: Query<(Entity, &TileStrId, &mut PortalSeri, ),(With<Disabled>)>,
-    tiles_map: Res<TileEntitiesMap>,
+    tiles_map: Res<TileEzerosMap>,
 ) {
     info!("Mapping portal tiles");
     for (ent, str_id, mut portal_seri) in query.iter_mut() {
@@ -307,7 +306,6 @@ pub fn instantiate_portal(mut cmd: Commands,
 
     for (portal_ent, portal_recipe, &global_pos, dim_ref, tile_ref) in new_portals.iter() {
 
-        
         let str_id = ori_tile_str_id_query.get(tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
         
         let Ok((&dimension_hash_id, &dimension_root_oplist)) = dimension_query.get(portal_recipe.dest_dimension) 
@@ -352,7 +350,7 @@ pub fn instantiate_portal(mut cmd: Commands,
 
         let oe_portal = 
         mass_collected
-        .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default());
+        .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default(), None);
 
         cmd.entity(this_end_portal).insert(PortalConnection::new(oe_portal));
 
@@ -365,7 +363,6 @@ pub fn instantiate_portal(mut cmd: Commands,
         debug!(target:"portal_init", "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
 
     };
-
     'successful_searches: for search_successful_msg in mreader_search_successful.read() {
         let ss_filtered_op_ent = search_successful_msg.op_filter_ent;
         if successful_searches.contains(&ss_filtered_op_ent) {
@@ -401,7 +398,6 @@ pub fn instantiate_portal(mut cmd: Commands,
             }
         }
     }
-
     for failed_search in mreader_search_failed.read() {
 
         if successful_searches.contains(&failed_search.0) { 
@@ -458,14 +454,14 @@ pub fn client_sync_tile(
 #[allow(unused_parens)]
 pub fn make_child_of_chunk(mut cmd: Commands, 
 
-    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilePos>, Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, Or<(Without<Disabled>, With<Disabled>)>)>,
+    query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilemapId>, 
+        Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
     loaded_chunks: Res<LoadedChunks>,
 ) {
     let mut child_ofs = Vec::new();
-    for (ent, &ezero, &global_pos, &dim_ref, to_persist) in query.iter() {
+    for (ent, &global_pos, &dim_ref, to_persist) in query.iter() {
 
         let chunk_pos: ChunkPos = global_pos.into();
-
         
         if to_persist {
             child_ofs.push((ent, ChildOf(dim_ref.0)));

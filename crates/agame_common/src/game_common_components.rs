@@ -236,10 +236,10 @@ define_tag_hashset_and_impl_methods!(TagHashSet, Tag);
 pub struct AddSameHashedTags;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, Hash, PartialEq, Eq, )]
-pub struct HashedTags(pub Vec<HashId>);
-impl_tag_vec_methods!(HashedTags, HashId);
+pub struct HashedTagsVec(pub Vec<HashId>);
+impl_tag_vec_methods!(HashedTagsVec, HashId);
 
-impl From<&TagHashSet> for HashedTags {
+impl From<&TagHashSet> for HashedTagsVec {
     fn from(tag: &TagHashSet) -> Self {
         Self(tag.0.iter().map(|t| HashId::from(t)).collect())
     }

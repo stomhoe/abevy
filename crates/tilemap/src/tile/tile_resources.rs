@@ -4,11 +4,13 @@ use bevy::{ecs::entity::EntityHashSet, math::f32, platform::collections::{HashMa
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
 use common::{common_components::Tag, common_types::HashIdToEntityMap};
+use dimension_shared::DimensionRef;
 use serde::{Deserialize, Serialize};
+use tilemap_shared::GlobalTilePos;
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
 #[reflect(Resource, Default)]
-pub struct TileEntitiesMap(pub HashIdToEntityMap);
+pub struct TileEzerosMap(pub HashIdToEntityMap);
 
 #[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Message, Reflect)]
 #[reflect(Resource, Default)]
@@ -19,6 +21,9 @@ pub struct TileInstancesEntityMap(pub HashIdToEntityMap);
 #[reflect(Resource, Default)]
 pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
 
+#[derive(Resource, Debug, Reflect, Default)]
+#[reflect(Resource, Default)]
+pub struct TilesAtGpos (pub HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>);
 
 
 #[derive(AssetCollection, Resource, Default, Reflect)]

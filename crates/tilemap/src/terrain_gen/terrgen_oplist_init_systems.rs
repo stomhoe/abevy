@@ -6,7 +6,7 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 use common::common_components::StrId;
 use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
-use game_common::game_common_components::{HashedTags, TagHashSet};
+use game_common::game_common_components::{HashedTagsVec, TagHashSet};
 
 use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
@@ -20,7 +20,7 @@ pub fn init_oplists_from_assets(
     mut assets: ResMut<Assets<OpListSerialization>>, 
     terr_gen_map: Res<TerrGenEntityMap>,  
     samplers_map: Res<TileWeightedSamplersMap>,
-    tiles_map: Res<TileEntitiesMap>,
+    tiles_map: Res<TileEzerosMap>,
     oplist_map: Option<Res<OpListEntityMap>>,
 ) {
     if oplist_map.is_some() { return ; }

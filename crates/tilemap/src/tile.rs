@@ -10,7 +10,7 @@ use tilemap_shared::{GlobalTilePos, OplistSize};
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::{tile::{
-    tile_components::*, tile_events::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_systems::*
+    tile_components::*, tile_messages::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_systems::*
 }};
 mod tile_systems;
 mod tile_init_systems;
@@ -22,7 +22,7 @@ pub mod tile_resources;
 pub mod tile_sampler_resources;
 pub mod tile_shader_resources;
 pub mod tile_materials;
-pub mod tile_events;
+pub mod tile_messages;
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -35,12 +35,14 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         flip_tile_horizontally_based_on_initial_pos_hash,
         (client_sync_tile, ).run_if(in_state(ClientState::Connected)),
-        spritetile_readjust_transform_to_match_globalpos,
+        (despawn_if_not_excepted, spritetile_readjust_transform_to_match_globalpos).chain(),
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
+        add_tile_to_gpos_map,
         make_child_of_chunk,
         add_handles,
         init_tile_sprite,
         add_image_handle_to_tile_shader,
+        emit_global_tile_pos_change,
     ))
     
     /* .add_systems(map_portal_tiles
@@ -81,7 +83,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<GlobalTilePos>()
     .register_type::<TileWeightedSamplerHandles>()
     .register_type::<TileWeightedSamplerSeri>()
-    .register_type::<TileEntitiesMap>()
+    .register_type::<TileEzerosMap>()
     .register_type::<TileWeightedSamplersMap>()
     .register_type::<TileShaderEntityMap>()
     .register_type::<TileShader>()
@@ -96,6 +98,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<PortalConnection>()
     .register_type::<EguiTileShaderHolder>()
     
+    .init_resource::<TilesAtGpos>()
     
     .replicate::<Tile>()
     .replicate::<TileStrId>()
@@ -115,13 +118,14 @@ pub fn plugin(app: &mut App) {
     
     .replicate_filtered::<Transform, With<TilesEguiHolder>>()
     .replicate_filtered::<Transform, With<PortalsZeroEguiHolder>>()
-    .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilePos>, With<Disabled>)>>()
+    .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilemapId>, With<Disabled>)>>()
     
     
     .replicate_filtered::<ChildOf, With<EntityWeightedSampler>>()
     
     //usar feature
     .add_message::<SavedTileHadChunkDespawn>()
+    .add_message::<GlobalTilePosChanged>()
     
     
     ;

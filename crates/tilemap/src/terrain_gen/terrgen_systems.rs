@@ -6,15 +6,9 @@ use common::{common_components::{DisplayName, HashId, StrId}, };
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{DimensionRef, DimensionRootOplist};
 use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
-use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_components::*, } };
+use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::tile_components::*, tilemap_resources::MassCollectedTiles };
 use std::{f32::consts::PI, };
 use ::tilemap_shared::*;
-
-
-// HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
-
-// PARA HACER ISLAS CON FORMA CUSTOM (P. EJ CIRCULAR O DISCO O ALGO RARO Q NO SE PUEDE HACER CON NOISE), MARCAR EN UN PUNTO EXTREMADAMENTE OCÉANICO CON UNA TILE MARKER Y DESP HACER OTRO SISTEMA Q LO PONGA TODO POR ENCIMA, SOBREESCRIBIENDO LO Q HABÍA ANTES
-
 
 #[allow(unused_parens)]
 pub fn spawn_terrain_operations (
@@ -74,7 +68,7 @@ pub fn spawn_terrain_operations (
 pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, 
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
     gen_settings: Single<&AcGlobalGenSettings>,
-    oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTags>), ( )>,
+    oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ( )>,
     fnl_noises: Query<&FnlNoiseComp,>,
     op_filters: Query<&OpFilter,>,
     weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
@@ -110,8 +104,8 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                         };
                         noise.sample(global_pos, *sample_range, *compl, *operand_seed + ev.dimension_hash_id, &gen_settings)   
                     },
-                    OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed),
-                    OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_pos, my_oplist_size),
+                    OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed) as f32,
+                    OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_pos, true, my_oplist_size) as f32,
                 };
                 if operand.complement && !matches!(operand.element, OperandElement::NoiseEntity(_, _, _, _)) {
                     curr_operand_val = 1.0 - curr_operand_val;
@@ -212,7 +206,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
 }
 
 fn spawn_bifurcation_oplists(
-    ev: &mut PendingOp, oplist_query: &Query<(&OperationList, &OplistSize, Option<&HashedTags>), ()>,
+    ev: &mut PendingOp, oplist_query: &Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ()>,
     new_pending_ops: &mut Vec<PendingOp>, oplist: Entity, my_oplist_size: OplistSize,
 ) {unsafe{
     let (_, &child_oplist_size, _) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");

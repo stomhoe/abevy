@@ -4,6 +4,7 @@ use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
 use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
+use sprite_shared::AcZ;
 
 use crate::{chunking_resources::AaChunkRangeSettings, regioning::regioning_components::ChunksActiveInRegion, tile::tile_components::*};
 use ::tilemap_shared::*;
@@ -42,7 +43,7 @@ pub struct TerrGenOpsLaunched;
 use crate::tilemap_systems::{MapKey, MapStruct};
 
 #[derive(Component, Default, Clone, Reflect, )]
-pub struct LayersMap(pub HashMap<MapKey, MapStruct>);
+pub struct LayersMap(pub HashMap<AcZ, HashMap<MapKey, MapStruct>>);
 
 
 #[derive(Component, Debug, Reflect)]

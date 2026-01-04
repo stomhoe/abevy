@@ -35,7 +35,7 @@ pub fn reload_assets_ingame(
 
         cmd.remove_resource::<TileWeightedSamplersMap>();
         cmd.remove_resource::<TileShaderEntityMap>();
-        cmd.remove_resource::<TileEntitiesMap>();
+        cmd.remove_resource::<TileEzerosMap>();
         cmd.remove_resource::<SpriteCfgEntityMap>();
         
         cmd.remove_resource::<OpListEntityMap>();

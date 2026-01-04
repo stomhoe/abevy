@@ -46,7 +46,7 @@ pub fn init_tile_weighted_samplers_refs(
     mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
     hashpos_weighted_map: Res<TileWeightedSamplersMap>,
     hashpos_query: Query<(&StrId, ), (With<EntityWeightedSampler>)>,
-    tile_ents_map: Res<TileEntitiesMap>,
+    tile_ents_map: Res<TileEzerosMap>,
 ) {
     for handle in seris_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue };

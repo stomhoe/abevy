@@ -1,13 +1,14 @@
 
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::TileFlip;
+use bevy_ecs_tilemap::{map::TilemapId, tiles::TileFlip};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
-use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos, HashablePosVec};
-use crate:: tile::tile_components::*;
+use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos, HashablePosVec, PrevGlobalTilePos, OplistSize};
+use crate::{ chunking_components::LayersMap, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos}, tilemap_resources::DeleteOthersExceptZLevels};
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
@@ -84,3 +85,96 @@ pub fn spritetile_readjust_transform_to_match_globalpos(
 }
 
 
+#[allow(unused_parens)]
+pub fn emit_global_tile_pos_change(
+    mut query: Query<(Entity, &mut PrevGlobalTilePos, &mut PrevDimensionRef, &GlobalTilePos, &DimensionRef),(Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, Without<EntityZero>, )>,
+    mut mwriter: MessageWriter<GlobalTilePosChanged>,
+) {
+    let mut write = Vec::new();
+    for (entity, mut prev_tile_pos, mut prev_dim_ref, global_tile_pos, dimension_ref) in query.iter_mut() {
+        write.push(GlobalTilePosChanged {
+            entity,
+            old_gpos: prev_tile_pos.0, 
+            old_dim: DimensionRef(prev_dim_ref.0),
+        });
+        prev_tile_pos.0 = *global_tile_pos;
+        prev_dim_ref.0 = dimension_ref.0;
+    }
+    mwriter.write_batch(write);
+}
+
+
+#[allow(unused_parens)]
+pub fn add_tile_to_gpos_map(
+    mut map: ResMut<TilesAtGpos>,
+    query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&OplistSize>),(Changed<GlobalTilePos>, Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
+    mut removed_tiles: RemovedComponents<Tile>,
+    mut changed_pos: MessageReader<GlobalTilePosChanged>,
+) {
+    for (ent, dimension_ref, gpos, oplist_size) in query.iter() {
+        map.0.entry((*dimension_ref, *gpos)).or_default().push(ent);
+        if let Some(oplist_size) = oplist_size {
+            //TODO llenar todas las posiciones que ocupe la tile
+
+        }
+    }
+    for removed_tile in removed_tiles.read() {
+        if let Ok((_, &dim, &gpos, oplist_size)) = query.get(removed_tile) {
+            if let Some(ents_vec) = map.0.get_mut(&(dim, gpos)) {
+                if let Some(i) = ents_vec.iter().position(|&e| e == removed_tile) {
+                    ents_vec.swap_remove(i);
+                }
+            }
+        }
+    }
+    for msg in changed_pos.read() {
+        if let Some(ents_vec) = map.0.get_mut(&(msg.old_dim, msg.old_gpos)) {
+            if let Some(i) = ents_vec.iter().position(|&e| e == msg.entity) {
+                ents_vec.swap_remove(i);
+            }
+        }
+    }
+}
+
+
+#[allow(unused_parens)]
+pub fn despawn_if_not_excepted(mut cmd: Commands, 
+    query: Query<(Entity, &DimensionRef, &GlobalTilePos, &DeleteOthersExceptZLevels, &AcZ,),(Added<InitialPos>, Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
+    map: Res<TilesAtGpos>,
+) {
+    for (newtile_ent, &dim, &gpos, newtile_delete_others_excp, new_tile_z, ) in query.iter() {
+        
+        if let Some(otile_ents) = map.0.get(&(dim, gpos)) {
+            for &otile_ent in otile_ents.iter() {
+                if otile_ent == newtile_ent {
+                    continue ;
+                }
+                let Ok((_, _, _, otile_delete_others_excp, otile_z, )) = query.get(otile_ent) else {
+                    continue ;
+                };
+
+                if let Some(newtile_delete_others_excp) = &newtile_delete_others_excp.0 {
+                    if newtile_delete_others_excp.contains(otile_z) {
+                        continue ;
+                    } else{
+                        cmd.entity(otile_ent).try_despawn();
+                        continue ;
+                    }
+                }
+
+                let Some(otile_delete_others_excp) = &otile_delete_others_excp.0 else {
+                    continue ;
+                };
+                if otile_delete_others_excp.contains(new_tile_z) {
+                    continue ;
+                } else{
+                    cmd.entity(newtile_ent).try_despawn();
+                }
+            }
+        }
+    
+        if newtile_delete_others_excp.0.is_none() {
+            cmd.entity(newtile_ent).try_remove::<DeleteOthersExceptZLevels>();
+        }
+    }
+}

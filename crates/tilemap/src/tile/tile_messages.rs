@@ -16,6 +16,12 @@ use {common::common_components::*, };
 #[derive(Debug, Message)]
 pub struct SavedTileHadChunkDespawn (pub Entity);
 
+#[derive(Debug, Message)]
+pub struct GlobalTilePosChanged {
+    pub entity: Entity,
+    pub old_gpos: GlobalTilePos,
+    pub old_dim: DimensionRef,
+}
 
 // #[derive(Debug, Deserialize, Message, Serialize, MapEntities, Hash, PartialEq, Eq, Clone)]
 // pub struct SpawnSyncTile  { 

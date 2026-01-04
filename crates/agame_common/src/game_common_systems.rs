@@ -120,12 +120,12 @@ pub fn add_hashed_tags(mut cmd: Commands,
 ) {
     let mut tags_to_add = Vec::new();
     for (ent, tags) in query.iter() {
-        let hashed_tags = HashedTags::from(tags);
+        let hashed_tags = HashedTagsVec::from(tags);
         tags_to_add.push((ent, hashed_tags));  
     }
     for ent in removed.read() {
         if let Ok((_, _)) = query.get(ent) {
-            cmd.entity(ent).try_remove::<HashedTags>();
+            cmd.entity(ent).try_remove::<HashedTagsVec>();
         }
     }
     cmd.insert_batch(tags_to_add);

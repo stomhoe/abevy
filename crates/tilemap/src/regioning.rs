@@ -12,7 +12,7 @@ pub struct RegioningSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        RonAssetPlugin::<StructuredGenConfig>::new(&["structure.ron"]),
+        RonAssetPlugin::<StructuredGenConfigSeri>::new(&["structure.ron"]),
     ))
     .add_systems(Update, (
         (
