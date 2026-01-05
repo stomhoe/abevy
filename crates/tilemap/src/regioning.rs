@@ -2,8 +2,7 @@ use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use tilemap_shared::{AcGlobalGenSettings, ChunkPos};
-use crate::{chunking_systems::*, regioning::{regioning_components::*, regioning_init_systems::*, regioning_resources::*, regioning_systems::*}, tilemap_systems::*};
+use crate::{regioning::{regioning_components::*, regioning_init_systems::*, regioning_messages::*, regioning_resources::*, regioning_systems::*}, };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct RegioningSystems;
@@ -16,7 +15,8 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(Update, (
         (
-            plan_structures_for_new_region,
+            request_chunk_claims_for_new_region, 
+            get_chunk_claims_for_new_region,
         ).in_set(RegioningSystems).run_if(in_state(TerrainHotReloading::KeepAlive))
     ))
     .add_systems(
@@ -34,10 +34,14 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadedRegions>()
     .register_type::<WhitelistedFilterOf>()
     .replicate::<WhitelistedFilterOf>()
+
+    .add_message::<RequestChunkClaim>()
+    .add_message::<ClaimedChunks>()
 ;
 }
 
 pub mod regioning_components;
 pub mod regioning_resources;
+pub mod regioning_messages;
 mod regioning_systems;
 mod regioning_init_systems;

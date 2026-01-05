@@ -1,5 +1,5 @@
 
-use bevy::prelude::*;
+use bevy::{ecs::entity::EntityHashSet, prelude::*};
 use camera::camera_components::CameraTarget;
 use common::common_components::{StrId, StrId20B};
 use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
@@ -31,6 +31,7 @@ pub fn init_structured_gen_configs (
 
     let mut opfilters_to_spawn = Vec::new();
     let mut dimension_refs_to_insert = Vec::new();
+    let mut gen_cfgs_to_insert = Vec::new();
 
     let mut map = StructuredGenConfigEntityMap::default();
     for handle in std::mem::take(&mut seris_handles.handles) {
@@ -40,7 +41,13 @@ pub fn init_structured_gen_configs (
         };
         info!(target: "structure_spawn", "Loading StructureSeri from handle: {:?}", handle);
 
-        let main_ent = cmd.spawn(StructuredGenConfig).id();
+        let main_ent = cmd.spawn_empty().id();
+
+        let mut gen_cfg = StructuredGenConfig::default();
+
+        if let Some(max_per_region) = structured_gen_seri.max_per_region {
+            gen_cfg.max_per_region = max_per_region;
+        }
 
         if let Some(whitelisted_filters) = structured_gen_seri.whitelisted_filters{
             if ! whitelisted_filters.is_empty(){
@@ -64,10 +71,10 @@ pub fn init_structured_gen_configs (
                 }
             }
         }
-        if let Some(active_in_dimensions) = structured_gen_seri.exclusive_for_dimensions{
-            if ! active_in_dimensions.is_empty(){
+        if let Some(exclusive_for_dimensions) = structured_gen_seri.exclusive_for_dimensions{
+            if ! exclusive_for_dimensions.is_empty(){
                 let mut dim_refs = MultipleDimensionRefs::default();
-                for dim_strid in active_in_dimensions {
+                for dim_strid in exclusive_for_dimensions {
                     let Ok(dim_ent) = dimension_entity_map.0.get(&dim_strid) else {
                         error!(target: "structure_spawn", "Failed to find Dimension with StrId: {}", dim_strid);
                         continue;
@@ -81,9 +88,7 @@ pub fn init_structured_gen_configs (
                 dimension_refs_to_insert.push((main_ent, dim_refs));
             }
         }
-
         if let Some(pdisk_mindist_seed_vec) = structured_gen_seri.pdisk_mindist_and_tag {
-
 
             let Ok(poisson_disk) = PoissonDisk::multiple_tagged(pdisk_mindist_seed_vec, 3, 16)
             else {
@@ -94,11 +99,9 @@ pub fn init_structured_gen_configs (
             cmd.entity(main_ent).insert(poisson_disk);
         }
 
-        let Ok(()) = ent_w_sampler.insert(main_ent, structured_gen_seri.weight)
-        else {
-            error!(target: "structure_spawn", "StructureSeri with id: {} has negative weight: {}, skipping this structured gen config.", structured_gen_seri.id, structured_gen_seri.weight);
-            continue;
-        };
+        ent_w_sampler.insert(main_ent, structured_gen_seri.weight);
+
+        gen_cfgs_to_insert.push((main_ent, gen_cfg));
 
         map.0.overwrite(structured_gen_seri.id.clone(), main_ent);
 
@@ -106,6 +109,7 @@ pub fn init_structured_gen_configs (
     cmd.insert_resource(map);
     cmd.spawn_batch(opfilters_to_spawn);
     cmd.insert_batch(dimension_refs_to_insert);
+    cmd.insert_batch(gen_cfgs_to_insert);
 
     cmd.spawn((StructuredGenConfigWeightedMap, ent_w_sampler, ));
 }

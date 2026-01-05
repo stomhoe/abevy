@@ -7,7 +7,7 @@ use dimension_shared::DimensionRef
 ;
 use tilemap_shared::{ChunkPos, GlobalTilePos};
 
-use crate::{chunking_components::*, chunking_resources::*, regioning::regioning_resources::LoadedRegions, tile::tile_messages::SavedTileHadChunkDespawn};
+use crate::{chunking_components::*, chunking_resources::*, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}, tile::tile_messages::SavedTileHadChunkDespawn};
 
 //TODO HACERLO MÁS EVENT-DRIVEN
 
@@ -42,6 +42,7 @@ pub fn visit_chunks_around_activators(
                             let region_ent = cmd.spawn_empty().id();
                             comps_for_region_ents.push((region_ent, (
                                 region_pos,
+                                Region,
                                 StrId20B::new_truncated(format!("Region({}, {})", region_pos.0.x, region_pos.0.y)),
                                 Transform::default(),
                                 ChildOf(dimension_ref.0),

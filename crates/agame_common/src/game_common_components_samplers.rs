@@ -34,18 +34,17 @@ macro_rules! define_weightedsampler_impl {
                     total_weight,
                 }
             }
-            pub fn insert(&mut self, item: $inner, weight: f32) -> Result<(), ()>  {
+            pub fn insert(&mut self, item: $inner, weight: f32) {
                 if weight < 0.0 {
-                    error!(
-                        "Negative weight ({}) encountered in WeightedSampler for value {:?}, skipping entry.",
+                    warn!(
+                        "Negative weight ({}) encountered in WeightedSampler for value {:?}.",
                         weight, item
                     );
-                    return Err(());
                 }
+                let weight = weight.max(0.0);
                 self.weights.push((item, weight));
                 self.total_weight += weight;
                 self.cumulative_weights.push(self.total_weight);
-                Ok(())
             }
 
             fn sample_index(&self, rng_val: f32) -> Option<usize> {

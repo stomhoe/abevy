@@ -44,12 +44,11 @@ pub struct StructuredGenConfigSeri {
     pub min_dists_from_other_structures: Option<HashMap<String, u8>>,//in chunks
     
     //if empty, active in all dimensions (but that dimension must have a matcfhing tag)
-    pub exclusive_for_dimensions: Option<Vec<String>>,//tag
+    pub exclusive_for_dimensions: Option<Vec<String>>,//TODO user tags en vez de ids?
 
     pub min_used_chunks: Option<u8>,//structure's own minimum chunk usage takes priority over this one
-    pub max_used_chunks: Option<u8>,
-    pub occupy_chunk_strat: Option<String>,//drunk walk or rectangle. StructuredGen's own strategy takes priority over this one
-    pub min_per_region: Option<u8>,
+    pub max_used_chunks: Option<u16>,
+
     pub max_per_region: Option<u8>,
 
 }
