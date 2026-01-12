@@ -18,8 +18,7 @@ use std::hash::Hash;
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct DeleteOthersExceptZLevels(pub Option<HashSet<AcZ>>);
+
 
 #[derive(Bundle, Debug, Clone, Reflect)]
 pub struct TileMassSpawnBundle{
@@ -31,7 +30,6 @@ pub struct TileMassSpawnBundle{
     pub oplist_size: OplistSize,
     pub tile_bundle: bevy_ecs_tilemap::prelude::TileBundle,
     pub initial_pos: InitialPos,
-    pub delete_others_excp: DeleteOthersExceptZLevels,
     
 }
 
@@ -49,13 +47,11 @@ impl MassCollectedTiles {
         global_pos: GlobalTilePos,
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
-        delete_others_except_zlevels: Option<HashSet<AcZ>>,
     ) -> Vec<Entity> {
         let ezeros_iter = ezeros.into_iter();
         let mut spawned = Vec::with_capacity(ezeros_iter.size_hint().0);
-        let delete_others_except_zlevels = delete_others_except_zlevels.clone();
         spawned.extend(ezeros_iter.map(|ezero| {
-            self.clonespawn_and_push_tile(cmd, ezero, global_pos, dim_ref, oplist_size, delete_others_except_zlevels.clone())
+            self.clonespawn_and_push_tile(cmd, ezero, global_pos, dim_ref, oplist_size, )
         }));
         spawned
     }
@@ -66,7 +62,6 @@ impl MassCollectedTiles {
         gpos: GlobalTilePos,
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
-        delete_others_except_zlevels: Option<HashSet<AcZ>>,
     ) -> Entity {
         let tile_instance = cmd.entity(ezero_ref.0).clone_and_spawn_with_opt_out(|builder|{
             builder.deny::<ToDenyOnTileClone>();
@@ -84,7 +79,6 @@ impl MassCollectedTiles {
             oplist_size,
             tile_bundle,
             initial_pos: InitialPos(gpos),
-            delete_others_excp: DeleteOthersExceptZLevels(delete_others_except_zlevels),
         };
         self.0.push((tile_instance, helper));
         tile_instance
@@ -110,7 +104,7 @@ impl MassCollectedTiles {
                 self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
             }
         } else {
-            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, oplist_size, None);
+            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, oplist_size, );
         }
     }
     ///used by terrain gen

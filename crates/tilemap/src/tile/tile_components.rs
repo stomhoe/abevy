@@ -1,6 +1,6 @@
 use bevy::ecs::entity::MapEntities;
 use bevy::{ecs::entity::EntityHashMap, };
-use bevy::platform::collections::HashMap;
+use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 pub use bevy_ecs_tilemap::tiles::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -74,109 +74,110 @@ pub struct PortalRecipe {
     pub max_val: f32,
     pub one_way: bool,
 }
-    impl PortalRecipe {
-        pub fn to_op_filter(&self, start_pos: GlobalTilePos, oe_rootoplist: Entity) -> OpFilter {
-            OpFilter {
-                tags: HashedTagsVec::from(&self.tags),
-                start_oplist: oe_rootoplist,
-                op_i: self.op_i,
-                min_val: self.min_val,
-                max_val: self.max_val,
-                search_start_pos: start_pos,
-            }
+impl PortalRecipe {
+    pub fn to_op_filter(&self, start_pos: GlobalTilePos, oe_rootoplist: Entity) -> OpFilter {
+        OpFilter {
+            tags: HashedTagsVec::from(&self.tags),
+            start_oplist: oe_rootoplist,
+            op_i: self.op_i,
+            min_val: self.min_val,
+            max_val: self.max_val,
+            search_start_pos: start_pos,
         }
     }
-    impl Default for PortalRecipe {
-        fn default() -> Self {
-            Self { dest_dimension: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, tags: TagHashSet::default(), op_i: -1, min_val: 0.0, max_val: 0.0, one_way: false}
+}
+impl Default for PortalRecipe {
+    fn default() -> Self {
+        Self { dest_dimension: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, tags: TagHashSet::default(), op_i: -1, min_val: 0.0, max_val: 0.0, one_way: false}
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
+pub struct PortalConnection { #[entities]pub dest_portal: Entity, }
+impl PortalConnection {
+    pub fn new(dest_portal: Entity) -> Self {
+        Self { dest_portal }
+    }
+}
+
+pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AcGlobalGenSettings) -> f32 {
+    let mut hasher = DefaultHasher::new();
+    initial_pos.hash(&mut hasher);
+    settings.seed.hash(&mut hasher);
+    (hasher.finish() as f64 / u64::MAX as f64).abs() as f32
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct FlipHorizontallyBasedOnHash;
+
+
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug)]
+pub struct InitialPos(pub GlobalTilePos);
+
+
+#[derive(Component, Debug, Clone, Default)]
+pub struct TileHidsHandles { ids: Vec<HashId>, handles: Vec<Handle<Image>>,}
+
+impl TileHidsHandles {
+    pub fn from_paths(asset_server: &AssetServer, img_paths: TileImagePaths, ) -> Result<Self, BevyError> {
+        
+        if img_paths.is_empty() {
+            return Err(BevyError::from("TileImgsMap cannot be created with an empty image paths map"));
         }
-    }
-    
-    #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
-    pub struct PortalConnection { #[entities]pub dest_portal: Entity, }
-    impl PortalConnection {
-        pub fn new(dest_portal: Entity) -> Self {
-            Self { dest_portal }
+        let mut ids = Vec::with_capacity(img_paths.len());
+        let mut handles = Vec::with_capacity(img_paths.len());
+        for (key, path) in img_paths {
+            let Ok(image_holder) = ImageHolder::new(asset_server, path.clone())
+            else {
+                error!("Failed to find image file for key {} at path: {}", key, path);
+                continue;
+            };
+            ids.push(HashId::from(key));
+            handles.push(image_holder.0);
         }
-    }
-    
-    pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AcGlobalGenSettings) -> f32 {
-        let mut hasher = DefaultHasher::new();
-        initial_pos.hash(&mut hasher);
-        settings.seed.hash(&mut hasher);
-        (hasher.finish() as f64 / u64::MAX as f64).abs() as f32
-    }
-    
-    #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-    pub struct FlipHorizontallyBasedOnHash;
-    
-    
-    #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug)]
-    pub struct InitialPos(pub GlobalTilePos);
-    
-    
-    #[derive(Component, Debug, Clone, Default)]
-    pub struct TileHidsHandles { ids: Vec<HashId>, handles: Vec<Handle<Image>>,}
-    
-    impl TileHidsHandles {
-        pub fn from_paths(asset_server: &AssetServer, img_paths: TileImagePaths, ) -> Result<Self, BevyError> {
-            
-            if img_paths.is_empty() {
-                return Err(BevyError::from("TileImgsMap cannot be created with an empty image paths map"));
-            }
-            let mut ids = Vec::with_capacity(img_paths.len());
-            let mut handles = Vec::with_capacity(img_paths.len());
-            for (key, path) in img_paths {
-                let Ok(image_holder) = ImageHolder::new(asset_server, path.clone())
-                else {
-                    error!("Failed to find image file for key {} at path: {}", key, path);
-                    continue;
-                };
-                ids.push(HashId::from(key));
-                handles.push(image_holder.0);
-            }
-            if ids.is_empty() {
-                return Err(BevyError::from("No valid entries"));
-            }
-            
-            Ok(Self { ids, handles, })
+        if ids.is_empty() {
+            return Err(BevyError::from("No valid entries"));
         }
         
-        pub fn first_handle(&self) -> Handle<Image> {
-            self.handles.first().cloned().unwrap_or_else(|| Handle::default())
-        }
-        
-        // NO HACER take() porque lo necesitan multiples isntancias de tiles
-        pub fn handles(&self) -> &Vec<Handle<Image>> { &self.handles }
-        
-        pub fn iter(&self) -> impl Iterator<Item = (HashId, &Handle<Image>)> {
-            self.ids.iter().cloned().zip(self.handles.iter())
-        }
+        Ok(Self { ids, handles, })
     }
     
-    
-    
-    #[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Reflect, Default)]
-    pub struct MinDistancesMap(pub EntityHashMap<u32>);
-    
-    impl MinDistancesMap {
-        #[allow(unused_parens, )]
-        pub fn check_min_distances(&self, 
-            my_pos: (DimensionRef, GlobalTilePos), new: (EntityZeroRef, DimensionRef, GlobalTilePos)
-        ) -> bool {
-            self.0.get(&new.0.0).map_or(true, |&min_dist| {
-                my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist
-            })
-        }
+    pub fn first_handle(&self) -> Handle<Image> {
+        self.handles.first().cloned().unwrap_or_else(|| Handle::default())
     }
     
-    #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-    pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
+    // NO HACER take() porque lo necesitan multiples isntancias de tiles
+    pub fn handles(&self) -> &Vec<Handle<Image>> { &self.handles }
     
-    #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-    #[require(Terrgen, EntityPrefix::new_truncated("TileSamplers"), )]
-    pub struct TileSamplerHolder;
-    
-    
-    
-    
+    pub fn iter(&self) -> impl Iterator<Item = (HashId, &Handle<Image>)> {
+        self.ids.iter().cloned().zip(self.handles.iter())
+    }
+}
+
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Reflect, Default)]
+pub struct MinDistancesMap(pub EntityHashMap<u32>);
+
+impl MinDistancesMap {
+    #[allow(unused_parens, )]
+    pub fn check_min_distances(&self, 
+        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZeroRef, DimensionRef, GlobalTilePos)
+    ) -> bool {
+        self.0.get(&new.0.0).map_or(true, |&min_dist| {
+            my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist
+        })
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(Terrgen, EntityPrefix::new_truncated("TileSamplers"), )]
+pub struct TileSamplerHolder;
+
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct DeleteOthersExceptZLevels(pub HashSet<AcZ>);

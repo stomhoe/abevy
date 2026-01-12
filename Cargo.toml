@@ -48,6 +48,7 @@ delegate = "0.13.4"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.20"
 noiz = "0.3.0"
+bit-vec = "0.8.0"
 
 #bevy_save = "1.0.0"
 #bevy_rapier2d = "0.31.0"
@@ -85,6 +86,7 @@ bevy-inspector-egui = { workspace = true }
 bevy_simple_subsecond_system = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+bit-vec = { workspace = true }
 
 #log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # Improve Runtime Performance (Optional) 
 #bevy_northstar = "0.3.1"

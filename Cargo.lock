@@ -290,6 +290,7 @@ dependencies = [
  "bevy 0.17.3",
  "bevy-inspector-egui",
  "bevy_simple_subsecond_system",
+ "bit-vec 0.8.0",
  "camera",
  "client",
  "common",
@@ -7507,6 +7508,7 @@ dependencies = [
  "bevy_replicon",
  "bevy_replicon_renet",
  "bevy_simple_subsecond_system",
+ "bit-vec 0.8.0",
  "camera",
  "common",
  "debug_unwraps",
@@ -7545,6 +7547,10 @@ dependencies = [
  "delegate",
  "indexmap",
  "noiz",
+ "rand 0.9.2",
+ "rand_distr 0.5.1",
+ "rand_pcg",
+ "rand_seeder",
  "serde",
 ]
 

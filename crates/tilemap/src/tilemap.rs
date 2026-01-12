@@ -28,7 +28,7 @@ pub fn plugin(app: &mut App) {
         ).in_set(ChunkSystems).run_if(in_state(TerrainHotReloading::KeepAlive))
     ))
     .configure_sets(Update, (
-        (TerrainGenSystems, ChunkSystems).in_set(GameplaySystems).run_if(in_state(ReplicatedAssetsSession::KeepAlive).and(in_state(TerrainHotReloading::KeepAlive))),
+        (TerrainGenSystems, ChunkSystems, RegioningSystems).in_set(GameplaySystems).run_if(in_state(ReplicatedAssetsSession::KeepAlive).and(in_state(TerrainHotReloading::KeepAlive))),
     ))
     .configure_sets(
         OnEnter(AssetLoading::SpawnLocalEntities), (
@@ -44,7 +44,7 @@ pub fn plugin(app: &mut App) {
             TerrainGenSystems.before(GameplaySystems),
         )
     )
-    .register_type::<LayersMap>()
+    .register_type::<ChunkTmapsMap>()
     .register_type::<LoadedChunks>()
     .register_type::<ActivatingChunks>()
     .register_type::<ChunkPos>()

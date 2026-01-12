@@ -5,7 +5,7 @@ use being_shared::{ControlledBy, ControlledLocally, HumanControlled};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 use bevy_replicon_renet::renet::{RenetClient, RenetServer};
-use game_common::game_common_components::FacingDirection;
+use game_common::game_common_components::Direction;
 use modifier::{modifier_components::*, modifier_move_components::*};
 use player::{player_components::*, player_resources::KeyboardInputMappings};
 use sprite_animation_shared::MoveAnimActive;
@@ -118,14 +118,14 @@ pub fn apply_movement(
 
 
 #[allow(unused_parens)]
-pub fn update_facing_dir(mut query: Query<(&ProcessedInputVector, &mut FacingDirection), >) {
+pub fn update_facing_dir(mut query: Query<(&ProcessedInputVector, &mut Direction), >) {
     for (ProcessedInputVector(dir_vec), mut facing_dir) in query.iter_mut() {
         if dir_vec.xy() == Vec2::ZERO {continue;}
         
         *facing_dir = if dir_vec.x.abs() > dir_vec.y.abs() {
-            if dir_vec.x < 0.0 {FacingDirection::West} else {FacingDirection::East}
+            if dir_vec.x < 0.0 {Direction::West} else {Direction::East}
         } else {
-            if dir_vec.y <= 0.0 {FacingDirection::South} else {FacingDirection::North}
+            if dir_vec.y <= 0.0 {Direction::South} else {Direction::North}
         };
     }
 }

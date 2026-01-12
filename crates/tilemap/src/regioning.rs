@@ -11,13 +11,13 @@ pub struct RegioningSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        RonAssetPlugin::<StructuredGenConfigSeri>::new(&["structure.ron"]),
+        RonAssetPlugin::<StructuredGenConfigSeri>::new(&["strgencfg.ron"]),
     ))
     .add_systems(Update, (
         (
-            request_chunk_claims_for_new_region, 
-            get_chunk_claims_for_new_region,
-        ).in_set(RegioningSystems).run_if(in_state(TerrainHotReloading::KeepAlive))
+            (offer_chunks_of_new_region, read_chunk_claims_for_region_and_emit_build_orders,),
+            example_emit_claims_system, example_building_system
+        ).in_set(RegioningSystems)
     ))
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
@@ -35,8 +35,9 @@ pub fn plugin(app: &mut App) {
     .register_type::<WhitelistedFilterOf>()
     .replicate::<WhitelistedFilterOf>()
 
-    .add_message::<RequestChunkClaim>()
+    .add_message::<OfferChunk>()
     .add_message::<ClaimedChunks>()
+    .add_message::<StructureBuildOrder>()
 ;
 }
 

@@ -15,7 +15,7 @@ use common::{common_components::*, };
 #[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
 #[relationship(relationship_target = ChunksActiveInRegion)]
 
-#[require(Visibility::Hidden, SessionScoped, LayersMap, TilesToSave, )]
+#[require(Visibility::Hidden, SessionScoped, ChunkTmapsMap, TilesToSave, )]
 pub struct Chunk {
     #[relationship]
     pub region_ent: Entity,
@@ -43,7 +43,7 @@ pub struct TerrGenOpsLaunched;
 use crate::tilemap_systems::{MapKey, MapStruct};
 
 #[derive(Component, Default, Clone, Reflect, )]
-pub struct LayersMap(pub HashMap<AcZ, HashMap<MapKey, MapStruct>>);
+pub struct ChunkTmapsMap(pub HashMap<AcZ, HashMap<MapKey, MapStruct>>);
 
 
 #[derive(Component, Debug, Reflect)]

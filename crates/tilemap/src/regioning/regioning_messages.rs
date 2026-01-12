@@ -10,14 +10,12 @@ use crate::{chunking_components::Chunk, chunking_resources::AaChunkRangeSettings
 use common::{common_components::*, };
 
 #[derive(Message, Debug, Clone, )]
-pub struct RequestChunkClaim {
+pub struct OfferChunk {
     // for determinism
     pub i: u64,
     pub region_ent: Entity,// extraer region pos de una query
     pub structured_gen_cfg_ent: Entity,
-    pub start: ChunkPos, 
-    pub args: Vec<String>,
-    pub max_used_chunks: u16,
+    pub start_gpos: ChunkPos, 
 }
 
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]
@@ -26,12 +24,12 @@ pub struct ClaimedChunks {
     pub region_ent: Entity,
     pub structured_gen_cfg_ent: Entity,
     //TODO: chequear que cada chunkpos no se salga de su respectiva region
-    pub claimed_chunks: Vec<ChunkPos>, 
+    pub chunks_gpos: Vec<ChunkPos>, 
     pub partition_tolerant: bool,
 }
 impl Default for ClaimedChunks {
     fn default() -> Self {
-        Self { i: 0, region_ent: Entity::PLACEHOLDER, structured_gen_cfg_ent: Entity::PLACEHOLDER, claimed_chunks: Vec::new(), partition_tolerant: false }
+        Self { i: 0, region_ent: Entity::PLACEHOLDER, structured_gen_cfg_ent: Entity::PLACEHOLDER, chunks_gpos: Vec::new(), partition_tolerant: false }
     }
 }
 
@@ -40,6 +38,7 @@ impl Default for ClaimedChunks {
 pub struct StructureBuildOrder {
     pub i: u64,
     pub structured_gen_cfg_ent: Entity,
+    pub region_ent: Entity,
     //global chunk positions
-    pub chunks: Vec<ChunkPos>, 
+    pub chunks_gpos: Vec<ChunkPos>, 
 }

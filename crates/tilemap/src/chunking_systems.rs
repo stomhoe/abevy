@@ -68,8 +68,8 @@ pub fn visit_chunks_around_activators(
             }
         }
     }
-    cmd.insert_batch(comps_for_chunk_ents);
-    cmd.insert_batch(comps_for_region_ents);
+    cmd.try_insert_batch(comps_for_chunk_ents);
+    cmd.try_insert_batch(comps_for_region_ents);
 }
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(

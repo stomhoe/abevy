@@ -3,6 +3,7 @@ use std::{hash::{DefaultHasher, Hash, Hasher}, ops::Add};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Reflect, Deserialize, Serialize, Clone, )]
@@ -165,11 +166,15 @@ impl_position_conversions!(ChunkPos);
 
 impl ChunkPos {
     pub const fn new(x: i32, y: i32) -> Self { Self(IVec2::new(x, y)) }
+    pub fn rand_within_region(region_pos: RegionPos, rng: &mut impl Rng) -> Self {
+        let local_x = rng.random_range(0..REGION_SIZE_IN_CHUNKS.x());
+        let local_y = rng.random_range(0..REGION_SIZE_IN_CHUNKS.y());
+        Self(region_pos.0 * REGION_SIZE_IN_CHUNKS.0 + IVec2::new(local_x, local_y))
+    }
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
     pub const CHUNK_SIZE: UVec2 = UVec2 { x: 12, y: 12 };//NORMALMENTE 12X12. 60x60?
-}
-impl ChunkPos {
+
     pub fn to_pixelpos(&self) -> Vec2 {
         self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2() * Self::CHUNK_SIZE.as_vec2()
     }
@@ -178,6 +183,27 @@ impl ChunkPos {
     }
     pub fn to_region_pos(&self) -> RegionPos {
         RegionPos(self.0.div_euclid(REGION_SIZE_IN_CHUNKS.0))
+    }
+
+    pub fn chunk_pos_from_flat_index_within_region(index: usize, region_pos: RegionPos) -> Self {
+        let x = (index as i32 % REGION_SIZE_IN_CHUNKS.x()) as i32;
+        let y = (index as i32 / REGION_SIZE_IN_CHUNKS.x()) as i32;
+        ChunkPos(IVec2::new(x, y)) + region_pos.to_chunkpos()
+    }
+
+    pub const fn area(&self) -> usize {
+        (self.0.x * self.0.y) as usize
+    }
+    pub fn get_tilepositions_within_chunk(&self, oplist_size: OplistSize) -> Vec<GlobalTilePos> {
+        let mut tiles = Vec::with_capacity((Self::CHUNK_SIZE.x / oplist_size.x() * Self::CHUNK_SIZE.y / oplist_size.y()) as usize);
+        let chunk_origin = self.to_tilepos();
+        for y in (0..Self::CHUNK_SIZE.y).step_by(oplist_size.y() as usize) {
+            for x in (0..Self::CHUNK_SIZE.x).step_by(oplist_size.x() as usize) {
+                let tile_pos = GlobalTilePos(IVec2::new(chunk_origin.0.x + x as i32, chunk_origin.0.y + y as i32));
+                tiles.push(tile_pos);
+            }
+        }
+        tiles
     }
 }
 
@@ -262,6 +288,10 @@ impl RegionPos {
         let (min, max) = self.chunk_bounds();
         cp.x() >= min.x() && cp.y() >= min.y() && cp.x() < max.x() && cp.y() < max.y()
     }
+    pub fn to_chunkpos(&self) -> ChunkPos {
+        ChunkPos(self.0 * REGION_SIZE_IN_CHUNKS.0)
+    }
+
 }
 
 type PDiskDistType = i64;

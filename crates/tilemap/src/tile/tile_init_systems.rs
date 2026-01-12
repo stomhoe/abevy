@@ -27,7 +27,8 @@ pub fn init_tiles(
 
 ) {
     if tiling_map.is_some() { return; }
-    let mut tiling_map = TileEzerosMap::default();
+    cmd.insert_resource(TileEzerosMap::default());
+
 
     let holder = cmd.spawn((TilesEguiHolder, )).id();
     cmd.spawn((TileInstancesHolder, ChildOf(holder)));
@@ -56,12 +57,6 @@ pub fn init_tiles(
             ChildOf(holder),
         )).id();
 
-        if let Ok(existing) = tiling_map.0.get(&str_id) {
-            error!("Tile with '{}' already in TilingEntityMap : {:?}", str_id, existing);
-            cmd.entity(tile_enti).try_despawn();
-            continue;
-        }
-        tiling_map.0.overwrite(&str_id, tile_enti);
 
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
         let color = Color::srgba_u8(r, g, b, a);
@@ -157,7 +152,23 @@ pub fn init_tiles(
         }
     }
     cmd.insert_resource(res_tile_cats);
-    cmd.insert_resource(tiling_map);
+}
+
+pub fn add_tiles_to_map(
+    mut cmd: Commands,
+    map: Option<ResMut<TileEzerosMap>>,
+    query: Query<(Entity, &EntityPrefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>,)>,
+) {
+    if let Some(mut map) = map {
+        for (ent, prefix, str_id) in query.iter() {
+            if let Err(err) = map.0.try_insert(str_id, ent, ) {
+                error!("{} {} already in TilingEntityMap : {}", prefix, str_id, err);
+                cmd.entity(ent).try_despawn();
+            } else {
+                info!("Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
+            }
+        }
+    }
 }
 
 #[allow(unused_parens)]
@@ -189,7 +200,7 @@ pub fn init_tile_sprite(mut cmd: Commands,
             error!(target: "init_tile_sprite","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
         }
     }
-    cmd.insert_batch(to_insert);
+    cmd.try_insert_batch(to_insert);
 }
 
 
@@ -350,7 +361,7 @@ pub fn instantiate_portal(mut cmd: Commands,
 
         let oe_portal = 
         mass_collected
-        .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default(), None);
+        .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default(), );
 
         cmd.entity(this_end_portal).insert(PortalConnection::new(oe_portal));
 

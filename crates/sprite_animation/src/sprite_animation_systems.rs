@@ -6,7 +6,7 @@ use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, spritesheet};
 use common::{common_components::{ImageHolder, StrId}, };
-use game_common::game_common_components::{Directionable, EntityZeroRef, FacingDirection};
+use game_common::game_common_components::{Directionable, EntityZeroRef, Direction};
 use player::player_components::*;
 use sprite::sprite_components::*;
 use ::sprite_animation_shared::*;
@@ -19,9 +19,9 @@ use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUp
 #[allow(unused_parens, )]
 pub fn animate_sprite(
     mut cmd: Commands,
-    base: Query<(&HeldSprites, Option<&FacingDirection>, Option<&MoveAnimActive>, &Grounding, ), (
+    base: Query<(&HeldSprites, Option<&Direction>, Option<&MoveAnimActive>, &Grounding, ), (
         Or<(
-            Changed<HeldSprites>, Changed<FacingDirection>, 
+            Changed<HeldSprites>, Changed<Direction>, 
             Changed<MoveAnimActive>, Changed<Grounding>,
         )>,
     )>,
@@ -49,7 +49,7 @@ pub fn animate_sprite(
             else { error!(target: "sprite_animation", "Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0); continue };
 
             let anim_type = AnimType {
-                direction: if directionable { direction.copied().unwrap_or_default() } else { FacingDirection::default() },
+                direction: if directionable { direction.copied().unwrap_or_default() } else { Direction::default() },
                 moving: if movement_based { moving.copied().unwrap_or_default() } else { MoveAnimActive::default() },
                 grounding: if grounding_based { *grounding } else { Grounding::default() },
                 state_id: state_id.cloned(),
@@ -117,8 +117,8 @@ pub fn animate_sprite(
 #[allow(unused_parens)]
 pub fn update_animstate_for_clients(
     connected: Query<&Player, Without<OfSelf>>,
-    started_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&FacingDirection>, Option<&StrId>), 
-    Or<(Changed<MoveAnimActive>, Changed<Grounding>, Changed<FacingDirection>, )>,>,
+    started_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&Direction>, Option<&StrId>), 
+    Or<(Changed<MoveAnimActive>, Changed<Grounding>, Changed<Direction>, )>,>,
     controller: Query<&ControlledBy>,
     mut mwriter: MessageWriter<ToClients<MoveStateUpdated>>,
 ){
@@ -149,7 +149,7 @@ pub fn update_animstate_for_clients(
 pub fn client_receive_moving_anim(
     mut mreader: MessageReader<MoveStateUpdated>,
 
-    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut FacingDirection)>,
+    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut Direction)>,
 ) {
 
     for message in mreader.par_read() {

@@ -92,6 +92,7 @@ define_fixedstr_id!(EntityPrefix, 20);
 pub struct HashId(u64);
 impl HashId {
     pub fn new(id: u64) -> Self {HashId(id)} pub fn into_i32(self) -> i32 {self.0 as i32}
+
 }
 impl<S: AsRef<str>> From<S> for HashId {
     fn from(id: S) -> Self {

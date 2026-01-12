@@ -32,50 +32,50 @@ pub struct Persisted;
 #[allow(unused_parens, )]
 #[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, Eq, PartialEq, Hash, Clone, Copy)]
 #[strum(serialize_all = "lowercase")]
-pub enum FacingDirection { #[default] South, West, East, North, }
-impl FacingDirection {
-    pub fn next_clockwise(&self) -> FacingDirection {
+pub enum Direction { #[default] South, West, East, North, }
+impl Direction {
+    pub fn next_clockwise(&self) -> Direction {
         match self {
-            FacingDirection::South => FacingDirection::West,
-            FacingDirection::West => FacingDirection::North,
-            FacingDirection::North => FacingDirection::East,
-            FacingDirection::East => FacingDirection::South,
+            Direction::South => Direction::West,
+            Direction::West => Direction::North,
+            Direction::North => Direction::East,
+            Direction::East => Direction::South,
         }
     }
     pub fn to_dir_vec(&self) -> IVec2 {
         match self {
-            FacingDirection::South => IVec2::new(0, 1),
-            FacingDirection::West => IVec2::new(-1, 0),
-            FacingDirection::North => IVec2::new(0, -1),
-            FacingDirection::East => IVec2::new(1, 0),
+            Direction::South => IVec2::new(0, 1),
+            Direction::West => IVec2::new(-1, 0),
+            Direction::North => IVec2::new(0, -1),
+            Direction::East => IVec2::new(1, 0),
         }
     }
 }
-impl From<u8> for FacingDirection {
+impl From<u8> for Direction {
     fn from(value: u8) -> Self {
         match value {
-            0 => FacingDirection::South,
-            1 => FacingDirection::West,
-            2 => FacingDirection::East,
-            3 => FacingDirection::North,
-            _ => FacingDirection::South, // unreachable, but for completeness
+            0 => Direction::South,
+            1 => Direction::West,
+            2 => Direction::East,
+            3 => Direction::North,
+            _ => Direction::South, // unreachable, but for completeness
         }
     }
 }
-impl From<&str> for FacingDirection {
+impl From<&str> for Direction {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
-            "south" | "down" | "sur" | "s" => FacingDirection::South,
-            "west" | "left" | "lef" | "w" => FacingDirection::West,
-            "east" | "right" | "rig" | "e" => FacingDirection::East,
-            "north" | "up"  | "n" => FacingDirection::North,
-            _ => FacingDirection::South,
+            "south" | "down" | "sur" | "s" => Direction::South,
+            "west" | "left" | "lef" | "w" => Direction::West,
+            "east" | "right" | "rig" | "e" => Direction::East,
+            "north" | "up"  | "n" => Direction::North,
+            _ => Direction::South,
         }
     }
 }
-impl From<String> for FacingDirection {
+impl From<String> for Direction {
     fn from(s: String) -> Self {
-        FacingDirection::from(s.as_str())
+        Direction::from(s.as_str())
     }
 }
 
@@ -137,8 +137,8 @@ pub struct EntityZeroRef(#[entities] pub Entity);
 macro_rules! impl_tags_common_methods {
     ($collection_type_name:ty, $tag_type:ty, $collection_kind:ident) => {
         impl $collection_type_name {
-            pub fn try_new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Result<Self, ()> {
-                let collection: $collection_kind<$tag_type> = ids.into_iter()
+            pub fn new_error_if_set_empty<S: AsRef<str>>(tags: impl IntoIterator<Item = S>) -> Result<Self, ()> {
+                let collection: $collection_kind<$tag_type> = tags.into_iter()
                 .filter_map(|id| {
                     let id_str = id.as_ref().trim();
                     if id_str.is_empty() { None } else { Some(<$tag_type>::from(id_str)) }
@@ -151,8 +151,8 @@ macro_rules! impl_tags_common_methods {
                     Ok(Self(collection))
                 }
             }
-            pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-                let collection: $collection_kind<$tag_type> = ids.into_iter()
+            pub fn new<S: AsRef<str>>(tags: impl IntoIterator<Item = S>) -> Self {
+                let collection: $collection_kind<$tag_type> = tags.into_iter()
                 .filter_map(|id| {
                     let id_str = id.as_ref().trim();
                     if id_str.is_empty() { None } else { Some(<$tag_type>::from(id_str)) }

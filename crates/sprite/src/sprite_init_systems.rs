@@ -170,7 +170,7 @@ pub fn init_sprite_cfgs(
         
     }
     cmd.insert_resource(map);
-    cmd.insert_batch(comps_to_insert);  
+    cmd.try_insert_batch(comps_to_insert);  
 } 
 
 

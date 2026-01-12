@@ -87,7 +87,7 @@ pub fn plugin(app: &mut App) {
     .init_state::<GameSetupScreen>()
     .init_state::<SimulationState>()
     .register_type::<Description>()
-    .register_type::<FacingDirection>()
+    .register_type::<Direction>()
     .register_type::<WeightedSamplerRef>()
     .register_type::<TagHashSet>()
     .register_type::<EntityZeroRef>()
@@ -97,7 +97,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<VisibilityGameState>()    
     .replicate::<Persisted>()
 
-    .replicate_once::<FacingDirection>()
+    .replicate_once::<Direction>()
     .replicate::<Directionable>()
     .replicate::<EntityWeightedSampler>()
     .replicate::<ColorSampler>()

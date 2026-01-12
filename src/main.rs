@@ -25,7 +25,11 @@ concat!(
     "tilemap::terrain_gen::terrgen_systems=info,",
     "terrgen_process=info,",
     "tilemap::tile::tile_init_systems=info,",
+    "structure_spawn=trace,",
     "tilemap_systems=info,",
+    "tilemap=trace,",
+    "add2gposmap=info,",
+
     "zlevel=info,",
     "movement=warn,",
     "sprite_init=trace,",

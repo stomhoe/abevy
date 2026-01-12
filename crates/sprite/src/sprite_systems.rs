@@ -2,7 +2,7 @@
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use game_common::game_common_components::{TagHashSet, EntityZero, EntityZeroRef, FacingDirection};
+use game_common::game_common_components::{TagHashSet, EntityZero, EntityZeroRef, Direction};
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::sprite_components::*;
@@ -15,7 +15,7 @@ pub fn apply_scales(
     ),>, 
     sprite_config_query: Query<(Option<&FlipHorizIfDir>, &Scale2D, &ScaleLookUpDown, &ScaleSideways,),
     (Or<(With<Disabled>, Without<Disabled>)>)>, 
-    baseholder_query: Query<&FacingDirection>, 
+    baseholder_query: Query<&Direction>, 
 ) {
     for (
         spriteholder, mut sprite, &EntityZeroRef(spritecfg_ent), 
@@ -29,7 +29,7 @@ pub fn apply_scales(
             if let Ok(base_direction) = baseholder_query.get(spriteholder.base) {
     
                 match base_direction {
-                    FacingDirection::West => {
+                    Direction::West => {
                         total_scale *= ref_scale_sideways * scale_look_sideways.copied().unwrap_or_default();
                         
                         if let Some(&flip_horiz) = ref_flip_horiz_if_dir {
@@ -38,7 +38,7 @@ pub fn apply_scales(
                             };
                         }
                     },
-                    FacingDirection::East => {
+                    Direction::East => {
                         total_scale *= ref_scale_sideways * scale_look_sideways.copied().unwrap_or_default();
 
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
@@ -47,7 +47,7 @@ pub fn apply_scales(
                             };
                         }
                     },
-                    FacingDirection::North => {
+                    Direction::North => {
                         total_scale *= ref_scale_updown * scale_look_up_down.copied().unwrap_or_default();
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -55,7 +55,7 @@ pub fn apply_scales(
                             };
                         }
                     },
-                    FacingDirection::South => {
+                    Direction::South => {
                         total_scale *= ref_scale_updown * scale_look_up_down.copied().unwrap_or_default();
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -95,7 +95,7 @@ pub fn apply_offsets(
         Option<&OffsetForChildren>,
     ),(Or<(With<Disabled>, Without<Disabled>)>)>, 
     parent_sprite_query: Query<&EntityZeroRef>,
-    base_query: Query<&FacingDirection>,
+    base_query: Query<&Direction>,
 ) {
     for (
         sprite_entity, baseholder, child_of, sprite_config_ref, mut transform, 
@@ -122,17 +122,17 @@ pub fn apply_offsets(
 
             if let Ok(direction) = base_query.get(baseholder.base) {
                 match direction {
-                    FacingDirection::West => {
+                    Direction::West => {
                         total_offset += offset_sideways.cloned().unwrap_or_default();
                     },
-                    FacingDirection::East => {
+                    Direction::East => {
                         total_offset += offset_sideways.cloned().unwrap_or_default();
                     },
-                    FacingDirection::North => {
+                    Direction::North => {
                         total_offset += offset_updown.cloned().unwrap_or_default();
                         total_offset += offset_up.cloned().unwrap_or_default();
                     },
-                    FacingDirection::South => {
+                    Direction::South => {
                         total_offset += offset_updown.cloned().unwrap_or_default();
                         total_offset += offset_down.cloned().unwrap_or_default();
                     }

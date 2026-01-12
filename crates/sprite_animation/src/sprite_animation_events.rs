@@ -1,6 +1,6 @@
 use being_shared::Grounding;
 use bevy::{ecs::entity::MapEntities, prelude::*};
-use game_common::game_common_components::FacingDirection;
+use game_common::game_common_components::Direction;
 use serde::{Deserialize, Serialize};
 
 
@@ -9,5 +9,5 @@ pub struct MoveStateUpdated {
     #[entities]pub being_ent: Entity, 
     pub moving: bool,
     pub grounding: Option<Grounding>,
-    pub direction: Option<FacingDirection>
+    pub direction: Option<Direction>
 }

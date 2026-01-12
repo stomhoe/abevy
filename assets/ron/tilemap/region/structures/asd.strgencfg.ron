@@ -1,0 +1,7 @@
+//.ron file for structured generation configuration
+(
+    id: "nase",
+    structure_id: "ExampleStructure",
+    weight: 1.0,
+    tags: Some([ "caca", "" ]),
+)

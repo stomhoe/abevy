@@ -10,8 +10,8 @@ use tilemap_shared::{GlobalTilePos, OplistSize};
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::{tile::{
-    tile_components::*, tile_messages::*, tile_init_systems::*, tile_materials::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_systems::*
-}};
+    tile_components::*, tile_init_systems::*, tile_materials::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_systems::*
+}, tilemap_systems::process_tiles_pre};
 mod tile_systems;
 mod tile_init_systems;
 mod tile_sampler_init_systems;
@@ -33,17 +33,19 @@ pub struct TilingSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_systems(Update, (
-        flip_tile_horizontally_based_on_initial_pos_hash,
-        (client_sync_tile, ).run_if(in_state(ClientState::Connected)),
-        (despawn_if_not_excepted, spritetile_readjust_transform_to_match_globalpos).chain(),
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
-        add_tile_to_gpos_map,
+        (add_tiles_to_map, client_sync_tile, ).run_if(in_state(ClientState::Connected)),
+        flip_tile_horizontally_based_on_initial_pos_hash,
+        despawn_if_not_excepted.before(process_tiles_pre),
+        (add_spawned_tiles_to_gpos_map, ),
+        (spritetile_readjust_transform_to_match_globalpos).chain(),
         make_child_of_chunk,
         add_handles,
         init_tile_sprite,
         add_image_handle_to_tile_shader,
         emit_global_tile_pos_change,
     ))
+    .add_observer(remove_tile_from_gpos_map)
     
     /* .add_systems(map_portal_tiles
     OnEnter(AssetsLoadingState::LocalFinished), (
@@ -53,7 +55,7 @@ pub fn plugin(app: &mut App) {
         OnEnter(AssetLoading::SpawnReplicatedEntities), 
         (   
             init_shaders,  
-            init_tiles, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, init_tile_weighted_samplers_refs, 
+            init_tiles, add_tiles_to_map, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, init_tile_weighted_samplers_refs, 
         )
         .chain().in_set(TilingSystems))
         

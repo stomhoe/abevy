@@ -6,7 +6,7 @@ use game_common::game_common_components::{EntityZeroRef, Persisted};
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*, tilemap_resources::{DeleteOthersExceptZLevels, MassCollectedTiles, TileMassSpawnBundle}};
+use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*, tilemap_resources::*};
 
 
 
@@ -52,7 +52,7 @@ pub fn process_tiles_pre(
     oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
         Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>, ), (With<Disabled>)>,
 
-    mut chunk_query: Query<(&mut LayersMap), ()>,
+    mut chunk_query: Query<(&mut ChunkTmapsMap), ()>,
     mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
     image_size_map: Res<ImageSizeMap>,
 
@@ -89,7 +89,7 @@ pub fn process_tiles_pre(
         let ev = collected_tiles.0.get_unchecked_mut(i);
 
         let &mut (tile_ent, TileMassSpawnBundle {
-            ezero_ref, gpos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos, delete_others_excp: _, prev_gpos: _, prev_dim_ref: _,
+            ezero_ref, gpos, dim_ref, oplist_size, tile_bundle: ref mut bundle, initial_pos, prev_gpos: _, prev_dim_ref: _,
         }) = ev;
 
         let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, ))
@@ -162,7 +162,7 @@ pub fn process_tiles_pre(
 
     cmd.try_insert_batch(tilemap_bundles);
 
-    let mut tmaps_to_insert = Vec::with_capacity(changed_structs.len());
+    let mut insert2tmaps = Vec::with_capacity(changed_structs.len());
 
     for (chunk_ent, z, mapkey) in changed_structs.iter() {
         trace!("Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
@@ -186,7 +186,7 @@ pub fn process_tiles_pre(
             mapstruct.take_storage(),
             mapstruct.take_hash_id_map(),
         );
-        tmaps_to_insert.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
+        insert2tmaps.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
 
         let shader = if let Some(shader_ref) = mapkey.shader_ref {
             shader_query.get(shader_ref.0).ok().map(|(shader,)| shader.clone())
@@ -214,7 +214,7 @@ pub fn process_tiles_pre(
             .try_insert(MaterialTilemapHandle::<StandardTilemapMaterial>::default());
         }
     }
-    cmd.try_insert_batch(tmaps_to_insert);
+    cmd.try_insert_batch(insert2tmaps);
     event_writer.write_batch(tmaps_to_draw);
 
     Ok(())
@@ -233,12 +233,12 @@ fn func_process_tile_into_tilemaps(
     tile_handles: Option<&TileHidsHandles>,
     shader_ref: Option<&TileShaderRef>,
     image_size_map: &ImageSizeMap,
-    layers: &mut LayersMap,
+    layers: &mut ChunkTmapsMap,
     chunk: Entity,
     tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex)>,
     changed_structs: &mut HashSet<(Entity, AcZ, MapKey)>,
     tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, AcZ, ChildOf))>,
-    to_draw: &mut Vec<DrawTilemap>,
+    tmaps2draw: &mut Vec<DrawTilemap>,
 ) {
 
     let tile_size = match tile_handles {
@@ -252,35 +252,37 @@ fn func_process_tile_into_tilemaps(
     };
     let map_key = MapKey::new(oplist_size, tile_size, shader_ref.copied());
 
-    if let Some(mapstruct) = layers.0.get_mut(&tile_z_index) && let Some(mapstruct) = mapstruct.get(&map_key) {
-        let tmap_ent = mapstruct.tmap_ent;
-        if to_draw.iter().all(|e: &DrawTilemap| e.0 != tmap_ent) {
-            to_draw.push(DrawTilemap(tmap_ent));
-        }
+    if cmd.get_entity(tile_ent).is_err() {
+        return;
+    }
 
-        let mut tmap_handles_owned;
-        let mut storage_owned;
-        let mut tmap_hash_id_map_owned;
+    if let Some(mapstruct) = layers.0.get_mut(&tile_z_index) 
+    && let Some(mapstruct) = mapstruct.get_mut(&map_key) {
+        let tmap_ent = mapstruct.tmap_ent;
+        if cmd.get_entity(tile_ent).is_err() {
+            return;
+        }
+        
         
         let (tmap_handles, storage, tmap_hash_id_map) =
-            if let Ok((tmap_handles, storage, tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent)
-            {
-                (tmap_handles.into_inner(), storage.into_inner(), tmap_hash_id_map.into_inner())
-            } else {
-                changed_structs.insert((chunk, tile_z_index, map_key.clone()));
-                let MapStruct { texture: tmap_handles, storage, tmap_hash_id_map, .. } = mapstruct.clone();
-                tmap_handles_owned = tmap_handles;
-                storage_owned = storage;
-                tmap_hash_id_map_owned = tmap_hash_id_map;
-                (&mut tmap_handles_owned, &mut storage_owned, &mut tmap_hash_id_map_owned)
-            };
+        if let Ok((tmap_handles, storage, tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent)
+        {
+            //no insertion into changed structs needed since tilemap's components are getting edited directly
+            (tmap_handles.into_inner(), storage.into_inner(), tmap_hash_id_map.into_inner())
+        } else {
+            changed_structs.insert((chunk, tile_z_index, map_key.clone()));
+            let MapStruct { texture: tmap_handles, storage, tmap_hash_id_map, .. } = mapstruct;
+            (tmap_handles, storage, tmap_hash_id_map)
+        };
         let Vector(tmap_handles) = tmap_handles else {
             error!("Failed to get tilemap handles for {:?}", tmap_ent);
             return;
         };
+        if storage.get(&position).is_some() {
+            return;
+        }//no overwriting, tile must be despawned first
 
-        tilemap_id.0 = tmap_ent;
-
+        tilemap_id.0 = tmap_ent;//esto activa un draw 
         storage.set(&position, tile_ent);
 
         let Some(tile_handles) = tile_handles else { return; };
@@ -302,6 +304,11 @@ fn func_process_tile_into_tilemaps(
             }
         }
         texture_index.0 = first_texture_index.unwrap_or_default().0;
+
+
+        if tmaps2draw.iter().all(|e: &DrawTilemap| e.0 != tmap_ent) {
+            tmaps2draw.push(DrawTilemap(tmap_ent));
+        }
 
     } else {
         let mut tmap_hash_id_map = TmapHashIdtoTextureIndex::default();
@@ -328,7 +335,7 @@ fn func_process_tile_into_tilemaps(
 
         tilemap_id.0 = tmap_ent;
 
-        to_draw.push(DrawTilemap(tmap_ent));
+        tmaps2draw.push(DrawTilemap(tmap_ent));
 
         let mut storage = TilemapConfig::new_storage(oplist_size);
         storage.set(&position, tile_ent);

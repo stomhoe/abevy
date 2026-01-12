@@ -52,7 +52,7 @@ pub fn disable_ezeros(mut cmd: Commands,
     for ent in query.iter() { 
         batch.push((ent, Disabled, ));
     }
-    cmd.insert_batch(batch);
+    cmd.try_insert_batch(batch);
 }
 
 
@@ -128,5 +128,5 @@ pub fn add_hashed_tags(mut cmd: Commands,
             cmd.entity(ent).try_remove::<HashedTagsVec>();
         }
     }
-    cmd.insert_batch(tags_to_add);
+    cmd.try_insert_batch(tags_to_add);
 }

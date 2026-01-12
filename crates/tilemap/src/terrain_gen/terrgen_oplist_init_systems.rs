@@ -202,9 +202,9 @@ pub fn init_oplists_from_assets(
 
 
     } 
-    cmd.insert_batch(oplist_comps);
-    cmd.insert_batch(oplist_multiple_dimension_refs);
-    cmd.insert_batch(tags_to_insert);
+    cmd.try_insert_batch(oplist_comps);
+    cmd.try_insert_batch(oplist_multiple_dimension_refs);
+    cmd.try_insert_batch(tags_to_insert);
     cmd.insert_resource(oplist_map);
 } 
 
