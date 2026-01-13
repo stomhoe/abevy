@@ -7,7 +7,7 @@ use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
 use game_common::{game_common_components::{HashedTagsVec, TagHashSet}, game_common_components_samplers::EntityWeightedSampler};
 use tilemap_shared::{AcGlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec, PoissonDisk, RegionPos};
 
-use crate::{regioning::{regioning_components::{StructuredGenConfig, StructuredGenConfigWeightedMap, WhitelistedFilterOf}, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
+use crate::{regioning::{regioning_components::{StructuredGenConfig, StructuredGenCfgsWeightedMap, WhitelistedFilterOf}, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
 
 
 
@@ -118,5 +118,5 @@ pub fn init_structured_gen_configs (
     cmd.insert_batch(dimension_refs_to_insert);
     cmd.insert_batch(gen_cfgs_to_insert);
     
-    cmd.spawn((StructuredGenConfigWeightedMap, ent_w_sampler, ));
+    cmd.spawn((StructuredGenCfgsWeightedMap, ent_w_sampler, ));
 }

@@ -46,6 +46,7 @@ pub fn visit_chunks_around_activators(
                                 StrId20B::new_truncated(format!("Region({}, {})", region_pos.0.x, region_pos.0.y)),
                                 Transform::default(),
                                 ChildOf(dimension_ref.0),
+                                dimension_ref,
                             )));
                             region_ent
                         }).clone()
@@ -59,6 +60,7 @@ pub fn visit_chunks_around_activators(
                         Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
                         chunk_pos,
                         ChildOf(dimension_ref.0),
+                        dimension_ref,
                     )));
                     chunk_ent
                 });
@@ -125,7 +127,7 @@ pub struct CheckChunkDespawn (pub Entity, pub u8,);//u8 = retransmission count
 pub fn despawn_unreferenced_chunks(
     mut commands: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
-    chunks_query: Query<(&ChildOf, &ChunkPos, &Children, &TilesToSave), >,
+    chunks_query: Query<(&DimensionRef, &ChunkPos, &Children, &TilesToSave), >,
     tmaps: Query<&TileStorage>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
@@ -135,11 +137,9 @@ pub fn despawn_unreferenced_chunks(
     let mut despawn_retransmitted_events = Vec::new();
 
     for CheckChunkDespawn(chunk_ent, retransmission_count) in despawn_events.drain() {
-        let Ok((child_of, &chunk_pos, children, tiles_to_save)) = chunks_query.get(chunk_ent) else {
+        let Ok((&chunk_dimension, &chunk_pos, children, tiles_to_save)) = chunks_query.get(chunk_ent) else {
             continue; 
         };
-
-        let chunk_dimension = DimensionRef(child_of.parent());
 
         let referenced = activator_query.iter().any(|(&dimension_ref, activates_chunks)| {
             dimension_ref == chunk_dimension && activates_chunks.0.contains(&chunk_ent)

@@ -20,14 +20,16 @@ concat!(
     "cosmic_text=warn,",
     "offset_allocator=warn,",
     "bevy_asset_loader=warn,",
+    "bevy_ecs::relationship=error,",
+    
     "portal_init=info,",
+    
 
     "tilemap::terrain_gen::terrgen_systems=info,",
     "terrgen_process=info,",
-    "tilemap::tile::tile_init_systems=info,",
     "structure_spawn=debug,",
     "tilemap_systems=info,",
-    "tilemap=trace,",
+    "tilemap=debug,",
     "add2gposmap=info,",
 
     "zlevel=info,",
@@ -36,7 +38,6 @@ concat!(
     "sprite_building=trace,",
     "sprite_systems=trace,",
     "sprite_systems=trace,",
-    "init_tile_sprite=trace,",
 
     "game_init_systems=info,",
     

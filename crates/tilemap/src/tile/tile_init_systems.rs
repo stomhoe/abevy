@@ -22,13 +22,11 @@ pub fn init_tiles(
     mut cmd: Commands, 
     seris_handles: Res<TileSerisHandles>, mut assets: ResMut<Assets<TileSerialization>>,
     shader_map: Res<TileShaderEntityMap>,
-    tiling_map: Option<Res<TileEzerosMap>>,
+    tiling_map: Res<TileEzerosMap>,
     color_map: Res<ColorWeightedSamplersMap>,
 
 ) {
-    if tiling_map.is_some() { return; }
-    cmd.insert_resource(TileEzerosMap::default());
-
+    if ! tiling_map.0.0.is_empty() { return; }
 
     let holder = cmd.spawn((TilesEguiHolder, )).id();
     cmd.spawn((TileInstancesHolder, ChildOf(holder)));
@@ -162,10 +160,10 @@ pub fn add_tiles_to_map(
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
             if let Err(err) = map.0.try_insert(str_id, ent, ) {
-                error!("{} {} already in TilingEntityMap : {}", prefix, str_id, err);
+                error!(target:"tile_init","{} {} already in TilingEntityMap : {}", prefix, str_id, err);
                 cmd.entity(ent).try_despawn();
             } else {
-                info!("Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
+                info!(target:"tile_init","Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
             }
         }
     }
@@ -181,7 +179,7 @@ pub fn init_tile_sprite(mut cmd: Commands,
     let mut to_insert = Vec::new();
     for (entity, (image_path_holder, ezero_ref)) in query.iter() {
         if let Some(img_path_holder) = image_path_holder {
-            trace!(target: "init_tile_sprite","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
+            trace!(target: "tile_init","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
             to_insert.push((entity, Sprite{
                 image: asset_server.load(img_path_holder.path()),
                 ..Default::default()
@@ -191,13 +189,13 @@ pub fn init_tile_sprite(mut cmd: Commands,
             let Ok(img_path_holder) = ezero_img_path.get(ezero_ref.0) else {
                 continue;
             };
-            trace!(target: "init_tile_sprite","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
+            trace!(target: "tile_init","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
             to_insert.push((entity, Sprite{
                 image: asset_server.load(img_path_holder.path()),
                 ..Default::default()
             }));
         } else {
-            error!(target: "init_tile_sprite","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
+            error!(target: "tile_init","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
         }
     }
     cmd.try_insert_batch(to_insert);

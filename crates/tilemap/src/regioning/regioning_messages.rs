@@ -18,7 +18,7 @@ pub struct OfferChunk {
     pub start_gpos: ChunkPos, 
 }
 
-#[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Message, Debug, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct ClaimedChunks {
     pub i: u64,
     pub region_ent: Entity,

@@ -52,12 +52,10 @@ impl AcceptedFilters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(Replicated, EntityPrefix::new_truncated("StructGenCfgWMap"))]
-pub struct StructuredGenConfigWeightedMap;
-
-pub struct PlannedStructures{}//TODO put something inside
+pub struct StructuredGenCfgsWeightedMap;
 
 
-#[derive(Debug, )]
+#[derive(Debug, Reflect)]
 pub struct ChunkOccupationGrid{
     occupied_chunks_grid: [[Option<Entity>; 32]; 32],
     occupied_chunks_count: u32,
@@ -70,9 +68,6 @@ impl Default for ChunkOccupationGrid {
         }
     }
 }
-
-
-
 pub enum ChunkOccupyError {
     AlreadyOccupied(Entity),
     OutOfRegionBounds(Direction),
@@ -123,7 +118,7 @@ impl ChunkOccupationGrid {
     }
 }
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Reflect)]
 pub struct RegionStructures { 
     pub processed_up_to_i: usize,
     pub claims: [Option<ClaimedChunks>; MAX_CLAIMS],

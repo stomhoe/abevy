@@ -123,11 +123,14 @@ pub fn process_tiles_pre(
         bundle.color = color.cloned().unwrap_or_default();
         
         let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, gpos.into())) else {
+            let chunk_pos = ChunkPos::from(gpos);
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
+            error!(target: "tilemap_systems", "Chunk for tile entity {:?} at gpos {:?}, {} in dim {:?} not loaded, despawning tile", tile_ent, gpos, chunk_pos, dim_ref);
             continue;//chunk not loaded
         };
         let Ok(mut layers) = chunk_query.get_mut(chunk) else {
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
+            error!(target: "tilemap_systems", "Chunk entity {:?} not found in chunk query when processing tile entity {:?}, despawning tile", chunk, tile_ent);
             continue;//chunk entity not found
         };
         cmd.entity(tile_ent).try_remove::<(Disabled, )>();
@@ -274,12 +277,12 @@ fn func_process_tile_into_tilemaps(
             error!(target: "tilemap_systems", "Failed to get tilemap handles for {:?}", tmap_ent);
             return;
         };
-        /*
+        
         if storage.get(&position).is_some() {
             //no overwriting, tile must be despawned first
             return;
         }
-        */
+        
         tilemap_id.0 = tmap_ent;//esto activa un draw 
         storage.set(&position, tile_ent);
 

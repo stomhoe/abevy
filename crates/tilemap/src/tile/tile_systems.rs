@@ -138,7 +138,7 @@ pub fn remove_tile_from_gpos_map(
     mut map: ResMut<TilesAtGpos>,
 ) {
     let Ok((&dim, &gpos, tilemap_id, tile_pos)) = query.get(removed_tile.entity) else {
-        error!(target: "gposmap_remove", "Failed to get DimensionRef and GlobalTilePos for removed tile entity {:?}", removed_tile.entity);
+        trace!(target: "gposmap_remove", "Failed to get DimensionRef and GlobalTilePos for removed tile entity {:?}", removed_tile.entity);
         return;
     };
     if let Some(ents_vec) = map.0.get_mut(&(dim, gpos)) {
@@ -180,7 +180,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
         if let Some(otile_ents) = map.0.get(&(dim, gpos)) {
             for &otile_ent in otile_ents.iter() {
                 if otile_ent == newtile_ent {
-                    continue ;
+                    continue;//skip self
                 }
                 let Ok((otile_delete_others_excp, ezero_ref, )) = otile_query.get(otile_ent) else {
                     trace!(target: "tilemap", "Failed to get prev tile entity {:?}, skipping despawn check", otile_ent);    

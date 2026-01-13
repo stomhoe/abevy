@@ -33,13 +33,22 @@ pub fn plugin(app: &mut App) {
     .register_type::<WhitelistedFilterOf>()
     .register_type::<AcceptedFilters>()
 
-    .init_resource::<LoadedRegions>()
     .register_type::<WhitelistedFilterOf>()
-    .replicate::<WhitelistedFilterOf>()
+    .register_type::<StructuredGenConfig>()
+    .register_type::<RegionStructures>()
+    .register_type::<TilesToSpawnPerChunk>()
 
+    .replicate::<WhitelistedFilterOf>()
+    .replicate::<StructuredGenConfig>()
+    .replicate::<StructuredGenCfgsWeightedMap>()
+    .replicate_once::<Region>()
+    
     .add_message::<OfferChunk>()
     .add_message::<ClaimedChunks>()
     .add_message::<StructureBuildOrder>()
+    
+    .init_resource::<LoadedRegions>()
+
 ;
 }
 

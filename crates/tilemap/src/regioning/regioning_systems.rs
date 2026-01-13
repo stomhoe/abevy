@@ -16,16 +16,16 @@ use bit_vec::BitVec;
 #[allow(unused_parens)]
 pub fn offer_chunks_of_new_region(mut cmd: Commands, 
     settings: Single<&AcGlobalGenSettings>,
-    weight_map: Single<&EntityWeightedSampler, With<StructuredGenConfigWeightedMap>>,
+    weight_map: Single<&EntityWeightedSampler, With<StructuredGenCfgsWeightedMap>>,
     region_query: Query<(Entity, &RegionPos, &ChildOf),(Added<ChunksActiveInRegion>, )>,
     structured_gens: Query<(Option<&TagHashSet>, Option<&PoissonDisk>, Option<&MultipleDimensionRefs>),()>,
     dimension_query: Query<(Option<&WhitelistedStructureGenTags>, Option<&BlacklistedStructureGenTags>),()>,
     mut writer: MessageWriter<OfferChunk>,
 ) {
-    
     let mut to_write = Vec::new();
     
     for (region_ent, &region_pos, dim_ref) in region_query.iter() {
+        info!(target: "structure_spawn", "Offering chunks for new region at position ({}, {})", region_pos.0.x, region_pos.0.y);
         
         let Ok((dim_wlist_tags, dim_blist_tags)) = dimension_query.get(dim_ref.parent())
         else {
@@ -132,14 +132,14 @@ pub fn offer_chunks_of_new_region(mut cmd: Commands,
 
 #[allow(unused_parens, )]
 pub fn clonespawn_structure_tile_on_chunk_spawn(mut cmd: Commands, 
-    mut query: Query<(Entity, &Chunk, &ChunkPos),(Without<StructureSpawningChecked>)>,
+    mut query: Query<(Entity, &Chunk, &ChunkPos, &DimensionRef), (Without<StructureSpawningChecked>)>,
     region_query: Query<(&TilesToSpawnPerChunk),()>,
     mut collected: ResMut<MassCollectedTiles>,
 
 ) {
     let mut to_insert_checked = Vec::new();
     let mut to_insert_delete_others = Vec::new();
-    for (chunk_ent, chunk, chunk_pos) in query.iter_mut() {
+    for (chunk_ent, chunk, chunk_pos, dimension_ref) in query.iter_mut() {
         let Ok((tiles_to_spawn_per_chunk)) = region_query.get(chunk.region_ent)
         else {
             error!(target: "structure_spawn", "Region entity {:?} not found when spawning structure tiles for chunk at position {:?}, skipping structure tile spawn",
@@ -152,7 +152,7 @@ pub fn clonespawn_structure_tile_on_chunk_spawn(mut cmd: Commands,
         if let Some(tiles_to_spawn) = tiles_to_spawn_per_chunk.get(&chunk_pos) {
             debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
             for (tile_gpos, ezero_ref, delete_others) in tiles_to_spawn {
-                let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *ezero_ref, *tile_gpos, DimensionRef(chunk.region_ent), OplistSize::default(),);
+                let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *ezero_ref, *tile_gpos, *dimension_ref, OplistSize::default(),);
                 if let Some(delete_others) = delete_others {
                     to_insert_delete_others.push((tile_ent, delete_others.clone(), ));
                 }
@@ -299,7 +299,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
 
 
 #[allow(unused_parens)]
-pub fn example_emit_claims_system(mut cmd: Commands, 
+pub fn example_emit_claims_system(
     mut reader: MessageReader<OfferChunk>,
     region_query: Query<(&RegionPos, ),()>,
     mut writer: MessageWriter<ClaimedChunks>,
@@ -343,10 +343,10 @@ pub fn example_emit_claims_system(mut cmd: Commands,
 
 
 #[allow(unused_parens)]
-pub fn example_building_system(mut cmd: Commands, 
+pub fn example_building_system(
     mut reader: MessageReader<StructureBuildOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
-    mut region_query: Query<(&ChildOf, &mut TilesToSpawnPerChunk),()>,
+    mut region_query: Query<(&DimensionRef, &mut TilesToSpawnPerChunk),()>,
     
     ezeros_map: Res<TileEzerosMap>,
 ) {
@@ -357,12 +357,10 @@ pub fn example_building_system(mut cmd: Commands,
         if structured_gen_cfg.structure_id != "ExampleStructure" {
             continue;
         }
-        let Ok((child_of, mut tiles_to_spawn_per_chunk)) = region_query.get_mut(build_order.region_ent)
+        let Ok((dim_ref, mut tiles_to_spawn_per_chunk)) = region_query.get_mut(build_order.region_ent)
         else {
             continue;
         };
-        
-        let dim_ref = DimensionRef(child_of.parent());
         
         let tile_ezero_id = "cyan";
         let Ok(ezero_ref) = ezeros_map.0.get(&tile_ezero_id)
