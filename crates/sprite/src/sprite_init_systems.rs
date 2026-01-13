@@ -211,9 +211,9 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     father_query: Query<(Entity, &SpriteCfgsToBuild, Option<&BaseHolderRef>,), 
     (Without<SpriteConfig>, Changed<SpriteCfgsToBuild>,)>,
     spritecfgs_query: Query<(&StrId, Option<&SpriteCfgsToBuild>), 
-    (With<SpriteConfig>, Or<(With<Disabled>, Without<Disabled>)>)>,
-    held_sprites_query: Query<&HeldSprites, Or<(With<Disabled>, Without<Disabled>)>>,
-    sprite_config_ref_query: Query<&EntityZeroRef, Or<(With<Disabled>, Without<Disabled>)>>,
+    (With<SpriteConfig>, DisabledOrNot)>,
+    held_sprites_query: Query<&HeldSprites, DisabledOrNot>,
+    sprite_config_ref_query: Query<&EntityZeroRef, DisabledOrNot>,
 ) {
     for (father_to_sprite, to_build, baseholder_ref,) in father_query.iter() {
 
@@ -273,8 +273,8 @@ pub fn become_child_of_sprite_with_tag(
     new_sprites: Query<(Entity, &BaseHolderRef, &EntityZeroRef), (Without<SpriteConfig>, Changed<EntityZeroRef>,)>,
     sprite_holder: Query<&HeldSprites>,
     other_sprites: Query<(Entity, &EntityZeroRef), (Without<SpriteConfig>, )>,
-    becomes: Query<(&BecomeChildOfSpriteWithTag), (Or<(With<Disabled>, Without<Disabled>)>)>,
-    other_cats: Query<&TagHashSet, (Or<(With<Disabled>, Without<Disabled>)>)>,
+    becomes: Query<(&BecomeChildOfSpriteWithTag), (DisabledOrNot)>,
+    other_cats: Query<&TagHashSet, (DisabledOrNot)>,
 ) {
     for (new_ent, &sprite_holder_ref, &new_sprite_cfg_ref) in new_sprites.iter(){
         if let Ok(becomes_child_of_sprite_with_cat) = becomes.get(new_sprite_cfg_ref.0) {unsafe {

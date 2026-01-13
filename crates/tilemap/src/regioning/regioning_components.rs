@@ -1,9 +1,9 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
-use game_common::game_common_components::Direction;
+use game_common::game_common_components::{Direction, EntityZeroRef};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet, MapEntities}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
-use tilemap_shared::{ChunkPos, REGION_SIZE_IN_CHUNKS, RegionPos};
+use tilemap_shared::{ChunkPos, GlobalTilePos, REGION_SIZE_IN_CHUNKS, RegionPos};
 
 use crate::{chunking_components::Chunk, chunking_resources::AaChunkRangeSettings, regioning::regioning_messages::ClaimedChunks, tile::tile_components::*};
 
@@ -11,7 +11,7 @@ use crate::{chunking_components::Chunk, chunking_resources::AaChunkRangeSettings
 use common::{common_components::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(SessionScoped, TgenHotLoadingScoped, RegionStructures)]
+#[require(SessionScoped, TgenHotLoadingScoped, RegionStructures, TilesToSpawnPerChunk)]
 pub struct Region;
 
 #[derive(Component, Debug, Reflect)]
@@ -20,7 +20,7 @@ pub struct ChunksActiveInRegion(Vec<Entity>);
 impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-#[require(Replicated)]
+#[require(Replicated, EntityPrefix::new_truncated("StructureGenCfg"))]
 pub struct StructuredGenConfig{
     pub structure_id: StrId,
     pub max_per_region: u32,
@@ -139,6 +139,51 @@ impl Default for RegionStructures {
             struct_gen_counts: EntityHashMap::default(),
             occupation_grid: ChunkOccupationGrid::default(),
         }
+    }
+}
+
+pub type TilesForChunk = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>;
+
+#[derive(Component, Debug, Default, Reflect)]
+//a region's component, doesn't need dimension
+pub struct TilesToSpawnPerChunk(
+    HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>>,
+);
+impl TilesToSpawnPerChunk {
+    
+    pub fn push_one_checked(
+        &mut self, 
+        chunk_pos: ChunkPos, 
+        tile_pos: GlobalTilePos, 
+        ezero_ref: EntityZeroRef,
+        delete_others_except_zlevels: Option<DeleteOthersExceptZLevels>,
+    ) -> Result<(), BevyError> {
+        chunk_pos.is_tilepos_within_chunk(tile_pos)?;
+        self.0.entry(chunk_pos).or_default().push((tile_pos, ezero_ref, delete_others_except_zlevels));
+        Ok(())
+    }
+    pub fn push_one_unchecked(
+        &mut self, 
+        chunk_pos: ChunkPos, 
+        tile_pos: GlobalTilePos, 
+        ezero_ref: EntityZeroRef,
+        delete_others_except_zlevels: Option<DeleteOthersExceptZLevels>,
+    ) {
+        self.0.entry(chunk_pos).or_default().push((tile_pos, ezero_ref, delete_others_except_zlevels));
+    }
+
+    pub fn extend_check_bounds(&mut self, chunk_pos: ChunkPos, tile_data: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>) -> Result<(), BevyError> {
+        for (tile_pos, _, _) in &tile_data {
+            chunk_pos.is_tilepos_within_chunk(*tile_pos)?;
+        }
+        self.0.entry(chunk_pos).or_default().extend(tile_data);
+        Ok(())
+    }
+    pub fn extend_unchecked(&mut self, chunk_pos: ChunkPos, tile_data: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>) {
+        self.0.entry(chunk_pos).or_default().extend(tile_data);
+    }
+    pub fn get(&self, chunk_pos: &ChunkPos) -> Option<&Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>> {
+        self.0.get(chunk_pos)
     }
 }
 

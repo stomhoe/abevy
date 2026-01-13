@@ -4,6 +4,7 @@ use bevy::ecs::entity_disabling::Disabled;
 use bevy_ecs_tilemap::{map::TilemapId, tiles::TileFlip};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+use common::common_components::DisabledOrNot;
 use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
@@ -13,7 +14,8 @@ use crate::{ chunking_components::ChunkTmapsMap, tile::{tile_components::*, tile
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
     settings: Single<&AcGlobalGenSettings>,
-    mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>, &InitialPos, ), (Changed<InitialPos>, With<FlipHorizontallyBasedOnHash>, Or<(With<Disabled>, Without<Disabled>)>, Without<EntityZero>, )>,
+    mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>, &InitialPos, ), 
+    (Changed<InitialPos>, With<FlipHorizontallyBasedOnHash>, DisabledOrNot, Without<EntityZero>, )>,
     mut sprites_query: Query<(&mut Sprite), (Or<(With<Disabled>, Without<Disabled>,)>,  Without<InitialPos>, )>,
 ) {
     for ((tile_flip, sprite, held_sprites, children), initial_pos) in query.iter_mut() {
@@ -48,7 +50,7 @@ pub fn spritetile_readjust_transform_to_match_globalpos(
     Or<(Without<Disabled>, With<Disabled>, )>, Without<EntityZero>
 )>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
-    ezero_query: Query<&Transform, (With<EntityZero>, Without<GlobalTilePos>, Or<(With<Disabled>, Without<Disabled>)>,)>,
+    ezero_query: Query<&Transform, (With<EntityZero>, Without<GlobalTilePos>, DisabledOrNot,)>,
     parent_query: Query<(&GlobalTransform, ), ()>,
     state: Res<State<ClientState>>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
@@ -163,7 +165,7 @@ pub fn remove_tile_from_gpos_map(
 
 #[allow(unused_parens)]//problema: aunque se despawnee la tile va a ser procesada en process_tiles_pre
 pub fn despawn_if_not_excepted(mut cmd: Commands, 
-    acz_query: Query<&AcZ, (With<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>, )>,
+    acz_query: Query<&AcZ, (With<EntityZero>, DisabledOrNot, )>,
     changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&DeleteOthersExceptZLevels>, &EntityZeroRef,),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
     otile_query: Query<(Option<&DeleteOthersExceptZLevels>, &EntityZeroRef,), (Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
     map: Res<TilesAtGpos>,

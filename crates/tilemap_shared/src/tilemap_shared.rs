@@ -90,7 +90,7 @@ pub trait HashablePosVec: Hash {
     fn normalized_hash_value(&self, settings: &AcGlobalGenSettings, seed: u64) -> f64 {
         self.hash_value(settings, seed) as f64 / u64::MAX as f64
     }
-
+    
     fn x(&self) -> i32;
     fn y(&self) -> i32;
 }
@@ -115,7 +115,7 @@ impl_position_ops!(GlobalTilePos);
 
 impl GlobalTilePos {
     pub fn new(x: i32, y: i32) -> Self {GlobalTilePos(IVec2::new(x, y))}
-
+    
     pub fn distance(&self, other: &GlobalTilePos) -> f32 {
         (self.0.distance_squared(other.0) as f32).sqrt()
     }
@@ -123,7 +123,7 @@ impl GlobalTilePos {
         self.0.distance_squared(other.0) as u32
     }
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 64, y: 64 };
-
+    
     pub fn to_tilepos(&self, oplist_size: OplistSize) -> TilePos {
         let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
         let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) / oplist_size.inner().as_ivec2();
@@ -132,7 +132,7 @@ impl GlobalTilePos {
     pub fn to_chunkpos(&self) -> ChunkPos {
         ChunkPos(Into::<IVec2>::into(*self) / ChunkPos::CHUNK_SIZE.as_ivec2())
     }
-
+    
     pub fn to_translation(&self, prev_transform_z: f32) -> Vec3 {
         let vec2: Vec2 = (*self).into();
         vec2.extend(prev_transform_z)
@@ -174,7 +174,7 @@ impl ChunkPos {
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
     pub const CHUNK_SIZE: UVec2 = UVec2 { x: 12, y: 12 };//NORMALMENTE 12X12. 60x60?
-
+    
     pub fn to_pixelpos(&self) -> Vec2 {
         self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2() * Self::CHUNK_SIZE.as_vec2()
     }
@@ -184,13 +184,13 @@ impl ChunkPos {
     pub fn to_region_pos(&self) -> RegionPos {
         RegionPos(self.0.div_euclid(REGION_SIZE_IN_CHUNKS.0))
     }
-
+    
     pub fn chunk_pos_from_flat_index_within_region(index: usize, region_pos: RegionPos) -> Self {
         let x = (index as i32 % REGION_SIZE_IN_CHUNKS.x()) as i32;
         let y = (index as i32 / REGION_SIZE_IN_CHUNKS.x()) as i32;
         ChunkPos(IVec2::new(x, y)) + region_pos.to_chunkpos()
     }
-
+    
     pub const fn area(&self) -> usize {
         (self.0.x * self.0.y) as usize
     }
@@ -204,6 +204,32 @@ impl ChunkPos {
             }
         }
         tiles
+    }
+    pub fn is_tilepos_within_chunk(&self, tile_pos: GlobalTilePos) -> Result<(), BevyError> {
+        let chunk_origin = self.to_tilepos();
+        let chunk_ocorner = GlobalTilePos(IVec2::new(
+            chunk_origin.0.x + Self::CHUNK_SIZE.x as i32 - 1,
+            chunk_origin.0.y + Self::CHUNK_SIZE.y as i32 - 1,
+        ));
+        let is_within = tile_pos.0.x >= chunk_origin.0.x &&
+        tile_pos.0.x <= chunk_ocorner.0.x &&
+        tile_pos.0.y >= chunk_origin.0.y &&
+        tile_pos.0.y <= chunk_ocorner.0.y;
+        if is_within {
+            Ok(())
+        } else {
+            let dx = if tile_pos.0.x < chunk_origin.0.x {
+                chunk_origin.0.x - tile_pos.0.x
+            } else {
+                tile_pos.0.x - chunk_ocorner.0.x
+            };
+            let dy = if tile_pos.0.y < chunk_origin.0.y {
+                chunk_origin.0.y - tile_pos.0.y
+            } else {
+                tile_pos.0.y - chunk_ocorner.0.y
+            };
+            Err(BevyError::from(format!("{} out of chunk bounds ({},{}): {} tiles away (dx: {}, dy: {})", tile_pos, chunk_origin, chunk_ocorner, dx.max(dy), dx, dy)))
+        }
     }
 }
 
@@ -278,7 +304,7 @@ impl RegionPos {
     pub fn new(x: i32, y: i32) -> Self { Self(IVec2::new(x, y)) }
     pub fn x(&self) -> i32 { self.0.x }
     pub fn y(&self) -> i32 { self.0.y }
-
+    
     pub fn chunk_bounds(&self) -> (ChunkPos, ChunkPos) {
         let min = ChunkPos(self.0 * REGION_SIZE_IN_CHUNKS.0);
         let max = ChunkPos((self.0 + IVec2::ONE) * REGION_SIZE_IN_CHUNKS.0);
@@ -291,7 +317,7 @@ impl RegionPos {
     pub fn to_chunkpos(&self) -> ChunkPos {
         ChunkPos(self.0 * REGION_SIZE_IN_CHUNKS.0)
     }
-
+    
 }
 
 type PDiskDistType = i64;
@@ -299,9 +325,9 @@ type PDiskDistType = i64;
 pub struct PoissonDisk { pub mindists_seeds: Vec<(PDiskDistType, u64)>, }
 impl PoissonDisk {
     pub fn new(min_distance: u8, seed: u64) -> Result<Self, BevyError> {
-
+        
         let max = 5;
-
+        
         if min_distance > max {
             return Err(BevyError::from(format!("min_distance must be <= {}", max)));
         } else if min_distance == 0 {
@@ -313,7 +339,7 @@ impl PoissonDisk {
         let mut mindists_seeds: Vec<(PDiskDistType, u64)> = Vec::with_capacity(mindists_tag.len());
         for (min_distance, tag) in mindists_tag.iter() {
             let min_distance = min_distance.unwrap_or(fallback_mindist);
-
+            
             if min_distance > max {
                 return Err(BevyError::from(format!("min_distance must be <= {}", max)));
             } else if min_distance == 0 {
@@ -329,39 +355,39 @@ impl PoissonDisk {
     pub fn is_allowed_position<T: HashablePosVec>(&self, settings: &AcGlobalGenSettings, pos: T, check_within_radius: bool, oplist_size: OplistSize) -> bool {
         self.sample(settings, pos, check_within_radius, oplist_size) > 0.0
     }
-
+    
     pub fn sample<T: HashablePosVec>(&self, settings: &AcGlobalGenSettings, pos: T, 
         check_within_circle: bool, oplist_size: OplistSize, ) -> f64 {
-
-        let mut sum = 0.0;
-        for &(min_distance, seed) in self.mindists_seeds.iter() {
-            let val = pos.normalized_hash_value(settings, seed);
-            sum += val;
-            let added_sample_distance_x = oplist_size.x() as i32 - 1;
-            let added_sample_distance_y = oplist_size.y() as i32 - 1;
-    
-            for dy in -(min_distance as i32)..=(min_distance as i32) {
-                for dx in -(min_distance as i32)..=(min_distance as i32) {
-                    if dx == 0 && dy == 0 {
-                        continue;
-                    }
-                    // Only check within circle of radius min_distance
-                    if check_within_circle && dx * dx + dy * dy > (min_distance as i32).pow(2) {
-                        continue;
-                    }
-                    // Calculate the neighbor's position by offsetting the current tile position
-                    let neighbor_x = pos.x() + dx + added_sample_distance_x;
-                    let neighbor_y = pos.y() + dy + added_sample_distance_y;
-                    let neighbor_pos = GlobalTilePos(IVec2::new(neighbor_x, neighbor_y));
-                    let neighbor_val = neighbor_pos.normalized_hash_value(settings, seed);
-                    if neighbor_val > val {
-                        return 0.0;
+            
+            let mut sum = 0.0;
+            for &(min_distance, seed) in self.mindists_seeds.iter() {
+                let val = pos.normalized_hash_value(settings, seed);
+                sum += val;
+                let added_sample_distance_x = oplist_size.x() as i32 - 1;
+                let added_sample_distance_y = oplist_size.y() as i32 - 1;
+                
+                for dy in -(min_distance as i32)..=(min_distance as i32) {
+                    for dx in -(min_distance as i32)..=(min_distance as i32) {
+                        if dx == 0 && dy == 0 {
+                            continue;
+                        }
+                        // Only check within circle of radius min_distance
+                        if check_within_circle && dx * dx + dy * dy > (min_distance as i32).pow(2) {
+                            continue;
+                        }
+                        // Calculate the neighbor's position by offsetting the current tile position
+                        let neighbor_x = pos.x() + dx + added_sample_distance_x;
+                        let neighbor_y = pos.y() + dy + added_sample_distance_y;
+                        let neighbor_pos = GlobalTilePos(IVec2::new(neighbor_x, neighbor_y));
+                        let neighbor_val = neighbor_pos.normalized_hash_value(settings, seed);
+                        if neighbor_val > val {
+                            return 0.0;
+                        }
                     }
                 }
+                
             }
-            
+            sum / (self.mindists_seeds.len() as f64)
         }
-        sum / (self.mindists_seeds.len() as f64)
     }
-}
-impl Default for PoissonDisk { fn default() -> Self { Self { mindists_seeds: vec![(1, 0)] } } }
+    impl Default for PoissonDisk { fn default() -> Self { Self { mindists_seeds: vec![(1, 0)] } } }

@@ -9,7 +9,7 @@ use game_common::{game_common_components::{EntityZeroRef, TagHashSet}, game_comm
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::Chunk, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildOrder}}, tile::{tile_components::DeleteOthersExceptZLevels, tile_resources::TileEzerosMap}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking_components::{Chunk, StructureSpawningChecked}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildOrder}}, tile::{tile_components::DeleteOthersExceptZLevels, tile_resources::TileEzerosMap}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -128,6 +128,43 @@ pub fn offer_chunks_of_new_region(mut cmd: Commands,
         
     }
     writer.write_batch(to_write);
+}
+
+#[allow(unused_parens, )]
+pub fn clonespawn_structure_tile_on_chunk_spawn(mut cmd: Commands, 
+    mut query: Query<(Entity, &Chunk, &ChunkPos),(Without<StructureSpawningChecked>)>,
+    region_query: Query<(&TilesToSpawnPerChunk),()>,
+    mut collected: ResMut<MassCollectedTiles>,
+
+) {
+    let mut to_insert_checked = Vec::new();
+    let mut to_insert_delete_others = Vec::new();
+    for (chunk_ent, chunk, chunk_pos) in query.iter_mut() {
+        let Ok((tiles_to_spawn_per_chunk)) = region_query.get(chunk.region_ent)
+        else {
+            error!(target: "structure_spawn", "Region entity {:?} not found when spawning structure tiles for chunk at position {:?}, skipping structure tile spawn",
+            chunk.region_ent, chunk_pos);
+            to_insert_checked.push((chunk_ent, StructureSpawningChecked, ));
+
+            continue;
+        };
+
+        if let Some(tiles_to_spawn) = tiles_to_spawn_per_chunk.get(&chunk_pos) {
+            debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
+            for (tile_gpos, ezero_ref, delete_others) in tiles_to_spawn {
+                let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *ezero_ref, *tile_gpos, DimensionRef(chunk.region_ent), OplistSize::default(),);
+                if let Some(delete_others) = delete_others {
+                    to_insert_delete_others.push((tile_ent, delete_others.clone(), ));
+                }
+            }
+        }
+        else {
+            debug!(target: "structure_spawn", "No structure tiles to spawn in chunk at {:?}", chunk_pos);
+        }
+        to_insert_checked.push((chunk_ent, StructureSpawningChecked, ));
+    }
+    cmd.try_insert_batch(to_insert_checked);
+    cmd.try_insert_batch(to_insert_delete_others);
 }
 
 
@@ -309,12 +346,10 @@ pub fn example_emit_claims_system(mut cmd: Commands,
 pub fn example_building_system(mut cmd: Commands, 
     mut reader: MessageReader<StructureBuildOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
-    mut collected: ResMut<MassCollectedTiles>,
-    region_query: Query<(&ChildOf, ),()>,
+    mut region_query: Query<(&ChildOf, &mut TilesToSpawnPerChunk),()>,
     
     ezeros_map: Res<TileEzerosMap>,
 ) {
-    let mut to_insert = Vec::new();
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) 
         else { continue; };
@@ -322,7 +357,7 @@ pub fn example_building_system(mut cmd: Commands,
         if structured_gen_cfg.structure_id != "ExampleStructure" {
             continue;
         }
-        let Ok((child_of, )) = region_query.get(build_order.region_ent)
+        let Ok((child_of, mut tiles_to_spawn_per_chunk)) = region_query.get_mut(build_order.region_ent)
         else {
             continue;
         };
@@ -341,13 +376,15 @@ pub fn example_building_system(mut cmd: Commands,
         for &chunk_pos in &build_order.chunks_gpos {
             //todo hacer que se haga después de q se spawneen las tiles de terrgen
             for tpos in chunk_pos.get_tilepositions_within_chunk(OplistSize::default()){
-                let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, ezero_ref, tpos, dim_ref, OplistSize::default(),);
-                to_insert.push((tile_ent, DeleteOthersExceptZLevels::default()));
+
+
+                tiles_to_spawn_per_chunk.push_one_unchecked(chunk_pos, tpos, ezero_ref, Some(DeleteOthersExceptZLevels::default()));
             }
         }
         debug!(target: "structure_spawn", "Spawned ExampleStructure in region at {:?} occupying chunks: {:?}",
         build_order.region_ent, build_order.chunks_gpos);
         
     }
-    cmd.try_insert_batch(to_insert);
 }
+
+

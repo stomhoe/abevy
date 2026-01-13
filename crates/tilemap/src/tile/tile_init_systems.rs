@@ -157,7 +157,7 @@ pub fn init_tiles(
 pub fn add_tiles_to_map(
     mut cmd: Commands,
     map: Option<ResMut<TileEzerosMap>>,
-    query: Query<(Entity, &EntityPrefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, Or<(With<Disabled>, Without<Disabled>)>,)>,
+    query: Query<(Entity, &EntityPrefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, DisabledOrNot,)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
@@ -174,9 +174,9 @@ pub fn add_tiles_to_map(
 #[allow(unused_parens)]
 pub fn init_tile_sprite(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
-    ezero_img_path: Query<&ImagePathHolder, (Without<EntityZeroRef>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    ezero_img_path: Query<&ImagePathHolder, (Without<EntityZeroRef>, DisabledOrNot)>,
     query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<AcAnimationProgresses>, 
-        Without<Sprite>, Without<TilePos>, Without<Children>, Without<TileShader>, Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, Or<(With<Disabled>, Without<Disabled>)>)>,
+        Without<Sprite>, Without<TilePos>, Without<Children>, Without<TileShader>, Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, DisabledOrNot)>,
 ) {
     let mut to_insert = Vec::new();
     for (entity, (image_path_holder, ezero_ref)) in query.iter() {
@@ -207,7 +207,7 @@ pub fn init_tile_sprite(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn add_handles(  
     mut cmd: Commands,  asset_server: Res<AssetServer>,
-    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, DisabledOrNot)>,
 ) {
     for (enti, str_id, tile_image_paths) in query.iter() {
         let tile_handles = TileHidsHandles::from_paths(&asset_server, tile_image_paths.clone(), );

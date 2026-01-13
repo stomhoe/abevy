@@ -94,7 +94,7 @@ pub fn process_tiles_pre(
 
         let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, ))
         = oritile_query.get(ezero_ref.0) else{
-            error!("Original tile entity {} is despawned", ezero_ref.0);
+            error!(target: "tilemap_systems", "Original tile entity {} is despawned", ezero_ref.0);
             continue;
         };
         
@@ -165,20 +165,17 @@ pub fn process_tiles_pre(
     let mut insert2tmaps = Vec::with_capacity(changed_structs.len());
 
     for (chunk_ent, z, mapkey) in changed_structs.iter() {
-        trace!("Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
+        trace!(target: "tilemap_systems", "Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
 
         let Ok(mut layers) = chunk_query.get_mut(*chunk_ent) else {
             continue ;
         };
 
         //DEJAR EN GET_MUT, CON REMOVE SE PIERDE LA TMAP ENTITY USADA ARRIBA
-        let Some(inner_hmap) = layers.0.get_mut(z) else {
-            continue ;
+        let Some(mapstruct) = layers.0.get_mut(z)
+            .and_then(|inner_hmap| inner_hmap.get_mut(mapkey)) else {
+            continue;
         };
-        let Some(mapstruct) = inner_hmap.get_mut(mapkey) else{
-            continue ;
-        };
-
         let tmap_ent = mapstruct.tmap_ent;
 
         let (texture_vec, storage, tmap_hash_id_map) = (
@@ -193,10 +190,8 @@ pub fn process_tiles_pre(
         } else {
             None
         };
-
-        
         if let Some(shader) = shader {
-            trace!("Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
+            trace!(target: "tilemap_systems", "Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
             match shader {
                 TileShader::TexRepeat(handle) => {
                     let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone()));
@@ -246,7 +241,7 @@ fn func_process_tile_into_tilemaps(
         .unwrap_or(U16Vec2::ONE) ,
         None => {
             tile_visible.0 = false; 
-            error!("Tile entity {:?} has no TileHidsHandles", tile_ent);
+            error!(target: "tilemap_systems", "Tile entity {:?} has no TileHidsHandles", tile_ent);
             return;
         }
     };
@@ -260,6 +255,7 @@ fn func_process_tile_into_tilemaps(
     && let Some(mapstruct) = mapstruct.get_mut(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;
         if cmd.get_entity(tile_ent).is_err() {
+            error!(target: "tilemap_systems", "Tile entity {:?} not found when processing into tilemap", tile_ent);
             return;
         }
         
@@ -275,13 +271,15 @@ fn func_process_tile_into_tilemaps(
             (tmap_handles, storage, tmap_hash_id_map)
         };
         let Vector(tmap_handles) = tmap_handles else {
-            error!("Failed to get tilemap handles for {:?}", tmap_ent);
+            error!(target: "tilemap_systems", "Failed to get tilemap handles for {:?}", tmap_ent);
             return;
         };
+        /*
         if storage.get(&position).is_some() {
+            //no overwriting, tile must be despawned first
             return;
-        }//no overwriting, tile must be despawned first
-
+        }
+        */
         tilemap_id.0 = tmap_ent;//esto activa un draw 
         storage.set(&position, tile_ent);
 

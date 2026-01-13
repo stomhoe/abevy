@@ -16,7 +16,9 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         (
             (offer_chunks_of_new_region, read_chunk_claims_for_region_and_emit_build_orders,),
-            example_emit_claims_system, example_building_system
+            example_emit_claims_system, example_building_system,
+            clonespawn_structure_tile_on_chunk_spawn,
+
         ).in_set(RegioningSystems)
     ))
     .add_systems(

@@ -50,8 +50,9 @@ pub fn visit_chunks_around_activators(
                             region_ent
                         }).clone()
                     };
-
+                    
                     let chunk_ent = cmd.spawn_empty().id();
+                    loaded_chunks.0.insert(key, chunk_ent);
                     comps_for_chunk_ents.push((chunk_ent, (
                         Chunk { region_ent, },
                         StrId20B::new_truncated(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
@@ -59,7 +60,6 @@ pub fn visit_chunks_around_activators(
                         chunk_pos,
                         ChildOf(dimension_ref.0),
                     )));
-                    loaded_chunks.0.insert(key, chunk_ent);
                     chunk_ent
                 });
                 if !activates_chunks.0.contains(&chunk_ent) {

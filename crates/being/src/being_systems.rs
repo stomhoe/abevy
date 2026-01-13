@@ -4,6 +4,7 @@
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_replicon::prelude::{SendMode, ToClients};
 use camera::camera_components::CameraTarget;
+use common::common_components::DisabledOrNot;
 use dimension_shared::DimensionRef;
 use faction::faction_components::*;
 use movement::movement_events::TransformFromServer;
@@ -30,7 +31,7 @@ pub fn spawn_egui_being_holder(mut cmd: Commands,
 pub fn add_beings_to_holder(mut cmd: Commands, 
     holder: Single<(Entity, ), (With<EguiBeingHolder>)>, 
 
-    query: Query<(Entity, ),(With<Being>, Without<EguiBeingHolderReference>, Or<(With<Disabled>, Without<Disabled>)>)>,
+    query: Query<(Entity, ),(With<Being>, Without<EguiBeingHolderReference>, DisabledOrNot)>,
 ) {
     for (ent, ) in query.iter() {
         cmd.entity(ent).try_insert(EguiBeingHolderReference(holder.0));

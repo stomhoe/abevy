@@ -2,6 +2,7 @@
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
+use common::common_components::DisabledOrNot;
 use game_common::game_common_components::{TagHashSet, EntityZero, EntityZeroRef, Direction};
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
@@ -14,7 +15,7 @@ pub fn apply_scales(
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
     ),>, 
     sprite_config_query: Query<(Option<&FlipHorizIfDir>, &Scale2D, &ScaleLookUpDown, &ScaleSideways,),
-    (Or<(With<Disabled>, Without<Disabled>)>)>, 
+    (DisabledOrNot)>, 
     baseholder_query: Query<&Direction>, 
 ) {
     for (
@@ -86,14 +87,14 @@ pub fn apply_offsets(
         &mut Transform,
         Option<&Offset2D>, 
         Has<SpriteConfigNotFound>,
-    ), (Or<(With<Disabled>, Without<Disabled>)>, Without<EntityZero>, )>,
+    ), (DisabledOrNot, Without<EntityZero>, )>,
     sprite_config_query: Query<(
         Option<&TagHashSet>,
         Option<&Offset2D>,
         Option<&OffsetSideways>,
         Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>, 
         Option<&OffsetForChildren>,
-    ),(Or<(With<Disabled>, Without<Disabled>)>)>, 
+    ),(DisabledOrNot)>, 
     parent_sprite_query: Query<&EntityZeroRef>,
     base_query: Query<&Direction>,
 ) {
@@ -206,9 +207,9 @@ pub fn z_sort_system(
         (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>,)>, 
         Or<(With<Sprite>, With<TilemapAnchor>, )>)>,
         
-    parent_sprite_query: Query<&Sprite, (Or<(With<Disabled>, Without<Disabled>)>,)>,
+    parent_sprite_query: Query<&Sprite, (DisabledOrNot,)>,
     
-    ezero_query: Query<(&AcZ, Option<&YSortOrigin>), (Or<(With<Disabled>, Without<Disabled>)>,)>,
+    ezero_query: Query<(&AcZ, Option<&YSortOrigin>), (DisabledOrNot,)>,
 
     mut mw_draw_tmap: MessageWriter<DrawTilemap>,
 

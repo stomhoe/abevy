@@ -1,5 +1,5 @@
 
-use bevy::prelude::*;
+use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use indexmap::IndexMap;
 #[allow(unused_imports)] 
 use serde::{Deserialize, Serialize};
@@ -147,3 +147,5 @@ impl ImageHolderMap {
     }
    
 }
+
+pub type DisabledOrNot = Or<(With<Disabled>, Without<Disabled>)>;

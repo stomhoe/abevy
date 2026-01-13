@@ -14,7 +14,7 @@ use crate::{sprite_components::*, sprite_resources::*, };
 // #[allow(unused_parens)]
 // pub fn on_sprite_config_despawn(mut cmd: Commands, 
 //     mut removed_configs: RemovedComponents<SpriteConfig>,
-//     mut query: Query<(&SpriteConfigUsages),(Or<(With<Disabled>, Without<Disabled>)>,)>,
+//     mut query: Query<(&SpriteConfigUsages),(DisabledOrNot,)>,
 // ) {
 //     for ent in removed_configs.read() {
 //         if let Ok(usages) = query.get(ent) {

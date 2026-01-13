@@ -12,7 +12,7 @@ use crate::{
 #[allow(unused_parens)]
 pub fn set_entity_name(//DESACTIVAR EN RELEASE BUILDS
     mut query: Query<(&mut Name, AnyOf<(&EntityPrefix, &StrId, &StrId20B, &DisplayName)>), 
-    (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>, Or<(With<Disabled>, Without<Disabled>)>)>, )>,
+    (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>, DisabledOrNot)>, )>,
 ) {
     for (mut name, (e_prefix, strid, strid20b, display_name)) in query.iter_mut() {
         let display_name = if let Some(display_name) = display_name {
