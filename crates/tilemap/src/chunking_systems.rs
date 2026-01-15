@@ -59,7 +59,7 @@ pub fn visit_chunks_around_activators(
                         StrId20B::new_truncated(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
                         Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
                         chunk_pos,
-                        ChildOf(dimension_ref.0),
+                        ChildOf(region_ent),
                         dimension_ref,
                     )));
                     chunk_ent

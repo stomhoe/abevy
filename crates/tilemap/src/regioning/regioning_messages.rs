@@ -1,5 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
+use dimension_shared::DimensionRef;
+use game_common::game_common_components::EntityZeroRef;
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::{EntityHashSet, MapEntities}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use tilemap_shared::{ChunkPos, GlobalTilePos, RegionPos};
@@ -38,7 +40,18 @@ impl Default for ClaimedChunks {
 pub struct StructureBuildOrder {
     pub i: u64,
     pub structured_gen_cfg_ent: Entity,
-    pub region_ent: Entity,
-    //global chunk positions
+    pub region_pos: RegionPos,
+    pub dimension_ref: DimensionRef,
+    //sucessfully claimed global chunk positions
     pub chunks_gpos: Vec<ChunkPos>, 
+}
+
+
+#[derive(Message, Debug, )]
+pub struct StructureBuildCompliance {
+    pub structure_gen_cfg_ent: Entity,
+    pub dimension_ref: DimensionRef,
+    pub chunk_pos: ChunkPos,
+    pub tiles: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>,
+
 }

@@ -113,7 +113,7 @@ impl MassCollectedTiles {
         bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &AcGlobalGenSettings,
     )  {
         for tile in bif_tiles.iter().cloned() {
-            self.collect_tiles_rec(cmd, tile, ev.pos, ev.dim_ref, oplist_size, weight_maps, gen_settings, 0);
+            self.collect_tiles_rec(cmd, tile, ev.gpos, ev.dim_ref, oplist_size, weight_maps, gen_settings, 0);
         }
     }
 

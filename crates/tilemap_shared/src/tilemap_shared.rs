@@ -190,6 +190,10 @@ impl ChunkPos {
         let y = (index as i32 / REGION_SIZE_IN_CHUNKS.x()) as i32;
         ChunkPos(IVec2::new(x, y)) + region_pos.to_chunkpos()
     }
+    pub fn flat_index_within_region(&self, region_pos: RegionPos) -> usize {
+        let local_pos = *self - region_pos.to_chunkpos();
+        (local_pos.0.y * REGION_SIZE_IN_CHUNKS.x() + local_pos.0.x) as usize
+    }
     
     pub const fn area(&self) -> usize {
         (self.0.x * self.0.y) as usize

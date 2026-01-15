@@ -1,15 +1,16 @@
 
-use std::mem::take;
+use std::{hash::Hash, mem::take};
 
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*, ui::debug};
 
+use bevy_replicon::postcard::fixint::le;
 use common::common_components::HashId;
 use dimension_shared::{BlacklistedStructureGenTags, DimensionRef, MultipleDimensionRefs, WhitelistedStructureGenTags};
 use game_common::{game_common_components::{EntityZeroRef, TagHashSet}, game_common_components_samplers::EntityWeightedSampler};
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::{Chunk, StructureSpawningChecked}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildOrder}}, tile::{tile_components::DeleteOthersExceptZLevels, tile_resources::TileEzerosMap}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking_components::{Chunk, StructureSpawningDone}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}, regioning_resources::LoadedRegions}, tile::{tile_components::DeleteOthersExceptZLevels, tile_resources::TileEzerosMap}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -37,7 +38,7 @@ pub fn offer_chunks_of_new_region(mut cmd: Commands,
         let rng = region_pos.hash_value(&settings, 0);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(rng);
         
-
+        
         let mut offered_chunks_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area(), false);
         
         let mut claim_i = 0;
@@ -113,7 +114,7 @@ pub fn offer_chunks_of_new_region(mut cmd: Commands,
                 }
             }
             offered_chunks_bitmask.set(chunk_index, true);
-
+            
             to_write.push(OfferChunk {
                 i: claim_i,
                 region_ent,
@@ -130,38 +131,81 @@ pub fn offer_chunks_of_new_region(mut cmd: Commands,
     writer.write_batch(to_write);
 }
 
+
+#[allow(unused_parens)]
+pub fn track_when_region_is_ready_for_spawning(mut cmd: Commands, 
+    loaded_regions: Res<LoadedRegions>,
+    mut region_query: Query<(&RegionStructures, &mut RegionPlannedTiles, Has<RegionPlanningFinished>),()>,
+    mut reader: MessageMutator<StructureBuildCompliance>,
+) {
+    for build in reader.read() {
+        
+        let region_pos = build.chunk_pos.to_region_pos();
+
+        let Some(&region_ent) = loaded_regions.0.get(&(build.dimension_ref, region_pos))
+        else {
+            error!(target: "structure_spawn", "Region at position {:?} in dimension {:?} not found when processing structure build compliance, skipping", 
+            region_pos, build.dimension_ref);
+            continue;
+        };
+        
+        let Ok((region_structures, mut planned_tiles, region_planning_already_done)) = region_query.get_mut(region_ent)
+        else {
+            continue;
+        };
+        if region_planning_already_done {
+            error!(target: "structure_spawn", "Region entity {:?} at position {:?} in dimension {:?} already marked as RegionPlanningFinished when processing structure build compliance, skipping",
+            region_ent, region_pos, build.dimension_ref);
+            continue;
+        }
+
+        let Ok(finished) = planned_tiles.add_planned_tiles(build.chunk_pos, take(&mut build.tiles))
+        else {
+            error!(target: "structure_spawn", "Failed to add planned tiles for structure build compliance in region entity {:?} at chunk position {:?}, skipping", region_ent, build.chunk_pos);
+            continue;
+        };
+        
+        if finished {
+            info!(target: "structure_spawn", "Region entity {:?} has finished planning all structure tiles, marking as RegionPlanningFinished", region_ent);
+            cmd.entity(region_ent).try_insert(RegionPlanningFinished);
+        }
+        
+    }
+}
+
+
 #[allow(unused_parens, )]
 pub fn clonespawn_structure_tile_on_chunk_spawn(mut cmd: Commands, 
-    mut query: Query<(Entity, &Chunk, &ChunkPos, &DimensionRef), (Without<StructureSpawningChecked>)>,
-    region_query: Query<(&TilesToSpawnPerChunk),()>,
+    region_query: Query<(&ChunksActiveInRegion, &RegionPlannedTiles),(With<RegionPlanningFinished>)>,//todo ponerle a la region un componente q de una confirmacion final de q todas las structures q tenian algo por construir lo hicieron (usar un contador)
+    mut chunk_query: Query<(&ChunkPos, &DimensionRef), (Without<StructureSpawningDone>)>,
     mut collected: ResMut<MassCollectedTiles>,
-
+    
 ) {
     let mut to_insert_checked = Vec::new();
     let mut to_insert_delete_others = Vec::new();
-    for (chunk_ent, chunk, chunk_pos, dimension_ref) in query.iter_mut() {
-        let Ok((tiles_to_spawn_per_chunk)) = region_query.get(chunk.region_ent)
-        else {
-            error!(target: "structure_spawn", "Region entity {:?} not found when spawning structure tiles for chunk at position {:?}, skipping structure tile spawn",
-            chunk.region_ent, chunk_pos);
-            to_insert_checked.push((chunk_ent, StructureSpawningChecked, ));
-
-            continue;
-        };
-
-        if let Some(tiles_to_spawn) = tiles_to_spawn_per_chunk.get(&chunk_pos) {
-            debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
-            for (tile_gpos, ezero_ref, delete_others) in tiles_to_spawn {
-                let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *ezero_ref, *tile_gpos, *dimension_ref, OplistSize::default(),);
-                if let Some(delete_others) = delete_others {
-                    to_insert_delete_others.push((tile_ent, delete_others.clone(), ));
+    
+    for (chunks_active_in_region, tiles_to_spawn_per_chunk) in region_query.iter() {
+        for &chunk_ent in chunks_active_in_region.entities() {
+            let Ok ( ( chunk_pos, dimension_ref)) = chunk_query.get_mut(chunk_ent)
+            else {//checked chunks are ommited
+                continue;
+            };
+            
+            if let Some(tiles_to_spawn) = tiles_to_spawn_per_chunk.get(&chunk_pos) {
+                debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
+                for (tile_gpos, ezero_ref, delete_others) in tiles_to_spawn {
+                    let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *ezero_ref, *tile_gpos, *dimension_ref, OplistSize::default(),);
+                    if let Some(delete_others) = delete_others {
+                        to_insert_delete_others.push((tile_ent, delete_others.clone(), ));
+                    }
                 }
             }
+            else {
+                debug!(target: "structure_spawn", "No structure tiles to spawn in chunk at {:?}", chunk_pos);
+            }
+            to_insert_checked.push((chunk_ent, StructureSpawningDone, ));
+            
         }
-        else {
-            debug!(target: "structure_spawn", "No structure tiles to spawn in chunk at {:?}", chunk_pos);
-        }
-        to_insert_checked.push((chunk_ent, StructureSpawningChecked, ));
     }
     cmd.try_insert_batch(to_insert_checked);
     cmd.try_insert_batch(to_insert_delete_others);
@@ -171,7 +215,7 @@ pub fn clonespawn_structure_tile_on_chunk_spawn(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn read_chunk_claims_for_region_and_emit_build_orders(
     mut reader: MessageReader<ClaimedChunks>,
-    mut region_query: Query<(&RegionPos, &mut RegionStructures, ),()>,
+    mut region_query: Query<(&RegionPos, &DimensionRef, &mut RegionStructures, &mut RegionPlannedTiles),()>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     
     mut writer: MessageWriter<StructureBuildOrder>,
@@ -181,7 +225,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
         let mut build_orders = Vec::new();
         
         for claim in reader.read() {
-            let Ok((_, mut region_structures, )) = region_query.get_mut(claim.region_ent)
+            let Ok((_, _, mut region_structures, _)) = region_query.get_mut(claim.region_ent)
             else {
                 continue;
             };
@@ -195,13 +239,13 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
         
         
         for region_ent in regions_with_new_claims {
-            let Ok((&region_pos, mut region_structures, )) = region_query.get_mut(region_ent)
+            let Ok((&region_pos, &dimension_ref, mut region_structures, mut planned)) = region_query.get_mut(region_ent)
             else {
                 continue;
             };
             'nextregion: for i in region_structures.processed_up_to_i..MAX_CLAIMS {
                 
-                if region_structures.occupation_grid.occupied_count() >= max_used_chunks_per_region as u32 {
+                if region_structures.strgen_grid.occupied_count() >= max_used_chunks_per_region as u32 {
                     break 'nextregion;
                 }
                 let Some(claimed) = region_structures.claims.get_unchecked_mut(i) else {
@@ -225,10 +269,10 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                 }
                 let mut undo_claims = false;
                 let mut claimed_up_to: u64 = 0;
-                let mut non_claimed_chunks_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area(), false);
+                let mut failed_claims_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area(), false);
                 
-                'nextpos: for (i, &chunk_pos) in claimed.chunks_gpos.iter().enumerate(){
-                    match (region_structures.occupation_grid.occupy(
+                'nextpos: for (claim_i, &chunk_pos) in claimed.chunks_gpos.iter().enumerate(){
+                    match (region_structures.strgen_grid.occupy(
                         chunk_pos,
                         region_pos,
                         claimed.structured_gen_cfg_ent,
@@ -252,8 +296,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                         (Err(ChunkOccupyError::AlreadyOccupied(_)), true) => {
                             trace!(target: "structure_spawn", "Chunk at {:?} in region {:?} already occupied, but claim is partition tolerant, continuing", 
                             chunk_pos, region_pos);
-                            non_claimed_chunks_bitmask.set(i, true);
-                            claimed_up_to += 1;
+                            failed_claims_bitmask.set(claim_i, true);//OK
                             continue 'nextpos;
                         }
                         (Err(ChunkOccupyError::AlreadyOccupied(_)), false) => {
@@ -268,22 +311,27 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                 if undo_claims {
                     for i in 0..claimed_up_to {
                         let chunk_pos = claimed.chunks_gpos[i as usize];
-                        region_structures.occupation_grid.free(chunk_pos, region_pos);
+                        region_structures.strgen_grid.free(chunk_pos, region_pos);
                     }
                 } else{
                     region_structures.struct_gen_counts.entry(claimed.structured_gen_cfg_ent)
                     .and_modify(|count| *count += 1)
                     .or_insert(1);
                     
+                    
                     for i in (0..claimed.chunks_gpos.len()).rev() {
-                        if (non_claimed_chunks_bitmask.get(i).unwrap_or(false)) {
+                        if (failed_claims_bitmask.get(i).unwrap_or(false)) {
                             claimed.chunks_gpos.swap_remove(i);
                         }
                     }
                     
+                    planned.extend_pending_chunks(&claimed.chunks_gpos);
+                   
+                    
                     let order = StructureBuildOrder {
                         i: claimed.i,
-                        region_ent: claimed.region_ent,
+                        region_pos,
+                        dimension_ref,
                         structured_gen_cfg_ent: claimed.structured_gen_cfg_ent,
                         chunks_gpos: claimed.chunks_gpos,
                     };
@@ -296,6 +344,9 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
         writer.write_batch(build_orders);
     }
 }
+
+//todo poner un marker cuando se vacién los pending chunks en el planned y en ese momento permitir la construccion de estructuras
+
 
 
 #[allow(unused_parens)]
@@ -346,10 +397,11 @@ pub fn example_emit_claims_system(
 pub fn example_building_system(
     mut reader: MessageReader<StructureBuildOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
-    mut region_query: Query<(&DimensionRef, &mut TilesToSpawnPerChunk),()>,
-    
+    mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEzerosMap>,
 ) {
+    
+    let mut compliances_to_emit = Vec::new();    
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) 
         else { continue; };
@@ -357,10 +409,6 @@ pub fn example_building_system(
         if structured_gen_cfg.structure_id != "ExampleStructure" {
             continue;
         }
-        let Ok((dim_ref, mut tiles_to_spawn_per_chunk)) = region_query.get_mut(build_order.region_ent)
-        else {
-            continue;
-        };
         
         let tile_ezero_id = "cyan";
         let Ok(ezero_ref) = ezeros_map.0.get(&tile_ezero_id)
@@ -371,18 +419,27 @@ pub fn example_building_system(
         
         let ezero_ref = EntityZeroRef(ezero_ref);
         
+        
         for &chunk_pos in &build_order.chunks_gpos {
+            
+            let mut tiles4chunk: TilesFromBuilder = Vec::new();
             //todo hacer que se haga después de q se spawneen las tiles de terrgen
             for tpos in chunk_pos.get_tilepositions_within_chunk(OplistSize::default()){
-
-
-                tiles_to_spawn_per_chunk.push_one_unchecked(chunk_pos, tpos, ezero_ref, Some(DeleteOthersExceptZLevels::default()));
+                tiles4chunk.push((tpos, ezero_ref, Some(DeleteOthersExceptZLevels::default())));
+                
             }
+            compliances_to_emit.push(StructureBuildCompliance {
+                structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
+                dimension_ref: build_order.dimension_ref,
+                chunk_pos,
+                tiles: tiles4chunk,
+            });
+            debug!(target: "structure_spawn", "Spawned ExampleStructure in region at {:?} occupying chunks: {:?}",
+            build_order.region_pos, build_order.chunks_gpos);
         }
-        debug!(target: "structure_spawn", "Spawned ExampleStructure in region at {:?} occupying chunks: {:?}",
-        build_order.region_ent, build_order.chunks_gpos);
         
     }
+    writer.write_batch(compliances_to_emit);
 }
 
 

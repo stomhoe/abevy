@@ -14,7 +14,7 @@ use ::tilemap_shared::*;
 pub fn spawn_terrain_operations (
     mut commands: Commands, 
     res_chunk: Res<AaChunkRangeSettings>,
-    chunks_query: Query<(Entity, &ChunkPos, &ChildOf), (Without<TerrGenOpsLaunched>, With<Chunk>)>, 
+    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>)>, 
     dimension_query: Query<(&DimensionRootOplist, &HashId), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut ew_pending_ops: MessageWriter<PendingOp>,
@@ -24,7 +24,7 @@ pub fn spawn_terrain_operations (
 
     let chunk_area = res_chunk.approximate_number_of_tiles() * 4;
     let mut batch = Vec::with_capacity(chunk_area * 4);
-    'chunk_for: for (chunk_ent, chunk_pos, dim_ref) in chunks_query.iter() {
+    'chunk_for: for (chunk_ent, chunk_pos, &dim_ref) in chunks_query.iter() {
 
         let Ok((dim_root_op_list, hash_id)) = dimension_query.get(dim_ref.0) else {
             error!("No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
@@ -37,11 +37,11 @@ pub fn spawn_terrain_operations (
         for x in 0..ChunkPos::CHUNK_SIZE.x / oplist_size.x() {
             for y in 0..ChunkPos::CHUNK_SIZE.y / oplist_size.y() {
                 let pos_within_chunk = IVec2::new(x as i32, y as i32);
-                let global_pos = chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * oplist_size.inner().as_ivec2());
+                let gpos = chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * oplist_size.inner().as_ivec2());
                 trace!(
                     "Spawning terrain operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
                     oplist,
-                    global_pos,
+                    gpos,
                     chunk_ent,
                     pos_within_chunk,
                     oplist_size
@@ -50,7 +50,7 @@ pub fn spawn_terrain_operations (
                     continue 'chunk_for;
                 }
                 batch.push(PendingOp {
-                    oplist, dim_ref: DimensionRef(dim_ref.parent()), pos: global_pos, dimension_hash_id: hash_id.into_i32(), 
+                    oplist, dim_ref, gpos, dimension_hash_id: hash_id.into_i32(), 
                     variables: VariablesArray::default(), filtered_op: Entity::PLACEHOLDER,
                 });
             }
@@ -87,7 +87,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
             error!("Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
             continue;
         };
-        let global_pos = ev.pos;
+        let global_pos = ev.gpos;
         
         'opsfor: for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
             let mut operation_acc_val: f32 = 0.0;
@@ -176,7 +176,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                             sampled_value_events.push(SuitablePosFound {
                                 op_filter_ent: ev.filtered_op,
                                 val: operation_acc_val,
-                                found_pos: ev.pos,
+                                found_pos: ev.gpos,
                             });
                         }
                         continue 'eventfor;
@@ -212,15 +212,15 @@ fn spawn_bifurcation_oplists(
     let (_, &child_oplist_size, _) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
 
     if my_oplist_size != child_oplist_size
-    && (ev.pos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
+    && (ev.gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
     && ev.filtered_op == Entity::PLACEHOLDER
     {
         let x_end = child_oplist_size.x() as i32; let y_end = child_oplist_size.y() as i32;
         for x in 0..x_end {
             for y in 0..y_end {
-                let pos = ev.pos + GlobalTilePos::new(x, y);
+                let pos = ev.gpos + GlobalTilePos::new(x, y);
 
-                new_pending_ops.push(PendingOp{ oplist, pos, ..(*ev).clone()  });
+                new_pending_ops.push(PendingOp{ oplist, gpos: pos, ..(*ev).clone()  });
             }
         }
     } else {new_pending_ops.push(PendingOp{ oplist, ..(*ev).clone() });}
@@ -288,7 +288,7 @@ pub fn search_suitable_positions(
                         new_pending_ops.push(PendingOp {
                             oplist: opfilter.start_oplist,
                             dimension_hash_id,
-                            pos: calculate_pos(i_within_batch, explore_angle),
+                            gpos: calculate_pos(i_within_batch, explore_angle),
                             filtered_op,
                             variables: VariablesArray::default(),
                             dim_ref: DimensionRef(Entity::PLACEHOLDER),
@@ -330,7 +330,7 @@ pub fn search_suitable_positions(
                         dimension_hash_id,
                         oplist: opfilter.start_oplist,
                         dim_ref: DimensionRef(Entity::PLACEHOLDER),
-                        pos,
+                        gpos: pos,
                         variables: VariablesArray::default(),
                         filtered_op,
                     });

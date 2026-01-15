@@ -2,7 +2,7 @@
 use bevy_replicon::prelude::Replicated;
 use game_common::game_common_components::{Direction, EntityZeroRef};
 use serde::{Deserialize, Serialize};
-use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet, MapEntities}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet, MapEntities}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet, hash_map::Entry}, prelude::*};
 use tilemap_shared::{ChunkPos, GlobalTilePos, REGION_SIZE_IN_CHUNKS, RegionPos};
 
 use crate::{chunking_components::Chunk, chunking_resources::AaChunkRangeSettings, regioning::regioning_messages::ClaimedChunks, tile::tile_components::*};
@@ -11,7 +11,7 @@ use crate::{chunking_components::Chunk, chunking_resources::AaChunkRangeSettings
 use common::{common_components::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(SessionScoped, TgenHotLoadingScoped, RegionStructures, TilesToSpawnPerChunk)]
+#[require(SessionScoped, TgenHotLoadingScoped, RegionStructures, RegionPlannedTiles )]
 pub struct Region;
 
 #[derive(Component, Debug, Reflect)]
@@ -56,11 +56,11 @@ pub struct StructuredGenCfgsWeightedMap;
 
 
 #[derive(Debug, Reflect)]
-pub struct ChunkOccupationGrid{
+pub struct StrGenGrid{
     occupied_chunks_grid: [[Option<Entity>; 32]; 32],
     occupied_chunks_count: u32,
 }
-impl Default for ChunkOccupationGrid {
+impl Default for StrGenGrid {
     fn default() -> Self {
         Self {
             occupied_chunks_grid: [[None; 32]; 32],
@@ -73,7 +73,7 @@ pub enum ChunkOccupyError {
     OutOfRegionBounds(Direction),
 }
 
-impl ChunkOccupationGrid {
+impl StrGenGrid {
     pub fn is_occupied(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
         let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
         let x = local_chunk_pos.0.x as usize;
@@ -94,7 +94,7 @@ impl ChunkOccupationGrid {
             (_, _, _, true) => return Err(ChunkOccupyError::OutOfRegionBounds(Direction::North)),
             _ => {}
         }
-
+        
         match self.occupied_chunks_grid[y][x] {
             None => {
                 self.occupied_chunks_grid[y][x] = Some(struct_gen_cfg_ent);
@@ -123,7 +123,7 @@ pub struct RegionStructures {
     pub processed_up_to_i: usize,
     pub claims: [Option<ClaimedChunks>; MAX_CLAIMS],
     pub struct_gen_counts: EntityHashMap<u32>,
-    pub occupation_grid: ChunkOccupationGrid,
+    pub strgen_grid: StrGenGrid,
 }
 
 impl Default for RegionStructures {
@@ -132,54 +132,67 @@ impl Default for RegionStructures {
             claims: [(); MAX_CLAIMS].map(|_| None),
             processed_up_to_i: 0,
             struct_gen_counts: EntityHashMap::default(),
-            occupation_grid: ChunkOccupationGrid::default(),
+            strgen_grid: StrGenGrid::default(),
         }
     }
 }
 
-pub type TilesForChunk = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>;
+pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>;
 
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Reflect, Default)]
 //a region's component, doesn't need dimension
-pub struct TilesToSpawnPerChunk(
-    HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>>,
-);
-impl TilesToSpawnPerChunk {
-    
-    pub fn push_one_checked(
-        &mut self, 
-        chunk_pos: ChunkPos, 
-        tile_pos: GlobalTilePos, 
-        ezero_ref: EntityZeroRef,
-        delete_others_except_zlevels: Option<DeleteOthersExceptZLevels>,
-    ) -> Result<(), BevyError> {
-        chunk_pos.is_tilepos_within_chunk(tile_pos)?;
-        self.0.entry(chunk_pos).or_default().push((tile_pos, ezero_ref, delete_others_except_zlevels));
+pub struct RegionPlannedTiles { 
+    map: HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>>,
+    chunks_pending_build: HashSet<ChunkPos>,
+}
+impl RegionPlannedTiles {
+    pub fn new(chunk_positions: &[ChunkPos]) -> Self {
+        Self {
+            map: HashMap::new(),
+            chunks_pending_build: chunk_positions.iter().copied().collect(),
+        }
+    }
+
+    pub fn extend_pending_chunks(&mut self, chunk_positions: &[ChunkPos]) {
+        self.chunks_pending_build.extend(chunk_positions.iter().copied());
+    }
+
+    fn validate_chunk_pending(&self, chunk_pos: ChunkPos) -> Result<(), BevyError> {
+        if !self.chunks_pending_build.contains(&chunk_pos) {
+            return Err(BevyError::from(format!(
+                "ChunkPos {:?} is not pending a build order",
+                chunk_pos
+            )));
+        }
         Ok(())
     }
-    pub fn push_one_unchecked(
-        &mut self, 
-        chunk_pos: ChunkPos, 
-        tile_pos: GlobalTilePos, 
-        ezero_ref: EntityZeroRef,
-        delete_others_except_zlevels: Option<DeleteOthersExceptZLevels>,
-    ) {
-        self.0.entry(chunk_pos).or_default().push((tile_pos, ezero_ref, delete_others_except_zlevels));
-    }
 
-    pub fn extend_check_bounds(&mut self, chunk_pos: ChunkPos, tile_data: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>) -> Result<(), BevyError> {
+    pub fn add_planned_tiles(
+        &mut self,
+        chunk_pos: ChunkPos,
+        tile_data: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>,
+    ) -> Result<bool, BevyError> {
+        self.validate_chunk_pending(chunk_pos)?;
+
         for (tile_pos, _, _) in &tile_data {
             chunk_pos.is_tilepos_within_chunk(*tile_pos)?;
         }
-        self.0.entry(chunk_pos).or_default().extend(tile_data);
-        Ok(())
+
+        self.map.entry(chunk_pos).or_insert_with(Vec::new).extend(tile_data);
+        self.chunks_pending_build.remove(&chunk_pos);
+        Ok(self.chunks_pending_build.is_empty())
     }
-    pub fn extend_unchecked(&mut self, chunk_pos: ChunkPos, tile_data: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>) {
-        self.0.entry(chunk_pos).or_default().extend(tile_data);
-    }
-    pub fn get(&self, chunk_pos: &ChunkPos) -> Option<&Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>> {
-        self.0.get(chunk_pos)
+
+    pub fn get(
+        &self,
+        chunk_pos: &ChunkPos,
+    ) -> Option<&Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>> {
+        self.map.get(chunk_pos)
     }
 }
 
 pub const MAX_CLAIMS: usize = 1024;
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct RegionPlanningFinished;

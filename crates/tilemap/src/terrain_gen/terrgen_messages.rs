@@ -94,7 +94,7 @@ pub struct SearchFailed (pub Entity);
 
 #[derive(Message, Debug, Clone)]
 /// internal use only
-pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub pos: GlobalTilePos, 
+pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub gpos: GlobalTilePos, 
     pub dimension_hash_id: i32,
     pub variables: VariablesArray, pub filtered_op: Entity
 }
