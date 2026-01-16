@@ -98,7 +98,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<TileCategories>()
     .register_type::<KeepDistanceFrom>()
     .register_type::<PortalRecipe>()
-    .register_type::<PortalConnection>()
+    .register_type::<PortalTo>()
     .register_type::<EguiTileShaderHolder>()
     
     .init_resource::<TilesAtGpos>()

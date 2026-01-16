@@ -90,8 +90,7 @@ pub struct AcZ(pub f32);
 
 impl AcZ {
     pub fn new(z: f32) -> Self { Self(z) }
-    pub fn value(&self) -> f32 { self.0 }
-    pub fn as_float(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
+    pub fn used_float(&self) -> f32 { self.0 as f32 * Self::Z_MULTIPLIER }
     pub const Z_MULTIPLIER: f32 = 1e-5;
 }
 

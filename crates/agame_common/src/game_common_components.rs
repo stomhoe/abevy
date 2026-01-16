@@ -184,16 +184,19 @@ macro_rules! impl_tags_common_methods {
 macro_rules! impl_tag_vec_methods {
     ($collection_type_name:ty, $tag_type:ty) => {
         impl $collection_type_name {
-            pub fn contains(&self, tag: &$tag_type) -> bool {
-                self.0.iter().any(|t| t == tag)
+            pub fn contains(&self, tag: impl Into<$tag_type>) -> bool {
+                let tag = tag.into();
+                self.0.iter().any(|t| t == &tag)
             }
-            pub fn insert(&mut self, tag: $tag_type) {
-                if !self.contains(&tag) {
+            pub fn insert(&mut self, tag: impl Into<$tag_type>) {
+                let tag = tag.into();
+                if !self.0.iter().any(|t| t == &tag) {
                     self.0.push(tag);
                 }
             }
-            pub fn remove(&mut self, tag: &$tag_type) {
-                self.0.retain(|t| t != tag);
+            pub fn remove(&mut self, tag: impl Into<$tag_type>) {
+                let tag = tag.into();
+                self.0.retain(|t| t != &tag);
             }
         }
         impl_tags_common_methods!($collection_type_name, $tag_type, Vec);
@@ -202,14 +205,14 @@ macro_rules! impl_tag_vec_methods {
 macro_rules! impl_tag_hashset_methods {
     ($collection_type_name:ty, $tag_type:ty) => {
         impl $collection_type_name {
-            pub fn contains(&self, tag: &$tag_type) -> bool {
-                self.0.contains(tag)
+            pub fn contains(&self, tag: impl Into<$tag_type>) -> bool {
+                self.0.contains(&tag.into())
             }
-            pub fn insert(&mut self, tag: $tag_type) -> bool {
-                self.0.insert(tag)
+            pub fn insert(&mut self, tag: impl Into<$tag_type>) -> bool {
+                self.0.insert(tag.into())
             }
-            pub fn remove(&mut self, tag: &$tag_type) -> bool {
-                self.0.remove(tag)
+            pub fn remove(&mut self, tag: impl Into<$tag_type>) -> bool {
+                self.0.remove(&tag.into())
             }
         }
         impl_tags_common_methods!($collection_type_name, $tag_type, HashSet);

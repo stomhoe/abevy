@@ -232,7 +232,7 @@ pub fn z_sort_system(
 
         let use_y_sort = (maybe_ysort_origin.is_some() && parent_sprite_query.get(child_of.0).is_err()) as i32 as f32;
 
-        let target_z = maybe_z_index.unwrap_or_default().as_float() - use_y_sort * y_pos * YSortOrigin::Y_SORT_DIV;
+        let target_z = maybe_z_index.unwrap_or_default().used_float() - use_y_sort * y_pos * YSortOrigin::Y_SORT_DIV;
 
         if (transform.translation.z - target_z).abs() > f32::EPSILON {//NO TOCAR
             transform.translation.z = target_z;

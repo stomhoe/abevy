@@ -56,6 +56,15 @@ pub fn init_tiles(
             ChildOf(holder),
         )).id();
 
+        if let Some(tags) = &seri.tags {
+            let mut tag_hashset = TagHashSet::default();
+            for tag_str in tags {
+                if tag_str.trim().is_empty() { continue; }
+                tag_hashset.insert(Tag::new_truncated(tag_str));
+            }
+            cmd.entity(tile_enti).insert(tag_hashset);
+        }
+
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
         let color = Color::srgba_u8(r, g, b, a);
 
@@ -358,13 +367,20 @@ pub fn instantiate_portal(mut cmd: Commands,
         mass_collected
         .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default(), );
 
-        cmd.entity(this_end_portal).insert(PortalConnection::new(oe_portal));
+
+        cmd.entity(this_end_portal).try_insert(PortalTo::new(oe_portal));
 
         cmd.entity(oe_portal).remove::<PortalRecipe>();
 
         if portal_template.one_way {return;}
 
-        cmd.entity(oe_portal).insert(PortalConnection::new(this_end_portal));
+        cmd.entity(oe_portal).try_insert(PortalTo::new(this_end_portal))
+        .try_insert(DeleteOtherTiles {
+            spared_z: HashSet::from_iter(vec![AcZ::new(-900.0)]),
+            extra_radius: 2,
+            ..Default::default()
+        })
+        ;
 
         debug!(target:"portal_init", "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
 

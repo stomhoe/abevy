@@ -22,6 +22,7 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilt
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
     TileShaderRef, AcZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
+    TagHashSet, HashedTagsVec,
     //children entities don't get cloned
     Children, EntityZero
 );//Disabled no porque se elimina posteriormente
@@ -93,8 +94,8 @@ impl Default for PortalRecipe {
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
-pub struct PortalConnection { #[entities]pub dest_portal: Entity, }
-impl PortalConnection {
+pub struct PortalTo { #[entities]pub dest_portal: Entity, }
+impl PortalTo {
     pub fn new(dest_portal: Entity) -> Self {
         Self { dest_portal }
     }
@@ -180,4 +181,4 @@ pub struct TileSamplerHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct DeleteOthersExceptZLevels(pub HashSet<AcZ>);
+pub struct DeleteOtherTiles { pub spared_z: HashSet<AcZ>, pub spared_tags: TagHashSet, pub extra_radius: u32, }

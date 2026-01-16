@@ -8,7 +8,7 @@ use game_common::{game_common_components::{EntityZeroRef, TagHashSet}, game_comm
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::{Chunk, StructureSpawnDone}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}, regioning_resources::LoadedRegions}, tile::{tile_components::DeleteOthersExceptZLevels, tile_resources::TileEzerosMap}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking_components::{Chunk, StructureSpawnDone}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}, regioning_resources::LoadedRegions}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -458,10 +458,8 @@ pub fn drunkwalk_building_system(
 
         let tile_map_size = tile_width * tile_height;
         let mut floor_map = vec![false; tile_map_size];
-        let mut seed = build_order.region_pos.hash_value(&settings, 0);
-        for chunk_pos in chunk_positions {
-            seed = chunk_pos.hash_value(&settings, seed);
-        }
+        let mut seed = chunk_positions[0].hash_value(&settings, 0);
+
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
         let mut walker_x = tile_width / 2;
@@ -522,7 +520,7 @@ pub fn drunkwalk_building_system(
             }
         }
 
-        let delete_template = DeleteOthersExceptZLevels::default();
+        let delete_template = DeleteOtherTiles::default();
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
             for tile_pos in chunk_pos.get_tilepositions_within_chunk(OplistSize::default()) {

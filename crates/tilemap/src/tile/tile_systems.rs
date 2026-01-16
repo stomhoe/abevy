@@ -166,11 +166,11 @@ pub fn remove_tile_from_gpos_map(
 #[allow(unused_parens)]//problema: aunque se despawnee la tile va a ser procesada en process_tiles_pre
 pub fn despawn_if_not_excepted(mut cmd: Commands, 
     acz_query: Query<&AcZ, (With<EntityZero>, DisabledOrNot, )>,
-    changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&DeleteOthersExceptZLevels>, &EntityZeroRef,),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
-    otile_query: Query<(Option<&DeleteOthersExceptZLevels>, &EntityZeroRef,), (Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
+    changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagHashSet>, Option<&DeleteOtherTiles>, ),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
+    otile_query: Query<(&EntityZeroRef, Option<&TagHashSet>, Option<&DeleteOtherTiles>, ), (Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
     map: Res<TilesAtGpos>,
 ) {// poner el contenido de esto en process_tiles_pre? asi se intercepta a tiempo
-    for (newtile_ent, &dim, &gpos, newtile_delete_others_excp, ezero_ref, ) in changed_query.iter() {
+    for (newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp, ) in changed_query.iter() {
         
         let Ok(new_tile_z) = acz_query.get(ezero_ref.0) else {
             warn!(target: "tilemap", "Failed to get AcZ for tile entity {:?}, skipping despawn check", newtile_ent);
@@ -182,7 +182,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                 if otile_ent == newtile_ent {
                     continue;//skip self
                 }
-                let Ok((otile_delete_others_excp, ezero_ref, )) = otile_query.get(otile_ent) else {
+                let Ok((ezero_ref, otile_tag_hashset, otile_delete_others_excp,  )) = otile_query.get(otile_ent) else {
                     trace!(target: "tilemap", "Failed to get prev tile entity {:?}, skipping despawn check", otile_ent);    
                     continue ;
                 };
@@ -192,9 +192,15 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                 };
                 if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
                     cmd.entity(newtile_ent).try_remove::<(Disabled, )>();
-                    if newtile_delete_others_excp.0.contains(otile_z) {
+                    if newtile_delete_others_excp.spared_z.contains(otile_z) {
                         continue;
-                    } else {
+                    }
+                    else if let Some(otile_tag_hashset) = otile_tag_hashset 
+                    && newtile_delete_others_excp.spared_tags.intersects(otile_tag_hashset)
+                    {
+                        continue;
+                    }
+                    else {
                         trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
                         cmd.entity(otile_ent).try_despawn();
                         continue;
@@ -202,9 +208,16 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                 }
                 
                 if let Some(otile_delete_others_excp) = otile_delete_others_excp {
-                    if otile_delete_others_excp.0.contains(new_tile_z) {
+                    if otile_delete_others_excp.spared_z.contains(new_tile_z) {
                         continue;
-                    } else {
+                    }
+                    else if let Some(newtile_tag_hashset) = newtile_tag_hashset 
+                    && otile_delete_others_excp.spared_tags.intersects(newtile_tag_hashset)
+                    {
+                        continue;
+                    }
+                    
+                     else {
                         trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
                         cmd.entity(newtile_ent).try_despawn();
                     }

@@ -52,6 +52,6 @@ pub struct StructureBuildCompliance {
     pub structure_gen_cfg_ent: Entity,
     pub dimension_ref: DimensionRef,
     pub chunk_pos: ChunkPos,
-    pub tiles: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>,
+    pub tiles: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>,
 
 }

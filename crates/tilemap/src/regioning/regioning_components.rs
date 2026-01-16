@@ -138,12 +138,12 @@ impl Default for RegionStructures {
     }
 }
 
-pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>;
+pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
 
 #[derive(Component, Debug, Reflect, Default)]
 //a region's component, doesn't need dimension
 pub struct RegionPlannedTiles { 
-    map: HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>>,
+    map: HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>>,
     chunks_pending_build: HashSet<ChunkPos>,
 }
 impl RegionPlannedTiles {
