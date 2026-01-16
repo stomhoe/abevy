@@ -100,7 +100,7 @@ impl PortalConnection {
     }
 }
 
-pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &AcGlobalGenSettings) -> f32 {
+pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &GlobalGenSettings) -> f32 {
     let mut hasher = DefaultHasher::new();
     initial_pos.hash(&mut hasher);
     settings.seed.hash(&mut hasher);
@@ -157,7 +157,7 @@ impl TileHidsHandles {
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Reflect, Default)]
-pub struct MinDistancesMap(pub EntityHashMap<u32>);
+pub struct MinDistancesMap(pub EntityHashMap<u64>);
 
 impl MinDistancesMap {
     #[allow(unused_parens, )]
@@ -165,7 +165,7 @@ impl MinDistancesMap {
         my_pos: (DimensionRef, GlobalTilePos), new: (EntityZeroRef, DimensionRef, GlobalTilePos)
     ) -> bool {
         self.0.get(&new.0.0).map_or(true, |&min_dist| {
-            my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > min_dist * min_dist
+            my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > (min_dist * min_dist) 
         })
     }
 }

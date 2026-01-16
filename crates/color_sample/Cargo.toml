@@ -1,11 +1,11 @@
 [package]
-name = "game_common"
+name = "color_sample"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
-sprite_shared = { path = "../sprite_shared" }
+game_common = { path = "../agame_common" }
 tilemap_shared = { path = "../tilemap_shared" }
 
 bevy = { workspace = true }
@@ -17,8 +17,6 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
-bevy_simple_subsecond_system = { workspace = true }
-splines = { workspace = true }
 indexmap = { workspace = true }
 delegate = { workspace = true }
 tracing = { workspace = true }

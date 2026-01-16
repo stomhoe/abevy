@@ -2,11 +2,10 @@ use bevy::{color, ecs::entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-#[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::{EntityPrefix, StrId};
-use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos};
+use ::tilemap_shared::*;
 
-use crate::{color_sampler_resources::*, game_common_components_samplers::{ColorSampler, ColorSamplerRef, }};
+use crate::{color_sample_components::*, color_sample_resources::* };
 
 #[allow(unused_parens)]
 pub fn init_color_samplers(
@@ -83,7 +82,7 @@ pub fn add_colorsamplers_to_map(
 
 #[allow(unused_parens)]
 pub fn apply_pos_sampled_color(mut cmd: Commands, 
-    gen_settings: Single<&AcGlobalGenSettings>,
+    gen_settings: Single<&GlobalGenSettings>,
     samplers: Query<&ColorSampler>,
     mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, AnyOf<(&mut Sprite, &mut TileColor)>), (Or<(Changed<ColorSamplerRef>, Added<Sprite> )>, )>,
 ) {

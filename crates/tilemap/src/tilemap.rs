@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use common::common_states::*;
 use dimension_shared::DimensionSystems;
 use game_common::game_common::GameplaySystems;
-use tilemap_shared::{AcGlobalGenSettings, ChunkPos, PoissonDisk};
+use tilemap_shared::{GlobalGenSettings, ChunkPos, PoissonDisk};
 use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_resources::*, tilemap_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]

@@ -21,6 +21,7 @@ concat!(
     "offset_allocator=warn,",
     "bevy_asset_loader=warn,",
     "bevy_ecs::relationship=error,",
+    "calloop::loop_logic=error,",
     
     "portal_init=info,",
     
@@ -44,7 +45,7 @@ concat!(
     "sprite_animation_init=warn,",
     "entity_zero=info,",
 
-    "tile_init=debug,",
+    "tile_init=trace,",
     "asset_loading=warn,",
     "tiling_loading=debug,",
     "dimension_loading=debug,",
@@ -98,7 +99,7 @@ fn main() {
             tilemap::plugin,
             setup_screen::plugin,
             pregame_screen::plugin,
-            
+            color_sample::plugin,
         ))
         .run()
 

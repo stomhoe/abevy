@@ -4,4 +4,7 @@
     structure_id: "ExampleStructure",
     weight: 1.0,
     tags: Some([ "caca", "" ]),
+    pdisk_mindist_and_tag: Some([
+        (Some(2), "caca"),
+    ]),
 )

@@ -1,7 +1,7 @@
 use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
-use common::{common_components::StrId, common_resources::ImageSizeMap, };
+use common::{common_components::{DisabledOrNot, StrId}, common_resources::ImageSizeMap, };
 use game_common::game_common_components::{EntityZeroRef, Persisted};
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
@@ -11,7 +11,7 @@ use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
-pub struct MapKey {oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>,}
+pub struct MapKey {oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>, }
 impl MapKey {
     pub fn new(oplist_size: OplistSize, tile_size: U16Vec2, shader_ref: Option<TileShaderRef>) -> Self {
         Self { oplist_size, tile_size, shader_ref }
@@ -116,7 +116,7 @@ pub fn process_tiles_pre(
             trace!(target: "tilemap_systems", "Processing tile entity {:?} with strid {:?}", tile_ent, tile_strid);
             spritetiles_to_insert_pos_and_dim_ref.push((tile_ent, (ezero_ref, gpos, bundle.position, dim_ref, initial_pos, SyncToRenderWorld::default())));
             collected_tiles.0.swap_remove(i);
-            // El Disabled se saca en tile_readjust_transform
+            // Disabled is removed in tile_readjust_transform !
 
             continue;//is sprite tile
         }
@@ -125,12 +125,12 @@ pub fn process_tiles_pre(
         let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, gpos.into())) else {
             let chunk_pos = ChunkPos::from(gpos);
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
-            error!(target: "tilemap_systems", "Chunk for tile entity {:?} at gpos {:?}, {} in dim {:?} not loaded, despawning tile", tile_ent, gpos, chunk_pos, dim_ref);
+            trace!(target: "tilemap_systems", "Chunk for tile entity {:?} at gpos {:?}, {} in dim {:?} not loaded, despawning tile", tile_ent, gpos, chunk_pos, dim_ref);
             continue;//chunk not loaded
         };
         let Ok(mut layers) = chunk_query.get_mut(chunk) else {
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
-            error!(target: "tilemap_systems", "Chunk entity {:?} not found in chunk query when processing tile entity {:?}, despawning tile", chunk, tile_ent);
+            trace!(target: "tilemap_systems", "Chunk entity {:?} not found in chunk query when processing tile entity {:?}, despawning tile", chunk, tile_ent);
             continue;//chunk entity not found
         };
         cmd.entity(tile_ent).try_remove::<(Disabled, )>();
@@ -354,30 +354,15 @@ fn func_process_tile_into_tilemaps(
 #[allow(unused_parens)]
 pub fn tile_assign_child_of(mut cmd: Commands, 
     tile_instances_holder_query: Single<Entity, With<TileInstancesHolder>>,
-    mut query: Query<(Entity, ),(Without<ChildOf>, With<TilemapId>, With<TileTextureIndex>)>,
+    query: Query<Entity, (Without<ChildOf>, With<TilemapId>, With<TileTextureIndex>, DisabledOrNot)>,
 ) {
-    let query_len = query.iter().count();
-    let mut child_ofs_for_tiles: Vec<(Entity, ChildOf)> = Vec::with_capacity(query_len);
     let parent = tile_instances_holder_query.into_inner();
 
-    for (tile_ent,) in query.iter_mut() {
-        //info!("Assigning ChildOf to tile entity {:?}", tile_ent);
-        //cmd.entity(tile_ent).try_insert(ChildOf(parent));
-        child_ofs_for_tiles.push((tile_ent, ChildOf(parent)));
-    }
+    let child_ofs_for_tiles: Vec<(Entity, ChildOf)> = query
+        .iter()
+        .map(|tile_ent| (tile_ent, ChildOf(parent)))
+        .collect();
 
     cmd.try_insert_batch(child_ofs_for_tiles);
 }
 
-
-
-
-#[allow(unused_parens)]
-pub fn despawn_orphan_tilemaps(mut cmd: Commands, 
-    mut query: Query<(Entity, ), (Without<ChildOf>, With<TilemapGridSize>)>,
-) {
-    for (tilemap_ent, ) in query.iter_mut() {
-        info!("Despawning orphan tilemap entity {:?}", tilemap_ent);
-        cmd.entity(tilemap_ent).try_despawn();
-    }
-}

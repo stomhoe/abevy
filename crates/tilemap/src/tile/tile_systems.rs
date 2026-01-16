@@ -8,38 +8,40 @@ use common::common_components::DisabledOrNot;
 use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
-use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos, HashablePosVec, PrevGlobalTilePos, OplistSize};
+use tilemap_shared::{GlobalGenSettings, GlobalTilePos, HashablePosVec, PrevGlobalTilePos, OplistSize};
 use crate::{ chunking_components::ChunkTmapsMap, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos}, };
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
-    settings: Single<&AcGlobalGenSettings>,
+    settings: Single<&GlobalGenSettings>,
     mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>, &InitialPos, ), 
     (Changed<InitialPos>, With<FlipHorizontallyBasedOnHash>, DisabledOrNot, Without<EntityZero>, )>,
     mut sprites_query: Query<(&mut Sprite), (Or<(With<Disabled>, Without<Disabled>,)>,  Without<InitialPos>, )>,
 ) {
-    for ((tile_flip, sprite, held_sprites, children), initial_pos) in query.iter_mut() {
-        if let Some(mut flip) = tile_flip{
-            flip.x = initial_pos.0.hash_true_false(&settings, 0);
+    query.iter_mut().for_each(|((tile_flip, sprite, held_sprites, children), initial_pos)| {
+        let should_flip = initial_pos.0.hash_true_false(&settings, 0);
+        
+        if let Some(mut flip) = tile_flip {
+            flip.x = should_flip;
         }
         if let Some(mut sprite) = sprite {
-            sprite.flip_x = initial_pos.0.hash_true_false(&settings, 0);
+            sprite.flip_x = should_flip;
         }
         if let Some(held_sprites) = held_sprites {
-            for &sprite in held_sprites.entities() {
-                if let Ok((mut sprite)) = sprites_query.get_mut(sprite) {
-                    sprite.flip_x = initial_pos.0.hash_true_false(&settings, 0);
+            held_sprites.entities().iter().for_each(|&sprite_entity| {
+                if let Ok(mut sprite) = sprites_query.get_mut(sprite_entity) {
+                    sprite.flip_x = should_flip;
                 }
-            }
+            });
         }
         if let Some(children) = children {
-            for child in children.iter() {
-                if let Ok((mut sprite)) = sprites_query.get_mut(child) {
-                    sprite.flip_x = initial_pos.0.hash_true_false(&settings, 0);
+            children.iter().for_each(|child| {
+                if let Ok(mut sprite) = sprites_query.get_mut(child) {
+                    sprite.flip_x = should_flip;
                 }
-            }
+            });
         }
-    }
+    });
 }
 #[allow(unused_parens)]
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
@@ -49,14 +51,13 @@ pub fn spritetile_readjust_transform_to_match_globalpos(
     (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, 
     Or<(Without<Disabled>, With<Disabled>, )>, Without<EntityZero>
 )>,
-    //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
-    ezero_query: Query<&Transform, (With<EntityZero>, Without<GlobalTilePos>, DisabledOrNot,)>,
-    parent_query: Query<(&GlobalTransform, ), ()>,
-    state: Res<State<ClientState>>,
+//NO JUNTAR LOS ORS, NO ES EQUIVALENTE
+ezero_query: Query<&Transform, (With<EntityZero>, Without<GlobalTilePos>, DisabledOrNot,)>,
+parent_query: Query<(&GlobalTransform, ), ()>,
+state: Res<State<ClientState>>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
     let is_host = *state.get() == ClientState::Disconnected;
-
-    for (ent, mut transform, global_pos, visibility, child_of, ezero_ref, replicated, keep_disabled) in query.iter_mut() {
+    query.iter_mut().for_each(|(ent, mut transform, global_pos, visibility, child_of, ezero_ref, replicated, keep_disabled)| {
         let transl_from_global_pos = global_pos.to_translation(transform.translation.z);
         let ezero_translation = match ezero_query.get(ezero_ref.0) {
             Ok(transform) => transform.translation,
@@ -74,18 +75,17 @@ pub fn spritetile_readjust_transform_to_match_globalpos(
         } else {
             Vec3::ZERO
         };
-        if is_host || !replicated {// otherwise you get replicated transform if you are a client
+        if is_host || !replicated {
             transform.translation = transl_from_global_pos - parent_global_transl + ezero_translation;
         }
         if false == keep_disabled {
             cmd.entity(ent).try_remove::<(Disabled, )>();
         }
-        if let Some(visibility) = visibility {// DON'T REMOVE
+        if let Some(visibility) = visibility {
             *visibility.into_inner() = visibility.clone();
         }
-    }
+    });
 }
-
 
 #[allow(unused_parens)]
 pub fn emit_global_tile_pos_change(
@@ -119,16 +119,16 @@ pub fn add_spawned_tiles_to_gpos_map(
             }
         }
     }
-    for (ent, dimension_ref, gpos, oplist_size) in query.iter() {
+    query.iter().for_each(|(ent, dimension_ref, gpos, oplist_size)| {
         if !map.0.entry((*dimension_ref, *gpos)).or_default().contains(&ent) {
             map.0.entry((*dimension_ref, *gpos)).or_default().push(ent);
             trace!(target: "add2gposmap", "Added tile entity {:?} at gpos {:?} in dimension {:?}", ent, gpos, dimension_ref);
             if let Some(oplist_size) = oplist_size {
                 //TODO llenar todas las posiciones que ocupe la tile
-    
+                
             }
         }
-    }
+    });
 }
 
 pub fn remove_tile_from_gpos_map(
@@ -171,12 +171,12 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
     map: Res<TilesAtGpos>,
 ) {// poner el contenido de esto en process_tiles_pre? asi se intercepta a tiempo
     for (newtile_ent, &dim, &gpos, newtile_delete_others_excp, ezero_ref, ) in changed_query.iter() {
-
+        
         let Ok(new_tile_z) = acz_query.get(ezero_ref.0) else {
             warn!(target: "tilemap", "Failed to get AcZ for tile entity {:?}, skipping despawn check", newtile_ent);
             continue ;
         };
-
+        
         if let Some(otile_ents) = map.0.get(&(dim, gpos)) {
             for &otile_ent in otile_ents.iter() {
                 if otile_ent == newtile_ent {
@@ -191,6 +191,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                     continue ;
                 };
                 if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
+                    cmd.entity(newtile_ent).try_remove::<(Disabled, )>();
                     if newtile_delete_others_excp.0.contains(otile_z) {
                         continue;
                     } else {
@@ -199,7 +200,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                         continue;
                     }
                 }
-
+                
                 if let Some(otile_delete_others_excp) = otile_delete_others_excp {
                     if otile_delete_others_excp.0.contains(new_tile_z) {
                         continue;

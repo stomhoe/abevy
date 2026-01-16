@@ -23,13 +23,13 @@ pub struct AaChunkRangeSettings {
 }
 impl Default for AaChunkRangeSettings {
     fn default() -> Self {
-        DEBUG_CHUNK_RANGE_SETTINGS
+        EXTRA_RANGE_SETTINGS
     }
 }
 
 impl AaChunkRangeSettings {
-    pub fn approximate_number_of_tiles(&self) -> usize {
-        let ret = self.approximate_number_of_chunks(1.) * ChunkPos::CHUNK_SIZE.element_product() as usize;
+    pub fn approximate_number_of_tiles(&self, chunk_count: usize) -> usize {
+        let ret = chunk_count * ChunkPos::CHUNK_SIZE.element_product() as usize;
         //info!("Approximate number of tiles per chunk range settings: {}", ret);
         ret
     }
@@ -70,5 +70,11 @@ pub const NORMAL_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettin
 pub const EXTRA_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
     chunk_visib_max_dist: 14000.0,
     chunk_active_max_dist: 14000.0,
+    discovery_range: 8,
+};
+
+pub const REGION_SIZE_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
+    chunk_visib_max_dist: 5000.0,
+    chunk_active_max_dist: 5000.0,
     discovery_range: 8,
 };

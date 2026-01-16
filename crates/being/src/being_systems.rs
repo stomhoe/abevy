@@ -33,9 +33,9 @@ pub fn add_beings_to_holder(mut cmd: Commands,
 
     query: Query<(Entity, ),(With<Being>, Without<EguiBeingHolderReference>, DisabledOrNot)>,
 ) {
-    for (ent, ) in query.iter() {
+    query.iter().for_each(|(ent, )| {
         cmd.entity(ent).try_insert(EguiBeingHolderReference(holder.0));
-    }
+    });
 
 }
 

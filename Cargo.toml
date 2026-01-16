@@ -62,6 +62,7 @@ multiplayer_shared = { path = "crates/multiplayer_shared" }
 common = { path = "crates/acommon" }
 asset_loading = { path = "crates/asset_loading" }
 game_common = { path = "crates/agame_common" }
+color_sample = { path = "crates/color_sample" }
 host = { path = "crates/host" }
 client = { path = "crates/client" }
 game = { path = "crates/game" }

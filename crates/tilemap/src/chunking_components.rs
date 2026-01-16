@@ -41,7 +41,10 @@ impl TilesToSave { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 pub struct TerrGenOpsLaunched;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct StructureSpawningDone;
+pub struct StructureSpawnDone;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct TerrgenDisallowed;
 
 use crate::tilemap_systems::{MapKey, MapStruct};
 

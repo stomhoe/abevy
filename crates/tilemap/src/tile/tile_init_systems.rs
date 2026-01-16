@@ -3,9 +3,10 @@ use bevy::{asset, ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+use color_sample::{color_sample_components::ColorSamplerRef, color_sample_resources::ColorWeightedSamplersMap};
 use common::common_components::*;
 use ::dimension_shared::*;
-use ::game_common::{color_sampler_resources::*, game_common_components::*, game_common_components_samplers::*, *};
+use ::game_common::{game_common_components::*, game_common_components_samplers::*, *};
 use bevy_ecs_tilemap::tiles::TilePos;
 use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
@@ -35,15 +36,15 @@ pub fn init_tiles(
 
     let mut res_tile_cats = TileCategories::default();
 
-    for handle in seris_handles.handles.iter() {
-        //info!("Loading TileSeri from handle: {:?}", handle);
-        let Some(seri) = assets.get_mut(handle) else { continue; };
+
+    seris_handles.handles.iter().for_each(|handle| {
+        let Some(seri) = assets.get_mut(handle) else { return; };
 
         let str_id = match TileStrId::new_with_result(seri.id.clone(), Tile::MIN_ID_LENGTH) {
             Ok(id) => id,
             Err(err) => {
                 error!("Failed to create TileStrId for tile '{}': {}", seri.id, err);
-                continue;
+                return;
             }
         };
         let my_z = AcZ(seri.z);
@@ -54,7 +55,6 @@ pub fn init_tiles(
             EntityZero,
             ChildOf(holder),
         )).id();
-
 
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
         let color = Color::srgba_u8(r, g, b, a);
@@ -86,8 +86,7 @@ pub fn init_tiles(
         if let Some(portal) = &mut seri.portal { 
             cmd.entity(tile_enti).insert((take(portal), ChildOf(egui_portal_holder))); 
         }
-        if seri.sprite != Some(true) {//todo hacer q se puedan persistir tilemap tiles
-            
+        if seri.sprite != Some(true) {
             cmd.entity(tile_enti).insert(TileImagePaths(take(&mut seri.img_paths)));
 
             if let Some(shader_str) = &seri.shader {
@@ -106,18 +105,17 @@ pub fn init_tiles(
             }
 
             cmd.entity(tile_enti).insert_if_new((TileColor::from(color), ));
-        }
-        else{// sprite tile
-             cmd.entity(tile_enti).insert((
+        } else {
+            cmd.entity(tile_enti).insert((
                 Transform::default(),
                 Visibility::default(),
             ));
             let mut sprite_cfgs = Vec::new();
             for (key, path) in seri.img_paths.iter_mut() {
                 let path_holder = ImagePathHolder::new(take(path));
-                if  (path.trim().is_empty() || path_holder.is_err()) && !key.trim().is_empty() {
+                if (path.trim().is_empty() || path_holder.is_err()) && !key.trim().is_empty() {
                     sprite_cfgs.push(take(key));
-                } else{
+                } else {
                     let path_holder = path_holder.unwrap();
 
                     let child_sprite = cmd.spawn((
@@ -143,12 +141,12 @@ pub fn init_tiles(
             }
         }
         if let Some(cats) = &seri.cats {
-            for cat in cats.iter() {
-                if cat.trim().is_empty() { continue; }
+            cats.iter().for_each(|cat| {
+                if cat.trim().is_empty() { return; }
                 res_tile_cats.0.entry(Tag::new_truncated(cat)).or_default().insert(tile_enti);
-            }
+            });
         }
-    }
+    });
     cmd.insert_resource(res_tile_cats);
 }
 
@@ -163,7 +161,7 @@ pub fn add_tiles_to_map(
                 error!(target:"tile_init","{} {} already in TilingEntityMap : {}", prefix, str_id, err);
                 cmd.entity(ent).try_despawn();
             } else {
-                info!(target:"tile_init","Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
+                trace!(target:"tile_init","Inserted tile '{}' into TilingEntityMap with entity {:?}", str_id, ent);
             }
         }
     }
@@ -468,24 +466,18 @@ pub fn make_child_of_chunk(mut cmd: Commands,
     loaded_chunks: Res<LoadedChunks>,
 ) {
     let mut child_ofs = Vec::new();
-    for (ent, &global_pos, &dim_ref, to_persist) in query.iter() {
-
+    query.iter().for_each(|(ent, &global_pos, &dim_ref, to_persist)| {
         let chunk_pos: ChunkPos = global_pos.into();
         
         if to_persist {
             child_ofs.push((ent, ChildOf(dim_ref.0)));
-            continue;
-        }
-        else{
-            let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) 
-            else {
+        } else {
+            let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) else {
                 cmd.entity(ent).try_despawn();
-                continue;
+                return;
             };
-    
             child_ofs.push((ent, ChildOf(chunk)));
         }
-
-    }
+    });
     cmd.try_insert_batch(child_ofs);
 }

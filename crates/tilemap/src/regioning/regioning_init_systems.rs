@@ -5,7 +5,7 @@ use common::common_components::{StrId, StrId20B};
 use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
 ;
 use game_common::{game_common_components::{HashedTagsVec, TagHashSet}, game_common_components_samplers::EntityWeightedSampler};
-use tilemap_shared::{AcGlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec, PoissonDisk, RegionPos};
+use tilemap_shared::{GlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec, PoissonDisk, RegionPos};
 
 use crate::{regioning::{regioning_components::{StructuredGenConfig, StructuredGenCfgsWeightedMap, WhitelistedFilterOf}, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
 

@@ -13,8 +13,7 @@ use ::tilemap_shared::*;
 #[allow(unused_parens)]
 pub fn spawn_terrain_operations (
     mut commands: Commands, 
-    res_chunk: Res<AaChunkRangeSettings>,
-    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>)>, 
+    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<StructureSpawnDone>)>, 
     dimension_query: Query<(&DimensionRootOplist, &HashId), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut ew_pending_ops: MessageWriter<PendingOp>,
@@ -22,17 +21,16 @@ pub fn spawn_terrain_operations (
 ) -> Result {
     if chunks_query.is_empty() { return Ok(()); }
 
-    let chunk_area = res_chunk.approximate_number_of_tiles() * 4;
-    let mut batch = Vec::with_capacity(chunk_area * 4);
-    'chunk_for: for (chunk_ent, chunk_pos, &dim_ref) in chunks_query.iter() {
-
+    let chunk_area = chunks_query.iter().len() * ChunkPos::CHUNK_SIZE.element_product() as usize * 4;
+    let mut batch = Vec::with_capacity(chunk_area);
+    chunks_query.iter().for_each(|(chunk_ent, chunk_pos, &dim_ref)| {
         let Ok((dim_root_op_list, hash_id)) = dimension_query.get(dim_ref.0) else {
             error!("No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
-            continue;
+            return;
         };
         let Ok((oplist, oplist_size)) = oplists.get(dim_root_op_list.0) else {
             error!("Dimension references non-existent root operation list {:?}", dim_root_op_list);
-            continue;
+            return;
         };
         for x in 0..ChunkPos::CHUNK_SIZE.x / oplist_size.x() {
             for y in 0..ChunkPos::CHUNK_SIZE.y / oplist_size.y() {
@@ -47,7 +45,7 @@ pub fn spawn_terrain_operations (
                     oplist_size
                 );
                 if commands.get_entity(chunk_ent).is_err() {
-                    continue 'chunk_for;
+                    return;
                 }
                 batch.push(PendingOp {
                     oplist, dim_ref, gpos, dimension_hash_id: hash_id.into_i32(), 
@@ -55,11 +53,9 @@ pub fn spawn_terrain_operations (
                 });
             }
         }
-        if commands.get_entity(chunk_ent).is_err() {continue 'chunk_for;}
-
+        if commands.get_entity(chunk_ent).is_err() { return; }
         commands.entity(chunk_ent).try_insert(TerrGenOpsLaunched);
-
-    }
+    });   
     ew_pending_ops.write_batch(batch);
     Ok(())
 }
@@ -67,7 +63,7 @@ pub fn spawn_terrain_operations (
 /// input: PendingOp messages. output: PendingOp messages (for bifurcations), SuitablePosFound messages
 pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, 
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
-    gen_settings: Single<&AcGlobalGenSettings>,
+    gen_settings: Single<&GlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ( )>,
     fnl_noises: Query<&FnlNoiseComp,>,
     op_filters: Query<&OpFilter,>,
@@ -80,7 +76,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     let mut new_pending_ops_events = Vec::with_capacity(pending_ops_events.len());
     let mut sampled_value_events = Vec::new();
 
-    'eventfor: for mut ev in pending_ops_events.drain() {unsafe{
+    for mut ev in pending_ops_events.drain() {unsafe{
    
         let Ok((oplist, &my_oplist_size, oplist_tags)) = oplist_query.get(ev.oplist)
         else {
@@ -89,7 +85,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
         };
         let global_pos = ev.gpos;
         
-        'opsfor: for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
+        oplist.trunk.iter().enumerate().for_each(|(op_i, (operation, operands, stackarr_out_i))| {
             let mut operation_acc_val: f32 = 0.0;
             let mut selected_operand_i = 0; 
 
@@ -100,7 +96,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     OperandElement::NoiseEntity(ent, sample_range, compl, operand_seed) => {
                         let Ok(noise) = fnl_noises.get(*ent) else {
                             error!("Noise entity {} not found", ent);
-                            continue;
+                            return;
                         };
                         noise.sample(global_pos, *sample_range, *compl, *operand_seed + ev.dimension_hash_id, &gen_settings)   
                     },
@@ -129,7 +125,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     (Operation::Linear, 3.., _) => {operation_acc_val *= curr_operand_val; trace!("res: {}", operation_acc_val); },
                     (Operation::MultiplyNormalized, 1.., _) => operation_acc_val *= (curr_operand_val - 0.5) * 2.,
                     (Operation::MultiplyNormalizedAbs, 1.., _) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
-                    (Operation::Abs, _, _) => {operation_acc_val = operation_acc_val.abs(); break;},
+                    (Operation::Abs, _, _) => {operation_acc_val = operation_acc_val.abs(); return;},
                     (Operation::i_Max, 0, _) => { operation_acc_val = curr_operand_val; }
                     (Operation::i_Max, _, false) => {if curr_operand_val > operation_acc_val 
                         { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}
@@ -144,7 +140,6 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     (Operation::Clamp, 1, false) => {operation_acc_val = curr_operand_val.max(operation_acc_val);},
                     (Operation::Clamp, 1, true) => {operation_acc_val = curr_operand_val.max(operation_acc_val).min(1.0);},
                     (Operation::Clamp, 2.., _) => {operation_acc_val = curr_operand_val.min(operation_acc_val);},
-       
                     (_, 0, _) => {operation_acc_val = curr_operand_val;},
                 }
 
@@ -161,7 +156,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                 if let Ok(ref mut filter) = op_filters.get(ev.filtered_op) {
 
                     let Some(oplist_tags) = oplist_tags else {
-                        continue 'opsfor;
+                        return;
                     };
                     let filter_tags = &filter.tags;
                     
@@ -179,22 +174,25 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                                 found_pos: ev.gpos,
                             });
                         }
-                        continue 'eventfor;
+                        return;
                     } 
                 }
                 else{
                     trace!(target: "terrgen_process", "Failed to get OpFilter of entity {:?}", ev.filtered_op);
-                    continue 'eventfor;
+                    return;
                 }
             }
-        }
-        let destination_i = (ev.variables[0] as usize).min(oplist.bifurcations.len() - 1).max(0);
+        });
+
+        let destination_i = (ev.variables[0] as usize).min(oplist.bifurcations.len() - 1).max(0);   
         trace!("Destination index for bifurcation: {}", destination_i);
 
         let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
         
-        if let Some(oplist) = bifurcation.oplist {
-            spawn_bifurcation_oplists(&mut ev, &oplist_query, &mut new_pending_ops_events, oplist, my_oplist_size);
+        if let Some(child_oplist) = bifurcation.oplist {
+            let (_, &child_oplist_size, _) = oplist_query.get(child_oplist).debug_expect_unchecked("OplistSize not found");
+
+            spawn_bifurcation_oplists(&mut ev, my_oplist_size, &mut new_pending_ops_events, child_oplist, child_oplist_size);
         }
 
         if bifurcation.tiles.len() > 0 && ev.filtered_op == Entity::PLACEHOLDER {
@@ -206,25 +204,28 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
 }
 
 fn spawn_bifurcation_oplists(
-    ev: &mut PendingOp, oplist_query: &Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ()>,
-    new_pending_ops: &mut Vec<PendingOp>, oplist: Entity, my_oplist_size: OplistSize,
-) {unsafe{
-    let (_, &child_oplist_size, _) = oplist_query.get(oplist).debug_expect_unchecked("OplistSize not found");
-
-    if my_oplist_size != child_oplist_size
-    && (ev.gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO)
-    && ev.filtered_op == Entity::PLACEHOLDER
+    ev: &mut PendingOp, my_oplist_size: OplistSize, 
+    new_pending_ops: &mut Vec<PendingOp>, child_oplist: Entity, child_oplist_size: OplistSize,
+) {
+    if my_oplist_size <= child_oplist_size
     {
-        let x_end = child_oplist_size.x() as i32; let y_end = child_oplist_size.y() as i32;
+        if ev.gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO
+        {
+            new_pending_ops.push(PendingOp{ oplist: child_oplist, ..(*ev).clone()  });
+        }
+    } 
+    else{
+        let x_end = my_oplist_size.x() as i32 / child_oplist_size.x() as i32; 
+        let y_end = my_oplist_size.y() as i32 / child_oplist_size.y() as i32;
         for x in 0..x_end {
             for y in 0..y_end {
-                let pos = ev.gpos + GlobalTilePos::new(x, y);
+                let gpos = ev.gpos + GlobalTilePos::new(x, y);
 
-                new_pending_ops.push(PendingOp{ oplist, gpos: pos, ..(*ev).clone()  });
+                new_pending_ops.push(PendingOp{ gpos, oplist: child_oplist, ..(*ev).clone()  });
             }
         }
-    } else {new_pending_ops.push(PendingOp{ oplist, ..(*ev).clone() });}
-}}
+    }
+}
 
 
 

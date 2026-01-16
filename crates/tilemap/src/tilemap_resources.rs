@@ -1,21 +1,13 @@
-use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
-use bevy_asset_loader::asset_collection::AssetCollection;
+use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::*;
-use bevy_replicon::prelude::*;
-use common::common_types::HashIdToEntityMap;
-use sprite_shared::AcZ;
 
-use crate::{terrain_gen::terrgen_messages::PendingOp, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, }};
+use crate::{terrain_gen::terrgen_messages::PendingOp, };
 use dimension_shared::{DimensionRef, PrevDimensionRef};
 use crate::tile::tile_components::*;
 
-use bevy::{ecs::{entity::MapEntities, }, prelude::*};
 use ::tilemap_shared::*;
-use std::mem::take;
 use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
-use std::hash::Hash;
 
-use serde::{Deserialize, Serialize};
 
 
 
@@ -92,7 +84,7 @@ impl MassCollectedTiles {
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
         weight_maps: &Query<(&EntityWeightedSampler,), ()>,
-        gen_settings: &AcGlobalGenSettings,
+        gen_settings: &GlobalGenSettings,
         depth: u32
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
@@ -110,7 +102,7 @@ impl MassCollectedTiles {
     ///used by terrain gen
     pub fn collect_tiles(&mut self, 
         cmd: &mut Commands,
-        bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &AcGlobalGenSettings,
+        bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &GlobalGenSettings,
     )  {
         for tile in bif_tiles.iter().cloned() {
             self.collect_tiles_rec(cmd, tile, ev.gpos, ev.dim_ref, oplist_size, weight_maps, gen_settings, 0);

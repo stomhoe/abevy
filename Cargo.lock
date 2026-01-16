@@ -293,6 +293,7 @@ dependencies = [
  "bit-vec 0.8.0",
  "camera",
  "client",
+ "color_sample",
  "common",
  "dimension",
  "faction",
@@ -365,6 +366,7 @@ dependencies = [
  "bevy_replicon_renet",
  "bevy_simple_subsecond_system",
  "bevy_spritesheet_animation",
+ "color_sample",
  "common",
  "dimension",
  "dimension_shared",
@@ -3406,6 +3408,33 @@ dependencies = [
  "serde",
  "termcolor",
  "unicode-width",
+]
+
+[[package]]
+name = "color_sample"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.17.3",
+ "bevy-inspector-egui",
+ "bevy_asset_loader",
+ "bevy_common_assets",
+ "bevy_ecs_tilemap",
+ "bevy_replicon",
+ "common",
+ "delegate",
+ "game_common",
+ "indexmap",
+ "nano-id",
+ "rand 0.9.2",
+ "rand_distr 0.5.1",
+ "rand_pcg",
+ "rand_seeder",
+ "serde",
+ "strum 0.27.2",
+ "strum_macros 0.27.2",
+ "tilemap_shared",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -7511,6 +7540,7 @@ dependencies = [
  "bevy_simple_subsecond_system",
  "bit-vec 0.8.0",
  "camera",
+ "color_sample",
  "common",
  "debug_unwraps",
  "delegate",
@@ -7545,6 +7575,7 @@ dependencies = [
  "bevy_ecs_tilemap",
  "bevy_replicon",
  "bevy_replicon_renet",
+ "common",
  "delegate",
  "indexmap",
  "noiz",

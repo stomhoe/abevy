@@ -40,7 +40,7 @@ pub fn plugin(app: &mut App) {
             ).in_set(TerrainGenSystems)
         )
 
-        .register_type::<AcGlobalGenSettings>()
+        .register_type::<GlobalGenSettings>()
         .init_resource::<RegisteredPositions>()
         
 
@@ -76,7 +76,7 @@ pub fn plugin(app: &mut App) {
         .replicate_filtered::<OplistSize, With<OperationList>>()
         
         .replicate::<NoiseHolder>()
-        .replicate::<AcGlobalGenSettings>()
+        .replicate::<GlobalGenSettings>()
 
         .add_message::<PendingOp>()
         .add_message::<TerrainProbe>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()

@@ -1,9 +1,10 @@
 use bevy::ecs::entity_disabling::Disabled;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
+use color_sample::ColorSampleSystems;
 use common::common_states::{AssetLoading, };
 use bevy_ecs_tilemap::prelude::*;
-use game_common::{ColorSamplersInitSystems, game_common_components::{EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::{EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
 use sprite::AcSpriteSystems;
 use tilemap_shared::{GlobalTilePos, OplistSize};
 
@@ -11,7 +12,7 @@ use tilemap_shared::{GlobalTilePos, OplistSize};
 
 use crate::{tile::{
     tile_components::*, tile_init_systems::*, tile_materials::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_systems::*
-}, tilemap_systems::process_tiles_pre};
+}, };
 mod tile_systems;
 mod tile_init_systems;
 mod tile_sampler_init_systems;
@@ -36,7 +37,7 @@ pub fn plugin(app: &mut App) {
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
         (add_tiles_to_map, client_sync_tile, ).run_if(in_state(ClientState::Connected)),
         flip_tile_horizontally_based_on_initial_pos_hash,
-        despawn_if_not_excepted.before(process_tiles_pre),
+        despawn_if_not_excepted,
         (add_spawned_tiles_to_gpos_map, ),
         (spritetile_readjust_transform_to_match_globalpos).chain(),
         make_child_of_chunk,
@@ -60,7 +61,7 @@ pub fn plugin(app: &mut App) {
         .chain().in_set(TilingSystems))
         
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), 
-        (ColorSamplersInitSystems.before(TilingSystems), 
+        (ColorSampleSystems.before(TilingSystems), 
         AcSpriteSystems.before(TilingSystems),
         TilingSystems.run_if(in_state(ClientState::Disconnected)),
         

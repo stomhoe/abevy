@@ -36,6 +36,6 @@
         ("", ["tempveg_sampler", ""]),
     ],
     root_in_dimensions: [""],
-    size: Some((1, 1)),
+    size: Some((3, 3)),
 
 )

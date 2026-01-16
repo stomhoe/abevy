@@ -5,7 +5,7 @@ use camera::camera_components::CameraTarget;
 use common::common_components::{StrId, StrId20B};
 use dimension_shared::DimensionRef
 ;
-use tilemap_shared::{ChunkPos, GlobalTilePos};
+use tilemap_shared::{ChunkPos, GlobalTilePos, HashablePosVec};
 
 use crate::{chunking_components::*, chunking_resources::*, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}, tile::tile_messages::SavedTileHadChunkDespawn};
 
@@ -70,8 +70,8 @@ pub fn visit_chunks_around_activators(
             }
         }
     }
-    cmd.try_insert_batch(comps_for_chunk_ents);
     cmd.try_insert_batch(comps_for_region_ents);
+    cmd.try_insert_batch(comps_for_chunk_ents);
 }
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(

@@ -3,8 +3,11 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tilemap_shared::{AcGlobalGenSettings, GlobalTilePos, HashablePosVec};
 #[allow(unused_imports)] use bevy::prelude::*;
+
+
+use::tilemap_shared::*;
+
 #[macro_export]
 macro_rules! define_weightedsampler_impl {
     ($ty:ident, $inner:ty) => {
@@ -58,7 +61,7 @@ macro_rules! define_weightedsampler_impl {
                     Ok(idx) | Err(idx) => Some(idx),
                 }
             }
-            pub fn sample_with_pos(&self, settings: &AcGlobalGenSettings, pos: GlobalTilePos) -> Option<$inner> {
+            pub fn sample_with_pos(&self, settings: &GlobalGenSettings, pos: GlobalTilePos) -> Option<$inner> {
                 let hash_used_to_sample = pos.hash_for_weight_maps(settings);
                 let rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
                 self.sample_index(rng_val)
@@ -124,9 +127,7 @@ macro_rules! define_weightedsampler {
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
 pub struct WeightedSamplerRef(#[entities] pub Entity);
 
-define_weightedsampler!(ColorSampler, [u8; 4], "ColorWeightedSampler");
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
-pub struct ColorSamplerRef(#[entities] pub Entity);
+
 
 
 

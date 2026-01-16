@@ -13,6 +13,7 @@ sprite = { path = "../sprite" }
 dimension = { path = "../dimension" }
 dimension_shared = { path = "../dimension_shared" }
 being = { path = "../being" }
+color_sample = { path = "../color_sample" }
 
 
 bevy = { workspace = true }

@@ -3,7 +3,7 @@ use bevy_replicon::prelude::Replicated;
 use game_common::game_common_components::{Direction, EntityZeroRef};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet, MapEntities}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet, hash_map::Entry}, prelude::*};
-use tilemap_shared::{ChunkPos, GlobalTilePos, REGION_SIZE_IN_CHUNKS, RegionPos};
+use tilemap_shared::{ChunkPos, GlobalTilePos, HashablePosVec, REGION_SIZE_IN_CHUNKS, RegionPos};
 
 use crate::{chunking_components::Chunk, chunking_resources::AaChunkRangeSettings, regioning::regioning_messages::ClaimedChunks, tile::tile_components::*};
 
@@ -11,7 +11,7 @@ use crate::{chunking_components::Chunk, chunking_resources::AaChunkRangeSettings
 use common::{common_components::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(SessionScoped, TgenHotLoadingScoped, RegionStructures, RegionPlannedTiles )]
+#[require(SessionScoped, TgenHotLoadingScoped, RegionStructures, RegionPlannedTiles, Visibility, Transform )]
 pub struct Region;
 
 #[derive(Component, Debug, Reflect)]
@@ -74,26 +74,28 @@ pub enum ChunkOccupyError {
 }
 
 impl StrGenGrid {
-    pub fn is_occupied(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
+    #[inline]
+    fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError> {
         let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
-        let x = local_chunk_pos.0.x as usize;
-        let y = local_chunk_pos.0.y as usize;
-        self.occupied_chunks_grid[y][x].is_some()
+        match (local_chunk_pos.0.x < 0, local_chunk_pos.0.x >= REGION_SIZE_IN_CHUNKS.x(), local_chunk_pos.0.y < 0, local_chunk_pos.0.y >= REGION_SIZE_IN_CHUNKS.y()) {
+            (true, _, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::West)),
+            (_, true, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::East)),
+            (_, _, true, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::South)),
+            (_, _, _, true) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::North)),
+            _ => Ok((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize)),
+        }
+    }
+
+    pub fn is_occupied(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
+        self.get_local_pos(global_chunk_pos, region_pos)
+            .map(|(x, y)| self.occupied_chunks_grid[y][x].is_some())
+            .unwrap_or(false)
     }
     pub fn is_available(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
         !self.is_occupied(global_chunk_pos, region_pos)
     }
     pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, struct_gen_cfg_ent: Entity) -> Result<(), ChunkOccupyError> {
-        let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
-        let x = local_chunk_pos.0.x as usize;
-        let y = local_chunk_pos.0.y as usize;
-        match (local_chunk_pos.0.x < 0, local_chunk_pos.0.x >= REGION_SIZE_IN_CHUNKS.x(), local_chunk_pos.0.y < 0, local_chunk_pos.0.y >= REGION_SIZE_IN_CHUNKS.y()) {
-            (true, _, _, _) => return Err(ChunkOccupyError::OutOfRegionBounds(Direction::West)),
-            (_, true, _, _) => return Err(ChunkOccupyError::OutOfRegionBounds(Direction::East)),
-            (_, _, true, _) => return Err(ChunkOccupyError::OutOfRegionBounds(Direction::South)),
-            (_, _, _, true) => return Err(ChunkOccupyError::OutOfRegionBounds(Direction::North)),
-            _ => {}
-        }
+        let (x, y) = self.get_local_pos(global_chunk_pos, region_pos)?;
         
         match self.occupied_chunks_grid[y][x] {
             None => {
@@ -105,12 +107,11 @@ impl StrGenGrid {
         }
     }
     pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos) {
-        let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
-        let x = local_chunk_pos.0.x as usize;
-        let y = local_chunk_pos.0.y as usize;
-        if self.occupied_chunks_grid[y][x].is_some() {
-            self.occupied_chunks_grid[y][x] = None;
-            self.occupied_chunks_count -= 1;
+        if let Ok((x, y)) = self.get_local_pos(global_chunk_pos, region_pos) {
+            if self.occupied_chunks_grid[y][x].is_some() {
+                self.occupied_chunks_grid[y][x] = None;
+                self.occupied_chunks_count -= 1;
+            }
         }
     }
     pub fn occupied_count(&self) -> u32 {
@@ -157,22 +158,17 @@ impl RegionPlannedTiles {
         self.chunks_pending_build.extend(chunk_positions.iter().copied());
     }
 
-    fn validate_chunk_pending(&self, chunk_pos: ChunkPos) -> Result<(), BevyError> {
+    pub fn add_planned_tiles(
+        &mut self,
+        chunk_pos: ChunkPos,
+        tile_data: TilesFromBuilder,
+    ) -> Result<bool, BevyError> {
         if !self.chunks_pending_build.contains(&chunk_pos) {
             return Err(BevyError::from(format!(
                 "ChunkPos {:?} is not pending a build order",
                 chunk_pos
             )));
         }
-        Ok(())
-    }
-
-    pub fn add_planned_tiles(
-        &mut self,
-        chunk_pos: ChunkPos,
-        tile_data: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>,
-    ) -> Result<bool, BevyError> {
-        self.validate_chunk_pending(chunk_pos)?;
 
         for (tile_pos, _, _) in &tile_data {
             chunk_pos.is_tilepos_within_chunk(*tile_pos)?;
@@ -186,7 +182,7 @@ impl RegionPlannedTiles {
     pub fn get(
         &self,
         chunk_pos: &ChunkPos,
-    ) -> Option<&Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOthersExceptZLevels>)>> {
+    ) -> Option<&TilesFromBuilder> {
         self.map.get(chunk_pos)
     }
 }

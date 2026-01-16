@@ -39,6 +39,7 @@ impl TilemapConfig {
                 render_chunk_size: ChunkPos::CHUNK_SIZE * 2 / oplist_size_val,
                 y_sort: false,
             },
+            transform: Transform::from_scale(Vec3::splat(TILEMAP_SCALE)),
             ..Default::default()
         }
     }

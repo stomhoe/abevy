@@ -3,7 +3,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use common::{common_components::{DisabledOrNot, ImagePathHolder}, common_states::*, common_types::*};
 use bevy_replicon::prelude::*;
 
-use crate::{color_sampler_systems::*, color_sampler_resources::WeightedColorsSeri, game_common_components::*, game_common_components_samplers::{ColorSampler, EntityWeightedSampler, WeightedSamplerRef}, game_common_states::*, game_common_systems::* };
+use crate::{game_common_components::*, game_common_components_samplers::*, game_common_states::*, game_common_systems::* };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct StatefulSessionSystems;
@@ -20,28 +20,18 @@ pub struct SimPausedSystems;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ModifierSystems;
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct ColorSamplersInitSystems;
-
 
 
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
 
     app
-    .add_plugins((
-        RonAssetPlugin::<WeightedColorsSeri>::new(&["wcolors.ron"]),
-
-    ))
+    
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (reset_states))
 
-    .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (init_color_samplers, ).chain().in_set(ColorSamplersInitSystems))
-
     .add_systems(Update, (
-        (apply_pos_sampled_color).in_set(StatefulSessionSystems),
         (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
-        apply_pos_sampled_color,
         clone_ezero_children_ents,
         disable_ezeros,
         delete_sprites_without_childof,
@@ -92,7 +82,6 @@ pub fn plugin(app: &mut App) {
     .register_type::<TagHashSet>()
     .register_type::<EntityZeroRef>()
     .register_type::<EntityWeightedSampler>()
-    .register_type::<ColorSampler>()
     
     .replicate::<VisibilityGameState>()    
     .replicate::<Persisted>()
@@ -100,7 +89,6 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<Direction>()
     .replicate::<Directionable>()
     .replicate::<EntityWeightedSampler>()
-    .replicate::<ColorSampler>()
     .replicate::<Description>()
     .replicate_once::<GlobalTransform>()
     .replicate::<TagHashSet>()

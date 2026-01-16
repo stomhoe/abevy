@@ -92,7 +92,7 @@ pub struct TileSerialization {
     pub spawns: Option<Vec<String>>,
     pub spawns_children: Option<Vec<String>>,
     pub randflipx: Option<bool>,
-    pub min_distances: Option<HashMap<String, u32>>,
+    pub min_distances: Option<HashMap<String, u64>>,
     pub portal: Option<PortalSeri>,
     pub offset: Option<(f32, f32)>,
 

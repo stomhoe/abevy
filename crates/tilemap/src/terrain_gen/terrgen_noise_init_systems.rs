@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use fnl::*;
 use common::common_components::{DisplayName, EntityPrefix, StrId};
-use tilemap_shared::AcGlobalGenSettings;
+use tilemap_shared::GlobalGenSettings;
 use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*};
 use std::mem::take;
 
@@ -17,7 +17,7 @@ pub fn init_noises(
     let mut terrgen_map = TerrGenEntityMap::default();
     let mut fnl_comps_to_insert = Vec::new();
     
-    cmd.spawn((AcGlobalGenSettings::default(), EntityPrefix::new_truncated("AA_GLOBAL_GEN_SETTINGS")));
+    cmd.spawn((GlobalGenSettings::default(), EntityPrefix::new_truncated("AA_GLOBAL_GEN_SETTINGS")));
     info!("Spawning Global Gen Settings entity");
 
     let holder = cmd.spawn((NoiseHolder,)).id();
