@@ -1,0 +1,11 @@
+(
+    id: "purple",
+    name: "Purple",
+    z: -900,
+    img_paths: [
+        ("", "texture/world/white.png"),
+    ],
+    sprite: Some(false),
+    randflipx: Some(false),
+    color: Some((128, 0, 128, 255)),
+)

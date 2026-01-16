@@ -110,12 +110,12 @@ pub fn clear_chunks_on_dim_change(
     mut ewriter: MessageWriter<CheckChunkDespawn>,
 ) {
     let mut check_if_despawn = Vec::new();
-    for (mut activate_chunks) in activator_query.iter_mut() { 
+    activator_query.iter_mut().for_each(|mut activate_chunks| { 
         for &entity in activate_chunks.0.iter() {
             check_if_despawn.push(CheckChunkDespawn(entity, 0));
         }
         activate_chunks.0.clear();
-    }
+    });
     ewriter.write_batch(check_if_despawn);
 }
 

@@ -19,12 +19,12 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         (
             (offer_chunks_of_new_region, read_chunk_claims_for_region_and_emit_build_orders,),
-            example_emit_claims_system, 
-            example_building_system.in_set(StructureBuildingSystems),
+            example_emit_chunk_claims_system, 
+            drunkwalk_building_system.in_set(StructureBuildingSystems),
             clonespawn_structure_tile_on_chunk_spawn,//tiene q hacerse despues de los building systems
             track_when_region_is_ready_for_spawning,
-            despawn_empty_regions,
-        ).in_set(RegioningSystems)
+        ).in_set(RegioningSystems),
+        despawn_empty_regions,
     ))
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (

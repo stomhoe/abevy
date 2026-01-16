@@ -125,7 +125,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     (Operation::Linear, 3.., _) => {operation_acc_val *= curr_operand_val; trace!("res: {}", operation_acc_val); },
                     (Operation::MultiplyNormalized, 1.., _) => operation_acc_val *= (curr_operand_val - 0.5) * 2.,
                     (Operation::MultiplyNormalizedAbs, 1.., _) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
-                    (Operation::Abs, _, _) => {operation_acc_val = operation_acc_val.abs(); return;},
+                    (Operation::Abs, _, _) => {operation_acc_val = operation_acc_val.abs();},
                     (Operation::i_Max, 0, _) => { operation_acc_val = curr_operand_val; }
                     (Operation::i_Max, _, false) => {if curr_operand_val > operation_acc_val 
                         { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; }}

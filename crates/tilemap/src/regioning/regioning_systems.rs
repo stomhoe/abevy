@@ -347,7 +347,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
 
 
 #[allow(unused_parens)]
-pub fn example_emit_claims_system(
+pub fn example_emit_chunk_claims_system(
     mut reader: MessageReader<OfferChunk>,
     mut writer: MessageWriter<ClaimedChunks>,
     structured_gens: Query<(&StructuredGenConfig,)>,
@@ -361,27 +361,51 @@ pub fn example_emit_claims_system(
             trace!(target: "structure_spawn", "StructuredGenConfig entity {:?} is not for ExampleStructure, skipping", claim_request.structured_gen_cfg_ent);
             continue;
         }
-        
-        let claimed = ClaimedChunks {
+
+        let center_chunk = claim_request.start_gpos;
+        let parity_seed = (center_chunk.x() as i64).abs() + (center_chunk.y() as i64).abs();
+        let side_length = 3 + (parity_seed % 2) as i32;
+        let half_spread = side_length / 2;
+        let start_offset = -half_spread;
+        let end_offset = start_offset + side_length - 1;
+        let region_pos = center_chunk.to_region_pos();
+
+        let mut chunk_positions = Vec::new();
+        for dy in start_offset..=end_offset {
+            for dx in start_offset..=end_offset {
+                let candidate = center_chunk + IVec2::new(dx, dy);
+                if region_pos.contains_chunkpos(candidate) {
+                    chunk_positions.push(candidate);
+                }
+            }
+        }
+
+        if chunk_positions.is_empty() {
+            warn!(target: "structure_spawn", "No eligible chunks around {:?} for ExampleStructure, skipping", center_chunk);
+            continue;
+        }
+        chunk_positions.sort_unstable_by_key(|chunk| (chunk.y(), chunk.x()));
+        let chunk_count = chunk_positions.len();
+        claims_to_emit.push(ClaimedChunks {
             i: claim_request.i,
             region_ent: claim_request.region_ent,
             structured_gen_cfg_ent: claim_request.structured_gen_cfg_ent,
-            chunks_gpos: vec![claim_request.start_gpos],
+            chunks_gpos: chunk_positions,
             partition_tolerant: false,
-        };
-        claims_to_emit.push(claimed);
-        trace!(target: "structure_spawn", "Emitting ClaimedChunks for ExampleStructure in region for chunk position {:?}", claim_request.start_gpos);
+        });
+        trace!(target: "structure_spawn", "Emitting ClaimedChunks for ExampleStructure covering {} chunks around {:?}", chunk_count, center_chunk);
     }
     writer.write_batch(claims_to_emit);
 }
 
 
 #[allow(unused_parens)]
-pub fn example_building_system(
+pub fn drunkwalk_building_system(
     mut reader: MessageReader<StructureBuildOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEzerosMap>,
+    settings: Single<&GlobalGenSettings>,
 ) {
     
     let mut compliances_to_emit = Vec::new();    
@@ -392,24 +416,132 @@ pub fn example_building_system(
         if structured_gen_cfg.structure_id != "ExampleStructure" {
             continue;
         }
-        
-        let tile_ezero_id = "cyan";
-        let Ok(ezero_ref) = ezeros_map.0.get(&tile_ezero_id)
-        else {
-            error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when spawning ExampleStructure, skipping structure spawn", tile_ezero_id);
-            continue;
+
+        let floor_tile_id = "cyan";
+        let floor_entity = match ezeros_map.0.get(&floor_tile_id) {
+            Ok(entity) => EntityZeroRef(entity),
+            Err(_) => {
+                error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when spawning ExampleStructure, skipping structure spawn", floor_tile_id);
+                continue;
+            }
         };
-        
-        let ezero_ref = EntityZeroRef(ezero_ref);
-        
-        
-        for &chunk_pos in &build_order.chunks_gpos {
-            
+
+        let wall_tile_id = "purple";
+        let wall_entity = match ezeros_map.0.get(&wall_tile_id) {
+            Ok(entity) => EntityZeroRef(entity),
+            Err(_) => {
+                error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when spawning ExampleStructure, skipping structure spawn", wall_tile_id);
+                continue;
+            }
+        };
+
+        let chunk_positions = &build_order.chunks_gpos;
+        if chunk_positions.is_empty() {
+            continue;
+        }
+
+        let min_chunk_x = chunk_positions.iter().map(|chunk| chunk.x()).min().unwrap();
+        let max_chunk_x = chunk_positions.iter().map(|chunk| chunk.x()).max().unwrap();
+        let min_chunk_y = chunk_positions.iter().map(|chunk| chunk.y()).min().unwrap();
+        let max_chunk_y = chunk_positions.iter().map(|chunk| chunk.y()).max().unwrap();
+
+        let chunk_width = (max_chunk_x - min_chunk_x + 1) as usize;
+        let chunk_height = (max_chunk_y - min_chunk_y + 1) as usize;
+        let tile_width = chunk_width * ChunkPos::CHUNK_SIZE.x as usize;
+        let tile_height = chunk_height * ChunkPos::CHUNK_SIZE.y as usize;
+        if tile_width == 0 || tile_height == 0 {
+            continue;
+        }
+
+        let origin_chunk = ChunkPos::new(min_chunk_x, min_chunk_y);
+        let origin_tile = origin_chunk.to_tilepos();
+
+        let tile_map_size = tile_width * tile_height;
+        let mut floor_map = vec![false; tile_map_size];
+        let mut seed = build_order.region_pos.hash_value(&settings, 0);
+        for chunk_pos in chunk_positions {
+            seed = chunk_pos.hash_value(&settings, seed);
+        }
+        let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
+
+        let mut walker_x = tile_width / 2;
+        let mut walker_y = tile_height / 2;
+        let target_floor_tiles = std::cmp::max(1, ((tile_map_size as f32) * 0.35).ceil() as usize);
+        let tile_width_minus_one = tile_width - 1;
+        let tile_height_minus_one = tile_height - 1;
+        let mut carved = 0;
+        while carved < target_floor_tiles {
+            let idx = walker_y * tile_width + walker_x;
+            if !floor_map[idx] {
+                floor_map[idx] = true;
+                carved += 1;
+            }
+            match rng.random_range(0..4) {
+                0 => {
+                    if walker_x < tile_width_minus_one {
+                        walker_x += 1;
+                    }
+                }
+                1 => {
+                    if walker_x > 0 {
+                        walker_x -= 1;
+                    }
+                }
+                2 => {
+                    if walker_y < tile_height_minus_one {
+                        walker_y += 1;
+                    }
+                }
+                _ => {
+                    if walker_y > 0 {
+                        walker_y -= 1;
+                    }
+                }
+            }
+        }
+
+        let room_attempts = std::cmp::max(1, tile_map_size / 250);
+        for _ in 0..room_attempts {
+            let center_x = rng.random_range(0..tile_width);
+            let center_y = rng.random_range(0..tile_height);
+            let radius = rng.random_range(1..=3) as i32;
+            for dy in -radius..=radius {
+                for dx in -radius..=radius {
+                    let rx = center_x as i32 + dx;
+                    let ry = center_y as i32 + dy;
+                    if rx < 0 || ry < 0 {
+                        continue;
+                    }
+                    let rx = rx as usize;
+                    let ry = ry as usize;
+                    if rx >= tile_width || ry >= tile_height {
+                        continue;
+                    }
+                    floor_map[ry * tile_width + rx] = true;
+                }
+            }
+        }
+
+        let delete_template = DeleteOthersExceptZLevels::default();
+        for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
-            //todo hacer que se haga después de q se spawneen las tiles de terrgen
-            for tpos in chunk_pos.get_tilepositions_within_chunk(OplistSize::default()){
-                tiles4chunk.push((tpos, ezero_ref, Some(DeleteOthersExceptZLevels::default())));
-                
+            for tile_pos in chunk_pos.get_tilepositions_within_chunk(OplistSize::default()) {
+                let local_tile = tile_pos.0 - origin_tile.0;
+                if local_tile.x < 0 || local_tile.y < 0 {
+                    continue;
+                }
+                let idx_x = local_tile.x as usize;
+                let idx_y = local_tile.y as usize;
+                if idx_x >= tile_width || idx_y >= tile_height {
+                    continue;
+                }
+                let map_idx = idx_y * tile_width + idx_x;
+                let ezero_ref = if floor_map[map_idx] {
+                    floor_entity
+                } else {
+                    wall_entity
+                };
+                tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
             }
             compliances_to_emit.push(StructureBuildCompliance {
                 structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
@@ -417,15 +549,12 @@ pub fn example_building_system(
                 chunk_pos,
                 tiles: tiles4chunk,
             });
-            debug!(target: "structure_spawn", "Spawned ExampleStructure in region at {:?} occupying chunks: {:?}",
-            build_order.region_pos, build_order.chunks_gpos);
         }
-        
+        debug!(target: "structure_spawn", "Spawned dungeon for ExampleStructure across {} chunks at {:?}", chunk_positions.len(), build_order.region_pos);
     }
     writer.write_batch(compliances_to_emit);
 }
 
-#[allow(unused_parens)]
 pub fn despawn_empty_regions(mut cmd: Commands, 
     query: Query<(Entity),(With<Region>, Without<ChunksActiveInRegion>)>
 ){

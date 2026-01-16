@@ -86,16 +86,16 @@ pub fn apply_pos_sampled_color(mut cmd: Commands,
     samplers: Query<&ColorSampler>,
     mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, AnyOf<(&mut Sprite, &mut TileColor)>), (Or<(Changed<ColorSamplerRef>, Added<Sprite> )>, )>,
 ) {
-    for (entity, color_sampler, global_tile_pos, (sprite, tile_color)) in query.iter_mut() {
-        if let Ok(sampler) = samplers.get(color_sampler.0) {
-            let color = sampler.sample_with_pos(&gen_settings, *global_tile_pos).unwrap_or([255, 255, 255, 255]);
-            let color: Color = Color::srgba_u8(color[0], color[1], color[2], color[3]);
-            if let Some(mut sprite) = sprite {
-                sprite.color = color;
-            } else if let Some(mut tile_color) = tile_color {
-                tile_color.0 = color;
-            }
+    query.iter_mut().for_each(|(entity, color_sampler, global_tile_pos, (sprite, tile_color))| {
+        let Ok(sampler) = samplers.get(color_sampler.0) 
+        else {return;};
+        let color = sampler.sample_with_pos(&gen_settings, *global_tile_pos).unwrap_or([255, 255, 255, 255]);
+        let color: Color = Color::srgba_u8(color[0], color[1], color[2], color[3]);
+        if let Some(mut sprite) = sprite {
+            sprite.color = color;
+        } else if let Some(mut tile_color) = tile_color {
+            tile_color.0 = color;
         }
         cmd.entity(entity).try_remove::<ColorSamplerRef>();
-    }
+    });
 }

@@ -17,7 +17,7 @@ pub struct GlobalGenSettings {
 impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self { 
-            seed: 0,
+            seed: 3,
             world_freq: 1e-2,
         }
     }
@@ -196,7 +196,7 @@ impl ChunkPos {
         let local_y = rng.random_range(0..REGION_SIZE_IN_CHUNKS.y());
         Self(region_pos.0 * REGION_SIZE_IN_CHUNKS.0 + IVec2::new(local_x, local_y))
     }
-    pub const CHUNK_SIZE: UVec2 = UVec2::splat(6);
+    pub const CHUNK_SIZE: UVec2 = UVec2::splat(60);//may change later
     
     pub fn to_pixelpos(&self) -> Vec2 {
         self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2() * Self::CHUNK_SIZE.as_vec2()

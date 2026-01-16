@@ -1,0 +1,2 @@
+implement dungeon generation within these two systems. in example_emit_chunk_claims_system you would first have to claim some chunks around the given starting chunk (may be a 3x3 rectangle or 4x4, vary side length if needed) so you have space to work with.     pub const CHUNK_SIZE: UVec2 is accesible within ChunkPos
+in example_building_system you would pick which tiles to spawn and where. tile positions must be within bounds of any claimed chunk. here you would shape your dungeon using whichever dungeon generation algorithm

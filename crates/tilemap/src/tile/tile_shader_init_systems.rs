@@ -102,7 +102,7 @@ pub fn add_image_handle_to_tile_shader(
     asset_server: Res<AssetServer>,
     mut query: Query<(&mut TileShader, AnyOf<(&ImagePathHolder, &MultipleImagePathHolder)>),(Or<(Changed<ImagePathHolder>, Changed<MultipleImagePathHolder>)>,)>,
 ) {
-    for (mut tile_shader, (img_path, multiple_img_path)) in query.iter_mut() {
+    query.iter_mut().for_each(|(mut tile_shader, (img_path, multiple_img_path))| {
         if let Some(img_path) = img_path {
             let image_handle = asset_server.load(img_path.path());
             tile_shader.set_image_handle(image_handle);
@@ -112,5 +112,5 @@ pub fn add_image_handle_to_tile_shader(
             //tile_shader.set_multiple_image_handles(handles);
 
         }
-    }
+    });
 }
