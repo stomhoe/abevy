@@ -50,9 +50,9 @@ pub fn disable_ezeros(mut cmd: Commands,
     query: Query<(Entity),(With<EntityZero>, Without<Disabled>)>,
 ) {
     let mut batch = Vec::with_capacity(query.iter().count());
-    for ent in query.iter() { 
-        batch.push((ent, Disabled, ));
-    }
+    query.iter().for_each(|ent| {
+        batch.push((ent, Disabled));
+    });
     cmd.try_insert_batch(batch);
 }
 
@@ -72,18 +72,17 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
     let mut new_base_holder_ref = Vec::new();
 
     let is_client = *client_state.get() != ClientState::Disconnected;
-
-    for (new_ent, ezero_ref, is_replicated, is_persisted) in query.iter() {
+    query.iter().for_each(|(new_ent, ezero_ref, is_replicated, is_persisted)| {
         let Ok((ezero_children, ezero_held_sprites)) = ezero.get(ezero_ref.0) 
-        else { continue };
+        else { return };
 
         let is_replicated = (is_replicated || is_persisted);
 
         if is_client && is_replicated {
-            continue;
+            return;
         }
 
-        for child_to_clone in ezero_children.iter() {
+        ezero_children.iter().for_each(|child_to_clone| {
             let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
                 move |builder|{ builder.deny::<DenyForClonedEntityZeroChildren>();
                     if ! is_replicated{
@@ -100,8 +99,8 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
                     new_base_holder_ref.push((cloned_child, BaseHolderRef { base: new_ent,  }, ));
                 }
             }
-        }
-    }
+        });
+    });
     cmd.try_insert_batch(new_child_of);
     cmd.try_insert_batch(new_base_holder_ref);
 }
@@ -110,9 +109,9 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
 pub fn delete_sprites_without_childof(mut cmd: Commands, 
     query: Query<(Entity),(With<Sprite>, Without<ChildOf>, DisabledOrNot)>,
 ) {
-    for sprite_ent in query.iter() {
+    query.iter().for_each(|sprite_ent| {
         cmd.entity(sprite_ent).try_despawn()
-    }
+    });
 }
 #[allow(unused_parens)]
 pub fn add_hashed_tags(mut cmd: Commands, 
@@ -120,10 +119,10 @@ pub fn add_hashed_tags(mut cmd: Commands,
     mut removed: RemovedComponents<TagHashSet>,
 ) {
     let mut tags_to_add = Vec::new();
-    for (ent, tags) in query.iter() {
+    query.iter().for_each(|(ent, tags)| {
         let hashed_tags = HashedTagsVec::from(tags);
-        tags_to_add.push((ent, hashed_tags));  
-    }
+        tags_to_add.push((ent, hashed_tags));
+    });
     for ent in removed.read() {
         if let Ok((_, _)) = query.get(ent) {
             cmd.entity(ent).try_remove::<HashedTagsVec>();

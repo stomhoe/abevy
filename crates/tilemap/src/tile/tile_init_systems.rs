@@ -277,10 +277,10 @@ pub fn map_portal_tiles(mut cmd: Commands,
     tiles_map: Res<TileEzerosMap>,
 ) {
     info!("Mapping portal tiles");
-    for (ent, str_id, mut portal_seri) in query.iter_mut() {
+    query.iter_mut().for_each(|(ent, str_id, mut portal_seri)| {
         let Ok(tile_ent) = tiles_map.0.get(&portal_seri.oe_tile) else { 
             error!(target:"portal_init", "Portal tile {} to '{}' references unknown oe_tile '{}'", str_id, portal_seri.dest_dimension, portal_seri.oe_tile);
-            continue; 
+            return; 
         };
         info!(target:"portal_init", "Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
         cmd.entity(ent).insert(PortalRecipe{
@@ -292,7 +292,7 @@ pub fn map_portal_tiles(mut cmd: Commands,
             max_val: portal_seri.lim_above,
             one_way: portal_seri.one_way,
         });
-    }
+    });
 }
 
 #[allow(unused_parens)]
@@ -311,8 +311,7 @@ pub fn instantiate_portal(mut cmd: Commands,
     let mut started_searches: EntityHashMap<Entity> = EntityHashMap::new();
     let mut pos_searches = Vec::new();
 
-    for (portal_ent, portal_recipe, &global_pos, dim_ref, tile_ref) in new_portals.iter() {
-
+    new_portals.iter().for_each(|(portal_ent, portal_recipe, &global_pos, dim_ref, tile_ref)| {
         let str_id = ori_tile_str_id_query.get(tile_ref.0).map(|id| id.as_str()).unwrap_or_default();
         
         let Ok((&dimension_hash_id, &dimension_root_oplist)) = dimension_query.get(portal_recipe.dest_dimension) 
@@ -321,7 +320,7 @@ pub fn instantiate_portal(mut cmd: Commands,
                 "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_recipe.dest_dimension, dim_ref.0, global_pos,
             );
             cmd.entity(portal_ent).remove::<PortalRecipe>();
-            continue;
+            return;
         };
         let op_filter = portal_recipe.to_op_filter(global_pos, dimension_root_oplist.0);
 
@@ -332,7 +331,7 @@ pub fn instantiate_portal(mut cmd: Commands,
 
         pos_searches.push(TerrainProbe::standard_spiral_probe(dimension_hash_id, op_filter_ent, global_pos));
         started_searches.insert(op_filter_ent, portal_ent);
-    }
+    });
 
     let mut successful_searches: EntityHashSet = EntityHashSet::new();
 

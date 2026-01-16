@@ -20,10 +20,9 @@ pub fn reload_assets_ingame(
 ) {
     if keys.pressed(KeyCode::KeyR) {
         info!(target: "asset_loading", "Reloading assets...");
-
-        for (being_ent) in beings_query.iter() {
+        beings_query.iter().for_each(|(being_ent)| {
             cmd.entity(being_ent).remove::<(ChildOf,)>();
-        }
+        });
 
         for (mut activating_chunks) in chunks_query.iter_mut() {
             activating_chunks.0.clear();
@@ -61,8 +60,8 @@ pub fn on_assets_loaded(
 ) {
     hot_loading.set(TerrainHotReloading::KeepAlive);
 
-    for (being_ent) in beings_query.iter() {
+    beings_query.iter().for_each(|(being_ent)| {
         cmd.entity(being_ent).insert(DimensionStrIdRef::overworld_fallback());
-    }
+    });
 }
 

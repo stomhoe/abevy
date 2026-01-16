@@ -23,7 +23,7 @@ pub fn button_change_color_on_mouse_action(
         (Changed<Interaction>, With<Button>),
     >,
 ) {
-    for (interaction, mut background_color, background_style) in &mut interaction_query {
+    interaction_query.iter_mut().for_each(|(interaction, mut background_color, background_style)| {
         background_color.0 = match *interaction {
             Interaction::Pressed => {
                if let Some(style) = background_style {
@@ -47,5 +47,5 @@ pub fn button_change_color_on_mouse_action(
                 }
             }
         };
-    }
+    });
 }

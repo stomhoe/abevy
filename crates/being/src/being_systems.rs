@@ -47,7 +47,7 @@ pub fn host_add_activates_chunks(mut cmd: Commands,
     mut removed: RemovedComponents<BelongsToAPlayerFaction>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
-    for ent in query.iter() { cmd.entity(ent).try_insert_if_new(ActivatingChunks::new(&chunk_range)); }
+    query.iter().for_each(|ent| { cmd.entity(ent).try_insert_if_new(ActivatingChunks::new(&chunk_range)); });
     for ent in removed.read() { cmd.entity(ent).try_remove::<ActivatingChunks>(); }
 }
 
@@ -64,7 +64,7 @@ pub fn on_control_change(
         commands.entity(ent).remove::<ControlledLocally>();
     }
     let (self_entity, is_host) = self_player.single().unwrap();
-    for (ent, controlled_by, human_controlled, is_camera_target) in query.iter() {
+    query.iter().for_each(|(ent, controlled_by, human_controlled, is_camera_target)| {
         if controlled_by.client == self_entity {
             info!("debug {:?} is now controlled locally by self", ent);
             commands.entity(ent).try_insert_if_new((ControlledLocally::default(), ActivatingChunks::new(&chunk_range)));
@@ -81,7 +81,7 @@ pub fn on_control_change(
                 commands.entity(ent).try_remove::<ActivatingChunks>();
             }
         }
-    }
+    });
 
 }
 
@@ -93,43 +93,43 @@ pub fn cross_portal(mut cmd: Commands,
 ) {
     let mut to_write = Vec::new();
     for (being_entity, mut being_dimension_ref, mut being_transform, being_globtransform, touching_portal) 
-    in being_query.iter_mut() {
-        for (portal_ent, &dimension_ref, portal_instance, portal_transform) in portal_query.iter() {
+        in being_query.iter_mut() {
+        portal_query.iter().for_each(|(portal_ent, &dimension_ref, portal_instance, portal_transform)| {
             if being_dimension_ref.clone() == dimension_ref {
-                let distance = being_globtransform.translation().distance(portal_transform.translation());
-                match (touching_portal, distance < 50.0) {
-                    (None, false) => {},
-                    (Some(&TouchingPortal(touching_portal)), false) => {
-                        if portal_ent == touching_portal {
-                            cmd.entity(being_entity).try_remove::<TouchingPortal>();
-                        }
-                    },
-                    (Some(&TouchingPortal(touching_portal)), true) => {
-                        if portal_ent != touching_portal {
-                            cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
-                        }
-
-                    },
-                    (None, true) => {
-                        cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
-
-                        let Ok((_, &oe_dim_ref, _oe_portal_instance, oe_portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
-                            error!("Portal entity {:?} not found in portal query", portal_instance.dest_portal);//TA DISABLED POR ALGUNA RAZÓN
-                            continue;
-                        };
-
-                        being_dimension_ref.0 = oe_dim_ref.0;
-                        being_transform.translation = oe_portal_transform.translation().xy().extend(being_transform.translation.z);
-
-                        let to_clients = ToClients { 
-                            mode: SendMode::Broadcast, 
-                            message: TransformFromServer::new(being_entity, being_transform.clone(), false),
-                        };
-                        to_write.push(to_clients);
-                    },
+            let distance = being_globtransform.translation().distance(portal_transform.translation());
+            match (touching_portal, distance < 50.0) {
+                (None, false) => {},
+                (Some(&TouchingPortal(touching_portal)), false) => {
+                if portal_ent == touching_portal {
+                    cmd.entity(being_entity).try_remove::<TouchingPortal>();
                 }
+                },
+                (Some(&TouchingPortal(touching_portal)), true) => {
+                if portal_ent != touching_portal {
+                    cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
+                }
+
+                },
+                (None, true) => {
+                cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
+
+                let Ok((_, &oe_dim_ref, _oe_portal_instance, oe_portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
+                    error!("Portal entity {:?} not found in portal query", portal_instance.dest_portal);//TA DISABLED POR ALGUNA RAZÓN
+                    return;
+                };
+
+                being_dimension_ref.0 = oe_dim_ref.0;
+                being_transform.translation = oe_portal_transform.translation().xy().extend(being_transform.translation.z);
+
+                let to_clients = ToClients { 
+                    mode: SendMode::Broadcast, 
+                    message: TransformFromServer::new(being_entity, being_transform.clone(), false),
+                };
+                to_write.push(to_clients);
+                },
             }
-        }
+            }
+        });
     }
     ewriter.write_batch(to_write);
 }

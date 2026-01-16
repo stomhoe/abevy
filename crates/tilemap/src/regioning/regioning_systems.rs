@@ -1,7 +1,6 @@
 
-use std::{hash::Hash, mem::take};
-
-use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*, ui::debug};
+use std::{mem::take};
+#[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
 use dimension_shared::{BlacklistedStructureGenTags, DimensionRef, MultipleDimensionRefs, WhitelistedStructureGenTags};
@@ -156,7 +155,7 @@ pub fn track_when_region_is_ready_for_spawning(mut cmd: Commands,
     for build in reader.read() {
         
         let region_pos = build.chunk_pos.to_region_pos();
-
+        
         let Some(&region_ent) = loaded_regions.0.get(&(build.dimension_ref, region_pos))
         else {
             error!(target: "structure_spawn", "Region at position {:?} in dimension {:?} not found when processing structure build compliance, skipping", 
@@ -173,7 +172,7 @@ pub fn track_when_region_is_ready_for_spawning(mut cmd: Commands,
             region_ent, region_pos, build.dimension_ref);
             continue;
         }
-
+        
         let Ok(finished) = planned_tiles.add_planned_tiles(build.chunk_pos, take(&mut build.tiles))
         else {
             error!(target: "structure_spawn", "Failed to add planned tiles for structure build compliance in region entity {:?} at chunk position {:?}, skipping", region_ent, build.chunk_pos);
@@ -192,18 +191,14 @@ pub fn track_when_region_is_ready_for_spawning(mut cmd: Commands,
 #[allow(unused_parens, )]
 pub fn clonespawn_structure_tile_on_chunk_spawn(mut cmd: Commands, 
     region_query: Query<(&ChunksActiveInRegion, &RegionPlannedTiles),(With<RegionPlanningFinished>)>,
-    mut chunk_query: Query<(&ChunkPos, &DimensionRef), (Without<StructureSpawnDone>)>,
+    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<StructureSpawnDone>)>,
     mut collected: ResMut<MassCollectedTiles>,
 ) {
     let mut to_insert_structure_spawning_done = Vec::new();
     let mut to_insert_delete_others = Vec::new();
     
     for (chunks_active_in_region, tiles_to_spawn_per_chunk) in region_query.iter() {
-        for &chunk_ent in chunks_active_in_region.entities() {
-            let Ok((chunk_pos, dimension_ref)) = chunk_query.get_mut(chunk_ent)
-            else {
-                continue;
-            };
+        chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, chunk_pos, dimension_ref)| {
             
             if let Some(tiles_to_spawn) = tiles_to_spawn_per_chunk.get(&chunk_pos) {
                 debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
@@ -218,9 +213,10 @@ pub fn clonespawn_structure_tile_on_chunk_spawn(mut cmd: Commands,
             }
             to_insert_structure_spawning_done.push((chunk_ent, StructureSpawnDone));//hacerlo en otro sistema una vez se detecte el spawneo de la tile con structurespawningdone
         }
-    }
-    cmd.try_insert_batch(to_insert_structure_spawning_done);
-    cmd.try_insert_batch(to_insert_delete_others);
+    );
+}
+cmd.try_insert_batch(to_insert_structure_spawning_done);
+cmd.try_insert_batch(to_insert_delete_others);
 }
 
 
@@ -321,8 +317,8 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                     }
                 } else {
                     region_structures.struct_gen_counts.entry(claimed.structured_gen_cfg_ent)
-                        .and_modify(|count| *count += 1)
-                        .or_insert(1);
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
                     
                     for i in (0..claimed.chunks_gpos.len()).rev() {
                         if failed_claims_bitmask.get(i).unwrap_or(false) {

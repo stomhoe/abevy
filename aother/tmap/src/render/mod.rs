@@ -332,12 +332,12 @@ fn clear_removed(
     removed_query: Query<Entity, With<RemovedTileEntity>>,
     removed_map_query: Query<Entity, With<RemovedMapEntity>>,
 ) {
-    for entity in removed_query.iter() {
+    removed_query.iter().for_each(|entity| {
         commands.entity(entity).despawn();
-    }
-    for entity in removed_map_query.iter() {
+    });
+    removed_map_query.iter().for_each(|entity| {
         commands.entity(entity).despawn();
-    }
+    });
 }
 
 #[cfg(not(feature = "atlas"))]
