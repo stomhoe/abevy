@@ -5,6 +5,7 @@ use bevy::platform::collections::{HashMap, HashSet};
 pub use bevy_ecs_tilemap::tiles::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+use common::common_tag_components::{HashedTagsVec, TagSet};
 use common::{common_components::*, common_states::*};
 use dimension_shared::DimensionRef;
 use game_common::game_common_components::*;
@@ -22,9 +23,10 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilt
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
     TileShaderRef, AcZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
-    TagHashSet, HashedTagsVec,
+    DeleteOtherTiles,
+    TagSet, HashedTagsVec,
     //children entities don't get cloned
-    Children, EntityZero
+    Children, EntityZero, 
 );//Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]
@@ -69,7 +71,7 @@ pub type TileStrId = StrId20B;
 pub struct PortalRecipe { 
     #[entities]pub dest_dimension: Entity,
     #[entities]pub oe_portal_tile: Entity, 
-    pub tags: TagHashSet,
+    pub tags: TagSet,
     pub op_i: i16,
     pub min_val: f32,
     pub max_val: f32,
@@ -89,7 +91,7 @@ impl PortalRecipe {
 }
 impl Default for PortalRecipe {
     fn default() -> Self {
-        Self { dest_dimension: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, tags: TagHashSet::default(), op_i: -1, min_val: 0.0, max_val: 0.0, one_way: false}
+        Self { dest_dimension: Entity::PLACEHOLDER, oe_portal_tile: Entity::PLACEHOLDER, tags: TagSet::default(), op_i: -1, min_val: 0.0, max_val: 0.0, one_way: false}
     }
 }
 
@@ -181,4 +183,4 @@ pub struct TileSamplerHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct DeleteOtherTiles { pub spared_z: HashSet<AcZ>, pub spared_tags: TagHashSet, pub extra_radius: u32, }
+pub struct DeleteOtherTiles { pub spared_z: HashSet<AcZ>, pub spared_tags: TagSet, pub extra_radius: u32, }

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use crate::{regioning::{regioning_components::*, regioning_init_systems::*, regioning_messages::*, regioning_resources::*, regioning_systems::*}, };
+use crate::regioning::{dungeoning_systems::*, regioning_components::*, regioning_init_systems::*, regioning_messages::*, regioning_resources::*, regioning_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct RegioningSystems;
@@ -14,15 +14,16 @@ pub struct StructureBuildingSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        RonAssetPlugin::<StructuredGenConfigSeri>::new(&["strgencfg.ron"]),
+        RonAssetPlugin::<StructuredGenConfigSeri>::new(&["sgc.ron"]),
     ))
     .add_systems(Update, (
         (
-            (offer_chunks_of_new_region, read_chunk_claims_for_region_and_emit_build_orders,),
-            example_emit_chunk_claims_system, 
-            drunkwalk_building_system.in_set(StructureBuildingSystems),
-            clonespawn_structure_tile_on_chunk_spawn,//tiene q hacerse despues de los building systems
-            track_when_region_is_ready_for_spawning,
+            (offer_chunks_of_new_regions, read_chunk_claims_for_region_and_emit_build_orders,),
+            claim_chunks_for_various_dungeon_types, 
+            failsafe_timeout_pending_chunks,
+            add_planed_tiles_to_region,
+            (drunkwalk_dungeon_building_system, advanced_dungeon_building_system).in_set(StructureBuildingSystems),
+            clonespawn_tiles_on_chunk_spawn,//tiene q hacerse despues de los building systems            , // ensure missing compliances don't block region planning indefinitely            track_when_region_is_ready_for_spawning,
         ).in_set(RegioningSystems),
         despawn_empty_regions,
     ))
@@ -63,3 +64,4 @@ pub mod regioning_resources;
 pub mod regioning_messages;
 mod regioning_systems;
 mod regioning_init_systems;
+mod dungeoning_systems;

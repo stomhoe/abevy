@@ -13,12 +13,15 @@ pub struct GlobalGenSettings {
     
     pub seed: i32,
     pub world_freq: f32,
+    /// Timeout in seconds to wait for StructureBuildCompliance before giving up
+    pub structure_build_timeout_secs: f64,
 }
 impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self { 
             seed: 3,
             world_freq: 1e-2,
+            structure_build_timeout_secs: 5.0,
         }
     }
 }

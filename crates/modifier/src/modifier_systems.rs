@@ -9,7 +9,7 @@ use crate::modifier_components::*;
 pub fn apply_antidotes(
     affected_query: Query<&AppliedModifiers>,
     mut antis_query: Query<(&BaseValue, Option<&TimeBasedMultiplier>, &Antidote),()>,
-    mut modis_query: Query<(&ModifierCategories, Option<&mut EffectiveValue>)>,
+    mut modis_query: Query<(&ModifierTags, Option<&mut EffectiveValue>)>,
 ) {
     // for affected in affected_query.iter() {
     //     let mut counters_map: HashMap<String, f32> = HashMap::new();

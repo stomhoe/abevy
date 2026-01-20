@@ -32,7 +32,7 @@ pub struct ComponentName{
 }
 impl ComponentName {
     pub fn new(id: HashId) -> Self {
-        Self{ seed: id.into_i32()}
+        Self{ seed: id.as_i32()}
     }
 }
 

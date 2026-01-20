@@ -1,10 +1,10 @@
 
 use bevy::{ecs::entity::EntityHashSet, prelude::*};
 use camera::camera_components::CameraTarget;
-use common::common_components::{StrId, StrId20B};
+use common::{common_components::{HashId, StrId, StrId20B}, common_tag_components::{HashedTagsVec, TagSet}};
 use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
 ;
-use game_common::{game_common_components::{HashedTagsVec, TagHashSet}, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use tilemap_shared::{GlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec, PoissonDisk, RegionPos};
 
 use crate::{regioning::{regioning_components::{StructuredGenConfig, StructuredGenCfgsWeightedMap, WhitelistedFilterOf}, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
@@ -42,6 +42,7 @@ pub fn init_structured_gen_configs (
         
         let mut gen_cfg = StructuredGenConfig::default();
 
+        gen_cfg.hash = HashId::hash(structured_gen_seri.structure_id.as_str());
         gen_cfg.structure_id = StrId::new_truncated(structured_gen_seri.structure_id);
         
         if let Some(max_per_region) = structured_gen_seri.max_per_region {
@@ -51,7 +52,7 @@ pub fn init_structured_gen_configs (
             gen_cfg.args = args;
         }
         if let Some(tags) = structured_gen_seri.tags.clone() {
-            let tags = TagHashSet::new(tags);
+            let tags = TagSet::new(tags);
             cmd.entity(main_ent).try_insert(tags);
         }
         

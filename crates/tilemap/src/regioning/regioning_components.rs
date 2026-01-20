@@ -20,15 +20,16 @@ pub struct ChunksActiveInRegion(Vec<Entity>);
 impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-#[require(Replicated, EntityPrefix::new_truncated("StructureGenCfg"))]
+#[require(Replicated, EntityPrefix::new_truncated("StructureGenCfg"), )]
 pub struct StructuredGenConfig{
     pub structure_id: StrId,
+    pub hash: HashId,
     pub max_per_region: u32,
     pub args: Vec<String>,
 }
 impl Default for StructuredGenConfig {
     fn default() -> Self {
-        Self { structure_id: StrId::default(), max_per_region: 1024, args: Vec::new()  }
+        Self { structure_id: StrId::default(), hash: HashId::default(), max_per_region: 1024, args: Vec::new()  }
     }
 }
 
@@ -140,30 +141,45 @@ impl Default for RegionStructures {
 
 pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
 
-#[derive(Component, Debug, Reflect, Default)]
+#[derive(Component, Debug, Reflect)]
 //a region's component, doesn't need dimension
 pub struct RegionPlannedTiles { 
-    map: HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>>,
-    chunks_pending_build: HashSet<ChunkPos>,
+    tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, TilesFromBuilder>,
+    // store pending chunks along with the time (seconds since startup) when they were added
+    chunks_pending_build: HashMap<ChunkPos, f64>,
+}
+impl Default for RegionPlannedTiles {
+    fn default() -> Self {
+        Self { tiles_to_spawn_on_chunk_load_map: HashMap::new(), chunks_pending_build: HashMap::new() }
+    }
 }
 impl RegionPlannedTiles {
-    pub fn new(chunk_positions: &[ChunkPos]) -> Self {
+    pub fn new(chunk_positions: &[ChunkPos], now: f64) -> Self {
         Self {
-            map: HashMap::new(),
-            chunks_pending_build: chunk_positions.iter().copied().collect(),
+            tiles_to_spawn_on_chunk_load_map: HashMap::new(),
+            chunks_pending_build: chunk_positions.iter().copied().map(|p| (p, now)).collect(),
         }
     }
 
-    pub fn extend_pending_chunks(&mut self, chunk_positions: &[ChunkPos]) {
-        self.chunks_pending_build.extend(chunk_positions.iter().copied());
+    pub fn add_chunks_pending_build(&mut self, chunk_positions: &[ChunkPos], now: f64) {
+        for &pos in chunk_positions {
+            self.chunks_pending_build.insert(pos, now);
+        }
     }
 
-    pub fn add_planned_tiles(
+    pub fn is_chunk_pending_build(&self, chunk_pos: ChunkPos) -> bool {
+        self.chunks_pending_build.contains_key(&chunk_pos)
+    }
+    pub fn pending_chunks_count(&self) -> usize {
+        self.chunks_pending_build.len()
+    }
+
+    pub fn add_planned_tiles_and_remove_from_pending(
         &mut self,
         chunk_pos: ChunkPos,
         tile_data: TilesFromBuilder,
     ) -> Result<bool, BevyError> {
-        if !self.chunks_pending_build.contains(&chunk_pos) {
+        if !self.chunks_pending_build.contains_key(&chunk_pos) {
             return Err(BevyError::from(format!(
                 "ChunkPos {:?} is not pending a build order",
                 chunk_pos
@@ -174,7 +190,7 @@ impl RegionPlannedTiles {
             chunk_pos.is_tilepos_within_chunk(*tile_pos)?;
         }
 
-        self.map.entry(chunk_pos).or_insert_with(Vec::new).extend(tile_data);
+        self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new).extend(tile_data);
         self.chunks_pending_build.remove(&chunk_pos);
         Ok(self.chunks_pending_build.is_empty())
     }
@@ -183,12 +199,31 @@ impl RegionPlannedTiles {
         &self,
         chunk_pos: &ChunkPos,
     ) -> Option<&TilesFromBuilder> {
-        self.map.get(chunk_pos)
+        self.tiles_to_spawn_on_chunk_load_map.get(chunk_pos)
     }
+
+    pub fn pending_chunks_iter(&self) -> impl Iterator<Item = (&ChunkPos, &f64)> {
+        self.chunks_pending_build.iter()
+    }
+
+    pub fn remove_pending_chunk(&mut self, chunk_pos: &ChunkPos) -> bool {
+        self.chunks_pending_build.remove(chunk_pos).is_some()
+    }
+
+    pub fn mark_chunk_timed_out(&mut self, chunk_pos: ChunkPos) {
+        // remove from pending set and make an empty entry in the map so other systems see there are no tiles
+        self.chunks_pending_build.remove(&chunk_pos);
+        self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
+    }
+
 }
 
 pub const MAX_CLAIMS: usize = 1024;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct RegionPlanningFinished;
+pub struct AllTilesPrepared;
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BuildingStarted;

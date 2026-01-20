@@ -5,7 +5,7 @@ use being_shared::{Grounding, ControlledBy};
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, spritesheet};
-use common::common_components::{DisabledOrNot, ImageHolder, StrId};
+use common::common_components::{AnyDisabling, ImageHolder, StrId};
 use game_common::game_common_components::{Directionable, EntityZeroRef, Direction};
 use player::player_components::*;
 use sprite::sprite_components::*;
@@ -28,7 +28,7 @@ pub fn animate_sprite(
     mut sprites_query: Query<(Entity, Option<&SpritesheetAnimation>, &EntityZeroRef, 
         Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AcAnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
     
-    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (DisabledOrNot,)>,
+    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (AnyDisabling,)>,
     
     animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>),()>,
     

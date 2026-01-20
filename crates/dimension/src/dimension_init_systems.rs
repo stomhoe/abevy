@@ -1,14 +1,13 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{DisplayName, EntityPrefix, HashId, StrId};
-use game_common::game_common_components::TagHashSet;
+use common::{common_components::{DisplayName, EntityPrefix, HashId, StrId}, common_tag_components::TagSet};
 use crate::{
     dimension_resources::*,
 /*
     dimension_events::*,
 */
 };
-use dimension_shared::{Dimension, DimensionEntityMap, };
+use ::dimension_shared::*;
 
 #[allow(unused_parens)]
 pub fn init_dimensions(
@@ -19,7 +18,10 @@ pub fn init_dimensions(
     if map.is_some(){ return; }
     cmd.init_resource::<DimensionEntityMap>();
 
-    let mut to_spawn = Vec::new();
+    let mut common_components = Vec::new();
+    let mut tagsets_to_insert = Vec::new();
+    let mut whitelisted_structure_gen_tags_to_insert = Vec::new();
+    let mut blacklisted_structure_gen_tags_to_insert = Vec::new();
 
     for handle in std::mem::take(&mut seris_handles.handles) {
         let Some(seri) = assets.remove(&handle) else { continue };
@@ -38,10 +40,18 @@ pub fn init_dimensions(
         let dim_ent = cmd.spawn_empty().id();
 
         if let Some(tags) = seri.tags {
-            cmd.entity(dim_ent).try_insert(TagHashSet::new(tags));
+            tagsets_to_insert.push((dim_ent, TagSet::new(tags)));
+        }
+        if let Some(whitelisted_structure_gen_tags) = seri.whitelisted_structure_gen_tags {
+            let tag_set = WhitelistedStructureGenTags(TagSet::new(whitelisted_structure_gen_tags));
+            whitelisted_structure_gen_tags_to_insert.push((dim_ent, tag_set));
+        }
+        if let Some(blacklisted_structure_gen_tags) = seri.blacklisted_structure_gen_tags {
+            let tag_set = BlacklistedStructureGenTags(TagSet::new(blacklisted_structure_gen_tags));
+            blacklisted_structure_gen_tags_to_insert.push((dim_ent, tag_set));
         }
 
-        to_spawn.push((dim_ent, (
+        common_components.push((dim_ent, (
             HashId::from(str_id.as_ref()),
             str_id,
             Transform::default(),
@@ -50,7 +60,10 @@ pub fn init_dimensions(
             Visibility::Visible,
         )))
     }
-    cmd.insert_batch(to_spawn);
+    cmd.insert_batch(common_components);
+    cmd.insert_batch(tagsets_to_insert);
+    cmd.insert_batch(whitelisted_structure_gen_tags_to_insert);
+    cmd.insert_batch(blacklisted_structure_gen_tags_to_insert);
 }
 
 

@@ -1,0 +1,18 @@
+
+(
+    id: "b1",
+    operation_operands: [
+        ("max", ["fnl.conti.s4","fnl.penin.s4",], 1),
+        ("*", ["$2","$4",], 1),
+        ("idxmax", ["0.3", "$1"], 0),
+
+    ],
+   
+    bifs: [
+        ("", ["pink"]),
+        ("", ["pink"]),
+    ],
+    root_in_dimensions: [""],
+    size: Some((1, 1)),
+
+)

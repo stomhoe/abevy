@@ -2,9 +2,9 @@
 use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use common::common_tag_components::AddSameHashedTags;
 use fnl::{FastNoiseLite, NoiseSampleRange};
 
-use game_common::game_common_components::AddSameHashedTags;
 use serde::{Deserialize, Serialize};
 use ::tilemap_shared::*;
 

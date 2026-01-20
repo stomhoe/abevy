@@ -3,7 +3,7 @@ use bevy::input::ButtonInput;
 use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
 use bevy_replicon::prelude::Replicated;
-use common::common_components::DisabledOrNot;
+use common::common_components::AnyDisabling;
 use common::common_components::ImagePathHolder;
 use common::common_states::GamePhase;
 use ::sprite_shared::sprite_scale_offset::AllScalesAndOffsets;
@@ -107,26 +107,9 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn delete_sprites_without_childof(mut cmd: Commands, 
-    query: Query<(Entity),(With<Sprite>, Without<ChildOf>, DisabledOrNot)>,
+    query: Query<(Entity),(With<Sprite>, Without<ChildOf>, AnyDisabling)>,
 ) {
     query.iter().for_each(|sprite_ent| {
         cmd.entity(sprite_ent).try_despawn()
     });
-}
-#[allow(unused_parens)]
-pub fn add_hashed_tags(mut cmd: Commands, 
-    query: Query<(Entity, &TagHashSet),(Changed<TagHashSet>, With<AddSameHashedTags>)>,
-    mut removed: RemovedComponents<TagHashSet>,
-) {
-    let mut tags_to_add = Vec::new();
-    query.iter().for_each(|(ent, tags)| {
-        let hashed_tags = HashedTagsVec::from(tags);
-        tags_to_add.push((ent, hashed_tags));
-    });
-    for ent in removed.read() {
-        if let Ok((_, _)) = query.get(ent) {
-            cmd.entity(ent).try_remove::<HashedTagsVec>();
-        }
-    }
-    cmd.try_insert_batch(tags_to_add);
 }

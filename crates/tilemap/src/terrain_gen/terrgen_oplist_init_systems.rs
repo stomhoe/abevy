@@ -4,9 +4,8 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 
-use common::common_components::StrId;
+use common::{common_components::StrId, common_tag_components::TagSet};
 use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
-use game_common::game_common_components::{HashedTagsVec, TagHashSet};
 
 use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
@@ -25,46 +24,48 @@ pub fn init_oplists_from_assets(
 ) {
     if oplist_map.is_some() { return ; }
     let mut oplist_map = OpListEntityMap::default();
-
+    
     let egui_oplist_holder_ent = cmd.spawn(EguiOplistHolder).id();
     cmd.spawn((FailedSearchOplistFilterHolder, ChildOf(egui_oplist_holder_ent)));
-
+    
     let mut oplist_comps = Vec::new();
     let mut oplist_multiple_dimension_refs = Vec::new();
     let mut tags_to_insert = Vec::new();
-
+    
     for handle in seris_handles.handles.iter() {//ESTE VA CON ITER
         let Some(seri) = assets.get_mut(handle) else {
             continue;
         };
-        let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 3)
-        else {
-            error!("Failed to create StrId for oplist {}", seri.id);
-            continue;
+        let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!("Failed to create StrId for oplist {}: {:?}", seri.id, err);
+                continue;
+            }
         };   
         if seri.is_root() && seri.operation_operands.is_empty() {
             error!("root OpListSeri has no operations");
             continue;
         }
         let size =
-            if let Some(size) = seri.size {
-                if let Ok(size) = OplistSize::new(size) {
-                    size
-                } else {
-                    error!("Invalid oplist_size for {}, must be in [1,4] for each vec component", seri.id);
-                    continue;
-                }
-            } else{
-                OplistSize::default()
-            };
-
-
+        if let Some(size) = seri.size {
+            if let Ok(size) = OplistSize::new(size) {
+                size
+            } else {
+                error!("Invalid oplist_size for {}, must be in [1,4] for each vec component", seri.id);
+                continue;
+            }
+        } else{
+            OplistSize::default()
+        };
+        
+        
         let mut oplist = OperationList::default();
-
+        
         //define a mutable array of 16 f64s here
-
+        
         for (operation, str_operands, out) in seri.operation_operands.iter() {
-
+            
             if *out >= VariablesArray::SIZE {
                 error!("Output index {} out of bounds for OperationList", out);
                 continue;
@@ -73,13 +74,13 @@ pub fn init_oplists_from_assets(
             for operand in str_operands {
                 let operand = operand.trim();    
                 if operand.is_empty() { continue; }
-
+                
                 let (operand, complement) = if let Some(operand) = operand.strip_prefix("COMP") {
                     (operand.trim(), true)
                 } else {
                     (operand, false)
                 };
-
+                
                 let element = if let Ok(value) = operand.parse::<f32>() {
                     OperandElement::Value(value)
                 }
@@ -115,7 +116,7 @@ pub fn init_oplists_from_assets(
                     } else {
                         (fnl::NoiseSampleRange::ZeroToOne, ent_str)
                     };
-
+                    
                     // If the operand_str ends with ".s" followed by a number, use it as seed
                     let (base_str, extra_seed) = if let Some(idx) = ent_str.rfind(".s") {
                         let (base, seed_str) = ent_str.split_at(idx);
@@ -128,18 +129,18 @@ pub fn init_oplists_from_assets(
                         warn!("Entity not found in TerrGenEntityMap: {}", base_str);
                         continue;
                     };
-
+                    
                     OperandElement::NoiseEntity(ent, noise_sample_range, complement, extra_seed)
                 } else {
                     error!("Unknown operand: {}", operand);
                     continue;
                 };
-
+                
                 let operand = Operand { complement, element, };
-
+                
                 operands.push(operand);
             };
-
+            
             let operation = match operation.as_str().trim() {
                 "" => continue,
                 "+" => Operation::Add,
@@ -162,11 +163,11 @@ pub fn init_oplists_from_assets(
                     continue;
                 },
             };
-
+            
             oplist.trunk.push((operation, operands, *out));    
         }
         oplist.bifurcations = Vec::with_capacity(seri.bifs.len());
-
+        
         for (_oplist, tiles) in seri.bifs.iter() {
             let tiles = tiles
             .iter().filter(|tile_str| !tile_str.is_empty())
@@ -180,7 +181,7 @@ pub fn init_oplists_from_assets(
                     None
                 }
             }).collect::<Vec<Entity>>();
-
+            
             let bifurcation = Bifurcation { oplist: None, tiles };
             oplist.bifurcations.push(bifurcation);
         }
@@ -194,13 +195,13 @@ pub fn init_oplists_from_assets(
         if seri.is_root() { 
             oplist_multiple_dimension_refs.push((   spawned_oplist, MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))));
         }
-
-
+        
+        
         if let Some(tags) = &seri.tags {
-            tags_to_insert.push((spawned_oplist, TagHashSet::new(tags)));
+            tags_to_insert.push((spawned_oplist, TagSet::new(tags)));
         }
-
-
+        
+        
     } 
     cmd.try_insert_batch(oplist_comps);
     cmd.try_insert_batch(oplist_multiple_dimension_refs);
@@ -221,11 +222,11 @@ pub fn init_oplists_bifurcations(
         if let Some(seri) = assets.remove(&handle) {
             let oplist_ent = oplist_map.0.get(&seri.id)?;
             let (mut oplist, ) = oplist_query.get_mut(oplist_ent)?;
-
+            
             for (i, seri_bifurcation) in seri.bifs.iter().enumerate() {
                 let bifurcation_str = seri_bifurcation.0.trim();
                 if bifurcation_str.is_empty() { continue; }
-
+                
                 let Ok(bifurcation_ent) = oplist_map.0.get(&bifurcation_str.to_string()) else {
                     error!(
                         "bifurcation entity with id '{}' not found in OpListEntityMap",
@@ -241,7 +242,7 @@ pub fn init_oplists_bifurcations(
                     error!("bifurcation entity with id '{}' must not be a root oplist", bifurcation_str);
                     continue;
                 }
-
+                
                 cmd.entity(bifurcation_ent).insert(ChildOf(oplist_ent));
                 oplist.bifurcations[i].oplist = Some(bifurcation_ent);
             }   
@@ -255,9 +256,9 @@ pub fn cycle_detection(
     query: Query<(Entity, &OperationList, Has<MultipleDimensionStringRefs>)>,
 ) {
     let roots: Vec<Entity> = query
-        .iter()
-        .filter_map(|(ent, _, is_root)| if is_root { Some(ent) } else { None })
-        .collect();
+    .iter()
+    .filter_map(|(ent, _, is_root)| if is_root { Some(ent) } else { None })
+    .collect();
     fn dfs(
         query: &Query<(Entity, &OperationList, Has<MultipleDimensionStringRefs>)>,
         current: Entity,
@@ -272,7 +273,7 @@ pub fn cycle_detection(
             return false; 
         }
         stack.push(current);
-
+        
         let Ok((_, oplist, _)) = query.get(current) else {
             stack.pop();
             return false;
@@ -287,7 +288,7 @@ pub fn cycle_detection(
         stack.pop();
         false
     }
-
+    
     for root in roots {
         let mut visited = HashSet::new();
         let mut stack = Vec::new();
@@ -311,7 +312,7 @@ pub fn oplist_init_dim_refs(mut cmd: Commands,
                 error!(target: "dimension_loading", "Dimension entity '{}' referenced by DimensionEntityMap is not spawned in world", dim_ent);
                 continue;
             };
-
+            
             match (assignments.get(&dim_ent), root_op_list) {
                 (Some(&other_ent), _) => {
                     if other_ent == ent { warn!("self is already dimoplist"); continue; }
@@ -323,12 +324,12 @@ pub fn oplist_init_dim_refs(mut cmd: Commands,
                 },
                 (_, Some(&DimensionRootOplist(other_ent))) => {
                     if other_ent == ent { warn!("self is already dimoplist"); continue; }
-
+                    
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
                         continue;
                     };
                     error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_str_id);
-                continue;
+                    continue;
                 },
                 (None, None) => {
                     assignments.insert(dim_ent, ent);

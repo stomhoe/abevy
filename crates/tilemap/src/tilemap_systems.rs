@@ -1,7 +1,7 @@
 use bevy::{ecs::entity_disabling::Disabled, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
-use common::{common_components::{DisabledOrNot, StrId}, common_resources::ImageSizeMap, };
+use common::{common_components::{AnyDisabling, StrId}, common_resources::ImageSizeMap, };
 use game_common::game_common_components::{EntityZeroRef, Persisted};
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
@@ -354,7 +354,7 @@ fn func_process_tile_into_tilemaps(
 #[allow(unused_parens)]
 pub fn tile_assign_child_of(mut cmd: Commands, 
     tile_instances_holder_query: Single<Entity, With<TileInstancesHolder>>,
-    query: Query<Entity, (Without<ChildOf>, With<TilemapId>, With<TileTextureIndex>, DisabledOrNot)>,
+    query: Query<Entity, (Without<ChildOf>, With<TilemapId>, With<TileTextureIndex>, AnyDisabling)>,
 ) {
     let parent = tile_instances_holder_query.into_inner();
 

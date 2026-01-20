@@ -1,6 +1,6 @@
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_common_assets::ron::RonAssetPlugin;
-use common::{common_components::{DisabledOrNot, ImagePathHolder}, common_states::*, common_types::*};
+use common::{common_components::{AnyDisabling, ImagePathHolder}, common_states::*, common_types::*};
 use bevy_replicon::prelude::*;
 
 use crate::{color_sample_components::*, color_sample_resources::*, color_sample_systems::*};

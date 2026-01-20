@@ -6,7 +6,7 @@ pub fn plugin(app: &mut App) {
     app
         .register_type::<ModifierTarget>()
         .register_type::<AppliedModifiers>()
-        .register_type::<ModifierCategories>()
+        .register_type::<ModifierTags>()
         .register_type::<BaseValue>()
         .register_type::<EffectiveValue>()
         .register_type::<Antidote>()

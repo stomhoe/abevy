@@ -24,7 +24,7 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            (spawn_terrain_operations, (process_pending_ops_and_collect_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
+            (launch_terrain_gen_operations, (process_pending_ops_and_collect_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
             search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
             oplist_init_dim_refs,
         ))

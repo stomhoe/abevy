@@ -14,7 +14,7 @@
         "c.portal": 300,
     }),
     portal: Some((
-        dest_dimension: "cave",
+        dest_dimension: "dungeon",
         oe_tile: "portal_cave",
         oe_tags: ["portal"],
         op_i: -1,

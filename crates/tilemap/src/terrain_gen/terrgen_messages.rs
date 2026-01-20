@@ -1,7 +1,6 @@
 use bevy::{prelude::*};
-use common::common_components::HashId;
+use common::{common_components::HashId, common_tag_components::HashedTagsVec};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::{HashedTagsVec, TagHashSet};
 use serde::Deserialize;
 use ::tilemap_shared::*;
 use std::hash::Hash;
@@ -60,7 +59,7 @@ pub struct TerrainProbe {
 impl TerrainProbe{
     pub fn standard_spiral_probe(dimension_hash_id: HashId, operation_filter: Entity, search_start_pos: GlobalTilePos) -> TerrainProbe {
         TerrainProbe {
-            dimension_hash_id: dimension_hash_id.into_i32(),
+            dimension_hash_id: dimension_hash_id.as_i32(),
             step_size: 1,
             curr_iteration_batch_i: 0,
             max_batches: 100,

@@ -1,5 +1,5 @@
 (
-    id: "ow_root",
+    id: "dungeon_root",
     operation_operands: [
         ("+", ["fnl.conti_nofract", "0.0"], 1),
         ("+", ["fnl.conti_nofract.s2", "0.0"], 2),
@@ -10,11 +10,11 @@
     ],
    
     bifs: [
-        ("normal1", [""]),
-        ("elf1", [""]),
+        ("a1", [""]),
+        ("b1", [""]),
         ("", ["ocean"])
     ],
-    root_in_dimensions: ["ow", ],
+    root_in_dimensions: ["dungeon"],
     size: Some((1, 1)),
 
 )

@@ -41,7 +41,7 @@ impl TilesToSave { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 pub struct TerrGenOpsLaunched;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct StructureSpawnDone;
+pub struct ReadyForTerrgen;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct TerrgenDisallowed;

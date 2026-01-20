@@ -45,7 +45,7 @@ concat!(
     "sprite_animation_init=warn,",
     "entity_zero=info,",
 
-    "tile_init=trace,",
+    "tile_init=info,",
     "asset_loading=warn,",
     "tiling_loading=debug,",
     "dimension_loading=debug,",

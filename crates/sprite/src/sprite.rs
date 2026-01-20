@@ -8,7 +8,7 @@ use common::common_states::{AppState, AssetLoading };
 use game_common::{game_common::GameplaySystems, StatefulSessionSystems, };
 use ::sprite_shared::*;
 
-use crate::{sprite_components::*, sprite_init_systems::*, sprite_resources::*, sprite_systems::*};
+use crate::{sprite_building_systems::*, sprite_components::*, sprite_cfg_init_systems::*, sprite_resources::*, sprite_systems::*};
 
 #[allow(unused_imports)] use {bevy::prelude::*,};
 

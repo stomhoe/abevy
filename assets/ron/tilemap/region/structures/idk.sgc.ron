@@ -1,10 +1,10 @@
 //.ron file for structured generation configuration
 (
-    id: "nase",
-    structure_id: "ExampleStructure",
+    id: "idk_gen_cfg0",
+    structure_id: "idk",
     weight: 1.0,
-    tags: Some([ "caca", "" ]),
+    tags: Some([ "dungeon", "" ]),
     pdisk_mindist_and_tag: Some([
-        (Some(2), "caca"),
+        (Some(2), "dungeon"),
     ]),
 )

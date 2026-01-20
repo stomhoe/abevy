@@ -1,14 +1,14 @@
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 
-use crate::{common_components::*, common_resources::*, common_states::*, common_systems::*, common_types::*};
+use crate::{common_components::*, common_resources::*, common_states::*, common_systems::*, common_tag_components::TagSet, common_tag_systems::*, common_types::*};
 
 use {bevy::prelude::*,};
 
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app
-        .add_systems(Update, (set_entity_name, update_img_sizes_on_load))
+        .add_systems(Update, (set_entity_name, update_img_sizes_on_load, add_hash_id_from_str_id, add_hashed_tags, ))
         .add_plugins(())
         .insert_state::<AppState>(AppState::NoSession)
         .init_state::<PreGameState>()
@@ -26,6 +26,8 @@ pub fn plugin(app: &mut App) {
         .register_type::<HashIdToEntityMap>()
         .register_type::<Tag>().register_type_data::<Tag, InspectorEguiImpl>()
         .register_type::<ImagePathHolder>()
+        .register_type::<TagSet>()
+
 
         .replicate::<Name>()
         .replicate::<EntityPrefix>()
@@ -34,6 +36,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<DisplayName>()
         .replicate::<HashId>()
         .replicate::<ImagePathHolder>()
+        .replicate::<TagSet>()
      
 
     ;

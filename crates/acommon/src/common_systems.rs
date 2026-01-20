@@ -12,7 +12,7 @@ use crate::{
 #[allow(unused_parens)]
 pub fn set_entity_name(//DESACTIVAR EN RELEASE BUILDS
     mut query: Query<(&mut Name, AnyOf<(&EntityPrefix, &StrId, &StrId20B, &DisplayName)>), 
-    (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>, DisabledOrNot)>, )>,
+    (Or<(Changed<EntityPrefix>, Changed<StrId>, Changed<DisplayName>, AnyDisabling)>, )>,
 ) {
     for (mut name, (e_prefix, strid, strid20b, display_name)) in query.iter_mut() {
         let display_name = if let Some(display_name) = display_name {
@@ -27,6 +27,19 @@ pub fn set_entity_name(//DESACTIVAR EN RELEASE BUILDS
         
     }
 }
+
+
+#[allow(unused_parens)]
+pub fn add_hash_id_from_str_id(mut cmd: Commands, 
+    query: Query<(Entity, &StrId),(With<AddHashIdFromStrId>, Without<HashId>, )>,
+) {
+    let to_add: Vec<_> = query
+    .iter()
+    .map(|(entity, str_id)| (entity, HashId::from(str_id.as_str())))
+    .collect();
+    cmd.try_insert_batch(to_add);
+}
+
 
 pub fn update_img_sizes_on_load(mut events: MessageReader<AssetEvent<Image>>, assets: Res<Assets<Image>>, 
     mut map: ResMut<ImageSizeMap>,) {

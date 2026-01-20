@@ -1,6 +1,6 @@
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_common_assets::ron::RonAssetPlugin;
-use common::{common_components::{DisabledOrNot, ImagePathHolder}, common_states::*, common_types::*};
+use common::{common_components::{AnyDisabling, ImagePathHolder}, common_states::*, common_types::*};
 use bevy_replicon::prelude::*;
 
 use crate::{game_common_components::*, game_common_components_samplers::*, game_common_states::*, game_common_systems::* };
@@ -35,7 +35,6 @@ pub fn plugin(app: &mut App) {
         clone_ezero_children_ents,
         disable_ezeros,
         delete_sprites_without_childof,
-        add_hashed_tags,
     ))
     .configure_sets(Update, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -79,7 +78,6 @@ pub fn plugin(app: &mut App) {
     .register_type::<Description>()
     .register_type::<Direction>()
     .register_type::<WeightedSamplerRef>()
-    .register_type::<TagHashSet>()
     .register_type::<EntityZeroRef>()
     .register_type::<EntityWeightedSampler>()
     
@@ -91,10 +89,9 @@ pub fn plugin(app: &mut App) {
     .replicate::<EntityWeightedSampler>()
     .replicate::<Description>()
     .replicate_once::<GlobalTransform>()
-    .replicate::<TagHashSet>()
     .replicate::<EntityZero>()
-    .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>, DisabledOrNot)>()
-    .replicate_once_filtered_as::<Visibility, VisibilityGameState, (DisabledOrNot)>()
+    .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>, AnyDisabling)>()
+    .replicate_once_filtered_as::<Visibility, VisibilityGameState, (AnyDisabling)>()
 
     .replicate::<EntityZeroRef>()
     ;

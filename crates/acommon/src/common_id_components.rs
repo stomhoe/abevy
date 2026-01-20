@@ -87,17 +87,37 @@ define_fixedstr_id!(StrId, 32);
 
 define_fixedstr_id!(EntityPrefix, 20);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct AddHashIdFromStrId;
 
-#[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect, )]
+#[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect)]
 pub struct HashId(u64);
-impl HashId {
-    pub fn new(id: u64) -> Self {HashId(id)} pub fn into_i32(self) -> i32 {self.0 as i32}
 
+impl HashId {
+    pub fn new(id: u64) -> Self {
+        Self(id)
+    }
+    pub fn as_i32(self) -> i32 {
+        self.0 as i32
+    }
+    pub const fn hash(s: &str) -> Self {
+        const OFFSET: u64 = 0xcbf29ce484222325;
+        const PRIME: u64 = 0x100000001b3;
+        let bytes = s.as_bytes();
+        let mut hash = OFFSET;
+        let mut i = 0;
+        while i < bytes.len() {
+            hash ^= bytes[i] as u64;
+            hash = hash.wrapping_mul(PRIME);
+            i += 1;
+        }
+        Self(hash)
+    }
 }
+
 impl<S: AsRef<str>> From<S> for HashId {
     fn from(id: S) -> Self {
-        let s = id.as_ref(); let mut hasher = DefaultHasher::new();
-        s.hash(&mut hasher); Self((&hasher).finish())
+        Self::hash(id.as_ref())
     }
 }
 

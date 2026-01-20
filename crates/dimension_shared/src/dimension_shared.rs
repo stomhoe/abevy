@@ -5,7 +5,7 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use common::common_types::HashIdToEntityMap;
-use game_common::game_common_components::TagHashSet;
+use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -69,8 +69,8 @@ pub struct ReassignDimensionToEntity (pub Entity);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct WhitelistedStructureGenTags(pub TagHashSet);
+pub struct WhitelistedStructureGenTags(pub TagSet);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct BlacklistedStructureGenTags(pub TagHashSet);
+pub struct BlacklistedStructureGenTags(pub TagSet);

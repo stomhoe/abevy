@@ -20,8 +20,7 @@ pub struct SpriteConfigsHolder;
 pub struct EguiSpriteHolderReference(#[relationship]#[entities]pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(EntityPrefix::new_truncated("World sprites"), DespawnOnExit::<ClientState>, Replicated)]
-#[require(WorldSprites)]
+#[require(EntityPrefix::new_truncated("World sprites"), DespawnOnExit::<ClientState>, Replicated, WorldSprites, Visibility, Transform)]
 pub struct EguiSpriteHolder;
 
 #[derive(Component, Debug, Reflect, Default)]

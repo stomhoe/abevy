@@ -2,7 +2,7 @@
 
 
 use bevy::{ecs::{entity::{EntityHashSet, }, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
-use common::{common_components::{DisplayName, HashId, StrId}, };
+use common::{common_components::{DisplayName, HashId, StrId}, common_tag_components::HashedTagsVec, };
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{DimensionRef, DimensionRootOplist};
 use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
@@ -11,9 +11,9 @@ use std::{f32::consts::PI, };
 use ::tilemap_shared::*;
 
 #[allow(unused_parens)]
-pub fn spawn_terrain_operations (
+pub fn launch_terrain_gen_operations (
     mut commands: Commands, 
-    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<StructureSpawnDone>)>, 
+    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<ReadyForTerrgen>)>, 
     dimension_query: Query<(&DimensionRootOplist, &HashId), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut ew_pending_ops: MessageWriter<PendingOp>,
@@ -48,7 +48,7 @@ pub fn spawn_terrain_operations (
                     return;
                 }
                 batch.push(PendingOp {
-                    oplist, dim_ref, gpos, dimension_hash_id: hash_id.into_i32(), 
+                    oplist, dim_ref, gpos, dimension_hash_id: hash_id.as_i32(), 
                     variables: VariablesArray::default(), filtered_op: Entity::PLACEHOLDER,
                 });
             }

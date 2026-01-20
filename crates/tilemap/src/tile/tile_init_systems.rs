@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use color_sample::{color_sample_components::ColorSamplerRef, color_sample_resources::ColorWeightedSamplersMap};
-use common::common_components::*;
+use common::{common_components::*, common_tag_components::TagSet};
 use ::dimension_shared::*;
 use ::game_common::{game_common_components::*, game_common_components_samplers::*, *};
 use bevy_ecs_tilemap::tiles::TilePos;
@@ -57,7 +57,7 @@ pub fn init_tiles(
         )).id();
 
         if let Some(tags) = &seri.tags {
-            let mut tag_hashset = TagHashSet::default();
+            let mut tag_hashset = TagSet::default();
             for tag_str in tags {
                 if tag_str.trim().is_empty() { continue; }
                 tag_hashset.insert(Tag::new_truncated(tag_str));
@@ -162,7 +162,7 @@ pub fn init_tiles(
 pub fn add_tiles_to_map(
     mut cmd: Commands,
     map: Option<ResMut<TileEzerosMap>>,
-    query: Query<(Entity, &EntityPrefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, DisabledOrNot,)>,
+    query: Query<(Entity, &EntityPrefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, AnyDisabling,)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
@@ -179,9 +179,9 @@ pub fn add_tiles_to_map(
 #[allow(unused_parens)]
 pub fn init_tile_sprite(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
-    ezero_img_path: Query<&ImagePathHolder, (Without<EntityZeroRef>, DisabledOrNot)>,
+    ezero_img_path: Query<&ImagePathHolder, (Without<EntityZeroRef>, AnyDisabling)>,
     query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<AcAnimationProgresses>, 
-        Without<Sprite>, Without<TilePos>, Without<Children>, Without<TileShader>, Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, DisabledOrNot)>,
+        Without<Sprite>, Without<TilePos>, Without<Children>, Without<TileShader>, Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, AnyDisabling)>,
 ) {
     let mut to_insert = Vec::new();
     for (entity, (image_path_holder, ezero_ref)) in query.iter() {
@@ -212,7 +212,7 @@ pub fn init_tile_sprite(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn add_handles(  
     mut cmd: Commands,  asset_server: Res<AssetServer>,
-    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, DisabledOrNot)>,
+    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, AnyDisabling)>,
 ) {
     for (enti, str_id, tile_image_paths) in query.iter() {
         let tile_handles = TileHidsHandles::from_paths(&asset_server, tile_image_paths.clone(), );
@@ -295,7 +295,7 @@ pub fn map_portal_tiles(mut cmd: Commands,
         cmd.entity(ent).insert(PortalRecipe{
             dest_dimension: Entity::PLACEHOLDER,
             oe_portal_tile: tile_ent,
-            tags: TagHashSet::new(take(&mut portal_seri.oe_tags)), //SETEARLO DESPUÉS
+            tags: TagSet::new(take(&mut portal_seri.oe_tags)), //SETEARLO DESPUÉS
             op_i: portal_seri.op_i,
             min_val: portal_seri.lim_below,
             max_val: portal_seri.lim_above,
