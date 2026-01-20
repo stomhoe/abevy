@@ -24,14 +24,14 @@ pub struct OfferChunk {
 pub struct ClaimedChunks {
     pub i: u64,
     pub region_ent: Entity,
-    pub structured_gen_cfg_ent: Entity,
+    pub sgc_ent: Entity,
     //TODO: chequear que cada chunkpos no se salga de su respectiva region
     pub chunks_gpos: Vec<ChunkPos>, 
     pub partition_tolerant: bool,
 }
 impl Default for ClaimedChunks {
     fn default() -> Self {
-        Self { i: 0, region_ent: Entity::PLACEHOLDER, structured_gen_cfg_ent: Entity::PLACEHOLDER, chunks_gpos: Vec::new(), partition_tolerant: false }
+        Self { i: 0, region_ent: Entity::PLACEHOLDER, sgc_ent: Entity::PLACEHOLDER, chunks_gpos: Vec::new(), partition_tolerant: false }
     }
 }
 

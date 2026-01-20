@@ -8,7 +8,7 @@ use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::{Chunk, ReadyForTerrgen}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}, regioning_resources::LoadedRegions}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking_components::{Chunk, ReadyForTerrgen}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}, regioning_resources::LoadedRegions, regioning_structured_gen_cfg_components::*}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -144,7 +144,7 @@ pub fn offer_chunks_of_new_regions(
 pub fn read_chunk_claims_for_region_and_emit_build_orders(
     mut cmd: Commands,
     mut claims: MessageReader<ClaimedChunks>,
-    mut region_query: Query<(&RegionPos, &DimensionRef, &mut RegionStructures, &mut RegionPlannedTiles),()>,
+    mut region_query: Query<(&RegionPos, &DimensionRef, &mut ClaimList, &mut CountsOfSgcs, &mut GridOfSgcs, &mut RegionPlannedTiles),()>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     time: Res<Time>,
     mut writer: MessageWriter<StructureBuildOrder>,
@@ -154,11 +154,11 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
     let mut build_orders = Vec::new();
     
     for claim in claims.read() {
-        let Ok((_, _, mut region_structures, _)) = region_query.get_mut(claim.region_ent)
+        let Ok((_, _, mut claimlist, ..)) = region_query.get_mut(claim.region_ent)
         else {
             continue;
         };
-        region_structures.claims[claim.i as usize] = Some(claim.clone());
+        claimlist.claims[claim.i as usize] = Some(claim.clone());
         
         if !regions_with_new_claims.contains(&claim.region_ent) {
             regions_with_new_claims.push(claim.region_ent);
@@ -168,30 +168,31 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
     
     
     for region_ent in regions_with_new_claims {
-        let Ok((&region_pos, &dimension_ref, mut region_structures, mut planned)) = region_query.get_mut(region_ent)
+        let Ok((&region_pos, &dimension_ref, mut claimlist, mut counts_of_sgc, mut grid_of_sgc, mut planned)) = region_query.get_mut(region_ent)
         else {
             continue;
         };
-        'nextregion: for i in region_structures.processed_up_to_i..MAX_CLAIMS {
+        'nextregion: for i in claimlist.processed_up_to_i..MAX_CLAIMS {
             
-            if region_structures.strgen_grid.occupied_count() >= max_used_chunks_per_region as u32 {
+            if grid_of_sgc.occupied_count() >= max_used_chunks_per_region as u32 {
                 break 'nextregion;
             }
-            let Some(claimed) = region_structures.claims.get_mut(i).unwrap() else {
+            let Some(claimed) = claimlist.claims.get_mut(i).unwrap() else {
                 break 'nextregion;//ta bien, no hay que seguir hasta que aparezca la region structure en esta posicion
             };
             let mut claimed = take(claimed);
+            claimlist.claims[i] = None;
             
-            let Ok((structured_gen_cfg,)) = structured_gens.get(claimed.structured_gen_cfg_ent)
+            let Ok((structured_gen_cfg,)) = structured_gens.get(claimed.sgc_ent)
             else {
-                region_structures.processed_up_to_i += 1; 
+                claimlist.processed_up_to_i += 1; 
                 error!(target: "structure_spawn", "StructuredGenConfig entity {:?} not found when processing claims for region at {:?}, skipping claim", 
-                claimed.structured_gen_cfg_ent, region_pos);
+                claimed.sgc_ent, region_pos);
                 continue;
             };
             
-            if  region_structures.struct_gen_counts.get(&claimed.structured_gen_cfg_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
-                region_structures.processed_up_to_i += 1; 
+            if counts_of_sgc.0.get(&claimed.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
+                claimlist.processed_up_to_i += 1; 
                 debug!(target: "structure_spawn", "Max structures of type '{}' already spawned in region {:?}, skipping claim", 
                 structured_gen_cfg.structure_id, region_pos);
                 continue;
@@ -201,10 +202,10 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
             let mut failed_claims_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area() as usize, false);
             
             'nextpos: for (claim_i, &chunk_pos) in claimed.chunks_gpos.iter().enumerate(){
-                match (region_structures.strgen_grid.occupy(
+                match (grid_of_sgc.occupy(
                     chunk_pos,
                     region_pos,
-                    claimed.structured_gen_cfg_ent,
+                    claimed.sgc_ent,
                 ), claimed.partition_tolerant) {
                     (Ok(()), _) => {
                         debug!(target: "structure_spawn", "Successfully claimed chunk at {:?} in region {:?} for structure '{}'", chunk_pos, region_pos, structured_gen_cfg.structure_id);
@@ -233,10 +234,10 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
             if undo_claims {
                 for i in 0..claimed_up_to {
                     let chunk_pos = claimed.chunks_gpos[i as usize];
-                    region_structures.strgen_grid.free(chunk_pos, region_pos);
+                    grid_of_sgc.free(chunk_pos, region_pos);
                 }
             } else {
-                region_structures.struct_gen_counts.entry(claimed.structured_gen_cfg_ent)
+                counts_of_sgc.0.entry(claimed.sgc_ent)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
                 
@@ -253,12 +254,12 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                     i: claimed.i,
                     region_pos,
                     dimension_ref,
-                    structured_gen_cfg_ent: claimed.structured_gen_cfg_ent,
+                    structured_gen_cfg_ent: claimed.sgc_ent,
                     chunks_gpos: claimed.chunks_gpos,
                 };
                 build_orders.push(order);
             }
-            region_structures.processed_up_to_i += 1; 
+            claimlist.processed_up_to_i += 1; 
         }
         
     }
@@ -348,7 +349,7 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 
 
 pub fn despawn_empty_regions(mut cmd: Commands, 
-    query: Query<Entity,(With<Region>, Without<ChunksActiveInRegion>)>
+    query: Query<Entity,(With<Region>, Without<ChunksActiveInRegion>, With<BuildingStarted>)>
 ){
     query.iter().for_each(|region_ent| cmd.entity(region_ent).try_despawn());
 }

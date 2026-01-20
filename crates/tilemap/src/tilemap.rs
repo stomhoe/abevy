@@ -58,6 +58,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<MassCollectedTiles>()
 
     .add_message::<CheckChunkDespawn>()
+    
 
     
 ;

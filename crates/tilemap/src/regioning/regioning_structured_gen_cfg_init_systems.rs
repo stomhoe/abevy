@@ -1,13 +1,12 @@
 
 use bevy::{ecs::entity::EntityHashSet, prelude::*};
-use camera::camera_components::CameraTarget;
-use common::{common_components::{HashId, StrId, StrId20B}, common_tag_components::{HashedTagsVec, TagSet}};
+use common::{common_components::*, common_tag_components::{HashedTagsVec, TagSet}};
 use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
 ;
 use game_common::{game_common_components_samplers::EntityWeightedSampler};
-use tilemap_shared::{GlobalGenSettings, ChunkPos, GlobalTilePos, HashablePosVec, PoissonDisk, RegionPos};
+use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_components::{StructuredGenConfig, StructuredGenCfgsWeightedMap, WhitelistedFilterOf}, regioning_resources::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
+use crate::{regioning::{regioning_resources::*, regioning_structured_gen_cfg_components::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
 
 
 
@@ -25,6 +24,8 @@ pub fn init_structured_gen_configs (
     if map.is_some(){ return;}
     
     let mut ent_w_sampler = EntityWeightedSampler::default();
+
+    let holder = cmd.spawn_empty().id();
     
     let mut opfilters_to_spawn = Vec::new();
     let mut dimension_refs_to_insert = Vec::new();
@@ -108,8 +109,10 @@ pub fn init_structured_gen_configs (
         }
         
         ent_w_sampler.insert(main_ent, structured_gen_seri.weight);
+
+        let str_id = StrId::new_truncated(structured_gen_seri.id.clone());
         
-        gen_cfgs_to_insert.push((main_ent, gen_cfg));
+        gen_cfgs_to_insert.push((main_ent, (str_id, gen_cfg)));
         
         map.0.overwrite(structured_gen_seri.id.clone(), main_ent);
         

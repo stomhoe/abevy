@@ -1,5 +1,4 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon::prelude::Replicated;
 use game_common::game_common_components::{Direction, EntityZeroRef};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet, MapEntities}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet, hash_map::Entry}, prelude::*};
@@ -11,7 +10,7 @@ use crate::{chunking_components::Chunk, chunking_resources::AaChunkRangeSettings
 use common::{common_components::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(SessionScoped, TgenHotLoadingScoped, RegionStructures, RegionPlannedTiles, Visibility, Transform )]
+#[require(SessionScoped, TgenHotLoadingScoped, ClaimList, RegionPlannedTiles, Visibility, Transform )]
 pub struct Region;
 
 #[derive(Component, Debug, Reflect)]
@@ -19,62 +18,19 @@ pub struct Region;
 pub struct ChunksActiveInRegion(Vec<Entity>);
 impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-#[require(Replicated, EntityPrefix::new_truncated("StructureGenCfg"), )]
-pub struct StructuredGenConfig{
-    pub structure_id: StrId,
-    pub hash: HashId,
-    pub max_per_region: u32,
-    pub args: Vec<String>,
-}
-impl Default for StructuredGenConfig {
-    fn default() -> Self {
-        Self { structure_id: StrId::default(), hash: HashId::default(), max_per_region: 1024, args: Vec::new()  }
-    }
-}
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
-#[relationship(relationship_target = AcceptedFilters)]
-pub struct WhitelistedFilterOf {
-    #[relationship] #[entities]
-    pub structured_gen_cfg: Entity,
-}
-impl WhitelistedFilterOf{
-    pub fn new(structured_gen_cfg: Entity) -> Self {
-        Self { structured_gen_cfg }
-    }
-}
-
-#[derive(Component, Debug, Reflect)]
-#[relationship_target(relationship = WhitelistedFilterOf)]
-pub struct AcceptedFilters(Vec<Entity>);
-impl AcceptedFilters { pub fn entities(&self) -> &[Entity] { &self.0 } }
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, EntityPrefix::new_truncated("StructGenCfgWMap"))]
-pub struct StructuredGenCfgsWeightedMap;
-
-
-#[derive(Debug, Reflect)]
-pub struct StrGenGrid{
+#[derive(Component, Debug, Reflect, Default)]
+pub struct GridOfSgcs{
     occupied_chunks_grid: [[Option<Entity>; 32]; 32],
     occupied_chunks_count: u32,
 }
-impl Default for StrGenGrid {
-    fn default() -> Self {
-        Self {
-            occupied_chunks_grid: [[None; 32]; 32],
-            occupied_chunks_count: 0,
-        }
-    }
-}
+
 pub enum ChunkOccupyError {
     AlreadyOccupied(Entity),
     OutOfRegionBounds(Direction),
 }
 
-impl StrGenGrid {
+impl GridOfSgcs {
     #[inline]
     fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError> {
         let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
@@ -121,20 +77,20 @@ impl StrGenGrid {
 }
 
 #[derive(Component, Debug, Reflect)]
-pub struct RegionStructures { 
+#[require(CountsOfSgcs, GridOfSgcs)]
+pub struct ClaimList { 
     pub processed_up_to_i: usize,
     pub claims: [Option<ClaimedChunks>; MAX_CLAIMS],
-    pub struct_gen_counts: EntityHashMap<u32>,
-    pub strgen_grid: StrGenGrid,
 }
 
-impl Default for RegionStructures {
+#[derive(Component, Debug, Reflect, Default)]
+pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
+
+impl Default for ClaimList {
     fn default() -> Self {
         Self { 
             claims: [(); MAX_CLAIMS].map(|_| None),
             processed_up_to_i: 0,
-            struct_gen_counts: EntityHashMap::default(),
-            strgen_grid: StrGenGrid::default(),
         }
     }
 }

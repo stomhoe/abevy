@@ -6,7 +6,7 @@ use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, };
+use crate::{regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}, regioning_structured_gen_cfg_components::StructuredGenConfig}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, };
 
 
 const DRUNKWALK: HashId = HashId::hash("drunkwalk");
@@ -19,12 +19,12 @@ const ADMITTED_STRUCTURE_IDS: &[HashId] = &[
 
 #[allow(unused_parens)]
 pub fn claim_chunks_for_various_dungeon_types(
-    mut reader: MessageReader<OfferChunk>,
+    mut offered_chunks: MessageReader<OfferChunk>,
     mut writer: MessageWriter<ClaimedChunks>,
     structured_gens: Query<(&StructuredGenConfig,)>,
 ) {
     let mut claims_to_emit = Vec::new();
-    for claim_request in reader.read() {
+    for claim_request in offered_chunks.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(claim_request.structured_gen_cfg_ent)
         else { continue; };
 
@@ -62,7 +62,7 @@ pub fn claim_chunks_for_various_dungeon_types(
         claims_to_emit.push(ClaimedChunks {
             i: claim_request.i,
             region_ent: claim_request.region_ent,
-            structured_gen_cfg_ent: claim_request.structured_gen_cfg_ent,
+            sgc_ent: claim_request.structured_gen_cfg_ent,
             chunks_gpos: chunk_positions,
             partition_tolerant: false,
         });
@@ -351,7 +351,12 @@ pub fn advanced_dungeon_building_system(
             }
         }
 
+        // Corridor map: mark corridor tiles separately so we can avoid randomly placing pillars there
+        let mut corridor_map = vec![false; tile_map_size];
+
         // Connect rooms using simple nearest-neighbor chain (ensures connectivity)
+        // Make corridors wider (radius = 1 -> 3 tiles wide) and deterministic (no random carving within corridor)
+        let corridor_radius: i32 = 1; // change this to make corridors wider (>=1)
         if !rooms.is_empty() {
             // compute centers
             let mut centers: Vec<(i32,i32)> = rooms.iter().map(|r| (r.x + r.w/2, r.y + r.h/2)).collect();
@@ -363,20 +368,31 @@ pub fn advanced_dungeon_building_system(
                 // L-shaped corridor: horizontal then vertical
                 let (sx,ex) = if x0 <= x1 {(x0,x1)} else {(x1,x0)};
                 for x in sx..=ex {
-                    if x >= 0 && (x as usize) < tile_width && y0 >= 0 && (y0 as usize) < tile_height {
-                        floor_map[(y0 as usize) * tile_width + (x as usize)] = true;
+                    for dy in -corridor_radius..=corridor_radius {
+                        let yy = y0 + dy;
+                        if x >= 0 && (x as usize) < tile_width && yy >= 0 && (yy as usize) < tile_height {
+                            let idx = (yy as usize) * tile_width + (x as usize);
+                            floor_map[idx] = true;
+                            corridor_map[idx] = true;
+                        }
                     }
                 }
                 let (sy,ey) = if y0 <= y1 {(y0,y1)} else {(y1,y0)};
                 for y in sy..=ey {
-                    if x1 >= 0 && (x1 as usize) < tile_width && y >= 0 && (y as usize) < tile_height {
-                        floor_map[(y as usize) * tile_width + (x1 as usize)] = true;
+                    for dx in -corridor_radius..=corridor_radius {
+                        let xx = x1 + dx;
+                        if xx >= 0 && (xx as usize) < tile_width && y >= 0 && (y as usize) < tile_height {
+                            let idx = (y as usize) * tile_width + (xx as usize);
+                            floor_map[idx] = true;
+                            corridor_map[idx] = true;
+                        }
                     }
                 }
             }
         }
 
         // Optional: scatter a few pillars inside rooms for variety
+        // Avoid placing pillars in corridor tiles to keep corridors intact
         let pillar_attempts = (rooms.len() * 3).max(0);
         for _ in 0..pillar_attempts {
             if rooms.is_empty() { break; }
@@ -384,8 +400,11 @@ pub fn advanced_dungeon_building_system(
             let px = rng.random_range(r.x..(r.x + r.w)) as usize;
             let py = rng.random_range(r.y..(r.y + r.h)) as usize;
             if px < tile_width && py < tile_height {
+                let idx = py * tile_width + px;
+                // don't place pillars in corridors
+                if corridor_map[idx] { continue; }
                 // place a small 1x1 pillar (make it wall)
-                floor_map[py * tile_width + px] = false;
+                floor_map[idx] = false;
             }
         }
 
