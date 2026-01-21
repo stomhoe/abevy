@@ -17,9 +17,6 @@ use std::ops::{Index, IndexMut};
 pub struct EguiOplistHolder;
 
 
-
-
-
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
 pub struct ChunkRef(pub Entity);
 

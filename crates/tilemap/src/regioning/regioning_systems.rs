@@ -8,7 +8,7 @@ use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::{Chunk, ReadyForTerrgen}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}, regioning_resources::LoadedRegions, regioning_structured_gen_cfg_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking_components::{Chunk, ReadyForTerrgen}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_structured_gen_cfg_components::*}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -39,7 +39,7 @@ fn passes_dimension_tag_filters(
 pub fn offer_chunks_of_new_regions(
     mut cmd: Commands,
     settings: Single<&GlobalGenSettings>,
-    weight_map: Single<&EntityWeightedSampler, With<StructuredGenCfgsWeightedMap>>,
+    weight_map: Single<&EntityWeightedSampler, With<SgcsEntityWeightedMap>>,
     region_query: Query<(Entity, &RegionPos, &ChildOf),(Added<ChunksActiveInRegion>, )>,
     structured_gens: Query<(Option<&TagSet>, Option<&PoissonDisk>, Option<&MultipleDimensionRefs>),()>,
     dimension_query: Query<(Option<&WhitelistedStructureGenTags>, Option<&BlacklistedStructureGenTags>),()>,
@@ -147,7 +147,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
     mut region_query: Query<(&RegionPos, &DimensionRef, &mut ClaimList, &mut CountsOfSgcs, &mut GridOfSgcs, &mut RegionPlannedTiles),()>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     time: Res<Time>,
-    mut writer: MessageWriter<StructureBuildOrder>,
+    mut writer: MessageWriter<StructurePrepareTilesOrder>,
 ) {
     let mut regions_with_new_claims: Vec<Entity> = Vec::new();
     let mut regions_which_started_building = Vec::new();
@@ -168,7 +168,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
     
     
     for region_ent in regions_with_new_claims {
-        let Ok((&region_pos, &dimension_ref, mut claimlist, mut counts_of_sgc, mut grid_of_sgc, mut planned)) = region_query.get_mut(region_ent)
+        let Ok((&region_pos, &dimension_ref, mut claimlist, mut counts_of_sgcs, mut grid_of_sgc, mut planned)) = region_query.get_mut(region_ent)
         else {
             continue;
         };
@@ -191,7 +191,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                 continue;
             };
             
-            if counts_of_sgc.0.get(&claimed.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
+            if counts_of_sgcs.0.get(&claimed.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
                 claimlist.processed_up_to_i += 1; 
                 debug!(target: "structure_spawn", "Max structures of type '{}' already spawned in region {:?}, skipping claim", 
                 structured_gen_cfg.structure_id, region_pos);
@@ -237,7 +237,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                     grid_of_sgc.free(chunk_pos, region_pos);
                 }
             } else {
-                counts_of_sgc.0.entry(claimed.sgc_ent)
+                counts_of_sgcs.0.entry(claimed.sgc_ent)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
                 
@@ -250,7 +250,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                 planned.add_chunks_pending_build(&claimed.chunks_gpos, time.elapsed().as_secs_f64());
                 regions_which_started_building.push((region_ent, BuildingStarted));
                 
-                let order = StructureBuildOrder {
+                let order = StructurePrepareTilesOrder {
                     i: claimed.i,
                     region_pos,
                     dimension_ref,
@@ -345,13 +345,17 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 }
 
 
-
-
-
 pub fn despawn_empty_regions(mut cmd: Commands, 
-    query: Query<Entity,(With<Region>, Without<ChunksActiveInRegion>, With<BuildingStarted>)>
+    query: Query<(Entity, &DimensionRef, &RegionPos),(With<Region>, Without<ChunksActiveInRegion>,)>,
+    mut loaded_regions: ResMut<LoadedRegions>,
+
 ){
-    query.iter().for_each(|region_ent| cmd.entity(region_ent).try_despawn());
+    query.iter().for_each(|(region_ent, &dimension_ref, &region_pos)| {
+        info!(target: "structure_spawn", "Despawning empty region entity {:?} at position {:?} in dimension {:?} which has no active chunks", 
+        region_ent, region_pos, dimension_ref);
+        loaded_regions.0.remove(&(dimension_ref, region_pos));
+        cmd.entity(region_ent).despawn();
+    });
 }
 
 

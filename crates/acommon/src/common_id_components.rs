@@ -6,7 +6,6 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
 use crate::{common_types::*};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use std::fmt::{Debug, Display};

@@ -8,9 +8,12 @@ use bevy::ecs::entity::MapEntities;
 use common::{common_components::*, };
 
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(AssetScoped, EntityPrefix::new_truncated("EguiSgcHolder"), Replicated, SessionScoped, TgenHotLoadingScoped)]
+pub struct EguiSgcHolder;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-#[require(Replicated, EntityPrefix::new_truncated("StructureGenCfg"), )]
+#[require(Replicated, EntityPrefix::new_truncated("SGC"), AssetScoped, SessionScoped, TgenHotLoadingScoped, )]
 pub struct StructuredGenConfig{
     pub structure_id: StrId,
     pub hash: HashId,
@@ -42,5 +45,5 @@ impl AcceptedFilters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, EntityPrefix::new_truncated("StructGenCfgWMap"))]
-pub struct StructuredGenCfgsWeightedMap;
+#[require(Replicated, EntityPrefix::new_truncated("SGCsEntityWeightedMap"), AssetScoped, SessionScoped, TgenHotLoadingScoped, )]
+pub struct SgcsEntityWeightedMap;

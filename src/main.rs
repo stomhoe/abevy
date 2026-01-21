@@ -53,6 +53,7 @@ concat!(
     "being=debug,",
     "faction=debug,",
     "zsort=trace,",
+    "inspector=trace,",
 );
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 

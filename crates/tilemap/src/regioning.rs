@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
+use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use crate::regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_structured_gen_cfg_components::*, regioning_structured_gen_cfg_init_systems::*, regioning_systems::*};
@@ -42,16 +43,18 @@ pub fn plugin(app: &mut App) {
     .register_type::<WhitelistedFilterOf>()
     .register_type::<StructuredGenConfig>()
     .register_type::<ClaimList>()
-    .register_type::<RegionPlannedTiles>()
+    .register_type::<GridOfSgcs>().register_type_data::<GridOfSgcs, InspectorEguiImpl>()
+    .register_type::<CountsOfSgcs>()
 
     .replicate::<WhitelistedFilterOf>()
     .replicate::<StructuredGenConfig>()
-    .replicate::<StructuredGenCfgsWeightedMap>()
+    .replicate::<SgcsEntityWeightedMap>()
+    .replicate::<EguiSgcHolder>()
     .replicate_once::<Region>()
     
     .add_message::<OfferChunk>()
     .add_message::<ClaimedChunks>()
-    .add_message::<StructureBuildOrder>()
+    .add_message::<StructurePrepareTilesOrder>()
     .add_message::<StructureBuildCompliance>()
     
     .init_resource::<LoadedRegions>()

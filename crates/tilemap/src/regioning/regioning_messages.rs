@@ -37,7 +37,7 @@ impl Default for ClaimedChunks {
 
 
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct StructureBuildOrder {
+pub struct StructurePrepareTilesOrder {
     pub i: u64,
     pub structured_gen_cfg_ent: Entity,
     pub region_pos: RegionPos,

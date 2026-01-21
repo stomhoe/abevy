@@ -35,5 +35,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<DimensionRef>()
         .replicate::<MultipleDimensionRefs>()
         .replicate::<DimensionRootOplist>()
+        .replicate::<WhitelistedStructureGenTags>()
+        .replicate::<BlacklistedStructureGenTags>()
     ;
 }

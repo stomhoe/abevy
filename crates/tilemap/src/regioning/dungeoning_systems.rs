@@ -6,7 +6,7 @@ use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructureBuildOrder}, regioning_structured_gen_cfg_components::StructuredGenConfig}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, };
+use crate::{regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_structured_gen_cfg_components::StructuredGenConfig}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, };
 
 
 const DRUNKWALK: HashId = HashId::hash("drunkwalk");
@@ -74,7 +74,7 @@ pub fn claim_chunks_for_various_dungeon_types(
 
 #[allow(unused_parens)]
 pub fn drunkwalk_dungeon_building_system(
-    mut reader: MessageReader<StructureBuildOrder>,
+    mut reader: MessageReader<StructurePrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEzerosMap>,
@@ -212,7 +212,7 @@ pub fn drunkwalk_dungeon_building_system(
 
 #[allow(unused_parens)]
 pub fn advanced_dungeon_building_system(
-    mut reader: MessageReader<StructureBuildOrder>,
+    mut reader: MessageReader<StructurePrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEzerosMap>,

@@ -25,11 +25,11 @@ pub fn init_structured_gen_configs (
     
     let mut ent_w_sampler = EntityWeightedSampler::default();
 
-    let holder = cmd.spawn_empty().id();
+    let holder = cmd.spawn(EguiSgcHolder).id();
     
     let mut opfilters_to_spawn = Vec::new();
-    let mut dimension_refs_to_insert = Vec::new();
-    let mut gen_cfgs_to_insert = Vec::new();
+    let mut exclusive_for_dims = Vec::new();
+    let mut sgcs_comps = Vec::new();
     
     let mut map = StructuredGenConfigEntityMap::default();
     for handle in std::mem::take(&mut seris_handles.handles) {
@@ -94,7 +94,7 @@ pub fn init_structured_gen_configs (
                     error!(target: "structure_spawn", "StructureSeri with id: {} has no valid dimension references.", structured_gen_seri.id);
                     continue;
                 }
-                dimension_refs_to_insert.push((main_ent, dim_refs));
+                exclusive_for_dims.push((main_ent, dim_refs));
             }
         }
         if let Some(pdisk_mindist_seed_vec) = structured_gen_seri.pdisk_mindist_and_tag {
@@ -112,15 +112,15 @@ pub fn init_structured_gen_configs (
 
         let str_id = StrId::new_truncated(structured_gen_seri.id.clone());
         
-        gen_cfgs_to_insert.push((main_ent, (str_id, gen_cfg)));
+        sgcs_comps.push((main_ent, (str_id, gen_cfg, ChildOf(holder),)));
         
         map.0.overwrite(structured_gen_seri.id.clone(), main_ent);
         
     }
     cmd.insert_resource(map);
     cmd.spawn_batch(opfilters_to_spawn);
-    cmd.insert_batch(dimension_refs_to_insert);
-    cmd.insert_batch(gen_cfgs_to_insert);
+    cmd.insert_batch(exclusive_for_dims);
+    cmd.insert_batch(sgcs_comps);
     
-    cmd.spawn((StructuredGenCfgsWeightedMap, ent_w_sampler, ));
+    cmd.spawn((SgcsEntityWeightedMap, ent_w_sampler, ChildOf(holder),));
 }
