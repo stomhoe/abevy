@@ -35,7 +35,8 @@ impl TileShader {
             TileShader::TexRepeat(mat) => { mat.texture_overlay = handle; }
             TileShader::TwoTexRepeat(mat) => { mat.texture_overlay = handle.clone(); mat.texture_overlay_2 = handle; }
             TileShader::Voronoi(mat) => { mat.texture_overlay = handle; }
-            TileShader::Wavy(_mat) => { /* no image for wavy */ }
+            TileShader::Wavy(mat) => { mat.texture_overlay = handle; }
+
         }
     }
 }

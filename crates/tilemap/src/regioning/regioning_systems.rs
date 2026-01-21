@@ -48,11 +48,11 @@ pub fn offer_chunks_of_new_regions(
     let mut offers = Vec::new();
     
     for (region_ent, &region_pos, dim_ref) in region_query.iter() {
-        info!(target: "sgc_chunk_claim", "Offering chunks for new region at position ({}, {})", region_pos.0.x, region_pos.0.y);
+        info!(target: "sgc_chunk_offer", "Offering chunks for new region at position ({}, {})", region_pos.0.x, region_pos.0.y);
         
         let Ok((dim_wlist_tags, dim_blist_tags)) = dimension_query.get(dim_ref.parent())
         else {
-            error!(target: "sgc_chunk_claim", "Dimension entity {:?} not found when requesting chunk claims for region at position ({}, {}), skipping region", 
+            error!(target: "sgc_chunk_offer", "Dimension entity {:?} not found when requesting chunk claims for region at position ({}, {}), skipping region", 
             dim_ref.parent(), region_pos.0.x, region_pos.0.y);
             continue;
         };
@@ -70,7 +70,7 @@ pub fn offer_chunks_of_new_regions(
             if reattempt_count >= MAX_REATTEMPTS as u64 {
                 //safety break to avoid infinite loops
                 if offers.is_empty() {
-                    error!(target: "sgc_chunk_claim", "No structures could be offered for region at {}, stopping attempts", region_pos);
+                    error!(target: "sgc_chunk_offer", "No structures could be offered for region at {}, stopping attempts", region_pos);
                     cmd.entity(region_ent).try_insert(AllTilesPrepared);
                 } 
                 break 'nextattempt;
@@ -78,7 +78,7 @@ pub fn offer_chunks_of_new_regions(
             
             let Some(structured_gen_cfg_ent) = weight_map.sample_with_rng(&mut rng)
             else { 
-                error!(target: "sgc_chunk_claim", "No StructuredGenConfig available to spawn structure in region at {}", region_pos);
+                error!(target: "sgc_chunk_offer", "No StructuredGenConfig available to spawn structure in region at {}", region_pos);
                 break; 
             };
             let Ok((strgen_tags, poisson_disk, exclusive_for_dimensions)) = structured_gens.get(structured_gen_cfg_ent)
@@ -89,12 +89,12 @@ pub fn offer_chunks_of_new_regions(
             if let Some(exclusive_for_dimensions) = exclusive_for_dimensions {
                 if ! exclusive_for_dimensions.0.contains(&dim_ref.parent()) {
                     reattempt_count += 1;
-                    trace!(target: "sgc_chunk_claim", "Dimension entity {:?} is not in exclusive dimension list for structure '{:?}', skipping", dim_ref.parent(), structured_gen_cfg_ent);
+                    trace!(target: "sgc_chunk_offer", "Dimension entity {:?} is not in exclusive dimension list for structure '{:?}', skipping", dim_ref.parent(), structured_gen_cfg_ent);
                     continue 'nextattempt;
                 }
             } else if !passes_dimension_tag_filters(strgen_tags, dim_wlist_tags, dim_blist_tags) {
                 reattempt_count += 1;
-                trace!(target: "sgc_chunk_claim", "Dimension entity {:?} fails tag filter checks for structure '{:?}', skipping", dim_ref.parent(), structured_gen_cfg_ent);
+                trace!(target: "sgc_chunk_offer", "Dimension entity {:?} fails tag filter checks for structure '{:?}', skipping", dim_ref.parent(), structured_gen_cfg_ent);
                 continue 'nextattempt;
             }
             let mut available_indices = Vec::new();
@@ -116,7 +116,7 @@ pub fn offer_chunks_of_new_regions(
             if let Some(poisson_disk) = poisson_disk {
                 
                 if ! poisson_disk.is_allowed_position(&settings, rand_chunk_pos_within_region, false, OplistSize::default()) {
-                    trace!(target: "sgc_chunk_claim", "Random chunk position {:?} within region at {} rejected by PoissonDisk for structure '{:?}', reattempting", rand_chunk_pos_within_region, region_pos, structured_gen_cfg_ent);
+                    trace!(target: "sgc_chunk_offer", "Random chunk position {:?} within region at {} rejected by PoissonDisk for structure '{:?}', reattempting", rand_chunk_pos_within_region, region_pos, structured_gen_cfg_ent);
                     reattempt_count += 1;
                     continue 'nextattempt;
                 }
@@ -129,7 +129,7 @@ pub fn offer_chunks_of_new_regions(
                 structured_gen_cfg_ent,
                 start_gpos: rand_chunk_pos_within_region,
             });
-            debug!(target: "sgc_chunk_claim", "Emitting OfferChunk for structure '{:?}' in region at {} for {}", structured_gen_cfg_ent, region_pos, rand_chunk_pos_within_region);
+            debug!(target: "sgc_chunk_offer", "Emitting OfferChunk for structure '{:?}' in region at {} for {}", structured_gen_cfg_ent, region_pos, rand_chunk_pos_within_region);
             
             claim_i += 1;
             reattempt_count = 0;
@@ -186,14 +186,14 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
             let Ok((structured_gen_cfg,)) = structured_gens.get(claimed.sgc_ent)
             else {
                 claimlist.processed_up_to_i += 1; 
-                error!(target: "structure_spawn", "StructuredGenConfig entity {:?} not found when processing claims for region at {:?}, skipping claim", 
+                error!(target: "sgc_chunk_claim", "StructuredGenConfig entity {:?} not found when processing claims for region at {:?}, skipping claim", 
                 claimed.sgc_ent, region_pos);
                 continue;
             };
             
             if counts_of_sgcs.0.get(&claimed.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
                 claimlist.processed_up_to_i += 1; 
-                debug!(target: "structure_spawn", "Max structures of type '{}' already spawned in region {:?}, skipping claim", 
+                debug!(target: "sgc_chunk_claim", "Max structures of type '{}' already spawned in region {:?}, skipping claim", 
                 structured_gen_cfg.structure_id, region_pos);
                 continue;
             }
@@ -208,24 +208,24 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders(
                     claimed.sgc_ent,
                 ), claimed.partition_tolerant) {
                     (Ok(()), _) => {
-                        debug!(target: "structure_spawn", "Successfully claimed chunk at {:?} in region {:?} for structure '{}'", chunk_pos, region_pos, structured_gen_cfg.structure_id);
+                        debug!(target: "sgc_chunk_claim", "Successfully claimed chunk at {:?} in region {:?} for structure '{}'", chunk_pos, region_pos, structured_gen_cfg.structure_id);
                         claimed_up_to += 1;
                     }
                     (Err(ChunkOccupyError::OutOfRegionBounds(_)), _) => {
                         undo_claims = true;
-                        error!(target: "structure_spawn", "Chunk at {:?} is outside region bounds, undoing all claims for this structure", 
+                        error!(target: "sgc_chunk_claim", "Chunk at {:?} is outside region bounds, undoing all claims for this structure", 
                         chunk_pos);
                         break 'nextpos;
                     }
                     (Err(ChunkOccupyError::AlreadyOccupied(_)), true) => {
-                        trace!(target: "structure_spawn", "Chunk at {:?} in region {:?} already occupied, but claim is partition tolerant, continuing", 
+                        trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied, but claim is partition tolerant, continuing", 
                         chunk_pos, region_pos);
                         failed_claims_bitmask.set(claim_i, true);//OK
                         continue 'nextpos;
                     }
                     (Err(ChunkOccupyError::AlreadyOccupied(_)), false) => {
                         undo_claims = true;
-                        trace!(target: "structure_spawn", "Chunk at {:?} in region {:?} already occupied, undoing all claims for this structure", 
+                        trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied, undoing all claims for this structure", 
                         chunk_pos, region_pos);
                         break 'nextpos;
                     }

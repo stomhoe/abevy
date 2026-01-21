@@ -27,8 +27,8 @@ pub struct ShaderRepeatTexSeri {
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
-pub struct ShaderVoronoiSerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader/voro" , collection(typed))] 
+pub struct ShaderVoroshuSerisHandles {
+    #[asset(path ="ron/tilemap/tiling/shader/voroshu" , collection(typed))] 
     pub handles: Vec<Handle<ShaderVoronoiShuffleSeri>>,
 }
 
@@ -55,13 +55,11 @@ pub struct ShaderWavySerisHandles {
 #[derive(Deserialize, Asset, Reflect, Default)]
 pub struct ShaderWavySeri {
     pub id: String,
+    // Path to overlay texture (use "placeholder" if unknown)
+    pub img_path: String,
+    pub mask_color: [f32; 4],
     pub scale: f32,
-    pub speed: [f32; 2],
-    pub amplitude: f32,
-    pub wave_color: [f32; 4],
-    pub cell_scale: f32,
-    pub seam_strength: f32,
-    pub highlight_strength: f32,
-    pub warp_strength: f32,
-    pub flow_speed: f32,
-}  
+    pub time: f32,
+    pub speed: f32,
+    pub debug_mode: f32,
+}

@@ -10,7 +10,7 @@ pub fn init_shaders(
     mut cmd: Commands, 
     mut repeat_tex_handles: ResMut<ShaderRepeatTexSerisHandles>,
     mut repeat_assets: ResMut<Assets<ShaderRepeatTexSeri>>,
-    mut voronoi_tex_handles: ResMut<ShaderVoronoiSerisHandles>,
+    mut voronoi_tex_handles: ResMut<ShaderVoroshuSerisHandles>,
     mut voronoi_assets: ResMut<Assets<ShaderVoronoiShuffleSeri>>,
     mut wavy_handles: ResMut<ShaderWavySerisHandles>,
     mut wavy_assets: ResMut<Assets<ShaderWavySeri>>,
@@ -19,7 +19,6 @@ pub fn init_shaders(
     if tileshader_map.is_some(){ return; }
     let mut tileshader_map = TileShaderEntityMap::default();
     let holder = cmd.spawn((EguiTileShaderHolder, )).id();
-    // (ent, (StrId, TileShader, ImagePathHolder, ChildOf))
     let mut shader_comps_to_insert = Vec::new();
     let mut path_holders_to_insert = Vec::new();
 
@@ -121,20 +120,25 @@ pub fn init_shaders(
         shader_comps_to_insert.push((ent, (
             str_id.clone(),
             TileShader::Wavy(WavyMat::new(
+                seri.mask_color.into(),
                 seri.scale,
                 0.0,
-                seri.speed.into(),
-                seri.amplitude,
-                seri.wave_color.into(),
-                seri.cell_scale,
-                seri.seam_strength,
-                seri.highlight_strength,
-                seri.warp_strength,
-                seri.flow_speed,
+                seri.speed,
+                seri.debug_mode,
             )),
 
             ChildOf(holder),
         )));
+        match ImagePathHolder::new(seri.img_path) {
+            Ok(path_holder) => {
+                path_holders_to_insert.push((ent, path_holder));
+            },
+            Err(err) => {
+                error!("Failed to create ImagePathHolder for wavy shader '{}': {}", str_id, err);
+                continue;
+            }
+        }
+
         tileshader_map.0.overwrite(&str_id, ent);
     }
 

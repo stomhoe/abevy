@@ -6,4 +6,5 @@
         ("", "texture/world/white.png"),
     ],
     shader: Some("ocean_waves"),
+    color: Some((255, 0, 0, 255)),
 )

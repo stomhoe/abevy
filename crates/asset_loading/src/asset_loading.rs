@@ -46,7 +46,7 @@ pub fn plugin(app: &mut App) {
         .add_loading_state(
             LoadingState::new(AssetLoading::LoadingReplicatedCollections).continue_to_state(AssetLoading::SpawnReplicatedEntities)
             .load_collection::<ShaderRepeatTexSerisHandles>()
-            .load_collection::<ShaderVoronoiSerisHandles>()
+            .load_collection::<ShaderVoroshuSerisHandles>()
             .load_collection::<ShaderWavySerisHandles>()
             .load_collection::<TileSerisHandles>()
             .load_collection::<AnimSerisHandles>()

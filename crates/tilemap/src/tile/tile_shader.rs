@@ -45,7 +45,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<WavyMat>()
     .register_type::<ShaderRepeatTexSerisHandles>()
     .register_type::<ShaderRepeatTexSeri>()
-    .register_type::<ShaderVoronoiSerisHandles>()
+    .register_type::<ShaderVoroshuSerisHandles>()
     .register_type::<ShaderVoronoiShuffleSeri>()
     .register_type::<ShaderWavySerisHandles>()
     .register_type::<ShaderWavySeri>()
