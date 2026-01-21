@@ -1,0 +1,24 @@
+[package]
+name = "shader"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+
+
+bevy = { workspace = true }
+serde = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }
+indexmap = { workspace = true }
+delegate = { workspace = true }
+bevy_ecs_tilemap = { workspace = true }
+bevy-inspector-egui = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+rand_seeder = { workspace = true }
+rand_pcg = { workspace = true }
+noiz = { workspace = true }
+
+

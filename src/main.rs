@@ -85,6 +85,7 @@ fn main() {
             game_common::plugin,
             ui_shared::plugin,
             sprite_shared::plugin,
+            shader::plugin,
         ))
         .add_plugins((
             game::plugin,

@@ -7,7 +7,7 @@ use dimension::dimension_resources::DimensionSerisHandles;
 use game_common::{GameplaySystems, };
 use sprite::sprite_resources::*;
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
-use tilemap::{regioning::regioning_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::*, tile_shader_resources::*}};
+use tilemap::{regioning::regioning_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::*, tile_shader::tile_shader_resources::*}};
 
 use crate::asset_loading_systems::*;
 
@@ -47,6 +47,7 @@ pub fn plugin(app: &mut App) {
             LoadingState::new(AssetLoading::LoadingReplicatedCollections).continue_to_state(AssetLoading::SpawnReplicatedEntities)
             .load_collection::<ShaderRepeatTexSerisHandles>()
             .load_collection::<ShaderVoronoiSerisHandles>()
+            .load_collection::<ShaderWavySerisHandles>()
             .load_collection::<TileSerisHandles>()
             .load_collection::<AnimSerisHandles>()
             .load_collection::<SpriteSerisHandles>()

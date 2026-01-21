@@ -306,6 +306,7 @@ dependencies = [
  "player",
  "pregame_screen",
  "setup_screen",
+ "shader",
  "sprite",
  "sprite_animation",
  "sprite_animation_shared",
@@ -7043,6 +7044,26 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
+]
+
+[[package]]
+name = "shader"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.17.3",
+ "bevy-inspector-egui",
+ "bevy_ecs_tilemap",
+ "bevy_replicon",
+ "bevy_replicon_renet",
+ "common",
+ "delegate",
+ "indexmap",
+ "noiz",
+ "rand 0.9.2",
+ "rand_distr 0.5.1",
+ "rand_pcg",
+ "rand_seeder",
+ "serde",
 ]
 
 [[package]]

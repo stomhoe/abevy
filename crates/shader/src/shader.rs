@@ -1,0 +1,90 @@
+use std::{hash::{DefaultHasher, Hash, Hasher}, ops::Add};
+
+#[allow(unused_imports)] use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TilePos;
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
+use common::common_components::EntityPrefix;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+
+
+
+pub fn plugin(app: &mut App) {
+    app.init_resource::<ShaderUtils>();
+}
+
+
+pub const PERLIN_NOISE_2D: &str = include_str!("../../../assets/shader/noise/perlin_noise_2d.wgsl");
+
+pub const PERLIN_NOISE_3D: &str =
+    include_str!("../../../assets/shader/noise/perlin_noise_3d.wgsl");
+pub const SIMPLEX_NOISE_2D: &str =
+    include_str!("../../../assets/shader/noise/simplex_noise_2d.wgsl");
+pub const SIMPLEX_NOISE_3D: &str =
+    include_str!("../../../assets/shader/noise/simplex_noise_3d.wgsl");
+pub const FBM: &str = include_str!("../../../assets/shader/noise/fbm.wgsl");
+pub const VORO_NOISE: &str = include_str!("../../../assets/shader/noise/voronoise.wgsl");
+pub const MOCK_FRESNEL: &str = include_str!("../../../assets/shader/noise/mock_fresnel.wgsl");
+
+
+#[derive(Resource, Debug)]
+#[allow(dead_code, )]
+pub struct ShaderUtils {
+    perlin_noise_2d: Handle<Shader>,
+    perlin_noise_3d: Handle<Shader>,
+    simplex_noise_2d: Handle<Shader>,
+    simplex_noise_3d: Handle<Shader>,
+    fbm: Handle<Shader>,
+    voro_noise: Handle<Shader>,
+    mock_fresnel: Handle<Shader>,
+}
+
+impl FromWorld for ShaderUtils {
+    fn from_world(world: &mut World) -> Self {
+        let mut shaders = world
+            .get_resource_mut::<Assets<Shader>>()
+            .unwrap();
+
+        ShaderUtils {
+            perlin_noise_2d: load_shader(
+                &mut shaders,
+                "perlin_noise_2d",
+                PERLIN_NOISE_2D,
+            ),
+            perlin_noise_3d: load_shader(
+                &mut shaders,
+                "perlin_noise_3d",
+                PERLIN_NOISE_3D,
+            ),
+            simplex_noise_2d: load_shader(
+                &mut shaders,
+                "simplex_noise_2d",
+                SIMPLEX_NOISE_2D,
+            ),
+            simplex_noise_3d: load_shader(
+                &mut shaders,
+                "simplex_noise_3d",
+                SIMPLEX_NOISE_3D,
+            ),
+            fbm: load_shader(&mut shaders, "fbm", FBM),
+            voro_noise: load_shader(
+                &mut shaders,
+                "voronoise",
+                VORO_NOISE,
+            ),
+            mock_fresnel: load_shader(&mut shaders, "mock_fresnel", MOCK_FRESNEL),
+        }
+    }
+}
+
+fn load_shader(
+    shaders: &mut Mut<Assets<Shader>>,
+    name: &str,
+    shader_str: &'static str,
+) -> Handle<Shader> {
+    // In Bevy 0.16+, Shader::from_wgsl requires a second `path` argument. Use the
+    // shader name as the path and add the shader into the Assets with `add`.
+    let mut shader = Shader::from_wgsl(shader_str, name.to_string());
+    shader.set_import_path(format!("bevy_shader_utils::{}", name));
+    shaders.add(shader)
+}

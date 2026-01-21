@@ -48,11 +48,11 @@ pub fn offer_chunks_of_new_regions(
     let mut offers = Vec::new();
     
     for (region_ent, &region_pos, dim_ref) in region_query.iter() {
-        info!(target: "structure_spawn", "Offering chunks for new region at position ({}, {})", region_pos.0.x, region_pos.0.y);
+        info!(target: "sgc_chunk_claim", "Offering chunks for new region at position ({}, {})", region_pos.0.x, region_pos.0.y);
         
         let Ok((dim_wlist_tags, dim_blist_tags)) = dimension_query.get(dim_ref.parent())
         else {
-            error!(target: "structure_spawn", "Dimension entity {:?} not found when requesting chunk claims for region at position ({}, {}), skipping region", 
+            error!(target: "sgc_chunk_claim", "Dimension entity {:?} not found when requesting chunk claims for region at position ({}, {}), skipping region", 
             dim_ref.parent(), region_pos.0.x, region_pos.0.y);
             continue;
         };
@@ -70,7 +70,7 @@ pub fn offer_chunks_of_new_regions(
             if reattempt_count >= MAX_REATTEMPTS as u64 {
                 //safety break to avoid infinite loops
                 if offers.is_empty() {
-                    error!(target: "structure_spawn", "No structures could be offered for region at {}, stopping attempts", region_pos);
+                    error!(target: "sgc_chunk_claim", "No structures could be offered for region at {}, stopping attempts", region_pos);
                     cmd.entity(region_ent).try_insert(AllTilesPrepared);
                 } 
                 break 'nextattempt;
@@ -78,7 +78,7 @@ pub fn offer_chunks_of_new_regions(
             
             let Some(structured_gen_cfg_ent) = weight_map.sample_with_rng(&mut rng)
             else { 
-                error!(target: "structure_spawn", "No StructuredGenConfig available to spawn structure in region at {}", region_pos);
+                error!(target: "sgc_chunk_claim", "No StructuredGenConfig available to spawn structure in region at {}", region_pos);
                 break; 
             };
             let Ok((strgen_tags, poisson_disk, exclusive_for_dimensions)) = structured_gens.get(structured_gen_cfg_ent)
@@ -89,12 +89,12 @@ pub fn offer_chunks_of_new_regions(
             if let Some(exclusive_for_dimensions) = exclusive_for_dimensions {
                 if ! exclusive_for_dimensions.0.contains(&dim_ref.parent()) {
                     reattempt_count += 1;
-                    trace!(target: "structure_spawn", "Dimension entity {:?} is not in exclusive dimension list for structure '{:?}', skipping", dim_ref.parent(), structured_gen_cfg_ent);
+                    trace!(target: "sgc_chunk_claim", "Dimension entity {:?} is not in exclusive dimension list for structure '{:?}', skipping", dim_ref.parent(), structured_gen_cfg_ent);
                     continue 'nextattempt;
                 }
             } else if !passes_dimension_tag_filters(strgen_tags, dim_wlist_tags, dim_blist_tags) {
                 reattempt_count += 1;
-                trace!(target: "structure_spawn", "Dimension entity {:?} fails tag filter checks for structure '{:?}', skipping", dim_ref.parent(), structured_gen_cfg_ent);
+                trace!(target: "sgc_chunk_claim", "Dimension entity {:?} fails tag filter checks for structure '{:?}', skipping", dim_ref.parent(), structured_gen_cfg_ent);
                 continue 'nextattempt;
             }
             let mut available_indices = Vec::new();
@@ -116,7 +116,7 @@ pub fn offer_chunks_of_new_regions(
             if let Some(poisson_disk) = poisson_disk {
                 
                 if ! poisson_disk.is_allowed_position(&settings, rand_chunk_pos_within_region, false, OplistSize::default()) {
-                    trace!(target: "structure_spawn", "Random chunk position {:?} within region at {} rejected by PoissonDisk for structure '{:?}', reattempting", rand_chunk_pos_within_region, region_pos, structured_gen_cfg_ent);
+                    trace!(target: "sgc_chunk_claim", "Random chunk position {:?} within region at {} rejected by PoissonDisk for structure '{:?}', reattempting", rand_chunk_pos_within_region, region_pos, structured_gen_cfg_ent);
                     reattempt_count += 1;
                     continue 'nextattempt;
                 }
@@ -129,7 +129,7 @@ pub fn offer_chunks_of_new_regions(
                 structured_gen_cfg_ent,
                 start_gpos: rand_chunk_pos_within_region,
             });
-            debug!(target: "structure_spawn", "Emitting OfferChunk for structure '{:?}' in region at {} for {}", structured_gen_cfg_ent, region_pos, rand_chunk_pos_within_region);
+            debug!(target: "sgc_chunk_claim", "Emitting OfferChunk for structure '{:?}' in region at {} for {}", structured_gen_cfg_ent, region_pos, rand_chunk_pos_within_region);
             
             claim_i += 1;
             reattempt_count = 0;

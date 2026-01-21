@@ -1,0 +1,12 @@
+(
+    id: "ocean_waves",
+    scale: 1e-2,
+    speed: (0.5, 0.2),
+    amplitude: 0.95,
+    wave_color: (0., 100., 210., 220.),
+    cell_scale: 6.0,
+    seam_strength: 0.6,
+    highlight_strength: 0.6,
+    warp_strength: 0.9,
+    flow_speed: 1.0,
+)

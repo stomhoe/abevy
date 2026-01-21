@@ -6,7 +6,10 @@ pub use bevy_ecs_tilemap::tiles::*;
 use common::{common_components::*, common_states::*};
 use serde::{Serialize, Deserialize};
 
-use crate::tile::tile_materials::*;
+use crate::tile::tile_shader::tile_material::prelude::*;
+
+
+
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
@@ -23,6 +26,7 @@ pub enum TileShader{
     TexRepeat(MonoRepeatTextureOverlayMat),
     TwoTexRepeat(TwoOverlaysExample),
     Voronoi(VoronoiTextureOverlayMat),
+    Wavy(WavyMat),
     //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
 }
 impl TileShader {
@@ -31,6 +35,7 @@ impl TileShader {
             TileShader::TexRepeat(mat) => { mat.texture_overlay = handle; }
             TileShader::TwoTexRepeat(mat) => { mat.texture_overlay = handle.clone(); mat.texture_overlay_2 = handle; }
             TileShader::Voronoi(mat) => { mat.texture_overlay = handle; }
+            TileShader::Wavy(_mat) => { /* no image for wavy */ }
         }
     }
 }

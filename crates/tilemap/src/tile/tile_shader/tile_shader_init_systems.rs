@@ -2,7 +2,8 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::*;
-use crate::tile::{tile_materials::*, tile_shader_components::*, tile_shader_resources::*};
+use crate::tile::tile_shader::{tile_material::prelude::*, tile_shader_components::*, tile_shader_resources::*};
+
 
 #[allow(unused_parens)]
 pub fn init_shaders(
@@ -10,13 +11,17 @@ pub fn init_shaders(
     mut repeat_tex_handles: ResMut<ShaderRepeatTexSerisHandles>,
     mut repeat_assets: ResMut<Assets<ShaderRepeatTexSeri>>,
     mut voronoi_tex_handles: ResMut<ShaderVoronoiSerisHandles>,
-    mut voronoi_assets: ResMut<Assets<ShaderVoronoiSeri>>,
+    mut voronoi_assets: ResMut<Assets<ShaderVoronoiShuffleSeri>>,
+    mut wavy_handles: ResMut<ShaderWavySerisHandles>,
+    mut wavy_assets: ResMut<Assets<ShaderWavySeri>>,
     tileshader_map: Option<Res<TileShaderEntityMap>>,
 ) {
     if tileshader_map.is_some(){ return; }
     let mut tileshader_map = TileShaderEntityMap::default();
     let holder = cmd.spawn((EguiTileShaderHolder, )).id();
+    // (ent, (StrId, TileShader, ImagePathHolder, ChildOf))
     let mut shader_comps_to_insert = Vec::new();
+    let mut path_holders_to_insert = Vec::new();
 
     for handle in repeat_tex_handles.handles.drain(..) {
         let Some(seri) = repeat_assets.remove(&handle) else {
@@ -45,9 +50,9 @@ pub fn init_shaders(
                     TileShader::TexRepeat(MonoRepeatTextureOverlayMat::new(
                         Handle::default(), seri.mask_color.into(), seri.scale,
                     )),
-                    path_holder,
                     ChildOf(holder),
                 )));
+                path_holders_to_insert.push((ent, path_holder));
                 tileshader_map.0.overwrite(&str_id, ent);
 
             },
@@ -83,9 +88,9 @@ pub fn init_shaders(
                     TileShader::Voronoi(VoronoiTextureOverlayMat::new(
                         Handle::default(), seri.mask_color.into(), seri.scale, seri.voronoi_scale, seri.voronoi_scale_random, seri.voronoi_rotation
                     )),
-                    path_holder,
                     ChildOf(holder),
                 )));
+                path_holders_to_insert.push((ent, path_holder));
                 tileshader_map.0.overwrite(&str_id, ent);
             },
             Err(err) => {
@@ -93,24 +98,48 @@ pub fn init_shaders(
             }
         }
     }
+
+    // Wavy shaders (procedural, no image paths)
+    for handle in wavy_handles.handles.drain(..) {
+        let Some(seri) = wavy_assets.remove(&handle) else { continue; };
+        info!("Loading Wavy Shader from handle: {:?}", handle);
+
+        let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
+            Ok(id) => id,
+            Err(err) => {
+                error!("Failed to create StrId for shader '{}': {}", seri.id, err);
+                continue;
+            }
+        };
+
+        if let Ok(existing) = tileshader_map.0.get(&str_id) {
+            error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
+            continue;
+        }
+        let ent = cmd.spawn_empty().id();
+
+        shader_comps_to_insert.push((ent, (
+            str_id.clone(),
+            TileShader::Wavy(WavyMat::new(
+                seri.scale,
+                0.0,
+                seri.speed.into(),
+                seri.amplitude,
+                seri.wave_color.into(),
+                seri.cell_scale,
+                seri.seam_strength,
+                seri.highlight_strength,
+                seri.warp_strength,
+                seri.flow_speed,
+            )),
+
+            ChildOf(holder),
+        )));
+        tileshader_map.0.overwrite(&str_id, ent);
+    }
+
+    cmd.insert_batch(path_holders_to_insert);
     cmd.insert_resource(tileshader_map);
     cmd.insert_batch(shader_comps_to_insert);
 }
 
-#[allow(unused_parens)]
-pub fn add_image_handle_to_tile_shader(
-    asset_server: Res<AssetServer>,
-    mut query: Query<(&mut TileShader, AnyOf<(&ImagePathHolder, &MultipleImagePathHolder)>),(Or<(Changed<ImagePathHolder>, Changed<MultipleImagePathHolder>)>,)>,
-) {
-    query.iter_mut().for_each(|(mut tile_shader, (img_path, multiple_img_path))| {
-        if let Some(img_path) = img_path {
-            let image_handle = asset_server.load(img_path.path());
-            tile_shader.set_image_handle(image_handle);
-        } else if let Some(multiple_img_path) = multiple_img_path {
-            let paths = multiple_img_path.paths();
-            let handles: Vec<Handle<Image>> = paths.iter().map(|path| asset_server.load(path)).collect();
-            //tile_shader.set_multiple_image_handles(handles);
-
-        }
-    });
-}

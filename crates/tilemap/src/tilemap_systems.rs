@@ -6,7 +6,7 @@ use game_common::game_common_components::{EntityZeroRef, Persisted};
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_materials::*, tile_shader_components::*}, tilemap_components::*, tilemap_resources::*};
+use crate::{chunking_components::*, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}, }, tilemap_components::*, tilemap_resources::*};
 
 
 
@@ -58,6 +58,7 @@ pub fn process_tiles_pre(
 
     mut texture_overlay_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
     mut voronoi_mat: ResMut<Assets<VoronoiTextureOverlayMat>>,
+    mut wavy_mat: ResMut<Assets<WavyMat>>,
     mut event_writer: MessageWriter<DrawTilemap>,
     chunkrange: Res<AaChunkRangeSettings>,
 
@@ -202,6 +203,10 @@ pub fn process_tiles_pre(
                 }
                 TileShader::Voronoi(handle) => {
                     let material = MaterialTilemapHandle::from(voronoi_mat.add(handle.clone()));
+                    cmd.entity(tmap_ent).try_insert(material);
+                }
+                TileShader::Wavy(handle) => {
+                    let material = MaterialTilemapHandle::from(wavy_mat.add(handle.clone()));
                     cmd.entity(tmap_ent).try_insert(material);
                 }
                 TileShader::TwoTexRepeat(handle) => todo!(),

@@ -1,4 +1,4 @@
-use bevy::{asset, ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, }, platform::collections::{HashMap, HashSet}, render::sync_world::SyncToRenderWorld};
+use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, }, platform::collections::{HashMap, HashSet}, };
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -12,7 +12,7 @@ use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
-use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*,  tile_materials::*, tile_resources::*, tile_shader_components::{TileShader, TileShaderRef}, tile_shader_resources::*}, tilemap_resources::MassCollectedTiles };
+use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*, tile_shader::{tile_shader_components::*, tile_shader_resources::TileShaderEntityMap}, }, tilemap_resources::MassCollectedTiles };
 
 use std::mem::take;
 

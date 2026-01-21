@@ -12,7 +12,7 @@
     bifs: [
         ("normal1", [""]),
         ("elf1", [""]),
-        ("", ["ocean"])
+        ("", ["sand","ocean"])
     ],
     root_in_dimensions: ["ow", ],
     size: Some((1, 1)),

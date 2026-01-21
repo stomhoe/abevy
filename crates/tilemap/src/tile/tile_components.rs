@@ -16,8 +16,8 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
 use crate::tile::tile_resources::TileImagePaths;
-use crate::tile::tile_shader_components::*;
-use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilter},}, tile::tile_materials::* };
+use crate::tile::tile_shader::tile_shader_components::*;
+use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilter},}, };
 
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(

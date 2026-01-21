@@ -1,8 +1,9 @@
 (
     id: "ocean",
     name: "Ocean",
-    z: -1000,
+    z: -950,
     img_paths: [
-        ("", "texture/world/terrain/water/water0.png"),
+        ("", "texture/world/white.png"),
     ],
+    shader: Some("ocean_waves"),
 )

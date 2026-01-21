@@ -11,20 +11,16 @@ use tilemap_shared::{GlobalTilePos, OplistSize};
 #[allow(unused_imports)] use {bevy::prelude::*, superstate::superstate_plugin};
 
 use crate::{tile::{
-    tile_components::*, tile_init_systems::*, tile_materials::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_systems::*
+    tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
 }, };
 mod tile_systems;
 mod tile_init_systems;
 mod tile_sampler_init_systems;
-mod tile_shader_init_systems;
 pub mod tile_components;
-pub mod tile_shader_components;
 pub mod tile_resources;
 pub mod tile_sampler_resources;
-pub mod tile_shader_resources;
-pub mod tile_materials;
 pub mod tile_messages;
-
+pub mod tile_shader;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TilingSystems;
@@ -43,7 +39,6 @@ pub fn plugin(app: &mut App) {
         make_child_of_chunk,
         add_handles,
         init_tile_sprite,
-        add_image_handle_to_tile_shader,
         emit_global_tile_pos_change,
     ))
     .add_observer(remove_tile_from_gpos_map)
@@ -55,7 +50,6 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), 
         (   
-            init_shaders,  
             init_tiles, add_tiles_to_map, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, init_tile_weighted_samplers_refs, 
         )
         .chain().in_set(TilingSystems))
@@ -68,19 +62,14 @@ pub fn plugin(app: &mut App) {
     ))
     
     .add_plugins((
-        MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
-        MaterialTilemapPlugin::<VoronoiTextureOverlayMat>::default(),
-        RonAssetPlugin::<ShaderRepeatTexSeri>::new(&["rep1shader.ron"]),
-        RonAssetPlugin::<ShaderVoronoiSeri>::new(&["voro.ron"]),
+        tile_shader::plugin,
+        
         RonAssetPlugin::<TileSerialization>::new(&["tile.ron"]),
         RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
     ))
     
     
-    .register_type::<ShaderRepeatTexSerisHandles>()
-    .register_type::<ShaderRepeatTexSeri>()
-    .register_type::<ShaderVoronoiSerisHandles>()
-    .register_type::<ShaderVoronoiSeri>()
+
     .register_type::<TileSerisHandles>()
     .register_type::<TileSerialization>()
     .register_type::<GlobalTilePos>()
@@ -88,18 +77,13 @@ pub fn plugin(app: &mut App) {
     .register_type::<TileWeightedSamplerSeri>()
     .register_type::<TileEzerosMap>()
     .register_type::<TileWeightedSamplersMap>()
-    .register_type::<TileShaderEntityMap>()
-    .register_type::<TileShader>()
-    .register_type::<TileShaderRef>()
-    .register_type::<MonoRepeatTextureOverlayMat>()
-    .register_type::<VoronoiTextureOverlayMat>()
-    .register_type::<TwoOverlaysExample>()
+
+
     .register_type::<MinDistancesMap>()
     .register_type::<TileCategories>()
     .register_type::<KeepDistanceFrom>()
     .register_type::<PortalRecipe>()
     .register_type::<PortalTo>()
-    .register_type::<EguiTileShaderHolder>()
     
     .init_resource::<TilesAtGpos>()
     .init_resource::<TileEzerosMap>()
@@ -112,9 +96,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<InitialPos>()
     .replicate::<PortalsZeroEguiHolder>()
     .replicate::<TileInstancesHolder>()
-    .replicate::<TileShader>()
-    .replicate::<TileShaderRef>()
-    .replicate::<EguiTileShaderHolder>()
+
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()
     .replicate_filtered::<EntityZeroRef, With<Tile>>()
