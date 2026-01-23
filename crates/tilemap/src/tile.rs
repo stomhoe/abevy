@@ -2,7 +2,7 @@ use bevy::ecs::entity_disabling::Disabled;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use color_sample::ColorSampleSystems;
-use common::common_states::{AssetLoading, };
+use common::{common_components::AnyDisabling, common_states::AssetLoading};
 use bevy_ecs_tilemap::prelude::*;
 use game_common::{game_common_components::{EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
 use sprite::AcSpriteSystems;
@@ -41,6 +41,7 @@ pub fn plugin(app: &mut App) {
         add_handles,
         init_tile_sprite,
         emit_global_tile_pos_change,
+        validate_portal_recipes,
     ))
     .add_observer(remove_ezero_tile_from_map_on_despawn)
     .add_observer(remove_tile_from_gpos_map_on_despawn)
@@ -106,7 +107,7 @@ pub fn plugin(app: &mut App) {
     
     .replicate_filtered::<Transform, With<TilesEguiHolder>>()
     .replicate_filtered::<Transform, With<PortalsZeroEguiHolder>>()
-    .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilemapId>, With<Disabled>)>>()
+    .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilemapId>, AnyDisabling)>>()
     
     
     .replicate_filtered::<ChildOf, With<EntityWeightedSampler>>()

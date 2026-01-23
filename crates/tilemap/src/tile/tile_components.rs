@@ -15,7 +15,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use ::tilemap_shared::*;
 
-use crate::tile::tile_resources::TileImagePaths;
+use crate::tile::tile_resources::{PortalSeri, TileImagePaths};
 use crate::tile::tile_shader::tile_shader_components::*;
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilter},}, };
 
@@ -23,7 +23,7 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilt
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
     TileShaderRef, AcZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
-    DeleteOtherTiles,
+    DeleteOtherTiles, PortalRecipe, PortalSeri,
     TagSet, HashedTagsVec,
     //children entities don't get cloned
     Children, EntityZero, 
@@ -47,16 +47,16 @@ impl Tile {
 pub struct LocalChunkRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, AssetScoped, Prefix::trunc("Tiling"), Name, Transform, Visibility)]
+#[require(Replicated, AssetScoped, SessionScoped, Prefix::trunc("Tiling"), Name, Transform, Visibility)]
 pub struct TilesEguiHolder;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Prefix::trunc("Tile instances"), Name, Transform, Replicated)]
+#[require(Prefix::trunc("Tile instances"), Name, Transform, Replicated, SessionScoped)]
 pub struct TileInstancesHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, AssetScoped, Prefix::trunc("PortalsZero"), Name, Transform, Visibility, )]
+#[require(Replicated, AssetScoped, SessionScoped, Prefix::trunc("PortalsZero"), Name, Transform, Visibility, )]
 pub struct PortalsZeroEguiHolder;
 
 
@@ -65,6 +65,8 @@ pub type TileStrId = StrId20B;
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct SeekPortalOtherEnd;
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]

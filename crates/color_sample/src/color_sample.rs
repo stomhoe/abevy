@@ -19,6 +19,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         (apply_pos_sampled_color).in_set(ColorSampleSystems),
     ))
+    .add_observer(remove_color_sampler_from_map_on_despawn)
 
     .register_type::<ColorWeightedSamplerHandles>()
     .register_type::<ColorSamplerRef>()

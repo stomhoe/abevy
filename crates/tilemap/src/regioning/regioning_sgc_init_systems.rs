@@ -15,13 +15,13 @@ use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*}, te
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (
     mut cmd: Commands, 
-    map: Option<Res<SgcEntityMap>>,
+    mut map: ResMut<SgcEntityMap>,
     mut seris_handles: ResMut<StructureSerisHandles>,
     mut assets: ResMut<Assets<StructuredGenConfigSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,
     
 ) {
-    if map.is_some(){ return;}
+    if ! map.0.is_empty(){ return;}
     
     let mut ent_w_sampler = EntityWeightedSampler::default();
 
@@ -31,7 +31,6 @@ pub fn init_structured_gen_configs (
     let mut exclusive_for_dims = Vec::new();
     let mut sgcs_comps = Vec::new();
     
-    let mut map = SgcEntityMap::default();
     for handle in std::mem::take(&mut seris_handles.handles) {
         let Some(structured_gen_seri) = assets.remove(&handle) else {
             warn!(target: "structure_spawn", "Failed to load StructureSeri from handle: {:?}", handle);
@@ -117,7 +116,6 @@ pub fn init_structured_gen_configs (
         map.0.overwrite(structured_gen_seri.id.clone(), main_ent);
         
     }
-    cmd.insert_resource(map);
     cmd.spawn_batch(opfilters_to_spawn);
     cmd.insert_batch(exclusive_for_dims);
     cmd.insert_batch(sgcs_comps);

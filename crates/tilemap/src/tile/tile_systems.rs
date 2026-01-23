@@ -16,7 +16,7 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
     settings: Single<&GlobalGenSettings>,
     mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>, &InitialPos, ), 
     (Changed<InitialPos>, With<FlipHorizontallyBasedOnHash>, AnyDisabling, Without<EntityZero>, )>,
-    mut sprites_query: Query<(&mut Sprite), (Or<(With<Disabled>, Without<Disabled>,)>,  Without<InitialPos>, )>,
+    mut sprites_query: Query<(&mut Sprite), (AnyDisabling,  Without<InitialPos>, )>,
 ) {
     query.iter_mut().for_each(|((tile_flip, sprite, held_sprites, children), initial_pos)| {
         let should_flip = initial_pos.0.hash_true_false(&settings, 0);
@@ -49,23 +49,15 @@ pub fn spritetile_readjust_transform_to_match_globalpos(
     mut cmd: Commands,
     mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>),
     (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, 
-    Or<(Without<Disabled>, With<Disabled>, )>, Without<EntityZero>
-)>,
+    AnyDisabling, Without<EntityZero>)>,
 //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
-ezero_query: Query<&Transform, (With<EntityZero>, Without<GlobalTilePos>, AnyDisabling,)>,
-parent_query: Query<(&GlobalTransform, ), ()>,
-state: Res<State<ClientState>>,
+    parent_query: Query<(&GlobalTransform, ), ()>,
+    state: Res<State<ClientState>>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
     let is_host = *state.get() == ClientState::Disconnected;
     query.iter_mut().for_each(|(ent, mut transform, global_pos, visibility, child_of, ezero_ref, replicated, keep_disabled)| {
         let transl_from_global_pos = global_pos.to_translation(transform.translation.z);
-        let ezero_translation = match ezero_query.get(ezero_ref.0) {
-            Ok(transform) => transform.translation,
-            Err(_) => {
-                warn!(target: "tilemap", "Failed to get EntityZeroRef {:?} for tile entity {:?}, using default Transform", ezero_ref.0, ent);
-                Vec3::ZERO
-            }
-        };
+
         let parent_global_transl = if let Some(child_of) = child_of {
             if let Ok((parent_global_transform, )) = parent_query.get(child_of.parent()) {
                 parent_global_transform.translation()
@@ -76,12 +68,12 @@ state: Res<State<ClientState>>,
             Vec3::ZERO
         };
         if is_host || !replicated {
-            transform.translation = transl_from_global_pos - parent_global_transl + ezero_translation;
+            transform.translation = transl_from_global_pos - parent_global_transl;
         }
         if false == keep_disabled {
             cmd.entity(ent).try_remove::<(Disabled, )>();
         }
-        if let Some(visibility) = visibility {
+        if let Some(visibility) = visibility {//para arreglar un bug de q no se ve
             *visibility.into_inner() = visibility.clone();
         }
     });
@@ -109,7 +101,7 @@ pub fn emit_global_tile_pos_change(
 #[allow(unused_parens)]
 pub fn add_spawned_tiles_to_gpos_map(
     mut map: ResMut<TilesAtGpos>,
-    query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&OplistSize>),(Changed<GlobalTilePos>, Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
+    query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&OplistSize>),(Changed<GlobalTilePos>, AnyDisabling, Without<EntityZero>, )>,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
 ) {
     for msg in changed_pos.read() {
@@ -133,8 +125,8 @@ pub fn add_spawned_tiles_to_gpos_map(
 
 pub fn remove_tile_from_gpos_map_on_despawn(
     removed_tile: On<Despawn, (DimensionRef, GlobalTilePos)>,
-    query: Query<(&DimensionRef, &GlobalTilePos, Option<&TilemapId>, Option<&TilePos>),(Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
-    mut tmap_query: Query<(&mut TileStorage,), (Or<(Without<Disabled>, With<Disabled>)>, )>,
+    query: Query<(&DimensionRef, &GlobalTilePos, Option<&TilemapId>, Option<&TilePos>),(AnyDisabling, Without<EntityZero>, )>,
+    mut tmap_query: Query<(&mut TileStorage,), (AnyDisabling, )>,
     mut map: ResMut<TilesAtGpos>,
 ) {
     let Ok((&dim, &gpos, tilemap_id, tile_pos)) = query.get(removed_tile.entity) else {
@@ -166,8 +158,8 @@ pub fn remove_tile_from_gpos_map_on_despawn(
 #[allow(unused_parens)]//problema: aunque se despawnee la tile va a ser procesada en process_tiles_pre
 pub fn despawn_if_not_excepted(mut cmd: Commands, 
     ezero_query: Query<(Option<&AcZ>, Option<&DeleteOtherTiles>), (With<EntityZero>, AnyDisabling, )>,
-    changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
-    otile_query: Query<(&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>), (Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
+    changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, AnyDisabling, Without<EntityZero>, )>,
+    otile_query: Query<(&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>), (AnyDisabling, Without<EntityZero>, )>,
     map: Res<TilesAtGpos>,
 ) {
     //TODO: chequear en la EntityZero si tiene DeleteOtherTiles

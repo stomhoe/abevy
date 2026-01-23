@@ -404,7 +404,7 @@ impl FastNoiseLite {
             FractalType::FBm => self.gen_fractal_fbm_2d(x, y),
             FractalType::Ridged => self.gen_fractal_ridged_2d(x, y),
             FractalType::PingPong => self.gen_fractal_ping_pong_2d(x, y),
-            _ => self.gen_noise_single_2d(self.seed + seed, x, y),
+            _ => self.gen_noise_single_2d(self.seed.wrapping_add(seed), x, y),
         } 
     }
 

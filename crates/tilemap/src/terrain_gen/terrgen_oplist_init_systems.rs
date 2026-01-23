@@ -305,12 +305,13 @@ pub fn cycle_detection(
 
 #[allow(unused_parens)]
 pub fn oplist_init_dim_refs(mut cmd: Commands, 
-    oplist_query: Query<(Entity, &StrId, &MultipleDimensionRefs),(With<OperationList>, )>,
+    oplist_query: Query<(Entity, &StrId, &MultipleDimensionRefs),(Added<MultipleDimensionRefs>, With<OperationList>, )>,
     dimension_query: Query<(&StrId, Option<&DimensionRootOplist>), With<Dimension>>,
 ) {
-    let mut assignments: EntityHashMap<Entity> = EntityHashMap::new();
+    let mut assignments: EntityHashMap<DimensionRootOplist> = EntityHashMap::new();
     
-    for (ent, my_str_id, dim_refs) in oplist_query.iter() {
+
+    for (oplist_ent, my_str_id, dim_refs) in oplist_query.iter() {
         for &dim_ent in dim_refs.0.iter() {
             let Ok((dim_str_id, root_op_list)) = dimension_query.get(dim_ent) else {
                 error!(target: "dimension_loading", "Dimension entity '{}' referenced by DimensionEntityMap is not spawned in world", dim_ent);
@@ -319,15 +320,15 @@ pub fn oplist_init_dim_refs(mut cmd: Commands,
             
             match (assignments.get(&dim_ent), root_op_list) {
                 (Some(&other_ent), _) => {
-                    if other_ent == ent { warn!("self is already dimoplist"); continue; }
-                    let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
+                    if other_ent.0 == oplist_ent { warn!("self is already dimoplist"); continue; }
+                    let Ok((_, other_id, _, )) = oplist_query.get(other_ent.0) else {
                         continue;
                     };
                     error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_str_id);
                     continue;
                 },
                 (_, Some(&DimensionRootOplist(other_ent))) => {
-                    if other_ent == ent { warn!("self is already dimoplist"); continue; }
+                    if other_ent == oplist_ent { warn!("self is already dimoplist"); continue; }
                     
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
                         continue;
@@ -336,13 +337,12 @@ pub fn oplist_init_dim_refs(mut cmd: Commands,
                     continue;
                 },
                 (None, None) => {
-                    assignments.insert(dim_ent, ent);
-                    cmd.entity(dim_ent).insert(DimensionRootOplist(ent));
+                    assignments.insert(dim_ent, DimensionRootOplist(oplist_ent));
                 },
             }
         }
-        cmd.entity(ent).remove::<MultipleDimensionRefs>();
     }
+    cmd.try_insert_batch(assignments);
 }
 
 

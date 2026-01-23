@@ -169,9 +169,10 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
     non_ezero_bases: Query<(&HeldSprites),(Without<EntityZero>,)>,
     mut removed: RemovedComponents<Disabled>,
 ) {
+    let mut disableds = Vec::new();
     for (held_sprites) in ezero_bases.iter() {
         for &sprite_ent in held_sprites.entities() {
-            cmd.entity(sprite_ent).try_insert(Disabled);
+            disableds.push((sprite_ent, Disabled));
             //trace!(target:"sprite_systems", "Disabled sprite entity {:?} as its base entity was disabled", sprite_ent);
         }
     }
@@ -183,6 +184,7 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
             }
         }
     }
+    cmd.try_insert_batch(disableds);
 }
 #[allow(unused_parens)]
 pub fn add_sprites_to_holder(mut cmd: Commands, 

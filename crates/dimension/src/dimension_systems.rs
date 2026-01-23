@@ -17,7 +17,7 @@ pub fn replace_dim_string_ref_by_entity_ref(
     dimension_entity_map: Res<DimensionEntityMap>,
     dimension_query: Query<Option<&DimensionRootOplist>>,
     dimension_strid_query: Query<(Entity, Option<&StrId>, &DimensionStrIdRef, Option<&ChildOf>),>,
-    mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(With<Disabled>)>,
+    mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(AnyDisabling)>,
 ) {
     for (thing_ent, ent_strid, dimension_strid, child_of) in dimension_strid_query.iter() {
 

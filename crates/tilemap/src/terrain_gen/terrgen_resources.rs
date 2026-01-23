@@ -1,7 +1,7 @@
 use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_replicon::prelude::*;
-use common::common_types::HashIdToEntityMap;
+use common::{common_components::AnyDisabling, common_types::HashIdToEntityMap};
 
 use crate::{terrain_gen::terrgen_messages::PendingOp, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, }};
 use dimension_shared::DimensionRef;
@@ -19,7 +19,7 @@ impl RegisteredPositions {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
         new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
-        min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
+        min_dists_query: Query<(&MinDistancesMap), (AnyDisabling)>,
     ) -> bool {
 
 

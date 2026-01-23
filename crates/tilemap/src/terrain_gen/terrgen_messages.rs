@@ -63,7 +63,7 @@ impl TerrainProbe{
             step_size: 1,
             curr_iteration_batch_i: 0,
             max_batches: 100,
-            iterations_per_batch: 1000,
+            iterations_per_batch: 10000,
             probe_pattern: ProbePattern::new_spiral(search_start_pos),
             operation_filter,
         }

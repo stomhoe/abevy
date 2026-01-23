@@ -50,7 +50,7 @@ pub fn process_tiles_pre(
     mut collected_tiles: ResMut<MassCollectedTiles>,
 
     oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
-        Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>, ), (With<Disabled>)>,
+        Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>, ), (AnyDisabling)>,
 
     mut chunk_query: Query<(&mut ChunkTmapsMap), ()>,
     mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
@@ -62,7 +62,7 @@ pub fn process_tiles_pre(
     mut event_writer: MessageWriter<DrawTilemap>,
     chunkrange: Res<AaChunkRangeSettings>,
 
-    min_dists_query: Query<(&MinDistancesMap), (With<Disabled>)>,
+    min_dists_query: Query<(&MinDistancesMap), (AnyDisabling)>,
     mut regpos_map: ResMut<RegisteredPositions>,
     shader_query: Query<(&TileShader, ), ( )>,
 

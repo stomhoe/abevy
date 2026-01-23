@@ -102,11 +102,11 @@ pub struct TileSerialization {
 pub struct PortalSeri{
     pub dest_dimension: String,
     pub oe_tile: String,
-    pub oe_tags: Vec<String>,
-    pub op_i: i16,
-    pub lim_below: f32,
-    pub lim_above: f32,
-    pub one_way: bool,
+    pub oe_op_tags: Vec<String>,
+    pub op_i: Option<i16>,
+    pub min: Option<f32>,
+    pub max: Option<f32>,
+    pub one_way: Option<bool>,
     /// NASE
     pub dungeon: String,
 }

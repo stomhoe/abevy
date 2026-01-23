@@ -45,6 +45,7 @@ pub fn tick_time_based_multipliers(time: Res<Time>,
         multiplier.timer.tick(time.delta().mul_f32(factor));
     }
 }
+/* */
 #[allow(unused_parens)]
 pub fn disable_ezeros(mut cmd: Commands, 
     query: Query<(Entity),(With<EntityZero>, Without<Disabled>)>,
@@ -63,9 +64,9 @@ struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, Ima
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 
     query: Query<(Entity, &EntityZeroRef, Has<Replicated>, Has<Persisted>),
-    (Changed<EntityZeroRef>, Or<(Without<Disabled>, With<Disabled>)>)>,
+    (Changed<EntityZeroRef>, AnyDisabling)>,
 
-    ezero: Query<(&Children, Option<&HeldSprites>, ),(Or<(Without<Disabled>, With<Disabled>)>)>,
+    ezero: Query<(&Children, Option<&HeldSprites>, ),(AnyDisabling)>,
     client_state: Res<State<ClientState>>,
 ) {
     let mut new_child_of = Vec::new();

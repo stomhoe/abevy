@@ -36,6 +36,9 @@ pub fn plugin(app: &mut App) {
             .chain(),
     ).in_set(RegioningSystems))
     .add_observer(remove_sgc_from_map_on_despawn)
+
+    .init_resource::<SgcEntityMap>()
+
     .register_type::<LoadedRegions>()
     .register_type::<SgcEntityMap>()
     .register_type::<WhitelistedFilterOf>()

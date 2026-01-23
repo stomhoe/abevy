@@ -2,7 +2,7 @@ use bevy::{color, ecs::entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{Prefix, StrId};
+use common::common_components::{AnyDisabling, Prefix, StrId};
 use ::tilemap_shared::*;
 
 use crate::{color_sample_components::*, color_sample_resources::* };
@@ -98,4 +98,19 @@ pub fn apply_pos_sampled_color(mut cmd: Commands,
         }
         cmd.entity(entity).try_remove::<ColorSamplerRef>();
     });
+}
+
+#[allow(unused_parens)]
+pub fn remove_color_sampler_from_map_on_despawn(
+    trigger: On<Despawn, (ColorSampler )>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<ColorWeightedSamplersMap>,
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
+    }
 }
