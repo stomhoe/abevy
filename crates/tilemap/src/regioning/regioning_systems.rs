@@ -294,7 +294,6 @@ pub fn add_planed_tiles_to_region(mut cmd: Commands,
         
         if finished {
             info!(target: "structure_spawn", "Region entity {:?} has finished planning all structure tiles, marking as RegionPlanningFinished", region_ent);
-            cmd.entity(region_ent).try_insert(BuildingStarted);
             cmd.entity(region_ent).try_insert(AllTilesPrepared);
         }
         

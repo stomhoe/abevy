@@ -287,12 +287,10 @@ pub fn advanced_dungeon_building_system(
     ezeros_map: Res<TileEzerosMap>,
     settings: Single<&GlobalGenSettings>,
 ) {
-    // BSP rooms-and-corridors generator (distinct from drunkwalk)
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) else { continue; };
 
-        // Only run for the admitted "advanced" structure id
         if structured_gen_cfg.hash != IDK {
             continue;
         }
@@ -301,7 +299,7 @@ pub fn advanced_dungeon_building_system(
         let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when making AdvancedDungeon, skipping structure spawn", FLOOR_TILE_ID);
+                error!(target: "structure_spawn", "TileEzero '{}' not found", FLOOR_TILE_ID);
                 continue;
             }
         };
@@ -310,10 +308,13 @@ pub fn advanced_dungeon_building_system(
         let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when making AdvancedDungeon, skipping structure spawn", WALL_TILE_ID);
+                error!(target: "structure_spawn", "TileEzero '{}' not found", WALL_TILE_ID);
                 continue;
             }
         };
+
+        const LAVA_TILE_ID: HashId = HashId::hash("orange");
+        let lava_entity = ezeros_map.0.get(LAVA_TILE_ID).ok().map(EntityZeroRef);
 
         let chunk_positions = &build_order.chunks_gpos;
         if chunk_positions.is_empty() { continue; }
@@ -334,38 +335,34 @@ pub fn advanced_dungeon_building_system(
 
         let tile_map_size = tile_width * tile_height;
         let mut floor_map = vec![false; tile_map_size];
+        let mut hazard_map = vec![false; tile_map_size];
 
-        // Seed RNG differently from drunkwalk (salt=1) so results differ
         let seed = chunk_positions[0].hash_value(&settings, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
-        // BSP split representation
         #[derive(Clone, Copy)]
         struct Rect { x: i32, y: i32, w: i32, h: i32 }
         impl Rect {
             fn area(&self) -> i32 { self.w * self.h }
-            fn center(&self) -> (i32,i32) { (self.x + self.w/2, self.y + self.h/2) }
         }
 
-        // Start with whole map rectangle
         let mut leafs: Vec<Rect> = vec![ Rect { x: 0, y: 0, w: tile_width as i32, h: tile_height as i32 } ];
 
-        let target_rooms = std::cmp::max(1, (tile_map_size / 300).min(12)); // heuristic
-        let min_room_size = 4;
-        let max_splits = 200;
+        let target_rooms = std::cmp::max(2, (tile_map_size / 250).min(20));
+        let min_room_size = 5;
+        let max_splits = 300;
 
-        // Splitting loop
         for _ in 0..max_splits {
             if leafs.len() >= target_rooms { break; }
-            // pick largest leaf to split more often
-            let (idx, rect) = leafs.iter().enumerate().max_by_key(|(_,r)| r.area()).map(|(i,r)| (i,*r)).unwrap();
-            let can_split_h = rect.h >= (min_room_size*2 + 2);
-            let can_split_w = rect.w >= (min_room_size*2 + 2);
+            let (idx, rect) = match leafs.iter().enumerate().max_by_key(|(_,r)| r.area()) {
+                Some((i, r)) => (i, *r),
+                None => continue,
+            };
+            let can_split_h = rect.h >= (min_room_size * 2 + 3);
+            let can_split_w = rect.w >= (min_room_size * 2 + 3);
             if !can_split_h && !can_split_w { break; }
 
-            // Split along longer axis
             if can_split_w && (!can_split_h || rect.w >= rect.h) {
-                // choose split so both sides >= min_room_size
                 let split_min = rect.x + min_room_size;
                 let split_max = rect.x + rect.w - min_room_size;
                 if split_max - split_min <= 0 { break; }
@@ -373,7 +370,8 @@ pub fn advanced_dungeon_building_system(
                 let left = Rect { x: rect.x, y: rect.y, w: split - rect.x, h: rect.h };
                 let right = Rect { x: split, y: rect.y, w: rect.x + rect.w - split, h: rect.h };
                 leafs.remove(idx);
-                leafs.push(left); leafs.push(right);
+                leafs.push(left);
+                leafs.push(right);
             } else if can_split_h {
                 let split_min = rect.y + min_room_size;
                 let split_max = rect.y + rect.h - min_room_size;
@@ -382,32 +380,30 @@ pub fn advanced_dungeon_building_system(
                 let top = Rect { x: rect.x, y: rect.y, w: rect.w, h: split - rect.y };
                 let bot = Rect { x: rect.x, y: split, w: rect.w, h: rect.y + rect.h - split };
                 leafs.remove(idx);
-                leafs.push(top); leafs.push(bot);
-            } else { break; }
+                leafs.push(top);
+                leafs.push(bot);
+            }
         }
 
-        // From leaf rects, choose room rectangles inset with random padding
-        #[derive(Clone, Copy)] struct Room { x: i32, y: i32, w: i32, h: i32 }
+        #[derive(Clone, Copy)]
+        struct Room { x: i32, y: i32, w: i32, h: i32 }
         let mut rooms: Vec<Room> = Vec::new();
         for r in &leafs {
-            // available room space inside the leaf with a 1-tile margin on each side
             let available_w = r.w - 2;
             let available_h = r.h - 2;
             if available_w < min_room_size as i32 || available_h < min_room_size as i32 { continue; }
-            let room_w = rng.random_range(min_room_size..=available_w) as i32;
-            let room_h = rng.random_range(min_room_size..=available_h) as i32;
-            // compute placement bounds and guard against pathological cases
+            let room_w = rng.random_range(min_room_size as i32..=available_w) as i32;
+            let room_h = rng.random_range(min_room_size as i32..=available_h) as i32;
             let px_min = r.x + 1;
-            let px_max = r.x + r.w - room_w - 1;
+            let px_max = (r.x + r.w - room_w - 1).max(px_min);
             let py_min = r.y + 1;
-            let py_max = r.y + r.h - room_h - 1;
-            if px_max < px_min || py_max < py_min { continue; }
-            let px = rng.random_range(px_min ..= px_max);
-            let py = rng.random_range(py_min ..= py_max);
+            let py_max = (r.y + r.h - room_h - 1).max(py_min);
+            let px = rng.random_range(px_min..=px_max);
+            let py = rng.random_range(py_min..=py_max);
             rooms.push(Room { x: px, y: py, w: room_w, h: room_h });
         }
 
-        // Carve rooms into floor_map
+        // Carve rooms with varied sizes
         for rm in &rooms {
             for yy in 0..rm.h {
                 for xx in 0..rm.w {
@@ -420,22 +416,18 @@ pub fn advanced_dungeon_building_system(
             }
         }
 
-        // Corridor map: mark corridor tiles separately so we can avoid randomly placing pillars there
         let mut corridor_map = vec![false; tile_map_size];
-
-        // Connect rooms using simple nearest-neighbor chain (ensures connectivity)
-        // Make corridors wider (radius = 1 -> 3 tiles wide) and deterministic (no random carving within corridor)
-        let corridor_radius: i32 = 1; // change this to make corridors wider (>=1)
+        let corridor_radius = 1;
+        
         if !rooms.is_empty() {
-            // compute centers
             let mut centers: Vec<(i32,i32)> = rooms.iter().map(|r| (r.x + r.w/2, r.y + r.h/2)).collect();
-            // sort by x to make corridor layout pleasant
-            centers.sort_by_key(|c| c.0);
+            centers.sort_by_key(|c| (c.0, c.1));
+            
             for i in 1..centers.len() {
                 let (x0,y0) = centers[i-1];
                 let (x1,y1) = centers[i];
-                // L-shaped corridor: horizontal then vertical
                 let (sx,ex) = if x0 <= x1 {(x0,x1)} else {(x1,x0)};
+                
                 for x in sx..=ex {
                     for dy in -corridor_radius..=corridor_radius {
                         let yy = y0 + dy;
@@ -446,6 +438,7 @@ pub fn advanced_dungeon_building_system(
                         }
                     }
                 }
+                
                 let (sy,ey) = if y0 <= y1 {(y0,y1)} else {(y1,y0)};
                 for y in sy..=ey {
                     for dx in -corridor_radius..=corridor_radius {
@@ -460,24 +453,47 @@ pub fn advanced_dungeon_building_system(
             }
         }
 
-        // Optional: scatter a few pillars inside rooms for variety
-        // Avoid placing pillars in corridor tiles to keep corridors intact
-        let pillar_attempts = (rooms.len() * 3).max(0);
-        for _ in 0..pillar_attempts {
-            if rooms.is_empty() { break; }
-            let r = rooms[rng.random_range(0..rooms.len())];
-            let px = rng.random_range(r.x..(r.x + r.w)) as usize;
-            let py = rng.random_range(r.y..(r.y + r.h)) as usize;
-            if px < tile_width && py < tile_height {
-                let idx = py * tile_width + px;
-                // don't place pillars in corridors
-                if corridor_map[idx] { continue; }
-                // place a small 1x1 pillar (make it wall)
-                floor_map[idx] = false;
+        // Add hazards (lava pits) in some rooms
+        if lava_entity.is_some() {
+            for _ in 0..rooms.len().max(1) {
+                if rng.random_range(0..100) > 40 { continue; }
+                let r = rooms[rng.random_range(0..rooms.len())];
+                let pit_w = rng.random_range(2..=4);
+                let pit_h = rng.random_range(2..=4);
+                // Guard against pits too large for the room
+                if pit_w >= r.w - 2 || pit_h >= r.h - 2 { continue; }
+                let px = rng.random_range(r.x + 1..=(r.x + r.w - pit_w - 1));
+                let py = rng.random_range(r.y + 1..=(r.y + r.h - pit_h - 1));
+                
+                for yy in py..py + pit_h {
+                    for xx in px..px + pit_w {
+                        if (xx as usize) < tile_width && (yy as usize) < tile_height {
+                            let idx = (yy as usize) * tile_width + (xx as usize);
+                            hazard_map[idx] = true;
+                            floor_map[idx] = false;
+                        }
+                    }
+                }
             }
         }
 
-        // Build per-chunk tile lists similar to drunkwalk
+        // Scatter pillars
+        let pillar_attempts = (rooms.len() * 4).max(0);
+        for _ in 0..pillar_attempts {
+            if rooms.is_empty() { break; }
+            let r = rooms[rng.random_range(0..rooms.len())];
+            if r.w <= 0 || r.h <= 0 { continue; }
+            let px = rng.random_range(r.x..=(r.x + r.w - 1)) as usize;
+            let py = rng.random_range(r.y..=(r.y + r.h - 1)) as usize;
+            if px < tile_width && py < tile_height {
+                let idx = py * tile_width + px;
+                if corridor_map[idx] || hazard_map[idx] { continue; }
+                if rng.random_range(0..100) > 35 {
+                    floor_map[idx] = false;
+                }
+            }
+        }
+
         let delete_template = DeleteOtherTiles::default();
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
@@ -488,7 +504,14 @@ pub fn advanced_dungeon_building_system(
                 let idx_y = local_tile.y as usize;
                 if idx_x >= tile_width || idx_y >= tile_height { continue; }
                 let map_idx = idx_y * tile_width + idx_x;
-                let ezero_ref = if floor_map[map_idx] { floor_entity } else { wall_entity };
+                
+                let ezero_ref = if hazard_map[map_idx] {
+                    if let Some(lava) = lava_entity { lava } else { wall_entity }
+                } else if floor_map[map_idx] {
+                    floor_entity
+                } else {
+                    wall_entity
+                };
                 tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
             }
             compliances_to_emit.push(StructureBuildCompliance {
@@ -499,7 +522,7 @@ pub fn advanced_dungeon_building_system(
             });
         }
 
-        debug!(target: "structure_spawn", "Spawned advanced BSP dungeon across {} chunks at {:?}", chunk_positions.len(), build_order.region_pos);
+        debug!(target: "structure_spawn", "Spawned advanced BSP dungeon: {} rooms, {} chunks", rooms.len(), chunk_positions.len());
     }
     writer.write_batch(compliances_to_emit);
 }

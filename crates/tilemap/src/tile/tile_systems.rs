@@ -101,7 +101,7 @@ pub fn emit_global_tile_pos_change(
 #[allow(unused_parens)]
 pub fn add_spawned_tiles_to_gpos_map(
     mut map: ResMut<TilesAtGpos>,
-    query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&OplistSize>),(Changed<GlobalTilePos>, AnyDisabling, Without<EntityZero>, )>,
+    query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&OplistSize>),(AnyDisabling, Without<EntityZero>, )>,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
 ) {
     for msg in changed_pos.read() {
@@ -112,12 +112,21 @@ pub fn add_spawned_tiles_to_gpos_map(
         }
     }
     query.iter().for_each(|(ent, dimension_ref, gpos, oplist_size)| {
-        if !map.0.entry((*dimension_ref, *gpos)).or_default().contains(&ent) {
-            map.0.entry((*dimension_ref, *gpos)).or_default().push(ent);
+        let entry_vec = map.0.entry((*dimension_ref, *gpos)).or_default();
+        if !entry_vec.contains(&ent) {
+            entry_vec.push(ent);
             trace!(target: "add2gposmap", "Added tile entity {:?} at gpos {:?} in dimension {:?}", ent, gpos, dimension_ref);
             if let Some(oplist_size) = oplist_size {
-                //TODO llenar todas las posiciones que ocupe la tile
-                
+                // Fill all positions occupied by the tile based on its size
+                for dy in 0..oplist_size.x() {
+                    for dx in 0..oplist_size.y() {
+                        let offset_pos = *gpos + IVec2::new(dx as i32, dy as i32);
+                        let offset_entry = map.0.entry((*dimension_ref, offset_pos)).or_default();
+                        if !offset_entry.contains(&ent) {
+                            offset_entry.push(ent);
+                        }
+                    }
+                }
             }
         }
     });
@@ -125,31 +134,57 @@ pub fn add_spawned_tiles_to_gpos_map(
 
 pub fn remove_tile_from_gpos_map_on_despawn(
     removed_tile: On<Despawn, (DimensionRef, GlobalTilePos)>,
-    query: Query<(&DimensionRef, &GlobalTilePos, Option<&TilemapId>, Option<&TilePos>),(AnyDisabling, Without<EntityZero>, )>,
+    query: Query<(&DimensionRef, &GlobalTilePos, Option<&TilemapId>, Option<&TilePos>, Option<&OplistSize>),(AnyDisabling, Without<EntityZero>, )>,
     mut tmap_query: Query<(&mut TileStorage,), (AnyDisabling, )>,
     mut map: ResMut<TilesAtGpos>,
 ) {
-    let Ok((&dim, &gpos, tilemap_id, tile_pos)) = query.get(removed_tile.entity) else {
+    let Ok((&dim, &gpos, tilemap_id, tile_pos, oplist_size)) = query.get(removed_tile.entity) else {
         trace!(target: "gposmap_remove", "Failed to get DimensionRef and GlobalTilePos for removed tile entity {:?}", removed_tile.entity);
         return;
     };
+    
+    // Remove from primary position
+    let mut removed = false;
     if let Some(ents_vec) = map.0.get_mut(&(dim, gpos)) {
         if let Some(i) = ents_vec.iter().position(|&e| e == removed_tile.entity) {
             ents_vec.swap_remove(i);
-            trace!(target: "gposmap_remove", "Removed tile entity {:?} at gpos {:?} in dimension {:?}", removed_tile.entity, gpos, dim);
+            removed = true;
             if ents_vec.is_empty() {
                 map.0.remove(&(dim, gpos));
                 trace!(target: "gposmap_remove", "Removed last tile at gpos {:?} in dimension {:?}", gpos, dim);
             }
         }
     }
+    
+    if removed {
+        trace!(target: "gposmap_remove", "Removed tile entity {:?} at gpos {:?} in dimension {:?}", removed_tile.entity, gpos, dim);
+    }
+    
+    // Remove from OplistSize positions if applicable
+    if let Some(oplist_size) = oplist_size {
+        for dy in 0..oplist_size.x() {
+            for dx in 0..oplist_size.y() {
+                if dx == 0 && dy == 0 { continue; } // Already handled above
+                let offset_pos = gpos + IVec2::new(dx as i32, dy as i32);
+                if let Some(ents_vec) = map.0.get_mut(&(dim, offset_pos)) {
+                    if let Some(i) = ents_vec.iter().position(|&e| e == removed_tile.entity) {
+                        ents_vec.swap_remove(i);
+                        if ents_vec.is_empty() {
+                            map.0.remove(&(dim, offset_pos));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Remove from tilemap storage
     if let (Some(tilemap_id), Some(tile_pos)) = (tilemap_id, tile_pos) {
-        let Ok((mut tile_storage, )) = tmap_query.get_mut(tilemap_id.0) else {
-            return ;
-        };
-        if let Some(stored_tile_entity) = tile_storage.get(&tile_pos) {
-            if stored_tile_entity == removed_tile.entity {
-                tile_storage.remove(tile_pos);
+        if let Ok((mut tile_storage, )) = tmap_query.get_mut(tilemap_id.0) {
+            if let Some(stored_tile_entity) = tile_storage.get(&tile_pos) {
+                if stored_tile_entity == removed_tile.entity {
+                    tile_storage.remove(tile_pos);
+                }
             }
         }
     }
@@ -194,7 +229,6 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                 
                 let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
                 if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
-                    cmd.entity(newtile_ent).try_remove::<(Disabled, )>();
                     if newtile_delete_others_excp.spared_z.contains(otile_z) {
                         return;
                     }
