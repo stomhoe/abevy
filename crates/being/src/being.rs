@@ -27,7 +27,7 @@ pub fn plugin(app: &mut App) {
     ))
     
     .register_type::<Being>()
-    .register_type::<DirControlledBy>()
+    .register_type::<ControlledBy>()
     .register_type::<Grounding>()
     .register_type::<Controls>()
     .register_type::<EguiBeingHolderReference>()
@@ -44,7 +44,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<CharacterCreatedBy>()
     .replicate::<IsHumanControlled>()
     .replicate::<Being>()
-    .replicate::<DirControlledBy>()
+    .replicate::<ControlledBy>()
     .replicate::<EguiBeingHolderReference>()
     .replicate_once::<Grounding>()
     .replicate::<FollowerOf>()

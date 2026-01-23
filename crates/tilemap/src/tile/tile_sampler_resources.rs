@@ -3,7 +3,6 @@ use bevy::math::f32;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
 use common::common_types::HashIdToEntityMap;
-use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Default, Clone, Reflect)]
 #[reflect(Resource, Default)]

@@ -4,7 +4,7 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 
-use common::{common_components::StrId, common_tag_components::TagSet};
+use common::{common_components::{AnyDisabling, StrId}, common_tag_components::TagSet};
 use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
 use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
@@ -20,10 +20,9 @@ pub fn init_oplists_from_assets(
     terr_gen_map: Res<TerrGenEntityMap>,  
     samplers_map: Res<TileWeightedSamplersMap>,
     tiles_map: Res<TileEzerosMap>,
-    oplist_map: Option<Res<OpListEntityMap>>,
+    mut oplist_map: ResMut<OpListEntityMap>,
 ) {
-    if oplist_map.is_some() { return ; }
-    let mut oplist_map = OpListEntityMap::default();
+    if !oplist_map.0.is_empty() { return ; }
     
     let egui_oplist_holder_ent = cmd.spawn(EguiOplistHolder).id();
     cmd.spawn((FailedSearchOplistFilterHolder, ChildOf(egui_oplist_holder_ent)));
@@ -206,7 +205,6 @@ pub fn init_oplists_from_assets(
     cmd.try_insert_batch(oplist_comps);
     cmd.try_insert_batch(oplist_multiple_dimension_refs);
     cmd.try_insert_batch(tags_to_insert);
-    cmd.insert_resource(oplist_map);
 } 
 
 #[allow(unused_parens)]
@@ -220,7 +218,13 @@ pub fn init_oplists_bifurcations(
 ) -> Result {
     for handle in take(&mut seris_handles.handles) {
         if let Some(seri) = assets.remove(&handle) {
-            let oplist_ent = oplist_map.0.get(&seri.id)?;
+            let Ok(oplist_ent) = oplist_map.0.get(&seri.id) else {
+                error!(
+                    "oplist entity with id '{}' not found in OpListEntityMap",
+                    seri.id
+                );
+                continue;
+            };
             let (mut oplist, ) = oplist_query.get_mut(oplist_ent)?;
             
             for (i, seri_bifurcation) in seri.bifs.iter().enumerate() {
@@ -338,5 +342,22 @@ pub fn oplist_init_dim_refs(mut cmd: Commands,
             }
         }
         cmd.entity(ent).remove::<MultipleDimensionRefs>();
+    }
+}
+
+
+#[allow(unused_parens)]
+pub fn remove_oplist_from_map_on_despawn(
+    trigger: On<Despawn, OperationList>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<OpListEntityMap>,
+
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
     }
 }

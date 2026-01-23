@@ -3,7 +3,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use crate::regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_structured_gen_cfg_components::*, regioning_structured_gen_cfg_init_systems::*, regioning_systems::*};
+use crate::regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct RegioningSystems;
@@ -35,8 +35,9 @@ pub fn plugin(app: &mut App) {
             )
             .chain(),
     ).in_set(RegioningSystems))
+    .add_observer(remove_sgc_from_map_on_despawn)
     .register_type::<LoadedRegions>()
-    .register_type::<StructuredGenConfigEntityMap>()
+    .register_type::<SgcEntityMap>()
     .register_type::<WhitelistedFilterOf>()
     .register_type::<AcceptedFilters>()
 
@@ -65,7 +66,7 @@ pub fn plugin(app: &mut App) {
 pub mod regioning_components;
 pub mod regioning_resources;
 pub mod regioning_messages;
-pub mod regioning_structured_gen_cfg_components;
+pub mod regioning_sgc_components;
 mod regioning_systems;
-mod regioning_structured_gen_cfg_init_systems;
+mod regioning_sgc_init_systems;
 mod dungeoning_systems;

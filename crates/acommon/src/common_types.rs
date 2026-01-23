@@ -37,38 +37,15 @@ impl HashIdToEntityMap {
     pub fn overwrite<K: Into<HashId>>(&mut self, id: K, entity: Entity) -> Option<Entity> {
         self.0.insert(id.into(), entity)
     }
-
-    pub fn get<K>(&self, id: &K) -> Result<Entity, BevyError>
-    where
-        K: AsRef<str>,
-    {
-        let hash_id: HashId = HashId::from(id.as_ref());
-        self.0.get(&hash_id).copied().ok_or_else(|| {
-            BevyError::from(format!("Entity with id {} not found", id.as_ref()))
-        })
-    }
-    pub fn get_multiple<K>(&self, ids: &[K]) -> Result<Vec<Entity>, BevyError>
-    where
-        K: AsRef<str>,
-    {
-        let mut entities = Vec::with_capacity(ids.len());
-        for id in ids {
-            entities.push(self.get(id)?);
-        }
-        Ok(entities)
+    pub fn remove<K: Into<HashId>>(&mut self, id: K) -> Option<Entity> {
+        let hash_id: HashId = id.into();
+        self.0.remove(&hash_id)
     }
 
-    pub fn get_with_hash(&self, hash_id: &HashId) -> Result<Entity, BevyError> {
-        self.0.get(hash_id).copied().ok_or_else(|| {
-            BevyError::from(format!("Entity with hash id {:?} not found", hash_id))
-        })
-    }
-    pub fn get_multiple_with_hash(&self, hash_ids: &[HashId]) -> Result<Vec<Entity>, BevyError> {
-        let mut entities = Vec::with_capacity(hash_ids.len());
-        for hash_id in hash_ids {
-            entities.push(self.get_with_hash(hash_id)?);
-        }
-        Ok(entities)
+    pub fn get<K: Into<HashId>>(&self, id: K) -> Result<Entity, ()>
+    {
+        let hash_id: HashId = id.into();
+        self.0.get(&hash_id).copied().ok_or(())
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&HashId, &Entity)> {
@@ -147,7 +124,7 @@ impl std::fmt::Display for StringLengthError {
 }
 
 impl<const N: usize> FixedStr<N> {
-    pub fn new_truncated<S: AsRef<str>>(s: S) -> Self {
+    pub fn trunc<S: AsRef<str>>(s: S) -> Self {
         let bytes = s.as_ref().as_bytes();
         let mut arr = [0u8; N];
         let len = bytes.len().min(N);
@@ -163,7 +140,7 @@ impl<const N: usize> FixedStr<N> {
         if len > N {
             return Err(StringLengthError::TooLong(s.as_ref().to_string(), N as u8));
         }
-        Ok(Self::new_truncated(s))
+        Ok(Self::trunc(s))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -181,7 +158,7 @@ impl<const N: usize> Default for FixedStr<N> {fn default() -> Self { Self([0u8; 
 impl<const N: usize> std::fmt::Display for FixedStr<N> { #[inline(always)] fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { std::fmt::Display::fmt(self.as_str(), f) } }
 impl<const N: usize> std::fmt::Debug for FixedStr<N> { #[inline(always)] fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "{}", self.as_str()) } }
 impl<const N: usize> serde::Serialize for FixedStr<N> { fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer, { serializer.serialize_str(self.as_str()) } }
-impl<'de, const N: usize> serde::Deserialize<'de> for FixedStr<N> { fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de>, { let s = <&str>::deserialize(deserializer)?; Ok(FixedStr::new_truncated(s)) } }
-impl<const N: usize> From<&str> for FixedStr<N> { fn from(s: &str) -> Self { FixedStr::new_truncated(s) } }
-impl<const N: usize> From<String> for FixedStr<N> { fn from(s: String) -> Self { FixedStr::new_truncated(s) } }
+impl<'de, const N: usize> serde::Deserialize<'de> for FixedStr<N> { fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de>, { let s = <&str>::deserialize(deserializer)?; Ok(FixedStr::trunc(s)) } }
+impl<const N: usize> From<&str> for FixedStr<N> { fn from(s: &str) -> Self { FixedStr::trunc(s) } }
+impl<const N: usize> From<String> for FixedStr<N> { fn from(s: String) -> Self { FixedStr::trunc(s) } }
 impl<const N: usize> AsRef<str> for FixedStr<N> { fn as_ref(&self) -> &str { self.as_str() } }

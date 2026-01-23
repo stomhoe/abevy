@@ -3,7 +3,7 @@ use std::{hash::{DefaultHasher, Hash, Hasher}, ops::Add};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::EntityPrefix;
+use common::common_components::Prefix;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 

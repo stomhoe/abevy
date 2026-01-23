@@ -24,6 +24,10 @@ pub fn plugin(app: &mut App) {
             readjust_childof_to_new_dim_if_parent_was_dimension,
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
+        .add_observer(remove_from_map_on_dimension_despawn)
+
+        .init_resource::<DimensionEntityMap>()
+
         .register_type::<DimensionRef>()
         .register_type::<MultipleDimensionRefs>()
         .register_type::<DimensionRootOplist>()

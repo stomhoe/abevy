@@ -47,7 +47,7 @@ pub struct AnimationState(pub StrId);
 impl AnimationState {
     
     pub fn new<S: AsRef<str>>(state: S) -> Self {
-        Self(StrId::new_truncated(state.as_ref()))
+        Self(StrId::trunc(state.as_ref()))
     }
 }
 impl std::fmt::Display for AnimationState {
@@ -65,4 +65,4 @@ pub struct AnimationSheet(pub Spritesheet,);
 
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]
-pub struct AnimationLibrary ( pub HashMap<StrId, Entity>, );
+pub struct AnimationLibrary ( pub HashIdToEntityMap );

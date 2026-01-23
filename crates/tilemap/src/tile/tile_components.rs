@@ -30,14 +30,14 @@ pub struct ToDenyOnTileClone(
 );//Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]
-struct ToDenyOnReleaseBuild( Name, EntityPrefix, TileStrId  );
+struct ToDenyOnReleaseBuild( Name, Prefix, TileStrId  );
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 //NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
-#[require(AssetScoped, TgenHotLoadingScoped)]//no poner Replicated acá, sino el deny de Replicated quita el Tile
+#[require(AssetScoped, TgenHotLoadingScoped, SessionScoped)]//no poner Replicated acá, sino el deny de Replicated quita el Tile
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
@@ -47,16 +47,16 @@ impl Tile {
 pub struct LocalChunkRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, AssetScoped, EntityPrefix::new_truncated("Tiling"), Name, Transform, Visibility)]
+#[require(Replicated, AssetScoped, Prefix::trunc("Tiling"), Name, Transform, Visibility)]
 pub struct TilesEguiHolder;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(EntityPrefix::new_truncated("Tile instances"), Name, Transform, Replicated)]
+#[require(Prefix::trunc("Tile instances"), Name, Transform, Replicated)]
 pub struct TileInstancesHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, AssetScoped, EntityPrefix::new_truncated("PortalsZero"), Name, Transform, Visibility, )]
+#[require(Replicated, AssetScoped, Prefix::trunc("PortalsZero"), Name, Transform, Visibility, )]
 pub struct PortalsZeroEguiHolder;
 
 
@@ -177,7 +177,7 @@ impl MinDistancesMap {
 pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Terrgen, EntityPrefix::new_truncated("TileSamplers"), )]
+#[require(Terrgen, Prefix::trunc("TileSamplers"), )]
 pub struct TileSamplerHolder;
 
 

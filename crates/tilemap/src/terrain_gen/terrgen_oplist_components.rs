@@ -13,7 +13,7 @@ use strum_macros::{AsRefStr, Display, };
 use std::ops::{Index, IndexMut};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(AssetScoped, EntityPrefix::new_truncated("EguiOplistHolder"), Replicated, SessionScoped, TgenHotLoadingScoped)]
+#[require(AssetScoped, Prefix::trunc("EguiOplistHolder"), Replicated, SessionScoped, TgenHotLoadingScoped)]
 pub struct EguiOplistHolder;
 
 
@@ -25,7 +25,7 @@ pub struct Bifurcation{#[entities] pub oplist: Option<Entity>, #[entities] pub t
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(EntityPrefix::new_truncated("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped, AddSameHashedTags)]
+#[require(Prefix::trunc("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped, AddSameHashedTags)]
 #[component(map_entities)]
 pub struct OperationList {
 

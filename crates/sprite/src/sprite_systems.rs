@@ -186,7 +186,7 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
 }
 #[allow(unused_parens)]
 pub fn add_sprites_to_holder(mut cmd: Commands, 
-    holder: Single<(Entity, ), (With<EguiSpriteHolder>)>, 
+    holder: Single<(Entity, ), (With<EguiWorldSprites>)>, 
 
     query: Query<(Entity, ),(With<Sprite>, Without<EguiSpriteHolderReference>, Without<Disabled>)>,
     added_disabled: Query<(Entity, ),(With<Sprite>, With<EguiSpriteHolderReference>, Added<Disabled>)>,

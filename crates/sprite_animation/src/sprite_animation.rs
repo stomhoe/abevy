@@ -43,6 +43,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         (init_animations, ).chain()
     ).in_set(SpriteAnimationSystems)) 
+    .add_observer(remove_spriteanim_from_entimap_on_despawn)
 
     .add_mapped_server_message::<MoveStateUpdated>(Channel::Unordered)
     //.add_observer(client_receive_moving_anim)

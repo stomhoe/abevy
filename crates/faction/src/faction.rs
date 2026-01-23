@@ -17,6 +17,7 @@ pub fn plugin(app: &mut App) {
         
         ).in_set(StatefulSessionSystems)
     ))
+    .add_observer(remove_faction_from_entimap_on_despawn)
  
     .replicate::<Faction>()
     .replicate::<BelongsToFaction>()

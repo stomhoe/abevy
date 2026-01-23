@@ -19,7 +19,7 @@ pub struct DimensionRef(#[entities] pub Entity);
 pub struct PrevDimensionRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, TgenHotLoadingScoped, AssetScoped, EntityPrefix::new_truncated("DIMENSION") )]
+#[require(Replicated, SessionScoped, TgenHotLoadingScoped, AssetScoped, Prefix::trunc("DIMENSION"),  )]
 pub struct Dimension;
 
 #[derive(Resource, Debug, Default )]

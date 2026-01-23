@@ -40,9 +40,10 @@ concat!(
     "sprite_systems=trace,",
     "sprite_systems=trace,",
 
+    "being_control=trace,",
     "game_init_systems=info,",
     
-    "sprite_animation_init=warn,",
+    "sprite_animation_init=trace,",
     "entity_zero=info,",
 
     "tile_init=info,",

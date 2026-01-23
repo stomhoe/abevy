@@ -15,7 +15,7 @@ use {common::common_components::*, };
 pub struct Terrgen;
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize, PartialEq, Debug, Clone)]
-#[require(Terrgen, EntityPrefix::new_truncated("Noise"), )]
+#[require(Terrgen, Prefix::trunc("Noise"), )]
 pub struct FnlNoiseComp(pub FastNoiseLite);
 impl FnlNoiseComp {
     pub fn new(id: StrId) -> Self {
@@ -42,9 +42,10 @@ pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sy
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, Terrgen, EntityPrefix::new_truncated("Noises"), )]
+#[require(Replicated, Terrgen, Prefix::trunc("Noises"), AssetScoped, TgenHotLoadingScoped,SessionScoped )]
 pub struct NoiseHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(Replicated, Prefix::trunc("FailedSearches"), AssetScoped, TgenHotLoadingScoped,SessionScoped )]
 pub struct FailedSearchOplistFilterHolder;

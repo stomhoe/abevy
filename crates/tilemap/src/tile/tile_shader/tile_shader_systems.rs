@@ -1,7 +1,7 @@
 use bevy::prelude::*;
-use common::common_components::{ImagePathHolder, MultipleImagePathHolder};
+use common::common_components::{AnyDisabling, ImagePathHolder, MultipleImagePathHolder, StrId};
 
-use crate::tile::tile_shader::{tile_material::wavy::WavyMat, tile_shader_components::*};
+use crate::tile::tile_shader::{tile_material::wavy::WavyMat, tile_shader_components::*, tile_shader_resources::TileShaderEntityMap};
 
 #[allow(unused_parens)]
 pub fn add_image_handle_to_tile_shader(
@@ -27,3 +27,4 @@ pub fn update_wavy_time(time: Res<Time>, mut mats: ResMut<Assets<WavyMat>>) {
         mat.time = t as f32;
     }
 }
+

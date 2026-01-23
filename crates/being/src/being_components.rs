@@ -15,7 +15,7 @@ use sprite_animation_shared::MoveAnimActive;
 
 #[require(InputMoveVector, Replicated, MoveAnimActive,
 Grounding, Visibility, Direction, AppliedModifiers, Transform,
-EntityPrefix::new_truncated("BEING"), DimensionStrIdRef::overworld_fallback(), 
+Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), SessionScoped
 )]
 pub struct Being;
 impl Being {
@@ -40,7 +40,7 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 pub struct InfiniteMorale;
 
 #[derive(Component, Debug, Reflect, Default)]
-#[require(EntityPrefix::new_truncated("World beings"), DespawnOnExit::<ClientState>, Replicated)]
+#[require(Prefix::trunc("World beings"), DespawnOnExit::<ClientState>, Replicated, SessionScoped,)]
 #[relationship_target(relationship = EguiBeingHolderReference)]
 pub struct EguiBeingHolder(Vec<Entity>);
 impl EguiBeingHolder { pub fn entities(&self) -> &[Entity] { &self.0 } }
@@ -72,7 +72,7 @@ pub type ControlledLocally = being_shared::ControlledLocally;
 pub type IsHumanControlled = being_shared::HumanControlled;
 
 pub type Controls = being_shared::Controls;
-pub type DirControlledBy = being_shared::ControlledBy;
+pub type ControlledBy = being_shared::ControlledBy;
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
 #[relationship(relationship_target = Followers)]

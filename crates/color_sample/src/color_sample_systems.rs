@@ -2,7 +2,7 @@ use bevy::{color, ecs::entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{EntityPrefix, StrId};
+use common::common_components::{Prefix, StrId};
 use ::tilemap_shared::*;
 
 use crate::{color_sample_components::*, color_sample_resources::* };

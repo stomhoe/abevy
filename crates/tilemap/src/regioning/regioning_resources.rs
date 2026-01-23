@@ -6,7 +6,6 @@ use bevy_asset_loader::asset_collection::AssetCollection;
 use common::common_types::HashIdToEntityMap;
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
-use std::mem::take;
 use crate::terrain_gen::terrgen_messages::OpFilterSerialization;
 use serde::Deserialize;
 
@@ -16,7 +15,7 @@ pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 
 #[derive(Resource, Debug, Default, Reflect, )]
 #[reflect(Resource, Default)]
-pub struct StructuredGenConfigEntityMap(pub HashIdToEntityMap);
+pub struct SgcEntityMap(pub HashIdToEntityMap);
 
 
 #[derive(AssetCollection, Resource, Default, Reflect)]

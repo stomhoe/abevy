@@ -50,7 +50,7 @@ pub fn init_tiles(
         let my_z = AcZ(seri.z);
         let tile_enti = cmd.spawn((
             Tile, Replicated, str_id.clone(), Disabled,
-            EntityPrefix::new_truncated("Tile"), 
+            Prefix::trunc("Tile"), 
             my_z.clone(),
             EntityZero,
             ChildOf(holder),
@@ -60,7 +60,7 @@ pub fn init_tiles(
             let mut tag_hashset = TagSet::default();
             for tag_str in tags {
                 if tag_str.trim().is_empty() { continue; }
-                tag_hashset.insert(Tag::new_truncated(tag_str));
+                tag_hashset.insert(Tag::trunc(tag_str));
             }
             cmd.entity(tile_enti).insert(tag_hashset);
         }
@@ -84,7 +84,7 @@ pub fn init_tiles(
                         cmd.entity(tile_enti).insert(ColorSamplerRef(color_sampler_ent));
                     }
                     Err(err) => {
-                        error!("Tile '{}': Weighted color sampler with id '{}' not found: {}", str_id, color_map_str, err);
+                        error!("Tile '{}': Weighted color sampler with id '{}' not found in ColorWeightedSamplersMap", str_id, color_map_str);
                     }
                 }
             }
@@ -100,14 +100,11 @@ pub fn init_tiles(
 
             if let Some(shader_str) = &seri.shader {
                 if shader_str.len() > 2 {
-                    match shader_map.0.get(shader_str) {
-                        Ok(shader_ent) => {
-                            cmd.entity(tile_enti).insert(TileShaderRef(shader_ent));
-                        }
-                        Err(err) => {
-                            warn!("Tile '{}' references missing shader '{}': {}", str_id, shader_str, err);
-                        }
-                    }
+                    let Ok(shader_ent) = shader_map.0.get(shader_str) else {
+                        error!("Tile '{}' references shader {} not found in TileShaderEntityMap", str_id, shader_str);
+                        return;
+                    };
+                    cmd.entity(tile_enti).insert(TileShaderRef(shader_ent));
                 } else if shader_str.len() > 0 {
                     warn!("Tile {} shader {} is too short for a shader", str_id, shader_str);
                 }
@@ -152,7 +149,7 @@ pub fn init_tiles(
         if let Some(cats) = &seri.cats {
             cats.iter().for_each(|cat| {
                 if cat.trim().is_empty() { return; }
-                res_tile_cats.0.entry(Tag::new_truncated(cat)).or_default().insert(tile_enti);
+                res_tile_cats.0.entry(Tag::trunc(cat)).or_default().insert(tile_enti);
             });
         }
     });
@@ -162,7 +159,7 @@ pub fn init_tiles(
 pub fn add_tiles_to_map(
     mut cmd: Commands,
     map: Option<ResMut<TileEzerosMap>>,
-    query: Query<(Entity, &EntityPrefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, AnyDisabling,)>,
+    query: Query<(Entity, &Prefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, AnyDisabling,)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
@@ -250,7 +247,7 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 
         for (tile_id, min_dist) in min_distances {
 
-            if let Some(cat) = tile_id.strip_prefix("c.") && let Some(cat_entities) = tile_cats.0.get(&Tag::new_truncated(cat)) {
+            if let Some(cat) = tile_id.strip_prefix("c.") && let Some(cat_entities) = tile_cats.0.get(&Tag::trunc(cat)) {
 
                 for cat_tile_ent in cat_entities {
                     min_dists.0.insert(*cat_tile_ent, min_dist);
@@ -495,4 +492,20 @@ pub fn make_child_of_chunk(mut cmd: Commands,
         }
     });
     cmd.try_insert_batch(child_ofs);
+}
+
+
+#[allow(unused_parens)]
+pub fn remove_ezero_tile_from_map_on_despawn(
+    trigger: On<Despawn, (Tile, EntityZero, Disabled)>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<TileEzerosMap>,
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
+    }
 }

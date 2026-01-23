@@ -4,9 +4,10 @@
 use common::common_components::HashId;
 use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
+use rand_distr::{Normal, Distribution};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_structured_gen_cfg_components::StructuredGenConfig}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, };
+use crate::{regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_sgc_components::StructuredGenConfig}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, };
 
 
 const DRUNKWALK: HashId = HashId::hash("drunkwalk");
@@ -22,22 +23,28 @@ pub fn claim_chunks_for_various_dungeon_types(
     mut offered_chunks: MessageReader<OfferChunk>,
     mut writer: MessageWriter<ClaimedChunks>,
     structured_gens: Query<(&StructuredGenConfig,)>,
+    settings: Single<&GlobalGenSettings>,
 ) {
     let mut claims_to_emit = Vec::new();
-    for claim_request in offered_chunks.read() {
-        let Ok((structured_gen_cfg,)) = structured_gens.get(claim_request.structured_gen_cfg_ent)
+    for offer in offered_chunks.read() {
+        let Ok((structured_gen_cfg,)) = structured_gens.get(offer.structured_gen_cfg_ent)
         else { continue; };
 
         let id = structured_gen_cfg.hash;
         
         if !ADMITTED_STRUCTURE_IDS.contains(&id) {
-            trace!(target: "structure_spawn", "StructuredGenConfig entity {:?} is not in admitted structures, skipping", claim_request.structured_gen_cfg_ent);
+            trace!(target: "structure_spawn", "StructuredGenConfig entity {:?} is not in admitted structures, skipping", offer.structured_gen_cfg_ent);
             continue;
         }
+        let center_chunk = offer.start_gpos;
+        let seed = center_chunk.hash_value(&settings, 0);
+        let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
-        let center_chunk = claim_request.start_gpos;
-        let parity_seed = (center_chunk.x() as i64).abs() + (center_chunk.y() as i64).abs();
-        let side_length = 3 + (parity_seed % 2) as i32;
+        // Use normal distribution with mean 4, clamped to [3, 10]
+        let side_length = {
+            let normal = Normal::new(4.0, 1.5).unwrap();
+            (normal.sample(&mut rng) as i32).clamp(2, 11)
+        };
         let half_spread = side_length / 2;
         let start_offset = -half_spread;
         let end_offset = start_offset + side_length - 1;
@@ -46,10 +53,10 @@ pub fn claim_chunks_for_various_dungeon_types(
         let mut chunk_positions = Vec::new();
         for dy in start_offset..=end_offset {
             for dx in start_offset..=end_offset {
-                let candidate = center_chunk + IVec2::new(dx, dy);
-                if region_pos.contains_chunkpos(candidate) {
-                    chunk_positions.push(candidate);
-                }
+            let candidate = center_chunk + IVec2::new(dx, dy);
+            if region_pos.contains_chunkpos(candidate) {
+                chunk_positions.push(candidate);
+            }
             }
         }
 
@@ -60,9 +67,9 @@ pub fn claim_chunks_for_various_dungeon_types(
         chunk_positions.sort_unstable_by_key(|chunk| (chunk.y(), chunk.x()));
         let chunk_count = chunk_positions.len();
         claims_to_emit.push(ClaimedChunks {
-            i: claim_request.i,
-            region_ent: claim_request.region_ent,
-            sgc_ent: claim_request.structured_gen_cfg_ent,
+            i: offer.i,
+            region_ent: offer.region_ent,
+            sgc_ent: offer.structured_gen_cfg_ent,
             chunks_gpos: chunk_positions,
             partition_tolerant: false,
         });
@@ -86,14 +93,12 @@ pub fn drunkwalk_dungeon_building_system(
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) 
         else { continue; };
 
-        let id = &structured_gen_cfg.hash;
-        
-        if *id != DRUNKWALK{
+        if  structured_gen_cfg.hash != DRUNKWALK{
             continue;
         }
 
         const FLOOR_TILE_ID: HashId = HashId::hash("cyan");
-        let floor_entity = match ezeros_map.0.get_with_hash(&FLOOR_TILE_ID) {
+        let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
                 error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", FLOOR_TILE_ID);
@@ -102,7 +107,7 @@ pub fn drunkwalk_dungeon_building_system(
         };
 
         const WALL_TILE_ID: HashId = HashId::hash("purple");
-        let wall_entity = match ezeros_map.0.get_with_hash(&WALL_TILE_ID) {
+        let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
                 error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", WALL_TILE_ID);
@@ -229,7 +234,7 @@ pub fn advanced_dungeon_building_system(
         }
 
         const FLOOR_TILE_ID: HashId = HashId::hash("cyan");
-        let floor_entity = match ezeros_map.0.get_with_hash(&FLOOR_TILE_ID) {
+        let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
                 error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when making AdvancedDungeon, skipping structure spawn", FLOOR_TILE_ID);
@@ -238,7 +243,7 @@ pub fn advanced_dungeon_building_system(
         };
 
         const WALL_TILE_ID: HashId = HashId::hash("purple");
-        let wall_entity = match ezeros_map.0.get_with_hash(&WALL_TILE_ID) {
+        let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
                 error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when making AdvancedDungeon, skipping structure spawn", WALL_TILE_ID);

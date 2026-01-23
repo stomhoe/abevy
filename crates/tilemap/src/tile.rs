@@ -19,6 +19,7 @@ mod tile_sampler_init_systems;
 pub mod tile_components;
 pub mod tile_resources;
 pub mod tile_sampler_resources;
+pub mod tile_sampler_components;
 pub mod tile_messages;
 pub mod tile_shader;
 
@@ -41,7 +42,9 @@ pub fn plugin(app: &mut App) {
         init_tile_sprite,
         emit_global_tile_pos_change,
     ))
-    .add_observer(remove_tile_from_gpos_map)
+    .add_observer(remove_ezero_tile_from_map_on_despawn)
+    .add_observer(remove_tile_from_gpos_map_on_despawn)
+    .add_observer(remove_tws_from_map_on_despawn)
     
     /* .add_systems(map_portal_tiles
     OnEnter(AssetsLoadingState::LocalFinished), (
@@ -67,9 +70,10 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<TileSerialization>::new(&["tile.ron"]),
         RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
     ))
+    .init_resource::<TilesAtGpos>()
+    .init_resource::<TileEzerosMap>()
+    .init_resource::<TileWeightedSamplersMap>()
     
-    
-
     .register_type::<TileSerisHandles>()
     .register_type::<TileSerialization>()
     .register_type::<GlobalTilePos>()
@@ -85,8 +89,6 @@ pub fn plugin(app: &mut App) {
     .register_type::<PortalRecipe>()
     .register_type::<PortalTo>()
     
-    .init_resource::<TilesAtGpos>()
-    .init_resource::<TileEzerosMap>()
     
     .replicate::<Tile>()
     .replicate::<TileStrId>()

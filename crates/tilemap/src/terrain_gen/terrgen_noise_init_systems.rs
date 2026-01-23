@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use fnl::*;
-use common::common_components::{DisplayName, EntityPrefix, StrId};
+use common::common_components::{AnyDisabling, DisplayName, Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
 use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*};
 use std::mem::take;
@@ -10,17 +10,24 @@ pub fn init_noises(
     mut cmd: Commands, 
     mut seris_handles: ResMut<NoiseSerisHandles>,
     mut assets: ResMut<Assets<NoiseSerialization>>,
-    terrgen_map: Option<Res<TerrGenEntityMap>>,
+    mut terrgen_map: ResMut<TerrGenEntityMap>,
+    settings: Query<&GlobalGenSettings>,
+    noise_holder: Query<Entity, With<NoiseHolder>>,
 ) {
-    if terrgen_map.is_some() { return; }
+    if !terrgen_map.0.is_empty() { return; }
 
-    let mut terrgen_map = TerrGenEntityMap::default();
     let mut fnl_comps_to_insert = Vec::new();
     
-    cmd.spawn((GlobalGenSettings::default(), EntityPrefix::new_truncated("AA_GLOBAL_GEN_SETTINGS")));
+    if settings.is_empty(){
+        cmd.spawn((GlobalGenSettings::default(), Prefix::trunc("AA_GLOBAL_GEN_SETTINGS")));
+    }
     info!("Spawning Global Gen Settings entity");
 
-    let holder = cmd.spawn((NoiseHolder,)).id();
+    let holder = if noise_holder.is_empty() {
+        cmd.spawn((NoiseHolder,)).id()
+    } else {
+        noise_holder.single().unwrap()
+    };
 
     for handle in take(&mut seris_handles.handles) {
         let Some(seri) = assets.remove(&handle) else { continue };
@@ -132,11 +139,20 @@ pub fn init_noises(
             ),
         ));
     }
-    cmd.insert_resource(terrgen_map);
     cmd.insert_batch(fnl_comps_to_insert);
 }
 
-
-
- 
-
+#[allow(unused_parens)]
+pub fn remove_terrgen_from_map_on_despawn(
+    trigger: On<Despawn, Terrgen>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<TerrGenEntityMap>,
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
+    }
+}

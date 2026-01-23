@@ -6,7 +6,7 @@ use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
 use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_resources::*, regioning_structured_gen_cfg_components::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
+use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
 
 
 
@@ -15,7 +15,7 @@ use crate::{regioning::{regioning_resources::*, regioning_structured_gen_cfg_com
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (
     mut cmd: Commands, 
-    map: Option<Res<StructuredGenConfigEntityMap>>,
+    map: Option<Res<SgcEntityMap>>,
     mut seris_handles: ResMut<StructureSerisHandles>,
     mut assets: ResMut<Assets<StructuredGenConfigSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,
@@ -31,7 +31,7 @@ pub fn init_structured_gen_configs (
     let mut exclusive_for_dims = Vec::new();
     let mut sgcs_comps = Vec::new();
     
-    let mut map = StructuredGenConfigEntityMap::default();
+    let mut map = SgcEntityMap::default();
     for handle in std::mem::take(&mut seris_handles.handles) {
         let Some(structured_gen_seri) = assets.remove(&handle) else {
             warn!(target: "structure_spawn", "Failed to load StructureSeri from handle: {:?}", handle);
@@ -44,7 +44,7 @@ pub fn init_structured_gen_configs (
         let mut gen_cfg = StructuredGenConfig::default();
 
         gen_cfg.hash = HashId::hash(structured_gen_seri.structure_id.as_str());
-        gen_cfg.structure_id = StrId::new_truncated(structured_gen_seri.structure_id);
+        gen_cfg.structure_id = StrId::trunc(structured_gen_seri.structure_id);
         
         if let Some(max_per_region) = structured_gen_seri.max_per_region {
             gen_cfg.max_per_region = max_per_region;
@@ -76,7 +76,7 @@ pub fn init_structured_gen_configs (
                         max_val: opfilter_seri.max_val,
                         search_start_pos: GlobalTilePos::default(),
                     };
-                    opfilters_to_spawn.push((opfilter, WhitelistedFilterOf::new(main_ent), StrId::new_truncated(structured_gen_seri.id.clone())));
+                    opfilters_to_spawn.push((opfilter, WhitelistedFilterOf::new(main_ent), StrId::trunc(structured_gen_seri.id.clone())));
                 }
             }
         }
@@ -110,7 +110,7 @@ pub fn init_structured_gen_configs (
         
         ent_w_sampler.insert(main_ent, structured_gen_seri.weight);
 
-        let str_id = StrId::new_truncated(structured_gen_seri.id.clone());
+        let str_id = StrId::trunc(structured_gen_seri.id.clone());
         
         sgcs_comps.push((main_ent, (str_id, gen_cfg, ChildOf(holder),)));
         
@@ -123,4 +123,21 @@ pub fn init_structured_gen_configs (
     cmd.insert_batch(sgcs_comps);
     
     cmd.spawn((SgcsEntityWeightedMap, ent_w_sampler, ChildOf(holder),));
+}
+
+
+#[allow(unused_parens)]
+pub fn remove_sgc_from_map_on_despawn(
+    trigger: On<Despawn, StructuredGenConfig>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<SgcEntityMap>,
+
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
+    }
 }

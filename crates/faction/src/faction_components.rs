@@ -1,13 +1,13 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::common_components::EntityPrefix;
+use common::common_components::{Prefix, SessionScoped};
 
 use serde::{Deserialize, Serialize};
 
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Reflect)]
-#[require(Replicated, EntityPrefix::new_truncated("Faction"))]
+#[require(Replicated, Prefix::trunc("Faction"), SessionScoped)]
 pub struct Faction;
 
 

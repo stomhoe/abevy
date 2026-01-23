@@ -20,7 +20,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
 
-        .register_type::<EntityPrefix>().register_type_data::<EntityPrefix, InspectorEguiImpl>()
+        .register_type::<Prefix>().register_type_data::<Prefix, InspectorEguiImpl>()
         .register_type::<DisplayName>()
         .register_type::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
         .register_type::<HashIdToEntityMap>()
@@ -30,7 +30,7 @@ pub fn plugin(app: &mut App) {
 
 
         .replicate::<Name>()
-        .replicate::<EntityPrefix>()
+        .replicate::<Prefix>()
         .replicate::<StrId>()
         .replicate::<Tag>()
         .replicate::<DisplayName>()

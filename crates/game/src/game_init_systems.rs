@@ -17,7 +17,6 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     mut app_state: ResMut<NextState<AppState>>,
 ) 
 {
-    info!("game");
     let Ok(mut settings) = settings.single_mut()
     else {
         error!(target: "game_init_systems", "Failed to get AaGlobalGenSettings");
@@ -25,20 +24,16 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     };
     
 
-    settings.seed = 0;
     
-    let host_faction_id = StrId::new_truncated("host");
+    let host_faction_id = StrId::trunc("host");
     let host_faction = cmd.spawn((Faction, host_faction_id.clone(), OfSelf)).id();
     
-    let Ok(_) = map.0.try_insert(host_faction_id, host_faction)
-    else {
-        error!(target: "game_init_systems", "Failed to insert host faction into FactionEntityMap: duplicate id");
-        return;
-    };
+    map.0.overwrite(host_faction_id, host_faction);
+
     
     cmd.spawn((
         OfSelf, HostPlayer,
-        StrId::new_truncated("HOOOOOST"),
+        StrId::trunc("HOOOOOST"),
         BelongsToFaction(host_faction),
     ));
     app_state.set(AppState::StatefulGameSession);
@@ -58,7 +53,7 @@ pub fn host_on_player_added(mut cmd: Commands,
 
             //USAR EL DEFAULT ASE Q SE DESPAWNEE
             cmd.spawn((Being::default(), username.clone(), 
-                DirControlledBy { client: player_ent }, 
+                ControlledBy { client: player_ent }, 
                 CharacterCreatedBy { player: player_ent },
 
                 BelongsToFaction(host_faction.clone()),
@@ -81,18 +76,18 @@ pub fn put_player_beings_on_map(
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
     for (player_ent, created_characters, self_player) in players.iter() {
-        println!("Spawning player being: {:?}", created_characters);
+        debug!(target: "game_init", "Spawning player being: {:?}", created_characters);
 
         for &created_character in created_characters.entities() {
             cmd.entity(created_character).insert((
                 //TargetSpawnPos::new(0.0, 0.0),
                 ActivatingChunks::new(&chunk_range),
             ));
-            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(500.0)));
+            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(2000.0)));
         }
 
         if self_player.is_some() {
-            debug!(target: "game", "Spawning self player being:");
+            debug!(target: "game_init", "Spawning self player being:");
 
         } 
     }

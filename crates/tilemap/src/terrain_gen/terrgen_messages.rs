@@ -74,7 +74,7 @@ impl TerrainProbe{
 pub enum ProbePattern {
     Radial(Option<f32>),
     /// curr_length_in_dir, steps_taken, dir_vec, pos, turn parity
-    Spiral(u32, u32, IVec2, GlobalTilePos, bool),
+    Spiral(u64, u64, IVec2, GlobalTilePos, bool),
 }
 impl ProbePattern {
     pub fn new_radial() -> Self { ProbePattern::Radial(None) }

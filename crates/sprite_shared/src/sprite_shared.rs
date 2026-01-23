@@ -36,7 +36,7 @@ pub struct GroundingBased;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[relationship(relationship_target = HeldSprites)]
-#[require(EntityPrefix::new_truncated("Sprite"), )]
+#[require(Prefix::trunc("Sprite"), )]
 pub struct BaseHolderRef {#[relationship]#[entities]pub base: Entity, }
 
 #[derive(Component, Debug, Reflect)]
@@ -74,7 +74,7 @@ impl<'a> IntoIterator for &'a HeldSprites {
 pub struct SpriteConfigStrIds(Vec<StrId>);
 impl SpriteConfigStrIds {
     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-        Self(ids.into_iter().map(|s| StrId::new_truncated(s)).collect())
+        Self(ids.into_iter().map(|s| StrId::trunc(s)).collect())
     }
     pub fn ids(&self) -> &Vec<StrId> { &self.0 }
 }

@@ -17,16 +17,12 @@ use crate::{being_components::*,};
 pub fn spawn_egui_being_holder(mut cmd: Commands,
     query: Query<(&EguiBeingHolder, ), ()>, 
 ) {
-    if let Ok((_holder, )) = query.single() {
-        return;
-    }
+    if ! query.is_empty(){ return; }
 
 
     cmd.spawn((EguiBeingHolder::default(), ));
 }
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn add_beings_to_holder(mut cmd: Commands, 
     holder: Single<(Entity, ), (With<EguiBeingHolder>)>, 
@@ -56,23 +52,23 @@ pub fn on_control_change(
     mut commands: Commands, 
     self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<OfSelf>)>,
 
-    query: Query<(Entity, &DirControlledBy, &IsHumanControlled, Has<CameraTarget>),(Or<(Changed<DirControlledBy>, Changed<IsHumanControlled>)>)>,
-    mut removed: RemovedComponents<DirControlledBy>,
+    query: Query<(Entity, &ControlledBy, &IsHumanControlled, Has<CameraTarget>),(Or<(Changed<ControlledBy>, Changed<IsHumanControlled>)>)>,
+    mut removed: RemovedComponents<ControlledBy>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
     for ent in removed.read() {
-        commands.entity(ent).remove::<ControlledLocally>();
+        commands.entity(ent).try_remove::<ControlledLocally>();
     }
     let (self_entity, is_host) = self_player.single().unwrap();
     query.iter().for_each(|(ent, controlled_by, human_controlled, is_camera_target)| {
         if controlled_by.client == self_entity {
-            info!("debug {:?} is now controlled locally by self", ent);
+            info!(target: "being_control", "debug {:?} is now controlled locally by self", ent);
             commands.entity(ent).try_insert_if_new((ControlledLocally::default(), ActivatingChunks::new(&chunk_range)));
             if human_controlled.0 {//PROVISORIO
-                debug!("Entity {:?} is now a CameraTarget", ent);
+                debug!(target: "being_control", "Entity {:?} is now a CameraTarget", ent);
                 commands.entity(ent).try_insert(CameraTarget);
             } else {
-                debug!("Entity {:?} is no longer a CameraTarget", ent);
+                debug!(target: "being_control", "Entity {:?} is no longer a CameraTarget", ent);
                 commands.entity(ent).try_remove::<CameraTarget>();
             }//PROVISORIO
         } else {

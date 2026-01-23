@@ -7,7 +7,7 @@ use crate::{common::common_components::{EntityPrefix, FixedStr}, game::game_util
 
 
 #[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
-#[require(Replicated, EntityPrefix::new_truncated("Race"))]
+#[require(Replicated, EntityPrefix::trunc("Race"))]
 pub struct Race;
 
 

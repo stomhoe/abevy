@@ -1,7 +1,7 @@
 use bevy::ecs::{entity::EntityHashSet, entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{DisplayName, EntityPrefix, StrId};
+use common::common_components::{AnyDisabling, DisplayName, Prefix, StrId};
 use ::dimension_shared::*;
 use tilemap::{terrain_gen::{terrgen_oplist_components::OperationList, terrgen_resources::OpListEntityMap}, tile::{tile_components::{PortalRecipe, TileStrId}, tile_resources::PortalSeri}};
 use crate::{
@@ -80,6 +80,22 @@ pub fn readjust_childof_to_new_dim_if_parent_was_dimension(mut cmd: Commands,
     for (ent, dimension_ref, child_of) in query.iter() {
         if dimension_query.get(child_of.parent()).is_ok() {
             cmd.entity(ent).insert(ChildOf(dimension_ref.0));
+        }
+    }
+}
+
+#[allow(unused_parens)]
+pub fn remove_from_map_on_dimension_despawn(
+    trigger: On<Despawn, Dimension>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut dimension_entity_map: ResMut<DimensionEntityMap>,
+
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(dimension_entity) = dimension_entity_map.0.get(str_id) {
+            if dimension_entity == trigger.entity {
+                dimension_entity_map.0.remove(str_id.as_str());
+            }
         }
     }
 }

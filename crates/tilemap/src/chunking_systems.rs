@@ -43,7 +43,7 @@ pub fn visit_chunks_around_activators(
                             comps_for_region_ents.push((region_ent, (
                                 region_pos,
                                 Region,
-                                StrId20B::new_truncated(format!("Region({}, {})", region_pos.0.x, region_pos.0.y)),
+                                StrId20B::trunc(format!("Region({}, {})", region_pos.0.x, region_pos.0.y)),
                                 Transform::default(),
                                 ChildOf(dimension_ref.0),
                                 dimension_ref,
@@ -56,7 +56,7 @@ pub fn visit_chunks_around_activators(
                     loaded_chunks.0.insert(key, chunk_ent);
                     comps_for_chunk_ents.push((chunk_ent, (
                         Chunk { region_ent, },
-                        StrId20B::new_truncated(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
+                        StrId20B::trunc(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
                         Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
                         chunk_pos,
                         ChildOf(region_ent),

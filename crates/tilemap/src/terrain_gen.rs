@@ -39,16 +39,39 @@ pub fn plugin(app: &mut App) {
             ).chain(),
             ).in_set(TerrainGenSystems)
         )
+        .add_observer(remove_oplist_from_map_on_despawn)
+        .add_observer(remove_terrgen_from_map_on_despawn)
 
-        .register_type::<GlobalGenSettings>()
         .init_resource::<RegisteredPositions>()
+        .init_resource::<OpListEntityMap>()
+        .init_resource::<TerrGenEntityMap>()
         
-
         .add_plugins((
             RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),
             RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
-
+            
         ))
+        
+        .add_server_event::<RegisteredPositions>(Channel::Unordered)
+        .make_event_independent::<RegisteredPositions>()
+        
+        .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
+        
+        .replicate::<OperationList>()
+        .replicate::<FnlNoiseComp>()
+
+        .replicate_filtered::<ChildOf, With<OperationList>>()
+        .replicate_filtered::<ChildOf, With<FnlNoiseComp>>()
+        .replicate_filtered::<ChildOf, With<FailedSearchOplistFilterHolder>>()
+        .replicate_filtered::<OplistSize, With<OperationList>>()
+        
+        .replicate::<NoiseHolder>()
+        .replicate::<GlobalGenSettings>()
+
+        .add_message::<PendingOp>()
+        .add_message::<TerrainProbe>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
+
+        .register_type::<GlobalGenSettings>()
         .register_type::<NoiseSerisHandles>().register_type::<NoiseSerialization>()
         .register_type::<OpListSerisHandles>().register_type::<OpListSerialization>()
         .register_type::<FnlNoiseComp>().register_type::<FastNoiseLite>()
@@ -63,23 +86,6 @@ pub fn plugin(app: &mut App) {
         .register_type::<RootInDimensions>()
         .register_type::<OpFilter>()
 
-        .add_server_event::<RegisteredPositions>(Channel::Unordered)
-        .make_event_independent::<RegisteredPositions>()
-        
-        .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
-        
-        .replicate::<OperationList>()
-        .replicate::<FnlNoiseComp>()
-
-        .replicate_filtered::<ChildOf, With<OperationList>>()
-        .replicate_filtered::<ChildOf, With<FnlNoiseComp>>()
-        .replicate_filtered::<OplistSize, With<OperationList>>()
-        
-        .replicate::<NoiseHolder>()
-        .replicate::<GlobalGenSettings>()
-
-        .add_message::<PendingOp>()
-        .add_message::<TerrainProbe>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
         ;
 
         

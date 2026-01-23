@@ -15,7 +15,7 @@ pub fn enforce_single_camera_target(
 ) {
     for existing in existing_cameras.iter() {
         if existing != *new_camera {
-            commands.entity(existing).remove::<CameraTarget>();
+            commands.entity(existing).try_remove::<CameraTarget>();
         }
     }
 }

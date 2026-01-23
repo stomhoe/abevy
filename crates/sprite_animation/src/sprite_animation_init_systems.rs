@@ -2,7 +2,7 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
-use common::common_components::{ImagePathHolder, StrId};
+use common::common_components::{AnyDisabling, ImagePathHolder, StrId};
 use sprite::{sprite_components::*, };
 use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
@@ -18,6 +18,8 @@ pub fn init_animations(
     mut anim_handles: ResMut<AnimSerisHandles>,
     mut seris_assets: ResMut<Assets<AnimationSerialization>>,
     mut library: ResMut<AnimationLibrary>,
+    sc_holder: Query<Entity, With<SpriteConfigsHolder>>,
+
     //usar state
 ) {
     use std::mem::take;
@@ -26,10 +28,19 @@ pub fn init_animations(
         return;
     }
 
-    let holder = cmd.spawn((SpriteConfigsHolder, )).id();
+    let holder = if sc_holder.is_empty() {
+        debug!(target: "sprite_animation_init", "Creating AnimationsHolder as SpriteConfigsHolder not found.");
+        cmd.spawn((SpriteConfigsHolder, )).id()
+    }
+    else {
+        sc_holder.single().unwrap()
+    };
 
     let holder = cmd.spawn((AnimationsHolder, ChildOf(holder))).id();
 
+    let mut seris = Vec::new();
+
+    let mut main_comps = Vec::new();
 
     for handle in take(&mut anim_handles.handles) {
         let Some(mut seri) = seris_assets.remove(&handle) else { continue };
@@ -40,38 +51,39 @@ pub fn init_animations(
             continue;
         };
 
-        let str_id = StrId::new_truncated(take(&mut seri.id));
-        if !library.0.contains_key(&str_id) {
-
-            let y_sort = seri.y_sort.clone();
-
-            let ent = cmd.spawn((AnimationComp, str_id.clone(), ChildOf(holder), AcZ(seri.z))).id();
-
-            if let Some(y_sort) = y_sort {
-                cmd.entity(ent).insert(YSortOrigin(y_sort));
-            }
-            if let Some(offset) = seri.offset {
-                cmd.entity(ent).insert(Offset2D::from(offset));
-            }
-            if let Some(scale) = seri.scale {
-                cmd.entity(ent).insert(Scale2D::from(scale));
-            }
-
-            if let Some(color) = seri.color {
-                let (red, green, blue, alpha) = color.into();
-                cmd.entity(ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
-            }
-
-            cmd.entity(ent).insert(seri);
-
-
-            debug!(target: "sprite_animation_init", "Inserting animation '{}' into library.", str_id);
-            library.0.insert(str_id, ent);//NO SÉ SI MOVER A OTRO LUGAR
-        } else {
-            error!(target: "sprite_animation_init", "Animation with id '{}' already present in library, skipping insert.", str_id);
-            continue;
+        let str_id = StrId::trunc(take(&mut seri.id));
+        
+        let y_sort = seri.y_sort.clone();
+        
+        let ent = cmd.spawn_empty().id();
+        main_comps.push((ent, (AnimationComp, str_id.clone(), ChildOf(holder), AcZ(seri.z))));
+        
+        if let Some(y_sort) = y_sort {
+            cmd.entity(ent).insert(YSortOrigin(y_sort));
         }
+        if let Some(offset) = seri.offset {
+            cmd.entity(ent).insert(Offset2D::from(offset));
+        }
+        if let Some(scale) = seri.scale {
+            cmd.entity(ent).insert(Scale2D::from(scale));
+        }
+        
+        if let Some(color) = seri.color {
+            let (red, green, blue, alpha) = color.into();
+            cmd.entity(ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
+        }
+            
+        seris.push((ent, seri));
+        
+        
+        debug!(target: "sprite_animation_init", "Inserting animation '{}' into library.", str_id);
+
+        if let Some(prev) = library.0.overwrite(&str_id, ent) {
+            error!(target: "sprite_animation_init", "Animation with id '{}' already present in library, skipping insert.", str_id);
+        } 
     }
+    cmd.try_insert_batch(seris);
+    cmd.try_insert_batch(main_comps);
 }
 
 
@@ -180,5 +192,21 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
         cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet), ));
 
        
+    }
+}
+
+#[allow(unused_parens)]
+pub fn remove_spriteanim_from_entimap_on_despawn(
+    trigger: On<Despawn, AnimationComp>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<AnimationLibrary>,
+
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
     }
 }

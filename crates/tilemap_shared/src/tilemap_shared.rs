@@ -3,12 +3,12 @@ use std::{hash::{DefaultHasher, Hash, Hasher}, ops::Add};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::EntityPrefix;
+use common::common_components::Prefix;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Reflect, Deserialize, Serialize, Clone, )]
-#[require(Replicated, EntityPrefix::new_truncated("GlobalGenSettings"))]
+#[require(Replicated, Prefix::trunc("GlobalGenSettings"))]
 pub struct GlobalGenSettings {
     
     pub seed: i32,
@@ -20,7 +20,7 @@ impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self { 
             seed: 3,
-            world_freq: 1e-2,
+            world_freq: 1.0,
             structure_build_timeout_secs: 5.0,
         }
     }
@@ -199,7 +199,7 @@ impl ChunkPos {
         let local_y = rng.random_range(0..REGION_SIZE_IN_CHUNKS.y());
         Self(region_pos.0 * REGION_SIZE_IN_CHUNKS.0 + IVec2::new(local_x, local_y))
     }
-    pub const CHUNK_SIZE: UVec2 = UVec2::splat(60);//may change later
+    pub const CHUNK_SIZE: UVec2 = UVec2::splat(30);//may change later. fed
     
     pub fn to_pixelpos(&self) -> Vec2 {
         self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2() * Self::CHUNK_SIZE.as_vec2()
@@ -283,7 +283,6 @@ impl From<Vec3> for ChunkPos {
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
 /// IMPORTANTE: va asociado a cada tile instance, no a la tile original
 pub struct OplistSize(UVec2);
-
 impl OplistSize {
     pub fn new([x, y]: [u32; 2]) -> Result<Self, BevyError> {
         if x <= 0 || y <= 0 {
@@ -307,7 +306,6 @@ impl std::ops::Div<TilePos> for OplistSize {
         Self(self.0 / rhs)
     }
 }
-
 impl std::ops::Mul<TilePos> for OplistSize {
     type Output = Self;
     fn mul(self, rhs: TilePos) -> Self {
@@ -395,35 +393,35 @@ impl PoissonDisk {
     pub fn sample<T: HashablePosVec>(&self, settings: &GlobalGenSettings, pos: T, 
         check_within_circle: bool, oplist_size: OplistSize, ) -> f64 {
             
-            let mut sum = 0.0;
-            for &(min_distance, seed) in self.mindists_seeds.iter() {
-                let val = pos.normalized_hash_value(settings, seed);
-                sum += val;
-                let added_sample_distance_x = oplist_size.x() as i32 - 1;
-                let added_sample_distance_y = oplist_size.y() as i32 - 1;
-                
-                for dy in -(min_distance as i32)..=(min_distance as i32) {
-                    for dx in -(min_distance as i32)..=(min_distance as i32) {
-                        if dx == 0 && dy == 0 {
-                            continue;
-                        }
-                        // Only check within circle of radius min_distance
-                        if check_within_circle && dx * dx + dy * dy > (min_distance as i32).pow(2) {
-                            continue;
-                        }
-                        // Calculate the neighbor's position by offsetting the current tile position
-                        let neighbor_x = pos.x() + dx + added_sample_distance_x;
-                        let neighbor_y = pos.y() + dy + added_sample_distance_y;
-                        let neighbor_pos = GlobalTilePos(IVec2::new(neighbor_x, neighbor_y));
-                        let neighbor_val = neighbor_pos.normalized_hash_value(settings, seed);
-                        if neighbor_val > val {
-                            return 0.0;
-                        }
+        let mut sum = 0.0;
+        for &(min_distance, seed) in self.mindists_seeds.iter() {
+            let val = pos.normalized_hash_value(settings, seed);
+            sum += val;
+            let added_sample_distance_x = oplist_size.x() as i32 - 1;
+            let added_sample_distance_y = oplist_size.y() as i32 - 1;
+            
+            for dy in -(min_distance as i32)..=(min_distance as i32) {
+                for dx in -(min_distance as i32)..=(min_distance as i32) {
+                    if dx == 0 && dy == 0 {
+                        continue;
+                    }
+                    // Only check within circle of radius min_distance
+                    if check_within_circle && dx * dx + dy * dy > (min_distance as i32).pow(2) {
+                        continue;
+                    }
+                    // Calculate the neighbor's position by offsetting the current tile position
+                    let neighbor_x = pos.x() + dx + added_sample_distance_x;
+                    let neighbor_y = pos.y() + dy + added_sample_distance_y;
+                    let neighbor_pos = GlobalTilePos(IVec2::new(neighbor_x, neighbor_y));
+                    let neighbor_val = neighbor_pos.normalized_hash_value(settings, seed);
+                    if neighbor_val > val {
+                        return 0.0;
                     }
                 }
-                
             }
-            sum / (self.mindists_seeds.len() as f64)
+            
         }
-    }
-    impl Default for PoissonDisk { fn default() -> Self { Self { mindists_seeds: vec![(1, 0)] } } }
+        sum / (self.mindists_seeds.len() as f64)
+        }
+}
+impl Default for PoissonDisk { fn default() -> Self { Self { mindists_seeds: vec![(1, 0)] } } }

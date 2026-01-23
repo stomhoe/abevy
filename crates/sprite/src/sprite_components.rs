@@ -11,7 +11,7 @@ use sprite_shared::sprite_scale_offset::Offset2D;
 
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Reflect)]
-#[require(Replicated, AssetScoped, EntityPrefix::new_truncated("SpriteConfigs"), )]
+#[require(Replicated, AssetScoped, Prefix::trunc("SpriteConfigs"), SessionScoped)]
 pub struct SpriteConfigsHolder;
 
 
@@ -20,8 +20,8 @@ pub struct SpriteConfigsHolder;
 pub struct EguiSpriteHolderReference(#[relationship]#[entities]pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(EntityPrefix::new_truncated("World sprites"), DespawnOnExit::<ClientState>, Replicated, WorldSprites, Visibility, Transform)]
-pub struct EguiSpriteHolder;
+#[require(Prefix::trunc("World sprites"), DespawnOnExit::<ClientState>, Replicated, WorldSprites, Visibility, Transform, SessionScoped, )]
+pub struct EguiWorldSprites;
 
 #[derive(Component, Debug, Reflect, Default)]
 #[relationship_target(relationship = EguiSpriteHolderReference)]
@@ -30,7 +30,7 @@ impl WorldSprites { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(EntityPrefix::new_truncated("SpriteConfig"), AssetScoped, Replicated)]
+#[require(Prefix::trunc("SpriteConfig"), AssetScoped, SessionScoped, Replicated)]
 pub struct SpriteConfig;
 
 

@@ -8,7 +8,7 @@ use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::{Chunk, ReadyForTerrgen}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_structured_gen_cfg_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking_components::{Chunk, ReadyForTerrgen}, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -354,7 +354,7 @@ pub fn despawn_empty_regions(mut cmd: Commands,
         info!(target: "structure_spawn", "Despawning empty region entity {:?} at position {:?} in dimension {:?} which has no active chunks", 
         region_ent, region_pos, dimension_ref);
         loaded_regions.0.remove(&(dimension_ref, region_pos));
-        cmd.entity(region_ent).despawn();
+        cmd.entity(region_ent).try_despawn();
     });
 }
 

@@ -1,21 +1,20 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{EntityPrefix, StrId, TgenHotLoadingScoped};
+use common::common_components::{AnyDisabling, Prefix, StrId, TgenHotLoadingScoped};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 
-use crate::{tile::{tile_components::*, tile_resources::*, tile_sampler_resources::*}};
+use crate::tile::{tile_components::*, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
 
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
     mut cmd: Commands, 
     seris_handles: ResMut<TileWeightedSamplerHandles>,
     assets: Res<Assets<TileWeightedSamplerSeri>>,
-    map: Option<Res<TileWeightedSamplersMap>>,
+    mut map: ResMut<TileWeightedSamplersMap>,
 ) {
-    if map.is_some() { return; }
+    if ! map.0.is_empty() { return; }
     let holder = cmd.spawn((TileSamplerHolder, )).id();
-    let mut map = TileWeightedSamplersMap::default();
 
     let mut comps_to_insert = Vec::new();
     
@@ -31,11 +30,10 @@ pub fn init_tile_weighted_samplers(
                 }
                 let ent = cmd.spawn_empty().id();
                 map.0.overwrite(&str_id, ent);
-                comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), Replicated, EntityPrefix::new_truncated("TileWSampler"), ), ));
+                comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), TileWeightedSampler, )));
             }
         }
     }
-    cmd.insert_resource(map);
     cmd.insert_batch(comps_to_insert);
 } 
 
@@ -51,12 +49,9 @@ pub fn init_tile_weighted_samplers_refs(
     for handle in seris_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue };
 
-        let wmap_ent = match hashpos_weighted_map.0.get(&seri.id) {
-            Ok(ent) => ent,
-            Err(err) => {
-                error!("TileWeightedSamplerSeri '{}' not found in HashPosWeightedSamplersMap: {}", seri.id, err);
-                continue;
-            }
+        let Ok(wmap_ent) = hashpos_weighted_map.0.get(&seri.id) else {
+            error!("TileWeightedSamplerSeri '{}' not found in HashPosWeightedSamplersMap", seri.id);
+            continue;
         };
 
         let str_id = &seri.id;
@@ -101,6 +96,18 @@ pub fn init_tile_weighted_samplers_refs(
     }
 }
 
+#[allow(unused_parens)]
+pub fn remove_tws_from_map_on_despawn(
+    trigger: On<Despawn, TileWeightedSampler>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<TileWeightedSamplersMap>,
 
-
-
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
+    }
+}

@@ -131,7 +131,7 @@ pub fn add_spawned_tiles_to_gpos_map(
     });
 }
 
-pub fn remove_tile_from_gpos_map(
+pub fn remove_tile_from_gpos_map_on_despawn(
     removed_tile: On<Despawn, (DimensionRef, GlobalTilePos)>,
     query: Query<(&DimensionRef, &GlobalTilePos, Option<&TilemapId>, Option<&TilePos>),(Or<(Without<Disabled>, With<Disabled>)>, Without<EntityZero>, )>,
     mut tmap_query: Query<(&mut TileStorage,), (Or<(Without<Disabled>, With<Disabled>)>, )>,

@@ -2,7 +2,7 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{common_components::EntityPrefix, common_tag_components::TagSet};
+use common::{common_components::{Prefix, SessionScoped}, common_tag_components::TagSet};
 use serde::{Deserialize, Serialize};
 
 //USAR Name
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 #[relationship(relationship_target = AppliedModifiers)]
-#[require(Replicated, ApplyMode::Offsetting, EntityPrefix::new_truncated("Modifier"), )]
+#[require(Replicated, ApplyMode::Offsetting, Prefix::trunc("Modifier"), SessionScoped,)]
 pub struct ModifierTarget(#[relationship]#[entities]pub Entity);
 
 

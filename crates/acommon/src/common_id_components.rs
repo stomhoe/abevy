@@ -20,8 +20,8 @@ macro_rules! define_fixedstr_id {
         impl $ty {
             pub const SIZE: usize = $len;
 
-            pub fn new_truncated<S: AsRef<str>>(id: S) -> Self { 
-                Self(FixedStr::<$len>::new_truncated(id.as_ref().trim())) 
+            pub fn trunc<S: AsRef<str>>(id: S) -> Self { 
+                Self(FixedStr::<$len>::trunc(id.as_ref().trim())) 
             }
             pub fn new_with_result<S: AsRef<str>>(id: S, min_length: u8) -> Result<Self, StringLengthError> {
                 FixedStr::<$len>::new_with_result(id.as_ref().trim(), min_length).map(Self)
@@ -70,12 +70,12 @@ macro_rules! define_fixedstr_id {
         }
         impl From<&str> for $ty {
             fn from(s: &str) -> Self {
-                Self(FixedStr::<$len>::new_truncated(s.trim()))
+                Self(FixedStr::<$len>::trunc(s.trim()))
             }
         }
         impl From<String> for $ty {
             fn from(s: String) -> Self {
-                Self(FixedStr::<$len>::new_truncated(s.trim()))
+                Self(FixedStr::<$len>::trunc(s.trim()))
             }
         }
     };
@@ -84,7 +84,7 @@ define_fixedstr_id!(StrId20B, 20);
 define_fixedstr_id!(Tag, 32);
 define_fixedstr_id!(StrId, 32);
 
-define_fixedstr_id!(EntityPrefix, 20);
+define_fixedstr_id!(Prefix, 20);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct AddHashIdFromStrId;

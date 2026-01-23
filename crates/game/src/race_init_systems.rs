@@ -17,7 +17,7 @@ pub fn init_races(
     for handle in take(&mut seris_handles.handles) {
          if let Some(mut race_seri) = assets.remove(handle.id()){
 
-            let str_id = match StrId::new_truncated(race_seri.id) {
+            let str_id = match StrId::trunc(race_seri.id) {
                 Ok(id) => id,
                 Err(e) => {
                     let e: BevyError = BevyError::from(format!("Failed to create StrId for race {:?}: {}", race_seri.name, e));

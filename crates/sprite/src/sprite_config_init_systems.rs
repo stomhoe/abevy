@@ -11,18 +11,22 @@ use crate::{sprite_components::*, sprite_resources::*, };
 
 #[allow(unused_parens)]
 pub fn init_sprite_cfgs(
-    mut cmd: Commands, map: Option<Res<SpriteCfgEntityMap>>,
-    
+    mut cmd: Commands, 
+    mut scs_map: ResMut<SpriteCfgEntityMap>,
     mut seris_handles: ResMut<SpriteSerisHandles>,
     mut assets: ResMut<Assets<SpriteConfigSeri>>,
     library: Res<AnimationLibrary>,
-    holder: Single<Entity, With<SpriteConfigsHolder>>,
+    scs_holder: Query<Entity, With<SpriteConfigsHolder>>,
+    world_sprites_holder: Query<Entity, With<EguiWorldSprites>>,
 ) {
-    if map.is_some(){ return; }
+    info!(target: "sprite_init", "Initializing Sprite Configs...");
+    if !scs_map.0.is_empty(){ return; }
     
-    let mut map = SpriteCfgEntityMap::default();
-    
-    cmd.spawn(EguiSpriteHolder::default());
+    if world_sprites_holder.is_empty() {
+        cmd.spawn(EguiWorldSprites::default());
+    }
+
+    let scs_holder = scs_holder.single().unwrap();
     
     let mut comps_to_insert = Vec::new();
     
@@ -30,6 +34,7 @@ pub fn init_sprite_cfgs(
         let Some(mut seri) = assets.remove(&handle) else {continue;};
         
         debug!(target: "sprite_init", "Loading SpriteDataSeri from handle: {:?}", handle);
+
         
         let str_id = match StrId::new_with_result(seri.id, 3) {
             Ok(id) => id,
@@ -40,12 +45,12 @@ pub fn init_sprite_cfgs(
             }
         };
         
-        if let Ok(_existing_ent) = map.0.get(&str_id) {
+        if let Ok(_existing_ent) = scs_map.0.get(&str_id) {
             error!(target: "sprite_init", "Duplicate SpriteConfig StrId found: '{}', skipping duplicate.", str_id);
             continue;
         }
         let spritecfg_ent = cmd.spawn_empty().id();
-        map.0.overwrite(str_id.clone(), spritecfg_ent);
+        scs_map.0.overwrite(str_id.clone(), spritecfg_ent);
         
         let visib = match seri.visibility {
             Some(0) => Visibility::Inherited,
@@ -62,7 +67,7 @@ pub fn init_sprite_cfgs(
         let mut offset4children_cats = OffsetForChildren::default();
         if let Some(offset4children) = seri.offset4children.as_mut() {
             for (cat, (offset_x, offset_y, direction)) in take(offset4children) {
-                offset4children_cats.0.insert(Tag::new_truncated(cat), 
+                offset4children_cats.0.insert(Tag::trunc(cat), 
                 (Offset2D::from((offset_x, offset_y)), AppliesOnSpriteDirection::from(direction)));
             }
         }
@@ -72,7 +77,7 @@ pub fn init_sprite_cfgs(
             visib,
             offset4children_cats,
             EntityZero,
-            ChildOf(holder.entity()),
+            ChildOf(scs_holder),
         )));
         if let Some(tags) = seri.tags.as_ref() {
             if !tags.is_empty() {
@@ -121,7 +126,7 @@ pub fn init_sprite_cfgs(
         
         if seri.grounding_based == Some(true) { cmd.entity(spritecfg_ent).insert(GroundingBased); }
         if let Some(parent_cat) = seri.parent_cat.as_ref().filter(|s| !s.trim().is_empty()) {
-            let to_become_child = BecomeChildOfSpriteWithTag(Tag::new_truncated(parent_cat.trim()));
+            let to_become_child = BecomeChildOfSpriteWithTag(Tag::trunc(parent_cat.trim()));
             cmd.entity(spritecfg_ent).insert(to_become_child);
         }
         
@@ -129,8 +134,8 @@ pub fn init_sprite_cfgs(
             let mut anims_map = MappedAnimations::default();
             for (anim_type, anim_id) in seri.mapped_anims {
                 let anim_type = AnimType::from_tuple(anim_type);
-                let anim_id = StrId::new_truncated(anim_id);
-                let Some(&anim_ent) = library.0.get(&anim_id) else {
+                let anim_id = StrId::trunc(anim_id);
+                let Ok(anim_ent) = library.0.get(&anim_id) else {
                     error!(target: "sprite_init", "SpriteConfig {}: AnimationLibrary does not contain: {} ", str_id, anim_id);
                     continue;
                 };
@@ -167,7 +172,22 @@ pub fn init_sprite_cfgs(
         */
         
     }
-    cmd.insert_resource(map);
     cmd.try_insert_batch(comps_to_insert);  
 } 
 
+
+#[allow(unused_parens)]
+pub fn remove_spriteconfig_from_entimap_on_despawn(
+    trigger: On<Despawn, SpriteConfig>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<SpriteCfgEntityMap>,
+
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
+    }
+}

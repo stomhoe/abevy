@@ -8,7 +8,7 @@ use common::common_states::{AppState, AssetLoading };
 use game_common::{game_common::GameplaySystems, StatefulSessionSystems, };
 use ::sprite_shared::*;
 
-use crate::{sprite_building_systems::*, sprite_components::*, sprite_cfg_init_systems::*, sprite_resources::*, sprite_systems::*};
+use crate::{sprite_building_systems::*, sprite_components::*, sprite_config_init_systems::*, sprite_resources::*, sprite_systems::*};
 
 #[allow(unused_imports)] use {bevy::prelude::*,};
 
@@ -43,6 +43,11 @@ pub fn plugin(app: &mut App) {
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
        AcSpriteSystems.before(GameplaySystems)
     ))
+
+
+    .add_observer(remove_spriteconfig_from_entimap_on_despawn)
+
+    .init_resource::<SpriteCfgEntityMap>()
     
     
     .register_type::<AcZ>()
@@ -55,7 +60,8 @@ pub fn plugin(app: &mut App) {
     .register_type::<SpriteConfigNotFound>()
     .register_type::<EguiSpriteHolderReference>()
     .register_type::<WorldSprites>()
-    .register_type::<EguiSpriteHolder>()
+    .register_type::<EguiWorldSprites>()
+    .register_type::<WorldSprites>()
     .replicate::<AcZ>()
     
 
@@ -63,7 +69,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<SpriteConfigNotFound>()
     .replicate::<MappedAnimations>()
     .replicate::<EguiSpriteHolderReference>()
-    .replicate::<EguiSpriteHolder>()
+    .replicate::<EguiWorldSprites>()
     .replicate::<YSortOrigin>()
 
 

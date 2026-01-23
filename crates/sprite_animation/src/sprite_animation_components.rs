@@ -2,17 +2,17 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
 use bevy_spritesheet_animation::prelude::{Animation, AnimationProgress};
-use common::common_components::{EntityPrefix};
+use common::common_components::{AssetScoped, Prefix, SessionScoped};
 use serde::{Deserialize, Serialize};
 use sprite::sprite_components::AnimType;
 
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Copy, Reflect)]
-#[require(EntityPrefix::new_truncated("Animations"), Replicated, )]
+#[require(Prefix::trunc("Animations"), Replicated, AssetScoped, SessionScoped, )]
 pub struct AnimationsHolder;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect)]
-#[require(EntityPrefix::new_truncated("Animation"), Replicated, )]
+#[require(Prefix::trunc("Animation"), Replicated, AssetScoped, SessionScoped, )]
 pub struct AnimationComp;
 
 

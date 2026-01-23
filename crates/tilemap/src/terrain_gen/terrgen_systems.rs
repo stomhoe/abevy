@@ -2,7 +2,7 @@
 
 
 use bevy::{ecs::{entity::{EntityHashSet, }, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
-use common::{common_components::{DisplayName, HashId, StrId}, common_tag_components::HashedTagsVec, };
+use common::{common_components::{AnyDisabling, DisplayName, HashId, StrId}, common_tag_components::HashedTagsVec, };
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{DimensionRef, DimensionRootOplist};
 use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
@@ -98,7 +98,8 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                             error!("Noise entity {} not found", ent);
                             return;
                         };
-                        noise.sample(global_pos, *sample_range, *compl, *operand_seed + ev.dimension_hash_id, &gen_settings)   
+                        let seed = operand_seed.wrapping_add(ev.dimension_hash_id);
+                        noise.sample(global_pos, *sample_range, *compl, seed, &gen_settings)   
                     },
                     OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed) as f32,
                     OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_pos, true, my_oplist_size) as f32,
@@ -320,14 +321,13 @@ pub fn search_suitable_positions(
                     }
                 }
             }
-            ProbePattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turns) => {
+            ProbePattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turn_parity) => {
                 trace!(target: "pos_search", "Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
-                    pos, dir_vec, curr_length_in_dir, turns);
+                    pos, dir_vec, curr_length_in_dir, turn_parity);
 
                 for _ in 0..iterations_per_batch {
-                    pos = pos + GlobalTilePos(dir_vec * step_size as i32);
-
-                    new_pending_ops.push(PendingOp {
+                    pos = pos + GlobalTilePos(dir_vec.saturating_mul(IVec2::splat(step_size as i32)));  
+                     new_pending_ops.push(PendingOp {
                         dimension_hash_id,
                         oplist: opfilter.start_oplist,
                         dim_ref: DimensionRef(Entity::PLACEHOLDER),
@@ -341,14 +341,14 @@ pub fn search_suitable_positions(
                         steps_taken = 0;
                         
                         dir_vec = dir_vec.perp();
-                        curr_length_in_dir += turns as u32;
-                        turns = !turns;
+                        curr_length_in_dir = curr_length_in_dir.saturating_add(turn_parity as u64);
+                        turn_parity = !turn_parity;
                     }
                 }
                 if curr_iteration_batch_i as u16 + 1 < max_batches {
                     new_pos_searches.push(TerrainProbe{
                         curr_iteration_batch_i: curr_iteration_batch_i + 1,
-                        probe_pattern: ProbePattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turns),
+                        probe_pattern: ProbePattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turn_parity),
                         ..pos_search
                     });
                 } else {
@@ -363,5 +363,6 @@ pub fn search_suitable_positions(
     terrain_probe.write_batch(new_pos_searches);
     mwriter_search_failed.write_batch(search_failed_evs);
 }
+
 
 

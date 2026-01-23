@@ -14,10 +14,9 @@ pub fn init_shaders(
     mut voronoi_assets: ResMut<Assets<ShaderVoronoiShuffleSeri>>,
     mut wavy_handles: ResMut<ShaderWavySerisHandles>,
     mut wavy_assets: ResMut<Assets<ShaderWavySeri>>,
-    tileshader_map: Option<Res<TileShaderEntityMap>>,
+    mut tileshader_map: ResMut<TileShaderEntityMap>,
 ) {
-    if tileshader_map.is_some(){ return; }
-    let mut tileshader_map = TileShaderEntityMap::default();
+    if !tileshader_map.0.is_empty(){ return; }
     let holder = cmd.spawn((EguiTileShaderHolder, )).id();
     let mut shader_comps_to_insert = Vec::new();
     let mut path_holders_to_insert = Vec::new();
@@ -143,7 +142,21 @@ pub fn init_shaders(
     }
 
     cmd.insert_batch(path_holders_to_insert);
-    cmd.insert_resource(tileshader_map);
     cmd.insert_batch(shader_comps_to_insert);
 }
 
+
+#[allow(unused_parens)]
+pub fn remove_tile_shader_from_map_on_despawn(
+    trigger: On<Despawn, TileShader>,
+    query: Query<(&StrId),(AnyDisabling)>,
+    mut map: ResMut<TileShaderEntityMap>,
+) {
+    if let Ok(str_id) = query.get(trigger.entity) {
+        if let Ok(found_entity) = map.0.get(str_id) {
+            if found_entity == trigger.entity {
+                map.0.remove(str_id.as_str());
+            }
+        }
+    }
+}

@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{common_components::{DisplayName, EntityPrefix, HashId, StrId}, common_tag_components::TagSet};
+use common::{common_components::{DisplayName, Prefix, HashId, StrId}, common_tag_components::TagSet};
 use crate::{
     dimension_resources::*,
 /*
@@ -11,12 +11,11 @@ use ::dimension_shared::*;
 
 #[allow(unused_parens)]
 pub fn init_dimensions(
-    mut cmd: Commands, map: Option<Res<DimensionEntityMap>>,
+    mut cmd: Commands, mut map: ResMut<DimensionEntityMap>,
     mut seris_handles: ResMut<DimensionSerisHandles>,
     mut assets: ResMut<Assets<DimensionSeri>>,
 ) {
-    if map.is_some(){ return; }
-    cmd.init_resource::<DimensionEntityMap>();
+    if !map.0.is_empty(){ return; }
 
     let mut common_components = Vec::new();
     let mut tagsets_to_insert = Vec::new();
@@ -69,12 +68,12 @@ pub fn init_dimensions(
 
 pub fn add_dimensions_to_map(
     map: Option<ResMut<DimensionEntityMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (With<Dimension>, Added<StrId>)>,
+    query: Query<(Entity, &Prefix, &StrId), (With<Dimension>, Added<StrId>)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
-            if let Err(err) = map.0.try_insert(str_id, ent, ) {
-                error!(target: "dimension_loading", "{} {} already in DimensionEntityMap : {}", prefix, str_id, err);
+            if let Some(prev) = map.0.overwrite(str_id, ent, ) {
+                warn!(target: "dimension_loading", "Dimension'{}' {:?}  already existed in DimensionEntityMap, previous entity {:?} overwritten", str_id, ent, prev);
             } else {
                 info!(target: "dimension_loading", "Inserted Dimension'{}' {:?} into DimensionEntityMap  ", str_id, ent);
             }

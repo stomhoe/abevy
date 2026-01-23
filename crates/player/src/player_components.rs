@@ -10,7 +10,7 @@ pub struct OfSelf;
 
 
 #[derive(Debug, Component, Default, Serialize, Deserialize)]
-#[require(Replicated, EntityPrefix::new_truncated("Player"), AssetScoped)]
+#[require(Replicated, Prefix::trunc("Player"), SessionScoped)]
 pub struct Player;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]

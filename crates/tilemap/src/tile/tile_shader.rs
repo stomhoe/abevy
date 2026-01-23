@@ -30,6 +30,7 @@ pub fn plugin(app: &mut App) {
         update_wavy_time,
         
     ).in_set(TileShaderSystems))
+    .add_observer(remove_tile_shader_from_map_on_despawn)
     .add_plugins((
         MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
         MaterialTilemapPlugin::<VoronoiTextureOverlayMat>::default(),
@@ -39,6 +40,8 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<ShaderVoronoiShuffleSeri>::new(&["voroshu.ron"]),
         RonAssetPlugin::<ShaderWavySeri>::new(&["wavy.ron"]),
     ))
+    .init_resource::<TileShaderEntityMap>()
+
     .register_type::<MonoRepeatTextureOverlayMat>()
     .register_type::<VoronoiTextureOverlayMat>()
     .register_type::<TwoOverlaysExample>()
