@@ -26,7 +26,6 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             (launch_terrain_gen_operations, (process_pending_ops_and_collect_tiles,).before(process_tiles_pre)).in_set(TerrainGenSystems),
             search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
-            oplist_init_dim_refs,
         ))
         
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
@@ -35,6 +34,7 @@ pub fn plugin(app: &mut App) {
                 init_oplists_from_assets,
                 init_oplists_bifurcations,
                 cycle_detection,
+                assign_rootoplist_to_dimensions,
             
             ).chain(),
             ).in_set(TerrainGenSystems)

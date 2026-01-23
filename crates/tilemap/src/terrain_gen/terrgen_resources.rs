@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::EntityHashMap, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_replicon::prelude::*;
 use common::{common_components::AnyDisabling, common_types::HashIdToEntityMap};
@@ -14,8 +14,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone, )]
 #[reflect(Resource, Default)]
-pub struct RegisteredPositions(pub EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>); 
+pub struct RegisteredPositions { pub registered: EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>, pub exempted: EntityHashSet, } 
 impl RegisteredPositions {
+
+    pub fn exempt_entity_from_mindist_checks(&mut self, ent: Entity) {
+        self.exempted.insert(ent);
+    }
+
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
         new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
@@ -23,7 +28,7 @@ impl RegisteredPositions {
     ) -> bool {
 
 
-        let (new_tile, new_orig_ref, new_dim, new_pos, new_min_distances, keep_distance) = new;
+        let (new_tile, new_tile_ezero, new_dim, new_pos, new_min_distances, keep_distance) = new;
 
         if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
             return false;
@@ -32,28 +37,30 @@ impl RegisteredPositions {
             return true;
         }
 
-        if let Some(new_min_distances) = new_min_distances {
-            for (&oritile_ent, min_dist) in new_min_distances.0.iter() {
-                let Some(previous_positions) = self.0.get(&oritile_ent) else { continue };
-                for &(prev_dim, prev_pos) in previous_positions {
-                    if prev_dim == new_dim && new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
-                        return false;
+        if ! self.exempted.contains(&new_tile_ezero.0) {
+                if let Some(new_min_distances) = new_min_distances {
+                    for (&oritile_ent, min_dist) in new_min_distances.0.iter() {
+                        let Some(previous_positions) = self.registered.get(&oritile_ent) else { continue };
+                        for &(prev_dim, prev_pos) in previous_positions {
+                            if prev_dim == new_dim && new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
+                                return false;
+                            }
+                        }
+                    }
+            }
+            if let Some(keep_distance) = keep_distance {
+                for other_ent in &keep_distance.0 {
+                    let Some(positions) = self.registered.get(other_ent) else { continue };
+                    let Ok(min_dists) = min_dists_query.get(*other_ent) else { continue };
+                    for &prev_pos in positions {
+                        if min_dists.check_min_distances(prev_pos, (new_tile_ezero, new_dim, new_pos)) == false {
+                            return false;
+                        }
                     }
                 }
             }
         }
-        if let Some(keep_distance) = keep_distance {
-            for other_ent in &keep_distance.0 {
-                let Some(positions) = self.0.get(other_ent) else { continue };
-                let Ok(min_dists) = min_dists_query.get(*other_ent) else { continue };
-                for &prev_pos in positions {
-                    if min_dists.check_min_distances(prev_pos, (new_orig_ref, new_dim, new_pos)) == false {
-                        return false;
-                    }
-                }
-            }
-        }
-        self.0.entry(new_orig_ref.0).or_default().push((new_dim, new_pos));
+        self.registered.entry(new_tile_ezero.0).or_default().push((new_dim, new_pos));
 
         cmd.entity(new_tile).try_insert(Replicated);
 

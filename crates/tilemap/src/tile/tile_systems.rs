@@ -165,7 +165,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
     //TODO: chequear en la EntityZero si tiene DeleteOtherTiles
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
-            warn!(target: "tilemap", "Failed to get EntityZero for tile entity {:?}, skipping despawn check", newtile_ent);
+            warn!(target: "d", "Failed to get EntityZero for tile entity {:?}, skipping despawn check", newtile_ent);
             return;
         };
         let Some(newtile_z) = newtile_z else {

@@ -23,13 +23,13 @@ concat!(
     "bevy_ecs::relationship=error,",
     "calloop::loop_logic=error,",
     
-    "portal_init=info,",
+    "portal_init=debug,",
     
 
     "tilemap::terrain_gen::terrgen_systems=info,",
     "terrgen_process=info,",
     "structure_spawn=debug,",
-    "tilemap_systems=info,",
+    "tilemap_systems=trace,",
     "tilemap=debug,",
     "add2gposmap=info,",
 

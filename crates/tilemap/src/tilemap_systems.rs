@@ -49,7 +49,7 @@ pub fn process_tiles_pre(
 
     mut collected_tiles: ResMut<MassCollectedTiles>,
 
-    oritile_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
+    ezero_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
         Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>, ), (AnyDisabling)>,
 
     mut chunk_query: Query<(&mut ChunkTmapsMap), ()>,
@@ -94,7 +94,7 @@ pub fn process_tiles_pre(
         }) = ev;
 
         let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, ))
-        = oritile_query.get(ezero_ref.0) else{
+        = ezero_query.get(ezero_ref.0) else{
             error!(target: "tilemap_systems", "Original tile entity {} is despawned", ezero_ref.0);
             continue;
         };
@@ -102,6 +102,7 @@ pub fn process_tiles_pre(
         if false == regpos_map.check_min_distances(&mut cmd, is_host, (tile_ent, ezero_ref, dim_ref, gpos, min_dists, keep_distance_from), min_dists_query) {
             
             collected_tiles.0.swap_remove(i); cmd.entity(tile_ent).try_despawn(); 
+            info!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, gpos, dim_ref);
             continue; 
         }
         if to_persist {
@@ -114,7 +115,7 @@ pub fn process_tiles_pre(
             }
         }
         if transform.is_some() {
-            trace!(target: "tilemap_systems", "Processing tile entity {:?} with strid {:?}", tile_ent, tile_strid);
+            //trace!(target: "tilemap_systems", "Processing tile entity {:?} with strid {:?}", tile_ent, tile_strid);
             spritetiles_to_insert_pos_and_dim_ref.push((tile_ent, (ezero_ref, gpos, bundle.position, dim_ref, initial_pos, SyncToRenderWorld::default())));
             collected_tiles.0.swap_remove(i);
             // Disabled is removed in tile_readjust_transform !
@@ -169,7 +170,7 @@ pub fn process_tiles_pre(
     let mut insert2tmaps = Vec::with_capacity(changed_structs.len());
 
     for (chunk_ent, z, mapkey) in changed_structs.iter() {
-        trace!(target: "tilemap_systems", "Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
+        //trace!(target: "tilemap_systems", "Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
 
         let Ok(mut layers) = chunk_query.get_mut(*chunk_ent) else {
             continue ;
@@ -195,7 +196,7 @@ pub fn process_tiles_pre(
             None
         };
         if let Some(shader) = shader {
-            trace!(target: "tilemap_systems", "Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
+            //trace!(target: "tilemap_systems", "Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
             match shader {
                 TileShader::TexRepeat(handle) => {
                     let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone()));

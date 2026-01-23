@@ -35,6 +35,7 @@ struct ToDenyOnReleaseBuild( Name, Prefix, TileStrId  );
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct KeepDisabled;
 
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 //NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
 #[require(AssetScoped, TgenHotLoadingScoped, SessionScoped)]//no poner Replicated acá, sino el deny de Replicated quita el Tile

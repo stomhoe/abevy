@@ -5,7 +5,7 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 
 use common::{common_components::{AnyDisabling, StrId}, common_tag_components::TagSet};
-use dimension_shared::{Dimension, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
+use dimension_shared::{Dimension, DimensionEntityMap, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
 use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
@@ -20,6 +20,7 @@ pub fn init_oplists_from_assets(
     terr_gen_map: Res<TerrGenEntityMap>,  
     samplers_map: Res<TileWeightedSamplersMap>,
     tiles_map: Res<TileEzerosMap>,
+    dimension_map: Res<DimensionEntityMap>,
     mut oplist_map: ResMut<OpListEntityMap>,
 ) {
     if !oplist_map.0.is_empty() { return ; }
@@ -192,7 +193,18 @@ pub fn init_oplists_from_assets(
         oplist_map.0.overwrite(&str_id, spawned_oplist);
         oplist_comps.push((spawned_oplist, ( str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
         if seri.is_root() { 
-            oplist_multiple_dimension_refs.push((   spawned_oplist, MultipleDimensionStringRefs::new(take(&mut seri.root_in_dimensions))));
+            let mut dim_refs = MultipleDimensionRefs::default();
+            for dim_id in seri.root_in_dimensions.iter() {
+                if dim_id.trim().is_empty() { continue; }
+                let Ok(dim_entity) = dimension_map.0.get(&dim_id) else
+                {
+                    error!("Dimension '{}' not found in DimensionEntityMap for root oplist '{}'", dim_id, seri.id);
+                    continue;
+                };
+                dim_refs.0.insert(dim_entity);
+
+            }
+            oplist_multiple_dimension_refs.push((spawned_oplist, dim_refs));
         }
         
         
@@ -292,7 +304,6 @@ pub fn cycle_detection(
         stack.pop();
         false
     }
-    
     for root in roots {
         let mut visited = HashSet::new();
         let mut stack = Vec::new();
@@ -301,17 +312,15 @@ pub fn cycle_detection(
         }
     }
 }
-
-
 #[allow(unused_parens)]
-pub fn oplist_init_dim_refs(mut cmd: Commands, 
-    oplist_query: Query<(Entity, &StrId, &MultipleDimensionRefs),(Added<MultipleDimensionRefs>, With<OperationList>, )>,
+pub fn assign_rootoplist_to_dimensions(mut cmd: Commands, 
+    oplist_query: Query<(Entity, &StrId, &MultipleDimensionRefs),(With<OperationList>, )>,
     dimension_query: Query<(&StrId, Option<&DimensionRootOplist>), With<Dimension>>,
 ) {
     let mut assignments: EntityHashMap<DimensionRootOplist> = EntityHashMap::new();
     
 
-    for (oplist_ent, my_str_id, dim_refs) in oplist_query.iter() {
+    for (oplist_ent, my_oplist_id, dim_refs) in oplist_query.iter() {
         for &dim_ent in dim_refs.0.iter() {
             let Ok((dim_str_id, root_op_list)) = dimension_query.get(dim_ent) else {
                 error!(target: "dimension_loading", "Dimension entity '{}' referenced by DimensionEntityMap is not spawned in world", dim_ent);
@@ -324,7 +333,7 @@ pub fn oplist_init_dim_refs(mut cmd: Commands,
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent.0) else {
                         continue;
                     };
-                    error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_str_id);
+                    error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
                     continue;
                 },
                 (_, Some(&DimensionRootOplist(other_ent))) => {
@@ -333,7 +342,7 @@ pub fn oplist_init_dim_refs(mut cmd: Commands,
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
                         continue;
                     };
-                    error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_str_id);
+                    error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
                     continue;
                 },
                 (None, None) => {

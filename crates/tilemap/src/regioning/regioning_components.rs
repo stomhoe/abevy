@@ -24,56 +24,7 @@ impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
 
-pub enum ChunkOccupyError {
-    AlreadyOccupied(Entity),
-    OutOfRegionBounds(Direction),
-}
 
-impl GridOfSgcs {
-    #[inline]
-    fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError> {
-        let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
-        match (local_chunk_pos.0.x < 0, local_chunk_pos.0.x >= REGION_SIZE_IN_CHUNKS.x(), local_chunk_pos.0.y < 0, local_chunk_pos.0.y >= REGION_SIZE_IN_CHUNKS.y()) {
-            (true, _, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::West)),
-            (_, true, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::East)),
-            (_, _, true, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::South)),
-            (_, _, _, true) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::North)),
-            _ => Ok((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize)),
-        }
-    }
-    
-    pub fn is_occupied(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
-        self.get_local_pos(global_chunk_pos, region_pos)
-        .map(|(x, y)| self.occupied_chunks_grid[y][x].is_some())
-        .unwrap_or(false)
-    }
-    pub fn is_available(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
-        !self.is_occupied(global_chunk_pos, region_pos)
-    }
-    pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, struct_gen_cfg_ent: Entity) -> Result<(), ChunkOccupyError> {
-        let (x, y) = self.get_local_pos(global_chunk_pos, region_pos)?;
-        
-        match self.occupied_chunks_grid[y][x] {
-            None => {
-                self.occupied_chunks_grid[y][x] = Some(struct_gen_cfg_ent);
-                self.occupied_chunks_count += 1;
-                Ok(())
-            }
-            Some(entity) => Err(ChunkOccupyError::AlreadyOccupied(entity)),
-        }
-    }
-    pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos) {
-        if let Ok((x, y)) = self.get_local_pos(global_chunk_pos, region_pos) {
-            if self.occupied_chunks_grid[y][x].is_some() {
-                self.occupied_chunks_grid[y][x] = None;
-                self.occupied_chunks_count -= 1;
-            }
-        }
-    }
-    pub fn occupied_count(&self) -> u32 {
-        self.occupied_chunks_count
-    }
-}
 
 #[derive(Component, Debug, Reflect)]
 #[require(CountsOfSgcs, GridOfSgcs)]
@@ -183,12 +134,78 @@ pub struct AllTilesPrepared;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct BuildingStarted;
 
-#[derive(Component, Debug, Reflect, Default)]
-pub struct GridOfSgcs{
-    occupied_chunks_grid: [[Option<Entity>; 32]; 32],
-    occupied_chunks_count: u32,
-    
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct PendingOfferTimeout {
+    pub offered_at: f64,
 }
+#[derive(Debug, Reflect, )]
+pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u32, }
+impl<T: Copy> Default for RegionGrid<T> {
+    fn default() -> Self {
+        Self {
+            grid: [[const { None }; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize],
+            count: 0,
+        }
+    }
+}
+
+impl<T: Copy> RegionGrid<T> {
+    #[inline]
+    fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError<T>> {
+        let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
+        match (local_chunk_pos.0.x < 0, local_chunk_pos.0.x >= REGION_SIZE_IN_CHUNKS.x(), local_chunk_pos.0.y < 0, local_chunk_pos.0.y >= REGION_SIZE_IN_CHUNKS.y()) {
+            (true, _, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::West)),
+            (_, true, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::East)),
+            (_, _, true, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::South)),
+            (_, _, _, true) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::North)),
+            _ => Ok((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize)),
+        }
+    }
+    
+    pub fn is_occupied(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
+        self.get_local_pos(global_chunk_pos, region_pos)
+        .map(|(x, y)| self.grid[y][x].is_some())
+        .unwrap_or(false)
+    }
+    
+    pub fn is_available(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
+        !self.is_occupied(global_chunk_pos, region_pos)
+    }
+    
+    pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) -> Result<(), ChunkOccupyError<T>> {
+        let (x, y) = self.get_local_pos(global_chunk_pos, region_pos)?;
+        
+        match self.grid[y][x] {
+            None => {
+                self.grid[y][x] = Some(value);
+                self.count += 1;
+                Ok(())
+            }
+            Some(existing) => Err(ChunkOccupyError::AlreadyOccupied(existing)),
+        }
+    }
+    
+    pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos) {
+        if let Ok((x, y)) = self.get_local_pos(global_chunk_pos, region_pos) {
+            if self.grid[y][x].is_some() {
+                self.grid[y][x] = None;
+                self.count -= 1;
+            }
+        }
+    }
+    
+    pub fn occupied_count(&self) -> u32 {
+        self.count
+    }
+}
+pub enum ChunkOccupyError<T> {
+    AlreadyOccupied(T),
+    OutOfRegionBounds(Direction),
+}
+
+#[derive(Component, Debug, Reflect, Default)]
+pub struct GridOfSgcs(pub RegionGrid<Entity>);
+
 impl GridOfSgcs {
     fn render_grid(&self, ui: &mut egui::Ui) {
         egui::Grid::new(ui.id().with("grid_of_sgcs"))
@@ -205,54 +222,21 @@ impl GridOfSgcs {
             '0','1','2','3','4','5','6','7','8','9',
             'A','B','C','D','E','F','G','H','I','J','K','L','M',
             'N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
-            '!','@','#','$','%','^','&','*','(',')','-','+','=','/','|','~','<','>','?',':',';','🔸','✓','🌟','✨',
-            '🟦','🟥','🟩','🟨','🟪','🟫','🔳','🔲','⬜','⬛','🔺','🟫','🟩','┏','┓','┗','┛','⚪','🔵','🔴','🟢','🟡','🟣','🟤','🟠','█',
-            '░','🟪','🟧',
-            '▲','△','▶','▷','▼','▽','◀','◁','◢','◣','◤','◥',
-            '🔴','○','🟢','◉','◍',
+            '!','@','#','$','%','^','&','*','(',')','-','+','=','/','|','~','<','>','?',':',';',
+            '░','█','▲','△','▶','▷','▼','▽','◀','◁','◢','◣','◤','◥',
             '◆','◇','⬟','⬢','⬣',
             '■','□','▪','▫',
-            '✦','✧','✪','✫','✬','✭','✮','✯','💫','🌠','🎇','✨',
+            '✦','✧','✪','✫','✬','✭','✮','✯',
             '✖','✚','✛','✜','✢','✣','✤','✥',
-            '☀','☁','☂','☄','☯','☮','✞',
-            '🎵','🎶','🎼','♭','♮','♯',
-            '♠','♣','♥','♦',
             '±','×','÷','≈','≠','≤','≥','∞','∑','∏','√','∆','∇','∫',
-            '€','£','¥','¢','₩','₪',
             '⬅','➡','⬆','⬇','↩','↪','⇐','⇒','⇑','⇓',
-            '✱','✲','✳','✴','❖',
-            '⚑','⚐',
-            '⚙','⚡','⚖','⚔','⚓','⚕',
             'α','β','γ','δ','ε','ζ','η','θ','λ','μ','π','ω',
             'Φ','Ψ','Ω','Σ','Π',
             '∂','∈','∉','∩','∪','∀','∃',
-            '†','‡','°','‰','§','¶','🔹','¤','¬','¦','ʘ','♮',
-            // additional emojis
-            '🧡','💛','💚','💙','💜','🖤','🤍','🤎','🌈','🔥','💧','🌊','🌪','🌋',
-            '🏝','🏖','🏕','🏜','🏔','🏠','🏡','🏢','🏬','🏰','🗼','🗽','🕌','🕍','🛖',
-            '🚀','✈','🚁','🚂','🚢','🚲','🚗','🚌','🚓','🚑','🚒','🏁',
-            '🎯','🎮','🎲','🧩','🪄','🧸','🛡','🔮',
-            '🥇','🥈','🥉','🏆','🏵','🎖',
-            '📍','📌','🔒','🔓','🔑','🧭','🧱','🪵',
-            '😀','😃','😄','😁','😆','😅','😂','🤣','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
-            '😋','😛','😜','😝','🤤','😴','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓',
-            '🧐','😕','😟','🙁','☹','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😤','😡','🤬',
-            '👋','🤚','🖐','✋','🖖','👌','🤌','🤏','✌','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','👍','👎',
-            '👏','🙌','👐','🤝','🙏','💪','🦾','🦿','🦵','🦶','👂','👃','👣','👁','👀','🧠','🫀','🫁','🫦','🫧',
-            // 200 added emojis:
-            '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🦄','🐝','🐛','🦋','🐌',
-            '🐞','🐜','🪲','🕷','🦂','🐢','🐍','🦖','🦕','🐙','🦑','🦐','🦞','🐠','🐟','🐬','🦈','🐳','🐋','🦭',
-            '🐔','🦃','🕊','🐇','🦝','🦙','🐐','🐏','🐑','🐪','🐫','🐓','🐕','🦮','🐈','🐩','🐾','🦃','🦚',
-            '🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑',
-            '🥦','🥬','🥒','🌶','🫑','🌽','🥕','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🥞',
-            '🍪','🍩','🍰','🧁','🍫','🍬','🍭','🍮','🍯','🥛','🍼','☕','🍵','🧃','🍶','🍺','🍻','🥂','🍷','🥤',
-            '⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🎱','🏓','🏸','🥅','🏒','🏑','🥍','🏏','⛳','🏹','🎣','🥊',
-            '🚗','🚕','🚙','🚌','🚎','🏎','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🛴','🚲','🛵','🏍','🛺','🚨',
-            '✂','🔧','🔨','⚒','🛠','⛏','🔩','⚙','🧰','🧲','🧪','🔬','🔭','💡','🔦','🏮','🔑','🗝','🧯','🪛',
-            '☀','🌤','⛅','🌥','🌦','🌧','⛈','🌩','🌨','❄','🌬','🌪','🌫','🌈','☔','⚡','🔥','💧','🌊','🍃',
-            '🌍','🌎','🌏','🌕','🌖','🌗','🌘','🌑','🌒','🌓','🌔','🌚','🌝','🌞','🌛','🌜','🌠','⭐','🔯','🌟',
+            '†','‡','°','‰','§','¶','¤','¬','¦',
+            '·',
             ];
-            for row in &self.occupied_chunks_grid {
+            for row in self.0.grid.iter().rev() {
                 for cell in row {
                     let symbol = match cell {
                         Some(entity) => {

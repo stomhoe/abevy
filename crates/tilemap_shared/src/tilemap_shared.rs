@@ -4,7 +4,7 @@ use std::{hash::{DefaultHasher, Hash, Hasher}, ops::Add};
 use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::Prefix;
-use rand::Rng;
+use rand::{Rng, seq::SliceRandom};
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Reflect, Deserialize, Serialize, Clone, )]
@@ -20,7 +20,7 @@ impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self { 
             seed: 3,
-            world_freq: 1.0,
+            world_freq: 10./100.,
             structure_build_timeout_secs: 5.0,
         }
     }
@@ -347,6 +347,21 @@ impl RegionPos {
     pub fn contains_chunkpos(&self, cp: ChunkPos) -> bool {
         let (min, max) = self.chunk_bounds();
         cp.x() >= min.x() && cp.y() >= min.y() && cp.x() < max.x() && cp.y() < max.y()
+    }
+    pub fn all_chunk_positions(&self) -> Vec<ChunkPos> {
+        let mut chunks = Vec::with_capacity(REGION_SIZE_IN_CHUNKS.area_usize());
+        let (min, max) = self.chunk_bounds();
+        for y in min.0.y..max.0.y {
+            for x in min.0.x..max.0.x {
+                chunks.push(ChunkPos::new(x, y));
+            }
+        }
+        chunks
+    }
+    pub fn all_chunk_positions_shuffled(&self, rng: &mut impl Rng) -> Vec<ChunkPos> {
+        let mut chunks = self.all_chunk_positions();
+        chunks.shuffle(rng);
+        chunks
     }
     pub fn to_chunkpos(&self) -> ChunkPos {
         ChunkPos(self.0 * REGION_SIZE_IN_CHUNKS.0)

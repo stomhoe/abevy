@@ -24,6 +24,7 @@ pub fn plugin(app: &mut App) {
             (drunkwalk_dungeon_building_system, advanced_dungeon_building_system).in_set(StructureBuildingSystems),
             failsafe_timeout_pending_chunks,
             add_planed_tiles_to_region,
+            timeout_pending_offers,
             clonespawn_tiles_on_chunk_spawn,//tiene q hacerse despues de los building systems            , // ensure missing compliances don't block region planning indefinitely            track_when_region_is_ready_for_spawning,
         ).in_set(RegioningSystems),
         despawn_empty_regions,

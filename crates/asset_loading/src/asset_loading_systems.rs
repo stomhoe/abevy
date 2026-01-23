@@ -52,7 +52,7 @@ pub fn reload_assets_ingame(
         terr_gen_map.0.clear();
         dimension_entity_map.0.clear();
         library.0.clear();
-        regpos.0.clear();
+        regpos.registered.clear();
     
         loading_state.set(AssetLoading::LocalInProcess);
     }
