@@ -1,9 +1,9 @@
 use std::{mem, };
 
+use bevy_replicon_renet::{RenetServer, netcode::NetcodeServerTransport};
 use faction::faction_components::{BelongsToFaction, Faction};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_replicon_renet::{netcode::{NetcodeServerTransport}, renet::{RenetServer}};
 use common::common_states::{AssetLoading, GamePhase} ;
 use multiplayer_shared::multiplayer_events::{SendUsername, HostServer, StartServerFailed};
 use player::player_components::{OfSelf, Player};

@@ -16,7 +16,6 @@ bevy = { workspace = true }
 debug_unwraps = { workspace = true }
 serde = { workspace = true }
 bevy_common_assets = { workspace = true }
-bevy_simple_subsecond_system = { workspace = true }
 bevy_spritesheet_animation = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_replicon_renet = { workspace = true }

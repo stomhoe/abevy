@@ -1,13 +1,10 @@
-#[allow(unused_imports)] use bevy::prelude::*;
 use game_common::game_common_components::{Direction, EntityZeroRef};
 use serde::{Deserialize, Serialize};
-use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet, MapEntities}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet, hash_map::Entry}, prelude::*};
+use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use tilemap_shared::{ChunkPos, GlobalTilePos, HashablePosVec, REGION_SIZE_IN_CHUNKS, RegionPos};
 
-use crate::{chunking_components::Chunk, regioning::regioning_messages::ClaimedChunks, tile::tile_components::*};
+use crate::{chunking_components::Chunk, regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
 
 
 use common::{common_components::*, };
@@ -30,27 +27,37 @@ impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 #[require(CountsOfSgcs, GridOfSgcs)]
 pub struct ClaimList { 
     pub processed_up_to_i: usize,
-    pub claims: [Option<ClaimedChunks>; MAX_CLAIMS],
-    pub skipped_is: Vec<usize>,
+    pub claims: [Option<ChunksClaim>; MAX_CLAIMS],
+    pub skipped_is: HashSet<usize>,
+    pub time_last_advanced_at: f64,
 }
-
-#[derive(Component, Debug, Reflect, Default)]
-pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
-
+impl ClaimList {
+    pub fn advance_processed_upto_i(&mut self, time: &Time) {
+        self.processed_up_to_i += 1;
+        self.time_last_advanced_at = time.elapsed_secs_f64();
+    }
+    pub fn reached_end(&self) -> bool {
+        self.processed_up_to_i >= MAX_CLAIMS
+    }
+}
 impl Default for ClaimList {
     fn default() -> Self {
         Self { 
             claims: [(); MAX_CLAIMS].map(|_| None),
             processed_up_to_i: 0,
-            skipped_is: Vec::new(),
+            skipped_is: HashSet::new(),
+            time_last_advanced_at: f64::NEG_INFINITY,
         }
     }
 }
 
+#[derive(Component, Debug, Reflect, Default)]
+pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
+
+
 pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
 
 #[derive(Component, Debug, )]
-//a region's component, doesn't need dimension
 pub struct RegionPlannedTiles { 
     tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, TilesFromBuilder>,
     // store pending chunks along with the time (seconds since startup) when they were added
@@ -68,7 +75,6 @@ impl RegionPlannedTiles {
             chunks_pending_build: chunk_positions.iter().copied().map(|p| (p, now)).collect(),
         }
     }
-    
     pub fn add_chunks_pending_build(&mut self, chunk_positions: &[ChunkPos], now: f64) {
         for &pos in chunk_positions {
             self.chunks_pending_build.insert(pos, now);
@@ -103,10 +109,7 @@ impl RegionPlannedTiles {
         Ok(self.chunks_pending_build.is_empty())
     }
     
-    pub fn get(
-        &self,
-        chunk_pos: &ChunkPos,
-    ) -> Option<&TilesFromBuilder> {
+    pub fn get(&self, chunk_pos: &ChunkPos,) -> Option<&TilesFromBuilder> {
         self.tiles_to_spawn_on_chunk_load_map.get(chunk_pos)
     }
     
@@ -119,14 +122,13 @@ impl RegionPlannedTiles {
     }
     
     pub fn mark_chunk_timed_out(&mut self, chunk_pos: ChunkPos) {
-        // remove from pending set and make an empty entry in the map so other systems see there are no tiles
         self.chunks_pending_build.remove(&chunk_pos);
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
     }
     
 }
 
-pub const MAX_CLAIMS: usize = 1024;
+pub const MAX_CLAIMS: usize = REGION_SIZE_IN_CHUNKS.area_usize();
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
@@ -147,7 +149,7 @@ pub struct EmptyRegionDespawnTimer {
 }
 
 #[derive(Debug, Reflect, )]
-pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u32, }
+pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u64, }
 impl<T: Copy> Default for RegionGrid<T> {
     fn default() -> Self {
         Self {
@@ -156,7 +158,6 @@ impl<T: Copy> Default for RegionGrid<T> {
         }
     }
 }
-
 impl<T: Copy> RegionGrid<T> {
     #[inline]
     fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError<T>> {
@@ -169,17 +170,14 @@ impl<T: Copy> RegionGrid<T> {
             _ => Ok((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize)),
         }
     }
-    
     pub fn is_occupied(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
         self.get_local_pos(global_chunk_pos, region_pos)
         .map(|(x, y)| self.grid[y][x].is_some())
         .unwrap_or(false)
     }
-    
     pub fn is_available(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
         !self.is_occupied(global_chunk_pos, region_pos)
     }
-    
     pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) -> Result<(), ChunkOccupyError<T>> {
         let (x, y) = self.get_local_pos(global_chunk_pos, region_pos)?;
         
@@ -192,7 +190,6 @@ impl<T: Copy> RegionGrid<T> {
             Some(existing) => Err(ChunkOccupyError::AlreadyOccupied(existing)),
         }
     }
-    
     pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos) {
         if let Ok((x, y)) = self.get_local_pos(global_chunk_pos, region_pos) {
             if self.grid[y][x].is_some() {
@@ -201,8 +198,7 @@ impl<T: Copy> RegionGrid<T> {
             }
         }
     }
-    
-    pub fn occupied_count(&self) -> u32 {
+    pub fn occupied_count(&self) -> u64 {
         self.count
     }
 }
@@ -244,14 +240,18 @@ impl GridOfSgcs {
             '†','‡','°','‰','§','¶','¤','¬','¦',
             '·',
             ];
+            let mut entity_to_char: EntityHashMap<char> = EntityHashMap::default();
+            let mut char_index = 0;
+            
             for row in self.0.grid.iter().rev() {
                 for cell in row {
                     let symbol = match cell {
                         Some(entity) => {
-                            let mut hasher = DefaultHasher::new();
-                            entity.hash(&mut hasher);
-                            let digit = (hasher.finish() % ARRAY_OF_LEGIBLE_CHARS.len() as u64) as usize;
-                            ARRAY_OF_LEGIBLE_CHARS[digit].to_string()
+                            (*entity_to_char.entry(*entity).or_insert_with(|| {
+                                let ch = ARRAY_OF_LEGIBLE_CHARS[char_index % ARRAY_OF_LEGIBLE_CHARS.len()];
+                                char_index += 1;
+                                ch
+                            })).to_string()
                         }
                         None => "·".to_string(),
                     };
@@ -285,3 +285,6 @@ impl InspectorPrimitive for GridOfSgcs {
         self.render_grid(ui);
     }
 }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct AllClaimsProcessed;

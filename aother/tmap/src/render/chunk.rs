@@ -1,4 +1,4 @@
-use std::hash::{Hash, Hasher};
+use std::{cmp::Ordering, hash::{Hash, Hasher}};
 
 use bevy::{
     asset::RenderAssetUsages,
@@ -64,10 +64,10 @@ impl RenderChunk2dStorage {
         y_sort: bool,
     ) -> &mut RenderChunk2d {
         let pos = position.xyz();
-
+        
         self.entity_to_chunk_tile
-            .insert(tile_entity, (position.w, pos, tile_pos));
-
+        .insert(tile_entity, (position.w, pos, tile_pos));
+        
         let chunk_storage = if self.chunks.contains_key(&position.w) {
             self.chunks.get_mut(&position.w).unwrap()
         } else {
@@ -75,10 +75,10 @@ impl RenderChunk2dStorage {
             self.chunks.insert(position.w, hash_map);
             self.chunks.get_mut(&position.w).unwrap()
         };
-
+        
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         position.hash(&mut hasher);
-
+        
         if chunk_storage.contains_key(&pos) {
             chunk_storage.get_mut(&pos).unwrap()
         } else {
@@ -105,68 +105,68 @@ impl RenderChunk2dStorage {
             chunk_storage.get_mut(&pos).unwrap()
         }
     }
-
+    
     pub fn get(&self, position: &UVec4) -> Option<&RenderChunk2d> {
         if let Some(chunk_storage) = self.chunks.get(&position.w) {
             return chunk_storage.get(&position.xyz());
         }
         None
     }
-
+    
     pub fn get_mut(&mut self, position: &UVec4) -> &mut RenderChunk2d {
         let chunk_storage = self.chunks.get_mut(&position.w).unwrap();
         chunk_storage.get_mut(&position.xyz()).unwrap()
     }
-
+    
     pub fn remove_tile_with_entity(&mut self, entity: Entity) {
         if let Some((chunk, tile_pos)) = self.get_mut_from_entity(entity) {
             chunk.set(&tile_pos.into(), None);
         }
-
+        
         self.entity_to_chunk.remove(&entity);
         self.entity_to_chunk_tile.remove(&entity);
     }
-
+    
     pub fn get_mut_from_entity(&mut self, entity: Entity) -> Option<(&mut RenderChunk2d, UVec2)> {
         if !self.entity_to_chunk_tile.contains_key(&entity) {
             return None;
         }
-
+        
         let (tilemap_id, chunk_pos, tile_pos) = self.entity_to_chunk_tile.get(&entity).unwrap();
-
+        
         let chunk_storage = self.chunks.get_mut(tilemap_id)?;
         Some((chunk_storage.get_mut(chunk_pos)?, *tile_pos))
     }
-
+    
     pub fn get_chunk_storage(&mut self, position: &UVec4) -> &mut HashMap<UVec3, RenderChunk2d> {
         self.chunks.entry(position.w)
-            .or_insert_with(HashMap::default)
+        .or_insert_with(HashMap::default)
     }
-
+    
     pub fn remove(&mut self, position: &UVec4) {
         let chunk_storage = self.get_chunk_storage(position);
-
+        
         let pos = position.xyz();
-
+        
         chunk_storage.remove(&pos);
     }
-
+    
     pub fn count(&self) -> usize {
         self.chunks.len()
     }
-
+    
     pub fn iter(&self) -> impl Iterator<Item = &RenderChunk2d> {
         self.chunks.iter().flat_map(|(_, x)| x.iter().map(|x| x.1))
     }
-
+    
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut RenderChunk2d> {
         self.chunks
-            .iter_mut()
-            .flat_map(|(_, x)| x.iter_mut().map(|x| x.1))
+        .iter_mut()
+        .flat_map(|(_, x)| x.iter_mut().map(|x| x.1))
     }
-
+    
     pub fn remove_map(&mut self, entity: Entity) {
-        self.chunks.remove(&entity.index());
+        self.chunks.remove(&entity.index_u32());
     }
 }
 
@@ -281,41 +281,41 @@ impl RenderChunk2d {
             y_sort,
         }
     }
-
+    
     pub fn get(&self, tile_pos: &TilePos) -> &Option<PackedTileData> {
         &self.tiles[tile_pos.to_index(&self.size_in_tiles.into())]
     }
-
+    
     pub fn get_mut(&mut self, tile_pos: &TilePos) -> &mut Option<PackedTileData> {
         self.dirty_mesh = true;
         &mut self.tiles[tile_pos.to_index(&self.size_in_tiles.into())]
     }
-
+    
     pub fn set(&mut self, tile_pos: &TilePos, tile: Option<PackedTileData>) {
         self.dirty_mesh = true;
         self.tiles[tile_pos.to_index(&self.size_in_tiles.into())] = tile;
     }
-
+    
     pub fn get_index(&self) -> UVec3 {
         self.index
     }
-
+    
     pub fn get_map_type(&self) -> TilemapType {
         self.map_type
     }
-
+    
     pub fn get_transform(&self) -> Transform {
         self.transform
     }
-
+    
     pub fn get_transform_matrix(&self) -> Mat4 {
         self.transform_matrix
     }
-
+    
     pub fn intersects_frustum(&self, frustum: &ExtractedFrustum) -> bool {
         frustum.intersects_obb(&self.aabb, &self.transform_matrix)
     }
-
+    
     pub fn update_geometry(
         &mut self,
         global_transform: Transform,
@@ -324,22 +324,22 @@ impl RenderChunk2d {
         map_type: TilemapType,
     ) {
         let mut dirty_local_transform = false;
-
+        
         if self.grid_size != grid_size || self.tile_size != tile_size || self.map_type != map_type {
             self.grid_size = grid_size;
             self.map_type = map_type;
             self.tile_size = tile_size;
-
+            
             self.position = chunk_index_to_world_space(
                 self.index.xy(),
                 self.size_in_tiles,
                 &self.grid_size,
                 &self.map_type,
             );
-
+            
             self.local_transform = Transform::from_translation(self.position.extend(0.0));
             dirty_local_transform = true;
-
+            
             self.aabb = chunk_aabb(
                 self.size_in_tiles,
                 &self.grid_size,
@@ -347,19 +347,21 @@ impl RenderChunk2d {
                 &self.map_type,
             );
         }
-
+        
         let mut dirty_global_transform = false;
         if self.global_transform != global_transform {
             self.global_transform = global_transform;
             dirty_global_transform = true;
         }
-
+        
         if dirty_local_transform || dirty_global_transform {
             self.transform = global_transform * self.local_transform;
             self.transform_matrix = self.transform.to_matrix();
         }
     }
-
+    
+    
+    
     pub fn prepare(
         &mut self,
         device: &RenderDevice,
@@ -371,52 +373,63 @@ impl RenderChunk2d {
             let mut textures: Vec<[f32; 4]> = Vec::with_capacity(size);
             let mut colors: Vec<[f32; 4]> = Vec::with_capacity(size);
             let mut indices: Vec<u32> =
-                Vec::with_capacity(((self.size_in_tiles.x * self.size_in_tiles.y) * 6) as usize);
-
+            Vec::with_capacity(((self.size_in_tiles.x * self.size_in_tiles.y) * 6) as usize);
+            
             let mut i = 0;
-
-            // Convert tile into mesh data.
-            for tile in self.tiles.iter().filter_map(|x| x.as_ref()) {
+            
+            fn get_tiles_iter(
+                chunk: &RenderChunk2d,
+            ) -> Box<dyn Iterator<Item = &PackedTileData> + '_> {
+                match chunk.y_sort {
+                    true => Box::new((0..chunk.size_in_tiles.y).rev().flat_map(move |y| {
+                        (0..chunk.size_in_tiles.x)
+                        .filter_map(move |x| chunk.get(&TilePos::new(x, y)).as_ref())
+                    })),
+                    false => Box::new(chunk.tiles.iter().filter_map(|x| x.as_ref())),
+                }
+            }
+            
+            for tile in get_tiles_iter(&self) {
                 if !tile.visible {
                     continue;
                 }
-
+                
                 let position: [f32; 4] = tile.position.to_array();
                 positions.extend(
                     [
-                        // X, Y
-                        position,
-                        // X, Y + 1
-                        //[tile_pos.x, tile_pos.y + 1.0, animation_speed],
-                        position,
-                        // X + 1, Y + 1
-                        //[tile_pos.x + 1.0, tile_pos.y + 1.0, animation_speed],
-                        position,
-                        // X + 1, Y
-                        //[tile_pos.x + 1.0, tile_pos.y, animation_speed],
-                        position,
+                    // X, Y
+                    position,
+                    // X, Y + 1
+                    //[tile_pos.x, tile_pos.y + 1.0, animation_speed],
+                    position,
+                    // X + 1, Y + 1
+                    //[tile_pos.x + 1.0, tile_pos.y + 1.0, animation_speed],
+                    position,
+                    // X + 1, Y
+                    //[tile_pos.x + 1.0, tile_pos.y, animation_speed],
+                    position,
                     ]
                     .into_iter(),
                 );
-
+                
                 colors.extend(std::iter::repeat_n(tile.color, 4));
-
+                
                 // flipping and rotation packed in bits
                 // bit 0 : flip_x
                 // bit 1 : flip_y
                 // bit 2 : flip_d (anti diagonal)
-
+                
                 // let tile_flip_bits =
                 //     tile.flip_x as i32 | (tile.flip_y as i32) << 1 | (tile.flip_d as i32) << 2;
-
+                
                 //let texture: [f32; 4] = tile.texture.xyxx().into();
                 let texture: [f32; 4] = tile.texture.to_array();
                 textures.extend([texture, texture, texture, texture].into_iter());
-
+                
                 indices.extend_from_slice(&[i, i + 2, i + 1, i, i + 3, i + 2]);
                 i += 4;
             }
-
+            
             self.mesh.insert_attribute(
                 crate::render::ATTRIBUTE_POSITION,
                 VertexAttributeValues::Float32x4(positions),
@@ -430,36 +443,36 @@ impl RenderChunk2d {
                 VertexAttributeValues::Float32x4(colors),
             );
             self.mesh.insert_indices(Indices::U32(indices));
-
+            
             let vertex_buffer_data = self.mesh.create_packed_vertex_buffer_data();
             let vertex_buffer = device.create_buffer_with_data(&BufferInitDescriptor {
                 usage: BufferUsages::VERTEX,
                 label: Some("Mesh Vertex Buffer"),
                 contents: &vertex_buffer_data,
             });
-
+            
             let index_buffer = device.create_buffer_with_data(&BufferInitDescriptor {
                 usage: BufferUsages::INDEX,
                 contents: self.mesh.get_index_buffer_bytes().unwrap(),
                 label: Some("Mesh Index Buffer"),
             });
-
+            
             let buffer_info = RenderMeshBufferInfo::Indexed {
                 count: self.mesh.indices().unwrap().len() as u32,
                 index_format: self.mesh.indices().unwrap().into(),
             };
-
+            
             let mesh_vertex_buffer_layout = self
-                .mesh
-                .get_mesh_vertex_buffer_layout(mesh_vertex_buffer_layouts);
+            .mesh
+            .get_mesh_vertex_buffer_layout(mesh_vertex_buffer_layouts);
             self.render_mesh = Some(RenderMesh {
                 vertex_count: self.mesh.count_vertices() as u32,
                 buffer_info,
-                morph_targets: None,
                 layout: mesh_vertex_buffer_layout,
                 key_bits: BaseMeshPipelineKey::from_primitive_topology(
                     PrimitiveTopology::TriangleList,
                 ),
+                morph_targets: None,
             });
             self.vertex_buffer = Some(vertex_buffer);
             self.index_buffer = Some(index_buffer);

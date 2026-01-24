@@ -5,12 +5,7 @@ use std::{net::{Ipv4Addr, SocketAddr, UdpSocket}, time::SystemTime};
 
 
 use bevy_replicon_renet::{
-    RenetChannelsExt, RepliconRenetPlugins,
-    netcode::{
-        ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
-        ServerConfig,
-    },
-    renet::{ConnectionConfig, RenetClient, RenetServer},
+    RenetChannelsExt, RenetClient, netcode::{ClientAuthentication, NetcodeClientTransport}, renet::ConnectionConfig
 };
 
 pub fn join_server (

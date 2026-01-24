@@ -16,7 +16,6 @@ pub fn plugin(app: &mut App) {
         //.init_resource::<RESOURCE_NAME>()
         .add_plugins((
         // SomePlugin, 
-        // superstate_plugin::<SuperState, (Substate1, Substate2)>
         ))
         .add_client_message::<NameSelected>(Channel::Ordered)
         .add_client_message::<RaceSelected>(Channel::Ordered)

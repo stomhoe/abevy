@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use bevy_replicon_renet::{netcode::{NetcodeClientTransport, NetcodeDisconnectReason::{self, *}}, renet::RenetClient};
+use bevy_replicon_renet::{RenetClient, netcode::{NetcodeClientTransport, NetcodeDisconnectReason::{self, *}} };
 use common::{common_states::*};
 use multiplayer_shared::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, };
 use player::{player_components::*, player_resources::PlayerData};

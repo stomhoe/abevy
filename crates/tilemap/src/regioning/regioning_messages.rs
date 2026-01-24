@@ -17,7 +17,7 @@ pub struct OfferChunk {
 }
 
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq, Reflect)]
-pub struct ClaimedChunks {
+pub struct ChunksClaim {
     pub i: u64,
     pub region_ent: Entity,
     pub sgc_ent: Entity,
@@ -25,7 +25,7 @@ pub struct ClaimedChunks {
     pub chunks_gpos: Vec<ChunkPos>, 
     pub partition_tolerant: bool,
 }
-impl Default for ClaimedChunks {
+impl Default for ChunksClaim {
     fn default() -> Self {
         Self { i: 0, region_ent: Entity::PLACEHOLDER, sgc_ent: Entity::PLACEHOLDER, chunks_gpos: Vec::new(), partition_tolerant: false }
     }
@@ -51,3 +51,7 @@ pub struct StructureBuildCompliance {
     pub tiles: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>,
 
 }
+
+
+#[derive(Message, Debug, )]
+pub struct RecheckRegion(pub Entity);

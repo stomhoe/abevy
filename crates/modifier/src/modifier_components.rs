@@ -22,9 +22,6 @@ impl AppliedModifiers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
 
 
 
-/*TO-DO ¡IMPORTANTE! NO OLVIDARSE DE AGREGAR: 
-superstate_plugin::<Modifier, (Walking, Flying)>,
- EN EL Plugin DEL MÓDULO */
 pub type ModifierTags = TagSet;
 /*categorías/tipo de sustancia/familia de sustancia a las q pertenece: race_modifier,  
     (así se pueden identificar sustancias origen y hacer sistemas de antidotos q contrarresten sustancias específicas)

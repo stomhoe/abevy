@@ -3,7 +3,6 @@ use bevy_inspector_egui::{
     bevy_egui::EguiPlugin,
     quick::WorldInspectorPlugin,
 };
-use bevy_simple_subsecond_system::SimpleSubsecondPlugin;
 use tracing::Level;
 #[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, };
 

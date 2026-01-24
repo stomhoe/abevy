@@ -459,10 +459,11 @@ pub enum IsoCoordSystem {
 }
 
 /// The type of tile to be rendered, currently we support: Square, Hex, and Isometric.
-#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[reflect(Component)]
 pub enum TilemapType {
     /// A tilemap with rectangular tiles.
+    #[default]
     Square,
     /// Used to specify rendering of tilemaps on hexagons.
     ///
@@ -474,11 +475,6 @@ pub enum TilemapType {
     Isometric(IsoCoordSystem),
 }
 
-impl Default for TilemapType {
-    fn default() -> Self {
-        Self::Square
-    }
-}
 
 #[cfg(test)]
 mod tests {

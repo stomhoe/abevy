@@ -11,7 +11,7 @@ edition = "2024"
 default = []
 
 [workspace.dependencies]
-bevy = { version = "0.17.3", features = [
+bevy = { version = "0.18", features = [
     "dynamic_linking",
     "track_location",
     "serialize",
@@ -29,25 +29,23 @@ rand_seeder = "*"
 rand_pcg = "*"
 
 bevy_ecs_tilemap = { path = "aother/tmap", features = ["serde"] }
-superstate = { git = "https://github.com/KurlykovDanila/Superstate.git" }
 bevy_simple_scroll_view = "0.4.0"
-bevy_ui_text_input = "0.6.0"
-bevy_replicon = "0.36"
-bevy_replicon_renet = "0.12"
-serde = { version = "1.0.228", features = ["derive"] }
-bevy_common_assets = { version = "0.14.0", features = ["ron"]}
-
-bevy_simple_subsecond_system = "0.2.0" #IMPORTANTE PARA HOTPATCHEAR SISTEMAS
+bevy_ui_text_input = { git = "https://github.com/Elekrisk/bevy_ui_text_input/", branch = "bevy-0.18" }
+bevy_replicon = "0.38.2"
+bevy_replicon_renet = "0.14"
+bevy_common_assets = { version = "0.15.0", features = ["ron"]}
 bevy-ui-gradients = "0.4.0"
-bevy_spritesheet_animation = "5.0.0"
-bevy_asset_loader = { git = "https://github.com/NiklasEi/bevy_asset_loader.git", branch = "bevy_main" }
-bevy-inspector-egui = "0.35.0"
+bevy_spritesheet_animation = "6.1.0"
+bevy_asset_loader = "0.25.0"
+bevy-inspector-egui = "0.36.0"
+noiz = "0.4.0"
+
+serde = { version = "1.0.228", features = ["derive"] }
 splines = { version = "5.0.0", features = ["serde"] }
-indexmap = "2.12.0"
-delegate = "0.13.4"
-tracing = "0.1.41"
-tracing-subscriber = "0.3.20"
-noiz = "0.3.0"
+indexmap = "2.13.0"
+delegate = "0.13.5"
+tracing = "0.1.44"
+tracing-subscriber = "0.3.22"
 bit-vec = "0.8.0"
 
 #bevy_save = "1.0.0"
@@ -55,6 +53,9 @@ bit-vec = "0.8.0"
 #bevy_rand = "0.11.1"
 #bevy_enhanced_input = "0.15.2"
 #bevy_northstar = "0.3.1"
+#big_brain = "0.22.0"
+
+#cargo upgrade --incompatible
 
 [dependencies]
 
@@ -85,7 +86,6 @@ pregame_screen = { path = "crates/pregame_screen" }
 setup_screen = { path = "crates/setup_screen" }
 bevy = { workspace = true }
 bevy-inspector-egui = { workspace = true }
-bevy_simple_subsecond_system = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 bit-vec = { workspace = true }

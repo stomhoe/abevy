@@ -9,7 +9,7 @@ use rand::{Rng, SeedableRng};
 use rand_distr::{Normal, Distribution};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_sgc_components::StructuredGenConfig}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, };
+use crate::{regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_sgc_components::StructuredGenConfig}, tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap}, };
 
 
 const DRUNKWALK: HashId = HashId::hash("drunkwalk");
@@ -23,7 +23,7 @@ const ADMITTED_STRUCTURE_IDS: &[HashId] = &[
 #[allow(unused_parens)]
 pub fn claim_chunks_for_various_dungeon_types(
     mut offered_chunks: MessageReader<OfferChunk>,
-    mut writer: MessageWriter<ClaimedChunks>,
+    mut writer: MessageWriter<ChunksClaim>,
     region_dimension: Query<&DimensionRef>,
     structured_gens: Query<(&StructuredGenConfig,)>,
     dimension_hash: Query<&HashId>,
@@ -147,7 +147,7 @@ pub fn claim_chunks_for_various_dungeon_types(
 
         chunk_positions.sort_unstable_by_key(|chunk| (chunk.y(), chunk.x()));
         let chunk_count = chunk_positions.len();
-        claims_to_emit.push(ClaimedChunks {
+        claims_to_emit.push(ChunksClaim {
             i: offer.i,
             region_ent: offer.region_ent,
             sgc_ent: offer.structured_gen_cfg_ent,

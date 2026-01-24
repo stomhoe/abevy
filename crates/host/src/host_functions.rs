@@ -4,12 +4,10 @@ use std::{net::{Ipv4Addr, UdpSocket}, time::SystemTime};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 use bevy_replicon_renet::{
-    RenetChannelsExt,
-    netcode::{
+    RenetChannelsExt, RenetServer, netcode::{
         NetcodeServerTransport, ServerAuthentication,
         ServerConfig,
-    },
-    renet::{ConnectionConfig, RenetServer},
+    }, renet::ConnectionConfig
 };
 use multiplayer_shared::{multiplayer_events::HostServer, multiplayer_shared::PROTOCOL_ID};
 

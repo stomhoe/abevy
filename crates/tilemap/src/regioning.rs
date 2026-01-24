@@ -19,12 +19,14 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(Update, (
         (
-            (offer_chunks_of_new_regions_to_dungeoning_systems, claim_chunks_for_various_dungeon_types).chain(),
+            offer_chunks_of_new_regions_to_dungeoning_systems, 
+            claim_chunks_for_various_dungeon_types,
             read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems,
             (drunkwalk_dungeon_building_system, advanced_dungeon_building_system).in_set(StructureBuildingSystems),
             failsafe_timeout_pending_chunks,
             add_planed_tiles_to_region,
             timeout_pending_offers,
+            advance_i_on_claimlist_timeout,
             clonespawn_tiles_on_chunk_spawn,//tiene q hacerse despues de los building systems            , // ensure missing compliances don't block region planning indefinitely            track_when_region_is_ready_for_spawning,
         ).in_set(RegioningSystems),
 
@@ -42,6 +44,7 @@ pub fn plugin(app: &mut App) {
     .add_observer(remove_sgc_from_map_on_despawn)
 
     .init_resource::<SgcEntityMap>()
+    .init_resource::<LoadedRegions>()
 
     .register_type::<LoadedRegions>()
     .register_type::<SgcEntityMap>()
@@ -61,11 +64,11 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<Region>()
     
     .add_message::<OfferChunk>()
-    .add_message::<ClaimedChunks>()
+    .add_message::<ChunksClaim>()
     .add_message::<StructurePrepareTilesOrder>()
     .add_message::<StructureBuildCompliance>()
+    .add_message::<RecheckRegion>()
     
-    .init_resource::<LoadedRegions>()
 
 ;
 }

@@ -17,11 +17,9 @@ being = { path = "../being" }
 bevy = { workspace = true }
 nano-id = { workspace = true }
 debug_unwraps = { workspace = true }
-superstate = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_replicon_renet = { workspace = true }
 serde = { workspace = true }
-bevy_simple_subsecond_system = { workspace = true }
 bevy_asset_loader = { workspace = true }
 indexmap = { workspace = true }
 delegate = { workspace = true }

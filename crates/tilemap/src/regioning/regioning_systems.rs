@@ -9,7 +9,7 @@ use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ClaimedChunks, OfferChunk, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -67,57 +67,57 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         let all_chunk_positions = region_pos.all_chunk_positions_shuffled(&mut rng);
         const MAX_REATTEMPTS: usize = 50;
         
-        for (position_index, &chunk_pos) in all_chunk_positions.iter().enumerate() {
-            if position_index >= MAX_CLAIMS as usize {
+        'next_i: for (i, &chunk_pos) in all_chunk_positions.iter().enumerate() {
+            if i >= MAX_CLAIMS as usize {
                 break;
             }
             
             let mut reattempt_count = 0;
-            'nextstructure: loop {
+            'next_sgc_attempt: loop {
                 if reattempt_count >= MAX_REATTEMPTS as u64 {
-                    claimlist.skipped_is.push(position_index);
-                    break 'nextstructure;
+                    claimlist.skipped_is.insert(i);
+                    continue 'next_i;
                 }
                 
                 let Some(structured_gen_cfg_ent) = weight_map.sample_with_rng(&mut rng)
                 else { 
                     error!(target: "sgc_chunk_offer", "No StructuredGenConfig available to spawn structure in region at {}", region_pos);
-                    claimlist.skipped_is.push(position_index);
-                    break 'nextstructure; 
+                    claimlist.skipped_is.insert(i);
+                    continue 'next_i;
                 };
                 let Ok((strgen_tags, poisson_disk, exclusive_for_dimensions)) = structured_gens.get(structured_gen_cfg_ent)
                 else {
                     reattempt_count += 1;
-                    continue 'nextstructure;
+                    continue 'next_sgc_attempt;
                 };
                 if let Some(exclusive_for_dimensions) = exclusive_for_dimensions {
                     if ! exclusive_for_dimensions.0.contains(&dim_ref.0) {
                         reattempt_count += 1;
                         trace!(target: "sgc_chunk_offer", "Dimension entity {:?} is not in exclusive dimension list for structure '{:?}', skipping", dim_ref, structured_gen_cfg_ent);
-                        continue 'nextstructure;
+                        continue 'next_sgc_attempt;
                     }
                 } else if !passes_dimension_tag_filters(strgen_tags, dim_wlist_tags, dim_blist_tags) {
                     reattempt_count += 1;
                     trace!(target: "sgc_chunk_offer", "Dimension entity {:?} fails tag filter checks for structure '{:?}', skipping", dim_ref, structured_gen_cfg_ent);
-                    continue 'nextstructure;
+                    continue 'next_sgc_attempt;
                 }
                 
                 if let Some(poisson_disk) = poisson_disk {
                     if ! poisson_disk.is_allowed_position(&settings, chunk_pos, false, OplistSize::default()) {
                         trace!(target: "sgc_chunk_offer", "Chunk position {:?} within {} rejected by PoissonDisk for structure '{:?}', reattempting", chunk_pos, region_pos, structured_gen_cfg_ent);
                         reattempt_count += 1;
-                        continue 'nextstructure;
+                        continue 'next_sgc_attempt;
                     }
                 }
                 
                 offers.push(OfferChunk {
-                    i: position_index as u64,/*mal */
+                    i: i as u64,/*mal */
                     region_ent,
                     structured_gen_cfg_ent,
                     start_pos: chunk_pos,
                 });
                 debug!(target: "sgc_chunk_offer", "Emitting OfferChunk for structure '{:?}' in region at {} for {}", structured_gen_cfg_ent, region_pos, chunk_pos);
-                break 'nextstructure;
+                continue 'next_i;
             }
         }
         
@@ -134,18 +134,48 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
 
 
 #[allow(unused_parens)]
+pub fn advance_i_on_claimlist_timeout( 
+    mut query: Query<(Entity, &mut ClaimList),()>,
+    time: Res<Time>,
+    mut recheck_writer: MessageWriter<RecheckRegion>,
+) {
+    const CLAIM_TIMEOUT_SECS: f64 = 0.02;
+    let mut recheck = Vec::new();
+
+    query.iter_mut().for_each(|(region_ent, mut claimlist)| {
+        let time_last_advanced_at = claimlist.time_last_advanced_at;
+        if time_last_advanced_at != f64::NEG_INFINITY {
+            let elapsed = time.elapsed().as_secs_f64() - claimlist.time_last_advanced_at;
+            if elapsed > CLAIM_TIMEOUT_SECS {
+                if claimlist.reached_end(){
+                    claimlist.time_last_advanced_at = f64::INFINITY;
+                    return;
+                }
+                claimlist.advance_processed_upto_i(&time);
+                
+
+                recheck.push(RecheckRegion(region_ent));
+            }
+        }
+
+    });
+    recheck_writer.write_batch(recheck);//arreglar, causa mucho spam
+}
+
+
+#[allow(unused_parens)]
 pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
     mut cmd: Commands,
-    mut claims: MessageMutator<ClaimedChunks>,
+    mut claims: MessageMutator<ChunksClaim>,
     mut region_query: Query<(&RegionPos, &DimensionRef, &mut ClaimList, &mut CountsOfSgcs, &mut GridOfSgcs, &mut RegionPlannedTiles),()>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     time: Res<Time>,
+    mut recheck_reader: MessageReader<RecheckRegion>,
     mut writer: MessageWriter<StructurePrepareTilesOrder>,
-) {
-    let mut regions_with_new_claims: Vec<Entity> = Vec::new();
+){
+    let mut regions_with_new_claims: Vec<Entity> = recheck_reader.read().map(|ent| ent.0).collect();
     let mut regions_which_started_building = Vec::new();
     let mut build_orders = Vec::new();
-    
     for claim in claims.read() {
         if claim.region_ent == Entity::PLACEHOLDER {
             continue;
@@ -175,7 +205,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             }
         }
     }
-    let max_used_chunks_per_region = (REGION_SIZE_IN_CHUNKS.element_product() as f32 * 0.1) as u16;
+    let max_used_chunks_per_region = (REGION_SIZE_IN_CHUNKS.area_usize() as f32 * 0.1) as u64;
     //print everything within regions_with_new_claims to see contents (debugging)
         
     
@@ -186,55 +216,51 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             error!(target: "sgc_chunk_claim", "Region entity {:?} not found when processing chunk claims, skipping", region_ent);
             continue;
         };
-        for claim in claimlist.claims.iter().flatten() {
-            debug!(target: "sgc_chunk_claim", "Region at {:?} has pending claim: {:?}", region_pos, claim);
-        }
 
-        debug!(target: "sgc_chunk_claim", "Processing chunk claims for region at {:?}", region_pos);
         'nextregion: for i in claimlist.processed_up_to_i..MAX_CLAIMS {
 
             if claimlist.skipped_is.contains(&i) {
-                claimlist.processed_up_to_i += 1;
+                claimlist.advance_processed_upto_i(&time);
                 continue 'nextregion;
-            }
+            }//no tocar
             
-            if grid_of_sgc.0.occupied_count() >= max_used_chunks_per_region as u32 {
+            if grid_of_sgc.0.occupied_count() >= max_used_chunks_per_region {
                 debug!(target: "sgc_chunk_claim", "Region at {:?} has reached max used chunks per region ({}), stopping further claim processing", 
                 region_pos, max_used_chunks_per_region);
                 break 'nextregion;
             }
-            let Some(claimed) = claimlist.claims.get_mut(i).unwrap() else {
+            let Some(claim) = claimlist.claims.get_mut(i).unwrap() else {
                 error!(target: "sgc_chunk_claim", "No claim found at index {} for region at {:?}, stopping further claim processing",
                 i, region_pos);
                 break 'nextregion;//ta bien, no hay que seguir hasta que aparezca la region structure en esta posicion
             };
-            let mut claimed = take(claimed);
+            let mut claim = take(claim);
             claimlist.claims[i] = None;
             
-            let Ok((structured_gen_cfg,)) = structured_gens.get(claimed.sgc_ent)
+            let Ok((structured_gen_cfg,)) = structured_gens.get(claim.sgc_ent)
             else {
-                claimlist.processed_up_to_i += 1; 
+                claimlist.advance_processed_upto_i(&time);
                 error!(target: "sgc_chunk_claim", "StructuredGenConfig entity {:?} not found when processing claims for region at {:?}, skipping claim", 
-                claimed.sgc_ent, region_pos);
+                claim.sgc_ent, region_pos);
                 continue;
             };
             
-            if counts_of_sgcs.0.get(&claimed.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
-                claimlist.processed_up_to_i += 1; 
+            if counts_of_sgcs.0.get(&claim.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
+                claimlist.advance_processed_upto_i(&time);
                 debug!(target: "sgc_chunk_claim", "Max structures of type '{}' already spawned in region {:?}, skipping claim", 
                 structured_gen_cfg.structure_id, region_pos);
                 continue;
             }
             let mut undo_claims = false;
             let mut claimed_up_to: u64 = 0;
-            let mut failed_claims_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area() as usize, false);
+            let mut failed_claims_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area_usize(), false);
             
-            'nextpos: for (claim_i, &chunk_pos) in claimed.chunks_gpos.iter().enumerate(){
+            'nextpos: for (claim_i, &chunk_pos) in claim.chunks_gpos.iter().enumerate(){
                 match (grid_of_sgc.0.occupy(
                     chunk_pos,
                     region_pos,
-                    claimed.sgc_ent,
-                ), claimed.partition_tolerant) {
+                    claim.sgc_ent,
+                ), claim.partition_tolerant) {
                     (Ok(()), _) => {
                         debug!(target: "sgc_chunk_claim", "Successfully claimed chunk at {:?} in region {:?} for structure '{}'", chunk_pos, region_pos, structured_gen_cfg.structure_id);
                         claimed_up_to += 1;
@@ -261,32 +287,32 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             }
             if undo_claims {
                 for i in 0..claimed_up_to {
-                    let chunk_pos = claimed.chunks_gpos[i as usize];
+                    let chunk_pos = claim.chunks_gpos[i as usize];
                     grid_of_sgc.0.free(chunk_pos, region_pos);
                 }
             } else {
-                counts_of_sgcs.0.entry(claimed.sgc_ent)
+                counts_of_sgcs.0.entry(claim.sgc_ent)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
                 
-                for i in (0..claimed.chunks_gpos.len()).rev() {
+                for i in (0..claim.chunks_gpos.len()).rev() {
                     if failed_claims_bitmask.get(i).unwrap_or(false) {
-                        claimed.chunks_gpos.swap_remove(i);
+                        claim.chunks_gpos.swap_remove(i);
                     }
                 }
                 
-                planned.add_chunks_pending_build(&claimed.chunks_gpos, time.elapsed().as_secs_f64());
+                planned.add_chunks_pending_build(&claim.chunks_gpos, time.elapsed().as_secs_f64());
                 regions_which_started_building.push((region_ent, BuildingStarted));
                 debug!(target: "sgc_chunk_claim", "Region at {:?} emitting {} build orders for structure '{}'", 
-                    region_pos, claimed.chunks_gpos.len(), structured_gen_cfg.structure_id);
+                    region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id);
 
                 
                 let order = StructurePrepareTilesOrder {
-                    i: claimed.i,
+                    i: claim.i,
                     region_pos,
                     dimension_ref,
-                    structured_gen_cfg_ent: claimed.sgc_ent,
-                    chunks_gpos: claimed.chunks_gpos,
+                    structured_gen_cfg_ent: claim.sgc_ent,
+                    chunks_gpos: claim.chunks_gpos,
                 };
                 build_orders.push(order);
             }
@@ -346,9 +372,7 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 ) {
     let mut ready = Vec::new();
     let mut to_insert_delete_others = Vec::new();
-    
-    for (chunks_active_in_region, reg_planned) in region_query.iter() {
-        
+    region_query.iter().for_each(|(chunks_active_in_region, reg_planned)| {
         chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref)| {
             if reg_planned.is_chunk_pending_build(chunk_pos) {
                 return;
@@ -367,7 +391,7 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
             }
             ready.push((chunk_ent, ReadyForTerrgen));
         });
-    }
+    });
     cmd.try_insert_batch(ready);
     cmd.try_insert_batch(to_insert_delete_others);
 }
@@ -421,15 +445,14 @@ pub fn failsafe_timeout_pending_chunks(
 ) {
     let timeout = settings.structure_build_timeout_secs;
     let now = time.elapsed().as_secs_f64();
-    
-    for (region_ent, region_pos, mut planned) in query.iter_mut() {
+    query.iter_mut().for_each(|(region_ent, region_pos, mut planned)| {
         let mut timed_out = Vec::new();
         for (&chunk_pos, &since) in planned.pending_chunks_iter() {
             if now - since > timeout {
                 timed_out.push(chunk_pos);
             }
         }
-        if timed_out.is_empty() { continue; }
+        if timed_out.is_empty() { return; }
         
         for chunk_pos in timed_out {
             planned.mark_chunk_timed_out(chunk_pos);
@@ -440,7 +463,7 @@ pub fn failsafe_timeout_pending_chunks(
             info!(target: "structure_spawn", "Region entity {:?} at {} has timed out remaining pending chunks, marking as RegionPlanningFinished", region_ent, region_pos);
             cmd.entity(region_ent).try_insert(AllTilesPrepared);
         }
-    }
+    });
 }
 
 #[allow(unused_parens)]
@@ -451,13 +474,12 @@ pub fn timeout_pending_offers(
 ) {
     const OFFER_TIMEOUT_SECS: f64 = 0.2;
     let current_time = time.elapsed().as_secs_f64();
-    
-    for (region_ent, region_pos, pending_timeout) in query.iter() {
+    query.iter().for_each(|(region_ent, region_pos, pending_timeout)| {
         if current_time - pending_timeout.offered_at > OFFER_TIMEOUT_SECS {
             warn!(target: "sgc_chunk_offer", "Offers for region at {} timed out after {:.3}s with no claims, marking as BuildingStarted", region_pos, OFFER_TIMEOUT_SECS);
             cmd.entity(region_ent).try_insert(BuildingStarted);
             cmd.entity(region_ent).remove::<PendingOfferTimeout>();
         }
-    }
+    });
 }
 

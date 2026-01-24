@@ -21,12 +21,10 @@ bevy = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-bevy_simple_subsecond_system = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_replicon_renet = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
-superstate = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 debug_unwraps = { workspace = true }
