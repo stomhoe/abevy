@@ -3,6 +3,7 @@ use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
+use dimension_shared::DimensionRef;
 use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Normal, Distribution};
@@ -23,30 +24,46 @@ const ADMITTED_STRUCTURE_IDS: &[HashId] = &[
 pub fn claim_chunks_for_various_dungeon_types(
     mut offered_chunks: MessageReader<OfferChunk>,
     mut writer: MessageWriter<ClaimedChunks>,
+    region_dimension: Query<&DimensionRef>,
     structured_gens: Query<(&StructuredGenConfig,)>,
+    dimension_hash: Query<&HashId>,
     settings: Single<&GlobalGenSettings>,
 ) {
     let mut claims_to_emit = Vec::new();
     let mut already_claimed: HashSet<ChunkPos> = HashSet::new();
     
     for offer in offered_chunks.read() {
+        info!(target: "dungeoning", "Processing OfferChunk {:?} for region entity {:?}", offer.i, offer.region_ent);
         let Ok((structured_gen_cfg,)) = structured_gens.get(offer.structured_gen_cfg_ent)
-        else { continue; };
+        else { 
+            error!(target: "dungeoning", "StructuredGenConfig entity {:?} not found when making DrunkwalkDungeon, skipping structure spawn", offer.structured_gen_cfg_ent);
+            continue; };
 
         let id = structured_gen_cfg.hash;
         
         if !ADMITTED_STRUCTURE_IDS.contains(&id) {
-            trace!(target: "structure_spawn", "StructuredGenConfig entity {:?} is not in admitted structures, skipping", offer.structured_gen_cfg_ent);
+            trace!(target: "dungeoning", "StructuredGenConfig entity {:?} is not in admitted structures, skipping", offer.structured_gen_cfg_ent);
             continue;
         }
-        let center_chunk = offer.start_gpos;
-        let seed = center_chunk.hash_value(&settings, 0);
+        let center_chunk = offer.start_pos;
+
+        let Ok(dimension_ref) = region_dimension.get(offer.region_ent) else {
+            warn!(target: "dungeoning", "Region entity {:?} has no DimensionRef component when claiming chunks for structure spawn, skipping", offer.region_ent);
+            continue;
+        };
+
+        let Ok(dimension_hash) = dimension_hash.get(dimension_ref.0) else {
+            warn!(target: "dungeoning", "Dimension entity {:?} has no HashId component when claiming chunks for structure spawn, skipping", dimension_ref.0);
+            continue;
+        };
+
+        let seed = center_chunk.hash_value(&settings, 0).wrapping_add(dimension_hash.as_u64());
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
         // Use normal distribution with mean 4, clamped to [2, 6]
         let side_length = {
-            let normal = Normal::new(3.0, 1.5).unwrap();
-            (normal.sample(&mut rng) as i32).clamp(2, 6)
+            let normal = Normal::new(4.0, 1.5).unwrap();
+            (normal.sample(&mut rng) as i32).clamp(2, 7)
         };
         let half_spread = side_length / 2;
         let region_pos = center_chunk.to_region_pos();
@@ -119,7 +136,7 @@ pub fn claim_chunks_for_various_dungeon_types(
             .collect();
 
         if chunk_positions.is_empty() {
-            warn!(target: "structure_spawn", "No eligible unclaimed chunks around {:?} for ExampleStructure, skipping", center_chunk);
+            warn!(target: "dungeoning", "No eligible unclaimed chunks around {:?} for ExampleStructure, skipping", center_chunk);
             continue;
         }
 
@@ -137,7 +154,7 @@ pub fn claim_chunks_for_various_dungeon_types(
             chunks_gpos: chunk_positions,
             partition_tolerant: false,
         });
-        trace!(target: "structure_spawn", "Emitting ClaimedChunks for ExampleStructure covering {} chunks around {:?}", chunk_count, center_chunk);
+        trace!(target: "dungeoning", "Emitting ClaimedChunks for ExampleStructure covering {} chunks around {:?}", chunk_count, center_chunk);
     }
     writer.write_batch(claims_to_emit);
 }
@@ -149,15 +166,17 @@ pub fn drunkwalk_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEzerosMap>,
+    dimension_hash: Query<&HashId>,
     settings: Single<&GlobalGenSettings>,
 ) {
-    
     let mut compliances_to_emit = Vec::new();    
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) 
-        else { continue; };
+        else { 
+            error!(target: "dungeoning", "StructuredGenConfig entity {:?} not found when making DrunkwalkDungeon, skipping structure spawn", build_order.structured_gen_cfg_ent);
+            continue; };
 
-        if  structured_gen_cfg.hash != DRUNKWALK{
+        if structured_gen_cfg.hash != DRUNKWALK {
             continue;
         }
 
@@ -165,7 +184,7 @@ pub fn drunkwalk_dungeon_building_system(
         let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", FLOOR_TILE_ID);
+                error!(target: "dungeoning", "TileEzero with id '{}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", FLOOR_TILE_ID);
                 continue;
             }
         };
@@ -174,14 +193,19 @@ pub fn drunkwalk_dungeon_building_system(
         let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "structure_spawn", "TileEzero with id '{}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", WALL_TILE_ID);
+                error!(target: "dungeoning", "TileEzero with id '{}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", WALL_TILE_ID);
                 continue;
             }
         };
+
+        const LAVA_TILE_ID: HashId = HashId::hash("orange");
+        let lava_entity = ezeros_map.0.get(LAVA_TILE_ID).ok().map(EntityZeroRef);
+
         let chunk_positions = &build_order.chunks_gpos;
         if chunk_positions.is_empty() {
             continue;
         }
+
         let min_chunk_x = chunk_positions.iter().map(|chunk| chunk.x()).min().unwrap();
         let max_chunk_x = chunk_positions.iter().map(|chunk| chunk.x()).max().unwrap();
         let min_chunk_y = chunk_positions.iter().map(|chunk| chunk.y()).min().unwrap();
@@ -200,51 +224,187 @@ pub fn drunkwalk_dungeon_building_system(
 
         let tile_map_size = tile_width * tile_height;
         let mut floor_map = vec![false; tile_map_size];
-        let seed = chunk_positions[0].hash_value(&settings, 0);
-
+        let mut hazard_map = vec![false; tile_map_size];
+        
+        let Ok(dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
+            error!(target: "dungeoning", "Dimension entity {:?} has no HashId component when making DrunkwalkDungeon, skipping structure spawn", build_order.dimension_ref);
+            continue;
+        };
+        
+        let seed = chunk_positions[0].hash_value(&settings, 0).wrapping_add(dimension_hash.as_u64());
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
-        let mut walker_x = tile_width / 2;
-        let mut walker_y = tile_height / 2;
-        let target_floor_tiles = std::cmp::max(1, ((tile_map_size as f32) * 0.35).ceil() as usize);
-        let tile_width_minus_one = tile_width - 1;
-        let tile_height_minus_one = tile_height - 1;
+        // Multiple drunkwalks with wider paths and more aggressive carving
+        let num_walkers = rng.random_range(5..=10);
+        let target_floor_tiles = std::cmp::max(1, ((tile_map_size as f32) * 0.45).ceil() as usize);
         let mut carved = 0;
-        while carved < target_floor_tiles {
-            let idx = walker_y * tile_width + walker_x;
-            if !floor_map[idx] {
-                floor_map[idx] = true;
-                carved += 1;
-            }
-            match rng.random_range(0..4) {
-                0 => if walker_x < tile_width_minus_one { walker_x += 1; }
-                1 => if walker_x > 0 { walker_x -= 1; }
-                2 => if walker_y < tile_height_minus_one { walker_y += 1; }
-                _ => if walker_y > 0 { walker_y -= 1; }
-            }
-        }
 
-        let room_attempts = std::cmp::max(1, tile_map_size / 250);
-        for _ in 0..room_attempts {
-            let center_x = rng.random_range(0..tile_width);
-            let center_y = rng.random_range(0..tile_height);
-            let radius = rng.random_range(1..=3) as i32;
-            for dy in -radius..=radius {
-                for dx in -radius..=radius {
-                    let rx = center_x as i32 + dx;
-                    let ry = center_y as i32 + dy;
-                    if rx < 0 || ry < 0 {
-                        continue;
+        for _ in 0..num_walkers {
+            let mut walker_x = rng.random_range(0..tile_width);
+            let mut walker_y = rng.random_range(0..tile_height);
+            let walker_steps = rng.random_range(100..350);
+            let bias_chance = rng.random_range(15..45);
+            let path_width = rng.random_range(2..=4);
+
+            for _ in 0..walker_steps {
+                if carved >= target_floor_tiles { break; }
+                
+                // Carve a wider path
+                for dy in -(path_width as i32)..=path_width as i32 {
+                    for dx in -(path_width as i32)..=path_width as i32 {
+                        let x = (walker_x as i32 + dx).max(0) as usize;
+                        let y = (walker_y as i32 + dy).max(0) as usize;
+                        if x < tile_width && y < tile_height {
+                            let idx = y * tile_width + x;
+                            if !floor_map[idx] {
+                                floor_map[idx] = true;
+                                carved += 1;
+                            }
+                        }
                     }
-                    let rx = rx as usize;
-                    let ry = ry as usize;
-                    if rx >= tile_width || ry >= tile_height {
-                        continue;
-                    }
-                    floor_map[ry * tile_width + rx] = true;
+                }
+
+                let direction = if rng.random_range(0..100) < bias_chance {
+                    rng.random_range(0..4)
+                } else {
+                    rng.random_range(0..4)
+                };
+
+                match direction {
+                    0 => if walker_x < tile_width - 1 { walker_x += 1; },
+                    1 => if walker_x > 0 { walker_x -= 1; },
+                    2 => if walker_y < tile_height - 1 { walker_y += 1; },
+                    _ => if walker_y > 0 { walker_y -= 1; },
                 }
             }
         }
+
+        // Larger, more ambitious chambers
+        #[derive(Clone, Copy)]
+        struct Chamber { center_x: usize, center_y: usize }
+        let mut chambers: Vec<Chamber> = Vec::new();
+        let chamber_count = rng.random_range(6..=12);
+        for _ in 0..chamber_count {
+            let center_x = rng.random_range(8..tile_width.saturating_sub(8));
+            let center_y = rng.random_range(8..tile_height.saturating_sub(8));
+            let radius = rng.random_range(4..=10) as i32;
+
+            for dy in -radius..=radius {
+                for dx in -radius..=radius {
+                    let dist_sq = dx * dx + dy * dy;
+                    if dist_sq > radius * radius { continue; }
+
+                    let rx = center_x as i32 + dx;
+                    let ry = center_y as i32 + dy;
+                    if rx < 0 || ry < 0 { continue; }
+
+                    let rx = rx as usize;
+                    let ry = ry as usize;
+                    if rx >= tile_width || ry >= tile_height { continue; }
+
+                    floor_map[ry * tile_width + rx] = true;
+                }
+            }
+            chambers.push(Chamber { center_x, center_y });
+        }
+
+        // Connect chambers with corridors with random widths
+        if chambers.len() > 1 {
+            let mut sorted_chambers = chambers.clone();
+            sorted_chambers.sort_by_key(|c| (c.center_x, c.center_y));
+            
+            for i in 1..sorted_chambers.len() {
+                let from = sorted_chambers[i - 1];
+                let to = sorted_chambers[i];
+                let corridor_width = {
+                    let normal = Normal::new(1.5, 1.0).unwrap();
+                    (normal.sample(&mut rng) as i32).clamp(1, 5) as usize
+                };
+                
+                // Horizontal corridor
+                let (sx, ex) = if from.center_x <= to.center_x {
+                    (from.center_x, to.center_x)
+                } else {
+                    (to.center_x, from.center_x)
+                };
+                
+                for x in sx..=ex {
+                    for dy in -(corridor_width as i32)..=corridor_width as i32 {
+                        let y = (from.center_y as i32 + dy).max(0) as usize;
+                        if x < tile_width && y < tile_height {
+                            floor_map[y * tile_width + x] = true;
+                        }
+                    }
+                }
+                
+                // Vertical corridor
+                let (sy, ey) = if from.center_y <= to.center_y {
+                    (from.center_y, to.center_y)
+                } else {
+                    (to.center_y, from.center_y)
+                };
+                
+                for y in sy..=ey {
+                    for dx in -(corridor_width as i32)..=corridor_width as i32 {
+                        let x = (to.center_x as i32 + dx).max(0) as usize;
+                        if x < tile_width && y < tile_height {
+                            floor_map[y * tile_width + x] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add lava hazards in some chambers
+        if lava_entity.is_some() {
+            for _ in 0..chamber_count.max(2) {
+                if rng.random_range(0..100) > 35 { continue; }
+                
+                let center_x = rng.random_range(8..tile_width.saturating_sub(8));
+                let center_y = rng.random_range(8..tile_height.saturating_sub(8));
+                let hazard_radius = rng.random_range(3..=6) as i32;
+
+                for dy in -hazard_radius..=hazard_radius {
+                    for dx in -hazard_radius..=hazard_radius {
+                        let dist_sq = dx * dx + dy * dy;
+                        if dist_sq > hazard_radius * hazard_radius { continue; }
+
+                        let hx = center_x as i32 + dx;
+                        let hy = center_y as i32 + dy;
+                        if hx < 0 || hy < 0 { continue; }
+
+                        let hx = hx as usize;
+                        let hy = hy as usize;
+                        if hx >= tile_width || hy >= tile_height { continue; }
+
+                        if floor_map[hy * tile_width + hx] {
+                            hazard_map[hy * tile_width + hx] = true;
+                            floor_map[hy * tile_width + hx] = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Smooth isolated tiles
+        let mut smoothed = floor_map.clone();
+        for y in 1..tile_height - 1 {
+            for x in 1..tile_width - 1 {
+                if !floor_map[y * tile_width + x] { continue; }
+                let neighbors = [
+                    floor_map[(y - 1) * tile_width + x],
+                    floor_map[(y + 1) * tile_width + x],
+                    floor_map[y * tile_width + (x - 1)],
+                    floor_map[y * tile_width + (x + 1)],
+                ]
+                .iter().filter(|&&b| b).count();
+
+                if neighbors == 0 {
+                    smoothed[y * tile_width + x] = false;
+                }
+            }
+        }
+        floor_map = smoothed;
 
         let delete_template = DeleteOtherTiles::default();
         for &chunk_pos in chunk_positions {
@@ -260,21 +420,26 @@ pub fn drunkwalk_dungeon_building_system(
                     continue;
                 }
                 let map_idx = idx_y * tile_width + idx_x;
-                let ezero_ref = if floor_map[map_idx] {
+                let ezero_ref = if hazard_map[map_idx] {
+                    if let Some(lava) = lava_entity { lava } else { wall_entity }
+                } else if floor_map[map_idx] {
                     floor_entity
                 } else {
                     wall_entity
                 };
                 tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
             }
-            compliances_to_emit.push(StructureBuildCompliance {
-                structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
-                dimension_ref: build_order.dimension_ref,
-                chunk_pos,
-                tiles: tiles4chunk,
-            });
+            if !tiles4chunk.is_empty() {
+                compliances_to_emit.push(StructureBuildCompliance {
+                    structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
+                    dimension_ref: build_order.dimension_ref,
+                    chunk_pos,
+                    tiles: tiles4chunk,
+                });
+            }
         }
-        debug!(target: "structure_spawn", "Spawned dungeon for ExampleStructure across {} chunks at {:?}", chunk_positions.len(), build_order.region_pos);
+        let region_pos = chunk_positions[0].to_region_pos();
+        debug!(target: "dungeoning", "Spawned organic drunkwalk dungeon across {} chunks at {:?}", chunk_positions.len(), region_pos);
     }
     writer.write_batch(compliances_to_emit);
 }
@@ -286,9 +451,11 @@ pub fn advanced_dungeon_building_system(
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEzerosMap>,
     settings: Single<&GlobalGenSettings>,
+    dimension_hash: Query<&HashId>,
 ) {
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
+
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) else { continue; };
 
         if structured_gen_cfg.hash != IDK {
@@ -299,7 +466,7 @@ pub fn advanced_dungeon_building_system(
         let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "structure_spawn", "TileEzero '{}' not found", FLOOR_TILE_ID);
+                error!(target: "dungeoning", "TileEzero '{}' not found", FLOOR_TILE_ID);
                 continue;
             }
         };
@@ -308,7 +475,7 @@ pub fn advanced_dungeon_building_system(
         let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "structure_spawn", "TileEzero '{}' not found", WALL_TILE_ID);
+                error!(target: "dungeoning", "TileEzero '{}' not found", WALL_TILE_ID);
                 continue;
             }
         };
@@ -337,7 +504,12 @@ pub fn advanced_dungeon_building_system(
         let mut floor_map = vec![false; tile_map_size];
         let mut hazard_map = vec![false; tile_map_size];
 
-        let seed = chunk_positions[0].hash_value(&settings, 1);
+        let Ok(dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
+            error!(target: "dungeoning", "Dimension entity {:?} has no HashId component when making AdvancedDungeon, skipping structure spawn", build_order.dimension_ref);
+            continue;
+        };
+
+        let seed = chunk_positions[0].hash_value(&settings, 1).wrapping_add(dimension_hash.as_u64());
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
         #[derive(Clone, Copy)]
@@ -514,15 +686,17 @@ pub fn advanced_dungeon_building_system(
                 };
                 tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
             }
-            compliances_to_emit.push(StructureBuildCompliance {
-                structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
-                dimension_ref: build_order.dimension_ref,
-                chunk_pos,
-                tiles: tiles4chunk,
-            });
+            if !tiles4chunk.is_empty() {
+                compliances_to_emit.push(StructureBuildCompliance {
+                    structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
+                    dimension_ref: build_order.dimension_ref,
+                    chunk_pos,
+                    tiles: tiles4chunk,
+                });
+            }
         }
-
-        debug!(target: "structure_spawn", "Spawned advanced BSP dungeon: {} rooms, {} chunks", rooms.len(), chunk_positions.len());
+        let region_pos = chunk_positions[0].to_region_pos();
+        debug!(target: "dungeoning", "Spawned advanced BSP dungeon: {} rooms, {} chunks at {:?}", rooms.len(), chunk_positions.len(), region_pos);
     }
     writer.write_batch(compliances_to_emit);
 }

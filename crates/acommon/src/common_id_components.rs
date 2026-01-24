@@ -99,6 +99,9 @@ impl HashId {
     pub fn as_i32(self) -> i32 {
         self.0 as i32
     }
+    pub fn as_u64(self) -> u64 {
+        self.0
+    }
     pub const fn hash(s: &str) -> Self {
         const OFFSET: u64 = 0xcbf29ce484222325;
         const PRIME: u64 = 0x100000001b3;

@@ -31,6 +31,7 @@ impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 pub struct ClaimList { 
     pub processed_up_to_i: usize,
     pub claims: [Option<ClaimedChunks>; MAX_CLAIMS],
+    pub skipped_is: Vec<usize>,
 }
 
 #[derive(Component, Debug, Reflect, Default)]
@@ -41,6 +42,7 @@ impl Default for ClaimList {
         Self { 
             claims: [(); MAX_CLAIMS].map(|_| None),
             processed_up_to_i: 0,
+            skipped_is: Vec::new(),
         }
     }
 }
@@ -138,6 +140,12 @@ pub struct BuildingStarted;
 pub struct PendingOfferTimeout {
     pub offered_at: f64,
 }
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct EmptyRegionDespawnTimer {
+    pub marked_empty_at: f64,
+}
+
 #[derive(Debug, Reflect, )]
 pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u32, }
 impl<T: Copy> Default for RegionGrid<T> {

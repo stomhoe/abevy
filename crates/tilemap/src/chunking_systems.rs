@@ -125,9 +125,9 @@ pub struct CheckChunkDespawn (pub Entity, pub u8,);//u8 = retransmission count
 
 #[allow(unused_parens)]
 pub fn despawn_unreferenced_chunks(
-    mut commands: Commands,
+    mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
-    chunks_query: Query<(&DimensionRef, &ChunkPos, &Children, &TilesToSave), >,
+    chunks_query: Query<(&DimensionRef, &ChunkPos, Option<&Children>, Option<&TilesToSave>), >,
     tmaps: Query<&TileStorage>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
@@ -138,6 +138,7 @@ pub fn despawn_unreferenced_chunks(
 
     for CheckChunkDespawn(chunk_ent, retransmission_count) in despawn_events.drain() {
         let Ok((&chunk_dimension, &chunk_pos, children, tiles_to_save)) = chunks_query.get(chunk_ent) else {
+            //cmd.entity(chunk_ent).try_despawn();
             continue; 
         };
 
@@ -148,27 +149,29 @@ pub fn despawn_unreferenced_chunks(
         if !referenced {
             loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
 
-            for child in children.iter() {
-                if let Ok(tile_storage) = tmaps.get(child) {
-                    for pos in tile_storage.iter() {
-                        if let Some(tile_entity) = pos {
-                            if tiles_to_save.entities().contains(tile_entity) {
-                              
-                            } else{
-                                commands.entity(*tile_entity).try_despawn();
-                            }
-                        }
-                    }
-                }
-                if tiles_to_save.entities().contains(&child) {
-                    
-                    commands.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
-                    tosave_events.push(SavedTileHadChunkDespawn(child));
-                } else{//HACE FALTA
-                    commands.entity(child).try_despawn();
+            if let Some(children) = children.as_ref() {
+                for child in children.iter() {
+                    // if let Ok(tile_storage) = tmaps.get(child) {
+                    //     for pos in tile_storage.iter() {
+                    //         if let Some(tile_entity) = pos {
+                    //             if tiles_to_save.entities().contains(tile_entity) {
+                                  
+                    //             } else{
+                    //                 cmd.entity(*tile_entity).try_despawn();
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                    // if tiles_to_save.entities().contains(&child) {
+                        
+                    //     cmd.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
+                    //     tosave_events.push(SavedTileHadChunkDespawn(child));
+                    // } else{//HACE FALTA
+                    //     cmd.entity(child).try_despawn();
+                    // }
                 }
             }
-            commands.entity(chunk_ent).try_despawn();
+            cmd.entity(chunk_ent).try_despawn();
         }
     }
     tosave_event_writer.write_batch(tosave_events);

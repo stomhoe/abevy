@@ -134,18 +134,13 @@ impl RenderChunk2dStorage {
 
         let (tilemap_id, chunk_pos, tile_pos) = self.entity_to_chunk_tile.get(&entity).unwrap();
 
-        let chunk_storage = self.chunks.get_mut(tilemap_id).unwrap();
-        Some((chunk_storage.get_mut(&chunk_pos.xyz()).unwrap(), *tile_pos))
+        let chunk_storage = self.chunks.get_mut(tilemap_id)?;
+        Some((chunk_storage.get_mut(chunk_pos)?, *tile_pos))
     }
 
     pub fn get_chunk_storage(&mut self, position: &UVec4) -> &mut HashMap<UVec3, RenderChunk2d> {
-        if self.chunks.contains_key(&position.w) {
-            self.chunks.get_mut(&position.w).unwrap()
-        } else {
-            let hash_map = HashMap::default();
-            self.chunks.insert(position.w, hash_map);
-            self.chunks.get_mut(&position.w).unwrap()
-        }
+        self.chunks.entry(position.w)
+            .or_insert_with(HashMap::default)
     }
 
     pub fn remove(&mut self, position: &UVec4) {

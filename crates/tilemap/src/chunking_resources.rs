@@ -63,7 +63,7 @@ pub const ONE_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings 
 
 pub const NORMAL_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
     chunk_visib_max_dist: 3000.0,
-    chunk_active_max_dist: 6000.0,
+    chunk_active_max_dist: 3000.0,
     discovery_range: 2,
 };
 
@@ -73,8 +73,3 @@ pub const EXTRA_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
     discovery_range: 4,
 };
 
-pub const REGION_SIZE_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
-    chunk_visib_max_dist: 5000.0,
-    chunk_active_max_dist: 5000.0,
-    discovery_range: 4,
-};

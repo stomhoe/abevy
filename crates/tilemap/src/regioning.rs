@@ -19,14 +19,17 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(Update, (
         (
-            (offer_chunks_of_new_regions, read_chunk_claims_for_region_and_emit_build_orders,),
-            claim_chunks_for_various_dungeon_types, 
+            (offer_chunks_of_new_regions_to_dungeoning_systems, claim_chunks_for_various_dungeon_types).chain(),
+            read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems,
             (drunkwalk_dungeon_building_system, advanced_dungeon_building_system).in_set(StructureBuildingSystems),
             failsafe_timeout_pending_chunks,
             add_planed_tiles_to_region,
             timeout_pending_offers,
             clonespawn_tiles_on_chunk_spawn,//tiene q hacerse despues de los building systems            , // ensure missing compliances don't block region planning indefinitely            track_when_region_is_ready_for_spawning,
         ).in_set(RegioningSystems),
+
+        //ensure_regions_have_building_started,
+
         despawn_empty_regions,
     ))
     .add_systems(

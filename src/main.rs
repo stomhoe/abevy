@@ -45,6 +45,8 @@ concat!(
     
     "sprite_animation_init=trace,",
     "entity_zero=info,",
+    "dungeoning=trace,",
+    "sgc_chunk_claim=trace,",
 
     "tile_init=info,",
     "asset_loading=warn,",

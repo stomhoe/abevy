@@ -13,7 +13,7 @@ pub struct OfferChunk {
     pub i: u64,
     pub region_ent: Entity,// extraer region pos de una query
     pub structured_gen_cfg_ent: Entity,
-    pub start_gpos: ChunkPos, 
+    pub start_pos: ChunkPos, 
 }
 
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq, Reflect)]
