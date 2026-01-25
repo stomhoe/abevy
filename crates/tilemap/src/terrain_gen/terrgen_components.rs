@@ -11,7 +11,7 @@ use std::hash::{Hasher, Hash};
 use {common::common_components::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped, )]
+#[require(SessionScoped, AssetScoped, TgenHotLoadingScoped, Replicated, )]
 pub struct Terrgen;
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -26,15 +26,6 @@ impl FnlNoiseComp {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct ComponentName{
-    seed: i32,
-}
-impl ComponentName {
-    pub fn new(id: HashId) -> Self {
-        Self{ seed: id.as_i32()}
-    }
-}
 
 //             .replicate::<NoizRef>()
 #[derive(Component, )]
@@ -42,8 +33,8 @@ pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sy
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, Terrgen, Prefix::trunc("Noises"), AssetScoped, TgenHotLoadingScoped,SessionScoped )]
-pub struct NoiseHolder;
+#[require(Terrgen, SessionScoped, Prefix::trunc("Noises"), AssetScoped, TgenHotLoadingScoped, Replicated )]
+pub struct EguiNoiseHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]

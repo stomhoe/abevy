@@ -9,11 +9,11 @@ use common::{common_components::*, };
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(AssetScoped, Prefix::trunc("EguiSgcHolder"), Replicated, SessionScoped, TgenHotLoadingScoped)]
+#[require(AssetScoped, SessionScoped, TgenHotLoadingScoped, Replicated, Prefix::trunc("EguiSgcHolder"),)]
 pub struct EguiSgcHolder;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-#[require(Replicated, Prefix::trunc("SGC"), AssetScoped, SessionScoped, TgenHotLoadingScoped, )]
+#[require(AssetScoped, SessionScoped, TgenHotLoadingScoped, Replicated, Prefix::trunc("SGC"), )]
 pub struct StructuredGenConfig{
     pub structure_id: StrId,
     pub hash: HashId,

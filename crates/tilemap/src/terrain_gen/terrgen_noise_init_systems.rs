@@ -12,7 +12,7 @@ pub fn init_noises(
     mut assets: ResMut<Assets<NoiseSerialization>>,
     mut terrgen_map: ResMut<TerrGenEntityMap>,
     settings: Query<&GlobalGenSettings>,
-    noise_holder: Query<Entity, With<NoiseHolder>>,
+    noise_holder: Query<Entity, With<EguiNoiseHolder>>,
 ) {
     if !terrgen_map.0.is_empty() { return; }
 
@@ -24,7 +24,7 @@ pub fn init_noises(
     info!("Spawning Global Gen Settings entity");
 
     let holder = if noise_holder.is_empty() {
-        cmd.spawn((NoiseHolder,)).id()
+        cmd.spawn((EguiNoiseHolder,)).id()
     } else {
         noise_holder.single().unwrap()
     };

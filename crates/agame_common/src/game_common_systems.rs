@@ -5,6 +5,8 @@ use bevy_replicon::prelude::ClientState;
 use bevy_replicon::prelude::Replicated;
 use common::common_components::AnyDisabling;
 use common::common_components::ImagePathHolder;
+use common::common_components::StrId;
+use common::common_components::StrId20B;
 use common::common_states::GamePhase;
 use ::sprite_shared::sprite_scale_offset::AllScalesAndOffsets;
 use ::sprite_shared::*;
@@ -59,7 +61,7 @@ pub fn disable_ezeros(mut cmd: Commands,
 
 
 #[derive(Bundle)]
-struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, ImagePathHolder, AcZ, YSortOrigin, AllScalesAndOffsets, );
+struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, ImagePathHolder, AcZ, YSortOrigin, AllScalesAndOffsets, StrId, );
 
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 

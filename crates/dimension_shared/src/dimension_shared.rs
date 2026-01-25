@@ -4,6 +4,7 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
+use common::common_states::AssetLoading;
 use common::common_types::HashIdToEntityMap;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};

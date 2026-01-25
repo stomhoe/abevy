@@ -125,6 +125,7 @@ pub fn init_tiles(
                     let path_holder = path_holder.unwrap();
                     
                     let child_sprite = cmd.spawn((
+                        StrId::trunc(format!("TS{}", path_holder)),
                         Replicated,
                         path_holder,
                         ChildOf(tile_enti),

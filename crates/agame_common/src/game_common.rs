@@ -37,15 +37,14 @@ pub fn plugin(app: &mut App) {
         delete_sprites_without_childof,
     ))
     .configure_sets(Update, (
+        SimPausedSystems.run_if(in_state(SimulationState::Paused)),
         (ModifierSystems, ).in_set(SimRunningSystems),
         SimRunningSystems.run_if(in_state(SimulationState::Running)),
-        SimPausedSystems.run_if(in_state(SimulationState::Paused)),
         (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
-            .and(in_state(ReplicatedAssetsSession::KeepAlive))
             .and(
-                in_state(AssetLoading::SpawnLocalEntities).and(not(in_state(ClientState::Disconnected)))
+                in_state(AssetLoading::LoadingReplicatedCollections).and(in_state(ClientState::Connected))
                 .or(in_state(AssetLoading::SpawnReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         ).in_set(StatefulSessionSystems),
@@ -57,9 +56,8 @@ pub fn plugin(app: &mut App) {
         (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
-            .and(in_state(ReplicatedAssetsSession::KeepAlive))
             .and(
-                in_state(AssetLoading::SpawnLocalEntities).and(not(in_state(ClientState::Disconnected)))
+                in_state(AssetLoading::LoadingReplicatedCollections).and(in_state(ClientState::Connected))
                 .or(in_state(AssetLoading::SpawnReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         )

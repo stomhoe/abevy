@@ -1,10 +1,8 @@
 
 use std::{mem::take};
-use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap};
 #[allow(unused_imports)] use bevy::prelude::*;
-
 use common::{common_components::HashId, common_tag_components::TagSet};
-use dimension_shared::{BlacklistedStructureGenTags, DimensionRef, MultipleDimensionRefs, WhitelistedStructureGenTags};
+use ::dimension_shared::*;
 use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
 use ::tilemap_shared::*;
@@ -72,6 +70,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
                 break;
             }
             
+            let mut weight_map = weight_map.clone();//ok to be here
             let mut reattempt_count = 0;
             'next_sgc_attempt: loop {
                 if reattempt_count >= MAX_REATTEMPTS as u64 {
@@ -79,7 +78,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
                     continue 'next_i;
                 }
                 
-                let Some(structured_gen_cfg_ent) = weight_map.sample_with_rng(&mut rng)
+                let Some(structured_gen_cfg_ent) = weight_map.sample_and_remove_with_rng(&mut rng)
                 else { 
                     error!(target: "sgc_chunk_offer", "No StructuredGenConfig available to spawn structure in region at {}", region_pos);
                     claimlist.skipped_is.insert(i);
@@ -123,19 +122,20 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         
         if offers.is_empty() {
             error!(target: "sgc_chunk_offer", "No structures could be offered for region at {}, marking as BuildingStarted immediately", region_pos);
-            cmd.entity(region_ent).try_insert(BuildingStarted);
+            cmd.entity(region_ent).try_insert((BuildingStarted, AllClaimsProcessed));
         } else {
             cmd.entity(region_ent).try_insert(PendingOfferTimeout { offered_at: current_time });
+            writer.write_batch(take(&mut offers));
         }
         
     }
-    writer.write_batch(offers);
 }
 
 
 #[allow(unused_parens)]
 pub fn advance_i_on_claimlist_timeout( 
-    mut query: Query<(Entity, &mut ClaimList),()>,
+    mut cmd: Commands,
+    mut query: Query<(Entity, &mut ClaimList),(Without<AllClaimsProcessed>)>,
     time: Res<Time>,
     mut recheck_writer: MessageWriter<RecheckRegion>,
 ) {
@@ -149,6 +149,7 @@ pub fn advance_i_on_claimlist_timeout(
             if elapsed > CLAIM_TIMEOUT_SECS {
                 if claimlist.reached_end(){
                     claimlist.time_last_advanced_at = f64::INFINITY;
+                    cmd.entity(region_ent).try_insert(AllClaimsProcessed);
                     return;
                 }
                 claimlist.advance_processed_upto_i(&time);
@@ -205,7 +206,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             }
         }
     }
-    let max_used_chunks_per_region = (REGION_SIZE_IN_CHUNKS.area_usize() as f32 * 0.1) as u64;
+    let max_used_chunks_per_region = (REGION_SIZE_IN_CHUNKS.area_usize() as f32 * 0.001) as u64;
     //print everything within regions_with_new_claims to see contents (debugging)
         
     
@@ -225,7 +226,8 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             }//no tocar
             
             if grid_of_sgc.0.occupied_count() >= max_used_chunks_per_region {
-                debug!(target: "sgc_chunk_claim", "Region at {:?} has reached max used chunks per region ({}), stopping further claim processing", 
+                cmd.entity(region_ent).try_insert(AllClaimsProcessed);
+                trace!(target: "sgc_chunk_claim", "Region at {:?} has reached max used chunks per region ({}), stopping further claim processing", 
                 region_pos, max_used_chunks_per_region);
                 break 'nextregion;
             }
@@ -356,12 +358,10 @@ pub fn add_planed_tiles_to_region(mut cmd: Commands,
             continue;
         };
 
-        
         if finished {
             info!(target: "structure_spawn", "Region entity {:?} has finished planning all structure tiles, marking as RegionPlanningFinished", region_ent);
             cmd.entity(region_ent).try_insert(AllTilesPrepared);
         }
-        
     }
 }
 #[allow(unused_parens, )]

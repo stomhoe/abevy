@@ -63,27 +63,28 @@ multiplayer_shared = { path = "crates/multiplayer_shared" }
 common = { path = "crates/acommon" }
 asset_loading = { path = "crates/asset_loading" }
 game_common = { path = "crates/agame_common" }
-color_sample = { path = "crates/color_sample" }
+debug = { path = "crates/debug" }
 host = { path = "crates/host" }
 client = { path = "crates/client" }
+tilemap = { path = "crates/tilemap" }
+modifier = { path = "crates/modifier" }
 game = { path = "crates/game" }
 movement = { path = "crates/movement" }
+being = { path = "crates/being" }
 camera = { path = "crates/camera" }
 dimension = { path = "crates/dimension" }
 sprite_animation_shared = { path = "crates/sprite_animation_shared" }
 sprite_shared = { path = "crates/sprite_shared" }
 sprite_animation = { path = "crates/sprite_animation" }
 sprite = { path = "crates/sprite" } 
-tilemap = { path = "crates/tilemap" }
-modifier = { path = "crates/modifier" }
 faction = { path = "crates/faction" }
 player = { path = "crates/player" }
-being = { path = "crates/being" }
+color_sample = { path = "crates/color_sample" }
 shader = { path = "crates/shader" }
-
 ui_shared = { path = "crates/ui_shared" }
 pregame_screen = { path = "crates/pregame_screen" }
 setup_screen = { path = "crates/setup_screen" }
+
 bevy = { workspace = true }
 bevy-inspector-egui = { workspace = true }
 tracing = { workspace = true }

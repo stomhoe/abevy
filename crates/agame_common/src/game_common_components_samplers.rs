@@ -1,7 +1,5 @@
 
 use bevy::{ecs::entity::MapEntities, prelude::*};
-use bevy_replicon::prelude::Replicated;
-use common::common_components::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[allow(unused_imports)] use bevy::prelude::*;
 
@@ -73,6 +71,20 @@ macro_rules! define_weightedsampler_impl {
                 self.sample_index(rng_val)
                     .and_then(|idx| self.weights.get(idx).map(|(e, _)| *e))
             }
+            pub fn sample_and_remove_with_rng(&mut self, rng: &mut impl rand::Rng) -> Option<$inner> {
+                if self.weights.is_empty() { return None; }
+                let rng_val = rng.random_range(0.0..=1.0);
+                let idx = self.sample_index(rng_val)?;
+                let (item, weight) = self.weights.remove(idx);//don't use swap_remove
+                self.total_weight -= weight;
+                self.cumulative_weights.clear();
+                let mut acc = 0.0;
+                for &(_, w) in &self.weights {
+                    acc += w;
+                    self.cumulative_weights.push(acc);
+                }
+                Some(item)
+            }
         }
         impl std::ops::Deref for $ty {
             type Target = Vec<($inner, f32)>;
@@ -112,8 +124,9 @@ macro_rules! define_weightedsampler_impl {
 #[macro_export]
 macro_rules! define_weightedsampler {
     ($ty:ident, $inner:ty, $entityprefix:expr) => {
-        #[derive(Debug, Clone, Reflect, Default, Component)]
-        #[require(Prefix::trunc($entityprefix), Replicated, AssetScoped, SessionScoped, TgenHotLoadingScoped)]
+        use common::common_states::*;
+        #[derive(Debug, Clone, Reflect, Component)]
+        #[require(Prefix::trunc($entityprefix), Replicated, SessionScoped, TgenHotLoadingScoped)]
         pub struct $ty {
             weights: Vec<($inner, f32)>,
             cumulative_weights: Vec<f32>,
@@ -122,15 +135,6 @@ macro_rules! define_weightedsampler {
         $crate::define_weightedsampler_impl!($ty, $inner);
     };
 }
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
-pub struct WeightedSamplerRef(#[entities] pub Entity);
-
-
-
-
-
 #[derive(Debug, Clone, Component, Default, Reflect)]
 #[component(map_entities)]
 pub struct EntityWeightedSampler {
@@ -146,4 +150,5 @@ impl MapEntities for EntityWeightedSampler {
         }
     }
 }
-
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
+pub struct WeightedSamplerRef(#[entities] pub Entity);

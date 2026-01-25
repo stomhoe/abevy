@@ -52,7 +52,8 @@ pub fn host_on_player_added(mut cmd: Commands,
         if player_query.get(player_ent).is_err() {
 
             //USAR EL DEFAULT ASE Q SE DESPAWNEE
-            cmd.spawn((Being::default(), username.clone(), 
+            
+            let created_character = cmd.spawn((Being::default(), username.clone(), 
                 ControlledBy { client: player_ent }, 
                 CharacterCreatedBy { player: player_ent },
 
@@ -60,7 +61,8 @@ pub fn host_on_player_added(mut cmd: Commands,
                 Transform::from_translation(Vec3::new(5900.0, 900.0, 0.0)),
                 SpriteConfigStrIds::new(["humanhe0", "humanbo0"]),
                 
-            ));
+            )).id();
+            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(5000.0)));
 
         }else{
             //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER
@@ -72,21 +74,19 @@ pub fn host_on_player_added(mut cmd: Commands,
 #[allow(unused_parens, )]
 pub fn put_player_beings_on_map(
     mut cmd: Commands,
-    players: Query<(Entity, &CreatedCharacters, Option<&OfSelf>), (With<Player>)>,
+    players: Query<(Entity, &CreatedCharacters, Has<OfSelf>), (With<Player>)>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
     for (player_ent, created_characters, self_player) in players.iter() {
         debug!(target: "game_init", "Spawning player being: {:?}", created_characters);
 
         for &created_character in created_characters.entities() {
-            cmd.entity(created_character).insert((
-                //TargetSpawnPos::new(0.0, 0.0),
+            cmd.entity(created_character).try_insert_if_new((
                 ActivatingChunks::new(&chunk_range),
             ));
-            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(2000.0)));
         }
 
-        if self_player.is_some() {
+        if self_player {
             debug!(target: "game_init", "Spawning self player being:");
 
         } 

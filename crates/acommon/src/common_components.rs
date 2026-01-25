@@ -1,24 +1,24 @@
 
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
-use indexmap::IndexMap;
 #[allow(unused_imports)] 
 use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use crate::{common_states::*, common_types::*};
+use std::{fmt::Formatter, hash::{Hash, }};
+use crate::{common_states::*, };
 use std::fmt::{Debug, Display};
 
 pub use crate::common_id_components::*;
 
 pub type SessionScoped = DespawnOnExit::<AppState>;
 
-///used for hot reloading assets
-pub type AssetScoped = DespawnOnExit::<AssetLoading>;
+
+#[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
+pub struct AssetScoped;
 
 pub type TgenHotLoadingScoped = DespawnOnExit::<TerrainHotReloading>;
 
 
-#[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
+#[derive(Component, Clone, Default, Serialize, Deserialize, Reflect, )]
 pub struct DisplayName(pub String);
 
 impl DisplayName {
@@ -37,15 +37,15 @@ impl DisplayName {
     }
 }
 
-impl core::fmt::Display for DisplayName {
+impl Display for DisplayName {
     #[inline(always)]
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        core::fmt::Display::fmt(&self.0, f)
+    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
+        Display::fmt(&self.0, f)
     }
 }
-impl core::fmt::Debug for DisplayName {
+impl Debug for DisplayName {
     #[inline(always)]
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
         if self.0.is_empty() {write!(f, "")} else {write!(f, "DN({})", self.0)}
     }
 }
@@ -78,7 +78,7 @@ impl ImagePathHolder {
         &self.0
     }
 }
-impl std::fmt::Display for ImagePathHolder {
+impl Display for ImagePathHolder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }
 impl From<ImagePathHolder> for bevy::asset::AssetPath<'_> {

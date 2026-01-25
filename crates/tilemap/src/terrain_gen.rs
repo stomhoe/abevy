@@ -65,7 +65,7 @@ pub fn plugin(app: &mut App) {
         .replicate_filtered::<ChildOf, With<FailedSearchOplistFilterHolder>>()
         .replicate_filtered::<OplistSize, With<OperationList>>()
         
-        .replicate::<NoiseHolder>()
+        .replicate::<EguiNoiseHolder>()
         .replicate::<GlobalGenSettings>()
 
         .add_message::<PendingOp>()

@@ -21,7 +21,7 @@ pub struct TileShaderRef(#[entities] pub Entity);
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
 
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, Deserialize, Serialize)]
-#[require(Prefix::trunc("TileShader"), AssetScoped, Replicated)]
+#[require(AssetScoped, SessionScoped, Prefix::trunc("TileShader"), Replicated)]
 pub enum TileShader{
     TexRepeat(MonoRepeatTextureOverlayMat),
     TwoTexRepeat(TwoOverlaysExample),

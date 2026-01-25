@@ -14,9 +14,11 @@ const MOVEMENT_SCHEDULE: FixedUpdate = FixedUpdate;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(MOVEMENT_SCHEDULE, (
-            (process_movement_modifiers, update_facing_dir, apply_movement, update_human_move_input,
+            (
                 (send_move_input_to_server, ).run_if(in_state(ClientState::Connected)),
-                receive_move_input_from_client.run_if(in_state(ClientState::Disconnected))
+                (receive_move_input_from_client, ).run_if(in_state(ClientState::Disconnected)),
+                process_movement_modifiers, update_facing_dir, apply_movement, update_human_move_input,
+
             ).in_set(MovementSystems),
         ))
         .configure_sets(FixedUpdate, 
