@@ -43,7 +43,6 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
 
     structured_gens: Query<(Option<&TagSet>, Option<&PoissonDisk>, Option<&MultipleDimensionRefs>),()>,
     dimension_query: Query<(&HashId, Option<&WhitelistedStructureGenTags>, Option<&BlacklistedStructureGenTags>),()>,
-    time: Res<Time>,
     mut writer: MessageWriter<OfferChunk>,
 ) {
     let mut offers = Vec::new();
@@ -175,7 +174,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             continue;
         }
 
-        let Ok((region_pos, _, mut claimlist, ..)) = region_query.get_mut(claim.region_ent)
+        let Ok((_, _, mut claimlist, ..)) = region_query.get_mut(claim.region_ent)
         else {
             error!(target: "sgc_chunk_claim", "Region entity {:?} not found when receiving ClaimedChunks, skipping claim", claim.region_ent);
             continue;

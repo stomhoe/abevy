@@ -59,7 +59,6 @@ pub fn process_tiles_pre(
     mut texture_overlay_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
     mut voronoi_mat: ResMut<Assets<VoronoiTextureOverlayMat>>,
     mut wavy_mat: ResMut<Assets<WavyMat>>,
-    mut event_writer: MessageWriter<DrawTilemap>,
     chunkrange: Res<AaChunkRangeSettings>,
 
     min_dists_query: Query<(&MinDistancesMap), (AnyDisabling)>,
@@ -168,6 +167,8 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch(tilemap_bundles);
 
     let mut insert2tmaps = Vec::with_capacity(changed_structs.len());
+    let mut default_mats = Vec::new();
+    let mut texture_overlay_mats = Vec::new();
 
     for (chunk_ent, z, mapkey) in changed_structs.iter() {
         //trace!(target: "tilemap_systems", "Changed tilemap {:?} in chunk {:?}", mapkey, chunk_ent);
@@ -199,16 +200,16 @@ pub fn process_tiles_pre(
             //trace!(target: "tilemap_systems", "Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
             match shader {
                 TileShader::TexRepeat(handle) => {
-                    let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone()));
-                    cmd.entity(tmap_ent).try_insert(material);
+                    let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle));
+                    texture_overlay_mats.push((tmap_ent, material));
                 }
                 TileShader::Voronoi(handle) => {
-                    let material = MaterialTilemapHandle::from(voronoi_mat.add(handle.clone()));
+                    let material = MaterialTilemapHandle::from(voronoi_mat.add(handle));
                     cmd.entity(tmap_ent).try_insert(material);
                 }
                 TileShader::Wavy(handle) => {
-                    let material = MaterialTilemapHandle::from(wavy_mat.add(handle.clone()));
-                    cmd.entity(tmap_ent).try_insert(material);
+                    let material = MaterialTilemapHandle::from(wavy_mat.add(handle));
+                    default_mats.push((tmap_ent, material.clone()));
                 }
                 TileShader::TwoTexRepeat(handle) => todo!(),
             };
@@ -218,11 +219,15 @@ pub fn process_tiles_pre(
             .try_insert(MaterialTilemapHandle::<StandardTilemapMaterial>::default());
         }
     }
+    cmd.try_insert_batch(texture_overlay_mats);
+    cmd.try_insert_batch(default_mats);
     cmd.try_insert_batch(insert2tmaps);
-    event_writer.write_batch(tmaps_to_draw);
 
     Ok(())
 }}
+
+
+
 
 #[allow(clippy::too_many_arguments)]
 fn func_process_tile_into_tilemaps(

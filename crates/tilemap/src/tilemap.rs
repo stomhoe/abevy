@@ -20,6 +20,7 @@ pub fn plugin(app: &mut App) {
         tile::plugin,
         regioning::plugin,
     ))
+
     .add_systems(Update, (
         clear_chunks_on_dim_change,
         rem_outofrange_chunks_from_activators, 

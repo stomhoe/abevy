@@ -11,13 +11,13 @@ pub fn debug_increase_speed(
     if keys.pressed(KeyCode::NumpadAdd) {
         query.iter_mut().for_each(|(target, mut val)| {
             if my_being_query.get(target.0).is_ok() {
-                val.0 *= 1.05;
+                val.0 *= 1.1;
             }
         });
     } else if keys.pressed(KeyCode::NumpadSubtract) {
         query.iter_mut().for_each(|(target, mut val)| {
             if my_being_query.get(target.0).is_ok() {
-                val.0 *= 0.95;
+                val.0 *= 0.9;
             }
         });
     }
