@@ -4,12 +4,9 @@ use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashMap;
 use std::{fmt::Formatter, hash::{Hash, }};
-use crate::{common_states::*, };
 use std::fmt::{Debug, Display};
 
 pub use crate::common_id_components::*;
-
-// pub type AppStateScoped = DespawnOnExit::<AppState>;
 
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]

@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Copy, Reflect)]
-#[require(Prefix::trunc("Animations"), Replicated, AssetScoped, )]
+#[require(SparedFromHotReloading, AssetScoped, Replicated,Prefix::trunc("Animations"),   )]
 pub struct AnimationsHolder;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect)]
-#[require(Prefix::trunc("Animation"), Replicated, AssetScoped, )]
+#[require(SparedFromHotReloading, AssetScoped, Replicated,Prefix::trunc("Animation"),   )]
 pub struct AnimationComp;
 
 

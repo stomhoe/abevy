@@ -29,12 +29,12 @@ pub struct ClaimList {
     pub processed_up_to_i: usize,
     pub claims: [Option<ChunksClaim>; MAX_CLAIMS],
     pub skipped_is: HashSet<usize>,
-    pub time_last_advanced_at: f64,
+    pub advance_timer: Timer,
 }
 impl ClaimList {
-    pub fn advance_processed_upto_i(&mut self, time: &Time) {
+    pub fn advance_processed_upto_i(&mut self) {
         self.processed_up_to_i += 1;
-        self.time_last_advanced_at = time.elapsed_secs_f64();
+        self.advance_timer.reset();
     }
     pub fn reached_end(&self) -> bool {
         self.processed_up_to_i >= MAX_CLAIMS
@@ -46,7 +46,7 @@ impl Default for ClaimList {
             claims: [(); MAX_CLAIMS].map(|_| None),
             processed_up_to_i: 0,
             skipped_is: HashSet::new(),
-            time_last_advanced_at: f64::NEG_INFINITY,
+            advance_timer: Timer::from_seconds(0.02, TimerMode::Once),
         }
     }
 }
@@ -138,14 +138,14 @@ pub struct AllTilesPrepared;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct BuildingStarted;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Reflect)]
 pub struct PendingOfferTimeout {
-    pub offered_at: f64,
+    pub timeout_timer: Timer,
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Reflect)]
 pub struct EmptyRegionDespawnTimer {
-    pub marked_empty_at: f64,
+    pub despawn_timer: Timer,
 }
 
 #[derive(Debug, Reflect, )]

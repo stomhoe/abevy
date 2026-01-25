@@ -21,8 +21,8 @@ impl FnlNoiseComp {
     pub fn new(id: StrId) -> Self {
         Self(FastNoiseLite::new(id))
     }
-    pub fn sample(&self, pos: GlobalTilePos, range: NoiseSampleRange, complementary: bool, extra_seed: i32, settings: &GlobalGenSettings) -> f32 {
-        self.0.sample(pos.into(), range, complementary, extra_seed + settings.seed, settings.world_freq)
+    pub fn sample(&self, pos: GlobalTilePos, dim_hash_id: HashId, range: NoiseSampleRange, complementary: bool, extra_seed: i32, settings: &GlobalGenSettings) -> f32 {
+        self.0.sample(pos.into(), range, complementary, extra_seed.wrapping_add(settings.seed).wrapping_add(dim_hash_id.as_i32()), settings.world_freq)
     }
 }
 

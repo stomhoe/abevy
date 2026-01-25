@@ -48,7 +48,7 @@ pub fn launch_terrain_gen_operations (
                     return;
                 }
                 batch.push(PendingOp {
-                    oplist, dim_ref, gpos, dimension_hash_id: hash_id.as_i32(), 
+                    oplist, dimension_ref: dim_ref, gpos, 
                     variables: VariablesArray::default(), filtered_op: Entity::PLACEHOLDER,
                 });
             }
@@ -68,6 +68,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     fnl_noises: Query<&FnlNoiseComp,>,
     op_filters: Query<&OpFilter,>,
     weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
+    dim_hash_query: Query<&HashId, AnyDisabling>,
     mut collected: ResMut<MassCollectedTiles>,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
 ) {
@@ -84,6 +85,11 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
             continue;
         };
         let global_pos = ev.gpos;
+
+        let dimension_hash = 
+            dim_hash_query.get(ev.dimension_ref.0)
+            .cloned()
+            .unwrap_or_default();
         
         oplist.trunk.iter().enumerate().for_each(|(op_i, (operation, operands, stackarr_out_i))| {
             let mut operation_acc_val: f32 = 0.0;
@@ -98,11 +104,10 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                             error!("Noise entity {} not found", ent);
                             return;
                         };
-                        let seed = operand_seed.wrapping_add(ev.dimension_hash_id);
-                        noise.sample(global_pos, *sample_range, *compl, seed, &gen_settings)   
+                        noise.sample(global_pos, dimension_hash, *sample_range, *compl, *operand_seed, &gen_settings)   
                     },
-                    OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, *seed) as f32,
-                    OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(&gen_settings, global_pos, true, my_oplist_size) as f32,
+                    OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, dimension_hash, *seed) as f32,
+                    OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(global_pos, &gen_settings, dimension_hash, true, my_oplist_size) as f32,
                 };
                 if operand.complement && !matches!(operand.element, OperandElement::NoiseEntity(_, _, _, _)) {
                     curr_operand_val = 1.0 - curr_operand_val;
@@ -197,7 +202,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
         }
 
         if bifurcation.tiles.len() > 0 && ev.filtered_op == Entity::PLACEHOLDER {
-            collected.collect_tiles(&mut cmd, &bifurcation.tiles, &ev, my_oplist_size, &weight_maps, &gen_settings);
+            collected.collect_tiles(&mut cmd, &bifurcation.tiles, &ev, my_oplist_size, &weight_maps, &gen_settings, dimension_hash);
         }
     }}
     pending_ops_events.write_batch(new_pending_ops_events); 
@@ -255,8 +260,8 @@ pub fn search_suitable_positions(
             continue;
         }
 
-        let (filtered_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_hash_id) = 
-        (pos_search.operation_filter, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_hash_id);
+        let (filtered_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_ref) = 
+        (pos_search.operation_filter, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_ref);
 
         let Ok(opfilter) = studied_ops.get(filtered_op) else {//ERRROR: ENTTIY NO SPAWNEÓ TODAVÍA
             if curr_iteration_batch_i == 0 {
@@ -289,11 +294,10 @@ pub fn search_suitable_positions(
                     for i_within_batch in start_i_within_batch..iterations_per_batch {
                         new_pending_ops.push(PendingOp {
                             oplist: opfilter.start_oplist,
-                            dimension_hash_id,
+                            dimension_ref,
                             gpos: calculate_pos(i_within_batch, explore_angle),
                             filtered_op,
                             variables: VariablesArray::default(),
-                            dim_ref: DimensionRef(Entity::PLACEHOLDER),
                         });
                     }
                     if curr_iteration_batch_i as u16 + 1 < max_batches {
@@ -328,9 +332,8 @@ pub fn search_suitable_positions(
                 for _ in 0..iterations_per_batch {
                     pos = pos + GlobalTilePos(dir_vec.saturating_mul(IVec2::splat(step_size as i32)));  
                      new_pending_ops.push(PendingOp {
-                        dimension_hash_id,
+                        dimension_ref,
                         oplist: opfilter.start_oplist,
-                        dim_ref: DimensionRef(Entity::PLACEHOLDER),
                         gpos: pos,
                         variables: VariablesArray::default(),
                         filtered_op,

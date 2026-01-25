@@ -1,10 +1,9 @@
-use bevy::{color, ecs::entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{AnyDisabling, Prefix, StrId};
+use common::common_components::{AnyDisabling, HashId, Prefix, StrId};
 use ::tilemap_shared::*;
-
+use dimension_shared::DimensionRef;
 use crate::{color_sample_components::*, color_sample_resources::* };
 
 #[allow(unused_parens)]
@@ -79,17 +78,23 @@ pub fn add_colorsamplers_to_map(
     }
 }
 */
-
 #[allow(unused_parens)]
 pub fn apply_pos_sampled_color(mut cmd: Commands, 
     gen_settings: Single<&GlobalGenSettings>,
     samplers: Query<&ColorSampler>,
-    mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, AnyOf<(&mut Sprite, &mut TileColor)>), (Or<(Changed<ColorSamplerRef>, Added<Sprite> )>, )>,
+    dim_hash_query: Query<&HashId, AnyDisabling>,
+    mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, Option<&DimensionRef>, AnyOf<(&mut Sprite, &mut TileColor)>), (Or<(Changed<ColorSamplerRef>, Added<Sprite> )>, )>,
 ) {
-    query.iter_mut().for_each(|(entity, color_sampler, global_tile_pos, (sprite, tile_color))| {
+    query.iter_mut().for_each(|(entity, color_sampler, &global_tile_pos, dimension_ref, (sprite, tile_color))| {
         let Ok(sampler) = samplers.get(color_sampler.0) 
         else {return;};
-        let color = sampler.sample_with_pos(&gen_settings, *global_tile_pos).unwrap_or([255, 255, 255, 255]);
+
+        let dimension_hash = dimension_ref
+            .and_then(|dim_ref| dim_hash_query.get(dim_ref.0).ok())
+            .cloned()
+            .unwrap_or_default();
+
+        let color = sampler.sample_with_pos(global_tile_pos, &gen_settings, dimension_hash).unwrap_or([255, 255, 255, 255]);
         let color: Color = Color::srgba_u8(color[0], color[1], color[2], color[3]);
         if let Some(mut sprite) = sprite {
             sprite.color = color;

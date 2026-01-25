@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::*;
+use common::common_components::HashId;
 
 use crate::{terrain_gen::terrgen_messages::PendingOp, };
 use dimension_shared::{DimensionRef, PrevDimensionRef};
@@ -53,6 +54,7 @@ impl MassCollectedTiles {
         ezero_ref: EntityZeroRef,
         gpos: GlobalTilePos,
         dim_ref: DimensionRef,
+
         oplist_size: OplistSize,
     ) -> Entity {
         let tile_instance = cmd.entity(ezero_ref.0).clone_and_spawn_with_opt_out(|builder|{
@@ -81,6 +83,7 @@ impl MassCollectedTiles {
         cmd: &mut Commands,
         tiling_ent: Entity,
         global_pos: GlobalTilePos,
+        dim_hash_id: HashId,
         dim_ref: DimensionRef,
         oplist_size: OplistSize,
         weight_maps: &Query<(&EntityWeightedSampler,), ()>,
@@ -88,12 +91,12 @@ impl MassCollectedTiles {
         depth: u32
     ) {
         if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
-            if let Some(tiling_ent) = wmap.sample_with_pos(gen_settings, global_pos) {
+            if let Some(tiling_ent) = wmap.sample_with_pos(global_pos, gen_settings, dim_hash_id) {
                 if depth > 6 {
                     warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_ent);
                     return;
                 }
-                self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
+                self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_hash_id, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
             }
         } else {
             self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, oplist_size, );
@@ -103,9 +106,10 @@ impl MassCollectedTiles {
     pub fn collect_tiles(&mut self, 
         cmd: &mut Commands,
         bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &GlobalGenSettings,
+        dim_hash_id: HashId,
     )  {
         for tile in bif_tiles.iter().cloned() {
-            self.collect_tiles_rec(cmd, tile, ev.gpos, ev.dim_ref, oplist_size, weight_maps, gen_settings, 0);
+            self.collect_tiles_rec(cmd, tile, ev.gpos, dim_hash_id, ev.dimension_ref, oplist_size, weight_maps, gen_settings, 0);
         }
     }
 

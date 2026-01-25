@@ -2,10 +2,10 @@
 use bevy::{ecs::entity::MapEntities, prelude::*};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use::tilemap_shared::*;
-
 #[macro_export]
 macro_rules! define_weightedsampler_impl {
     ($ty:ident, $inner:ty) => {
+        use common::common_id_components::HashId;
         impl $ty {
             pub fn new(weights: &Vec<($inner, f32)>) -> Self {
                 let mut weights_vec = Vec::with_capacity(weights.len());
@@ -56,8 +56,8 @@ macro_rules! define_weightedsampler_impl {
                     Ok(idx) | Err(idx) => Some(idx),
                 }
             }
-            pub fn sample_with_pos(&self, settings: &GlobalGenSettings, pos: GlobalTilePos) -> Option<$inner> {
-                let hash_used_to_sample = pos.hash_for_weight_maps(settings);
+            pub fn sample_with_pos(&self, pos: GlobalTilePos, settings: &GlobalGenSettings, dimension_hash: HashId) -> Option<$inner> {
+                let hash_used_to_sample = pos.hash_for_weight_maps(settings, dimension_hash);
                 let rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
                 self.sample_index(rng_val)
                     .and_then(|idx| self.weights.get(idx).map(|(e, _)| *e))
@@ -68,11 +68,11 @@ macro_rules! define_weightedsampler_impl {
                 self.sample_index(rng_val)
                     .and_then(|idx| self.weights.get(idx).map(|(e, _)| *e))
             }
-            pub fn sample_and_remove_with_rng(&mut self, rng: &mut impl rand::Rng) -> Option<$inner> {
+            pub fn sample_with_rng_and_remove(&mut self, rng: &mut impl rand::Rng) -> Option<$inner> {
                 if self.weights.is_empty() { return None; }
                 let rng_val = rng.random_range(0.0..=1.0);
                 let idx = self.sample_index(rng_val)?;
-                let (item, weight) = self.weights.remove(idx);//don't use swap_remove
+                let (item, weight) = self.weights.remove(idx);//don't use swap_remove, order is important
                 self.total_weight -= weight;
                 self.cumulative_weights.clear();
                 let mut acc = 0.0;
@@ -81,6 +81,24 @@ macro_rules! define_weightedsampler_impl {
                     self.cumulative_weights.push(acc);
                 }
                 Some(item)
+            }
+            pub fn remove(&mut self, item: &$inner) -> bool
+            where
+                $inner: PartialEq,
+            {
+                if let Some(pos) = self.weights.iter().position(|(e, _)| e == item) {
+                    let (_, weight) = self.weights.remove(pos);
+                    self.total_weight -= weight;
+                    self.cumulative_weights.clear();
+                    let mut acc = 0.0;
+                    for &(_, w) in &self.weights {
+                        acc += w;
+                        self.cumulative_weights.push(acc);
+                    }
+                    true
+                } else {
+                    false
+                }
             }
         }
         impl std::ops::Deref for $ty {

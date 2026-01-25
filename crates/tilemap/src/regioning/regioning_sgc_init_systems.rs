@@ -120,7 +120,7 @@ pub fn init_structured_gen_configs (
     cmd.insert_batch(exclusive_for_dims);
     cmd.insert_batch(sgcs_comps);
     
-    cmd.spawn((SgcsEntityWeightedMap, ent_w_sampler, ChildOf(holder),));
+    cmd.spawn((SgcsWeightedSampler, ent_w_sampler, ChildOf(holder),));
 }
 
 
@@ -129,9 +129,13 @@ pub fn remove_sgc_from_map_on_despawn(
     trigger: On<Despawn, StructuredGenConfig>,
     query: Query<(&StrId),(AnyDisabling)>,
     mut map: ResMut<SgcEntityMap>,
+    mut weighted_map: Query<(&mut EntityWeightedSampler), (With<SgcsWeightedSampler>)>,
 
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
+        weighted_map.iter_mut().for_each(|(mut weighted_sampler)| {
+            weighted_sampler.remove(&trigger.entity);
+        });
         if let Ok(found_entity) = map.0.get(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());

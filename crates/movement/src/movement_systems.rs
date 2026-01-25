@@ -32,11 +32,6 @@ pub fn update_human_move_input(
         }
     }
 }
-
-
-
-
-
 #[allow(unused_parens, )]
 pub fn send_move_input_to_server(
     mut event_writer: MessageWriter<SendMoveInput>,
@@ -50,7 +45,6 @@ pub fn send_move_input_to_server(
     event_writer.write_batch(to_write);
 
 }
-
 #[allow(unused_parens, )]
 pub fn receive_move_input_from_client(
     mut events: MessageReader<FromClient<SendMoveInput>>,
@@ -117,8 +111,6 @@ pub fn apply_movement(
     ewriter.write_batch(to_write);   
 }
 
-
-
 #[allow(unused_parens)]
 pub fn update_facing_dir(mut query: Query<(&ProcessedInputVector, &mut Direction), >) {
     for (ProcessedInputVector(dir_vec), mut facing_dir) in query.iter_mut() {
@@ -131,10 +123,6 @@ pub fn update_facing_dir(mut query: Query<(&ProcessedInputVector, &mut Direction
         };
     }
 }
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
-
 
 
 //PARA HACER ANTÍDOTOS Q ATACAN SUSTANCIAS ESPECÍFICAS, HACER OTRO SISTEMA Q AFECTE EL POWER DE OTROS EFECTOS

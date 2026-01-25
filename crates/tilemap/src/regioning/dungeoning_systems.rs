@@ -33,7 +33,6 @@ pub fn claim_chunks_for_various_dungeon_types(
     let mut already_claimed: HashSet<ChunkPos> = HashSet::new();
     
     for offer in offered_chunks.read() {
-        info!(target: "dungeoning", "Processing OfferChunk {:?} for region entity {:?}", offer.i, offer.region_ent);
         let Ok((structured_gen_cfg,)) = structured_gens.get(offer.structured_gen_cfg_ent)
         else { 
             error!(target: "dungeoning", "StructuredGenConfig entity {:?} not found when making DrunkwalkDungeon, skipping structure spawn", offer.structured_gen_cfg_ent);
@@ -57,7 +56,7 @@ pub fn claim_chunks_for_various_dungeon_types(
             continue;
         };
 
-        let seed = center_chunk.hash_value(&settings, 0).wrapping_add(dimension_hash.as_u64());
+        let seed = center_chunk.hash_value(&settings, *dimension_hash, 0);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
         // Use normal distribution with mean 4, clamped to [2, 6]
@@ -226,12 +225,12 @@ pub fn drunkwalk_dungeon_building_system(
         let mut floor_map = vec![false; tile_map_size];
         let mut hazard_map = vec![false; tile_map_size];
         
-        let Ok(dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
+        let Ok(&dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
             error!(target: "dungeoning", "Dimension entity {:?} has no HashId component when making DrunkwalkDungeon, skipping structure spawn", build_order.dimension_ref);
             continue;
         };
         
-        let seed = chunk_positions[0].hash_value(&settings, 0).wrapping_add(dimension_hash.as_u64());
+        let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
         // Multiple drunkwalks with wider paths and more aggressive carving
@@ -504,12 +503,12 @@ pub fn advanced_dungeon_building_system(
         let mut floor_map = vec![false; tile_map_size];
         let mut hazard_map = vec![false; tile_map_size];
 
-        let Ok(dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
+        let Ok(&dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
             error!(target: "dungeoning", "Dimension entity {:?} has no HashId component when making AdvancedDungeon, skipping structure spawn", build_order.dimension_ref);
             continue;
         };
 
-        let seed = chunk_positions[0].hash_value(&settings, 1).wrapping_add(dimension_hash.as_u64());
+        let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
         #[derive(Clone, Copy)]

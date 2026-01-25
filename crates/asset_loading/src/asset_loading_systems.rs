@@ -24,7 +24,7 @@ pub fn reload_assets_while_ingame(
         });
 
         for (mut activating_chunks) in chunks_query.iter_mut() {
-            activating_chunks.0.clear();
+            activating_chunks.entities.clear();
         }
         hot_loading.set(AssetHotReloadState::Ongoing);
 

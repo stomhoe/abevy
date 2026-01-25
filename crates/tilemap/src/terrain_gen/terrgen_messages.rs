@@ -48,7 +48,7 @@ pub struct OpFilterSerialization {
 
 #[derive(Message, Debug, Clone)]
 pub struct TerrainProbe {
-    pub dimension_hash_id: i32,
+    pub dimension_ref: DimensionRef,
     pub operation_filter: Entity,
     pub step_size: u16,
     pub curr_iteration_batch_i: i16,//se puede cambiar a otra cosa para empezar alejado del centro
@@ -57,9 +57,9 @@ pub struct TerrainProbe {
     pub probe_pattern: ProbePattern,
 }
 impl TerrainProbe{
-    pub fn standard_spiral_probe(dimension_hash_id: HashId, operation_filter: Entity, search_start_pos: GlobalTilePos) -> TerrainProbe {
+    pub fn standard_spiral_probe(dimension_ref: DimensionRef, operation_filter: Entity, search_start_pos: GlobalTilePos) -> TerrainProbe {
         TerrainProbe {
-            dimension_hash_id: dimension_hash_id.as_i32(),
+            dimension_ref,
             step_size: 1,
             curr_iteration_batch_i: 0,
             max_batches: 100,
@@ -93,8 +93,8 @@ pub struct SearchFailed (pub Entity);
 
 #[derive(Message, Debug, Clone)]
 /// internal use only
-pub struct PendingOp {pub oplist: Entity, pub dim_ref: DimensionRef, pub gpos: GlobalTilePos, 
-    pub dimension_hash_id: i32,
+pub struct PendingOp {pub oplist: Entity, pub dimension_ref: DimensionRef, pub gpos: GlobalTilePos, 
+    //pub dimension_hash_id: i32,
     pub variables: VariablesArray, pub filtered_op: Entity
 }
 

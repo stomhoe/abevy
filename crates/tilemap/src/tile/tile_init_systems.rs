@@ -365,7 +365,7 @@ pub fn instantiate_portal(mut cmd: Commands,
     new_portals: Query<(Entity, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(Added<SeekPortalOtherEnd>, Without<EntityZero>, AnyDisabling)>,
     ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>, AnyDisabling)>,
     pending_search: Query<(Entity, &SearchingForSuitablePos, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
-    dimension_query: Query<(&HashId, &DimensionRootOplist), ()>,
+    dimension_query: Query<(&DimensionRootOplist), ()>,
     mut ew_pos_search: MessageWriter<TerrainProbe>, 
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut mreader_search_successful: MessageReader<SuitablePosFound>,
@@ -386,8 +386,7 @@ pub fn instantiate_portal(mut cmd: Commands,
             cmd.entity(portal_ent).try_remove::<SeekPortalOtherEnd>();
             return;
         };
-        
-        let Ok((&dimension_hash_id, &dimension_root_oplist)) = dimension_query.get(portal_recipe.dest_dimension) else {
+        let Ok((&dimension_root_oplist)) = dimension_query.get(portal_recipe.dest_dimension) else {
             error!(target:"portal_init",
             "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_recipe.dest_dimension, dim_ref.0, global_pos,
             );
@@ -400,7 +399,7 @@ pub fn instantiate_portal(mut cmd: Commands,
         
         cmd.entity(portal_ent).try_insert(SearchingForSuitablePos{ filtered_op_ent: op_filter_ent });
         
-        pos_searches.push(TerrainProbe::standard_spiral_probe(dimension_hash_id, op_filter_ent, global_pos));
+        pos_searches.push(TerrainProbe::standard_spiral_probe(DimensionRef(portal_recipe.dest_dimension), op_filter_ent, global_pos));
         started_searches.insert(op_filter_ent, portal_ent);
     });
     

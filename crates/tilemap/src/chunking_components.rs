@@ -49,11 +49,17 @@ pub struct ChunkTmapsMap(pub HashMap<AcZ, HashMap<MapKey, MapStruct>>);
 
 
 #[derive(Component, Debug, Reflect)]
-pub struct ActivatingChunks(pub Vec<Entity>,);
+pub struct ActivatingChunks {
+    pub reactivation_timer: Timer,
+    pub entities: Vec<Entity>,
+}
 
 impl ActivatingChunks {
     pub fn new(chunkrange: &AaChunkRangeSettings) -> Self { 
-        Self(Vec::with_capacity((chunkrange.approximate_number_of_chunks(1.2)) as usize)) 
+        Self {
+            entities: Vec::with_capacity((chunkrange.approximate_number_of_chunks(1.2)) as usize),
+            reactivation_timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+        }
     }
 
 }

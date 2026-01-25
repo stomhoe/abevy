@@ -3434,6 +3434,7 @@ dependencies = [
  "bevy_replicon",
  "common",
  "delegate",
+ "dimension_shared",
  "game_common",
  "indexmap",
  "nano-id",

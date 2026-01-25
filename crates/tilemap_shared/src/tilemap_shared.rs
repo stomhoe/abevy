@@ -3,7 +3,7 @@ use std::{hash::{DefaultHasher, Hash, Hasher}, ops::Add};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::Prefix;
+use common::common_components::{HashId, Prefix};
 use rand::{Rng, seq::SliceRandom};
 use serde::{Deserialize, Serialize};
 
@@ -78,21 +78,22 @@ macro_rules! impl_display_debug {
 }
 
 pub trait HashablePosVec: Hash {
-    fn hash_value(&self, settings: &GlobalGenSettings, seed: u64) -> u64 {
+    fn hash_value(&self, settings: &GlobalGenSettings, dimension_hash: HashId, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
         settings.seed.hash(&mut hasher);
+        dimension_hash.hash(&mut hasher);
         seed.hash(&mut hasher);
         hasher.finish()
     }
-    fn hash_true_false(&self, settings: &GlobalGenSettings, extra_seed: u64) -> bool {
-        self.hash_value(settings, extra_seed) % 2 == 0
+    fn hash_true_false(&self, settings: &GlobalGenSettings, dimension_hash: HashId, extra_seed: u64) -> bool {
+        self.hash_value(settings, dimension_hash, extra_seed) % 2 == 0
     }
-    fn hash_for_weight_maps(&self, settings: &GlobalGenSettings) -> u64 {
-        self.hash_value(settings, 53)
+    fn hash_for_weight_maps(&self, settings: &GlobalGenSettings, dimension_hash: HashId) -> u64 {
+        self.hash_value(settings, dimension_hash, 0)
     }
-    fn normalized_hash_value(&self, settings: &GlobalGenSettings, seed: u64) -> f64 {
-        self.hash_value(settings, seed) as f64 / u64::MAX as f64
+    fn normalized_hash_value(&self, settings: &GlobalGenSettings, dimension_hash: HashId, seed: u64) -> f64 {
+        self.hash_value(settings, dimension_hash, seed) as f64 / u64::MAX as f64
     }
     
     fn x(&self) -> i32;
@@ -401,16 +402,15 @@ impl PoissonDisk {
         }
         Ok(Self { mindists_seeds })
     }
-    pub fn is_allowed_position<T: HashablePosVec>(&self, settings: &GlobalGenSettings, pos: T, check_within_radius: bool, oplist_size: OplistSize) -> bool {
-        self.sample(settings, pos, check_within_radius, oplist_size) > 0.0
+    pub fn is_allowed_position<T: HashablePosVec>(&self, pos: T, settings: &GlobalGenSettings, dim_hash: HashId, check_within_radius: bool, oplist_size: OplistSize) -> bool {
+        self.sample(pos, settings, dim_hash, check_within_radius, oplist_size) > 0.0
     }
     
-    pub fn sample<T: HashablePosVec>(&self, settings: &GlobalGenSettings, pos: T, 
-        check_within_circle: bool, oplist_size: OplistSize, ) -> f64 {
+    pub fn sample<T: HashablePosVec>(&self, pos: T, settings: &GlobalGenSettings, dim_hash: HashId, check_within_radius: bool, oplist_size: OplistSize) -> f64 {
             
         let mut sum = 0.0;
         for &(min_distance, seed) in self.mindists_seeds.iter() {
-            let val = pos.normalized_hash_value(settings, seed);
+            let val = pos.normalized_hash_value(settings, dim_hash, seed);
             sum += val;
             let added_sample_distance_x = oplist_size.x() as i32 - 1;
             let added_sample_distance_y = oplist_size.y() as i32 - 1;
@@ -421,14 +421,14 @@ impl PoissonDisk {
                         continue;
                     }
                     // Only check within circle of radius min_distance
-                    if check_within_circle && dx * dx + dy * dy > (min_distance as i32).pow(2) {
+                    if check_within_radius && dx * dx + dy * dy > (min_distance as i32).pow(2) {
                         continue;
                     }
                     // Calculate the neighbor's position by offsetting the current tile position
                     let neighbor_x = pos.x() + dx + added_sample_distance_x;
                     let neighbor_y = pos.y() + dy + added_sample_distance_y;
                     let neighbor_pos = GlobalTilePos(IVec2::new(neighbor_x, neighbor_y));
-                    let neighbor_val = neighbor_pos.normalized_hash_value(settings, seed);
+                    let neighbor_val = neighbor_pos.normalized_hash_value(settings, dim_hash, seed);
                     if neighbor_val > val {
                         return 0.0;
                     }

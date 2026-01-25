@@ -40,7 +40,7 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 pub struct InfiniteMorale;
 
 #[derive(Component, Debug, Reflect, Default)]
-#[require(Prefix::trunc("World beings"), DespawnOnExit::<ClientState>, Replicated,)]
+#[require(SparedFromHotReloading, AssetScoped, Prefix::trunc("World beings"), DespawnOnExit::<ClientState>, Replicated,)]
 #[relationship_target(relationship = EguiBeingHolderReference)]
 pub struct EguiBeingHolder(Vec<Entity>);
 impl EguiBeingHolder { pub fn entities(&self) -> &[Entity] { &self.0 } }

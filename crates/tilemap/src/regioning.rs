@@ -59,7 +59,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<WhitelistedFilterOf>()
     .replicate::<StructuredGenConfig>()
-    .replicate::<SgcsEntityWeightedMap>()
+    .replicate::<SgcsWeightedSampler>()
     .replicate::<EguiSgcHolder>()
     .replicate_once::<Region>()
     

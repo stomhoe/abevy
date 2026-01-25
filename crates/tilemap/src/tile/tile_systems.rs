@@ -4,7 +4,7 @@ use bevy::ecs::entity_disabling::Disabled;
 use bevy_ecs_tilemap::{map::TilemapId, tiles::TileFlip};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::{common_components::AnyDisabling, common_tag_components::TagSet};
+use common::{common_components::{AnyDisabling, HashId}, common_tag_components::TagSet};
 use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
@@ -14,13 +14,18 @@ use crate::{ chunking_components::ChunkTmapsMap, tile::{tile_components::*, tile
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
     settings: Single<&GlobalGenSettings>,
-    mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>, &InitialPos, ), 
+    dim_hash_query: Query<&HashId, AnyDisabling>,
+    mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>, &InitialPos, Option<&DimensionRef>), 
     (Changed<InitialPos>, With<FlipHorizontallyBasedOnHash>, AnyDisabling, Without<EntityZero>, )>,
     mut sprites_query: Query<(&mut Sprite), (AnyDisabling,  Without<InitialPos>, )>,
 ) {
-    query.iter_mut().for_each(|((tile_flip, sprite, held_sprites, children), initial_pos)| {
-        let should_flip = initial_pos.0.hash_true_false(&settings, 0);
-        
+    query.iter_mut().for_each(|((tile_flip, sprite, held_sprites, children), initial_pos, dimension_ref)| {
+        let dimension_hash = dimension_ref
+            .and_then(|dim_ref| dim_hash_query.get(dim_ref.0).ok())
+            .cloned()
+            .unwrap_or_default();
+
+        let should_flip = initial_pos.0.hash_true_false(&settings, dimension_hash, 0);
         if let Some(mut flip) = tile_flip {
             flip.x = should_flip;
         }

@@ -1,4 +1,6 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use dimension_shared::DimensionSystems;
@@ -24,8 +26,12 @@ pub fn plugin(app: &mut App) {
         despawn_unreferenced_chunks, 
         tile_assign_child_of,
         (
-            visit_chunks_around_activators, 
-            show_or_hide_chunks, 
+            activate_chunks_every_second,
+            detect_activators_with_changes, 
+            visit_chunks_around_activators,
+            detect_camera_change_pos, 
+            update_chunk_visib,
+            recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(1000))),
             process_tiles_pre.before(despawn_unreferenced_chunks)//NO TOCAR
         ).in_set(ChunkSystems)
     ))
@@ -58,6 +64,9 @@ pub fn plugin(app: &mut App) {
 
 
     .add_message::<CheckChunkDespawn>()
+    .add_message::<ReactivateChunksFor>()
+    .add_message::<RecheckChunksVisibility>()
+
     
 
     

@@ -41,6 +41,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AssetLoading::NotStarted), 
             despawn_asset_scoped_entities
         )
+        // Don't use OnExit(AssetLoading::SpawnReplicatedEntities) because clients aren't in that state
 
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             on_assets_loaded.in_set(AssetHotReloading)
