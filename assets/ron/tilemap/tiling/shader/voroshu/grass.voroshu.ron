@@ -1,6 +1,6 @@
 (
     id: "grassvoronoi",
-    img_path: "texture/world/terrain/sepia.png",
+    img_path: "texture/world/terr/sepia.png",
     scale: 1e-1,
     voronoi_scale: 2,
     voronoi_scale_random: 0.0,

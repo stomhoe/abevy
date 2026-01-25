@@ -13,7 +13,7 @@ use strum_macros::{AsRefStr, Display, };
 use std::ops::{Index, IndexMut};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(AssetScoped, Prefix::trunc("EguiOplistHolder"), Replicated, SessionScoped, TgenHotLoadingScoped)]
+#[require(AssetScoped, Prefix::trunc("EguiOplistHolder"), Replicated, AppStateScoped, )]
 pub struct EguiOplistHolder;
 
 
@@ -21,11 +21,12 @@ pub struct EguiOplistHolder;
 pub struct ChunkRef(pub Entity);
 
 #[derive(Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
-pub struct Bifurcation{#[entities] pub oplist: Option<Entity>, #[entities] pub tiles: Vec<Entity>,}
-
-
+pub struct Bifurcation{
+    #[entities] pub oplist: Option<Entity>, 
+    #[entities]pub tiles: Vec<Entity>,
+}
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(Prefix::trunc("OpList"), Replicated, SessionScoped, AssetScoped, TgenHotLoadingScoped, AddSameHashedTags)]
+#[require(Prefix::trunc("OpList"), Replicated, AppStateScoped, AssetScoped, AddSameHashedTags)]
 #[component(map_entities)]
 pub struct OperationList {
 
@@ -46,7 +47,6 @@ impl MapEntities for OperationList {
             bifur.oplist = bifur.oplist.map(|oplist_entity| entity_mapper.get_mapped(oplist_entity));
             bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = entity_mapper.get_mapped(*tile_entity));
         }
-
     }
 }
 

@@ -2,7 +2,7 @@
     id: "ancient_banyan",
     name: "Ancient banyan",
     img_paths: [
-        ("", "texture/world/vegetation/tree/elf/ancient_banyan.png"),
+        ("", "texture/world/veg/tree/elf/ancient_banyan.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

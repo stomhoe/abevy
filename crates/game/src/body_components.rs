@@ -8,7 +8,7 @@
 
 // #[derive(Component, Debug, Deserialize, Serialize)]
 // #[relationship(relationship_target = BodyParts)]
-// #[require(Replicated, SessionScoped,  )]
+// #[require(Replicated, AppStateScoped,  )]
 // pub struct BodyPartOf {
 //     #[relationship] #[entities]
 //     pub being: Entity,

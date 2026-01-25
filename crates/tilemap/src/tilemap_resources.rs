@@ -99,7 +99,7 @@ impl MassCollectedTiles {
             self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, oplist_size, );
         }
     }
-    ///used by terrain gen
+    ///used by terr gen
     pub fn collect_tiles(&mut self, 
         cmd: &mut Commands,
         bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &GlobalGenSettings,

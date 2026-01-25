@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{AnyDisabling, Prefix, StrId, TgenHotLoadingScoped};
+use common::common_components::{AnyDisabling, Prefix, StrId, };
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 
 use crate::tile::{tile_components::*, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};

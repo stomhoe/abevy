@@ -2,7 +2,7 @@
     id: "pink_blossom",
     name: "Pink blossom",
     img_paths: [
-        ("", "texture/world/vegetation/tree/elf/pink_blossom.png"),
+        ("", "texture/world/veg/tree/elf/pink_blossom.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

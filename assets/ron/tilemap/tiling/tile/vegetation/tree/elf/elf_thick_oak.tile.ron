@@ -2,7 +2,7 @@
     id: "elf_thick_oak",
     name: "Elven thick oak",
     img_paths: [
-        ("", "texture/world/vegetation/tree/elf/elf_thick_oak.png")
+        ("", "texture/world/veg/tree/elf/elf_thick_oak.png")
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

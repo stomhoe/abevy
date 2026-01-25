@@ -2,7 +2,7 @@
     id: "slender_sapling",
     name: "Slender Sapling",
     img_paths: [
-        ("", "texture/world/vegetation/tree/slender_sapling.png"),
+        ("", "texture/world/veg/tree/slender_sapling.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

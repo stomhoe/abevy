@@ -2,7 +2,7 @@
     id: "willow",
     name: "Willow",
     img_paths: [
-        ("", "texture/world/vegetation/tree/willow.png")
+        ("", "texture/world/veg/tree/willow.png")
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

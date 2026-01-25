@@ -9,13 +9,11 @@ use std::fmt::{Debug, Display};
 
 pub use crate::common_id_components::*;
 
-pub type SessionScoped = DespawnOnExit::<AppState>;
+pub type AppStateScoped = DespawnOnExit::<AppState>;
 
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
 pub struct AssetScoped;
-
-pub type TgenHotLoadingScoped = DespawnOnExit::<TerrainHotReloading>;
 
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect, )]

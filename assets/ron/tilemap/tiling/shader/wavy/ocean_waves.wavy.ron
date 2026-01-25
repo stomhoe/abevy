@@ -1,6 +1,6 @@
 (
     id: "ocean_waves",
-    img_path: "texture/world/terrain/water/19.png",
+    img_path: "texture/world/terr/water/19.png",
     mask_color: (255., 0., 0., 255.),
     scale: 0.003,
     time: 0.0,

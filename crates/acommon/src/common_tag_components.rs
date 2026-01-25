@@ -6,10 +6,7 @@ use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashSet;
 use std::hash::{Hash, };
 use crate::common_components::{HashId, Tag};
-use crate::{common_types::*};
-use std::fmt::{Debug, Display};
-
-
+use std::fmt::{Debug, };
 
 macro_rules! impl_tags_common_methods {
     ($collection_type_name:ty, $tag_type:ty, $collection_kind:ident) => {
@@ -102,6 +99,7 @@ macro_rules! define_tag_hashset_and_impl_methods {
         impl_tag_hashset_methods!($name, $tag_type);
     };
 }
+#[allow(dead_code, )]
 macro_rules! define_tag_vec_and_impl_methods {
     ($name:ident, $tag_type:ty) => {
         #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, Default, PartialEq, Eq)]
@@ -113,6 +111,7 @@ macro_rules! define_tag_vec_and_impl_methods {
 define_tag_hashset_and_impl_methods!(TagSet, Tag);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(HashedTagsVec)]
 pub struct AddSameHashedTags;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, Hash, PartialEq, Eq, )]

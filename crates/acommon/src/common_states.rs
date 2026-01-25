@@ -29,19 +29,15 @@ pub enum GamePhase {#[default]Setup, ActiveGame,}
 pub enum AssetLoading {
     NotStarted,
 
-    /// asset loading is triggered
+    /// Asset loading is triggered
     LoadingReplicatedCollections,
+    
     #[default]//default is for DespawnOnExit<AssetLoading>
-    /// init systems are executed
+
+    /// Init systems which spawn entities are executed
     SpawnReplicatedEntities,
 }
 
 
 
-
-#[allow(unused_parens, dead_code)]
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[reflect(State, Default)]
-#[states(scoped_entities,)]
-pub enum TerrainHotReloading {#[default]KeepAlive, DespawnAll,}
 

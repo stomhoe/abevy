@@ -1,9 +1,6 @@
 
 use bevy::{ecs::entity::MapEntities, prelude::*};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-#[allow(unused_imports)] use bevy::prelude::*;
-
-
 use::tilemap_shared::*;
 
 #[macro_export]
@@ -126,7 +123,7 @@ macro_rules! define_weightedsampler {
     ($ty:ident, $inner:ty, $entityprefix:expr) => {
         use common::common_states::*;
         #[derive(Debug, Clone, Reflect, Component)]
-        #[require(Prefix::trunc($entityprefix), Replicated, SessionScoped, TgenHotLoadingScoped)]
+        #[require(Prefix::trunc($entityprefix), Replicated, AppStateScoped, AssetScoped, )]
         pub struct $ty {
             weights: Vec<($inner, f32)>,
             cumulative_weights: Vec<f32>,

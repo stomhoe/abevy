@@ -2,7 +2,7 @@
     id: "hollow_banyan",
     name: "Hollow banyan",
     img_paths: [
-        ("", "texture/world/vegetation/tree/elf/hollow_banyan.png"),
+        ("", "texture/world/veg/tree/elf/hollow_banyan.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

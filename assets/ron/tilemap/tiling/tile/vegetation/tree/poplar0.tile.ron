@@ -4,7 +4,7 @@
     z: 1000,
     y_sort: Some(0),
     img_paths: [
-        ("", "texture/world/vegetation/tree/poplar0.png"),
+        ("", "texture/world/veg/tree/poplar0.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

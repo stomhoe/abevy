@@ -20,16 +20,17 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(Update, (
         clear_chunks_on_dim_change,
-        (rem_outofrange_chunks_from_activators, despawn_unreferenced_chunks), 
+        rem_outofrange_chunks_from_activators, 
+        despawn_unreferenced_chunks, 
         tile_assign_child_of,
         (
             visit_chunks_around_activators, 
             show_or_hide_chunks, 
             process_tiles_pre.before(despawn_unreferenced_chunks)//NO TOCAR
-        ).in_set(ChunkSystems).run_if(in_state(TerrainHotReloading::KeepAlive))
+        ).in_set(ChunkSystems)
     ))
     .configure_sets(Update, (
-        (TerrainGenSystems, ChunkSystems, RegioningSystems).in_set(GameplaySystems).run_if(in_state(TerrainHotReloading::KeepAlive)),
+        (TerrainGenSystems, ChunkSystems, RegioningSystems).in_set(GameplaySystems)
     ))
 
     .configure_sets(

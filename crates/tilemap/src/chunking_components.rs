@@ -1,12 +1,8 @@
-#[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::TilePos;
-use debug_unwraps::{DebugUnwrapErrExt, DebugUnwrapExt};
-use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use serde::{Deserialize, Serialize};
-use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::{entity::EntityHashSet, }, platform::collections::{HashMap, HashSet}, prelude::*};
 use sprite_shared::AcZ;
 
-use crate::{chunking_resources::AaChunkRangeSettings, regioning::regioning_components::ChunksActiveInRegion, tile::tile_components::*};
+use crate::{chunking_resources::AaChunkRangeSettings, regioning::regioning_components::ChunksActiveInRegion, };
 use ::tilemap_shared::*;
 
 
@@ -15,7 +11,7 @@ use common::{common_components::*, };
 #[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
 #[relationship(relationship_target = ChunksActiveInRegion)]
 
-#[require(Visibility::Hidden, SessionScoped, ChunkTmapsMap, TilesToSave, )]
+#[require(Visibility::Hidden, AssetScoped, AppStateScoped, ChunkTmapsMap, TilesToSave, )]
 pub struct Chunk {
     #[relationship]
     pub region_ent: Entity,

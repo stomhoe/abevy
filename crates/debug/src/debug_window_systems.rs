@@ -23,7 +23,6 @@ pub fn states_window(
     pre_game_state: Res<State<PreGameState>>,
     game_phase: Res<State<GamePhase>>,
     asset_loading: Res<State<AssetLoading>>,
-    terrain_hot_reloading: Res<State<TerrainHotReloading>>,
     game_setup_screen: Option<Res<State<GameSetupScreen>>>,
     simulation_state: Option<Res<State<SimulationState>>>,
 ) {
@@ -52,9 +51,7 @@ pub fn states_window(
                 ui.label(format!("GamePhase: {:?}", game_phase.get()));
                 
                 ui.separator();
-                ui.heading("Asset Loading");
                 ui.label(format!("AssetLoading: {:?}", asset_loading.get()));
-                ui.label(format!("TerrainHotReloading: {:?}", terrain_hot_reloading.get()));
                 
                 ui.separator();
                 ui.heading("Sub States (Setup)");

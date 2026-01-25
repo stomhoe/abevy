@@ -9,11 +9,11 @@ use common::{common_components::*, };
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(AssetScoped, SessionScoped, TgenHotLoadingScoped, Replicated, Prefix::trunc("EguiSgcHolder"),)]
+#[require(AssetScoped, AppStateScoped, Replicated, Prefix::trunc("EguiSgcHolder"),)]
 pub struct EguiSgcHolder;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-#[require(AssetScoped, SessionScoped, TgenHotLoadingScoped, Replicated, Prefix::trunc("SGC"), )]
+#[require(AssetScoped, AppStateScoped, Replicated, Prefix::trunc("SGC"), )]
 pub struct StructuredGenConfig{
     pub structure_id: StrId,
     pub hash: HashId,
@@ -45,6 +45,6 @@ impl AcceptedFilters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, Prefix::trunc("SGCsEntityWeightedMap"), AssetScoped, SessionScoped, TgenHotLoadingScoped, )]
+#[require(Replicated, Prefix::trunc("SGCsEntityWeightedMap"), AssetScoped, AppStateScoped, )]
 pub struct SgcsEntityWeightedMap;
 

@@ -37,7 +37,7 @@ pub struct StructuredGenConfigSeri {
     /// weight in weighted map of structured gens for region. (more weight= likely for this structure to be generated first within the map of valid generations for that region)
     pub weight: f32,
     
-    //expected terrain conditions for spawning
+    //expected terr conditions for spawning
     pub whitelisted_filters: Option<Vec<OpFilterSerialization>>,
     
     pub pdisk_mindist_and_tag: Option<Vec<(Option<u8>, String)>>,

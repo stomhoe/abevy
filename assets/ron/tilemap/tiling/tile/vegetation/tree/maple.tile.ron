@@ -2,7 +2,7 @@
     id: "maple",
     name: "Maple",
     img_paths: [
-        ("", "texture/world/vegetation/tree/maple.png"),
+        ("", "texture/world/veg/tree/maple.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

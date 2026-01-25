@@ -7,13 +7,12 @@ use tilemap::{chunking_components::ActivatingChunks, terrain_gen::terrgen_resour
 
 
 #[allow(unused_parens, )]
-pub fn reload_assets_ingame(
+pub fn reload_assets_while_ingame(
     mut cmd: Commands, 
     keys: Res<ButtonInput<KeyCode>>,
     beings_query: Query<(Entity), (With<Being>,)>,
     mut chunks_query: Query<&mut ActivatingChunks>,
     mut loading_state: ResMut<NextState<AssetLoading>>,
-    mut hot_loading: ResMut<NextState<TerrainHotReloading>>,
 
     mut regpos: ResMut<RegisteredPositions>,
 ) {
@@ -26,7 +25,6 @@ pub fn reload_assets_ingame(
         for (mut activating_chunks) in chunks_query.iter_mut() {
             activating_chunks.0.clear();
         }
-        hot_loading.set(TerrainHotReloading::DespawnAll);
 
         regpos.registered.clear();
     
@@ -36,12 +34,10 @@ pub fn reload_assets_ingame(
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(
     mut cmd: Commands,
-    mut hot_loading: ResMut<NextState<TerrainHotReloading>>,
     beings_query: Query<(Entity), (With<Being>, Without<ChildOf>)>,
     mut game_state: ResMut<NextState<GamePhase>>,
 
 ) {
-    hot_loading.set(TerrainHotReloading::KeepAlive);
 
     beings_query.iter().for_each(|(being_ent)| {
         cmd.entity(being_ent).try_insert(DimensionStrIdRef::overworld_fallback());

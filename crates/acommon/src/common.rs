@@ -14,7 +14,6 @@ pub fn plugin(app: &mut App) {
         .init_state::<PreGameState>()
         .init_state::<GamePhase>()
         
-        .init_state::<TerrainHotReloading>()
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
 

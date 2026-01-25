@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 #[allow(unused_imports)] 
 use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash, };
 use crate::{common_types::*};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use std::fmt::{Debug, Display};
@@ -91,7 +91,6 @@ pub struct AddHashIdFromStrId;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect)]
 pub struct HashId(u64);
-
 impl HashId {
     pub fn new(id: u64) -> Self {
         Self(id)
@@ -116,13 +115,11 @@ impl HashId {
         Self(hash)
     }
 }
-
 impl<S: AsRef<str>> From<S> for HashId {
     fn from(id: S) -> Self {
         Self::hash(id.as_ref())
     }
 }
-
 impl Display for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "HId({:05})", self.0)

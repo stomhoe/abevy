@@ -2,7 +2,7 @@
     id: "poplar1",
     name: "Poplar",
     img_paths: [
-        ("", "texture/world/vegetation/tree/poplar1.png"),
+        ("", "texture/world/veg/tree/poplar1.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

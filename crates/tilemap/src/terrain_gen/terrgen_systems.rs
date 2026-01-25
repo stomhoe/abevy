@@ -37,7 +37,7 @@ pub fn launch_terrain_gen_operations (
                 let pos_within_chunk = IVec2::new(x as i32, y as i32);
                 let gpos = chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * oplist_size.inner().as_ivec2());
                 trace!(
-                    "Spawning terrain operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
+                    "Spawning terr operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
                     oplist,
                     gpos,
                     chunk_ent,

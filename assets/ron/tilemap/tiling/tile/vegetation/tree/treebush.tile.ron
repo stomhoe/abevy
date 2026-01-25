@@ -2,7 +2,7 @@
     id: "treebush",
     name: "Treebush",
     img_paths: [
-        ("", "texture/world/vegetation/tree/treebush.png")
+        ("", "texture/world/veg/tree/treebush.png")
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

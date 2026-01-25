@@ -13,7 +13,7 @@ use crate::tile::tile_shader::tile_material::prelude::*;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(AssetScoped, SessionScoped, Prefix::trunc("TileShaders"), Replicated)]
+#[require(AssetScoped, AppStateScoped, Prefix::trunc("TileShaders"), Replicated)]
 pub struct EguiTileShaderHolder;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash, Reflect, MapEntities)]
@@ -21,7 +21,7 @@ pub struct TileShaderRef(#[entities] pub Entity);
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
 
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, Deserialize, Serialize)]
-#[require(AssetScoped, SessionScoped, Prefix::trunc("TileShader"), Replicated)]
+#[require(AssetScoped, AppStateScoped, Prefix::trunc("TileShader"), Replicated)]
 pub enum TileShader{
     TexRepeat(MonoRepeatTextureOverlayMat),
     TwoTexRepeat(TwoOverlaysExample),

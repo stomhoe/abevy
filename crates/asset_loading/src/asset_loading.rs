@@ -1,5 +1,6 @@
 
 
+use bevy_replicon::prelude::ClientState;
 use color_sample::color_sample_resources::ColorWeightedSamplerHandles;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
@@ -25,8 +26,11 @@ pub fn plugin(app: &mut App) {
         .insert_state::<AssetLoading>(AssetLoading::NotStarted)
 
         .add_systems(Update, (
-            reload_assets_ingame,
+            reload_assets_while_ingame,
         ))
+        .add_systems(OnEnter(ClientState::Connecting), 
+            despawn_asset_scoped_entities
+        )
         .add_systems(OnEnter(AssetLoading::LoadingReplicatedCollections), 
             despawn_asset_scoped_entities
         )
@@ -39,7 +43,7 @@ pub fn plugin(app: &mut App) {
         ))
 
         .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            AssetHotReloading.run_if(in_state(TerrainHotReloading::DespawnAll)).after(GameplaySystems)
+            AssetHotReloading.after(GameplaySystems)
         ))
         .add_loading_state(
             LoadingState::new(AssetLoading::LoadingReplicatedCollections).continue_to_state(AssetLoading::SpawnReplicatedEntities)

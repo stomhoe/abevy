@@ -4,7 +4,7 @@
     z: 1000,
     y_sort: Some(0),
     img_paths: [
-        ("", "texture/world/vegetation/tree/elf/euca.png"),
+        ("", "texture/world/veg/tree/elf/euca.png"),
     ],
     sprite: Some(true), 
     randflipx: Some(true), 

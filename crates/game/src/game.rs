@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::{ClientState, };
-use common::common_states::{AppState, AssetLoading, GamePhase, TerrainHotReloading};
+use common::common_states::{AppState, AssetLoading, GamePhase, };
 use game_common::game_common::{GameplaySystems, StatefulSessionSystems};
 
 use crate::{game_init_systems::*,};
@@ -16,7 +16,6 @@ pub fn plugin(app: &mut App) {
         (server_or_singleplayer_setup,)
         .run_if(
             in_state(ClientState::Disconnected)
-            .and(not(in_state(TerrainHotReloading::DespawnAll)))
         )
         .in_set(GameplaySystems)
     )
