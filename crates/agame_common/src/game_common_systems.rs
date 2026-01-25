@@ -17,7 +17,7 @@ use crate::game_common_states::*;
 pub fn reset_states(
     mut state: ResMut<NextState<GamePhase>>
 ) {
-    state.set(GamePhase::default());
+    //state.set(GamePhase::default());
 }
 
 pub fn toggle_simulation(

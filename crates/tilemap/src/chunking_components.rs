@@ -11,7 +11,7 @@ use common::{common_components::*, };
 #[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
 #[relationship(relationship_target = ChunksActiveInRegion)]
 
-#[require(Visibility::Hidden, AssetScoped, AppStateScoped, ChunkTmapsMap, TilesToSave, )]
+#[require(Visibility::Hidden, AssetScoped, ChunkTmapsMap, TilesToSave, )]
 pub struct Chunk {
     #[relationship]
     pub region_ent: Entity,

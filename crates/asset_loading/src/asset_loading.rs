@@ -23,16 +23,20 @@ pub struct AssetHotReloading;
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app
-        .insert_state::<AssetLoading>(AssetLoading::NotStarted)
+        .init_state::<AssetLoading>()
+        .init_state::<AssetHotReloadState>()
 
         .add_systems(Update, (
             reload_assets_while_ingame,
         ))
+        .add_systems(OnExit(AppState::StatefulGameSession), 
+            despawn_asset_scoped_entities
+        )
         .add_systems(OnEnter(ClientState::Connecting), 
             despawn_asset_scoped_entities
         )
-        .add_systems(OnEnter(AssetLoading::LoadingReplicatedCollections), 
-            despawn_asset_scoped_entities
+        .add_systems(OnEnter(AssetLoading::LoadingAssetsIntoHandles), 
+            despawn_asset_scoped_entities_except_spared
         )
         .add_systems(OnEnter(AssetLoading::NotStarted), 
             despawn_asset_scoped_entities
@@ -43,10 +47,10 @@ pub fn plugin(app: &mut App) {
         ))
 
         .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            AssetHotReloading.after(GameplaySystems)
+            AssetHotReloading.run_if(in_state(AssetHotReloadState::Ongoing)).after(GameplaySystems)
         ))
         .add_loading_state(
-            LoadingState::new(AssetLoading::LoadingReplicatedCollections).continue_to_state(AssetLoading::SpawnReplicatedEntities)
+            LoadingState::new(AssetLoading::LoadingAssetsIntoHandles).continue_to_state(AssetLoading::SpawnReplicatedEntities)
             .load_collection::<ShaderRepeatTexSerisHandles>()
             .load_collection::<ShaderVoroshuSerisHandles>()
             .load_collection::<ShaderWavySerisHandles>()

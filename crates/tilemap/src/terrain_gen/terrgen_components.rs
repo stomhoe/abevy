@@ -11,7 +11,7 @@ use std::hash::{Hasher, Hash};
 use {common::common_components::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(AppStateScoped, AssetScoped, Replicated, )]
+#[require(AssetScoped, Replicated, )]
 pub struct Terrgen;
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -33,10 +33,10 @@ pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sy
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Terrgen, AppStateScoped, Prefix::trunc("Noises"), AssetScoped, Replicated )]
+#[require(Terrgen, Prefix::trunc("Noises"), AssetScoped, Replicated )]
 pub struct EguiNoiseHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, Prefix::trunc("FailedSearches"), AssetScoped,AppStateScoped )]
+#[require(Replicated, Prefix::trunc("FailedSearches"), AssetScoped, )]
 pub struct FailedSearchOplistFilterHolder;

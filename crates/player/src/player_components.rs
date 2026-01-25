@@ -10,7 +10,7 @@ pub struct OfSelf;
 
 
 #[derive(Debug, Component, Default, Serialize, Deserialize)]
-#[require(Replicated, Prefix::trunc("Player"), AppStateScoped)]
+#[require(Replicated, Prefix::trunc("Player"), SparedFromHotReloading, )]
 pub struct Player;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]

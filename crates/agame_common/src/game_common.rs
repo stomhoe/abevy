@@ -44,7 +44,7 @@ pub fn plugin(app: &mut App) {
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
             .and(
-                in_state(AssetLoading::LoadingReplicatedCollections).and(in_state(ClientState::Connected))
+                in_state(AssetLoading::LoadingAssetsIntoHandles).and(in_state(ClientState::Connected))
                 .or(in_state(AssetLoading::SpawnReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         ).in_set(StatefulSessionSystems),
@@ -57,7 +57,7 @@ pub fn plugin(app: &mut App) {
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
             .and(
-                in_state(AssetLoading::LoadingReplicatedCollections).and(in_state(ClientState::Connected))
+                in_state(AssetLoading::LoadingAssetsIntoHandles).and(in_state(ClientState::Connected))
                 .or(in_state(AssetLoading::SpawnReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         )
@@ -67,6 +67,10 @@ pub fn plugin(app: &mut App) {
         SimRunningSystems.run_if(in_state(SimulationState::Running)),
         SimPausedSystems.run_if(in_state(SimulationState::Paused)),
     ))
+    .configure_sets(
+        OnEnter(AssetLoading::SpawnReplicatedEntities),
+        (GameplaySystems).run_if(in_state(AssetHotReloadState::Stopped))
+    )
 
 
 

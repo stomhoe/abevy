@@ -1,13 +1,13 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::common_components::{Prefix, AppStateScoped};
+use common::common_components::{AssetScoped, Prefix, SparedFromHotReloading };
 
 use serde::{Deserialize, Serialize};
 
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Reflect)]
-#[require(Replicated, Prefix::trunc("Faction"), AppStateScoped)]
+#[require(Replicated, Prefix::trunc("Faction"), AssetScoped, SparedFromHotReloading,)]
 pub struct Faction;
 
 

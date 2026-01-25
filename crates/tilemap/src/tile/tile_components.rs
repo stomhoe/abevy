@@ -38,7 +38,7 @@ pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 //NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
-#[require(AssetScoped, AppStateScoped)]//no poner Replicated acá, sino el deny de Replicated quita el Tile
+#[require(AssetScoped, )]//no poner Replicated acá, sino el deny de Replicated quita el Tile
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
@@ -48,16 +48,16 @@ impl Tile {
 pub struct LocalChunkRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, AssetScoped, AppStateScoped, Prefix::trunc("Tiling"), Name, Transform, Visibility)]
+#[require(Replicated, AssetScoped, Prefix::trunc("Tiling"), Name, Transform, Visibility)]
 pub struct TilesEguiHolder;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Prefix::trunc("Tile instances"), Name, Transform, Replicated, AppStateScoped)]
+#[require(Prefix::trunc("Tile instances"), Name, Transform, Replicated, )]
 pub struct TileInstancesHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Replicated, AssetScoped, AppStateScoped, Prefix::trunc("PortalsZero"), Name, Transform, Visibility, )]
+#[require(Replicated, AssetScoped, Prefix::trunc("PortalsZero"), Name, Transform, Visibility, )]
 pub struct PortalsZeroEguiHolder;
 
 

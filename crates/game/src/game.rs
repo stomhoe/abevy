@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::{ClientState, };
-use common::common_states::{AppState, AssetLoading, GamePhase, };
+use common::common_states::{AssetLoading, GamePhase, };
 use game_common::game_common::{GameplaySystems, StatefulSessionSystems};
 
 use crate::{game_init_systems::*,};

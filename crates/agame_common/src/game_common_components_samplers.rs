@@ -123,7 +123,7 @@ macro_rules! define_weightedsampler {
     ($ty:ident, $inner:ty, $entityprefix:expr) => {
         use common::common_states::*;
         #[derive(Debug, Clone, Reflect, Component)]
-        #[require(Prefix::trunc($entityprefix), Replicated, AppStateScoped, AssetScoped, )]
+        #[require(Prefix::trunc($entityprefix), Replicated, AssetScoped, )]
         pub struct $ty {
             weights: Vec<($inner, f32)>,
             cumulative_weights: Vec<f32>,

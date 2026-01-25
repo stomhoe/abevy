@@ -20,7 +20,7 @@ pub fn plugin(app: &mut App) {
         add_beings_to_holder,
     ))
 
-    .add_systems(OnEnter(AssetLoading::LoadingReplicatedCollections), (
+    .add_systems(OnEnter(AssetLoading::LoadingAssetsIntoHandles), (
         (
            spawn_egui_being_holder.run_if(in_state(ClientState::Disconnected)),
         ),

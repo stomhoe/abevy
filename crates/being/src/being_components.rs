@@ -15,7 +15,7 @@ use sprite_animation_shared::MoveAnimActive;
 
 #[require(InputMoveVector, Replicated, MoveAnimActive,
 Grounding, Visibility, Direction, AppliedModifiers, Transform,
-Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AppStateScoped
+Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading,
 )]
 pub struct Being;
 impl Being {
@@ -40,7 +40,7 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 pub struct InfiniteMorale;
 
 #[derive(Component, Debug, Reflect, Default)]
-#[require(Prefix::trunc("World beings"), DespawnOnExit::<ClientState>, Replicated, AppStateScoped,)]
+#[require(Prefix::trunc("World beings"), DespawnOnExit::<ClientState>, Replicated,)]
 #[relationship_target(relationship = EguiBeingHolderReference)]
 pub struct EguiBeingHolder(Vec<Entity>);
 impl EguiBeingHolder { pub fn entities(&self) -> &[Entity] { &self.0 } }

@@ -5,5 +5,5 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(AssetScoped, AppStateScoped, Replicated, Prefix::trunc("TileWSampler"), )]
+#[require(AssetScoped, Replicated, Prefix::trunc("TileWSampler"), )]
 pub struct TileWeightedSampler;

@@ -29,7 +29,7 @@ pub fn on_server_start_successful(
     mut assets_loading_state: ResMut<NextState<AssetLoading>>,
 ) {
     game_phase.set(GamePhase::Setup);
-    assets_loading_state.set(AssetLoading::LoadingReplicatedCollections);
+    assets_loading_state.set(AssetLoading::LoadingAssetsIntoHandles);
 
     cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
     cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
