@@ -45,6 +45,7 @@ pub fn plugin(app: &mut App) {
 
     .init_resource::<SgcEntityMap>()
     .init_resource::<LoadedRegions>()
+    .init_resource::<RegioningSpawnAsyncTasks>()
 
     .register_type::<LoadedRegions>()
     .register_type::<SgcEntityMap>()

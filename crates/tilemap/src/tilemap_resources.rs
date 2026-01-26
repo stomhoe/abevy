@@ -138,7 +138,58 @@ pub struct TilemapPrepResult {
     pub prepared_tiles: Vec<TilemapPreparedTile>,
 }
 
+#[derive(Debug, Clone)]
+pub struct TilemapKeyData {
+    pub ac_z: AcZ,
+    pub oplist_size: OplistSize,
+    pub tile_size: U16Vec2,
+    pub shader_ref: TileShaderRef,
+}
+
+#[derive(Debug, Clone)]
+pub struct TilemapPlanInput {
+    pub tile_ent: Entity,
+    pub bundle: TileMassSpawnBundle,
+    pub tile_z_index: AcZ,
+    pub tile_handles: Option<TileHidsHandles>,
+    pub shader_ref: Option<TileShaderRef>,
+    pub tile_size: U16Vec2,
+    pub chunk_ent: Option<Entity>,
+    pub is_sprite: bool,
+    pub should_replicate: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct TilemapTilePlan {
+    pub tile_ent: Entity,
+    pub bundle: TileMassSpawnBundle,
+    pub key: TilemapKeyData,
+    pub tile_handles: Option<TileHidsHandles>,
+    pub shader_ref: TileShaderRef,
+    pub tile_size: U16Vec2,
+    pub tile_z_index: AcZ,
+    pub chunk_ent: Entity,
+}
+
+#[derive(Debug, Clone)]
+pub struct SpriteTilePlan {
+    pub tile_ent: Entity,
+    pub ezero_ref: EntityZeroRef,
+    pub gpos: GlobalTilePos,
+    pub position: TilePos,
+    pub dim_ref: DimensionRef,
+    pub initial_pos: InitialPos,
+}
+
+#[derive(Debug, Default)]
+pub struct TilemapPlanResult {
+    pub tilemap_tiles: Vec<TilemapTilePlan>,
+    pub sprite_tiles: Vec<SpriteTilePlan>,
+    pub replicated_tiles: Vec<Entity>,
+}
+
 #[derive(Resource, Debug, Default)]
 pub struct TilemapAsyncTasks {
     pub prep_tasks: Vec<Task<TilemapPrepResult>>,
+    pub plan_tasks: Vec<Task<TilemapPlanResult>>,
 }

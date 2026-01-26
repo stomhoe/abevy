@@ -1,17 +1,39 @@
 #[allow(unused_imports)] use bevy::platform::collections::HashMap;
-use bevy::{ecs::entity::MapEntities, prelude::*};
+use bevy::{prelude::*, tasks::Task};
 use bevy_inspector_egui::prelude::*;
 use bevy_asset_loader::asset_collection::AssetCollection;
 
 use common::common_types::HashIdToEntityMap;
 use dimension_shared::DimensionRef;
+use game_common::game_common_components::EntityZeroRef;
 use ::tilemap_shared::*;
+use crate::tile::tile_components::DeleteOtherTiles;
 use crate::terrain_gen::terrgen_messages::OpFilterSerialization;
 use serde::Deserialize;
 
 #[derive(Resource, Reflect, InspectorOptions, Default)]
 #[reflect(Resource, Default, InspectorOptions)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
+
+#[derive(Debug, Clone)]
+pub struct RegionTileSpawnRequest {
+    pub chunk_ent: Entity,
+    pub dimension_ref: DimensionRef,
+    pub tile_gpos: GlobalTilePos,
+    pub ezero_ref: EntityZeroRef,
+    pub delete_others: Option<DeleteOtherTiles>,
+}
+
+#[derive(Debug, Default)]
+pub struct RegionSpawnTaskResult {
+    pub ready_chunks: Vec<Entity>,
+    pub spawn_requests: Vec<RegionTileSpawnRequest>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct RegioningSpawnAsyncTasks {
+    pub spawn_tasks: Vec<Task<RegionSpawnTaskResult>>,
+}
 
 #[derive(Resource, Debug, Default, Reflect, )]
 #[reflect(Resource, Default)]

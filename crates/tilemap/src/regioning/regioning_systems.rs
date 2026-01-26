@@ -1,13 +1,24 @@
 
-use std::{mem::take};
+use std::mem::take;
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy::tasks::{AsyncComputeTaskPool, futures_lite::future};
 use common::{common_components::HashId, common_tag_components::TagSet};
 use ::dimension_shared::*;
 use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
-use crate::{chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{
+    chunking_components::ReadyForTerrgen,
+    regioning::{
+        regioning_components::*,
+        regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, StructurePrepareTilesOrder},
+        regioning_resources::{LoadedRegions, RegioningSpawnAsyncTasks, RegionSpawnTaskResult, RegionTileSpawnRequest},
+        regioning_sgc_components::*,
+    },
+    tile::tile_components::DeleteOtherTiles,
+    tilemap_resources::MassCollectedTiles,
+};
 
 use bit_vec::BitVec;
 
@@ -355,31 +366,119 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
     region_query: Query<(&ChunksActiveInRegion, &RegionPlannedTiles),(Or<(Changed<ChunksActiveInRegion>, Changed<RegionPlannedTiles>, )>, With<BuildingStarted>)>,
     chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<ReadyForTerrgen>)>,
     mut collected: ResMut<MassCollectedTiles>,
+    mut async_tasks: ResMut<RegioningSpawnAsyncTasks>,
 ) {
     let mut ready = Vec::new();
     let mut to_insert_delete_others = Vec::new();
+
+    async_tasks.spawn_tasks.retain_mut(|task| {
+        if let Some(result) = future::block_on(future::poll_once(task)) {
+            apply_spawn_task_result(&mut cmd, &mut collected, &mut ready, &mut to_insert_delete_others, result);
+            false
+        } else {
+            true
+        }
+    });
+
+    if !ready.is_empty() {
+        cmd.try_insert_batch(ready);
+    }
+    if !to_insert_delete_others.is_empty() {
+        cmd.try_insert_batch(to_insert_delete_others);
+    }
+
+    if !async_tasks.spawn_tasks.is_empty() {
+        return;
+    }
+
+    let mut inputs = Vec::new();
     region_query.iter().for_each(|(chunks_active_in_region, reg_planned)| {
         chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref)| {
             if reg_planned.is_chunk_pending_build(chunk_pos) {
                 return;
             }
-            
-            if let Some(tiles_to_spawn) = reg_planned.get(&chunk_pos) {
-                debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
-                for (tile_gpos, ezero_ref, delete_others) in tiles_to_spawn {
-                    let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *ezero_ref, *tile_gpos, dimension_ref, OplistSize::default());
-                    if let Some(delete_others) = delete_others {
-                        to_insert_delete_others.push((tile_ent, (delete_others.clone())));
-                    }
-                }
-            } else {
-                trace!(target: "structure_spawn", "No structure tiles to spawn in chunk at {:?}", chunk_pos);
-            }
-            ready.push((chunk_ent, ReadyForTerrgen));
+
+            let tiles = reg_planned.get(&chunk_pos).cloned();
+            inputs.push(RegionSpawnTaskInput {
+                chunk_ent,
+                dimension_ref,
+                tiles,
+            });
         });
     });
-    cmd.try_insert_batch(ready);
-    cmd.try_insert_batch(to_insert_delete_others);
+
+    if inputs.is_empty() {
+        return;
+    }
+
+    let task_pool = AsyncComputeTaskPool::get();
+    async_tasks.spawn_tasks.push(task_pool.spawn(async move {
+        build_spawn_task_result(inputs)
+    }));
+}
+
+#[derive(Clone)]
+struct RegionSpawnTaskInput {
+    chunk_ent: Entity,
+    dimension_ref: DimensionRef,
+    tiles: Option<TilesFromBuilder>,
+}
+
+fn build_spawn_task_result(inputs: Vec<RegionSpawnTaskInput>) -> RegionSpawnTaskResult {
+    let mut result = RegionSpawnTaskResult::default();
+    result.ready_chunks = Vec::with_capacity(inputs.len());
+
+    for input in inputs {
+        result.ready_chunks.push(input.chunk_ent);
+
+        let Some(tiles) = input.tiles else {
+            continue;
+        };
+
+        if !tiles.is_empty() {
+            debug!(
+                target: "structure_spawn",
+                "Spawning {} structure tiles in chunk {:?}",
+                tiles.len(),
+                input.chunk_ent
+            );
+        }
+
+        for (tile_gpos, ezero_ref, delete_others) in tiles {
+            result.spawn_requests.push(RegionTileSpawnRequest {
+                chunk_ent: input.chunk_ent,
+                dimension_ref: input.dimension_ref,
+                tile_gpos,
+                ezero_ref,
+                delete_others,
+            });
+        }
+    }
+
+    result
+}
+
+fn apply_spawn_task_result(
+    cmd: &mut Commands,
+    collected: &mut MassCollectedTiles,
+    ready: &mut Vec<(Entity, ReadyForTerrgen)>,
+    to_insert_delete_others: &mut Vec<(Entity, DeleteOtherTiles)>,
+    result: RegionSpawnTaskResult,
+) {
+    ready.extend(result.ready_chunks.into_iter().map(|ent| (ent, ReadyForTerrgen)));
+
+    for request in result.spawn_requests {
+        let tile_ent = collected.clonespawn_and_push_tile(
+            cmd,
+            request.ezero_ref,
+            request.tile_gpos,
+            request.dimension_ref,
+            OplistSize::default(),
+        );
+        if let Some(delete_others) = request.delete_others {
+            to_insert_delete_others.push((tile_ent, delete_others));
+        }
+    }
 }
 
 #[allow(unused_parens, )]
