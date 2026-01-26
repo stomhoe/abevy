@@ -24,6 +24,7 @@ pub fn launch_terrain_gen_operations (
     let chunk_count = chunks_query.iter().count();
     let chunk_area = chunk_count * ChunkPos::CHUNK_SIZE.element_product() as usize * 4;
     let mut batch = Vec::with_capacity(chunk_area);
+    let mut terr_gen_ops = Vec::with_capacity(chunk_count);
     for (chunk_ent, chunk_pos, &dim_ref) in chunks_query.iter() {
         let Ok((dim_root_op_list, )) = dimension_query.get(dim_ref.0) else {
             error!("No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
@@ -51,9 +52,10 @@ pub fn launch_terrain_gen_operations (
                 });
             }
         }
-        commands.entity(chunk_ent).try_insert(TerrGenOpsLaunched);
+        terr_gen_ops.push((chunk_ent, TerrGenOpsLaunched));
     }
     ew_pending_ops.write_batch(batch);
+    commands.try_insert_batch(terr_gen_ops);
     Ok(())
 }
 #[allow(unused_parens)]
