@@ -71,6 +71,7 @@ pub fn plugin(app: &mut App) {
         RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["sampler.ron"]),
     ))
     .init_resource::<TilesAtGpos>()
+    .init_resource::<TileAsyncTasks>()
     .init_resource::<TileEzerosMap>()
     .init_resource::<TileWeightedSamplersMap>()
     

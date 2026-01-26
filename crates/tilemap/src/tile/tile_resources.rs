@@ -1,4 +1,4 @@
-use bevy::{ecs::entity::EntityHashSet, math::f32, platform::collections::{HashMap, HashSet}};
+use bevy::{ecs::entity::EntityHashSet, math::f32, platform::collections::{HashMap, HashSet}, tasks::Task};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
@@ -24,6 +24,25 @@ pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]
 pub struct TilesAtGpos (pub HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>);
+
+#[derive(Debug, Clone)]
+pub struct TileGposAddition {
+    pub dimension_ref: DimensionRef,
+    pub gpos: GlobalTilePos,
+    pub entity: Entity,
+    pub is_primary: bool,
+}
+
+#[derive(Debug, Default)]
+pub struct TileGposTaskResult {
+    pub additions: Vec<TileGposAddition>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct TileAsyncTasks {
+    pub gpos_tasks: Vec<Task<TileGposTaskResult>>,
+    pub despawn_tasks: Vec<Task<Vec<Entity>>>,
+}
 
 
 #[derive(AssetCollection, Resource, Default, Reflect)]

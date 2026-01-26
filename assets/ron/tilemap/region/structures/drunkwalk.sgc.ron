@@ -4,7 +4,7 @@
     structure_id: "drunkwalk",
     weight: 1.0,
     tags: Some([ "dungeon", "" ]),
-    pdisk_mindist_and_tag: Some([
-        (Some(3), "dungeon"),
-    ]),
+    // pdisk_mindist_and_tag: Some([
+    //     (Some(0), "dungeon"),
+    // ]),
 )

@@ -46,8 +46,8 @@ pub fn launch_terrain_gen_operations (
 }
 #[allow(unused_parens)]
 /// input: PendingOp messages. output: PendingOp messages (for bifurcations), SuitablePosFound messages
-pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactorizar todo esto, que se hagan llamadas recursivas en vez de spawnear nuevos con resmut. Buscar TaskPool sino causa freezes
-    mut pending_ops_events: ResMut<Messages<PendingOp>>,
+pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactorizar todo esto, que se hagan llamadas recursivas
+    mut pending_ops_events: ResMut<Messages<PendingOp>>,//turn into MessageReader!!!!, don't write out more of these!
     gen_settings: Single<&GlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ( )>,
     fnl_noises: Query<&FnlNoiseComp,>,
@@ -59,13 +59,13 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
 ) {
-    let mut new_pending_ops_events: Vec<PendingOp> = Vec::new();
+    let mut pending_ops_batch: Vec<PendingOp> = Vec::new();
     let mut sampled_value_events: Vec<SuitablePosFound> = Vec::new();
     let mut tile_requests: Vec<TerrGenTileRequest> = Vec::new();
 
     terrgen_tasks.launch_tasks.retain_mut(|task| {
         if let Some(batch) = future::block_on(future::poll_once(task)) {
-            new_pending_ops_events.extend(batch);
+            pending_ops_batch.extend(batch);
             false
         } else {
             true
@@ -74,7 +74,6 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
 
     terrgen_tasks.op_tasks.retain_mut(|task| {
         if let Some(result) = future::block_on(future::poll_once(task)) {
-            new_pending_ops_events.extend(result.new_pending_ops);
             sampled_value_events.extend(result.sampled_value_events);
             tile_requests.extend(result.tile_requests);
             false
@@ -95,9 +94,6 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
         );
     }
 
-    if !new_pending_ops_events.is_empty() {
-        pending_ops_events.write_batch(new_pending_ops_events);
-    }
     if !sampled_value_events.is_empty() {
         ewriter_sampled_value.write_batch(sampled_value_events);
     }
@@ -110,84 +106,121 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
         }));
     }
 
-    if pending_ops_events.is_empty() { return; }
-
     let gen_settings = (*gen_settings).clone();
-    let mut inputs: Vec<TerrGenOpTaskInput> = Vec::with_capacity(pending_ops_events.len());
-    for ev in pending_ops_events.drain() {
-        let Ok((oplist, &my_oplist_size, oplist_tags)) = oplist_query.get(ev.oplist)
-        else {
-            error!("Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
+    pending_ops_batch.extend(pending_ops_events.drain());
+    if pending_ops_batch.is_empty() { return; }
+
+    let task_context = build_terrgen_task_context(
+        &pending_ops_batch,
+        &oplist_query,
+        &fnl_noises,
+        &op_filters,
+        &dim_hash_query,
+    );
+
+    if !pending_ops_batch.is_empty() {
+        let task_pool = AsyncComputeTaskPool::get();
+        terrgen_tasks.op_tasks.push(task_pool.spawn(async move {
+            process_pending_ops_batch(pending_ops_batch, task_context, gen_settings)
+        }));
+    }
+}
+
+#[derive(Clone)]
+struct TerrGenTaskContext {
+    oplists: HashMap<Entity, OperationList>,
+    oplist_sizes: HashMap<Entity, OplistSize>,
+    oplist_tags: HashMap<Entity, Option<HashedTagsVec>>,
+    child_oplist_sizes: HashMap<Entity, HashMap<Entity, OplistSize>>,
+    noises: HashMap<Entity, FnlNoiseComp>,
+    filters: HashMap<Entity, OpFilter>,
+    dimension_hashes: HashMap<Entity, HashId>,
+}
+
+fn build_terrgen_task_context(
+    pending_ops: &[PendingOp],
+    oplist_query: &Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ()>,
+    fnl_noises: &Query<&FnlNoiseComp>,
+    op_filters: &Query<&OpFilter>,
+    dim_hash_query: &Query<&HashId, AnyDisabling>,
+) -> TerrGenTaskContext {
+    let mut oplists: HashMap<Entity, OperationList> = HashMap::new();
+    let mut oplist_sizes: HashMap<Entity, OplistSize> = HashMap::new();
+    let mut oplist_tags: HashMap<Entity, Option<HashedTagsVec>> = HashMap::new();
+    let mut child_oplist_sizes: HashMap<Entity, HashMap<Entity, OplistSize>> = HashMap::new();
+    let mut noise_entities: HashSet<Entity> = HashSet::new();
+
+    let mut to_visit: Vec<Entity> = pending_ops.iter().map(|ev| ev.oplist).collect();
+    let mut visited: HashSet<Entity> = HashSet::new();
+
+    while let Some(oplist_ent) = to_visit.pop() {
+        if !visited.insert(oplist_ent) {
+            continue;
+        }
+
+        let Ok((oplist, &oplist_size, oplist_tags_opt)) = oplist_query.get(oplist_ent) else {
+            error!("Oplist entity {:?} not found in terrgen_process_pending_ops", oplist_ent);
             continue;
         };
 
-        let dimension_hash = dim_hash_query
-            .get(ev.dimension_ref.0)
-            .cloned()
-            .unwrap_or_default();
-
-        let noise_entities = collect_noise_entities(oplist);
-        let mut noises: HashMap<Entity, FnlNoiseComp> = HashMap::with_capacity(noise_entities.len());
-        let mut missing_noise = false;
-        for ent in noise_entities {
-            let Ok(noise) = fnl_noises.get(ent) else {
-                error!("Noise entity {} not found", ent);
-                missing_noise = true;
-                break;
-            };
-            noises.insert(ent, noise.clone());
-        }
-        if missing_noise {
-            continue;
-        }
-
-        let filter = if ev.filtered_op != Entity::PLACEHOLDER {
-            op_filters.get(ev.filtered_op).ok().cloned()
-        } else {
-            None
-        };
-
-        let mut child_oplist_sizes: HashMap<Entity, OplistSize> = HashMap::new();
+        let mut child_sizes: HashMap<Entity, OplistSize> = HashMap::new();
         for bifurcation in oplist.bifurcations.iter() {
             if let Some(child_oplist) = bifurcation.oplist {
                 let Ok((_, &child_size, _)) = oplist_query.get(child_oplist) else {
                     error!("OplistSize not found for child oplist {:?}", child_oplist);
                     continue;
                 };
-                child_oplist_sizes.insert(child_oplist, child_size);
+                child_sizes.insert(child_oplist, child_size);
+                to_visit.push(child_oplist);
             }
         }
 
-        inputs.push(TerrGenOpTaskInput {
-            pending: ev,
-            oplist: oplist.clone(),
-            oplist_size: my_oplist_size,
-            oplist_tags: oplist_tags.cloned(),
-            noises,
-            filter,
-            child_oplist_sizes,
-            dimension_hash,
-        });
+        noise_entities.extend(collect_noise_entities(oplist));
+        child_oplist_sizes.insert(oplist_ent, child_sizes);
+        oplists.insert(oplist_ent, oplist.clone());
+        oplist_sizes.insert(oplist_ent, oplist_size);
+        oplist_tags.insert(oplist_ent, oplist_tags_opt.cloned());
     }
 
-    if !inputs.is_empty() {
-        let task_pool = AsyncComputeTaskPool::get();
-        terrgen_tasks.op_tasks.push(task_pool.spawn(async move {
-            process_pending_ops_batch(inputs, gen_settings)
-        }));
+    let mut noises: HashMap<Entity, FnlNoiseComp> = HashMap::with_capacity(noise_entities.len());
+    for ent in noise_entities {
+        let Ok(noise) = fnl_noises.get(ent) else {
+            error!("Noise entity {} not found", ent);
+            continue;
+        };
+        noises.insert(ent, noise.clone());
     }
-}
 
-#[derive(Clone)]
-struct TerrGenOpTaskInput {
-    pending: PendingOp,
-    oplist: OperationList,
-    oplist_size: OplistSize,
-    oplist_tags: Option<HashedTagsVec>,
-    noises: HashMap<Entity, FnlNoiseComp>,
-    filter: Option<OpFilter>,
-    child_oplist_sizes: HashMap<Entity, OplistSize>,
-    dimension_hash: HashId,
+    let mut filters: HashMap<Entity, OpFilter> = HashMap::new();
+    for ev in pending_ops.iter() {
+        if ev.filtered_op == Entity::PLACEHOLDER {
+            continue;
+        }
+        if let Ok(filter) = op_filters.get(ev.filtered_op) {
+            filters.insert(ev.filtered_op, filter.clone());
+        } else {
+            trace!(target: "terrgen_process", "Failed to get OpFilter of entity {:?}", ev.filtered_op);
+        }
+    }
+
+    let mut dimension_hashes: HashMap<Entity, HashId> = HashMap::new();
+    for ev in pending_ops.iter() {
+        let hash = dim_hash_query
+            .get(ev.dimension_ref.0)
+            .cloned()
+            .unwrap_or_default();
+        dimension_hashes.insert(ev.dimension_ref.0, hash);
+    }
+
+    TerrGenTaskContext {
+        oplists,
+        oplist_sizes,
+        oplist_tags,
+        child_oplist_sizes,
+        noises,
+        filters,
+        dimension_hashes,
+    }
 }
 
 fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<PendingOp> {
@@ -235,20 +268,42 @@ fn collect_noise_entities(oplist: &OperationList) -> Vec<Entity> {
     noise_entities.into_iter().collect()
 }
 
-fn process_pending_ops_batch(inputs: Vec<TerrGenOpTaskInput>, gen_settings: GlobalGenSettings) -> TerrGenOpTaskResult {
+fn process_pending_ops_batch(
+    pending_ops: Vec<PendingOp>,
+    context: TerrGenTaskContext,
+    gen_settings: GlobalGenSettings,
+) -> TerrGenOpTaskResult {
     let mut result = TerrGenOpTaskResult::default();
+    let mut pending_queue = pending_ops;
 
-    for input in inputs { unsafe {
-        let mut ev = input.pending;
-        let oplist = input.oplist;
-        let my_oplist_size = input.oplist_size;
-        let oplist_tags = input.oplist_tags;
-        let noises = input.noises;
-        let filter = input.filter;
-        let child_oplist_sizes = input.child_oplist_sizes;
-        let dimension_hash = input.dimension_hash;
+    while let Some(mut ev) = pending_queue.pop() { unsafe {
+        let Some(oplist) = context.oplists.get(&ev.oplist) else {
+            error!("Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
+            continue;
+        };
+        let Some(&my_oplist_size) = context.oplist_sizes.get(&ev.oplist) else {
+            error!("OplistSize not found for oplist {:?}", ev.oplist);
+            continue;
+        };
+
+        let oplist_tags = context
+            .oplist_tags
+            .get(&ev.oplist)
+            .cloned()
+            .unwrap_or(None);
+        let child_oplist_sizes = context.child_oplist_sizes.get(&ev.oplist);
+        let dimension_hash = context
+            .dimension_hashes
+            .get(&ev.dimension_ref.0)
+            .cloned()
+            .unwrap_or_default();
+        let filter = if ev.filtered_op != Entity::PLACEHOLDER {
+            context.filters.get(&ev.filtered_op)
+        } else {
+            None
+        };
+
         let global_pos = ev.gpos;
-
         let bifurcations_len = oplist.bifurcations.len();
         let has_filter = ev.filtered_op != Entity::PLACEHOLDER;
 
@@ -256,18 +311,20 @@ fn process_pending_ops_batch(inputs: Vec<TerrGenOpTaskInput>, gen_settings: Glob
             let mut operation_acc_val: f32 = 0.0;
             let mut selected_operand_i = 0;
             let operands_len = operands.len();
+            let mut missing_noise = false;
 
             for (operand_i, operand) in operands.iter().enumerate() {
                 let mut curr_operand_val = match &operand.element {
                     OperandElement::StackArray(i) => ev.variables[*i],
                     OperandElement::Value(val) => *val,
                     OperandElement::NoiseEntity(ent, sample_range, compl, operand_seed) => {
-                        let Some(noise) = noises.get(ent) else {
+                        let Some(noise) = context.noises.get(ent) else {
                             error!("Noise entity {} not found", ent);
-                            return TerrGenOpTaskResult::default();
+                            missing_noise = true;
+                            break;
                         };
                         noise.sample(global_pos, dimension_hash, *sample_range, *compl, *operand_seed, &gen_settings)
-                    },
+                    }
                     OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, dimension_hash, *seed) as f32,
                     OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(global_pos, &gen_settings, dimension_hash, true, my_oplist_size) as f32,
                 };
@@ -309,11 +366,15 @@ fn process_pending_ops_batch(inputs: Vec<TerrGenOpTaskInput>, gen_settings: Glob
                 );
             }
 
+            if missing_noise {
+                continue;
+            }
+
             trace!("Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
             ev.variables[*stackarr_out_i] = operation_acc_val;
 
             if has_filter {
-                if let Some(ref filter) = filter {
+                if let Some(filter) = filter {
                     let Some(oplist_tags) = oplist_tags.as_ref() else {
                         continue;
                     };
@@ -343,10 +404,14 @@ fn process_pending_ops_batch(inputs: Vec<TerrGenOpTaskInput>, gen_settings: Glob
         let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
 
         if let Some(child_oplist) = bifurcation.oplist {
-            if let Some(&child_oplist_size) = child_oplist_sizes.get(&child_oplist) {
-                spawn_bifurcation_oplists(&mut ev, my_oplist_size, &mut result.new_pending_ops, child_oplist, child_oplist_size);
+            if let Some(child_sizes) = child_oplist_sizes {
+                if let Some(&child_oplist_size) = child_sizes.get(&child_oplist) {
+                    spawn_bifurcation_oplists(&mut ev, my_oplist_size, &mut pending_queue, child_oplist, child_oplist_size);
+                } else {
+                    error!("OplistSize not found for child oplist {:?}", child_oplist);
+                }
             } else {
-                error!("OplistSize not found for child oplist {:?}", child_oplist);
+                error!("No child oplist sizes found for oplist {:?}", ev.oplist);
             }
         }
 
