@@ -58,7 +58,7 @@ pub fn launch_terrain_gen_operations (
 }
 #[allow(unused_parens)]
 /// input: PendingOp messages. output: PendingOp messages (for bifurcations), SuitablePosFound messages
-pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, 
+pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactorizar todo esto, que se hagan llamadas recursivas en vez de spawnear nuevos con resmut. Buscar TaskPool sino causa freezes
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
     gen_settings: Single<&GlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ( )>,

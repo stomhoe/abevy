@@ -217,6 +217,7 @@ pub fn process_tiles_pre(
             default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
         }
     }
+    cmd.try_insert_batch(default_mats);
     cmd.try_insert_batch(texture_overlay_mats);
     cmd.try_insert_batch(wavy_mats);
     cmd.try_insert_batch(insert2tmaps);
