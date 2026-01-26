@@ -351,18 +351,18 @@ pub fn validate_portal_recipes(mut cmd: Commands,
         }
         if found {
             debug!(target:"portal_init", "PortalRecipe with dest_dimension entity {:?} successfully found oplist with intersecting tagset for {:?}.", recipe.dest_dimension, searched_tags);
-            cmd.entity(ezero_portal).try_insert(SeekPortalOtherEnd);
+            cmd.entity(ezero_portal).try_insert(SeekingPortalOtherEnd);
         }
         else{
             error!(target:"portal_init", "PortalRecipe with dest_dimension entity {:?} could not find any oplist's tagset which intersects {:?}.", recipe.dest_dimension, searched_tags);
-            cmd.entity(ezero_portal).try_remove::<SeekPortalOtherEnd>();
+            cmd.entity(ezero_portal).try_remove::<SeekingPortalOtherEnd>();
         }
     }
 }
 
 #[allow(unused_parens)]
 pub fn instantiate_portal(mut cmd: Commands,
-    new_portals: Query<(Entity, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(Added<SeekPortalOtherEnd>, Without<EntityZero>, AnyDisabling)>,
+    new_portals: Query<(Entity, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(With<SeekingPortalOtherEnd>, Without<EntityZero>, AnyDisabling)>,
     ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>, AnyDisabling)>,
     pending_search: Query<(Entity, &SearchingForSuitablePos, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
     dimension_query: Query<(&DimensionRootOplist), ()>,
@@ -376,14 +376,14 @@ pub fn instantiate_portal(mut cmd: Commands,
     let mut pos_searches = Vec::new();
     
     new_portals.iter().for_each(|(portal_ent, &global_pos, dim_ref, ezero_ref)| {
+        info!(target:"portal_init", "Instantiating portal tile entity {:?} at position {:?} in dimension {:?}", portal_ent, global_pos, dim_ref);
+        cmd.entity(portal_ent).try_remove::<SeekingPortalOtherEnd>();
         let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
             error!(target:"portal_init", "Portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, ezero_ref.0);
-            cmd.entity(portal_ent).try_remove::<SeekPortalOtherEnd>();
             return;
         };
         let Some(portal_recipe) = portal_recipe_opt else {
             error!(target:"portal_init", "Portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, ezero_ref.0);
-            cmd.entity(portal_ent).try_remove::<SeekPortalOtherEnd>();
             return;
         };
         let Ok((&dimension_root_oplist)) = dimension_query.get(portal_recipe.dest_dimension) else {
@@ -423,9 +423,9 @@ pub fn instantiate_portal(mut cmd: Commands,
         
         
         cmd.entity(our_end_portal).try_insert(PortalTo::new(oe_portal))
-        .try_remove::<(SearchingForSuitablePos, SeekPortalOtherEnd)>();
+        .try_remove::<(SearchingForSuitablePos, SeekingPortalOtherEnd)>();
         
-        cmd.entity(oe_portal).try_remove::<(SeekPortalOtherEnd)>()
+        cmd.entity(oe_portal).try_remove::<(SeekingPortalOtherEnd)>()
         // .try_insert(DeleteOtherTiles {
         //     spared_z: HashSet::from_iter(vec![AcZ::new(-900.0)]),
         //     extra_radius: 2,
@@ -564,7 +564,7 @@ pub fn client_sync_tile(
 #[allow(unused_parens)]
 pub fn make_child_of_chunk(mut cmd: Commands, 
     query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilemapId>, 
-        Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, AnyDisabling, Without<EntityZero>, )>,
+        Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
     loaded_chunks: Res<LoadedChunks>,
 ) {
     let mut child_ofs = Vec::new();

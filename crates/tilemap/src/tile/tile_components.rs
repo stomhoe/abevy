@@ -28,7 +28,7 @@ pub struct ToDenyOnTileClone(
     //children entities don't get cloned
     Children, EntityZero, 
     DisplayName, Prefix, TileStrId,
-    ToDenyOnReleaseBuild,
+    
 );//Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]
@@ -71,7 +71,7 @@ pub type TileStrId = StrId20B;
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct SeekPortalOtherEnd;
+pub struct SeekingPortalOtherEnd;
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]

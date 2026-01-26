@@ -427,7 +427,6 @@ fn func_process_tile_into_tilemaps(
             (tmap_handles, storage, tmap_hash_id_map)
         };
         let Vector(tmap_handles) = tmap_handles else {
-            error!(target: "tilemap_systems", "Failed to get tilemap handles for {:?}", tmap_ent);
             return;
         };
         

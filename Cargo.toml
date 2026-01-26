@@ -16,7 +16,6 @@ bevy = { version = "0.18", features = [
     "track_location",
     "serialize",
     "jpeg",
-    "trace",
 ] }
 
 nano-id = "0.4.0"

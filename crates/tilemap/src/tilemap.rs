@@ -33,7 +33,7 @@ pub fn plugin(app: &mut App) {
             detect_camera_change_pos, 
             update_chunk_visib,
             recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(1000))),
-            process_tiles_pre.before(despawn_unreferenced_chunks)//NO TOCAR
+            process_tiles_pre.before(despawn_unreferenced_chunks)// DON'T TOUCH
         ).in_set(ChunkSystems)
     ))
     .configure_sets(Update, (
