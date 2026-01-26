@@ -21,16 +21,20 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilt
 
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
-    DisplayName, MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
+    MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
     TileShaderRef, AcZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
     DeleteOtherTiles, PortalRecipe, PortalSeri, 
     TagSet, HashedTagsVec,
     //children entities don't get cloned
     Children, EntityZero, 
+    DisplayName, Prefix, TileStrId,
+    ToDenyOnReleaseBuild,
 );//Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]
-struct ToDenyOnReleaseBuild( Name, Prefix, TileStrId  );
+struct ToDenyOnReleaseBuild( 
+    Name, 
+);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct KeepDisabled;

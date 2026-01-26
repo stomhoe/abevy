@@ -8,7 +8,7 @@ use {bevy::prelude::*,};
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app
-        .add_systems(Update, (set_entity_name, update_img_sizes_on_load, add_hash_id_from_str_id, add_hashed_tags, ))
+        .add_systems(Update, (update_img_sizes_on_load, add_hash_id_from_str_id, add_hashed_tags, ))
         .add_plugins(())
         .insert_state::<AppState>(AppState::NoSession)
         .init_state::<PreGameState>()

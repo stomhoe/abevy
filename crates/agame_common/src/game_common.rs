@@ -33,6 +33,7 @@ pub fn plugin(app: &mut App) {
         (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
         clone_ezero_children_ents,
+        set_entity_name,
         //disable_ezeros,
         delete_sprites_without_childof,
     ))

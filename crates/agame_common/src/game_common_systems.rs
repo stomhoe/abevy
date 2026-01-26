@@ -4,7 +4,9 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
 use bevy_replicon::prelude::Replicated;
 use common::common_components::AnyDisabling;
+use common::common_components::DisplayName;
 use common::common_components::ImagePathHolder;
+use common::common_components::Prefix;
 use common::common_components::StrId;
 use common::common_components::StrId20B;
 use common::common_states::GamePhase;
@@ -104,4 +106,71 @@ pub fn delete_sprites_without_childof(mut cmd: Commands,
     query.iter().for_each(|sprite_ent| {
         cmd.entity(sprite_ent).try_despawn()
     });
+}
+
+
+/// DEACTIVATE THIS SYSTEM IN RELEASE BUILDS !!!!
+#[allow(unused_parens)]
+pub fn set_entity_name(
+    ezeros_query: Query<AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &EntityZeroRef)>, (With<EntityZero>, AnyDisabling)>,
+    mut changers_query: Query<(&mut Name, AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &EntityZeroRef)>), 
+    (
+        Or<(Changed<Prefix>, Changed<StrId>, Changed<StrId20B>, Changed<DisplayName>, Changed<EntityZeroRef>)>, 
+    AnyDisabling)>,
+) {
+    for (mut name, (e_prefix, strid, strid20b, display_name, ezero_ref)) in changers_query.iter_mut() {
+        let mut prefix = e_prefix.map(|p| p.as_str());
+        let mut sid = strid.map(|s| s.as_str());
+        let mut sid20 = strid20b.map(|s| s.as_str());
+        let mut display_name = display_name;
+
+        let mut ezero_id = String::new();
+        if let Some(ezero_ref) = ezero_ref {
+            if let Ok((z_prefix, z_strid, z_strid20, z_display_name, _)) =
+            ezeros_query.get(ezero_ref.0)
+            {
+            if prefix.is_none() {
+                prefix = z_prefix.map(|p| p.as_str());
+            }
+            if sid.is_none() {
+                sid = z_strid.map(|s| s.as_str());
+            }
+            if sid20.is_none() {
+                sid20 = z_strid20.map(|s| s.as_str());
+            }
+            if display_name.is_none() {
+                display_name = z_display_name;
+            }
+            }
+            ezero_id = format!("{:?}", ezero_ref.0);
+        }
+
+        let prefix = prefix.unwrap_or("");
+        let sid = sid.unwrap_or("");
+        let sid20 = sid20.unwrap_or("");
+
+        let mut new_name = String::with_capacity(
+            prefix.len()
+            + 1
+            + sid.len()
+            + sid20.len()
+            + ezero_id.len()
+            + display_name.map(|d| d.0.len() + 2).unwrap_or(0),
+        );
+
+        new_name.push_str(prefix);
+        new_name.push(' ');
+        new_name.push_str(sid);
+        new_name.push_str(sid20);
+        if !ezero_id.is_empty() {
+            new_name.push_str(&ezero_id);
+        }
+
+        if let Some(dn) = display_name {
+            new_name.push(' ');
+            new_name.push_str(dn.0.as_str());
+        }
+
+        name.set(new_name);
+    }
 }

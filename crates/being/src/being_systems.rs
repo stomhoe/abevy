@@ -66,7 +66,7 @@ pub fn on_control_change(
             commands.entity(ent).try_insert_if_new((ControlledLocally::default(), ActivatingChunks::new(&chunk_range)));
             if human_controlled.0 {//PROVISORIO
                 debug!(target: "being_control", "Entity {:?} is now a CameraTarget", ent);
-                commands.entity(ent).try_insert(CameraTarget);
+                commands.entity(ent).try_insert(CameraTarget::default());
             } else {
                 debug!(target: "being_control", "Entity {:?} is no longer a CameraTarget", ent);
                 commands.entity(ent).try_remove::<CameraTarget>();
