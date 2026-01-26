@@ -61,6 +61,10 @@ concat!(
 
 /*
 cargo run --release --features bevy/trace_tracy,bevy/debug
+
+/usr/local/bin/tracy-profiler
+
+
 */
 
 

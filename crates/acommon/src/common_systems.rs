@@ -1,5 +1,6 @@
 
 use bevy::ecs::entity_disabling::Disabled;
+use std::fmt::Write;
 #[allow(unused_imports)] use bevy::prelude::*;
 use crate::{
     common_components::*, common_resources::ImageSizeMap,
@@ -9,22 +10,35 @@ use crate::{
 //    common_events::*,
 };
 
+
+/// DEACTIVATE THIS SYSTEM IN RELEASE BUILDS !!!!
 #[allow(unused_parens)]
-pub fn set_entity_name(//DESACTIVAR EN RELEASE BUILDS
+pub fn set_entity_name(
     mut query: Query<(&mut Name, AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName)>), 
-    (Or<(Changed<Prefix>, Changed<StrId>, Changed<DisplayName>,)>, AnyDisabling)>,
+    (
+        Or<(Changed<Prefix>, Changed<StrId>, Changed<StrId20B>, Changed<DisplayName>,)>, 
+    AnyDisabling)>,
 ) {
     for (mut name, (e_prefix, strid, strid20b, display_name)) in query.iter_mut() {
-        let display_name = if let Some(display_name) = display_name {
-            format!(" {:?}", display_name.0.as_str())
-        } else {
-            "".to_string()
-        };
+        let prefix = e_prefix.map(|p| p.as_str()).unwrap_or("");
+        let sid = strid.map(|s| s.as_str()).unwrap_or("");
+        let sid20 = strid20b.map(|s| s.as_str()).unwrap_or("");
 
-        let new_name = format!("{} {}{}{}", e_prefix.cloned().unwrap_or_default(), strid.cloned().unwrap_or_default(), strid20b.cloned().unwrap_or_default(), display_name);
+        let mut new_name = String::with_capacity(
+            prefix.len() + 1 + sid.len() + sid20.len() + display_name.map(|d| d.0.len() + 2).unwrap_or(0),
+        );
+
+        new_name.push_str(prefix);
+        new_name.push(' ');
+        new_name.push_str(sid);
+        new_name.push_str(sid20);
+
+        if let Some(dn) = display_name {
+            new_name.push(' ');
+            let _ = write!(new_name, "{:?}", dn.0.as_str());
+        }
 
         name.set(new_name);
-        
     }
 }
 

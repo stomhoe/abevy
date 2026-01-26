@@ -103,8 +103,6 @@ pub fn emit_global_tile_pos_change(
     mwriter.write_batch(write);
 }
 
-
-#[allow(unused_parens)]
 #[allow(unused_parens)]
 pub fn add_spawned_tiles_to_gpos_map(
     mut map: ResMut<TilesAtGpos>,
