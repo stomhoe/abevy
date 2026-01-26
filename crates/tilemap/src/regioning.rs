@@ -24,7 +24,7 @@ pub fn plugin(app: &mut App) {
             read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems,
             (drunkwalk_dungeon_building_system, advanced_dungeon_building_system).in_set(StructureBuildingSystems),
             failsafe_timeout_pending_chunks,
-            add_planned_tiles_to_region,
+            add_planned_tiles_to_region.before(process_pending_ops_and_collect_tiles),
             timeout_pending_offers,
             advance_i_on_claimlist_timeout,
             clonespawn_tiles_on_chunk_spawn.before(process_tiles_pre)
