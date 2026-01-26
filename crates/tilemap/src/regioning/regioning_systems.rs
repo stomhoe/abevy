@@ -323,7 +323,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
 }
 
 #[allow(unused_parens)]
-pub fn add_planed_tiles_to_region(mut cmd: Commands, 
+pub fn add_planned_tiles_to_region(mut cmd: Commands, 
     mut reader: MessageMutator<StructureBuildCompliance>,
     loaded_regions: Res<LoadedRegions>,
     mut region_query: Query<(&mut RegionPlannedTiles, Has<AllTilesPrepared>),()>,

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_fps_counter::FpsCounter;
 use modifier::{modifier_components::*, modifier_move_components::Speed};
 use being::being_components::{Being, ControlledLocally};
 
@@ -20,5 +21,18 @@ pub fn debug_increase_speed(
                 val.0 *= 0.9;
             }
         });
+    }
+}
+
+fn mouse_handler(
+    mouse_button_input: Res<ButtonInput<KeyCode>>,
+    mut diags_state: ResMut<FpsCounter>,
+) {
+    if mouse_button_input.pressed(KeyCode::F11) {
+        if diags_state.is_enabled() {
+            diags_state.disable();
+        } else {
+            diags_state.enable();
+        }
     }
 }

@@ -41,9 +41,9 @@ pub fn plugin(app: &mut App) {
         init_tile_sprite,
         emit_global_tile_pos_change,
         validate_portal_recipes,
+        remove_tile_from_gpos_map_on_despawn,
     ))
     .add_observer(remove_ezero_tile_from_map_on_despawn)
-    .add_observer(remove_tile_from_gpos_map_on_despawn)
     .add_observer(remove_tws_from_map_on_despawn)
     
     /* .add_systems(map_portal_tiles

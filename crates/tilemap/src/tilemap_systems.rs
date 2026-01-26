@@ -85,17 +85,17 @@ pub fn process_tiles_pre(
     });
 
     if let Some(plan_result) = plan_results.pop() {
-        apply_tilemap_plan(
-            &mut cmd,
-            plan_result,
-            &mut chunk_query,
-            &mut tilemaps,
-            &shader_query,
-            &mut texture_overlay_mat,
-            &mut voronoi_mat,
-            &mut wavy_mat,
-            chunkrange,
-        );
+            apply_tilemap_plan(
+                &mut cmd,
+                plan_result,
+                &mut chunk_query,
+                &mut tilemaps,
+                &shader_query,
+                &mut texture_overlay_mat,
+                &mut voronoi_mat,
+                &mut wavy_mat,
+                chunkrange,
+            );
         return Ok(());
     }
     if !tilemap_tasks.plan_tasks.is_empty() {
@@ -363,10 +363,10 @@ fn apply_tilemap_plan(
     let mut tilemap_bundles = Vec::with_capacity(200);
     let mut spritetiles_to_insert_pos_and_dim_ref = Vec::with_capacity(plan.sprite_tiles.len());
     //collect here
-    let mut to_insert_replicated = plan.replicated_tiles
-        .iter()
-        .map(|&tile_ent| (tile_ent, Replicated))
-        .collect::<Vec<(Entity, Replicated)>>();
+    let mut to_insert_replicated = Vec::with_capacity(plan.replicated_tiles.len());
+    for &tile_ent in &plan.replicated_tiles {
+        to_insert_replicated.push((tile_ent, Replicated));
+    }
     let mut tiles_to_insert: Vec<(Entity, TileMassSpawnBundle)> = Vec::with_capacity(tiles_len);
 
     for sprite in plan.sprite_tiles {
@@ -447,29 +447,24 @@ fn apply_tilemap_plan(
         );
         insert2tmaps.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
 
-        let shader = if Entity::PLACEHOLDER != mapkey.shader_ref.0 {
-            shader_query.get(mapkey.shader_ref.0).ok().map(|(shader,)| shader.clone())
-        } else {
-            None
-        };
-        if let Some(shader) = shader {
+        if let Ok((shader,)) = shader_query.get(mapkey.shader_ref.0) {
             match shader {
                 TileShader::TexRepeat(handle) => {
-                    let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle));
+                    let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle.clone()));
                     texture_overlay_mats.push((tmap_ent, material));
                 }
                 TileShader::Voronoi(handle) => {
-                    let material = MaterialTilemapHandle::from(voronoi_mat.add(handle));
+                    let material = MaterialTilemapHandle::from(voronoi_mat.add(handle.clone()));
                     cmd.entity(tmap_ent).try_insert(material);
                 }
                 TileShader::Wavy(handle) => {
-                    let material = MaterialTilemapHandle::from(wavy_mat.add(handle));
+                    let material = MaterialTilemapHandle::from(wavy_mat.add(handle.clone()));
                     wavy_mats.push((tmap_ent, material.clone()));
                 }
                 TileShader::TwoTexRepeat(_handle) => todo!(),
             };
-
-        } else {
+        }
+        else {
             default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
         }
     }
@@ -597,14 +592,18 @@ fn func_process_tile_into_tilemaps(
 #[allow(unused_parens)]
 pub fn tile_assign_child_of(mut cmd: Commands, 
     tile_instances_holder_query: Single<Entity, With<TileInstancesHolder>>,
-    query: Query<Entity, (Without<ChildOf>, With<TilemapId>, With<TileTextureIndex>, AnyDisabling)>,
+    query: Query<(Entity, &TilemapId), (Without<ChildOf>, AnyDisabling)>,
 ) {
     let parent = tile_instances_holder_query.into_inner();
 
-    let child_ofs_for_tiles: Vec<(Entity, ChildOf)> = query
-        .iter()
-        .map(|tile_ent| (tile_ent, ChildOf(parent)))
-        .collect();
+    let mut child_ofs_for_tiles: Vec<(Entity, ChildOf)> = Vec::with_capacity(query.iter().size_hint().0);
+    for (tile_ent, &tile_map_id) in query.iter() {
+        if tile_map_id == TilemapId::default() {
+            cmd.entity(tile_ent).try_despawn();
+            continue;
+        }
+        child_ofs_for_tiles.push((tile_ent, ChildOf(parent)));
+    }
 
     cmd.try_insert_batch(child_ofs_for_tiles);
 }

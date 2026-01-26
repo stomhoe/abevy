@@ -224,7 +224,7 @@ pub fn extract(//TODO EXPONER UN EVENTO
 ) {
     let now = std::time::Instant::now();
 
-    let mut extracted_tiles = Vec::with_capacity(changed_tiles_query.iter().count());
+    let mut extracted_tiles = Vec::with_capacity(changed_tiles_query.iter().size_hint().0);
 
     let mut extracted_tilemaps_keys = EntityHashSet::with_capacity(event_reader.len()); 
     let mut extracted_tilemaps: Vec<(Entity, ExtractedTilemapBundle)> = Vec::with_capacity(event_reader.len());

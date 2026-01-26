@@ -18,12 +18,12 @@ use game_common::{game_common_components::*, game_common_components_samplers::En
 pub struct TileMassSpawnBundle{
     pub ezero_ref: EntityZeroRef,
     pub gpos: GlobalTilePos,
-    pub prev_gpos: PrevGlobalTilePos,
     pub dim_ref: DimensionRef,
-    pub prev_dim_ref: PrevDimensionRef,
     pub oplist_size: OplistSize,
     pub tile_bundle: bevy_ecs_tilemap::prelude::TileBundle,
     pub initial_pos: InitialPos,
+    pub prev_gpos: PrevGlobalTilePos,
+    pub prev_dim_ref: PrevDimensionRef,
     
 }
 
@@ -68,12 +68,12 @@ impl MassCollectedTiles {
         let helper = TileMassSpawnBundle {
             ezero_ref,
             gpos,
-            prev_gpos: PrevGlobalTilePos(gpos),
             dim_ref,
-            prev_dim_ref: PrevDimensionRef(dim_ref.0),
             oplist_size,
             tile_bundle,
             initial_pos: InitialPos(gpos),
+            prev_gpos: PrevGlobalTilePos(gpos),
+            prev_dim_ref: PrevDimensionRef(dim_ref.0),
         };
         self.0.push((tile_instance, helper));
         tile_instance

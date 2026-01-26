@@ -26,7 +26,7 @@ pub struct ToDenyOnTileClone(
     DeleteOtherTiles, PortalRecipe, PortalSeri, 
     TagSet, HashedTagsVec,
     //children entities don't get cloned
-    Children, EntityZero, ToDenyOnReleaseBuild
+    Children, EntityZero, 
 );//Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]

@@ -59,6 +59,11 @@ concat!(
 );
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
+/*
+cargo run --release --features bevy/trace_tracy,bevy/debug
+*/
+
+
 fn main() {
     
     App::new()
@@ -109,7 +114,7 @@ fn main() {
 
     ;
 }
-/* 
+/* ç
 Log Levels
     Trace (Not printed by default) (PARA MENSAJES MUY SPAM)
     Debug (Not printed by default) (MENSAJES Q SON SOLO PARA DEBUGGEAR PERO NO SPAMMEAN)

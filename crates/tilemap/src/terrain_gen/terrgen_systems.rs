@@ -1,13 +1,13 @@
 
 
 
-use bevy::{ecs::entity::EntityHashSet, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy::{prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use common::{common_components::{AnyDisabling, HashId}, common_tag_components::HashedTagsVec, };
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{DimensionRef, DimensionRootOplist};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*, terrgen_resources::*}, tilemap_resources::MassCollectedTiles };
-use std::{collections::{HashMap, HashSet}, f32::consts::PI, };
+use std::{collections::{HashMap, HashSet}, f32::consts::PI, mem::take};
 use ::tilemap_shared::*;
 
 #[allow(unused_parens)]
@@ -21,7 +21,7 @@ pub fn launch_terrain_gen_operations (
 ) -> Result {
     if chunks_query.is_empty() { return Ok(()); }
 
-    let chunk_count = chunks_query.iter().count();
+    let chunk_count = chunks_query.iter().size_hint().0;
     let mut terr_gen_ops = Vec::with_capacity(chunk_count);
     for (chunk_ent, chunk_pos, &dim_ref) in chunks_query.iter() {
         let Ok((dim_root_op_list, )) = dimension_query.get(dim_ref.0) else {
@@ -58,10 +58,13 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
+    mut pending_ops_batch: Local<Vec<PendingOp>>,
+    mut sampled_value_events: Local<Vec<SuitablePosFound>>,
+    mut tile_requests: Local<Vec<TerrGenTileRequest>>,
 ) {
-    let mut pending_ops_batch: Vec<PendingOp> = Vec::new();
-    let mut sampled_value_events: Vec<SuitablePosFound> = Vec::new();
-    let mut tile_requests: Vec<TerrGenTileRequest> = Vec::new();
+    pending_ops_batch.clear();
+    sampled_value_events.clear();
+    tile_requests.clear();
 
     terrgen_tasks.launch_tasks.retain_mut(|task| {
         if let Some(batch) = future::block_on(future::poll_once(task)) {
@@ -82,7 +85,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
         }
     });
 
-    for request in tile_requests {
+    for request in tile_requests.drain(..) {
         collected.collect_tiles(
             &mut cmd,
             &request.bif_tiles,
@@ -95,11 +98,11 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
     }
 
     if !sampled_value_events.is_empty() {
-        ewriter_sampled_value.write_batch(sampled_value_events);
+        ewriter_sampled_value.write_batch(sampled_value_events.drain(..));
     }
 
     if !launch_queue.0.is_empty() {
-        let work_items = launch_queue.0.drain(..).collect::<Vec<_>>();
+        let work_items = take(&mut launch_queue.0);
         let task_pool = AsyncComputeTaskPool::get();
         terrgen_tasks.launch_tasks.push(task_pool.spawn(async move {
             build_pending_ops_for_launch(work_items)
@@ -118,12 +121,11 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
         &dim_hash_query,
     );
 
-    if !pending_ops_batch.is_empty() {
-        let task_pool = AsyncComputeTaskPool::get();
-        terrgen_tasks.op_tasks.push(task_pool.spawn(async move {
-            process_pending_ops_batch(pending_ops_batch, task_context, gen_settings)
-        }));
-    }
+    let pending_ops_batch = take(&mut *pending_ops_batch);
+    let task_pool = AsyncComputeTaskPool::get();
+    terrgen_tasks.op_tasks.push(task_pool.spawn(async move {
+        process_pending_ops_batch(pending_ops_batch, task_context, gen_settings)
+    }));
 }
 
 #[derive(Clone)]
@@ -144,14 +146,15 @@ fn build_terrgen_task_context(
     op_filters: &Query<&OpFilter>,
     dim_hash_query: &Query<&HashId, AnyDisabling>,
 ) -> TerrGenTaskContext {
-    let mut oplists: HashMap<Entity, OperationList> = HashMap::new();
-    let mut oplist_sizes: HashMap<Entity, OplistSize> = HashMap::new();
-    let mut oplist_tags: HashMap<Entity, Option<HashedTagsVec>> = HashMap::new();
-    let mut child_oplist_sizes: HashMap<Entity, HashMap<Entity, OplistSize>> = HashMap::new();
-    let mut noise_entities: HashSet<Entity> = HashSet::new();
+    let pending_len = pending_ops.len();
+    let mut oplists: HashMap<Entity, OperationList> = HashMap::with_capacity(pending_len);
+    let mut oplist_sizes: HashMap<Entity, OplistSize> = HashMap::with_capacity(pending_len);
+    let mut oplist_tags: HashMap<Entity, Option<HashedTagsVec>> = HashMap::with_capacity(pending_len);
+    let mut child_oplist_sizes: HashMap<Entity, HashMap<Entity, OplistSize>> = HashMap::with_capacity(pending_len);
+    let mut noise_entities: HashSet<Entity> = HashSet::with_capacity(pending_len);
 
     let mut to_visit: Vec<Entity> = pending_ops.iter().map(|ev| ev.oplist).collect();
-    let mut visited: HashSet<Entity> = HashSet::new();
+    let mut visited: HashSet<Entity> = HashSet::with_capacity(pending_len);
 
     while let Some(oplist_ent) = to_visit.pop() {
         if !visited.insert(oplist_ent) {
@@ -163,7 +166,7 @@ fn build_terrgen_task_context(
             continue;
         };
 
-        let mut child_sizes: HashMap<Entity, OplistSize> = HashMap::new();
+        let mut child_sizes: HashMap<Entity, OplistSize> = HashMap::with_capacity(oplist.bifurcations.len());
         for bifurcation in oplist.bifurcations.iter() {
             if let Some(child_oplist) = bifurcation.oplist {
                 let Ok((_, &child_size, _)) = oplist_query.get(child_oplist) else {
@@ -191,7 +194,7 @@ fn build_terrgen_task_context(
         noises.insert(ent, noise.clone());
     }
 
-    let mut filters: HashMap<Entity, OpFilter> = HashMap::new();
+    let mut filters: HashMap<Entity, OpFilter> = HashMap::with_capacity(pending_len);
     for ev in pending_ops.iter() {
         if ev.filtered_op == Entity::PLACEHOLDER {
             continue;
@@ -203,13 +206,15 @@ fn build_terrgen_task_context(
         }
     }
 
-    let mut dimension_hashes: HashMap<Entity, HashId> = HashMap::new();
+    let mut dimension_hashes: HashMap<Entity, HashId> = HashMap::with_capacity(pending_len / 2 + 1);
     for ev in pending_ops.iter() {
-        let hash = dim_hash_query
-            .get(ev.dimension_ref.0)
-            .cloned()
-            .unwrap_or_default();
-        dimension_hashes.insert(ev.dimension_ref.0, hash);
+        if !dimension_hashes.contains_key(&ev.dimension_ref.0) {
+            let hash = dim_hash_query
+                .get(ev.dimension_ref.0)
+                .cloned()
+                .unwrap_or_default();
+            dimension_hashes.insert(ev.dimension_ref.0, hash);
+        }
     }
 
     TerrGenTaskContext {
@@ -589,17 +594,21 @@ pub fn search_suitable_positions(
     studied_ops: Query<&OpFilter, ( )>,
     failed_search_oplist_filter_holder: Single<Entity, (With<FailedSearchOplistFilterHolder>)>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
+    mut found_suitable_positions: Local<HashSet<Entity>>,
+    mut new_pending_ops: Local<Vec<PendingOp>>,
+    mut new_pos_searches: Local<Vec<TerrainProbe>>,
+    mut search_failed_evs: Local<Vec<SearchFailed>>,
+    mut failed_entities: Local<Vec<Entity>>,
 ) {
-    let mut found_suitable_positions = EntityHashSet::new();
-
+    found_suitable_positions.clear();
     for found_ev in mreader_suitable_pos_found.read() {
         found_suitable_positions.insert(found_ev.op_filter_ent);
     }
 
-    let mut new_pending_ops = Vec::new();
-    let mut new_pos_searches = Vec::new();
-    let mut search_failed_evs = Vec::new();
-    let mut failed_entities = Vec::new();
+    new_pending_ops.clear();
+    new_pos_searches.clear();
+    search_failed_evs.clear();
+    failed_entities.clear();
 
     terrgen_tasks.search_tasks.retain_mut(|task| {
         if let Some(result) = future::block_on(future::poll_once(task)) {
@@ -613,18 +622,18 @@ pub fn search_suitable_positions(
         }
     });
 
-    for failed in failed_entities {
+    for failed in failed_entities.drain(..) {
         cmd.entity(failed).try_insert(ChildOf(failed_search_oplist_filter_holder.entity()));
     }
 
     if !new_pending_ops.is_empty() {
-        mwriter_pending_ops.write_batch(new_pending_ops);
+        mwriter_pending_ops.write_batch(new_pending_ops.drain(..));
     }
     if !new_pos_searches.is_empty() {
-        terrain_probe.write_batch(new_pos_searches);
+        terrain_probe.write_batch(new_pos_searches.drain(..));
     }
     if !search_failed_evs.is_empty() {
-        mwriter_search_failed.write_batch(search_failed_evs);
+        mwriter_search_failed.write_batch(search_failed_evs.drain(..));
     }
 
     if terrain_probe.is_empty() { return; }
@@ -635,7 +644,7 @@ pub fn search_suitable_positions(
         inputs.push(TerrGenSearchTaskInput { probe: pos_search, opfilter });
     }
 
-    let found = found_suitable_positions.into_iter().collect::<HashSet<_>>();
+    let found = found_suitable_positions.drain().collect::<HashSet<_>>();
     let task_pool = AsyncComputeTaskPool::get();
     terrgen_tasks.search_tasks.push(task_pool.spawn(async move {
         process_search_batch(inputs, found)

@@ -1,5 +1,6 @@
-use bevy::{ecs::entity::EntityHashSet, math::f32, platform::collections::{HashMap, HashSet}, tasks::Task};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::f32, platform::collections::{HashMap, HashSet}, tasks::Task};
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_ecs_tilemap::{map::TilemapId, tiles::TilePos};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
@@ -23,12 +24,42 @@ pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
 
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]
-pub struct TilesAtGpos (pub HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>);
+pub struct TilesAtGpos  { 
+    pub map: HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>,
+    pub entity_pos_map: EntityHashMap<(DimensionRef, GlobalTilePos, TilePos, TilemapId)>,
+ }
+ impl TilesAtGpos {
+    pub fn reserve_capacity(&mut self, additional: usize) {
+        self.map.reserve(additional);
+        self.entity_pos_map.reserve(additional);
+    }
+    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, tpos: TilePos, tilemap_id: Option<TilemapId>, ) {
+        self.map.entry((dimension_ref, gpos)).or_default().push(entity);
+        self.entity_pos_map.insert(entity, (dimension_ref, gpos, tpos, tilemap_id.unwrap_or_default()));
+    }
+    pub fn remove_entity_and_get_data(&mut self, entity: Entity) -> Option<(TilePos, TilemapId)> {
+        if let Some((dimension_ref, gpos, tpos, tilemap_id)) = self.entity_pos_map.remove(&entity) {
+            if let Some(entities) = self.map.get_mut(&(dimension_ref, gpos)) {
+                if let Some(pos) = entities.iter().position(|&e| e == entity) {
+                    entities.swap_remove(pos);
+                    if entities.is_empty() {
+                        self.map.remove(&(dimension_ref, gpos));
+                    }
+                }
+            }
+            Some((tpos, tilemap_id))
+        } else {
+            None
+        }
+    }
+ }
 
 #[derive(Debug, Clone)]
 pub struct TileGposAddition {
     pub dimension_ref: DimensionRef,
     pub gpos: GlobalTilePos,
+    pub tile_pos: TilePos,
+    pub tilemap_id: TilemapId,
     pub entity: Entity,
     pub is_primary: bool,
 }

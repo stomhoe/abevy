@@ -47,17 +47,6 @@ pub fn tick_time_based_multipliers(time: Res<Time>,
         multiplier.timer.tick(time.delta().mul_f32(factor));
     }
 }
-/* */
-#[allow(unused_parens)]
-pub fn disable_ezeros(mut cmd: Commands, 
-    query: Query<(Entity),(With<EntityZero>, Without<Disabled>)>,
-) {
-    let mut batch = Vec::with_capacity(query.iter().count());
-    query.iter().for_each(|ent| {
-        batch.push((ent, Disabled));
-    });
-    cmd.try_insert_batch(batch);
-}
 
 
 #[derive(Bundle)]

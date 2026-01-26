@@ -25,7 +25,7 @@ pub fn plugin(app: &mut App) {
         clear_chunks_on_dim_change,
         rem_outofrange_chunks_from_activators, 
         despawn_unreferenced_chunks, 
-        tile_assign_child_of,
+        tile_assign_child_of.run_if(on_timer(Duration::from_millis(100))),
         (
             activate_chunks_every_second,
             detect_activators_with_changes, 
