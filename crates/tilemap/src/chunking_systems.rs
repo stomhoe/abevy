@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use bevy_ecs_tilemap::{DrawTilemap, map::*, tiles::TileStorage};
+use bevy_ecs_tilemap::{DrawTilemap, tiles::TileStorage};
 use camera::camera_components::CameraTarget;
 use common::common_components::{AnyDisabling, StrId20B};
 use dimension_shared::DimensionRef;
@@ -194,7 +194,7 @@ pub fn despawn_unreferenced_chunks(
     mut referenced_chunks: Local<HashSet<Entity>>,
     mut tosave_events: Local<Vec<SavedTileHadChunkDespawn>>,
 ) {
-    let mut despawn_retransmitted_events = Vec::new();
+    let despawn_retransmitted_events = Vec::new();
     referenced_chunks.clear();
     referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.entities.len()).sum());
     for (_, activates_chunks) in activator_query.iter() {
@@ -202,8 +202,8 @@ pub fn despawn_unreferenced_chunks(
     }
     tosave_events.clear();
     
-    for CheckChunkDespawn(chunk_ent, retransmission_count) in despawn_events.drain() {
-        let Ok((&chunk_dimension, &chunk_pos, children, tiles_to_save)) = chunks_query.get(chunk_ent) else {
+    for CheckChunkDespawn(chunk_ent, _retransmission_count) in despawn_events.drain() {
+        let Ok((&chunk_dimension, &chunk_pos, children, _tiles_to_save)) = chunks_query.get(chunk_ent) else {
             //cmd.entity(chunk_ent).try_despawn();
             continue; 
         };

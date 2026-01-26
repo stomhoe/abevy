@@ -48,7 +48,6 @@ pub fn plugin(app: &mut App) {
             TerrainGenSystems.before(GameplaySystems),
         )
     )
-    .register_type::<ChunkTmapsMap>()
     .register_type::<LoadedChunks>()
     .register_type::<ActivatingChunks>()
     .register_type::<ChunkPos>()

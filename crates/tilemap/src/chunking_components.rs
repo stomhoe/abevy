@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-use bevy::{ecs::{entity::EntityHashSet, }, platform::collections::{HashMap, HashSet}, prelude::*};
-use sprite_shared::AcZ;
+use bevy::{ecs::{entity::EntityHashSet, }, prelude::*};
 
 use crate::{chunking_resources::AaChunkRangeSettings, regioning::regioning_components::ChunksActiveInRegion, };
 use ::tilemap_shared::*;
@@ -11,7 +10,7 @@ use common::{common_components::*, };
 #[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
 #[relationship(relationship_target = ChunksActiveInRegion)]
 
-#[require(Visibility::Hidden, AssetScoped, ChunkTmapsMap, TilesToSave, )]
+#[require(Visibility::Hidden, AssetScoped, TilesToSave, )]
 pub struct Chunk {
     #[relationship]
     pub region_ent: Entity,
@@ -41,12 +40,6 @@ pub struct ReadyForTerrgen;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct TerrgenDisallowed;
-
-use crate::tilemap_systems::{MapKey, MapStruct};
-
-#[derive(Component, Default, Clone, Reflect, )]
-pub struct ChunkTmapsMap(pub HashMap<MapKey, MapStruct>);
-
 
 #[derive(Component, Debug, Reflect)]
 pub struct ActivatingChunks {

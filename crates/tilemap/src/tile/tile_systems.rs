@@ -1,7 +1,6 @@
 
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy::tasks::{AsyncComputeTaskPool, futures_lite::future};
 use bevy_ecs_tilemap::{map::TilemapId, tiles::TileFlip};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
@@ -10,7 +9,7 @@ use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos, HashablePosVec, PrevGlobalTilePos, OplistSize};
-use crate::{ chunking_components::ChunkTmapsMap, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::{TileAsyncTasks, TileGposAddition, TileGposTaskResult, TilesAtGpos}}, };
+use crate::{ tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::{TilesAtGpos}}, };
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
@@ -61,7 +60,7 @@ pub fn spritetile_readjust_transform_to_match_globalpos(
     state: Res<State<ClientState>>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
     let is_host = *state.get() == ClientState::Disconnected;
-    query.iter_mut().for_each(|(ent, mut transform, global_pos, visibility, child_of, ezero_ref, replicated, keep_disabled)| {
+    query.iter_mut().for_each(|(ent, mut transform, global_pos, visibility, child_of, _ezero_ref, replicated, keep_disabled)| {
         let transl_from_global_pos = global_pos.to_translation(transform.translation.z);
         
         let parent_global_transl = if let Some(child_of) = child_of {
@@ -115,7 +114,7 @@ pub fn add_spawned_tiles_to_gpos_map(
     
     map.reserve_capacity(entities.len());
     
-    query.iter_many(entities).for_each(|(ent, &dimension_ref, &gpos, &tpos, tilemap_id, oplist_size)| {
+    query.iter_many(entities).for_each(|(ent, &dimension_ref, &gpos, &tpos, tilemap_id, _oplist_size)| {
         map.insert(ent, dimension_ref, gpos, tpos, tilemap_id.copied(), );         
     });
 }
