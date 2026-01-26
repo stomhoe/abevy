@@ -147,7 +147,6 @@ pub fn init_oplists_from_assets(
                 "-" => Operation::Subtract,
                 "*" => Operation::Multiply,
                 "*opo" => Operation::MultiplyOpo,
-                "/" => Operation::Divide,
                 "min" => Operation::Min,
                 "max" => Operation::Max,
                 "avg" => Operation::Average,
@@ -157,7 +156,6 @@ pub fn init_oplists_from_assets(
                 "idxmax" => Operation::i_Max,
                 "idxnorm" => Operation::i_Norm,
                 "lin" => Operation::Linear,
-                "clamp" => Operation::Clamp,
                 _ => {
                     error!("Unknown operation: {}", operation);
                     continue;

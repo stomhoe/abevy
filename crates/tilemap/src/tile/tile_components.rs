@@ -23,10 +23,10 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilt
 pub struct ToDenyOnTileClone(
     DisplayName, MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
     TileShaderRef, AcZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
-    DeleteOtherTiles, PortalRecipe, PortalSeri,
+    DeleteOtherTiles, PortalRecipe, PortalSeri, 
     TagSet, HashedTagsVec,
     //children entities don't get cloned
-    Children, EntityZero, 
+    Children, EntityZero, ToDenyOnReleaseBuild
 );//Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]
@@ -147,6 +147,7 @@ impl TileHidsHandles {
         
         Ok(Self { ids, handles, })
     }
+    pub fn len(&self) -> usize { self.handles.len() }
     
     pub fn first_handle(&self) -> Handle<Image> {
         self.handles.first().cloned().unwrap_or_else(|| Handle::default())

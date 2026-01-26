@@ -1,12 +1,12 @@
 
 
 
-use bevy::{ecs::{entity::{EntityHashSet, }, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
-use common::{common_components::{AnyDisabling, DisplayName, HashId, StrId}, common_tag_components::HashedTagsVec, };
+use bevy::{ecs::entity::EntityHashSet, prelude::*};
+use common::{common_components::{AnyDisabling, HashId}, common_tag_components::HashedTagsVec, };
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{DimensionRef, DimensionRootOplist};
-use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
-use crate::{chunking_components::*, chunking_resources::{AaChunkRangeSettings, LoadedChunks}, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*, terrgen_resources::*}, tile::tile_components::*, tilemap_resources::MassCollectedTiles };
+use game_common::game_common_components_samplers::EntityWeightedSampler;
+use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_oplist_components::*}, tilemap_resources::MassCollectedTiles };
 use std::{f32::consts::PI, };
 use ::tilemap_shared::*;
 
@@ -14,23 +14,24 @@ use ::tilemap_shared::*;
 pub fn launch_terrain_gen_operations (
     mut commands: Commands, 
     chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<ReadyForTerrgen>)>, 
-    dimension_query: Query<(&DimensionRootOplist, &HashId), ()>,
+    dimension_query: Query<(&DimensionRootOplist, ), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut ew_pending_ops: MessageWriter<PendingOp>,
 
 ) -> Result {
     if chunks_query.is_empty() { return Ok(()); }
 
-    let chunk_area = chunks_query.iter().len() * ChunkPos::CHUNK_SIZE.element_product() as usize * 4;
+    let chunk_count = chunks_query.iter().count();
+    let chunk_area = chunk_count * ChunkPos::CHUNK_SIZE.element_product() as usize * 4;
     let mut batch = Vec::with_capacity(chunk_area);
-    chunks_query.iter().for_each(|(chunk_ent, chunk_pos, &dim_ref)| {
-        let Ok((dim_root_op_list, hash_id)) = dimension_query.get(dim_ref.0) else {
+    for (chunk_ent, chunk_pos, &dim_ref) in chunks_query.iter() {
+        let Ok((dim_root_op_list, )) = dimension_query.get(dim_ref.0) else {
             error!("No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
-            return;
+            continue;
         };
         let Ok((oplist, oplist_size)) = oplists.get(dim_root_op_list.0) else {
             error!("Dimension references non-existent root operation list {:?}", dim_root_op_list);
-            return;
+            continue;
         };
         for x in 0..ChunkPos::CHUNK_SIZE.x / oplist_size.x() {
             for y in 0..ChunkPos::CHUNK_SIZE.y / oplist_size.y() {
@@ -44,18 +45,14 @@ pub fn launch_terrain_gen_operations (
                     pos_within_chunk,
                     oplist_size
                 );
-                if commands.get_entity(chunk_ent).is_err() {
-                    return;
-                }
                 batch.push(PendingOp {
                     oplist, dimension_ref: dim_ref, gpos, 
                     variables: VariablesArray::default(), filtered_op: Entity::PLACEHOLDER,
                 });
             }
         }
-        if commands.get_entity(chunk_ent).is_err() { return; }
         commands.entity(chunk_ent).try_insert(TerrGenOpsLaunched);
-    });   
+    }
     ew_pending_ops.write_batch(batch);
     Ok(())
 }
@@ -74,8 +71,9 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
 ) {
     if pending_ops_events.is_empty() { return; }
 
-    let mut new_pending_ops_events = Vec::with_capacity(pending_ops_events.len());
-    let mut sampled_value_events = Vec::new();
+    let pending_count = pending_ops_events.len();
+    let mut new_pending_ops_events = Vec::with_capacity(pending_count);
+    let mut sampled_value_events = Vec::with_capacity(pending_count);
 
     for mut ev in pending_ops_events.drain() {unsafe{
    
@@ -90,10 +88,14 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
             dim_hash_query.get(ev.dimension_ref.0)
             .cloned()
             .unwrap_or_default();
+
+        let bifurcations_len = oplist.bifurcations.len();
+        let has_filter = ev.filtered_op != Entity::PLACEHOLDER;
         
-        oplist.trunk.iter().enumerate().for_each(|(op_i, (operation, operands, stackarr_out_i))| {
+        for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
             let mut operation_acc_val: f32 = 0.0;
             let mut selected_operand_i = 0; 
+            let operands_len = operands.len();
 
             for (operand_i, operand) in operands.iter().enumerate() {
                 let mut curr_operand_val = match &operand.element {
@@ -112,7 +114,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                 if operand.complement && !matches!(operand.element, OperandElement::NoiseEntity(_, _, _, _)) {
                     curr_operand_val = 1.0 - curr_operand_val;
                 }
-                let is_last = operand_i == operands.len() - 1;   
+                let is_last = operand_i + 1 == operands_len;   
                 let prev_value = operation_acc_val;
 
                 match (operation, operand_i, is_last) {
@@ -120,7 +122,6 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     (Operation::Subtract, 1.., _) => operation_acc_val -= curr_operand_val,
                     (Operation::Multiply, 1.., _) => operation_acc_val *= curr_operand_val,
                     (Operation::MultiplyOpo, 1.., _) => operation_acc_val *= (1.0 - curr_operand_val),
-                    (Operation::Divide, 1.., _) => if curr_operand_val != 0.0 { operation_acc_val /= curr_operand_val },
                     (Operation::Min, 1.., _) => operation_acc_val = operation_acc_val.min(curr_operand_val),
                     (Operation::Max, 1.., _) => operation_acc_val = operation_acc_val.max(curr_operand_val),
                     (Operation::Average, _, false) => {operation_acc_val += curr_operand_val;},
@@ -138,14 +139,9 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                     (Operation::i_Max, _, true) => {if curr_operand_val > operation_acc_val
                         { selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32;}
                     (Operation::i_Norm, 0, false) => { operation_acc_val = curr_operand_val; }
-                    (Operation::i_Norm, 0, true) => { operation_acc_val = curr_operand_val * (oplist.bifurcations.len() - 1) as f32; }
+                    (Operation::i_Norm, 0, true) => { operation_acc_val = curr_operand_val * (bifurcations_len - 1) as f32; }
                     (Operation::i_Norm, _, false) => { operation_acc_val *= curr_operand_val; }
-                    (Operation::i_Norm, 1.., true) => { operation_acc_val *= curr_operand_val * (oplist.bifurcations.len() - 1) as f32; }
-                    (Operation::Clamp, 0, true) => {operation_acc_val = curr_operand_val.max(0.0).min(1.0);},
-                    (Operation::Clamp, 0, _) => {operation_acc_val = curr_operand_val;},
-                    (Operation::Clamp, 1, false) => {operation_acc_val = curr_operand_val.max(operation_acc_val);},
-                    (Operation::Clamp, 1, true) => {operation_acc_val = curr_operand_val.max(operation_acc_val).min(1.0);},
-                    (Operation::Clamp, 2.., _) => {operation_acc_val = curr_operand_val.min(operation_acc_val);},
+                    (Operation::i_Norm, 1.., true) => { operation_acc_val *= curr_operand_val * (bifurcations_len - 1) as f32; }
                     (_, 0, _) => {operation_acc_val = curr_operand_val;},
                 }
 
@@ -158,11 +154,11 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
             trace!("Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
             ev.variables[*stackarr_out_i] = operation_acc_val;
 
-            if (ev.filtered_op != Entity::PLACEHOLDER)  {
+            if has_filter  {
                 if let Ok(ref mut filter) = op_filters.get(ev.filtered_op) {
 
                     let Some(oplist_tags) = oplist_tags else {
-                        return;
+                        continue;
                     };
                     let filter_tags = &filter.tags;
                     
@@ -180,17 +176,17 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
                                 found_pos: ev.gpos,
                             });
                         }
-                        return;
+                        continue;
                     } 
                 }
                 else{
                     trace!(target: "terrgen_process", "Failed to get OpFilter of entity {:?}", ev.filtered_op);
-                    return;
+                    continue;
                 }
             }
-        });
+        }
 
-        let destination_i = (ev.variables[0] as usize).min(oplist.bifurcations.len() - 1).max(0);   
+        let destination_i = (ev.variables[0] as usize).min(bifurcations_len - 1).max(0);   
         trace!("Destination index for bifurcation: {}", destination_i);
 
         let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
@@ -244,9 +240,10 @@ pub fn search_suitable_positions(
     studied_ops: Query<&OpFilter, ( )>,
     failed_search_oplist_filter_holder: Single<Entity, (With<FailedSearchOplistFilterHolder>)>,
 ) {
-    let mut new_pending_ops = Vec::new();
-    let mut new_pos_searches = Vec::new();
-    let mut search_failed_evs = Vec::new();
+    let pending_count = terrain_probe.len();
+    let mut new_pending_ops = Vec::with_capacity(pending_count);
+    let mut new_pos_searches = Vec::with_capacity(pending_count);
+    let mut search_failed_evs = Vec::with_capacity(pending_count);
     let mut found_suitable_positions = EntityHashSet::new();
 
     for found_ev in mreader_suitable_pos_found.read() {

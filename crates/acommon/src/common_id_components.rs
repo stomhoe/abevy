@@ -135,7 +135,12 @@ impl Debug for HashId {
 #[derive(Component, Default, Deserialize, Serialize, Clone, Debug, Reflect)]
 pub struct HashIdMap<T>(pub HashMap<HashId, T>);
 impl<T> HashIdMap<T> {
-    pub fn new() -> Self { Self(HashMap::new()) }
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+    pub fn reserve(&mut self, additional: usize) {
+        self.0.reserve(additional);
+    }
     pub fn insert<S: AsRef<str>>(&mut self, key: S, value: T) -> Option<T> { self.0.insert(HashId::from(key), value) }
     pub fn insert_with_id(&mut self, id: HashId, value: T) -> Option<T> { self.0.insert(id, value) }
 

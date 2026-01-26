@@ -45,7 +45,7 @@ pub struct TerrgenDisallowed;
 use crate::tilemap_systems::{MapKey, MapStruct};
 
 #[derive(Component, Default, Clone, Reflect, )]
-pub struct ChunkTmapsMap(pub HashMap<AcZ, HashMap<MapKey, MapStruct>>);
+pub struct ChunkTmapsMap(pub HashMap<MapKey, MapStruct>);
 
 
 #[derive(Component, Debug, Reflect)]

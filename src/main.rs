@@ -27,35 +27,35 @@ concat!(
 
     "tilemap::terrain_gen::terrgen_systems=info,",
     "terrgen_process=info,",
-    "structure_spawn=debug,",
-    "tilemap_systems=trace,",
-    "tilemap=debug,",
-    "add2gposmap=info,",
+    "structure_spawn=warn,",
+    "tilemap_systems=warn,",
+    "tilemap=warn,",
+    "add2gposmap=warn,",
 
     "zlevel=info,",
     "movement=warn,",
-    "sprite_init=trace,",
-    "sprite_building=trace,",
-    "sprite_systems=trace,",
-    "sprite_systems=trace,",
+    "sprite_init=warn,",
+    "sprite_building=warn,",
+    "sprite_systems=warn,",
+    "sprite_systems=warn,",
 
-    "being_control=trace,",
+    "being_control=warn,",
     "game_init_systems=info,",
     
-    "sprite_animation_init=trace,",
+    "sprite_animation_init=warn,",
     "entity_zero=info,",
-    "dungeoning=trace,",
-    "sgc_chunk_claim=trace,",
+    "dungeoning=warn,",
+    "sgc_chunk_claim=warn,",
 
     "tile_init=info,",
     "asset_loading=warn,",
-    "tiling_loading=debug,",
-    "dimension_loading=debug,",
-    "control=debug,",
-    "being=debug,",
-    "faction=debug,",
-    "zsort=trace,",
-    "inspector=trace,",
+    "tiling_loading=warn,",
+    "dimension_loading=warn,",
+    "control=warn,",
+    "being=warn,",
+    "faction=warn,",
+    "zsort=warn,",
+    "inspector=warn,",
 );
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
@@ -74,7 +74,6 @@ fn main() {
             .set(ImagePlugin::default_nearest(),),
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
-            //SimpleSubsecondPlugin::default(),
         ))
         .add_plugins((
             multiplayer_shared::plugin, //VA ARRIBA    

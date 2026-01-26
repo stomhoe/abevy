@@ -51,3 +51,8 @@ impl TilemapConfig {
 
 #[derive(Component, Debug, Clone, Default, Reflect)]
 pub struct TmapHashIdtoTextureIndex(pub HashIdMap<TileTextureIndex>);
+impl TmapHashIdtoTextureIndex {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashIdMap::with_capacity(capacity))
+    }
+}
