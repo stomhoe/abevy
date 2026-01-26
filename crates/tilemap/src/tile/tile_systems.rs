@@ -157,30 +157,12 @@ pub fn remove_tile_from_gpos_map_on_despawn(
     }
 }
 
-#[allow(unused_parens)]//problema: aunque se despawnee la tile va a ser procesada en process_tiles_pre
 pub fn despawn_if_not_excepted(mut cmd: Commands, 
     ezero_query: Query<(Option<&AcZ>, Option<&DeleteOtherTiles>), (With<EntityZero>, AnyDisabling, )>,
     changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, AnyDisabling, Without<EntityZero>, )>,
     otile_query: Query<(&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>), (AnyDisabling, Without<EntityZero>, )>,
     map: Res<TilesAtGpos>,
-    mut async_tasks: ResMut<TileAsyncTasks>,
 ) {
-    async_tasks.despawn_tasks.retain_mut(|task| {
-        if let Some(result) = future::block_on(future::poll_once(task)) {
-            for ent in result {
-                cmd.entity(ent).try_despawn();
-            }
-            false
-        } else {
-            true
-        }
-    });
-    
-    if !async_tasks.despawn_tasks.is_empty() {
-        return;
-    }
-    
-    let mut inputs = Vec::new();
     //TODO: chequear en la EntityZero si tiene DeleteOtherTiles
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
@@ -192,7 +174,6 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
             return;
         };
         
-        let mut others = Vec::new();
         if let Some(otile_ents) = map.map.get(&(dim, gpos)) {
             otile_ents.iter().for_each(|&otile_ent| {
                 if otile_ent == newtile_ent {
@@ -211,100 +192,41 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                     return;
                 };
                 
-                let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp).cloned();
-                others.push(OtherTileInfo {
-                    ent: otile_ent,
-                    z: *otile_z,
-                    tags: otile_tag_hashset.cloned(),
-                    delete_others_excp: otile_delete_others_excp,
-                });
+                
+                let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
+                if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
+                    if newtile_delete_others_excp.spared_z.contains(otile_z) {
+                        return;
+                    }
+                    else if let Some(otile_tag_hashset) = otile_tag_hashset 
+                    && newtile_delete_others_excp.spared_tags.intersects(otile_tag_hashset)
+                    {
+                        return;
+                    }
+                    else {
+                        trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
+                        cmd.entity(otile_ent).try_despawn();
+                        return;
+                    }
+                }
+                
+                let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp);
+                if let Some(otile_delete_others_excp) = otile_delete_others_excp {
+                    if otile_delete_others_excp.spared_z.contains(newtile_z) {
+                        return;
+                    }
+                    else if let Some(newtile_tag_hashset) = newtile_tag_hashset 
+                    && otile_delete_others_excp.spared_tags.intersects(newtile_tag_hashset)
+                    {
+                        return;
+                    }
+                    
+                    else {
+                        trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
+                        cmd.entity(newtile_ent).try_despawn();
+                    }
+                }
             });
         }
-        
-        if others.is_empty() {
-            return;
-        }
-        
-        let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp).cloned();
-        inputs.push(DespawnCandidateInput {
-            newtile_ent,
-            newtile_z: *newtile_z,
-            newtile_tags: newtile_tag_hashset.cloned(),
-            newtile_delete_others_excp,
-            others,
-        });
     });
-    
-    if inputs.is_empty() {
-        return;
-    }
-    
-    let task_pool = AsyncComputeTaskPool::get();
-    async_tasks.despawn_tasks.push(task_pool.spawn(async move {
-        process_despawn_if_not_excepted_batch(inputs)
-    }));
-}
-
-#[derive(Clone)]
-struct DespawnCandidateInput {
-    newtile_ent: Entity,
-    newtile_z: AcZ,
-    newtile_tags: Option<TagSet>,
-    newtile_delete_others_excp: Option<DeleteOtherTiles>,
-    others: Vec<OtherTileInfo>,
-}
-
-#[derive(Clone)]
-struct OtherTileInfo {
-    ent: Entity,
-    z: AcZ,
-    tags: Option<TagSet>,
-    delete_others_excp: Option<DeleteOtherTiles>,
-}
-
-fn process_despawn_if_not_excepted_batch(inputs: Vec<DespawnCandidateInput>) -> Vec<Entity> {
-    let mut to_despawn = Vec::new();
-    for input in inputs {
-        let mut despawn_newtile = false;
-        for other in input.others {
-            if other.ent == input.newtile_ent {
-                continue;
-            }
-            
-            if let Some(newtile_delete_others_excp) = input.newtile_delete_others_excp.as_ref() {
-                if newtile_delete_others_excp.spared_z.contains(&other.z) {
-                    // spared by z
-                } else if other
-                .tags
-                .as_ref()
-                .is_some_and(|tags| newtile_delete_others_excp.spared_tags.intersects(tags))
-                {
-                    // spared by tag
-                } else {
-                    to_despawn.push(other.ent);
-                    continue;
-                }
-            }
-            
-            if let Some(otile_delete_others_excp) = other.delete_others_excp.as_ref() {
-                if otile_delete_others_excp.spared_z.contains(&input.newtile_z) {
-                    continue;
-                } else if input
-                .newtile_tags
-                .as_ref()
-                .is_some_and(|tags| otile_delete_others_excp.spared_tags.intersects(tags))
-                {
-                    continue;
-                } else {
-                    despawn_newtile = true;
-                }
-            }
-        }
-        
-        if despawn_newtile {
-            to_despawn.push(input.newtile_ent);
-        }
-    }
-    
-    to_despawn
 }

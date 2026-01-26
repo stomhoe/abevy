@@ -11,7 +11,7 @@ use bevy::prelude::*;
 
 use crate::{tile::{
     tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
-}, };
+}, tilemap_systems::process_tiles_pre, };
 mod tile_systems;
 mod tile_init_systems;
 mod tile_sampler_init_systems;
@@ -33,7 +33,7 @@ pub fn plugin(app: &mut App) {
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
         (add_tiles_to_map, client_sync_tile, ).run_if(in_state(ClientState::Connected)),
         flip_tile_horizontally_based_on_initial_pos_hash,
-        despawn_if_not_excepted,
+        despawn_if_not_excepted.after(process_tiles_pre),
         (add_spawned_tiles_to_gpos_map, ),
         (spritetile_readjust_transform_to_match_globalpos).chain(),
         make_child_of_chunk,
