@@ -1,10 +1,11 @@
-use bevy::prelude::*;
+use bevy::{math::U16Vec2, prelude::*, tasks::Task};
 use bevy_ecs_tilemap::tiles::*;
 use common::common_components::HashId;
 
 use crate::{terrain_gen::terrgen_messages::PendingOp, };
 use dimension_shared::{DimensionRef, PrevDimensionRef};
-use crate::tile::tile_components::*;
+use crate::tile::{tile_components::*, tile_shader::tile_shader_components::TileShaderRef};
+use sprite_shared::AcZ;
 
 use ::tilemap_shared::*;
 use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
@@ -113,4 +114,31 @@ impl MassCollectedTiles {
         }
     }
 
+}
+
+#[derive(Debug, Clone)]
+pub struct TilemapPreparedTile {
+    pub tile_ent: Entity,
+    pub bundle: TileMassSpawnBundle,
+    pub tile_strid: TileStrId,
+    pub min_dists: Option<MinDistancesMap>,
+    pub keep_distance_from: Option<KeepDistanceFrom>,
+    pub to_persist: bool,
+    pub tile_z_index: AcZ,
+    pub tile_handles: Option<TileHidsHandles>,
+    pub shader_ref: Option<TileShaderRef>,
+    pub transform: Option<Transform>,
+    pub color: Option<TileColor>,
+    pub tile_size: U16Vec2,
+    pub chunk_ent: Option<Entity>,
+}
+
+#[derive(Debug, Default)]
+pub struct TilemapPrepResult {
+    pub prepared_tiles: Vec<TilemapPreparedTile>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct TilemapAsyncTasks {
+    pub prep_tasks: Vec<Task<TilemapPrepResult>>,
 }

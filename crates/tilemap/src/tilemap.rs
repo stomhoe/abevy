@@ -32,7 +32,7 @@ pub fn plugin(app: &mut App) {
             visit_chunks_around_activators,
             detect_camera_change_pos, 
             update_chunk_visib,
-            recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(1000))),
+            recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(2000))),
             process_tiles_pre.before(despawn_unreferenced_chunks)//NO TOCAR
         ).in_set(ChunkSystems)
     ))
@@ -60,6 +60,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadedChunks>()
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<MassCollectedTiles>()
+    .init_resource::<TilemapAsyncTasks>()
 
     .replicate::<PoissonDisk>()
 

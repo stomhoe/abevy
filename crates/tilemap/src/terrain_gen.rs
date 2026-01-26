@@ -45,6 +45,8 @@ pub fn plugin(app: &mut App) {
         .init_resource::<RegisteredPositions>()
         .init_resource::<OpListEntityMap>()
         .init_resource::<TerrGenEntityMap>()
+        .init_resource::<TerrGenLaunchQueue>()
+        .init_resource::<TerrGenAsyncTasks>()
         
         .add_plugins((
             RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),

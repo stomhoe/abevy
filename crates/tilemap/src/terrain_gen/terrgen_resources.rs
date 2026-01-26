@@ -1,13 +1,13 @@
-use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled}, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task};
 use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_replicon::prelude::*;
-use common::{common_components::AnyDisabling, common_types::HashIdToEntityMap};
+use common::{common_components::{AnyDisabling, HashId}, common_types::HashIdToEntityMap};
 
-use crate::{terrain_gen::terrgen_messages::PendingOp, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, }};
+use crate::{terrain_gen::terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, }};
 use dimension_shared::DimensionRef;
 
 use ::tilemap_shared::*;
-use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::*};
 
 use serde::{Deserialize, Serialize};
 
@@ -67,6 +67,47 @@ impl RegisteredPositions {
  
         true
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct TerrGenLaunchWork {
+    pub chunk_ent: Entity,
+    pub chunk_pos: ChunkPos,
+    pub dim_ref: DimensionRef,
+    pub root_oplist: Entity,
+    pub oplist_size: OplistSize,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct TerrGenLaunchQueue(pub Vec<TerrGenLaunchWork>);
+
+#[derive(Debug, Clone)]
+pub struct TerrGenTileRequest {
+    pub bif_tiles: Vec<Entity>,
+    pub pending: PendingOp,
+    pub oplist_size: OplistSize,
+    pub dimension_hash: HashId,
+}
+
+#[derive(Debug, Default)]
+pub struct TerrGenOpTaskResult {
+    pub new_pending_ops: Vec<PendingOp>,
+    pub sampled_value_events: Vec<SuitablePosFound>,
+    pub tile_requests: Vec<TerrGenTileRequest>,
+}
+
+#[derive(Debug, Default)]
+pub struct TerrGenSearchTaskResult {
+    pub new_pending_ops: Vec<PendingOp>,
+    pub new_pos_searches: Vec<TerrainProbe>,
+    pub search_failed: Vec<Entity>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct TerrGenAsyncTasks {
+    pub launch_tasks: Vec<Task<Vec<PendingOp>>>,
+    pub op_tasks: Vec<Task<TerrGenOpTaskResult>>,
+    pub search_tasks: Vec<Task<TerrGenSearchTaskResult>>,
 }
 
 #[derive(Resource, Debug, Default, Reflect, )]
