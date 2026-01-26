@@ -22,8 +22,8 @@ concat!(
     "bevy_ecs::relationship=error,",
     "calloop::loop_logic=error,",
     
-    "portal_init=debug,",
-    
+    "portal_init=trace,",
+    "pos_search=trace,",
 
     "tilemap::terrain_gen::terrgen_systems=info,",
     "terrgen_process=info,",

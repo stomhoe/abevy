@@ -135,7 +135,7 @@ pub fn claim_chunks_for_various_dungeon_types(
             .collect();
 
         if chunk_positions.is_empty() {
-            warn!(target: "dungeoning", "No eligible unclaimed chunks around {:?} for ExampleStructure, skipping", center_chunk);
+            trace!(target: "dungeoning", "No eligible unclaimed chunks around {:?} for ExampleStructure, skipping", center_chunk);
             continue;
         }
 

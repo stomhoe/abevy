@@ -433,6 +433,32 @@ fn process_pending_ops_batch(
     result
 }
 
+
+fn spawn_bifurcation_oplists(
+    ev: &mut PendingOp, my_oplist_size: OplistSize, 
+    new_pending_ops: &mut Vec<PendingOp>, child_oplist: Entity, child_oplist_size: OplistSize,
+) {
+    if my_oplist_size <= child_oplist_size
+    {
+        if ev.gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO
+        {
+            new_pending_ops.push(PendingOp{ oplist: child_oplist, ..(*ev).clone()  });
+        }
+    } 
+    else{
+        let x_end = my_oplist_size.x() as i32 / child_oplist_size.x() as i32; 
+        let y_end = my_oplist_size.y() as i32 / child_oplist_size.y() as i32;
+        for x in 0..x_end {
+            for y in 0..y_end {
+                let gpos = ev.gpos + GlobalTilePos::new(x, y);
+                
+                new_pending_ops.push(PendingOp{ gpos, oplist: child_oplist, ..(*ev).clone()  });
+            }
+        }
+    }
+}
+
+
 #[derive(Clone)]
 struct TerrGenSearchTaskInput {
     probe: TerrainProbe,
@@ -558,32 +584,6 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
         search_failed,
     }
 }
-
-fn spawn_bifurcation_oplists(
-    ev: &mut PendingOp, my_oplist_size: OplistSize, 
-    new_pending_ops: &mut Vec<PendingOp>, child_oplist: Entity, child_oplist_size: OplistSize,
-) {
-    if my_oplist_size <= child_oplist_size
-    {
-        if ev.gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO
-        {
-            new_pending_ops.push(PendingOp{ oplist: child_oplist, ..(*ev).clone()  });
-        }
-    } 
-    else{
-        let x_end = my_oplist_size.x() as i32 / child_oplist_size.x() as i32; 
-        let y_end = my_oplist_size.y() as i32 / child_oplist_size.y() as i32;
-        for x in 0..x_end {
-            for y in 0..y_end {
-                let gpos = ev.gpos + GlobalTilePos::new(x, y);
-
-                new_pending_ops.push(PendingOp{ gpos, oplist: child_oplist, ..(*ev).clone()  });
-            }
-        }
-    }
-}
-
-
 
 #[allow(unused_parens)]
 //input: PosSearch messages. output: SearchFailed or SuitablePosFound(emitted in produce_tiles) 
