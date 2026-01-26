@@ -2,6 +2,7 @@
 use std::{mem::take};
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{common_components::HashId, common_tag_components::TagSet};
+use debug_unwraps::DebugUnwrapExt;
 use ::dimension_shared::*;
 use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
@@ -219,92 +220,96 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                 region_pos, max_used_chunks_per_region);
                 break 'nextregion;
             }
-            let Some(claim) = claimlist.claims.get_mut(i).unwrap() else {
-                error!(target: "sgc_chunk_claim", "No claim found at index {} for region at {:?}, stopping further claim processing",
-                i, region_pos);
-                break 'nextregion;//ta bien, no hay que seguir hasta que aparezca la region structure en esta posicion
-            };
-            let mut claim = take(claim);
-            claimlist.claims[i] = None;
-            
-            let Ok((structured_gen_cfg,)) = structured_gens.get(claim.sgc_ent)
-            else {
-                claimlist.advance_processed_upto_i();
-                error!(target: "sgc_chunk_claim", "StructuredGenConfig entity {:?} not found when processing claims for region at {:?}, skipping claim", 
-                claim.sgc_ent, region_pos);
-                continue;
-            };
-            
-            if counts_of_sgcs.0.get(&claim.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
-                claimlist.advance_processed_upto_i();
-                debug!(target: "sgc_chunk_claim", "Max structures of type '{}' already spawned in region {:?}, skipping claim", 
-                structured_gen_cfg.structure_id, region_pos);
-                continue;
-            }
-            let mut undo_claims = false;
-            let mut claimed_up_to: u64 = 0;
-            let mut failed_claims_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area_usize(), false);
-            
-            'nextpos: for (claim_i, &chunk_pos) in claim.chunks_gpos.iter().enumerate(){
-                match (grid_of_sgc.0.occupy(
-                    chunk_pos,
-                    region_pos,
-                    claim.sgc_ent,
-                ), claim.partition_tolerant) {
-                    (Ok(()), _) => {
-                        debug!(target: "sgc_chunk_claim", "Successfully claimed chunk at {:?} in region {:?} for structure '{}'", chunk_pos, region_pos, structured_gen_cfg.structure_id);
-                        claimed_up_to += 1;
-                    }
-                    (Err(ChunkOccupyError::OutOfRegionBounds(_)), _) => {
-                        undo_claims = true;
-                        error!(target: "sgc_chunk_claim", "Chunk at {:?} is outside region bounds, undoing all claims for this structure", 
-                        chunk_pos);
-                        break 'nextpos;
-                    }
-                    (Err(ChunkOccupyError::AlreadyOccupied(_)), true) => {
-                        trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied, but claim is partition tolerant, continuing", 
-                        chunk_pos, region_pos);
-                        failed_claims_bitmask.set(claim_i, true);//OK
-                        continue 'nextpos;
-                    }
-                    (Err(ChunkOccupyError::AlreadyOccupied(_)), false) => {
-                        undo_claims = true;
-                        trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied, undoing all claims for this structure", 
-                        chunk_pos, region_pos);
-                        break 'nextpos;
-                    }
-                }
-            }
-            if undo_claims {
-                for i in 0..claimed_up_to {
-                    let chunk_pos = claim.chunks_gpos[i as usize];
-                    grid_of_sgc.0.free(chunk_pos, region_pos);
-                }
-            } else {
-                counts_of_sgcs.0.entry(claim.sgc_ent)
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
-                
-                for i in (0..claim.chunks_gpos.len()).rev() {
-                    if failed_claims_bitmask.get(i).unwrap_or(false) {
-                        claim.chunks_gpos.swap_remove(i);
-                    }
-                }
-                planned.add_chunks_pending_build(&claim.chunks_gpos, time.elapsed().as_secs_f64());
-                regions_which_started_building.push((region_ent, BuildingStarted));
-                debug!(target: "sgc_chunk_claim", "Region at {:?} emitting {} build orders for structure '{}'", 
-                    region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id);
-                
-                let order = StructurePrepareTilesOrder {
-                    i: claim.i,
-                    region_pos,
-                    dimension_ref,
-                    structured_gen_cfg_ent: claim.sgc_ent,
-                    chunks_gpos: claim.chunks_gpos,
+            unsafe{
+
+                let Some(claim) = claimlist.claims.get_mut(i).debug_unwrap_unchecked() else {
+                    error!(target: "sgc_chunk_claim", "No claim found at index {} for region at {:?}, stopping further claim processing",
+                    i, region_pos);
+                    break 'nextregion;//ta bien, no hay que seguir hasta que aparezca la region structure en esta posicion
                 };
-                build_orders.push(order);
+                let mut claim = take(claim);
+                
+                *claimlist.claims.get_mut(i).debug_unwrap_unchecked() = None;
+                
+                let Ok((structured_gen_cfg,)) = structured_gens.get(claim.sgc_ent)
+                else {
+                    claimlist.advance_processed_upto_i();
+                    error!(target: "sgc_chunk_claim", "StructuredGenConfig entity {:?} not found when processing claims for region at {:?}, skipping claim", 
+                    claim.sgc_ent, region_pos);
+                    continue;
+                };
+                
+                if counts_of_sgcs.0.get(&claim.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
+                    claimlist.advance_processed_upto_i();
+                    debug!(target: "sgc_chunk_claim", "Max structures of type '{}' already spawned in region {:?}, skipping claim", 
+                    structured_gen_cfg.structure_id, region_pos);
+                    continue;
+                }
+                let mut undo_claims = false;
+                let mut claimed_up_to: u64 = 0;
+                let mut failed_claims_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area_usize(), false);
+                
+                'nextpos: for (claim_i, &chunk_pos) in claim.chunks_gpos.iter().enumerate(){
+                    match (grid_of_sgc.0.occupy(
+                        chunk_pos,
+                        region_pos,
+                        claim.sgc_ent,
+                    ), claim.partition_tolerant) {
+                        (Ok(()), _) => {
+                            debug!(target: "sgc_chunk_claim", "Successfully claimed chunk at {:?} in region {:?} for structure '{}'", chunk_pos, region_pos, structured_gen_cfg.structure_id);
+                            claimed_up_to += 1;
+                        }
+                        (Err(ChunkOccupyError::OutOfRegionBounds(_)), _) => {
+                            undo_claims = true;
+                            error!(target: "sgc_chunk_claim", "Chunk at {:?} is outside region bounds, undoing all claims for this structure", 
+                            chunk_pos);
+                            break 'nextpos;
+                        }
+                        (Err(ChunkOccupyError::AlreadyOccupied(_)), true) => {
+                            trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied, but claim is partition tolerant, continuing", 
+                            chunk_pos, region_pos);
+                            failed_claims_bitmask.set(claim_i, true);//OK
+                            continue 'nextpos;
+                        }
+                        (Err(ChunkOccupyError::AlreadyOccupied(_)), false) => {
+                            undo_claims = true;
+                            trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied, undoing all claims for this structure", 
+                            chunk_pos, region_pos);
+                            break 'nextpos;
+                        }
+                    }
+                }
+                if undo_claims {
+                    for i in 0..claimed_up_to {
+                        let chunk_pos = claim.chunks_gpos[i as usize];
+                        grid_of_sgc.0.free(chunk_pos, region_pos);
+                    }
+                } else {
+                    counts_of_sgcs.0.entry(claim.sgc_ent)
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+                    
+                    for i in (0..claim.chunks_gpos.len()).rev() {
+                        if failed_claims_bitmask.get(i).unwrap_or(false) {
+                            claim.chunks_gpos.swap_remove(i);
+                        }
+                    }
+                    planned.add_chunks_pending_build(&claim.chunks_gpos, time.elapsed().as_secs_f64());
+                    regions_which_started_building.push((region_ent, BuildingStarted));
+                    debug!(target: "sgc_chunk_claim", "Region at {:?} emitting {} build orders for structure '{}'", 
+                        region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id);
+                    
+                    let order = StructurePrepareTilesOrder {
+                        i: claim.i,
+                        region_pos,
+                        dimension_ref,
+                        structured_gen_cfg_ent: claim.sgc_ent,
+                        chunks_gpos: claim.chunks_gpos,
+                    };
+                    build_orders.push(order);
+                }
+                claimlist.processed_up_to_i += 1; 
             }
-            claimlist.processed_up_to_i += 1; 
         }
     }
     writer.write_batch(build_orders);

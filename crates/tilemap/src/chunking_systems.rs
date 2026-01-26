@@ -1,6 +1,5 @@
 
 use bevy::prelude::*;
-use bevy::ecs::system::{Deferred, SystemBuffer, SystemMeta};
 use bevy_ecs_tilemap::{DrawTilemap, map::*, tiles::TileStorage};
 use camera::camera_components::CameraTarget;
 use common::common_components::{AnyDisabling, StrId20B};
@@ -13,64 +12,16 @@ use crate::{chunking_components::*, chunking_resources::*, regioning::{regioning
 type RegionSpawnBundle = (RegionPos, Region, StrId20B, Transform, ChildOf, DimensionRef);
 type ChunkSpawnBundle = (Chunk, StrId20B, Transform, ChunkPos, ChildOf, DimensionRef);
 
-#[derive(Default)]
-pub struct LoadedChunksBuffer {
-    insertions: Vec<((DimensionRef, ChunkPos), Entity)>,
-}
-
-impl LoadedChunksBuffer {
-    fn insert(&mut self, key: (DimensionRef, ChunkPos), ent: Entity) {
-        self.insertions.push((key, ent));
-    }
-}
-
-impl SystemBuffer for LoadedChunksBuffer {
-    fn apply(&mut self, _system_meta: &SystemMeta, world: &mut World) {
-        if self.insertions.is_empty() {
-            return;
-        }
-        let mut loaded_chunks = world.resource_mut::<LoadedChunks>();
-        for (key, ent) in self.insertions.drain(..) {
-            loaded_chunks.0.insert(key, ent);
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct LoadedRegionsBuffer {
-    insertions: Vec<((DimensionRef, RegionPos), Entity)>,
-}
-
-impl LoadedRegionsBuffer {
-    fn insert(&mut self, key: (DimensionRef, RegionPos), ent: Entity) {
-        self.insertions.push((key, ent));
-    }
-}
-
-impl SystemBuffer for LoadedRegionsBuffer {
-    fn apply(&mut self, _system_meta: &SystemMeta, world: &mut World) {
-        if self.insertions.is_empty() {
-            return;
-        }
-        let mut loaded_regions = world.resource_mut::<LoadedRegions>();
-        for (key, ent) in self.insertions.drain(..) {
-            loaded_regions.0.insert(key, ent);
-        }
-    }
-}
-
 
 #[allow(unused_parens, )]
 pub fn visit_chunks_around_activators(
     mut cmd: Commands, 
     mut query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), ()>,
-    loaded_chunks: Res<LoadedChunks>,
+    mut loaded_chunks: ResMut<LoadedChunks>,
     tilemap_settings: Res<AaChunkRangeSettings>,
-    loaded_regions: Res<LoadedRegions>,
+    mut loaded_regions: ResMut<LoadedRegions>,
     mut reader: MessageReader<ReactivateChunksFor>,
     mut active_set: Local<HashSet<Entity>>,
-    mut loaded_chunks_buf: Deferred<LoadedChunksBuffer>,
-    mut loaded_regions_buf: Deferred<LoadedRegionsBuffer>,
 ) {
     let cnt = tilemap_settings.discovery_range as i32;   
     let range_len = (2 * cnt - 1).max(0) as usize;
@@ -120,14 +71,14 @@ pub fn visit_chunks_around_activators(
                                         dimension_ref,
                                     )));
                                     new_regions.insert(region_key, region_ent);
-                                    loaded_regions_buf.insert(region_key, region_ent);
+                                    loaded_regions.0.insert(region_key, region_ent);
                                     region_ent
                                 })
                         };
 
                         let chunk_ent = cmd.spawn_empty().id();
                         new_chunks.insert(key, chunk_ent);
-                        loaded_chunks_buf.insert(key, chunk_ent);
+                        loaded_chunks.0.insert(key, chunk_ent);
                         comps_for_chunk_ents.push((chunk_ent, (
                             Chunk { region_ent, },
                             StrId20B::trunc(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
@@ -151,7 +102,7 @@ pub fn visit_chunks_around_activators(
 }
 
 #[allow(unused_parens)]
-pub fn activate_chunks_every_second( 
+pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 segundo despues del ultimo movimiento
     mut query: Query<(Entity, &mut ActivatingChunks),()>,
     time: Res<Time>,
     mut writer: MessageWriter<ReactivateChunksFor>,
@@ -307,7 +258,7 @@ pub fn update_chunk_visib(
     
     let camera_chunk_pos = ChunkPos::from(camera_transform.translation().xy());
     to_draw.clear();
-    to_draw.reserve(chunks_query.iter().size_hint().0 / 2);
+    to_draw.reserve(reader.read().size_hint().0*3);
     
     chunks_query.iter_mut().for_each(|(mut visibility, &chunk_pos, children)| {
         let out_of_visible = chunkrange_settings.out_of_visible_range(camera_transform, chunk_pos);

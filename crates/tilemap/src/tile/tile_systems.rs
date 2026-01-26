@@ -161,7 +161,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
     ezero_query: Query<(Option<&AcZ>, Option<&DeleteOtherTiles>), (With<EntityZero>, AnyDisabling, )>,
     changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, AnyDisabling, Without<EntityZero>, )>,
     otile_query: Query<(&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>), (AnyDisabling, Without<EntityZero>, )>,
-    map: Res<TilesAtGpos>,
+    tiles_at_gpos: Res<TilesAtGpos>,
 ) {
     //TODO: chequear en la EntityZero si tiene DeleteOtherTiles
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
@@ -174,7 +174,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
             return;
         };
         
-        if let Some(otile_ents) = map.map.get(&(dim, gpos)) {
+        if let Some(otile_ents) = tiles_at_gpos.map.get(&(dim, gpos)) {
             otile_ents.iter().for_each(|&otile_ent| {
                 if otile_ent == newtile_ent {
                     return;
