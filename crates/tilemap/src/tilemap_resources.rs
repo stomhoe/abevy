@@ -117,6 +117,19 @@ impl MassCollectedTiles {
 }
 
 #[derive(Debug, Clone)]
+pub struct TilemapLimboEntry {
+    pub tile_ent: Entity,
+    pub bundle: TileMassSpawnBundle,
+    pub retries_left: u64,
+}
+impl TilemapLimboEntry {
+    pub const MAX_RETRIES: u64 = 5;
+}
+
+#[derive(Debug, Clone, Resource, Default)]
+pub struct TilemapLimboTiles(pub Vec<TilemapLimboEntry>);
+
+#[derive(Debug, Clone)]
 pub struct TilemapPreparedTile {
     pub tile_ent: Entity,
     pub bundle: TileMassSpawnBundle,

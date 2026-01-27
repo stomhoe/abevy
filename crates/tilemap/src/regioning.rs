@@ -3,7 +3,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use crate::{chunking_systems::despawn_unreferenced_chunks, regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*}, terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tilemap_systems::process_tiles_pre};
+use crate::{chunking_systems::despawn_unreferenced_chunks, regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*}, terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::tile_systems::despawn_if_not_excepted, tilemap_systems::process_tiles_pre};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct RegioningSystems;
@@ -28,7 +28,9 @@ pub fn plugin(app: &mut App) {
             timeout_pending_offers,
             advance_i_on_claimlist_timeout,
             clonespawn_tiles_on_chunk_spawn//DON'T TOUCH THE .before's
-            .before(process_tiles_pre).before(process_pending_ops_and_collect_tiles),
+            .before(process_tiles_pre)//.before(process_pending_ops_and_collect_tiles)
+            ,
+            
         ).in_set(RegioningSystems),
 
         //ensure_regions_have_building_started,

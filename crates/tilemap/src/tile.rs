@@ -12,7 +12,7 @@ use bevy::prelude::*;
 use crate::{terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::{
     tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
 }, tilemap_systems::{process_tiles_pre, tile_assign_child_of} };
-mod tile_systems;
+pub mod tile_systems;
 mod tile_init_systems;
 mod tile_sampler_init_systems;
 pub mod tile_components;

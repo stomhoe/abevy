@@ -35,7 +35,7 @@ pub fn plugin(app: &mut App) {
         clone_ezero_children_ents,
         set_entity_name,
         //disable_ezeros,
-        delete_sprites_without_childof,
+        despawn_sprites_without_childof,
     ))
     .configure_sets(Update, (
         SimPausedSystems.run_if(in_state(SimulationState::Paused)),

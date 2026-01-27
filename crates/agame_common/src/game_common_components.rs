@@ -23,6 +23,10 @@ pub struct Directionable;
 pub struct EntityZero;
 
 
+#[derive(Component, Debug, Default, Copy, Clone, Reflect, )]
+pub struct ReparentingRetries(pub u64);
+
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 /// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state
 pub struct Persisted;

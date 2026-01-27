@@ -1,13 +1,13 @@
-use bevy::{asset::AssetId, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy::{asset::AssetId, ecs::{query, system::SystemParam}, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::{AnyDisabling}, common_resources::ImageSizeMap, };
-use game_common::game_common_components::{Persisted};
+use game_common::game_common_components::{Persisted, ReparentingRetries};
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
 
-use crate::{chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}, }, tilemap_components::*, tilemap_resources::*};
+use crate::{chunking_components::Chunk, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}, }, tilemap_components::*, tilemap_resources::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct MapKey {
@@ -59,37 +59,54 @@ impl MapStruct {
 
 use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 
+#[derive(SystemParam)]
+pub struct ProcessTilesPreParams<'w, 's> {
+    pub collected_tiles: ResMut<'w, MassCollectedTiles>,
+    pub limbo_tiles: ResMut<'w, TilemapLimboTiles>,
+    pub tilemap_tasks: ResMut<'w, TilemapAsyncTasks>,
+
+    pub ezero_query: Query<'w, 's, (
+        &'static TileStrId,
+        Option<&'static MinDistancesMap>,
+        Option<&'static KeepDistanceFrom>,
+        Has<Persisted>,
+        Option<&'static AcZ>,
+        Option<&'static TileHidsHandles>,
+        Option<&'static TileShaderRef>,
+        Option<&'static Transform>,
+        Option<&'static TileColor>,
+    ), AnyDisabling>,
+
+    pub tilemaps: Query<'w, 's, (
+        &'static mut TilemapTexture,
+        &'static mut TileStorage,
+        &'static mut TmapHashIdtoTextureIndex,
+    ), ()>,
+    pub image_size_map: Res<'w, ImageSizeMap>,
+
+    pub texture_overlay_mat: ResMut<'w, Assets<MonoRepeatTextureOverlayMat>>,
+    pub voronoi_mat: ResMut<'w, Assets<VoronoiTextureOverlayMat>>,
+    pub wavy_mat: ResMut<'w, Assets<WavyMat>>,
+    pub chunkrange: Res<'w, AaChunkRangeSettings>,
+
+    pub min_dists_query: Query<'w, 's, (&'static MinDistancesMap), AnyDisabling>,
+    pub regpos_map: ResMut<'w, RegisteredPositions>,
+    pub shader_query: Query<'w, 's, (&'static TileShader), ()>,
+
+    pub loaded_chunks: Res<'w, LoadedChunks>,
+    pub state: Res<'w, State<ClientState>>,
+}
+
 #[allow(unused_parens, )]//TODO: USAR try_insert_bundle
 pub fn process_tiles_pre(
-    mut cmd: Commands, 
-
-    mut collected_tiles: ResMut<MassCollectedTiles>,
-    mut tilemap_tasks: ResMut<TilemapAsyncTasks>,
-
-    ezero_query: Query<(&TileStrId, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>, Has<Persisted>, 
-        Option<&AcZ>, Option<&TileHidsHandles>, Option<&TileShaderRef>, Option<&Transform>, Option<&TileColor>, ), (AnyDisabling)>,
-
-    mut tilemaps: Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex, ), ( )>,
-    image_size_map: Res<ImageSizeMap>,
-
-    mut texture_overlay_mat: ResMut<Assets<MonoRepeatTextureOverlayMat>>,
-    mut voronoi_mat: ResMut<Assets<VoronoiTextureOverlayMat>>,
-    mut wavy_mat: ResMut<Assets<WavyMat>>,
-    chunkrange: Res<AaChunkRangeSettings>,
-
-    min_dists_query: Query<(&MinDistancesMap), (AnyDisabling)>,
-    mut regpos_map: ResMut<RegisteredPositions>,
-    shader_query: Query<(&TileShader, ), ( )>,
-
-    loaded_chunks: Res<LoadedChunks>,
-    state: Res<State<ClientState>>,
+    mut cmd: Commands,
+    mut params: ProcessTilesPreParams,
     mut tmap_map: Local<HashMap<MapKey, MapStruct>>,
-) -> Result {
-
-    let is_host = *state.get() == ClientState::Disconnected;
+) {
+    let is_host = *params.state.get() == ClientState::Disconnected;
 
     let mut prepared_tiles: Vec<TilemapPreparedTile> = Vec::new();
-    tilemap_tasks.prep_tasks.retain_mut(|task| {
+    params.tilemap_tasks.prep_tasks.retain_mut(|task| {
         if let Some(result) = future::block_on(future::poll_once(task)) {
             prepared_tiles.extend(result.prepared_tiles);
             false
@@ -99,35 +116,33 @@ pub fn process_tiles_pre(
     });
 
     if prepared_tiles.is_empty() {
-        if !tilemap_tasks.prep_tasks.is_empty() { return Ok(()); }
-        if collected_tiles.0.is_empty() { return Ok(()); }
+        if !params.tilemap_tasks.prep_tasks.is_empty() { return; }
+        if params.collected_tiles.0.is_empty() { return; }
 
-        let inputs = collect_tilemap_prep_inputs(&mut cmd, &mut collected_tiles, &ezero_query);
-        if inputs.is_empty() { return Ok(()); }
-
-        let image_sizes: HashMap<AssetId<Image>, U16Vec2> = image_size_map
+        let inputs = collect_tilemap_prep_inputs(&mut cmd, &mut params.collected_tiles, &params.ezero_query);
+        if inputs.is_empty() { return; }
+        let image_sizes: HashMap<AssetId<Image>, U16Vec2> = params.image_size_map
             .0
             .iter()
             .map(|(id, size)| (*id, *size))
             .collect();
-        let loaded_chunks_map: HashMap<(DimensionRef, ChunkPos), Entity> = loaded_chunks
+        let loaded_chunks_map: HashMap<(DimensionRef, ChunkPos), Entity> = params.loaded_chunks
             .0
             .iter()
             .map(|(key, &ent)| (*key, ent))
             .collect();
 
         let task_pool = AsyncComputeTaskPool::get();
-        tilemap_tasks.prep_tasks.push(task_pool.spawn(async move {
+        params.tilemap_tasks.prep_tasks.push(task_pool.spawn(async move {
             process_tilemap_prep_batch(inputs, image_sizes, loaded_chunks_map)
         }));
-        return Ok(());
     }
 
     if !tmap_map.is_empty() {
-        tmap_map.retain(|key, _| loaded_chunks.0.contains_key(&(key.dim_ref(), key.chunk_pos())));
+        tmap_map.retain(|key, _| params.loaded_chunks.0.contains_key(&(key.dim_ref(), key.chunk_pos())));
     }
 
-    let reserved = chunkrange.approximate_number_of_chunks(0.06);
+    let reserved = params.chunkrange.approximate_number_of_chunks(0.06);
     let tiles_len = prepared_tiles.len();
 
     let mut changed_structs: HashSet<MapKey> = HashSet::with_capacity(reserved);
@@ -143,7 +158,7 @@ pub fn process_tiles_pre(
         let tile_ent = prepared.tile_ent;
         let mut bundle = prepared.bundle;
 
-        if false == regpos_map.check_min_distances(
+        if false == params.regpos_map.check_min_distances(
             &mut cmd,
             is_host,
             (
@@ -154,7 +169,7 @@ pub fn process_tiles_pre(
                 prepared.min_dists.as_ref(),
                 prepared.keep_distance_from.as_ref(),
             ),
-            min_dists_query,
+            params.min_dists_query,
         ) {
             cmd.entity(tile_ent).try_despawn();
             info!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
@@ -189,8 +204,14 @@ pub fn process_tiles_pre(
 
         let Some(chunk) = prepared.chunk_ent else {
             let chunk_pos = ChunkPos::from(bundle.gpos);
-            cmd.entity(tile_ent).try_despawn();
-            trace!(target: "tilemap_systems", "Chunk for tile entity {:?} at gpos {:?}, {} in dim {:?} not loaded, despawning tile", tile_ent, bundle.gpos, chunk_pos, bundle.dim_ref);
+            let gpos = bundle.gpos;
+            let dim_ref = bundle.dim_ref;
+            params.limbo_tiles.0.push(TilemapLimboEntry {
+                tile_ent,
+                bundle,
+                retries_left: TilemapLimboEntry::MAX_RETRIES,
+            });
+            trace!(target: "tilemap_systems", "Chunk for tile entity {:?} at gpos {:?}, {} in dim {:?} not loaded, sending to limbo", tile_ent, gpos, chunk_pos, dim_ref);
             continue;//chunk not loaded
         };
         let chunk_pos = ChunkPos::from(bundle.gpos);
@@ -211,7 +232,7 @@ pub fn process_tiles_pre(
             chunk,
             chunk_pos,
             bundle.dim_ref,
-            &mut tilemaps,
+            &mut params.tilemaps,
             &mut changed_structs,
             &mut tilemap_bundles,
         );
@@ -247,7 +268,7 @@ pub fn process_tiles_pre(
         insert2tmaps.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
 
         let shader = if let Some(shader_ref) = mapkey.shader_ref() {
-            shader_query.get(shader_ref.0).ok().map(|(shader,)| shader.clone())
+            params.shader_query.get(shader_ref.0).ok().map(|(shader)| shader.clone())
         } else {
             None
         };
@@ -255,15 +276,15 @@ pub fn process_tiles_pre(
             //trace!(target: "tilemap_systems", "Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
             match shader {
                 TileShader::TexRepeat(handle) => {
-                    let material = MaterialTilemapHandle::from(texture_overlay_mat.add(handle));
+                    let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(handle));
                     texture_overlay_mats.push((tmap_ent, material));
                 }
                 TileShader::Voronoi(handle) => {
-                    let material = MaterialTilemapHandle::from(voronoi_mat.add(handle));
+                    let material = MaterialTilemapHandle::from(params.voronoi_mat.add(handle));
                     cmd.entity(tmap_ent).try_insert(material);
                 }
                 TileShader::Wavy(handle) => {
-                    let material = MaterialTilemapHandle::from(wavy_mat.add(handle));
+                    let material = MaterialTilemapHandle::from(params.wavy_mat.add(handle));
                     wavy_mats.push((tmap_ent, material.clone()));
                 }
                 TileShader::TwoTexRepeat(_handle) => todo!(),
@@ -278,7 +299,56 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch(wavy_mats);
     cmd.try_insert_batch(insert2tmaps);
 
-    Ok(())
+}
+
+#[allow(unused_parens)]
+pub fn requeue_limbo_tiles(
+    mut cmd: Commands,
+    mut limbo_tiles: ResMut<TilemapLimboTiles>,
+    mut collected_tiles: ResMut<MassCollectedTiles>,
+    mut loaded_chunks: ResMut<LoadedChunks>,
+    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), With<Chunk>>,
+    alive_query: Query<Entity>,
+) {
+    if limbo_tiles.0.is_empty() {
+        return;
+    }
+
+    let mut i = 0;
+    while i < limbo_tiles.0.len() {
+        let mut entry = limbo_tiles.0.swap_remove(i);
+
+        if alive_query.get(entry.tile_ent).is_err() {
+            continue;
+        }
+
+        let chunk_pos = ChunkPos::from(entry.bundle.gpos);
+        if loaded_chunks.0.contains_key(&(entry.bundle.dim_ref, chunk_pos)) {
+            collected_tiles.0.push((entry.tile_ent, entry.bundle));
+            continue;
+        }
+
+        if let Some((chunk_ent, _, _)) = chunk_query
+            .iter()
+            .find(|(_, pos, dim)| **pos == chunk_pos && **dim == entry.bundle.dim_ref)
+        {
+            // in case LoadedChunks missed this chunk
+            loaded_chunks
+                .0
+                .insert((entry.bundle.dim_ref, chunk_pos), chunk_ent);
+            collected_tiles.0.push((entry.tile_ent, entry.bundle));
+            continue;
+        }
+
+        if entry.retries_left == 0 {
+            cmd.entity(entry.tile_ent).try_despawn();
+            continue;
+        }
+
+        entry.retries_left -= 1;
+        limbo_tiles.0.push(entry);
+        i += 1;
+    }
 }
 
 #[derive(Clone)]
@@ -400,7 +470,7 @@ fn func_process_tile_into_tilemaps(
     dim_ref: DimensionRef,
     tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex)>,
     changed_structs: &mut HashSet<MapKey>,
-    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, AcZ, ChildOf))>,
+    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, AcZ, ChildOf, ChunkPos, DimensionRef))>,
 ) {
     let tile_size = match tile_handles {
         Some(_) => tile_size,
@@ -476,9 +546,11 @@ fn func_process_tile_into_tilemaps(
         tilemap_bundles.push(
             (tmap_ent,
             (
-                TilemapConfig::new(oplist_size, tile_size),
+                TilemapConfig::new(oplist_size, tile_size, ),
                 tile_z_index,
                 ChildOf(chunk),
+                chunk_pos,
+                dim_ref,
             ))
         );
 
@@ -494,6 +566,40 @@ fn func_process_tile_into_tilemaps(
             tmap_hash_id_map,
             });
     }
+}
+
+#[allow(unused_parens)]
+pub fn reparent_orphan_tilemaps(
+    mut cmd: Commands,
+    mut tmap_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut ReparentingRetries), (With<TilemapTexture>, Without<ChildOf>)>,
+    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), (With<Chunk>, )>,
+    mut loaded_chunks: ResMut<LoadedChunks>,
+) {
+    let mut child_ofs = Vec::with_capacity(tmap_query.iter().size_hint().0);
+    for (tmap_ent, &tmap_chunk_pos, &dim_ref, mut retries) in tmap_query.iter_mut() {
+        if let Some(&chunk_ent) = loaded_chunks.0.get(&(dim_ref, tmap_chunk_pos)) {
+            //cmd.entity(tmap_ent).insert(ChildOf(chunk_ent));
+            child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
+            retries.0 = 0;
+            continue;
+        }
+        else{
+            for (chunk_ent, &cpos, &chunk_dim_ref) in chunk_query.iter() {
+                if &tmap_chunk_pos == &cpos && dim_ref == chunk_dim_ref {
+                    //cmd.entity(tmap_ent).insert(ChildOf(chunk_ent));
+                    child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
+                    loaded_chunks.0.insert((dim_ref, tmap_chunk_pos), chunk_ent);
+                    retries.0 = 0;
+                    break;
+                }
+            }
+        }
+        retries.0 += 1;
+        if retries.0 > 5 {
+            cmd.entity(tmap_ent).try_despawn();
+        }
+    }
+    cmd.try_insert_batch(child_ofs);
 }
 
 #[allow(unused_parens)]

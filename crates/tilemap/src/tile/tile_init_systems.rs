@@ -561,28 +561,6 @@ pub fn client_sync_tile(
     
 }
 
-#[allow(unused_parens)]
-pub fn make_child_of_chunk(mut cmd: Commands, 
-    query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilemapId>, 
-        Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
-    loaded_chunks: Res<LoadedChunks>,
-) {
-    let mut child_ofs = Vec::new();
-    query.iter().for_each(|(ent, &global_pos, &dim_ref, to_persist)| {
-        let chunk_pos: ChunkPos = global_pos.into();
-        
-        if to_persist {
-            child_ofs.push((ent, ChildOf(dim_ref.0)));
-        } else {
-            let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) else {
-                cmd.entity(ent).try_despawn();
-                return;
-            };
-            child_ofs.push((ent, ChildOf(chunk)));
-        }
-    });
-    cmd.try_insert_batch(child_ofs);
-}
 
 #[allow(unused_parens)]
 pub fn remove_ezero_tile_from_map_on_despawn(

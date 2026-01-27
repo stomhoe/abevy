@@ -14,7 +14,7 @@ type ChunkSpawnBundle = (Chunk, StrId20B, Transform, ChunkPos, ChildOf, Dimensio
 
 
 #[allow(unused_parens, )]
-pub fn visit_chunks_around_activators(
+pub fn spawn_chunks_around_activators(
     mut cmd: Commands, 
     mut query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), ()>,
     mut loaded_chunks: ResMut<LoadedChunks>,
@@ -118,13 +118,12 @@ pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 se
     writer.write_batch(to_reactivate.drain(..));
 }
 #[allow(unused_parens, )]
-pub fn detect_activators_with_changes(
+pub fn detect_activators_with_pos_changes(
     query: Query<(Entity), 
     (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>,)>, With <ActivatingChunks>)>,
     mut writer: MessageWriter<ReactivateChunksFor>,
     mut msgs: Local<Vec<ReactivateChunksFor>>,
 ) {
-    msgs.clear();
     msgs.extend(query.iter().map(ReactivateChunksFor));
     writer.write_batch(msgs.drain(..));
 }
@@ -181,6 +180,16 @@ pub fn clear_chunks_on_dim_change(
 #[derive(Debug, Message)]
 pub struct CheckChunkDespawn (pub Entity, pub u8,);//u8 = retransmission count
 
+pub fn periodically_despawn_unreferenced_chunks(
+    mut ewriter: MessageWriter<CheckChunkDespawn>,
+    chunks_query: Query<(Entity), With<Chunk>,>,
+    mut to_check: Local<Vec<CheckChunkDespawn>>,
+) {
+    for chunk_ent in chunks_query.iter() {
+        to_check.push(CheckChunkDespawn(chunk_ent, 0));
+    }
+    ewriter.write_batch(to_check.drain(..));
+}
 
 #[allow(unused_parens)]
 pub fn despawn_unreferenced_chunks(
@@ -193,6 +202,7 @@ pub fn despawn_unreferenced_chunks(
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
     mut referenced_chunks: Local<HashSet<Entity>>,
     mut tosave_events: Local<Vec<SavedTileHadChunkDespawn>>,
+    
 ) {
     let despawn_retransmitted_events = Vec::new();
     referenced_chunks.clear();
@@ -224,6 +234,7 @@ pub fn despawn_unreferenced_chunks(
                                 // }
                         }
                     }
+                    
                     // if tiles_to_save.entities().contains(&child) {
                     
                     //     cmd.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
@@ -251,7 +262,7 @@ pub fn update_chunk_visib(
     mut event_writer: MessageWriter<DrawTilemap>,
     mut to_draw: Local<Vec<DrawTilemap>>,
 ) {
-    if reader.read().next().is_none() {
+    if reader.is_empty() {
         return;
     }
     let camera_transform = *camera_query;
@@ -288,7 +299,7 @@ pub fn detect_camera_change_pos(
     trace!(target: "chunk_visibility", "Camera position or dimension changed, rechecking chunk visibility.");
 }
 
-pub fn recheck_chunk_visibility(
+pub fn periodically_recheck_chunk_visibility(
     mut recheck_writer: MessageWriter<RecheckChunksVisibility>,
 ) {
     recheck_writer.write(RecheckChunksVisibility);

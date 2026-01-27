@@ -289,7 +289,7 @@ impl OplistSize {
         if x <= 0 || y <= 0 {
             return Err(BevyError::from("OplistSize dimensions must be > 0"));
         }
-        let max = 4;
+        let max = 6;
         if x > max || y > max {
             return Err(BevyError::from(format!("OplistSize dimensions must be <= {}", max)));
         }

@@ -8,8 +8,8 @@ use common::{common_components::{AnyDisabling, HashId}, common_tag_components::T
 use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
-use tilemap_shared::{GlobalGenSettings, GlobalTilePos, HashablePosVec, PrevGlobalTilePos, OplistSize};
-use crate::{ tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::{TilesAtGpos}}, };
+use tilemap_shared::{ChunkPos, GlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos};
+use crate::{ chunking_resources::LoadedChunks, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos} };
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
@@ -228,4 +228,28 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
             });
         }
     });
+}
+
+
+#[allow(unused_parens)]
+pub fn make_child_of_chunk(mut cmd: Commands, 
+    query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilemapId>, 
+        Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
+    loaded_chunks: Res<LoadedChunks>,
+) {
+    let mut child_ofs = Vec::new();
+    query.iter().for_each(|(ent, &global_pos, &dim_ref, to_persist)| {
+        let chunk_pos: ChunkPos = global_pos.into();
+        
+        if to_persist {
+            child_ofs.push((ent, ChildOf(dim_ref.0)));
+        } else {
+            let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) else {
+                cmd.entity(ent).try_despawn();
+                return;
+            };
+            child_ofs.push((ent, ChildOf(chunk)));
+        }
+    });
+    cmd.try_insert_batch(child_ofs);
 }

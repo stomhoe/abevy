@@ -100,7 +100,7 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
 }
 
 #[allow(unused_parens)]
-pub fn delete_sprites_without_childof(mut cmd: Commands, 
+pub fn despawn_sprites_without_childof(mut cmd: Commands, 
     query: Query<(Entity),(With<Sprite>, Without<ChildOf>, AnyDisabling)>,
 ) {
     query.iter().for_each(|sprite_ent| {

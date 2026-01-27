@@ -6,7 +6,7 @@ use common::common_states::*;
 use dimension_shared::DimensionSystems;
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
-use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, *}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_resources::*, tilemap_systems::*};
+use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile, tilemap_components::TmapHashIdtoTextureIndex, tilemap_resources::*, tilemap_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -24,16 +24,23 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         clear_chunks_on_dim_change,
         rem_outofrange_chunks_from_activators, 
-        despawn_unreferenced_chunks, 
+        (despawn_unreferenced_chunks, ), 
         tile_assign_child_of,
         (
             activate_chunks_every_second,
-            detect_activators_with_changes, 
-            visit_chunks_around_activators,
+            detect_activators_with_pos_changes, 
+            spawn_chunks_around_activators.after(despawn_unreferenced_chunks),
+            reparent_orphan_tilemaps
+            .run_if(on_timer(Duration::from_millis(1000))),
+            requeue_limbo_tiles
+            .run_if(on_timer(Duration::from_millis(1000))),
             detect_camera_change_pos, 
             update_chunk_visib,
-            recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(1000))),
-            process_tiles_pre.before(despawn_unreferenced_chunks)// DON'T TOUCH
+            periodically_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_millis(5000))),
+            periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(1000))),
+            process_tiles_pre.before(despawn_unreferenced_chunks)
+            
+            // DON'T TOUCH
         ).in_set(ChunkSystems)
     ))
     .configure_sets(Update, (
@@ -42,7 +49,7 @@ pub fn plugin(app: &mut App) {
 
     .configure_sets(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            TilingSystems.before(TerrainGenSystems),
+            crate::tile::TilingSystems.before(TerrainGenSystems),
             DimensionSystems.before(TerrainGenSystems),
             TerrainGenSystems.before(RegioningSystems),
             TerrainGenSystems.before(GameplaySystems),
@@ -59,6 +66,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadedChunks>()
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<MassCollectedTiles>()
+    .init_resource::<TilemapLimboTiles>()
     .init_resource::<TilemapAsyncTasks>()
 
     .replicate::<PoissonDisk>()

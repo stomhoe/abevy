@@ -243,6 +243,7 @@ pub fn extract(//TODO EXPONER UN EVENTO
         animated,
     ) in changed_tiles_query.iter()
     {
+        let Ok(data) = tilemap_query.get(tilemap_id.0) else { continue };
         // flipping and rotation packed in bits
         // bit 0 : flip_x
         // bit 1 : flip_y
@@ -267,7 +268,6 @@ pub fn extract(//TODO EXPONER UN EVENTO
             color: color.0.to_linear().to_f32_array(),
         };
 
-        let Ok(data) = tilemap_query.get(tilemap_id.0) else { break };
 
         if extracted_tilemaps_keys.insert(data.0.id()) {
             extracted_tilemaps.push((

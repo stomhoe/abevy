@@ -1,5 +1,5 @@
 #[allow(unused_imports)] use bevy::platform::collections::HashMap;
-use bevy::{ecs::entity::MapEntities, prelude::*};
+use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
 use bevy_asset_loader::asset_collection::AssetCollection;
 
