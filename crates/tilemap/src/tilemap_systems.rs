@@ -87,6 +87,7 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub texture_overlay_mat: ResMut<'w, Assets<MonoRepeatTextureOverlayMat>>,
     pub voronoi_mat: ResMut<'w, Assets<VoronoiTextureOverlayMat>>,
     pub wavy_mat: ResMut<'w, Assets<WavyMat>>,
+    pub rocky_mat: ResMut<'w, Assets<RockyTerrainMat>>,
     pub chunkrange: Res<'w, AaChunkRangeSettings>,
 
     pub min_dists_query: Query<'w, 's, (&'static MinDistancesMap), AnyDisabling>,
@@ -248,6 +249,7 @@ pub fn process_tiles_pre(
     let mut default_mats = Vec::with_capacity(changed_structs.len());
     let mut wavy_mats = Vec::with_capacity(changed_structs.len());
     let mut texture_overlay_mats = Vec::with_capacity(changed_structs.len());
+    let mut rocky_mats = Vec::with_capacity(changed_structs.len());
 
     for mapkey in changed_structs.iter() {
         //trace!(target: "tilemap_systems", "Changed tilemap {:?} in chunk {:?}", mapkey, mapkey.chunk_pos());
@@ -284,6 +286,10 @@ pub fn process_tiles_pre(
                     wavy_mats.push((tmap_ent, material.clone()));
                 }
                 TileShader::TwoTexRepeat(_handle) => todo!(),
+                TileShader::RockyTerrain(rocky_terrain_mat) => {
+                    let material = MaterialTilemapHandle::from(params.rocky_mat.add(rocky_terrain_mat));
+                    rocky_mats.push((tmap_ent, material.clone()));
+                }
             };
 
         } else {
@@ -294,6 +300,7 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch(texture_overlay_mats);
     cmd.try_insert_batch(wavy_mats);
     cmd.try_insert_batch(insert2tmaps);
+    cmd.try_insert_batch(rocky_mats);
 
 }
 
@@ -466,7 +473,7 @@ fn func_process_tile_into_tilemaps(
     dim_ref: DimensionRef,
     tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex)>,
     changed_structs: &mut HashSet<MapKey>,
-    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, AcZ, ChildOf, ChunkPos, DimensionRef))>,
+    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, AcZ, ChildOf, ChunkPos, DimensionRef, TileShaderRef))>,
 ) {
     let tile_size = match tile_handles {
         Some(_) => tile_size,
@@ -547,6 +554,7 @@ fn func_process_tile_into_tilemaps(
                 ChildOf(chunk),
                 chunk_pos,
                 dim_ref,
+                shader_ref.copied().unwrap_or_default(),
             ))
         );
 

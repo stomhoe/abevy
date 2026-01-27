@@ -63,3 +63,20 @@ pub struct ShaderWavySeri {
     pub speed: f32,
     pub debug_mode: f32,
 }
+
+#[derive(AssetCollection, Resource, Default, Reflect)]
+#[reflect(Resource, Default)] 
+pub struct ShaderRockyTerrainSerisHandles {
+    #[asset(path ="ron/tilemap/tiling/shader/rocky" , collection(typed))] 
+    pub handles: Vec<Handle<ShaderRockyTerrainSeri>>,
+}
+
+#[derive(Deserialize, Asset, Reflect, Default)]
+pub struct ShaderRockyTerrainSeri {
+    pub id: String,
+    pub roughness: f32,
+    pub scale: f32,
+    pub height_scale: f32,
+    pub color_base: [f32; 4],
+    pub color_shadow: [f32; 4],
+}

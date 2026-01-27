@@ -35,10 +35,12 @@ pub fn plugin(app: &mut App) {
         MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
         MaterialTilemapPlugin::<VoronoiTextureOverlayMat>::default(),
         MaterialTilemapPlugin::<WavyMat>::default(),
+        MaterialTilemapPlugin::<RockyTerrainMat>::default(),
         
         RonAssetPlugin::<ShaderRepeatTexSeri>::new(&["rep1shader.ron"]),
         RonAssetPlugin::<ShaderVoronoiShuffleSeri>::new(&["voroshu.ron"]),
         RonAssetPlugin::<ShaderWavySeri>::new(&["wavy.ron"]),
+        RonAssetPlugin::<ShaderRockyTerrainSeri>::new(&["rocky.ron"]),
     ))
     .init_resource::<TileShaderEntityMap>()
 
@@ -46,12 +48,15 @@ pub fn plugin(app: &mut App) {
     .register_type::<VoronoiTextureOverlayMat>()
     .register_type::<TwoOverlaysExample>()
     .register_type::<WavyMat>()
+    .register_type::<RockyTerrainMat>()
     .register_type::<ShaderRepeatTexSerisHandles>()
     .register_type::<ShaderRepeatTexSeri>()
     .register_type::<ShaderVoroshuSerisHandles>()
     .register_type::<ShaderVoronoiShuffleSeri>()
     .register_type::<ShaderWavySerisHandles>()
     .register_type::<ShaderWavySeri>()
+    .register_type::<ShaderRockyTerrainSerisHandles>()
+    .register_type::<ShaderRockyTerrainSeri>()
     .register_type::<TileShaderEntityMap>()
     .register_type::<TileShader>()
     .register_type::<TileShaderRef>()

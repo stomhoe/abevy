@@ -95,6 +95,6 @@ impl Default for WavyMat {
 
 impl MaterialTilemap for WavyMat {
     fn fragment_shader() -> ShaderRef {
-        "shader/wavy.wgsl".into()
+        "shader_wgsl/wavy.wgsl".into()
     }
 }

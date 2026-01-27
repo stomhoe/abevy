@@ -55,6 +55,7 @@ pub fn plugin(app: &mut App) {
             .load_collection::<ShaderRepeatTexSerisHandles>()
             .load_collection::<ShaderVoroshuSerisHandles>()
             .load_collection::<ShaderWavySerisHandles>()
+            .load_collection::<ShaderRockyTerrainSerisHandles>()
             .load_collection::<TileSerisHandles>()
             .load_collection::<AnimSerisHandles>()
             .load_collection::<SpriteSerisHandles>()

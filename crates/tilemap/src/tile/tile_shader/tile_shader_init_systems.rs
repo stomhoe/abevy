@@ -14,6 +14,8 @@ pub fn init_shaders(
     mut voronoi_assets: ResMut<Assets<ShaderVoronoiShuffleSeri>>,
     mut wavy_handles: ResMut<ShaderWavySerisHandles>,
     mut wavy_assets: ResMut<Assets<ShaderWavySeri>>,
+    mut rocky_handles: ResMut<ShaderRockyTerrainSerisHandles>,
+    mut rocky_assets: ResMut<Assets<ShaderRockyTerrainSeri>>,
     mut tileshader_map: ResMut<TileShaderEntityMap>,
 ) {
     if !tileshader_map.0.is_empty(){ return; }
@@ -137,6 +139,40 @@ pub fn init_shaders(
                 continue;
             }
         }
+
+        tileshader_map.0.overwrite(&str_id, ent);
+    }
+
+    // Rocky terrain shaders (procedural, no image paths)
+    for handle in rocky_handles.handles.drain(..) {
+        let Some(seri) = rocky_assets.remove(&handle) else { continue; };
+        info!("Loading Rocky Terrain Shader from handle: {:?}", handle);
+
+        let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
+            Ok(id) => id,
+            Err(err) => {
+                error!("Failed to create StrId for shader '{}': {}", seri.id, err);
+                continue;
+            }
+        };
+
+        if let Ok(existing) = tileshader_map.0.get(&str_id) {
+            error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
+            continue;
+        }
+        let ent = cmd.spawn_empty().id();
+
+        shader_comps_to_insert.push((ent, (
+            str_id.clone(),
+            TileShader::RockyTerrain(RockyTerrainMat::new(
+                seri.roughness,
+                seri.scale,
+                seri.height_scale,
+                seri.color_base.into(),
+                seri.color_shadow.into(),
+            )),
+            ChildOf(holder),
+        )));
 
         tileshader_map.0.overwrite(&str_id, ent);
     }

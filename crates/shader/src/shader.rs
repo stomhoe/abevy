@@ -7,17 +7,17 @@ pub fn plugin(app: &mut App) {
 }
 
 
-pub const PERLIN_NOISE_2D: &str = include_str!("../../../assets/shader/noise/perlin_noise_2d.wgsl");
+pub const PERLIN_NOISE_2D: &str = include_str!("../../../assets/shader_wgsl/noise/perlin_noise_2d.wgsl");
 
 pub const PERLIN_NOISE_3D: &str =
-    include_str!("../../../assets/shader/noise/perlin_noise_3d.wgsl");
+    include_str!("../../../assets/shader_wgsl/noise/perlin_noise_3d.wgsl");
 pub const SIMPLEX_NOISE_2D: &str =
-    include_str!("../../../assets/shader/noise/simplex_noise_2d.wgsl");
+    include_str!("../../../assets/shader_wgsl/noise/simplex_noise_2d.wgsl");
 pub const SIMPLEX_NOISE_3D: &str =
-    include_str!("../../../assets/shader/noise/simplex_noise_3d.wgsl");
-pub const FBM: &str = include_str!("../../../assets/shader/noise/fbm.wgsl");
-pub const VORO_NOISE: &str = include_str!("../../../assets/shader/noise/voronoise.wgsl");
-pub const MOCK_FRESNEL: &str = include_str!("../../../assets/shader/noise/mock_fresnel.wgsl");
+    include_str!("../../../assets/shader_wgsl/noise/simplex_noise_3d.wgsl");
+pub const FBM: &str = include_str!("../../../assets/shader_wgsl/noise/fbm.wgsl");
+pub const VORO_NOISE: &str = include_str!("../../../assets/shader_wgsl/noise/voronoise.wgsl");
+pub const MOCK_FRESNEL: &str = include_str!("../../../assets/shader_wgsl/noise/mock_fresnel.wgsl");
 
 
 #[derive(Resource, Debug)]

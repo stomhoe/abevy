@@ -3848,6 +3848,7 @@ dependencies = [
  "rand_pcg",
  "rand_seeder",
  "serde",
+ "sprite_shared",
  "tilemap",
  "tilemap_shared",
 ]

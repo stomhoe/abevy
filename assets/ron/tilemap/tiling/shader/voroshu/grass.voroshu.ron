@@ -1,9 +1,9 @@
 (
     id: "grassvoronoi",
-    img_path: "texture/world/terr/sepia.png",
-    scale: 1e-1,
-    voronoi_scale: 2,
-    voronoi_scale_random: 0.0,
-    voronoi_rotation: 6.14,
+    img_path: "texture/world/terr/dungeon/dungeon_floor.png",
+    scale: 1.2,
+    voronoi_scale: 2.0,
+    voronoi_scale_random: 0.4,
+    voronoi_rotation: 1.6,
     mask_color: (255., 0, 0, 255.),
 )

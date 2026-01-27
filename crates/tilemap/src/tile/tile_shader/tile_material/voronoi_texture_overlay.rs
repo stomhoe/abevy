@@ -89,7 +89,7 @@ impl PartialEq for VoronoiTextureOverlayMat {
 }
 impl MaterialTilemap for VoronoiTextureOverlayMat {
     fn fragment_shader() -> ShaderRef {
-        "shader/voronoi_shuffle.wgsl".into()
+        "shader_wgsl/voronoi_shuffle.wgsl".into()
     }
 }
 

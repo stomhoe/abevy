@@ -17,7 +17,7 @@ pub struct TwoOverlaysExample {
 
 impl MaterialTilemap for TwoOverlaysExample {
     fn fragment_shader() -> ShaderRef {
-        "shader/textured_tile_dual.wgsl".into()
+        "shader_wgsl/textured_tile_dual.wgsl".into()
     }
 }
 impl PartialEq for TwoOverlaysExample {

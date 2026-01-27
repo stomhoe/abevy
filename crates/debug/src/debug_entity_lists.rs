@@ -10,12 +10,87 @@ use tilemap::chunking_resources::AaChunkRangeSettings;
 use tilemap::regioning::regioning_components::{Region, GridOfSgcs, ClaimList, RegionPlannedTiles, ChunksActiveInRegion, CountsOfSgcs, PendingOfferTimeout, EmptyRegionDespawnTimer, AllTilesPrepared, BuildingStarted, AllClaimsProcessed};
 use tilemap::terrain_gen::terrgen_operaton_list_components::{OperationList, Operation, Operand, OperandElement};
 use tilemap::terrain_gen::terrgen_components::{Terrgen, FnlNoiseComp};
+use tilemap::tile::tile_components::{Tile, TileStrId};
+use tilemap::tile::tile_shader::tile_shader_components::TileShaderRef;
 use tilemap_shared::{ChunkPos, PoissonDisk, RegionPos};
-
+use bevy_ecs_tilemap::prelude::{TileStorage, TilePos};
+use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use sprite_shared::AcZ;
+use common::common_components::StrId;
 
 use being::being_components::Being;
 use dimension_shared::DimensionRef;
 use camera::camera_components::CameraTarget;
+
+// Color palette for unique tile types - readable and distinct colors
+const TILE_COLORS: &[egui::Color32] = &[
+    egui::Color32::from_rgb(100, 200, 100),  // Green
+    egui::Color32::from_rgb(100, 150, 255),  // Light Blue
+    egui::Color32::from_rgb(255, 200, 100),  // Orange
+    egui::Color32::from_rgb(200, 100, 255),  // Purple
+    egui::Color32::from_rgb(255, 150, 150),  // Light Red
+    egui::Color32::from_rgb(100, 200, 200),  // Cyan
+    egui::Color32::from_rgb(255, 255, 100),  // Yellow
+    egui::Color32::from_rgb(200, 200, 100),  // Olive
+    egui::Color32::from_rgb(150, 200, 150),  // Light Green
+    egui::Color32::from_rgb(200, 150, 255),  // Light Purple
+];
+
+fn get_color_for_str_id(str_id: &str) -> egui::Color32 {
+    let mut hash: usize = 0;
+    for byte in str_id.bytes() {
+        hash = hash.wrapping_mul(31).wrapping_add(byte as usize);
+    }
+    TILE_COLORS[hash % TILE_COLORS.len()]
+}
+
+#[allow(unused_parens)]
+fn render_tilemap_grid(
+    ui: &mut egui::Ui,
+    tile_storage: &TileStorage,
+    tile_query: &Query<(Entity, &EntityZeroRef), With<Tile>>,
+    ezero_query: &Query<&TileStrId, With<EntityZero>>,
+) {
+    let size = tile_storage.size;
+    
+    // Only render if not too large (avoid performance issues)
+    if size.x > 50 || size.y > 50 {
+        ui.label(format!("Grid too large to display: {}x{}", size.x, size.y));
+        return;
+    }
+    
+    egui::Grid::new("tilemap_tiles_grid")
+        .spacing([2.0, 2.0])
+        .show(ui, |ui| {
+            for y in (0..size.y).rev() {
+                for x in 0..size.x {
+                    let tile_pos = TilePos { x, y };
+                    
+                    if let Some(tile_entity) = tile_storage.checked_get(&tile_pos) {
+                        // Try to get EntityZeroRef for this tile
+                        if let Ok((_, ezero_ref)) = tile_query.get(tile_entity) {
+                            // Query the EntityZero to get its StrId
+                            if let Ok(str_id) = ezero_query.get(ezero_ref.0) {
+                                let str_id_str = str_id.as_str();
+                                let label = format!("{}", str_id_str);
+                                let color = get_color_for_str_id(str_id_str);
+                                ui.colored_label(color, egui::RichText::new(label).small());
+                            } else {
+                                let label = format!("Ez:{:?}", ezero_ref.0.index());
+                                let color = egui::Color32::GRAY;
+                                ui.colored_label(color, egui::RichText::new(label).small());
+                            }
+                        } else {
+                            ui.label(egui::RichText::new(format!("Ent:{:?}", tile_entity.index())).small());
+                        }
+                    } else {
+                        ui.label(egui::RichText::new(".").small());
+                    }
+                }
+                ui.end_row();
+            }
+        });
+}
 
 #[allow(unused_parens)]
 pub fn chunks_list_window(
@@ -37,6 +112,11 @@ pub fn chunks_list_window(
     ), With<Chunk>>,
     dimension_query: Query<&Name>,
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    // Query for child entities to check their components
+    tile_storage_query: Query<(Entity, Option<&Name>, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
+    tile_query: Query<(Entity, &EntityZeroRef), With<Tile>>,
+    ezero_query: Query<&TileStrId, With<EntityZero>>,
+    shader_query: Query<&StrId>,
 ) {
     if !window_visible.chunks_list {
         return;
@@ -122,7 +202,16 @@ pub fn chunks_list_window(
 
             for dim_key in sorted_dims.iter() {
                 if let Some(chunks_map) = chunks_by_dimension.get(dim_key) {
-                    ui.collapsing(dim_key, |ui| {
+                    let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
+                        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
+                            dim_key == &format!("{}", camera_name)
+                        } else {
+                            false
+                        }
+                    });
+                    egui::CollapsingHeader::new(dim_key)
+                        .default_open(is_camera_dim)
+                        .show(ui, |ui| {
                         // Create grid of chunk positions
                         let positions: Vec<ChunkPos> = chunks_map.keys().copied().collect();
                         if let (Some(min_x), Some(max_x), Some(min_y), Some(max_y)) = (
@@ -141,15 +230,12 @@ pub fn chunks_list_window(
                                                 let is_selected = selected_entities.selected_chunks.contains(entity);
                                                 let is_camera_pos = camera_chunk_pos.map_or(false, |cam_pos| cam_pos == pos);
                                                 
-                                                let mut label = format!("{},{}\n{} children", x, y, children.len());
-                                                if let Some(n) = name {
-                                                    label = format!("{}\n{}", label, n);
-                                                }
+                                                let label = format!("{},{}\n{} children", x, y, children.len());
                                                 
                                                 let button_response = if is_camera_pos {
-                                                    ui.selectable_label(is_selected, egui::RichText::new(&label).color(egui::Color32::YELLOW).strong())
+                                                    ui.selectable_label(is_selected, egui::RichText::new(&label).color(egui::Color32::YELLOW).strong().small())
                                                 } else {
-                                                    ui.selectable_label(is_selected, &label)
+                                                    ui.selectable_label(is_selected, egui::RichText::new(&label).small())
                                                 };
                                                 
                                                 if button_response.clicked() {
@@ -201,6 +287,43 @@ pub fn chunks_list_window(
                                 activating.entities.len(), 
                                 activating.reactivation_timer.elapsed_secs()));
                         }
+                        
+                        // Display children details
+                        ui.separator();
+                        egui::CollapsingHeader::new("Children:")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                for child_entity in children.iter() {
+                                    // Check if child is a tilemap with TileStorage
+                                    if let Ok((tmap_entity, tmap_name, tile_storage, ac_z, shader_ref)) = tile_storage_query.get(child_entity) {
+                                        let tmap_name_str = tmap_name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
+                                        
+                                        // Build the label with AcZ and shader info
+                                        let mut label = format!("📦 Tilemap: {}", tmap_name_str);
+                                        if let Some(z) = ac_z {
+                                            label.push_str(&format!(" [Z: {:.1}]", z.0));
+                                        }
+                                        if let Some(shader_ref) = shader_ref {
+                                            if let Ok(shader_str) = shader_query.get(shader_ref.0) {
+                                                label.push_str(&format!(" [Shader: {}]", shader_str.as_str()));
+                                            }
+                                        }
+                                        
+                                        ui.collapsing(label, |ui| {
+                                            ui.label(format!("Size: {}x{}", tile_storage.size.x, tile_storage.size.y));
+                                            
+                                            // Draw tilemap grid
+                                            ui.label("Tile Grid:");
+                                            ui.indent("tilemap_grid", |ui| {
+                                                render_tilemap_grid(ui, tile_storage, &tile_query, &ezero_query);
+                                            });
+                                        });
+                                    } else {
+                                        // Display generic child info
+                                        ui.label(format!("Child: {:?}", child_entity));
+                                    }
+                                }
+                            });
                     });
                 });
             }
@@ -300,7 +423,16 @@ pub fn regions_list_window(
 
             for dim_key in sorted_dims.iter() {
                 if let Some(regions_map) = regions_by_dimension.get(dim_key) {
-                    ui.collapsing(dim_key, |ui| {
+                    let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
+                        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
+                            dim_key == &format!("{}", camera_name)
+                        } else {
+                            false
+                        }
+                    });
+                    egui::CollapsingHeader::new(dim_key)
+                        .default_open(is_camera_dim)
+                        .show(ui, |ui| {
                         // Create grid of region positions
                         let positions: Vec<RegionPos> = regions_map.keys().copied().collect();
                         if let (Some(min_x), Some(max_x), Some(min_y), Some(max_y)) = (
@@ -484,7 +616,16 @@ pub fn beings_list_window(
 
             for dim_key in sorted_dims.iter() {
                 if let Some(beings) = beings_by_dimension.get(dim_key) {
-                ui.collapsing(format!("{} ({})", dim_key, beings.len()), |ui| {
+                let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
+                    if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
+                        dim_key == &format!("{}", camera_name)
+                    } else {
+                        false
+                    }
+                });
+                egui::CollapsingHeader::new(format!("{} ({})", dim_key, beings.len()))
+                    .default_open(is_camera_dim)
+                    .show(ui, |ui| {
                     for (entity, name) in beings.iter() {
                         let label = if let Some(n) = name {
                             format!("{} ({:?})", n, entity)

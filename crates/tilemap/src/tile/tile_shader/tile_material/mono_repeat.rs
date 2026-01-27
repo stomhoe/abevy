@@ -68,6 +68,6 @@ impl Default for MonoRepeatTextureOverlayMat {
 }
 impl MaterialTilemap for MonoRepeatTextureOverlayMat {
     fn fragment_shader() -> ShaderRef {
-        "shader/textured_tile.wgsl".into()
+        "shader_wgsl/textured_tile.wgsl".into()
     }
 }
