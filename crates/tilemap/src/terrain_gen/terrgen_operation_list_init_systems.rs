@@ -7,7 +7,7 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use common::{common_components::{AnyDisabling, StrId}, common_tag_components::TagSet};
 use dimension_shared::{Dimension, DimensionEntityMap, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
-use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_oplist_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
+use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_operaton_list_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
 
 use std::mem::take;

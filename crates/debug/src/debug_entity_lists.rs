@@ -7,7 +7,11 @@ use crate::debug_resources::{DubugWindowsVisibility, DebugSelectedEntities};
 // Import needed components
 use tilemap::chunking_components::{Chunk, TilesToSave, TerrGenOpsLaunched, ReadyForTerrgen, ActivatingChunks};
 use tilemap::regioning::regioning_components::{Region, GridOfSgcs, ClaimList, RegionPlannedTiles, ChunksActiveInRegion, CountsOfSgcs, PendingOfferTimeout, EmptyRegionDespawnTimer, AllTilesPrepared, BuildingStarted, AllClaimsProcessed};
+use tilemap::terrain_gen::terrgen_operaton_list_components::{OperationList, Operation, Operand, OperandElement, VariablesArray};
+use tilemap::terrain_gen::terrgen_components::{Terrgen, FnlNoiseComp};
 use tilemap_shared::{ChunkPos, RegionPos};
+
+
 use being::being_components::Being;
 use dimension_shared::DimensionRef;
 use camera::camera_components::CameraTarget;
@@ -91,7 +95,7 @@ pub fn chunks_list_window(
             ui.horizontal(|ui| {
                 ui.heading(format!("Chunks: {}", chunk_query.iter().count()));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✕").clicked() {
+                    if ui.button("✖").clicked() {
                         window_visible.chunks_list = false;
                     }
                 });
@@ -269,7 +273,7 @@ pub fn regions_list_window(
             ui.horizontal(|ui| {
                 ui.heading(format!("Regions: {}", region_query.iter().count()));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✕").clicked() {
+                    if ui.button("✖").clicked() {
                         window_visible.regions_list = false;
                     }
                 });
@@ -453,7 +457,7 @@ pub fn beings_list_window(
             ui.horizontal(|ui| {
                 ui.heading(format!("Beings: {}", being_query.iter().count()));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✕").clicked() {
+                    if ui.button("✖").clicked() {
                         window_visible.beings_list = false;
                     }
                 });
@@ -472,6 +476,229 @@ pub fn beings_list_window(
                         ui.label(label);
                     }
                 });
+                }
+            }
+        });
+}
+
+#[allow(unused_parens)]
+pub fn terrgen_editor_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selected_entities: ResMut<DebugSelectedEntities>,
+    mut queries: ParamSet<(
+        Query<(Entity, Option<&Name>, &OperationList)>,
+        Query<&mut OperationList>,
+    )>,
+    noise_query: Query<(Entity, Option<&Name>, &FnlNoiseComp), With<Terrgen>>,
+) {
+    if !window_visible.terrgen_editor {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let screen_rect = ctx.content_rect();
+    let default_x = screen_rect.left() + 700.0;
+    let default_y = screen_rect.top() + 10.0;
+
+    // Pre-collect noise data to avoid borrow conflicts
+    let noise_data: Vec<(Entity, String)> = noise_query.iter()
+        .map(|(ent, name, _)| {
+            let label = if let Some(n) = name {
+                format!("{}", n)
+            } else {
+                format!("{:?}", ent)
+            };
+            (ent, label)
+        })
+        .collect();
+
+    // Pre-collect operationlist data
+    let operationlist_vec: Vec<(Entity, String)> = queries.p0().iter()
+        .map(|(ent, name, _)| {
+            let label = if let Some(n) = name {
+                format!("{} ({:?})", n, ent)
+            } else {
+                format!("OperationList ({:?})", ent)
+            };
+            (ent, label)
+        })
+        .collect();
+
+    egui::Window::new("Terrgen Editor")
+        .default_pos([default_x, default_y])
+        .resizable(true)
+        .movable(true)
+        .default_width(500.0)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading("Terrgen Editor");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("✖").clicked() {
+                        window_visible.terrgen_editor = false;
+                    }
+                });
+            });
+            ui.separator();
+
+            // Select OperationList
+            ui.label("Select OperationList:");
+            
+            for (entity, label) in operationlist_vec.iter() {
+                if ui.selectable_label(
+                    selected_entities.selected_operationlist == Some(*entity),
+                    label,
+                ).clicked() {
+                    selected_entities.selected_operationlist = Some(*entity);
+                }
+            }
+
+            ui.separator();
+
+            // Edit selected OperationList
+            if let Some(oplist_entity) = selected_entities.selected_operationlist {
+                if let Ok(mut oplist) = queries.p1().get_mut(oplist_entity) {
+                    ui.heading("Operations:");
+                    
+                    // Display trunk operations
+                    let trunk_len = oplist.trunk.len();
+                    let mut remove_op_idx = None;
+                    
+                    for idx in 0..trunk_len {
+                        // Display operation header - extract values first
+                        let op_str = oplist.trunk[idx].0.as_ref().to_string();
+                        let var_idx = oplist.trunk[idx].2;
+                        
+                        ui.horizontal(|ui| {
+                            ui.label(format!("Op {}: {} (Var{})", idx, op_str, var_idx));
+                            
+                            // Move up button
+                            if idx > 0 && ui.button("⬆").clicked() {
+                                oplist.trunk.swap(idx, idx - 1);
+                            }
+                            
+                            // Move down button
+                            if idx < trunk_len - 1 && ui.button("⬇").clicked() {
+                                oplist.trunk.swap(idx, idx + 1);
+                            }
+                            
+                            // Remove button
+                            if ui.button("✕").clicked() {
+                                remove_op_idx = Some(idx);
+                            }
+                        });
+                        
+                        // Edit operands for this operation
+                        ui.horizontal(|ui| {
+                            ui.label("  Operands:");
+                            if ui.button("+ Add").clicked() {
+                                oplist.trunk[idx].1.push(Operand {
+                                    complement: false,
+                                    element: OperandElement::default(),
+                                });
+                            }
+                        });
+                        
+                        // Edit each operand
+                        let op_count = oplist.trunk[idx].1.len();
+                        let mut remove_opd_idx = None;
+                        
+                        for opd_idx in 0..op_count {
+                            let mut removed = false;
+                            ui.horizontal(|ui| {
+                                if ui.button("✕").clicked() {
+                                    removed = true;
+                                }
+                                
+                                ui.checkbox(&mut oplist.trunk[idx].1[opd_idx].complement, "Complement");
+                                ui.label(format!("Operand {}:", opd_idx));
+                                
+                                match &mut oplist.trunk[idx].1[opd_idx].element {
+                                    OperandElement::Value(v) => {
+                                        ui.label("Value:");
+                                        ui.add(egui::DragValue::new(v).speed(0.1));
+                                    }
+                                    OperandElement::StackArray(idx_val) => {
+                                        ui.label("StackArray Idx:");
+                                        ui.add(egui::DragValue::new(idx_val).speed(1.0));
+                                    }
+                                    OperandElement::NoiseEntity(entity_ref, _range, _complementary, seed) => {
+                                        ui.label("NoiseEntity:");
+                                        
+                                        // Show current and allow selection from pre-collected data
+                                        for (noise_ent, noise_label) in noise_data.iter() {
+                                            if ui.selectable_label(*entity_ref == *noise_ent, noise_label).clicked() {
+                                                *entity_ref = *noise_ent;
+                                            }
+                                        }
+                                        
+                                        ui.add(egui::DragValue::new(seed).speed(1.0).prefix("Seed: "));
+                                    }
+                                    OperandElement::HashPos(hash) => {
+                                        ui.label("HashPos:");
+                                        ui.add(egui::DragValue::new(hash).speed(1.0));
+                                    }
+                                    OperandElement::PoissonDisk(_) => {
+                                        ui.label("PoissonDisk (non-editable)");
+                                    }
+                                }
+                            });
+                            
+                            if removed {
+                                remove_opd_idx = Some(opd_idx);
+                            }
+                        }
+                        
+                        // Remove operand if marked
+                        if let Some(opd_idx) = remove_opd_idx {
+                            oplist.trunk[idx].1.remove(opd_idx);
+                        }
+                    }
+                    
+                    // Remove operation if marked
+                    if let Some(op_idx) = remove_op_idx {
+                        oplist.trunk.remove(op_idx);
+                    }
+                    
+                    ui.separator();
+                    
+                    // Add new operation button
+                    if ui.button("+ Add New Operation").clicked() {
+                        oplist.trunk.push((Operation::Add, vec![], 0));
+                    }
+                    
+                    ui.separator();
+                    
+                    // Display bifurcations
+                    ui.heading(format!("Bifurcations: {}", oplist.bifurcations.len()));
+                    for (bif_idx, bifur) in oplist.bifurcations.iter().enumerate() {
+                        ui.horizontal(|ui| {
+                            if let Some(oplist_ent) = bifur.oplist {
+                                ui.label(format!("Bifurcation {}: OpList({:?}), Tiles: {}", 
+                                    bif_idx, oplist_ent, bifur.tiles.len()));
+                            } else {
+                                ui.label(format!("Bifurcation {}: No OpList, Tiles: {}", 
+                                    bif_idx, bifur.tiles.len()));
+                            }
+                        });
+                    }
+                }
+            }
+
+            ui.separator();
+
+            // Select and show Noise components
+            ui.label("Available Noise Components:");
+            
+            for (entity, label) in noise_data.iter() {
+                if ui.selectable_label(
+                    selected_entities.selected_noise == Some(*entity),
+                    label,
+                ).clicked() {
+                    selected_entities.selected_noise = Some(*entity);
                 }
             }
         });

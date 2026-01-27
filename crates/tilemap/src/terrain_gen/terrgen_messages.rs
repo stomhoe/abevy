@@ -5,7 +5,7 @@ use serde::Deserialize;
 use ::tilemap_shared::*;
 use std::hash::Hash;
 
-use crate::{terrain_gen::{terrgen_oplist_components::VariablesArray, }, };
+use crate::{terrain_gen::{terrgen_operaton_list_components::VariablesArray, }, };
 
 
 

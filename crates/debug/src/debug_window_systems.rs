@@ -101,8 +101,8 @@ pub fn main_menu_window(
     };
 
     let screen_rect = ctx.content_rect();
-    let default_x = screen_rect.right() - 250.0;
-    let default_y = screen_rect.top() + 10.0;
+    let default_x = screen_rect.right();
+    let default_y = screen_rect.top();
 
     egui::Window::new("Debug Menu")
         .default_pos([default_x, default_y])
@@ -133,6 +133,10 @@ pub fn main_menu_window(
 
             if ui.button("Beings List").clicked() {
                 window_visible.beings_list = !window_visible.beings_list;
+            }
+
+            if ui.button("Terrgen Editor").clicked() {
+                window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
 
             ui.separator();

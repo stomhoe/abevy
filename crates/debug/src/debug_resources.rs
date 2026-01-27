@@ -8,6 +8,7 @@ pub struct DubugWindowsVisibility{
     pub chunks_list: bool,
     pub regions_list: bool,
     pub beings_list: bool,
+    pub terrgen_editor: bool,
 }
 
 impl Default for DubugWindowsVisibility {
@@ -18,6 +19,7 @@ impl Default for DubugWindowsVisibility {
             chunks_list: false,
             regions_list: false,
             beings_list: false,
+            terrgen_editor: false,
         }
     }
 }
@@ -26,4 +28,6 @@ impl Default for DubugWindowsVisibility {
 pub struct DebugSelectedEntities {
     pub selected_regions: std::collections::HashSet<Entity>,
     pub selected_chunks: std::collections::HashSet<Entity>,
+    pub selected_operationlist: Option<Entity>,
+    pub selected_noise: Option<Entity>,
 }

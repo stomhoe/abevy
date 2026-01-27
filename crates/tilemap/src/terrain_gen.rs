@@ -5,13 +5,13 @@ use common::common_states::AssetLoading;
 use dimension_shared::RootInDimensions;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking_components::TerrGenOpsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_oplist_components::*, terrgen_oplist_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::process_tiles_pre,};
+use crate::{chunking_components::TerrGenOpsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_operaton_list_components::*, terrgen_operation_list_init_systems::*, terrgen_resources::*, terrgen_systems::*}, tilemap_systems::process_tiles_pre,};
 
 pub mod terrgen_systems;
-mod terrgen_oplist_init_systems;
+mod terrgen_operation_list_init_systems;
 mod terrgen_noise_init_systems;
 pub mod terrgen_components;
-pub mod terrgen_oplist_components;
+pub mod terrgen_operaton_list_components;
 pub mod terrgen_resources;
 pub mod terrgen_messages;
 
