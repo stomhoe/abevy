@@ -55,7 +55,7 @@ pub fn states_window(
             ui.horizontal(|ui| {
                 ui.heading("Main States");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✕").clicked() {
+                    if ui.button("✖").clicked() {
                         window_visible.states = false;
                     }
                 });
@@ -112,7 +112,7 @@ pub fn main_menu_window(
             ui.horizontal(|ui| {
                 ui.heading("Debug Windows");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✕").clicked() {
+                    if ui.button("✖").clicked() {
                         window_visible.main_menu = false;
                     }
                 });

@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, HashMap};
 use crate::debug_resources::{DubugWindowsVisibility, DebugSelectedEntities};
 
 // Import needed components
-use tilemap::chunking_components::Chunk;
+use tilemap::chunking_components::{Chunk, TilesToSave, TerrGenOpsLaunched, ReadyForTerrgen, ActivatingChunks};
 use tilemap::regioning::regioning_components::{Region, GridOfSgcs, ClaimList, RegionPlannedTiles, ChunksActiveInRegion, CountsOfSgcs, PendingOfferTimeout, EmptyRegionDespawnTimer, AllTilesPrepared, BuildingStarted, AllClaimsProcessed};
 use tilemap_shared::{ChunkPos, RegionPos};
 use being::being_components::Being;
@@ -17,9 +17,20 @@ pub fn chunks_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    chunk_query: Query<(Entity, &Chunk, &DimensionRef, &ChunkPos, Option<&Name>, &Children), With<Chunk>>,
+    chunk_query: Query<(
+        Entity,
+        &Chunk,
+        &DimensionRef,
+        &ChunkPos,
+        Option<&Name>,
+        &Children,
+        Option<&TilesToSave>,
+        Has<TerrGenOpsLaunched>,
+        Has<ReadyForTerrgen>,
+        Option<&ActivatingChunks>,
+    ), With<Chunk>>,
     dimension_query: Query<&Name>,
-    camera_dimension: Query<&DimensionRef, With<CameraTarget>>,
+    camera_dimension: Query<(&DimensionRef, &Transform), With<CameraTarget>>,
 ) {
     if !window_visible.chunks_list {
         return;
@@ -33,14 +44,19 @@ pub fn chunks_list_window(
     let default_x = screen_rect.left() + 10.0;
     let default_y = screen_rect.top() + 10.0;
 
-    // Get camera target dimension if available
-    let camera_dim_ref = camera_dimension.iter().next();
+    // Get camera target dimension and position
+    let (camera_dim_ref, camera_chunk_pos) = camera_dimension.iter().next()
+        .map(|(dim_ref, transform)| {
+            let chunk_pos = ChunkPos::from(transform.translation);
+            (Some(dim_ref), Some(chunk_pos))
+        })
+        .unwrap_or((None, None));
     
     // Group chunks by dimension and position
-    let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Name>, &Children)>> =
+    let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Name>, &Children, Option<&TilesToSave>, bool, bool, Option<&ActivatingChunks>)>> =
         BTreeMap::new();
 
-    for (entity, _chunk, dim_ref, chunk_pos, name, children) in chunk_query.iter() {
+    for (entity, _chunk, dim_ref, chunk_pos, name, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks) in chunk_query.iter() {
         let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
             format!("{}", n)
         } else {
@@ -50,7 +66,7 @@ pub fn chunks_list_window(
         chunks_by_dimension
             .entry(dim_name)
             .or_insert_with(HashMap::new)
-            .insert(*chunk_pos, (entity, name, children));
+            .insert(*chunk_pos, (entity, name, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks));
     }
     
     // Sort dimensions with camera dimension first
@@ -99,13 +115,22 @@ pub fn chunks_list_window(
                                     for y in (min_y..=max_y).rev() {
                                         for x in min_x..=max_x {
                                             let pos = ChunkPos(IVec2::new(x, y));
-                                            if let Some((entity, name, children)) = chunks_map.get(&pos) {
+                                            if let Some((entity, name, children, _tiles_to_save, _has_terrgen_ops, _has_ready_for_terrgen, _activating_chunks)) = chunks_map.get(&pos) {
                                                 let is_selected = selected_entities.selected_chunks.contains(entity);
+                                                let is_camera_pos = camera_chunk_pos.map_or(false, |cam_pos| cam_pos == pos);
+                                                
                                                 let mut label = format!("{},{}\n{} children", x, y, children.len());
                                                 if let Some(n) = name {
                                                     label = format!("{}\n{}", label, n);
                                                 }
-                                                if ui.selectable_label(is_selected, &label).clicked() {
+                                                
+                                                let button_response = if is_camera_pos {
+                                                    ui.selectable_label(is_selected, egui::RichText::new(&label).color(egui::Color32::YELLOW).strong())
+                                                } else {
+                                                    ui.selectable_label(is_selected, &label)
+                                                };
+                                                
+                                                if button_response.clicked() {
                                                     if is_selected {
                                                         selected_entities.selected_chunks.remove(entity);
                                                     } else {
@@ -122,6 +147,40 @@ pub fn chunks_list_window(
                         }
                     });
                 }
+            }
+            
+            // Show details for selected chunks in stable order
+            let mut selected_chunk_details: Vec<_> = chunks_by_dimension.iter()
+                .flat_map(|(_, map)| map.iter())
+                .filter(|(_, (entity, ..))| selected_entities.selected_chunks.contains(entity))
+                .collect();
+            selected_chunk_details.sort_by_key(|(_, (entity, ..))| entity.index());
+            
+            for (_chunk_pos, (entity, name, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks)) in selected_chunk_details {
+                let name_str = name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
+                ui.collapsing(format!("Details: {} ({:?})", name_str, entity), |ui| {
+                    ui.vertical(|ui| {
+                        ui.label(format!("Children count: {}", children.len()));
+                        
+                        if let Some(tiles) = tiles_to_save {
+                            ui.label(format!("TilesToSave: {} tiles", tiles.entities().len()));
+                        }
+                        
+                        if *has_terrgen_ops {
+                            ui.label("🔧 TerrGenOpsLaunched");
+                        }
+                        
+                        if *has_ready_for_terrgen {
+                            ui.label("✓ ReadyForTerrgen");
+                        }
+                        
+                        if let Some(activating) = activating_chunks {
+                            ui.label(format!("⏳ ActivatingChunks: {} entities, timer: {:.2}s", 
+                                activating.entities.len(), 
+                                activating.reactivation_timer.elapsed_secs()));
+                        }
+                    });
+                });
             }
         });
 }
@@ -149,7 +208,7 @@ pub fn regions_list_window(
         Has<AllClaimsProcessed>,
     ), With<Region>>,
     dimension_query: Query<&Name>,
-    camera_dimension: Query<&DimensionRef, With<CameraTarget>>,
+    camera_dimension: Query<(&DimensionRef, &Transform), With<CameraTarget>>,
 ) {
     if !window_visible.regions_list {
         return;
@@ -179,8 +238,14 @@ pub fn regions_list_window(
             .insert(*region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims));
     }
     
-    // Get camera target dimension if available
-    let camera_dim_ref = camera_dimension.iter().next();
+    // Get camera target dimension and position
+    let (camera_dim_ref, camera_region_pos) = camera_dimension.iter().next()
+        .map(|(dim_ref, transform)| {
+            let chunk_pos = ChunkPos::from(transform.translation);
+            let region_pos = chunk_pos.to_region_pos();
+            (Some(dim_ref), Some(region_pos))
+        })
+        .unwrap_or((None, None));
     
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = regions_by_dimension.keys().cloned().collect();
@@ -230,12 +295,20 @@ pub fn regions_list_window(
                                             let pos = RegionPos(IVec2::new(x, y));
                                             if let Some((entity, name, _grid, _claim_list, _planned_tiles, _chunks_active, _counts, _pending_timeout, _empty_timer, _has_all_tiles, _has_building_started, _has_all_claims)) = regions_map.get(&pos) {
                                                 let is_selected = selected_entities.selected_regions.contains(entity);
+                                                let is_camera_pos = camera_region_pos.map_or(false, |cam_pos| cam_pos == pos);
+                                                
                                                 let mut label = format!("{},{}", x, y);
                                                 if let Some(n) = name {
                                                     label = format!("{}\n{}", label, n);
                                                 }
                                                 
-                                                if ui.selectable_label(is_selected, &label).clicked() {
+                                                let button_response = if is_camera_pos {
+                                                    ui.selectable_label(is_selected, egui::RichText::new(&label).color(egui::Color32::YELLOW).strong())
+                                                } else {
+                                                    ui.selectable_label(is_selected, &label)
+                                                };
+                                                
+                                                if button_response.clicked() {
                                                     if is_selected {
                                                         selected_entities.selected_regions.remove(entity);
                                                     } else {
