@@ -1,5 +1,6 @@
 (
     id: "ow",
     name: "Overworld",
-    description: "The overworld"
+    description: "The overworld",
+    whitelisted_structure_gen_tags: Some([ "", ]),
 )

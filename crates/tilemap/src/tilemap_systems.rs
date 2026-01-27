@@ -206,11 +206,7 @@ pub fn process_tiles_pre(
             let chunk_pos = ChunkPos::from(bundle.gpos);
             let gpos = bundle.gpos;
             let dim_ref = bundle.dim_ref;
-            params.limbo_tiles.0.push(TilemapLimboEntry {
-                tile_ent,
-                bundle,
-                retries_left: TilemapLimboEntry::MAX_RETRIES,
-            });
+            params.limbo_tiles.0.push(LimboTileEntry::new(tile_ent, bundle));
             trace!(target: "tilemap_systems", "Chunk for tile entity {:?} at gpos {:?}, {} in dim {:?} not loaded, sending to limbo", tile_ent, gpos, chunk_pos, dim_ref);
             continue;//chunk not loaded
         };
@@ -568,39 +564,6 @@ fn func_process_tile_into_tilemaps(
     }
 }
 
-#[allow(unused_parens)]
-pub fn reparent_orphan_tilemaps(
-    mut cmd: Commands,
-    mut tmap_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut ReparentingRetries), (With<TilemapTexture>, Without<ChildOf>)>,
-    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), (With<Chunk>, )>,
-    mut loaded_chunks: ResMut<LoadedChunks>,
-) {
-    let mut child_ofs = Vec::with_capacity(tmap_query.iter().size_hint().0);
-    for (tmap_ent, &tmap_chunk_pos, &dim_ref, mut retries) in tmap_query.iter_mut() {
-        if let Some(&chunk_ent) = loaded_chunks.0.get(&(dim_ref, tmap_chunk_pos)) {
-            //cmd.entity(tmap_ent).insert(ChildOf(chunk_ent));
-            child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
-            retries.0 = 0;
-            continue;
-        }
-        else{
-            for (chunk_ent, &cpos, &chunk_dim_ref) in chunk_query.iter() {
-                if &tmap_chunk_pos == &cpos && dim_ref == chunk_dim_ref {
-                    //cmd.entity(tmap_ent).insert(ChildOf(chunk_ent));
-                    child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
-                    loaded_chunks.0.insert((dim_ref, tmap_chunk_pos), chunk_ent);
-                    retries.0 = 0;
-                    break;
-                }
-            }
-        }
-        retries.0 += 1;
-        if retries.0 > 5 {
-            cmd.entity(tmap_ent).try_despawn();
-        }
-    }
-    cmd.try_insert_batch(child_ofs);
-}
 
 #[allow(unused_parens)]
 pub fn tile_assign_child_of(mut cmd: Commands, 
@@ -608,7 +571,7 @@ pub fn tile_assign_child_of(mut cmd: Commands,
     query: Query<(Entity, &TilemapId), (Without<ChildOf>, AnyDisabling)>,
 ) {
     let parent = tile_instances_holder_query.into_inner();
-
+    
     let mut child_ofs_for_tiles: Vec<(Entity, ChildOf)> = Vec::with_capacity(query.iter().size_hint().0);
     for (tile_ent, &tile_map_id) in query.iter() {
         if tile_map_id == TilemapId::default() {
@@ -621,3 +584,40 @@ pub fn tile_assign_child_of(mut cmd: Commands,
     cmd.try_insert_batch(child_ofs_for_tiles);
 }
 
+
+#[allow(unused_parens)]
+#[deprecated(
+    since = "0.1.0",
+    note = "most likely to be deleted since it is not necessary and causes chunks to appear without tilemaps due to some race condition"
+)]
+///reparent_orphan_tilemaps.run_if(on_timer(Duration::from_seconds(3))),// DON'T PUT LESS THAN 3
+pub fn reparent_orphan_tilemaps(
+    mut cmd: Commands,
+    mut tmap_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut ReparentingRetries), (With<TilemapTexture>, Without<ChildOf>)>,
+    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), (With<Chunk>, )>,
+    mut loaded_chunks: ResMut<LoadedChunks>,
+) {
+    let mut child_ofs = Vec::with_capacity(tmap_query.iter().size_hint().0);
+    for (tmap_ent, &tmap_chunk_pos, &dim_ref, mut retries) in tmap_query.iter_mut() {
+        if let Some(&chunk_ent) = loaded_chunks.0.get(&(dim_ref, tmap_chunk_pos)) {
+            child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
+            retries.0 = 0;
+            continue;
+        }
+        else{
+            for (chunk_ent, &cpos, &chunk_dim_ref) in chunk_query.iter() {
+                if &tmap_chunk_pos == &cpos && dim_ref == chunk_dim_ref {
+                    child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
+                    loaded_chunks.0.insert((dim_ref, tmap_chunk_pos), chunk_ent);
+                    retries.0 = 0;
+                    break;
+                }
+            }
+        }
+        retries.0 += 1;
+        if retries.0 > 20 {
+            cmd.entity(tmap_ent).try_despawn();
+        }
+    }
+    cmd.try_insert_batch(child_ofs);
+}

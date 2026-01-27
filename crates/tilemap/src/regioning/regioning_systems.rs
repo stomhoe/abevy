@@ -49,7 +49,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     let mut offers = Vec::new();
     
     for (region_ent, &region_pos, &dim_ref, mut claimlist) in region_query.iter_mut() {
-        info!(target: "sgc_chunk_offer", "Offering chunks for new region at {:?}", region_pos);
+        trace!(target: "sgc_chunk_offer", "Offering chunks for new region at {:?}", region_pos);
         
         let Ok((&dim_hash, dim_wlist_tags, dim_blist_tags)) = dimension_query.get(dim_ref.0)
         else {
@@ -63,7 +63,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         
         let all_chunk_positions = region_pos.all_chunk_positions_shuffled(&mut rng);
         
-        // solo por las dudas
+        /// not necessary since weight_map is finite, but just in case
         const MAX_REATTEMPTS: usize = 10000;
         
         'next_i: for (i, &chunk_pos) in all_chunk_positions.iter().enumerate() {
@@ -122,7 +122,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         }
         
         if offers.is_empty() {
-            error!(target: "sgc_chunk_offer", "No structures could be offered for region at {}, marking as BuildingStarted immediately", region_pos);
+            warn!(target: "sgc_chunk_offer", "No structures could be offered for region at {}, marking as BuildingStarted immediately", region_pos);
             cmd.entity(region_ent).try_insert((BuildingStarted, AllClaimsProcessed));
         } else {
             cmd.entity(region_ent).try_insert(PendingOfferTimeout { timeout_timer: Timer::from_seconds(0.2, TimerMode::Once) });
@@ -350,7 +350,7 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
         };
 
         if finished {
-            info!(target: "structure_spawn", "Region entity {:?} has finished planning all structure tiles, marking as RegionPlanningFinished", region_ent);
+            debug!(target: "structure_spawn", "Region entity {:?} has finished planning all structure tiles, marking as RegionPlanningFinished", region_ent);
             cmd.entity(region_ent).try_insert(AllTilesPrepared);
         }
     }
@@ -445,11 +445,11 @@ pub fn failsafe_timeout_pending_chunks(
         
         for chunk_pos in timed_out {
             planned.mark_chunk_timed_out(chunk_pos);
-            warn!(target: "structure_spawn", "Timed out waiting for StructureBuildCompliance for chunk {:?} in region {:?}, marking as empty and continuing", chunk_pos, region_pos);
+            error!(target: "structure_spawn", "Timed out waiting for StructureBuildCompliance for chunk {:?} in region {:?}, marking as empty and continuing", chunk_pos, region_pos);
         }
         
         if planned.pending_chunks_iter().next().is_none() {
-            info!(target: "structure_spawn", "Region entity {:?} at {} has timed out remaining pending chunks, marking as RegionPlanningFinished", region_ent, region_pos);
+            error!(target: "structure_spawn", "Region entity {:?} at {} has timed out remaining pending chunks, marking as RegionPlanningFinished", region_ent, region_pos);
             cmd.entity(region_ent).try_insert(AllTilesPrepared);
         }
     });

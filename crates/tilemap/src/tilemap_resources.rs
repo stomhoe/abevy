@@ -14,7 +14,7 @@ use game_common::{game_common_components::*, game_common_components_samplers::En
 
 
 
-#[derive(Bundle, Debug, Clone, Reflect)]
+#[derive(Bundle, Debug, Clone, Reflect,)]
 pub struct TileMassSpawnBundle{
     pub ezero_ref: EntityZeroRef,
     pub gpos: GlobalTilePos,
@@ -23,10 +23,8 @@ pub struct TileMassSpawnBundle{
     pub tile_bundle: bevy_ecs_tilemap::prelude::TileBundle,
     pub initial_pos: InitialPos,
     pub prev_gpos: PrevGlobalTilePos,
-    pub prev_dim_ref: PrevDimensionRef,
-    
+    pub prev_dim_ref: PrevDimensionRef,   
 }
-
 
 #[derive(Debug, Clone, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
@@ -117,17 +115,23 @@ impl MassCollectedTiles {
 }
 
 #[derive(Debug, Clone)]
-pub struct TilemapLimboEntry {
+pub struct LimboTileEntry {
     pub tile_ent: Entity,
     pub bundle: TileMassSpawnBundle,
     pub retries_left: u64,
 }
-impl TilemapLimboEntry {
-    pub const MAX_RETRIES: u64 = 5;
+impl LimboTileEntry {
+    pub fn new(tile_ent: Entity, bundle: TileMassSpawnBundle) -> Self {
+        LimboTileEntry {
+            tile_ent,
+            bundle,
+            retries_left: 10,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Resource, Default)]
-pub struct TilemapLimboTiles(pub Vec<TilemapLimboEntry>);
+pub struct TilemapLimboTiles(pub Vec<LimboTileEntry>);
 
 #[derive(Debug, Clone)]
 pub struct TilemapPreparedTile {
