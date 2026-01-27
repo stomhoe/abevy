@@ -34,7 +34,7 @@ pub fn chunks_list_window(
         Option<&ActivatingChunks>,
     ), With<Chunk>>,
     dimension_query: Query<&Name>,
-    camera_dimension: Query<(&DimensionRef, &Transform), With<CameraTarget>>,
+    camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
 ) {
     if !window_visible.chunks_list {
         return;
@@ -51,7 +51,7 @@ pub fn chunks_list_window(
     // Get camera target dimension and position
     let (camera_dim_ref, camera_chunk_pos) = camera_dimension.iter().next()
         .map(|(dim_ref, transform)| {
-            let chunk_pos = ChunkPos::from(transform.translation);
+            let chunk_pos = ChunkPos::from(transform.translation());
             (Some(dim_ref), Some(chunk_pos))
         })
         .unwrap_or((None, None));
@@ -212,7 +212,7 @@ pub fn regions_list_window(
         Has<AllClaimsProcessed>,
     ), With<Region>>,
     dimension_query: Query<&Name>,
-    camera_dimension: Query<(&DimensionRef, &Transform), With<CameraTarget>>,
+    camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
 ) {
     if !window_visible.regions_list {
         return;
@@ -245,7 +245,7 @@ pub fn regions_list_window(
     // Get camera target dimension and position
     let (camera_dim_ref, camera_region_pos) = camera_dimension.iter().next()
         .map(|(dim_ref, transform)| {
-            let chunk_pos = ChunkPos::from(transform.translation);
+            let chunk_pos = ChunkPos::from(transform.translation());
             let region_pos = chunk_pos.to_region_pos();
             (Some(dim_ref), Some(region_pos))
         })
@@ -489,6 +489,7 @@ pub fn terrgen_editor_window(
     mut queries: ParamSet<(
         Query<(Entity, Option<&Name>, &OperationList)>,
         Query<&mut OperationList>,
+        Query<&mut FnlNoiseComp, With<Terrgen>>,
     )>,
     noise_query: Query<(Entity, Option<&Name>, &FnlNoiseComp), With<Terrgen>>,
 ) {
@@ -699,6 +700,92 @@ pub fn terrgen_editor_window(
                     label,
                 ).clicked() {
                     selected_entities.selected_noise = Some(*entity);
+                }
+            }
+
+            ui.separator();
+
+            // Edit selected Noise component
+            if let Some(noise_entity) = selected_entities.selected_noise {
+                if let Ok(mut noise_comp) = queries.p2().get_mut(noise_entity) {
+                    ui.heading("Noise Component Editor");
+                    
+                    ui.horizontal(|ui| {
+                        ui.label("Seed:");
+                        ui.add(egui::DragValue::new(&mut noise_comp.0.seed).speed(1));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Offset X:");
+                        ui.add(egui::DragValue::new(&mut noise_comp.0.offset.x).speed(1));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Offset Y:");
+                        ui.add(egui::DragValue::new(&mut noise_comp.0.offset.y).speed(1));
+                    });
+
+                    ui.separator();
+                    ui.heading("Noise Type");
+                    
+                    let current_type = format!("{:?}", noise_comp.0.noise_type);
+                    ui.label(format!("Current: {}", current_type));
+
+                    ui.separator();
+                    ui.heading("Fractal Settings");
+                    
+                    let current_fractal = format!("{:?}", noise_comp.0.fractal_type);
+                    ui.label(format!("Fractal Type: {}", current_fractal));
+
+                    ui.horizontal(|ui| {
+                        ui.label("Octaves:");
+                        ui.add(egui::Slider::new(&mut noise_comp.0.octaves, 1..=10));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Lacunarity:");
+                        ui.add(egui::Slider::new(&mut noise_comp.0.lacunarity, 0.1..=4.0).step_by(0.01));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Gain:");
+                        ui.add(egui::Slider::new(&mut noise_comp.0.gain, 0.0..=1.0).step_by(0.01));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Weighted Strength:");
+                        ui.add(egui::Slider::new(&mut noise_comp.0.weighted_strength, 0.0..=1.0).step_by(0.01));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Ping Pong Strength:");
+                        ui.add(egui::Slider::new(&mut noise_comp.0.ping_pong_strength, 0.0..=4.0).step_by(0.01));
+                    });
+
+                    ui.separator();
+                    ui.heading("Cellular Settings");
+
+                    let current_cellular_dist = format!("{:?}", noise_comp.0.cellular_distance_function);
+                    ui.label(format!("Distance Function: {}", current_cellular_dist));
+
+                    let current_cellular_return = format!("{:?}", noise_comp.0.cellular_return_type);
+                    ui.label(format!("Return Type: {}", current_cellular_return));
+
+                    ui.horizontal(|ui| {
+                        ui.label("Jitter Modifier:");
+                        ui.add(egui::Slider::new(&mut noise_comp.0.cellular_jitter_modifier, 0.0..=2.0).step_by(0.01));
+                    });
+
+                    ui.separator();
+                    ui.heading("Domain Warp Settings");
+
+                    let current_warp_type = format!("{:?}", noise_comp.0.domain_warp_type);
+                    ui.label(format!("Warp Type: {}", current_warp_type));
+
+                    ui.horizontal(|ui| {
+                        ui.label("Warp Amplitude:");
+                        ui.add(egui::Slider::new(&mut noise_comp.0.domain_warp_amp, 0.0..=2.0).step_by(0.01));
+                    });
                 }
             }
         });

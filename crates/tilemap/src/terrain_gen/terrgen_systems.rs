@@ -343,6 +343,7 @@ fn process_pending_ops_batch(
                     (Operation::Add, 1.., _) => operation_acc_val += curr_operand_val,
                     (Operation::Subtract, 1.., _) => operation_acc_val -= curr_operand_val,
                     (Operation::Multiply, 1.., _) => operation_acc_val *= curr_operand_val,
+                    (Operation::Divide, 1.., _) => if curr_operand_val != 0.0 { operation_acc_val /= curr_operand_val },
                     (Operation::MultiplyOpo, 1.., _) => operation_acc_val *= 1.0 - curr_operand_val,
                     (Operation::Min, 1.., _) => operation_acc_val = operation_acc_val.min(curr_operand_val),
                     (Operation::Max, 1.., _) => operation_acc_val = operation_acc_val.max(curr_operand_val),
@@ -362,7 +363,14 @@ fn process_pending_ops_batch(
                     (Operation::i_Norm, 0, true) => { operation_acc_val = curr_operand_val * (bifurcations_len - 1) as f32; }
                     (Operation::i_Norm, _, false) => { operation_acc_val *= curr_operand_val; }
                     (Operation::i_Norm, 1.., true) => { operation_acc_val *= curr_operand_val * (bifurcations_len - 1) as f32; }
+                    (Operation::Clamp, 0, true) => {operation_acc_val = curr_operand_val.max(0.0).min(1.0);},
+                    (Operation::Clamp, 0, _) => {operation_acc_val = curr_operand_val;},
+                    (Operation::Clamp, 1, false) => {operation_acc_val = curr_operand_val.max(operation_acc_val);},
+                    (Operation::Clamp, 1, true) => {operation_acc_val = curr_operand_val.max(operation_acc_val).min(1.0);},
+                    (Operation::Clamp, 2.., _) => {operation_acc_val = curr_operand_val.min(operation_acc_val);},
                     (_, 0, _) => { operation_acc_val = curr_operand_val; }
+
+
                 }
 
                 trace!(

@@ -2,6 +2,8 @@ use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use bevy::prelude::*;
 use common::common_states::*;
 use game_common::game_common_states::*;
+use tilemap_shared::GlobalGenSettings;
+use tilemap::chunking_resources::AaChunkRangeSettings;
 
 use crate::debug_resources::DubugWindowsVisibility;
 
@@ -139,7 +141,85 @@ pub fn main_menu_window(
                 window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
 
+            if ui.button("Settings Editor").clicked() {
+                window_visible.settings_editor = !window_visible.settings_editor;
+            }
+
             ui.separator();
             ui.label("F11: Toggle this menu");
+        });
+}
+
+#[allow(unused_parens)]
+pub fn settings_editor_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut gen_settings: Query<&mut GlobalGenSettings>,
+    mut chunk_settings: ResMut<AaChunkRangeSettings>,
+) {
+    if !window_visible.settings_editor {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+    let Ok(mut gen_settings) = gen_settings.single_mut() else {
+        return;
+    };
+
+    let screen_rect = ctx.content_rect();
+    let default_x = screen_rect.left() + 10.0;
+    let default_y = screen_rect.top() + 10.0;
+
+    egui::Window::new("Settings Editor")
+        .default_pos([default_x, default_y])
+        .resizable(true)
+        .movable(true)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading("World & Chunk Settings");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("✖").clicked() {
+                        window_visible.settings_editor = false;
+                    }
+                });
+            });
+
+            ui.separator();
+            ui.heading("Global Generation Settings");
+            
+            ui.horizontal(|ui| {
+                ui.label("Seed:");
+                ui.add(egui::Slider::new(&mut gen_settings.seed, -1000..=1000));
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("World Frequency:");
+                ui.add(egui::Slider::new(&mut gen_settings.world_freq, 0.01..=0.20));
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("Structure Build Timeout (s):");
+                ui.add(egui::Slider::new(&mut gen_settings.structure_build_timeout_secs, 0.1..=60.0));
+            });
+
+            ui.separator();
+            ui.heading("Chunk Range Settings");
+
+            ui.horizontal(|ui| {
+                ui.label("Chunk Visibility Distance:");
+                ui.add(egui::Slider::new(&mut chunk_settings.chunk_visib_max_dist, 100.0..=10000.0));
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("Chunk Active Distance:");
+                ui.add(egui::Slider::new(&mut chunk_settings.chunk_active_max_dist, 100.0..=10000.0));
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("Discovery Range (chunks):");
+                ui.add(egui::Slider::new(&mut chunk_settings.discovery_range, 1..=10));
+            });
         });
 }

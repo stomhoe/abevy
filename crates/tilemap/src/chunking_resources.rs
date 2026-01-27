@@ -12,12 +12,12 @@ pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 #[derive(Resource, Reflect, InspectorOptions)]
 #[reflect(Resource, Default, InspectorOptions)]
 pub struct AaChunkRangeSettings {
-    #[inspector(min = 0., max = 100000.)]
+    #[inspector(min = 0., max = 10000.)]
     pub chunk_visib_max_dist: f32,
-    #[inspector(min = 0., max = 100000.)]
+    #[inspector(min = 0., max = 10000.)]
     /// range in which already generated chunks are kept active
     pub chunk_active_max_dist: f32,
-    #[inspector(min = 1, max = 20)]
+    #[inspector(min = 1, max = 10)]
     /// half side of square in which chunks get generated (not shown)
     pub discovery_range: u8,
 }

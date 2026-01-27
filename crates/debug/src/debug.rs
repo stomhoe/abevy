@@ -24,6 +24,7 @@ pub fn plugin(app: &mut App) {
         regions_list_window,
         beings_list_window,
         terrgen_editor_window,
+        settings_editor_window,
     ))
     .init_resource::<DubugWindowsVisibility>()
     .init_resource::<DebugSelectedEntities>()

@@ -9,6 +9,7 @@ pub struct DubugWindowsVisibility{
     pub regions_list: bool,
     pub beings_list: bool,
     pub terrgen_editor: bool,
+    pub settings_editor: bool,
 }
 
 impl Default for DubugWindowsVisibility {
@@ -20,6 +21,7 @@ impl Default for DubugWindowsVisibility {
             regions_list: false,
             beings_list: false,
             terrgen_editor: false,
+            settings_editor: false,
         }
     }
 }
