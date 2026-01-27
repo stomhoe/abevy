@@ -211,7 +211,7 @@ pub enum ChunkOccupyError<T> {
 pub struct GridOfSgcs(pub RegionGrid<Entity>);
 
 impl GridOfSgcs {
-    fn render_grid(&self, ui: &mut egui::Ui) {
+    pub fn render_grid(&self, ui: &mut egui::Ui) {
         egui::Grid::new(ui.id().with("grid_of_sgcs"))
         .spacing([0.0, 0.0])
         .min_col_width(0.0)

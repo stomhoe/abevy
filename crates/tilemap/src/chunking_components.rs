@@ -38,9 +38,6 @@ pub struct TerrGenOpsLaunched;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct ReadyForTerrgen;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct TerrgenDisallowed;
-
 #[derive(Component, Debug, Reflect)]
 pub struct ActivatingChunks {
     pub reactivation_timer: Timer,

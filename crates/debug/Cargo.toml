@@ -10,6 +10,10 @@ movement = { path = "../movement" }
 modifier = { path = "../modifier" }
 player = { path = "../player" }
 being = { path = "../being" }
+camera = { path = "../camera" }
+tilemap = { path = "../tilemap" }
+tilemap_shared = { path = "../tilemap_shared" }
+dimension_shared = { path = "../dimension_shared" }
 
 bevy = { workspace = true }
 serde = { workspace = true }

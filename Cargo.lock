@@ -3833,8 +3833,10 @@ dependencies = [
  "bevy_ecs_tilemap",
  "bevy_replicon",
  "bevy_replicon_renet",
+ "camera",
  "common",
  "delegate",
+ "dimension_shared",
  "game_common",
  "indexmap",
  "modifier",
@@ -3846,6 +3848,8 @@ dependencies = [
  "rand_pcg",
  "rand_seeder",
  "serde",
+ "tilemap",
+ "tilemap_shared",
 ]
 
 [[package]]

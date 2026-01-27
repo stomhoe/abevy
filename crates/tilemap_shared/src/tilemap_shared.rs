@@ -20,7 +20,8 @@ impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self { 
             seed: 3,
-            world_freq: 10./100.,
+            world_freq: 6.
+            /100.,//<-DON'T TOUCH
             structure_build_timeout_secs: 5.0,
         }
     }

@@ -1,7 +1,7 @@
 //.ron file for structured generation configuration
 (
-    id: "idk_gen_cfg0",
-    structure_id: "idk",
+    id: "chamberscorridors_gen_cfg0",
+    structure_id: "chamberscorridors",
     weight: 1.0,
     tags: Some([ "dungeon", "" ]),
     // pdisk_mindist_and_tag: Some([

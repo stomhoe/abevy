@@ -13,11 +13,11 @@ use crate::{regioning::{regioning_components::*, regioning_messages::{ChunksClai
 
 
 const DRUNKWALK: HashId = HashId::hash("drunkwalk");
-const IDK: HashId = HashId::hash("idk");
+const CHAMBERS_CORRIDORS: HashId = HashId::hash("chamberscorridors");
 
 const ADMITTED_STRUCTURE_IDS: &[HashId] = &[
     DRUNKWALK,
-    IDK,
+    CHAMBERS_CORRIDORS,
 ];
 
 #[allow(unused_parens)]
@@ -457,7 +457,7 @@ pub fn advanced_dungeon_building_system(
 
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) else { continue; };
 
-        if structured_gen_cfg.hash != IDK {
+        if structured_gen_cfg.hash != CHAMBERS_CORRIDORS {
             continue;
         }
 

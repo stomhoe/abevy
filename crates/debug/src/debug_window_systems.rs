@@ -16,9 +16,19 @@ pub fn debug_toggle_states_window(
 }
 
 #[allow(unused_parens)]
+pub fn debug_toggle_main_menu(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+) {
+    if keys.just_pressed(KeyCode::F11) {
+        window_visible.main_menu = !window_visible.main_menu;
+    }
+}
+
+#[allow(unused_parens)]
 pub fn states_window(
     mut contexts: EguiContexts,
-    window_visible: Res<DubugWindowsVisibility>,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
     app_state: Res<State<AppState>>,
     pre_game_state: Res<State<PreGameState>>,
     game_phase: Res<State<GamePhase>>,
@@ -42,32 +52,90 @@ pub fn states_window(
         .resizable(true)
         .movable(true)
         .show(ctx, |ui| {
-            ui.vertical(|ui| {
+            ui.horizontal(|ui| {
                 ui.heading("Main States");
-                ui.separator();
-                
-                ui.label(format!("AppState: {:?}", app_state.get()));
-                ui.label(format!("PreGameState: {:?}", pre_game_state.get()));
-                ui.label(format!("GamePhase: {:?}", game_phase.get()));
-                
-                ui.separator();
-                ui.label(format!("AssetLoading: {:?}", asset_loading.get()));
-                
-                ui.separator();
-                ui.heading("Sub States (Setup)");
-                if let Some(setup_screen) = game_setup_screen {
-                    ui.label(format!("GameSetupScreen: {:?}", setup_screen.get()));
-                } else {
-                    ui.label("GameSetupScreen: Not active");
-                }
-                
-                ui.separator();
-                ui.heading("Sub States (Active Game)");
-                if let Some(sim_state) = simulation_state {
-                    ui.label(format!("SimulationState: {:?}", sim_state.get()));
-                } else {
-                    ui.label("SimulationState: Not active");
-                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("✕").clicked() {
+                        window_visible.states = false;
+                    }
+                });
             });
+            ui.separator();
+            
+            ui.label(format!("AppState: {:?}", app_state.get()));
+            ui.label(format!("PreGameState: {:?}", pre_game_state.get()));
+            ui.label(format!("GamePhase: {:?}", game_phase.get()));
+            
+            ui.separator();
+            ui.label(format!("AssetLoading: {:?}", asset_loading.get()));
+            
+            ui.separator();
+            ui.heading("Sub States (Setup)");
+            if let Some(setup_screen) = game_setup_screen {
+                ui.label(format!("GameSetupScreen: {:?}", setup_screen.get()));
+            } else {
+                ui.label("GameSetupScreen: Not active");
+            }
+            
+            ui.separator();
+            ui.heading("Sub States (Active Game)");
+            if let Some(sim_state) = simulation_state {
+                ui.label(format!("SimulationState: {:?}", sim_state.get()));
+            } else {
+                ui.label("SimulationState: Not active");
+            }
+        });
+}
+
+#[allow(unused_parens)]
+pub fn main_menu_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+) {
+    if !window_visible.main_menu {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let screen_rect = ctx.content_rect();
+    let default_x = screen_rect.right() - 250.0;
+    let default_y = screen_rect.top() + 10.0;
+
+    egui::Window::new("Debug Menu")
+        .default_pos([default_x, default_y])
+        .resizable(true)
+        .movable(true)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading("Debug Windows");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("✕").clicked() {
+                        window_visible.main_menu = false;
+                    }
+                });
+            });
+            ui.separator();
+
+            if ui.button("States Inspector (F12)").clicked() {
+                window_visible.states = !window_visible.states;
+            }
+
+            if ui.button("Chunks List").clicked() {
+                window_visible.chunks_list = !window_visible.chunks_list;
+            }
+
+            if ui.button("Regions List").clicked() {
+                window_visible.regions_list = !window_visible.regions_list;
+            }
+
+            if ui.button("Beings List").clicked() {
+                window_visible.beings_list = !window_visible.beings_list;
+            }
+
+            ui.separator();
+            ui.label("F11: Toggle this menu");
         });
 }
