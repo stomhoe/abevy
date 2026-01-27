@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_ui_text_input::{*,
 };
 use common::common_states::*;
-use multiplayer_shared::{multiplayer_events::{HostServer, JoinServer}, multiplayer_resources::TargetJoinServer};
+use multiplayer_shared::{multiplayer_events::{AttemptHostServer, JoinServer}, multiplayer_resources::TargetJoinServer};
 use ui_shared::ui_components::CurrentText;
 
 use crate::main_menu_components::{MainMenuButton, MainMenuIpLineEdit};
@@ -31,7 +31,7 @@ pub fn menu_button_interaction(
 
                 }
                 MainMenuButton::Host => {
-                    cmd.trigger(HostServer::default());
+                    cmd.trigger(AttemptHostServer::default());
                 }
                 MainMenuButton::Join => {
                     cmd.trigger(JoinServer::default());

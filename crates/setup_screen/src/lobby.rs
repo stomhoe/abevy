@@ -16,8 +16,13 @@ mod lobby_layout;
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
-        .add_observer(layout_for_host)
         .add_observer(host_setup)
+        .add_systems(
+            OnEnter(ServerState::Running),
+            (
+                layout_for_host.run_if(in_state(GamePhase::Setup)),
+            ),
+        )
         .add_systems(
             OnEnter(GamePhase::ActiveGame),
             (

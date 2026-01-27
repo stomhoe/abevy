@@ -133,7 +133,6 @@ pub fn init_noises(
             noise_ent,
             (
                 str_id.clone(),
-                DisplayName::new(seri.id.clone()),
                 FnlNoiseComp(noise),
                 ChildOf(holder),
             ),

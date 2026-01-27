@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use common::common_states::*;
 use game_common::game_common_states::*;
 use tilemap_shared::GlobalGenSettings;
-use tilemap::chunking_resources::AaChunkRangeSettings;
 
 use crate::debug_resources::DubugWindowsVisibility;
 
@@ -121,27 +120,27 @@ pub fn main_menu_window(
             });
             ui.separator();
 
-            if ui.button("States Inspector (F12)").clicked() {
+            if ui.button("🔍 States Inspector (F12)").clicked() {
                 window_visible.states = !window_visible.states;
             }
 
-            if ui.button("Chunks List").clicked() {
+            if ui.button("▢▢  Chunking").clicked() {
                 window_visible.chunks_list = !window_visible.chunks_list;
             }
 
-            if ui.button("Regions List").clicked() {
+            if ui.button("⬜ Regions").clicked() {
                 window_visible.regions_list = !window_visible.regions_list;
             }
 
-            if ui.button("Beings List").clicked() {
+            if ui.button("👥 Beings List").clicked() {
                 window_visible.beings_list = !window_visible.beings_list;
             }
 
-            if ui.button("Terrgen Editor").clicked() {
+            if ui.button("⛰️ Terrgen Editor").clicked() {
                 window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
 
-            if ui.button("Settings Editor").clicked() {
+            if ui.button("🌍 Global generation settings").clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;
             }
 
@@ -151,11 +150,10 @@ pub fn main_menu_window(
 }
 
 #[allow(unused_parens)]
-pub fn settings_editor_window(
+pub fn global_gen_settings_editor_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut gen_settings: Query<&mut GlobalGenSettings>,
-    mut chunk_settings: ResMut<AaChunkRangeSettings>,
 ) {
     if !window_visible.settings_editor {
         return;
@@ -172,13 +170,13 @@ pub fn settings_editor_window(
     let default_x = screen_rect.left() + 10.0;
     let default_y = screen_rect.top() + 10.0;
 
-    egui::Window::new("Settings Editor")
+    egui::Window::new("Global gen settings editor")
         .default_pos([default_x, default_y])
         .resizable(true)
         .movable(true)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.heading("World & Chunk Settings");
+                ui.heading("Global gen settings editor");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.button("✖").clicked() {
                         window_visible.settings_editor = false;
@@ -187,7 +185,6 @@ pub fn settings_editor_window(
             });
 
             ui.separator();
-            ui.heading("Global Generation Settings");
             
             ui.horizontal(|ui| {
                 ui.label("Seed:");
@@ -202,24 +199,6 @@ pub fn settings_editor_window(
             ui.horizontal(|ui| {
                 ui.label("Structure Build Timeout (s):");
                 ui.add(egui::Slider::new(&mut gen_settings.structure_build_timeout_secs, 0.1..=60.0));
-            });
-
-            ui.separator();
-            ui.heading("Chunk Range Settings");
-
-            ui.horizontal(|ui| {
-                ui.label("Chunk Visibility Distance:");
-                ui.add(egui::Slider::new(&mut chunk_settings.chunk_visib_max_dist, 100.0..=10000.0));
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Chunk Active Distance:");
-                ui.add(egui::Slider::new(&mut chunk_settings.chunk_active_max_dist, 100.0..=10000.0));
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Discovery Range (chunks):");
-                ui.add(egui::Slider::new(&mut chunk_settings.discovery_range, 1..=10));
             });
         });
 }

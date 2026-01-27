@@ -5,14 +5,14 @@ use faction::faction_components::{BelongsToFaction, Faction};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::{AssetLoading, GamePhase} ;
-use multiplayer_shared::multiplayer_events::{SendUsername, HostServer, StartServerFailed};
+use multiplayer_shared::multiplayer_events::{SendUsername, AttemptHostServer, StartServerFailed};
 use player::player_components::{OfSelf, Player};
 
 use crate::host_functions::host_server;
 
 
 pub fn attempt_host(
-    start_server: On<HostServer>,
+    start_server: On<AttemptHostServer>,
     mut cmd: Commands, 
     channels: Res<RepliconChannels>,
 ) {

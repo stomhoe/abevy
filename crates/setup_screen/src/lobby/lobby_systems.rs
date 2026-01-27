@@ -5,11 +5,11 @@ use bevy::{prelude::*};
 
 use common::{common_components::StrId, common_states::*};
 use game_common::game_common_states::GameSetupScreen;
-use multiplayer_shared::multiplayer_events::{HostStartedGameplay, HostServer};
+use multiplayer_shared::multiplayer_events::{HostStartedGameplay, AttemptHostServer};
 use player::{player_components::*, player_resources::PlayerData};
 use crate::lobby::lobby_components::*;
 
-pub fn host_setup(start_server: On<HostServer>, cmd: Commands, ) {
+pub fn host_setup(start_server: On<AttemptHostServer>, cmd: Commands, ) {
 
 }
 

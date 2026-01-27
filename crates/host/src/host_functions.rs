@@ -9,13 +9,13 @@ use bevy_replicon_renet::{
         ServerConfig,
     }, renet::ConnectionConfig
 };
-use multiplayer_shared::{multiplayer_events::HostServer, multiplayer_shared::PROTOCOL_ID};
+use multiplayer_shared::{multiplayer_events::AttemptHostServer, multiplayer_shared::PROTOCOL_ID};
 
 
 pub fn host_server(
     commands: &mut Commands,
     channels: Res<RepliconChannels>,
-    start_server: HostServer,
+    start_server: AttemptHostServer,
     max_clients: u8,
 ) -> Result {
     let server_channels_config = channels.server_configs();
