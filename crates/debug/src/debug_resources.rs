@@ -32,4 +32,5 @@ pub struct DebugSelectedEntities {
     pub selected_chunks: std::collections::HashSet<Entity>,
     pub selected_operationlist: Option<Entity>,
     pub selected_noise: Option<Entity>,
+    pub selected_tile: Option<Entity>,
 }

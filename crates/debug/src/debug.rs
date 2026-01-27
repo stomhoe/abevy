@@ -26,6 +26,7 @@ pub fn plugin(app: &mut App) {
         terrgen_editor_window,
         global_gen_settings_editor_window,
     ))
+    .add_systems(EguiPrimaryContextPass, tile_details_inspector)
     .init_resource::<DubugWindowsVisibility>()
     .init_resource::<DebugSelectedEntities>()
     .init_resource::<FontsInitialized>()

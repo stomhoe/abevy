@@ -1,4 +1,5 @@
 use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
+use bevy_inspector_egui::bevy_inspector;
 use bevy::prelude::*;
 use std::collections::{BTreeMap, HashMap};
 
@@ -10,13 +11,14 @@ use tilemap::chunking_resources::AaChunkRangeSettings;
 use tilemap::regioning::regioning_components::{Region, GridOfSgcs, ClaimList, RegionPlannedTiles, ChunksActiveInRegion, CountsOfSgcs, PendingOfferTimeout, EmptyRegionDespawnTimer, AllTilesPrepared, BuildingStarted, AllClaimsProcessed};
 use tilemap::terrain_gen::terrgen_operaton_list_components::{OperationList, Operation, Operand, OperandElement};
 use tilemap::terrain_gen::terrgen_components::{Terrgen, FnlNoiseComp};
-use tilemap::tile::tile_components::{Tile, TileStrId};
+use tilemap::tile::tile_components::{Tile, TileStrId, TileHidsHandles, MinDistancesMap, KeepDistanceFrom, DeleteOtherTiles, PortalRecipe, InitialPos, PortalTo};
 use tilemap::tile::tile_shader::tile_shader_components::TileShaderRef;
 use tilemap_shared::{ChunkPos, PoissonDisk, RegionPos};
 use bevy_ecs_tilemap::prelude::{TileStorage, TilePos};
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
-use sprite_shared::AcZ;
-use common::common_components::StrId;
+use sprite_shared::{AcZ, YSortOrigin};
+use common::common_components::{StrId, Prefix};
+use common::common_tag_components::{HashedTagsVec, TagSet};
 
 use being::being_components::Being;
 use dimension_shared::DimensionRef;
@@ -50,14 +52,17 @@ fn render_tilemap_grid(
     tile_storage: &TileStorage,
     tile_query: &Query<(Entity, &EntityZeroRef), With<Tile>>,
     ezero_query: &Query<&TileStrId, With<EntityZero>>,
-) {
+    selected_tile: &mut Option<Entity>,
+) -> Option<Entity> {
     let size = tile_storage.size;
     
     // Only render if not too large (avoid performance issues)
     if size.x > 50 || size.y > 50 {
         ui.label(format!("Grid too large to display: {}x{}", size.x, size.y));
-        return;
+        return None;
     }
+    
+    let mut clicked_tile = None;
     
     egui::Grid::new("tilemap_tiles_grid")
         .spacing([2.0, 2.0])
@@ -74,14 +79,26 @@ fn render_tilemap_grid(
                                 let str_id_str = str_id.as_str();
                                 let label = format!("{}", str_id_str);
                                 let color = get_color_for_str_id(str_id_str);
-                                ui.colored_label(color, egui::RichText::new(label).small());
+                                let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
+                                let response = ui.selectable_label(is_selected, egui::RichText::new(label).small().color(color));
+                                if response.clicked() {
+                                    clicked_tile = Some(tile_entity);
+                                }
                             } else {
                                 let label = format!("Ez:{:?}", ezero_ref.0.index());
                                 let color = egui::Color32::GRAY;
-                                ui.colored_label(color, egui::RichText::new(label).small());
+                                let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
+                                let response = ui.selectable_label(is_selected, egui::RichText::new(label).small().color(color));
+                                if response.clicked() {
+                                    clicked_tile = Some(tile_entity);
+                                }
                             }
                         } else {
-                            ui.label(egui::RichText::new(format!("Ent:{:?}", tile_entity.index())).small());
+                            let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
+                            let response = ui.selectable_label(is_selected, egui::RichText::new(format!("Ent:{:?}", tile_entity.index())).small());
+                            if response.clicked() {
+                                clicked_tile = Some(tile_entity);
+                            }
                         }
                     } else {
                         ui.label(egui::RichText::new(".").small());
@@ -90,6 +107,8 @@ fn render_tilemap_grid(
                 ui.end_row();
             }
         });
+    
+    clicked_tile
 }
 
 #[allow(unused_parens)]
@@ -315,7 +334,9 @@ pub fn chunks_list_window(
                                             // Draw tilemap grid
                                             ui.label("Tile Grid:");
                                             ui.indent("tilemap_grid", |ui| {
-                                                render_tilemap_grid(ui, tile_storage, &tile_query, &ezero_query);
+                                                if let Some(clicked_tile) = render_tilemap_grid(ui, tile_storage, &tile_query, &ezero_query, &mut selected_entities.selected_tile) {
+                                                    selected_entities.selected_tile = Some(clicked_tile);
+                                                }
                                             });
                                         });
                                     } else {
@@ -326,6 +347,55 @@ pub fn chunks_list_window(
                             });
                     });
                 });
+            }
+        });
+}
+
+#[allow(unused_parens)]
+pub fn tile_details_inspector(world: &mut World) {
+    let selected_tile_entity = world.resource::<DebugSelectedEntities>().selected_tile;
+    
+    if selected_tile_entity.is_none() {
+        return;
+    }
+    
+    let selected_tile_entity = selected_tile_entity.unwrap();
+    
+    let mut egui_context_query = world
+        .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
+    
+    let Some(egui_context) = egui_context_query.iter(world).next() else {
+        return;
+    };
+    
+    let mut egui_context = egui_context.clone();
+    let screen_rect = egui_context.get_mut().screen_rect();
+    
+    let world_ptr = world as *mut World;
+    
+    egui::Window::new("Selected Tile Details")
+        .default_width(600.0)
+        .default_height(500.0)
+        .default_pos([screen_rect.right() - 620.0, screen_rect.top() + 10.0])
+        .open(&mut true)
+        .vscroll(true)
+        .show(egui_context.get_mut(), |ui| {
+            ui.heading(format!("Entity: {:?}", selected_tile_entity));
+            ui.separator();
+            
+            ui.label("All Components on this Tile:");
+            ui.separator();
+            
+            // Use unsafe to access world for full component inspection with values
+            unsafe {
+                bevy_inspector::ui_for_entity(&mut *world_ptr, selected_tile_entity, ui);
+            }
+            
+            ui.separator();
+            if ui.button("Clear Selection").clicked() {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_tile = None;
+                }
             }
         });
 }
