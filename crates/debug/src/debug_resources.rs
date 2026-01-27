@@ -10,6 +10,9 @@ pub struct DubugWindowsVisibility{
     pub beings_list: bool,
     pub terrgen_editor: bool,
     pub settings_editor: bool,
+    pub tile_details: bool,
+    pub chunk_details: bool,
+    pub tilemap_details: bool,
 }
 
 impl Default for DubugWindowsVisibility {
@@ -22,6 +25,9 @@ impl Default for DubugWindowsVisibility {
             beings_list: false,
             terrgen_editor: false,
             settings_editor: false,
+            tile_details: false,
+            chunk_details: false,
+            tilemap_details: false,
         }
     }
 }
