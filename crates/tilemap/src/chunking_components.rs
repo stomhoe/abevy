@@ -9,8 +9,6 @@ use common::{common_components::*, };
 
 #[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
 #[relationship(relationship_target = ChunksActiveInRegion)]
-
-#[require(Visibility::Hidden, AssetScoped, TilesToSave, )]
 pub struct Chunk {
     #[relationship]
     pub region_ent: Entity,

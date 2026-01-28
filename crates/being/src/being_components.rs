@@ -29,22 +29,12 @@ impl Being {
     pub const Z_LEVEL: f32 = 1_000.;
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
-#[relationship(relationship_target = EguiBeingHolder)]
-pub struct EguiBeingHolderReference(#[relationship]#[entities]pub Entity);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
 pub struct MainCharacter{#[entities] created_by: Entity}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
 pub struct InfiniteMorale;
-
-#[derive(Component, Debug, Reflect, Default)]
-#[require(SparedFromHotReloading, AssetScoped, Prefix::trunc("World beings"), DespawnOnExit::<ClientState>, Replicated,)]
-#[relationship_target(relationship = EguiBeingHolderReference)]
-pub struct EguiBeingHolder(Vec<Entity>);
-impl EguiBeingHolder { pub fn entities(&self) -> &[Entity] { &self.0 } }
-
 
 // #[derive(Component)]
 // #[relationship_target(relationship = BodyPartOf)]

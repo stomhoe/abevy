@@ -7,7 +7,7 @@ use crate::debug_resources::{DubugWindowsVisibility, DebugSelectedEntities};
 
 // Import needed components
 use tilemap::chunking_components::*;
-use tilemap::chunking_resources::AaChunkRangeSettings;
+use tilemap::chunking_resources::{AaChunkRangeSettings, LoadedChunks};
 use tilemap::regioning::regioning_components::*;
 use tilemap::terrain_gen::terrgen_operaton_list_components::*;
 use tilemap::terrain_gen::terrgen_components::{Terrgen, FnlNoiseComp};
@@ -121,20 +121,20 @@ pub fn chunks_list_window(
         &Chunk,
         &DimensionRef,
         &ChunkPos,
-        Option<&Name>,
-        &Children,
+        Option<&Children>,
         Option<&TilesToSave>,
         Has<TerrGenOpsLaunched>,
         Has<ReadyForTerrgen>,
         Option<&ActivatingChunks>,
     ), With<Chunk>>,
-    dimension_query: Query<&Name>,
+
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    loaded_chunks: Res<LoadedChunks>,
     // Query for child entities to check their components
     tile_storage_query: Query<(Entity, Option<&Name>, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
     tile_query: Query<(Entity, &EntityZeroRef), With<Tile>>,
     ezero_query: Query<&TileStrId, With<EntityZero>>,
-    shader_query: Query<&StrId>,
+    id_query: Query<&StrId>,
 ) {
     if !window_visible.chunks_list {
         return;
@@ -157,12 +157,12 @@ pub fn chunks_list_window(
         .unwrap_or((None, None));
     
     // Group chunks by dimension and position
-    let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Name>, &Children, Option<&TilesToSave>, bool, bool, Option<&ActivatingChunks>)>> =
+    let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Children>, Option<&TilesToSave>, bool, bool, Option<&ActivatingChunks>)>> =
         BTreeMap::new();
 
-    for (entity, _chunk, dim_ref, chunk_pos, name, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks) in chunk_query.iter() {
-        let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
-            format!("{}", n)
+    for (entity, _chunk, dim_ref, chunk_pos, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks) in chunk_query.iter() {
+        let dim_name = if let Ok(str_id) = id_query.get(dim_ref.0) {
+            str_id.as_str().to_string()
         } else {
             format!("{:?}", dim_ref)
         };
@@ -170,14 +170,14 @@ pub fn chunks_list_window(
         chunks_by_dimension
             .entry(dim_name)
             .or_insert_with(HashMap::new)
-            .insert(*chunk_pos, (entity, name, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks));
+            .insert(*chunk_pos, (entity, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks));
     }
     
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = chunks_by_dimension.keys().cloned().collect();
     if let Some(camera_ref) = camera_dim_ref {
-        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
-            let camera_dim_str = format!("{}", camera_name);
+        if let Ok(camera_str_id) = id_query.get(camera_ref.0) {
+            let camera_dim_str = camera_str_id.as_str().to_string();
             sorted_dims.sort_by(|a, b| {
                 if a == &camera_dim_str { std::cmp::Ordering::Less }
                 else if b == &camera_dim_str { std::cmp::Ordering::Greater }
@@ -221,8 +221,8 @@ pub fn chunks_list_window(
             for dim_key in sorted_dims.iter() {
                 if let Some(chunks_map) = chunks_by_dimension.get(dim_key) {
                     let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
-                        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
-                            dim_key == &format!("{}", camera_name)
+                        if let Ok(camera_str_id) = id_query.get(camera_ref.0) {
+                            dim_key == &camera_str_id.as_str().to_string()
                         } else {
                             false
                         }
@@ -244,11 +244,12 @@ pub fn chunks_list_window(
                                     for y in (min_y..=max_y).rev() {
                                         for x in min_x..=max_x {
                                             let pos = ChunkPos(IVec2::new(x, y));
-                                            if let Some((entity, name, children, _tiles_to_save, _has_terrgen_ops, _has_ready_for_terrgen, _activating_chunks)) = chunks_map.get(&pos) {
+                                            if let Some((entity, children, _tiles_to_save, _has_terrgen_ops, _has_ready_for_terrgen, _activating_chunks)) = chunks_map.get(&pos) {
                                                 let is_selected = selected_entities.selected_chunks.contains(entity);
                                                 let is_camera_pos = camera_chunk_pos.map_or(false, |cam_pos| cam_pos == pos);
                                                 
-                                                let label = format!("{},{}\n{} children", x, y, children.len());
+                                                let children_count = children.map_or(0, |c| c.len());
+                                                let label = format!("{},{}\n{} children", x, y, children_count);
                                                 
                                                 let button_response = if is_camera_pos {
                                                     ui.selectable_label(is_selected, egui::RichText::new(&label).color(egui::Color32::YELLOW).strong().small())
@@ -277,6 +278,88 @@ pub fn chunks_list_window(
                 }
             }
             
+            // Display LoadedChunks resource sorted by distance to camera
+            ui.separator();
+            egui::CollapsingHeader::new("Loaded Chunks Resource (Sorted by Distance)")
+                .default_open(true)
+                .show(ui, |ui| {
+                let camera_pos = camera_dimension.iter().next()
+                    .map(|(_, transform)| transform.translation().xy());
+                
+                // Collect and sort LoadedChunks entries by distance to camera
+                let mut loaded_chunks_list: Vec<_> = loaded_chunks.0.iter().collect();
+                
+                if let Some(cam_pos) = camera_pos {
+                    loaded_chunks_list.sort_by(|a, b| {
+                        let dist_a = cam_pos.distance(a.0.1.to_pixelpos());
+                        let dist_b = cam_pos.distance(b.0.1.to_pixelpos());
+                        dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                }
+                
+                ui.label(format!("Total entries: {}", loaded_chunks_list.len()));
+                
+                ui.horizontal(|ui| {
+                    ui.label("Dimension");
+                    ui.separator();
+                    ui.label("CPos");
+                    ui.separator();
+                    ui.label("Dist");
+                    ui.separator();
+                    ui.label("Entity");
+                });
+                
+                let mut shown_count = 0;
+                for ((dim_ref, chunk_pos), entity) in loaded_chunks_list.iter() {
+                    if shown_count >= 50 {
+                        ui.label(format!("... and {} more", loaded_chunks_list.len() - shown_count));
+                        break;
+                    }
+                    
+                    let distance = camera_pos
+                        .map(|cam_pos| cam_pos.distance(chunk_pos.to_pixelpos()))
+                        .unwrap_or(f32::INFINITY);
+                    
+                    let dim_str_id = if let Ok(str_id) = id_query.get(dim_ref.0) {
+                        let str_id_text = str_id.as_str();
+                        if str_id_text.len() > 20 {
+                            format!("{}...", &str_id_text[..17])
+                        } else {
+                            str_id_text.to_string()
+                        }
+                    } else {
+                        format!("{:?}", dim_ref)
+                    };
+                    
+                    let bg_color = if distance < 500.0 {
+                        egui::Color32::from_rgb(100, 150, 100)
+                    } else if distance < 1500.0 {
+                        egui::Color32::from_rgb(150, 150, 100)
+                    } else {
+                        egui::Color32::DARK_GRAY
+                    };
+                    
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new(&dim_str_id).background_color(bg_color));
+                        ui.separator();
+                        ui.label(format!("{},{}", chunk_pos.0.x, chunk_pos.0.y));
+                        ui.separator();
+                        ui.label(format!("{:.0}", distance));
+                        ui.separator();
+                        if ui.selectable_label(selected_entities.selected_chunks.contains(entity), format!("{}", entity.index())).clicked() {
+                            if selected_entities.selected_chunks.contains(entity) {
+                                selected_entities.selected_chunks.remove(entity);
+                            } else {
+                                selected_entities.selected_chunks.insert(**entity);
+                                window_visible.chunk_details = true;
+                            }
+                        }
+                    });
+                    
+                    shown_count += 1;
+                }
+            });
+            
             // Show details for selected chunks in stable order
             let mut selected_chunk_details: Vec<_> = chunks_by_dimension.iter()
                 .flat_map(|(_, map)| map.iter())
@@ -284,11 +367,11 @@ pub fn chunks_list_window(
                 .collect();
             selected_chunk_details.sort_by_key(|(_, (entity, ..))| entity.index());
             
-            for (_chunk_pos, (entity, name, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks)) in selected_chunk_details {
-                let name_str = name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
-                ui.collapsing(format!("Details: {} ({:?})", name_str, entity), |ui| {
+            for (chunk_pos, (entity, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks)) in selected_chunk_details {
+                ui.collapsing(format!("Details: {:?} ({:?})", chunk_pos, entity), |ui| {
                     ui.vertical(|ui| {
-                        ui.label(format!("Children count: {}", children.len()));
+                        let children_count = children.map_or(0, |c| c.len());
+                        ui.label(format!("Children count: {}", children_count));
                         
                         if let Some(tiles) = tiles_to_save {
                             ui.label(format!("TilesToSave: {} tiles", tiles.entities().len()));
@@ -310,10 +393,11 @@ pub fn chunks_list_window(
                         
                         // Display children details
                         ui.separator();
-                        egui::CollapsingHeader::new("Children:")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                for child_entity in children.iter() {
+                        if let Some(children_ref) = children {
+                            egui::CollapsingHeader::new("Children:")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                for child_entity in children_ref.iter() {
                                     // Check if child is a tilemap with TileStorage
                                     if let Ok((tmap_entity, tmap_name, tile_storage, ac_z, shader_ref)) = tile_storage_query.get(child_entity) {
                                         let tmap_name_str = tmap_name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
@@ -324,7 +408,7 @@ pub fn chunks_list_window(
                                             label.push_str(&format!(" [Z: {:.1}]", z.0));
                                         }
                                         if let Some(shader_ref) = shader_ref {
-                                            if let Ok(shader_str) = shader_query.get(shader_ref.0) {
+                                            if let Ok(shader_str) = id_query.get(shader_ref.0) {
                                                 label.push_str(&format!(" [Shader: {}]", shader_str.as_str()));
                                             }
                                         }
@@ -347,6 +431,9 @@ pub fn chunks_list_window(
                                     }
                                 }
                             });
+                        } else {
+                            ui.label("No children");
+                        }
                     });
                 });
             }
@@ -474,7 +561,11 @@ pub fn chunk_details_inspector(world: &mut World) {
         .open(&mut is_open)
         .vscroll(true)
         .show(egui_context.get_mut(), |ui| {
-            ui.heading(format!("Chunk Entity: {:?}", selected_chunk_entity));
+            if let Ok(entity_ref) = world.get_entity(selected_chunk_entity) {
+                if let Some(chunk_pos) = entity_ref.get::<ChunkPos>() {
+                    ui.heading(chunk_pos.to_string());
+                }
+            }
             ui.separator();
             
             ui.label("All Components on this Chunk:");
@@ -657,8 +748,8 @@ pub fn regions_list_window(
         Has<BuildingStarted>,
         Has<AllClaimsProcessed>,
     ), With<Region>>,
-    dimension_query: Query<&Name>,
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    id_query: Query<&StrId>,
 ) {
     if !window_visible.regions_list {
         return;
@@ -672,19 +763,21 @@ pub fn regions_list_window(
     let default_x = screen_rect.left() + 350.0;
     let default_y = screen_rect.top() + 10.0;
 
-    // Group regions by dimension and position
-    let mut regions_by_dimension: BTreeMap<String, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, Option<&PendingOfferTimeout>, Option<&EmptyRegionDespawnTimer>, bool, bool, bool)>> =
+    // Group regions by dimension and position (keyed by StrId and Entity number)
+    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, Option<&PendingOfferTimeout>, Option<&EmptyRegionDespawnTimer>, bool, bool, bool)>)> =
         BTreeMap::new();
 
     for (entity, _region, dim_ref, region_pos, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims) in region_query.iter() {
-        let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
-            format!("{}", n)
+        let dim_key = if let Ok(str_id) = id_query.get(dim_ref.0) {
+            format!("{} ({})", str_id.as_str(), dim_ref.0.index())
         } else {
-            format!("{:?}", dim_ref)
+            format!("{:?} ({})", dim_ref, dim_ref.0.index())
         };
+        
         regions_by_dimension
-            .entry(dim_name)
-            .or_insert_with(HashMap::new)
+            .entry(dim_key.clone())
+            .or_insert_with(|| (dim_ref.0, HashMap::new()))
+            .1
             .insert(*region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims));
     }
     
@@ -700,14 +793,16 @@ pub fn regions_list_window(
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = regions_by_dimension.keys().cloned().collect();
     if let Some(camera_ref) = camera_dim_ref {
-        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
-            let camera_dim_str = format!("{}", camera_name);
-            sorted_dims.sort_by(|a, b| {
-                if a == &camera_dim_str { std::cmp::Ordering::Less }
-                else if b == &camera_dim_str { std::cmp::Ordering::Greater }
-                else { a.cmp(b) }
-            });
-        }
+        let camera_dim_key = if let Ok(camera_str_id) = id_query.get(camera_ref.0) {
+            format!("{} ({})", camera_str_id.as_str(), camera_ref.0.index())
+        } else {
+            format!("{:?} ({})", camera_ref, camera_ref.0.index())
+        };
+        sorted_dims.sort_by(|a, b| {
+            if a == &camera_dim_key { std::cmp::Ordering::Less }
+            else if b == &camera_dim_key { std::cmp::Ordering::Greater }
+            else { a.cmp(b) }
+        });
     }
 
     egui::Window::new("Regions Grid")
@@ -727,15 +822,17 @@ pub fn regions_list_window(
             ui.separator();
 
             for dim_key in sorted_dims.iter() {
-                if let Some(regions_map) = regions_by_dimension.get(dim_key) {
+                if let Some((_, regions_map)) = regions_by_dimension.get(dim_key) {
                     let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
-                        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
-                            dim_key == &format!("{}", camera_name)
+                        let camera_key = if let Ok(camera_str_id) = id_query.get(camera_ref.0) {
+                            format!("{} ({})", camera_str_id.as_str(), camera_ref.0.index())
                         } else {
-                            false
-                        }
+                            format!("{:?} ({})", camera_ref, camera_ref.0.index())
+                        };
+                        dim_key == &camera_key
                     });
-                    egui::CollapsingHeader::new(dim_key)
+                    let header_label = format!("{} - {} regions", dim_key, regions_map.len());
+                    egui::CollapsingHeader::new(&header_label)
                         .default_open(is_camera_dim)
                         .show(ui, |ui| {
                         // Create grid of region positions
@@ -746,7 +843,7 @@ pub fn regions_list_window(
                             positions.iter().map(|p| p.0.y).min(),
                             positions.iter().map(|p| p.0.y).max(),
                         ) {
-                            egui::Grid::new(format!("regions_grid_{}", dim_key))
+                            egui::Grid::new(format!("regions_grid_{:?}", dim_key.replace(" ", "_")))
                                 .spacing([5.0, 5.0])
                                 .show(ui, |ui| {
                                     for y in (min_y..=max_y).rev() {
@@ -788,14 +885,14 @@ pub fn regions_list_window(
             
             // Show details for selected regions in stable order
             let mut selected_region_details: Vec<_> = regions_by_dimension.iter()
-                .flat_map(|(_, map)| map.iter())
+                .flat_map(|(_, (_, map))| map.iter())
                 .filter(|(_, (entity, ..))| selected_entities.selected_regions.contains(entity))
                 .collect();
             selected_region_details.sort_by_key(|(_, (entity, ..))| entity.index());
             
             for (_region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims)) in selected_region_details {
                 let name_str = name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
-                    ui.collapsing(format!("Details: {} ({:?})", name_str, entity), |ui| {
+                    ui.collapsing(format!("Details: {} (Entity: {:?})", name_str, entity), |ui| {
                         ui.horizontal(|ui| {
                             ui.vertical(|ui| {
                                 if let Some(grid_sgcs) = grid {

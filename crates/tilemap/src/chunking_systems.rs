@@ -2,16 +2,14 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{DrawTilemap, tiles::TileStorage};
 use camera::camera_components::CameraTarget;
-use common::common_components::{AnyDisabling, StrId20B};
+use common::common_components::{AnyDisabling, AssetScoped, StrId20B};
 use dimension_shared::DimensionRef;
 use game_common::game_common_components::DespawnTimer;
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, time::Duration};
 use tilemap_shared::{ChunkPos, HashablePosVec, RegionPos};
 
 use crate::{chunking_components::*, chunking_resources::*, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}, tile::tile_messages::SavedTileHadChunkDespawn};
 
-type RegionSpawnBundle = (RegionPos, Region, StrId20B, Transform, ChildOf, DimensionRef);
-type ChunkSpawnBundle = (Chunk, StrId20B, Transform, ChunkPos, ChildOf, DimensionRef);
 
 
 #[allow(unused_parens, )]
@@ -26,8 +24,8 @@ pub fn spawn_chunks_around_activators(
     let cnt = tilemap_settings.discovery_range as i32;   
     let range_len = (2 * cnt - 1).max(0) as usize;
     let approx_chunks = range_len.saturating_mul(range_len);
-    let mut comps_for_region_ents: Vec<(Entity, RegionSpawnBundle)> = Vec::new();
-    let mut comps_for_chunk_ents: Vec<(Entity, ChunkSpawnBundle)> = Vec::new();
+    let mut comps_for_region_ents = Vec::new();
+    let mut comps_for_chunk_ents = Vec::new();
     
     
     for msg in reader.read() {
@@ -75,11 +73,15 @@ pub fn spawn_chunks_around_activators(
                     loaded_chunks.0.insert(key, chunk_ent);
                     comps_for_chunk_ents.push((chunk_ent, (
                         Chunk { region_ent, },
+                        Visibility::Hidden,
+                        AssetScoped,
+                        TilesToSave::default(),
                         StrId20B::trunc(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
-                        Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
+                        Transform::default(),
                         chunk_pos,
                         ChildOf(region_ent),
                         dimension_ref,
+                        DespawnTimer::new(6.0),//LEAVE AT 6.0 FOR SLOW PCs
                     )));
                     chunk_ent
                 });
@@ -95,7 +97,6 @@ pub fn spawn_chunks_around_activators(
 
 #[derive(Message, Debug, Clone, )]
 pub struct ReactivateChunksFor(pub Entity);
-
 
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
@@ -132,7 +133,10 @@ pub fn rem_outofrange_chunks_from_activators(
 #[derive(Debug, Message)]
 pub struct CheckChunkDespawn (pub Entity, pub u8,);//u8 = retransmission count
 
-pub fn periodically_despawn_unreferenced_chunks(
+#[derive(Debug, Message)]
+pub struct ForceChunkDespawn (pub Entity, );
+
+pub fn periodically_check_despawn_unreferenced_chunks(
     mut ewriter: MessageWriter<CheckChunkDespawn>,
     chunks_query: Query<Entity, With<Chunk>,>,
     mut to_check: Local<Vec<CheckChunkDespawn>>,
@@ -144,7 +148,7 @@ pub fn periodically_despawn_unreferenced_chunks(
 }
 
 #[allow(unused_parens)]
-pub fn despawn_unreferenced_chunks(
+pub fn despawn_chunks(
     mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
     chunks_query: Query<(&DimensionRef, &ChunkPos, Option<&Children>, Option<&TilesToSave>), >,
@@ -152,11 +156,11 @@ pub fn despawn_unreferenced_chunks(
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
+    mut force_despawn_reader: MessageReader<ForceChunkDespawn>,
     mut referenced_chunks: Local<HashSet<Entity>>,
     mut tosave_events: Local<Vec<SavedTileHadChunkDespawn>>,
-    
+    mut chunks_to_despawn: Local<Vec<Entity>>,
 ) {
-    let despawn_retransmitted_events = Vec::new();
     referenced_chunks.clear();
     referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.entities.len()).sum());
     for (_, activates_chunks) in activator_query.iter() {
@@ -165,42 +169,44 @@ pub fn despawn_unreferenced_chunks(
     tosave_events.clear();
     
     for CheckChunkDespawn(chunk_ent, _retransmission_count) in despawn_events.drain() {
-        let Ok((&chunk_dimension, &chunk_pos, children, _tiles_to_save)) = chunks_query.get(chunk_ent) else {
-            //cmd.entity(chunk_ent).try_despawn();
-            continue; 
-        };
         
         let referenced = referenced_chunks.contains(&chunk_ent);
         
         if !referenced {
-            loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
             
-            if let Some(children) = children.as_ref() {
-                for child in children.iter() {
-                    if let Ok(tile_storage) = tmaps.get(child) {
-                        for tile_entity in tile_storage.iter().cloned() {
-                            cmd.entity(tile_entity.unwrap_or(Entity::PLACEHOLDER)).try_despawn();
-                                // if tiles_to_save.entities().contains(tile_entity) {
-                    
-                                // } else{
-                                // }
-                        }
-                    }
-                    
-                    // if tiles_to_save.entities().contains(&child) {
-                    
-                    //     cmd.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
-                    //     tosave_events.push(SavedTileHadChunkDespawn(child));
-                    // } else{//HACE FALTA
-                    //     cmd.entity(child).try_despawn();
-                    // }
-                }
-            }
-            cmd.entity(chunk_ent).try_despawn();
+            chunks_to_despawn.push(chunk_ent);
         }
     }
+    chunks_to_despawn.extend(force_despawn_reader.read().map(|msg| msg.0));
+    
+    for chunk_ent in chunks_to_despawn.drain(..) {
+        let Ok((&chunk_dimension, &chunk_pos, children, _tiles_to_save)) = chunks_query.get(chunk_ent) else {
+            //cmd.entity(chunk_ent).try_despawn();
+            continue; 
+        };
+        loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
+            
+        if let Some(children) = children.as_ref() {
+            for child in children.iter() {
+                if let Ok(tile_storage) = tmaps.get(child) {
+                    for tile_entity in tile_storage.iter() {
+                        if let Some(tile_entity) = tile_entity {
+                            cmd.entity(*tile_entity).try_despawn();
+                        }
+                    }
+                }
+                // if tiles_to_save.entities().contains(&child) {
+                //     cmd.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
+                //     tosave_events.push(SavedTileHadChunkDespawn(child));
+                // } else{//HACE FALTA
+                //     cmd.entity(child).try_despawn();
+                // }
+            }
+        }
+        cmd.entity(chunk_ent).try_despawn();
+    }
     tosave_event_writer.write_batch(tosave_events.drain(..));
-    despawn_events.write_batch(despawn_retransmitted_events);
+
 }
 
 
@@ -220,7 +226,6 @@ pub fn update_chunk_visib(
     let camera_transform = *camera_query;
     
     let camera_chunk_pos = ChunkPos::from(camera_transform.translation().xy());
-    to_draw.clear();
     to_draw.reserve(reader.read().size_hint().0*3);
     
     chunks_query.iter_mut().for_each(|(mut visibility, &chunk_pos, children)| {
@@ -265,7 +270,6 @@ pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 se
     mut writer: MessageWriter<ReactivateChunksFor>,
     mut to_reactivate: Local<Vec<ReactivateChunksFor>>,
 ) {
-    to_reactivate.clear();
     for (being_entity, mut activates_chunks) in query.iter_mut() {
         activates_chunks.reactivation_timer.tick(time.delta());
         if activates_chunks.reactivation_timer.is_finished() {

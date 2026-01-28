@@ -22,13 +22,13 @@ concat!(
     "bevy_ecs::relationship=error,",
     "calloop::loop_logic=error,",
     
-    "portal_init=info,",
+    "portal_init=warn,",
     "pos_search=info,",
 
-    "tilemap::terrain_gen::terrgen_systems=info,",
+    "terrgen_systems=info,",
     "terrgen_process=info,",
     "structure_spawn=warn,",
-    "tilemap_systems=info,",
+    "tilemap_systems=warn,",
     "tilemap=warn,",
     "add2gposmap=warn,",
 

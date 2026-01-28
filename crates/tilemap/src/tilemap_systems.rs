@@ -345,7 +345,7 @@ pub fn requeue_limbo_tiles(
 
         if entry.retries_left == 0 {
             cmd.entity(entry.tile_ent).try_despawn();
-            error!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned after max retries in limbo", entry.tile_ent, entry.bundle.gpos, entry.bundle.dim_ref);
+            trace!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned after max retries in limbo", entry.tile_ent, entry.bundle.gpos, entry.bundle.dim_ref);
             continue;
         }
 
@@ -454,7 +454,6 @@ fn process_tilemap_prep_batch(
 
 
 
-
 #[allow(clippy::too_many_arguments)]
 fn func_process_tile_into_tilemaps(
     cmd: &mut Commands,
@@ -474,7 +473,7 @@ fn func_process_tile_into_tilemaps(
     dim_ref: DimensionRef,
     tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex)>,
     changed_structs: &mut HashSet<MapKey>,
-    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, AcZ, ChildOf, ChunkPos, DimensionRef, TileShaderRef))>,
+    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, ChildOf, DimensionRef, TileShaderRef))>,
 ) {
     let tile_size = match tile_handles {
         Some(_) => tile_size,
@@ -550,10 +549,8 @@ fn func_process_tile_into_tilemaps(
         tilemap_bundles.push(
             (tmap_ent,
             (
-                TilemapConfig::new(oplist_size, tile_size, ),
-                tile_z_index,
+                TilemapConfig::new(oplist_size, tile_size, chunk_pos, tile_z_index),
                 ChildOf(chunk),
-                chunk_pos,
                 dim_ref,
                 shader_ref.copied().unwrap_or_default(),
             ))
@@ -571,6 +568,27 @@ fn func_process_tile_into_tilemaps(
             tmap_hash_id_map,
             });
     }
+}
+#[allow(unused_parens)]
+pub fn reparent_orphan_tilemaps(
+    mut cmd: Commands,
+    mut tmap_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut ReparentingRetries), (With<TilemapTexture>, Without<ChildOf>)>,
+    loaded_chunks: Res<LoadedChunks>,
+) {
+    let mut child_ofs = Vec::with_capacity(tmap_query.iter().size_hint().0);
+    for (tmap_ent, &tmap_chunk_pos, &dim_ref, mut retries) in tmap_query.iter_mut() {
+        if let Some(&chunk_ent) = loaded_chunks.0.get(&(dim_ref, tmap_chunk_pos)) {
+            //cmd.entity(tmap_ent).insert(ChildOf(chunk_ent));
+            child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
+            retries.0 = 0;
+            continue;
+        }
+        retries.0 += 1;
+        if retries.0 > 10 {
+            cmd.entity(tmap_ent).try_despawn();
+        }
+    }
+    cmd.try_insert_batch(child_ofs);
 }
 
 

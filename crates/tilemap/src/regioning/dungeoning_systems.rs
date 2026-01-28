@@ -159,6 +159,8 @@ pub fn claim_chunks_for_various_dungeon_types(
 }
 
 const FLOOR_TILE_ID: HashId = HashId::hash("dunewbie");
+const WALL_TILE_ID: HashId = HashId::hash("gray");
+
 
 
 #[allow(unused_parens)]
@@ -189,7 +191,6 @@ pub fn drunkwalk_dungeon_building_system(
             }
         };
 
-        const WALL_TILE_ID: HashId = HashId::hash("purple");
         let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
@@ -470,7 +471,6 @@ pub fn advanced_dungeon_building_system(
             }
         };
 
-        const WALL_TILE_ID: HashId = HashId::hash("purple");
         let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {

@@ -11,7 +11,7 @@ use sprite_shared::sprite_scale_offset::Offset2D;
 
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Reflect)]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpriteConfigs"), )]
+#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpriteConfigs"), Visibility)]
 pub struct SpriteConfigsHolder;
 
 

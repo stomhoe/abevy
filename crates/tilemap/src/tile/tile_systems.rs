@@ -1,7 +1,7 @@
 
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::{map::TilemapId, tiles::TileFlip};
+use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, tiles::TileFlip};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::{AnyDisabling, HashId}, common_tag_components::TagSet};
@@ -9,7 +9,7 @@ use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
 use tilemap_shared::{ChunkPos, GlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos};
-use crate::{ chunking_resources::LoadedChunks, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos} };
+use crate::{ chunking_components::Chunk, chunking_resources::LoadedChunks, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos} };
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
@@ -54,24 +54,20 @@ pub fn spritetile_readjust_transform_to_match_globalpos(
     mut cmd: Commands,
     mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>),
     (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, 
-    AnyDisabling, Without<EntityZero>)>,
+    AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, )>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
-    parent_query: Query<(&GlobalTransform, ), ()>,
+    parent_query: Query<&GlobalTransform, AnyDisabling>,
     state: Res<State<ClientState>>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
     let is_host = *state.get() == ClientState::Disconnected;
     query.iter_mut().for_each(|(ent, mut transform, global_pos, visibility, child_of, _ezero_ref, replicated, keep_disabled)| {
         let transl_from_global_pos = global_pos.to_translation(transform.translation.z);
         
-        let parent_global_transl = if let Some(child_of) = child_of {
-            if let Ok((parent_global_transform, )) = parent_query.get(child_of.parent()) {
-                parent_global_transform.translation()
-            } else {
-                Vec3::ZERO
-            }
-        } else {
-            Vec3::ZERO
-        };
+        let parent_global_transl = child_of
+            .and_then(|co| parent_query.get(co.parent()).ok())
+            .map(|t| t.translation())
+            .unwrap_or(Vec3::ZERO);
+        
         if is_host || !replicated {
             transform.translation = transl_from_global_pos - parent_global_transl;
         }
@@ -235,21 +231,22 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
 pub fn make_spritetile_child_of_chunk(mut cmd: Commands, 
     query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilemapId>, 
         AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
-    loaded_chunks: Res<LoadedChunks>,
-) {
-    let mut child_ofs = Vec::new();
-    query.iter().for_each(|(ent, &global_pos, &dim_ref, to_persist)| {
-        let chunk_pos: ChunkPos = global_pos.into();
-        
-        if to_persist {
-            child_ofs.push((ent, ChildOf(dim_ref.0)));
-        } else {
-            let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) else {
-                cmd.entity(ent).try_despawn();
-                return;
-            };
-            child_ofs.push((ent, ChildOf(chunk)));
-        }
-    });
-    cmd.try_insert_batch(child_ofs);
-}
+        loaded_chunks: Res<LoadedChunks>,
+    ) {
+        let mut child_ofs = Vec::new();
+        query.iter().for_each(|(ent, &global_pos, &dim_ref, to_persist)| {
+            let chunk_pos: ChunkPos = global_pos.into();
+            
+            if to_persist {
+                child_ofs.push((ent, ChildOf(dim_ref.0)));
+            } else {
+                let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) else {
+                    cmd.entity(ent).try_despawn();
+                    return;
+                };
+                child_ofs.push((ent, ChildOf(chunk)));
+            }
+        });
+        cmd.try_insert_batch(child_ofs);
+    }
+    

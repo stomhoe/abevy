@@ -23,19 +23,20 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         rem_outofrange_chunks_from_activators, 
-        //process_despawn_timers,
-        (despawn_unreferenced_chunks, ), 
+        despawn_chunks, 
         tmaptile_assign_child_of,
+        
         (
+            /* --- reparent_orphan_tilemaps.run_if(on_timer(Duration::from_secs(5))), --- */
             activate_chunks_every_second,
             detect_activators_with_pos_changes, 
-            spawn_chunks_around_activators.after(despawn_unreferenced_chunks).after(despawn_if_not_excepted),//DON'T TOUCH
+            spawn_chunks_around_activators.after(despawn_chunks).after(despawn_if_not_excepted),//DON'T TOUCH
             requeue_limbo_tiles.run_if(on_timer(Duration::from_millis(500))),
             detect_camera_change_pos, 
             update_chunk_visib,
-            periodically_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_millis(5000))),
+            periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_millis(500))),
             periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
-            process_tiles_pre.before(despawn_unreferenced_chunks),//DON'T TOUCH
+            process_tiles_pre.before(despawn_chunks),//DON'T TOUCH
 
             // DON'T TOUCH
         ).in_set(ChunkSystems)
@@ -72,7 +73,7 @@ pub fn plugin(app: &mut App) {
     .add_message::<CheckChunkDespawn>()
     .add_message::<ReactivateChunksFor>()
     .add_message::<RecheckChunksVisibility>()
-
+    .add_message::<ForceChunkDespawn>()
     
 
     

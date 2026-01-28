@@ -14,29 +14,6 @@ use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunk
 use crate::{being_components::*,};
 
 #[allow(unused_parens)]
-pub fn spawn_egui_being_holder(mut cmd: Commands,
-    query: Query<(&EguiBeingHolder, ), ()>, 
-) {
-    if ! query.is_empty(){ return; }
-
-
-    cmd.spawn((EguiBeingHolder::default(), ));
-}
-
-#[allow(unused_parens)]
-pub fn add_beings_to_holder(mut cmd: Commands, 
-    holder: Single<(Entity, ), (With<EguiBeingHolder>)>, 
-
-    query: Query<(Entity, ),(With<Being>, Without<EguiBeingHolderReference>, AnyDisabling)>,
-) {
-    query.iter().for_each(|(ent, )| {
-        cmd.entity(ent).try_insert(EguiBeingHolderReference(holder.0));
-    });
-
-}
-
-
-#[allow(unused_parens)]
 // A L CENTRO DE LA BASE VA A HABER Q PONERLE UNO DE ALGUNA FORMA
 pub fn host_add_activates_chunks(mut cmd: Commands, 
     query: Query<(Entity),(With<Being>, Added<BelongsToAPlayerFaction>)>,

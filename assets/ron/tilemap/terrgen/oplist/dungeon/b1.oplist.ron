@@ -10,8 +10,8 @@
     tags: Some([ "portal", "" ]),
    
     bifs: [
-        ("", ["pink"]),
-        ("", ["pink"]),
+        ("", ["gray"]),
+        ("", ["gray"]),
     ],
     root_in_dimensions: [""],
     size: Some((1, 1)),
