@@ -26,6 +26,18 @@ pub struct EntityZero;
 #[derive(Component, Debug, Default, Copy, Clone, Reflect, )]
 pub struct ReparentingRetries(pub u64);
 
+#[derive(Component, Debug, Reflect)]
+pub struct DespawnTimer {
+    pub timer: Timer,
+}
+impl DespawnTimer {
+    pub fn new(seconds: f32) -> Self {
+        Self {
+            timer: Timer::from_seconds(seconds, TimerMode::Once),
+        }
+    }
+}
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 /// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state

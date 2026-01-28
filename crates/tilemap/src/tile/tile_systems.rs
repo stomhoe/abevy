@@ -161,7 +161,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
     changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, AnyDisabling, Without<EntityZero>, )>,
     otile_query: Query<(&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>), (AnyDisabling, Without<EntityZero>, )>,
     tiles_at_gpos: Res<TilesAtGpos>,
-) {
+) {//TODO hacer que no despawnee portales o cosas con su pos registrada
     //TODO: chequear en la EntityZero si tiene DeleteOtherTiles
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
@@ -232,9 +232,9 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
 
 
 #[allow(unused_parens)]
-pub fn make_child_of_chunk(mut cmd: Commands, 
+pub fn make_spritetile_child_of_chunk(mut cmd: Commands, 
     query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilemapId>, 
-        Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
+        AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
     loaded_chunks: Res<LoadedChunks>,
 ) {
     let mut child_ofs = Vec::new();

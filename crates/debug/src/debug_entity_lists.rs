@@ -6,19 +6,18 @@ use std::collections::{BTreeMap, HashMap};
 use crate::debug_resources::{DubugWindowsVisibility, DebugSelectedEntities};
 
 // Import needed components
-use tilemap::chunking_components::{Chunk, TilesToSave, TerrGenOpsLaunched, ReadyForTerrgen, ActivatingChunks};
+use tilemap::chunking_components::*;
 use tilemap::chunking_resources::AaChunkRangeSettings;
-use tilemap::regioning::regioning_components::{Region, GridOfSgcs, ClaimList, RegionPlannedTiles, ChunksActiveInRegion, CountsOfSgcs, PendingOfferTimeout, EmptyRegionDespawnTimer, AllTilesPrepared, BuildingStarted, AllClaimsProcessed};
-use tilemap::terrain_gen::terrgen_operaton_list_components::{OperationList, Operation, Operand, OperandElement};
+use tilemap::regioning::regioning_components::*;
+use tilemap::terrain_gen::terrgen_operaton_list_components::*;
 use tilemap::terrain_gen::terrgen_components::{Terrgen, FnlNoiseComp};
-use tilemap::tile::tile_components::{Tile, TileStrId, TileHidsHandles, MinDistancesMap, KeepDistanceFrom, DeleteOtherTiles, PortalRecipe, InitialPos, PortalTo};
+use tilemap::tile::tile_components::*;
 use tilemap::tile::tile_shader::tile_shader_components::TileShaderRef;
-use tilemap_shared::{ChunkPos, PoissonDisk, RegionPos};
+use ::tilemap_shared::*;
 use bevy_ecs_tilemap::prelude::{TileStorage, TilePos};
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
-use sprite_shared::{AcZ, YSortOrigin};
-use common::common_components::{StrId, Prefix};
-use common::common_tag_components::{HashedTagsVec, TagSet};
+use ::sprite_shared::*;
+use common::common_components::*;
 
 use being::being_components::Being;
 use dimension_shared::DimensionRef;
@@ -369,8 +368,6 @@ pub fn tile_details_inspector(world: &mut World) {
         return;
     }
     
-    drop(window_visible);  // Release the resource borrow
-    
     // Try to get the TileStrId from the referenced EntityZero
     let tile_str_id = if let Ok(entity_ref) = world.get_entity(selected_tile_entity) {
         if let Some(ezero_ref) = entity_ref.get::<game_common::game_common_components::EntityZeroRef>() {
@@ -398,7 +395,7 @@ pub fn tile_details_inspector(world: &mut World) {
     };
     
     let mut egui_context = egui_context.clone();
-    let screen_rect = egui_context.get_mut().screen_rect();
+    let screen_rect = egui_context.get_mut().content_rect();
     
     let world_ptr = world as *mut World;
     let mut is_open = true;
@@ -456,7 +453,6 @@ pub fn chunk_details_inspector(world: &mut World) {
         return;
     }
     
-    drop(window_visible);  // Release the resource borrow
     
     let mut egui_context_query = world
         .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
@@ -466,7 +462,7 @@ pub fn chunk_details_inspector(world: &mut World) {
     };
     
     let mut egui_context = egui_context.clone();
-    let screen_rect = egui_context.get_mut().screen_rect();
+    let screen_rect = egui_context.get_mut().content_rect();
     
     let world_ptr = world as *mut World;
     let mut is_open = true;
@@ -524,7 +520,7 @@ pub fn tilemap_details_inspector(world: &mut World) {
         return;
     }
     
-    drop(window_visible);  // Release the resource borrow
+    let _ = window_visible;  // Release the resource borrow
     
     let mut egui_context_query = world
         .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
@@ -534,7 +530,7 @@ pub fn tilemap_details_inspector(world: &mut World) {
     };
     
     let mut egui_context = egui_context.clone();
-    let screen_rect = egui_context.get_mut().screen_rect();
+    let screen_rect = egui_context.get_mut().content_rect();
     
     let world_ptr = world as *mut World;
     let mut is_open = true;
@@ -568,6 +564,73 @@ pub fn tilemap_details_inspector(world: &mut World) {
     if !is_open {
         if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
             window_visible.tilemap_details = false;
+        }
+    }
+}
+
+#[allow(unused_parens)]
+pub fn being_details_inspector(world: &mut World) {
+    let selected_being_entity = if let Some(selected_entities) = world.get_resource::<DebugSelectedEntities>() {
+        selected_entities.selected_being
+    } else {
+        None
+    };
+    
+    if selected_being_entity.is_none() {
+        return;
+    }
+    
+    let selected_being_entity = selected_being_entity.unwrap();
+    let window_visible = world.resource::<DubugWindowsVisibility>();
+    
+    if !window_visible.being_details {
+        return;
+    }
+    
+    let _ = window_visible;  // Release the resource borrow
+    
+    let mut egui_context_query = world
+        .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
+    
+    let Some(egui_context) = egui_context_query.iter(world).next() else {
+        return;
+    };
+    
+    let mut egui_context = egui_context.clone();
+    let screen_rect = egui_context.get_mut().content_rect();
+    
+    let world_ptr = world as *mut World;
+    let mut is_open = true;
+    
+    egui::Window::new("Selected Being Details")
+        .default_width(600.0)
+        .default_height(500.0)
+        .default_pos([screen_rect.right() - 620.0, screen_rect.top() + 10.0])
+        .open(&mut is_open)
+        .vscroll(true)
+        .show(egui_context.get_mut(), |ui| {
+            ui.heading(format!("Being Entity: {:?}", selected_being_entity));
+            ui.separator();
+            
+            ui.label("All Components on this Being:");
+            ui.separator();
+            
+            // Use unsafe to access world for full component inspection with values
+            unsafe {
+                bevy_inspector::ui_for_entity(&mut *world_ptr, selected_being_entity, ui);
+            }
+            
+            ui.separator();
+            if ui.button("Clear Selection").clicked() {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_being = None;
+                }
+            }
+        });
+    
+    if !is_open {
+        if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
+            window_visible.being_details = false;
         }
     }
 }
@@ -790,6 +853,7 @@ pub fn regions_list_window(
 pub fn beings_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selected_entities: ResMut<DebugSelectedEntities>,
     being_query: Query<(Entity, &Being, Option<&Name>), With<Being>>,
     dimension_ref_query: Query<&DimensionRef>,
     dimension_query: Query<&Name>,
@@ -874,7 +938,11 @@ pub fn beings_list_window(
                         } else {
                             format!("Unnamed ({:?})", entity)
                         };
-                        ui.label(label);
+                        let is_selected = selected_entities.selected_being == Some(*entity);
+                        if ui.selectable_label(is_selected, label).clicked() {
+                            selected_entities.selected_being = Some(*entity);
+                            window_visible.being_details = true;
+                        }
                     }
                 });
                 }

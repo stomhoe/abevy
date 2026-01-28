@@ -28,7 +28,7 @@ concat!(
     "tilemap::terrain_gen::terrgen_systems=info,",
     "terrgen_process=info,",
     "structure_spawn=warn,",
-    "tilemap_systems=warn,",
+    "tilemap_systems=info,",
     "tilemap=warn,",
     "add2gposmap=warn,",
 

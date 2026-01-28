@@ -209,21 +209,23 @@ pub fn init_tile_sprite(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn add_handles(  
     mut cmd: Commands,  asset_server: Res<AssetServer>,
-    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, AnyDisabling)>,
+    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, Changed<TileImagePaths>, AnyDisabling)>,
 ) {
+    let mut comps = Vec::new();
     for (enti, str_id, tile_image_paths) in query.iter() {
         let tile_handles = TileHidsHandles::from_paths(&asset_server, tile_image_paths.clone(), );
         
         match tile_handles {
             Ok(tile_handles) => {
-                debug!(target: "tile_init", "Adding TileHandles for tile '{}'", str_id);
-                cmd.entity(enti).insert(tile_handles);
+                trace!(target: "tile_init", "Adding TileHandles for tile '{}'", str_id);
+                comps.push((enti, tile_handles));
             }
             Err(err) => {
-                error!(target: "tile_init", "Failed to create TileHandles for tile '{}': {:?}", str_id, err);
+                error!(target: "tile_init", "Failed to create TileHandles for tile '{}': {}", str_id, err);
             }
         }
     }
+    cmd.try_insert_batch(comps);
 }
 
 #[allow(unused_parens)]
@@ -233,6 +235,8 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
     tile_cats: Res<TileCategories>,
 ) {
     let mut keep_away: EntityHashMap<HashSet<Entity>> = EntityHashMap::default();
+    let mut comps = Vec::with_capacity(seris_handles.handles.len()/10);
+    let mut comps2 = Vec::with_capacity(seris_handles.handles.len()/10);
     
     for handle in seris_handles.handles.drain(..) {
         let Some(seri) = assets.remove(&handle) else { continue; };
@@ -269,12 +273,14 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
         
         if min_dists.0.is_empty() { continue; }
         
-        cmd.entity(tile_ent).insert(min_dists);
+        comps.push((tile_ent, min_dists));        
     }
     
     for (tile_ent, ents) in keep_away {
-        cmd.entity(tile_ent).insert(KeepDistanceFrom(ents.into_iter().collect()));
+        comps2.push((tile_ent, KeepDistanceFrom(ents.into_iter().collect())));
     }
+    cmd.try_insert_batch(comps);
+    cmd.try_insert_batch(comps2);
 }
 
 #[allow(unused_parens)]
@@ -370,10 +376,12 @@ pub fn instantiate_portal(mut cmd: Commands,
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut mreader_search_successful: MessageReader<SuitablePosFound>,
     mut mreader_search_failed: MessageReader<SearchFailed>, 
-    mut register_pos: ResMut<RegisteredPositions>
+    mut register_pos: ResMut<RegisteredPositions>,
+    mut successful_searches: Local<EntityHashSet>,
 ) {
     let mut started_searches: EntityHashMap<Entity> = EntityHashMap::new();
     let mut pos_searches = Vec::new();
+    let mut portal_tos = Vec::new();
     
     new_portals.iter().for_each(|(portal_ent, &global_pos, dim_ref, ezero_ref)| {
         info!(target:"portal_init", "Instantiating portal tile entity {:?} at position {:?} in dimension {:?}", portal_ent, global_pos, dim_ref);
@@ -403,8 +411,6 @@ pub fn instantiate_portal(mut cmd: Commands,
         started_searches.insert(op_filter_ent, portal_ent);
     });
     
-    let mut successful_searches: EntityHashSet = EntityHashSet::new();
-    
     let mut handle_success = |our_end_portal: Entity, portal_template: &PortalRecipe, 
     found_pos: GlobalTilePos, filtered_op_ent: Entity| 
     {
@@ -421,8 +427,9 @@ pub fn instantiate_portal(mut cmd: Commands,
         .clonespawn_and_push_tile(&mut cmd, oe_portal_tileref, found_pos, oe_dim_ref, OplistSize::default(), );
         register_pos.exempt_entity_from_mindist_checks(oe_portal);
         
-        
-        cmd.entity(our_end_portal).try_insert(PortalTo::new(oe_portal))
+        portal_tos.push((our_end_portal, PortalTo::new(oe_portal)));
+
+        cmd.entity(our_end_portal)
         .try_remove::<(SearchingForSuitablePos, SeekingPortalOtherEnd)>();
         
         cmd.entity(oe_portal).try_remove::<(SeekingPortalOtherEnd)>()
@@ -434,7 +441,7 @@ pub fn instantiate_portal(mut cmd: Commands,
         ;
         
         if portal_template.one_way == false {
-            cmd.entity(oe_portal).try_insert(PortalTo::new(our_end_portal));
+            portal_tos.push((oe_portal, PortalTo::new(our_end_portal)));
         }
         
         debug!(target:"portal_init", "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
@@ -531,34 +538,7 @@ pub fn instantiate_portal(mut cmd: Commands,
         }
     }
     ew_pos_search.write_batch(pos_searches);
-}
-
-#[allow(unused_parens)]
-pub fn client_sync_tile(
-    mut cmd: Commands, 
-    query: Query<(Entity, &EntityZeroRef, &GlobalTilePos, &DimensionRef, ), (Added<Replicated>, With<Tile>, AnyDisabling)>,
-    loaded_chunks: Res<LoadedChunks>,
-    mut collected: Res<MassCollectedTiles>//TODO synquear tiles de tilemaps si es posible
-    
-) {
-    //let mut tiles_to_tmap_process = Vec::new();
-    // for (tile_ent, &orig_ref, &global_pos, &dim_ref, ) in query.iter() {
-    //     let Ok((tile_strid, is_child, sprite)) = ori_query.get(orig_ref.0) else{
-    //         error!("Original tile entity {} is despawned", orig_ref.0);
-    //         continue;
-    //     };
-    //     info!("Client instantiated replicated tile '{}' at position {:?} in dimension {:?}", tile_strid, global_pos, dim_ref.0);
-    
-    //     let chunk_pos: ChunkPos = global_pos.into();
-    
-    
-    //     if is_child && let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) {
-    //despawn prev tile if at same pos
-    
-    //     } 
-    // }
-    //ewriter_tmap_process.write_batch(tiles_to_tmap_process);
-    
+    cmd.try_insert_batch(portal_tos);
 }
 
 

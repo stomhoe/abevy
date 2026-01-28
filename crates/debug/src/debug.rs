@@ -30,6 +30,7 @@ pub fn plugin(app: &mut App) {
         tile_details_inspector,
         chunk_details_inspector,
         tilemap_details_inspector,
+        being_details_inspector,
     ))
     .init_resource::<DubugWindowsVisibility>()
     .init_resource::<DebugSelectedEntities>()

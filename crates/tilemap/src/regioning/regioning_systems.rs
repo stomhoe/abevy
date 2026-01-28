@@ -389,30 +389,19 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 
 #[allow(unused_parens, )]
 pub fn despawn_empty_regions(mut cmd: Commands, 
-    query: Query<(Entity, &DimensionRef, &RegionPos),(With<Region>, Without<ChunksActiveInRegion>, Without<EmptyRegionDespawnTimer>)>,
+    tomark_query: Query<(Entity, &DimensionRef, &RegionPos),(With<Region>, Without<ChunksActiveInRegion>, Without<EmptyRegionDespawnTimer>)>,
     mut despawn_query: Query<(Entity, &DimensionRef, &RegionPos, &mut EmptyRegionDespawnTimer), (Without<ChunksActiveInRegion>)>,
     saved_query: Query<(Entity, &DimensionRef, &RegionPos, &ChunksActiveInRegion), (Added<ChunksActiveInRegion>, With<EmptyRegionDespawnTimer>)>,
     mut loaded_regions: ResMut<LoadedRegions>,
     time: Res<Time>,
 ){
     // First pass: mark newly empty regions for despawn
-    query.iter().for_each(|(region_ent, &dimension_ref, &region_pos)| {
+    tomark_query.iter().for_each(|(region_ent, &dimension_ref, &region_pos)| {
         // Check if already marked, if not mark it
         if despawn_query.get(region_ent).is_err() {
             debug!(target: "region", "Region entity {:?} at position {:?} in dimension {:?} lost all active chunks, marking for despawn in 60s", 
                 region_ent, region_pos, dimension_ref);
             cmd.entity(region_ent).try_insert(EmptyRegionDespawnTimer { despawn_timer: Timer::from_seconds(60.0, TimerMode::Once) });
-        }
-    });
-    
-    // Second pass: despawn regions that have timed out
-    despawn_query.iter_mut().for_each(|(region_ent, &dimension_ref, &region_pos, mut despawn_timer)| {
-        despawn_timer.despawn_timer.tick(time.delta());
-        if despawn_timer.despawn_timer.is_finished() {
-            debug!(target: "region", "Despawning empty region entity {:?} at position {:?} in dimension {:?} after 60s with no active chunks", 
-                region_ent, region_pos, dimension_ref);
-            loaded_regions.0.remove(&(dimension_ref, region_pos));
-            cmd.entity(region_ent).try_despawn();
         }
     });
     saved_query.iter().for_each(|(region_ent, &dimension_ref, &region_pos, chunks_active_in_region, )| {
@@ -422,6 +411,17 @@ pub fn despawn_empty_regions(mut cmd: Commands,
         debug!(target: "region", "Region entity {:?} at position {:?} in dimension {:?} regained active chunks, cancelling despawn", 
             region_ent, region_pos, dimension_ref);
         cmd.entity(region_ent).try_remove::<EmptyRegionDespawnTimer>();
+    });
+    
+    // Second pass: despawn regions that have timed out
+    despawn_query.iter_mut().for_each(|(region_ent, &dimension_ref, &region_pos, mut despawn_timer)| {
+        despawn_timer.despawn_timer.tick(time.delta());
+        if despawn_timer.despawn_timer.is_finished() {
+            debug!(target: "region", "Despawning empty region entity {:?} at position {:?} in dimension {:?} after 60s with no active chunks", 
+                region_ent, region_pos, dimension_ref);
+            loaded_regions.0.remove(&(dimension_ref, region_pos));
+            //cmd.entity(region_ent).try_despawn();
+        }
     });
 }
 

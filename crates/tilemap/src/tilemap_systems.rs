@@ -345,6 +345,7 @@ pub fn requeue_limbo_tiles(
 
         if entry.retries_left == 0 {
             cmd.entity(entry.tile_ent).try_despawn();
+            error!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned after max retries in limbo", entry.tile_ent, entry.bundle.gpos, entry.bundle.dim_ref);
             continue;
         }
 
@@ -574,7 +575,7 @@ fn func_process_tile_into_tilemaps(
 
 
 #[allow(unused_parens)]
-pub fn tile_assign_child_of(mut cmd: Commands, 
+pub fn tmaptile_assign_child_of(mut cmd: Commands, 
     tile_instances_holder_query: Single<Entity, With<TileInstancesHolder>>,
     query: Query<(Entity, &TilemapId), (Without<ChildOf>, AnyDisabling)>,
 ) {

@@ -158,6 +158,8 @@ pub fn claim_chunks_for_various_dungeon_types(
     writer.write_batch(claims_to_emit);
 }
 
+const FLOOR_TILE_ID: HashId = HashId::hash("dunewbie");
+
 
 #[allow(unused_parens)]
 pub fn drunkwalk_dungeon_building_system(
@@ -179,7 +181,6 @@ pub fn drunkwalk_dungeon_building_system(
             continue;
         }
 
-        const FLOOR_TILE_ID: HashId = HashId::hash("cyan");
         let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
@@ -461,7 +462,6 @@ pub fn advanced_dungeon_building_system(
             continue;
         }
 
-        const FLOOR_TILE_ID: HashId = HashId::hash("cyan");
         let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {

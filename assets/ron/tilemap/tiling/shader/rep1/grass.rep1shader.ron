@@ -1,6 +1,6 @@
 (
     id: "grassrep1",
     img_path: "texture/world/terr/grass.png",
-    scale: 1e-3,
+    scale: 10,
     mask_color: (255., 0, 0, 255.),
 )

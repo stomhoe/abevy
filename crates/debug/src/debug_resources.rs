@@ -13,6 +13,7 @@ pub struct DubugWindowsVisibility{
     pub tile_details: bool,
     pub chunk_details: bool,
     pub tilemap_details: bool,
+    pub being_details: bool,
 }
 
 impl Default for DubugWindowsVisibility {
@@ -28,6 +29,7 @@ impl Default for DubugWindowsVisibility {
             tile_details: false,
             chunk_details: false,
             tilemap_details: false,
+            being_details: false,
         }
     }
 }
@@ -39,4 +41,5 @@ pub struct DebugSelectedEntities {
     pub selected_operationlist: Option<Entity>,
     pub selected_noise: Option<Entity>,
     pub selected_tile: Option<Entity>,
+    pub selected_being: Option<Entity>,
 }

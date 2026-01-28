@@ -14,7 +14,7 @@ fn almost_equal(a: vec4<f32>, b: vec4<f32>, epsilon: f32) -> bool {
 @fragment
 fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
     let color = process_fragment(in);
-    let tex_color = textureSample(overlay_texture, overlay_sampler, fract(in.world_position.xy * scale));
+    let tex_color = textureSample(overlay_texture, overlay_sampler, fract(in.world_position.xy * scale / 10000.0));
     if almost_equal(color, mask_color, 0.00001) {
         return tex_color;
     }

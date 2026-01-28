@@ -4,6 +4,7 @@ use bevy_ecs_tilemap::{DrawTilemap, tiles::TileStorage};
 use camera::camera_components::CameraTarget;
 use common::common_components::{AnyDisabling, StrId20B};
 use dimension_shared::DimensionRef;
+use game_common::game_common_components::DespawnTimer;
 use std::collections::{HashMap, HashSet};
 use tilemap_shared::{ChunkPos, HashablePosVec, RegionPos};
 
@@ -21,15 +22,13 @@ pub fn spawn_chunks_around_activators(
     tilemap_settings: Res<AaChunkRangeSettings>,
     mut loaded_regions: ResMut<LoadedRegions>,
     mut reader: MessageReader<ReactivateChunksFor>,
-    mut active_set: Local<HashSet<Entity>>,
 ) {
     let cnt = tilemap_settings.discovery_range as i32;   
     let range_len = (2 * cnt - 1).max(0) as usize;
     let approx_chunks = range_len.saturating_mul(range_len);
     let mut comps_for_region_ents: Vec<(Entity, RegionSpawnBundle)> = Vec::new();
     let mut comps_for_chunk_ents: Vec<(Entity, ChunkSpawnBundle)> = Vec::new();
-    let mut new_regions: HashMap<(DimensionRef, RegionPos), Entity> = HashMap::new();
-    let mut new_chunks: HashMap<(DimensionRef, ChunkPos), Entity> = HashMap::new();
+    
     
     for msg in reader.read() {
         let Ok((transform, mut activates_chunks, &dimension_ref)) = query.get_mut(msg.0) else {
@@ -38,9 +37,6 @@ pub fn spawn_chunks_around_activators(
         };
         comps_for_chunk_ents.reserve(approx_chunks);
         comps_for_region_ents.reserve(approx_chunks / 8);
-        active_set.clear();
-        active_set.reserve(activates_chunks.entities.len().saturating_mul(2));
-        active_set.extend(activates_chunks.entities.iter().copied());
         let center_chunk_pos = ChunkPos::from(transform.translation().xy());
         
         activates_chunks.reactivation_timer.reset();
@@ -51,130 +47,86 @@ pub fn spawn_chunks_around_activators(
                 let chunk_pos = ChunkPos::new(x, y);
                 let key = (dimension_ref, chunk_pos);
                 let chunk_ent = loaded_chunks.0.get(&key)
-                    .copied()
-                    .or_else(|| new_chunks.get(&key).copied())
-                    .unwrap_or_else(|| {
-                        let region_ent = {
-                            let region_pos = chunk_pos.to_region_pos();
-                            let region_key = (dimension_ref, region_pos);
-                            loaded_regions.0.get(&region_key)
-                                .copied()
-                                .or_else(|| new_regions.get(&region_key).copied())
-                                .unwrap_or_else(|| {
-                                    let region_ent = cmd.spawn_empty().id();
-                                    comps_for_region_ents.push((region_ent, (
-                                        region_pos,
-                                        Region,
-                                        StrId20B::trunc(format!("Region({}, {})", region_pos.0.x, region_pos.0.y)),
-                                        Transform::default(),
-                                        ChildOf(dimension_ref.0),
-                                        dimension_ref,
-                                    )));
-                                    new_regions.insert(region_key, region_ent);
-                                    loaded_regions.0.insert(region_key, region_ent);
-                                    region_ent
-                                })
-                        };
-
-                        let chunk_ent = cmd.spawn_empty().id();
-                        new_chunks.insert(key, chunk_ent);
-                        loaded_chunks.0.insert(key, chunk_ent);
-                        comps_for_chunk_ents.push((chunk_ent, (
-                            Chunk { region_ent, },
-                            StrId20B::trunc(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
-                            Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
-                            chunk_pos,
-                            ChildOf(region_ent),
-                            dimension_ref,
-                        )));
-                        chunk_ent
-                    });
-                if !active_set.contains(&chunk_ent) {
+                .copied()
+                .or_else(|| loaded_chunks.0.get(&key).copied())
+                .unwrap_or_else(|| {
+                    let region_ent = {
+                        let region_pos = chunk_pos.to_region_pos();
+                        let region_key = (dimension_ref, region_pos);
+                        loaded_regions.0.get(&region_key)
+                        .copied()
+                        .or_else(|| loaded_regions.0.get(&region_key).copied())
+                        .unwrap_or_else(|| {
+                            let region_ent = cmd.spawn_empty().id();
+                            comps_for_region_ents.push((region_ent, (
+                                region_pos,
+                                Region,
+                                StrId20B::trunc(format!("Region({}, {})", region_pos.0.x, region_pos.0.y)),
+                                Transform::default(),
+                                ChildOf(dimension_ref.0),
+                                dimension_ref,
+                            )));
+                            loaded_regions.0.insert(region_key, region_ent);
+                            region_ent
+                        })
+                    };
+                    
+                    let chunk_ent = cmd.spawn_empty().id();
+                    loaded_chunks.0.insert(key, chunk_ent);
+                    comps_for_chunk_ents.push((chunk_ent, (
+                        Chunk { region_ent, },
+                        StrId20B::trunc(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
+                        Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
+                        chunk_pos,
+                        ChildOf(region_ent),
+                        dimension_ref,
+                    )));
+                    chunk_ent
+                });
+                if !activates_chunks.entities.contains(&chunk_ent) {
                     activates_chunks.entities.push(chunk_ent);
-                    active_set.insert(chunk_ent);
                 }
             }
         }
     }
     cmd.try_insert_batch(comps_for_region_ents);
     cmd.try_insert_batch(comps_for_chunk_ents);
-    
-}
-
-#[allow(unused_parens)]
-pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 segundo despues del ultimo movimiento
-    mut query: Query<(Entity, &mut ActivatingChunks),()>,
-    time: Res<Time>,
-    mut writer: MessageWriter<ReactivateChunksFor>,
-    mut to_reactivate: Local<Vec<ReactivateChunksFor>>,
-) {
-    to_reactivate.clear();
-    for (entity, mut activates_chunks) in query.iter_mut() {
-        activates_chunks.reactivation_timer.tick(time.delta());
-        if activates_chunks.reactivation_timer.is_finished() {
-            to_reactivate.push(ReactivateChunksFor(entity));
-        }
-    }
-    writer.write_batch(to_reactivate.drain(..));
-}
-#[allow(unused_parens, )]
-pub fn detect_activators_with_pos_changes(
-    query: Query<(Entity), 
-    (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>,)>, With <ActivatingChunks>)>,
-    mut writer: MessageWriter<ReactivateChunksFor>,
-    mut msgs: Local<Vec<ReactivateChunksFor>>,
-) {
-    msgs.extend(query.iter().map(ReactivateChunksFor));
-    writer.write_batch(msgs.drain(..));
 }
 
 #[derive(Message, Debug, Clone, )]
 pub struct ReactivateChunksFor(pub Entity);
 
 
-
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
-    mut activator_query: Query<(&GlobalTransform, &mut ActivatingChunks), (Or<(Changed<GlobalTransform>, )>, )>,
-    chunks_query: Query<(&ChunkPos), With<Chunk>>,
+    mut activator_query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), (Or<(Changed<GlobalTransform>, Changed<DimensionRef>)>, )>,
+    chunks_query: Query<(&ChunkPos, &DimensionRef), With<Chunk>>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
     mut ewriter: MessageWriter<CheckChunkDespawn>,
     mut to_despawn: Local<Vec<CheckChunkDespawn>>,
 ) {
-    to_despawn.clear();
-    for (act_transform, mut activates_chunks) in activator_query.iter_mut() {
+    for (act_transform, mut activates_chunks, &act_dim) in activator_query.iter_mut() {
         let act_chunk_pos = ChunkPos::from(act_transform.translation().xy());
-        activates_chunks.entities.retain(|&chunk_ent| {
-            if let Ok(&chunk_pos) = chunks_query.get(chunk_ent) {
-                let keep = !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos)
-                    && chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos));
-                if !keep {
-                    to_despawn.push(CheckChunkDespawn(chunk_ent, 0));
-                }
-                keep
+        let mut i = 0;
+        while i < activates_chunks.entities.len() {
+            let chunk_ent = activates_chunks.entities[i];
+            let Ok((&chunk_pos, &chunk_dim)) = chunks_query.get(chunk_ent) else {
+                activates_chunks.entities.swap_remove(i);
+                continue;
+            };
+
+            let keep = chunk_dim == act_dim && 
+                !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos)
+                && chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos));
+            if !keep {
+                to_despawn.push(CheckChunkDespawn(chunk_ent, 0));
+                activates_chunks.entities.swap_remove(i);
             } else {
-                false
+                i += 1;
             }
-        });
+        }
     }
     ewriter.write_batch(to_despawn.drain(..));
-}
-
-
-#[allow(unused_parens, )]
-pub fn clear_chunks_on_dim_change(
-    mut activator_query: Query<(&mut ActivatingChunks), (Changed<DimensionRef>, )>,
-    mut ewriter: MessageWriter<CheckChunkDespawn>,
-    mut check_if_despawn: Local<Vec<CheckChunkDespawn>>,
-) {
-    check_if_despawn.clear();
-    activator_query.iter_mut().for_each(|mut activated_chunks| { 
-        for &entity in activated_chunks.entities.iter() {
-            check_if_despawn.push(CheckChunkDespawn(entity, 0));
-        }
-        activated_chunks.entities.clear();
-    });
-    ewriter.write_batch(check_if_despawn.drain(..));
 }
 
 #[derive(Debug, Message)]
@@ -182,7 +134,7 @@ pub struct CheckChunkDespawn (pub Entity, pub u8,);//u8 = retransmission count
 
 pub fn periodically_despawn_unreferenced_chunks(
     mut ewriter: MessageWriter<CheckChunkDespawn>,
-    chunks_query: Query<(Entity), With<Chunk>,>,
+    chunks_query: Query<Entity, With<Chunk>,>,
     mut to_check: Local<Vec<CheckChunkDespawn>>,
 ) {
     for chunk_ent in chunks_query.iter() {
@@ -304,4 +256,31 @@ pub fn periodically_recheck_chunk_visibility(
 ) {
     recheck_writer.write(RecheckChunksVisibility);
     trace!(target: "chunk_visibility", "Rechecking chunk visibility due to timer.");
+}
+
+#[allow(unused_parens)]
+pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 segundo despues del ultimo movimiento
+    mut query: Query<(Entity, &mut ActivatingChunks),()>,
+    time: Res<Time>,
+    mut writer: MessageWriter<ReactivateChunksFor>,
+    mut to_reactivate: Local<Vec<ReactivateChunksFor>>,
+) {
+    to_reactivate.clear();
+    for (being_entity, mut activates_chunks) in query.iter_mut() {
+        activates_chunks.reactivation_timer.tick(time.delta());
+        if activates_chunks.reactivation_timer.is_finished() {
+            to_reactivate.push(ReactivateChunksFor(being_entity));
+        }
+    }
+    writer.write_batch(to_reactivate.drain(..));
+}
+#[allow(unused_parens, )]
+pub fn detect_activators_with_pos_changes(
+    query: Query<(Entity), 
+    (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>,)>, With <ActivatingChunks>)>,
+    mut writer: MessageWriter<ReactivateChunksFor>,
+    mut msgs: Local<Vec<ReactivateChunksFor>>,
+) {
+    msgs.extend(query.iter().map(ReactivateChunksFor));
+    writer.write_batch(msgs.drain(..));
 }
