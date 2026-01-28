@@ -1,16 +1,11 @@
 
-use bevy::{ecs::entity::EntityHashSet, prelude::*};
+use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::*};
 use common::{common_components::*, common_tag_components::{HashedTagsVec, TagSet}};
-use dimension_shared::{DimensionEntityMap, DimensionRef, MultipleDimensionRefs}
-;
+use ::dimension_shared::*;
 use game_common::{game_common_components_samplers::EntityWeightedSampler};
 use ::tilemap_shared::*;
 
 use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
-
-
-
-
 
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (
@@ -49,7 +44,10 @@ pub fn init_structured_gen_configs (
             gen_cfg.max_per_region = max_per_region;
         }
         if let Some(args) = structured_gen_seri.args.clone() {
-            gen_cfg.args = args;
+            gen_cfg.args = HashMap::with_capacity(args.len());
+            for (key, val_vec) in args {
+                gen_cfg.args.insert(StrId::trunc(key), val_vec);
+            }
         }
         if let Some(tags) = structured_gen_seri.tags.clone() {
             let tags = TagSet::new(tags);

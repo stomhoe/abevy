@@ -1,32 +1,28 @@
-use being::being_components::Being;
 use bevy::prelude::*;
 use common::{common_components::{AnyDisabling, AssetScoped, SparedFromHotReloading}, common_states::*};
 use dimension_shared::{DimensionStrIdRef};
 
 use tilemap::{chunking_components::ActivatingChunks, terrain_gen::terrgen_resources::*};
+use tilemap_shared::ForceAllChunksDespawn;
 
 
 #[allow(unused_parens, )]
 pub fn reload_assets_while_ingame(
     mut cmd: Commands, 
     keys: Res<ButtonInput<KeyCode>>,
-    beings_query: Query<(Entity), (With<Being>,)>,
-    mut chunks_query: Query<&mut ActivatingChunks>,
     mut loading_state: ResMut<NextState<AssetLoading>>,
     mut hot_loading: ResMut<NextState<AssetHotReloadState>>,
 
     mut regpos: ResMut<RegisteredPositions>,
+    mut force_all_chunks_despawn_writer: MessageWriter<ForceAllChunksDespawn>,
 ) {
     if keys.pressed(KeyCode::KeyR) {
         info!(target: "asset_loading", "Reloading assets...");
-        beings_query.iter().for_each(|(being_ent)| {
-            cmd.entity(being_ent).try_remove::<(ChildOf,)>();
-        });
 
-        for (mut activating_chunks) in chunks_query.iter_mut() {
-            activating_chunks.entities.clear();
-        }
+
+        
         hot_loading.set(AssetHotReloadState::Ongoing);
+        force_all_chunks_despawn_writer.write_default();
 
         regpos.registered.clear();
     
@@ -37,14 +33,9 @@ pub fn reload_assets_while_ingame(
 pub fn on_assets_loaded(
     mut cmd: Commands,
     mut hot_loading: ResMut<NextState<AssetHotReloadState>>,
-    beings_query: Query<(Entity), (With<Being>, Without<ChildOf>)>,
     mut game_state: ResMut<NextState<GamePhase>>,
 
 ) {
-    
-    beings_query.iter().for_each(|(being_ent)| {
-        cmd.entity(being_ent).try_insert(DimensionStrIdRef::overworld_fallback());
-    });
     hot_loading.set(AssetHotReloadState::Stopped);
     //game_state.set(GamePhase::ActiveGame);
 }

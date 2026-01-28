@@ -33,7 +33,7 @@ pub struct StructuredGenConfigSeri {
     pub tags: Option<Vec<String>>,
 
     /// extra arguments given to structure generation
-    pub args: Option<Vec<String>>,
+    pub args: Option<HashMap<String, Vec<String>>>,
     /// weight in weighted map of structured gens for region. (more weight= likely for this structure to be generated first within the map of valid generations for that region)
     pub weight: f32,
     

@@ -2,7 +2,7 @@
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use common::common_components::HashId;
+use common::common_components::{HashId, StrId};
 use dimension_shared::DimensionRef;
 use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
@@ -158,11 +158,6 @@ pub fn claim_chunks_for_various_dungeon_types(
     writer.write_batch(claims_to_emit);
 }
 
-const FLOOR_TILE_ID: HashId = HashId::hash("dunewbie");
-const WALL_TILE_ID: HashId = HashId::hash("gray");
-
-
-
 #[allow(unused_parens)]
 pub fn drunkwalk_dungeon_building_system(
     mut reader: MessageReader<StructurePrepareTilesOrder>,
@@ -183,24 +178,41 @@ pub fn drunkwalk_dungeon_building_system(
             continue;
         }
 
-        let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
+        // Extract tile IDs from config args with defaults
+        let floor_tile_id = structured_gen_cfg.args
+            .get(&StrId::trunc("floor_tile_id"))
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("dunewbie"));
+        
+        let wall_tile_id = structured_gen_cfg.args
+            .get(&StrId::trunc("wall_tile_id"))
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("gray"));
+        
+        let lava_tile_id = structured_gen_cfg.args
+            .get(&StrId::trunc("lava_tile_id"))
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()));
+
+        let floor_entity = match ezeros_map.0.get(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero with id '{}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", FLOOR_TILE_ID);
+                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", floor_tile_id);
                 continue;
             }
         };
 
-        let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
+        let wall_entity = match ezeros_map.0.get(wall_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero with id '{}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", WALL_TILE_ID);
+                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", wall_tile_id);
                 continue;
             }
         };
 
-        const LAVA_TILE_ID: HashId = HashId::hash("orange");
-        let lava_entity = ezeros_map.0.get(LAVA_TILE_ID).ok().map(EntityZeroRef);
+        let lava_entity = lava_tile_id.and_then(|id| ezeros_map.0.get(id).ok()).map(EntityZeroRef);
 
         let chunk_positions = &build_order.chunks_gpos;
         if chunk_positions.is_empty() {
@@ -486,24 +498,41 @@ pub fn advanced_dungeon_building_system(
             continue;
         }
 
-        let floor_entity = match ezeros_map.0.get(FLOOR_TILE_ID) {
+        // Extract tile IDs from config args with defaults
+        let floor_tile_id = structured_gen_cfg.args
+            .get(&StrId::trunc("floor_tile_id"))
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("dunewbie"));
+        
+        let wall_tile_id = structured_gen_cfg.args
+            .get(&StrId::trunc("wall_tile_id"))
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("gray"));
+        
+        let lava_tile_id = structured_gen_cfg.args
+            .get(&StrId::trunc("lava_tile_id"))
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()));
+
+        let floor_entity = match ezeros_map.0.get(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero '{}' not found", FLOOR_TILE_ID);
+                error!(target: "dungeoning", "TileEzero '{:?}' not found", floor_tile_id);
                 continue;
             }
         };
 
-        let wall_entity = match ezeros_map.0.get(WALL_TILE_ID) {
+        let wall_entity = match ezeros_map.0.get(wall_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero '{}' not found", WALL_TILE_ID);
+                error!(target: "dungeoning", "TileEzero '{:?}' not found", wall_tile_id);
                 continue;
             }
         };
 
-        const LAVA_TILE_ID: HashId = HashId::hash("orange");
-        let lava_entity = ezeros_map.0.get(LAVA_TILE_ID).ok().map(EntityZeroRef);
+        let lava_entity = lava_tile_id.and_then(|id| ezeros_map.0.get(id).ok()).map(EntityZeroRef);
 
         let chunk_positions = &build_order.chunks_gpos;
         if chunk_positions.is_empty() { continue; }

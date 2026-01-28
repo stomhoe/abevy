@@ -10,7 +10,7 @@ use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, refl
 use common::{common_components::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(AssetScoped, ClaimList, RegionPlannedTiles, Visibility, Transform )]
+#[require(ClaimList, RegionPlannedTiles, Visibility, Transform )]
 pub struct Region;
 
 #[derive(Component, Debug, Reflect)]
@@ -143,10 +143,6 @@ pub struct PendingOfferTimeout {
     pub timeout_timer: Timer,
 }
 
-#[derive(Component, Debug, Reflect)]
-pub struct EmptyRegionDespawnTimer {
-    pub despawn_timer: Timer,
-}
 
 #[derive(Debug, Reflect, )]
 pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u64, }

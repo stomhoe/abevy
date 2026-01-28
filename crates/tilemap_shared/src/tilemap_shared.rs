@@ -280,7 +280,8 @@ impl From<Vec3> for ChunkPos {
     }
 }
 
-
+#[derive(Debug, Message, Default)]
+pub struct ForceAllChunksDespawn;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
 /// IMPORTANTE: va asociado a cada tile instance, no a la tile original

@@ -4,7 +4,6 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
-use common::common_states::AssetLoading;
 use common::common_types::HashIdToEntityMap;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
@@ -20,7 +19,7 @@ pub struct DimensionRef(#[entities] pub Entity);
 pub struct PrevDimensionRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
+#[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
 pub struct Dimension;
 
 #[derive(Resource, Debug, Default )]

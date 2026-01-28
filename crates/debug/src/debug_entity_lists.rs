@@ -15,7 +15,7 @@ use tilemap::tile::tile_components::*;
 use tilemap::tile::tile_shader::tile_shader_components::TileShaderRef;
 use ::tilemap_shared::*;
 use bevy_ecs_tilemap::prelude::{TileStorage, TilePos};
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use game_common::game_common_components::{DespawnTimer, EntityZero, EntityZeroRef};
 use ::sprite_shared::*;
 use common::common_components::*;
 
@@ -743,7 +743,7 @@ pub fn regions_list_window(
         Option<&ChunksActiveInRegion>,
         Option<&CountsOfSgcs>,
         Option<&PendingOfferTimeout>,
-        Option<&EmptyRegionDespawnTimer>,
+        Option<&DespawnTimer>,
         Has<AllTilesPrepared>,
         Has<BuildingStarted>,
         Has<AllClaimsProcessed>,
@@ -764,7 +764,7 @@ pub fn regions_list_window(
     let default_y = screen_rect.top() + 10.0;
 
     // Group regions by dimension and position (keyed by StrId and Entity number)
-    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, Option<&PendingOfferTimeout>, Option<&EmptyRegionDespawnTimer>, bool, bool, bool)>)> =
+    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, Option<&PendingOfferTimeout>, Option<&DespawnTimer>, bool, bool, bool)>)> =
         BTreeMap::new();
 
     for (entity, _region, dim_ref, region_pos, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims) in region_query.iter() {

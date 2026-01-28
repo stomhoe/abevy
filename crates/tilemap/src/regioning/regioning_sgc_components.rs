@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
 use serde::{Deserialize, Serialize};
-use bevy::ecs::entity::MapEntities;
+use bevy::{ecs::entity::MapEntities, platform::collections::HashMap};
 
 
 
@@ -18,11 +18,11 @@ pub struct StructuredGenConfig{
     pub structure_id: StrId,
     pub hash: HashId,
     pub max_per_region: u32,
-    pub args: Vec<String>,
+    pub args: HashMap<StrId, Vec<String>>,
 }
 impl Default for StructuredGenConfig {
     fn default() -> Self {
-        Self { structure_id: StrId::default(), hash: HashId::default(), max_per_region: 1024, args: Vec::new()  }
+        Self { structure_id: StrId::default(), hash: HashId::default(), max_per_region: 1024, args: HashMap::new()  }
     }
 }
 

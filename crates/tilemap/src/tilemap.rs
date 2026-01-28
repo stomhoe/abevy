@@ -25,6 +25,7 @@ pub fn plugin(app: &mut App) {
         rem_outofrange_chunks_from_activators, 
         despawn_chunks, 
         tmaptile_assign_child_of,
+        despawn_all_chunks_on_order,
         
         (
             /* --- reparent_orphan_tilemaps.run_if(on_timer(Duration::from_secs(5))), --- */
@@ -74,6 +75,7 @@ pub fn plugin(app: &mut App) {
     .add_message::<ReactivateChunksFor>()
     .add_message::<RecheckChunksVisibility>()
     .add_message::<ForceChunkDespawn>()
+    .add_message::<ForceAllChunksDespawn>()
     
 
     

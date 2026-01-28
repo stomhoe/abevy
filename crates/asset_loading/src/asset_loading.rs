@@ -46,7 +46,6 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             on_assets_loaded.in_set(AssetHotReloading)
         ))
-
         .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             AssetHotReloading.run_if(in_state(AssetHotReloadState::Ongoing)).after(GameplaySystems)
         ))

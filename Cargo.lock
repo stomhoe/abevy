@@ -369,6 +369,7 @@ dependencies = [
  "sprite_animation",
  "sprite_animation_shared",
  "tilemap",
+ "tilemap_shared",
  "tracing",
  "tracing-subscriber",
 ]

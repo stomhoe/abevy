@@ -6,7 +6,7 @@ use common::common_components::{AnyDisabling, AssetScoped, StrId20B};
 use dimension_shared::DimensionRef;
 use game_common::game_common_components::DespawnTimer;
 use std::{collections::{HashMap, HashSet}, time::Duration};
-use tilemap_shared::{ChunkPos, HashablePosVec, RegionPos};
+use tilemap_shared::{ChunkPos, ForceAllChunksDespawn, HashablePosVec, RegionPos};
 
 use crate::{chunking_components::*, chunking_resources::*, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}, tile::tile_messages::SavedTileHadChunkDespawn};
 
@@ -74,7 +74,6 @@ pub fn spawn_chunks_around_activators(
                     comps_for_chunk_ents.push((chunk_ent, (
                         Chunk { region_ent, },
                         Visibility::Hidden,
-                        AssetScoped,
                         TilesToSave::default(),
                         StrId20B::trunc(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
                         Transform::default(),
@@ -115,12 +114,12 @@ pub fn rem_outofrange_chunks_from_activators(
                 activates_chunks.entities.swap_remove(i);
                 continue;
             };
-
+            
             let keep = chunk_dim == act_dim && 
-                !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos)
-                && chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos));
+            !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos)
+            && chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos));
             if !keep {
-                to_despawn.push(CheckChunkDespawn(chunk_ent, 0));
+                to_despawn.push(CheckChunkDespawn(chunk_ent));
                 activates_chunks.entities.swap_remove(i);
             } else {
                 i += 1;
@@ -131,7 +130,30 @@ pub fn rem_outofrange_chunks_from_activators(
 }
 
 #[derive(Debug, Message)]
-pub struct CheckChunkDespawn (pub Entity, pub u8,);//u8 = retransmission count
+pub struct CheckChunkDespawn (pub Entity);
+
+
+#[allow(unused_parens)]
+pub fn despawn_all_chunks_on_order(
+    mut reader: MessageReader<ForceAllChunksDespawn>,
+    chunks_query: Query<(Entity),(With<Chunk>)>,
+    mut activators_query: Query<&mut ActivatingChunks>,
+    mut writer: MessageWriter<ForceChunkDespawn>,
+) {
+    if reader.is_empty() {
+        return;
+    }
+    reader.clear();
+    let mut evs = Vec::with_capacity(chunks_query.iter().size_hint().0);
+    for ent in chunks_query.iter() {
+        evs.push(ForceChunkDespawn(ent));
+    }
+    for (mut activating_chunks) in activators_query.iter_mut() {
+        activating_chunks.entities.clear();
+    }
+    writer.write_batch(evs);
+}
+
 
 #[derive(Debug, Message)]
 pub struct ForceChunkDespawn (pub Entity, );
@@ -142,13 +164,13 @@ pub fn periodically_check_despawn_unreferenced_chunks(
     mut to_check: Local<Vec<CheckChunkDespawn>>,
 ) {
     for chunk_ent in chunks_query.iter() {
-        to_check.push(CheckChunkDespawn(chunk_ent, 0));
+        to_check.push(CheckChunkDespawn(chunk_ent));
     }
     ewriter.write_batch(to_check.drain(..));
 }
 
 #[allow(unused_parens)]
-pub fn despawn_chunks(
+pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
     chunks_query: Query<(&DimensionRef, &ChunkPos, Option<&Children>, Option<&TilesToSave>), >,
@@ -168,7 +190,7 @@ pub fn despawn_chunks(
     }
     tosave_events.clear();
     
-    for CheckChunkDespawn(chunk_ent, _retransmission_count) in despawn_events.drain() {
+    for CheckChunkDespawn(chunk_ent) in despawn_events.drain() {
         
         let referenced = referenced_chunks.contains(&chunk_ent);
         
@@ -185,7 +207,7 @@ pub fn despawn_chunks(
             continue; 
         };
         loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
-            
+        
         if let Some(children) = children.as_ref() {
             for child in children.iter() {
                 if let Ok(tile_storage) = tmaps.get(child) {
@@ -206,7 +228,7 @@ pub fn despawn_chunks(
         cmd.entity(chunk_ent).try_despawn();
     }
     tosave_event_writer.write_batch(tosave_events.drain(..));
-
+    
 }
 
 
