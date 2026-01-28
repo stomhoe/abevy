@@ -27,8 +27,6 @@ pub fn plugin(app: &mut App) {
 
     app
     
-    .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (reset_states))
-
     .add_systems(Update, (
         (toggle_simulation, ).in_set(GameplaySystems),
         (tick_time_based_multipliers).in_set(SimRunningSystems),
@@ -45,7 +43,7 @@ pub fn plugin(app: &mut App) {
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
             .and(
-                in_state(AssetLoading::LoadingAssetsIntoHandles).and(in_state(ClientState::Connected))
+                (in_state(ClientState::Connected))
                 .or(in_state(AssetLoading::SpawnReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         ).in_set(StatefulSessionSystems),
@@ -58,7 +56,7 @@ pub fn plugin(app: &mut App) {
         (GameplaySystems).run_if(
             in_state(GamePhase::ActiveGame)
             .and(
-                in_state(AssetLoading::LoadingAssetsIntoHandles).and(in_state(ClientState::Connected))
+                (in_state(ClientState::Connected))
                 .or(in_state(AssetLoading::SpawnReplicatedEntities).and(in_state(ClientState::Disconnected)))
             )
         )

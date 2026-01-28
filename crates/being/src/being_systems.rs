@@ -15,13 +15,15 @@ use crate::{being_components::*,};
 
 #[allow(unused_parens)]
 // A L CENTRO DE LA BASE VA A HABER Q PONERLE UNO DE ALGUNA FORMA
-pub fn host_add_activates_chunks(mut cmd: Commands, 
+pub fn add_activates_chunks(mut cmd: Commands, 
     query: Query<(Entity),(With<Being>, Added<BelongsToAPlayerFaction>)>,
     mut removed: RemovedComponents<BelongsToAPlayerFaction>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
-    query.iter().for_each(|ent| { cmd.entity(ent).try_insert_if_new(ActivatingChunks::new(&chunk_range)); });
+    let mut activates_chunks = Vec::new();
+    query.iter().for_each(|ent| { activates_chunks.push((ent, ActivatingChunks::new(&chunk_range))); });
     for ent in removed.read() { cmd.entity(ent).try_remove::<ActivatingChunks>(); }
+    cmd.try_insert_batch(activates_chunks);
 }
 
 #[allow(unused_parens)]

@@ -19,6 +19,7 @@ pub fn plugin(app: &mut App) {
 
         .replicate::<ModifierTarget>()
         .replicate::<BaseValue>()
+        .replicate::<EffectiveValue>()//NO SÉ SI ES TEMPORAL O NO
         .replicate::<MitigatingOnly>()
         .replicate::<ApplyMode>()
         .replicate::<Speed>()

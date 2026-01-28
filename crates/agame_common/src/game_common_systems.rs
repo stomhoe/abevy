@@ -15,12 +15,6 @@ use ::sprite_shared::*;
 use crate::game_common_components::*;
 use crate::game_common_states::*;
 
-#[allow(unused_parens)]
-pub fn reset_states(
-    mut state: ResMut<NextState<GamePhase>>
-) {
-    //state.set(GamePhase::default());
-}
 
 pub fn toggle_simulation(
     keyboard_input: Res<ButtonInput<KeyCode>>,

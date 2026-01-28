@@ -14,7 +14,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         (
-            (host_add_activates_chunks, cross_portal).run_if(in_state(ClientState::Disconnected)),
+            (add_activates_chunks, cross_portal).run_if(in_state(ClientState::Disconnected)),
             on_control_change,
         ).in_set(GameplaySystems),
     ))

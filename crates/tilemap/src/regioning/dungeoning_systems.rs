@@ -407,6 +407,29 @@ pub fn drunkwalk_dungeon_building_system(
         }
         floor_map = smoothed;
 
+        // Create wall outlines only (around floor tiles)
+        let mut wall_map = vec![false; tile_map_size];
+        for y in 0..tile_height {
+            for x in 0..tile_width {
+                if !floor_map[y * tile_width + x] && !hazard_map[y * tile_width + x] { continue; }
+                // Mark adjacent non-floor tiles as walls
+                let neighbors = [
+                    (y.saturating_sub(1), x),
+                    (y + 1, x),
+                    (y, x.saturating_sub(1)),
+                    (y, x + 1),
+                ];
+                for (ny, nx) in neighbors {
+                    if ny < tile_height && nx < tile_width {
+                        let idx = ny * tile_width + nx;
+                        if !floor_map[idx] && !hazard_map[idx] {
+                            wall_map[idx] = true;
+                        }
+                    }
+                }
+            }
+        }
+
         let delete_template = DeleteOtherTiles::default();
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
@@ -421,14 +444,14 @@ pub fn drunkwalk_dungeon_building_system(
                     continue;
                 }
                 let map_idx = idx_y * tile_width + idx_x;
-                let ezero_ref = if hazard_map[map_idx] {
-                    if let Some(lava) = lava_entity { lava } else { wall_entity }
+                if hazard_map[map_idx] {
+                    let ezero_ref = if let Some(lava) = lava_entity { lava } else { wall_entity };
+                    tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
                 } else if floor_map[map_idx] {
-                    floor_entity
-                } else {
-                    wall_entity
-                };
-                tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
+                    tiles4chunk.push((tile_pos, floor_entity, Some(delete_template.clone())));
+                } else if wall_map[map_idx] {
+                    tiles4chunk.push((tile_pos, wall_entity, Some(delete_template.clone())));
+                }
             }
             if !tiles4chunk.is_empty() {
                 compliances_to_emit.push(StructureBuildCompliance {
@@ -665,6 +688,29 @@ pub fn advanced_dungeon_building_system(
             }
         }
 
+        // Create wall outlines only (around floor tiles and corridors)
+        let mut wall_map = vec![false; tile_map_size];
+        for y in 0..tile_height {
+            for x in 0..tile_width {
+                if !floor_map[y * tile_width + x] && !hazard_map[y * tile_width + x] { continue; }
+                // Mark adjacent non-floor tiles as walls
+                let neighbors = [
+                    (y.saturating_sub(1), x),
+                    (y + 1, x),
+                    (y, x.saturating_sub(1)),
+                    (y, x + 1),
+                ];
+                for (ny, nx) in neighbors {
+                    if ny < tile_height && nx < tile_width {
+                        let idx = ny * tile_width + nx;
+                        if !floor_map[idx] && !hazard_map[idx] {
+                            wall_map[idx] = true;
+                        }
+                    }
+                }
+            }
+        }
+
         let delete_template = DeleteOtherTiles::default();
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
@@ -676,14 +722,14 @@ pub fn advanced_dungeon_building_system(
                 if idx_x >= tile_width || idx_y >= tile_height { continue; }
                 let map_idx = idx_y * tile_width + idx_x;
                 
-                let ezero_ref = if hazard_map[map_idx] {
-                    if let Some(lava) = lava_entity { lava } else { wall_entity }
+                if hazard_map[map_idx] {
+                    let ezero_ref = if let Some(lava) = lava_entity { lava } else { wall_entity };
+                    tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
                 } else if floor_map[map_idx] {
-                    floor_entity
-                } else {
-                    wall_entity
-                };
-                tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
+                    tiles4chunk.push((tile_pos, floor_entity, Some(delete_template.clone())));
+                } else if wall_map[map_idx] {
+                    tiles4chunk.push((tile_pos, wall_entity, Some(delete_template.clone())));
+                }
             }
             if !tiles4chunk.is_empty() {
                 compliances_to_emit.push(StructureBuildCompliance {
