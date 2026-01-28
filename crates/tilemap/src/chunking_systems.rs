@@ -134,10 +134,9 @@ pub struct CheckChunkDespawn (pub Entity);
 
 
 #[allow(unused_parens)]
-pub fn despawn_all_chunks_on_order(
+pub fn on_message_signal_despawn_all_chunks(
     mut reader: MessageReader<ForceAllChunksDespawn>,
     chunks_query: Query<(Entity),(With<Chunk>)>,
-    mut activators_query: Query<&mut ActivatingChunks>,
     mut writer: MessageWriter<ForceChunkDespawn>,
 ) {
     if reader.is_empty() {
@@ -148,9 +147,7 @@ pub fn despawn_all_chunks_on_order(
     for ent in chunks_query.iter() {
         evs.push(ForceChunkDespawn(ent));
     }
-    for (mut activating_chunks) in activators_query.iter_mut() {
-        activating_chunks.entities.clear();
-    }
+
     writer.write_batch(evs);
 }
 
@@ -172,7 +169,7 @@ pub fn periodically_check_despawn_unreferenced_chunks(
 #[allow(unused_parens)]
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
-    activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
+    mut activator_query: Query<(&DimensionRef, &mut ActivatingChunks, ), >,
     chunks_query: Query<(&DimensionRef, &ChunkPos, Option<&Children>, Option<&TilesToSave>), >,
     tmaps: Query<&TileStorage, AnyDisabling>,
     mut loaded_chunks: ResMut<LoadedChunks>,
@@ -207,7 +204,16 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
             continue; 
         };
         loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
-        
+        for (_, mut activates_chunks) in activator_query.iter_mut() {
+            let mut i = 0;
+            while i < activates_chunks.entities.len() {
+                if activates_chunks.entities[i] == chunk_ent {
+                    activates_chunks.entities.swap_remove(i);
+                } else {
+                    i += 1;
+                }
+            }
+        }
         if let Some(children) = children.as_ref() {
             for child in children.iter() {
                 if let Ok(tile_storage) = tmaps.get(child) {

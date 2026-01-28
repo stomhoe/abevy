@@ -25,17 +25,17 @@ pub fn plugin(app: &mut App) {
         rem_outofrange_chunks_from_activators, 
         despawn_chunks, 
         tmaptile_assign_child_of,
-        despawn_all_chunks_on_order,
+        on_message_signal_despawn_all_chunks,
         
         (
-            /* --- reparent_orphan_tilemaps.run_if(on_timer(Duration::from_secs(5))), --- */
+            reparent_orphan_tilemaps.run_if(on_timer(Duration::from_secs(5))).after(process_tiles_pre),
             activate_chunks_every_second,
             detect_activators_with_pos_changes, 
             spawn_chunks_around_activators.after(despawn_chunks).after(despawn_if_not_excepted),//DON'T TOUCH
             requeue_limbo_tiles.run_if(on_timer(Duration::from_millis(500))),
             detect_camera_change_pos, 
             update_chunk_visib,
-            periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_millis(500))),
+            periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_secs(5))),
             periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
             process_tiles_pre.before(despawn_chunks),//DON'T TOUCH
 

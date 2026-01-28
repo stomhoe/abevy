@@ -1,6 +1,6 @@
 (
     id: "lava",
     img_path: "texture/world/terr/water/lava.png",
-    scale: 30,
+    scale: 25,
     mask_color: (255., 0, 0, 255.),
 )

@@ -1,4 +1,4 @@
-use bevy::{asset::AssetId, ecs::{query, system::SystemParam}, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy::{asset::AssetId, ecs::{query, system::SystemParam}, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::{AnyDisabling}, common_resources::ImageSizeMap, };
@@ -63,7 +63,6 @@ use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 pub struct ProcessTilesPreParams<'w, 's> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,
     pub limbo_tiles: ResMut<'w, TilemapLimboTiles>,
-    pub tilemap_tasks: ResMut<'w, TilemapAsyncTasks>,
 
     pub ezero_query: Query<'w, 's, (
         &'static TileStrId,
@@ -106,45 +105,14 @@ pub fn process_tiles_pre(
 ) {
     let is_host = *params.state.get() == ClientState::Disconnected;
 
-    let mut prepared_tiles: Vec<TilemapPreparedTile> = Vec::new();
-    params.tilemap_tasks.prep_tasks.retain_mut(|task| {
-        if let Some(result) = future::block_on(future::poll_once(task)) {
-            prepared_tiles.extend(result.prepared_tiles);
-            false
-        } else {
-            true
-        }
-    });
-
-    if prepared_tiles.is_empty() {
-        if !params.tilemap_tasks.prep_tasks.is_empty() { return; }
-        if params.collected_tiles.0.is_empty() { return; }
-
-        let inputs = collect_tilemap_prep_inputs(&mut cmd, &mut params.collected_tiles, &params.ezero_query);
-        if inputs.is_empty() { return; }
-        let image_sizes: HashMap<AssetId<Image>, U16Vec2> = params.image_size_map
-            .0
-            .iter()
-            .map(|(id, size)| (*id, *size))
-            .collect();
-        let loaded_chunks_map: HashMap<(DimensionRef, ChunkPos), Entity> = params.loaded_chunks
-            .0
-            .iter()
-            .map(|(key, &ent)| (*key, ent))
-            .collect();
-
-        let task_pool = AsyncComputeTaskPool::get();
-        params.tilemap_tasks.prep_tasks.push(task_pool.spawn(async move {
-            process_tilemap_prep_batch(inputs, image_sizes, loaded_chunks_map)
-        }));
-    }
+    if params.collected_tiles.0.is_empty() { return; }
 
     if !tmap_map.is_empty() {
         tmap_map.retain(|key, _| params.loaded_chunks.0.contains_key(&(key.dim_ref(), key.chunk_pos())));
     }
 
     let reserved = params.chunkrange.approximate_number_of_chunks(0.06);
-    let tiles_len = prepared_tiles.len();
+    let tiles_len = params.collected_tiles.0.len();
 
     let mut changed_structs: HashSet<MapKey> = HashSet::with_capacity(reserved);
 
@@ -155,9 +123,17 @@ pub fn process_tiles_pre(
     let mut spritetiles_to_insert_pos_and_dim_ref = Vec::with_capacity(tiles_len/20);
 
     let mut tiles_to_insert: Vec<(Entity, TileMassSpawnBundle)> = Vec::with_capacity(tiles_len);
-    for prepared in prepared_tiles {
-        let tile_ent = prepared.tile_ent;
-        let mut bundle = prepared.bundle;
+    
+    for (tile_ent, bundle) in params.collected_tiles.0.drain(..) {
+        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color))
+            = params.ezero_query.get(bundle.ezero_ref.0)
+        else {
+            error!(target: "tilemap_systems", "Original tile entity {} is despawned", bundle.ezero_ref.0);
+            cmd.entity(tile_ent).try_despawn();
+            continue;
+        };
+
+        let mut bundle = bundle;
 
         if false == params.regpos_map.check_min_distances(
             &mut cmd,
@@ -167,8 +143,8 @@ pub fn process_tiles_pre(
                 bundle.ezero_ref,
                 bundle.dim_ref,
                 bundle.gpos,
-                prepared.min_dists.as_ref(),
-                prepared.keep_distance_from.as_ref(),
+                min_dists,
+                keep_distance_from,
             ),
             params.min_dists_query,
         ) {
@@ -177,7 +153,7 @@ pub fn process_tiles_pre(
             continue;
         }
 
-        if prepared.to_persist {
+        if to_persist {
             if is_host {
                 to_insert_replicated.push((tile_ent, Replicated));
             } else {
@@ -186,7 +162,7 @@ pub fn process_tiles_pre(
             }
         }
 
-        if prepared.transform.is_some() {
+        if transform.is_some() {
             spritetiles_to_insert_pos_and_dim_ref.push((
                 tile_ent,
                 (
@@ -201,9 +177,9 @@ pub fn process_tiles_pre(
             continue;//is sprite tile
         }
 
-        bundle.tile_bundle.color = prepared.color.unwrap_or_default();
+        bundle.tile_bundle.color = color.cloned().unwrap_or_default();
 
-        let Some(chunk) = prepared.chunk_ent else {
+        let Some(chunk) = params.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied() else {
             let chunk_pos = ChunkPos::from(bundle.gpos);
             let gpos = bundle.gpos;
             let dim_ref = bundle.dim_ref;
@@ -213,6 +189,16 @@ pub fn process_tiles_pre(
         };
         let chunk_pos = ChunkPos::from(bundle.gpos);
 
+        let tile_size = if let Some(ref handles) = tile_handles {
+            params.image_size_map
+                .0
+                .get(&handles.first_handle().id())
+                .copied()
+                .unwrap_or(U16Vec2::ONE)
+        } else {
+            U16Vec2::ONE
+        };
+
         func_process_tile_into_tilemaps(
             &mut cmd,
             tile_ent,
@@ -221,10 +207,10 @@ pub fn process_tiles_pre(
             &mut bundle.tile_bundle.tilemap_id,
             bundle.oplist_size,
             bundle.tile_bundle.position,
-            prepared.tile_z_index,
-            prepared.tile_handles.as_ref(),
-            prepared.shader_ref.as_ref(),
-            prepared.tile_size,
+            tile_z_index.cloned().unwrap_or_default(),
+            tile_handles,
+            shader_ref,
+            tile_size,
             &mut *tmap_map,
             chunk,
             chunk_pos,
@@ -309,8 +295,7 @@ pub fn requeue_limbo_tiles(
     mut cmd: Commands,
     mut limbo_tiles: ResMut<TilemapLimboTiles>,
     mut collected_tiles: ResMut<MassCollectedTiles>,
-    mut loaded_chunks: ResMut<LoadedChunks>,
-    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), With<Chunk>>,
+    loaded_chunks: Res<LoadedChunks>,
     alive_query: Query<Entity>,
 ) {
     if limbo_tiles.0.is_empty() {
@@ -331,18 +316,6 @@ pub fn requeue_limbo_tiles(
             continue;
         }
 
-        if let Some((chunk_ent, _, _)) = chunk_query
-            .iter()
-            .find(|(_, pos, dim)| **pos == chunk_pos && **dim == entry.bundle.dim_ref)
-        {
-            // in case LoadedChunks missed this chunk
-            loaded_chunks
-                .0
-                .insert((entry.bundle.dim_ref, chunk_pos), chunk_ent);
-            collected_tiles.0.push((entry.tile_ent, entry.bundle));
-            continue;
-        }
-
         if entry.retries_left == 0 {
             cmd.entity(entry.tile_ent).try_despawn();
             trace!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned after max retries in limbo", entry.tile_ent, entry.bundle.gpos, entry.bundle.dim_ref);
@@ -353,103 +326,6 @@ pub fn requeue_limbo_tiles(
         limbo_tiles.0.push(entry);
         i += 1;
     }
-}
-
-#[derive(Clone)]
-struct TilemapPrepInput {
-    tile_ent: Entity,
-    bundle: TileMassSpawnBundle,
-    tile_strid: TileStrId,
-    min_dists: Option<MinDistancesMap>,
-    keep_distance_from: Option<KeepDistanceFrom>,
-    to_persist: bool,
-    tile_z_index: AcZ,
-    tile_handles: Option<TileHidsHandles>,
-    shader_ref: Option<TileShaderRef>,
-    transform: Option<Transform>,
-    color: Option<TileColor>,
-}
-
-fn collect_tilemap_prep_inputs(
-    cmd: &mut Commands,
-    collected_tiles: &mut MassCollectedTiles,
-    ezero_query: &Query<(
-        &TileStrId,
-        Option<&MinDistancesMap>,
-        Option<&KeepDistanceFrom>,
-        Has<Persisted>,
-        Option<&AcZ>,
-        Option<&TileHidsHandles>,
-        Option<&TileShaderRef>,
-        Option<&Transform>,
-        Option<&TileColor>,
-    ), AnyDisabling>,
-) -> Vec<TilemapPrepInput> {
-    let mut inputs = Vec::with_capacity(collected_tiles.0.len());
-    for (tile_ent, bundle) in collected_tiles.0.drain(..) {
-        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color))
-            = ezero_query.get(bundle.ezero_ref.0)
-        else {
-            error!(target: "tilemap_systems", "Original tile entity {} is despawned", bundle.ezero_ref.0);
-            cmd.entity(tile_ent).try_despawn();
-            continue;
-        };
-
-        inputs.push(TilemapPrepInput {
-            tile_ent,
-            bundle,
-            tile_strid: tile_strid.clone(),
-            min_dists: min_dists.cloned(),
-            keep_distance_from: keep_distance_from.cloned(),
-            to_persist,
-            tile_z_index: tile_z_index.cloned().unwrap_or_default(),
-            tile_handles: tile_handles.cloned(),
-            shader_ref: shader_ref.copied(),
-            transform: transform.cloned(),
-            color: color.copied(),
-        });
-    }
-    inputs
-}
-
-fn process_tilemap_prep_batch(
-    inputs: Vec<TilemapPrepInput>,
-    image_sizes: HashMap<AssetId<Image>, U16Vec2>,
-    loaded_chunks: HashMap<(DimensionRef, ChunkPos), Entity>,
-) -> TilemapPrepResult {
-    let mut prepared_tiles = Vec::with_capacity(inputs.len());
-
-    for input in inputs {
-        let tile_size = if let Some(ref handles) = input.tile_handles {
-            image_sizes
-                .get(&handles.first_handle().id())
-                .copied()
-                .unwrap_or(U16Vec2::ONE)
-        } else {
-            U16Vec2::ONE
-        };
-
-        let chunk_pos = ChunkPos::from(input.bundle.gpos);
-        let chunk_ent = loaded_chunks.get(&(input.bundle.dim_ref, chunk_pos)).copied();
-
-        prepared_tiles.push(TilemapPreparedTile {
-            tile_ent: input.tile_ent,
-            bundle: input.bundle,
-            tile_strid: input.tile_strid,
-            min_dists: input.min_dists,
-            keep_distance_from: input.keep_distance_from,
-            to_persist: input.to_persist,
-            tile_z_index: input.tile_z_index,
-            tile_handles: input.tile_handles,
-            shader_ref: input.shader_ref,
-            transform: input.transform,
-            color: input.color,
-            tile_size,
-            chunk_ent,
-        });
-    }
-
-    TilemapPrepResult { prepared_tiles }
 }
 
 
@@ -569,6 +445,9 @@ fn func_process_tile_into_tilemaps(
             });
     }
 }
+
+pub const REPARENT_CHECK_INTERVAL_SECS: u64 = 5;
+
 #[allow(unused_parens)]
 pub fn reparent_orphan_tilemaps(
     mut cmd: Commands,
@@ -578,13 +457,12 @@ pub fn reparent_orphan_tilemaps(
     let mut child_ofs = Vec::with_capacity(tmap_query.iter().size_hint().0);
     for (tmap_ent, &tmap_chunk_pos, &dim_ref, mut retries) in tmap_query.iter_mut() {
         if let Some(&chunk_ent) = loaded_chunks.0.get(&(dim_ref, tmap_chunk_pos)) {
-            //cmd.entity(tmap_ent).insert(ChildOf(chunk_ent));
             child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
             retries.0 = 0;
             continue;
         }
         retries.0 += 1;
-        if retries.0 > 10 {
+        if retries.0 > 30/REPARENT_CHECK_INTERVAL_SECS {
             cmd.entity(tmap_ent).try_despawn();
         }
     }
