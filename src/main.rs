@@ -24,6 +24,7 @@ concat!(
     
     "portal_init=warn,",
     "pos_search=info,",
+    "childrensprite_init=trace,",
 
     "terrgen_systems=info,",
     "terrgen_process=info,",
@@ -31,6 +32,8 @@ concat!(
     "tilemap_systems=warn,",
     "tilemap=warn,",
     "add2gposmap=warn,",
+
+    "debug=info,",
 
     "zlevel=info,",
     "movement=warn,",

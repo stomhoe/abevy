@@ -7,7 +7,7 @@ use camera::camera_components::CameraTarget;
 use common::common_components::AnyDisabling;
 use dimension_shared::DimensionRef;
 use faction::faction_components::*;
-use movement::movement_events::TransformFromServer;
+use movement::movement_messages::TransformFromServer;
 use player::player_components::*;
 use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalTo, Tile}};
 

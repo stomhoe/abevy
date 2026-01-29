@@ -3,7 +3,7 @@ use bevy_fps_counter::FpsCounterPlugin;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_inspector_egui::bevy_egui::{EguiPrimaryContextPass, };
 
-use crate::{debug_resources::*, debug_window_systems::*, debug_entity_lists::*, debug_systems::*, debug_fonts::*};
+use crate::{debug_entity_lists::*, debug_fonts::*, debug_messages::*, debug_resources::*, debug_systems::*, debug_window_systems::*};
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
@@ -16,6 +16,7 @@ pub fn plugin(app: &mut App) {
         debug_increase_speed,
         debug_toggle_states_window,
         debug_toggle_main_menu,
+        receive_increase_speed_from_client.run_if(in_state(ServerState::Running))
     ))
     .add_systems(EguiPrimaryContextPass, (
         main_menu_window,
@@ -24,6 +25,7 @@ pub fn plugin(app: &mut App) {
         regions_list_window,
         beings_list_window,
         portals_list_window,
+        sprites_list_window,
         terrgen_editor_window,
         global_gen_settings_editor_window,
         registered_positions_window,
@@ -35,11 +37,12 @@ pub fn plugin(app: &mut App) {
         tilemap_details_inspector,
         being_details_inspector,
         exempted_entity_details_inspector,
+        sprite_details_inspector,
     ))
     .init_resource::<DubugWindowsVisibility>()
     .init_resource::<DebugSelectedEntities>()
     .init_resource::<FontsInitialized>()
-    
+    .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered)
     ;
 }
 

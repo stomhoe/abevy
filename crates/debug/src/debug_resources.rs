@@ -19,6 +19,8 @@ pub struct DubugWindowsVisibility{
     pub being_details: bool,
     pub registered_positions: bool,
     pub exempted_entity_details: bool,
+    pub sprites_list: bool,
+    pub sprite_details: bool,
 }
 
 impl Default for DubugWindowsVisibility {
@@ -39,6 +41,8 @@ impl Default for DubugWindowsVisibility {
             being_details: false,
             registered_positions: false,
             exempted_entity_details: false,
+            sprites_list: false,
+            sprite_details: false,
         }
     }
 }
@@ -53,4 +57,5 @@ pub struct DebugSelectedEntities {
     pub selected_tile: Option<Entity>,
     pub selected_being: Option<Entity>,
     pub selected_exempted_entity: Option<Entity>,
+    pub selected_sprite: Option<Entity>,
 }

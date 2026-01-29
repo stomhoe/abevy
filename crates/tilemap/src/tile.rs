@@ -8,7 +8,7 @@ use common::{common_components::AnyDisabling, common_states::AssetLoading};
 use bevy_ecs_tilemap::prelude::*;
 use game_common::{game_common_components::{EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
 use sprite::AcSpriteSystems;
-use tilemap_shared::{GlobalTilePos, OplistSize};
+use tilemap_shared::{GlobalTilePos, OplistSize, PrevGlobalTilePos};
 use bevy::prelude::*;
 
 use crate::{terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::{
@@ -42,7 +42,7 @@ pub fn plugin(app: &mut App) {
         (spritetile_readjust_transform_to_match_globalpos).chain(),
         make_spritetile_child_of_chunk.run_if(on_timer(Duration::from_millis(500))),//DON   
         add_handles,
-        init_tile_sprite,
+        init_childrensprite,
         emit_global_tile_pos_change,
         validate_portal_recipes,
         remove_tile_from_gpos_map_on_despawn,
@@ -96,11 +96,13 @@ pub fn plugin(app: &mut App) {
     
     
     .replicate::<Tile>()
+    .replicate::<TileChildSprite>()
     .replicate::<TileStrId>()
     .replicate::<TileImagePaths>()
     .replicate::<TileColor>()
     .replicate::<TileSamplerHolder>()
     .replicate::<InitialPos>()
+    .replicate::<PrevGlobalTilePos>()
     .replicate::<PortalsZeroEguiHolder>()
     .replicate::<TileInstancesHolder>()
 

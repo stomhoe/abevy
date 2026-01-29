@@ -2,7 +2,7 @@ use bevy::{prelude::*};
 use bevy_replicon::prelude::*;
 use game_common::game_common::{GameplaySystems, SimRunningSystems};
 
-use crate::{movement_components::*, movement_events::*, movement_systems::*};
+use crate::{movement_components::*, movement_messages::*, movement_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct MovementSystems;

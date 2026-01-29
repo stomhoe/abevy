@@ -152,9 +152,6 @@ pub fn process_tiles_pre(
             ),
             params.min_dists_query,
         ) {
-            if seeking_portal_other_end {
-                error!(target: "tilemap_systems", "Tile entity {:?} had SeekingPortalOtherEnd component", tile_ent);
-            }
             cmd.entity(tile_ent).try_despawn();
             info!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
             continue;

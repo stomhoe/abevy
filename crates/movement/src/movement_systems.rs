@@ -9,7 +9,7 @@ use modifier::{modifier_components::*, modifier_move_components::*};
 use player::{player_components::*, player_resources::KeyboardInputMappings};
 use sprite_animation_shared::MoveAnimActive;
 
-use crate::{movement_components::*, movement_events::{SendMoveInput, TransformFromServer}};
+use crate::{movement_components::*, movement_messages::{SendMoveInput, TransformFromServer}};
 
 #[allow(unused_parens, )]
 pub fn update_human_move_input(
@@ -50,7 +50,7 @@ pub fn receive_move_input_from_client(
     mut events: MessageReader<FromClient<SendMoveInput>>,
     mut controlled_beings_query: Query<(&mut InputMoveVector, &ControlledBy, ), ()>,
 
-) -> Result {
+) {
     for from_client in events.read() {
         let SendMoveInput { vec: new_vec, being_ent } = from_client.message.clone();
 
@@ -72,8 +72,6 @@ pub fn receive_move_input_from_client(
             warn!("Client tried to control a being that does not exist in server or is not controllable {}", being_ent);
         }
     }
-    
-    Ok(())
 }
 
 #[allow(unused_parens, )]

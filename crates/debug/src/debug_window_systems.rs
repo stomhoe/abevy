@@ -140,7 +140,11 @@ pub fn main_menu_window(
                 window_visible.portals_list = !window_visible.portals_list;
             }
 
-            if ui.button(egui::RichText::new("🌍 Terrain generation editor").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("� Sprites").size(16.0)).clicked() {
+                window_visible.sprites_list = !window_visible.sprites_list;
+            }
+
+            if ui.button(egui::RichText::new("�🌍 Terrain generation editor").size(16.0)).clicked() {
                 window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
 

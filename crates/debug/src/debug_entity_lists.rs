@@ -24,6 +24,7 @@ use common::common_components::*;
 use being::being_components::Being;
 use dimension_shared::DimensionRef;
 use camera::camera_components::CameraTarget;
+use sprite::sprite_components::SpriteConfig;
 
 // Color palette for unique tile types - readable and distinct colors
 const TILE_COLORS: &[egui::Color32] = &[
@@ -1803,5 +1804,132 @@ pub fn registered_positions_window(
                     }
                 });
         });
+}
+
+#[allow(unused_parens)]
+pub fn sprites_list_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selected_entities: ResMut<DebugSelectedEntities>,
+    sprite_query: Query<(Entity, Option<&Name>), With<SpriteConfig>>,
+) {
+    if !window_visible.sprites_list {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let screen_rect = ctx.content_rect();
+    let default_x = screen_rect.right() - 300.0;
+    let default_y = screen_rect.bottom() - 400.0;
+
+    // Collect sprites
+    let sprites: Vec<(Entity, Option<Name>)> = sprite_query
+        .iter()
+        .map(|(entity, name)| (entity, name.map(|n| n.clone())))
+        .collect();
+
+    egui::Window::new("Sprites List")
+        .default_pos([default_x, default_y])
+        .resizable(true)
+        .movable(true)
+        .default_width(300.0)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading(format!("Sprites: {}", sprites.len()));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("✖").clicked() {
+                        window_visible.sprites_list = false;
+                    }
+                });
+            });
+            ui.separator();
+
+            egui::ScrollArea::vertical()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    for (entity, name) in sprites.iter() {
+                        let label = if let Some(n) = name {
+                            format!("{} ({:?})", n, entity)
+                        } else {
+                            format!("Sprite ({:?})", entity)
+                        };
+                        let is_selected = selected_entities.selected_sprite == Some(*entity);
+                        if ui.selectable_label(is_selected, label).clicked() {
+                            selected_entities.selected_sprite = Some(*entity);
+                            window_visible.sprite_details = true;
+                        }
+                    }
+                });
+        });
+}
+
+#[allow(unused_parens)]
+pub fn sprite_details_inspector(world: &mut World) {
+    let selected_sprite_entity = world.resource::<DebugSelectedEntities>().selected_sprite;
+    
+    if selected_sprite_entity.is_none() {
+        return;
+    }
+    
+    let selected_sprite_entity = selected_sprite_entity.unwrap();
+    let window_visible = world.resource::<DubugWindowsVisibility>();
+    
+    if !window_visible.sprite_details {
+        return;
+    }
+    
+    let mut egui_context_query = world
+        .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
+    
+    let Some(egui_context) = egui_context_query.iter(world).next() else {
+        return;
+    };
+    
+    let mut egui_context = egui_context.clone();
+    let screen_rect = egui_context.get_mut().content_rect();
+    
+    let world_ptr = world as *mut World;
+    let mut is_open = true;
+    
+    egui::Window::new("Selected Sprite Details")
+        .default_width(600.0)
+        .default_height(500.0)
+        .default_pos([screen_rect.right() - 620.0, screen_rect.bottom() - 400.0])
+        .open(&mut is_open)
+        .vscroll(true)
+        .show(egui_context.get_mut(), |ui| {
+            if let Ok(entity_ref) = world.get_entity(selected_sprite_entity) {
+                if let Some(name) = entity_ref.get::<Name>() {
+                    ui.heading(format!("Sprite: {}", name));
+                } else {
+                    ui.heading(format!("Sprite Entity: {:?}", selected_sprite_entity));
+                }
+            }
+            ui.separator();
+            
+            ui.label("All Components on this Sprite:");
+            ui.separator();
+            
+            // Use unsafe to access world for full component inspection with values
+            unsafe {
+                bevy_inspector::ui_for_entity(&mut *world_ptr, selected_sprite_entity, ui);
+            }
+            
+            ui.separator();
+            if ui.button("Clear Selection").clicked() {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_sprite = None;
+                }
+            }
+        });
+    
+    if !is_open {
+        if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
+            window_visible.sprite_details = false;
+        }
+    }
 }
 

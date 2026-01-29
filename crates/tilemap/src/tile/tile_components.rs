@@ -48,6 +48,9 @@ impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
 }
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct TileChildSprite;
+
 #[derive(Component, Debug, Copy, Clone, Hash, Reflect)]
 pub struct LocalChunkRef(#[entities] pub Entity);
 

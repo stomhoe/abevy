@@ -15,6 +15,7 @@ tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 dimension_shared = { path = "../dimension_shared" }
 sprite_shared = { path = "../sprite_shared" }
+sprite = { path = "../sprite" }
 
 bevy = { workspace = true }
 serde = { workspace = true }

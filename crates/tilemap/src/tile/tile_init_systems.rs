@@ -8,6 +8,7 @@ use common::{common_components::*, common_tag_components::TagSet};
 use ::dimension_shared::*;
 use ::game_common::{game_common_components::*, game_common_components_samplers::*, *};
 use bevy_ecs_tilemap::tiles::TilePos;
+use sprite::sprite_components::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
@@ -126,6 +127,8 @@ pub fn init_tiles(
                     let child_sprite = cmd.spawn((
                         StrId::trunc(format!("{}", path_holder).replace("texture/", "")),
                         Replicated,
+                        EntityZero,
+                        TileChildSprite,
                         path_holder,
                         ChildOf(tile_enti),
                         BaseHolderRef{ base: tile_enti },
@@ -159,10 +162,10 @@ pub fn init_tiles(
 pub fn add_tiles_to_map(
     mut cmd: Commands,
     map: Option<ResMut<TileEzerosMap>>,
-    query: Query<(Entity, &Prefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, AnyDisabling,)>,
+    ezeros_query: Query<(Entity, &Prefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, AnyDisabling,)>,
 ) {
     if let Some(mut map) = map {
-        for (ent, prefix, str_id) in query.iter() {
+        for (ent, prefix, str_id) in ezeros_query.iter() {
             if let Err(err) = map.0.try_insert(str_id, ent, ) {
                 error!(target:"tile_init","{} {} already in TilingEntityMap : {}", prefix, str_id, err);
                 cmd.entity(ent).try_despawn();
@@ -174,32 +177,42 @@ pub fn add_tiles_to_map(
 }
 
 #[allow(unused_parens)]
-pub fn init_tile_sprite(mut cmd: Commands, 
+pub fn init_childrensprite(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
-    ezero_img_path: Query<&ImagePathHolder, (With<EntityZero>, AnyDisabling)>,
-    query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<AcAnimationProgresses>, 
-        Without<Sprite>, Without<TilePos>, Without<Children>, Without<TileShader>, Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, AnyDisabling)>,
+    ezero_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>),(With<EntityZero>, AnyDisabling)>,
+    childrensprite_query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<AcAnimationProgresses>, 
+        Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, With<TileChildSprite>,
+        Without<Sprite>, Without<TilemapId>, Without<Children>, Without<TileShader>, AnyDisabling)>,
     ) {
         let mut to_insert = Vec::new();
-        for (entity, (image_path_holder, ezero_ref)) in query.iter() {
+        for (entity, (image_path_holder, ezero_ref)) in childrensprite_query.iter() {
             if let Some(img_path_holder) = image_path_holder {
-                trace!(target: "tile_init","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
+                trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
                 to_insert.push((entity, Sprite{
                     image: asset_server.load(img_path_holder.path()),
                     ..Default::default()
                 }));
             }
             else if let Some(ezero_ref) = ezero_ref {
-                let Ok(img_path_holder) = ezero_img_path.get(ezero_ref.0) else {
+                let Ok((img_path_holder, is_ezero_a_spriteconfig)) = ezero_img_path.get(ezero_ref.0) else {
+                    error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity doesn't exist", entity, ezero_ref.0);
                     continue;
                 };
-                trace!(target: "tile_init","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
+                if is_ezero_a_spriteconfig{
+                    continue;
+                }
+                let Some(img_path_holder) = img_path_holder else {
+                    error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity has no ImagePathHolder", entity, ezero_ref.0);
+                    continue;
+                };
+
+                trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
                 to_insert.push((entity, Sprite{
                     image: asset_server.load(img_path_holder.path()),
                     ..Default::default()
                 }));
             } else {
-                error!(target: "tile_init","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
+                error!(target: "childrensprite_init","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
             }
         }
         cmd.try_insert_batch(to_insert);
@@ -208,10 +221,10 @@ pub fn init_tile_sprite(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn add_handles(  
     mut cmd: Commands,  asset_server: Res<AssetServer>,
-    query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, Changed<TileImagePaths>, AnyDisabling)>,
+    ezero_id_query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHidsHandles>, Changed<TileImagePaths>, AnyDisabling)>,
 ) {
     let mut comps = Vec::new();
-    for (enti, str_id, tile_image_paths) in query.iter() {
+    for (enti, str_id, tile_image_paths) in ezero_id_query.iter() {
         let tile_handles = TileHidsHandles::from_paths(&asset_server, tile_image_paths.clone(), );
         
         match tile_handles {
@@ -284,11 +297,12 @@ pub fn map_min_dist_tiles(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn map_portal_tiles(mut cmd: Commands, 
-    mut query: Query<(Entity, &TileStrId, &mut PortalSeri, ),(With<EntityZero>, AnyDisabling, Changed<PortalSeri>, )>,
+    mut portals_ezero_query: Query<(Entity, &TileStrId, &mut PortalSeri, ),
+    (With<EntityZero>, AnyDisabling, Changed<PortalSeri>, )>,
     tiles_map: Res<TileEzerosMap>,
 ) {
     info!("Mapping portal tiles");
-    query.iter_mut().for_each(|(ent, str_id, mut portal_seri)| {
+    portals_ezero_query.iter_mut().for_each(|(ent, str_id, mut portal_seri)| {
         let Ok(tile_ent) = tiles_map.0.get(&portal_seri.oe_tile) else { 
             error!(target:"portal_init", "Portal tile {} to '{}' references unknown oe_tile '{}'", str_id, portal_seri.dest_dimension, portal_seri.oe_tile);
             return; 
@@ -544,10 +558,10 @@ pub fn instantiate_portal(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn remove_ezero_tile_from_map_on_despawn(
     trigger: On<Despawn, (Tile, EntityZero, )>,
-    query: Query<(&TileStrId),(AnyDisabling)>,
+    ezero_id_query: Query<(&TileStrId),(AnyDisabling)>,
     mut map: ResMut<TileEzerosMap>,
 ) {
-    if let Ok(str_id) = query.get(trigger.entity) {
+    if let Ok(str_id) = ezero_id_query.get(trigger.entity) {
         if let Ok(found_entity) = map.0.get(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
