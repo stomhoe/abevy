@@ -64,17 +64,7 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,
     pub limbo_tiles: ResMut<'w, TilemapLimboTiles>,
 
-    pub ezero_query: Query<'w, 's, (
-        &'static TileStrId,
-        Option<&'static MinDistancesMap>,
-        Option<&'static KeepDistanceFrom>,
-        Has<Persisted>,
-        Option<&'static AcZ>,
-        Option<&'static TileHidsHandles>,
-        Option<&'static TileShaderRef>,
-        Option<&'static Transform>,
-        Option<&'static TileColor>,
-    ), AnyDisabling>,
+    
 
     pub tilemaps: Query<'w, 's, (
         &'static mut TilemapTexture,
@@ -102,7 +92,20 @@ pub fn process_tiles_pre(
     mut cmd: Commands,
     mut params: ProcessTilesPreParams,
     mut tmap_map: Local<HashMap<MapKey, MapStruct>>,
-) {
+    ezero_query: Query<(
+        &TileStrId,
+        Option<&MinDistancesMap>,
+        Option<&KeepDistanceFrom>,
+        Has<Persisted>,
+        Option<&AcZ>,
+        Option<&TileHidsHandles>,
+        Option<&TileShaderRef>,
+        Option<&Transform>,
+        Option<&TileColor>,
+        Has<SeekingPortalOtherEnd>
+    ), AnyDisabling>,
+)
+{
     let is_host = *params.state.get() == ClientState::Disconnected;
 
     if params.collected_tiles.0.is_empty() { return; }
@@ -125,10 +128,11 @@ pub fn process_tiles_pre(
     let mut tiles_to_insert: Vec<(Entity, TileMassSpawnBundle)> = Vec::with_capacity(tiles_len);
     
     for (tile_ent, bundle) in params.collected_tiles.0.drain(..) {
-        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color))
-            = params.ezero_query.get(bundle.ezero_ref.0)
+        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, seeking_portal_other_end))
+            = ezero_query.get(bundle.ezero_ref.0)
         else {
             error!(target: "tilemap_systems", "Original tile entity {} is despawned", bundle.ezero_ref.0);
+            
             cmd.entity(tile_ent).try_despawn();
             continue;
         };
@@ -148,6 +152,9 @@ pub fn process_tiles_pre(
             ),
             params.min_dists_query,
         ) {
+            if seeking_portal_other_end {
+                error!(target: "tilemap_systems", "Tile entity {:?} had SeekingPortalOtherEnd component", tile_ent);
+            }
             cmd.entity(tile_ent).try_despawn();
             info!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
             continue;

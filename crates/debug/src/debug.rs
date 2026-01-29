@@ -23,12 +23,15 @@ pub fn plugin(app: &mut App) {
         chunks_list_window,
         regions_list_window,
         beings_list_window,
+        portals_list_window,
         terrgen_editor_window,
         global_gen_settings_editor_window,
+        registered_positions_window,
     ))
     .add_systems(EguiPrimaryContextPass, (
         tile_details_inspector,
         chunk_details_inspector,
+        portals_details_inspector,
         tilemap_details_inspector,
         being_details_inspector,
     ))

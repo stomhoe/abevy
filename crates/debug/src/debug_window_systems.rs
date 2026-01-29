@@ -120,28 +120,36 @@ pub fn main_menu_window(
             });
             ui.separator();
 
-            if ui.button("🔍 States Inspector (F12)").clicked() {
+            if ui.button(egui::RichText::new("🔍 States Inspector (F12)").size(16.0)).clicked() {
                 window_visible.states = !window_visible.states;
             }
 
-            if ui.button("▢▢  Chunking").clicked() {
+            if ui.button(egui::RichText::new("▢▢  Chunking").size(16.0)).clicked() {
                 window_visible.chunks_list = !window_visible.chunks_list;
             }
 
-            if ui.button("⬜ Regions").clicked() {
+            if ui.button(egui::RichText::new("⬜ Regions").size(16.0)).clicked() {
                 window_visible.regions_list = !window_visible.regions_list;
             }
 
-            if ui.button("👥 Beings List").clicked() {
+            if ui.button(egui::RichText::new("👥 Beings List").size(16.0)).clicked() {
                 window_visible.beings_list = !window_visible.beings_list;
             }
 
-            if ui.button("⛰️ Terrgen Editor").clicked() {
+            if ui.button(egui::RichText::new("🌀 Portals").size(16.0)).clicked() {
+                window_visible.portals_list = !window_visible.portals_list;
+            }
+
+            if ui.button(egui::RichText::new("⛰️ Terrgen Editor").size(16.0)).clicked() {
                 window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
 
-            if ui.button("🌍 Global generation settings").clicked() {
+            if ui.button(egui::RichText::new("🌍 Global generation settings").size(16.0)).clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;
+            }
+
+            if ui.button(egui::RichText::new("📍 Registered Positions").size(16.0)).clicked() {
+                window_visible.registered_positions = !window_visible.registered_positions;
             }
 
             ui.separator();

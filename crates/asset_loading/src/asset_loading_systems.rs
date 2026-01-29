@@ -24,7 +24,7 @@ pub fn reload_assets_while_ingame(
         hot_loading.set(AssetHotReloadState::Ongoing);
         force_all_chunks_despawn_writer.write_default();
 
-        regpos.registered.clear();
+        regpos.clear();
     
         loading_state.set(AssetLoading::LoadingAssetsIntoHandles);
     }

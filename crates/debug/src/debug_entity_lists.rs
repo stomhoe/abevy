@@ -1,6 +1,7 @@
 use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use bevy_inspector_egui::bevy_inspector;
 use bevy::prelude::*;
+use bevy::transform::components::GlobalTransform;
 use std::collections::{BTreeMap, HashMap};
 
 use crate::debug_resources::{DubugWindowsVisibility, DebugSelectedEntities};
@@ -11,6 +12,7 @@ use tilemap::chunking_resources::{AaChunkRangeSettings, LoadedChunks};
 use tilemap::regioning::regioning_components::*;
 use tilemap::terrain_gen::terrgen_operaton_list_components::*;
 use tilemap::terrain_gen::terrgen_components::{Terrgen, FnlNoiseComp};
+use tilemap::terrain_gen::terrgen_resources::RegisteredPositions;
 use tilemap::tile::tile_components::*;
 use tilemap::tile::tile_shader::tile_shader_components::TileShaderRef;
 use ::tilemap_shared::*;
@@ -241,30 +243,46 @@ pub fn chunks_list_window(
                             egui::Grid::new(format!("chunks_grid_{}", dim_key))
                                 .spacing([5.0, 5.0])
                                 .show(ui, |ui| {
+                                    // Get currently selected chunk (single select)
+                                    let selected_chunk = selected_entities.selected_chunks.iter().next().copied();
+                                    
                                     for y in (min_y..=max_y).rev() {
                                         for x in min_x..=max_x {
                                             let pos = ChunkPos(IVec2::new(x, y));
                                             if let Some((entity, children, _tiles_to_save, _has_terrgen_ops, _has_ready_for_terrgen, _activating_chunks)) = chunks_map.get(&pos) {
-                                                let is_selected = selected_entities.selected_chunks.contains(entity);
+                                                let is_selected = selected_chunk == Some(*entity);
                                                 let is_camera_pos = camera_chunk_pos.map_or(false, |cam_pos| cam_pos == pos);
                                                 
                                                 let children_count = children.map_or(0, |c| c.len());
+                                                
+                                                // Check if any child has TileStorage (TilemapType)
+                                                let has_tilemap_child = children
+                                                    .map(|children| {
+                                                        children.iter().any(|child| tile_storage_query.get(child).is_ok())
+                                                    })
+                                                    .unwrap_or(false);
+                                                
                                                 let label = format!("{},{}\n{} children", x, y, children_count);
                                                 
-                                                let button_response = if is_camera_pos {
-                                                    ui.selectable_label(is_selected, egui::RichText::new(&label).color(egui::Color32::YELLOW).strong().small())
-                                                } else {
-                                                    ui.selectable_label(is_selected, egui::RichText::new(&label).small())
-                                                };
+                                                let mut rich_text = egui::RichText::new(&label).small();
+                                                
+                                                // Apply red color if no tilemap children (includes chunks with 0 children)
+                                                if !has_tilemap_child {
+                                                    rich_text = rich_text.color(egui::Color32::RED);
+                                                }
+                                                
+                                                // Apply camera position styling (overrides other colors unless red)
+                                                if is_camera_pos && has_tilemap_child {
+                                                    rich_text = rich_text.color(egui::Color32::YELLOW).strong();
+                                                }
+                                                
+                                                let button_response = ui.selectable_label(is_selected, rich_text);
                                                 
                                                 if button_response.clicked() {
-                                                    if is_selected {
-                                                        selected_entities.selected_chunks.remove(entity);
-                                                        window_visible.chunk_details = false;
-                                                    } else {
-                                                        selected_entities.selected_chunks.insert(*entity);
-                                                        window_visible.chunk_details = true;  // Show chunk details window
-                                                    }
+                                                    // Single select: clear previous selection and select new chunk
+                                                    selected_entities.selected_chunks.clear();
+                                                    selected_entities.selected_chunks.insert(*entity);
+                                                    window_visible.chunk_details = true;  // Show chunk details window
                                                 }
                                             } else {
                                                 ui.label("");
@@ -278,87 +296,113 @@ pub fn chunks_list_window(
                 }
             }
             
-            // Display LoadedChunks resource sorted by distance to camera
+            // Display LoadedChunks resource sorted by distance to camera in a grid
             ui.separator();
-            egui::CollapsingHeader::new("Loaded Chunks Resource (Sorted by Distance)")
+            egui::CollapsingHeader::new("Loaded Chunks Resource (Grid)")
                 .default_open(true)
                 .show(ui, |ui| {
-                let camera_pos = camera_dimension.iter().next()
-                    .map(|(_, transform)| transform.translation().xy());
+                // Get camera position and current chunk
+                let camera_chunk_pos = camera_dimension.iter().next()
+                    .map(|(_, transform)| ChunkPos::from(transform.translation()));
                 
-                // Collect and sort LoadedChunks entries by distance to camera
-                let mut loaded_chunks_list: Vec<_> = loaded_chunks.0.iter().collect();
+                // Group chunks by dimension
+                let mut chunks_by_dim: BTreeMap<String, Vec<(Entity, ChunkPos)>> = BTreeMap::new();
                 
-                if let Some(cam_pos) = camera_pos {
-                    loaded_chunks_list.sort_by(|a, b| {
-                        let dist_a = cam_pos.distance(a.0.1.to_pixelpos());
-                        let dist_b = cam_pos.distance(b.0.1.to_pixelpos());
-                        dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
-                    });
-                }
-                
-                ui.label(format!("Total entries: {}", loaded_chunks_list.len()));
-                
-                ui.horizontal(|ui| {
-                    ui.label("Dimension");
-                    ui.separator();
-                    ui.label("CPos");
-                    ui.separator();
-                    ui.label("Dist");
-                    ui.separator();
-                    ui.label("Entity");
-                });
-                
-                let mut shown_count = 0;
-                for ((dim_ref, chunk_pos), entity) in loaded_chunks_list.iter() {
-                    if shown_count >= 50 {
-                        ui.label(format!("... and {} more", loaded_chunks_list.len() - shown_count));
-                        break;
-                    }
-                    
-                    let distance = camera_pos
-                        .map(|cam_pos| cam_pos.distance(chunk_pos.to_pixelpos()))
-                        .unwrap_or(f32::INFINITY);
-                    
+                for ((dim_ref, chunk_pos), entity) in loaded_chunks.0.iter() {
                     let dim_str_id = if let Ok(str_id) = id_query.get(dim_ref.0) {
-                        let str_id_text = str_id.as_str();
-                        if str_id_text.len() > 20 {
-                            format!("{}...", &str_id_text[..17])
-                        } else {
-                            str_id_text.to_string()
-                        }
+                        str_id.as_str().to_string()
                     } else {
                         format!("{:?}", dim_ref)
                     };
                     
-                    let bg_color = if distance < 500.0 {
-                        egui::Color32::from_rgb(100, 150, 100)
-                    } else if distance < 1500.0 {
-                        egui::Color32::from_rgb(150, 150, 100)
-                    } else {
-                        egui::Color32::DARK_GRAY
-                    };
-                    
-                    ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new(&dim_str_id).background_color(bg_color));
-                        ui.separator();
-                        ui.label(format!("{},{}", chunk_pos.0.x, chunk_pos.0.y));
-                        ui.separator();
-                        ui.label(format!("{:.0}", distance));
-                        ui.separator();
-                        if ui.selectable_label(selected_entities.selected_chunks.contains(entity), format!("{}", entity.index())).clicked() {
-                            if selected_entities.selected_chunks.contains(entity) {
-                                selected_entities.selected_chunks.remove(entity);
+                    chunks_by_dim
+                        .entry(dim_str_id)
+                        .or_insert_with(Vec::new)
+                        .push((*entity, *chunk_pos));
+                }
+                
+                ui.label(format!("Total entries: {}", loaded_chunks.0.len()));
+                
+                // Display each dimension's chunks in a grid
+                for (dim_name, chunks) in chunks_by_dim.into_iter() {
+                    let header_label = format!("{} - {} chunks", dim_name, chunks.len());
+                    egui::CollapsingHeader::new(&header_label)
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            // Find the bounding box of chunks
+                            let (min_x, max_x, min_y, max_y) = chunks.iter().fold(
+                                (i32::MAX, i32::MIN, i32::MAX, i32::MIN),
+                                |(min_x, max_x, min_y, max_y), (_, pos)| {
+                                    (
+                                        min_x.min(pos.0.x),
+                                        max_x.max(pos.0.x),
+                                        min_y.min(pos.0.y),
+                                        max_y.max(pos.0.y),
+                                    )
+                                }
+                            );
+                            
+                            let grid_width = (max_x - min_x + 1) as usize;
+                            let grid_height = (max_y - min_y + 1) as usize;
+                            
+                            // Only render if grid is not too large
+                            if grid_width > 100 || grid_height > 100 {
+                                ui.label(format!("Grid too large to display: {}x{}", grid_width, grid_height));
                             } else {
-                                selected_entities.selected_chunks.insert(**entity);
-                                window_visible.chunk_details = true;
+                                // Create a map for quick lookup
+                                let chunk_map: std::collections::HashMap<(i32, i32), (Entity, ChunkPos)> = 
+                                    chunks.iter().map(|(entity, pos)| ((pos.0.x, pos.0.y), (*entity, *pos))).collect();
+                                
+                                // Get currently selected chunk (should be 0 or 1)
+                                let selected_chunk = selected_entities.selected_chunks.iter().next().copied();
+                                
+                                // Render grid
+                                egui::Grid::new(format!("loaded_chunks_grid_{}", dim_name))
+                                    .spacing([2.0, 2.0])
+                                    .show(ui, |ui| {
+                                        for y in (min_y..=max_y).rev() {
+                                            for x in min_x..=max_x {
+                                                if let Some((entity, chunk_pos)) = chunk_map.get(&(x, y)) {
+                                                    let is_camera_chunk = camera_chunk_pos
+                                                        .map(|cam_pos| cam_pos == *chunk_pos)
+                                                        .unwrap_or(false);
+                                                    let is_selected = selected_chunk == Some(*entity);
+                                                    
+                                                    let bg_color = if is_camera_chunk {
+                                                        egui::Color32::from_rgb(100, 200, 100)
+                                                    } else {
+                                                        egui::Color32::DARK_GRAY
+                                                    };
+                                                    
+                                                    let text_color = if is_selected {
+                                                        egui::Color32::YELLOW
+                                                    } else {
+                                                        egui::Color32::WHITE
+                                                    };
+                                                    
+                                                    if ui.selectable_label(
+                                                        is_selected,
+                                                        egui::RichText::new(format!("{},{}", x, y))
+                                                            .background_color(bg_color)
+                                                            .color(text_color)
+                                                    ).clicked() {
+                                                        // Single select: clear previous selection and select new chunk
+                                                        selected_entities.selected_chunks.clear();
+                                                        selected_entities.selected_chunks.insert(*entity);
+                                                        window_visible.chunk_details = true;
+                                                    }
+                                                } else {
+                                                    ui.label("");
+                                                }
+                                            }
+                                            ui.end_row();
+                                        }
+                                    });
                             }
-                        }
                     });
-                    
-                    shown_count += 1;
                 }
             });
+
             
             // Show details for selected chunks in stable order
             let mut selected_chunk_details: Vec<_> = chunks_by_dimension.iter()
@@ -368,7 +412,9 @@ pub fn chunks_list_window(
             selected_chunk_details.sort_by_key(|(_, (entity, ..))| entity.index());
             
             for (chunk_pos, (entity, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks)) in selected_chunk_details {
-                ui.collapsing(format!("Details: {:?} ({:?})", chunk_pos, entity), |ui| {
+                egui::CollapsingHeader::new(format!("Details: {:?} ({:?})", chunk_pos, entity))
+                    .default_open(true)
+                    .show(ui, |ui| {
                     ui.vertical(|ui| {
                         let children_count = children.map_or(0, |c| c.len());
                         ui.label(format!("Children count: {}", children_count));
@@ -587,6 +633,71 @@ pub fn chunk_details_inspector(world: &mut World) {
     if !is_open {
         if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
             window_visible.chunk_details = false;
+        }
+    }
+}
+
+#[allow(unused_parens)]
+pub fn portals_details_inspector(world: &mut World) {
+    let selected_portal_entity = world.resource::<DebugSelectedEntities>().selected_portals.iter().next().copied();
+    
+    if selected_portal_entity.is_none() {
+        return;
+    }
+    
+    let selected_portal_entity = selected_portal_entity.unwrap();
+    let window_visible = world.resource::<DubugWindowsVisibility>();
+    
+    if !window_visible.portal_details {
+        return;
+    }
+    
+    let mut egui_context_query = world
+        .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
+    
+    let Some(egui_context) = egui_context_query.iter(world).next() else {
+        return;
+    };
+    
+    let mut egui_context = egui_context.clone();
+    let screen_rect = egui_context.get_mut().content_rect();
+    
+    let world_ptr = world as *mut World;
+    let mut is_open = true;
+    
+    egui::Window::new("Selected Portal Details")
+        .default_width(600.0)
+        .default_height(500.0)
+        .default_pos([screen_rect.right() - 620.0, screen_rect.top() + 10.0])
+        .open(&mut is_open)
+        .vscroll(true)
+        .show(egui_context.get_mut(), |ui| {
+            if let Ok(entity_ref) = world.get_entity(selected_portal_entity) {
+                if let Some(global_pos) = entity_ref.get::<GlobalTilePos>() {
+                    ui.heading(format!("Portal at ({}, {})", global_pos.x(), global_pos.y()));
+                }
+            }
+            ui.separator();
+            
+            ui.label("All Components on this Portal:");
+            ui.separator();
+            
+            // Use unsafe to access world for full component inspection with values
+            unsafe {
+                bevy_inspector::ui_for_entity(&mut *world_ptr, selected_portal_entity, ui);
+            }
+            
+            ui.separator();
+            if ui.button("Clear Selection").clicked() {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_portals.clear();
+                }
+            }
+        });
+    
+    if !is_open {
+        if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
+            window_visible.portal_details = false;
         }
     }
 }
@@ -1048,6 +1159,167 @@ pub fn beings_list_window(
 }
 
 #[allow(unused_parens)]
+pub fn portals_list_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selected_entities: ResMut<DebugSelectedEntities>,
+    portal_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&EntityZeroRef>, &PortalTo), With<PortalTo>>,
+    dimension_query: Query<&Name>,
+    camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    ezero_query: Query<&TileStrId, With<EntityZero>>,
+    target_query: Query<Entity>,
+) {
+    if !window_visible.portals_list {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let screen_rect = ctx.content_rect();
+    let default_x = screen_rect.right() - 400.0;
+    let default_y = screen_rect.top() + 10.0;
+
+    // Get camera position and dimension
+    let camera_info = camera_query.iter().next();
+    let camera_pos = camera_info.map(|(_, transform)| transform.translation().xy());
+    let camera_dim_ref = camera_info.map(|(dim_ref, _)| dim_ref);
+
+    // Group portals by dimension
+    let mut portals_by_dimension: BTreeMap<String, Vec<(Entity, GlobalTilePos, Option<EntityZeroRef>, Vec2, bool)>> = BTreeMap::new();
+
+    for (entity, dim_ref, global_pos, ezero_ref, portal_to) in portal_query.iter() {
+        let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
+            format!("{}", n)
+        } else {
+            format!("{:?}", dim_ref)
+        };
+        
+        // Calculate direction vector if in same dimension
+        let direction = if camera_dim_ref.map(|c| c == dim_ref).unwrap_or(false) {
+            if let Some(cam_pos) = camera_pos {
+                let portal_pixel_pos: Vec2 = (*global_pos).into();
+                portal_pixel_pos - cam_pos
+            } else {
+                Vec2::ZERO
+            }
+        } else {
+            Vec2::ZERO
+        };
+        
+        // Check if the target entity exists
+        let target_exists = target_query.get(portal_to.dest_portal).is_ok();
+        
+        portals_by_dimension
+            .entry(dim_name)
+            .or_insert_with(Vec::new)
+            .push((entity, *global_pos, ezero_ref.copied(), direction, target_exists));
+    }
+    
+    // Sort dimensions with camera dimension first
+    let mut sorted_dims: Vec<_> = portals_by_dimension.keys().cloned().collect();
+    if let Some(camera_ref) = camera_dim_ref {
+        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
+            let camera_dim_str = format!("{}", camera_name);
+            sorted_dims.sort_by(|a, b| {
+                if a == &camera_dim_str { std::cmp::Ordering::Less }
+                else if b == &camera_dim_str { std::cmp::Ordering::Greater }
+                else { a.cmp(b) }
+            });
+        }
+    }
+    
+    // Helper function to get directional arrow
+    let get_arrow = |dir: Vec2| -> &'static str {
+        if dir == Vec2::ZERO {
+            "?"
+        } else {
+            let angle = dir.y.atan2(dir.x);
+            let normalized = ((angle * 4.0 / std::f32::consts::PI + 8.5) as i32 % 8) as usize;
+            match normalized {
+                0 => "→",
+                1 => "↗",
+                2 => "↑",
+                3 => "↖",
+                4 => "←",
+                5 => "↙",
+                6 => "↓",
+                7 => "↘",
+                _ => "?",
+            }
+        }
+    };
+
+    egui::Window::new("Portals List")
+        .default_pos([default_x, default_y])
+        .resizable(true)
+        .movable(true)
+        .default_width(400.0)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading(format!("Portals: {}", portal_query.iter().count()));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("✖").clicked() {
+                        window_visible.portals_list = false;
+                    }
+                });
+            });
+            ui.separator();
+
+            for dim_key in sorted_dims.iter() {
+                if let Some(mut portals) = portals_by_dimension.remove(dim_key) {
+                    // Sort portals by distance (closest first)
+                    portals.sort_by(|a, b| {
+                        let dist_a = a.3.length();
+                        let dist_b = b.3.length();
+                        dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    
+                    egui::CollapsingHeader::new(format!("{} ({})", dim_key, portals.len()))
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            for (entity, _global_pos, ezero_ref, direction, target_exists) in portals.iter() {
+                                // Check if this portal is selected
+                                let is_selected = selected_entities.selected_portals.contains(entity);
+                                
+                                // Get the StrId from EntityZero
+                                let str_id_str = if let Some(ezero_ref) = ezero_ref {
+                                    if let Ok(str_id) = ezero_query.get(ezero_ref.0) {
+                                        format!("{}", str_id)
+                                    } else {
+                                        "Unknown".to_string()
+                                    }
+                                } else {
+                                    "NoType".to_string()
+                                };
+                                
+                                let arrow = get_arrow(*direction);
+                                let portal_label = format!("{} {} {:?}", arrow, str_id_str, entity);
+                                
+                                let text = egui::RichText::new(&portal_label);
+                                let text = if !target_exists {
+                                    text.color(egui::Color32::RED)
+                                } else if is_selected {
+                                    text.color(egui::Color32::YELLOW)
+                                } else {
+                                    text.color(egui::Color32::WHITE)
+                                };
+                                
+                                if ui.selectable_label(is_selected, text).clicked() {
+                                    // Single select: clear previous selection and select new portal
+                                    selected_entities.selected_portals.clear();
+                                    selected_entities.selected_portals.insert(*entity);
+                                    window_visible.portal_details = true;
+                                }
+                            }
+                        });
+                }
+            }
+        });
+}
+
+#[allow(unused_parens)]
 pub fn terrgen_editor_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
@@ -1389,3 +1661,55 @@ pub fn terrgen_editor_window(
             })
         });
 }
+
+#[allow(unused_parens)]
+pub fn registered_positions_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    registered_positions: Res<RegisteredPositions>,
+    id_query: Query<&StrId>,
+) {
+    if !window_visible.registered_positions {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let screen_rect = ctx.content_rect();
+    let default_x = screen_rect.left() + 10.0;
+    let default_y = screen_rect.top() + 650.0;
+
+    egui::Window::new("Registered Positions")
+        .default_pos([default_x, default_y])
+        .resizable(true)
+        .movable(true)
+        .default_width(600.0)
+        .default_height(300.0)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading("Registered Positions");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("✖").clicked() {
+                        window_visible.registered_positions = false;
+                    }
+                });
+            });
+            ui.separator();
+
+            ui.horizontal(|ui| {
+                ui.label("RegisteredPositions (private data)");
+                ui.label(format!("Exempted entities: {}", registered_positions.exempted.len()));
+            });
+            ui.separator();
+
+            egui::ScrollArea::vertical()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    // TODO: RegisteredPositions fields are private, need to add getter methods
+                    ui.label("RegisteredPositions data is private and needs accessor methods");
+                });
+        });
+}
+

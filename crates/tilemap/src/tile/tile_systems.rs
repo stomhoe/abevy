@@ -9,7 +9,7 @@ use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
 use tilemap_shared::{ChunkPos, GlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos};
-use crate::{ chunking_components::Chunk, chunking_resources::LoadedChunks, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos} };
+use crate::{ chunking_components::Chunk, chunking_resources::LoadedChunks, terrain_gen::terrgen_resources::RegisteredPositions, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos} };
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
@@ -64,9 +64,9 @@ pub fn spritetile_readjust_transform_to_match_globalpos(
         let transl_from_global_pos = global_pos.to_translation(transform.translation.z);
         
         let parent_global_transl = child_of
-            .and_then(|co| parent_query.get(co.parent()).ok())
-            .map(|t| t.translation())
-            .unwrap_or(Vec3::ZERO);
+        .and_then(|co| parent_query.get(co.parent()).ok())
+        .map(|t| t.translation())
+        .unwrap_or(Vec3::ZERO);
         
         if is_host || !replicated {
             transform.translation = transl_from_global_pos - parent_global_transl;
@@ -157,8 +157,8 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
     changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, AnyDisabling, Without<EntityZero>, )>,
     otile_query: Query<(&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>), (AnyDisabling, Without<EntityZero>, )>,
     tiles_at_gpos: Res<TilesAtGpos>,
-) {//TODO hacer que no despawnee portales o cosas con su pos registrada
-    //TODO: chequear en la EntityZero si tiene DeleteOtherTiles
+    registered_positions: Res<RegisteredPositions>,
+) {
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
             warn!(target: "d", "Failed to get EntityZero for tile entity {:?}, skipping despawn check", newtile_ent);
@@ -200,7 +200,10 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                     }
                     else {
                         trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
-                        cmd.entity(otile_ent).try_despawn();
+                        // Don't despawn if the tile's EntityZero is registered or exempted
+                        if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
+                            cmd.entity(otile_ent).try_despawn();
+                        }
                         return;
                     }
                 }
@@ -218,7 +221,10 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
                     
                     else {
                         trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
-                        cmd.entity(newtile_ent).try_despawn();
+                        // Don't despawn if the new tile's EntityZero is registered or exempted
+                        if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
+                            cmd.entity(newtile_ent).try_despawn();
+                        }
                     }
                 }
             });
@@ -229,24 +235,30 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn make_spritetile_child_of_chunk(mut cmd: Commands, 
-    query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>), (With<Tile>, Without<TilemapId>, 
-        AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
-        loaded_chunks: Res<LoadedChunks>,
-    ) {
-        let mut child_ofs = Vec::new();
-        query.iter().for_each(|(ent, &global_pos, &dim_ref, to_persist)| {
-            let chunk_pos: ChunkPos = global_pos.into();
-            
-            if to_persist {
-                child_ofs.push((ent, ChildOf(dim_ref.0)));
-            } else {
-                let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) else {
-                    cmd.entity(ent).try_despawn();
-                    return;
-                };
-                child_ofs.push((ent, ChildOf(chunk)));
-            }
-        });
-        cmd.try_insert_batch(child_ofs);
-    }
-    
+    query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>, Has<PortalTo>), (With<Tile>, Without<TilemapId>, 
+    AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
+    loaded_chunks: Res<LoadedChunks>,
+) {
+    let mut child_ofs = Vec::new();
+    query.iter().for_each(|(ent, &global_pos, &dim_ref, to_persist, portal_to)| {
+        let chunk_pos: ChunkPos = global_pos.into();
+        
+        if to_persist {
+            child_ofs.push((ent, ChildOf(dim_ref.0)));
+        } else {
+            let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) else {
+                if portal_to {
+                    error!(target: "tilemap", "Portal tile entity {:?} at gpos {:?} in dimension {:?} has no loaded chunk to be child of!", ent, global_pos, dim_ref);
+                    error!(target: "tilemap", "Portal tile entity {:?} at gpos {:?} in dimension {:?} has no loaded chunk to be child of!", ent, global_pos, dim_ref);
+                    error!(target: "tilemap", "Portal tile entity {:?} at gpos {:?} in dimension {:?} has no loaded chunk to be child of!", ent, global_pos, dim_ref);
+
+                }
+
+                cmd.entity(ent).try_despawn();
+                return;
+            };
+            child_ofs.push((ent, ChildOf(chunk)));
+        }
+    });
+    cmd.try_insert_batch(child_ofs);
+}

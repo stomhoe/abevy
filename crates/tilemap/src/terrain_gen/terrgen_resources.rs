@@ -3,7 +3,7 @@ use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_replicon::prelude::*;
 use common::{common_components::{AnyDisabling, HashId}, common_types::HashIdToEntityMap};
 
-use crate::{terrain_gen::terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}, tile::tile_components::{KeepDistanceFrom, MinDistancesMap, }};
+use crate::{terrain_gen::terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}, tile::{tile_components::{KeepDistanceFrom, MinDistancesMap, }, tile_resources::TilesAtGpos}};
 use dimension_shared::DimensionRef;
 
 use ::tilemap_shared::*;
@@ -14,11 +14,24 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone, )]
 #[reflect(Resource, Default)]
-pub struct RegisteredPositions { pub registered: EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>, pub exempted: EntityHashSet, } 
+pub struct RegisteredPositions { registered: EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>, pub exempted: EntityHashSet, } 
 impl RegisteredPositions {
+
+    pub fn clear(&mut self) {
+        self.registered.clear();
+        self.exempted.clear();
+    }
 
     pub fn exempt_entity_from_mindist_checks(&mut self, ent: Entity) {
         self.exempted.insert(ent);
+    }
+    pub fn register_ezero_at_position(&mut self, ezero: EntityZeroRef, dim: DimensionRef, pos: GlobalTilePos) {
+        self.registered.entry(ezero.0).or_default().push((dim, pos));
+    }
+    pub fn is_pos_registered(&self, ezero: EntityZeroRef, dim: DimensionRef, pos: GlobalTilePos) -> bool {
+        self.registered.get(&ezero.0).map_or(false, |positions| {
+            positions.iter().any(|(d, p)| *d == dim && *p == pos)
+        })
     }
 
     #[allow(unused_parens, )]
@@ -37,29 +50,32 @@ impl RegisteredPositions {
             return true;
         }
 
-        if ! self.exempted.contains(&new_tile_ezero.0) {
-                if let Some(new_min_distances) = new_min_distances {
-                    for (&oritile_ent, min_dist) in new_min_distances.0.iter() {
-                        let Some(previous_positions) = self.registered.get(&oritile_ent) else { continue };
-                        for &(prev_dim, prev_pos) in previous_positions {
-                            if prev_dim == new_dim && new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
-                                return false;
-                            }
-                        }
-                    }
-            }
-            if let Some(keep_distance) = keep_distance {
-                for other_ent in &keep_distance.0 {
-                    let Some(positions) = self.registered.get(other_ent) else { continue };
-                    let Ok(min_dists) = min_dists_query.get(*other_ent) else { continue };
-                    for &prev_pos in positions {
-                        if min_dists.check_min_distances(prev_pos, (new_tile_ezero, new_dim, new_pos)) == false {
-                            return false;
-                        }
+        if ! self.exempted.contains(&new_tile) {
+            if let Some(new_min_distances) = new_min_distances {
+                for (&ezero_ent, min_dist) in new_min_distances.0.iter() {
+                let Some(previous_positions) = self.registered.get(&ezero_ent) else { continue };
+                for &(prev_dim, prev_pos) in previous_positions {
+                    if prev_dim == new_dim && new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
+                    return false;
                     }
                 }
+                }
             }
+            if let Some(keep_distance) = keep_distance {
+            for ezero_ent in &keep_distance.0 {
+                let Some(positions) = self.registered.get(ezero_ent) else { continue };
+                let Ok(min_dists) = min_dists_query.get(*ezero_ent) else { continue };
+                for &prev_pos in positions {
+                if min_dists.check_min_distances(prev_pos, (new_tile_ezero, new_dim, new_pos)) == false {
+                    return false;
+                }
+                }
+            }
+            }
+        } else if new_min_distances.is_none() && keep_distance.is_none() {
+            return true;
         }
+        
         self.registered.entry(new_tile_ezero.0).or_default().push((new_dim, new_pos));
 
         cmd.entity(new_tile).try_insert(Replicated);

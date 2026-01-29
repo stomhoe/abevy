@@ -32,7 +32,9 @@ pub struct TilingSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_systems(Update, (
+
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
+        
         (add_tiles_to_map, ).run_if(in_state(ClientState::Connected)),
         flip_tile_horizontally_based_on_initial_pos_hash,
         despawn_if_not_excepted.after(process_tiles_pre),//DON'T TOUCH
