@@ -1,6 +1,7 @@
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
+use bevy::time;
 use bevy_replicon::prelude::ClientState;
 use bevy_replicon::prelude::Replicated;
 use common::common_components::AnyDisabling;
@@ -166,5 +167,34 @@ pub fn set_entity_name(
         }
 
         name.set(new_name);
+    }
+}
+
+
+
+#[allow(unused_parens)]
+pub fn tick_despawn_timers(mut cmd: Commands, 
+    mut query: Query<(Entity, &mut DespawnTimer),()>,
+    time: Res<Time>,
+) {
+    for (entity, mut timer) in query.iter_mut() {
+        timer.0.tick(time.delta());
+        if timer.0.is_finished() {
+            cmd.entity(entity).try_despawn();
+        }
+    }
+}
+
+
+#[allow(unused_parens)]
+pub fn tick_sim_despawn_timers(mut cmd: Commands, 
+    mut query: Query<(Entity, &mut SimDespawnTimer),()>,
+    time: Res<Time>,
+) {
+    for (entity, mut timer) in query.iter_mut() {
+        timer.0.tick(time.delta());
+        if timer.0.is_finished() {
+            cmd.entity(entity).try_despawn();
+        }
     }
 }

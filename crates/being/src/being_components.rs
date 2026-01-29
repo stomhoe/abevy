@@ -42,19 +42,19 @@ pub struct InfiniteMorale;
 // impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
 // #[allow(dead_code)] 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, MapEntities, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect, )]
 pub struct RaceRef(#[entities] pub Entity);
 
 #[derive(Component, Default, Deserialize, Serialize)]
 pub struct PlayerDirectControllable;
 
-#[derive(Component)]
+#[derive(Component, Reflect, MapEntities, )]
 //no insertar este component si no se quiere restringir quien puede tomar control
 /// entities: whitelisted players
 pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si es de la misma facción antes de intentar tomar control
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities, )]
 pub struct TouchingPortal(#[entities] pub Entity);
 
 
@@ -64,7 +64,7 @@ pub type IsHumanControlled = being_shared::HumanControlled;
 pub type Controls = being_shared::Controls;
 pub type ControlledBy = being_shared::ControlledBy;
 
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, Hash, PartialEq, Eq, )]
 #[relationship(relationship_target = Followers)]
 pub struct FollowerOf {#[relationship] #[entities] pub master: Entity,}
 
@@ -85,7 +85,7 @@ impl TargetSpawnPos {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities, )]
 #[relationship(relationship_target = CreatedCharacters)]
 #[require(PlayerDirectControllable, being_shared::HumanControlled(true))]
 pub struct CharacterCreatedBy {

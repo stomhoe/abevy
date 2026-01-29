@@ -62,7 +62,7 @@ pub fn host_on_player_added(mut cmd: Commands,
                 SpriteConfigStrIds::new(["humanhe0", "humanbo0"]),
                 
             )).id();
-            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, EffectiveValue(5000.0)));
+            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, CurrFinalValue(5000.0)));
 
         }else{
             //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER

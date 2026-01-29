@@ -131,7 +131,7 @@ pub fn process_movement_modifiers(
     state : Res<State<ClientState>>,
     mut being_query: Query<(&AppliedModifiers, &InputMoveVector, &mut ProcessedInputVector, Has<ControlledLocally>), >,
     speed_query: Query<(
-        &EffectiveValue,
+        &CurrFinalValue,
         &ApplyMode,
         Has<Speed>,
         Has<InvertMovement>,
@@ -157,9 +157,9 @@ pub fn process_movement_modifiers(
         let mut invert_scale: f32 = 1.0;
 
         for effect in applied.entities().iter() {
-            if let Ok((&EffectiveValue(val), optype, speed, invert, mitigating)) = speed_query.get(*effect) {
+            if let Ok((&CurrFinalValue(val), optype, speed, invert, mitigating)) = speed_query.get(*effect) {
                 match optype {
-                    ApplyMode::Offsetting => {
+                    ApplyMode::Add => {
                         if speed {
 
                             if val > 0.0 {
@@ -174,7 +174,7 @@ pub fn process_movement_modifiers(
                         }
                         if invert {invert_sum += val;}
                     },
-                    ApplyMode::Scaling => {
+                    ApplyMode::Mul => {
                         if speed { speed_scale *= val.max(0.0); }
                         if invert { invert_scale *= val.max(0.0); }
                     }

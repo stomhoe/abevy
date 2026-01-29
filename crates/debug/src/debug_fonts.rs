@@ -2,14 +2,13 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 
 #[derive(Resource, Default)]
-pub struct FontsInitialized(pub bool);
+pub struct DebugFontsInitialized(pub bool);
 
-/// Setup custom fonts for debug UI to support unicode symbols
 pub fn setup_debug_fonts(
     mut contexts: EguiContexts,
-    mut initialized: ResMut<FontsInitialized>,
+    mut fonts_already_initialized: ResMut<DebugFontsInitialized>,
 ) {
-    if initialized.0 {
+    if fonts_already_initialized.0 {
         return;
     }
 
@@ -17,15 +16,11 @@ pub fn setup_debug_fonts(
         return;
     };
     
-    // Start with default fonts
     let mut fonts = egui::FontDefinitions::default();
 
     const FONT_NAME: &str = "";
 
-    // Add a font that supports unicode characters well
-    // Using DejaVu Sans which has excellent unicode coverage
     if let Some(font_data) = fonts.font_data.get(FONT_NAME) {
-        // Font already available, add it to families
         fonts
             .families
             .entry(egui::FontFamily::Proportional)
@@ -38,7 +33,6 @@ pub fn setup_debug_fonts(
             .or_default()
             .insert(0, FONT_NAME.to_owned());
     } else {
-        // Load DejaVu Sans from assets
         fonts.font_data.insert(
             FONT_NAME.to_owned(),
             std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
@@ -53,7 +47,6 @@ pub fn setup_debug_fonts(
             .or_default()
             .insert(0, FONT_NAME.to_owned());
 
-        // Also use it for monospace
         fonts
             .families
             .entry(egui::FontFamily::Monospace)
@@ -61,7 +54,7 @@ pub fn setup_debug_fonts(
             .insert(0, FONT_NAME.to_owned());
     }
 
-    // Apply the fonts
+
     ctx.set_fonts(fonts);
-    initialized.0 = true;
+    fonts_already_initialized.0 = true;
 }

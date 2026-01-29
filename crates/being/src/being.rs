@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use being_shared::Grounding;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use game_common::{game_common::{GameplaySystems, StatefulSessionSystems}, };
+use game_common::{HostSystems, game_common::{GameplaySystems, StatefulSessionSystems} };
 
 use crate::{being_resources::*, being_systems::*, being_components::*};
 
@@ -14,7 +14,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         (
-            (add_activates_chunks, cross_portal).run_if(in_state(ClientState::Disconnected)),
+            (add_activates_chunks, cross_portal).in_set(HostSystems),
             on_control_change,
         ).in_set(GameplaySystems),
     ))

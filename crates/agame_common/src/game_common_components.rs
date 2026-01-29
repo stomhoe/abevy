@@ -27,17 +27,22 @@ pub struct EntityZero;
 pub struct ReparentingRetries(pub u64);
 
 #[derive(Component, Debug, Reflect)]
-pub struct DespawnTimer {
-    pub timer: Timer,
-}
+/// WARNING: runs when simulation is running too
+pub struct DespawnTimer(pub Timer);
 impl DespawnTimer {
     pub fn new(seconds: f32) -> Self {
-        Self {
-            timer: Timer::from_seconds(seconds, TimerMode::Once),
-        }
+        Self(Timer::from_seconds(seconds, TimerMode::Once))
     }
 }
 
+#[derive(Component, Debug, Reflect)]
+/// WARNING: runs when simulation is running too
+pub struct SimDespawnTimer(pub Timer);
+impl SimDespawnTimer {
+    pub fn new(seconds: f32) -> Self {
+        Self(Timer::from_seconds(seconds, TimerMode::Once))
+    }
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 /// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state

@@ -80,7 +80,6 @@ pub fn spawn_chunks_around_activators(
                         chunk_pos,
                         ChildOf(region_ent),
                         dimension_ref,
-                        DespawnTimer::new(6.0),//LEAVE AT 6.0 FOR SLOW PCs
                     )));
                     chunk_ent
                 });
@@ -242,8 +241,8 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
 #[allow(unused_parens)]
 pub fn update_chunk_visib(
     mut reader: MessageReader<RecheckChunksVisibility>,
-    camera_query: Single<(&GlobalTransform), (With<CameraTarget>)>,
-    mut chunks_query: Query<(&mut Visibility, &ChunkPos, &Children), With<Chunk>>,
+    camera_query: Single<(&GlobalTransform, &DimensionRef), (With<CameraTarget>)>,
+    mut chunks_query: Query<(&mut Visibility, &ChunkPos, &DimensionRef, &Children), With<Chunk>>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
     mut event_writer: MessageWriter<DrawTilemap>,
     mut to_draw: Local<Vec<DrawTilemap>>,
@@ -251,20 +250,24 @@ pub fn update_chunk_visib(
     if reader.is_empty() {
         return;
     }
-    let camera_transform = *camera_query;
+    to_draw.reserve(reader.read().size_hint().0);
+    reader.clear();
+
+    let (camera_transform, camera_dimension) = *camera_query;
     
     let camera_chunk_pos = ChunkPos::from(camera_transform.translation().xy());
-    to_draw.reserve(reader.read().size_hint().0*3);
-    
-    chunks_query.iter_mut().for_each(|(mut visibility, &chunk_pos, children)| {
+
+    chunks_query.iter_mut().for_each(|(mut visibility, &chunk_pos, &chunk_dimension, children)| {
+
+        let different_dimension = camera_dimension != &chunk_dimension;
         let out_of_visible = chunkrange_settings.out_of_visible_range(camera_transform, chunk_pos);
         let out_of_discovery = chunkrange_settings.out_of_discovery_range(camera_chunk_pos, chunk_pos);
         
-        if out_of_visible && out_of_discovery {
+        if different_dimension || (out_of_visible && out_of_discovery) {
             if *visibility != Visibility::Hidden {
                 *visibility = Visibility::Hidden;
             }
-        } else if *visibility == Visibility::Hidden {
+        } else if *visibility != Visibility::Inherited {
             *visibility = Visibility::Inherited;
             to_draw.extend(children.iter().map(|child| DrawTilemap(child)));
         }

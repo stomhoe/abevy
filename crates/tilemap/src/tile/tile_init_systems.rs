@@ -15,7 +15,7 @@ use ::tilemap_shared::*;
 
 use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*, tile_shader::{tile_shader_components::*, tile_shader_resources::TileShaderEntityMap}, }, tilemap_resources::MassCollectedTiles };
 
-use core::f32;
+use core::{error, f32};
 use std::{any::Any, mem::take};
 
 
@@ -174,6 +174,9 @@ pub fn add_tiles_to_map(
             }
         }
     }
+    else {
+        error!(target:"tile_init","TileEzerosMap resource not found when trying to add tiles to it.");
+    }
 }
 
 #[allow(unused_parens)]
@@ -183,39 +186,39 @@ pub fn init_childrensprite(mut cmd: Commands,
     childrensprite_query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<AcAnimationProgresses>, 
         Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, With<TileChildSprite>,
         Without<Sprite>, Without<TilemapId>, Without<Children>, Without<TileShader>, AnyDisabling)>,
-    ) {
-        let mut to_insert = Vec::new();
-        for (entity, (image_path_holder, ezero_ref)) in childrensprite_query.iter() {
-            if let Some(img_path_holder) = image_path_holder {
-                trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
-                to_insert.push((entity, Sprite{
-                    image: asset_server.load(img_path_holder.path()),
-                    ..Default::default()
-                }));
-            }
-            else if let Some(ezero_ref) = ezero_ref {
-                let Ok((img_path_holder, is_ezero_a_spriteconfig)) = ezero_img_path.get(ezero_ref.0) else {
-                    error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity doesn't exist", entity, ezero_ref.0);
-                    continue;
-                };
-                if is_ezero_a_spriteconfig{
-                    continue;
-                }
-                let Some(img_path_holder) = img_path_holder else {
-                    error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity has no ImagePathHolder", entity, ezero_ref.0);
-                    continue;
-                };
-
-                trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
-                to_insert.push((entity, Sprite{
-                    image: asset_server.load(img_path_holder.path()),
-                    ..Default::default()
-                }));
-            } else {
-                error!(target: "childrensprite_init","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
-            }
+) {
+    let mut to_insert = Vec::new();
+    for (entity, (image_path_holder, ezero_ref)) in childrensprite_query.iter() {
+        if let Some(img_path_holder) = image_path_holder {
+            trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
+            to_insert.push((entity, Sprite{
+                image: asset_server.load(img_path_holder.path()),
+                ..Default::default()
+            }));
         }
-        cmd.try_insert_batch(to_insert);
+        else if let Some(ezero_ref) = ezero_ref {
+            let Ok((img_path_holder, is_ezero_a_spriteconfig)) = ezero_img_path.get(ezero_ref.0) else {
+                error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity doesn't exist", entity, ezero_ref.0);
+                continue;
+            };
+            if is_ezero_a_spriteconfig{
+                continue;
+            }
+            let Some(img_path_holder) = img_path_holder else {
+                error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity has no ImagePathHolder", entity, ezero_ref.0);
+                continue;
+            };
+
+            trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
+            to_insert.push((entity, Sprite{
+                image: asset_server.load(img_path_holder.path()),
+                ..Default::default()
+            }));
+        } else {
+            error!(target: "childrensprite_init","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
+        }
+    }
+    cmd.try_insert_batch(to_insert);
 }
 
 #[allow(unused_parens)]

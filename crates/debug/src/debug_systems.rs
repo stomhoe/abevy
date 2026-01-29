@@ -10,7 +10,7 @@ use crate::debug_messages::UpdateBeingSpeed;
 pub fn debug_increase_speed(
     keys: Res<ButtonInput<KeyCode>>,
     my_being_query: Query<(&Being), (With<ControlledLocally>)>,
-    mut query: Query<(&ModifierTarget, &mut EffectiveValue),(With<Speed>, )>,
+    mut query: Query<(&ModifierTarget, &mut CurrFinalValue),(With<Speed>, )>,
     client_state: Res<State<ClientState>>,
     mut writer: MessageWriter<UpdateBeingSpeed>,
 ) {
@@ -48,7 +48,7 @@ pub fn debug_increase_speed(
 pub fn receive_increase_speed_from_client(
     mut events: MessageReader<FromClient<UpdateBeingSpeed>>,
     controlled_beings_query: Query<(&AppliedModifiers, &ControlledBy, ), ()>,
-    mut modifiers_query: Query<(&mut EffectiveValue),(With<Speed>, )>,
+    mut modifiers_query: Query<(&mut CurrFinalValue),(With<Speed>, )>,
 ) {
     for from_client in events.read() {
         let UpdateBeingSpeed { value: new_value, being_ent } = from_client.message.clone();

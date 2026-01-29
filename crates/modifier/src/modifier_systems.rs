@@ -1,6 +1,6 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
-use game_common::game_common_components::TimeBasedMultiplier;
+use game_common::game_common_components::{DespawnTimer, TimeBasedMultiplier};
 
 use crate::modifier_components::*;
 
@@ -9,7 +9,7 @@ use crate::modifier_components::*;
 pub fn apply_antidotes(
     affected_query: Query<&AppliedModifiers>,
     mut antis_query: Query<(&BaseValue, Option<&TimeBasedMultiplier>, &Antidote),()>,
-    mut modis_query: Query<(&ModifierTags, Option<&mut EffectiveValue>)>,
+    mut modis_query: Query<(&ModifierTags, Option<&mut CurrFinalValue>)>,
 ) {
     // for affected in affected_query.iter() {
     //     let mut counters_map: HashMap<String, f32> = HashMap::new();
@@ -43,6 +43,17 @@ pub fn apply_antidotes(
 }
 
 
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+//                                                       ^^^^
+#[allow(unused_parens)]
+pub fn despawn_modifiers_on_time_up(mut cmd: Commands, 
+    mut query: Query<(&mut DespawnTimer),()>
+) {
+    for mut item in query.iter_mut() {
+        
+    }
+}
 
 
 

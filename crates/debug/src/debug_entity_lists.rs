@@ -1022,7 +1022,7 @@ pub fn regions_list_window(
                                     for y in (min_y..=max_y).rev() {
                                         for x in min_x..=max_x {
                                             let pos = RegionPos(IVec2::new(x, y));
-                                            if let Some((entity, name, _grid, _claim_list, _planned_tiles, _chunks_active, _counts, _pending_timeout, _empty_timer, _has_all_tiles, _has_building_started, _has_all_claims)) = regions_map.get(&pos) {
+                                            if let Some((entity, name, ..)) = regions_map.get(&pos) {
                                                 let is_selected = selected_entities.selected_regions.contains(entity);
                                                 let is_camera_pos = camera_region_pos.map_or(false, |cam_pos| cam_pos == pos);
                                                 
@@ -1064,7 +1064,7 @@ pub fn regions_list_window(
                 .collect();
             selected_region_details.sort_by_key(|(_, (entity, ..))| entity.index());
             
-            for (_region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims)) in selected_region_details {
+            for (region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims)) in selected_region_details {
                 let name_str = name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
                     egui::CollapsingHeader::new(format!("Details: {} (Entity: {:?})", name_str, entity))
                         .default_open(true)
@@ -1074,11 +1074,20 @@ pub fn regions_list_window(
                                 if let Some(grid_sgcs) = grid {
                                     ui.label("GridOfSgcs:");
                                     ui.indent("grid_sgcs", |ui| {
-                                        // Display current chunk position if available
-                                        if let (Some(_cam_dim), Some(cam_chunk)) = (camera_dim_ref, camera_chunk_pos) {
-                                            ui.label(egui::RichText::new(format!("📍 Current chunk: ({}, {})", cam_chunk.0.x, cam_chunk.0.y)).strong());
-                                        }
-                                        grid_sgcs.render_grid(ui);
+                                        // Only highlight if camera is in the same dimension as the region
+                                        let highlight_pos = if let (Some(cam_pos), Some(cam_dim)) = (camera_chunk_pos, camera_dim_ref) {
+                                            // Find the region's dimension ref
+                                            let region_dim_matches = region_query.get(*entity).map(|(_, _, region_dim_ref, _, ..)| region_dim_ref == cam_dim).unwrap_or(false);
+                                            let cam_region_pos = cam_pos.to_region_pos();
+                                            if region_dim_matches && cam_region_pos == *region_pos {
+                                                Some(cam_pos)
+                                            } else {
+                                                None
+                                            }
+                                        } else {
+                                            None
+                                        };
+                                        grid_sgcs.render_grid(ui, highlight_pos, Some(*region_pos));
                                     });
                                 }
                             });

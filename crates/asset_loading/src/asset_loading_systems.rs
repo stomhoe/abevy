@@ -1,22 +1,27 @@
 use bevy::prelude::*;
+use bevy_replicon::prelude::{ServerState};
 use common::{common_components::{AnyDisabling, AssetScoped, SparedFromHotReloading}, common_states::*};
-use dimension_shared::{DimensionStrIdRef};
 
-use tilemap::{chunking_components::ActivatingChunks, terrain_gen::terrgen_resources::*};
+use tilemap::{terrain_gen::terrgen_resources::*};
 use tilemap_shared::ForceAllChunksDespawn;
 
 
 #[allow(unused_parens, )]
 pub fn reload_assets_while_ingame(
-    mut cmd: Commands, 
     keys: Res<ButtonInput<KeyCode>>,
     mut loading_state: ResMut<NextState<AssetLoading>>,
     mut hot_loading: ResMut<NextState<AssetHotReloadState>>,
 
     mut regpos: ResMut<RegisteredPositions>,
     mut force_all_chunks_despawn_writer: MessageWriter<ForceAllChunksDespawn>,
+    client_state: Res<State<ServerState>>,
 ) {
     if keys.pressed(KeyCode::KeyR) {
+        
+        if *client_state.get() != ServerState::Running {
+            warn!(target: "asset_loading", "You cannot hot-reload assets as a client.");
+            return;
+        }
         info!(target: "asset_loading", "Reloading assets...");
 
 
@@ -31,13 +36,9 @@ pub fn reload_assets_while_ingame(
 }
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(
-    mut cmd: Commands,
     mut hot_loading: ResMut<NextState<AssetHotReloadState>>,
-    mut game_state: ResMut<NextState<GamePhase>>,
-
 ) {
     hot_loading.set(AssetHotReloadState::Stopped);
-    //game_state.set(GamePhase::ActiveGame);
 }
 
 

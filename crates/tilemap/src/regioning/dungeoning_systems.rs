@@ -59,7 +59,6 @@ pub fn claim_chunks_for_various_dungeon_types(
         let seed = center_chunk.hash_value(&settings, *dimension_hash, 0);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
-        // Use normal distribution with mean 4, clamped to [2, 6]
         let side_length = {
             let normal = Normal::new(4.0, 1.5).unwrap();
             (normal.sample(&mut rng) as i32).clamp(2, 7)
@@ -67,79 +66,24 @@ pub fn claim_chunks_for_various_dungeon_types(
         let half_spread = side_length / 2;
         let region_pos = center_chunk.to_region_pos();
 
-        // Compute smart offsets: start with ideal centered range, then shift away from region bounds
-        let mut start_offset = -half_spread;
-        let mut end_offset = start_offset + side_length - 1;
+        let start_offset = -half_spread;
+        let end_offset = start_offset + side_length - 1;
 
-        // Try candidate positions, shifting right/up if we'd go out of bounds
-        let mut valid_positions = Vec::new();
+        let mut chunk_positions: Vec<ChunkPos> = Vec::new();
         for dy in start_offset..=end_offset {
             for dx in start_offset..=end_offset {
                 let candidate = center_chunk + IVec2::new(dx, dy);
-                if region_pos.contains_chunkpos(candidate) {
-                    valid_positions.push(candidate);
+                if region_pos.contains_chunkpos(candidate) && !already_claimed.contains(&candidate) {
+                    chunk_positions.push(candidate);
                 }
             }
         }
-
-        // If we got a partial square due to boundary, intelligently shift the entire offset range
-        if !valid_positions.is_empty() && valid_positions.len() < (side_length * side_length) as usize {
-            // Find bounds of what we got vs what we wanted
-            let ideal_min_x = center_chunk.x() + start_offset;
-            let ideal_max_x = center_chunk.x() + end_offset;
-            let ideal_min_y = center_chunk.y() + start_offset;
-            let ideal_max_y = center_chunk.y() + end_offset;
-
-            let actual_min_x = valid_positions.iter().map(|p| p.x()).min().unwrap_or(ideal_min_x);
-            let actual_max_x = valid_positions.iter().map(|p| p.x()).max().unwrap_or(ideal_max_x);
-            let actual_min_y = valid_positions.iter().map(|p| p.y()).min().unwrap_or(ideal_min_y);
-            let actual_max_y = valid_positions.iter().map(|p| p.y()).max().unwrap_or(ideal_max_y);
-
-            // Shift offsets to move away from boundary that caused truncation
-            if actual_min_x > ideal_min_x {
-                let shift = actual_min_x - ideal_min_x;
-                start_offset += shift;
-                end_offset += shift;
-            } else if actual_max_x < ideal_max_x {
-                let shift = ideal_max_x - actual_max_x;
-                start_offset -= shift;
-                end_offset -= shift;
-            }
-
-            if actual_min_y > ideal_min_y {
-                let shift = actual_min_y - ideal_min_y;
-                start_offset += shift;
-                end_offset += shift;
-            } else if actual_max_y < ideal_max_y {
-                let shift = ideal_max_y - actual_max_y;
-                start_offset -= shift;
-                end_offset -= shift;
-            }
-
-            // Recollect with adjusted offsets
-            valid_positions.clear();
-            for dy in start_offset..=end_offset {
-                for dx in start_offset..=end_offset {
-                    let candidate = center_chunk + IVec2::new(dx, dy);
-                    if region_pos.contains_chunkpos(candidate) {
-                        valid_positions.push(candidate);
-                    }
-                }
-            }
-        }
-
-        // Filter out already claimed chunks
-        let mut chunk_positions: Vec<ChunkPos> = valid_positions
-            .into_iter()
-            .filter(|pos| !already_claimed.contains(pos))
-            .collect();
 
         if chunk_positions.is_empty() {
             trace!(target: "dungeoning", "No eligible unclaimed chunks around {:?} for ExampleStructure, skipping", center_chunk);
             continue;
         }
 
-        // Track these chunks as claimed
         for &chunk_pos in &chunk_positions {
             already_claimed.insert(chunk_pos);
         }

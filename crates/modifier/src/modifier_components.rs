@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 #[relationship(relationship_target = AppliedModifiers)]
-#[require(AssetScoped, SparedFromHotReloading, Replicated, ApplyMode::Offsetting, Prefix::trunc("Modifier"), )]
+#[require(AssetScoped, SparedFromHotReloading, Replicated, ApplyMode::Add, Prefix::trunc("Modifier"), )]
 pub struct ModifierTarget(#[relationship]#[entities]pub Entity);
 
 
@@ -33,7 +33,8 @@ pub struct BaseValue(pub f32);//negate for opposite effect or negation
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct EffectiveValue(pub f32);
+#[require(ApplyMode::Add)]
+pub struct CurrFinalValue(pub f32);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 ///poison ID, efectiveness(multiplicador sobre propia Potency, resultado se substrae a la Potency del veneno) 
@@ -61,10 +62,11 @@ pub struct ConvertsDamageOnNonPenetration(pub HashMap<String, String>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub enum ApplyMode {
-    #[default] Offsetting, 
+    #[default] 
+    Add, 
     Min, Max,
-    /// solo [0, ...] permitido NO RECOMENDADO USAR, MUCHO MÁS DIFÍCIL DE BALANCEAR 
-    Scaling, 
+    /// solo [0, ...] permitido. NO RECOMENDADO USAR, MUCHO MÁS DIFÍCIL DE BALANCEAR 
+    Mul, 
 }
 
 

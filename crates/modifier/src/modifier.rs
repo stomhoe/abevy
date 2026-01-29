@@ -7,7 +7,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<AppliedModifiers>()
         .register_type::<ModifierTags>()
         .register_type::<BaseValue>()
-        .register_type::<EffectiveValue>()
+        .register_type::<CurrFinalValue>()
         .register_type::<Antidote>()
         .register_type::<OffsetValForSelf>()
         .register_type::<CopyValPortionForSelf>()
@@ -19,12 +19,12 @@ pub fn plugin(app: &mut App) {
 
         .replicate::<ModifierTarget>()
         .replicate::<BaseValue>()
-        .replicate::<EffectiveValue>()//NO SÉ SI ES TEMPORAL O NO
+        .replicate::<CurrFinalValue>()//NO SÉ SI ES TEMPORAL O NO
         .replicate::<MitigatingOnly>()
         .replicate::<ApplyMode>()
         .replicate::<Speed>()
         .replicate::<InvertMovement>()
-        .replicate::<EffectiveValue>()
+        .replicate::<CurrFinalValue>()
         .replicate_filtered::<ChildOf, With<ModifierTarget>>()
     ;
 }

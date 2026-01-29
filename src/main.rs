@@ -24,7 +24,7 @@ concat!(
     
     "portal_init=warn,",
     "pos_search=info,",
-    "childrensprite_init=trace,",
+    "childrensprite_init=info,",
 
     "terrgen_systems=info,",
     "terrgen_process=info,",
@@ -62,14 +62,11 @@ concat!(
 );
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
-/*
-cargo run --release --features bevy/trace_tracy,bevy/debug
+/*TRACING
+cargo run -r --features bevy/trace_tracy,bevy/debug
 
 /usr/local/bin/tracy-profiler
-
-
 */
-
 
 fn main() {
     
@@ -121,13 +118,13 @@ fn main() {
 
     ;
 }
-/* ç
+/*
 Log Levels
-    Trace (Not printed by default) (PARA MENSAJES MUY SPAM)
-    Debug (Not printed by default) (MENSAJES Q SON SOLO PARA DEBUGGEAR PERO NO SPAMMEAN)
-    Info (default level that is printed)
-    Warn
-    Error
+    trace (Not printed by default) (PARA MENSAJES MUY SPAM)
+    debug (Not printed by default) (MENSAJES Q SON SOLO PARA DEBUGGEAR PERO NO SPAMMEAN)
+    info (default level that is printed) (MENSAJES IMPORTANTES QUE NO SPAMMEAN NI SON ERRORES)
+    warn (ADVERTENCIAS, el programa funciona bien pero te avisa que algo podría estar mal)
+    error (ERRORES, algo claramente está mal)
     None (you turned off logging)
 
 

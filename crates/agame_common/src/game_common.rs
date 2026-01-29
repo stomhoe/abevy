@@ -20,7 +20,11 @@ pub struct SimPausedSystems;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ModifierSystems;
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct HostSystems;
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct ClientSystems;
 
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
@@ -32,6 +36,8 @@ pub fn plugin(app: &mut App) {
         (tick_time_based_multipliers).in_set(SimRunningSystems),
         clone_ezero_children_ents,
         set_entity_name,
+        tick_despawn_timers.in_set(HostSystems),
+        tick_sim_despawn_timers.in_set(HostSystems).in_set(SimRunningSystems),
         //disable_ezeros,
         despawn_sprites_without_childof,
     ))
@@ -49,6 +55,8 @@ pub fn plugin(app: &mut App) {
         ).in_set(StatefulSessionSystems),
         
         StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
+        HostSystems.run_if(in_state(ClientState::Disconnected)),
+        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
     ))
     .configure_sets(FixedUpdate, (
         (ModifierSystems, ).in_set(SimRunningSystems),
@@ -65,6 +73,9 @@ pub fn plugin(app: &mut App) {
         StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
         SimRunningSystems.run_if(in_state(SimulationState::Running)),
         SimPausedSystems.run_if(in_state(SimulationState::Paused)),
+        HostSystems.run_if(in_state(ClientState::Disconnected)),
+        ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
+
     ))
     .configure_sets(
         OnEnter(AssetLoading::SpawnReplicatedEntities),

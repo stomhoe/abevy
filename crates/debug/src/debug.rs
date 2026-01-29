@@ -11,8 +11,8 @@ pub fn plugin(app: &mut App) {
     .add_plugins((
         FpsCounterPlugin
     ))
-    .add_systems(Update, setup_debug_fonts)
     .add_systems(Update, (
+        setup_debug_fonts,
         debug_increase_speed,
         debug_toggle_states_window,
         debug_toggle_main_menu,
@@ -41,7 +41,7 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<DubugWindowsVisibility>()
     .init_resource::<DebugSelectedEntities>()
-    .init_resource::<FontsInitialized>()
+    .init_resource::<DebugFontsInitialized>()
     .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered)
     ;
 }

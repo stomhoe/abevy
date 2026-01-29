@@ -28,7 +28,7 @@ pub fn plugin(app: &mut App) {
             timeout_pending_offers,
             advance_i_on_claimlist_timeout,
             clonespawn_tiles_on_chunk_spawn//DON'T TOUCH THE .before's
-            .before(process_tiles_pre)//.before(process_pending_ops_and_collect_tiles)
+            .before(process_tiles_pre)
             ,
             
         ).in_set(RegioningSystems),
@@ -43,7 +43,8 @@ pub fn plugin(app: &mut App) {
                 init_structured_gen_configs,
             )
             .chain(),
-    ).in_set(RegioningSystems))
+        ).in_set(RegioningSystems))
+    .add_observer(on_region_despawn)
     .add_observer(remove_sgc_from_map_on_despawn)
 
     .init_resource::<SgcEntityMap>()

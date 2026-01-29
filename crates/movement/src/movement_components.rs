@@ -45,3 +45,4 @@ pub struct Swimmer;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(InnateMovementCapability)] 
 pub struct Flier;
+

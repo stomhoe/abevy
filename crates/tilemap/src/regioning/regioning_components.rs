@@ -207,7 +207,7 @@ pub enum ChunkOccupyError<T> {
 pub struct GridOfSgcs(pub RegionGrid<Entity>);
 
 impl GridOfSgcs {
-    pub fn render_grid(&self, ui: &mut egui::Ui) {
+    pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) {
         egui::Grid::new(ui.id().with("grid_of_sgcs"))
         .spacing([0.0, 0.0])
         .min_col_width(0.0)
@@ -239,8 +239,22 @@ impl GridOfSgcs {
             let mut entity_to_char: EntityHashMap<char> = EntityHashMap::default();
             let mut char_index = 0;
             
-            for row in self.0.grid.iter().rev() {
-                for cell in row {
+            // Compute local position if we have both current position and region position
+            let local_pos = if let (Some(chunk_pos), Some(region_pos)) = (current_position, region_pos) {
+                let local_chunk_pos = chunk_pos - region_pos.to_chunkpos();
+                let is_in_bounds = local_chunk_pos.0.x >= 0 && local_chunk_pos.0.x < REGION_SIZE_IN_CHUNKS.x() 
+                    && local_chunk_pos.0.y >= 0 && local_chunk_pos.0.y < REGION_SIZE_IN_CHUNKS.y();
+                if is_in_bounds {
+                    Some((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize))
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            
+            for (display_y, row) in self.0.grid.iter().rev().enumerate() {
+                for (x, cell) in row.iter().enumerate() {
                     let symbol = match cell {
                         Some(entity) => {
                             (*entity_to_char.entry(*entity).or_insert_with(|| {
@@ -251,7 +265,30 @@ impl GridOfSgcs {
                         }
                         None => "·".to_string(),
                     };
-                    ui.add_sized(cell_size, egui::Button::new(egui::RichText::new(symbol).monospace()).frame(false));
+                    
+                    // Determine whether this cell should be highlighted
+                    let mut is_highlight = false;
+                    if let Some((local_x, local_y)) = local_pos {
+                        // Convert display_y (which counts from 0 at the top after reversal) to grid array index
+                        let grid_y = (REGION_SIZE_IN_CHUNKS.y() as usize - 1) - display_y;
+                        if local_x == x && local_y == grid_y {
+                            is_highlight = true;
+                        }
+                    }
+
+                    // Build text and button with visible styling when highlighted
+                    let mut text = egui::RichText::new(symbol).monospace();
+                    if is_highlight {
+                        text = text.color(egui::Color32::YELLOW).strong();
+                    }
+                    let mut button = egui::Button::new(text);
+                    if is_highlight {
+                        button = button.frame(true).fill(egui::Color32::from_rgb(60, 60, 60));
+                    } else {
+                        button = button.frame(false);
+                    }
+
+                    ui.add_sized(cell_size, button);
                 }
                 ui.end_row();
             }
@@ -268,7 +305,7 @@ impl InspectorPrimitive for GridOfSgcs {
         _: egui::Id,
         _: InspectorUi<'_, '_>,
     ) -> bool {
-        self.render_grid(ui);
+        self.render_grid(ui, None, None);
         false
     }
     fn ui_readonly(
@@ -278,7 +315,7 @@ impl InspectorPrimitive for GridOfSgcs {
         _: egui::Id,
         _: InspectorUi<'_, '_>,
     ) {
-        self.render_grid(ui);
+        self.render_grid(ui, None, None);
     }
 }
 
