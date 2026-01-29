@@ -25,13 +25,13 @@ impl SpeedModifier {
 }
 
 #[derive(Bundle, Debug, )]
-pub struct TempSpeedModifier(
+pub struct TemporalSpeedModifier(
     pub SpeedModifier,
     pub SimDespawnTimer,
 );
-impl TempSpeedModifier {
+impl TemporalSpeedModifier {
     pub fn new(target: Entity, value: f32, apply_mode: ApplyMode, duration: f32) -> Self {
-        TempSpeedModifier(
+        TemporalSpeedModifier(
             SpeedModifier::new(target, value, apply_mode),
             SimDespawnTimer::new(duration),
         )

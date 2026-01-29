@@ -1,11 +1,11 @@
 //.ron file for structured generation configuration
 (
-    id: "chamberscorridors_gen_cfg0",
+    id: "cha_catas",
     structure_id: "chamberscorridors",
     weight: 1.0,
     tags: Some([ "dungeon", "" ]),
     args: Some({
-        "floor_tile_id": ["dunewbie"],
+        "floor_tile_id": ["ducatas"],
         "wall_tile_id": ["gray"],
         "lava_tile_id": ["lava"],
     }),

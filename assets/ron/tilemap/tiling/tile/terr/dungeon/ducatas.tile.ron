@@ -1,0 +1,10 @@
+(
+    id: "ducatas",
+    name: "Catacombs terrain",
+    z: -1000,
+    img_paths: [
+        ("", "texture/world/white.png"),
+    ],
+    shader: Some("ducatas"),
+    color: Some((255, 0, 0, 255)),
+)

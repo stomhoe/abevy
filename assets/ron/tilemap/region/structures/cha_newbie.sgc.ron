@@ -1,0 +1,15 @@
+//.ron file for structured generation configuration
+(
+    id: "cha_newbie",
+    structure_id: "chamberscorridors",
+    weight: 1.0,
+    tags: Some([ "dungeon", "" ]),
+    args: Some({
+        "floor_tile_id": ["dunewbie"],
+        "wall_tile_id": ["gray"],
+        "lava_tile_id": ["lava"],
+    }),
+    // pdisk_mindist_and_tag: Some([
+    //     (Some(0), "dungeon"),
+    // ]),
+)
