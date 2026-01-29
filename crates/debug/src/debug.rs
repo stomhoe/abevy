@@ -11,7 +11,7 @@ pub fn plugin(app: &mut App) {
     .add_plugins((
         FpsCounterPlugin
     ))
-    .add_systems(Startup, setup_debug_fonts)
+    .add_systems(Update, setup_debug_fonts)
     .add_systems(Update, (
         debug_increase_speed,
         debug_toggle_states_window,

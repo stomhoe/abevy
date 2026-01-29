@@ -132,7 +132,7 @@ pub fn main_menu_window(
                 window_visible.regions_list = !window_visible.regions_list;
             }
 
-            if ui.button(egui::RichText::new("👥 Beings List").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
                 window_visible.beings_list = !window_visible.beings_list;
             }
 
@@ -140,15 +140,15 @@ pub fn main_menu_window(
                 window_visible.portals_list = !window_visible.portals_list;
             }
 
-            if ui.button(egui::RichText::new("⛰️ Terrgen Editor").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("🌍 Terrain generation editor").size(16.0)).clicked() {
                 window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
 
-            if ui.button(egui::RichText::new("🌍 Global generation settings").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;
             }
 
-            if ui.button(egui::RichText::new("📍 Registered Positions").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("📍 Registered Tile Positions").size(16.0)).clicked() {
                 window_visible.registered_positions = !window_visible.registered_positions;
             }
 

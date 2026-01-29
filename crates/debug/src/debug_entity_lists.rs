@@ -954,13 +954,13 @@ pub fn regions_list_window(
     }
     
     // Get camera target dimension and position
-    let (camera_dim_ref, camera_region_pos) = camera_dimension.iter().next()
+    let (camera_dim_ref, camera_chunk_pos, camera_region_pos) = camera_dimension.iter().next()
         .map(|(dim_ref, transform)| {
             let chunk_pos = ChunkPos::from(transform.translation());
             let region_pos = chunk_pos.to_region_pos();
-            (Some(dim_ref), Some(region_pos))
+            (Some(dim_ref), Some(chunk_pos), Some(region_pos))
         })
-        .unwrap_or((None, None));
+        .unwrap_or((None, None, None));
     
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = regions_by_dimension.keys().cloned().collect();
@@ -1038,8 +1038,9 @@ pub fn regions_list_window(
                                                 
                                                 if button_response.clicked() {
                                                     if is_selected {
-                                                        selected_entities.selected_regions.remove(entity);
+                                                        selected_entities.selected_regions.clear();
                                                     } else {
+                                                        selected_entities.selected_regions.clear();
                                                         selected_entities.selected_regions.insert(*entity);
                                                     }
                                                 }
@@ -1064,12 +1065,18 @@ pub fn regions_list_window(
             
             for (_region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims)) in selected_region_details {
                 let name_str = name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
-                    ui.collapsing(format!("Details: {} (Entity: {:?})", name_str, entity), |ui| {
+                    egui::CollapsingHeader::new(format!("Details: {} (Entity: {:?})", name_str, entity))
+                        .default_open(true)
+                        .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.vertical(|ui| {
                                 if let Some(grid_sgcs) = grid {
                                     ui.label("GridOfSgcs:");
                                     ui.indent("grid_sgcs", |ui| {
+                                        // Display current chunk position if available
+                                        if let (Some(_cam_dim), Some(cam_chunk)) = (camera_dim_ref, camera_chunk_pos) {
+                                            ui.label(egui::RichText::new(format!("📍 Current chunk: ({}, {})", cam_chunk.0.x, cam_chunk.0.y)).strong());
+                                        }
                                         grid_sgcs.render_grid(ui);
                                     });
                                 }

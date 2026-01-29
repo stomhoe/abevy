@@ -12,7 +12,7 @@
     bifs: [
         ("a1", [""]),
         ("b1", [""]),
-        ("", ["ocean"])
+        ("", ["gray"])
     ],
     root_in_dimensions: ["dungeon"],
     size: Some((1, 1)),

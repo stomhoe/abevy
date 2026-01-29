@@ -9,7 +9,7 @@
     ],
    
     bifs: [
-        ("", ["blue"]),
+        ("", ["ocean"]),
         ("normal2", [""]),
     ],
     root_in_dimensions: [""],
