@@ -1,5 +1,6 @@
 
 use bevy::prelude::*;
+use bevy::ecs::entity::EntityHashSet;
 
 #[derive(Resource)]
 pub struct DubugWindowsVisibility{
@@ -17,6 +18,7 @@ pub struct DubugWindowsVisibility{
     pub tilemap_details: bool,
     pub being_details: bool,
     pub registered_positions: bool,
+    pub exempted_entity_details: bool,
 }
 
 impl Default for DubugWindowsVisibility {
@@ -36,17 +38,19 @@ impl Default for DubugWindowsVisibility {
             tilemap_details: false,
             being_details: false,
             registered_positions: false,
+            exempted_entity_details: false,
         }
     }
 }
 
 #[derive(Resource, Default)]
 pub struct DebugSelectedEntities {
-    pub selected_regions: std::collections::HashSet<Entity>,
-    pub selected_chunks: std::collections::HashSet<Entity>,
-    pub selected_portals: std::collections::HashSet<Entity>,
+    pub selected_regions: EntityHashSet,
+    pub selected_chunks: EntityHashSet,
+    pub selected_portals: EntityHashSet,
     pub selected_operationlist: Option<Entity>,
     pub selected_noise: Option<Entity>,
     pub selected_tile: Option<Entity>,
     pub selected_being: Option<Entity>,
+    pub selected_exempted_entity: Option<Entity>,
 }

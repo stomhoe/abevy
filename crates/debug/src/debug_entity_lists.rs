@@ -609,7 +609,7 @@ pub fn chunk_details_inspector(world: &mut World) {
         .show(egui_context.get_mut(), |ui| {
             if let Ok(entity_ref) = world.get_entity(selected_chunk_entity) {
                 if let Some(chunk_pos) = entity_ref.get::<ChunkPos>() {
-                    ui.heading(chunk_pos.to_string());
+                    ui.heading((*chunk_pos).to_string());
                 }
             }
             ui.separator();
@@ -674,7 +674,7 @@ pub fn portals_details_inspector(world: &mut World) {
         .show(egui_context.get_mut(), |ui| {
             if let Ok(entity_ref) = world.get_entity(selected_portal_entity) {
                 if let Some(global_pos) = entity_ref.get::<GlobalTilePos>() {
-                    ui.heading(format!("Portal at ({}, {})", global_pos.x(), global_pos.y()));
+                    ui.heading(format!("Portal at ({}, {})", (*global_pos).x(), (*global_pos).y()));
                 }
             }
             ui.separator();
@@ -833,6 +833,67 @@ pub fn being_details_inspector(world: &mut World) {
     if !is_open {
         if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
             window_visible.being_details = false;
+        }
+    }
+}
+
+#[allow(unused_parens)]
+pub fn exempted_entity_details_inspector(world: &mut World) {
+    let selected_entity = world.resource::<DebugSelectedEntities>().selected_exempted_entity;
+    
+    if selected_entity.is_none() {
+        return;
+    }
+    
+    let selected_entity = selected_entity.unwrap();
+    let window_visible = world.resource::<DubugWindowsVisibility>();
+    
+    if !window_visible.exempted_entity_details {
+        return;
+    }
+    
+    let mut egui_context_query = world
+        .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
+    
+    let Some(egui_context) = egui_context_query.iter(world).next() else {
+        return;
+    };
+    
+    let mut egui_context = egui_context.clone();
+    let screen_rect = egui_context.get_mut().content_rect();
+    
+    let world_ptr = world as *mut World;
+    let mut is_open = true;
+    
+    egui::Window::new("Selected Exempted Entity Details")
+        .default_width(600.0)
+        .default_height(500.0)
+        .default_pos([screen_rect.right() - 620.0, screen_rect.top() + 10.0])
+        .open(&mut is_open)
+        .vscroll(true)
+        .show(egui_context.get_mut(), |ui| {
+            ui.heading(format!("Exempted Entity: {:?}", selected_entity));
+            ui.separator();
+            
+            ui.label("All Components on this Entity:");
+            ui.separator();
+            
+            // Use unsafe to access world for full component inspection with values
+            unsafe {
+                bevy_inspector::ui_for_entity(&mut *world_ptr, selected_entity, ui);
+            }
+            
+            ui.separator();
+            if ui.button("Clear Selection").clicked() {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_exempted_entity = None;
+                }
+            }
+        });
+    
+    if !is_open {
+        if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
+            window_visible.exempted_entity_details = false;
         }
     }
 }
@@ -1187,7 +1248,7 @@ pub fn portals_list_window(
     let camera_dim_ref = camera_info.map(|(dim_ref, _)| dim_ref);
 
     // Group portals by dimension
-    let mut portals_by_dimension: BTreeMap<String, Vec<(Entity, GlobalTilePos, Option<EntityZeroRef>, Vec2, bool)>> = BTreeMap::new();
+    let mut portals_by_dimension: BTreeMap<String, Vec<(Entity, GlobalTilePos, Option<EntityZeroRef>, Vec2, bool, f32)>> = BTreeMap::new();
 
     for (entity, dim_ref, global_pos, ezero_ref, portal_to) in portal_query.iter() {
         let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
@@ -1208,13 +1269,15 @@ pub fn portals_list_window(
             Vec2::ZERO
         };
         
+        let distance = direction.length();
+        
         // Check if the target entity exists
         let target_exists = target_query.get(portal_to.dest_portal).is_ok();
         
         portals_by_dimension
             .entry(dim_name)
             .or_insert_with(Vec::new)
-            .push((entity, *global_pos, ezero_ref.copied(), direction, target_exists));
+            .push((entity, *global_pos, ezero_ref.copied(), direction, target_exists, distance));
     }
     
     // Sort dimensions with camera dimension first
@@ -1271,15 +1334,13 @@ pub fn portals_list_window(
                 if let Some(mut portals) = portals_by_dimension.remove(dim_key) {
                     // Sort portals by distance (closest first)
                     portals.sort_by(|a, b| {
-                        let dist_a = a.3.length();
-                        let dist_b = b.3.length();
-                        dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+                        a.5.partial_cmp(&b.5).unwrap_or(std::cmp::Ordering::Equal)
                     });
                     
                     egui::CollapsingHeader::new(format!("{} ({})", dim_key, portals.len()))
                         .default_open(true)
                         .show(ui, |ui| {
-                            for (entity, _global_pos, ezero_ref, direction, target_exists) in portals.iter() {
+                            for (entity, _global_pos, ezero_ref, direction, target_exists, distance) in portals.iter() {
                                 // Check if this portal is selected
                                 let is_selected = selected_entities.selected_portals.contains(entity);
                                 
@@ -1295,7 +1356,7 @@ pub fn portals_list_window(
                                 };
                                 
                                 let arrow = get_arrow(*direction);
-                                let portal_label = format!("{} {} {:?}", arrow, str_id_str, entity);
+                                let portal_label = format!("{} {} {:?} [{}]", arrow, str_id_str, entity, distance.round() as i32);
                                 
                                 let text = egui::RichText::new(&portal_label);
                                 let text = if !target_exists {
@@ -1666,6 +1727,7 @@ pub fn terrgen_editor_window(
 pub fn registered_positions_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selected_entities: ResMut<DebugSelectedEntities>,
     registered_positions: Res<RegisteredPositions>,
     id_query: Query<&StrId>,
 ) {
@@ -1699,16 +1761,39 @@ pub fn registered_positions_window(
             ui.separator();
 
             ui.horizontal(|ui| {
-                ui.label("RegisteredPositions (private data)");
-                ui.label(format!("Exempted entities: {}", registered_positions.exempted.len()));
+                ui.label("RegisteredPositions:");
+                ui.label(format!("Exempted entities: {}", registered_positions.get_exempted_entities().len()));
+                ui.label(format!("Registered entries: {}", registered_positions.get_registered_entries().len()));
             });
             ui.separator();
 
             egui::ScrollArea::vertical()
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
-                    // TODO: RegisteredPositions fields are private, need to add getter methods
-                    ui.label("RegisteredPositions data is private and needs accessor methods");
+                    // Show exempted entities
+                    if !registered_positions.get_exempted_entities().is_empty() {
+                        ui.label("Exempted Entities:");
+                        for entity in registered_positions.get_exempted_entities().iter() {
+                            let is_selected = selected_entities.selected_exempted_entity == Some(*entity);
+                            let label = format!("  {:?}", entity);
+                            if ui.selectable_label(is_selected, label).clicked() {
+                                selected_entities.selected_exempted_entity = Some(*entity);
+                                window_visible.exempted_entity_details = true;
+                            }
+                        }
+                        ui.separator();
+                    }
+                    
+                    // Show registered entries
+                    if !registered_positions.get_registered_entries().is_empty() {
+                        ui.label("Registered Positions:");
+                        for (entity, positions) in registered_positions.get_registered_entries().iter() {
+                            ui.label(format!("Entity {:?}: {} positions", entity, positions.len()));
+                            for (dim_ref, pos) in positions {
+                                ui.label(format!("  Dim: {:?}, Pos: {:?}", dim_ref, pos));
+                            }
+                        }
+                    }
                 });
         });
 }

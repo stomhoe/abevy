@@ -32,7 +32,7 @@
     bifs: [
         ("", [""]),
         ("", ["temptree_sampler", ""]),//temptree_sampler
-        ("", ["portal_cave", "cyan"]),//
+        ("", ["portal_cave", ""]),//
         ("", ["tempveg_sampler", ""]),
     ],
     root_in_dimensions: [""],

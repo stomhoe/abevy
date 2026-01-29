@@ -20,44 +20,26 @@ pub fn setup_debug_fonts(
     // Start with default fonts
     let mut fonts = egui::FontDefinitions::default();
 
-    // Add a font that supports unicode characters well
-    // Using DejaVu Sans which has excellent unicode coverage
-    if let Some(font_data) = fonts.font_data.get("DejaVuSans") {
-        // Font already available, add it to families
-        fonts
-            .families
-            .entry(egui::FontFamily::Proportional)
-            .or_default()
-            .insert(0, "DejaVuSans".to_owned());
+    // Add Symbola font for emoji and symbol support
+    fonts.font_data.insert(
+        "Symbola".to_owned(),
+        std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+            "../../../assets/fonts/Symbola.ttf"
+        ))),
+    );
 
-        fonts
-            .families
-            .entry(egui::FontFamily::Monospace)
-            .or_default()
-            .insert(0, "DejaVuSans".to_owned());
-    } else {
-        // Load DejaVu Sans from assets
-        fonts.font_data.insert(
-            "DejaVuSans".to_owned(),
-            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-                "../../../assets/fonts/DejaVuSans.ttf"
-            ))),
-        );
+    // Put Symbola first for emoji/symbol support
+    fonts
+        .families
+        .entry(egui::FontFamily::Proportional)
+        .or_default()
+        .insert(0, "Symbola".to_owned());
 
-        // Put DejaVu Sans first for proportional text (higher priority than default)
-        fonts
-            .families
-            .entry(egui::FontFamily::Proportional)
-            .or_default()
-            .insert(0, "DejaVuSans".to_owned());
-
-        // Also use it for monospace
-        fonts
-            .families
-            .entry(egui::FontFamily::Monospace)
-            .or_default()
-            .insert(0, "DejaVuSans".to_owned());
-    }
+    fonts
+        .families
+        .entry(egui::FontFamily::Monospace)
+        .or_default()
+        .insert(0, "Symbola".to_owned());
 
     // Apply the fonts
     ctx.set_fonts(fonts);

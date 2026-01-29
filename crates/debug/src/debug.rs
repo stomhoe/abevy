@@ -11,7 +11,7 @@ pub fn plugin(app: &mut App) {
     .add_plugins((
         FpsCounterPlugin
     ))
-    .add_systems(Update, setup_debug_fonts)
+    .add_systems(Startup, setup_debug_fonts)
     .add_systems(Update, (
         debug_increase_speed,
         debug_toggle_states_window,
@@ -34,6 +34,7 @@ pub fn plugin(app: &mut App) {
         portals_details_inspector,
         tilemap_details_inspector,
         being_details_inspector,
+        exempted_entity_details_inspector,
     ))
     .init_resource::<DubugWindowsVisibility>()
     .init_resource::<DebugSelectedEntities>()

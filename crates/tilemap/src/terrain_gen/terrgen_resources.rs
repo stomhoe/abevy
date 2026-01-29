@@ -34,6 +34,14 @@ impl RegisteredPositions {
         })
     }
 
+    pub fn get_exempted_entities(&self) -> &EntityHashSet {
+        &self.exempted
+    }
+
+    pub fn get_registered_entries(&self) -> &EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>> {
+        &self.registered
+    }
+
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
         new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
