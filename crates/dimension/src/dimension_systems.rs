@@ -21,7 +21,7 @@ pub fn replace_dim_string_ref_by_entity_ref(
 ) {
     for (thing_ent, ent_strid, dimension_strid, child_of) in dimension_strid_query.iter() {
 
-        if let Ok(dimension_entity) = dimension_entity_map.0.get(&dimension_strid.0) {
+        if let Ok(dimension_entity) = dimension_entity_map.0.get_cloned(&dimension_strid.0) {
             cmd.entity(thing_ent)
                 .insert(DimensionRef(dimension_entity))
                 .remove::<DimensionStrIdRef>();
@@ -38,7 +38,7 @@ pub fn replace_dim_string_ref_by_entity_ref(
         }
     }
     for (ent, ent_str_id, portal_seri, mut portal_template) in portal_tile_query.iter_mut() {
-        let Ok(dimension_entity) = dimension_entity_map.0.get(&portal_seri.dest_dimension)
+        let Ok(dimension_entity) = dimension_entity_map.0.get_cloned(&portal_seri.dest_dimension)
         else {
             error!(target: "dimension_loading", "Portal tile '{}' does not have a corresponding Dimension entity in the map.", ent_str_id);
             continue;
@@ -59,7 +59,7 @@ pub fn replace_multiple_string_refs_by_entity_refs(
     for (ent, ent_str_id, string_refs, ) in query.iter() {
         let mut entity_set = EntityHashSet::default();
         for str_ref in string_refs.iter() {
-            let Ok(dim_ent) = dimension_entity_map.0.get(str_ref) 
+            let Ok(dim_ent) = dimension_entity_map.0.get_cloned(str_ref) 
             else {
                 error!(target: "dimension_loading", "{}'s MultipleDimensionStringRefs '{}' does not have a corresponding Entity in DimensionEntityMap.", ent_str_id.cloned().unwrap_or_default(), str_ref);
                 continue;
@@ -92,7 +92,7 @@ pub fn remove_from_map_on_dimension_despawn(
 
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(dimension_entity) = dimension_entity_map.0.get(str_id) {
+        if let Ok(dimension_entity) = dimension_entity_map.0.get_cloned(str_id) {
             if dimension_entity == trigger.entity {
                 dimension_entity_map.0.remove(str_id.as_str());
             }

@@ -6,7 +6,7 @@ use common::common_states::*;
 use dimension_shared::DimensionSystems;
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
-use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, tile_systems::despawn_if_not_excepted}, tilemap_components::TmapHashIdtoTextureIndex, tilemap_resources::*, tilemap_systems::*};
+use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, tile_systems::despawn_if_not_excepted}, tilemap_components::HashIdToTexIndex, tilemap_resources::*, tilemap_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -58,7 +58,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<ActivatingChunks>()
     .register_type::<ChunkPos>()
     .register_type::<AaChunkRangeSettings>()
-    .register_type::<TmapHashIdtoTextureIndex>()
+    .register_type::<HashIdToTexIndex>()
     .register_type::<MassCollectedTiles>().register_type::<TileMassSpawnBundle>()
     .register_type::<PoissonDisk>()
     

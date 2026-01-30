@@ -125,7 +125,7 @@ pub fn init_oplists_from_assets(
                     } else {
                         (ent_str, 0)
                     };
-                    let Ok(ent) = terr_gen_map.0.get(&base_str.to_string()) else {
+                    let Ok(ent) = terr_gen_map.0.get_cloned(&base_str.to_string()) else {
                         warn!("Entity not found in TerrGenEntityMap: {}", base_str);
                         continue;
                     };
@@ -172,9 +172,9 @@ pub fn init_oplists_from_assets(
             let tiles = tiles
             .iter().filter(|tile_str| !tile_str.is_empty())
             .filter_map(|tile_str| {
-                if let Ok(sampler_ent) = samplers_map.0.get(tile_str) {
+                if let Ok(sampler_ent) = samplers_map.0.get_cloned(tile_str) {
                     Some(sampler_ent)
-                } else if let Ok(tile_ent) = tiles_map.0.get(tile_str) {
+                } else if let Ok(tile_ent) = tiles_map.0.get_cloned(tile_str) {
                     Some(tile_ent)
                 } else {
                     warn!("Tile {} not found in TilingEntityMap or TileWeightedSamplersMap", tile_str);
@@ -185,7 +185,7 @@ pub fn init_oplists_from_assets(
             let bifurcation = Bifurcation { oplist: None, tiles };
             oplist.bifurcations.push(bifurcation);
         }
-        if let Ok(ent) = oplist_map.0.get(&str_id) {
+        if let Ok(ent) = oplist_map.0.get_cloned(&str_id) {
             error!("{} already in OpListEntityMap : {}", str_id, ent);
             continue;
         }
@@ -196,7 +196,7 @@ pub fn init_oplists_from_assets(
             let mut dim_refs = MultipleDimensionRefs::default();
             for dim_id in seri.root_in_dimensions.iter() {
                 if dim_id.trim().is_empty() { continue; }
-                let Ok(dim_entity) = dimension_map.0.get(&dim_id) else
+                let Ok(dim_entity) = dimension_map.0.get_cloned(&dim_id) else
                 {
                     error!("Dimension '{}' not found in DimensionEntityMap for root oplist '{}'", dim_id, seri.id);
                     continue;
@@ -230,7 +230,7 @@ pub fn init_oplists_bifurcations(
 ) -> Result {
     for handle in take(&mut seris_handles.handles) {
         if let Some(seri) = assets.remove(&handle) {
-            let Ok(oplist_ent) = oplist_map.0.get(&seri.id) else {
+            let Ok(oplist_ent) = oplist_map.0.get_cloned(&seri.id) else {
                 error!(
                     "oplist entity with id '{}' not found in OpListEntityMap",
                     seri.id
@@ -243,7 +243,7 @@ pub fn init_oplists_bifurcations(
                 let bifurcation_str = seri_bifurcation.0.trim();
                 if bifurcation_str.is_empty() { continue; }
                 
-                let Ok(bifurcation_ent) = oplist_map.0.get(&bifurcation_str.to_string()) else {
+                let Ok(bifurcation_ent) = oplist_map.0.get_cloned(&bifurcation_str.to_string()) else {
                     error!(
                         "bifurcation entity with id '{}' not found in OpListEntityMap",
                         bifurcation_str
@@ -363,7 +363,7 @@ pub fn remove_oplist_from_map_on_despawn(
 
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get(str_id) {
+        if let Ok(found_entity) = map.0.get_cloned(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
             }

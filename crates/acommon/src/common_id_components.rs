@@ -101,6 +101,9 @@ impl HashId {
     pub fn as_u64(self) -> u64 {
         self.0
     }
+    pub fn merge(&self, other: HashId) -> HashId {
+        HashId(self.0.wrapping_add(other.0))
+    }
     pub const fn hash(s: &str) -> Self {
         const OFFSET: u64 = 0xcbf29ce484222325;
         const PRIME: u64 = 0x100000001b3;
@@ -132,27 +135,60 @@ impl Debug for HashId {
 }
 
 
-#[derive(Component, Default, Deserialize, Serialize, Clone, Debug, Reflect)]
+#[derive(Component, Deserialize, Serialize, Clone, Debug, Reflect)]
 pub struct HashIdMap<T>(pub HashMap<HashId, T>);
-impl<T> HashIdMap<T> {
+impl<T: Clone> HashIdMap<T> {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+    pub fn insert<K: Into<HashId>>(&mut self, id: K, value: T) -> Result<(), DuplicateKeyError<T>> {
+        let hash_id = id.into();
+        if let Some(existing) = self.0.get(&hash_id) {
+            return Err(DuplicateKeyError((*existing).clone()));
+        }
+        self.0.insert(hash_id, value);
+        Ok(())
+    }
     pub fn with_capacity(capacity: usize) -> Self {
         Self(HashMap::with_capacity(capacity))
     }
     pub fn reserve(&mut self, additional: usize) {
         self.0.reserve(additional);
     }
-    pub fn insert<S: AsRef<str>>(&mut self, key: S, value: T) -> Option<T> { self.0.insert(HashId::from(key), value) }
-    pub fn insert_with_id(&mut self, id: HashId, value: T) -> Option<T> { self.0.insert(id, value) }
 
-    pub fn get<S: AsRef<str>>(&self, key: S) -> Option<&T> { self.0.get(&HashId::from(key)) }
-    pub fn get_mut<S: AsRef<str>>(&mut self, key: S) -> Option<&mut T> { self.0.get_mut(&HashId::from(key)) }
-    pub fn remove<S: AsRef<str>>(&mut self, key: S) -> Option<T> { self.0.remove(&HashId::from(key)) }
-    pub fn contains_key<S: AsRef<str>>(&self, key: S) -> bool { self.0.contains_key(&HashId::from(key)) }
-    pub fn len(&self) -> usize { self.0.len() }
+    pub fn overwrite<K: Into<HashId>>(&mut self, id: K, value: T) -> Option<T> {
+        self.0.insert(id.into(), value)
+    }
+
+    pub fn remove<K: Into<HashId>>(&mut self, id: K) -> Option<T> {
+        let hash_id: HashId = id.into();
+        self.0.remove(&hash_id)
+    }
+
+    pub fn get<K: Into<HashId>>(&self, id: K) -> Result<&T, ()> {
+        let hash_id: HashId = id.into();
+        self.0.get(&hash_id).ok_or(())
+    }
+    pub fn get_cloned<K: Into<HashId>>(&self, id: K) -> Result<T, ()> {
+        let hash_id: HashId = id.into();
+        self.0.get(&hash_id).cloned().ok_or(())
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&HashId, &T)> {
+        self.0.iter()
+    }
+    pub fn clear(&mut self) { self.0.clear(); }
     pub fn is_empty(&self) -> bool { self.0.is_empty() }
-    pub fn iter(&self) -> impl Iterator<Item = (&HashId, &T)> { self.0.iter() }
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&HashId, &mut T)> { self.0.iter_mut() }
+    pub fn len(&self) -> usize { self.0.len() }
 }
+impl<T> Default for HashIdMap<T> {
+    fn default() -> Self {
+        Self(HashMap::new())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DuplicateKeyError<T>(pub T);
 use delegate::delegate;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Debug)]

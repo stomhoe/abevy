@@ -28,7 +28,7 @@ pub fn init_color_samplers(
                 continue;
             }
         };
-        if let Ok(_) = color_map.0.get(&str_id) {
+        if let Ok(_) = color_map.0.get_cloned(&str_id) {
             error!("Duplicate color sampler id used: '{}'. Skipping spawning this sampler.", str_id);
             continue;
         }
@@ -112,7 +112,7 @@ pub fn remove_color_sampler_from_map_on_despawn(
     mut map: ResMut<ColorWeightedSamplersMap>,
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get(str_id) {
+        if let Ok(found_entity) = map.0.get_cloned(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
             }

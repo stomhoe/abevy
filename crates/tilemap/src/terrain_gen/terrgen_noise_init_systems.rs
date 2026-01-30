@@ -123,7 +123,7 @@ pub fn init_noises(
         noise.set_cellular_jitter(seri.cellular_jitter);
         noise.set_domain_warp_amp(seri.domain_warp_amp);
 
-        if let Ok(existing) = terrgen_map.0.get(&str_id) {
+        if let Ok(existing) = terrgen_map.0.get_cloned(&str_id) {
             error!("{} already in TerrGenEntityMap : {:?}", str_id, existing);
             continue;
         }
@@ -148,7 +148,7 @@ pub fn remove_terrgen_from_map_on_despawn(
     mut map: ResMut<TerrGenEntityMap>,
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get(str_id) {
+        if let Ok(found_entity) = map.0.get_cloned(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
             }

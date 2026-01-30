@@ -34,7 +34,7 @@ pub struct TilemapConfig {
 }
 
 impl TilemapConfig {
-    pub fn new(oplist_size: OplistSize, tile_size: U16Vec2, chunk_pos: ChunkPos, ac_z: AcZ) -> Self {
+    pub fn new(oplist_size: OplistSize, tile_size: U16Vec2, chunk_pos: ChunkPos, ac_z: AcZ, y_sort: bool) -> Self {
         let oplist_size_val = oplist_size.inner();
         Self {
             entity_prefix: Prefix::trunc("Tilemap"),
@@ -43,7 +43,7 @@ impl TilemapConfig {
             map_size: TilemapSize::from(ChunkPos::CHUNK_SIZE / oplist_size_val),
             render_settings: TilemapRenderSettings {
                 render_chunk_size: ChunkPos::CHUNK_SIZE * 2 / oplist_size_val,
-                y_sort: false,
+                y_sort,
             },
             transform: Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
             chunk_pos,
@@ -58,9 +58,19 @@ impl TilemapConfig {
 
 
 #[derive(Component, Debug, Clone, Default, Reflect)]
-pub struct TmapHashIdtoTextureIndex(pub HashIdMap<TileTextureIndex>);
-impl TmapHashIdtoTextureIndex {
+pub struct HashIdToTexIndex(HashIdMap<TileTextureIndex>);
+impl HashIdToTexIndex {
     pub fn with_capacity(capacity: usize) -> Self {
         Self(HashIdMap::with_capacity(capacity))
+    }
+    pub fn reserve(&mut self, additional: usize) {
+        self.0.reserve(additional);
+    }
+    pub fn insert(&mut self, tile_hid: HashId, handle_hid: HashId, tex_index: TileTextureIndex) {
+        self.0.insert(tile_hid.merge(handle_hid), tex_index);
+    }
+    pub fn get(&self, tile_hid: HashId, handle_hid: HashId) -> Result<&TileTextureIndex, ()> {
+        let merged = tile_hid.merge(handle_hid);
+        self.0.get(merged)
     }
 }

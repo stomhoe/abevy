@@ -1,4 +1,4 @@
-use bevy::platform::collections::HashSet ;
+use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet} ;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
@@ -25,9 +25,9 @@ pub fn replace_string_ids_by_entities(
     query.iter().for_each(|(ent, str_ids)| {
         
         debug!(target: "sprite_building", "Replacing string ids for entity {:?}", ent);
-        let mut entities_to_build = HashSet::new();
+        let mut entities_to_build = EntityHashSet::new();
         for id in str_ids.ids() {
-            if let Ok(sprite_ent) = map.0.get(id) {
+            if let Ok(sprite_ent) = map.0.get_cloned(id) {
                 debug!(target: "sprite_building", "Replacing string id '{}' with entity {:?}", id, sprite_ent);
                 entities_to_build.insert(sprite_ent);
             } else {

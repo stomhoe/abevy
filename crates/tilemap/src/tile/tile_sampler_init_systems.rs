@@ -24,7 +24,7 @@ pub fn init_tile_weighted_samplers(
             
             if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
 
-                if let Ok(ent) = map.0.get(&str_id) {
+                if let Ok(ent) = map.0.get_cloned(&str_id) {
                     error!("TileWeightedSampler '{}' already in TileWeightedSamplersMap : {:?}", str_id, ent);
                     continue;
                 }
@@ -49,7 +49,7 @@ pub fn init_tile_weighted_samplers_refs(
     for handle in seris_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue };
 
-        let Ok(wmap_ent) = hashpos_weighted_map.0.get(&seri.id) else {
+        let Ok(wmap_ent) = hashpos_weighted_map.0.get_cloned(&seri.id) else {
             error!("TileWeightedSamplerSeri '{}' not found in HashPosWeightedSamplersMap", seri.id);
             continue;
         };
@@ -63,7 +63,7 @@ pub fn init_tile_weighted_samplers_refs(
                 continue;
             }
             if !tile_id.ends_with("*") {
-                if let Ok(ent) = tile_ents_map.0.get(&tile_id) {
+                if let Ok(ent) = tile_ents_map.0.get_cloned(&tile_id) {
                     if weights.iter().any(|(e, _)| *e == ent) {
                         error!("TileWeightedSampler {:?} already contains tile entity {:?} for id {:?}, skipping duplicate", str_id, ent, tile_id);
                         continue;
@@ -75,7 +75,7 @@ pub fn init_tile_weighted_samplers_refs(
                 }
             } else {
                 let sampler_id_trimmed = tile_id.trim_end_matches('*');
-                if let Ok(ent) = hashpos_weighted_map.0.get(&sampler_id_trimmed.to_string()) {
+                if let Ok(ent) = hashpos_weighted_map.0.get_cloned(&sampler_id_trimmed.to_string()) {
                     if weights.iter().any(|(e, _)| *e == ent) {
                         error!("TileWeightedSampler {:?} already contains sampler entity {:?} for id {:?}, skipping duplicate", str_id, ent, sampler_id_trimmed);
                         continue;
@@ -104,7 +104,7 @@ pub fn remove_tws_from_map_on_despawn(
 
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get(str_id) {
+        if let Ok(found_entity) = map.0.get_cloned(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
             }

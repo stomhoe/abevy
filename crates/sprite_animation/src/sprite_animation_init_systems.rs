@@ -203,7 +203,7 @@ pub fn remove_spriteanim_from_entimap_on_despawn(
 
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get(str_id) {
+        if let Ok(found_entity) = map.0.get_cloned(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
             }

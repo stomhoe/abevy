@@ -1,9 +1,9 @@
 use bevy::{asset::AssetId, ecs::{query, system::SystemParam}, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
-use common::{common_components::{AnyDisabling}, common_resources::ImageSizeMap, };
+use common::{common_components::{AnyDisabling, HashId}, common_resources::ImageSizeMap, };
 use game_common::game_common_components::{Persisted, ReparentingRetries};
-use sprite_shared::AcZ;
+use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
 
@@ -43,13 +43,13 @@ pub struct MapStruct{
     pub tmap_ent: Entity,
     pub texture: TilemapTexture,
     pub storage: TileStorage,
-    pub tmap_hash_id_map: TmapHashIdtoTextureIndex,
+    pub tmap_hash_id_map: HashIdToTexIndex,
 }
 use std::{collections::HashMap, mem::take};
 impl MapStruct {
     pub fn take_texture(&mut self) -> TilemapTexture {take(&mut self.texture)}
     pub fn take_storage(&mut self) -> TileStorage {take(&mut self.storage)}
-    pub fn take_hash_id_map(&mut self) -> TmapHashIdtoTextureIndex {take(&mut self.tmap_hash_id_map)}
+    pub fn take_hash_id_map(&mut self) -> HashIdToTexIndex {take(&mut self.tmap_hash_id_map)}
 }
 
 
@@ -69,7 +69,7 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub tilemaps: Query<'w, 's, (
         &'static mut TilemapTexture,
         &'static mut TileStorage,
-        &'static mut TmapHashIdtoTextureIndex,
+        &'static mut HashIdToTexIndex,
     ), ()>,
     pub image_size_map: Res<'w, ImageSizeMap>,
 
@@ -94,15 +94,16 @@ pub fn process_tiles_pre(
     mut tmap_map: Local<HashMap<MapKey, MapStruct>>,
     ezero_query: Query<(
         &TileStrId,
+        &HashId,
         Option<&MinDistancesMap>,
         Option<&KeepDistanceFrom>,
         Has<Persisted>,
         Option<&AcZ>,
-        Option<&TileHidsHandles>,
+        Option<&TileHashIdsHandles>,
         Option<&TileShaderRef>,
         Option<&Transform>,
         Option<&TileColor>,
-        Has<SeekingPortalOtherEnd>
+        Has<YSortOrigin>,
     ), AnyDisabling>,
 )
 {
@@ -128,7 +129,7 @@ pub fn process_tiles_pre(
     let mut tiles_to_insert: Vec<(Entity, TileMassSpawnBundle)> = Vec::with_capacity(tiles_len);
     
     for (tile_ent, bundle) in params.collected_tiles.0.drain(..) {
-        let Ok((tile_strid, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, seeking_portal_other_end))
+        let Ok((tile_strid, hash_id, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, y_sort, ))
             = ezero_query.get(bundle.ezero_ref.0)
         else {
             error!(target: "tilemap_systems", "Original tile entity {} is despawned", bundle.ezero_ref.0);
@@ -206,6 +207,7 @@ pub fn process_tiles_pre(
         func_process_tile_into_tilemaps(
             &mut cmd,
             tile_ent,
+            *hash_id,
             &mut bundle.tile_bundle.visible,
             &mut bundle.tile_bundle.texture_index,
             &mut bundle.tile_bundle.tilemap_id,
@@ -222,6 +224,7 @@ pub fn process_tiles_pre(
             &mut params.tilemaps,
             &mut changed_structs,
             &mut tilemap_bundles,
+            y_sort,
         );
 
         tiles_to_insert.push((tile_ent, bundle));
@@ -338,28 +341,30 @@ pub fn requeue_limbo_tiles(
 fn func_process_tile_into_tilemaps(
     cmd: &mut Commands,
     tile_ent: Entity,
+    tile_hid: HashId,
     tile_visible: &mut TileVisible,
     texture_index: &mut TileTextureIndex,
     tilemap_id: &mut TilemapId,
     oplist_size: OplistSize,
     position: TilePos,
     tile_z_index: AcZ,
-    tile_handles: Option<&TileHidsHandles>,
+    tile_handles: Option<&TileHashIdsHandles>,
     shader_ref: Option<&TileShaderRef>,
     tile_size: U16Vec2,
     tmap_map: &mut HashMap<MapKey, MapStruct>,
     chunk: Entity,
     chunk_pos: ChunkPos,
     dim_ref: DimensionRef,
-    tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut TmapHashIdtoTextureIndex)>,
+    tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut HashIdToTexIndex)>,
     changed_structs: &mut HashSet<MapKey>,
     tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, ChildOf, DimensionRef, TileShaderRef))>,
+    y_sort: bool,
 ) {
     let tile_size = match tile_handles {
         Some(_) => tile_size,
         None => {
             tile_visible.0 = false; 
-            error!(target: "tilemap_systems", "Tile entity {:?} has no TileHidsHandles", tile_ent);
+            error!(target: "tilemap_systems", "Tile entity {:?} has no TileHashIdsHandles", tile_ent);
             return;
         }
     };
@@ -395,7 +400,7 @@ fn func_process_tile_into_tilemaps(
 
         let mut first_texture_index = None;
 
-        for (id, handle) in tile_handles.iter() {
+        for (handle_hid, handle) in tile_handles.iter() {
             let texture_index = tmap_handles
                 .iter()
                 .position(|x| *x == *handle)
@@ -404,7 +409,7 @@ fn func_process_tile_into_tilemaps(
                     tmap_handles.push(handle.clone());
                     TileTextureIndex((tmap_handles.len() - 1) as u32)
                 });
-            tmap_hash_id_map.0.insert_with_id(id, texture_index);
+            tmap_hash_id_map.insert(tile_hid, handle_hid, texture_index);
             if first_texture_index.is_none() {
                 first_texture_index = Some(texture_index);
             }
@@ -412,13 +417,13 @@ fn func_process_tile_into_tilemaps(
         texture_index.0 = first_texture_index.unwrap_or_default().0;
 
     } else {
-        let mut tmap_hash_id_map = TmapHashIdtoTextureIndex::with_capacity(0);
+        let mut tmap_hash_id_map = HashIdToTexIndex::with_capacity(0);
         changed_structs.insert(map_key.clone());
 
         let handles = if let Some(tile_handles) = tile_handles {
-            tmap_hash_id_map.0.reserve(tile_handles.len());
-            for (i, (id, _)) in tile_handles.iter().enumerate() {
-                tmap_hash_id_map.0.insert_with_id(id, TileTextureIndex(i as u32));
+            tmap_hash_id_map.reserve(tile_handles.len());
+            for (i, (handle_hid, _)) in tile_handles.iter().enumerate() {
+                tmap_hash_id_map.insert(tile_hid, handle_hid, TileTextureIndex(i as u32));
             }
             tile_handles.handles().clone()
         } else {
@@ -429,7 +434,7 @@ fn func_process_tile_into_tilemaps(
         tilemap_bundles.push(
             (tmap_ent,
             (
-                TilemapConfig::new(oplist_size, tile_size, chunk_pos, tile_z_index),
+                TilemapConfig::new(oplist_size, tile_size, chunk_pos, tile_z_index, y_sort),
                 ChildOf(chunk),
                 dim_ref,
                 shader_ref.copied().unwrap_or_default(),

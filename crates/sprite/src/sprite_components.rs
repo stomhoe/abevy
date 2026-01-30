@@ -1,5 +1,5 @@
 use being_shared::Grounding;
-use bevy::ecs::entity::MapEntities;
+use bevy::ecs::entity::{EntityHashSet, MapEntities};
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -84,8 +84,8 @@ pub struct BecomeChildOfSpriteWithTag (pub Tag);
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone )]
-pub struct SpriteCfgsToBuild(#[entities] pub HashSet<Entity>);
+#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities )]
+pub struct SpriteCfgsToBuild(#[entities] pub EntityHashSet);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]

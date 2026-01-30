@@ -11,50 +11,7 @@ use serde::{Deserialize, Serialize};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use std::fmt::Display;
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize, Reflect)]
-pub struct HashIdToEntityMap(pub HashMap<HashId, Entity>);
-
-#[derive(Debug, Clone, Copy)]
-pub struct DuplicateKeyError(pub Entity);
-impl Display for DuplicateKeyError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Duplicate key error: entity {:?}", self.0)
-    }
-}
-
-impl HashIdToEntityMap {
-    pub fn new() -> Self { Self(HashMap::new()) }
-
-    pub fn try_insert<K: Into<HashId>>(&mut self, id: K, entity: Entity) -> Result<(), DuplicateKeyError> {
-        let hash_id = id.into();
-        if let Some(existing) = self.0.get(&hash_id).copied() {
-            return Err(DuplicateKeyError(existing));
-        }
-        self.0.insert(hash_id, entity);
-        Ok(())
-    }
-
-    pub fn overwrite<K: Into<HashId>>(&mut self, id: K, entity: Entity) -> Option<Entity> {
-        self.0.insert(id.into(), entity)
-    }
-    pub fn remove<K: Into<HashId>>(&mut self, id: K) -> Option<Entity> {
-        let hash_id: HashId = id.into();
-        self.0.remove(&hash_id)
-    }
-
-    pub fn get<K: Into<HashId>>(&self, id: K) -> Result<Entity, ()>
-    {
-        let hash_id: HashId = id.into();
-        self.0.get(&hash_id).copied().ok_or(())
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&HashId, &Entity)> {
-        self.0.iter()
-    }
-    pub fn clear(&mut self) { self.0.clear(); }
-    pub fn is_empty(&self) -> bool { self.0.is_empty() }
-    pub fn len(&self) -> usize { self.0.len() }
-}
+pub type HashIdToEntityMap = HashIdMap<Entity>;
 
 #[derive(Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct FixedStr<const N: usize>([u8; N]);

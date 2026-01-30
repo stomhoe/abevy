@@ -10,8 +10,8 @@
     tags: Some([ "dungeon", "" ]),
    
     bifs: [
-        ("", ["dark_gray"]),
-        ("", ["dark_gray"]),
+        ("", ["dublack"]),
+        ("", ["dublack"]),
     ],
     root_in_dimensions: [""],
     size: Some((1, 1)),

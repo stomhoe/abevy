@@ -81,7 +81,7 @@ pub fn init_structured_gen_configs (
             if ! exclusive_for_dimensions.is_empty(){
                 let mut dim_refs = MultipleDimensionRefs::default();
                 for dim_strid in exclusive_for_dimensions {
-                    let Ok(dim_ent) = dimension_entity_map.0.get(&dim_strid) else {
+                    let Ok(dim_ent) = dimension_entity_map.0.get_cloned(&dim_strid) else {
                         error!(target: "structure_spawn", "Failed to find Dimension with StrId: {}", dim_strid);
                         continue;
                     };
@@ -134,7 +134,7 @@ pub fn remove_sgc_from_map_on_despawn(
         weighted_map.iter_mut().for_each(|(mut weighted_sampler)| {
             weighted_sampler.remove(&trigger.entity);
         });
-        if let Ok(found_entity) = map.0.get(str_id) {
+        if let Ok(found_entity) = map.0.get_cloned(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
             }

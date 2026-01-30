@@ -45,7 +45,7 @@ pub fn init_sprite_cfgs(
             }
         };
         
-        if let Ok(_existing_ent) = scs_map.0.get(&str_id) {
+        if let Ok(_existing_ent) = scs_map.0.get_cloned(&str_id) {
             error!(target: "sprite_init", "Duplicate SpriteConfig StrId found: '{}', skipping duplicate.", str_id);
             continue;
         }
@@ -135,7 +135,7 @@ pub fn init_sprite_cfgs(
             for (anim_type, anim_id) in seri.mapped_anims {
                 let anim_type = AnimType::from_tuple(anim_type);
                 let anim_id = StrId::trunc(anim_id);
-                let Ok(anim_ent) = library.0.get(&anim_id) else {
+                let Ok(&anim_ent) = library.0.get(&anim_id) else {
                     error!(target: "sprite_init", "SpriteConfig {}: AnimationLibrary does not contain: {} ", str_id, anim_id);
                     continue;
                 };
@@ -184,7 +184,7 @@ pub fn remove_spriteconfig_from_entimap_on_despawn(
 
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get(str_id) {
+        if let Ok(found_entity) = map.0.get_cloned(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
             }

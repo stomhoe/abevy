@@ -39,7 +39,7 @@ pub fn init_shaders(
 
         match ImagePathHolder::new(seri.img_path) {
             Ok(path_holder) => {
-                if let Ok(existing) = tileshader_map.0.get(&str_id) {
+                if let Ok(existing) = tileshader_map.0.get_cloned(&str_id) {
                     error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
                     continue;
                 }
@@ -77,7 +77,7 @@ pub fn init_shaders(
 
         match ImagePathHolder::new(seri.img_path) {
             Ok(path_holder) => {
-                if let Ok(existing) = tileshader_map.0.get(&str_id) {
+                if let Ok(existing) = tileshader_map.0.get_cloned(&str_id) {
                     error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
                     continue;
                 }
@@ -112,7 +112,7 @@ pub fn init_shaders(
             }
         };
 
-        if let Ok(existing) = tileshader_map.0.get(&str_id) {
+        if let Ok(existing) = tileshader_map.0.get_cloned(&str_id) {
             error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
             continue;
         }
@@ -156,7 +156,7 @@ pub fn init_shaders(
             }
         };
 
-        if let Ok(existing) = tileshader_map.0.get(&str_id) {
+        if let Ok(existing) = tileshader_map.0.get_cloned(&str_id) {
             error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
             continue;
         }
@@ -189,7 +189,7 @@ pub fn remove_tile_shader_from_map_on_despawn(
     mut map: ResMut<TileShaderEntityMap>,
 ) {
     if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get(str_id) {
+        if let Ok(found_entity) = map.0.get_cloned(str_id) {
             if found_entity == trigger.entity {
                 map.0.remove(str_id.as_str());
             }

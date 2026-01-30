@@ -21,13 +21,14 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilt
 
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
-    MinDistancesMap, KeepDistanceFrom, TileHidsHandles, Replicated,
+    MinDistancesMap, KeepDistanceFrom, TileHashIdsHandles, Replicated,
     TileShaderRef, AcZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
     DeleteOtherTiles, PortalRecipe, PortalSeri, 
     TagSet, HashedTagsVec,
     //children entities don't get cloned
     Children, EntityZero, 
     DisplayName, Prefix, TileStrId,
+    TileImagePaths,
     
 );//Disabled no porque se elimina posteriormente
 
@@ -47,11 +48,12 @@ pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
 }
+pub type TileStrId = StrId20B;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct TileChildSprite;
 
-#[derive(Component, Debug, Copy, Clone, Hash, Reflect)]
+#[derive(Component, Debug, Copy, Clone, Hash, Reflect, MapEntities)]
 pub struct LocalChunkRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
@@ -68,7 +70,6 @@ pub struct TileInstancesHolder;
 pub struct PortalsZeroEguiHolder;
 
 
-pub type TileStrId = StrId20B;
 
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
@@ -129,9 +130,10 @@ pub struct InitialPos(pub GlobalTilePos);
 
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct TileHidsHandles { ids: Vec<HashId>, handles: Vec<Handle<Image>>,}
+/// Holds the mapping between tile image HashIds and the image handles they are mapped to
+pub struct TileHashIdsHandles { ids: Vec<HashId>, handles: Vec<Handle<Image>>,}
 
-impl TileHidsHandles {
+impl TileHashIdsHandles {
     pub fn from_paths(asset_server: &AssetServer, img_paths: TileImagePaths, ) -> Result<Self, BevyError> {
         
         if img_paths.is_empty() {
@@ -160,7 +162,7 @@ impl TileHidsHandles {
         self.handles.first().cloned().unwrap_or_else(|| Handle::default())
     }
     
-    // NO HACER take() porque lo necesitan multiples isntancias de tiles
+    /// NO HACER take() porque lo necesitan multiples isntancias de tiles
     pub fn handles(&self) -> &Vec<Handle<Image>> { &self.handles }
     
     pub fn iter(&self) -> impl Iterator<Item = (HashId, &Handle<Image>)> {

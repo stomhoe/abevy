@@ -9,7 +9,7 @@ use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
 use tilemap_shared::{ChunkPos, GlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos};
-use crate::{ chunking_components::Chunk, chunking_resources::LoadedChunks, terrain_gen::terrgen_resources::RegisteredPositions, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos} };
+use crate::{ chunking_components::Chunk, chunking_resources::LoadedChunks, terrain_gen::terrgen_resources::RegisteredPositions, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos}, tilemap_components::HashIdToTexIndex };
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
@@ -261,4 +261,18 @@ pub fn make_spritetile_child_of_chunk(mut cmd: Commands,
         }
     });
     cmd.try_insert_batch(child_ofs);
+}
+
+
+
+#[allow(unused_parens)]
+//todo que se triggeree con un evento cuando el tilemap esté listo, sino puede q las tiles adyacentes no esten cargadas todavia
+pub fn tile_adjacency_retexturing_system(mut cmd: Commands, 
+    ezero_query: Query<(&EntityZero), (AnyDisabling,)>,
+    tilemap_query: Query<(&TileStorage, &HashIdToTexIndex), ()>,
+    mut tile_query: Query<(&EntityZeroRef, &mut TileTextureIndex),()>
+) {
+    for mut item in tile_query.iter_mut() {
+        
+    }
 }

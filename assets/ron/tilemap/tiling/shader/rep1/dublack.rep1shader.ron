@@ -1,0 +1,6 @@
+(
+    id: "dublack",
+    img_path: "texture/world/terr/dungeon/dublack.png",
+    scale: 10,
+    mask_color: (255., 0, 0, 255.),
+)

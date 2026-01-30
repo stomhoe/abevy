@@ -140,7 +140,7 @@ pub fn drunkwalk_dungeon_building_system(
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()));
 
-        let floor_entity = match ezeros_map.0.get(floor_tile_id) {
+        let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
                 error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", floor_tile_id);
@@ -148,7 +148,7 @@ pub fn drunkwalk_dungeon_building_system(
             }
         };
 
-        let wall_entity = match ezeros_map.0.get(wall_tile_id) {
+        let wall_entity = match ezeros_map.0.get_cloned(wall_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
                 error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", wall_tile_id);
@@ -156,7 +156,7 @@ pub fn drunkwalk_dungeon_building_system(
             }
         };
 
-        let lava_entity = lava_tile_id.and_then(|id| ezeros_map.0.get(id).ok()).map(EntityZeroRef);
+        let lava_entity = lava_tile_id.and_then(|id| ezeros_map.0.get_cloned(id).ok()).map(EntityZeroRef);
 
         let chunk_positions = &build_order.chunks_gpos;
         if chunk_positions.is_empty() {
@@ -460,7 +460,7 @@ pub fn advanced_dungeon_building_system(
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()));
 
-        let floor_entity = match ezeros_map.0.get(floor_tile_id) {
+        let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
                 error!(target: "dungeoning", "TileEzero '{:?}' not found", floor_tile_id);
@@ -468,7 +468,7 @@ pub fn advanced_dungeon_building_system(
             }
         };
 
-        let wall_entity = match ezeros_map.0.get(wall_tile_id) {
+        let wall_entity = match ezeros_map.0.get_cloned(wall_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
                 error!(target: "dungeoning", "TileEzero '{:?}' not found", wall_tile_id);
@@ -476,7 +476,7 @@ pub fn advanced_dungeon_building_system(
             }
         };
 
-        let lava_entity = lava_tile_id.and_then(|id| ezeros_map.0.get(id).ok()).map(EntityZeroRef);
+        let lava_entity = lava_tile_id.and_then(|id| ezeros_map.0.get_cloned(id).ok()).map(EntityZeroRef);
 
         let chunk_positions = &build_order.chunks_gpos;
         if chunk_positions.is_empty() { continue; }
