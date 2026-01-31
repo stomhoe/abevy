@@ -7,8 +7,8 @@ use std::collections::{BTreeMap, HashMap};
 use crate::debug_resources::{DubugWindowsVisibility, DebugSelectedEntities};
 
 // Import needed components
-use tilemap::chunking_components::*;
-use tilemap::chunking_resources::{AaChunkRangeSettings, LoadedChunks};
+use tilemap::chunking::chunking_components::*;
+use tilemap::chunking::chunking_resources::{AaChunkRangeSettings, LoadedChunks};
 use tilemap::regioning::regioning_components::*;
 use tilemap::terrain_gen::terrgen_operaton_list_components::*;
 use tilemap::terrain_gen::terrgen_components::{Terrgen, FnlNoiseComp};

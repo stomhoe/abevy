@@ -3,7 +3,7 @@
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::{AnyDisabling, StrId};
 use player::player_components::*;
-use tilemap::chunking_components::ActivatingChunks;
+use tilemap::chunking::chunking_components::ActivatingChunks;
 
 use crate::{faction_components::*, faction_resources::FactionEntityMap, };
 

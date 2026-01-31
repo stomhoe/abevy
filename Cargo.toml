@@ -38,17 +38,17 @@ bevy-ui-gradients = "0.4.0"
 bevy_spritesheet_animation = "6.1.0"
 bevy_asset_loader = "0.25.0"
 bevy-inspector-egui = "0.36.0"
-noiz = "0.4.0"
 
 serde = { version = "1.0.228", features = ["derive"] }
 splines = { version = "5.0.0", features = ["serde"] }
 indexmap = "2.13.0"
-delegate = "0.13.5"
 tracing = "0.1.44"
 tracing-subscriber = "0.3.22"
-bit-vec = "0.8.0"
 bevy-fps-counter = "0.9.0"
+bit-vec = "0.8.0"
+delegate = "0.13.5"
 
+noiz = "0.4.0"
 #bevy_save = "1.0.0"
 #bevy_rapier2d = "0.31.0"
 #bevy_rand = "0.11.1"

@@ -10,7 +10,7 @@ use game_common::game_common_components::DespawnTimer;
 use modifier::{modifier_components::{ApplyMode, CurrFinalValue, ModifierTarget}, modifier_move_bundles::TemporalSpeedModifier, modifier_move_components::Speed};
 use movement::movement_messages::TransformFromServer;
 use player::player_components::*;
-use tilemap::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalTo, Tile}};
+use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalTo, Tile}};
 
 use crate::{being_components::*,};
 

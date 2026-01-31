@@ -2,12 +2,13 @@ use std::collections::VecDeque;
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::{ArgsMap, EntityZeroRef};
 use rand::{Rng, SeedableRng};
+use rand_distr::num_traits::Float;
 use ::tilemap_shared::*;
 
 use crate::regioning::{
-    dungeoning_utils::{carve_room_circle, parse_arg},
+    dungeoning_utils::*,
     regioning_components::*,
     regioning_messages::{StructureBuildCompliance, StructurePrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
@@ -16,7 +17,79 @@ use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosM
 
 const SPIRAL: HashId = HashId::hash("spiral");
 
-#[allow(unused_parens)]
+/// Cache for Spiral dungeon configuration
+#[derive(Debug, Clone)]
+pub struct SpiralConfig {
+    corridor_width_min: i32,
+    corridor_width_max: i32,
+    room_radius: i32,
+    wall_thickness: i32,
+    angle_step: f32,
+    turn_spacing: f32,
+    radius_step_scale: f32,
+    turns: f32,
+}
+
+impl SpiralConfig {
+    fn from_args(args: &ArgsMap) -> Self {
+        let corridor_width_min: i32 = args.parse_arg("spiral_corridor_width_min", 3);
+        let corridor_width_max: i32 = args.parse_arg("spiral_corridor_width_max", 5);
+        let room_radius: i32 = args.parse_arg("spiral_room_radius", 5);
+        let wall_thickness: i32 = args.parse_arg("spiral_center_wall_thickness", 1);
+        let angle_step: f32 = args.parse_arg("spiral_angle_step", 0.15);
+        let turn_spacing: f32 = args.parse_arg("spiral_turn_spacing", 1.0);
+        let radius_step_scale: f32 = args.parse_arg("spiral_radius_step", 1.0);
+        let turns: f32 = args.parse_arg("spiral_turns", 0.0);
+
+        Self {
+            corridor_width_min: corridor_width_min.max(1),
+            corridor_width_max: corridor_width_max.max(1),
+            room_radius: room_radius.max(2),
+            wall_thickness: wall_thickness.clamp(1, 6),
+            angle_step: angle_step.clamp(0.02, 1.0),
+            turn_spacing: turn_spacing.clamp(0.5, 32.0),
+            radius_step_scale: radius_step_scale.clamp(0.2, 5.0),
+            turns,
+        }
+    }
+}
+
+/// Cache for tile IDs used in Spiral dungeons
+#[derive(Debug, Clone)]
+pub struct SpiralTileIds {
+    floor_tile_id: HashId,
+    wall_tile_id: HashId,
+    lava_tile_id: Option<HashId>,
+}
+
+impl SpiralTileIds {
+    fn from_args(args: &ArgsMap) -> Self {
+        let floor_tile_id = args
+            .get("floor_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("dunewbie"));
+        
+        let wall_tile_id = args
+            .get("wall_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("gray"));
+        
+        let lava_tile_id = args
+            .get("lava_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()));
+
+        Self {
+            floor_tile_id,
+            wall_tile_id,
+            lava_tile_id,
+        }
+    }
+}
+
+#[allow(unused_parens, )]
 pub fn spiral_dungeon_building_system(
     mut reader: MessageReader<StructurePrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
@@ -24,6 +97,8 @@ pub fn spiral_dungeon_building_system(
     ezeros_map: Res<TileEzerosMap>,
     settings: Single<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
+    mut config_cache: Local<Option<SpiralConfig>>,
+    mut tile_ids_cache: Local<Option<SpiralTileIds>>,
 ) {
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
@@ -33,22 +108,10 @@ pub fn spiral_dungeon_building_system(
             continue;
         }
 
-        let floor_tile_id = structured_gen_cfg.args
-            .get("floor_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
-        let wall_tile_id = structured_gen_cfg.args
-            .get("wall_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("gray"));
-        
-        let lava_tile_id = structured_gen_cfg.args
-            .get("lava_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()));
+        let tile_ids = tile_ids_cache.get_or_insert_with(|| SpiralTileIds::from_args(&structured_gen_cfg.args));
+        let floor_tile_id = tile_ids.floor_tile_id;
+        let wall_tile_id = tile_ids.wall_tile_id;
+        let lava_tile_id = tile_ids.lava_tile_id;
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
@@ -101,8 +164,11 @@ pub fn spiral_dungeon_building_system(
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
-        let corridor_width_min = parse_arg::<i32>(&structured_gen_cfg.args, "spiral_corridor_width_min", 3).max(1);
-        let corridor_width_max = parse_arg::<i32>(&structured_gen_cfg.args, "spiral_corridor_width_max", 5).max(1);
+        // Cache config on first call
+        let cfg = config_cache.get_or_insert_with(|| SpiralConfig::from_args(&structured_gen_cfg.args));
+
+        let corridor_width_min = cfg.corridor_width_min;
+        let corridor_width_max = cfg.corridor_width_max;
         let (corridor_width_min, corridor_width_max) = if corridor_width_min <= corridor_width_max {
             (corridor_width_min, corridor_width_max)
         } else {
@@ -112,10 +178,8 @@ pub fn spiral_dungeon_building_system(
         let corridor_radius = (corridor_width as i32) / 2;
 
         let max_room_radius = (tile_width.min(tile_height) as i32 / 4).max(2);
-        let room_radius = parse_arg::<i32>(&structured_gen_cfg.args, "spiral_room_radius", 5)
-            .clamp(2, max_room_radius);
-        let wall_thickness = parse_arg::<i32>(&structured_gen_cfg.args, "spiral_center_wall_thickness", 1)
-            .clamp(1, 6);
+        let room_radius = cfg.room_radius.clamp(2, max_room_radius);
+        let wall_thickness = cfg.wall_thickness;
 
         let center_x = (tile_width as i32) / 2;
         let center_y = (tile_height as i32) / 2;
@@ -154,20 +218,13 @@ pub fn spiral_dungeon_building_system(
         if max_radius <= room_radius + 1 {
             continue;
         }
-        let angle_step = parse_arg::<f32>(&structured_gen_cfg.args, "spiral_angle_step", 0.15)
-            .clamp(0.02, 1.0);
-        let turn_spacing = parse_arg::<f32>(
-            &structured_gen_cfg.args,
-            "spiral_turn_spacing",
-            corridor_width as f32,
-        )
-        .clamp(0.5, 32.0);
+        let angle_step = cfg.angle_step;
+        let turn_spacing = cfg.turn_spacing;
         let base_radius_per_rad = turn_spacing / std::f32::consts::TAU;
-        let radius_step_scale = parse_arg::<f32>(&structured_gen_cfg.args, "spiral_radius_step", 1.0)
-            .clamp(0.2, 5.0);
+        let radius_step_scale = cfg.radius_step_scale;
         let radius_per_rad = (base_radius_per_rad * radius_step_scale).clamp(0.05, 10.0);
         let start_radius = outer_radius as f32 + 1.0;
-        let turns = parse_arg::<f32>(&structured_gen_cfg.args, "spiral_turns", 0.0);
+        let turns = cfg.turns;
         let mut max_theta = ((max_radius as f32 - start_radius) / radius_per_rad)
             .max(std::f32::consts::TAU);
         if turns > 0.0 {

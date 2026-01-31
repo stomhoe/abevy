@@ -23,9 +23,6 @@ pub struct Directionable;
 pub struct EntityZero;
 
 
-#[derive(Component, Debug, Default, Copy, Clone, Reflect, )]
-pub struct ReparentingRetries(pub u64);
-
 #[derive(Component, Debug, Reflect)]
 /// WARNING: runs when simulation is running too
 pub struct DespawnTimer(pub Timer);
@@ -113,13 +110,26 @@ impl ArgsMap {
     pub fn with_capacity(capacity: usize) -> Self {
         Self(HashMap::with_capacity(capacity))
     }
-
+    
     pub fn insert<T: Into<StrId>, U: Into<String>>(&mut self, key: T, val: Vec<U>) {
         let val_strs: Vec<String> = val.into_iter().map(|v| v.into()).collect();
         self.0.insert(key.into(), val_strs);
     }
     pub fn get<T: Into<StrId>>(&self, key: T) -> Option<&Vec<String>> {
         self.0.get(&key.into())
+    }
+    
+    pub fn parse_arg<T: std::str::FromStr + Clone, K: Into<StrId>>(&self, key: K, default: T) -> T {
+        self.get(key)
+        .and_then(|v| v.first())
+        .and_then(|s| s.parse::<T>().ok())
+        .unwrap_or(default)
+    }
+    
+    pub fn parse_opt_arg<T: std::str::FromStr, K: Into<StrId>>(&self, key: K) -> Option<T> {
+        self.get(key)
+        .and_then(|v| v.first())
+        .and_then(|s| s.parse::<T>().ok())
     }
 }
 

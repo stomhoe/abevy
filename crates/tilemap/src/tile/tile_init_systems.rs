@@ -13,7 +13,7 @@ use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
-use crate::{chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*, tile_shader::{tile_shader_components::*, tile_shader_resources::TileShaderEntityMap}, }, tilemap_resources::MassCollectedTiles };
+use crate::{chunking::chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*, tile_shader::{tile_shader_components::*, tile_shader_resources::TileShaderEntityMap}, }, tilemap_resources::MassCollectedTiles };
 
 use core::{error, f32};
 use std::{any::Any, mem::take};

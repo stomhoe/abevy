@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use tilemap_shared::{ChunkPos, GlobalTilePos, HashablePosVec, REGION_SIZE_IN_CHUNKS, RegionPos};
 
-use crate::{chunking_components::Chunk, regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
+use crate::{chunking::chunking_components::Chunk, regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 
 

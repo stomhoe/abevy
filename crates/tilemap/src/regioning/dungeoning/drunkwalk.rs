@@ -1,13 +1,12 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::{ArgsMap, EntityZeroRef};
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;
 
 use crate::regioning::{
-    dungeoning_utils::parse_arg,
     regioning_components::*,
     regioning_messages::{StructureBuildCompliance, StructurePrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
@@ -15,6 +14,66 @@ use crate::regioning::{
 use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap};
 
 const DRUNKWALK: HashId = HashId::hash("drunkwalk");
+
+/// Cache for Drunkwalk dungeon configuration
+#[derive(Debug, Clone)]
+pub struct DrunkwalkConfig {
+    corridor_wiggle_chance: f32,
+    corridor_wiggle_step_max: i32,
+    corridor_detour_chance: f32,
+    corridor_detour_max_offset: i32,
+}
+
+impl DrunkwalkConfig {
+    fn from_args(args: &ArgsMap) -> Self {
+        let corridor_wiggle_chance: f32 = args.parse_arg("corridor_wiggle_chance", 0.35);
+        let corridor_wiggle_step_max: i32 = args.parse_arg("corridor_wiggle_step_max", 1);
+        let corridor_detour_chance: f32 = args.parse_arg("corridor_detour_chance", 0.0);
+        let corridor_detour_max_offset: i32 = args.parse_arg("corridor_detour_max_offset", 0);
+
+        Self {
+            corridor_wiggle_chance: corridor_wiggle_chance.clamp(0.0, 1.0),
+            corridor_wiggle_step_max: corridor_wiggle_step_max.clamp(0, 4),
+            corridor_detour_chance: corridor_detour_chance.clamp(0.0, 1.0),
+            corridor_detour_max_offset: corridor_detour_max_offset.clamp(0, 32),
+        }
+    }
+}
+
+/// Cache for tile IDs used in Drunkwalk dungeons
+#[derive(Debug, Clone)]
+pub struct DrunkwalkTileIds {
+    floor_tile_id: HashId,
+    wall_tile_id: HashId,
+    lava_tile_id: Option<HashId>,
+}
+
+impl DrunkwalkTileIds {
+    fn from_args(args: &ArgsMap) -> Self {
+        let floor_tile_id = args
+            .get("floor_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("dunewbie"));
+        
+        let wall_tile_id = args
+            .get("wall_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("gray"));
+        
+        let lava_tile_id = args
+            .get("lava_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()));
+
+        Self {
+            floor_tile_id,
+            wall_tile_id,
+            lava_tile_id,
+        }
+    }
+}
 
 #[allow(unused_parens)]
 pub fn drunkwalk_dungeon_building_system(
@@ -24,6 +83,8 @@ pub fn drunkwalk_dungeon_building_system(
     ezeros_map: Res<TileEzerosMap>,
     dimension_hash: Query<&HashId>,
     settings: Single<&GlobalGenSettings>,
+    mut config_cache: Local<Option<DrunkwalkConfig>>,
+    mut tile_ids_cache: Local<Option<DrunkwalkTileIds>>,
 ) {
     let mut compliances_to_emit = Vec::new();    
     for build_order in reader.read() {
@@ -36,23 +97,10 @@ pub fn drunkwalk_dungeon_building_system(
             continue;
         }
 
-        // Extract tile IDs from config args with defaults
-        let floor_tile_id = structured_gen_cfg.args
-            .get("floor_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
-        let wall_tile_id = structured_gen_cfg.args
-            .get("wall_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("gray"));
-        
-        let lava_tile_id = structured_gen_cfg.args
-            .get("lava_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()));
+        let tile_ids = tile_ids_cache.get_or_insert_with(|| DrunkwalkTileIds::from_args(&structured_gen_cfg.args));
+        let floor_tile_id = tile_ids.floor_tile_id;
+        let wall_tile_id = tile_ids.wall_tile_id;
+        let lava_tile_id = tile_ids.lava_tile_id;
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
@@ -108,14 +156,14 @@ pub fn drunkwalk_dungeon_building_system(
         
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
-        let corridor_wiggle_chance = parse_arg::<f32>(&structured_gen_cfg.args, "corridor_wiggle_chance", 0.35)
-            .clamp(0.0, 1.0);
-        let corridor_wiggle_step_max = parse_arg::<i32>(&structured_gen_cfg.args, "corridor_wiggle_step_max", 1)
-            .clamp(0, 4);
-        let corridor_detour_chance = parse_arg::<f32>(&structured_gen_cfg.args, "corridor_detour_chance", 0.0)
-            .clamp(0.0, 1.0);
-        let corridor_detour_max_offset = parse_arg::<i32>(&structured_gen_cfg.args, "corridor_detour_max_offset", 0)
-            .clamp(0, 32);
+        
+        // Cache config on first call
+        let cfg = config_cache.get_or_insert_with(|| DrunkwalkConfig::from_args(&structured_gen_cfg.args));
+
+        let corridor_wiggle_chance = cfg.corridor_wiggle_chance;
+        let corridor_wiggle_step_max = cfg.corridor_wiggle_step_max;
+        let corridor_detour_chance = cfg.corridor_detour_chance;
+        let corridor_detour_max_offset = cfg.corridor_detour_max_offset;
 
         // Multiple drunkwalks with wider paths and more aggressive carving
         let num_walkers = rng.random_range(5..=10);

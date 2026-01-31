@@ -72,4 +72,3 @@ pub const EXTRA_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
     chunk_active_max_dist: 14000.0,
     discovery_range: 4,
 };
-

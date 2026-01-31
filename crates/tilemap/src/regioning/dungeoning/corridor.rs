@@ -1,14 +1,14 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::{ArgsMap, EntityZeroRef};
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
 use crate::regioning::{
     dungeoning_utils::{
         carve_corridor_horizontal, carve_corridor_vertical, carve_room_circle, carve_room_rectangle,
-        carve_room_triangle, parse_arg,
+        carve_room_triangle,
     },
     regioning_components::*,
     regioning_messages::{StructureBuildCompliance, StructurePrepareTilesOrder},
@@ -18,7 +18,79 @@ use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosM
 
 const CHAMBERS_CORRIDORS: HashId = HashId::hash("chamberscorridors");
 
-#[allow(unused_parens)]
+/// Cache for Corridor/Chambers dungeon configuration
+#[derive(Debug, Clone)]
+pub struct CorridorConfig {
+    rect_weight: f32,
+    circle_weight: f32,
+    triangle_weight: f32,
+    same_shape_chance: f32,
+    corridor_wiggle_chance: f32,
+    corridor_wiggle_step_max: i32,
+    corridor_detour_chance: f32,
+    corridor_detour_max_offset: i32,
+}
+
+impl CorridorConfig {
+    fn from_args(args: &ArgsMap) -> Self {
+        let rect_weight: f32 = args.parse_arg("room_shape_weight_rectangle", 1.0);
+        let circle_weight: f32 = args.parse_arg("room_shape_weight_circle", 1.0);
+        let triangle_weight: f32 = args.parse_arg("room_shape_weight_triangle", 1.0);
+        let same_shape_chance: f32 = args.parse_arg("room_same_shape_chance", 0.25);
+        let corridor_wiggle_chance: f32 = args.parse_arg("corridor_wiggle_chance", 0.0);
+        let corridor_wiggle_step_max: i32 = args.parse_arg("corridor_wiggle_step_max", 1);
+        let corridor_detour_chance: f32 = args.parse_arg("corridor_detour_chance", 0.0);
+        let corridor_detour_max_offset: i32 = args.parse_arg("corridor_detour_max_offset", 0);
+
+        Self {
+            rect_weight: rect_weight.max(0.0),
+            circle_weight: circle_weight.max(0.0),
+            triangle_weight: triangle_weight.max(0.0),
+            same_shape_chance: same_shape_chance.clamp(0.0, 1.0),
+            corridor_wiggle_chance: corridor_wiggle_chance.clamp(0.0, 1.0),
+            corridor_wiggle_step_max: corridor_wiggle_step_max.clamp(0, 4),
+            corridor_detour_chance: corridor_detour_chance.clamp(0.0, 1.0),
+            corridor_detour_max_offset: corridor_detour_max_offset.clamp(0, 32),
+        }
+    }
+}
+
+/// Cache for tile IDs used in Corridor dungeons
+#[derive(Debug, Clone)]
+pub struct CorridorTileIds {
+    floor_tile_id: HashId,
+    wall_tile_id: HashId,
+    lava_tile_id: Option<HashId>,
+}
+
+impl CorridorTileIds {
+    fn from_args(args: &ArgsMap) -> Self {
+        let floor_tile_id = args
+            .get("floor_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("dunewbie"));
+        
+        let wall_tile_id = args
+            .get("wall_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("gray"));
+        
+        let lava_tile_id = args
+            .get("lava_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()));
+
+        Self {
+            floor_tile_id,
+            wall_tile_id,
+            lava_tile_id,
+        }
+    }
+}
+
+#[allow(unused_parens, )]
 pub fn corridor_dungeon_building_system(
     mut reader: MessageReader<StructurePrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
@@ -26,6 +98,8 @@ pub fn corridor_dungeon_building_system(
     ezeros_map: Res<TileEzerosMap>,
     settings: Single<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
+    mut config_cache: Local<Option<CorridorConfig>>,
+    mut tile_ids_cache: Local<Option<CorridorTileIds>>,
 ) {
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
@@ -35,22 +109,10 @@ pub fn corridor_dungeon_building_system(
         if structured_gen_cfg.structure_hash_id() != CHAMBERS_CORRIDORS {
             continue;
         }
-        let floor_tile_id = structured_gen_cfg.args
-            .get("floor_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
-        let wall_tile_id = structured_gen_cfg.args
-            .get("wall_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("gray"));
-        
-        let lava_tile_id = structured_gen_cfg.args
-            .get("lava_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()));
+        let tile_ids = tile_ids_cache.get_or_insert_with(|| CorridorTileIds::from_args(&structured_gen_cfg.args));
+        let floor_tile_id = tile_ids.floor_tile_id;
+        let wall_tile_id = tile_ids.wall_tile_id;
+        let lava_tile_id = tile_ids.lava_tile_id;
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
@@ -106,16 +168,17 @@ pub fn corridor_dungeon_building_system(
             Triangle,
         }
 
-        let rect_weight = parse_arg::<f32>(&structured_gen_cfg.args, "room_shape_weight_rectangle", 1.0).max(0.0);
-        let circle_weight = parse_arg::<f32>(&structured_gen_cfg.args, "room_shape_weight_circle", 1.0).max(0.0);
-        let triangle_weight = parse_arg::<f32>(&structured_gen_cfg.args, "room_shape_weight_triangle", 1.0).max(0.0);
-        let same_shape_chance = parse_arg::<f32>(&structured_gen_cfg.args, "room_same_shape_chance", 0.25).clamp(0.0, 1.0);
-        let corridor_wiggle_chance = parse_arg::<f32>(&structured_gen_cfg.args, "corridor_wiggle_chance", 0.0).clamp(0.0, 1.0);
-        let corridor_wiggle_step_max = parse_arg::<i32>(&structured_gen_cfg.args, "corridor_wiggle_step_max", 1)
-            .clamp(0, 4);
-        let corridor_detour_chance = parse_arg::<f32>(&structured_gen_cfg.args, "corridor_detour_chance", 0.0).clamp(0.0, 1.0);
-        let corridor_detour_max_offset = parse_arg::<i32>(&structured_gen_cfg.args, "corridor_detour_max_offset", 0)
-            .clamp(0, 32);
+        // Cache config on first call
+        let cfg = config_cache.get_or_insert_with(|| CorridorConfig::from_args(&structured_gen_cfg.args));
+
+        let rect_weight = cfg.rect_weight;
+        let circle_weight = cfg.circle_weight;
+        let triangle_weight = cfg.triangle_weight;
+        let same_shape_chance = cfg.same_shape_chance;
+        let corridor_wiggle_chance = cfg.corridor_wiggle_chance;
+        let corridor_wiggle_step_max = cfg.corridor_wiggle_step_max;
+        let corridor_detour_chance = cfg.corridor_detour_chance;
+        let corridor_detour_max_offset = cfg.corridor_detour_max_offset;
 
         let pick_shape = |rng: &mut rand_pcg::Pcg64Mcg| -> RoomShape {
             let total = rect_weight + circle_weight + triangle_weight;

@@ -6,7 +6,7 @@ use common::common_states::*;
 use dimension_shared::DimensionSystems;
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
-use crate::{chunking_components::*, chunking_resources::*, chunking_systems::*, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, tile_systems::despawn_if_not_excepted}, tilemap_components::HashIdToTexIndex, tilemap_resources::*, tilemap_systems::*};
+use crate::{chunking::{self, chunking_components::*, chunking_despawn_systems::{CheckChunkDespawn, ForceChunkDespawn, on_message_signal_despawn_all_chunks, rem_outofrange_chunks_from_activators, periodically_check_despawn_unreferenced_chunks, despawn_chunks}, chunking_resources::*, chunking_spawn_systems::{activate_chunks_every_second, detect_activators_with_pos_changes, spawn_chunks_around_activators}, chunking_visibility_systems::{detect_camera_change_pos, update_chunk_visib, periodically_recheck_chunk_visibility, RecheckChunksVisibility}, chunking_spawn_systems::ReactivateChunksFor}, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, tile_systems::despawn_if_not_excepted}, tilemap_components::HashIdToTexIndex, tilemap_resources::*, tilemap_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -19,24 +19,15 @@ pub fn plugin(app: &mut App) {
         terrain_gen::plugin,
         tile::plugin,
         regioning::plugin,
+        chunking::plugin,
     ))
 
     .add_systems(Update, (
-        rem_outofrange_chunks_from_activators, 
-        despawn_chunks, 
-        tmaptile_assign_child_of,
-        on_message_signal_despawn_all_chunks,
         
+        tmaptile_assign_child_of,
         (
-            reparent_orphan_tilemaps.run_if(on_timer(Duration::from_secs(5))).after(process_tiles_pre),
-            activate_chunks_every_second,
-            detect_activators_with_pos_changes, 
-            spawn_chunks_around_activators.after(despawn_chunks).after(despawn_if_not_excepted),//DON'T TOUCH
+            reparent_orphan_tilemaps.run_if(on_timer(Duration::from_secs(1))),//dejar en 1
             requeue_limbo_tiles.run_if(on_timer(Duration::from_millis(500))),
-            detect_camera_change_pos, 
-            update_chunk_visib,
-            periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_secs(5))),
-            periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
             process_tiles_pre.before(despawn_chunks),//DON'T TOUCH
 
             // DON'T TOUCH
@@ -54,28 +45,17 @@ pub fn plugin(app: &mut App) {
             TerrainGenSystems.before(GameplaySystems),
         )
     )
-    .register_type::<LoadedChunks>()
-    .register_type::<ActivatingChunks>()
-    .register_type::<ChunkPos>()
-    .register_type::<AaChunkRangeSettings>()
+
     .register_type::<HashIdToTexIndex>()
     .register_type::<MassCollectedTiles>().register_type::<TileMassSpawnBundle>()
     .register_type::<PoissonDisk>()
     
-    .init_resource::<LoadedChunks>()
-    .init_resource::<AaChunkRangeSettings>()
     .init_resource::<MassCollectedTiles>()
     .init_resource::<TilemapLimboTiles>()
-    .init_resource::<TilemapAsyncTasks>()
 
     .replicate::<PoissonDisk>()
+    
 
-
-    .add_message::<CheckChunkDespawn>()
-    .add_message::<ReactivateChunksFor>()
-    .add_message::<RecheckChunksVisibility>()
-    .add_message::<ForceChunkDespawn>()
-    .add_message::<ForceAllChunksDespawn>()
     
 
     

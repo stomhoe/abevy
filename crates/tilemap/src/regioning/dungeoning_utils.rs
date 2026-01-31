@@ -2,18 +2,7 @@ use game_common::game_common_components::ArgsMap;
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 
-pub fn parse_arg<T: std::str::FromStr + Clone>(args: &ArgsMap, key: &str, default: T) -> T {
-    args.get(key)
-        .and_then(|v| v.first())
-        .and_then(|s| s.parse::<T>().ok())
-        .unwrap_or(default)
-}
 
-pub fn parse_opt_arg<T: std::str::FromStr>(args: &ArgsMap, key: &str) -> Option<T> {
-    args.get(key)
-        .and_then(|v| v.first())
-        .and_then(|s| s.parse::<T>().ok())
-}
 
 pub fn carve_room_rectangle(
     floor_map: &mut [bool],

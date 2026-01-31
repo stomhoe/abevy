@@ -9,7 +9,7 @@ use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
 use tilemap_shared::{ChunkPos, GlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos};
-use crate::{ chunking_components::Chunk, chunking_resources::LoadedChunks, terrain_gen::terrgen_resources::RegisteredPositions, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos}, tilemap_components::HashIdToTexIndex };
+use crate::{ chunking::chunking_components::Chunk, chunking::chunking_resources::LoadedChunks, terrain_gen::terrgen_resources::RegisteredPositions, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos}, tilemap_components::HashIdToTexIndex };
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(

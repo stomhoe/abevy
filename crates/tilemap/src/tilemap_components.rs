@@ -4,7 +4,6 @@ use bevy_ecs_tilemap::{FrustumCulling, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_states::*};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::ReparentingRetries;
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 
@@ -27,7 +26,6 @@ pub struct TilemapConfig {
     frustum_culling: FrustumCulling,
     sync: SyncToRenderWorld,
     anchor: TilemapAnchor,
-    retries: ReparentingRetries,
     ac_z: AcZ,
     /*
 */

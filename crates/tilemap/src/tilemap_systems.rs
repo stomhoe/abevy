@@ -2,12 +2,12 @@ use bevy::{asset::AssetId, ecs::{query, system::SystemParam}, math::U16Vec2, pla
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::{AnyDisabling, HashId}, common_resources::ImageSizeMap, };
-use game_common::game_common_components::{Persisted, ReparentingRetries};
+use game_common::game_common_components::{DespawnTimer, Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
 
-use crate::{chunking_components::Chunk, chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}, }, tilemap_components::*, tilemap_resources::*};
+use crate::{chunking::chunking_components::Chunk, chunking::chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}, }, tilemap_components::*, tilemap_resources::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct MapKey {
@@ -63,7 +63,6 @@ use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 pub struct ProcessTilesPreParams<'w, 's> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,
     pub limbo_tiles: ResMut<'w, TilemapLimboTiles>,
-
     
 
     pub tilemaps: Query<'w, 's, (
@@ -455,25 +454,22 @@ fn func_process_tile_into_tilemaps(
     }
 }
 
-pub const REPARENT_CHECK_INTERVAL_SECS: u64 = 5;
 
 #[allow(unused_parens)]
 pub fn reparent_orphan_tilemaps(
     mut cmd: Commands,
-    mut tmap_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut ReparentingRetries), (With<TilemapTexture>, Without<ChildOf>)>,
+    mut tmap_query: Query<(Entity, &ChunkPos, &DimensionRef, ), (With<TilemapTexture>, Without<ChildOf>)>,
     loaded_chunks: Res<LoadedChunks>,
 ) {
     let mut child_ofs = Vec::with_capacity(tmap_query.iter().size_hint().0);
-    for (tmap_ent, &tmap_chunk_pos, &dim_ref, mut retries) in tmap_query.iter_mut() {
+    let mut despawn_timers = Vec::with_capacity(tmap_query.iter().size_hint().0);
+    for (tmap_ent, &tmap_chunk_pos, &dim_ref) in tmap_query.iter_mut() {
         if let Some(&chunk_ent) = loaded_chunks.0.get(&(dim_ref, tmap_chunk_pos)) {
             child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
-            retries.0 = 0;
+            cmd.entity(tmap_ent).try_remove::<DespawnTimer>();
             continue;
         }
-        retries.0 += 1;
-        if retries.0 > 30/REPARENT_CHECK_INTERVAL_SECS {
-            cmd.entity(tmap_ent).try_despawn();
-        }
+        despawn_timers.push((tmap_ent, DespawnTimer::new(15.)));
     }
     cmd.try_insert_batch(child_ofs);
 }

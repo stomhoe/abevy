@@ -1,12 +1,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::{ArgsMap, EntityZeroRef};
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
 use crate::regioning::{
-    dungeoning_utils::parse_arg,
     regioning_components::*,
     regioning_messages::{StructureBuildCompliance, StructurePrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
@@ -15,7 +14,66 @@ use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosM
 
 const ARCHI_SPIRAL: HashId = HashId::hash("archimedes_spiral");
 
-#[allow(unused_parens)]
+/// Cache for Archimedes Spiral dungeon configuration
+#[derive(Debug, Clone)]
+pub struct ArchimedeSpiralConfig {
+    corridor_width_min: i32,
+    corridor_width_max: i32,
+    wall_thickness: i32,
+    corridor_separation_mult: f32,
+    turn_spacing: f32,
+    angle_step: f32,
+}
+
+impl ArchimedeSpiralConfig {
+    fn from_args(args: &ArgsMap) -> Self {
+        let corridor_width_min: i32 = args.parse_arg("arch_spiral_corridor_width_min", 3);
+        let corridor_width_max: i32 = args.parse_arg("arch_spiral_corridor_width_max", 5);
+        let wall_thickness: i32 = args.parse_arg("arch_spiral_wall_thickness", 2);
+        let corridor_separation_mult: f32 = args.parse_arg("arch_spiral_corridor_separation_mult", 5.0);
+        let turn_spacing: f32 = args.parse_arg("arch_spiral_turn_spacing", 1.0);
+        let angle_step: f32 = args.parse_arg("arch_spiral_angle_step", 0.08);
+
+        Self {
+            corridor_width_min: corridor_width_min.max(1),
+            corridor_width_max: corridor_width_max.max(1),
+            wall_thickness: wall_thickness.clamp(1, 6),
+            corridor_separation_mult: corridor_separation_mult.clamp(0.5, 32.0),
+            turn_spacing: turn_spacing.clamp(1.0, 64.0),
+            angle_step: angle_step.clamp(0.02, 0.5),
+        }
+    }
+}
+
+/// Cache for tile IDs used in Archimedes Spiral dungeons
+#[derive(Debug, Clone)]
+pub struct ArchimedeSpiralTileIds {
+    floor_tile_id: HashId,
+    wall_tile_id: HashId,
+}
+
+impl ArchimedeSpiralTileIds {
+    fn from_args(args: &ArgsMap) -> Self {
+        let floor_tile_id = args
+            .get("floor_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("dunewbie"));
+        
+        let wall_tile_id = args
+            .get("wall_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("gray"));
+
+        Self {
+            floor_tile_id,
+            wall_tile_id,
+        }
+    }
+}
+
+#[allow(unused_parens, )]
 pub fn archimedes_spiral_building_system(
     mut reader: MessageReader<StructurePrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
@@ -23,6 +81,8 @@ pub fn archimedes_spiral_building_system(
     ezeros_map: Res<TileEzerosMap>,
     settings: Single<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
+    mut config_cache: Local<Option<ArchimedeSpiralConfig>>,
+    mut tile_ids_cache: Local<Option<ArchimedeSpiralTileIds>>,
 ) {
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
@@ -32,18 +92,9 @@ pub fn archimedes_spiral_building_system(
             continue;
         }
 
-        let floor_tile_id = structured_gen_cfg.args
-            .get("floor_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
-        let wall_tile_id = structured_gen_cfg.args
-            .get("wall_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("gray"));
-        
+        let tile_ids = tile_ids_cache.get_or_insert_with(|| ArchimedeSpiralTileIds::from_args(&structured_gen_cfg.args));
+        let floor_tile_id = tile_ids.floor_tile_id;
+        let wall_tile_id = tile_ids.wall_tile_id;
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
@@ -94,30 +145,21 @@ pub fn archimedes_spiral_building_system(
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
-        let corridor_width_min = parse_arg::<i32>(&structured_gen_cfg.args, "arch_spiral_corridor_width_min", 3).max(1);
-        let corridor_width_max = parse_arg::<i32>(&structured_gen_cfg.args, "arch_spiral_corridor_width_max", 5).max(1);
+        // Cache config on first call
+        let cfg = config_cache.get_or_insert_with(|| ArchimedeSpiralConfig::from_args(&structured_gen_cfg.args));
+
+        let corridor_width_min = cfg.corridor_width_min;
+        let corridor_width_max = cfg.corridor_width_max;
         let (corridor_width_min, corridor_width_max) = if corridor_width_min <= corridor_width_max {
             (corridor_width_min, corridor_width_max)
         } else {
             (corridor_width_max, corridor_width_min)
         };
         let corridor_width = rng.random_range(corridor_width_min..=corridor_width_max) as usize;
-        let wall_thickness = parse_arg::<i32>(&structured_gen_cfg.args, "arch_spiral_wall_thickness", 2)
-            .clamp(1, 6) as i32;
-        let corridor_separation_mult = parse_arg::<f32>(
-            &structured_gen_cfg.args,
-            "arch_spiral_corridor_separation_mult",
-            5.0,
-        )
-        .clamp(0.5, 32.0);
-        let turn_spacing = parse_arg::<f32>(
-            &structured_gen_cfg.args,
-            "arch_spiral_turn_spacing",
-            corridor_width as f32,
-        )
-        .clamp(1.0, 64.0) * corridor_separation_mult;
-        let angle_step = parse_arg::<f32>(&structured_gen_cfg.args, "arch_spiral_angle_step", 0.08)
-            .clamp(0.02, 0.5);
+        let wall_thickness = cfg.wall_thickness as i32;
+        let corridor_separation_mult = cfg.corridor_separation_mult;
+        let turn_spacing = cfg.turn_spacing;
+        let angle_step = cfg.angle_step;
 
         let min_x = carve_margin as i32;
         let min_y = carve_margin as i32;

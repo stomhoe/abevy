@@ -6,7 +6,7 @@ use common::{common_components::{AnyDisabling, HashId}, common_tag_components::H
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{DimensionRef, DimensionRootOplist};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
-use crate::{chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_operaton_list_components::*, terrgen_resources::*}, tilemap_resources::MassCollectedTiles };
+use crate::{chunking::chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_operaton_list_components::*, terrgen_resources::*}, tilemap_resources::MassCollectedTiles };
 use std::{collections::{HashMap, HashSet}, f32::consts::PI, mem::take};
 use ::tilemap_shared::*;
 
