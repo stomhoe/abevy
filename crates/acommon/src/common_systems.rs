@@ -13,11 +13,19 @@ use crate::{
 
 #[allow(unused_parens)]
 pub fn add_hash_id_from_str_id(mut cmd: Commands, 
-    query: Query<(Entity, &StrId),(With<AddHashIdFromStrId>, Without<HashId>, )>,
+    query: Query<(Entity, AnyOf<(&StrId, &StrId20B)>),(Or<(Changed<StrId>, Changed<StrId20B>)>, With<AddHashIdFromStrId>, Without<HashId>, AnyDisabling)>,
 ) {
     let to_add: Vec<_> = query
     .iter()
-    .map(|(entity, str_id)| (entity, HashId::from(str_id.as_str())))
+    .filter_map(|(entity, (str_id, str_id20b))| {
+        if let Some(str_id) = str_id {
+            Some((entity, HashId::from(str_id.as_str())))
+        } else if let Some(str_id20b) = str_id20b {
+            Some((entity, HashId::from(str_id20b.as_str())))
+        } else {
+            None
+        }
+    })
     .collect();
     cmd.try_insert_batch(to_add);
 }

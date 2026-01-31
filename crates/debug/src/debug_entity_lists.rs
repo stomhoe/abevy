@@ -134,7 +134,7 @@ pub fn chunks_list_window(
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     loaded_chunks: Res<LoadedChunks>,
     // Query for child entities to check their components
-    tile_storage_query: Query<(Entity, Option<&Name>, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
+    tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
     tile_query: Query<(Entity, &EntityZeroRef), With<Tile>>,
     ezero_query: Query<&TileStrId, With<EntityZero>>,
     id_query: Query<&StrId>,
@@ -446,11 +446,10 @@ pub fn chunks_list_window(
                                 .show(ui, |ui| {
                                 for child_entity in children_ref.iter() {
                                     // Check if child is a tilemap with TileStorage
-                                    if let Ok((tmap_entity, tmap_name, tile_storage, ac_z, shader_ref)) = tile_storage_query.get(child_entity) {
-                                        let tmap_name_str = tmap_name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
+                                    if let Ok((tmap_entity, tile_storage, ac_z, shader_ref)) = tile_storage_query.get(child_entity) {
                                         
                                         // Build the label with AcZ and shader info
-                                        let mut label = format!("📦 Tilemap: {}", tmap_name_str);
+                                        let mut label = format!("🗺️ Tilemap ({})", tmap_entity.index());
                                         if let Some(z) = ac_z {
                                             label.push_str(&format!(" [Z: {:.1}]", z.0));
                                         }
@@ -463,14 +462,15 @@ pub fn chunks_list_window(
                                         ui.collapsing(label, |ui| {
                                             ui.label(format!("Size: {}x{}", tile_storage.size.x, tile_storage.size.y));
                                             
-                                            // Draw tilemap grid
-                                            ui.label("Tile Grid:");
-                                            ui.indent("tilemap_grid", |ui| {
-                                                if let Some(clicked_tile) = render_tilemap_grid(ui, tile_storage, &tile_query, &ezero_query, &mut selected_entities.selected_tile) {
-                                                    selected_entities.selected_tile = Some(clicked_tile);
-                                                    window_visible.tile_details = true;  // Show tile details window when selected
-                                                }
-                                            });
+                                            if ui.button("📋 View All Components").clicked() {
+                                                selected_entities.selected_tilemap = Some(child_entity);
+                                                window_visible.tilemap_details = true;
+                                            }
+
+                                            if let Some(clicked_tile) = render_tilemap_grid(ui, tile_storage, &tile_query, &ezero_query, &mut selected_entities.selected_tile) {
+                                                selected_entities.selected_tile = Some(clicked_tile);
+                                                window_visible.tile_details = true;  // Show tile details window when selected
+                                            }
                                         });
                                     } else {
                                         // Display generic child info
@@ -705,39 +705,36 @@ pub fn portals_details_inspector(world: &mut World) {
 
 #[allow(unused_parens)]
 pub fn tilemap_details_inspector(world: &mut World) {
-    // This will be set from chunks_list_window when a tilemap is selected
     let selected_tilemap_entity = if let Some(selected_entities) = world.get_resource::<DebugSelectedEntities>() {
-        selected_entities.selected_operationlist  // Reusing for now as tilemap selection - could add dedicated field
+        selected_entities.selected_tilemap
     } else {
         None
     };
-    
+
     if selected_tilemap_entity.is_none() {
         return;
     }
-    
+
     let selected_tilemap_entity = selected_tilemap_entity.unwrap();
     let window_visible = world.resource::<DubugWindowsVisibility>();
-    
+
     if !window_visible.tilemap_details {
         return;
     }
-    
-    let _ = window_visible;  // Release the resource borrow
-    
+
     let mut egui_context_query = world
         .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
-    
+
     let Some(egui_context) = egui_context_query.iter(world).next() else {
         return;
     };
-    
+
     let mut egui_context = egui_context.clone();
     let screen_rect = egui_context.get_mut().content_rect();
-    
+
     let world_ptr = world as *mut World;
     let mut is_open = true;
-    
+
     egui::Window::new("Selected Tilemap Details")
         .default_width(600.0)
         .default_height(500.0)
@@ -747,23 +744,20 @@ pub fn tilemap_details_inspector(world: &mut World) {
         .show(egui_context.get_mut(), |ui| {
             ui.heading(format!("Tilemap Entity: {:?}", selected_tilemap_entity));
             ui.separator();
-            
-            ui.label("All Components on this Tilemap:");
-            ui.separator();
-            
-            // Use unsafe to access world for full component inspection with values
+
+            // Directly show all components
             unsafe {
                 bevy_inspector::ui_for_entity(&mut *world_ptr, selected_tilemap_entity, ui);
             }
-            
+
             ui.separator();
             if ui.button("Clear Selection").clicked() {
                 if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
-                    selected_entities.selected_operationlist = None;
+                    selected_entities.selected_tilemap = None;
                 }
             }
         });
-    
+
     if !is_open {
         if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
             window_visible.tilemap_details = false;

@@ -28,6 +28,8 @@ pub struct ToDenyOnTileClone(
     //children entities don't get cloned
     Children, EntityZero, 
     DisplayName, Prefix, TileStrId,
+    AddHashIdFromStrId,
+    HashId,
     TileImagePaths,
     
 );//Disabled no porque se elimina posteriormente

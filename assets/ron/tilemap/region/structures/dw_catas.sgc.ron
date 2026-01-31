@@ -1,6 +1,6 @@
 //.ron file for structured generation configuration
 (
-    id: "drunkwalk_gen_cfg0",
+    id: "dw_catas",
     structure_id: "drunkwalk",
     weight: 1.0,
     tags: Some([ "dungeon", "" ]),

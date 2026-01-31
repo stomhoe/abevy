@@ -80,11 +80,11 @@ pub fn apply_scales(
 pub fn apply_offsets(
     mut cmd: Commands,
     mut sprite_query: Query<(
+        &mut Transform,
         Entity,
         &BaseHolderRef, 
         &ChildOf,
         Option<&EntityZeroRef>,
-        &mut Transform,
         Option<&Offset2D>, 
         Has<SpriteConfigNotFound>,
     ), (AnyDisabling, Without<EntityZero>, )>,
@@ -99,7 +99,7 @@ pub fn apply_offsets(
     base_query: Query<&Direction>,
 ) {
     for (
-        sprite_entity, baseholder, child_of, sprite_config_ref, mut transform, 
+        mut transform, sprite_entity, baseholder, child_of, sprite_config_ref, 
         offset, has_sprite_config_not_found
     ) in sprite_query.iter_mut() {
 

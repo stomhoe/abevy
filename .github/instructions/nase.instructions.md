@@ -1,4 +1,4 @@
 ---
 applyTo: '**'
 ---
-always use cargo check. if build use -r. avoid summarizing what you coded
+cargo check, not build. avoid summarizing at the end

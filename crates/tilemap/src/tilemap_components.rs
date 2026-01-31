@@ -67,10 +67,10 @@ impl HashIdToTexIndex {
         self.0.reserve(additional);
     }
     pub fn insert(&mut self, tile_hid: HashId, handle_hid: HashId, tex_index: TileTextureIndex) {
-        self.0.insert(tile_hid.merge(handle_hid), tex_index);
+        let _ = self.0.insert(tile_hid.merge(handle_hid), tex_index);
     }
-    pub fn get(&self, tile_hid: HashId, handle_hid: HashId) -> Result<&TileTextureIndex, ()> {
+    pub fn get(&self, tile_hid: HashId, handle_hid: HashId) -> Result<TileTextureIndex, ()> {
         let merged = tile_hid.merge(handle_hid);
-        self.0.get(merged)
+        self.0.get(merged).cloned()
     }
 }

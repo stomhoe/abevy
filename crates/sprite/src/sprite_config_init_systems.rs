@@ -78,6 +78,7 @@ pub fn init_sprite_cfgs(
             offset4children_cats,
             EntityZero,
             ChildOf(scs_holder),
+            Transform::default(),
         )));
         if let Some(tags) = seri.tags.as_ref() {
             if !tags.is_empty() {

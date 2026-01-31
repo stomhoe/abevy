@@ -22,7 +22,7 @@ impl Default for GlobalGenSettings {
             seed: 3,
             world_freq: 6.
             /100.,//<-DON'T TOUCH
-            structure_build_timeout_secs: 5.0,
+            structure_build_timeout_secs: 10.0,
         }
     }
 }

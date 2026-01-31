@@ -1,5 +1,5 @@
 
-use bevy::{ecs::entity::MapEntities, prelude::*};
+use bevy::{ecs::entity::MapEntities, platform::collections::HashMap, prelude::*};
 use common::common_components::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::time::Duration;
@@ -105,6 +105,23 @@ pub struct SourceDest{
     pub destination: Entity,
 }
 
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, Default)]
+pub struct ArgsMap(
+    HashMap<StrId, Vec<String>>,
+);
+impl ArgsMap {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+
+    pub fn insert<T: Into<StrId>, U: Into<String>>(&mut self, key: T, val: Vec<U>) {
+        let val_strs: Vec<String> = val.into_iter().map(|v| v.into()).collect();
+        self.0.insert(key.into(), val_strs);
+    }
+    pub fn get<T: Into<StrId>>(&self, key: T) -> Option<&Vec<String>> {
+        self.0.get(&key.into())
+    }
+}
 
 #[derive(Component, Debug,)]
 pub struct Health(pub f32,);//SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (GRUNTS IRRECLUTABLES PARA FARMEAR XP O LOOT)

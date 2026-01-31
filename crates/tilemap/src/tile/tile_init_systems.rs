@@ -53,6 +53,7 @@ pub fn init_tiles(
             Prefix::trunc("Tile"), 
             my_z.clone(),
             EntityZero,
+            AddHashIdFromStrId,
             ChildOf(holder),
         )).id();
         

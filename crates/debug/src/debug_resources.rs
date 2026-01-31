@@ -58,4 +58,5 @@ pub struct DebugSelectedEntities {
     pub selected_being: Option<Entity>,
     pub selected_exempted_entity: Option<Entity>,
     pub selected_sprite: Option<Entity>,
+    pub selected_tilemap: Option<Entity>,
 }

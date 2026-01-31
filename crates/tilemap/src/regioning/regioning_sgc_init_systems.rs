@@ -2,7 +2,7 @@
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::*};
 use common::{common_components::*, common_tag_components::{HashedTagsVec, TagSet}};
 use ::dimension_shared::*;
-use game_common::{game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::ArgsMap, game_common_components_samplers::EntityWeightedSampler};
 use ::tilemap_shared::*;
 
 use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
@@ -22,9 +22,11 @@ pub fn init_structured_gen_configs (
 
     let holder = cmd.spawn(EguiSgcHolder).id();
     
+
+    let mut sgcs_comps = Vec::new();
+
     let mut opfilters_to_spawn = Vec::new();
     let mut exclusive_for_dims = Vec::new();
-    let mut sgcs_comps = Vec::new();
     
     for handle in std::mem::take(&mut seris_handles.handles) {
         let Some(structured_gen_seri) = assets.remove(&handle) else {
@@ -35,18 +37,20 @@ pub fn init_structured_gen_configs (
         
         let main_ent = cmd.spawn_empty().id();
         
-        let mut gen_cfg = StructuredGenConfig::default();
 
-        gen_cfg.hash = HashId::hash(structured_gen_seri.structure_id.as_str());
-        gen_cfg.structure_id = StrId::trunc(structured_gen_seri.structure_id);
+        let mut gen_cfg = StructuredGenConfig::new(structured_gen_seri.structure_id, );
+
+        let sgc_id = StrId::trunc(structured_gen_seri.id.clone());
+
+
         
         if let Some(max_per_region) = structured_gen_seri.max_per_region {
             gen_cfg.max_per_region = max_per_region;
         }
         if let Some(args) = structured_gen_seri.args.clone() {
-            gen_cfg.args = HashMap::with_capacity(args.len());
+            gen_cfg.args = ArgsMap::with_capacity(args.len());
             for (key, val_vec) in args {
-                gen_cfg.args.insert(StrId::trunc(key), val_vec);
+                gen_cfg.args.insert(key, val_vec);
             }
         }
         if let Some(tags) = structured_gen_seri.tags.clone() {
@@ -107,9 +111,8 @@ pub fn init_structured_gen_configs (
         
         ent_w_sampler.insert(main_ent, structured_gen_seri.weight);
 
-        let str_id = StrId::trunc(structured_gen_seri.id.clone());
         
-        sgcs_comps.push((main_ent, (str_id, gen_cfg, ChildOf(holder),)));
+        sgcs_comps.push((main_ent, (sgc_id, gen_cfg, ChildOf(holder),)));
         
         map.0.overwrite(structured_gen_seri.id.clone(), main_ent);
         

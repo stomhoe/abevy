@@ -242,7 +242,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                 if counts_of_sgcs.0.get(&claim.sgc_ent).copied().unwrap_or(0) >= structured_gen_cfg.max_per_region  {
                     claimlist.advance_processed_upto_i();
                     debug!(target: "sgc_chunk_claim", "Max structures of type '{}' already spawned in region {:?}, skipping claim", 
-                    structured_gen_cfg.structure_id, region_pos);
+                    structured_gen_cfg.structure_id(), region_pos);
                     continue;
                 }
                 let mut undo_claims = false;
@@ -256,7 +256,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                         claim.sgc_ent,
                     ), claim.partition_tolerant) {
                         (Ok(()), _) => {
-                            debug!(target: "sgc_chunk_claim", "Successfully claimed chunk at {:?} in region {:?} for structure '{}'", chunk_pos, region_pos, structured_gen_cfg.structure_id);
+                            debug!(target: "sgc_chunk_claim", "Successfully claimed chunk at {:?} in region {:?} for structure '{}'", chunk_pos, region_pos, structured_gen_cfg.structure_id());
                             claimed_up_to += 1;
                         }
                         (Err(ChunkOccupyError::OutOfRegionBounds(_)), _) => {
@@ -297,7 +297,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                     planned.add_chunks_pending_build(&claim.chunks_gpos, time.elapsed().as_secs_f64());
                     regions_which_started_building.push((region_ent, BuildingStarted));
                     debug!(target: "sgc_chunk_claim", "Region at {:?} emitting {} build orders for structure '{}'", 
-                        region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id);
+                        region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id());
                     
                     let order = StructurePrepareTilesOrder {
                         i: claim.i,

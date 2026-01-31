@@ -1,5 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
+use game_common::game_common_components::ArgsMap;
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::entity::MapEntities, platform::collections::HashMap};
 
@@ -12,17 +13,32 @@ use common::{common_components::*, };
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("EguiSgcHolder"),)]
 pub struct EguiSgcHolder;
 
+
+
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGC"), )]
 pub struct StructuredGenConfig{
-    pub structure_id: StrId,
-    pub hash: HashId,
+    // the structure's id, not the sgc's
+    structure_id: StrId,
+    /// the structure's HaId, not the sgc's
+    structure_hash_id: HashId,
     pub max_per_region: u32,
-    pub args: HashMap<StrId, Vec<String>>,
+    pub args: ArgsMap,
 }
-impl Default for StructuredGenConfig {
-    fn default() -> Self {
-        Self { structure_id: StrId::default(), hash: HashId::default(), max_per_region: 1024, args: HashMap::new()  }
+impl StructuredGenConfig {
+    pub fn new<S: AsRef<str>>(structure_id: S) -> Self {
+        Self { 
+            structure_id: StrId::trunc(structure_id.as_ref()), 
+            structure_hash_id: HashId::hash(structure_id.as_ref()), 
+            max_per_region: 1024, 
+            args: ArgsMap::default(),
+        }
+    }
+    pub fn structure_id(&self) -> &StrId {
+        &self.structure_id
+    }
+    pub fn structure_hash_id(&self) -> HashId {
+        self.structure_hash_id
     }
 }
 

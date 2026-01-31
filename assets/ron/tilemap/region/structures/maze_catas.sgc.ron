@@ -1,11 +1,11 @@
 //.ron file for structured generation configuration
 (
-    id: "dw_newbie",
-    structure_id: "drunkwalk",
+    id: "maze_catas",
+    structure_id: "maze",
     weight: 1.0,
     tags: Some([ "dungeon", "" ]),
     args: Some({
-        "floor_tile_id": ["dunewbie"],
+        "floor_tile_id": ["ducatas"],
         "wall_tile_id": ["newbiewall"],
         "lava_tile_id": ["lava"],
     }),

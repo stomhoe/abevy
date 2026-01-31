@@ -165,6 +165,8 @@ pub fn periodically_check_despawn_unreferenced_chunks(
     ewriter.write_batch(to_check.drain(..));
 }
 
+//todo hacer q chunks sin children se despawneen tras 5 segs
+
 #[allow(unused_parens)]
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
