@@ -33,7 +33,6 @@ pub fn plugin(app: &mut App) {
         //despawn systems
         periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_secs(2))),
         detect_activators_with_pos_changes, 
-        despawn_empty_chunks_without_any_tmap_children_on_timeout.run_if(on_timer(Duration::from_secs_f32(CHECK_FREQUENCY_SECS))),
         
         //visibility systems
         update_chunk_visib,
