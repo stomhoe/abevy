@@ -118,14 +118,14 @@ impl MassCollectedTiles {
 pub struct LimboTileEntry {
     pub tile_ent: Entity,
     pub bundle: TileMassSpawnBundle,
-    pub retries_left: u64,
+    pub timer: Timer,
 }
 impl LimboTileEntry {
     pub fn new(tile_ent: Entity, bundle: TileMassSpawnBundle) -> Self {
         LimboTileEntry {
             tile_ent,
             bundle,
-            retries_left: 10,
+            timer: Timer::from_seconds(5.0, TimerMode::Once),
         }
     }
 }

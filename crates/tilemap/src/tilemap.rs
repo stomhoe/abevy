@@ -26,8 +26,7 @@ pub fn plugin(app: &mut App) {
         
         tmaptile_assign_child_of,
         (
-            reparent_orphan_tilemaps.run_if(on_timer(Duration::from_secs(1))),//dejar en 1
-            requeue_limbo_tiles.run_if(on_timer(Duration::from_millis(500))),
+            requeue_limbo_tiles.run_if(on_timer(Duration::from_secs_f32(RECHECK_LIMBO_TILES_FREQ))),
             process_tiles_pre.before(despawn_chunks).before(despawn_if_not_excepted),//DON'T TOUCH
         ).in_set(ChunkSystems)
     ))

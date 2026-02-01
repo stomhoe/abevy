@@ -45,7 +45,7 @@ pub struct MapStruct{
     pub storage: TileStorage,
     pub tmap_hash_id_map: HashIdToTexIndex,
 }
-use std::{collections::HashMap, mem::take};
+use std::{collections::HashMap, mem::take, time::Duration};
 impl MapStruct {
     pub fn take_texture(&mut self) -> TilemapTexture {take(&mut self.texture)}
     pub fn take_storage(&mut self) -> TileStorage {take(&mut self.storage)}
@@ -449,24 +449,6 @@ fn func_process_tile_into_tilemaps(
 }
 
 
-#[allow(unused_parens)]
-pub fn reparent_orphan_tilemaps(
-    mut cmd: Commands,
-    mut tmap_query: Query<(Entity, &ChunkPos, &DimensionRef, ), (With<TilemapTexture>, Without<ChildOf>)>,
-    loaded_chunks: Res<LoadedChunks>,
-) {
-    let mut child_ofs = Vec::with_capacity(tmap_query.iter().size_hint().0);
-    let mut despawn_timers = Vec::with_capacity(tmap_query.iter().size_hint().0);
-    for (tmap_ent, &tmap_chunk_pos, &dim_ref) in tmap_query.iter_mut() {
-        if let Some(&chunk_ent) = loaded_chunks.0.get(&(dim_ref, tmap_chunk_pos)) {
-            child_ofs.push((tmap_ent, ChildOf(chunk_ent)));
-            cmd.entity(tmap_ent).try_remove::<DespawnTimer>();
-            continue;
-        }
-        despawn_timers.push((tmap_ent, DespawnTimer::new(15.)));
-    }
-    cmd.try_insert_batch(child_ofs);
-}
 
 
 #[allow(unused_parens)]
@@ -484,9 +466,11 @@ pub fn tmaptile_assign_child_of(mut cmd: Commands,
         }
         child_ofs_for_tiles.push((tile_ent, ChildOf(parent)));
     }
-
+    
     cmd.try_insert_batch(child_ofs_for_tiles);
 }
+
+pub const RECHECK_LIMBO_TILES_FREQ: f32 = 0.3;
 
 #[allow(unused_parens)]
 pub fn requeue_limbo_tiles(
@@ -494,32 +478,24 @@ pub fn requeue_limbo_tiles(
     mut limbo_tiles: ResMut<TilemapLimboTiles>,
     mut collected_tiles: ResMut<MassCollectedTiles>,
     loaded_chunks: Res<LoadedChunks>,
-    alive_query: Query<Entity>,
 ) {
     if limbo_tiles.0.is_empty() {
         return;
     }
-    let mut i = 0;
-    while i < limbo_tiles.0.len() {
-        let mut entry = limbo_tiles.0.swap_remove(i);
-
-        if alive_query.get(entry.tile_ent).is_err() {
-            continue;
-        }
-
+    let original_len = limbo_tiles.0.len();
+    for _ in 0..original_len {
+        let mut entry = limbo_tiles.0.swap_remove(0);
         let chunk_pos = ChunkPos::from(entry.bundle.gpos);
         if loaded_chunks.0.contains_key(&(entry.bundle.dim_ref, chunk_pos)) {
             collected_tiles.0.push((entry.tile_ent, entry.bundle));
             continue;
         }
-        if entry.retries_left == 0 {
+        entry.timer.tick(Duration::from_secs_f32(RECHECK_LIMBO_TILES_FREQ));
+        if entry.timer.is_finished() {
             cmd.entity(entry.tile_ent).try_despawn();
             trace!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned after max retries in limbo", entry.tile_ent, entry.bundle.gpos, entry.bundle.dim_ref);
             continue;
         }
-
-        entry.retries_left -= 1;
         limbo_tiles.0.push(entry);
-        i += 1;
     }
 }
