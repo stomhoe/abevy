@@ -24,10 +24,11 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         
-        tmaptile_assign_child_of,
+        tmaptile_assign_child_of.run_if(on_timer(Duration::from_secs_f32(RECHECK_LIMBO_TILES_FREQ))),
         (
-            requeue_limbo_tiles.run_if(on_timer(Duration::from_secs_f32(RECHECK_LIMBO_TILES_FREQ))),
-            process_tiles_pre.before(despawn_chunks).before(despawn_if_not_excepted),//DON'T TOUCH
+            process_tiles_pre
+            .before(despawn_chunks)//if this is removed everything breaks
+            .before(despawn_if_not_excepted),//if this is removed you can see the tilemap which was before removal
         ).in_set(ChunkSystems)
     ))
     .add_observer(on_tilemap_despawn)
@@ -49,7 +50,6 @@ pub fn plugin(app: &mut App) {
     .register_type::<PoissonDisk>()
     
     .init_resource::<MassCollectedTiles>()
-    .init_resource::<TilemapLimboTiles>()
     .init_resource::<TmapMap>()
 
 

@@ -62,7 +62,6 @@ use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 #[derive(SystemParam)]
 pub struct ProcessTilesPreParams<'w, 's> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,
-    pub limbo_tiles: ResMut<'w, TilemapLimboTiles>,
     
 
     pub tilemaps: Query<'w, 's, (
@@ -219,11 +218,7 @@ pub fn process_tiles_pre(
         bundle.tile_bundle.color = color.cloned().unwrap_or_default();
 
         let Some(chunk) = params.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied() else {
-            let chunk_pos = ChunkPos::from(bundle.gpos);
-            let gpos = bundle.gpos;
-            let dim_ref = bundle.dim_ref;
-            params.limbo_tiles.0.push(LimboTileEntry::new(tile_ent, bundle));
-            trace!(target: "tilemap_systems", "Chunk for tile entity {:?} at gpos {:?}, {} in dim {:?} not loaded, sending to limbo", tile_ent, gpos, chunk_pos, dim_ref);
+            cmd.entity(tile_ent).try_despawn();
             continue;//chunk not loaded
         };
         let chunk_pos = ChunkPos::from(bundle.gpos);
@@ -472,30 +467,3 @@ pub fn tmaptile_assign_child_of(mut cmd: Commands,
 
 pub const RECHECK_LIMBO_TILES_FREQ: f32 = 0.3;
 
-#[allow(unused_parens)]
-pub fn requeue_limbo_tiles(
-    mut cmd: Commands,
-    mut limbo_tiles: ResMut<TilemapLimboTiles>,
-    mut collected_tiles: ResMut<MassCollectedTiles>,
-    loaded_chunks: Res<LoadedChunks>,
-) {
-    if limbo_tiles.0.is_empty() {
-        return;
-    }
-    let original_len = limbo_tiles.0.len();
-    for _ in 0..original_len {
-        let mut entry = limbo_tiles.0.swap_remove(0);
-        let chunk_pos = ChunkPos::from(entry.bundle.gpos);
-        if loaded_chunks.0.contains_key(&(entry.bundle.dim_ref, chunk_pos)) {
-            collected_tiles.0.push((entry.tile_ent, entry.bundle));
-            continue;
-        }
-        entry.timer.tick(Duration::from_secs_f32(RECHECK_LIMBO_TILES_FREQ));
-        if entry.timer.is_finished() {
-            cmd.entity(entry.tile_ent).try_despawn();
-            trace!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned after max retries in limbo", entry.tile_ent, entry.bundle.gpos, entry.bundle.dim_ref);
-            continue;
-        }
-        limbo_tiles.0.push(entry);
-    }
-}

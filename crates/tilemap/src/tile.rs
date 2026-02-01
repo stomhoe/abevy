@@ -37,7 +37,7 @@ pub fn plugin(app: &mut App) {
         
         (add_tiles_to_map, ).run_if(in_state(ClientState::Connected)),
         flip_tile_horizontally_based_on_initial_pos_hash,
-        despawn_if_not_excepted.after(process_tiles_pre),//DON'T TOUCH
+        despawn_if_not_excepted,//DON'T TOUCH
         (add_spawned_tiles_to_gpos_map, ),
         (spritetile_readjust_transform_to_match_globalpos).chain(),
         make_spritetile_child_of_chunk.run_if(on_timer(Duration::from_millis(500))),//DON   

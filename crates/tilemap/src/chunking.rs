@@ -38,7 +38,6 @@ pub fn plugin(app: &mut App) {
         update_chunk_visib,
         detect_camera_change_pos_visib, 
         periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
-        periodically_redraw_visible_chunks.run_if(on_timer(Duration::from_secs(2))),
 
     ).in_set(ChunkSystems),
         despawn_chunks, 

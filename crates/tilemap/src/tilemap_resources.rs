@@ -129,7 +129,3 @@ impl LimboTileEntry {
         }
     }
 }
-
-#[derive(Debug, Clone, Resource, Default)]
-pub struct TilemapLimboTiles(pub Vec<LimboTileEntry>);
-

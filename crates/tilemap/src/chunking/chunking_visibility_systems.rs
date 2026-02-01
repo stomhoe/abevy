@@ -68,17 +68,3 @@ pub fn periodically_recheck_chunk_visibility(
     trace!(target: "chunk_visibility", "Rechecking chunk visibility due to timer.");
 }
 
-pub fn periodically_redraw_visible_chunks(
-    mut chunks_query: Query<(&Visibility, &Children), With<Chunk>>,
-    mut event_writer: MessageWriter<DrawTilemap>,
-    mut to_draw: Local<Vec<DrawTilemap>>,
-) {
-    chunks_query.iter_mut().for_each(|(visibility, children)| {
-        if *visibility == Visibility::Inherited {
-            to_draw.extend(children.iter().map(|child| DrawTilemap(child)));
-        }
-    });
-    if !to_draw.is_empty() {
-        event_writer.write_batch(to_draw.drain(..));
-    }
-}
