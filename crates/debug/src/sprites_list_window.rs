@@ -1,0 +1,66 @@
+use bevy::prelude::*;
+use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
+
+use sprite::sprite_components::SpriteConfig;
+
+use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+
+#[allow(unused_parens)]
+pub fn sprites_list_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selected_entities: ResMut<DebugSelectedEntities>,
+    sprite_query: Query<(Entity, Option<&Name>), With<SpriteConfig>>,
+) {
+    if !window_visible.sprites_list {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let screen_rect = ctx.content_rect();
+    let default_x = screen_rect.right() - 300.0;
+    let default_y = screen_rect.bottom() - 400.0;
+
+    // Collect sprites
+    let sprites: Vec<(Entity, Option<Name>)> = sprite_query
+        .iter()
+        .map(|(entity, name)| (entity, name.map(|n| n.clone())))
+        .collect();
+
+    egui::Window::new("Sprites List")
+        .default_pos([default_x, default_y])
+        .resizable(true)
+        .movable(true)
+        .default_width(300.0)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading(format!("Sprites: {}", sprites.len()));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("✖").clicked() {
+                        window_visible.sprites_list = false;
+                    }
+                });
+            });
+            ui.separator();
+
+            egui::ScrollArea::vertical()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    for (entity, name) in sprites.iter() {
+                        let label = if let Some(n) = name {
+                            format!("{} ({:?})", n, entity)
+                        } else {
+                            format!("Sprite ({:?})", entity)
+                        };
+                        let is_selected = selected_entities.selected_sprite == Some(*entity);
+                        if ui.selectable_label(is_selected, label).clicked() {
+                            selected_entities.selected_sprite = Some(*entity);
+                            window_visible.sprite_details = true;
+                        }
+                    }
+                });
+        });
+}

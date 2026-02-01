@@ -35,13 +35,11 @@ pub fn plugin(app: &mut App) {
             timeout_pending_offers,
             advance_i_on_claimlist_timeout,
             
-            clonespawn_tiles_on_chunk_spawn//DON'T TOUCH THE .before's
-            .before(process_tiles_pre)
+            clonespawn_tiles_on_chunk_spawn
+            .before(process_tiles_pre)//removing this breaks it
             ,
             
         ).in_set(RegioningSystems),
-
-        //ensure_regions_have_building_started,
 
         despawn_empty_regions,
     ))
@@ -65,8 +63,8 @@ pub fn plugin(app: &mut App) {
 
     .register_type::<WhitelistedFilterOf>()
     .register_type::<StructuredGenConfig>()
-    .register_type::<ClaimList>()
-    .register_type::<GridOfSgcs>().register_type_data::<GridOfSgcs, InspectorEguiImpl>()
+    .register_type::<ClaimList>().register_type_data::<GridOfSgcs, InspectorEguiImpl>()
+    .register_type::<GridOfSgcs>()
     .register_type::<CountsOfSgcs>()
 
     .replicate::<WhitelistedFilterOf>()
@@ -77,7 +75,7 @@ pub fn plugin(app: &mut App) {
     
     .add_message::<OfferChunk>()
     .add_message::<ChunksClaim>()
-    .add_message::<StructurePrepareTilesOrder>()
+    .add_message::<SgcPrepareTilesOrder>()
     .add_message::<StructureBuildCompliance>()
     .add_message::<RecheckRegion>()
     

@@ -17,9 +17,8 @@ pub fn launch_terrain_gen_operations (
     dimension_query: Query<(&DimensionRootOplist, ), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
-
-) -> Result {
-    if chunks_query.is_empty() { return Ok(()); }
+) {
+    if chunks_query.is_empty() { return; }
 
     let chunk_count = chunks_query.iter().size_hint().0;
     let mut terr_gen_ops = Vec::with_capacity(chunk_count);
@@ -42,12 +41,10 @@ pub fn launch_terrain_gen_operations (
         terr_gen_ops.push((chunk_ent, TerrGenOpsLaunched));
     }
     commands.try_insert_batch(terr_gen_ops);
-    Ok(())
 }
 #[allow(unused_parens)]
-/// input: PendingOp messages. output: PendingOp messages (for bifurcations), SuitablePosFound messages
-pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactorizar todo esto, que se hagan llamadas recursivas
-    mut pending_ops_events: ResMut<Messages<PendingOp>>,//turn into MessageReader!!!!, don't write out more of these!
+pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, 
+    mut pending_ops_events: ResMut<Messages<PendingOp>>,
     gen_settings: Single<&GlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ( )>,
     fnl_noises: Query<&FnlNoiseComp,>,
@@ -55,12 +52,12 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, //todo refactori
     weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
     dim_hash_query: Query<&HashId, AnyDisabling>,
     mut collected: ResMut<MassCollectedTiles>,
-    mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
     mut pending_ops_batch: Local<Vec<PendingOp>>,
     mut sampled_value_events: Local<Vec<SuitablePosFound>>,
     mut tile_requests: Local<Vec<TerrGenTileRequest>>,
+    mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
 ) {
     pending_ops_batch.clear();
     sampled_value_events.clear();

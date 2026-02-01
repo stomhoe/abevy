@@ -22,17 +22,12 @@ pub fn spawn_chunks_around_activators(
     tilemap_settings: Res<AaChunkRangeSettings>,
     mut loaded_regions: ResMut<LoadedRegions>,
     mut reader: MessageReader<ReactivateChunksFor>,
-    mut limbo_tiles: ResMut<TilemapLimboTiles>,
-    mut collected_tiles: ResMut<MassCollectedTiles>,
-    alive_query: Query<Entity>,
 ) {
     let cnt = tilemap_settings.discovery_range as i32;   
     let range_len = (2 * cnt - 1).max(0) as usize;
     let approx_chunks = range_len.saturating_mul(range_len);
     let mut comps_for_region_ents = Vec::new();
     let mut comps_for_chunk_ents = Vec::new();
-    let mut activated_keys: HashSet<(DimensionRef, ChunkPos)> = HashSet::with_capacity(approx_chunks);
-    
     
     for msg in reader.read() {
         let Ok((transform, mut activates_chunks, &dimension_ref)) = query.get_mut(msg.0) else {
@@ -50,7 +45,6 @@ pub fn spawn_chunks_around_activators(
                 
                 let chunk_pos = ChunkPos::new(x, y);
                 let key = (dimension_ref, chunk_pos);
-                activated_keys.insert(key);
                 let chunk_ent = loaded_chunks.0.get(&key)
                 .copied()
                 .or_else(|| loaded_chunks.0.get(&key).copied())
@@ -87,6 +81,7 @@ pub fn spawn_chunks_around_activators(
                         chunk_pos,
                         ChildOf(region_ent),
                         dimension_ref,
+                        ChunkDespawnTimer::new(),
                     )));
                     chunk_ent
                 });
@@ -99,42 +94,9 @@ pub fn spawn_chunks_around_activators(
     cmd.try_insert_batch(comps_for_region_ents);
     cmd.try_insert_batch(comps_for_chunk_ents);
 
-    return;
-    if !limbo_tiles.0.is_empty() && !activated_keys.is_empty() {
-        requeue_limbo_for_activated_chunks(
-            &mut limbo_tiles,
-            &mut collected_tiles,
-            &alive_query,
-            &activated_keys,
-        );
-    }
 }
 
-fn requeue_limbo_for_activated_chunks(
-    limbo_tiles: &mut TilemapLimboTiles,
-    collected_tiles: &mut MassCollectedTiles,
-    alive_query: &Query<Entity>,
-    activated_keys: &HashSet<(DimensionRef, ChunkPos)>,
-) {
-    let mut i = 0;
-    while i < limbo_tiles.0.len() {
-        let entry = limbo_tiles.0.swap_remove(i);
 
-        if alive_query.get(entry.tile_ent).is_err() {
-            continue;
-        }
-
-        let chunk_pos = ChunkPos::from(entry.bundle.gpos);
-        let key = (entry.bundle.dim_ref, chunk_pos);
-        if activated_keys.contains(&key) {
-            collected_tiles.0.push((entry.tile_ent, entry.bundle));
-            continue;
-        }
-
-        limbo_tiles.0.push(entry);
-        i += 1;
-    }
-}
 
 #[derive(Message, Debug, Clone, )]
 pub struct ReactivateChunksFor(pub Entity);

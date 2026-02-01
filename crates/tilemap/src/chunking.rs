@@ -2,6 +2,7 @@ use std::time::Duration;
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
+use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 #[allow(unused_imports)] use bevy_replicon::prelude::Replicated;
 
 pub mod chunking_components;
@@ -24,14 +25,21 @@ pub fn plugin(app: &mut App) {
     app
     .add_systems(Update, (
     (
-        periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
+        //spawn systems
+        spawn_chunks_around_activators.after(despawn_chunks),//DON'T TOUCH
         activate_chunks_every_second,
-        detect_camera_change_pos, 
-        update_chunk_visib,
-        periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_secs(2))),
         on_message_signal_despawn_all_chunks,
+
+        //despawn systems
+        periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_secs(2))),
         detect_activators_with_pos_changes, 
-        spawn_chunks_around_activators.after(despawn_chunks).after(despawn_if_not_excepted),//DON'T TOUCH
+        despawn_empty_chunks_without_any_tmap_children_on_timeout.run_if(on_timer(Duration::from_secs_f32(CHECK_FREQUENCY_SECS))),
+        
+        //visibility systems
+        update_chunk_visib,
+        detect_camera_change_pos_visib, 
+        periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
+        periodically_redraw_visible_chunks.run_if(on_timer(Duration::from_secs(2))),
 
     ).in_set(ChunkSystems),
         despawn_chunks, 
@@ -39,9 +47,10 @@ pub fn plugin(app: &mut App) {
 
     ))
     .register_type::<LoadedChunks>()
-    .register_type::<ActivatingChunks>()
+    .register_type::<ActivatingChunks>().register_type_data::<ActivatingChunks, InspectorEguiImpl>()
     .register_type::<ChunkPos>()
     .register_type::<AaChunkRangeSettings>()
+    .register_type::<ChunkDespawnTimer>()
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<LoadedChunks>()
 

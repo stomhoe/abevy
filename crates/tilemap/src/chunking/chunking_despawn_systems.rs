@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use bevy_ecs_tilemap::{DrawTilemap, tiles::TileStorage};
+use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor, tiles::TileStorage};
 use camera::camera_components::CameraTarget;
 use common::common_components::{AnyDisabling, AssetScoped, StrId20B};
 use dimension_shared::DimensionRef;
@@ -151,4 +151,33 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
     }
     tosave_event_writer.write_batch(tosave_events.drain(..));
     
+}
+
+pub const CHECK_FREQUENCY_SECS: f32 = 0.3;
+
+#[allow(unused_parens)]
+pub fn despawn_empty_chunks_without_any_tmap_children_on_timeout(
+    mut chunks_query: Query<(Entity, Option<&Children>, &mut ChunkDespawnTimer), Or<(With<ReadyForTerrgen>, With<TerrGenDisabled>)>>,//Or<TerrGenDisabled>
+    tilemaps_query: Query<Entity, (With<TilemapAnchor>, AnyDisabling)>,
+    mut writer: MessageWriter<ForceChunkDespawn>,
+    mut msgs: Local<Vec<ForceChunkDespawn>>,
+) {
+    for (chunk_ent, children, mut despawn_timer) in chunks_query.iter_mut() {
+        let has_tmap_child = children
+            .map(|c| c.iter())
+            .into_iter()
+            .flatten()
+            .any(|child_ent| tilemaps_query.get(child_ent).is_ok());
+
+        if has_tmap_child {
+            despawn_timer.0.reset();
+            continue;
+        }
+
+        despawn_timer.0.tick(Duration::from_secs_f32(CHECK_FREQUENCY_SECS));
+        if despawn_timer.0.is_finished() {
+            msgs.push(ForceChunkDespawn(chunk_ent));
+        }
+    }
+    writer.write_batch(msgs.drain(..));
 }

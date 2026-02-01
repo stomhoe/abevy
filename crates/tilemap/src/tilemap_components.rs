@@ -27,6 +27,7 @@ pub struct TilemapConfig {
     sync: SyncToRenderWorld,
     anchor: TilemapAnchor,
     ac_z: AcZ,
+    oplist_size: OplistSize,
     /*
 */
 }
@@ -46,6 +47,7 @@ impl TilemapConfig {
             transform: Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
             chunk_pos,
             ac_z,
+            oplist_size,
             ..Default::default()
         }
     }

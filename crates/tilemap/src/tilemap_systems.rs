@@ -1,4 +1,4 @@
-use bevy::{asset::AssetId, ecs::{query, system::SystemParam}, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
+use bevy::{ecs::system::SystemParam, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::{AnyDisabling, HashId}, common_resources::ImageSizeMap, };
@@ -7,7 +7,7 @@ use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
 
-use crate::{chunking::chunking_components::Chunk, chunking::chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}, }, tilemap_components::*, tilemap_resources::*};
+use crate::{chunking::chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}, }, tilemap_components::*, tilemap_resources::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct MapKey {
@@ -86,11 +86,46 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub state: Res<'w, State<ClientState>>,
 }
 
+#[derive(Resource, Debug, Reflect, Default, )]
+#[reflect(Resource, Default)]
+pub struct TmapMap (
+    pub HashMap<MapKey, MapStruct>
+);
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+
+#[allow(unused_parens)]
+pub fn on_tilemap_despawn(trig: On<Despawn, (DimensionRef, ChunkPos, AcZ, OplistSize, TilemapTileSize, TileShaderRef)>,
+    query: Query<(&DimensionRef, &ChunkPos, &AcZ, &OplistSize, &TilemapTileSize, &TileShaderRef)>,
+    mut tmap_map: ResMut<TmapMap>,
+) {
+    let Ok((dimension_ref, chunk_pos, ac_z, oplist_size, tile_size, shader_ref)) = query.get(trig.entity) else {
+        return;
+    };
+    let opt_shader = if shader_ref.is_none() {
+        None
+    } else {
+        Some(*shader_ref)
+    };
+    let tile_size_u16vec2 = U16Vec2::new(tile_size.x as u16, tile_size.y as u16);
+
+    let map_key = MapKey::new(
+        *dimension_ref,
+        *chunk_pos,
+        *ac_z,
+        *oplist_size,
+        tile_size_u16vec2,
+        opt_shader,
+    );
+    tmap_map.0.remove(&map_key);
+}
+
+
 #[allow(unused_parens, )]//TODO: USAR try_insert_bundle
 pub fn process_tiles_pre(
     mut cmd: Commands,
     mut params: ProcessTilesPreParams,
-    mut tmap_map: Local<HashMap<MapKey, MapStruct>>,
+    mut tmap_map: ResMut<TmapMap>,
     ezero_query: Query<(
         &TileStrId,
         &HashId,
@@ -110,9 +145,9 @@ pub fn process_tiles_pre(
 
     if params.collected_tiles.0.is_empty() { return; }
 
-    if !tmap_map.is_empty() {
-        tmap_map.retain(|key, _| params.loaded_chunks.0.contains_key(&(key.dim_ref(), key.chunk_pos())));
-    }
+    // if !tmap_map.0.is_empty() {
+    //     tmap_map.0.retain(|key, _| params.loaded_chunks.0.contains_key(&(key.dim_ref(), key.chunk_pos())));
+    // }
 
     let reserved = params.chunkrange.approximate_number_of_chunks(0.06);
     let tiles_len = params.collected_tiles.0.len();
@@ -216,7 +251,7 @@ pub fn process_tiles_pre(
             tile_handles,
             shader_ref,
             tile_size,
-            &mut *tmap_map,
+            &mut tmap_map.0,
             chunk,
             chunk_pos,
             bundle.dim_ref,
@@ -245,7 +280,7 @@ pub fn process_tiles_pre(
 
     for mapkey in changed_structs.iter() {
         //trace!(target: "tilemap_systems", "Changed tilemap {:?} in chunk {:?}", mapkey, mapkey.chunk_pos());
-        let Some(mapstruct) = tmap_map.get_mut(mapkey) else {
+        let Some(mapstruct) = tmap_map.0.get_mut(mapkey) else {
             continue;
         };
         let tmap_ent = mapstruct.tmap_ent;
@@ -296,46 +331,6 @@ pub fn process_tiles_pre(
 
 }
 
-#[allow(unused_parens)]
-pub fn requeue_limbo_tiles(
-    mut cmd: Commands,
-    mut limbo_tiles: ResMut<TilemapLimboTiles>,
-    mut collected_tiles: ResMut<MassCollectedTiles>,
-    loaded_chunks: Res<LoadedChunks>,
-    alive_query: Query<Entity>,
-) {
-    if limbo_tiles.0.is_empty() {
-        return;
-    }
-
-    let mut i = 0;
-    while i < limbo_tiles.0.len() {
-        let mut entry = limbo_tiles.0.swap_remove(i);
-
-        if alive_query.get(entry.tile_ent).is_err() {
-            continue;
-        }
-
-        let chunk_pos = ChunkPos::from(entry.bundle.gpos);
-        if loaded_chunks.0.contains_key(&(entry.bundle.dim_ref, chunk_pos)) {
-            collected_tiles.0.push((entry.tile_ent, entry.bundle));
-            continue;
-        }
-
-        if entry.retries_left == 0 {
-            cmd.entity(entry.tile_ent).try_despawn();
-            trace!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned after max retries in limbo", entry.tile_ent, entry.bundle.gpos, entry.bundle.dim_ref);
-            continue;
-        }
-
-        entry.retries_left -= 1;
-        limbo_tiles.0.push(entry);
-        i += 1;
-    }
-}
-
-
-
 #[allow(clippy::too_many_arguments)]
 fn func_process_tile_into_tilemaps(
     cmd: &mut Commands,
@@ -371,7 +366,6 @@ fn func_process_tile_into_tilemaps(
 
     if let Some(mapstruct) = tmap_map.get_mut(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;
-        
         
         let (tmap_handles, storage, tmap_hash_id_map) =
         if let Ok((tmap_handles, storage, tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent)
@@ -492,4 +486,40 @@ pub fn tmaptile_assign_child_of(mut cmd: Commands,
     }
 
     cmd.try_insert_batch(child_ofs_for_tiles);
+}
+
+#[allow(unused_parens)]
+pub fn requeue_limbo_tiles(
+    mut cmd: Commands,
+    mut limbo_tiles: ResMut<TilemapLimboTiles>,
+    mut collected_tiles: ResMut<MassCollectedTiles>,
+    loaded_chunks: Res<LoadedChunks>,
+    alive_query: Query<Entity>,
+) {
+    if limbo_tiles.0.is_empty() {
+        return;
+    }
+    let mut i = 0;
+    while i < limbo_tiles.0.len() {
+        let mut entry = limbo_tiles.0.swap_remove(i);
+
+        if alive_query.get(entry.tile_ent).is_err() {
+            continue;
+        }
+
+        let chunk_pos = ChunkPos::from(entry.bundle.gpos);
+        if loaded_chunks.0.contains_key(&(entry.bundle.dim_ref, chunk_pos)) {
+            collected_tiles.0.push((entry.tile_ent, entry.bundle));
+            continue;
+        }
+        if entry.retries_left == 0 {
+            cmd.entity(entry.tile_ent).try_despawn();
+            trace!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned after max retries in limbo", entry.tile_ent, entry.bundle.gpos, entry.bundle.dim_ref);
+            continue;
+        }
+
+        entry.retries_left -= 1;
+        limbo_tiles.0.push(entry);
+        i += 1;
+    }
 }

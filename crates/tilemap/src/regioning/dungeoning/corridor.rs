@@ -11,7 +11,7 @@ use crate::regioning::{
         carve_room_triangle,
     },
     regioning_components::*,
-    regioning_messages::{StructureBuildCompliance, StructurePrepareTilesOrder},
+    regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
 use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap};
@@ -92,7 +92,7 @@ impl CorridorTileIds {
 
 #[allow(unused_parens, )]
 pub fn corridor_dungeon_building_system(
-    mut reader: MessageReader<StructurePrepareTilesOrder>,
+    mut reader: MessageReader<SgcPrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEzerosMap>,
@@ -450,6 +450,7 @@ pub fn corridor_dungeon_building_system(
         }
 
         let delete_template = DeleteOtherTiles::default();
+        let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
             for tile_pos in chunk_pos.get_tilepositions_within_chunk(OplistSize::default()) {
@@ -469,15 +470,15 @@ pub fn corridor_dungeon_building_system(
                     tiles4chunk.push((tile_pos, wall_entity, Some(delete_template.clone())));
                 }
             }
-            if !tiles4chunk.is_empty() {
-                compliances_to_emit.push(StructureBuildCompliance {
-                    structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
-                    dimension_ref: build_order.dimension_ref,
-                    chunk_pos,
-                    tiles: tiles4chunk,
-                });
-            }
+            chunk_tiles.push((chunk_pos, tiles4chunk));
         }
+        compliances_to_emit.push(StructureBuildCompliance {
+            i: build_order.i,
+            structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
+            dimension_ref: build_order.dimension_ref,
+            chunks: chunk_tiles,
+            terrgen_disabled_for_chunks: Vec::new(),
+        });
         let region_pos = chunk_positions[0].to_region_pos();
         debug!(target: "dungeoning", "Spawned advanced BSP dungeon: {} rooms, {} chunks at {:?}", rooms.len(), chunk_positions.len(), region_pos);
     }

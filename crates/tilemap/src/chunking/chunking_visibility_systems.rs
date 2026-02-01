@@ -2,15 +2,11 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{DrawTilemap, tiles::TileStorage};
 use camera::camera_components::CameraTarget;
-use common::common_components::{AnyDisabling, AssetScoped, StrId20B};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::DespawnTimer;
-use std::{collections::{HashMap, HashSet}, time::Duration};
-use tilemap_shared::{ChunkPos, ForceAllChunksDespawn, HashablePosVec, RegionPos};
+use tilemap_shared::ChunkPos;
 
 use super::chunking_components::*;
 use super::chunking_resources::*;
-use crate::{regioning::{regioning_components::Region, regioning_resources::LoadedRegions}, tile::tile_messages::SavedTileHadChunkDespawn, tilemap_resources::{MassCollectedTiles, TilemapLimboTiles}};
 
 
 #[allow(unused_parens)]
@@ -42,9 +38,12 @@ pub fn update_chunk_visib(
             if *visibility != Visibility::Hidden {
                 *visibility = Visibility::Hidden;
             }
-        } else if *visibility != Visibility::Inherited {
-            *visibility = Visibility::Inherited;
-            to_draw.extend(children.iter().map(|child| DrawTilemap(child)));
+        } else  {
+            if *visibility != Visibility::Inherited {
+                *visibility = Visibility::Inherited;
+                to_draw.extend(children.iter().map(|child| DrawTilemap(child)));
+                //todo chequear q el tilemap tenga todos sus compoentes, sino mandar a una queue
+            }
         }
     });
     event_writer.write_batch(to_draw.drain(..));
@@ -54,7 +53,7 @@ pub fn update_chunk_visib(
 pub struct RecheckChunksVisibility;
 
 #[allow(unused_parens)]
-pub fn detect_camera_change_pos(
+pub fn detect_camera_change_pos_visib(
     _: Single<(&CameraTarget), (Or<(Changed<GlobalTransform>, Added<CameraTarget>, Changed<DimensionRef>, )>, )>,
     mut recheck_writer: MessageWriter<RecheckChunksVisibility>,
 ) {
@@ -67,4 +66,19 @@ pub fn periodically_recheck_chunk_visibility(
 ) {
     recheck_writer.write(RecheckChunksVisibility);
     trace!(target: "chunk_visibility", "Rechecking chunk visibility due to timer.");
+}
+
+pub fn periodically_redraw_visible_chunks(
+    mut chunks_query: Query<(&Visibility, &Children), With<Chunk>>,
+    mut event_writer: MessageWriter<DrawTilemap>,
+    mut to_draw: Local<Vec<DrawTilemap>>,
+) {
+    chunks_query.iter_mut().for_each(|(visibility, children)| {
+        if *visibility == Visibility::Inherited {
+            to_draw.extend(children.iter().map(|child| DrawTilemap(child)));
+        }
+    });
+    if !to_draw.is_empty() {
+        event_writer.write_batch(to_draw.drain(..));
+    }
 }

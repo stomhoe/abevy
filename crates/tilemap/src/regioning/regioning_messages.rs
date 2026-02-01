@@ -33,7 +33,7 @@ impl Default for ChunksClaim {
 
 
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct StructurePrepareTilesOrder {
+pub struct SgcPrepareTilesOrder {
     pub i: u64,
     pub structured_gen_cfg_ent: Entity,
     pub region_pos: RegionPos,
@@ -43,13 +43,15 @@ pub struct StructurePrepareTilesOrder {
 }
 
 
+pub type StructureTilesForChunk = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
+
 #[derive(Message, Debug, )]
 pub struct StructureBuildCompliance {
+    pub i: u64,
     pub structure_gen_cfg_ent: Entity,
     pub dimension_ref: DimensionRef,
-    pub chunk_pos: ChunkPos,
-    pub tiles: Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>,
-
+    pub chunks: Vec<(ChunkPos, StructureTilesForChunk)>,
+    pub terrgen_disabled_for_chunks: Vec<ChunkPos>,
 }
 
 

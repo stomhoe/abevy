@@ -57,72 +57,100 @@ pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
 
 pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
 
-#[derive(Component, Debug, )]
+#[derive(Debug, Clone)]
+pub struct PendingBuildOrder {
+    pub chunks: Vec<ChunkPos>,
+    pub timer: Timer,
+}
+
+#[derive(Component, Debug, Default)]
 pub struct RegionPlannedTiles { 
     tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, TilesFromBuilder>,
-    // store pending chunks along with the time (seconds since startup) when they were added
-    chunks_pending_build: HashMap<ChunkPos, f64>,
+    // store pending build orders along with their timeout timer
+    pending_build_orders: HashMap<u64, PendingBuildOrder>,
+    pending_chunks: HashSet<ChunkPos>,
 }
-impl Default for RegionPlannedTiles {
-    fn default() -> Self {
-        Self { tiles_to_spawn_on_chunk_load_map: HashMap::new(), chunks_pending_build: HashMap::new() }
-    }
-}
+
 impl RegionPlannedTiles {
-    pub fn new(chunk_positions: &[ChunkPos], now: f64) -> Self {
-        Self {
-            tiles_to_spawn_on_chunk_load_map: HashMap::new(),
-            chunks_pending_build: chunk_positions.iter().copied().map(|p| (p, now)).collect(),
-        }
+    pub fn new(order_i: u64, chunk_positions: &[ChunkPos], timeout_secs: f32) -> Self {
+        let mut planned = Self::default();
+        planned.add_build_order_pending(order_i, chunk_positions, timeout_secs);
+        planned
     }
-    pub fn add_chunks_pending_build(&mut self, chunk_positions: &[ChunkPos], now: f64) {
+    pub fn add_build_order_pending(&mut self, order_i: u64, chunk_positions: &[ChunkPos], timeout_secs: f32) {
+        let timer = Timer::from_seconds(timeout_secs, TimerMode::Once);
+        if let Some(previous) = self.pending_build_orders.insert(order_i, PendingBuildOrder {
+            chunks: chunk_positions.to_vec(),
+            timer,
+        }) {
+            for pos in previous.chunks {
+                self.pending_chunks.remove(&pos);
+            }
+        }
         for &pos in chunk_positions {
-            self.chunks_pending_build.insert(pos, now);
+            self.pending_chunks.insert(pos);
         }
     }
     
     pub fn is_chunk_pending_build(&self, chunk_pos: ChunkPos) -> bool {
-        self.chunks_pending_build.contains_key(&chunk_pos)
+        self.pending_chunks.contains(&chunk_pos)
     }
     pub fn pending_chunks_count(&self) -> usize {
-        self.chunks_pending_build.len()
+        self.pending_chunks.len()
     }
     
     pub fn add_planned_tiles_and_remove_from_pending(
         &mut self,
-        chunk_pos: ChunkPos,
-        tile_data: TilesFromBuilder,
+        order_i: u64,
+        chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)>,
     ) -> Result<bool, BevyError> {
-        if !self.chunks_pending_build.contains_key(&chunk_pos) {
+        let Some(order) = self.pending_build_orders.remove(&order_i) else {
             return Err(BevyError::from(format!(
-                "ChunkPos {:?} is not pending a build order",
-                chunk_pos
+                "Build order {} is not pending",
+                order_i
             )));
+        };
+        let mut provided_chunks: HashSet<ChunkPos> = HashSet::new();
+        for (chunk_pos, tile_data) in chunk_tiles {
+            if !order.chunks.contains(&chunk_pos) {
+                return Err(BevyError::from(format!(
+                    "ChunkPos {:?} is not part of build order {}",
+                    chunk_pos, order_i
+                )));
+            }
+            for (tile_pos, _, _) in &tile_data {
+                chunk_pos.is_tilepos_within_chunk(*tile_pos)?;
+            }
+            self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new).extend(tile_data);
+            provided_chunks.insert(chunk_pos);
         }
-        
-        for (tile_pos, _, _) in &tile_data {
-            chunk_pos.is_tilepos_within_chunk(*tile_pos)?;
+        for chunk_pos in order.chunks {
+            if !provided_chunks.contains(&chunk_pos) {
+                self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
+            }
+            self.pending_chunks.remove(&chunk_pos);
         }
-        
-        self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new).extend(tile_data);
-        self.chunks_pending_build.remove(&chunk_pos);
-        Ok(self.chunks_pending_build.is_empty())
+        Ok(self.pending_build_orders.is_empty())
     }
     
     pub fn get(&self, chunk_pos: &ChunkPos,) -> Option<&TilesFromBuilder> {
         self.tiles_to_spawn_on_chunk_load_map.get(chunk_pos)
     }
     
-    pub fn pending_chunks_iter(&self) -> impl Iterator<Item = (&ChunkPos, &f64)> {
-        self.chunks_pending_build.iter()
+    pub fn pending_build_orders_iter(&self) -> impl Iterator<Item = (&u64, &PendingBuildOrder)> {
+        self.pending_build_orders.iter()
     }
-    
-    pub fn remove_pending_chunk(&mut self, chunk_pos: &ChunkPos) -> bool {
-        self.chunks_pending_build.remove(chunk_pos).is_some()
+
+    pub fn pending_build_orders_iter_mut(&mut self) -> impl Iterator<Item = (&u64, &mut PendingBuildOrder)> {
+        self.pending_build_orders.iter_mut()
+    }
+
+    pub fn take_pending_build_order(&mut self, order_i: u64) -> Option<PendingBuildOrder> {
+        self.pending_build_orders.remove(&order_i)
     }
     
     pub fn mark_chunk_timed_out(&mut self, chunk_pos: ChunkPos) {
-        self.chunks_pending_build.remove(&chunk_pos);
+        self.pending_chunks.remove(&chunk_pos);
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
     }
     

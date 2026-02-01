@@ -3,7 +3,27 @@ use bevy_fps_counter::FpsCounterPlugin;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy_inspector_egui::bevy_egui::{EguiPrimaryContextPass, };
 
-use crate::{debug_entity_lists::*, debug_fonts::*, debug_messages::*, debug_resources::*, debug_systems::*, debug_window_systems::*};
+use crate::{
+    being_details_inspector::*,
+    beings_list_window::*,
+    chunk_details_inspector::*,
+    chunks_list_window::*,
+    debug_fonts::*,
+    debug_messages::*,
+    debug_resources::*,
+    debug_systems::*,
+    debug_window_systems::*,
+    exempted_entity_details_inspector::*,
+    portals_details_inspector::*,
+    portals_list_window::*,
+    regions_list_window::*,
+    registered_positions_window::*,
+    sprite_details_inspector::*,
+    sprites_list_window::*,
+    terrgen_editor_window::*,
+    tile_details_inspector::*,
+    tilemap_details_inspector::*,
+};
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {

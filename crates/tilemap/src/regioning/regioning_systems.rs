@@ -8,7 +8,7 @@ use game_common::{game_common_components::DespawnTimer, game_common_components_s
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
-use crate::{chunking::chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, StructurePrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking::chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -163,9 +163,9 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
     mut claims: MessageMutator<ChunksClaim>,
     mut region_query: Query<(&RegionPos, &DimensionRef, &mut ClaimList, &mut CountsOfSgcs, &mut GridOfSgcs, &mut RegionPlannedTiles),()>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
-    time: Res<Time>,
+    settings: Single<&GlobalGenSettings>,
     mut recheck_reader: MessageReader<RecheckRegion>,
-    mut writer: MessageWriter<StructurePrepareTilesOrder>,
+    mut writer: MessageWriter<SgcPrepareTilesOrder>,
 ){
     let mut regions_with_new_claims: Vec<Entity> = recheck_reader.read().map(|ent| ent.0).collect();
     let mut regions_which_started_building = Vec::new();
@@ -294,12 +294,12 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                             claim.chunks_gpos.swap_remove(i);
                         }
                     }
-                    planned.add_chunks_pending_build(&claim.chunks_gpos, time.elapsed().as_secs_f64());
+                    planned.add_build_order_pending(claim.i, &claim.chunks_gpos, settings.structure_build_timeout_secs as f32);
                     regions_which_started_building.push((region_ent, BuildingStarted));
                     debug!(target: "sgc_chunk_claim", "Region at {:?} emitting {} build orders for structure '{}'", 
                         region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id());
                     
-                    let order = StructurePrepareTilesOrder {
+                    let order = SgcPrepareTilesOrder {
                         i: claim.i,
                         region_pos,
                         dimension_ref,
@@ -323,9 +323,13 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
     mut region_query: Query<(&mut RegionPlannedTiles, Has<AllTilesPrepared>),()>,
 ) {
     for build in reader.read() {
-        
-        let region_pos = build.chunk_pos.to_region_pos();
-        
+        let order_i = build.i;
+        let chunks = take(&mut build.chunks);
+        let region_pos = if let Some((chunk_pos, _)) = chunks.first() {
+            chunk_pos.to_region_pos()
+        } else {
+            continue;
+        };
         let Some(&region_ent) = loaded_regions.0.get(&(build.dimension_ref, region_pos))
         else {
             error!(target: "structure_spawn", "Region at position {:?} in dimension {:?} not found when processing structure build compliance, skipping", 
@@ -343,9 +347,9 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
             continue;
         }
         
-        let Ok(finished) = planned_tiles.add_planned_tiles_and_remove_from_pending(build.chunk_pos, take(&mut build.tiles))
+        let Ok(finished) = planned_tiles.add_planned_tiles_and_remove_from_pending(order_i, chunks)
         else {
-            error!(target: "structure_spawn", "Failed to add planned tiles for structure build compliance in region entity {:?} at chunk position {:?}, skipping", region_ent, build.chunk_pos);
+            error!(target: "structure_spawn", "Failed to add planned tiles for structure build compliance in region entity {:?} for build order {}, skipping", region_ent, order_i);
             continue;
         };
 
@@ -389,15 +393,15 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 
 #[allow(unused_parens, )]
 pub fn despawn_empty_regions(mut cmd: Commands, 
-    to_add_despawn_timer_query: Query<(Entity, &DimensionRef, &RegionPos),
+    to_add_despawn_timer_query: Query<(Entity, ),
     (With<Region>, Without<ChunksActiveInRegion>, Without<DespawnTimer>)>,
     regions_which_regained_chunks_query: Query<(Entity, &DimensionRef, &RegionPos, &ChunksActiveInRegion), (Added<ChunksActiveInRegion>, With<DespawnTimer>)>,
 ){
     // First pass: mark newly empty regions for despawn
-    to_add_despawn_timer_query.iter().for_each(|(region_ent, &dimension_ref, &region_pos)| {
+    to_add_despawn_timer_query.iter().for_each(|(region_ent, )| {
         // Check if already marked, if not mark it
    
-        cmd.entity(region_ent).try_insert_if_new(DespawnTimer(Timer::from_seconds(60.0, TimerMode::Once)));
+        cmd.entity(region_ent).try_insert_if_new(DespawnTimer::new(40.0));
     });
     regions_which_regained_chunks_query.iter().for_each(|(region_ent, &dimension_ref, &region_pos, chunks_active_in_region, )| {
         if chunks_active_in_region.entities().is_empty() {
@@ -425,27 +429,29 @@ pub fn on_region_despawn(
 pub fn failsafe_timeout_pending_chunks(
     mut cmd: Commands,
     time: Res<Time>,
-    settings: Single<&GlobalGenSettings>,
     mut query: Query<(Entity, &RegionPos, &mut RegionPlannedTiles), Without<AllTilesPrepared>>,
 ) {
-    let timeout = settings.structure_build_timeout_secs;
-    let now = time.elapsed().as_secs_f64();
     query.iter_mut().for_each(|(region_ent, region_pos, mut planned)| {
-        let mut timed_out = Vec::new();
-        for (&chunk_pos, &since) in planned.pending_chunks_iter() {
-            if now - since > timeout {
-                timed_out.push(chunk_pos);
+        let mut timed_out_orders: Vec<u64> = Vec::new();
+        for (&order_i, order) in planned.pending_build_orders_iter_mut() {
+            order.timer.tick(time.delta());
+            if order.timer.is_finished() {
+                timed_out_orders.push(order_i);
             }
         }
-        if timed_out.is_empty() { return; }
+        if timed_out_orders.is_empty() { return; }
         
-        for chunk_pos in timed_out {
-            planned.mark_chunk_timed_out(chunk_pos);
-            error!(target: "structure_spawn", "Timed out waiting for StructureBuildCompliance for chunk {:?} in region {:?}, marking as empty and continuing", chunk_pos, region_pos);
+        for order_i in timed_out_orders {
+            if let Some(order) = planned.take_pending_build_order(order_i) {
+                for chunk_pos in order.chunks {
+                    planned.mark_chunk_timed_out(chunk_pos);
+                    error!(target: "structure_spawn", "Timed out waiting for StructureBuildCompliance for chunk {:?} in region {:?}, marking as empty and continuing", chunk_pos, region_pos);
+                }
+            }
         }
         
-        if planned.pending_chunks_iter().next().is_none() {
-            error!(target: "structure_spawn", "Region entity {:?} at {} has timed out remaining pending chunks, marking as RegionPlanningFinished", region_ent, region_pos);
+        if planned.pending_build_orders_iter().next().is_none() {
+            error!(target: "structure_spawn", "Region entity {:?} at {} has timed out remaining pending build orders, marking as RegionPlanningFinished", region_ent, region_pos);
             cmd.entity(region_ent).try_insert(AllTilesPrepared);
         }
     });

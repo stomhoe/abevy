@@ -19,6 +19,11 @@ pub struct EguiTileShaderHolder;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash, Reflect, MapEntities)]
 pub struct TileShaderRef(#[entities] pub Entity);
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
+impl TileShaderRef {
+    pub fn is_none(&self) -> bool {
+        self.0 == Entity::PLACEHOLDER
+    }
+}
 
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, Deserialize, Serialize)]
 #[require(AssetScoped, Prefix::trunc("TileShader"), Replicated)]

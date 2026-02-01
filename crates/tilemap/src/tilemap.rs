@@ -6,7 +6,7 @@ use common::common_states::*;
 use dimension_shared::DimensionSystems;
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
-use crate::{chunking::{self, chunking_components::*, chunking_despawn_systems::{CheckChunkDespawn, ForceChunkDespawn, on_message_signal_despawn_all_chunks, rem_outofrange_chunks_from_activators, periodically_check_despawn_unreferenced_chunks, despawn_chunks}, chunking_resources::*, chunking_spawn_systems::{activate_chunks_every_second, detect_activators_with_pos_changes, spawn_chunks_around_activators}, chunking_visibility_systems::{detect_camera_change_pos, update_chunk_visib, periodically_recheck_chunk_visibility, RecheckChunksVisibility}, chunking_spawn_systems::ReactivateChunksFor}, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, tile_systems::despawn_if_not_excepted}, tilemap_components::HashIdToTexIndex, tilemap_resources::*, tilemap_systems::*};
+use crate::{chunking::{self, chunking_despawn_systems::despawn_chunks}, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, tile_systems::despawn_if_not_excepted}, tilemap_components::HashIdToTexIndex, tilemap_resources::*, tilemap_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -28,11 +28,10 @@ pub fn plugin(app: &mut App) {
         (
             reparent_orphan_tilemaps.run_if(on_timer(Duration::from_secs(1))),//dejar en 1
             requeue_limbo_tiles.run_if(on_timer(Duration::from_millis(500))),
-            process_tiles_pre.before(despawn_chunks),//DON'T TOUCH
-
-            // DON'T TOUCH
+            process_tiles_pre.before(despawn_chunks).before(despawn_if_not_excepted),//DON'T TOUCH
         ).in_set(ChunkSystems)
     ))
+    .add_observer(on_tilemap_despawn)
     .configure_sets(Update, (
         (TerrainGenSystems, ChunkSystems, RegioningSystems).in_set(GameplaySystems)
     ))
@@ -52,6 +51,8 @@ pub fn plugin(app: &mut App) {
     
     .init_resource::<MassCollectedTiles>()
     .init_resource::<TilemapLimboTiles>()
+    .init_resource::<TmapMap>()
+
 
     .replicate::<PoissonDisk>()
     
