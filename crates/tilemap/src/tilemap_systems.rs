@@ -2,12 +2,13 @@ use bevy::{ecs::system::SystemParam, math::U16Vec2, platform::collections::HashS
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::{AnyDisabling, HashId}, common_resources::ImageSizeMap, };
+use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{DespawnTimer, Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
 
-use crate::{chunking::chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}, }, tilemap_components::*, tilemap_resources::*};
+use crate::{chunking::chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{self, tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_components::*, tilemap_resources::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct MapKey {
@@ -157,23 +158,33 @@ pub fn process_tiles_pre(
     let mut tilemap_bundles = Vec::with_capacity(200);//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
 
     let mut to_insert_replicated = Vec::with_capacity(tiles_len/100);
-    let mut spritetiles_to_insert_pos_and_dim_ref = Vec::with_capacity(tiles_len/20);
+    //let mut spritetiles_to_insert_pos_and_dim_ref = Vec::with_capacity(tiles_len/20);
+    let mut spritetiles_to_remove_bundle = Vec::with_capacity(tiles_len/20);
 
-    let mut tiles_to_insert: Vec<(Entity, TileMassSpawnBundle)> = Vec::with_capacity(tiles_len);
+    //let mut child_ofs_to_insert = Vec::with_capacity(tiles_len);
     
-    for (tile_ent, bundle) in params.collected_tiles.0.drain(..) {
-        let Ok((tile_strid, hash_id, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, y_sort, ))
-            = ezero_query.get(bundle.ezero_ref.0)
-        else {
-            error!(target: "tilemap_systems", "Original tile entity {} is despawned", bundle.ezero_ref.0);
-            
-            cmd.entity(tile_ent).try_despawn();
-            continue;
+    let mut i = 0;
+    while i < params.collected_tiles.0.len() {
+        // To avoid borrow checker issues, destructure the entry first, then operate on it
+        let (tile_ent, bundle_ptr) = {
+            unsafe{
+                let (tile_ent, bundle) = &mut params.collected_tiles.0.get_mut(i).debug_unwrap_unchecked();
+                (*tile_ent, bundle as *mut TileMassSpawnBundle)
+            }
         };
+        // SAFETY: We only have one mutable reference to this bundle at a time
+        let bundle = unsafe { &mut *bundle_ptr };
 
-        let mut bundle = bundle;
+        let query_result = ezero_query.get(bundle.ezero_ref.0);
+        if query_result.is_err() {
+            error!(target: "tilemap_systems", "Original tile entity {} is despawned", bundle.ezero_ref.0);
+            cmd.entity(tile_ent).try_despawn();
+            params.collected_tiles.0.swap_remove(i);
+            continue;
+        }
+        let (tile_strid, hash_id, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, y_sort) = query_result.unwrap();
 
-        if false == params.regpos_map.check_min_distances(
+        if !params.regpos_map.check_min_distances(
             &mut cmd,
             is_host,
             (
@@ -187,6 +198,7 @@ pub fn process_tiles_pre(
             params.min_dists_query,
         ) {
             cmd.entity(tile_ent).try_despawn();
+            params.collected_tiles.0.swap_remove(i);
             info!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
             continue;
         }
@@ -196,31 +208,26 @@ pub fn process_tiles_pre(
                 to_insert_replicated.push((tile_ent, Replicated));
             } else {
                 cmd.entity(tile_ent).try_despawn();
-                continue;//client shouldn't spawn this
+                params.collected_tiles.0.swap_remove(i);
+                continue;
             }
         }
 
         if transform.is_some() {
-            spritetiles_to_insert_pos_and_dim_ref.push((
-                tile_ent,
-                (
-                    bundle.ezero_ref,
-                    bundle.gpos,
-                    bundle.tile_bundle.position,
-                    bundle.dim_ref,
-                    bundle.initial_pos,
-                    SyncToRenderWorld::default(),
-                ),
-            ));
-            continue;//is sprite tile
+            spritetiles_to_remove_bundle.push(tile_ent);
+            i += 1;
+            continue;
         }
 
         bundle.tile_bundle.color = color.cloned().unwrap_or_default();
 
-        let Some(chunk) = params.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied() else {
+        let chunk_opt = params.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied();
+        if chunk_opt.is_none() {
             cmd.entity(tile_ent).try_despawn();
-            continue;//chunk not loaded
-        };
+            params.collected_tiles.0.swap_remove(i);
+            continue;
+        }
+        let chunk = chunk_opt.unwrap();
         let chunk_pos = ChunkPos::from(bundle.gpos);
 
         let tile_size = if let Some(ref handles) = tile_handles {
@@ -255,13 +262,14 @@ pub fn process_tiles_pre(
             &mut tilemap_bundles,
             y_sort,
         );
-
-        tiles_to_insert.push((tile_ent, bundle));
+        i += 1;
     }
     //DEJAR CON IF NEW ASÍ TILES DE TILEMAP PUEDEN SER REPLICADAS 
-    cmd.try_insert_batch_if_new(tiles_to_insert);
+    cmd.try_insert_batch_if_new(take(&mut params.collected_tiles.0));
 
-    cmd.try_insert_batch(spritetiles_to_insert_pos_and_dim_ref);
+    for tile_ent in spritetiles_to_remove_bundle.drain(..) {
+        cmd.entity(tile_ent).try_remove::<TileBundle>();
+    }
 
     cmd.try_insert_batch(to_insert_replicated);
 
@@ -464,6 +472,3 @@ pub fn tmaptile_assign_child_of(mut cmd: Commands,
     
     cmd.try_insert_batch(child_ofs_for_tiles);
 }
-
-pub const RECHECK_LIMBO_TILES_FREQ: f32 = 0.3;
-

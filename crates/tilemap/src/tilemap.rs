@@ -24,7 +24,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         
-        tmaptile_assign_child_of.run_if(on_timer(Duration::from_secs_f32(RECHECK_LIMBO_TILES_FREQ))),
+        tmaptile_assign_child_of,
         (
             process_tiles_pre
             .before(despawn_chunks)//if this is removed everything breaks

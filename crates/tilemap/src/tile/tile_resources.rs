@@ -26,55 +26,29 @@ pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
 #[reflect(Resource, Default)]
 pub struct TilesAtGpos  { 
     pub map: HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>,
-    pub entity_pos_map: EntityHashMap<(DimensionRef, GlobalTilePos, TilePos, TilemapId)>,
- }
- impl TilesAtGpos {
+    pub entity_pos_map: EntityHashMap<(DimensionRef, GlobalTilePos, Option<TilePos>, TilemapId)>,
+}
+impl TilesAtGpos {
     pub fn reserve_capacity(&mut self, additional: usize) {
         self.map.reserve(additional);
         self.entity_pos_map.reserve(additional);
     }
-    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, tpos: TilePos, tilemap_id: Option<TilemapId>, ) {
+    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, tpos: Option<TilePos>, tilemap_id: Option<TilemapId>, ) {
         self.map.entry((dimension_ref, gpos)).or_default().push(entity);
         self.entity_pos_map.insert(entity, (dimension_ref, gpos, tpos, tilemap_id.unwrap_or_default()));
     }
-    pub fn remove_entity_and_get_data(&mut self, entity: Entity) -> Option<(TilePos, TilemapId)> {
-        if let Some((dimension_ref, gpos, tpos, tilemap_id)) = self.entity_pos_map.remove(&entity) {
+    pub fn remove_entity_and_get_data(&mut self, entity: Entity) -> Option<(Option<TilePos>, TilemapId)> {
+        self.entity_pos_map.remove(&entity).and_then(|(dimension_ref, gpos, tpos, tilemap_id)| {
             if let Some(entities) = self.map.get_mut(&(dimension_ref, gpos)) {
-                if let Some(pos) = entities.iter().position(|&e| e == entity) {
-                    entities.swap_remove(pos);
-                    if entities.is_empty() {
-                        self.map.remove(&(dimension_ref, gpos));
-                    }
+                entities.swap_remove(entities.iter().position(|&e| e == entity)?);
+                if entities.is_empty() {
+                    self.map.remove(&(dimension_ref, gpos));
                 }
             }
             Some((tpos, tilemap_id))
-        } else {
-            None
-        }
+        })
     }
- }
-
-#[derive(Debug, Clone)]
-pub struct TileGposAddition {
-    pub dimension_ref: DimensionRef,
-    pub gpos: GlobalTilePos,
-    pub tile_pos: TilePos,
-    pub tilemap_id: TilemapId,
-    pub entity: Entity,
-    pub is_primary: bool,
 }
-
-#[derive(Debug, Default)]
-pub struct TileGposTaskResult {
-    pub additions: Vec<TileGposAddition>,
-}
-
-#[derive(Resource, Debug, Default)]
-pub struct TileAsyncTasks {
-    pub gpos_tasks: Vec<Task<TileGposTaskResult>>,
-    pub despawn_tasks: Vec<Task<Vec<Entity>>>,
-}
-
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
@@ -118,7 +92,7 @@ impl<'a> IntoIterator for &'a mut TileImagePaths {
 impl IntoIterator for TileImagePaths {
     type Item = (String, String);
     type IntoIter = std::vec::IntoIter<(String, String)>;
-
+    
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
@@ -146,7 +120,7 @@ pub struct TileSerialization {
     pub min_distances: Option<HashMap<String, u64>>,
     pub portal: Option<PortalSeri>,
     pub offset: Option<(f32, f32)>,
-
+    
 }
 #[derive(Component, Deserialize, Reflect, Default)]
 pub struct PortalSeri{

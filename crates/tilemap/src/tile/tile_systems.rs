@@ -101,7 +101,7 @@ pub fn emit_global_tile_pos_change(
 #[allow(unused_parens)]
 pub fn add_spawned_tiles_to_gpos_map(
     mut map: ResMut<TilesAtGpos>,
-    query: Query<(Entity, &DimensionRef, &GlobalTilePos, &TilePos, Option<&TilemapId>, Option<&OplistSize>),(AnyDisabling, Without<EntityZero>, )>,
+    query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&TilePos>, Option<&TilemapId>, Option<&OplistSize>),(AnyDisabling, Without<EntityZero>, )>,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
 ) {
     let iter = changed_pos.read().map(|msg| msg.entity);
@@ -110,8 +110,8 @@ pub fn add_spawned_tiles_to_gpos_map(
     
     map.reserve_capacity(entities.len());
     
-    query.iter_many(entities).for_each(|(ent, &dimension_ref, &gpos, &tpos, tilemap_id, _oplist_size)| {
-        map.insert(ent, dimension_ref, gpos, tpos, tilemap_id.copied(), );         
+    query.iter_many(entities).for_each(|(ent, &dimension_ref, &gpos, tpos, tilemap_id, _oplist_size)| {
+        map.insert(ent, dimension_ref, gpos, tpos.copied(), tilemap_id.copied(), );         
     });
 }
 
@@ -142,12 +142,18 @@ pub fn remove_tile_from_gpos_map_on_despawn(
         //         }
         //     }
         // }
-        if let Ok((mut tile_storage, )) = tmap_query.get_mut(tilemap_id.0) {
-            if let Some(stored_tile_entity) = tile_storage.get(&tile_pos) {
-                if stored_tile_entity == tile_ent {
-                    tile_storage.remove(&tile_pos);
-                }
-            }
+        let Some(tile_pos) = tile_pos else {
+            continue;
+        };
+        let Ok((mut tile_storage, )) = tmap_query.get_mut(tilemap_id.0) 
+        else {
+            continue;
+        };
+        let Some(stored_tile_entity) = tile_storage.get(&tile_pos) else {
+            continue;
+        };
+        if stored_tile_entity == tile_ent {
+            tile_storage.remove(&tile_pos);
         }
     }
 }
