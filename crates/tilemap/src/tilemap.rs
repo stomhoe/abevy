@@ -24,11 +24,11 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         
-        tmaptile_assign_child_of,
+        //tmaptile_assign_child_of,
         (
             process_tiles_pre
             .before(despawn_chunks)//if this is removed everything breaks
-            .before(despawn_if_not_excepted),//if this is removed you can see the tilemap which was before removal
+            .before(despawn_if_not_excepted),//if this is removed you can get a glimpse of the tilemap which was there before removal
         ).in_set(ChunkSystems)
     ))
     .add_observer(on_tilemap_despawn)

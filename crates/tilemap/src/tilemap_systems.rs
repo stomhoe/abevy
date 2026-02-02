@@ -145,10 +145,6 @@ pub fn process_tiles_pre(
 
     if params.collected_tiles.0.is_empty() { return; }
 
-    // if !tmap_map.0.is_empty() {
-    //     tmap_map.0.retain(|key, _| params.loaded_chunks.0.contains_key(&(key.dim_ref(), key.chunk_pos())));
-    // }
-
     let reserved = params.chunkrange.approximate_number_of_chunks(0.06);
     let tiles_len = params.collected_tiles.0.len();
 
@@ -161,7 +157,7 @@ pub fn process_tiles_pre(
     //let mut spritetiles_to_insert_pos_and_dim_ref = Vec::with_capacity(tiles_len/20);
     let mut spritetiles_to_remove_bundle = Vec::with_capacity(tiles_len/20);
 
-    //let mut child_ofs_to_insert = Vec::with_capacity(tiles_len);
+    let mut child_ofs_to_insert: Vec<(Entity, ChildOf)> = Vec::with_capacity(tiles_len);
     
     let mut i = 0;
     while i < params.collected_tiles.0.len() {
@@ -261,6 +257,7 @@ pub fn process_tiles_pre(
             &mut changed_structs,
             &mut tilemap_bundles,
             y_sort,
+            &mut child_ofs_to_insert
         );
         i += 1;
     }
@@ -270,6 +267,7 @@ pub fn process_tiles_pre(
     for tile_ent in spritetiles_to_remove_bundle.drain(..) {
         cmd.entity(tile_ent).try_remove::<TileBundle>();
     }
+    cmd.try_insert_batch(child_ofs_to_insert);
 
     cmd.try_insert_batch(to_insert_replicated);
 
@@ -356,6 +354,7 @@ fn func_process_tile_into_tilemaps(
     changed_structs: &mut HashSet<MapKey>,
     tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, ChildOf, DimensionRef, TileShaderRef))>,
     y_sort: bool,
+    childofs: &mut Vec<(Entity, ChildOf)>,
 ) {
     let tile_size = match tile_handles {
         Some(_) => tile_size,
@@ -412,6 +411,8 @@ fn func_process_tile_into_tilemaps(
         }
         texture_index.0 = first_texture_index.unwrap_or_default().0;
 
+        childofs.push((tile_ent, ChildOf(tmap_ent)));
+
     } else {
         let mut tmap_hash_id_map = HashIdToTexIndex::with_capacity(0);
         changed_structs.insert(map_key.clone());
@@ -448,6 +449,7 @@ fn func_process_tile_into_tilemaps(
             storage,
             tmap_hash_id_map,
             });
+        childofs.push((tile_ent, ChildOf(tmap_ent)));
     }
 }
 
