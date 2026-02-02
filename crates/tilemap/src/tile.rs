@@ -103,7 +103,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<InitialPos>()
     .replicate::<PrevGlobalTilePos>()
     .replicate::<PortalsZeroEguiHolder>()
-    .replicate::<TileInstancesHolder>()
 
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()

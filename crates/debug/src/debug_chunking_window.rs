@@ -106,7 +106,7 @@ fn render_tilemap_grid(
 }
 
 #[allow(unused_parens)]
-pub fn chunks_list_window(
+pub fn debug_chunking_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
@@ -255,7 +255,7 @@ pub fn chunks_list_window(
                                                     })
                                                     .unwrap_or(false);
 
-                                                let label = format!("{},{}\n{} children", x, y, children_count);
+                                                let label = format!("{},{} enti{}\n{} children", x, y, entity.index(), children_count);
 
                                                 let mut rich_text = egui::RichText::new(&label).small();
 
@@ -455,7 +455,7 @@ pub fn chunks_list_window(
 
                                                     if ui.selectable_label(
                                                         is_selected,
-                                                        egui::RichText::new(format!("{},{}", x, y))
+                                                        egui::RichText::new(format!("{},{} [{}]", x, y, entity.index()))
                                                             .background_color(bg_color)
                                                             .color(text_color)
                                                     ).clicked() {

@@ -50,7 +50,7 @@ pub fn plugin(app: &mut App) {
             )
             .chain(),
         ).in_set(RegioningSystems))
-    .add_observer(on_region_despawn)
+    .add_observer(on_region_despawn_remove_from_loaded_regions)
     .add_observer(remove_sgc_from_map_on_despawn)
 
     .init_resource::<SgcEntityMap>()

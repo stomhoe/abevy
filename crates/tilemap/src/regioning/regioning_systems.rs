@@ -413,7 +413,7 @@ pub fn despawn_empty_regions(mut cmd: Commands,
     });
 }
 #[allow(unused_parens, )]
-pub fn on_region_despawn(
+pub fn on_region_despawn_remove_from_loaded_regions(
     on: On<Despawn, Region>,
     region_query: Query<(&DimensionRef, &RegionPos),(AnyDisabling)>,
     mut loaded_regions: ResMut<LoadedRegions>,

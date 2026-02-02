@@ -10,7 +10,7 @@ use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, refl
 use common::{common_components::*, };
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(ClaimList, RegionPlannedTiles, Visibility, Transform )]
+#[require(ClaimList, RegionPlannedTiles, Visibility, Transform, AssetScoped)]
 pub struct Region;
 
 #[derive(Component, Debug, Reflect)]

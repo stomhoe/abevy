@@ -31,6 +31,8 @@ pub struct ToDenyOnTileClone(
     AddHashIdFromStrId,
     HashId,
     TileImagePaths,
+    AssetScoped,
+    SparedFromHotReloading
     
 );//Disabled no porque se elimina posteriormente
 
@@ -45,7 +47,7 @@ pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 //NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
-#[require(AssetScoped, )]//no poner Replicated acá, sino el deny de Replicated quita el Tile
+//no poner Replicated acá, sino el deny de Replicated quita el Tile
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
@@ -61,11 +63,6 @@ pub struct LocalChunkRef(#[entities] pub Entity);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(Replicated, AssetScoped, Prefix::trunc("Tiling"), Name, Transform, Visibility)]
 pub struct TilesEguiHolder;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Prefix::trunc("Tile instances"), Name, Transform, Replicated, )]
-pub struct TileInstancesHolder;
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(Replicated, AssetScoped, Prefix::trunc("PortalsZero"), Name, Transform, Visibility, )]

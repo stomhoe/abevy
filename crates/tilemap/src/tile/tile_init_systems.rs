@@ -7,7 +7,6 @@ use color_sample::{color_sample_components::ColorSamplerRef, color_sample_resour
 use common::{common_components::*, common_tag_components::TagSet};
 use ::dimension_shared::*;
 use ::game_common::{game_common_components::*, game_common_components_samplers::*, *};
-use bevy_ecs_tilemap::tiles::TilePos;
 use sprite::sprite_components::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
@@ -30,7 +29,6 @@ pub fn init_tiles(
     if ! tiling_map.0.0.is_empty() { return; }
     
     let holder = cmd.spawn((TilesEguiHolder, )).id();
-    cmd.spawn((TileInstancesHolder, ChildOf(holder)));
     
     let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();
     
@@ -55,6 +53,8 @@ pub fn init_tiles(
             EntityZero,
             AddHashIdFromStrId,
             ChildOf(holder),
+            AssetScoped,
+            SparedFromHotReloading,
         )).id();
         
         if let Some(tags) = &seri.tags {
@@ -568,7 +568,7 @@ cmd.try_insert_batch(portal_tos);
 #[allow(unused_parens)]
 pub fn remove_ezero_tile_from_map_on_despawn(
     trigger: On<Despawn, (Tile, EntityZero, )>,
-    ezero_id_query: Query<(&TileStrId),(AnyDisabling)>,
+    ezero_id_query: Query<(&TileStrId),(With<EntityZero>, AnyDisabling)>,
     mut map: ResMut<TileEzerosMap>,
 ) {
     if let Ok(str_id) = ezero_id_query.get(trigger.entity) {

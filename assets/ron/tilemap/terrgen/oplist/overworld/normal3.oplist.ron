@@ -10,6 +10,7 @@
         ("*", ["$3", "$1", "0.5"], 3),      //$3: lake strength
         ("*opo", ["$3", "$2"], 3),          //$2: beachness modifier
 
+
         //river calculation: difference between two noises
         ("idxmax", ["0.8", "fnl.river.s7"], 4),
         //("abs", ["$4"], 4),                 //$4: river strength (absolute difference)

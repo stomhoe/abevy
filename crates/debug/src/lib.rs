@@ -2,7 +2,7 @@
 pub use debug::*;
 pub mod debug;
 mod debug_window_systems;
-mod chunks_list_window;
+mod debug_chunking_window;
 mod tile_details_inspector;
 mod chunk_details_inspector;
 mod region_details_inspector;

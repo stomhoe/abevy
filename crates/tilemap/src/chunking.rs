@@ -52,6 +52,8 @@ pub fn plugin(app: &mut App) {
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<LoadedChunks>()
 
+    .add_observer(on_chunk_despawn)
+
     .add_message::<CheckChunkDespawn>()
     .add_message::<ReactivateChunksFor>()
     .add_message::<RecheckChunksVisibility>()

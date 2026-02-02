@@ -85,10 +85,9 @@ pub fn periodically_check_despawn_unreferenced_chunks(
 #[allow(unused_parens)]
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
-    mut activator_query: Query<(&DimensionRef, &mut ActivatingChunks, ), >,
-    chunks_query: Query<(&DimensionRef, &ChunkPos, Option<&Children>, Option<&TilesToSave>), >,
+    activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
+    chunks_query: Query<(Option<&Children>, Option<&TilesToSave>), >,
     tmaps: Query<&TileStorage, AnyDisabling>,
-    mut loaded_chunks: ResMut<LoadedChunks>,
     mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
     mut force_despawn_reader: MessageReader<ForceChunkDespawn>,
@@ -108,28 +107,16 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
         let referenced = referenced_chunks.contains(&chunk_ent);
         
         if !referenced {
-            
             chunks_to_despawn.push(chunk_ent);
         }
     }
     chunks_to_despawn.extend(force_despawn_reader.read().map(|msg| msg.0));
     
     for chunk_ent in chunks_to_despawn.drain(..) {
-        let Ok((&chunk_dimension, &chunk_pos, children, _tiles_to_save)) = chunks_query.get(chunk_ent) else {
+        let Ok((children, _tiles_to_save)) = chunks_query.get(chunk_ent) else {
             //cmd.entity(chunk_ent).try_despawn();
             continue; 
         };
-        loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
-        for (_, mut activates_chunks) in activator_query.iter_mut() {
-            let mut i = 0;
-            while i < activates_chunks.entities.len() {
-                if activates_chunks.entities[i] == chunk_ent {
-                    activates_chunks.entities.swap_remove(i);
-                } else {
-                    i += 1;
-                }
-            }
-        }
         if let Some(children) = children.as_ref() {
             for child in children.iter() {
                 if let Ok(tile_storage) = tmaps.get(child) {
@@ -151,4 +138,31 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
     }
     tosave_event_writer.write_batch(tosave_events.drain(..));
     
+}
+#[allow(unused_parens)]
+pub fn on_chunk_despawn(
+    trig: On<Despawn, (Chunk, )>, 
+    chunk_query: Query<(&DimensionRef, &ChunkPos), ()>,
+    mut activator_query: Query<(&mut ActivatingChunks), >,
+    mut loaded_chunks: ResMut<LoadedChunks>,
+){
+    for mut activates_chunks in activator_query.iter_mut() {
+        let mut i = 0;
+        while i < activates_chunks.entities.len() {
+            if activates_chunks.entities[i] == trig.entity {
+                activates_chunks.entities.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+    let Ok((&chunk_dimension, &chunk_pos)) = chunk_query.get(trig.entity) else {
+        error!(target:"chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
+        loaded_chunks.0.retain(|_, chunk_entity| chunk_entity.clone() != trig.entity);
+
+        return; 
+    };
+    //trace!(target:"chunk_despawn","Chunk at position {:?} in dimension {:?} despawned, removing from LoadedChunks", chunk_pos, chunk_dimension);
+    loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
+
 }

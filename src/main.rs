@@ -33,6 +33,8 @@ concat!(
     "tilemap=warn,",
     "add2gposmap=warn,",
 
+    "chunk_despawn=info,",
+
     "debug=info,",
 
     "zlevel=info,",

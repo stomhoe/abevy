@@ -7,7 +7,7 @@ use crate::{
     being_details_inspector::*,
     beings_list_window::*,
     chunk_details_inspector::*,
-    chunks_list_window::*,
+    debug_chunking_window::*,
     debug_fonts::*,
     debug_messages::*,
     debug_resources::*,
@@ -42,7 +42,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(EguiPrimaryContextPass, (
         main_menu_window,
         states_window,
-        chunks_list_window,
+        debug_chunking_window,
         regions_list_window,
         beings_list_window,
         portals_list_window,
