@@ -24,11 +24,11 @@ pub fn launch_terrain_gen_operations (
     let mut terr_gen_ops = Vec::with_capacity(chunk_count);
     for (chunk_ent, chunk_pos, &dim_ref) in chunks_query.iter() {
         let Ok((dim_root_op_list, )) = dimension_query.get(dim_ref.0) else {
-            error!(target:"terrgen_systems", "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
+            error!(target: "terrgen_systems", "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
             continue;
         };
         let Ok((oplist, oplist_size)) = oplists.get(dim_root_op_list.0) else {
-            error!(target:"terrgen_systems", "Dimension references non-existent root operation list {:?}", dim_root_op_list);
+            error!(target: "terrgen_systems", "Dimension references non-existent root operation list {:?}", dim_root_op_list);
             continue;
         };
         launch_queue.0.push(TerrGenLaunchWork {
@@ -159,7 +159,7 @@ fn build_terrgen_task_context(
         }
 
         let Ok((oplist, &oplist_size, oplist_tags_opt)) = oplist_query.get(oplist_ent) else {
-            error!(target:"terrgen_systems", "Oplist entity {:?} not found in terrgen_process_pending_ops", oplist_ent);
+            error!(target: "terrgen_systems", "Oplist entity {:?} not found in terrgen_process_pending_ops", oplist_ent);
             continue;
         };
 
@@ -167,7 +167,7 @@ fn build_terrgen_task_context(
         for bifurcation in oplist.bifurcations.iter() {
             if let Some(child_oplist) = bifurcation.oplist {
                 let Ok((_, &child_size, _)) = oplist_query.get(child_oplist) else {
-                    error!(target:"terrgen_systems", "OplistSize not found for child oplist {:?}", child_oplist);
+                    error!(target: "terrgen_systems", "OplistSize not found for child oplist {:?}", child_oplist);
                     continue;
                 };
                 child_sizes.insert(child_oplist, child_size);
@@ -185,7 +185,7 @@ fn build_terrgen_task_context(
     let mut noises: HashMap<Entity, FnlNoiseComp> = HashMap::with_capacity(noise_entities.len());
     for ent in noise_entities {
         let Ok(noise) = fnl_noises.get(ent) else {
-            error!(target:"terrgen_systems", "Noise entity {} not found", ent);
+            error!(target: "terrgen_systems", "Noise entity {} not found", ent);
             continue;
         };
         noises.insert(ent, noise.clone());
@@ -238,7 +238,7 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
                 let pos_within_chunk = IVec2::new(x as i32, y as i32);
                 let gpos = work.chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * work.oplist_size.inner().as_ivec2());
                 trace!(
-                    target:"terrgen_systems",
+                    target: "terrgen_systems",
                     "Spawning terr operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
                     work.root_oplist,
                     gpos,
@@ -281,11 +281,11 @@ fn process_pending_ops_batch(
 
     while let Some(mut ev) = pending_queue.pop() { unsafe {
         let Some(oplist) = context.oplists.get(&ev.oplist) else {
-            error!(target:"terrgen_systems", "Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
+            error!(target: "terrgen_systems", "Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
             continue;
         };
         let Some(&my_oplist_size) = context.oplist_sizes.get(&ev.oplist) else {
-            error!(target:"terrgen_systems", "OplistSize not found for oplist {:?}", ev.oplist);
+            error!(target: "terrgen_systems", "OplistSize not found for oplist {:?}", ev.oplist);
             continue;
         };
 
@@ -322,7 +322,7 @@ fn process_pending_ops_batch(
                     OperandElement::Value(val) => *val,
                     OperandElement::NoiseEntity(ent, sample_range, compl, operand_seed) => {
                         let Some(noise) = context.noises.get(ent) else {
-                            error!(target:"terrgen_systems", "Noise entity {} not found", ent);
+                            error!(target: "terrgen_systems", "Noise entity {} not found", ent);
                             missing_noise = true;
                             break;
                         };
@@ -347,10 +347,10 @@ fn process_pending_ops_batch(
                     (Operation::Max, 1.., _) => operation_acc_val = operation_acc_val.max(curr_operand_val),
                     (Operation::Average, _, false) => { operation_acc_val += curr_operand_val; }
                     (Operation::Average, _, true) => { operation_acc_val += curr_operand_val; operation_acc_val /= operands.len() as f32; }
-                    (Operation::Linear, 0, _) => { operation_acc_val = curr_operand_val; trace!(target:"terrgen_systems", "conti: {}", curr_operand_val) }
-                    (Operation::Linear, 1, _) => { operation_acc_val *= curr_operand_val; trace!(target:"terrgen_systems", "beach: {}", curr_operand_val) }
+                    (Operation::Linear, 0, _) => { operation_acc_val = curr_operand_val; trace!(target: "terrgen_systems", "conti: {}", curr_operand_val) }
+                    (Operation::Linear, 1, _) => { operation_acc_val *= curr_operand_val; trace!(target: "terrgen_systems", "beach: {}", curr_operand_val) }
                     (Operation::Linear, 2, _) => { operation_acc_val += curr_operand_val; }
-                    (Operation::Linear, 3.., _) => { operation_acc_val *= curr_operand_val; trace!(target:"terrgen_systems", "res: {}", operation_acc_val); }
+                    (Operation::Linear, 3.., _) => { operation_acc_val *= curr_operand_val; trace!(target: "terrgen_systems", "res: {}", operation_acc_val); }
                     (Operation::MultiplyNormalized, 1.., _) => operation_acc_val *= (curr_operand_val - 0.5) * 2.,
                     (Operation::MultiplyNormalizedAbs, 1.., _) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
                     (Operation::Abs, _, _) => { operation_acc_val = operation_acc_val.abs(); }
@@ -371,7 +371,7 @@ fn process_pending_ops_batch(
 
                 }
 
-                trace!(target:"terrgen_systems",
+                trace!(target: "terrgen_systems",
                     "{} with operand {:?} at stack array index {}: prev_value: {}, curr_value: {}, {:?},",
                     operation, operand, *stackarr_out_i, prev_value, operation_acc_val, global_pos,
                 );
@@ -381,7 +381,7 @@ fn process_pending_ops_batch(
                 continue;
             }
 
-            trace!(target:"terrgen_systems", "Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
+            trace!(target: "terrgen_systems", "Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
             ev.variables[*stackarr_out_i] = operation_acc_val;
 
             if has_filter {
@@ -410,7 +410,7 @@ fn process_pending_ops_batch(
         }
 
         let destination_i = (ev.variables[0] as usize).min(bifurcations_len - 1).max(0);
-        trace!(target:"terrgen_systems", "Destination index for bifurcation: {}", destination_i);
+        trace!(target: "terrgen_systems", "Destination index for bifurcation: {}", destination_i);
 
         let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
 
@@ -419,10 +419,10 @@ fn process_pending_ops_batch(
                 if let Some(&child_oplist_size) = child_sizes.get(&child_oplist) {
                     spawn_bifurcation_oplists(&mut ev, my_oplist_size, &mut pending_queue, child_oplist, child_oplist_size);
                 } else {
-                    error!(target:"terrgen_systems", "OplistSize not found for child oplist {:?}", child_oplist);
+                    error!(target: "terrgen_systems", "OplistSize not found for child oplist {:?}", child_oplist);
                 }
             } else {
-                error!(target:"terrgen_systems", "No child oplist sizes found for oplist {:?}", ev.oplist);
+                error!(target: "terrgen_systems", "No child oplist sizes found for oplist {:?}", ev.oplist);
             }
         }
 

@@ -23,18 +23,18 @@ pub fn init_color_samplers(
         let str_id = match StrId::new_with_result(seri.id.clone(), WeightedColorsSeri::MIN_ID_LENGTH) {
             Ok(id) => id,
             Err(err) => {
-                error!(target:"color_sampler_init", "Failed to create StrId for color sampler '{}': {}", seri.id, err);
+                error!(target: "color_sampler_init", "Failed to create StrId for color sampler '{}': {}", seri.id, err);
                 continue;
             }
         };
         if seri.weights.is_empty() {
-            warn!(target:"color_sampler_init", "Color sampler '{}' has no weights", str_id);
+            warn!(target: "color_sampler_init", "Color sampler '{}' has no weights", str_id);
         }
         let mut i = 0;
         while i < seri.weights.len() {
             if seri.weights[i].1 < 0.0 {
                 error!(
-                    target:"color_sampler_init",
+                    target: "color_sampler_init",
                     "Invalid color sampler '{}': negative weight detected at index {} (color value: {:?}, weight: {}). Removing this entry.",
                     str_id, i, seri.weights[i].0, seri.weights[i].1
                 );
@@ -66,10 +66,10 @@ pub fn map_colorsampler_id_to_entity(
             if err.0 == new_ent {
                 continue;
             }
-            error!(target:"color_sampler_init","{} '{}' already in ColorWeightedSamplersMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, err, new_ent);
+            error!(target: "color_sampler_init","{} '{}' already in ColorWeightedSamplersMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, err, new_ent);
             cmd.entity(new_ent).try_despawn();
         } else {
-            info!(target:"color_sampler_init", "Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
+            info!(target: "color_sampler_init", "Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
         }
     }
 }

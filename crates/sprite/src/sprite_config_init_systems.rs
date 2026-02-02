@@ -181,15 +181,15 @@ pub fn add_sprite_cfgs_to_map(
                 if prev_ent.0 == ent {
                     continue;
                 }
-                error!(target:"sprite_init","{} '{}' already in SpriteCfgEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
+                error!(target: "sprite_init","{} '{}' already in SpriteCfgEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
                 cmd.entity(ent).try_despawn();
             } else {
-                trace!(target:"sprite_init","Inserted sprite config '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
+                trace!(target: "sprite_init","Inserted sprite config '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
             }
         }
     }
     else {
-        error!(target:"sprite_init","SpriteCfgEntityMap resource not found when trying to add sprite configs to it.");
+        error!(target: "sprite_init","SpriteCfgEntityMap resource not found when trying to add sprite configs to it.");
     }
 }
 

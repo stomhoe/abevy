@@ -26,7 +26,9 @@ concat!(
     "pos_search=info,",
     "childrensprite_init=info,",
 
-    "sgc_init=trace,",
+    "oplist_init=warn,",
+    "terrgen_init=warn,",
+    "sgc_init=warn,",
 
     "terrgen_systems=info,",
     "terrgen_process=info,",

@@ -91,7 +91,7 @@ pub fn init_races(
                     }
                 }
                 if !sex_entities_weights.is_empty() {
-                    let sex_sampler = EntityWeightedSampler::new(&sex_entities_weights);
+                    let sex_sampler = SexesSampler::new(&sex_entities_weights);
                     cmd.entity(entity).insert(sex_sampler);
                 }
             }

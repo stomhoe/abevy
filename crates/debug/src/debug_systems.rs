@@ -52,7 +52,7 @@ pub fn receive_increase_speed_from_client(
 ) {
     for from_client in events.read() {
         let UpdateBeingSpeed { value: new_value, being_ent } = from_client.message.clone();
-        info!(target:"debug", "Received speed update for being {:?} with value {:?}", being_ent, new_value);
+        info!(target: "debug", "Received speed update for being {:?} with value {:?}", being_ent, new_value);
 
         if let Ok((applied_modifiers, controlled_by, )) = controlled_beings_query.get(being_ent) {
 

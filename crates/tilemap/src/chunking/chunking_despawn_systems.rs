@@ -145,7 +145,7 @@ pub fn on_chunk_despawn(
         }
     }
     let Ok((&chunk_dimension, &chunk_pos)) = chunk_query.get(trig.entity) else {
-        error!(target:"chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
+        error!(target: "chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
         loaded_chunks.0.retain(|_, chunk_entity| chunk_entity.clone() != trig.entity);
 
         return; 

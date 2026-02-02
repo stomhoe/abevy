@@ -177,15 +177,15 @@ pub fn map_ezero_tile_id_to_entity(
                 if prev_ent.0 == ent {
                     continue;
                 }
-                error!(target:"tile_init","{} '{}' already in TileEzerosMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
+                error!(target: "tile_init","{} '{}' already in TileEzerosMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
                 cmd.entity(ent).try_despawn();
             } else {
-                trace!(target:"tile_init","Inserted tile '{}' into TileEzerosMap with entity {:?}", str_id, ent);
+                trace!(target: "tile_init","Inserted tile '{}' into TileEzerosMap with entity {:?}", str_id, ent);
             }
         }
     }
     else {
-        error!(target:"tile_init","TileEzerosMap resource not found when trying to add tiles to it.");
+        error!(target: "tile_init","TileEzerosMap resource not found when trying to add tiles to it.");
     }
 }
 
@@ -317,10 +317,10 @@ pub fn init_childrensprite(mut cmd: Commands,
         info!("Mapping portal tiles");
         portals_ezero_query.iter_mut().for_each(|(ent, str_id, mut portal_seri)| {
             let Ok(tile_ent) = tiles_map.0.get_cloned(&portal_seri.oe_tile) else { 
-                error!(target:"portal_init", "Portal tile {} to '{}' references unknown oe_tile '{}'", str_id, portal_seri.dest_dimension, portal_seri.oe_tile);
+                error!(target: "portal_init", "Portal tile {} to '{}' references unknown oe_tile '{}'", str_id, portal_seri.dest_dimension, portal_seri.oe_tile);
                 return; 
             };
-            info!(target:"portal_init", "Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
+            info!(target: "portal_init", "Mapping portal tile '{}' to destination dimension '{}'", str_id, portal_seri.dest_dimension);
             cmd.entity(ent).insert(PortalRecipe{
                 dest_dimension: Entity::PLACEHOLDER,
                 oe_portal_tile: tile_ent,
@@ -344,11 +344,11 @@ pub fn init_childrensprite(mut cmd: Commands,
                 continue;
             }
             let Ok(root_oplist) = dimension_query.get(recipe.dest_dimension) else {
-                error!(target:"portal_init", "PortalRecipe with dest_dimension entity {:?} references a Dimension that doesn't exist.", recipe.dest_dimension);
+                error!(target: "portal_init", "PortalRecipe with dest_dimension entity {:?} references a Dimension that doesn't exist.", recipe.dest_dimension);
                 continue;
             };
             let Some(root_oplist) = root_oplist else {
-                error!(target:"portal_init", "PortalRecipe with dest_dimension entity {:?} references a Dimension that has no DimensionRootOplist.", recipe.dest_dimension);
+                error!(target: "portal_init", "PortalRecipe with dest_dimension entity {:?} references a Dimension that has no DimensionRootOplist.", recipe.dest_dimension);
                 continue;
             };
             let mut found = false;
@@ -382,11 +382,11 @@ pub fn init_childrensprite(mut cmd: Commands,
                 }
             }
             if found {
-                debug!(target:"portal_init", "PortalRecipe with dest_dimension entity {:?} successfully found oplist with intersecting tagset for {:?}.", recipe.dest_dimension, searched_tags);
+                debug!(target: "portal_init", "PortalRecipe with dest_dimension entity {:?} successfully found oplist with intersecting tagset for {:?}.", recipe.dest_dimension, searched_tags);
                 cmd.entity(ezero_portal).try_insert(SeekingPortalOtherEnd);
             }
             else{
-                error!(target:"portal_init", "PortalRecipe with dest_dimension entity {:?} could not find any oplist's tagset which intersects {:?}.", recipe.dest_dimension, searched_tags);
+                error!(target: "portal_init", "PortalRecipe with dest_dimension entity {:?} could not find any oplist's tagset which intersects {:?}.", recipe.dest_dimension, searched_tags);
                 cmd.entity(ezero_portal).try_remove::<SeekingPortalOtherEnd>();
             }
         }
@@ -410,18 +410,18 @@ pub fn init_childrensprite(mut cmd: Commands,
         let mut portal_tos = Vec::new();
         
         new_portals.iter().for_each(|(portal_ent, &global_pos, dim_ref, ezero_ref)| {
-            info!(target:"portal_init", "Instantiating portal tile entity {:?} at position {:?} in dimension {:?}", portal_ent, global_pos, dim_ref);
+            info!(target: "portal_init", "Instantiating portal tile entity {:?} at position {:?} in dimension {:?}", portal_ent, global_pos, dim_ref);
             cmd.entity(portal_ent).try_remove::<SeekingPortalOtherEnd>();
             let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
-                error!(target:"portal_init", "Portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, ezero_ref.0);
+                error!(target: "portal_init", "Portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, ezero_ref.0);
                 return;
             };
             let Some(portal_recipe) = portal_recipe_opt else {
-                error!(target:"portal_init", "Portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, ezero_ref.0);
+                error!(target: "portal_init", "Portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, ezero_ref.0);
                 return;
             };
             let Ok((&dimension_root_oplist)) = dimension_query.get(portal_recipe.dest_dimension) else {
-                error!(target:"portal_init",
+                error!(target: "portal_init",
                 "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_recipe.dest_dimension, dim_ref.0, global_pos,
             );
             return;
@@ -446,7 +446,7 @@ pub fn init_childrensprite(mut cmd: Commands,
         
         let oe_portal_tileref = EntityZeroRef(portal_template.oe_portal_tile);
         
-        debug!(target:"portal_init", "OE Portal TileRef: {:?}", oe_portal_tileref);
+        debug!(target: "portal_init", "OE Portal TileRef: {:?}", oe_portal_tileref);
         
         let oe_portal = 
         mass_collected
@@ -470,33 +470,33 @@ pub fn init_childrensprite(mut cmd: Commands,
             portal_tos.push((oe_portal, PortalTo::new(our_end_portal)));
         }
         
-        debug!(target:"portal_init", "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
+        debug!(target: "portal_init", "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
         
     };//end handle_success closure
     
     'successful_searches: for suitable_pos in mreader_search_successful.read() {
         let ss_filtered_op_ent = suitable_pos.op_filter_ent;
         if successful_searches.contains(&ss_filtered_op_ent) {
-            trace!(target:"portal_init", "Ignoring duplicate SuitablePosFound for studied_op_ent {:?}", ss_filtered_op_ent);
+            trace!(target: "portal_init", "Ignoring duplicate SuitablePosFound for studied_op_ent {:?}", ss_filtered_op_ent);
             continue 'successful_searches;
         }
         
         if let Some(portal_ent) = started_searches.remove(&ss_filtered_op_ent) {
             let Ok((.., &orig_tile_ref)) = new_portals.get(portal_ent) else {
-                error!(target:"portal_init", "SuitablePosFound for studied_op_ent {:?} but portal which started the search {:?} is no longer spawned", ss_filtered_op_ent, portal_ent);
+                error!(target: "portal_init", "SuitablePosFound for studied_op_ent {:?} but portal which started the search {:?} is no longer spawned", ss_filtered_op_ent, portal_ent);
                 continue 'successful_searches;
             };
             let Ok((str_id, portal_recipe)) = ezero_query.get(orig_tile_ref.0) else {
-                error!(target:"portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", ss_filtered_op_ent, portal_ent, orig_tile_ref.0);
+                error!(target: "portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", ss_filtered_op_ent, portal_ent, orig_tile_ref.0);
                 continue 'successful_searches;
             };
             let Some(portal_recipe) = portal_recipe else {
-                error!(target:"portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} {} which doesn't have a PortalRecipe.", ss_filtered_op_ent, portal_ent, orig_tile_ref.0, str_id);
+                error!(target: "portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} {} which doesn't have a PortalRecipe.", ss_filtered_op_ent, portal_ent, orig_tile_ref.0, str_id);
                 continue 'successful_searches;
             };
             
             successful_searches.insert(ss_filtered_op_ent);
-            debug!(target:"portal_init", "added ss_filtered_op_ent {:?} to successful searches", ss_filtered_op_ent);
+            debug!(target: "portal_init", "added ss_filtered_op_ent {:?} to successful searches", ss_filtered_op_ent);
             handle_success(portal_ent, portal_recipe, suitable_pos.found_pos, ss_filtered_op_ent);
             continue 'successful_searches;
         }
@@ -509,26 +509,26 @@ pub fn init_childrensprite(mut cmd: Commands,
                 if ss_filtered_op_ent == searching_for.filtered_op_ent  {
                     successful_searches.insert(ss_filtered_op_ent);
                     let Ok((_, portal_recipe)) = ezero_query.get(ezero_ref.0) else {
-                        error!(target:"portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which doesn't exist.", ss_filtered_op_ent, ent, ezero_ref.0);
+                        error!(target: "portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which doesn't exist.", ss_filtered_op_ent, ent, ezero_ref.0);
                         continue 'successful_searches;
                     };
                     let Some(portal_recipe) = portal_recipe else {
-                        error!(target:"portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", ss_filtered_op_ent, ent, ezero_ref.0);
+                        error!(target: "portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", ss_filtered_op_ent, ent, ezero_ref.0);
                         continue 'successful_searches;
                     };
                     
                     let Ok((str_id, ..)) = ezero_query.get(ezero_ref.0) else {
-                        error!(target:"portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", ss_filtered_op_ent, ent, ezero_ref.0);
+                        error!(target: "portal_init", "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", ss_filtered_op_ent, ent, ezero_ref.0);
                         continue 'successful_searches;
                     };
-                    info!(target:"portal_init",
+                    info!(target: "portal_init",
                     "Found suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}, found pos: {:?}", str_id, ent, dim_ref.0, my_pos, portal_recipe.dest_dimension, suitable_pos.found_pos
                 );
                 handle_success(ent, portal_recipe, suitable_pos.found_pos, ss_filtered_op_ent);
                 continue 'successful_searches;
             }
         } else {
-            trace!(target:"portal_init", "Ignoring duplicate SuitablePosFound for studied_op_ent {:?} in pending searches", ss_filtered_op_ent);
+            trace!(target: "portal_init", "Ignoring duplicate SuitablePosFound for studied_op_ent {:?} in pending searches", ss_filtered_op_ent);
             continue 'successful_searches;
         }
     }
@@ -540,7 +540,7 @@ for failed_search in mreader_search_failed.read() {
     }
     
     if started_searches.remove(&failed_search.0).is_some() {
-        error!(target:"portal_init", "Failed to find suitable pos for a portal tile, {:?}", failed_search.0);
+        error!(target: "portal_init", "Failed to find suitable pos for a portal tile, {:?}", failed_search.0);
         cmd.entity(failed_search.0).try_despawn();
         
         continue;
@@ -548,16 +548,16 @@ for failed_search in mreader_search_failed.read() {
     
     for (portal_ent, searching_for, &global_pos, dim_ref, tile_ref) in pending_search.iter() {
         let Ok((str_id, portal_template)) = ezero_query.get(tile_ref.0) else {
-            error!(target:"portal_init", "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which no longer exists.", failed_search.0, portal_ent, tile_ref.0);
+            error!(target: "portal_init", "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which no longer exists.", failed_search.0, portal_ent, tile_ref.0);
             continue;
         };
         let Some(portal_template) = portal_template else {
-            error!(target:"portal_init", "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", failed_search.0, portal_ent, tile_ref.0);
+            error!(target: "portal_init", "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", failed_search.0, portal_ent, tile_ref.0);
             continue;
         };
         
         if failed_search.0 == searching_for.filtered_op_ent {
-            error!(target:"portal_init",
+            error!(target: "portal_init",
             "Failed to find suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}", str_id, portal_ent, dim_ref.0, global_pos, portal_template.dest_dimension
         );
     }

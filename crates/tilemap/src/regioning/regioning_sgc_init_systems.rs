@@ -132,15 +132,15 @@ pub fn map_sgc_id_to_entity(
                 if prev_ent.0 == ent {
                     continue;
                 }
-                error!(target:"sgc_init","{} '{}' already in SgcEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
+                error!(target: "sgc_init","{} '{}' already in SgcEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
                 cmd.entity(ent).try_despawn();
             } else {
-                trace!(target:"sgc_init","Inserted tile '{}' into SgcEntityMap with entity {:?}", str_id, ent);
+                trace!(target: "sgc_init","Inserted {} '{}' into SgcEntityMap with entity {:?}", prefix.cloned().unwrap_or_default(), str_id, ent);
             }
         }
     }
     else {
-        error!(target:"sgc_init","SgcEntityMap resource not found when trying to add sgc to it.");
+        error!(target: "sgc_init","SgcEntityMap resource not found when trying to add sgc to it.");
     }
 }
 

@@ -21,7 +21,7 @@ pub fn init_noises(
     if settings.is_empty(){
         cmd.spawn((GlobalGenSettings::default(), Prefix::trunc("AA_GLOBAL_GEN_SETTINGS")));
     }
-    info!("Spawning Global Gen Settings entity");
+    info!(target: "terrgen_init", "Spawning Global Gen Settings entity");
 
     let holder = if noise_holder.is_empty() {
         cmd.spawn((EguiNoiseHolder,)).id()
@@ -35,7 +35,7 @@ pub fn init_noises(
         let str_id = match StrId::new_with_result(seri.id.clone(), 3) {
             Ok(id) => id,
             Err(e) => {
-                error!("Failed to create StrId for noise {}: {}", seri.id, e);
+                error!(target: "terrgen_init", "Failed to create StrId for noise {}: {}", seri.id, e);
                 continue;
             }    
         };
@@ -43,7 +43,7 @@ pub fn init_noises(
         
         if let Some(frequency) = seri.frequency {
             if frequency < 0.00000000001 {
-                error!("Frequency is too small (< 0.0001) for noise {}", seri.id);
+                error!(target: "terrgen_init", "Frequency is too small (< 0.0001) for noise {}", seri.id);
             }
         }
         noise.set_frequency(seri.frequency);
@@ -57,7 +57,7 @@ pub fn init_noises(
                 4 => NoiseType::ValueCubic,
                 5 => NoiseType::Value,
                 _ => {
-                    error!("Unknown noise type: {} for noise {}", noise_type, seri.id);
+                    error!(target: "terrgen_init", "Unknown noise type: {} for noise {}", noise_type, seri.id);
                     continue;
                 }
             }));
@@ -71,7 +71,7 @@ pub fn init_noises(
                 4 => FractalType::DomainWarpProgressive,
                 5 => FractalType::DomainWarpIndependent,
                 _ => {
-                    error!("Unknown fractal type: {} for noise {}", fractal_type, seri.id);
+                    error!(target: "terrgen_init", "Unknown fractal type: {} for noise {}", fractal_type, seri.id);
                     continue;
                 }
             }));
@@ -88,7 +88,7 @@ pub fn init_noises(
                 2 => CellularDistanceFunction::Manhattan,
                 3 => CellularDistanceFunction::Hybrid,
                 _ => {
-                    error!("Unknown cellular distance function: {} for noise {}", cellular_distance_function, seri.id);
+                    error!(target: "terrgen_init", "Unknown cellular distance function: {} for noise {}", cellular_distance_function, seri.id);
                     continue;
                 }
             }));
@@ -104,7 +104,7 @@ pub fn init_noises(
                 5 => CellularReturnType::Distance2Mul,
                 6 => CellularReturnType::Distance2Div,
                 _ => {
-                    error!("Unknown cellular return type: {} for noise {}", cellular_return_type, seri.id);   
+                    error!(target: "terrgen_init", "Unknown cellular return type: {} for noise {}", cellular_return_type, seri.id);   
                     continue;
                 }
             }));
@@ -115,7 +115,7 @@ pub fn init_noises(
                 1 => DomainWarpType::OpenSimplex2Reduced,
                 2 => DomainWarpType::BasicGrid,
                 _ => {
-                    error!("Unknown domain warp type: {} for noise {}", domain_warp_type, seri.id);
+                    error!(target: "terrgen_init", "Unknown domain warp type: {} for noise {}", domain_warp_type, seri.id);
                     continue;
                 }
             }));
@@ -124,7 +124,7 @@ pub fn init_noises(
         noise.set_domain_warp_amp(seri.domain_warp_amp);
 
         if let Ok(existing) = terrgen_map.0.get_cloned(&str_id) {
-            error!("{} already in TerrGenEntityMap : {:?}", str_id, existing);
+            error!(target: "terrgen_init", "{} already in TerrGenEntityMap : {:?}", str_id, existing);
             continue;
         }
         let noise_ent = cmd.spawn_empty().id();
@@ -151,15 +151,15 @@ pub fn map_terrgen_id_to_entity(
                 if prev_ent.0 == ent {
                     continue;
                 }
-                error!(target:"terrgen_init","{} '{}' already in TerrGenEntityMap with entity {:?}, cannot insert entity {:?}", prefix, str_id, prev_ent, ent);
+                error!(target: "terrgen_init","{} '{}' already in TerrGenEntityMap with entity {:?}, cannot insert entity {:?}", prefix, str_id, prev_ent, ent);
                 cmd.entity(ent).try_despawn();
             } else {
-                trace!(target:"terrgen_init","Inserted tile '{}' into TerrGenEntityMap with entity {:?}", str_id, ent);
+                trace!(target: "terrgen_init","Inserted tile '{}' into TerrGenEntityMap with entity {:?}", str_id, ent);
             }
         }
     }
     else {
-        error!(target:"terrgen_init","TerrGenEntityMap resource not found when trying to add tiles to it.");
+        error!(target: "terrgen_init","TerrGenEntityMap resource not found when trying to add tiles to it.");
     }
 }
 

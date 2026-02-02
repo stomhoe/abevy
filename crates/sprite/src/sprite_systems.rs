@@ -173,14 +173,14 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
     for (held_sprites) in ezero_bases.iter() {
         for &sprite_ent in held_sprites.entities() {
             disableds.push((sprite_ent, Disabled));
-            //trace!(target:"sprite_systems", "Disabled sprite entity {:?} as its base entity was disabled", sprite_ent);
+            //trace!(target: "sprite_systems", "Disabled sprite entity {:?} as its base entity was disabled", sprite_ent);
         }
     }
     for ent in removed.read() {
         if let Ok((held_sprites)) = non_ezero_bases.get(ent) {
             for &sprite_ent in held_sprites.entities() {
                 cmd.entity(sprite_ent).try_remove::<Disabled>();
-                //trace!(target:"sprite_systems","Re-enabled sprite entity {:?} as its base entity {:?} was re-enabled", sprite_ent, ent);
+                //trace!(target: "sprite_systems","Re-enabled sprite entity {:?} as its base entity {:?} was re-enabled", sprite_ent, ent);
             }
         }
     }

@@ -39,12 +39,12 @@ pub fn init_oplists_from_assets(
         let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
             Ok(str_id) => str_id,
             Err(err) => {
-                error!("Failed to create StrId for oplist {}: {:?}", seri.id, err);
+                error!(target: "oplist_init", "Failed to create StrId for oplist {}: {:?}", seri.id, err);
                 continue;
             }
         };   
         if seri.is_root() && seri.operation_operands.is_empty() {
-            error!("root OpListSeri has no operations");
+            error!(target: "oplist_init", "root OpListSeri has no operations");
             continue;
         }
         let size =
@@ -52,7 +52,7 @@ pub fn init_oplists_from_assets(
             if let Ok(size) = OplistSize::new(size) {
                 size
             } else {
-                error!("Invalid oplist_size for {}, must be in [1,4] for each vec component", seri.id);
+                error!(target: "oplist_init", "Invalid oplist_size for {}, must be in [1,4] for each vec component", seri.id);
                 continue;
             }
         } else{
@@ -67,7 +67,7 @@ pub fn init_oplists_from_assets(
         for (operation, str_operands, out) in seri.operation_operands.iter() {
             
             if *out >= VariablesArray::SIZE {
-                error!("Output index {} out of bounds for OperationList", out);
+                error!(target: "oplist_init", "Output index {} out of bounds for OperationList", out);
                 continue;
             }
             let mut operands = Vec::new();
@@ -86,11 +86,11 @@ pub fn init_oplists_from_assets(
                 }
                 else if let Some(var_i) = operand.strip_prefix("$") {
                     let Ok(var_i) = var_i.parse::<u8>() else {
-                        warn!("Failed to parse Stack array index from '{}'", operand);
+                        warn!(target: "oplist_init", "Failed to parse Stack array index from '{}'", operand);
                         continue;
                     };
                     if var_i >= VariablesArray::SIZE {
-                        warn!("Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
+                        warn!(target: "oplist_init", "Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
                     }
                     OperandElement::StackArray(var_i)
                 } else if let Some(seed_str) = operand.strip_prefix("hp") {
@@ -101,11 +101,11 @@ pub fn init_oplists_from_assets(
                     // Example: "pd3123" -> min_dist = 3, seed = 123
                     let (min_dist_str, seed_str) = pd_str.split_at(1);
                     let (Ok(min_dist), Ok(seed)) = (min_dist_str.parse::<u8>(), seed_str.parse::<u64>()) else {
-                        warn!("Invalid PoissonDisk min_dist ('{}') or seed ('{}')", min_dist_str, seed_str);
+                        warn!(target: "oplist_init", "Invalid PoissonDisk min_dist ('{}') or seed ('{}')", min_dist_str, seed_str);
                         continue;
                     };
                     let Ok(op) = OperandElement::new_poisson_disk(min_dist, seed) else {
-                        warn!("Failed to create PoissonDisk operand with min_dist {} and seed {}", min_dist, seed);
+                        warn!(target: "oplist_init", "Failed to create PoissonDisk operand with min_dist {} and seed {}", min_dist, seed);
                         continue;
                     };
                     op      
@@ -126,13 +126,13 @@ pub fn init_oplists_from_assets(
                         (ent_str, 0)
                     };
                     let Ok(ent) = terr_gen_map.0.get_cloned(&base_str.to_string()) else {
-                        warn!("Entity not found in TerrGenEntityMap: {}", base_str);
+                        warn!(target: "oplist_init", "Entity not found in TerrGenEntityMap: {}", base_str);
                         continue;
                     };
                     
                     OperandElement::NoiseEntity(ent, noise_sample_range, complement, extra_seed)
                 } else {
-                    error!("Unknown operand: {}", operand);
+                    error!(target: "oplist_init", "Unknown operand: {}", operand);
                     continue;
                 };
                 
@@ -159,7 +159,7 @@ pub fn init_oplists_from_assets(
                 "lin" => Operation::Linear,
                 "clamp" => Operation::Clamp,
                 _ => {
-                    error!("Unknown operation: {}", operation);
+                    error!(target: "oplist_init", "Unknown operation: {}", operation);
                     continue;
                 },
             };
@@ -177,7 +177,7 @@ pub fn init_oplists_from_assets(
                 } else if let Ok(tile_ent) = tiles_map.0.get_cloned(tile_str) {
                     Some(tile_ent)
                 } else {
-                    warn!("Tile {} not found in TilingEntityMap or TileWeightedSamplersMap", tile_str);
+                    warn!(target: "oplist_init", "Tile {} not found in TilingEntityMap or TileWeightedSamplersMap", tile_str);
                     None
                 }
             }).collect::<Vec<Entity>>();
@@ -186,7 +186,7 @@ pub fn init_oplists_from_assets(
             oplist.bifurcations.push(bifurcation);
         }
         if let Ok(ent) = oplist_map.0.get_cloned(&str_id) {
-            error!("{} already in OpListEntityMap : {}", str_id, ent);
+            error!(target: "oplist_init", "{} already in OpListEntityMap : {}", str_id, ent);
             continue;
         }
         let spawned_oplist = cmd.spawn_empty().id();
@@ -197,7 +197,7 @@ pub fn init_oplists_from_assets(
                 if dim_id.trim().is_empty() { continue; }
                 let Ok(dim_entity) = dimension_map.0.get_cloned(&dim_id) else
                 {
-                    error!("Dimension '{}' not found in DimensionEntityMap for root oplist '{}'", dim_id, seri.id);
+                    error!(target: "oplist_init", "Dimension '{}' not found in DimensionEntityMap for root oplist '{}'", dim_id, seri.id);
                     continue;
                 };
                 dim_refs.0.insert(dim_entity);
@@ -231,6 +231,7 @@ pub fn init_oplists_bifurcations(
         if let Some(seri) = assets.remove(&handle) {
             let Ok(oplist_ent) = oplist_map.0.get_cloned(&seri.id) else {
                 error!(
+                    target: "oplist_init",
                     "oplist entity with id '{}' not found in OpListEntityMap",
                     seri.id
                 );
@@ -244,17 +245,18 @@ pub fn init_oplists_bifurcations(
                 
                 let Ok(bifurcation_ent) = oplist_map.0.get_cloned(&bifurcation_str.to_string()) else {
                     error!(
+                        target: "oplist_init",
                         "bifurcation entity with id '{}' not found in OpListEntityMap",
                         bifurcation_str
                     );
                     continue;
                 };
                 if oplist_ent == bifurcation_ent {
-                    error!("bifurcation entity with id '{}' would make parent diverge into itself ", bifurcation_str);
+                    error!(target: "oplist_init", "bifurcation entity with id '{}' would make parent diverge into itself ", bifurcation_str);
                     continue;
                 }
                 if is_root.get(bifurcation_ent).is_ok() {
-                    error!("bifurcation entity with id '{}' must not be a root oplist", bifurcation_str);
+                    error!(target: "oplist_init", "bifurcation entity with id '{}' must not be a root oplist", bifurcation_str);
                     continue;
                 }
                 
@@ -281,7 +283,7 @@ pub fn cycle_detection(
         stack: &mut Vec<Entity>,
     ) -> bool {
         if stack.contains(&current) {
-            error!("Cycle detected, caused by oplist entity {:?}'s bifurcations", current);
+            error!(target: "oplist_init", "Cycle detected, caused by oplist entity {:?}'s bifurcations", current);
             return true;
         }
         if !visited.insert(current) {
@@ -307,7 +309,7 @@ pub fn cycle_detection(
         let mut visited = HashSet::new();
         let mut stack = Vec::new();
         if dfs(&query, root, &mut visited, &mut stack) {
-            error!("Cycle detected starting from root oplist {:?}", root);
+            error!(target: "oplist_init", "Cycle detected starting from root oplist {:?}", root);
         }
     }
 }
@@ -322,26 +324,26 @@ pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
     for (oplist_ent, my_oplist_id, dim_refs) in oplist_query.iter() {
         for &dim_ent in dim_refs.0.iter() {
             let Ok((dim_str_id, root_op_list)) = dimension_query.get(dim_ent) else {
-                error!(target: "dimension_loading", "Dimension entity '{}' referenced by DimensionEntityMap is not spawned in world", dim_ent);
+                error!(target: "oplist_init", "Dimension entity '{}' referenced by DimensionEntityMap is not spawned in world", dim_ent);
                 continue;
             };
             
             match (assignments.get(&dim_ent), root_op_list) {
                 (Some(&other_ent), _) => {
-                    if other_ent.0 == oplist_ent { warn!("self is already dimoplist"); continue; }
+                    if other_ent.0 == oplist_ent { warn!(target: "oplist_init", "self is already dimoplist"); continue; }
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent.0) else {
                         continue;
                     };
-                    error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
+                    error!(target: "oplist_init", "Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
                     continue;
                 },
                 (_, Some(&DimensionRootOplist(other_ent))) => {
-                    if other_ent == oplist_ent { warn!("self is already dimoplist"); continue; }
+                    if other_ent == oplist_ent { warn!(target: "oplist_init", "self is already dimoplist"); continue; }
                     
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
                         continue;
                     };
-                    error!("Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
+                    error!(target: "oplist_init", "Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
                     continue;
                 },
                 (None, None) => {
@@ -364,15 +366,15 @@ pub fn map_oplist_id_to_entity(
                 if prev_ent.0 == ent {
                     continue;
                 }
-                error!(target:"sgc_init","{} '{}' already in SgcEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
+                error!(target: "oplist_init", "{} '{}' already in OpListEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
                 cmd.entity(ent).try_despawn();
             } else {
-                trace!(target:"sgc_init","Inserted tile '{}' into SgcEntityMap with entity {:?}", str_id, ent);
+                trace!(target: "oplist_init", "Inserted tile '{}' into OpListEntityMap with entity {:?}", str_id, ent);
             }
         }
     }
     else {
-        error!(target:"sgc_init","SgcEntityMap resource not found when trying to add sgc to it.");
+        error!(target: "oplist_init","OpListEntityMap resource not found when trying to add oplist to it.");
     }
 }
 
