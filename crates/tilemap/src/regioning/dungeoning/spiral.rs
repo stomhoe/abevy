@@ -4,7 +4,6 @@ use std::collections::VecDeque;
 use common::common_components::HashId;
 use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
-use rand_distr::num_traits::Float;
 use ::tilemap_shared::*;
 
 use crate::regioning::{
@@ -153,6 +152,49 @@ pub fn spiral_dungeon_building_system(
                 }
             }
         }
+
+        let center_hole_radius = (room_radius - 2).max(1);
+        let center_hole_radius_sq = center_hole_radius * center_hole_radius;
+        for y in 0..tile_height {
+            for x in 0..tile_width {
+                let dx = x as i32 - center_x;
+                let dy = y as i32 - center_y;
+                let dist_sq = dx * dx + dy * dy;
+                if dist_sq <= center_hole_radius_sq {
+                    floor_map[y * tile_width + x] = false;
+                }
+            }
+        }
+
+        let mut center_wall_ring_map = vec![false; tile_map_size];
+        let center_ring_radius = center_hole_radius + 1;
+        let center_ring_outer = center_ring_radius + 1;
+        let center_ring_radius_sq = center_ring_radius * center_ring_radius;
+        let center_ring_outer_sq = center_ring_outer * center_ring_outer;
+        for y in 0..tile_height {
+            for x in 0..tile_width {
+                let dx = x as i32 - center_x;
+                let dy = y as i32 - center_y;
+                let dist_sq = dx * dx + dy * dy;
+                if dist_sq >= center_ring_radius_sq && dist_sq <= center_ring_outer_sq {
+                    center_wall_ring_map[y * tile_width + x] = true;
+                }
+            }
+        }
+
+        let ring_samples = ((std::f32::consts::TAU * center_ring_radius as f32) * 2.0)
+            .ceil()
+            .max(24.0) as usize;
+        for i in 0..ring_samples {
+            let theta = (i as f32 / ring_samples as f32) * std::f32::consts::TAU;
+            let x = center_x as f32 + center_ring_radius as f32 * theta.cos();
+            let y = center_y as f32 + center_ring_radius as f32 * theta.sin();
+            let xi = x.round() as i32;
+            let yi = y.round() as i32;
+            if xi >= 0 && yi >= 0 && (xi as usize) < tile_width && (yi as usize) < tile_height {
+                center_wall_ring_map[yi as usize * tile_width + xi as usize] = true;
+            }
+        }
         
         let can_step = |nx: i32, ny: i32| {
             nx >= carve_margin as i32
@@ -242,9 +284,33 @@ pub fn spiral_dungeon_building_system(
         let mut visited = vec![false; tile_map_size];
         let mut queue = VecDeque::new();
         let center_idx = center_y as usize * tile_width + center_x as usize;
+        let mut seed_idx = None;
         if floor_map[center_idx] {
-            visited[center_idx] = true;
-            queue.push_back(center_idx);
+            seed_idx = Some(center_idx);
+        } else {
+            let max_search_radius = (tile_width.max(tile_height) as i32).saturating_sub(1);
+            'find_seed: for radius in 1..=max_search_radius {
+                let min_x = (center_x - radius).max(0);
+                let max_x = (center_x + radius).min(tile_width as i32 - 1);
+                let min_y = (center_y - radius).max(0);
+                let max_y = (center_y + radius).min(tile_height as i32 - 1);
+                for y in min_y..=max_y {
+                    for x in min_x..=max_x {
+                        let idx = y as usize * tile_width + x as usize;
+                        if floor_map[idx] {
+                            seed_idx = Some(idx);
+                            break 'find_seed;
+                        }
+                    }
+                }
+            }
+            if seed_idx.is_none() {
+                seed_idx = floor_map.iter().position(|&v| v);
+            }
+        }
+        if let Some(seed_idx) = seed_idx {
+            visited[seed_idx] = true;
+            queue.push_back(seed_idx);
         }
         while let Some(idx) = queue.pop_front() {
             let x = idx % tile_width;
@@ -264,9 +330,11 @@ pub fn spiral_dungeon_building_system(
                 }
             }
         }
-        for idx in 0..tile_map_size {
-            if floor_map[idx] && !visited[idx] {
-                floor_map[idx] = false;
+        if seed_idx.is_some() {
+            for idx in 0..tile_map_size {
+                if floor_map[idx] && !visited[idx] {
+                    floor_map[idx] = false;
+                }
             }
         }
         
@@ -300,6 +368,44 @@ pub fn spiral_dungeon_building_system(
                 wall_map[idx] = true;
             }
         }
+
+        for idx in 0..tile_map_size {
+            if center_wall_ring_map[idx] {
+                wall_map[idx] = true;
+            }
+        }
+
+        let mut closed_wall_map = wall_map.clone();
+        for y in 1..tile_height - 1 {
+            for x in 1..tile_width - 1 {
+                let dx = x as i32 - center_x;
+                let dy = y as i32 - center_y;
+                let dist_sq = dx * dx + dy * dy;
+                if dist_sq <= center_hole_radius_sq {
+                    continue;
+                }
+                let idx = y * tile_width + x;
+                if wall_map[idx] || floor_map[idx] || hazard_map[idx] {
+                    continue;
+                }
+                let left = wall_map[y * tile_width + (x - 1)];
+                let right = wall_map[y * tile_width + (x + 1)];
+                let up = wall_map[(y - 1) * tile_width + x];
+                let down = wall_map[(y + 1) * tile_width + x];
+                let up_left = wall_map[(y - 1) * tile_width + (x - 1)];
+                let up_right = wall_map[(y - 1) * tile_width + (x + 1)];
+                let down_left = wall_map[(y + 1) * tile_width + (x - 1)];
+                let down_right = wall_map[(y + 1) * tile_width + (x + 1)];
+                if (left && right)
+                    || (up && down)
+                    || (up_left && down_right)
+                    || (up_right && down_left)
+                {
+                    closed_wall_map[idx] = true;
+                }
+            }
+        }
+        wall_map = closed_wall_map;
         
         let delete_template = DeleteOtherTiles::default();
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());

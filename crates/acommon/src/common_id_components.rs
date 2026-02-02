@@ -14,7 +14,7 @@ use std::fmt::{Debug, Display};
 
 macro_rules! define_fixedstr_id {
     ($ty:ident, $len:expr) => {
-        #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, Reflect, PartialEq, Eq, )]
+        #[derive(Component, Deserialize, Serialize, Clone, Hash, Reflect, PartialEq, Eq, )]
         #[require(Name)]
         pub struct $ty(FixedStr<$len>);
         impl $ty {
@@ -78,6 +78,11 @@ macro_rules! define_fixedstr_id {
                 Self(FixedStr::<$len>::trunc(s.trim()))
             }
         }
+        impl Default for $ty {
+            fn default() -> Self {
+                Self(FixedStr::<$len>::default())
+            }
+        }
     };
 }
 define_fixedstr_id!(StrId20B, 20);
@@ -92,7 +97,7 @@ macro_rules! new_strid {
 
 
 
-define_fixedstr_id!(Prefix, 20);
+define_fixedstr_id!(Prefix, 32);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct AddHashIdFromStrId;

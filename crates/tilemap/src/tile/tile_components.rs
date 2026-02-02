@@ -9,6 +9,7 @@ use common::common_tag_components::{HashedTagsVec, TagSet};
 use common::common_components::*;
 use dimension_shared::DimensionRef;
 use game_common::game_common_components::*;
+use game_common::game_common_string_components::Description;
 use ::sprite_shared::*;
 
 use std::hash::{DefaultHasher, Hash, Hasher};

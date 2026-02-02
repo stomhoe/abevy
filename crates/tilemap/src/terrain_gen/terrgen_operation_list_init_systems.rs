@@ -4,7 +4,7 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 
-use common::{common_components::{AnyDisabling, StrId}, common_tag_components::TagSet};
+use common::{common_components::{AnyDisabling, Prefix, StrId}, common_tag_components::TagSet};
 use dimension_shared::{Dimension, DimensionEntityMap, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
 use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_operaton_list_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
@@ -21,7 +21,7 @@ pub fn init_oplists_from_assets(
     samplers_map: Res<TileWeightedSamplersMap>,
     tiles_map: Res<TileEzerosMap>,
     dimension_map: Res<DimensionEntityMap>,
-    mut oplist_map: ResMut<OpListEntityMap>,
+    oplist_map: Res<OpListEntityMap>,
 ) {
     if !oplist_map.0.is_empty() { return ; }
     
@@ -190,7 +190,6 @@ pub fn init_oplists_from_assets(
             continue;
         }
         let spawned_oplist = cmd.spawn_empty().id();
-        oplist_map.0.overwrite(&str_id, spawned_oplist);
         oplist_comps.push((spawned_oplist, ( str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
         if seri.is_root() { 
             let mut dim_refs = MultipleDimensionRefs::default();
@@ -354,6 +353,28 @@ pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
     cmd.try_insert_batch(assignments);
 }
 
+pub fn map_oplist_id_to_entity(
+    mut cmd: Commands,
+    map: Option<ResMut<OpListEntityMap>>,
+    ezeros_query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<OperationList>, )>,
+) {
+    if let Some(mut map) = map {
+        for (ent, prefix, str_id) in ezeros_query.iter() {
+            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
+                if prev_ent.0 == ent {
+                    continue;
+                }
+                error!(target:"sgc_init","{} '{}' already in SgcEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
+                cmd.entity(ent).try_despawn();
+            } else {
+                trace!(target:"sgc_init","Inserted tile '{}' into SgcEntityMap with entity {:?}", str_id, ent);
+            }
+        }
+    }
+    else {
+        error!(target:"sgc_init","SgcEntityMap resource not found when trying to add sgc to it.");
+    }
+}
 
 #[allow(unused_parens)]
 pub fn remove_oplist_from_map_on_despawn(

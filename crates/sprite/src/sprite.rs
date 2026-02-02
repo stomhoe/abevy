@@ -30,14 +30,15 @@ pub fn plugin(app: &mut App) {
         z_sort_system,
         // server only
         (become_child_of_sprite_with_tag, replace_string_ids_by_entities, 
-            add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected).and(in_state(AppState::StatefulGameSession)))
+            add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected)
+            .and(in_state(AppState::StatefulGameSession)))
             
     ).in_set(AcSpriteSystems))
-    .add_systems(Update, (add_sprites_to_holder,)) 
+    .add_systems(Update, (add_sprites_to_holder, add_sprite_cfgs_to_map)) 
     .configure_sets(SPRITES_SCHEDULE, AcSpriteSystems.in_set(StatefulSessionSystems))
     
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-        (init_sprite_cfgs, ).chain(),
+        (init_sprite_cfgs, add_sprite_cfgs_to_map).chain(),
     ).in_set(AcSpriteSystems)) 
 
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (

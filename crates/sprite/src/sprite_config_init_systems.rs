@@ -12,7 +12,7 @@ use crate::{sprite_components::*, sprite_resources::*, };
 #[allow(unused_parens)]
 pub fn init_sprite_cfgs(
     mut cmd: Commands, 
-    mut scs_map: ResMut<SpriteCfgEntityMap>,
+    scs_map: Res<SpriteCfgEntityMap>,
     mut seris_handles: ResMut<SpriteSerisHandles>,
     mut assets: ResMut<Assets<SpriteConfigSeri>>,
     library: Res<AnimationLibrary>,
@@ -45,12 +45,7 @@ pub fn init_sprite_cfgs(
             }
         };
         
-        if let Ok(_existing_ent) = scs_map.0.get_cloned(&str_id) {
-            error!(target: "sprite_init", "Duplicate SpriteConfig StrId found: '{}', skipping duplicate.", str_id);
-            continue;
-        }
         let spritecfg_ent = cmd.spawn_empty().id();
-        scs_map.0.overwrite(str_id.clone(), spritecfg_ent);
         
         let visib = match seri.visibility {
             Some(0) => Visibility::Inherited,
@@ -175,7 +170,28 @@ pub fn init_sprite_cfgs(
     }
     cmd.try_insert_batch(comps_to_insert);  
 } 
-
+pub fn add_sprite_cfgs_to_map(
+    mut cmd: Commands,
+    map: Option<ResMut<SpriteCfgEntityMap>>,
+    ezeros_query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<SpriteConfig>, With<EntityZero>, AnyDisabling,)>,
+) {
+    if let Some(mut map) = map {
+        for (ent, prefix, str_id) in ezeros_query.iter() {
+            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
+                if prev_ent.0 == ent {
+                    continue;
+                }
+                error!(target:"sprite_init","{} '{}' already in SpriteCfgEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
+                cmd.entity(ent).try_despawn();
+            } else {
+                trace!(target:"sprite_init","Inserted sprite config '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
+            }
+        }
+    }
+    else {
+        error!(target:"sprite_init","SpriteCfgEntityMap resource not found when trying to add sprite configs to it.");
+    }
+}
 
 #[allow(unused_parens)]
 pub fn remove_spriteconfig_from_entimap_on_despawn(

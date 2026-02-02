@@ -2,7 +2,8 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
-use common::common_components::{AnyDisabling, ImagePathHolder, StrId};
+use common::common_components::{AnyDisabling, ImagePathHolder, Prefix, StrId};
+use game_common::game_common_components::EntityZero;
 use sprite::{sprite_components::*, };
 use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
@@ -17,7 +18,7 @@ pub fn init_animations(
     mut cmd: Commands,
     mut anim_handles: ResMut<AnimSerisHandles>,
     mut seris_assets: ResMut<Assets<AnimationSerialization>>,
-    mut library: ResMut<AnimationLibrary>,
+    library: Res<AnimationLibrary>,
     sc_holder: Query<Entity, With<SpriteConfigsHolder>>,
 
     //usar state
@@ -74,16 +75,31 @@ pub fn init_animations(
         }
             
         seris.push((ent, seri));
-        
-        
-        debug!(target: "sprite_animation_init", "Inserting animation '{}' into library.", str_id);
-
-        if let Some(prev) = library.0.overwrite(&str_id, ent) {
-            error!(target: "sprite_animation_init", "Animation with id '{}' already present in library, skipping insert.", str_id);
-        } 
     }
     cmd.try_insert_batch(seris);
     cmd.try_insert_batch(main_comps);
+}
+pub fn map_spriteanim_id_to_entity(
+    mut cmd: Commands,
+    map: Option<ResMut<AnimationLibrary>>,
+    ezeros_query: Query<(Entity, Option<&Prefix>, &StrId), (With<AnimationComp>, Changed<StrId>, AnyDisabling,)>,
+) {
+    if let Some(mut map) = map {
+        for (ent, prefix, str_id) in ezeros_query.iter() {
+            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
+                if prev_ent.0 == ent {
+                    continue;
+                }
+                error!(target:"sprite_init","{} '{}' already in AnimationLibrary with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
+                cmd.entity(ent).try_despawn();
+            } else {
+                trace!(target:"sprite_init","Inserted animation '{}' into AnimationLibrary with entity {:?}", str_id, ent);
+            }
+        }
+    }
+    else {
+        error!(target:"sprite_init","AnimationLibrary resource not found when trying to add animations to it.");
+    }
 }
 
 

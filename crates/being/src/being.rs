@@ -6,11 +6,13 @@ use game_common::{HostSystems, game_common::{GameplaySystems, StatefulSessionSys
 
 use crate::{being_resources::*, being_systems::*, being_components::*};
 
-
-
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
+    .add_plugins((
+        crate::race::plugin,
+        crate::sex::plugin,
+    ))
 
     .add_systems(Update, (
         (

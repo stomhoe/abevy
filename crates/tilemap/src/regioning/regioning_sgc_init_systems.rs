@@ -10,7 +10,7 @@ use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*}, te
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (
     mut cmd: Commands, 
-    mut map: ResMut<SgcEntityMap>,
+    map: Res<SgcEntityMap>,
     mut seris_handles: ResMut<StructureSerisHandles>,
     mut assets: ResMut<Assets<StructuredGenConfigSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,
@@ -30,10 +30,10 @@ pub fn init_structured_gen_configs (
     
     for handle in std::mem::take(&mut seris_handles.handles) {
         let Some(structured_gen_seri) = assets.remove(&handle) else {
-            warn!(target: "structure_spawn", "Failed to load StructureSeri from handle: {:?}", handle);
+            warn!(target: "sgc_init", "Failed to load StructureSeri from handle: {:?}", handle);
             continue;
         };
-        info!(target: "structure_spawn", "Loading StructureSeri from handle: {:?}", handle);
+        info!(target: "sgc_init", "Loading StructureSeri from handle: {:?}", handle);
         
         let main_ent = cmd.spawn_empty().id();
         
@@ -65,7 +65,7 @@ pub fn init_structured_gen_configs (
                 for opfilter_seri in whitelisted_filters {
                     
                     let Ok(tags) = HashedTagsVec::new_error_if_set_empty(opfilter_seri.tags) else {
-                        error!(target: "structure_spawn", "OpFilterSerialization within {} has no tags.", structured_gen_seri.id);
+                        error!(target: "sgc_init", "OpFilterSerialization within {} has no tags.", structured_gen_seri.id);
                         continue;
                     };
                     
@@ -86,13 +86,13 @@ pub fn init_structured_gen_configs (
                 let mut dim_refs = MultipleDimensionRefs::default();
                 for dim_strid in exclusive_for_dimensions {
                     let Ok(dim_ent) = dimension_entity_map.0.get_cloned(&dim_strid) else {
-                        error!(target: "structure_spawn", "Failed to find Dimension with StrId: {}", dim_strid);
+                        error!(target: "sgc_init", "Failed to find Dimension with StrId: {}", dim_strid);
                         continue;
                     };
                     dim_refs.0.insert(dim_ent);
                 }
                 if dim_refs.0.is_empty(){
-                    error!(target: "structure_spawn", "StructureSeri with id: {} has no valid dimension references.", structured_gen_seri.id);
+                    error!(target: "sgc_init", "StructureSeri with id: {} has no valid dimension references.", structured_gen_seri.id);
                     continue;
                 }
                 exclusive_for_dims.push((main_ent, dim_refs));
@@ -102,7 +102,7 @@ pub fn init_structured_gen_configs (
             
             let Ok(poisson_disk) = PoissonDisk::multiple_tagged(pdisk_mindist_seed_vec, 3, 16)
             else {
-                error!(target: "structure_spawn", "Failed to create PoissonDisk for StructureSeri with id: {}, skipping PoissonDisk creation.", structured_gen_seri.id);
+                error!(target: "sgc_init", "Failed to create PoissonDisk for StructureSeri with id: {}, skipping PoissonDisk creation.", structured_gen_seri.id);
                 continue;
             };
             
@@ -113,9 +113,6 @@ pub fn init_structured_gen_configs (
 
         
         sgcs_comps.push((main_ent, (sgc_id, gen_cfg, ChildOf(holder),)));
-        
-        map.0.overwrite(structured_gen_seri.id.clone(), main_ent);
-        
     }
     cmd.spawn_batch(opfilters_to_spawn);
     cmd.insert_batch(exclusive_for_dims);
@@ -124,6 +121,28 @@ pub fn init_structured_gen_configs (
     cmd.spawn((SgcsWeightedSampler, ent_w_sampler, ChildOf(holder),));
 }
 
+pub fn map_sgc_id_to_entity(
+    mut cmd: Commands,
+    map: Option<ResMut<SgcEntityMap>>,
+    ezeros_query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<StructuredGenConfig>, )>,
+) {
+    if let Some(mut map) = map {
+        for (ent, prefix, str_id) in ezeros_query.iter() {
+            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
+                if prev_ent.0 == ent {
+                    continue;
+                }
+                error!(target:"sgc_init","{} '{}' already in SgcEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
+                cmd.entity(ent).try_despawn();
+            } else {
+                trace!(target:"sgc_init","Inserted tile '{}' into SgcEntityMap with entity {:?}", str_id, ent);
+            }
+        }
+    }
+    else {
+        error!(target:"sgc_init","SgcEntityMap resource not found when trying to add sgc to it.");
+    }
+}
 
 #[allow(unused_parens)]
 pub fn remove_sgc_from_map_on_despawn(

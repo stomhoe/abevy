@@ -285,7 +285,7 @@ dependencies = [
  "bevy-inspector-egui",
  "camera",
  "client",
- "color_sample",
+ "color_sampler",
  "common",
  "debug",
  "dimension",
@@ -359,7 +359,7 @@ dependencies = [
  "bevy_replicon",
  "bevy_replicon_renet",
  "bevy_spritesheet_animation",
- "color_sample",
+ "color_sampler",
  "common",
  "dimension",
  "dimension_shared",
@@ -504,6 +504,7 @@ dependencies = [
  "nano-id",
  "player",
  "serde",
+ "sprite",
  "sprite_animation_shared",
  "strum 0.27.2",
  "strum_macros 0.27.2",
@@ -3432,7 +3433,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "color_sample"
+name = "color_sampler"
 version = "0.1.0"
 dependencies = [
  "bevy 0.18.0",
@@ -7405,7 +7406,7 @@ dependencies = [
  "bevy_replicon_renet",
  "bit-vec 0.8.0",
  "camera",
- "color_sample",
+ "color_sampler",
  "common",
  "debug_unwraps",
  "delegate",

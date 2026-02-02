@@ -26,6 +26,8 @@ concat!(
     "pos_search=info,",
     "childrensprite_init=info,",
 
+    "sgc_init=trace,",
+
     "terrgen_systems=info,",
     "terrgen_process=info,",
     "structure_spawn=warn,",
@@ -114,7 +116,7 @@ fn main() {
             tilemap::plugin,
             setup_screen::plugin,
             pregame_screen::plugin,
-            color_sample::plugin,
+            color_sampler::plugin,
         ))
         .run()
 

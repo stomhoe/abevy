@@ -1,16 +1,12 @@
 
 use bevy::prelude::*;
-use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor, tiles::TileStorage};
-use camera::camera_components::CameraTarget;
-use common::common_components::{AnyDisabling, AssetScoped, StrId20B};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::DespawnTimer;
-use std::{collections::{HashMap, HashSet}, time::Duration};
-use tilemap_shared::{ChunkPos, ForceAllChunksDespawn, HashablePosVec, RegionPos};
+use std::collections::HashSet;
+use tilemap_shared::{ChunkPos, ForceAllChunksDespawn};
 
 use super::chunking_components::*;
 use super::chunking_resources::*;
-use crate::{regioning::{regioning_components::Region, regioning_resources::LoadedRegions}, tile::tile_messages::SavedTileHadChunkDespawn, tilemap_resources::{MassCollectedTiles, }};
+use crate::tile::tile_messages::SavedTileHadChunkDespawn;
 
 
 #[allow(unused_parens, )]
@@ -87,7 +83,6 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
     mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
     chunks_query: Query<(Option<&Children>, Option<&TilesToSave>), >,
-    tmaps: Query<&TileStorage, AnyDisabling>,
     mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
     mut force_despawn_reader: MessageReader<ForceChunkDespawn>,
@@ -119,13 +114,6 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
         };
         if let Some(children) = children.as_ref() {
             for child in children.iter() {
-                if let Ok(tile_storage) = tmaps.get(child) {
-                    for tile_entity in tile_storage.iter() {
-                        if let Some(tile_entity) = tile_entity {
-                            cmd.entity(*tile_entity).try_despawn();
-                        }
-                    }
-                }
                 // if tiles_to_save.entities().contains(&child) {
                 //     cmd.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
                 //     tosave_events.push(SavedTileHadChunkDespawn(child));
@@ -162,7 +150,11 @@ pub fn on_chunk_despawn(
 
         return; 
     };
-    //trace!(target:"chunk_despawn","Chunk at position {:?} in dimension {:?} despawned, removing from LoadedChunks", chunk_pos, chunk_dimension);
-    loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
-
+    let Some(chunk_ent) = loaded_chunks.0.get(&(chunk_dimension, chunk_pos))
+    else {
+        return; 
+    };
+    if *chunk_ent == trig.entity {
+        loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
+    }
 }

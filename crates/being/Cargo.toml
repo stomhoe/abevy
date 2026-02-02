@@ -15,6 +15,7 @@ dimension_shared = { path = "../dimension_shared" }
 being_shared = { path = "../being_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 modifier = { path = "../modifier" }
+sprite = { path = "../sprite" }
 
 bevy = { workspace = true }
 nano-id = { workspace = true }

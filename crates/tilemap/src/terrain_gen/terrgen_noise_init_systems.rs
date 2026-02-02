@@ -10,7 +10,7 @@ pub fn init_noises(
     mut cmd: Commands, 
     mut seris_handles: ResMut<NoiseSerisHandles>,
     mut assets: ResMut<Assets<NoiseSerialization>>,
-    mut terrgen_map: ResMut<TerrGenEntityMap>,
+    terrgen_map: Res<TerrGenEntityMap>,
     settings: Query<&GlobalGenSettings>,
     noise_holder: Query<Entity, With<EguiNoiseHolder>>,
 ) {
@@ -128,7 +128,6 @@ pub fn init_noises(
             continue;
         }
         let noise_ent = cmd.spawn_empty().id();
-        terrgen_map.0.overwrite(&str_id, noise_ent);
         fnl_comps_to_insert.push((
             noise_ent,
             (
@@ -140,6 +139,30 @@ pub fn init_noises(
     }
     cmd.insert_batch(fnl_comps_to_insert);
 }
+
+pub fn map_terrgen_id_to_entity(
+    mut cmd: Commands,
+    map: Option<ResMut<TerrGenEntityMap>>,
+    ezeros_query: Query<(Entity, &Prefix, &StrId), (Changed<StrId>, With<Terrgen>, )>,
+) {
+    if let Some(mut map) = map {
+        for (ent, prefix, str_id) in ezeros_query.iter() {
+            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
+                if prev_ent.0 == ent {
+                    continue;
+                }
+                error!(target:"terrgen_init","{} '{}' already in TerrGenEntityMap with entity {:?}, cannot insert entity {:?}", prefix, str_id, prev_ent, ent);
+                cmd.entity(ent).try_despawn();
+            } else {
+                trace!(target:"terrgen_init","Inserted tile '{}' into TerrGenEntityMap with entity {:?}", str_id, ent);
+            }
+        }
+    }
+    else {
+        error!(target:"terrgen_init","TerrGenEntityMap resource not found when trying to add tiles to it.");
+    }
+}
+
 
 #[allow(unused_parens)]
 pub fn remove_terrgen_from_map_on_despawn(

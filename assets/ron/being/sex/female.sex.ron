@@ -1,0 +1,5 @@
+(
+    id: "female",
+    name: "Female",
+    description: Some("Female biological sex"),
+)

@@ -21,12 +21,13 @@ pub fn plugin(app: &mut App) {
         SpritesheetAnimationPlugin, 
         RonAssetPlugin::<AnimationSerialization>::new(&["anim.ron"]),
     ))
-    .add_systems(Update, (
+    .add_systems(Update, ((
            animate_sprite, 
            update_animstate_for_clients.run_if(in_state(ServerState::Running)),  
            client_receive_moving_anim.run_if(in_state(ClientState::Connected)),   
         ).in_set(SpriteAnimationSystems),
-
+        map_spriteanim_id_to_entity,
+    ),
     )
 
     .add_systems(FixedUpdate, ((//está en fixed update para q no le afecte lo de SimRunningSystems
@@ -41,7 +42,7 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-        (init_animations, ).chain()
+        (init_animations, map_spriteanim_id_to_entity).chain()
     ).in_set(SpriteAnimationSystems)) 
     .add_observer(remove_spriteanim_from_entimap_on_despawn)
 

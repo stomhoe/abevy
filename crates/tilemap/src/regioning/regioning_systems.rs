@@ -414,15 +414,21 @@ pub fn despawn_empty_regions(mut cmd: Commands,
 }
 #[allow(unused_parens, )]
 pub fn on_region_despawn_remove_from_loaded_regions(
-    on: On<Despawn, Region>,
+    trig: On<Despawn, Region>,
     region_query: Query<(&DimensionRef, &RegionPos),(AnyDisabling)>,
     mut loaded_regions: ResMut<LoadedRegions>,
 )
 {
-    let Ok((&dimension_ref, &region_pos)) = region_query.get(on.entity) else {
+    let Ok((&dimension_ref, &region_pos)) = region_query.get(trig.entity) else {
         return;
     };
-    loaded_regions.0.remove(&(dimension_ref, region_pos));
+    let Some(region_ent) = loaded_regions.0.get(&(dimension_ref, region_pos))
+    else {
+        return; 
+    };
+    if *region_ent == trig.entity {
+        loaded_regions.0.remove(&(dimension_ref, region_pos));
+    }
 }
 
 

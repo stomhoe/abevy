@@ -40,13 +40,13 @@ pub fn plugin(app: &mut App) {
             ,
             
         ).in_set(RegioningSystems),
-
+        map_sgc_id_to_entity,
         despawn_empty_regions,
     ))
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (   
-                init_structured_gen_configs,
+                init_structured_gen_configs, map_sgc_id_to_entity
             )
             .chain(),
         ).in_set(RegioningSystems))

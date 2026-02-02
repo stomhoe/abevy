@@ -33,9 +33,6 @@ pub fn init_dimensions(
                 continue;
             }
         };
-
-        info!(target: "dimension_loading", "Spawning dimension '{}' with id '{}' ", seri.name, str_id);
-
         let dim_ent = cmd.spawn_empty().id();
 
         if let Some(tags) = seri.tags {
@@ -66,16 +63,19 @@ pub fn init_dimensions(
 }
 
 
-pub fn add_dimensions_to_map(
+pub fn map_dimension_id_to_entity(
     map: Option<ResMut<DimensionEntityMap>>,
-    query: Query<(Entity, &Prefix, &StrId), (With<Dimension>, Added<StrId>)>,
+    query: Query<(Entity, Option<&Prefix>, &StrId), (With<Dimension>, Added<StrId>)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in query.iter() {
             if let Some(prev) = map.0.overwrite(str_id, ent, ) {
-                warn!(target: "dimension_loading", "Dimension'{}' {:?}  already existed in DimensionEntityMap, previous entity {:?} overwritten", str_id, ent, prev);
+                if prev == ent {
+                    continue;
+                }
+                warn!(target: "dimension_loading", "{}'{}' {:?}  already existed in DimensionEntityMap, previous entity {:?} overwritten", prefix.cloned().unwrap_or_default(), str_id, ent, prev);
             } else {
-                info!(target: "dimension_loading", "Inserted Dimension'{}' {:?} into DimensionEntityMap  ", str_id, ent);
+                info!(target: "dimension_loading", "Inserted {}'{}' {:?} into DimensionEntityMap  ", prefix.cloned().unwrap_or_default(), str_id, ent);
             }
         }
     } else {

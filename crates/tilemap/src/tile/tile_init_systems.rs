@@ -3,7 +3,7 @@ use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disab
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use color_sample::{color_sample_components::ColorSamplerRef, color_sample_resources::ColorWeightedSamplersMap};
+use color_sampler::{color_sampler_components::ColorSamplerRef, color_sampler_resources::ColorWeightedSamplersMap};
 use common::{common_components::*, common_tag_components::TagSet};
 use ::dimension_shared::*;
 use ::game_common::{game_common_components::*, game_common_components_samplers::*, *};
@@ -166,15 +166,18 @@ pub fn init_tiles(
     cmd.insert_resource(res_tile_cats);
 }
 
-pub fn add_tiles_to_map(
+pub fn map_ezero_tile_id_to_entity(
     mut cmd: Commands,
     map: Option<ResMut<TileEzerosMap>>,
-    ezeros_query: Query<(Entity, &Prefix, &TileStrId), (Changed<TileStrId>, With<EntityZero>, AnyDisabling,)>,
+    ezeros_query: Query<(Entity, Option<&Prefix>, &TileStrId), (Changed<TileStrId>, With<Tile>, With<EntityZero>, AnyDisabling,)>,
 ) {
     if let Some(mut map) = map {
         for (ent, prefix, str_id) in ezeros_query.iter() {
             if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
-                error!(target:"tile_init","{} '{}' already in TileEzerosMap with entity {:?}, cannot insert entity {:?}", prefix, str_id, prev_ent, ent);
+                if prev_ent.0 == ent {
+                    continue;
+                }
+                error!(target:"tile_init","{} '{}' already in TileEzerosMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
                 cmd.entity(ent).try_despawn();
             } else {
                 trace!(target:"tile_init","Inserted tile '{}' into TileEzerosMap with entity {:?}", str_id, ent);

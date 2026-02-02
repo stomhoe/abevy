@@ -24,6 +24,7 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
+            map_terrgen_id_to_entity, map_oplist_id_to_entity,
             (launch_terrain_gen_operations, (process_pending_ops_and_collect_tiles,)).in_set(TerrainGenSystems),
             search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
         ))
@@ -31,7 +32,9 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (
                 init_noises,
+                map_terrgen_id_to_entity,
                 init_oplists_from_assets,
+                map_oplist_id_to_entity,
                 init_oplists_bifurcations,
                 cycle_detection,
                 assign_rootoplist_to_dimensions,

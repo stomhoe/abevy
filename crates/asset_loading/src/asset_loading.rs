@@ -1,13 +1,15 @@
 
 
 use bevy_replicon::prelude::ClientState;
-use color_sample::color_sample_resources::ColorWeightedSamplerHandles;
+use color_sampler::color_sampler_resources::ColorWeightedSamplerHandles;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use dimension::dimension_resources::DimensionSerisHandles;
 use game_common::{GameplaySystems, };
 use sprite::sprite_resources::*;
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
+use being::race::race_resources::RaceSerisHandles;
+use being::sex::sex_resources::SexSerisHandles;
 use tilemap::{regioning::regioning_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::*, tile_shader::tile_shader_resources::*}};
 
 use crate::asset_loading_systems::*;
@@ -64,6 +66,8 @@ pub fn plugin(app: &mut App) {
             .load_collection::<OpListSerisHandles>()
             .load_collection::<DimensionSerisHandles>()
             .load_collection::<StructureSerisHandles>()
+            .load_collection::<RaceSerisHandles>()
+            .load_collection::<SexSerisHandles>()
 
 
         )

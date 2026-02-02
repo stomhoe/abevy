@@ -4,19 +4,18 @@ use bevy_ecs_tilemap::tiles::TileColor;
 use common::common_components::{AnyDisabling, HashId, Prefix, StrId};
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
-use crate::{color_sample_components::*, color_sample_resources::* };
+use crate::{color_sampler_components::*, color_sampler_resources::* };
 
 #[allow(unused_parens)]
 pub fn init_color_samplers(
     mut cmd: Commands,
     mut sampler_handles: ResMut<ColorWeightedSamplerHandles>,
     mut assets: ResMut<Assets<WeightedColorsSeri>>,
-    color_map: Option<Res<ColorWeightedSamplersMap>>,
+    color_map: Res<ColorWeightedSamplersMap>,
 ) {
-    if color_map.is_some() { return; }
+    if ! color_map.0.is_empty() { return; }
 
     let mut wmap_to_insert = Vec::new();
-    let mut color_map = ColorWeightedSamplersMap::default();
 
     for handle in sampler_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue; };
@@ -24,22 +23,18 @@ pub fn init_color_samplers(
         let str_id = match StrId::new_with_result(seri.id.clone(), WeightedColorsSeri::MIN_ID_LENGTH) {
             Ok(id) => id,
             Err(err) => {
-                error!("Failed to create StrId for color sampler '{}': {}", seri.id, err);
+                error!(target:"color_sampler_init", "Failed to create StrId for color sampler '{}': {}", seri.id, err);
                 continue;
             }
         };
-        if let Ok(_) = color_map.0.get_cloned(&str_id) {
-            error!("Duplicate color sampler id used: '{}'. Skipping spawning this sampler.", str_id);
-            continue;
-        }
-
         if seri.weights.is_empty() {
-            warn!("Color sampler '{}' has no weights", str_id);
+            warn!(target:"color_sampler_init", "Color sampler '{}' has no weights", str_id);
         }
         let mut i = 0;
         while i < seri.weights.len() {
             if seri.weights[i].1 < 0.0 {
                 error!(
+                    target:"color_sampler_init",
                     "Invalid color sampler '{}': negative weight detected at index {} (color value: {:?}, weight: {}). Removing this entry.",
                     str_id, i, seri.weights[i].0, seri.weights[i].1
                 );
@@ -52,32 +47,33 @@ pub fn init_color_samplers(
         let wmap = ColorSampler::new(&seri.weights);
 
         let ent = cmd.spawn_empty().id(); 
-        color_map.0.overwrite(&str_id, ent);
 
         wmap_to_insert.push((ent, (str_id, wmap.clone())));
 
     }
-    cmd.insert_resource(color_map);
     cmd.insert_batch(wmap_to_insert);
 }
-/*
+
 #[allow(unused_parens, )]
-pub fn add_colorsamplers_to_map(
+pub fn map_colorsampler_id_to_entity(
     mut cmd: Commands,
     map: Option<ResMut<ColorWeightedSamplersMap>>,
-    query: Query<(Entity, &EntityPrefix, &StrId), (Added<ColorSampler>, )>,
+    query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<ColorSampler>)>,
 ) {
     let Some(mut map) = map else { return; };
     for (new_ent, prefix, str_id) in query.iter() {
-        if let Err(err) = map.0.try_insert(str_id, new_ent, ) {
-            error!("{} {} already in ColorWeightedSamplersMap : {}", prefix, str_id, err);
+        if let Err(err) = map.0.insert(str_id, new_ent, ) {
+            if err.0 == new_ent {
+                continue;
+            }
+            error!(target:"color_sampler_init","{} '{}' already in ColorWeightedSamplersMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, err, new_ent);
             cmd.entity(new_ent).try_despawn();
         } else {
-            info!("Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
+            info!(target:"color_sampler_init", "Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
         }
     }
 }
-*/
+
 #[allow(unused_parens)]
 pub fn apply_pos_sampled_color(mut cmd: Commands, 
     gen_settings: Single<&GlobalGenSettings>,

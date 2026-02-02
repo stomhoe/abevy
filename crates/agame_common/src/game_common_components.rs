@@ -8,11 +8,6 @@ use strum_macros::{AsRefStr, Display, };
 use std::hash::Hash;
 
 
-
-#[allow(unused_parens, dead_code)]
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
-pub struct Description(pub String);
-
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct SearchingForSuitablePos{ pub filtered_op_ent: Entity, }
 
@@ -33,7 +28,7 @@ impl DespawnTimer {
 }
 
 #[derive(Component, Debug, Reflect)]
-/// WARNING: runs when simulation is running too
+/// WARNING: runs only when simulation is running 
 pub struct SimDespawnTimer(pub Timer);
 impl SimDespawnTimer {
     pub fn new(seconds: f32) -> Self {
@@ -182,7 +177,7 @@ pub struct EntityZeroRef(#[entities] pub Entity);
 
 
 #[derive( Debug, Default, Deserialize, Serialize, Clone, )]
-pub enum FunctionType {#[default] LineOneToZero, LinealZeroToOne, Curve(Spline<f32, f32>),}
+pub enum FunctionType {#[default] LinealOneToZero, LinealZeroToOne, Curve(Spline<f32, f32>),}
 
 #[derive(Debug, Default, Component, Deserialize, Serialize, Clone, )]
 //ES FINITO PERO ES MEJOR, SIMPLEMENTE PONES UNA DURACIÓN ASTRONÓMICA PARA EL TIMER Y PODES SEGUIR USANDO CURVAS BEZIER, CON INFINITO NO SE PUEDE USAR NINGUNA CURVA BEZIER
@@ -216,14 +211,14 @@ impl TimeBasedMultiplier {
     }
     pub fn one_on_finish_zero(duration: Duration) -> Self {
         Self { 
-            function: FunctionType::LineOneToZero, 
+            function: FunctionType::LinealOneToZero, 
             timer: Timer::new(duration, TimerMode::Once) 
         }
     }
     pub fn sample(&self) -> f32 {
         if self.timer.is_finished() {
             match self.function {
-                FunctionType::LineOneToZero => 0.0,
+                FunctionType::LinealOneToZero => 0.0,
                 FunctionType::LinealZeroToOne => 1.0,
                 FunctionType::Curve(ref spline) => {
                     match spline.clamped_sample(1.0) {
@@ -237,7 +232,7 @@ impl TimeBasedMultiplier {
             }
         } else {
             match self.function {
-                FunctionType::LineOneToZero => 1.0,
+                FunctionType::LinealOneToZero => 1.0,
                 FunctionType::LinealZeroToOne => 0.0,
                 FunctionType::Curve(ref spline) => {
                     let passed_time_ratio = self.timer.elapsed_secs() / self.timer.duration().as_secs_f32();
