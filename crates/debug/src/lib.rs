@@ -5,6 +5,7 @@ mod debug_window_systems;
 mod chunks_list_window;
 mod tile_details_inspector;
 mod chunk_details_inspector;
+mod region_details_inspector;
 mod portals_details_inspector;
 mod tilemap_details_inspector;
 mod being_details_inspector;

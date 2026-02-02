@@ -17,6 +17,7 @@ use crate::{
     portals_details_inspector::*,
     portals_list_window::*,
     regions_list_window::*,
+    region_details_inspector::*,
     registered_positions_window::*,
     sprite_details_inspector::*,
     sprites_list_window::*,
@@ -53,6 +54,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(EguiPrimaryContextPass, (
         tile_details_inspector,
         chunk_details_inspector,
+        region_details_inspector,
         portals_details_inspector,
         tilemap_details_inspector,
         being_details_inspector,

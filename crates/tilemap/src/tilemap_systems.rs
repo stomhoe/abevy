@@ -139,9 +139,13 @@ pub fn process_tiles_pre(
         Option<&TileColor>,
         Has<YSortOrigin>,
     ), AnyDisabling>,
+    tile_instances_holder_query: Single<Entity, With<TileInstancesHolder>>,
+
 )
 {
     let is_host = *params.state.get() == ClientState::Disconnected;
+
+    let tile_instance_ent = tile_instances_holder_query.into_inner();
 
     if params.collected_tiles.0.is_empty() { return; }
 
@@ -257,7 +261,8 @@ pub fn process_tiles_pre(
             &mut changed_structs,
             &mut tilemap_bundles,
             y_sort,
-            &mut child_ofs_to_insert
+            &mut child_ofs_to_insert,
+            tile_instance_ent
         );
         i += 1;
     }
@@ -355,6 +360,7 @@ fn func_process_tile_into_tilemaps(
     tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, ChildOf, DimensionRef, TileShaderRef))>,
     y_sort: bool,
     childofs: &mut Vec<(Entity, ChildOf)>,
+    tile_instances_holder_query: Entity
 ) {
     let tile_size = match tile_handles {
         Some(_) => tile_size,
@@ -411,7 +417,7 @@ fn func_process_tile_into_tilemaps(
         }
         texture_index.0 = first_texture_index.unwrap_or_default().0;
 
-        childofs.push((tile_ent, ChildOf(tmap_ent)));
+        childofs.push((tile_ent, ChildOf(tile_instances_holder_query)));
 
     } else {
         let mut tmap_hash_id_map = HashIdToTexIndex::with_capacity(0);
@@ -449,7 +455,7 @@ fn func_process_tile_into_tilemaps(
             storage,
             tmap_hash_id_map,
             });
-        childofs.push((tile_ent, ChildOf(tmap_ent)));
+        childofs.push((tile_ent, ChildOf(tile_instances_holder_query)));
     }
 }
 

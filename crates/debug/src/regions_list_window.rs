@@ -183,6 +183,14 @@ pub fn regions_list_window(
                         .default_open(true)
                         .show(ui, |ui| {
                         ui.horizontal(|ui| {
+                            if ui.button("Inspect Entity").clicked() {
+                                selected_entities.selected_regions.clear();
+                                selected_entities.selected_regions.insert(*entity);
+                                window_visible.region_details = true;
+                            }
+                        });
+                        ui.separator();
+                        ui.horizontal(|ui| {
                             ui.vertical(|ui| {
                                 if let Some(grid_sgcs) = grid {
                                     ui.label("GridOfSgcs:");

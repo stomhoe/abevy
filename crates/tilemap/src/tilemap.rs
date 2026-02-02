@@ -23,8 +23,6 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(Update, (
-        
-        //tmaptile_assign_child_of,
         (
             process_tiles_pre
             .before(despawn_chunks)//if this is removed everything breaks

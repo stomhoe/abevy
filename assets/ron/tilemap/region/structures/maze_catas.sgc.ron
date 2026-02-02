@@ -8,6 +8,11 @@
         "floor_tile_id": ["ducatas"],
         "wall_tile_id": ["newbiewall"],
         "lava_tile_id": ["lava"],
+        "claim_square_min_side_length": ["7"],
+        "claim_square_max_side_length": ["11"],
+        "claim_square_normal_mean": ["7.0"],
+        "claim_square_normal_std_dev": ["3.0"],
+
     }),
     // pdisk_mindist_and_tag: Some([
     //     (Some(0), "dungeon"),

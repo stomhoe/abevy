@@ -8,6 +8,28 @@
         "floor_tile_id": ["ducatas"],
         "wall_tile_id": ["newbiewall"],
         "lava_tile_id": ["lava"],
+        // Room shape weights (relative probabilities)
+        "room_shape_weight_rectangle": ["1.0"],
+        "room_shape_weight_circle": ["1.0"],
+        "room_shape_weight_triangle": ["1.0"],
+        "room_shape_weight_polygon": ["1.0"],
+        // Same-shape weights
+        "room_same_shape_weight_rectangle": ["1.0"],
+        "room_same_shape_weight_circle": ["1.0"],
+        "room_same_shape_weight_triangle": ["0."],
+        "room_same_shape_weight_polygon": ["1.0"],
+        "room_same_shape_chance": ["0.25"],
+        // Polygon settings
+        "room_polygon_min_sides": ["4"],
+        "room_polygon_max_sides": ["12"],
+        "room_polygon_rotation_min_deg": ["0.0"],
+        "room_polygon_rotation_max_deg": ["360.0"],
+        // Corridor settings
+        "corridor_radius": ["2"],
+        "corridor_wiggle_chance": ["0.05"],
+        "corridor_wiggle_step_max": ["1"],
+        "corridor_detour_chance": ["0.0"],
+        "corridor_detour_max_offset": ["0"],
     }),
     // pdisk_mindist_and_tag: Some([
     //     (Some(0), "dungeon"),

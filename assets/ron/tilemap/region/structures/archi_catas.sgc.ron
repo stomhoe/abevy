@@ -1,16 +1,16 @@
 //.ron file for structured generation configuration
 (
     id: "archi_catas",
-    structure_id: "archimedes_spiral",
-    weight: 19999.0,
+    structure_id: "archi",
+    weight: 1.0,
     tags: Some([ "dungeon", "" ]),
     args: Some({
         "floor_tile_id": ["ducatas"],
         "wall_tile_id": ["newbiewall"],
         "lava_tile_id": ["lava"],
-        "claim_square_min_side_length": ["6"],
+        "claim_square_min_side_length": ["8"],
         "claim_square_max_side_length": ["10"],
-        "claim_square_normal_mean": ["19.0"],
+        "claim_square_normal_mean": ["9.0"],
         "claim_square_normal_std_dev": ["3.0"],
 
     }),

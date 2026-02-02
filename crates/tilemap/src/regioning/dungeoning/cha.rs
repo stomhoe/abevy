@@ -1,94 +1,22 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
-use game_common::game_common_components::{ArgsMap, EntityZeroRef};
+use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
+use rand_distr::num_traits::Float;
 use ::tilemap_shared::*;
 
 use crate::regioning::{
     dungeoning_utils::{
         carve_corridor_horizontal, carve_corridor_vertical, carve_room_circle, carve_room_rectangle,
-        carve_room_triangle,
+        carve_room_regular_polygon, carve_room_triangle_vertices,
     },
     regioning_components::*,
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
 use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap};
-
-const CHAMBERS_CORRIDORS: HashId = HashId::hash("chamberscorridors");
-
-/// Cache for Corridor/Chambers dungeon configuration
-#[derive(Debug, Clone)]
-pub struct CorridorConfig {
-    rect_weight: f32,
-    circle_weight: f32,
-    triangle_weight: f32,
-    same_shape_chance: f32,
-    corridor_wiggle_chance: f32,
-    corridor_wiggle_step_max: i32,
-    corridor_detour_chance: f32,
-    corridor_detour_max_offset: i32,
-}
-
-impl CorridorConfig {
-    fn from_args(args: &ArgsMap) -> Self {
-        let rect_weight: f32 = args.parse_arg("room_shape_weight_rectangle", 1.0);
-        let circle_weight: f32 = args.parse_arg("room_shape_weight_circle", 1.0);
-        let triangle_weight: f32 = args.parse_arg("room_shape_weight_triangle", 1.0);
-        let same_shape_chance: f32 = args.parse_arg("room_same_shape_chance", 0.25);
-        let corridor_wiggle_chance: f32 = args.parse_arg("corridor_wiggle_chance", 0.0);
-        let corridor_wiggle_step_max: i32 = args.parse_arg("corridor_wiggle_step_max", 1);
-        let corridor_detour_chance: f32 = args.parse_arg("corridor_detour_chance", 0.0);
-        let corridor_detour_max_offset: i32 = args.parse_arg("corridor_detour_max_offset", 0);
-
-        Self {
-            rect_weight: rect_weight.max(0.0),
-            circle_weight: circle_weight.max(0.0),
-            triangle_weight: triangle_weight.max(0.0),
-            same_shape_chance: same_shape_chance.clamp(0.0, 1.0),
-            corridor_wiggle_chance: corridor_wiggle_chance.clamp(0.0, 1.0),
-            corridor_wiggle_step_max: corridor_wiggle_step_max.clamp(0, 4),
-            corridor_detour_chance: corridor_detour_chance.clamp(0.0, 1.0),
-            corridor_detour_max_offset: corridor_detour_max_offset.clamp(0, 32),
-        }
-    }
-}
-
-/// Cache for tile IDs used in Corridor dungeons
-#[derive(Debug, Clone)]
-pub struct CorridorTileIds {
-    floor_tile_id: HashId,
-    wall_tile_id: HashId,
-    lava_tile_id: Option<HashId>,
-}
-
-impl CorridorTileIds {
-    fn from_args(args: &ArgsMap) -> Self {
-        let floor_tile_id = args
-            .get("floor_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
-        let wall_tile_id = args
-            .get("wall_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
-            .unwrap_or_else(|| HashId::hash("gray"));
-        
-        let lava_tile_id = args
-            .get("lava_tile_id")
-            .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()));
-
-        Self {
-            floor_tile_id,
-            wall_tile_id,
-            lava_tile_id,
-        }
-    }
-}
+use super::dungeoning_ids::CHAMBERS_CORRIDORS;
 
 #[allow(unused_parens, )]
 pub fn corridor_dungeon_building_system(
@@ -98,8 +26,6 @@ pub fn corridor_dungeon_building_system(
     ezeros_map: Res<TileEzerosMap>,
     settings: Single<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
-    mut config_cache: Local<Option<CorridorConfig>>,
-    mut tile_ids_cache: Local<Option<CorridorTileIds>>,
 ) {
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
@@ -109,10 +35,22 @@ pub fn corridor_dungeon_building_system(
         if structured_gen_cfg.structure_hash_id() != CHAMBERS_CORRIDORS {
             continue;
         }
-        let tile_ids = tile_ids_cache.get_or_insert_with(|| CorridorTileIds::from_args(&structured_gen_cfg.args));
-        let floor_tile_id = tile_ids.floor_tile_id;
-        let wall_tile_id = tile_ids.wall_tile_id;
-        let lava_tile_id = tile_ids.lava_tile_id;
+        let floor_tile_id = structured_gen_cfg.args
+            .get("floor_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("dunewbie"));
+        
+        let wall_tile_id = structured_gen_cfg.args
+            .get("wall_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("gray"));
+        
+        let lava_tile_id = structured_gen_cfg.args
+            .get("lava_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()));
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
@@ -166,22 +104,76 @@ pub fn corridor_dungeon_building_system(
             Rectangle,
             Circle,
             Triangle,
+            RegularPolygon,
         }
 
-        // Cache config on first call
-        let cfg = config_cache.get_or_insert_with(|| CorridorConfig::from_args(&structured_gen_cfg.args));
-
-        let rect_weight = cfg.rect_weight;
-        let circle_weight = cfg.circle_weight;
-        let triangle_weight = cfg.triangle_weight;
-        let same_shape_chance = cfg.same_shape_chance;
-        let corridor_wiggle_chance = cfg.corridor_wiggle_chance;
-        let corridor_wiggle_step_max = cfg.corridor_wiggle_step_max;
-        let corridor_detour_chance = cfg.corridor_detour_chance;
-        let corridor_detour_max_offset = cfg.corridor_detour_max_offset;
+        let rect_weight: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_shape_weight_rectangle", 1.0)
+            .max(0.0);
+        let circle_weight: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_shape_weight_circle", 1.0)
+            .max(0.0);
+        let triangle_weight: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_shape_weight_triangle", 1.0)
+            .max(0.0);
+        let polygon_weight: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_shape_weight_polygon", 1.0)
+            .max(0.0);
+        let same_shape_chance: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_same_shape_chance", 0.25)
+            .clamp(0.0, 1.0);
+        let polygon_min_sides: i32 = structured_gen_cfg
+            .args
+            .parse_arg("room_polygon_min_sides", 4)
+            .clamp(3, 12);
+        let polygon_max_sides: i32 = structured_gen_cfg
+            .args
+            .parse_arg("room_polygon_max_sides", 8)
+            .clamp(polygon_min_sides, 16);
+        let polygon_rotation_min_deg: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_polygon_rotation_min_deg", 0.0);
+        let polygon_rotation_max_deg: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_polygon_rotation_max_deg", 360.0);
+        let same_shape_rect_weight: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_same_shape_weight_rectangle", rect_weight)
+            .max(0.0);
+        let same_shape_circle_weight: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_same_shape_weight_circle", circle_weight)
+            .max(0.0);
+        let same_shape_triangle_weight: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_same_shape_weight_triangle", triangle_weight)
+            .max(0.0);
+        let same_shape_polygon_weight: f32 = structured_gen_cfg
+            .args
+            .parse_arg("room_same_shape_weight_polygon", polygon_weight)
+            .max(0.0);
+        let corridor_wiggle_chance: Option<f32> = structured_gen_cfg
+            .args
+            .parse_opt_arg("corridor_wiggle_chance");
+        let corridor_wiggle_step_max: Option<i32> = structured_gen_cfg
+            .args
+            .parse_opt_arg("corridor_wiggle_step_max");
+        let corridor_detour_chance: f32 = structured_gen_cfg
+            .args
+            .parse_arg("corridor_detour_chance", 0.0)
+            .clamp(0.0, 1.0);
+        let corridor_detour_max_offset = structured_gen_cfg
+            .args
+            .parse_arg("corridor_detour_max_offset", 0)
+            .clamp(0, 32);
 
         let pick_shape = |rng: &mut rand_pcg::Pcg64Mcg| -> RoomShape {
-            let total = rect_weight + circle_weight + triangle_weight;
+            let total = rect_weight + circle_weight + triangle_weight + polygon_weight;
             if total <= 0.0 {
                 return RoomShape::Rectangle;
             }
@@ -190,13 +182,32 @@ pub fn corridor_dungeon_building_system(
                 RoomShape::Rectangle
             } else if roll < rect_weight + circle_weight {
                 RoomShape::Circle
-            } else {
+            } else if roll < rect_weight + circle_weight + triangle_weight {
                 RoomShape::Triangle
+            } else {
+                RoomShape::RegularPolygon
+            }
+        };
+
+        let pick_same_shape = |rng: &mut rand_pcg::Pcg64Mcg| -> RoomShape {
+            let total = same_shape_rect_weight + same_shape_circle_weight + same_shape_triangle_weight + same_shape_polygon_weight;
+            if total <= 0.0 {
+                return RoomShape::Rectangle;
+            }
+            let roll = rng.random_range(0.0..total);
+            if roll < same_shape_rect_weight {
+                RoomShape::Rectangle
+            } else if roll < same_shape_rect_weight + same_shape_circle_weight {
+                RoomShape::Circle
+            } else if roll < same_shape_rect_weight + same_shape_circle_weight + same_shape_triangle_weight {
+                RoomShape::Triangle
+            } else {
+                RoomShape::RegularPolygon
             }
         };
 
         let use_same_shape = rng.random_range(0.0..1.0) < same_shape_chance;
-        let same_shape = if use_same_shape { Some(pick_shape(&mut rng)) } else { None };
+        let same_shape = if use_same_shape { Some(pick_same_shape(&mut rng)) } else { None };
 
         #[derive(Clone, Copy)]
         struct Rect { x: i32, y: i32, w: i32, h: i32 }
@@ -272,13 +283,103 @@ pub fn corridor_dungeon_building_system(
                     carve_room_circle(&mut floor_map, tile_width, tile_height, rm.x, rm.y, rm.w, rm.h);
                 }
                 RoomShape::Triangle => {
-                    carve_room_triangle(&mut floor_map, tile_width, tile_height, rm.x, rm.y, rm.w, rm.h);
+                    // Randomly choose triangle type
+                    let triangle_type = rng.random_range(0..3);
+                    
+                    let (v0, v1, v2) = match triangle_type {
+                        0 => {
+                            // Isosceles triangles - randomly choose orientation
+                            let orientation = rng.random_range(0..4);
+                            match orientation {
+                                0 => {
+                                    // Pointing up
+                                    ((rm.x + rm.w / 2, rm.y), (rm.x, rm.y + rm.h), (rm.x + rm.w, rm.y + rm.h))
+                                }
+                                1 => {
+                                    // Pointing down
+                                    ((rm.x + rm.w / 2, rm.y + rm.h), (rm.x, rm.y), (rm.x + rm.w, rm.y))
+                                }
+                                2 => {
+                                    // Pointing right
+                                    ((rm.x + rm.w, rm.y + rm.h / 2), (rm.x, rm.y), (rm.x, rm.y + rm.h))
+                                }
+                                _ => {
+                                    // Pointing left
+                                    ((rm.x, rm.y + rm.h / 2), (rm.x + rm.w, rm.y), (rm.x + rm.w, rm.y + rm.h))
+                                }
+                            }
+                        }
+                        1 => {
+                            // Right-angled triangles - randomly choose corner
+                            let corner = rng.random_range(0..4);
+                            match corner {
+                                0 => {
+                                    // Right angle at top-left
+                                    ((rm.x, rm.y), (rm.x + rm.w, rm.y), (rm.x, rm.y + rm.h))
+                                }
+                                1 => {
+                                    // Right angle at top-right
+                                    ((rm.x, rm.y), (rm.x + rm.w, rm.y), (rm.x + rm.w, rm.y + rm.h))
+                                }
+                                2 => {
+                                    // Right angle at bottom-left
+                                    ((rm.x, rm.y + rm.h), (rm.x + rm.w, rm.y + rm.h), (rm.x, rm.y))
+                                }
+                                _ => {
+                                    // Right angle at bottom-right
+                                    ((rm.x, rm.y + rm.h), (rm.x + rm.w, rm.y + rm.h), (rm.x + rm.w, rm.y))
+                                }
+                            }
+                        }
+                        _ => {
+                            // Scalene triangles - random vertex positions
+                            let v0_x = rm.x + rng.random_range(0..=rm.w / 3);
+                            let v0_y = rm.y + rng.random_range(0..=rm.h / 4);
+                            let v1_x = rm.x + rm.w - rng.random_range(0..=rm.w / 4);
+                            let v1_y = rm.y + rm.h;
+                            let v2_x = rm.x + rng.random_range(rm.w / 2..=rm.w);
+                            let v2_y = rm.y + rng.random_range(rm.h / 3..=rm.h);
+                            ((v0_x, v0_y), (v1_x, v1_y), (v2_x, v2_y))
+                        }
+                    };
+                    carve_room_triangle_vertices(&mut floor_map, tile_width, tile_height, v0, v1, v2);
+                }
+                RoomShape::RegularPolygon => {
+                    let sides = if polygon_max_sides <= polygon_min_sides {
+                        polygon_min_sides
+                    } else {
+                        rng.random_range(polygon_min_sides..=polygon_max_sides)
+                    };
+                    let rotation_deg = if polygon_rotation_max_deg <= polygon_rotation_min_deg {
+                        polygon_rotation_min_deg
+                    } else {
+                        rng.random_range(polygon_rotation_min_deg..=polygon_rotation_max_deg)
+                    };
+                    carve_room_regular_polygon(
+                        &mut floor_map,
+                        tile_width,
+                        tile_height,
+                        rm.x,
+                        rm.y,
+                        rm.w,
+                        rm.h,
+                        sides,
+                        rotation_deg,
+                    );
                 }
             }
         }
 
         let mut corridor_map = vec![false; tile_map_size];
-        let corridor_radius = 1;
+        let corridor_radius: Option<i32> = structured_gen_cfg
+            .args
+            .parse_opt_arg("corridor_radius");
+        let corridor_wiggle_chance: Option<f32> = structured_gen_cfg
+            .args
+            .parse_opt_arg("corridor_wiggle_chance");
+        let corridor_wiggle_step_max = structured_gen_cfg
+            .args
+            .parse_opt_arg("corridor_wiggle_step_max");
         
         if !rooms.is_empty() {
             let mut centers: Vec<(i32,i32)> = rooms.iter().map(|r| (r.x + r.w/2, r.y + r.h/2)).collect();
