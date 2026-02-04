@@ -9,3 +9,5 @@ common = { path = "../acommon" }
 bevy = { workspace = true }
 serde = { workspace = true }
 bevy_spritesheet_animation = { workspace = true }
+bevy_replicon = { workspace = true }
+paste = { workspace = true }

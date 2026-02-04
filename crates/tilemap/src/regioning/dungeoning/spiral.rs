@@ -12,7 +12,7 @@ use crate::regioning::{
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
-use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap};
+use crate::tile::{tile_components::DeleteOtherTiles, TileEzerosMap};
 use super::dungeoning_ids::SPIRAL;
 
 #[allow(unused_parens, )]

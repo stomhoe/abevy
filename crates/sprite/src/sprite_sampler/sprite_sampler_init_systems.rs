@@ -1,0 +1,110 @@
+#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
+#[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+use common::{define_entity_map_systems, common_components::{AnyDisabling, Prefix, StrId}};
+use game_common::game_common_components_samplers::EntityWeightedSampler;
+use serde::{Deserialize, Serialize};
+
+use crate::{sprite::SpriteCfgEntityMap, sprite_sampler::{SpriteWeightedSamplersMap, sprite_sampler_components::{EguiSpriteSamplerHolder, SpriteWeightedSampler}, sprite_sampler_resources::*}};
+
+
+
+#[allow(unused_parens)]
+pub fn init_sprite_weighted_samplers(
+    mut cmd: Commands, 
+    seris_handles: ResMut<SpriteWeightedSamplerHandles>,
+    assets: Res<Assets<SpriteWeightedSamplerSeri>>,
+    map: Res<SpriteWeightedSamplersMap>,
+) {
+    if ! map.0.is_empty() { return; }
+    let holder = cmd.spawn((EguiSpriteSamplerHolder, )).id();
+
+    let mut comps_to_insert = Vec::new();
+    
+    for handle in seris_handles.handles.iter() {
+        if let Some(seri) = assets.get(handle) {
+            if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
+
+                if let Ok(ent) = map.0.get_cloned(&str_id) {
+                    error!("SpriteWeightedSampler '{}' already in SpriteWeightedSamplersMap : {:?}", str_id, ent);
+                    continue;
+                }
+                let ent = cmd.spawn_empty().id();
+                comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), SpriteWeightedSampler, )));
+            }
+        }
+    }
+    cmd.insert_batch(comps_to_insert);
+} 
+
+#[allow(unused_parens)]
+pub fn init_sprite_weighted_samplers_refs(
+    mut cmd: Commands, 
+    mut seris_handles: ResMut<SpriteWeightedSamplerHandles>,
+    mut assets: ResMut<Assets<SpriteWeightedSamplerSeri>>,
+    sprite_weighted_map: Res<SpriteWeightedSamplersMap>,
+    _hashpos_query: Query<(&StrId, ), (With<EntityWeightedSampler>)>,
+    sprite_ents_map: Res<SpriteCfgEntityMap>,
+) {
+    for handle in seris_handles.handles.drain(..) {
+        let Some(mut seri) = assets.remove(&handle) else { continue };
+
+        let Ok(wmap_ent) = sprite_weighted_map.0.get_cloned(&seri.id) else {
+            error!("SpriteWeightedSamplerSeri '{}' not found in SpriteWeightedSamplersMap", seri.id);
+            continue;
+        };
+
+        let str_id = &seri.id;
+        let mut weights: Vec<(Entity, f32)> = Vec::new();
+
+        for (sprite_id, weight) in seri.weights.drain(..) {
+            if weight < 0.0 {
+                error!("SpriteWeightedSampler {:?} has negative weight {}, skipping this weighted entry", str_id, weight);
+                continue;
+            }
+            if !sprite_id.ends_with("*") {
+                // Try to resolve as sprite config entity using StrId
+                if let Ok(sprite_str_id) = StrId::new_with_result(sprite_id.clone(), 3) {
+                    if let Ok(ent) = sprite_ents_map.0.get_cloned(&sprite_str_id) {
+                        if weights.iter().any(|(e, _)| *e == ent) {
+                            error!("SpriteWeightedSampler {:?} already contains sprite entity {:?} for id {:?}, skipping duplicate", str_id, ent, sprite_id);
+                            continue;
+                        }
+                        weights.push((ent.clone(), weight));
+                    } else {
+                        error!("SpriteWeightedSampler {:?} references non-existent sprite id {:?}, skipping this weighted entry", str_id, sprite_id);
+                        continue;
+                    }
+                } else {
+                    error!("SpriteWeightedSampler {:?} failed to create StrId from sprite id {:?}, skipping this weighted entry", str_id, sprite_id);
+                    continue;
+                }
+            } else {
+                let sampler_id_trimmed = sprite_id.trim_end_matches('*');
+                if let Ok(sampler_str_id) = StrId::new_with_result(sampler_id_trimmed.to_string(), 3) {
+                    if let Ok(ent) = sprite_weighted_map.0.get_cloned(&sampler_str_id) {
+                        if weights.iter().any(|(e, _)| *e == ent) {
+                            error!("SpriteWeightedSampler {:?} already contains sampler entity {:?} for id {:?}, skipping duplicate", str_id, ent, sampler_id_trimmed);
+                            continue;
+                        }
+                        weights.push((ent.clone(), weight));
+                    } else {
+                        error!("SpriteWeightedSampler {:?} references non-existent sampler id {:?}, skipping this weighted entry", str_id, sampler_id_trimmed);
+                        continue;
+                    }
+                } else {
+                    error!("SpriteWeightedSampler {:?} failed to create StrId from sampler id {:?}, skipping this weighted entry", str_id, sampler_id_trimmed);
+                    continue;
+                }
+            }
+        }
+        if weights.is_empty() {
+            error!("SpriteWeightedSampler {:?} has no valid sampling output", str_id);
+            continue;
+        }
+
+        cmd.entity(wmap_ent).insert(EntityWeightedSampler::new(&weights));
+    }
+}
+
+

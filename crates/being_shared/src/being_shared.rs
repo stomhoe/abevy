@@ -1,6 +1,9 @@
 
 use bevy::prelude::*;
+use bevy_replicon::prelude::Replicated;
+use common::common_components::{Prefix, StrId};
 use serde::{Deserialize, Serialize};
+use bevy::ecs::entity::MapEntities;
 
 #[derive(Component, Debug, Default, )]
 pub struct ControlledLocally;
@@ -16,7 +19,7 @@ pub struct Controls(Vec<Entity>);
 impl Controls {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, )]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
 #[relationship(relationship_target = Controls)]
 pub struct ControlledBy  { 
     #[relationship] #[entities]
@@ -57,3 +60,23 @@ impl From<&str> for Grounding {
         }
     }
 }
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, )]
+#[require(Replicated, Prefix::trunc("BeingInstTemplate"))]
+pub struct BeingInstTemplate{
+    pub points: u32,
+}
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities, )]
+pub struct BitRef(#[entities] pub Entity);
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities, )]
+pub struct RaceRef(#[entities] pub Entity);
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
+pub struct RaceStrIdRef(pub StrId);
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
+pub struct BitStrIdRef(pub StrId);

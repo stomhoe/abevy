@@ -13,11 +13,6 @@ use serde::Deserialize;
 #[reflect(Resource, Default, InspectorOptions)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 
-#[derive(Resource, Debug, Default, Reflect, )]
-#[reflect(Resource, Default)]
-pub struct SgcEntityMap(pub HashIdToEntityMap);
-
-
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
 pub struct StructureSerisHandles {

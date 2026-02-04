@@ -3,13 +3,15 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::common_states::AssetLoading;
+use common::{common_states::AssetLoading, common_components::{AnyDisabling, StrId}, define_entity_map_systems};
 use game_common::game_common::SimRunningSystems;
 use sprite::AcSpriteSystems;
 use ::sprite_animation_shared::*;
 
 
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*, sprite_animation_init_systems::*, sprite_animation_systems::*};
+
+
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct SpriteAnimationSystems;
@@ -20,13 +22,14 @@ pub fn plugin(app: &mut App) {
     .add_plugins((
         SpritesheetAnimationPlugin, 
         RonAssetPlugin::<AnimationSerialization>::new(&["anim.ron"]),
+        plugin_animation_library,
     ))
+
     .add_systems(Update, ((
            animate_sprite, 
            update_animstate_for_clients.run_if(in_state(ServerState::Running)),  
            client_receive_moving_anim.run_if(in_state(ClientState::Connected)),   
         ).in_set(SpriteAnimationSystems),
-        map_spriteanim_id_to_entity,
     ),
     )
 
@@ -42,9 +45,8 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-        (init_animations, map_spriteanim_id_to_entity).chain()
+        (init_animations, map_animation_library_id_to_entity).chain()
     ).in_set(SpriteAnimationSystems)) 
-    .add_observer(remove_spriteanim_from_entimap_on_despawn)
 
     .add_mapped_server_message::<MoveStateUpdated>(Channel::Unordered)
     //.add_observer(client_receive_moving_anim)

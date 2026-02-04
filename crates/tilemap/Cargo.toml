@@ -37,6 +37,7 @@ delegate = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }
 bevy-inspector-egui = { workspace = true }
 bit-vec = { workspace = true }
+paste = { workspace = true }
 
 noiz = { workspace = true }
 

@@ -3,7 +3,14 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use crate::{chunking::chunking_spawn_systems::*, regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*}, terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::tile_systems::despawn_if_not_excepted, tilemap_systems::process_tiles_pre};
+use common::{define_entity_map_systems, common_components::StrId};
+use crate::{chunking::chunking_spawn_systems::*, regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*, regioning_sgc_components::StructuredGenConfig}, terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::tile_systems::despawn_if_not_excepted, tilemap_systems::process_tiles_pre};
+
+define_entity_map_systems!(
+    SgcEntityMap,
+    StrId,
+    StructuredGenConfig
+);
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct RegioningSystems;
@@ -16,6 +23,7 @@ pub fn plugin(app: &mut App) {
     app
     .add_plugins((
         RonAssetPlugin::<StructuredGenConfigSeri>::new(&["sgc.ron"]),
+        plugin_sgc_entity_map,
     ))
     .add_systems(Update, (
         (
@@ -40,20 +48,14 @@ pub fn plugin(app: &mut App) {
             ,
             
         ).in_set(RegioningSystems),
-        map_sgc_id_to_entity,
         despawn_empty_regions,
     ))
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            (   
-                init_structured_gen_configs, map_sgc_id_to_entity
-            )
-            .chain(),
+            init_structured_gen_configs, map_sgc_entity_map_id_to_entity
         ).in_set(RegioningSystems))
     .add_observer(on_region_despawn_remove_from_loaded_regions)
-    .add_observer(remove_sgc_from_map_on_despawn)
 
-    .init_resource::<SgcEntityMap>()
     .init_resource::<LoadedRegions>()
 
     .register_type::<LoadedRegions>()

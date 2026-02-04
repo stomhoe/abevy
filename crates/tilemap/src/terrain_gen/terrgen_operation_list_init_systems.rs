@@ -3,11 +3,10 @@
 
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
-
 use common::{common_components::{AnyDisabling, Prefix, StrId}, common_tag_components::TagSet};
 use dimension_shared::{Dimension, DimensionEntityMap, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
-use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_operaton_list_components::*, terrgen_resources::*}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
+use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, TerrGenEntityMap, terrgen_operaton_list_components::*, terrgen_resources::*, OpListEntityMap}, tile::{TileEzerosMap, TileWeightedSamplersMap}};
 use ::tilemap_shared::*;
 
 use std::mem::take;
@@ -353,43 +352,4 @@ pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
         }
     }
     cmd.try_insert_batch(assignments);
-}
-
-pub fn map_oplist_id_to_entity(
-    mut cmd: Commands,
-    map: Option<ResMut<OpListEntityMap>>,
-    ezeros_query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<OperationList>, )>,
-) {
-    if let Some(mut map) = map {
-        for (ent, prefix, str_id) in ezeros_query.iter() {
-            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
-                if prev_ent.0 == ent {
-                    continue;
-                }
-                error!(target: "oplist_init", "{} '{}' already in OpListEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
-                cmd.entity(ent).try_despawn();
-            } else {
-                trace!(target: "oplist_init", "Inserted tile '{}' into OpListEntityMap with entity {:?}", str_id, ent);
-            }
-        }
-    }
-    else {
-        error!(target: "oplist_init","OpListEntityMap resource not found when trying to add oplist to it.");
-    }
-}
-
-#[allow(unused_parens)]
-pub fn remove_oplist_from_map_on_despawn(
-    trigger: On<Despawn, OperationList>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut map: ResMut<OpListEntityMap>,
-
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
 }

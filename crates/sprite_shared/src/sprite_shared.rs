@@ -1,7 +1,7 @@
-use bevy::platform::collections::HashMap;
+use bevy::{ecs::entity::MapEntities, platform::collections::HashMap};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::{common_components::*, common_types::*};
+use common::{common_components::*, common_types::*, define_entity_map_systems};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
@@ -25,6 +25,8 @@ pub fn plugin(app: &mut App) {
     ;
     sprite_scale_offset::plugin(app);
 }
+
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct MovementBased;
@@ -77,6 +79,28 @@ impl SpriteConfigStrIds {
         Self(ids.into_iter().map(|s| StrId::trunc(s)).collect())
     }
     pub fn ids(&self) -> &Vec<StrId> { &self.0 }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+
+pub struct SampleSpritesFromStrIds(Vec<StrId>);
+impl SampleSpritesFromStrIds {
+    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
+        Self(ids.into_iter().map(|s| StrId::trunc(s)).collect())
+    }
+    pub fn ids(&self) -> &Vec<StrId> { &self.0 }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities, )]
+
+pub struct SampleSprites(#[entities]pub Vec<Entity>);
+impl SampleSprites {
+    pub fn new(entities: Vec<Entity>) -> Self {
+        Self(entities)
+    }
+    pub fn entities(&self) -> &Vec<Entity> {
+        &self.0
+    }
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]

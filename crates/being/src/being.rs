@@ -1,10 +1,11 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, };
 use being_shared::Grounding;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::{HostSystems, game_common::{GameplaySystems, StatefulSessionSystems} };
+use sprite::AcSpriteSystems;
 
-use crate::{being_resources::*, being_systems::*, being_components::*};
+use crate::{being_components::*, being_resources::*, being_systems::*, being_inst_template::BeingInstTemplateSystems, race::RaceSystems};
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
@@ -21,13 +22,12 @@ pub fn plugin(app: &mut App) {
         ).in_set(GameplaySystems),
     ))
 
-    /*
-    .add_systems(OnEnter(AssetLoading::LoadingAssetsIntoHandles), (
-        (
-
-        ),
+    .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
+        RaceSystems.after(AcSpriteSystems),
+        BeingInstTemplateSystems.after(RaceSystems)
     ))
-     */
+
+
     
     .register_type::<Being>()
     .register_type::<ControlledBy>()

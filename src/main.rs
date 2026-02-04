@@ -5,67 +5,126 @@ use bevy_inspector_egui::{
 };
 use tracing::Level;
 #[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, };
+use common::log_targets;
 
-pub const FILTER: &str = 
-concat!(
-    "info,",
-    "naga=error,","wgpu_hal=error,",
-    "bevy_ecs_tilemap=warn,",
-    "wgpu_core=error,",
-    "bevy_egui=warn,",
-    "bevy_replicon=warn,",
-    "bevy_render=warn,",
-    "bevy_app=warn,",
-    "cosmic_text=warn,",
-    "offset_allocator=warn,",
-    "bevy_asset_loader=warn,",
-    "bevy_ecs::relationship=error,",
-    "calloop::loop_logic=error,",
-    
-    "portal_init=warn,",
-    "pos_search=info,",
-    "childrensprite_init=info,",
+fn build_filter() -> String {
+    format!(
+        "info,\
+        {}=error,{}=error,\
+        {}=warn,\
+        {}=error,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=error,\
+        {}=error,\
+        \
+        {}=warn,\
+        {}=info,\
+        {}=info,\
+        \
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        \
+        {}=info,\
+        {}=info,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        \
+        {}=info,\
+        \
+        {}=info,\
+        \
+        {}=info,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        \
+        {}=warn,\
+        {}=info,\
+        \
+        {}=warn,\
+        {}=info,\
+        {}=warn,\
+        {}=warn,\
+        \
+        {}=info,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,\
+        {}=warn,",
+        log_targets::NAGA,
+        log_targets::WGPU_HAL,
+        log_targets::BEVY_ECS_TILEMAP,
+        log_targets::WGPU_CORE,
+        log_targets::BEVY_EGUI,
+        log_targets::BEVY_REPLICON,
+        log_targets::BEVY_RENDER,
+        log_targets::BEVY_APP,
+        log_targets::COSMIC_TEXT,
+        log_targets::OFFSET_ALLOCATOR,
+        log_targets::BEVY_ASSET_LOADER,
+        log_targets::BEVY_ECS_RELATIONSHIP,
+        log_targets::CALLOOP_LOOP_LOGIC,
+        
+        log_targets::PORTAL_INIT,
+        log_targets::POSITION_SEARCH,
+        log_targets::CHILDRENSPRITE_INIT,
 
-    "oplist_init=warn,",
-    "terrgen_init=warn,",
-    "sgc_init=warn,",
+        log_targets::OPLIST_INIT,
+        log_targets::TERRGEN_INIT,
+        log_targets::SGC_INIT,
 
-    "terrgen_systems=info,",
-    "terrgen_process=info,",
-    "structure_spawn=warn,",
-    "tilemap_systems=warn,",
-    "tilemap=warn,",
-    "add2gposmap=warn,",
+        log_targets::TERRGEN_SYSTEM,
+        log_targets::TERRGEN_PROCESS,
+        log_targets::STRUCTURE_SPAWN,
+        log_targets::TILEMAP_SYSTEM,
+        log_targets::TILEMAP_SYSTEM,
+        log_targets::GPOS_MAP,
 
-    "chunk_despawn=info,",
+        log_targets::CHUNK_DESPAWN,
 
-    "debug=info,",
+        log_targets::DEBUG,
 
-    "zlevel=info,",
-    "movement=warn,",
-    "sprite_init=warn,",
-    "sprite_building=warn,",
-    "sprite_systems=warn,",
-    "sprite_systems=warn,",
+        log_targets::Z_LEVEL_SYSTEM,
+        log_targets::MOVEMENT_SYSTEM,
+        log_targets::SPRITE_INIT,
+        log_targets::SPRITE_BUILD,
+        log_targets::SPRITE_SYSTEM,
+        log_targets::SPRITE_SYSTEM,
 
-    "being_control=warn,",
-    "game_init_systems=info,",
-    
-    "sprite_animation_init=warn,",
-    "entity_zero=info,",
-    "dungeoning=warn,",
-    "sgc_chunk_claim=warn,",
+        log_targets::BEING_CONTROL,
+        log_targets::GAME_INIT,
+        
+        log_targets::SPRITE_ANIMATION_INIT,
+        log_targets::ENTITY_ZERO_SYSTEM,
+        log_targets::DUNGEONING_SYSTEM,
+        log_targets::SGC_CHUNK_CLAIM,
 
-    "tile_init=info,",
-    "asset_loading=warn,",
-    "tiling_loading=warn,",
-    "dimension_loading=warn,",
-    "control=warn,",
-    "being=warn,",
-    "faction=warn,",
-    "zsort=warn,",
-    "inspector=warn,",
-);
+        log_targets::TILE_INIT,
+        log_targets::ASSET_LOAD,
+        log_targets::TILEMAP_LOAD,
+        log_targets::DIMENSION_LOAD,
+        log_targets::CONTROL,
+        log_targets::BEING_SYSTEM,
+        log_targets::FACTION_SYSTEM,
+        log_targets::Z_SORT_SYSTEM,
+        log_targets::INSPECTOR,
+    )
+}
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
 /*TRACING
@@ -82,7 +141,7 @@ fn main() {
             DefaultPlugins
             .set(//https://bevy-logging.github.io/chapter_5.html
                 LogPlugin {
-                    filter: FILTER.to_string(),
+                    filter: build_filter(),
                     level: Level::TRACE,
                     ..Default::default()
                 })

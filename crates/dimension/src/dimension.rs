@@ -13,9 +13,10 @@ pub fn plugin(app: &mut App) {
     app
         .add_plugins((
             RonAssetPlugin::<DimensionSeri>::new(&["dimension.ron"]),
+            plugin_dimension_entity_map,
         ))
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            (init_dimensions, map_dimension_id_to_entity).chain().in_set(DimensionSystems),
+            (init_dimensions, map_dimension_entity_map_id_to_entity).chain().in_set(DimensionSystems),
         ))
         .add_systems(Update, (
             (replace_multiple_string_refs_by_entity_refs, replace_dim_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected)
@@ -24,9 +25,6 @@ pub fn plugin(app: &mut App) {
             readjust_childof_to_new_dim_if_parent_was_dimension,
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
-        .add_observer(remove_from_map_on_dimension_despawn)
-
-        .init_resource::<DimensionEntityMap>()
 
         .register_type::<DimensionRef>()
         .register_type::<MultipleDimensionRefs>()

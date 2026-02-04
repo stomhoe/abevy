@@ -2,30 +2,27 @@ use std::mem::take;
 
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{common_components::*, common_tag_components::TagSet};
+use common::{common_components::*, common_tag_components::TagSet, define_entity_map_systems};
+use common::entity_map_macros::*;
 use game_common::game_common_components::*;
 use sprite_animation_shared::AnimationLibrary ;
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
-use crate::{sprite_components::*, sprite_resources::*, };
+use crate::{SpriteCfgEntityMap, sprite_components::*, sprite_resources::* };
+
+
 
 #[allow(unused_parens)]
-pub fn init_sprite_cfgs(
+pub fn init_sprite_configs(
     mut cmd: Commands, 
     scs_map: Res<SpriteCfgEntityMap>,
     mut seris_handles: ResMut<SpriteSerisHandles>,
     mut assets: ResMut<Assets<SpriteConfigSeri>>,
     library: Res<AnimationLibrary>,
     scs_holder: Query<Entity, With<SpriteConfigsHolder>>,
-    world_sprites_holder: Query<Entity, With<EguiWorldSprites>>,
 ) {
-    info!(target: "sprite_init", "Initializing Sprite Configs...");
     if !scs_map.0.is_empty(){ return; }
     
-    if world_sprites_holder.is_empty() {
-        cmd.spawn(EguiWorldSprites::default());
-    }
-
     let scs_holder = scs_holder.single().unwrap();
     
     let mut comps_to_insert = Vec::new();
@@ -170,41 +167,4 @@ pub fn init_sprite_cfgs(
     }
     cmd.try_insert_batch(comps_to_insert);  
 } 
-pub fn add_sprite_cfgs_to_map(
-    mut cmd: Commands,
-    map: Option<ResMut<SpriteCfgEntityMap>>,
-    ezeros_query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<SpriteConfig>, With<EntityZero>, AnyDisabling,)>,
-) {
-    if let Some(mut map) = map {
-        for (ent, prefix, str_id) in ezeros_query.iter() {
-            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
-                if prev_ent.0 == ent {
-                    continue;
-                }
-                error!(target: "sprite_init","{} '{}' already in SpriteCfgEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
-                cmd.entity(ent).try_despawn();
-            } else {
-                trace!(target: "sprite_init","Inserted sprite config '{}' into SpriteCfgEntityMap with entity {:?}", str_id, ent);
-            }
-        }
-    }
-    else {
-        error!(target: "sprite_init","SpriteCfgEntityMap resource not found when trying to add sprite configs to it.");
-    }
-}
 
-#[allow(unused_parens)]
-pub fn remove_spriteconfig_from_entimap_on_despawn(
-    trigger: On<Despawn, SpriteConfig>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut map: ResMut<SpriteCfgEntityMap>,
-
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
-}

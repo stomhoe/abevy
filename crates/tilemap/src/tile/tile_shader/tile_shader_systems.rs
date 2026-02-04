@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use common::common_components::{AnyDisabling, ImagePathHolder, MultipleImagePathHolder, StrId};
 
-use crate::tile::tile_shader::{tile_material::wavy::WavyMat, tile_shader_components::*, tile_shader_resources::TileShaderEntityMap};
+use crate::tile::tile_shader::{tile_material::wavy::WavyMat, tile_shader_components::*, };
 
 #[allow(unused_parens)]
 pub fn add_image_handle_to_tile_shader(

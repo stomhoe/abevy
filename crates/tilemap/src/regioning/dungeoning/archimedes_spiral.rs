@@ -7,7 +7,7 @@ use ::tilemap_shared::*;
 
 use crate::regioning::{regioning_components::*, regioning_messages::{SgcPrepareTilesOrder, StructureBuildCompliance}, regioning_sgc_components::StructuredGenConfig
 };
-use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::TileEzerosMap};
+use crate::tile::{tile_components::DeleteOtherTiles, TileEzerosMap};
 use super::dungeoning_ids::ARCHI;
 
 #[allow(unused_parens, )]

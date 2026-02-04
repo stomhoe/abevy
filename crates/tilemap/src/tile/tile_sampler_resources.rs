@@ -2,12 +2,6 @@ use bevy::math::f32;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-use common::common_types::HashIdToEntityMap;
-
-#[derive(Resource, Debug, Default, Clone, Reflect)]
-#[reflect(Resource, Default)]
-pub struct TileWeightedSamplersMap(pub HashIdToEntityMap);
-
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
 pub struct TileWeightedSamplerHandles {

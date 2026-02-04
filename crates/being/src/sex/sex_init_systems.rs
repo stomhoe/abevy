@@ -3,7 +3,7 @@
 use common::common_components::*;
 use game_common::game_common_string_components::*;
 
-use crate::sex::{sex_components::*, sex_resources::*};
+use crate::sex::{SexEntityMap, sex_components::*, sex_resources::*};
 
 pub fn init_sexes(
     mut cmd: Commands,

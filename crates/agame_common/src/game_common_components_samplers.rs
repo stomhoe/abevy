@@ -5,7 +5,6 @@ use::tilemap_shared::*;
 #[macro_export]
 macro_rules! define_weightedsampler_impl {
     ($ty:ident, $inner:ty) => {
-        use common::common_id_components::HashId;
         impl $ty {
             pub fn new(weights: &Vec<($inner, f32)>) -> Self {
                 let mut weights_vec = Vec::with_capacity(weights.len());
@@ -56,17 +55,17 @@ macro_rules! define_weightedsampler_impl {
                     Ok(idx) | Err(idx) => Some(idx),
                 }
             }
-            pub fn sample_with_pos(&self, pos: GlobalTilePos, settings: &GlobalGenSettings, dimension_hash: HashId) -> Option<$inner> {
+            pub fn sample_with_pos(&self, pos: GlobalTilePos, settings: &GlobalGenSettings, dimension_hash: common::common_id_components::HashId) -> Option<$inner> {
                 let hash_used_to_sample = pos.hash_for_weight_maps(settings, dimension_hash);
                 let rng_val = (hash_used_to_sample as f64 / u64::MAX as f64) as f32;
                 self.sample_index(rng_val)
-                    .and_then(|idx| self.weights.get(idx).map(|(e, _)| *e))
+                    .and_then(|idx| self.weights.get(idx).map(|(e, _)| e.clone()))
             }
             pub fn sample_with_rng(&self, rng: &mut impl rand::Rng) -> Option<$inner> {
                 if self.weights.is_empty() { return None; }
                 let rng_val = rng.random_range(0.0..=1.0);
                 self.sample_index(rng_val)
-                    .and_then(|idx| self.weights.get(idx).map(|(e, _)| *e))
+                    .and_then(|idx| self.weights.get(idx).map(|(e, _)| e.clone()))
             }
             pub fn sample_with_rng_and_remove(&mut self, rng: &mut impl rand::Rng) -> Option<$inner> {
                 if self.weights.is_empty() { return None; }
@@ -139,9 +138,9 @@ macro_rules! define_weightedsampler_impl {
 #[macro_export]
 macro_rules! define_weightedsampler {
     ($ty:ident, $inner:ty, $entityprefix:expr) => {
-        use common::common_states::*;
+        use common::common_components::{Prefix, AssetScoped};
         #[derive(Debug, Clone, Reflect, Component)]
-        #[require(Prefix::trunc($entityprefix), Replicated, AssetScoped, )]
+        #[require(Prefix::trunc($entityprefix), bevy_replicon::shared::replication::Replicated, AssetScoped, )]
         pub struct $ty {
             weights: Vec<($inner, f32)>,
             cumulative_weights: Vec<f32>,
@@ -167,3 +166,6 @@ impl MapEntities for EntityWeightedSampler {
 }
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
 pub struct WeightedSamplerRef(#[entities] pub Entity);
+
+
+define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");            

@@ -1,11 +1,11 @@
 
-use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::*};
+use bevy::prelude::*;
 use common::{common_components::*, common_tag_components::{HashedTagsVec, TagSet}};
 use ::dimension_shared::*;
 use game_common::{game_common_components::ArgsMap, game_common_components_samplers::EntityWeightedSampler};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*}, terrain_gen::{terrgen_messages::OpFilter, terrgen_resources::*}};
+use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*, SgcEntityMap}, terrain_gen::terrgen_messages::OpFilter};
 
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (
@@ -121,45 +121,3 @@ pub fn init_structured_gen_configs (
     cmd.spawn((SgcsWeightedSampler, ent_w_sampler, ChildOf(holder),));
 }
 
-pub fn map_sgc_id_to_entity(
-    mut cmd: Commands,
-    map: Option<ResMut<SgcEntityMap>>,
-    ezeros_query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<StructuredGenConfig>, )>,
-) {
-    if let Some(mut map) = map {
-        for (ent, prefix, str_id) in ezeros_query.iter() {
-            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
-                if prev_ent.0 == ent {
-                    continue;
-                }
-                error!(target: "sgc_init","{} '{}' already in SgcEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
-                cmd.entity(ent).try_despawn();
-            } else {
-                trace!(target: "sgc_init","Inserted {} '{}' into SgcEntityMap with entity {:?}", prefix.cloned().unwrap_or_default(), str_id, ent);
-            }
-        }
-    }
-    else {
-        error!(target: "sgc_init","SgcEntityMap resource not found when trying to add sgc to it.");
-    }
-}
-
-#[allow(unused_parens)]
-pub fn remove_sgc_from_map_on_despawn(
-    trigger: On<Despawn, StructuredGenConfig>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut map: ResMut<SgcEntityMap>,
-    mut weighted_map: Query<(&mut EntityWeightedSampler), (With<SgcsWeightedSampler>)>,
-
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        weighted_map.iter_mut().for_each(|(mut weighted_sampler)| {
-            weighted_sampler.remove(&trigger.entity);
-        });
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
-}

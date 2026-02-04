@@ -8,9 +8,5 @@ use serde::{Deserialize, Serialize};
 #[require(SparedFromHotReloading, AssetScoped, Replicated,Prefix::trunc("Animations"),   )]
 pub struct AnimationsHolder;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect)]
-#[require(SparedFromHotReloading, AssetScoped, Replicated,Prefix::trunc("Animation"),   )]
-pub struct AnimationComp;
-
 
 

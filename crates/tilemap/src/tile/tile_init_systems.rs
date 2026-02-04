@@ -3,7 +3,7 @@ use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disab
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use color_sampler::{color_sampler_components::ColorSamplerRef, color_sampler_resources::ColorWeightedSamplersMap};
+use color_sampler::{ColorWeightedSamplersMap, color_sampler_components::ColorSamplerRef };
 use common::{common_components::*, common_tag_components::TagSet};
 use ::dimension_shared::*;
 use ::game_common::{game_common_components::*, game_common_components_samplers::*, *};
@@ -12,9 +12,7 @@ use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
-use crate::{chunking::chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*, tile_shader::{tile_shader_components::*, tile_shader_resources::TileShaderEntityMap}, }, tilemap_resources::MassCollectedTiles };
-
-use core::{error, f32};
+use crate::{chunking::chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*, tile_shader::{TileShaderEntityMap, tile_shader_components::* }, TileEzerosMap}, tilemap_resources::MassCollectedTiles };
 use std::{any::Any, mem::take};
 
 
@@ -164,29 +162,6 @@ pub fn init_tiles(
         }
     });
     cmd.insert_resource(res_tile_cats);
-}
-
-pub fn map_ezero_tile_id_to_entity(
-    mut cmd: Commands,
-    map: Option<ResMut<TileEzerosMap>>,
-    ezeros_query: Query<(Entity, Option<&Prefix>, &TileStrId), (Changed<TileStrId>, With<Tile>, With<EntityZero>, AnyDisabling,)>,
-) {
-    if let Some(mut map) = map {
-        for (ent, prefix, str_id) in ezeros_query.iter() {
-            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
-                if prev_ent.0 == ent {
-                    continue;
-                }
-                error!(target: "tile_init","{} '{}' already in TileEzerosMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
-                cmd.entity(ent).try_despawn();
-            } else {
-                trace!(target: "tile_init","Inserted tile '{}' into TileEzerosMap with entity {:?}", str_id, ent);
-            }
-        }
-    }
-    else {
-        error!(target: "tile_init","TileEzerosMap resource not found when trying to add tiles to it.");
-    }
 }
 
 #[allow(unused_parens)]

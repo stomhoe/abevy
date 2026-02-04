@@ -1,9 +1,10 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_replicon::prelude::Replicated;
 use bevy_spritesheet_animation::prelude::{Animation, AnimationProgress, Spritesheet};
-use common::{common_components::StrId, common_types::*};
+use common::{common_components::{AssetScoped, Prefix, SparedFromHotReloading, StrId}, common_types::*};
 use serde::{Deserialize, Serialize};
-
+use common::define_entity_map_systems;
 
 #[allow(unused_imports)] use {bevy::prelude::*, };
 
@@ -62,7 +63,15 @@ pub struct AnimationHandle(pub Handle<Animation>,);
 #[derive(Component, Debug, Clone, )]
 pub struct AnimationSheet(pub Spritesheet,);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect)]
+#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("Animation"),   )]
+pub struct AnimationComp;
 
-#[derive(Resource, Debug, Reflect, Default)]
-#[reflect(Resource, Default)]
-pub struct AnimationLibrary ( pub HashIdToEntityMap );
+
+
+define_entity_map_systems!(
+    AnimationLibrary,
+    StrId,
+    AnimationComp,
+    ()
+);

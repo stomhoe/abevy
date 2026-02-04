@@ -38,6 +38,7 @@ bevy-ui-gradients = "0.4.0"
 bevy_spritesheet_animation = "6.1.0"
 bevy_asset_loader = "0.25.0"
 bevy-inspector-egui = "0.36.0"
+paste = "1.0"
 
 serde = { version = "1.0.228", features = ["derive"] }
 splines = { version = "5.0.0", features = ["serde"] }

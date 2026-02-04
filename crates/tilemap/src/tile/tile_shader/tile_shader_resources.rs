@@ -5,10 +5,6 @@
 use common::common_types::HashIdToEntityMap;
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Debug, Default, Reflect )]
-#[reflect(Resource, Default)]
-pub struct TileShaderEntityMap(pub HashIdToEntityMap);
-
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
 pub struct ShaderRepeatTexSerisHandles {

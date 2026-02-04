@@ -84,18 +84,3 @@ pub fn readjust_childof_to_new_dim_if_parent_was_dimension(mut cmd: Commands,
     }
 }
 
-#[allow(unused_parens)]
-pub fn remove_from_map_on_dimension_despawn(
-    trigger: On<Despawn, Dimension>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut dimension_entity_map: ResMut<DimensionEntityMap>,
-
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(dimension_entity) = dimension_entity_map.0.get_cloned(str_id) {
-            if dimension_entity == trigger.entity {
-                dimension_entity_map.0.remove(str_id.as_str());
-            }
-        }
-    }
-}

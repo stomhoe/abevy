@@ -6,10 +6,17 @@ use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use common::common_types::HashIdToEntityMap;
 use common::common_tag_components::TagSet;
+use common::{define_entity_map_systems, entity_map_macros::*};
 use serde::{Deserialize, Serialize};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct DimensionSystems;
+
+define_entity_map_systems!(
+    DimensionEntityMap,
+    StrId,
+    Dimension
+);
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
@@ -22,8 +29,7 @@ pub struct PrevDimensionRef(#[entities] pub Entity);
 #[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
 pub struct Dimension;
 
-#[derive(Resource, Debug, Default )]
-pub struct DimensionEntityMap(pub HashIdToEntityMap);
+
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
 #[relationship(relationship_target = RootInDimensions)]

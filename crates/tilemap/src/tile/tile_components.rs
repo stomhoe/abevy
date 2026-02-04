@@ -53,7 +53,7 @@ pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
 }
-pub type TileStrId = StrId20B;
+pub type TileStrId = StrId;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct TileChildSprite;

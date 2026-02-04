@@ -15,20 +15,6 @@ use sprite_shared::sprite_scale_offset::Offset2D;
 pub struct SpriteConfigsHolder;
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
-#[relationship(relationship_target = WorldSprites)]
-pub struct EguiSpriteHolderReference(#[relationship]#[entities]pub Entity);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(WorldSprites, DespawnOnExit::<ClientState>, Replicated, Visibility, Transform, Prefix::trunc("World sprites"), )]
-pub struct EguiWorldSprites;
-
-#[derive(Component, Debug, Reflect, Default)]
-#[relationship_target(relationship = EguiSpriteHolderReference)]
-pub struct WorldSprites(Vec<Entity>);
-impl WorldSprites { pub fn entities(&self) -> &[Entity] { &self.0 } }
-
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpriteConfig"), )]
 pub struct SpriteConfig;
@@ -84,9 +70,13 @@ pub struct BecomeChildOfSpriteWithTag (pub Tag);
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities )]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities, Default )]
 pub struct SpriteCfgsToBuild(#[entities] pub EntityHashSet);
-
+impl SpriteCfgsToBuild {
+    pub fn with_capacity(capacity: usize) -> Self {
+        SpriteCfgsToBuild(EntityHashSet::with_capacity(capacity))
+    }
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct OffsetForChildren(pub HashMap<Tag, (Offset2D, AppliesOnSpriteDirection)>);

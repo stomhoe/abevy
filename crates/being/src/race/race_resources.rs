@@ -5,8 +5,6 @@ use common::common_types::HashIdToEntityMap;
 
 
 //CASO DE USO: RECIBIS UN PAQUETE ONLINE SOLO CON NID Y TENES Q VER A Q ENTITY SE REFIERE
-#[derive(Resource, Debug, Default )]
-pub struct RaceEntityMap (pub HashIdToEntityMap);
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]

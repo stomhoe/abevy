@@ -10,7 +10,6 @@ use crate::{terrain_gen::{terrgen_operaton_list_components::VariablesArray, }, }
 
 
 #[derive(Debug, Clone, Component, Reflect)]
-/// when process_pending_ops_and_collect_tiles finds a suitable position within this filter's parameters, it writes out a SuitablePosFound message
 pub struct OpFilter{
     pub start_oplist: Entity,
     pub tags: HashedTagsVec,
@@ -92,9 +91,7 @@ pub struct SuitablePosFound { pub op_filter_ent: Entity, pub val: f32, pub found
 pub struct SearchFailed (pub Entity);
 
 #[derive(Message, Debug, Clone)]
-/// internal use only
 pub struct PendingOp {pub oplist: Entity, pub dimension_ref: DimensionRef, pub gpos: GlobalTilePos, 
-    //pub dimension_hash_id: i32,
     pub variables: VariablesArray, pub filtered_op: Entity
 }
 

@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::tiles::TileColor;
 use common::common_components::{AnyDisabling, HashId, Prefix, StrId};
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
-use crate::{color_sampler_components::*, color_sampler_resources::* };
+use crate::{ColorWeightedSamplersMap, color_sampler_components::*, color_sampler_resources::* };
 
 #[allow(unused_parens)]
 pub fn init_color_samplers(
@@ -54,25 +54,7 @@ pub fn init_color_samplers(
     cmd.insert_batch(wmap_to_insert);
 }
 
-#[allow(unused_parens, )]
-pub fn map_colorsampler_id_to_entity(
-    mut cmd: Commands,
-    map: Option<ResMut<ColorWeightedSamplersMap>>,
-    query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<ColorSampler>)>,
-) {
-    let Some(mut map) = map else { return; };
-    for (new_ent, prefix, str_id) in query.iter() {
-        if let Err(err) = map.0.insert(str_id, new_ent, ) {
-            if err.0 == new_ent {
-                continue;
-            }
-            error!(target: "color_sampler_init","{} '{}' already in ColorWeightedSamplersMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, err, new_ent);
-            cmd.entity(new_ent).try_despawn();
-        } else {
-            info!(target: "color_sampler_init", "Inserted tile '{}' into ColorWeightedSamplersMap with entity {:?}", str_id, new_ent);
-        }
-    }
-}
+
 
 #[allow(unused_parens)]
 pub fn apply_pos_sampled_color(mut cmd: Commands, 
@@ -101,17 +83,3 @@ pub fn apply_pos_sampled_color(mut cmd: Commands,
     });
 }
 
-#[allow(unused_parens)]
-pub fn remove_color_sampler_from_map_on_despawn(
-    trigger: On<Despawn, (ColorSampler )>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut map: ResMut<ColorWeightedSamplersMap>,
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
-}

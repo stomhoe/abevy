@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use fnl::*;
-use common::common_components::{AnyDisabling, DisplayName, Prefix, StrId};
+use common::common_components::{DisplayName, Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
-use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*};
+use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*, TerrGenEntityMap};
 use std::mem::take;
 
 #[allow(unused_parens)]
@@ -140,41 +140,3 @@ pub fn init_noises(
     cmd.insert_batch(fnl_comps_to_insert);
 }
 
-pub fn map_terrgen_id_to_entity(
-    mut cmd: Commands,
-    map: Option<ResMut<TerrGenEntityMap>>,
-    ezeros_query: Query<(Entity, &Prefix, &StrId), (Changed<StrId>, With<Terrgen>, )>,
-) {
-    if let Some(mut map) = map {
-        for (ent, prefix, str_id) in ezeros_query.iter() {
-            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
-                if prev_ent.0 == ent {
-                    continue;
-                }
-                error!(target: "terrgen_init","{} '{}' already in TerrGenEntityMap with entity {:?}, cannot insert entity {:?}", prefix, str_id, prev_ent, ent);
-                cmd.entity(ent).try_despawn();
-            } else {
-                trace!(target: "terrgen_init","Inserted tile '{}' into TerrGenEntityMap with entity {:?}", str_id, ent);
-            }
-        }
-    }
-    else {
-        error!(target: "terrgen_init","TerrGenEntityMap resource not found when trying to add tiles to it.");
-    }
-}
-
-
-#[allow(unused_parens)]
-pub fn remove_terrgen_from_map_on_despawn(
-    trigger: On<Despawn, Terrgen>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut map: ResMut<TerrGenEntityMap>,
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
-}

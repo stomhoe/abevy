@@ -2,9 +2,6 @@ use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use common::common_types::HashIdToEntityMap;
 
-#[derive(Resource, Debug, Default)]
-pub struct SexEntityMap(pub HashIdToEntityMap);
-
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
 pub struct SexSerisHandles {

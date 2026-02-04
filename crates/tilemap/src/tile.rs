@@ -4,25 +4,40 @@ use bevy::{time::common_conditions::on_timer};
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
-use common::{common_components::AnyDisabling, common_states::AssetLoading};
+use common::{common_components::{AnyDisabling, StrId}, common_states::AssetLoading, define_entity_map_systems};
 use bevy_ecs_tilemap::prelude::*;
-use game_common::{game_common_components::{EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::{EntityZero, EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
 use sprite::AcSpriteSystems;
 use tilemap_shared::{GlobalTilePos, OplistSize, PrevGlobalTilePos};
 use bevy::prelude::*;
 
 use crate::{terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::{
-    tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
+    tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
 }, tilemap_systems::* };
 pub mod tile_systems;
-mod tile_init_systems;
-mod tile_sampler_init_systems;
+pub mod tile_init_systems;
+pub mod tile_sampler_init_systems;
 pub mod tile_components;
 pub mod tile_resources;
 pub mod tile_sampler_resources;
 pub mod tile_sampler_components;
 pub mod tile_messages;
 pub mod tile_shader;
+
+use crate::tile::tile_components::TileStrId;
+
+define_entity_map_systems!(
+    TileEzerosMap,
+    TileStrId,
+    Tile,
+    (With<EntityZero>, AnyDisabling)
+);
+
+define_entity_map_systems!(
+    TileWeightedSamplersMap,
+    StrId,
+    TileWeightedSampler
+);
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TilingSystems;
@@ -35,7 +50,7 @@ pub fn plugin(app: &mut App) {
 
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
         
-        map_ezero_tile_id_to_entity,
+        map_tile_ezeros_map_id_to_entity,
         flip_tile_horizontally_based_on_initial_pos_hash,
         despawn_if_not_excepted,//DON'T TOUCH
         (add_spawned_tiles_to_gpos_map, ),
@@ -47,13 +62,10 @@ pub fn plugin(app: &mut App) {
         validate_portal_recipes,
         remove_tile_from_gpos_map_on_despawn,
     ))
-    .add_observer(remove_ezero_tile_from_map_on_despawn)
-    .add_observer(remove_tws_from_map_on_despawn)
-
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), 
         (   
-            init_tiles, map_ezero_tile_id_to_entity, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, init_tile_weighted_samplers_refs, 
+            init_tiles, map_tile_ezeros_map_id_to_entity, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, map_tile_weighted_samplers_map_id_to_entity,  init_tile_weighted_samplers_refs, 
         )
         .chain().in_set(TilingSystems))
         
@@ -69,18 +81,17 @@ pub fn plugin(app: &mut App) {
         
         RonAssetPlugin::<TileSerialization>::new(&["tile.ron"]),
         RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["tsampler.ron"]),
+        plugin_tile_ezeros_map,
+        plugin_tile_weighted_samplers_map,
     ))
     .init_resource::<TilesAtGpos>()
-    .init_resource::<TileEzerosMap>()
-    .init_resource::<TileWeightedSamplersMap>()
+    
     
     .register_type::<TileSerisHandles>()
     .register_type::<TileSerialization>()
     .register_type::<GlobalTilePos>()
     .register_type::<TileWeightedSamplerHandles>()
     .register_type::<TileWeightedSamplerSeri>()
-    .register_type::<TileEzerosMap>()
-    .register_type::<TileWeightedSamplersMap>()
 
 
     .register_type::<MinDistancesMap>()

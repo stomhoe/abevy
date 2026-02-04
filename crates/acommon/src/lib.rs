@@ -1,6 +1,9 @@
 
 
 pub use common::*;
+pub use entity_map_macros::*;
+pub use log_targets::*;
+pub use paste;
 pub mod common;
 
 pub mod common_components;
@@ -11,4 +14,6 @@ pub mod common_states;
 pub mod common_resources;
 mod common_systems;
 mod common_tag_systems;
+pub mod entity_map_macros;
+pub mod log_targets;
 

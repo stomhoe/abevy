@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::*;
-use crate::tile::tile_shader::{tile_material::prelude::*, tile_shader_components::*, tile_shader_resources::*};
+use crate::tile::tile_shader::{TileShaderEntityMap, tile_material::prelude::*, tile_shader_components::*, tile_shader_resources::*};
 
 
 #[allow(unused_parens)]

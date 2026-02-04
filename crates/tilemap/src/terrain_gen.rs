@@ -2,6 +2,7 @@
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
+use common::{define_entity_map_systems, entity_map_macros::*, common_components::StrId};
 use dimension_shared::RootInDimensions;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
@@ -15,6 +16,18 @@ pub mod terrgen_operaton_list_components;
 pub mod terrgen_resources;
 pub mod terrgen_messages;
 
+define_entity_map_systems!(
+    TerrGenEntityMap,
+    StrId,
+    Terrgen
+);
+
+define_entity_map_systems!(
+    OpListEntityMap,
+    StrId,
+    OperationList
+);
+
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TerrainGenSystems;
 
@@ -24,7 +37,6 @@ pub struct TerrainGenSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, (
-            map_terrgen_id_to_entity, map_oplist_id_to_entity,
             (launch_terrain_gen_operations, (process_pending_ops_and_collect_tiles,)).in_set(TerrainGenSystems),
             search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
         ))
@@ -32,9 +44,9 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (
                 init_noises,
-                map_terrgen_id_to_entity,
+                map_terr_gen_entity_map_id_to_entity,
                 init_oplists_from_assets,
-                map_oplist_id_to_entity,
+                map_op_list_entity_map_id_to_entity,
                 init_oplists_bifurcations,
                 cycle_detection,
                 assign_rootoplist_to_dimensions,
@@ -42,19 +54,16 @@ pub fn plugin(app: &mut App) {
             ).chain(),
             ).in_set(TerrainGenSystems)
         )
-        .add_observer(remove_oplist_from_map_on_despawn)
-        .add_observer(remove_terrgen_from_map_on_despawn)
 
         .init_resource::<RegisteredPositions>()
-        .init_resource::<OpListEntityMap>()
-        .init_resource::<TerrGenEntityMap>()
         .init_resource::<TerrGenLaunchQueue>()
         .init_resource::<TerrGenAsyncTasks>()
         
         .add_plugins((
             RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),
             RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
-            
+            plugin_terr_gen_entity_map,
+            plugin_op_list_entity_map,
         ))
         
         .add_server_event::<RegisteredPositions>(Channel::Unordered)
@@ -82,8 +91,6 @@ pub fn plugin(app: &mut App) {
         .register_type::<FnlNoiseComp>().register_type::<FastNoiseLite>()
         .register_type::<OperationList>().register_type::<Operation>()
         .register_type::<Operand>()
-        .register_type::<TerrGenEntityMap>()
-        .register_type::<OpListEntityMap>()
         .register_type::<OplistSize>()
         .register_type::<TerrGenOpsLaunched>()
         .register_type::<ChunkRef>()

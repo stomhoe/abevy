@@ -16,6 +16,7 @@ being_shared = { path = "../being_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 modifier = { path = "../modifier" }
 sprite = { path = "../sprite" }
+sprite_shared = { path = "../sprite_shared" }
 
 bevy = { workspace = true }
 nano-id = { workspace = true }
@@ -32,3 +33,4 @@ indexmap = { workspace = true }
 delegate = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+paste = { workspace = true }

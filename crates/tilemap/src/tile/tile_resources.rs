@@ -9,14 +9,6 @@ use dimension_shared::DimensionRef;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::GlobalTilePos;
 
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Event, Reflect)]
-#[reflect(Resource, Default)]
-pub struct TileEzerosMap(pub HashIdToEntityMap);
-
-#[derive(Resource, Debug, Default, Clone, Serialize, Deserialize, Message, Reflect)]
-#[reflect(Resource, Default)]
-//NO SE USA
-pub struct TileInstancesEntityMap(pub HashIdToEntityMap);
 
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]

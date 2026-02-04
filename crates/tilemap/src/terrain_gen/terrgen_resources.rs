@@ -134,14 +134,6 @@ pub struct TerrGenAsyncTasks {
     pub search_tasks: Vec<Task<TerrGenSearchTaskResult>>,
 }
 
-#[derive(Resource, Debug, Default, Reflect, )]
-#[reflect(Resource, Default)]
-pub struct TerrGenEntityMap(pub HashIdToEntityMap);
-
-#[derive(Resource, Debug, Default, Reflect, )]
-#[reflect(Resource, Default)]
-pub struct OpListEntityMap(pub HashIdToEntityMap);
-
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]

@@ -3,6 +3,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 use common::common_components::{AnyDisabling, ImagePathHolder, Prefix, StrId};
+use common::{entity_map_macros::*, define_entity_map_systems};
 use game_common::game_common_components::EntityZero;
 use sprite::{sprite_components::*, };
 use ::sprite_animation_shared::*;
@@ -79,28 +80,7 @@ pub fn init_animations(
     cmd.try_insert_batch(seris);
     cmd.try_insert_batch(main_comps);
 }
-pub fn map_spriteanim_id_to_entity(
-    mut cmd: Commands,
-    map: Option<ResMut<AnimationLibrary>>,
-    ezeros_query: Query<(Entity, Option<&Prefix>, &StrId), (With<AnimationComp>, Changed<StrId>, AnyDisabling,)>,
-) {
-    if let Some(mut map) = map {
-        for (ent, prefix, str_id) in ezeros_query.iter() {
-            if let Err(prev_ent) = map.0.insert(str_id, ent, ) {
-                if prev_ent.0 == ent {
-                    continue;
-                }
-                error!(target: "sprite_init","{} '{}' already in AnimationLibrary with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, ent);
-                cmd.entity(ent).try_despawn();
-            } else {
-                trace!(target: "sprite_init","Inserted animation '{}' into AnimationLibrary with entity {:?}", str_id, ent);
-            }
-        }
-    }
-    else {
-        error!(target: "sprite_init","AnimationLibrary resource not found when trying to add animations to it.");
-    }
-}
+
 
 
 #[allow(unused_parens)]
@@ -211,18 +191,3 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
     }
 }
 
-#[allow(unused_parens)]
-pub fn remove_spriteanim_from_entimap_on_despawn(
-    trigger: On<Despawn, AnimationComp>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut map: ResMut<AnimationLibrary>,
-
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
-}

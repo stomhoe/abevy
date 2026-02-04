@@ -1,3 +1,4 @@
+use being_shared::BeingInstTemplate;
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet} ;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -6,7 +7,7 @@ use game_common::game_common_components::*;
 use sprite_animation_shared::AcAnimationProgresses ;
 use ::sprite_shared::*;
 
-use crate::{sprite_components::*, sprite_resources::*, };
+use crate::{SpriteCfgEntityMap, sprite_components::*, sprite_resources::* };
 
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
@@ -46,7 +47,7 @@ pub fn replace_string_ids_by_entities(
 pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     mut cmd: Commands,
     father_query: Query<(Entity, &SpriteCfgsToBuild, Option<&BaseHolderRef>,), 
-    (Without<SpriteConfig>, Changed<SpriteCfgsToBuild>,)>,
+    (Without<SpriteConfig>, Without<BeingInstTemplate>, Changed<SpriteCfgsToBuild>,)>,
     spritecfgs_query: Query<(Entity, &StrId, Option<&SpriteCfgsToBuild>), 
     (With<SpriteConfig>, AnyDisabling)>,
     held_sprites_query: Query<&HeldSprites, AnyDisabling>,

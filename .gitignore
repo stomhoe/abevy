@@ -11,6 +11,7 @@
 # Cargo package files
 Cargo.lock
 Cargo.toml.orig
+backup.log
 
 # IDEs and editors
 /.idea/

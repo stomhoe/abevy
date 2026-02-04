@@ -6,7 +6,7 @@ use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use dimension::dimension_resources::DimensionSerisHandles;
 use game_common::{GameplaySystems, };
-use sprite::sprite_resources::*;
+use sprite::{sprite_resources::*, sprite_sampler::sprite_sampler_resources::SpriteWeightedSamplerHandles};
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
 use being::race::race_resources::RaceSerisHandles;
 use being::sex::sex_resources::SexSerisHandles;
@@ -68,6 +68,7 @@ pub fn plugin(app: &mut App) {
             .load_collection::<StructureSerisHandles>()
             .load_collection::<RaceSerisHandles>()
             .load_collection::<SexSerisHandles>()
+            .load_collection::<SpriteWeightedSamplerHandles>()
 
 
         )

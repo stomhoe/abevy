@@ -2,10 +2,10 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use game_common::game_common_string_components::*;
-use game_common::game_common_components_samplers::EntityWeightedSampler;
-use sprite::sprite_resources::SpriteCfgEntityMap;
+use sprite::SpriteCfgEntityMap;
 
-use crate::{race::{race_components::*, race_resources::*}, sex::sex_resources::SexEntityMap};
+use crate::sex::SexEntityMap;
+use crate::{race::{race_components::*, race_resources::*, RaceEntityMap}, };
 
 pub fn init_races(
     mut cmd: Commands,
@@ -101,25 +101,4 @@ pub fn init_races(
     }
 }
 
-pub fn map_race_id_to_entity(
-    mut cmd: Commands,
-    map: Option<ResMut<RaceEntityMap>>,
-    query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<Race>)>,
-) {
-    if let Some(mut map) = map {
-        for (entity, prefix, str_id) in query.iter() {
-            if let Err(prev_ent) = map.0.insert(str_id, entity) {
-                if prev_ent.0 == entity {
-                    continue;
-                }
-                error!(target: "race_init", "{} '{}' already in RaceEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, entity);
-                cmd.entity(entity).try_despawn();
-            } else {
-                trace!(target: "race_init", "Inserted race '{}' into RaceEntityMap with entity {:?}", str_id, entity);
-            }
-        }
-    } else {
-        error!(target: "race_init", "RaceEntityMap resource not found when trying to add race to it.");
-    }
-}
 

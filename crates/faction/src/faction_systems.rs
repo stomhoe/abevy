@@ -5,7 +5,7 @@ use common::common_components::{AnyDisabling, StrId};
 use player::player_components::*;
 use tilemap::chunking::chunking_components::ActivatingChunks;
 
-use crate::{faction_components::*, faction_resources::FactionEntityMap, };
+use crate::{faction_components::*, FactionEntityMap, };
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^

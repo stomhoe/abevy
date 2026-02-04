@@ -186,20 +186,6 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
     }
     cmd.try_insert_batch(disableds);
 }
-#[allow(unused_parens)]
-pub fn add_sprites_to_holder(mut cmd: Commands, 
-    holder: Single<(Entity, ), (With<EguiWorldSprites>)>, 
-
-    query: Query<(Entity, ),(With<Sprite>, Without<EguiSpriteHolderReference>, Without<Disabled>)>,
-    added_disabled: Query<(Entity, ),(With<Sprite>, With<EguiSpriteHolderReference>, Added<Disabled>)>,
-) {
-    for (ent, ) in query.iter() {
-        cmd.entity(ent).try_insert(EguiSpriteHolderReference(holder.0));
-    }
-    for (ent, ) in added_disabled.iter() {
-        cmd.entity(ent).try_remove::<EguiSpriteHolderReference>();
-    }
-}
 
 #[allow(unused_parens, )]
 pub fn z_sort_system(

@@ -10,12 +10,15 @@ sprite_animation_shared = { path = "../sprite_animation_shared" }
 player = { path = "../player" }
 being_shared = { path = "../being_shared" }
 sprite_shared = { path = "../sprite_shared" }
+tilemap_shared = { path = "../tilemap_shared" }
+dimension_shared = { path = "../dimension_shared" }
 
 bevy_spritesheet_animation = { workspace = true }
 
 bevy_ecs_tilemap = { workspace = true }
 bevy = { workspace = true }
 debug_unwraps = { workspace = true }
+paste = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_common_assets = { workspace = true }
