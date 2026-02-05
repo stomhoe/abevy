@@ -7,11 +7,6 @@ use common::define_entity_map_systems;
 
 use crate::tile::tile_shader::{tile_material::prelude::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_shader_systems::*};
 
-define_entity_map_systems!(
-    TileShaderEntityMap,
-    StrId,
-    TileShader
-);
 
 // Bring material types into scope for this file
 

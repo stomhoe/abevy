@@ -2,9 +2,7 @@ use being_shared::BeingInstTemplate;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use common::{entity_map_macros::*, define_entity_map_systems};
-use game_common::{game_common_components_samplers::EntityWeightedSampler, game_common_string_components::*};
-use sprite::{sprite_components::SpriteCfgsToBuild, SpriteCfgEntityMap, sprite_sampler::SpriteWeightedSamplersMap};
+use sprite::{sprite_components::SpriteCfgsToBuild, sprite_resources::SpriteCfgEntityMap, sprite_sampler::SpriteWeightedSamplersMap};
 use sprite_shared::SampleSprites;
 
 use crate::being_inst_template::{self, being_inst_template_components::*, being_inst_template_resources::*};

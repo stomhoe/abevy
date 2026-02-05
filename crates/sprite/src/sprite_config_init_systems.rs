@@ -2,13 +2,12 @@ use std::mem::take;
 
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{common_components::*, common_tag_components::TagSet, define_entity_map_systems};
-use common::entity_map_macros::*;
+use common::{common_components::*, common_tag_components::TagSet, };
 use game_common::game_common_components::*;
 use sprite_animation_shared::AnimationLibrary ;
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
-use crate::{SpriteCfgEntityMap, sprite_components::*, sprite_resources::* };
+use crate::{sprite_components::*, sprite_resources::* };
 
 
 

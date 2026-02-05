@@ -6,11 +6,6 @@ use common::{common_components::StrId, common_states::AssetLoading, define_entit
 
 use crate::{being_inst_template::{being_inst_template_components::*, being_inst_template_init_systems::*, being_inst_template_build_systems::*, being_inst_template_resources::*}, };
 
-define_entity_map_systems!(
-    BitEntityMap,
-    StrId,
-    BeingInstTemplate
-);
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct BeingInstTemplateSystems;

@@ -1,8 +1,9 @@
+use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use game_common::game_common_string_components::*;
-use sprite::SpriteCfgEntityMap;
+use sprite::sprite_resources::SpriteCfgEntityMap;
 
 use crate::sex::SexEntityMap;
 use crate::{race::{race_components::*, race_resources::*, RaceEntityMap}, };
@@ -46,17 +47,30 @@ pub fn init_races(
             };
 
             let selectable_sprites = {
-                let mut sprites = Vec::new();
-                for sprite_id in &race_seri.selectable_sprites {
-                    match sprite_map.0.get_cloned(sprite_id) {
-                        Ok(entity) => sprites.push(entity),
-                        Err(_) => warn!(target: "race_init", "Race '{}' selectable sprite '{}' not found", str_id, sprite_id),
+                if let Some(sprite_ids) = &race_seri.selectable_sprites {
+                    let valid_ids: HashSet<_> = sprite_ids
+                        .iter()
+                        .map(|id| id.trim())
+                        .filter(|id| !id.is_empty())
+                        .collect();
+                    
+                    if valid_ids.is_empty() {
+                        None
+                    } else {
+                        let mut sprites = Vec::new();
+                        for sprite_id in valid_ids {
+                            match sprite_map.0.get_cloned(sprite_id) {
+                                Ok(entity) => sprites.push(entity),
+                                Err(_) => warn!(target: "race_init", "Race '{}' selectable sprite '{}' not found", str_id, sprite_id),
+                            }
+                        }
+                        if !sprites.is_empty() {
+                            Some(PlayerSelectableSprites(sprites))
+                        } else {
+                            None
+                        }
                     }
-                }
-                if !sprites.is_empty() {
-                    Some(PlayerSelectableSprites(sprites))
                 } else {
-                    warn!(target: "race_init", "Race '{}' has empty selectable sprites after lookup", str_id);
                     None
                 }
             };

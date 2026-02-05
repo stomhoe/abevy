@@ -1,5 +1,5 @@
 use bevy::{prelude::*, };
-use being_shared::Grounding;
+use being_shared::{Grounding, Sentient};
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::{HostSystems, game_common::{GameplaySystems, StatefulSessionSystems} };
@@ -46,8 +46,9 @@ pub fn plugin(app: &mut App) {
     .replicate::<IsHumanControlled>()
     .replicate::<Being>()
     .replicate::<ControlledBy>()
-    .replicate_once::<Grounding>()
+    .replicate::<Grounding>()
     .replicate::<FollowerOf>()
+    .replicate::<Sentient>()
 
     .replicate_filtered::<ChildOf, With<Being>>()
     .replicate_filtered::<Transform, With<Being>>()

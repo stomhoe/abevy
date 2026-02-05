@@ -1,23 +1,24 @@
 
 use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
+use avian2d::prelude::*;
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, tiles::TileFlip};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::{common_components::{AnyDisabling, HashId}, common_tag_components::TagSet};
+use common::{common_components::{HashId}, common_tag_components::TagSet};
 use dimension_shared::{DimensionRef, PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
 use tilemap_shared::{ChunkPos, GlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos};
-use crate::{ chunking::chunking_components::Chunk, chunking::chunking_resources::LoadedChunks, terrain_gen::terrgen_resources::RegisteredPositions, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, tile_resources::TilesAtGpos}, tilemap_components::HashIdToTexIndex };
+use crate::{ chunking::chunking_resources::LoadedChunks, tile::{tile_components::*, tile_messages::GlobalTilePosChanged, }, tilemap_components::*, tilemap_resources::* };
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
     settings: Single<&GlobalGenSettings>,
-    dim_hash_query: Query<&HashId, AnyDisabling>,
+    dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut query: Query<(AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>, &InitialPos, Option<&DimensionRef>), 
-    (Changed<InitialPos>, With<FlipHorizontallyBasedOnHash>, AnyDisabling, Without<EntityZero>, )>,
-    mut sprites_query: Query<(&mut Sprite), (AnyDisabling,  Without<InitialPos>, )>,
+    (Changed<InitialPos>, With<FlipHorizontallyBasedOnHash>, common::AnyDisabling, Without<EntityZero>, )>,
+    mut sprites_query: Query<(&mut Sprite), (common::AnyDisabling,  Without<InitialPos>, )>,
 ) {
     query.iter_mut().for_each(|((tile_flip, sprite, held_sprites, children), initial_pos, dimension_ref)| {
         let dimension_hash = dimension_ref
@@ -50,13 +51,13 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
 }
 #[allow(unused_parens)]
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
-pub fn spritetile_readjust_transform_to_match_globalpos(
+pub fn spritetile_snap_transform_to_global_pos(
     mut cmd: Commands,
     mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>),
-    (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, 
-    AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, )>,
+    (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>,)>, 
+    common::AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, With<Tile>)>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
-    parent_query: Query<&GlobalTransform, AnyDisabling>,
+    parent_query: Query<&GlobalTransform, common::AnyDisabling>,
     state: Res<State<ClientState>>,
 ) {//TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
     let is_host = *state.get() == ClientState::Disconnected;
@@ -101,7 +102,7 @@ pub fn emit_global_tile_pos_change(
 #[allow(unused_parens)]
 pub fn add_spawned_tiles_to_gpos_map(
     mut map: ResMut<TilesAtGpos>,
-    query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&TilePos>, Option<&TilemapId>, Option<&OplistSize>),(AnyDisabling, Without<EntityZero>, )>,
+    query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&TilePos>, Option<&TilemapId>, Option<&OplistSize>),(common::AnyDisabling, Without<EntityZero>, )>,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
 ) {
     let iter = changed_pos.read().map(|msg| msg.entity);
@@ -117,7 +118,7 @@ pub fn add_spawned_tiles_to_gpos_map(
 
 pub fn remove_tile_from_gpos_map_on_despawn(
     mut removed_tiles: RemovedComponents<Tile>,
-    mut tmap_query: Query<(&mut TileStorage,), (AnyDisabling, )>,
+    mut tmap_query: Query<(&mut TileStorage,), (common::AnyDisabling, )>,
     mut map: ResMut<TilesAtGpos>,
 ) {
     for tile_ent in removed_tiles.read() {
@@ -158,12 +159,36 @@ pub fn remove_tile_from_gpos_map_on_despawn(
     }
 }
 
+#[allow(unused_parens)]
+pub fn add_projectile_colliders_to_tiles(
+    mut cmd: Commands,
+    query: Query<(Entity, &GlobalTilePos, Option<&OplistSize>), (Added<BlocksProjectiles>, With<Tile>, Without<EntityZero>)>,
+) {
+    for (ent, gpos, oplist_size) in query.iter() {
+        let size = oplist_size
+            .map(|size| size.inner())
+            .unwrap_or(UVec2::ONE);
+        let tile_size = Vec2::new(
+            GlobalTilePos::TILE_SIZE_PXS.x as f32 * size.x as f32,
+            GlobalTilePos::TILE_SIZE_PXS.y as f32 * size.y as f32,
+        );
+        let transform = Transform::from_translation(gpos.to_translation(0.0));
+
+        cmd.entity(ent).try_insert((
+            RigidBody::Static,
+            Collider::rectangle(tile_size.x, tile_size.y),
+            transform,
+            GlobalTransform::default(),
+        ));
+    }
+}
+
 pub fn despawn_if_not_excepted(mut cmd: Commands, 
-    ezero_query: Query<(Option<&AcZ>, Option<&DeleteOtherTiles>), (With<EntityZero>, AnyDisabling, )>,
-    changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, AnyDisabling, Without<EntityZero>, )>,
-    otile_query: Query<(&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>), (AnyDisabling, Without<EntityZero>, )>,
+    ezero_query: Query<(Option<&AcZ>, Option<&DeleteOtherTiles>), (With<EntityZero>, common::AnyDisabling, )>,
+    changed_query: Query<(Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),(Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>, common::AnyDisabling, Without<EntityZero>, )>,
+    otile_query: Query<(&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>), (common::AnyDisabling, Without<EntityZero>, )>,
     tiles_at_gpos: Res<TilesAtGpos>,
-    registered_positions: Res<RegisteredPositions>,
+    registered_positions: Res<ImportantRegisteredPositions>,
 ) {
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
@@ -242,7 +267,7 @@ pub fn despawn_if_not_excepted(mut cmd: Commands,
 #[allow(unused_parens)]
 pub fn make_spritetile_child_of_chunk(mut cmd: Commands, 
     query: Query<(Entity, &GlobalTilePos, &DimensionRef, Has<Persisted>, Has<PortalTo>), (With<Tile>, Without<TilemapId>, 
-    AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
+    common::AnyDisabling, Without<EntityZero>, Without<ChildOf>)>,
     loaded_chunks: Res<LoadedChunks>,
 ) {
     let mut child_ofs = Vec::new();
@@ -274,7 +299,7 @@ pub fn make_spritetile_child_of_chunk(mut cmd: Commands,
 #[allow(unused_parens)]
 //todo que se triggeree con un evento cuando el tilemap esté listo, sino puede q las tiles adyacentes no esten cargadas todavia
 pub fn tile_adjacency_retexturing_system(mut cmd: Commands, 
-    ezero_query: Query<(&EntityZero), (AnyDisabling,)>,
+    ezero_query: Query<(&EntityZero), (common::AnyDisabling,)>,
     tilemap_query: Query<(&TileStorage, &HashIdToTexIndex), ()>,
     mut tile_query: Query<(&EntityZeroRef, &mut TileTextureIndex),()>
 ) {

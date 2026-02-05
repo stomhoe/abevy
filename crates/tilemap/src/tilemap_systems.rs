@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemParam, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
-use common::{common_components::{AnyDisabling, HashId}, common_resources::ImageSizeMap, };
+use common::{common_components::{HashId}, common_resources::ImageSizeMap, };
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{DespawnTimer, Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
@@ -78,8 +78,8 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub rocky_mat: ResMut<'w, Assets<RockyTerrainMat>>,
     pub chunkrange: Res<'w, AaChunkRangeSettings>,
 
-    pub min_dists_query: Query<'w, 's, (&'static MinDistancesMap), AnyDisabling>,
-    pub regpos_map: ResMut<'w, RegisteredPositions>,
+    pub min_dists_query: Query<'w, 's, (&'static MinDistancesMap), common::AnyDisabling>,
+    pub regpos_map: ResMut<'w, ImportantRegisteredPositions>,
     pub shader_query: Query<'w, 's, (&'static TileShader), ()>,
 
     pub loaded_chunks: Res<'w, LoadedChunks>,
@@ -138,7 +138,7 @@ pub fn process_tiles_pre(
         Option<&Transform>,
         Option<&TileColor>,
         Has<YSortOrigin>,
-    ), AnyDisabling>,
+    ), common::AnyDisabling>,
 )
 {
     let is_host = *params.state.get() == ClientState::Disconnected;

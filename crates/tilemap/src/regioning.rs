@@ -6,11 +6,6 @@ use common::common_states::*;
 use common::{define_entity_map_systems, common_components::StrId};
 use crate::{chunking::chunking_spawn_systems::*, regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*, regioning_sgc_components::StructuredGenConfig}, terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::tile_systems::despawn_if_not_excepted, tilemap_systems::process_tiles_pre};
 
-define_entity_map_systems!(
-    SgcEntityMap,
-    StrId,
-    StructuredGenConfig
-);
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct RegioningSystems;

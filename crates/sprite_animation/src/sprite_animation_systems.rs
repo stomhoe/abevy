@@ -2,16 +2,16 @@
 
 use bevy_replicon::prelude::*;
 use being_shared::{Grounding, ControlledBy};
-use bevy::ecs::entity_disabling::Disabled;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_spritesheet_animation::{prelude::*, spritesheet};
-use common::common_components::{AnyDisabling, ImageHolder, StrId};
+use bevy_spritesheet_animation::{prelude::*, };
+use common::common_components::*;
 use game_common::game_common_components::{Directionable, EntityZeroRef, Direction};
 use player::player_components::*;
 use sprite::sprite_components::*;
 use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
 
+#[allow(unused_imports, )]
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
 
 //TODO hacer animation speed para walking proporcional a la velocidad real del being 
@@ -28,7 +28,7 @@ pub fn animate_sprite(
     mut sprites_query: Query<(Entity, Option<&SpritesheetAnimation>, &EntityZeroRef, 
         Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AcAnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
     
-    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), (AnyDisabling,)>,
+    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), ()>,
     
     animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>),()>,
     

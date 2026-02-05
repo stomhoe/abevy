@@ -15,7 +15,7 @@ use crate::regioning::{
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
-use crate::tile::{tile_components::DeleteOtherTiles, TileEzerosMap};
+use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::*};
 use super::dungeoning_ids::CHAMBERS_CORRIDORS;
 
 #[allow(unused_parens, )]

@@ -7,7 +7,7 @@ use game_common::game_common_components::*;
 use sprite_animation_shared::AcAnimationProgresses ;
 use ::sprite_shared::*;
 
-use crate::{SpriteCfgEntityMap, sprite_components::*, sprite_resources::* };
+use crate::{sprite_components::*, sprite_resources::* };
 
 #[allow(unused_parens, )]
 pub fn replace_string_ids_by_entities(
@@ -49,9 +49,9 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     father_query: Query<(Entity, &SpriteCfgsToBuild, Option<&BaseHolderRef>,), 
     (Without<SpriteConfig>, Without<BeingInstTemplate>, Changed<SpriteCfgsToBuild>,)>,
     spritecfgs_query: Query<(Entity, &StrId, Option<&SpriteCfgsToBuild>), 
-    (With<SpriteConfig>, AnyDisabling)>,
-    held_sprites_query: Query<&HeldSprites, AnyDisabling>,
-    sprite_config_ref_query: Query<&EntityZeroRef, AnyDisabling>,
+    (With<SpriteConfig>, common::AnyDisabling)>,
+    held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
+    sprite_config_ref_query: Query<&EntityZeroRef, common::AnyDisabling>,
 ) {
     father_query.iter().for_each(|(father_to_sprite, to_build, baseholder_ref)| {
         
@@ -109,8 +109,8 @@ pub fn become_child_of_sprite_with_tag(
     new_sprites: Query<(Entity, &BaseHolderRef, &EntityZeroRef), (Without<SpriteConfig>, Changed<EntityZeroRef>,)>,
     sprite_holder: Query<&HeldSprites>,
     other_sprites: Query<(Entity, &EntityZeroRef), (Without<SpriteConfig>, )>,
-    becomes_query: Query<(&BecomeChildOfSpriteWithTag), (AnyDisabling)>,
-    other_cats: Query<&TagSet, (AnyDisabling)>,
+    becomes_query: Query<(&BecomeChildOfSpriteWithTag), (common::AnyDisabling)>,
+    other_cats: Query<&TagSet, (common::AnyDisabling)>,
 ) {
     let mut childofs_to_add = Vec::new();
 

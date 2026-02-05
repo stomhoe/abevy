@@ -146,4 +146,3 @@ impl ImageHolderMap {
    
 }
 
-pub type AnyDisabling = Or<(With<Disabled>, Without<Disabled>)>;

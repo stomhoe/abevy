@@ -1,9 +1,9 @@
+#[allow(unused_imports, )]
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task};
 use bevy_asset_loader::asset_collection::AssetCollection;
-use bevy_replicon::prelude::*;
-use common::{common_components::{AnyDisabling, HashId}, common_types::HashIdToEntityMap};
+use common::{common_components::{HashId}, common_types::HashIdToEntityMap};
 
-use crate::{terrain_gen::terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}, tile::{tile_components::{KeepDistanceFrom, MinDistancesMap, }, tile_resources::TilesAtGpos}};
+use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}}, tile::{tile_components::{KeepDistanceFrom, MinDistancesMap, }, }, tilemap_resources};
 use dimension_shared::DimensionRef;
 
 use ::tilemap_shared::*;
@@ -12,86 +12,7 @@ use game_common::{game_common_components::*};
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Resource, Debug, Reflect, Default, Event, Deserialize, Serialize, Clone, )]
-#[reflect(Resource, Default)]
-pub struct RegisteredPositions { registered: EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>, pub exempted: EntityHashSet, } 
-impl RegisteredPositions {
 
-    pub fn clear(&mut self) {
-        self.registered.clear();
-        self.exempted.clear();
-    }
-
-    pub fn exempt_entity_from_mindist_checks(&mut self, ent: Entity) {
-        self.exempted.insert(ent);
-    }
-    pub fn register_ezero_at_position(&mut self, ezero: EntityZeroRef, dim: DimensionRef, pos: GlobalTilePos) {
-        self.registered.entry(ezero.0).or_default().push((dim, pos));
-    }
-    pub fn is_pos_registered(&self, ezero: EntityZeroRef, dim: DimensionRef, pos: GlobalTilePos) -> bool {
-        self.registered.get(&ezero.0).map_or(false, |positions| {
-            positions.iter().any(|(d, p)| *d == dim && *p == pos)
-        })
-    }
-
-    pub fn get_exempted_entities(&self) -> &EntityHashSet {
-        &self.exempted
-    }
-
-    pub fn get_registered_entries(&self) -> &EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>> {
-        &self.registered
-    }
-
-    #[allow(unused_parens, )]
-    pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
-        new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
-        min_dists_query: Query<(&MinDistancesMap), (AnyDisabling)>,
-    ) -> bool {
-
-
-        let (new_tile, new_tile_ezero, new_dim, new_pos, new_min_distances, keep_distance) = new;
-
-        if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
-            return false;
-        }
-        if keep_distance.is_none() && new_min_distances.is_none() {
-            return true;
-        }
-
-        if ! self.exempted.contains(&new_tile) {
-            if let Some(new_min_distances) = new_min_distances {
-                for (&ezero_ent, min_dist) in new_min_distances.0.iter() {
-                let Some(previous_positions) = self.registered.get(&ezero_ent) else { continue };
-                for &(prev_dim, prev_pos) in previous_positions {
-                    if prev_dim == new_dim && new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
-                    return false;
-                    }
-                }
-                }
-            }
-            if let Some(keep_distance) = keep_distance {
-            for ezero_ent in &keep_distance.0 {
-                let Some(positions) = self.registered.get(ezero_ent) else { continue };
-                let Ok(min_dists) = min_dists_query.get(*ezero_ent) else { continue };
-                for &prev_pos in positions {
-                if min_dists.check_min_distances(prev_pos, (new_tile_ezero, new_dim, new_pos)) == false {
-                    return false;
-                }
-                }
-            }
-            }
-        } else if new_min_distances.is_none() && keep_distance.is_none() {
-            return true;
-        }
-        
-        self.registered.entry(new_tile_ezero.0).or_default().push((new_dim, new_pos));
-
-        cmd.entity(new_tile).try_insert(Replicated);
-
- 
-        true
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct TerrGenLaunchWork {
@@ -206,5 +127,9 @@ impl OpListSerialization {
 
 
 
-
+common::define_entity_map_systems!(
+    TerrGenEntityMap,
+    common::common_components::StrId,
+    Terrgen
+);
 

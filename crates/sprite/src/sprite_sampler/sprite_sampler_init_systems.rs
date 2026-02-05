@@ -1,11 +1,10 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::{define_entity_map_systems, common_components::{AnyDisabling, Prefix, StrId}};
+use common::{common_components::{Prefix, StrId}};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
-use serde::{Deserialize, Serialize};
 
-use crate::{sprite::SpriteCfgEntityMap, sprite_sampler::{SpriteWeightedSamplersMap, sprite_sampler_components::{EguiSpriteSamplerHolder, SpriteWeightedSampler}, sprite_sampler_resources::*}};
+use crate::{sprite_resources::*, sprite_sampler::{SpriteWeightedSamplersMap, sprite_sampler_components::{EguiSpriteSamplerHolder, SpriteWeightedSampler}, sprite_sampler_resources::*}};
 
 
 

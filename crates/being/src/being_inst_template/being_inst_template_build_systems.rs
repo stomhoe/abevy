@@ -2,8 +2,7 @@ use ::being_shared::*;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use game_common::{game_common_components_samplers::EntityWeightedSampler, game_common_string_components::*};
-use sprite::{sprite_components::SpriteCfgsToBuild, SpriteCfgEntityMap, sprite_sampler::SpriteWeightedSamplersMap};
+use sprite::{sprite_components::*, sprite_resources::*, sprite_sampler::SpriteWeightedSamplersMap};
 use sprite_shared::SampleSprites;
 
 use crate::being_inst_template::{BitEntityMap, being_inst_template_components::*, being_inst_template_resources::*};
@@ -50,7 +49,7 @@ pub fn build_being_from_being_inst_template_ref(
 #[allow(unused_parens)]
 pub fn convert_strid_to_ent(
     mut cmd: Commands,
-    query: Query<(Entity, &BitStrIdRef), (Changed<BitStrIdRef>, AnyDisabling)>,
+    query: Query<(Entity, &BitStrIdRef), (Changed<BitStrIdRef>, common::AnyDisabling)>,
     bit_emap: Res<BitEntityMap>,
 ) {
     let mut bit_refs = Vec::new();

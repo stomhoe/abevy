@@ -8,4 +8,6 @@
     //shader: Some("newbiewall"),
     color: Some((255, 0, 0, 255)),
     y_sort: Some(0),
+    walk_speed: Some(0),
+    blocks_projectiles: Some(true),
 )

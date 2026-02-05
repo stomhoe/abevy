@@ -6,7 +6,7 @@ use bevy_asset_loader::asset_collection::AssetCollection;
 use common::common_types::HashIdToEntityMap;
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
-use crate::terrain_gen::terrgen_messages::OpFilterSerialization;
+use crate::{regioning::regioning_sgc_components::{self, StructuredGenConfig}, terrain_gen::terrgen_messages::OpFilterSerialization};
 use serde::Deserialize;
 
 #[derive(Resource, Reflect, InspectorOptions, Default)]
@@ -49,5 +49,12 @@ pub struct StructuredGenConfigSeri {
     pub max_per_region: Option<u32>,
     
 }
+
+common::define_entity_map_systems!(
+    SgcEntityMap,
+    common::common_components::StrId,
+    StructuredGenConfig
+);
+
 
 

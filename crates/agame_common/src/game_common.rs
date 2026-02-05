@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use common::{common_components::AnyDisabling, common_states::*};
+use common::{common_states::*};
 use bevy_replicon::prelude::*;
 
 use crate::{game_common_components::*, game_common_components_samplers::*, game_common_states::*, game_common_string_components::Description, game_common_systems::* };
@@ -101,8 +101,8 @@ pub fn plugin(app: &mut App) {
     .replicate::<Description>()
     .replicate_once::<GlobalTransform>()
     .replicate::<EntityZero>()
-    .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>, AnyDisabling)>()
-    .replicate_once_filtered_as::<Visibility, VisibilityGameState, (AnyDisabling)>()
+    .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>, )>()
+    .replicate_once_as::<Visibility, VisibilityGameState>()
 
     .replicate::<EntityZeroRef>()
     ;

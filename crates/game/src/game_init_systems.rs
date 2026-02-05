@@ -1,6 +1,6 @@
 use being::being_components::*;
 use common::{common_components::StrId, common_states::AppState};
-use faction::{FactionEntityMap, faction_components::* };
+use faction::{faction_components::*, faction_resources::*};
 use modifier::{modifier_components::*, modifier_move_components::Speed};
 use player::player_components::*;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings};

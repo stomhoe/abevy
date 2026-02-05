@@ -1,11 +1,10 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{AnyDisabling, StrId};
+use common::common_components::{StrId};
 use player::player_components::*;
-use tilemap::chunking::chunking_components::ActivatingChunks;
 
-use crate::{faction_components::*, FactionEntityMap, };
+use crate::{faction_components::*, faction_resources::*, };
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^
@@ -74,21 +73,4 @@ pub fn set_player_of_faction(mut cmd: Commands,
         cmd.entity(ent).try_insert(PlayerOfFaction::new(belonging_to_faction.0));
     }
     for ent in removed.read() {cmd.entity(ent).try_remove::<PlayerOfFaction>(); }
-}
-
-
-#[allow(unused_parens)]
-pub fn remove_faction_from_entimap_on_despawn(
-    trigger: On<Despawn, Faction>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut map: ResMut<FactionEntityMap>,
-
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
 }

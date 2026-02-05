@@ -46,10 +46,14 @@ pub fn plugin(app: &mut App) {
     .register_type::<HashIdToTexIndex>()
     .register_type::<MassCollectedTiles>().register_type::<TileMassSpawnBundle>()
     .register_type::<PoissonDisk>()
+    .register_type::<TmapMap>()
+    .register_type::<ImportantRegisteredPositions>()
     
     .init_resource::<MassCollectedTiles>()
     .init_resource::<TmapMap>()
+    .init_resource::<ImportantRegisteredPositions>()
 
+    .init_resource::<TilesAtGpos>()
 
     .replicate::<PoissonDisk>()
     

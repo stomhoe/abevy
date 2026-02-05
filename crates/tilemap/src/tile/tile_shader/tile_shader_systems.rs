@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use common::common_components::{AnyDisabling, ImagePathHolder, MultipleImagePathHolder, StrId};
+use common::common_components::{ImagePathHolder, MultipleImagePathHolder, StrId};
 
 use crate::tile::tile_shader::{tile_material::wavy::WavyMat, tile_shader_components::*, };
 

@@ -1,7 +1,7 @@
 
 use std::{mem::take};
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::{common_components::{AnyDisabling, HashId}, common_tag_components::TagSet};
+use common::{common_components::{HashId}, common_tag_components::TagSet};
 use debug_unwraps::DebugUnwrapExt;
 use ::dimension_shared::*;
 use game_common::{game_common_components::DespawnTimer, game_common_components_samplers::EntityWeightedSampler};
@@ -415,7 +415,7 @@ pub fn despawn_empty_regions(mut cmd: Commands,
 #[allow(unused_parens, )]
 pub fn on_region_despawn_remove_from_loaded_regions(
     trig: On<Despawn, Region>,
-    region_query: Query<(&DimensionRef, &RegionPos),(AnyDisabling)>,
+    region_query: Query<(&DimensionRef, &RegionPos),(common::AnyDisabling)>,
     mut loaded_regions: ResMut<LoadedRegions>,
 )
 {

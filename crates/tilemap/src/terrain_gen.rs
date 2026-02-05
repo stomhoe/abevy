@@ -2,7 +2,6 @@
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use common::{define_entity_map_systems, entity_map_macros::*, common_components::StrId};
 use dimension_shared::RootInDimensions;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
@@ -16,15 +15,11 @@ pub mod terrgen_operaton_list_components;
 pub mod terrgen_resources;
 pub mod terrgen_messages;
 
-define_entity_map_systems!(
-    TerrGenEntityMap,
-    StrId,
-    Terrgen
-);
 
-define_entity_map_systems!(
+
+common::define_entity_map_systems!(
     OpListEntityMap,
-    StrId,
+    common::common_components::StrId,
     OperationList
 );
 
@@ -55,7 +50,6 @@ pub fn plugin(app: &mut App) {
             ).in_set(TerrainGenSystems)
         )
 
-        .init_resource::<RegisteredPositions>()
         .init_resource::<TerrGenLaunchQueue>()
         .init_resource::<TerrGenAsyncTasks>()
         
@@ -66,10 +60,6 @@ pub fn plugin(app: &mut App) {
             plugin_op_list_entity_map,
         ))
         
-        .add_server_event::<RegisteredPositions>(Channel::Unordered)
-        .make_event_independent::<RegisteredPositions>()
-        
-        .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
         
         .replicate::<OperationList>()
         .replicate::<FnlNoiseComp>()
@@ -94,7 +84,6 @@ pub fn plugin(app: &mut App) {
         .register_type::<OplistSize>()
         .register_type::<TerrGenOpsLaunched>()
         .register_type::<ChunkRef>()
-        .register_type::<RegisteredPositions>()
         .register_type::<RootInDimensions>()
         .register_type::<OpFilter>()
 

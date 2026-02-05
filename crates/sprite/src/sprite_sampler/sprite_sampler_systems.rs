@@ -1,14 +1,13 @@
 use being_shared::BeingInstTemplate;
 use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::common_components::AnyDisabling;
 use common::common_id_components::HashId;
 use dimension_shared::DimensionRef;
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 use sprite_shared::{SampleSprites, SampleSpritesFromStrIds};
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
 
-use crate::{SpriteCfgEntityMap, sprite_components::SpriteCfgsToBuild, sprite_sampler::{SpriteWeightedSampler, SpriteWeightedSamplersMap}};
+use crate::{sprite_components::SpriteCfgsToBuild, sprite_resources::*, sprite_sampler::SpriteWeightedSamplersMap};
 
 /// Resolves SampleSpritesFromStrIds into SampleSprites by converting string IDs to entities
 #[allow(unused_parens)]
@@ -65,7 +64,7 @@ pub fn sample_from_sprite_entities(
         Without<BeingInstTemplate>
     )>,
     sampler_query: Query<&EntityWeightedSampler>,
-    dimension_hash_query: Query<&HashId, AnyDisabling>,
+    dimension_hash_query: Query<&HashId, common::AnyDisabling>,
 ) {
     let mut configs_to_build = Vec::new();
 

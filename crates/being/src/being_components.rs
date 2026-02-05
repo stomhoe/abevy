@@ -5,7 +5,7 @@ use bevy_replicon::prelude::{ClientState, Replicated};
 use dimension_shared::DimensionStrIdRef;
 use game_common::game_common_components::{Direction, };
 use modifier::modifier_components::AppliedModifiers;
-use movement::movement_components::InputMoveVector;
+use movement::movement_components::{GridLockedMovement, InputMoveVector};
 use serde::{Deserialize, Serialize};
 use common::common_components::*;
 use sprite_animation_shared::MoveAnimActive;
@@ -15,8 +15,8 @@ use sprite_animation_shared::MoveAnimActive;
 
 #[require(InputMoveVector, Replicated, MoveAnimActive,
 Grounding, Visibility, Direction, AppliedModifiers, Transform,
-Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading,
-)]
+Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading, 
+GridLockedMovement, )]
 pub struct Being;
 impl Being {
 

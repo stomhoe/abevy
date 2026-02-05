@@ -2,6 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::*;
+use common::log_targets::TILE_SHADER_INIT;
 use crate::tile::tile_shader::{TileShaderEntityMap, tile_material::prelude::*, tile_shader_components::*, tile_shader_resources::*};
 
 
@@ -27,12 +28,12 @@ pub fn init_shaders(
         let Some(seri) = repeat_assets.remove(&handle) else {
           continue;
         };
-        info!("Loading Shader from handle: {:?}", handle);
+        info!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
             Err(err) => {
-                error!("Failed to create StrId for shader '{}': {}", seri.id, err);
+                error!(target: TILE_SHADER_INIT, "Failed to create StrId for shader '{}': {}", seri.id, err);
                 continue;
             }
         };
@@ -40,7 +41,7 @@ pub fn init_shaders(
         match ImagePathHolder::new(seri.img_path) {
             Ok(path_holder) => {
                 if let Ok(existing) = tileshader_map.0.get_cloned(&str_id) {
-                    error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
+                    error!(target: TILE_SHADER_INIT, "TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
                     continue;
                 }
                 let ent = cmd.spawn_empty().id();
@@ -57,7 +58,7 @@ pub fn init_shaders(
 
             },
             Err(err) => {
-                error!("Failed to create ImagePathHolder for shader '{}': {}", str_id, err);
+                error!(target: TILE_SHADER_INIT, "Failed to create ImagePathHolder for shader '{}': {}", str_id, err);
             }
         }
     }
@@ -65,12 +66,12 @@ pub fn init_shaders(
         let Some(seri) = voronoi_assets.remove(&handle) else {
           continue;
         };
-        info!("Loading Shader from handle: {:?}", handle);
+        info!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
             Err(err) => {
-                error!("Failed to create StrId for shader '{}': {}", seri.id, err);
+                error!(target: TILE_SHADER_INIT, "Failed to create StrId for shader '{}': {}", seri.id, err);
                 continue;
             }
         };
@@ -78,7 +79,7 @@ pub fn init_shaders(
         match ImagePathHolder::new(seri.img_path) {
             Ok(path_holder) => {
                 if let Ok(existing) = tileshader_map.0.get_cloned(&str_id) {
-                    error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
+                    error!(target: TILE_SHADER_INIT, "TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
                     continue;
                 }
                 let ent = cmd.spawn_empty().id();
@@ -94,7 +95,7 @@ pub fn init_shaders(
                 tileshader_map.0.overwrite(&str_id, ent);
             },
             Err(err) => {
-                error!("Failed to find image path for shader '{}': {}", str_id, err);
+                error!(target: TILE_SHADER_INIT, "Failed to find image path for shader '{}': {}", str_id, err);
             }
         }
     }
@@ -102,18 +103,18 @@ pub fn init_shaders(
     // Wavy shaders (procedural, no image paths)
     for handle in wavy_handles.handles.drain(..) {
         let Some(seri) = wavy_assets.remove(&handle) else { continue; };
-        info!("Loading Wavy Shader from handle: {:?}", handle);
+        info!(target: TILE_SHADER_INIT, "Loading Wavy Shader from handle: {:?}", handle);
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
             Err(err) => {
-                error!("Failed to create StrId for shader '{}': {}", seri.id, err);
+                error!(target: TILE_SHADER_INIT, "Failed to create StrId for shader '{}': {}", seri.id, err);
                 continue;
             }
         };
 
         if let Ok(existing) = tileshader_map.0.get_cloned(&str_id) {
-            error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
+            error!(target: TILE_SHADER_INIT, "TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
             continue;
         }
         let ent = cmd.spawn_empty().id();
@@ -135,7 +136,7 @@ pub fn init_shaders(
                 path_holders_to_insert.push((ent, path_holder));
             },
             Err(err) => {
-                error!("Failed to create ImagePathHolder for wavy shader '{}': {}", str_id, err);
+                error!(target: TILE_SHADER_INIT, "Failed to create ImagePathHolder for wavy shader '{}': {}", str_id, err);
                 continue;
             }
         }
@@ -146,18 +147,18 @@ pub fn init_shaders(
     // Rocky terrain shaders (procedural, no image paths)
     for handle in rocky_handles.handles.drain(..) {
         let Some(seri) = rocky_assets.remove(&handle) else { continue; };
-        info!("Loading Rocky Terrain Shader from handle: {:?}", handle);
+        info!(target: TILE_SHADER_INIT, "Loading Rocky Terrain Shader from handle: {:?}", handle);
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
             Err(err) => {
-                error!("Failed to create StrId for shader '{}': {}", seri.id, err);
+                error!(target: TILE_SHADER_INIT, "Failed to create StrId for shader '{}': {}", seri.id, err);
                 continue;
             }
         };
 
         if let Ok(existing) = tileshader_map.0.get_cloned(&str_id) {
-            error!("TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
+            error!(target: TILE_SHADER_INIT, "TileShader '{}' already in TileShaderEntityMap : {:?}", str_id, existing);
             continue;
         }
         let ent = cmd.spawn_empty().id();
@@ -179,20 +180,4 @@ pub fn init_shaders(
 
     cmd.insert_batch(path_holders_to_insert);
     cmd.insert_batch(shader_comps_to_insert);
-}
-
-
-#[allow(unused_parens)]
-pub fn remove_tile_shader_from_map_on_despawn(
-    trigger: On<Despawn, TileShader>,
-    query: Query<(&StrId),(AnyDisabling)>,
-    mut map: ResMut<TileShaderEntityMap>,
-) {
-    if let Ok(str_id) = query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
 }

@@ -1,7 +1,7 @@
 use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{AnyDisabling, DisplayName, Prefix, StrId};
+use common::common_components::*;
 use ::dimension_shared::*;
 use tilemap::tile::{tile_components::{PortalRecipe, TileStrId}, tile_resources::PortalSeri};
 use crate::{
@@ -17,7 +17,7 @@ pub fn replace_dim_string_ref_by_entity_ref(
     dimension_entity_map: Res<DimensionEntityMap>,
     dimension_query: Query<Option<&DimensionRootOplist>>,
     dimension_strid_query: Query<(Entity, Option<&StrId>, &DimensionStrIdRef, Option<&ChildOf>),>,
-    mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(AnyDisabling)>,
+    mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(common::AnyDisabling)>,
 ) {
     for (thing_ent, ent_strid, dimension_strid, child_of) in dimension_strid_query.iter() {
 

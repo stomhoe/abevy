@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 
 use common::common_components::StrId;
-use tilemap::terrain_gen::terrgen_resources::RegisteredPositions;
+use tilemap::tilemap_resources::ImportantRegisteredPositions;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -11,7 +11,7 @@ pub fn registered_positions_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    registered_positions: Res<RegisteredPositions>,
+    registered_positions: Res<ImportantRegisteredPositions>,
     id_query: Query<&StrId>,
 ) {
     if !window_visible.registered_positions {

@@ -1,16 +1,9 @@
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
-use bevy::time;
 use bevy_replicon::prelude::ClientState;
 use bevy_replicon::prelude::Replicated;
-use common::common_components::AnyDisabling;
-use common::common_components::DisplayName;
-use common::common_components::ImagePathHolder;
-use common::common_components::Prefix;
-use common::common_components::StrId;
-use common::common_components::StrId20B;
-use common::common_states::GamePhase;
+use common::common_components::*;
 use ::sprite_shared::sprite_scale_offset::AllScalesAndOffsets;
 use ::sprite_shared::*;
 use crate::game_common_components::*;
@@ -52,9 +45,9 @@ struct DenyForClonedEntityZeroChildren( EntityZero, BaseHolderRef, Disabled, Ima
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(mut cmd: Commands, 
     query: Query<(Entity, &EntityZeroRef, Has<Replicated>, Has<Persisted>),
-    (Changed<EntityZeroRef>, AnyDisabling)>,
+    (Changed<EntityZeroRef>, common::AnyDisabling)>,
 
-    ezero: Query<(&Children, Option<&HeldSprites>, ),(AnyDisabling)>,
+    ezero: Query<(&Children, Option<&HeldSprites>, ),(common::AnyDisabling)>,
     client_state: Res<State<ClientState>>,
 ) {
     let mut new_child_of = Vec::new();
@@ -96,7 +89,7 @@ pub fn clone_ezero_children_ents(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn despawn_sprites_without_childof(mut cmd: Commands, 
-    query: Query<(Entity),(With<Sprite>, Without<ChildOf>, AnyDisabling)>,
+    query: Query<(Entity),(With<Sprite>, Without<ChildOf>, common::AnyDisabling)>,
 ) {
     query.iter().for_each(|sprite_ent| {
         cmd.entity(sprite_ent).try_despawn()
@@ -107,11 +100,11 @@ pub fn despawn_sprites_without_childof(mut cmd: Commands,
 /// DEACTIVATE THIS SYSTEM IN RELEASE BUILDS !!!!
 #[allow(unused_parens)]
 pub fn set_entity_name(
-    ezeros_query: Query<AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &EntityZeroRef)>, (With<EntityZero>, AnyDisabling)>,
+    ezeros_query: Query<AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &EntityZeroRef)>, (With<EntityZero>, common::AnyDisabling)>,
     mut changers_query: Query<(&mut Name, AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &EntityZeroRef)>), 
     (
         Or<(Changed<Prefix>, Changed<StrId>, Changed<StrId20B>, Changed<DisplayName>, Changed<EntityZeroRef>)>, 
-    AnyDisabling)>,
+    common::AnyDisabling)>,
 ) {
     for (mut name, (e_prefix, strid, strid20b, display_name, ezero_ref)) in changers_query.iter_mut() {
         let mut prefix = e_prefix.map(|p| p.as_str());

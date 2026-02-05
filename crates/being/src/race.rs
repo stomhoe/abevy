@@ -2,16 +2,10 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use common::common_states::AssetLoading;
-use common::{define_entity_map_systems, common_components::StrId};
-use sprite::AcSpriteSystems;
 
-use crate::race::{race_init_systems::*, race_resources::*, race_components::Race};
+use crate::race::{race_init_systems::*, race_resources::*, race_components::*};
 
-define_entity_map_systems!(
-    RaceEntityMap,
-    StrId,
-    Race
-);
+
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]

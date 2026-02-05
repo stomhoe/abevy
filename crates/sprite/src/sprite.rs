@@ -4,7 +4,7 @@ use bevy::time::common_conditions::on_timer;
 use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{common_components::StrId, common_states::{AppState, AssetLoading }, define_entity_map_systems};
+use common::{common_components::StrId, common_states::{AppState, AssetLoading }, };
 use game_common::{StatefulSessionSystems, game_common::GameplaySystems, game_common_components::EntityZero };
 use ::sprite_shared::*;
 
@@ -15,12 +15,7 @@ use crate::{sprite_building_systems::*, sprite_components::*, sprite_config_init
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct AcSpriteSystems;
 
-define_entity_map_systems!(
-    SpriteCfgEntityMap,
-    StrId,
-    SpriteConfig,
-    (With<EntityZero>, )
-);
+
 const SPRITES_SCHEDULE: Update = Update;
 
 #[allow(unused_parens, )]
@@ -33,7 +28,7 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(SPRITES_SCHEDULE, (
         disable_children_sprites_of_disabled,
-        (apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(10))),
+        (apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(10))), 
         z_sort_system,
         // server only
         (become_child_of_sprite_with_tag, replace_string_ids_by_entities, 

@@ -255,7 +255,7 @@ pub fn debug_chunking_window(
                                                     })
                                                     .unwrap_or(false);
 
-                                                let label = format!("{},{} e{}\n{} children", x, y, entity.index(), children_count);
+                                                let label = format!("{},{} {}\n{} ch", x, y, entity.index(), children_count);
 
                                                 let mut rich_text = egui::RichText::new(&label).small();
 
@@ -309,7 +309,7 @@ pub fn debug_chunking_window(
                         }
 
                         if *has_terrgen_ops {
-                            ui.label("🔧 TerrGenOpsLaunched");
+                            ui.label("✓ TerrGenOpsLaunched");
                         }
 
                         if *has_ready_for_terrgen {

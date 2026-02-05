@@ -2,10 +2,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
+use tilemap_shared::GlobalTilePos;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-#[require(ProcessedInputVector, )]
+#[require(ProcessedInputMoveVector, FinalMoveVector, OutputSpeedMagnitude)]
 pub struct InputMoveVector(pub Vec2);//USADO TMB POR BOTS
 //no se incluye la coordenada z de agacharse o saltar porq esto se debe mandar reliably ya q no se spammea tanto
 
@@ -16,8 +17,17 @@ pub struct InputJump;
 pub struct InputDuck;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct ProcessedInputVector(pub Vec2);
+pub struct ProcessedInputMoveVector(pub Vec2);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+pub struct FinalMoveVector(pub Vec2);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+pub struct OutputSpeedMagnitude(pub f32);
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct GridLockedMovement;
 
 
 

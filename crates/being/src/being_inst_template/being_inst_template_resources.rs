@@ -1,6 +1,7 @@
+use being_shared::BeingInstTemplate;
 use bevy::{platform::collections::HashMap, prelude::*};
 use bevy_asset_loader::prelude::*;
-use common::common_types::HashIdToEntityMap;
+use common::{common_components::StrId, define_entity_map_systems};
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
@@ -22,3 +23,9 @@ pub struct BitSerialization {
     pub sprites_scale_ranges: Option<HashMap<String, (f32, f32)>>,
     pub health_multiplier: Option<f32>,
 }
+
+define_entity_map_systems!(
+    BitEntityMap,
+    StrId,
+    BeingInstTemplate
+);

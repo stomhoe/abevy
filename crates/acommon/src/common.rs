@@ -1,6 +1,4 @@
-use std::time::Duration;
-
-use bevy::time::common_conditions::on_timer;
+use bevy::{ecs::entity_disabling::Disabled, time::common_conditions::on_timer};
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 
@@ -44,3 +42,5 @@ pub fn plugin(app: &mut App) {
 
     ;
 }
+
+pub type AnyDisabling = Or<(With<Disabled>, Without<Disabled>)>;

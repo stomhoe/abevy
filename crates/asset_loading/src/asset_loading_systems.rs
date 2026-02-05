@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::{ServerState};
-use common::{common_components::{AnyDisabling, AssetScoped, SparedFromHotReloading}, common_states::*};
+use common::{common_components::{AssetScoped, SparedFromHotReloading}, common_states::*};
 
 use tilemap::{terrain_gen::terrgen_resources::*};
 use tilemap_shared::ForceAllChunksDespawn;
@@ -12,7 +12,7 @@ pub fn reload_assets_while_ingame(
     mut loading_state: ResMut<NextState<AssetLoading>>,
     mut hot_loading: ResMut<NextState<AssetHotReloadState>>,
 
-    mut regpos: ResMut<RegisteredPositions>,
+    mut regpos: ResMut<tilemap::tilemap_resources::ImportantRegisteredPositions>,
     mut force_all_chunks_despawn_writer: MessageWriter<ForceAllChunksDespawn>,
     client_state: Res<State<ServerState>>,
 ) {
@@ -44,7 +44,7 @@ pub fn on_assets_loaded(
 
 pub fn despawn_asset_scoped_entities(
     mut commands: Commands,
-    query: Query<Entity, (With<AssetScoped>, AnyDisabling)>,
+    query: Query<Entity, (With<AssetScoped>, common::AnyDisabling)>,
 ) {
     for entity in &query {
         commands.entity(entity).try_despawn();
@@ -53,7 +53,7 @@ pub fn despawn_asset_scoped_entities(
 
 pub fn despawn_asset_scoped_entities_except_spared(
     mut commands: Commands,
-    query: Query<Entity, (With<AssetScoped>, Without<SparedFromHotReloading>, AnyDisabling)>,
+    query: Query<Entity, (With<AssetScoped>, Without<SparedFromHotReloading>, common::AnyDisabling)>,
 ) {
     for entity in &query {
         commands.entity(entity).try_despawn();

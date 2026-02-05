@@ -4,43 +4,21 @@ use bevy_ecs_tilemap::{map::TilemapId, tiles::TilePos};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-use common::{common_components::Tag, common_types::HashIdToEntityMap};
+use common::{common_components::Tag, };
 use dimension_shared::DimensionRef;
+use game_common::game_common_components::EntityZero;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::GlobalTilePos;
+
+use crate::tile::tile_components::Tile;
+
 
 
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]
 pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
 
-#[derive(Resource, Debug, Reflect, Default)]
-#[reflect(Resource, Default)]
-pub struct TilesAtGpos  { 
-    pub map: HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>,
-    pub entity_pos_map: EntityHashMap<(DimensionRef, GlobalTilePos, Option<TilePos>, TilemapId)>,
-}
-impl TilesAtGpos {
-    pub fn reserve_capacity(&mut self, additional: usize) {
-        self.map.reserve(additional);
-        self.entity_pos_map.reserve(additional);
-    }
-    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, tpos: Option<TilePos>, tilemap_id: Option<TilemapId>, ) {
-        self.map.entry((dimension_ref, gpos)).or_default().push(entity);
-        self.entity_pos_map.insert(entity, (dimension_ref, gpos, tpos, tilemap_id.unwrap_or_default()));
-    }
-    pub fn remove_entity_and_get_data(&mut self, entity: Entity) -> Option<(Option<TilePos>, TilemapId)> {
-        self.entity_pos_map.remove(&entity).and_then(|(dimension_ref, gpos, tpos, tilemap_id)| {
-            if let Some(entities) = self.map.get_mut(&(dimension_ref, gpos)) {
-                entities.swap_remove(entities.iter().position(|&e| e == entity)?);
-                if entities.is_empty() {
-                    self.map.remove(&(dimension_ref, gpos));
-                }
-            }
-            Some((tpos, tilemap_id))
-        })
-    }
-}
+
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
@@ -112,7 +90,17 @@ pub struct TileSerialization {
     pub min_distances: Option<HashMap<String, u64>>,
     pub portal: Option<PortalSeri>,
     pub offset: Option<(f32, f32)>,
-    
+
+    // CHATGPT, IMPROVE IF NECESSARY!!
+
+    ///if Some, is a ground tile and f32 the is walk speed modifier. if None or Some(0.0) is impassable tile
+    pub walk_speed: Option<f32>,
+    /// to be used by other systems to factor in their own walkspeed on top if a certain tag is present on this tile
+    pub walk_speed_tags: Option<HashSet<String>>,
+
+    /// When true, this tile spawns a projectile-stopping collider.
+    pub blocks_projectiles: Option<bool>,
+
 }
 #[derive(Component, Deserialize, Reflect, Default)]
 pub struct PortalSeri{
@@ -133,3 +121,10 @@ pub struct DungeonSeri {
     pub name: String,
     pub description: String,
 }
+
+common::define_entity_map_systems!(
+    TileEzerosMap,
+    super::tile_components::TileStrId,
+    Tile,
+    (With<EntityZero>, common::AnyDisabling)
+);

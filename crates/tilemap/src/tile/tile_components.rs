@@ -9,7 +9,7 @@ use common::common_tag_components::{HashedTagsVec, TagSet};
 use common::common_components::*;
 use dimension_shared::DimensionRef;
 use game_common::game_common_components::*;
-use game_common::game_common_string_components::Description;
+use game_common::game_common_string_components::{Description, GameCommonStringComponentsBundle};
 use ::sprite_shared::*;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -23,17 +23,17 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{OpFilt
 #[derive(Bundle)]
 pub struct ToDenyOnTileClone(
     MinDistancesMap, KeepDistanceFrom, TileHashIdsHandles, Replicated,
-    TileShaderRef, AcZ, YSortOrigin, ChildOf, Description, TileColor, ImagePathHolder,
+    TileShaderRef, AcZ, YSortOrigin, ChildOf, TileColor, ImagePathHolder,
     DeleteOtherTiles, PortalRecipe, PortalSeri, 
     TagSet, HashedTagsVec,
     //children entities don't get cloned
     Children, EntityZero, 
-    DisplayName, Prefix, TileStrId,
     AddHashIdFromStrId,
     HashId,
     TileImagePaths,
     AssetScoped,
-    SparedFromHotReloading
+    SparedFromHotReloading,
+    GameCommonStringComponentsBundle
     
 );//Disabled no porque se elimina posteriormente
 
@@ -192,6 +192,13 @@ pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(Terrgen, Prefix::trunc("TileSamplers"), )]
 pub struct TileSamplerHolder;
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct WalkSpeed(pub f32); //1.0 es velocidad normal
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BlocksProjectiles;
 
 
 

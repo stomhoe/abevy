@@ -4,16 +4,16 @@ use bevy::{time::common_conditions::on_timer};
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
-use common::{common_components::{AnyDisabling, StrId}, common_states::AssetLoading, define_entity_map_systems};
+use common::{common_states::AssetLoading, };
 use bevy_ecs_tilemap::prelude::*;
 use game_common::{game_common_components::{EntityZero, EntityZeroRef, VisibilityGameState}, game_common_components_samplers::EntityWeightedSampler};
 use sprite::AcSpriteSystems;
 use tilemap_shared::{GlobalTilePos, OplistSize, PrevGlobalTilePos};
 use bevy::prelude::*;
 
-use crate::{terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::{
-    tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
-}, tilemap_systems::* };
+use crate::tile::{
+    tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
+} ;
 pub mod tile_systems;
 pub mod tile_init_systems;
 pub mod tile_sampler_init_systems;
@@ -26,18 +26,8 @@ pub mod tile_shader;
 
 use crate::tile::tile_components::TileStrId;
 
-define_entity_map_systems!(
-    TileEzerosMap,
-    TileStrId,
-    Tile,
-    (With<EntityZero>, AnyDisabling)
-);
 
-define_entity_map_systems!(
-    TileWeightedSamplersMap,
-    StrId,
-    TileWeightedSampler
-);
+
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TilingSystems;
@@ -49,12 +39,11 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
 
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
-        
-        map_tile_ezeros_map_id_to_entity,
         flip_tile_horizontally_based_on_initial_pos_hash,
         despawn_if_not_excepted,//DON'T TOUCH
         (add_spawned_tiles_to_gpos_map, ),
-        (spritetile_readjust_transform_to_match_globalpos).chain(),
+        add_projectile_colliders_to_tiles,
+        (spritetile_snap_transform_to_global_pos).chain(),
         make_spritetile_child_of_chunk.run_if(on_timer(Duration::from_millis(500))),//DON   
         add_handles,
         init_childrensprite,
@@ -84,7 +73,6 @@ pub fn plugin(app: &mut App) {
         plugin_tile_ezeros_map,
         plugin_tile_weighted_samplers_map,
     ))
-    .init_resource::<TilesAtGpos>()
     
     
     .register_type::<TileSerisHandles>()
@@ -99,6 +87,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<KeepDistanceFrom>()
     .register_type::<PortalRecipe>()
     .register_type::<PortalTo>()
+    .register_type::<BlocksProjectiles>()
     
     
     .replicate::<Tile>()
@@ -110,15 +99,18 @@ pub fn plugin(app: &mut App) {
     .replicate::<InitialPos>()
     .replicate::<PrevGlobalTilePos>()
     .replicate::<PortalsZeroEguiHolder>()
+    .replicate::<BlocksProjectiles>()
 
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()
     .replicate_filtered::<EntityZeroRef, With<Tile>>()
     .replicate_filtered::<GlobalTilePos, With<Tile>>()
+    .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
+
     
     .replicate_filtered::<Transform, With<TilesEguiHolder>>()
     .replicate_filtered::<Transform, With<PortalsZeroEguiHolder>>()
-    .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilemapId>, AnyDisabling)>>()
+    .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilemapId>, )>>()
     
     
     .replicate_filtered::<ChildOf, With<EntityWeightedSampler>>()

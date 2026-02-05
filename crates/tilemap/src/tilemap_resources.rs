@@ -1,5 +1,6 @@
-use bevy::{math::U16Vec2, prelude::*, tasks::Task};
-use bevy_ecs_tilemap::tiles::*;
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::U16Vec2, platform::collections::HashMap, prelude::*, tasks::Task};
+use bevy_ecs_tilemap::{map::TilemapId, tiles::*};
+use bevy_replicon::prelude::Replicated;
 use common::common_components::HashId;
 
 use crate::{terrain_gen::terrgen_messages::PendingOp, };
@@ -12,7 +13,86 @@ use game_common::{game_common_components::*, game_common_components_samplers::En
 
 
 
-
+#[derive(Resource, Debug, Reflect, Default, Clone, )]
+#[reflect(Resource, Default)]
+pub struct ImportantRegisteredPositions { registered: EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>, pub exempted: EntityHashSet, } 
+impl ImportantRegisteredPositions {
+    
+    pub fn clear(&mut self) {
+        self.registered.clear();
+        self.exempted.clear();
+    }
+    
+    pub fn exempt_entity_from_mindist_checks(&mut self, ent: Entity) {
+        self.exempted.insert(ent);
+    }
+    pub fn register_ezero_at_position(&mut self, ezero: EntityZeroRef, dim: DimensionRef, pos: GlobalTilePos) {
+        self.registered.entry(ezero.0).or_default().push((dim, pos));
+    }
+    pub fn is_pos_registered(&self, ezero: EntityZeroRef, dim: DimensionRef, pos: GlobalTilePos) -> bool {
+        self.registered.get(&ezero.0).map_or(false, |positions| {
+            positions.iter().any(|(d, p)| *d == dim && *p == pos)
+        })
+    }
+    
+    pub fn get_exempted_entities(&self) -> &EntityHashSet {
+        &self.exempted
+    }
+    
+    pub fn get_registered_entries(&self) -> &EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>> {
+        &self.registered
+    }
+    
+    #[allow(unused_parens, )]
+    pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
+        new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+        min_dists_query: Query<(&MinDistancesMap), (common::AnyDisabling)>,
+    ) -> bool {
+        
+        
+        let (new_tile, new_tile_ezero, new_dim, new_pos, new_min_distances, keep_distance) = new;
+        
+        if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
+            return false;
+        }
+        if keep_distance.is_none() && new_min_distances.is_none() {
+            return true;
+        }
+        
+        if ! self.exempted.contains(&new_tile) {
+            if let Some(new_min_distances) = new_min_distances {
+                for (&ezero_ent, min_dist) in new_min_distances.0.iter() {
+                    let Some(previous_positions) = self.registered.get(&ezero_ent) else { continue };
+                    for &(prev_dim, prev_pos) in previous_positions {
+                        if prev_dim == new_dim && new_pos.distance_squared(&prev_pos) < min_dist*min_dist {
+                            return false;
+                        }
+                    }
+                }
+            }
+            if let Some(keep_distance) = keep_distance {
+                for ezero_ent in &keep_distance.0 {
+                    let Some(positions) = self.registered.get(ezero_ent) else { continue };
+                    let Ok(min_dists) = min_dists_query.get(*ezero_ent) else { continue };
+                    for &prev_pos in positions {
+                        if min_dists.check_min_distances(prev_pos, (new_tile_ezero, new_dim, new_pos)) == false {
+                            return false;
+                        }
+                    }
+                }
+            }
+        } else if new_min_distances.is_none() && keep_distance.is_none() {
+            return true;
+        }
+        
+        self.registered.entry(new_tile_ezero.0).or_default().push((new_dim, new_pos));
+        
+        cmd.entity(new_tile).try_insert(Replicated);
+        
+        
+        true
+    }
+}
 
 #[derive(Bundle, Debug, Clone, Reflect,)]
 pub struct TileMassSpawnBundle{
@@ -30,7 +110,7 @@ pub struct TileMassSpawnBundle{
 #[reflect(Resource, Default)]
 pub struct MassCollectedTiles  (pub Vec<(Entity, TileMassSpawnBundle)>);
 impl MassCollectedTiles {
-
+    
     /// for iterable collections
     pub fn add_tiles_from_ezeros(
         &mut self,
@@ -53,7 +133,7 @@ impl MassCollectedTiles {
         ezero_ref: EntityZeroRef,
         gpos: GlobalTilePos,
         dim_ref: DimensionRef,
-
+        
         oplist_size: OplistSize,
     ) -> Entity {
         let tile_instance = cmd.entity(ezero_ref.0).clone_and_spawn_with_opt_out(|builder|{
@@ -76,7 +156,7 @@ impl MassCollectedTiles {
         self.0.push((tile_instance, helper));
         tile_instance
     }
-
+    
     fn collect_tiles_rec(
         &mut self,
         cmd: &mut Commands,
@@ -111,21 +191,37 @@ impl MassCollectedTiles {
             self.collect_tiles_rec(cmd, tile, ev.gpos, dim_hash_id, ev.dimension_ref, oplist_size, weight_maps, gen_settings, 0);
         }
     }
-
+    
 }
 
-#[derive(Debug, Clone)]
-pub struct LimboTileEntry {
-    pub tile_ent: Entity,
-    pub bundle: TileMassSpawnBundle,
-    pub timer: Timer,
+#[derive(Resource, Debug, Reflect, Default)]
+#[reflect(Resource, Default)]
+pub struct TilesAtGpos  { 
+    pub map: bevy::platform::collections::HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>,
+    pub reverse_map: bevy::ecs::entity::EntityHashMap<(DimensionRef, GlobalTilePos, Option<TilePos>, bevy_ecs_tilemap::map::TilemapId)>,
 }
-impl LimboTileEntry {
-    pub fn new(tile_ent: Entity, bundle: TileMassSpawnBundle) -> Self {
-        LimboTileEntry {
-            tile_ent,
-            bundle,
-            timer: Timer::from_seconds(5.0, TimerMode::Once),
-        }
+impl TilesAtGpos {
+    pub fn tiles_at_pos(&self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
+        self.map.get(&(dim_ref, gpos)).map_or(&[], |ents| ents.as_slice())
+    }
+
+    pub fn reserve_capacity(&mut self, additional: usize) {
+        self.map.reserve(additional);
+        self.reverse_map.reserve(additional);
+    }
+    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, tpos: Option<TilePos>, tilemap_id: Option<bevy_ecs_tilemap::map::TilemapId>, ) {
+        self.map.entry((dimension_ref, gpos)).or_default().push(entity);
+        self.reverse_map.insert(entity, (dimension_ref, gpos, tpos, tilemap_id.unwrap_or_default()));
+    }
+    pub fn remove_entity_and_get_data(&mut self, entity: Entity) -> Option<(Option<TilePos>, bevy_ecs_tilemap::map::TilemapId)> {
+        self.reverse_map.remove(&entity).and_then(|(dimension_ref, gpos, tpos, tilemap_id)| {
+            if let Some(entities) = self.map.get_mut(&(dimension_ref, gpos)) {
+                entities.swap_remove(entities.iter().position(|&e| e == entity)?);
+                if entities.is_empty() {
+                    self.map.remove(&(dimension_ref, gpos));
+                }
+            }
+            Some((tpos, tilemap_id))
+        })
     }
 }

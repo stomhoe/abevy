@@ -5,4 +5,4 @@ cd "$projectRoot" || exit 1
 
 rm -f rustc*.txt
 
-cargo run > >(tee onerun_out.txt) 2>onerun_err.txt
+cargo run -r > >(tee onerun_out.txt) 2>onerun_err.txt

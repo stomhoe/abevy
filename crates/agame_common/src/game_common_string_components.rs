@@ -1,11 +1,7 @@
 
-use bevy::{ecs::entity::MapEntities, platform::collections::HashMap, prelude::*};
+use bevy::prelude::*;
 use common::common_components::*;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::time::Duration;
-use splines::{Interpolation, Key, Spline};
-use strum_macros::{AsRefStr, Display, };
-use std::hash::Hash;
+use serde::{Deserialize, Serialize, };
 
 
 #[derive(Bundle)]
@@ -17,6 +13,7 @@ pub struct GameCommonStringComponentsBundle {
     pub demonym: Demonym,
     pub singular_denomination: SingularDenomination,
     pub plural_denomination: PluralDenomination,
+    pub prefix: Prefix,
 
 }
 

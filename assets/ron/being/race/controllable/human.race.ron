@@ -12,8 +12,8 @@
         "male": 1,
         "female": 1,
     },
-    can_equip_tools: true,
+    sentient: Some(true),
     sprite_pool: ["humanbo0", "humanhe0"],
-    selectable_sprites: ["humanbo0", "humanhe0"],
+    selectable_sprites: Some(["humanbo0", "humanhe0"]),
 
 )

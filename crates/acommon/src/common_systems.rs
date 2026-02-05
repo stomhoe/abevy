@@ -13,7 +13,7 @@ use crate::{
 
 #[allow(unused_parens)]
 pub fn add_hash_id_from_str_id(mut cmd: Commands, 
-    query: Query<(Entity, AnyOf<(&StrId, &StrId20B)>),(Or<(Changed<StrId>, Changed<StrId20B>)>, With<AddHashIdFromStrId>, Without<HashId>, AnyDisabling)>,
+    query: Query<(Entity, AnyOf<(&StrId, &StrId20B)>),(Or<(Changed<StrId>, Changed<StrId20B>)>, With<AddHashIdFromStrId>, Without<HashId>, crate::AnyDisabling)>,
 ) {
     let to_add: Vec<_> = query
     .iter()

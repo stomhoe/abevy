@@ -18,6 +18,7 @@ SpriteConfigSeri(
     directionable: Some(true),
     movement_based: Some(true),
     grounding_based: Some(false),
+    offset: Some((0., -16.)),
     offset4children: Some({
         "head": (0., 21., "")
     }),

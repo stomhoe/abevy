@@ -2,7 +2,7 @@
 
 
 use bevy::{prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
-use common::{common_components::{AnyDisabling, HashId}, common_tag_components::HashedTagsVec, };
+use common::{common_components::{HashId}, common_tag_components::HashedTagsVec, };
 use debug_unwraps::DebugUnwrapExt;
 use dimension_shared::{DimensionRef, DimensionRootOplist};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
@@ -50,7 +50,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     fnl_noises: Query<&FnlNoiseComp,>,
     op_filters: Query<&OpFilter,>,
     weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
-    dim_hash_query: Query<&HashId, AnyDisabling>,
+    dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut collected: ResMut<MassCollectedTiles>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
@@ -141,7 +141,7 @@ fn build_terrgen_task_context(
     oplist_query: &Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ()>,
     fnl_noises: &Query<&FnlNoiseComp>,
     op_filters: &Query<&OpFilter>,
-    dim_hash_query: &Query<&HashId, AnyDisabling>,
+    dim_hash_query: &Query<&HashId, common::AnyDisabling>,
 ) -> TerrGenTaskContext {
     let pending_len = pending_ops.len();
     let mut oplists: HashMap<Entity, OperationList> = HashMap::with_capacity(pending_len);

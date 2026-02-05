@@ -80,3 +80,7 @@ pub struct RaceStrIdRef(pub StrId);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 pub struct BitStrIdRef(pub StrId);
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+pub struct Sentient;

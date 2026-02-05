@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled, }, platform::collections::{HashMap, HashSet}, };
+use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, }, platform::collections::{HashSet}, };
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
@@ -12,8 +12,8 @@ use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 
-use crate::{chunking::chunking_resources::LoadedChunks, terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, terrgen_resources::RegisteredPositions}, tile::{tile_components::*, tile_resources::*, tile_shader::{TileShaderEntityMap, tile_shader_components::* }, TileEzerosMap}, tilemap_resources::MassCollectedTiles };
-use std::{any::Any, mem::take};
+use crate::{terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, }, tile::{tile_components::*, tile_resources::*, tile_shader::{tile_shader_resources::*, tile_shader_components::* }, }, tilemap_resources::* };
+use std::{mem::take};
 
 
 #[allow(unused_parens)]
@@ -94,6 +94,16 @@ pub fn init_tiles(
         if let Some(portal) = &mut seri.portal { 
             cmd.entity(tile_enti).insert((take(portal), ChildOf(egui_portal_holder))); 
         }
+
+        if let Some(ws) = seri.walk_speed {
+            cmd.entity(tile_enti).insert(WalkSpeed(ws));
+        } else{
+            cmd.entity(tile_enti).insert(WalkSpeed(1.0));
+        }
+
+        if seri.blocks_projectiles == Some(true) {
+            cmd.entity(tile_enti).insert(BlocksProjectiles);
+        }
         
         
         
@@ -167,10 +177,10 @@ pub fn init_tiles(
 #[allow(unused_parens)]
 pub fn init_childrensprite(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
-    ezero_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>),(With<EntityZero>, AnyDisabling)>,
+    ezero_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>),(With<EntityZero>, )>,
     childrensprite_query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<AcAnimationProgresses>, 
         Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, With<TileChildSprite>,
-        Without<Sprite>, Without<TilemapId>, Without<Children>, Without<TileShader>, AnyDisabling)>,
+        Without<Sprite>, Without<TilemapId>, Without<Children>, Without<TileShader>, common::AnyDisabling)>,
     ) {
         let mut to_insert = Vec::new();
         for (entity, (image_path_holder, ezero_ref)) in childrensprite_query.iter() {
@@ -209,7 +219,7 @@ pub fn init_childrensprite(mut cmd: Commands,
     #[allow(unused_parens)]
     pub fn add_handles(  
         mut cmd: Commands,  asset_server: Res<AssetServer>,
-        ezero_id_query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHashIdsHandles>, Changed<TileImagePaths>, AnyDisabling)>,
+        ezero_id_query: Query<(Entity, &TileStrId, &TileImagePaths),(With<EntityZero>, Without<TileHashIdsHandles>, Changed<TileImagePaths>, )>,
     ) {
         let mut comps = Vec::new();
         for (enti, str_id, tile_image_paths) in ezero_id_query.iter() {
@@ -286,7 +296,7 @@ pub fn init_childrensprite(mut cmd: Commands,
     #[allow(unused_parens)]
     pub fn map_portal_tiles(mut cmd: Commands, 
         mut portals_ezero_query: Query<(Entity, &TileStrId, &mut PortalSeri, ),
-        (With<EntityZero>, AnyDisabling, Changed<PortalSeri>, )>,
+        (With<EntityZero>, common::AnyDisabling, Changed<PortalSeri>, )>,
         tiles_map: Res<TileEzerosMap>,
     ) {
         info!("Mapping portal tiles");
@@ -369,15 +379,15 @@ pub fn init_childrensprite(mut cmd: Commands,
     
     #[allow(unused_parens)]
     pub fn instantiate_portal(mut cmd: Commands,
-        new_portals: Query<(Entity, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(With<SeekingPortalOtherEnd>, Without<EntityZero>, AnyDisabling)>,
-        ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>, AnyDisabling)>,
+        new_portals: Query<(Entity, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(With<SeekingPortalOtherEnd>, Without<EntityZero>, )>,
+        ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>, )>,
         pending_search: Query<(Entity, &SearchingForSuitablePos, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
         dimension_query: Query<(&DimensionRootOplist), ()>,
         mut ew_pos_search: MessageWriter<TerrainProbe>, 
         mut mass_collected: ResMut<MassCollectedTiles>,
         mut mreader_search_successful: MessageReader<SuitablePosFound>,
         mut mreader_search_failed: MessageReader<SearchFailed>, 
-        mut register_pos: ResMut<RegisteredPositions>,
+        mut register_pos: ResMut<ImportantRegisteredPositions>,
         mut successful_searches: Local<EntityHashSet>,
     ) {
         let mut started_searches: EntityHashMap<Entity> = EntityHashMap::new();
@@ -540,20 +550,4 @@ for failed_search in mreader_search_failed.read() {
 }
 ew_pos_search.write_batch(pos_searches);
 cmd.try_insert_batch(portal_tos);
-}
-
-
-#[allow(unused_parens)]
-pub fn remove_ezero_tile_from_map_on_despawn(
-    trigger: On<Despawn, (Tile, EntityZero, )>,
-    ezero_id_query: Query<(&TileStrId),(With<EntityZero>, AnyDisabling)>,
-    mut map: ResMut<TileEzerosMap>,
-) {
-    if let Ok(str_id) = ezero_id_query.get(trigger.entity) {
-        if let Ok(found_entity) = map.0.get_cloned(str_id) {
-            if found_entity == trigger.entity {
-                map.0.remove(str_id.as_str());
-            }
-        }
-    }
 }

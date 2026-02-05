@@ -21,19 +21,25 @@ pub fn debug_increase_speed(
     if keys.pressed(KeyCode::NumpadAdd) {
         query.iter_mut().for_each(|(target, mut val)| {
             if my_being_query.get(target.0).is_ok() {
-                val.0 *= 1.05;
+                let mut new_val = val.clone();
+                new_val.0 *= 1.05;
                 if is_client {
-                    msgs.push( UpdateBeingSpeed { being_ent: target.0, value: val.clone(), } );
+                    msgs.push( UpdateBeingSpeed { being_ent: target.0, value: new_val, } );
+                } else {
+                    val.0 = new_val.0;
                 }
             }
         });
     } else if keys.pressed(KeyCode::NumpadSubtract) {
         query.iter_mut().for_each(|(target, mut val)| {
             if my_being_query.get(target.0).is_ok() {
-                val.0 *= 0.95;
-                val.0 = val.0.max(1.);
+                let mut new_val = val.clone();
+                new_val.0 *= 0.95;
+                new_val.0 = new_val.0.max(1.);
                 if is_client {
-                    msgs.push( UpdateBeingSpeed { being_ent: target.0, value: val.clone(), } );
+                    msgs.push( UpdateBeingSpeed { being_ent: target.0, value: new_val, } );
+                } else {
+                    val.0 = new_val.0;
                 }
             }
         });

@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{AnyDisabling, HashId, Prefix, StrId};
+use common::common_components::*;
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
 use crate::{ColorWeightedSamplersMap, color_sampler_components::*, color_sampler_resources::* };
@@ -60,7 +60,7 @@ pub fn init_color_samplers(
 pub fn apply_pos_sampled_color(mut cmd: Commands, 
     gen_settings: Single<&GlobalGenSettings>,
     samplers: Query<&ColorSampler>,
-    dim_hash_query: Query<&HashId, AnyDisabling>,
+    dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, Option<&DimensionRef>, AnyOf<(&mut Sprite, &mut TileColor)>), (Or<(Changed<ColorSamplerRef>, Added<Sprite> )>, )>,
 ) {
     query.iter_mut().for_each(|(entity, color_sampler, &global_tile_pos, dimension_ref, (sprite, tile_color))| {

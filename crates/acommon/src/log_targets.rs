@@ -45,6 +45,7 @@ pub const PORTAL_INIT: &str = "portal_init";
 pub const BEING_TEMPLATE_INIT: &str = "being_template_init";
 pub const COLOR_SAMPLER_INIT: &str = "color_sampler_init";
 pub const CHILDRENSPRITE_INIT: &str = "childrensprite_init";
+pub const TILE_SHADER_INIT: &str = "tile_shader_init";
 pub const GAME_INIT: &str = "game_init";
 
 // ============================================================================

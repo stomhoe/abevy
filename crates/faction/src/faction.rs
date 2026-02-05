@@ -1,16 +1,9 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::{AppRuleExt};
-use common::common_states::{AppState, GamePhase};
-use common::{define_entity_map_systems, entity_map_macros::*, common_components::StrId};
 use game_common::game_common::{GameplaySystems, StatefulSessionSystems};
 
 use crate::{faction_resources::*, faction_systems::*, faction_components::*};
 
-define_entity_map_systems!(
-    FactionEntityMap,
-    StrId,
-    Faction
-);
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {

@@ -5,6 +5,8 @@
 use common::common_types::HashIdToEntityMap;
 use serde::{Deserialize, Serialize};
 
+use crate::tile::tile_shader::tile_shader_components::TileShader;
+
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)] 
 pub struct ShaderRepeatTexSerisHandles {
@@ -76,3 +78,9 @@ pub struct ShaderRockyTerrainSeri {
     pub color_base: [f32; 4],
     pub color_shadow: [f32; 4],
 }
+
+common::define_entity_map_systems!(
+    TileShaderEntityMap,
+    common::common_components::StrId,
+    TileShader
+);

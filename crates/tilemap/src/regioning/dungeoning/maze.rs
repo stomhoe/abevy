@@ -10,7 +10,7 @@ use crate::regioning::{
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
-use crate::tile::{tile_components::DeleteOtherTiles, TileEzerosMap};
+use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::*};
 use super::dungeoning_ids::MAZE;
 
 #[allow(unused_parens, )]
