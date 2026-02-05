@@ -1,9 +1,9 @@
 (
     id: "newbiewall",
     name: "Dungeon newbie wall",
-    z: 700,
+    z: -700,
     img_paths: [
-        ("", "texture/world/terr/dungeon/newbiewall.png"),
+        ("", "texture/world/white.png"),
     ],
     //shader: Some("newbiewall"),
     color: Some((255, 0, 0, 255)),

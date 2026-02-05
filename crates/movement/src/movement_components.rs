@@ -27,7 +27,11 @@ pub struct OutputSpeedMagnitude(pub f32);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[require(QueuedGridMoveDir)]
 pub struct GridLockedMovement;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct QueuedGridMoveDir(pub Vec2);
 
 
 

@@ -21,8 +21,8 @@ pub fn plugin(app: &mut App) {
                 process_speed_modifiers,
                 prepare_grid_locked_movement,
                 update_human_move_input,
-                update_facing_dir,
-                modify_transform,
+                //update_facing_dir,
+                //modify_transform,
                 do_free_movement,
 
             ).in_set(MovementSystems),
