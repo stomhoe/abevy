@@ -51,7 +51,6 @@ pub struct StructuredGenConfigSeri {
 }
 
 common::define_entity_map_systems!(
-    SgcEntityMap,
     common::common_components::StrId,
     StructuredGenConfig
 );

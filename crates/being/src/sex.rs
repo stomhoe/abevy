@@ -15,16 +15,16 @@ pub fn plugin(app: &mut App) {
     app
         .add_plugins((
             RonAssetPlugin::<SexSerialization>::new(&["sex.ron"]),
-            plugin_sex_entity_map,
+            plugin_sex,
         ))
         .add_systems(
             OnEnter(AssetLoading::SpawnReplicatedEntities), 
             (
-                (init_sexes, map_sex_entity_map_id_to_entity).chain()
+                (init_sexes, map_sex_id_to_entity).chain()
             ).in_set(SexSystems)
         )
         .add_systems(Update, (
-            map_sex_entity_map_id_to_entity
+            map_sex_id_to_entity
         ))
 
         .register_type::<SexSerialization>();

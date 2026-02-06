@@ -5,12 +5,12 @@ use ::dimension_shared::*;
 use game_common::{game_common_components::ArgsMap, game_common_components_samplers::EntityWeightedSampler};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*, SgcEntityMap}, terrain_gen::terrgen_messages::OpFilter};
+use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*, StructuredGenConfigEntityMap}, terrain_gen::terrgen_messages::OpFilter};
 
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (
     mut cmd: Commands, 
-    map: Res<SgcEntityMap>,
+    map: Res<StructuredGenConfigEntityMap>,
     mut seris_handles: ResMut<StructureSerisHandles>,
     mut assets: ResMut<Assets<StructuredGenConfigSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,

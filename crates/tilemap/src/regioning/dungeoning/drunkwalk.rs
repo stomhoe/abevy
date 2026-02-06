@@ -19,7 +19,7 @@ pub fn drunkwalk_dungeon_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
-    ezeros_map: Res<TileEzerosMap>,
+    ezeros_map: Res<TileEntityMap>,
     dimension_hash: Query<&HashId>,
     settings: Single<&GlobalGenSettings>,
 ) {
@@ -54,7 +54,7 @@ pub fn drunkwalk_dungeon_building_system(
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", floor_tile_id);
+                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", floor_tile_id);
                 continue;
             }
         };
@@ -62,7 +62,7 @@ pub fn drunkwalk_dungeon_building_system(
         let wall_entity = match ezeros_map.0.get_cloned(wall_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEzerosMap when making DrunkwalkDungeon, skipping structure spawn", wall_tile_id);
+                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", wall_tile_id);
                 continue;
             }
         };

@@ -11,8 +11,8 @@ use sprite_shared::sprite_scale_offset::Offset2D;
 
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Reflect)]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpriteConfigs"), Visibility, Transform)]
-pub struct SpriteConfigsHolder;
+#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("EguiSpriteConfigsHolder"), Visibility, Transform)]
+pub struct EguiSpriteConfigsHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -71,10 +71,10 @@ pub struct BecomeChildOfSpriteWithTag (pub Tag);
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities, Default )]
-pub struct SpriteCfgsToBuild(#[entities] pub EntityHashSet);
-impl SpriteCfgsToBuild {
+pub struct ScrsToBuild(#[entities] pub EntityHashSet);
+impl ScrsToBuild {
     pub fn with_capacity(capacity: usize) -> Self {
-        SpriteCfgsToBuild(EntityHashSet::with_capacity(capacity))
+        ScrsToBuild(EntityHashSet::with_capacity(capacity))
     }
 }
 

@@ -18,7 +18,6 @@ pub mod terrgen_messages;
 
 
 common::define_entity_map_systems!(
-    OpListEntityMap,
     common::common_components::StrId,
     OperationList
 );
@@ -39,9 +38,9 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (
                 init_noises,
-                map_terr_gen_entity_map_id_to_entity,
+                map_terrgen_id_to_entity,
                 init_oplists_from_assets,
-                map_op_list_entity_map_id_to_entity,
+                map_operation_list_id_to_entity,
                 init_oplists_bifurcations,
                 cycle_detection,
                 assign_rootoplist_to_dimensions,
@@ -56,8 +55,8 @@ pub fn plugin(app: &mut App) {
         .add_plugins((
             RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),
             RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
-            plugin_terr_gen_entity_map,
-            plugin_op_list_entity_map,
+            plugin_terrgen,
+            plugin_operation_list,
         ))
         
         

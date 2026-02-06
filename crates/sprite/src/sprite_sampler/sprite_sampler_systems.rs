@@ -1,39 +1,39 @@
 use being_shared::BeingInstTemplate;
 use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::common_id_components::HashId;
+use common::{common_components::StrId, common_id_components::HashId};
 use dimension_shared::DimensionRef;
 use game_common::game_common_components_samplers::EntityWeightedSampler;
-use sprite_shared::{SampleSprites, SampleSpritesFromStrIds};
+use sprite_shared::{SampleSpriteEnts, SampleSpritesFromStrIds};
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
 
-use crate::{sprite_components::SpriteCfgsToBuild, sprite_resources::*, sprite_sampler::SpriteWeightedSamplersMap};
+use crate::{sprite_components::ScrsToBuild, sprite_resources::*, sprite_sampler::SpriteWeightedSamplerEntityMap};
 
 /// Resolves SampleSpritesFromStrIds into SampleSprites by converting string IDs to entities
 #[allow(unused_parens)]
 pub fn replace_sampler_string_ids_by_entities(
     mut cmd: Commands,
-    query: Query<(Entity, &SampleSpritesFromStrIds), (Changed<SampleSpritesFromStrIds>,)>,
-    sampler_map: Option<Res<SpriteWeightedSamplersMap>>,
-    sprite_map: Option<Res<SpriteCfgEntityMap>>,
+    query: Query<(Entity, &SampleSpritesFromStrIds, Option<&StrId>), (Changed<SampleSpritesFromStrIds>,)>,
+    sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
+    sprite_map: Option<Res<SpriteConfigEntityMap>>,
 ) {
     let Some(sprite_map) = sprite_map else {
         if !query.is_empty() {
-            error!(target: "sprite_sampler_systems", "SpriteCfgEntityMap not found, cannot replace sampler string ids");
+            error!(target: "sprite_sampler_systems", "SpriteConfigEntityMap not found, cannot replace sampler string ids");
         }
         return;
     };
     let Some(sampler_map) = sampler_map else {
         if !query.is_empty() {
-            error!(target: "sprite_sampler_systems", "SpriteWeightedSamplersMap not found, cannot replace sampler string ids");
+            error!(target: "sprite_sampler_systems", "SpriteWeightedSamplerEntityMap not found, cannot replace sampler string ids");
         }
         return;
     };
 
     let mut sample_sprites_to_insert = Vec::new();
 
-    for (ent, sampler_ids) in query.iter() {
-        debug!(target: "sprite_sampler_systems", "Resolving sampler string ids for entity {:?}", ent);
+    for (ent, sampler_ids, strid) in query.iter() {
+        debug!(target: "sprite_sampler_systems", "Resolving sampler string ids for {}", strid.cloned().unwrap_or_default());
         let mut resolved_entities = Vec::new();
 
         for strid in sampler_ids.ids() {
@@ -46,7 +46,7 @@ pub fn replace_sampler_string_ids_by_entities(
         }
 
         if !resolved_entities.is_empty() {
-            sample_sprites_to_insert.push((ent, SampleSprites::new(resolved_entities)));
+            sample_sprites_to_insert.push((ent, SampleSpriteEnts::new(resolved_entities)));
         }
     }
 
@@ -58,7 +58,7 @@ pub fn replace_sampler_string_ids_by_entities(
 pub fn sample_from_sprite_entities(
     mut cmd: Commands,
     global_gen_settings: Single<&GlobalGenSettings>,
-    being_query: Query<(Entity, &SampleSprites, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleSprites>,
+    being_query: Query<(Entity, &SampleSpriteEnts, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleSpriteEnts>,
         Without<BeingInstTemplate>
     )>,
     samplers_query: Query<&EntityWeightedSampler>,
@@ -77,7 +77,7 @@ pub fn sample_from_sprite_entities(
         } else {
             continue;
         };
-        
+
         let Ok(dim_hash) = dimension_hash_query.get(dimension_ref.0).copied() else {
             continue;
         };
@@ -94,7 +94,7 @@ pub fn sample_from_sprite_entities(
         }
 
         if !sampled_configs.is_empty() {
-            configs_to_build.push((ent, SpriteCfgsToBuild(sampled_configs)));
+            configs_to_build.push((ent, ScrsToBuild(sampled_configs)));
         }
     }
 
@@ -103,8 +103,8 @@ pub fn sample_from_sprite_entities(
 
 fn resolve_sampler_id_no_sample(
     id: &common::common_components::StrId,
-    sampler_map: &SpriteWeightedSamplersMap,
-    sprite_map: &SpriteCfgEntityMap,
+    sampler_map: &SpriteWeightedSamplerEntityMap,
+    sprite_map: &SpriteConfigEntityMap,
     resolved_entities: &mut Vec<Entity>,
 ) {
     if let Ok(sprite_ent) = sprite_map.0.get_cloned(id) {

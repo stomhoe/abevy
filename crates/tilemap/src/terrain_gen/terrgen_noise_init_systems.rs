@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use fnl::*;
 use common::common_components::{DisplayName, Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
-use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*, TerrGenEntityMap};
+use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*, TerrgenEntityMap};
 use std::mem::take;
 
 #[allow(unused_parens)]
@@ -10,7 +10,7 @@ pub fn init_noises(
     mut cmd: Commands, 
     mut seris_handles: ResMut<NoiseSerisHandles>,
     mut assets: ResMut<Assets<NoiseSerialization>>,
-    terrgen_map: Res<TerrGenEntityMap>,
+    terrgen_map: Res<TerrgenEntityMap>,
     settings: Query<&GlobalGenSettings>,
     noise_holder: Query<Entity, With<EguiNoiseHolder>>,
 ) {
@@ -124,7 +124,7 @@ pub fn init_noises(
         noise.set_domain_warp_amp(seri.domain_warp_amp);
 
         if let Ok(existing) = terrgen_map.0.get_cloned(&str_id) {
-            error!(target: "terrgen_init", "{} already in TerrGenEntityMap : {:?}", str_id, existing);
+            error!(target: "terrgen_init", "{} already in TerrgenEntityMap : {:?}", str_id, existing);
             continue;
         }
         let noise_ent = cmd.spawn_empty().id();

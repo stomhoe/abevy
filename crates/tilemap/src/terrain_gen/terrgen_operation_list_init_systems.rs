@@ -6,7 +6,7 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use common::{common_components::{Prefix, StrId}, common_tag_components::TagSet};
 use dimension_shared::{Dimension, DimensionEntityMap, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
-use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, TerrGenEntityMap, terrgen_operaton_list_components::*, terrgen_resources::*, OpListEntityMap}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplersMap}};
+use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, TerrgenEntityMap, terrgen_operaton_list_components::*, terrgen_resources::*, OperationListEntityMap}, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerEntityMap}};
 use ::tilemap_shared::*;
 
 use std::mem::take;
@@ -16,11 +16,11 @@ use std::collections::HashSet;
 pub fn init_oplists_from_assets(
     mut cmd: Commands, seris_handles: Res<OpListSerisHandles>,
     mut assets: ResMut<Assets<OpListSerialization>>, 
-    terr_gen_map: Res<TerrGenEntityMap>,  
-    samplers_map: Res<TileWeightedSamplersMap>,
-    tiles_map: Res<TileEzerosMap>,
+    terr_gen_map: Res<TerrgenEntityMap>,  
+    samplers_map: Res<TileWeightedSamplerEntityMap>,
+    tiles_map: Res<TileEntityMap>,
     dimension_map: Res<DimensionEntityMap>,
-    oplist_map: Res<OpListEntityMap>,
+    oplist_map: Res<OperationListEntityMap>,
 ) {
     if !oplist_map.0.is_empty() { return ; }
     
@@ -125,7 +125,7 @@ pub fn init_oplists_from_assets(
                         (ent_str, 0)
                     };
                     let Ok(ent) = terr_gen_map.0.get_cloned(&base_str.to_string()) else {
-                        warn!(target: "oplist_init", "Entity not found in TerrGenEntityMap: {}", base_str);
+                        warn!(target: "oplist_init", "Entity not found in TerrgenEntityMap: {}", base_str);
                         continue;
                     };
                     
@@ -176,7 +176,7 @@ pub fn init_oplists_from_assets(
                 } else if let Ok(tile_ent) = tiles_map.0.get_cloned(tile_str) {
                     Some(tile_ent)
                 } else {
-                    warn!(target: "oplist_init", "Tile {} not found in TilingEntityMap or TileWeightedSamplersMap", tile_str);
+                    warn!(target: "oplist_init", "Tile {} not found in TilingEntityMap or TileWeightedSamplerEntityMap", tile_str);
                     None
                 }
             }).collect::<Vec<Entity>>();
@@ -185,7 +185,7 @@ pub fn init_oplists_from_assets(
             oplist.bifurcations.push(bifurcation);
         }
         if let Ok(ent) = oplist_map.0.get_cloned(&str_id) {
-            error!(target: "oplist_init", "{} already in OpListEntityMap : {}", str_id, ent);
+            error!(target: "oplist_init", "{} already in OperationListEntityMap : {}", str_id, ent);
             continue;
         }
         let spawned_oplist = cmd.spawn_empty().id();
@@ -222,7 +222,7 @@ pub fn init_oplists_bifurcations(
     mut cmd: Commands,
     mut seris_handles: ResMut<OpListSerisHandles>,
     mut assets: ResMut<Assets<OpListSerialization>>, 
-    oplist_map: Res<OpListEntityMap>,
+    oplist_map: Res<OperationListEntityMap>,
     mut oplist_query: Query<(&mut OperationList, )>,
     is_root: Query<(&MultipleDimensionStringRefs)>,
 ) -> Result {
@@ -231,7 +231,7 @@ pub fn init_oplists_bifurcations(
             let Ok(oplist_ent) = oplist_map.0.get_cloned(&seri.id) else {
                 error!(
                     target: "oplist_init",
-                    "oplist entity with id '{}' not found in OpListEntityMap",
+                    "oplist entity with id '{}' not found in OperationListEntityMap",
                     seri.id
                 );
                 continue;
@@ -245,7 +245,7 @@ pub fn init_oplists_bifurcations(
                 let Ok(bifurcation_ent) = oplist_map.0.get_cloned(&bifurcation_str.to_string()) else {
                     error!(
                         target: "oplist_init",
-                        "bifurcation entity with id '{}' not found in OpListEntityMap",
+                        "bifurcation entity with id '{}' not found in OperationListEntityMap",
                         bifurcation_str
                     );
                     continue;

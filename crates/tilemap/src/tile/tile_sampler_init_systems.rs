@@ -4,14 +4,14 @@
 use common::common_components::{StrId};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 
-use crate::tile::{TileWeightedSamplersMap, tile_components::*, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
+use crate::tile::{TileWeightedSamplerEntityMap, tile_components::*, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
 
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
     mut cmd: Commands, 
     seris_handles: ResMut<TileWeightedSamplerHandles>,
     assets: Res<Assets<TileWeightedSamplerSeri>>,
-    mut map: ResMut<TileWeightedSamplersMap>,
+    mut map: ResMut<TileWeightedSamplerEntityMap>,
 ) {
     if ! map.0.is_empty() { return; }
     let holder = cmd.spawn((TileSamplerHolder, )).id();
@@ -25,7 +25,7 @@ pub fn init_tile_weighted_samplers(
             if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
 
                 if let Ok(ent) = map.0.get_cloned(&str_id) {
-                    error!("TileWeightedSampler '{}' already in TileWeightedSamplersMap : {:?}", str_id, ent);
+                    error!("TileWeightedSampler '{}' already in TileWeightedSamplerEntityMap : {:?}", str_id, ent);
                     continue;
                 }
                 let ent = cmd.spawn_empty().id();
@@ -42,15 +42,15 @@ pub fn init_tile_weighted_samplers_refs(
     mut cmd: Commands, 
     mut seris_handles: ResMut<TileWeightedSamplerHandles>,
     mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
-    hashpos_weighted_map: Res<TileWeightedSamplersMap>,
+    hashpos_weighted_map: Res<TileWeightedSamplerEntityMap>,
     hashpos_query: Query<(&StrId, ), (With<EntityWeightedSampler>)>,
-    tile_ents_map: Res<TileEzerosMap>,
+    tile_ents_map: Res<TileEntityMap>,
 ) {
     for handle in seris_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue };
 
         let Ok(wmap_ent) = hashpos_weighted_map.0.get_cloned(&seri.id) else {
-            error!("TileWeightedSamplerSeri '{}' not found in HashPosWeightedSamplersMap", seri.id);
+            error!("TileWeightedSamplerSeri '{}' not found in TileWeightedSamplerEntityMap", seri.id);
             continue;
         };
 

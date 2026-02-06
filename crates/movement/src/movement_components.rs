@@ -1,29 +1,16 @@
-
-#[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use tilemap_shared::GlobalTilePos;
 
+/// Raw input movement vector - updated by keyboard/AI and synced to server
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct InputDirection(pub Vec2);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-#[require(ProcessedInputMoveVector, FinalMoveVector, OutputSpeedMagnitude)]
-pub struct InputMoveVector(pub Vec2);//USADO TMB POR BOTS
-//no se incluye la coordenada z de agacharse o saltar porq esto se debe mandar reliably ya q no se spammea tanto
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Message)]
-pub struct InputJump;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Message)]
-pub struct InputDuck;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct ProcessedInputMoveVector(pub Vec2);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct FinalMoveVector(pub Vec2);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct OutputSpeedMagnitude(pub f32);
+/// Processed movement state - direction after modifiers and calculated speed
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct MoveState {
+    pub norm_move_dir: Vec2,
+    pub speed_magnitude: f32,
+}
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
@@ -43,20 +30,20 @@ pub struct QueuedGridMoveDir(pub Vec2);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct WallPhaser;
 
+//borrar estos
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct InnateMovementCapability;//NO SACARSELO SOLO PORQ ESTÉ ULTRAHERIDO
 
 
 // NO SON EXLUSIVOS ASÍ Q NO ES SUPERSTATE
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(InnateMovementCapability)] 
+#[require(InnateMovementCapability)]
 pub struct LandWalker;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(InnateMovementCapability)] 
+#[require(InnateMovementCapability)]
 pub struct Swimmer;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(InnateMovementCapability)] 
+#[require(InnateMovementCapability)]
 pub struct Flier;
-

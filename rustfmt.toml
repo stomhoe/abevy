@@ -1,0 +1,113 @@
+# Rust formatting configuration for argentum_coop
+# This configuration is used by rustfmt to format Rust code
+
+# Line length before wrapping (default: 100)
+max_width = 100
+
+# Use small heuristics for better formatting (default: false)
+use_small_heuristics = "Default"
+
+# Use field init shorthand (default: true)
+use_field_init_shorthand = true
+
+# Format code in doc comments (default: true)
+format_code_in_doc_comments = true
+
+# Format strings (default: false)
+format_strings = true
+
+# Normalize comments (default: false)
+normalize_comments = true
+
+# Normalize doc attributes (default: false)
+normalize_doc_attributes = true
+
+# Edition of Rust to target (2024 for this project)
+edition = "2024"
+
+# Hard tabs or spaces (default: false, means spaces)
+hard_tabs = false
+
+# Tab size (default: 4)
+tab_size = 4
+
+# Newline style: Unix, Windows, Auto (default: Unix)
+newline_style = "Unix"
+
+# Function call formatting style: Visual, Tall, Mixed (default: Visual)
+fn_call_width = 80
+
+# Struct formatting style: Visual, Tall (default: Visual)
+struct_literal_width = 80
+
+# Array formatting style: Visual, Tall (default: Visual)
+array_width = 80
+
+# Chain formatting style: Visual, Tall (default: Visual)
+chain_width = 80
+
+# Match block formatting
+match_block_trailing_comma = false
+
+# Force single line blocks
+fn_single_line = false
+
+# Imports formatting
+reorder_imports = true
+reorder_modules = true
+group_imports = "StdExternalCrate"
+
+# Spaces around operators (default: true)
+space_after_colon = true
+space_before_colon = false
+
+# Comments
+comment_width = 80
+
+# Blank lines
+blank_lines_lower_bound = 0
+blank_lines_upper_bound = 1
+
+# Remove nested parentheses (default: true)
+remove_nested_parens = true
+
+# Space after match keyword (default: false)
+space_after_match_keyword = true
+
+# Space before colon in patterns
+space_before_colon = false
+
+# Overflow delimited expressions
+overflow_delimited_expressions = true
+
+# Reorder impl items
+reorder_impl_items = true
+
+# Struct layout
+struct_literal_style = "Block"
+
+# Fn single line
+fn_single_line = false
+
+# Async function formatting
+async_closure_style = "Block"
+
+# Match arm leading pipes
+match_arm_leading_pipes = "Never"
+
+# Edition-specific features
+use_try_shorthand = true
+use_small_heuristics = "Default"
+
+# Trailing comma
+trailing_comma = "Vertical"
+
+# Semicolon formatting - allow flexibility via attributes
+# Enable rustfmt to respect #[rustfmt::skip] and #[allow(rustfmt::*)] attributes
+format_macro_bodies = true
+format_macro_matchers = true
+
+# Allow using #[rustfmt::skip] to skip formatting specific items
+# and #[allow(rustfmt::*)] for specific lints
+
+edition = "2024"

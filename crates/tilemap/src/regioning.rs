@@ -18,7 +18,7 @@ pub fn plugin(app: &mut App) {
     app
     .add_plugins((
         RonAssetPlugin::<StructuredGenConfigSeri>::new(&["sgc.ron"]),
-        plugin_sgc_entity_map,
+        plugin_structured_gen_config,
     ))
     .add_systems(Update, (
         (
@@ -47,14 +47,14 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            init_structured_gen_configs, map_sgc_entity_map_id_to_entity
+            init_structured_gen_configs, map_structured_gen_config_id_to_entity
         ).in_set(RegioningSystems))
     .add_observer(on_region_despawn_remove_from_loaded_regions)
 
     .init_resource::<LoadedRegions>()
 
     .register_type::<LoadedRegions>()
-    .register_type::<SgcEntityMap>()
+    .register_type::<StructuredGenConfigEntityMap>()
     .register_type::<WhitelistedFilterOf>()
     .register_type::<AcceptedFilters>()
 

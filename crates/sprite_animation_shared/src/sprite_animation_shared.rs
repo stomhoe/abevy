@@ -4,7 +4,6 @@ use bevy_replicon::prelude::Replicated;
 use bevy_spritesheet_animation::prelude::{Animation, AnimationProgress, Spritesheet};
 use common::{common_components::{AssetScoped, Prefix, SparedFromHotReloading, StrId}, common_types::*};
 use serde::{Deserialize, Serialize};
-use common::define_entity_map_systems;
 
 #[allow(unused_imports)] use {bevy::prelude::*, };
 
@@ -69,9 +68,7 @@ pub struct AnimationComp;
 
 
 
-define_entity_map_systems!(
-    AnimationLibrary,
+common::define_entity_map_systems!(
     StrId,
-    AnimationComp,
-    ()
+    AnimationComp
 );

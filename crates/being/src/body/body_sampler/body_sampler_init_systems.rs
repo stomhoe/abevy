@@ -12,7 +12,7 @@ pub fn init_body_weighted_samplers(
     mut cmd: Commands, 
     seris_handles: ResMut<BodyWeightedSamplerHandles>,
     assets: Res<Assets<BodyWeightedSamplerSeri>>,
-    map: Res<BodyWeightedSamplersMap>,
+    map: Res<BodyWeightedSamplerEntityMap>,
 ) {
     if ! map.0.is_empty() { return; }
     let holder = cmd.spawn((EguiBodySamplerHolder, )).id();
@@ -24,7 +24,7 @@ pub fn init_body_weighted_samplers(
             if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
 
                 if let Ok(ent) = map.0.get_cloned(&str_id) {
-                    error!("BodyWeightedSampler '{}' already in BodyWeightedSamplersMap : {:?}", str_id, ent);
+                    error!("BodyWeightedSampler '{}' already in BodyWeightedSamplerEntityMap : {:?}", str_id, ent);
                     continue;
                 }
                 let ent = cmd.spawn_empty().id();
@@ -40,14 +40,14 @@ pub fn init_body_weighted_samplers_refs(
     mut cmd: Commands, 
     mut seris_handles: ResMut<BodyWeightedSamplerHandles>,
     mut assets: ResMut<Assets<BodyWeightedSamplerSeri>>,
-    body_weighted_map: Res<BodyWeightedSamplersMap>,
+    body_weighted_map: Res<BodyWeightedSamplerEntityMap>,
     body_map: Res<BodyTreeEntityMap>,
 ) {
     for handle in seris_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue };
 
         let Ok(wmap_ent) = body_weighted_map.0.get_cloned(&seri.id) else {
-            error!("BodyWeightedSamplerSeri '{}' not found in BodyWeightedSamplersMap", seri.id);
+            error!("BodyWeightedSamplerSeri '{}' not found in BodyWeightedSamplerEntityMap", seri.id);
             continue;
         };
 

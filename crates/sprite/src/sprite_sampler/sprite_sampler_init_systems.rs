@@ -4,7 +4,7 @@
 use common::{common_components::{Prefix, StrId}};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 
-use crate::{sprite_resources::*, sprite_sampler::{SpriteWeightedSamplersMap, sprite_sampler_components::{EguiSpriteSamplerHolder, SpriteWeightedSampler}, sprite_sampler_resources::*}};
+use crate::{sprite_resources::*, sprite_sampler::{SpriteWeightedSamplerEntityMap, sprite_sampler_components::{EguiSpriteSamplerHolder, SpriteWeightedSampler}, sprite_sampler_resources::*}};
 
 
 
@@ -13,7 +13,7 @@ pub fn init_sprite_weighted_samplers(
     mut cmd: Commands, 
     seris_handles: ResMut<SpriteWeightedSamplerHandles>,
     assets: Res<Assets<SpriteWeightedSamplerSeri>>,
-    map: Res<SpriteWeightedSamplersMap>,
+    map: Res<SpriteWeightedSamplerEntityMap>,
 ) {
     if ! map.0.is_empty() { return; }
     let holder = cmd.spawn((EguiSpriteSamplerHolder, )).id();
@@ -25,7 +25,7 @@ pub fn init_sprite_weighted_samplers(
             if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
 
                 if let Ok(ent) = map.0.get_cloned(&str_id) {
-                    error!("SpriteWeightedSampler '{}' already in SpriteWeightedSamplersMap : {:?}", str_id, ent);
+                    error!("SpriteWeightedSampler '{}' already in SpriteWeightedSamplerEntityMap : {:?}", str_id, ent);
                     continue;
                 }
                 let ent = cmd.spawn_empty().id();
@@ -41,15 +41,15 @@ pub fn init_sprite_weighted_samplers_refs(
     mut cmd: Commands, 
     mut seris_handles: ResMut<SpriteWeightedSamplerHandles>,
     mut assets: ResMut<Assets<SpriteWeightedSamplerSeri>>,
-    sprite_weighted_map: Res<SpriteWeightedSamplersMap>,
+    sprite_weighted_map: Res<SpriteWeightedSamplerEntityMap>,
     _hashpos_query: Query<(&StrId, ), (With<EntityWeightedSampler>)>,
-    sprite_ents_map: Res<SpriteCfgEntityMap>,
+    sprite_ents_map: Res<SpriteConfigEntityMap>,
 ) {
     for handle in seris_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue };
 
         let Ok(wmap_ent) = sprite_weighted_map.0.get_cloned(&seri.id) else {
-            error!("SpriteWeightedSamplerSeri '{}' not found in SpriteWeightedSamplersMap", seri.id);
+            error!("SpriteWeightedSamplerSeri '{}' not found in SpriteWeightedSamplerEntityMap", seri.id);
             continue;
         };
 

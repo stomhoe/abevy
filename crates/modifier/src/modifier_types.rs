@@ -38,7 +38,6 @@ pub struct HandlingCapability;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 #[require(ModifierTags, )]
-/// if negative, reduces max hp, if positive, increases max hp. Value is the offset applied to max hp.
 pub struct HitpointsCapacity;
 
 
@@ -48,7 +47,6 @@ pub struct HitpointRegenRate;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 #[require(ModifierTags, )]
-/// provided capacity for holding blood
 pub struct BloodCapacity;
 
 

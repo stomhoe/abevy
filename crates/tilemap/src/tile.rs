@@ -54,7 +54,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), 
         (   
-            init_tiles, map_tile_ezeros_map_id_to_entity, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, map_tile_weighted_samplers_map_id_to_entity,  init_tile_weighted_samplers_refs, 
+            init_tiles, map_tile_id_to_entity, map_min_dist_tiles, map_portal_tiles, init_tile_weighted_samplers, map_tile_weighted_sampler_id_to_entity,  init_tile_weighted_samplers_refs, 
         )
         .chain().in_set(TilingSystems))
         
@@ -70,8 +70,8 @@ pub fn plugin(app: &mut App) {
         
         RonAssetPlugin::<TileSerialization>::new(&["tile.ron"]),
         RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["tsampler.ron"]),
-        plugin_tile_ezeros_map,
-        plugin_tile_weighted_samplers_map,
+        plugin_tile,
+        plugin_tile_weighted_sampler,
     ))
     
     

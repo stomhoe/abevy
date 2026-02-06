@@ -17,8 +17,8 @@ pub fn init_animations(
     mut cmd: Commands,
     mut anim_handles: ResMut<AnimSerisHandles>,
     mut seris_assets: ResMut<Assets<AnimationSerialization>>,
-    library: Res<AnimationLibrary>,
-    sc_holder: Query<Entity, With<SpriteConfigsHolder>>,
+    library: Res<AnimationCompEntityMap>,
+    sc_holder: Query<Entity, With<EguiSpriteConfigsHolder>>,
 
     //usar state
 ) {
@@ -30,7 +30,7 @@ pub fn init_animations(
 
     let holder = if sc_holder.is_empty() {
         debug!(target: "sprite_animation_init", "Creating AnimationsHolder as SpriteConfigsHolder not found.");
-        cmd.spawn((SpriteConfigsHolder, )).id()
+        cmd.spawn((EguiSpriteConfigsHolder, )).id()
     }
     else {
         sc_holder.single().unwrap()
@@ -52,12 +52,12 @@ pub fn init_animations(
         };
 
         let str_id = StrId::trunc(take(&mut seri.id));
-        
+
         let y_sort = seri.y_sort.clone();
-        
+
         let ent = cmd.spawn_empty().id();
         main_comps.push((ent, (AnimationComp, str_id.clone(), ChildOf(holder), AcZ(seri.z))));
-        
+
         if let Some(y_sort) = y_sort {
             cmd.entity(ent).insert(YSortOrigin(y_sort));
         }
@@ -67,12 +67,12 @@ pub fn init_animations(
         if let Some(scale) = seri.scale {
             cmd.entity(ent).insert(Scale2D::from(scale));
         }
-        
+
         if let Some(color) = seri.color {
             let (red, green, blue, alpha) = color.into();
             cmd.entity(ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
         }
-            
+
         seris.push((ent, seri));
     }
     cmd.try_insert_batch(seris);
@@ -82,7 +82,7 @@ pub fn init_animations(
 
 
 #[allow(unused_parens)]
-pub fn init_animation_sheet_and_handle(mut cmd: Commands, 
+pub fn init_animation_sheet_and_handle(mut cmd: Commands,
     asset_server: Res<AssetServer>,
     mut animation_assets: ResMut<Assets<Animation>>,
     query: Query<(Entity, &StrId, &AnimationSerialization),(With<AnimationSerialization>, Without<AnimationHandle>)>,
@@ -117,7 +117,7 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
                     cols, str_id
                 );
             }
-        }    
+        }
         let (rows, cols) = (rows.max(1), cols.max(1));
 
         let sheet = Spritesheet::new(&image_handle, cols, rows);
@@ -185,7 +185,6 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
         let handle: Handle<Animation> = animation_assets.add(animation.build());
         cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet), ));
 
-       
+
     }
 }
-

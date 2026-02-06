@@ -54,7 +54,6 @@ pub struct BodyPartSeri {
 }
 
 common::define_entity_map_systems!(
-    BodyPartEntityMap,
     common::common_components::StrId,
     BodyPart,
     With<EntityZero>

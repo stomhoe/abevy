@@ -5,19 +5,19 @@ use dimension_shared::DimensionRef;
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
 
-use crate::{body::{body_components::*, body_resources::*, body_sampler::{BodyWeightedSamplersMap, body_sampler_components::*}, }, race::race_components::Race};
+use crate::{body::{body_components::*, body_resources::*, body_sampler::{BodyWeightedSamplerEntityMap, body_sampler_components::*}, }, race::race_components::Race};
 
 /// Resolves SampleBodiesFromStrIds into SampleBodies by converting string IDs to entities
 #[allow(unused_parens)]
 pub fn replace_body_sampler_string_id_by_entity(
     mut cmd: Commands,
     query: Query<(Entity, &SampleBodyFromStrId), (Changed<SampleBodyFromStrId>,)>,
-    sampler_map: Option<Res<BodyWeightedSamplersMap>>,
+    sampler_map: Option<Res<BodyWeightedSamplerEntityMap>>,
     body_map: Option<Res<BodyTreeEntityMap>>,
 ) {
     let Some(sampler_map) = sampler_map else {
         if !query.is_empty() {
-            error!(target: "body_sampler_systems", "BodyWeightedSamplersMap not found, cannot replace sampler string ids");
+            error!(target: "body_sampler_systems", "BodyWeightedSamplerEntityMap not found, cannot replace sampler string ids");
         }
         return;
     };
@@ -33,13 +33,13 @@ pub fn replace_body_sampler_string_id_by_entity(
 
     for (ent, sampler_strid) in query.iter() {
         debug!(target: "body_sampler_systems", "Resolving sampler string ids for entity {:?}", ent);
-        
+
         if let Some(resolved_ent) = resolve_sampler_id_no_sample(
             &sampler_strid.id(),
             &sampler_map,
             &body_map,
         ) {
-            sample_bodies_to_insert.push((ent, SampleBody::new(resolved_ent)));
+            sample_bodies_to_insert.push((ent, SampleTreeEnt::new(resolved_ent)));
         }
     }
 
@@ -48,7 +48,7 @@ pub fn replace_body_sampler_string_id_by_entity(
 
 fn resolve_sampler_id_no_sample(
     id: &common::common_components::StrId,
-    sampler_map: &BodyWeightedSamplersMap,
+    sampler_map: &BodyWeightedSamplerEntityMap,
     body_map: &BodyTreeEntityMap,
 ) -> Option<Entity>{
     if let Ok(body_ent) = body_map.0.get_cloned(id) {
@@ -70,7 +70,7 @@ fn resolve_sampler_id_no_sample(
 pub fn sample_from_body_entities(
     mut cmd: Commands,
     global_gen_settings: Single<&GlobalGenSettings>,
-    query: Query<(Entity, &SampleBody, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleBody>,
+    query: Query<(Entity, &SampleTreeEnt, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleTreeEnt>,
         Without<BeingInstTemplate>, Without<Race>
     )>,
     sampler_query: Query<&EntityWeightedSampler>,

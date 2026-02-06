@@ -128,7 +128,6 @@ impl OpListSerialization {
 
 
 common::define_entity_map_systems!(
-    TerrGenEntityMap,
     common::common_components::StrId,
     Terrgen
 );

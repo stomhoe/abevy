@@ -20,7 +20,6 @@ pub struct TileWeightedSamplerSeri {
 
 
 define_entity_map_systems!(
-    TileWeightedSamplersMap,
     common::common_id_components::StrId,
     TileWeightedSampler
 );

@@ -2,8 +2,7 @@ use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::prelude::MaterialTilemapPlugin;
 use bevy_replicon::prelude::*;
-use common::{common_components::StrId, common_states::AssetLoading};
-use common::define_entity_map_systems;
+use common::{common_states::AssetLoading};
 
 use crate::tile::tile_shader::{tile_material::prelude::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_shader_systems::*};
 
@@ -23,21 +22,21 @@ pub struct TileShaderSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-        (init_shaders, map_tile_shader_entity_map_id_to_entity).chain()
+        (init_shaders, map_tile_shader_id_to_entity).chain()
     ).in_set(TileShaderSystems))
     .add_systems(Update, (
-        
+
         add_image_handle_to_tile_shader,
         update_wavy_time,
-        
+
     ).in_set(TileShaderSystems))
     .add_plugins((
-        plugin_tile_shader_entity_map,
+        plugin_tile_shader,
         MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
         MaterialTilemapPlugin::<VoronoiTextureOverlayMat>::default(),
         MaterialTilemapPlugin::<WavyMat>::default(),
         MaterialTilemapPlugin::<RockyTerrainMat>::default(),
-        
+
         RonAssetPlugin::<ShaderRepeatTexSeri>::new(&["rep1shader.ron"]),
         RonAssetPlugin::<ShaderVoronoiShuffleSeri>::new(&["voroshu.ron"]),
         RonAssetPlugin::<ShaderWavySeri>::new(&["wavy.ron"]),
@@ -58,12 +57,9 @@ pub fn plugin(app: &mut App) {
     .register_type::<ShaderRockyTerrainSerisHandles>()
     .register_type::<ShaderRockyTerrainSeri>()
     .register_type::<TileShader>()
-    .register_type::<TileShaderRef>()
     .register_type::<EguiTileShaderHolder>()
-    
+
     .replicate::<TileShader>()
-    .replicate::<TileShaderRef>()
     .replicate::<EguiTileShaderHolder>()
     ;
 }
-

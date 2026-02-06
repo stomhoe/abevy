@@ -80,7 +80,6 @@ pub struct ShaderRockyTerrainSeri {
 }
 
 common::define_entity_map_systems!(
-    TileShaderEntityMap,
     common::common_components::StrId,
     TileShader
 );

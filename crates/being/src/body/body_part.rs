@@ -21,12 +21,12 @@ pub fn plugin(app: &mut App) {
     .add_plugins((
 		RonAssetPlugin::<BodyPartSeri>::new(&["bodypart.ron"]),
 
-        plugin_body_part_entity_map,
+        plugin_body_part,
     ))
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-		(init_body_parts, map_body_part_entity_map_id_to_entity).chain().in_set(BodyPartSystems),
+    (init_body_parts, map_body_part_id_to_entity).chain().in_set(BodyPartSystems),
     ))
-    .add_systems(Update, map_body_part_entity_map_id_to_entity)
+    .add_systems(Update, map_body_part_id_to_entity)
     .register_type::<BodyPart>()
     .register_type::<BodyPartOf>()
     .register_type::<BodyPartParent>()

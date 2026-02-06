@@ -22,7 +22,7 @@ pub fn plugin(app: &mut App) {
     .add_plugins((
         SpritesheetAnimationPlugin, 
         RonAssetPlugin::<AnimationSerialization>::new(&["anim.ron"]),
-        plugin_animation_library,
+        plugin_animation_comp,
     ))
 
     .add_systems(Update, ((
@@ -45,7 +45,7 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-        (init_animations, map_animation_library_id_to_entity).chain()
+        (init_animations, map_animation_comp_id_to_entity).chain()
     ).in_set(SpriteAnimationSystems)) 
 
     .add_mapped_server_message::<MoveStateUpdated>(Channel::Unordered)
@@ -65,8 +65,8 @@ pub fn plugin(app: &mut App) {
     .register_type::<AnimationSerialization>()
     .register_type::<AnimationHandle>()
     
-    .register_type::<AnimationLibrary>()
-    .init_resource::<AnimationLibrary>()
+    .register_type::<AnimationCompEntityMap>()
+    .init_resource::<AnimationCompEntityMap>()
 
 
     ;

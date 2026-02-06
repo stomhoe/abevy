@@ -8,15 +8,14 @@ use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{
-    common_components::StrId,
     common_states::{AppState, AssetLoading},
 };
 use game_common::{
-    StatefulSessionSystems, game_common::GameplaySystems, game_common_components::EntityZero,
+    StatefulSessionSystems, game_common::GameplaySystems,
 };
 
 use crate::{
-    sprite_building_systems::*,
+    sprite_build_systems::*,
     sprite_components::*,
     sprite_config_init_systems::*,
     sprite_resources::*,
@@ -37,7 +36,7 @@ pub fn plugin(app: &mut App) {
     app.add_plugins((
         RonAssetPlugin::<SpriteConfigSeri>::new(&["sprite.ron"]),
         sprite_sampler::plugin,
-        plugin_sprite_cfg_entity_map,
+        plugin_sprite_config,
     ))
     .add_systems(
         SPRITES_SCHEDULE,
@@ -64,7 +63,7 @@ pub fn plugin(app: &mut App) {
     )
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
-        ((init_sprite_configs, map_sprite_cfg_entity_map_id_to_entity).chain())
+        ((init_sprite_configs, map_sprite_config_id_to_entity).chain())
             .in_set(AcSpriteSystems),
     )
     .configure_sets(
@@ -78,7 +77,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<SpriteSerisHandles>()
     .register_type::<SpriteConfigSeri>()
     .register_type::<MappedAnimations>()
-    .register_type::<SpriteConfigsHolder>()
+    .register_type::<EguiSpriteConfigsHolder>()
     .register_type::<OffsetForChildren>()
     .register_type::<SpriteConfigNotFound>()
     .replicate::<AcZ>()
@@ -90,5 +89,5 @@ pub fn plugin(app: &mut App) {
     .replicate::<OffsetForChildren>()
     .replicate_filtered::<ChildOf, With<SpriteConfig>>()
     .replicate_filtered::<Transform, With<SpriteConfig>>()
-    .replicate::<SpriteConfigsHolder>();
+    .replicate::<EguiSpriteConfigsHolder>();
 }

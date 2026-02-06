@@ -13,10 +13,10 @@ pub fn plugin(app: &mut App) {
     app
         .add_plugins((
             RonAssetPlugin::<DimensionSeri>::new(&["dimension.ron"]),
-            plugin_dimension_entity_map,
+            plugin_dimension,
         ))
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            (init_dimensions, map_dimension_entity_map_id_to_entity).chain().in_set(DimensionSystems),
+            (init_dimensions, map_dimension_id_to_entity_custom).chain().in_set(DimensionSystems),
         ))
         .add_systems(Update, (
             (replace_multiple_string_refs_by_entity_refs, replace_dim_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected)
@@ -26,7 +26,6 @@ pub fn plugin(app: &mut App) {
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
 
-        .register_type::<DimensionRef>()
         .register_type::<MultipleDimensionRefs>()
         .register_type::<DimensionRootOplist>()
         .register_type::<RootInDimensions>()
@@ -34,7 +33,6 @@ pub fn plugin(app: &mut App) {
         .replicate_once::<Transform>()
 
         .replicate::<Dimension>()
-        .replicate::<DimensionRef>()
         .replicate::<MultipleDimensionRefs>()
         .replicate::<DimensionRootOplist>()
         .replicate::<WhitelistedStructureGenTags>()

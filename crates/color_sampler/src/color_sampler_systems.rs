@@ -4,14 +4,14 @@ use bevy_ecs_tilemap::tiles::TileColor;
 use common::common_components::*;
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
-use crate::{ColorWeightedSamplersMap, color_sampler_components::*, color_sampler_resources::* };
+use crate::{ColorSamplerEntityMap, color_sampler_components::*, color_sampler_resources::* };
 
 #[allow(unused_parens)]
 pub fn init_color_samplers(
     mut cmd: Commands,
     mut sampler_handles: ResMut<ColorWeightedSamplerHandles>,
     mut assets: ResMut<Assets<WeightedColorsSeri>>,
-    color_map: Res<ColorWeightedSamplersMap>,
+    color_map: Res<ColorSamplerEntityMap>,
 ) {
     if ! color_map.0.is_empty() { return; }
 

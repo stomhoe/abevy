@@ -1,11 +1,9 @@
-#[allow(unused_imports)]
 use bevy::prelude::*;
-#[allow(unused_imports)]
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use modifier::modifier_components::ModifierTarget;
-
 use crate::being_components::*;
 use crate::body::{body_components::*, body_part::body_part_components::*};
+
 pub fn build_body_tree(
     mut cmd: Commands,
     query: Query<
@@ -43,7 +41,7 @@ fn walk_and_clone_tree(
     modifier_target_query: &Query<&ModifierTarget>,
     being_ent: Entity,
 ) -> Option<Entity> {
-    let Ok((ezero_ref, ezero_body_part_of, bodypart_children)) =
+    let Ok((ezero_ref, _ezero_body_part_of, bodypart_children)) =
         ref_of_bpart_toclone_query.get(ezerotree_curr_node_ent)
     else {
         return None;

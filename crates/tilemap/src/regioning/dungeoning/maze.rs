@@ -18,7 +18,7 @@ pub fn maze_dungeon_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
-    ezeros_map: Res<TileEzerosMap>,
+    ezeros_map: Res<TileEntityMap>,
     settings: Single<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {

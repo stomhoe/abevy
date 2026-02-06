@@ -7,6 +7,7 @@ use common::{common_components::*, common_states::*};
 use serde::{Serialize, Deserialize};
 
 use crate::tile::tile_shader::tile_material::prelude::*;
+use crate::tile::{self, tile_shader::*};
 
 
 
@@ -16,8 +17,7 @@ use crate::tile::tile_shader::tile_material::prelude::*;
 #[require(AssetScoped, Prefix::trunc("TileShaders"), Replicated)]
 pub struct EguiTileShaderHolder;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash, Reflect, MapEntities)]
-pub struct TileShaderRef(#[entities] pub Entity);
+pub type TileShaderRef = tile::tile_shader::tile_shader_resources::TileShaderRef;
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
 impl TileShaderRef {
     pub fn is_none(&self) -> bool {

@@ -1,13 +1,23 @@
-use bevy::{prelude::*, };
 use being_shared::{Grounding, Sentient};
+use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use game_common::{HostSystems, game_common::{GameplaySystems, StatefulSessionSystems} };
+use game_common::{
+    HostSystems,
+    game_common::{GameplaySystems, StatefulSessionSystems},
+};
 use sprite::AcSpriteSystems;
 
-use crate::{being_components::*, being_inst_template::BeingInstTemplateSystems, being_resources::*, being_systems::*, body::{self, BodySystems}, race::RaceSystems};
+use crate::{
+    being_components::*,
+    being_inst_template::BeingInstTemplateSystems,
+    being_resources::*,
+    being_systems::*,
+    body::{self, BodySystems},
+    race::RaceSystems,
+};
 
-#[allow(unused_parens, )]
+#[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
@@ -30,7 +40,7 @@ pub fn plugin(app: &mut App) {
     ))
 
 
-    
+
     .register_type::<Being>()
     .register_type::<ControlledBy>()
     .register_type::<Grounding>()
@@ -41,9 +51,9 @@ pub fn plugin(app: &mut App) {
     .register_type::<CharacterCreatedBy>()
     .register_type::<CreatedCharacters>()
     .register_type::<IsHumanControlled>()
-    
+
     .replicate::<PlayerDirectControllable>()
-    
+
     .replicate::<CharacterCreatedBy>()
     .replicate::<IsHumanControlled>()
     .replicate::<Being>()
@@ -52,9 +62,9 @@ pub fn plugin(app: &mut App) {
     .replicate::<FollowerOf>()
     .replicate::<Sentient>()
 
+    .replicate_filtered::<Transform, With<Being>>()
+    .replicate::<MappedSpritesToSample>()
+
     .replicate_filtered::<ChildOf, With<Being>>()
-    //.replicate_filtered::<Transform, With<Being>>()
     ;
 }
-
-

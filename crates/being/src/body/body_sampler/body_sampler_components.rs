@@ -26,8 +26,8 @@ impl SampleBodyFromStrId {
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities, )]
-pub struct SampleBody(#[entities]pub Entity);
-impl SampleBody {
+pub struct SampleTreeEnt(#[entities]pub Entity);
+impl SampleTreeEnt {
     pub fn new(entity: Entity) -> Self { Self(entity) }
     pub fn entity(&self) -> &Entity { &self.0 }
 }

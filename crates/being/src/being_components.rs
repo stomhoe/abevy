@@ -5,7 +5,7 @@ use bevy_replicon::prelude::{ClientState, Replicated};
 use dimension_shared::DimensionStrIdRef;
 use game_common::game_common_components::{Direction, };
 use modifier::modifier_components::AppliedModifiers;
-use movement::movement_components::{GridLockedMovement, InputMoveVector};
+use movement::movement_components::*;
 use serde::{Deserialize, Serialize};
 use common::common_components::*;
 use sprite_animation_shared::MoveAnimActive;
@@ -13,10 +13,10 @@ use sprite_animation_shared::MoveAnimActive;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities, Default)]
 
-#[require(InputMoveVector, Replicated, MoveAnimActive,
+#[require(InputDirection, MoveState, Replicated, MoveAnimActive,
 Grounding, Visibility, Direction, AppliedModifiers, Transform,
-Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading, 
-GridLockedMovement, )]
+Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading,
+GridLockedMovement )]
 pub struct Being;
 impl Being {
 
@@ -41,7 +41,7 @@ pub struct InfiniteMorale;
 // pub struct BodyParts(Vec<Entity>);
 // impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
-// #[allow(dead_code)] 
+// #[allow(dead_code)]
 #[derive(Component, Debug, MapEntities, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect, )]
 pub struct RaceRef(#[entities] pub Entity);
 
@@ -98,10 +98,10 @@ pub struct CreatedCharacters(Vec<Entity>);
 impl CreatedCharacters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
-
-//TANTO PARA BEINGS COMO PARA OBJETOS Y TILES
-
-//HACER Q AFECTE LA VISIBILIDAD DE LAS COSAS . Q TENGAS
-//DESPUES EN EL TERRAIN_GEN_SYSTEMS SE PUEDE HACER UN MATCH SEGÚN LA DIMENSION ACTUAL DEL PLAYER
-//Y TENER UN PROC DE GENERACIÓN DE TERRAIN POR DIMENSION ANTES DE ENTRAR AL DOBLE FOR DE GENERACIÓN DE CADA TILE
-
+use bevy::ecs::entity::EntityHashMap;
+use sprite_shared::SampleSpriteEnts;
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities, )]
+pub struct MappedSpritesToSample(
+    /// sexent - samplespriteents
+    #[entities] pub EntityHashMap<SampleSpriteEnts>,
+);

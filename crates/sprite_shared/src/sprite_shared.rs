@@ -71,19 +71,8 @@ impl<'a> IntoIterator for &'a HeldSprites {
     }
 }
 
-// #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-// /// DON'T REPLICATE
-// pub struct SpriteConfigStrIds(Vec<StrId>);
-// impl SpriteConfigStrIds {
-//     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-//         Self(ids.into_iter().map(|s| StrId::trunc(s)).collect())
-//     }
-//     pub fn ids(&self) -> &Vec<StrId> { &self.0 }
-// }
-
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-
-pub struct SampleSpritesFromStrIds(Vec<StrId>);
+pub struct SampleSpritesFromStrIds(Vec<StrId>); // correct to be multiple
 impl SampleSpritesFromStrIds {
     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
         Self(ids.into_iter().map(|s| StrId::trunc(s)).collect())
@@ -93,8 +82,8 @@ impl SampleSpritesFromStrIds {
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities, )]
 
-pub struct SampleSprites(#[entities]pub Vec<Entity>);
-impl SampleSprites {
+pub struct SampleSpriteEnts(#[entities]pub Vec<Entity>);
+impl SampleSpriteEnts {
     pub fn new(entities: Vec<Entity>) -> Self {
         Self(entities)
     }

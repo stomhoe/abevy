@@ -5,7 +5,6 @@
 /// # Example
 /// ```ignore
 /// define_entity_map_systems!(
-///     ColorWeightedSamplersMap,
 ///     StrId,
 ///     ColorSampler
 /// );
@@ -13,18 +12,16 @@
 ///
 #[macro_export]
 macro_rules! define_entity_map_systems {
-    // Simplified version - most common case  
+    // Simplified version - most common case
     (
-        $map_name:ident,
         $id_type:ty,
-        $watch_component:ty
+        $main_component:ty
     ) => {
         $crate::define_entity_map_systems!(
-            $map_name,
             $id_type,
-            $watch_component,
+            $main_component,
             (),
-            $watch_component,
+            $main_component,
             "",
             ""
         );
@@ -32,17 +29,15 @@ macro_rules! define_entity_map_systems {
 
     // With additional filters
     (
-        $map_name:ident,
         $id_type:ty,
-        $watch_component:ty,
+        $main_component:ty,
         $with_filters:ty
     ) => {
         $crate::define_entity_map_systems!(
-            $map_name,
             $id_type,
-            $watch_component,
+            $main_component,
             $with_filters,
-            $watch_component,
+            $main_component,
             "",
             ""
         );
@@ -50,29 +45,31 @@ macro_rules! define_entity_map_systems {
 
     // Full version with all parameters
     (
-        $map_name:ident,
         $id_type:ty,
-        $watch_component:ty,
+        $main_component:ty,
         $with_filters:ty,
         $despawn_trigger:ty,
         $target:expr,
-        $entity_type:expr
+        $entity_prefix:expr
     ) => {
         paste::paste! {
-            #[derive(bevy::prelude::Resource, Debug, Clone, Reflect)]
+            #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone, Reflect)]
             #[reflect(Resource)]
-            pub struct $map_name(pub common::common_types::HashIdToEntityMap);
+            pub struct [<$main_component EntityMap>](pub common::common_types::HashIdToEntityMap);
 
-            impl Default for $map_name {
+            impl Default for [<$main_component EntityMap>] {
                 fn default() -> Self {
                     Self(Default::default())
                 }
             }
 
-            pub fn [<map_ $map_name:snake _id_to_entity>](
+            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, bevy::ecs::entity::MapEntities, )]
+            pub struct [<$main_component Ref>](#[entities] pub Entity);
+
+            pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
-                map: Option<ResMut<$map_name>>,
-                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type), (Changed<$id_type>, With<$watch_component>, $with_filters)>,
+                map: Option<ResMut<[<$main_component EntityMap>]>>,
+                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type), (Changed<$id_type>, With<$main_component>, $with_filters)>,
             ) {
                 if let Some(mut map) = map {
                     for (entity, prefix, id) in query.iter() {
@@ -85,7 +82,7 @@ macro_rules! define_entity_map_systems {
                                 "{} '{}' already in {} with entity {:?}, cannot insert entity {:?}",
                                 prefix.cloned().unwrap_or_default(),
                                 id,
-                                stringify!($map_name),
+                                stringify!($main_component),
                                 prev_ent,
                                 entity
                             );
@@ -94,9 +91,9 @@ macro_rules! define_entity_map_systems {
                             trace!(
                                 target: $target,
                                 "Inserted {} '{}' into {} with entity {:?}",
-                                $entity_type,
+                                $entity_prefix,
                                 id,
-                                stringify!($map_name),
+                                stringify!($main_component),
                                 entity
                             );
                         }
@@ -105,16 +102,16 @@ macro_rules! define_entity_map_systems {
                     error!(
                         target: $target,
                         "{} resource not found when trying to add {} to it.",
-                        stringify!($map_name),
-                        $entity_type
+                        stringify!($main_component),
+                        $entity_prefix
                     );
                 }
             }
 
-            pub fn [<remove_ $watch_component:snake _from_ $map_name:snake _on_despawn>](
+            pub fn [<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>](
                 trigger: On<bevy::prelude::Despawn, $despawn_trigger>,
                 query: Query<(&$id_type), $with_filters>,
-                mut map: ResMut<$map_name>,
+                mut map: ResMut<[<$main_component EntityMap>]>,
             ) {
                 if let Ok(id) = query.get(trigger.entity) {
                     if let Ok(found_entity) = map.0.get_cloned(id) {
@@ -125,13 +122,15 @@ macro_rules! define_entity_map_systems {
                 }
             }
 
-            pub fn [<plugin_ $map_name:snake>](app: &mut App) {
+            pub fn [<plugin_ $main_component:snake>](app: &mut App) {
                 use bevy_replicon::prelude::AppRuleExt;
-                app.init_resource::<$map_name>()
-                    .register_type::<$map_name>()
-                    .add_systems(Update, [<map_ $map_name:snake _id_to_entity>])
-                    .add_observer([<remove_ $watch_component:snake _from_ $map_name:snake _on_despawn>])
-                    .replicate::<$watch_component>()
+                app.init_resource::<[<$main_component EntityMap>]>()
+                    .register_type::<[<$main_component EntityMap>]>()
+                    .register_type::<[<$main_component Ref>]>()
+                    .add_systems(Update, [<map_ $main_component:snake _id_to_entity>])
+                    .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])
+                    .replicate::<$main_component>()
+                    .replicate::<[<$main_component Ref>]>()
                     ;
             }
         }

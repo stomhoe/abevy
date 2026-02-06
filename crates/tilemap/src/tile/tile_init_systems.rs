@@ -13,7 +13,7 @@ use bevy_asset_loader::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
-use color_sampler::{ColorWeightedSamplersMap, color_sampler_components::ColorSamplerRef};
+use color_sampler::{ColorSamplerEntityMap, color_sampler_components::ColorSamplerRef};
 use common::{common_components::*, common_tag_components::TagSet};
 use sprite::sprite_components::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
@@ -35,8 +35,8 @@ pub fn init_tiles(
     seris_handles: Res<TileSerisHandles>,
     mut assets: ResMut<Assets<TileSerialization>>,
     shader_map: Res<TileShaderEntityMap>,
-    tiling_map: Res<TileEzerosMap>,
-    color_map: Res<ColorWeightedSamplersMap>,
+    tiling_map: Res<TileEntityMap>,
+    color_map: Res<ColorSamplerEntityMap>,
 ) {
     if !tiling_map.0.0.is_empty() {
         return;
@@ -98,7 +98,7 @@ pub fn init_tiles(
                         cmd.entity(tile_enti).insert(ColorSamplerRef(color_sampler_ent));
                     }
                     Err(err) => {
-                        error!("Tile '{}': Weighted color sampler with id '{}' not found in ColorWeightedSamplersMap", str_id, color_map_str);
+                        error!("Tile '{}': Weighted color sampler with id '{}' not found in ColorSamplerEntityMap", str_id, color_map_str);
                     }
                 }
             }
@@ -283,7 +283,7 @@ pub fn map_min_dist_tiles(
     mut cmd: Commands,
     mut seris_handles: ResMut<TileSerisHandles>,
     mut assets: ResMut<Assets<TileSerialization>>,
-    tiles_map: Res<TileEzerosMap>,
+    tiles_map: Res<TileEntityMap>,
     tile_cats: Res<TileCategories>,
 ) {
     let mut keep_away: EntityHashMap<HashSet<Entity>> = EntityHashMap::default();
@@ -357,7 +357,7 @@ pub fn map_portal_tiles(
         (Entity, &TileStrId, &mut PortalSeri),
         (With<EntityZero>, common::AnyDisabling, Changed<PortalSeri>),
     >,
-    tiles_map: Res<TileEzerosMap>,
+    tiles_map: Res<TileEntityMap>,
 ) {
     info!("Mapping portal tiles");
     portals_ezero_query.iter_mut().for_each(|(ent, str_id, mut portal_seri)| {

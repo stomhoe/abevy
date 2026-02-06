@@ -63,7 +63,7 @@ pub fn init_dimensions(
 }
 
 
-pub fn map_dimension_id_to_entity(
+pub fn map_dimension_id_to_entity_custom(
     map: Option<ResMut<DimensionEntityMap>>,
     query: Query<(Entity, Option<&Prefix>, &StrId), (With<Dimension>, Added<StrId>)>,
 ) {

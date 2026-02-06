@@ -123,7 +123,6 @@ pub struct DungeonSeri {
 }
 
 common::define_entity_map_systems!(
-    TileEzerosMap,
     super::tile_components::TileStrId,
     Tile,
     (With<EntityZero>, common::AnyDisabling)

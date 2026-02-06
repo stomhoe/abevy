@@ -1,30 +1,33 @@
-use being_shared::BeingInstTemplate;
-#[allow(unused_imports)]
+use being_shared::{BeingInstTemplate, RaceRef};
 use bevy::prelude::*;
-#[allow(unused_imports)]
-use bevy_replicon::prelude::*;
 use common::common_components::*;
 use sprite::{
-    sprite_components::SpriteCfgsToBuild, sprite_resources::SpriteCfgEntityMap,
-    sprite_sampler::SpriteWeightedSamplersMap,
+    sprite_components::ScrsToBuild, sprite_resources::SpriteConfigEntityMap,
 };
-use sprite_shared::SampleSprites;
+use ::sprite_shared::*;
 
 use crate::being_inst_template::{
     being_inst_template_components::*, being_inst_template_resources::*,
 };
+use crate::race::race_resources::RaceEntityMap;
+use crate::body::body_resources::BodyTreeEntityMap;
+use faction::faction_resources::FactionEntityMap;
+use faction::faction_components::BelongsToFaction;
 
 pub fn init_being_templates(
     mut cmd: Commands,
     mut seris_handles: ResMut<BitSerisHandles>,
     mut assets: ResMut<Assets<BitSerialization>>,
-    sc_emap: Res<SpriteCfgEntityMap>,
-    sws_emap: Res<SpriteWeightedSamplersMap>,
+    sc_emap: Res<SpriteConfigEntityMap>,
+    race_emap: Res<RaceEntityMap>,
+    faction_emap: Res<FactionEntityMap>,
 ) {
     use std::mem::take;
     let mut main_comps = Vec::new();
-    let mut sprite_distributions_to_insert = Vec::new();
-    let mut scs_to_insert = Vec::new();
+    let mut samples = Vec::new();
+    let mut race_refs_to_insert = Vec::new();
+    let mut faction_refs_to_insert = Vec::new();
+
     for handle in take(&mut seris_handles.handles) {
         if let Some(template_seri) = assets.remove(handle.id()) {
             let str_id = StrId::trunc(&template_seri.id);
@@ -33,49 +36,48 @@ pub fn init_being_templates(
 
             let being_inst_template = BeingInstTemplate {
                 points: template_seri.points,
+                extra_health_multiplier: template_seri.health_multiplier.unwrap_or(1.).max(0.01),
             };
 
             main_comps.push((bit_entity, (being_inst_template, str_id.clone())));
 
             if let Some(sprites_weight_maps) = template_seri.scs_samplers {
-                let mut samplers = Vec::new();
-                for weight_map_id in sprites_weight_maps {
-                    match sws_emap.0.get_cloned(&weight_map_id) {
-                        Ok(sampler_entity) => {
-                            samplers.push(sampler_entity);
-                        }
-                        Err(_) => {
-                            warn!(target: "being_template_init", "BeingTemplate '{}' sprite weighted sampler '{}' not found in SpriteWeightedSamplersMap", str_id, weight_map_id);
-                        }
+                samples.push((bit_entity, SampleSpritesFromStrIds::new(sprites_weight_maps,)));
+
+            }
+
+            if let Some(faction_str_id) = template_seri.fallback_faction {
+                if ! faction_str_id.trim().is_empty(){
+                    let faction_str_id = StrId::trunc(&faction_str_id);
+
+                    if let Ok(faction_entity) = faction_emap.0.get_cloned(&faction_str_id) {
+                        faction_refs_to_insert.push((bit_entity, BelongsToFaction(faction_entity)));
+                    } else {
+                        warn!(target: "being_template_init", "BeingTemplate '{}' faction '{}' not found in FactionEntityMap", str_id, faction_str_id);
                     }
                 }
-                if !samplers.is_empty() {
-                    sprite_distributions_to_insert.push((bit_entity, SampleSprites(samplers)));
+            }
+
+            // Resolve race entity from race string
+            let race_str_id = StrId::trunc(&template_seri.race);
+            match race_emap.0.get_cloned(&race_str_id) {
+                Ok(race_entity) => {
+                    race_refs_to_insert.push((bit_entity, RaceRef(race_entity)));
+                }
+                Err(_) => {
+                    warn!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
                 }
             }
-            if let Some(sprite_ids) = template_seri.scs_ids {
-                let mut sprite_entities = SpriteCfgsToBuild::with_capacity(sprite_ids.len());
-                for sprite_id in sprite_ids {
-                    let Ok(sprite_entity) = sc_emap.0.get_cloned(&sprite_id) else {
-                        warn!(target: "being_template_init", "BeingTemplate '{}' sprite '{}' not found in SpriteCfgEntityMap", str_id, sprite_id);
-                        continue;
-                    };
-                    sprite_entities.0.insert(sprite_entity);
-                }
-                if !sprite_entities.0.is_empty() {
-                    scs_to_insert.push((bit_entity, sprite_entities));
-                }
-            }
+
             if let Some(health_multiplier) = template_seri.health_multiplier {
                 if health_multiplier < 0.0 {
                     warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, setting to 0.0", str_id, health_multiplier);
                 }
-                cmd.entity(bit_entity)
-                    .try_insert(BitHealthMultiplier(health_multiplier.max(0.0)));
             }
         }
     }
     cmd.try_insert_batch(main_comps);
-    cmd.try_insert_batch(sprite_distributions_to_insert);
-    cmd.try_insert_batch(scs_to_insert);
+    cmd.try_insert_batch(samples);
+    cmd.try_insert_batch(faction_refs_to_insert);
+    cmd.try_insert_batch(race_refs_to_insert);
 }

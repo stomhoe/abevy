@@ -16,7 +16,7 @@ pub fn plugin(app: &mut App) {
     ))
  
     .add_plugins((
-        plugin_faction_entity_map,
+        plugin_faction,
     ))
 
     .replicate::<Faction>()

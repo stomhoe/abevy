@@ -19,7 +19,6 @@ pub struct SexSerialization {
 
 
 common::define_entity_map_systems!(
-    SexEntityMap,
     common::common_components::StrId,
     Sex
 );

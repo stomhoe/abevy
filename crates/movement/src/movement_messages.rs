@@ -2,11 +2,10 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 use common::common_components::{StrId};
 use serde::{Deserialize, Serialize};
 
-use crate::movement_components::*;
-
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
 pub struct SendMoveInput {
-    #[entities]pub being_ent: Entity, pub vec: InputMoveVector,
+    #[entities]pub being_ent: Entity,
+    pub vec: Vec2,
 }
 
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
