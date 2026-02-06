@@ -72,20 +72,7 @@ pub struct BeingInstTemplate{
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities, )]
-pub struct BitRef(#[entities] pub Entity);
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities, )]
-pub struct RaceRef(#[entities] pub Entity);
-
-#[derive(Component, Debug, Clone, Reflect, )]
-pub struct RaceStrIdRef(pub StrId);
-
-#[derive(Component, Debug, Clone, Reflect, )]
-pub struct BitStrIdRef(pub StrId);
-
-#[derive(Component, Debug, Clone, Reflect, )]
-pub struct BodyTreeStrIdRef(pub StrId);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]

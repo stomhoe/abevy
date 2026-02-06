@@ -1,17 +1,19 @@
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::f32, platform::collections::{HashMap, HashSet}, tasks::Task};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::f32, platform::collections::{HashMap, HashSet}, };
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_ecs_tilemap::{map::TilemapId, tiles::TilePos};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
 use common::{common_components::Tag, };
-use dimension_shared::DimensionRef;
 use game_common::game_common_components::EntityZero;
 use serde::{Deserialize, Serialize};
-use tilemap_shared::GlobalTilePos;
 
 use crate::tile::tile_components::Tile;
 
+common::define_entity_map_systems!(
+    Tile,
+    (With<EntityZero>, common::AnyDisabling),
+    EntityZero,
+);
 
 
 #[derive(Resource, Debug, Reflect, Default)]
@@ -21,9 +23,9 @@ pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
 
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
+#[reflect(Resource, Default)]
 pub struct TileSerisHandles {
-    #[asset(path = "ron/tilemap/tiling/tile", collection(typed))] 
+    #[asset(path = "ron/tilemap/tiling/tile", collection(typed))]
     pub handles: Vec<Handle<TileSerialization>>,
 }
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
@@ -62,7 +64,7 @@ impl<'a> IntoIterator for &'a mut TileImagePaths {
 impl IntoIterator for TileImagePaths {
     type Item = (String, String);
     type IntoIter = std::vec::IntoIter<(String, String)>;
-    
+
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
@@ -121,9 +123,3 @@ pub struct DungeonSeri {
     pub name: String,
     pub description: String,
 }
-
-common::define_entity_map_systems!(
-    super::tile_components::TileStrId,
-    Tile,
-    (With<EntityZero>, common::AnyDisabling)
-);

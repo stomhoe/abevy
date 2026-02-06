@@ -29,6 +29,5 @@ pub struct BodyTreeSeri {
 }
 
 common::define_entity_map_systems!(
-    common::common_components::StrId,
     BodyTree
 );

@@ -9,12 +9,6 @@ use bevy::{ecs::entity::MapEntities, platform::collections::HashMap};
 use common::{common_components::*, };
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("EguiSgcHolder"),)]
-pub struct EguiSgcHolder;
-
-
-
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGC"), )]
 pub struct StructuredGenConfig{
@@ -27,10 +21,10 @@ pub struct StructuredGenConfig{
 }
 impl StructuredGenConfig {
     pub fn new<S: AsRef<str>>(structure_id: S) -> Self {
-        Self { 
-            structure_id: StrId::trunc(structure_id.as_ref()), 
-            structure_hash_id: HashId::hash(structure_id.as_ref()), 
-            max_per_region: 1024, 
+        Self {
+            structure_id: StrId::trunc(structure_id.as_ref()),
+            structure_hash_id: HashId::hash(structure_id.as_ref()),
+            max_per_region: 1024,
             args: ArgsMap::default(),
         }
     }
@@ -63,4 +57,3 @@ impl AcceptedFilters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGCsWeightedSampler"), )]
 pub struct SgcsWeightedSampler;
-

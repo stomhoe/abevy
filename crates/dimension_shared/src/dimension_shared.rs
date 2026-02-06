@@ -4,7 +4,6 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
-use common::common_types::HashIdToEntityMap;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +11,6 @@ use serde::{Deserialize, Serialize};
 pub struct DimensionSystems;
 
 common::define_entity_map_systems!(
-    StrId,
     Dimension
 );
 
@@ -35,8 +33,6 @@ pub struct RootInDimensions(EntityHashSet);
 impl RootInDimensions { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Reflect)]
-pub struct DimensionStrIdRef(pub StrId);
 impl DimensionStrIdRef {
     pub fn new<S: AsRef<str>>(id: S) -> Result<Self, BevyError> {
         let str_id = StrId::new_with_result(id, 2).map_err(|e| BevyError::from(e.to_string()))?;
@@ -44,7 +40,7 @@ impl DimensionStrIdRef {
     }
     pub fn overworld_fallback() -> Self {
         warn!("Using overworld fallback for DimensionStrIdRef");
-        DimensionStrIdRef(StrId::new_with_result("ow", 0).unwrap())
+        DimensionStrIdRef(StrId::trunc("ow"))
     }
 }
 

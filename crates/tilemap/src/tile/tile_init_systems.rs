@@ -8,10 +8,7 @@ use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
     platform::collections::HashSet,
 };
-#[allow(unused_imports)]
-use bevy_asset_loader::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-#[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use color_sampler::{ColorSamplerEntityMap, color_sampler_components::ColorSamplerRef};
 use common::{common_components::*, common_tag_components::TagSet};
@@ -37,12 +34,16 @@ pub fn init_tiles(
     shader_map: Res<TileShaderEntityMap>,
     tiling_map: Res<TileEntityMap>,
     color_map: Res<ColorSamplerEntityMap>,
+    egui_tiles_holder_query: Query<Entity, With<EguiTilesHolder>>,
 ) {
     if !tiling_map.0.0.is_empty() {
         return;
     }
-
-    let holder = cmd.spawn((TilesEguiHolder,)).id();
+    let holder = if let Ok(first_holder) = egui_tiles_holder_query.single() {
+        first_holder
+    } else {
+        cmd.spawn((EguiTilesHolder,)).id()
+    };
 
     let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();
 
@@ -67,7 +68,7 @@ pub fn init_tiles(
             AddHashIdFromStrId,
             ChildOf(holder),
             AssetScoped,
-            SparedFromHotReloading,
+            //SparedFromHotReloading,
         )).id();
 
         if let Some(tags) = &seri.tags {

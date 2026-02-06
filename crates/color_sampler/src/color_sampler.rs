@@ -6,7 +6,6 @@ use bevy_replicon::prelude::*;
 use crate::{color_sampler_components::*, color_sampler_resources::*, color_sampler_systems::*};
 
 define_entity_map_systems!(
-    StrId,
     ColorSampler
 );
 

@@ -26,7 +26,6 @@ pub fn plugin(app: &mut App) {
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
     (init_body_parts, map_body_part_id_to_entity).chain().in_set(BodyPartSystems),
     ))
-    .add_systems(Update, map_body_part_id_to_entity)
     .register_type::<BodyPart>()
     .register_type::<BodyPartOf>()
     .register_type::<BodyPartParent>()

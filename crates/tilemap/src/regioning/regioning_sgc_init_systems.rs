@@ -9,41 +9,45 @@ use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*, Str
 
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (
-    mut cmd: Commands, 
+    mut cmd: Commands,
     map: Res<StructuredGenConfigEntityMap>,
     mut seris_handles: ResMut<StructureSerisHandles>,
     mut assets: ResMut<Assets<StructuredGenConfigSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,
-    
+    egui_holder_query: Query<Entity, With<EguiSgcsHolder>>
+
 ) {
     if ! map.0.is_empty(){ return;}
-    
-    let mut ent_w_sampler = EntityWeightedSampler::default();
 
-    let holder = cmd.spawn(EguiSgcHolder).id();
-    
+    let mut ent_w_sampler = EntityWeightedSampler::default();
 
     let mut sgcs_comps = Vec::new();
 
     let mut opfilters_to_spawn = Vec::new();
     let mut exclusive_for_dims = Vec::new();
-    
+
+    let egui_ent = if let Ok(egui_ent) = egui_holder_query.single() {
+        egui_ent
+    } else {
+        cmd.spawn(EguiSgcsHolder).id()
+    };
+
     for handle in std::mem::take(&mut seris_handles.handles) {
         let Some(structured_gen_seri) = assets.remove(&handle) else {
             warn!(target: "sgc_init", "Failed to load StructureSeri from handle: {:?}", handle);
             continue;
         };
         info!(target: "sgc_init", "Loading StructureSeri from handle: {:?}", handle);
-        
+
         let main_ent = cmd.spawn_empty().id();
-        
+
 
         let mut gen_cfg = StructuredGenConfig::new(structured_gen_seri.structure_id, );
 
         let sgc_id = StrId::trunc(structured_gen_seri.id.clone());
 
 
-        
+
         if let Some(max_per_region) = structured_gen_seri.max_per_region {
             gen_cfg.max_per_region = max_per_region;
         }
@@ -57,18 +61,18 @@ pub fn init_structured_gen_configs (
             let tags = TagSet::new(tags);
             cmd.entity(main_ent).try_insert(tags);
         }
-        
-        
+
+
         if let Some(whitelisted_filters) = structured_gen_seri.whitelisted_filters{
             if ! whitelisted_filters.is_empty(){
-                
+
                 for opfilter_seri in whitelisted_filters {
-                    
+
                     let Ok(tags) = HashedTagsVec::new_error_if_set_empty(opfilter_seri.tags) else {
                         error!(target: "sgc_init", "OpFilterSerialization within {} has no tags.", structured_gen_seri.id);
                         continue;
                     };
-                    
+
                     let opfilter = OpFilter {
                         start_oplist: Entity::PLACEHOLDER,
                         tags,
@@ -99,25 +103,24 @@ pub fn init_structured_gen_configs (
             }
         }
         if let Some(pdisk_mindist_seed_vec) = structured_gen_seri.pdisk_mindist_and_tag {
-            
+
             let Ok(poisson_disk) = PoissonDisk::multiple_tagged(pdisk_mindist_seed_vec, 3, 16)
             else {
                 error!(target: "sgc_init", "Failed to create PoissonDisk for StructureSeri with id: {}, skipping PoissonDisk creation.", structured_gen_seri.id);
                 continue;
             };
-            
+
             cmd.entity(main_ent).insert(poisson_disk);
         }
-        
+
         ent_w_sampler.insert(main_ent, structured_gen_seri.weight);
 
-        
-        sgcs_comps.push((main_ent, (sgc_id, gen_cfg, ChildOf(holder),)));
+
+        sgcs_comps.push((main_ent, (sgc_id, gen_cfg, )));
     }
     cmd.spawn_batch(opfilters_to_spawn);
     cmd.insert_batch(exclusive_for_dims);
     cmd.insert_batch(sgcs_comps);
-    
-    cmd.spawn((SgcsWeightedSampler, ent_w_sampler, ChildOf(holder),));
-}
 
+    cmd.spawn((SgcsWeightedSampler, ent_w_sampler, ChildOf(egui_ent),));
+}

@@ -76,17 +76,6 @@ pub struct LocalChunkRef(#[entities] pub Entity);
 #[require(
     Replicated,
     AssetScoped,
-    Prefix::trunc("Tiling"),
-    Name,
-    Transform,
-    Visibility
-)]
-pub struct TilesEguiHolder;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(
-    Replicated,
-    AssetScoped,
     Prefix::trunc("PortalsZero"),
     Name,
     Transform,

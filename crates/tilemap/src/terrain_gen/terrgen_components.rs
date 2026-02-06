@@ -33,10 +33,5 @@ pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sy
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Terrgen, Prefix::trunc("Noises"), AssetScoped, Replicated )]
-pub struct EguiNoiseHolder;
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 #[require(Replicated, Prefix::trunc("FailedSearches"), AssetScoped, )]
 pub struct FailedSearchOplistFilterHolder;

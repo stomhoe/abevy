@@ -10,10 +10,6 @@ use sprite_animation_shared::{AnimationState, MoveAnimActive};
 use sprite_shared::sprite_scale_offset::Offset2D;
 
 
-#[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Reflect)]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("EguiSpriteConfigsHolder"), Visibility, Transform)]
-pub struct EguiSpriteConfigsHolder;
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpriteConfig"), )]

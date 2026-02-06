@@ -18,7 +18,6 @@ pub mod terrgen_messages;
 
 
 common::define_entity_map_systems!(
-    common::common_components::StrId,
     OperationList
 );
 
@@ -34,7 +33,7 @@ pub fn plugin(app: &mut App) {
             (launch_terrain_gen_operations, (process_pending_ops_and_collect_tiles,)).in_set(TerrainGenSystems),
             search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
         ))
-        
+
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (
                 init_noises,
@@ -44,22 +43,22 @@ pub fn plugin(app: &mut App) {
                 init_oplists_bifurcations,
                 cycle_detection,
                 assign_rootoplist_to_dimensions,
-            
+
             ).chain(),
             ).in_set(TerrainGenSystems)
         )
 
         .init_resource::<TerrGenLaunchQueue>()
         .init_resource::<TerrGenAsyncTasks>()
-        
+
         .add_plugins((
             RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),
             RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
             plugin_terrgen,
             plugin_operation_list,
         ))
-        
-        
+
+
         .replicate::<OperationList>()
         .replicate::<FnlNoiseComp>()
 
@@ -67,8 +66,8 @@ pub fn plugin(app: &mut App) {
         .replicate_filtered::<ChildOf, With<FnlNoiseComp>>()
         .replicate_filtered::<ChildOf, With<FailedSearchOplistFilterHolder>>()
         .replicate_filtered::<OplistSize, With<OperationList>>()
-        
-        .replicate::<EguiNoiseHolder>()
+
+
         .replicate::<GlobalGenSettings>()
 
         .add_message::<PendingOp>()
@@ -88,9 +87,5 @@ pub fn plugin(app: &mut App) {
 
         ;
 
-        
+
 }
-
-
-
-

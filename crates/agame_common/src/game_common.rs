@@ -98,7 +98,6 @@ pub fn plugin(app: &mut App) {
     .register_type::<WeightedSamplerRef>()
     .register_type::<EntityZeroRef>()
     .register_type::<EntityWeightedSampler>()
-    .replicate::<VisibilityGameState>()
     .replicate::<Persisted>()
     .replicate_once::<Direction>()
     .replicate::<Directionable>()
@@ -106,7 +105,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<Description>()
     .replicate_once::<GlobalTransform>()
     .replicate::<EntityZero>()
-    .replicate_filtered_as::<Visibility, VisibilityGameState, (With<EntityZero>,)>()
-    .replicate_once_as::<Visibility, VisibilityGameState>()
+    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EntityZero>,)>()
+    .replicate_once_as::<Visibility, common::common_components::VisibilityGameState>()
     .replicate::<EntityZeroRef>();
 }

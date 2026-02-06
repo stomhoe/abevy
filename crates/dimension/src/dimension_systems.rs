@@ -13,11 +13,10 @@ use crate::{
 
 #[allow(unused_parens)]
 pub fn replace_dim_string_ref_by_entity_ref(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     dimension_entity_map: Res<DimensionEntityMap>,
     dimension_query: Query<Option<&DimensionRootOplist>>,
     dimension_strid_query: Query<(Entity, Option<&StrId>, &DimensionStrIdRef, Option<&ChildOf>),>,
-    mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(common::AnyDisabling)>,
 ) {
     for (thing_ent, ent_strid, dimension_strid, child_of) in dimension_strid_query.iter() {
 
@@ -37,6 +36,14 @@ pub fn replace_dim_string_ref_by_entity_ref(
             warn!(target: "dimension_loading", "DimensionStrIdRef '{}' does not have a corresponding Dimension entity in the map.", dimension_strid.0);
         }
     }
+}
+
+#[allow(unused_parens)]
+pub fn replace_portal_tile_string_ref_by_entity_ref(
+    mut cmd: Commands,
+    dimension_entity_map: Res<DimensionEntityMap>,
+    mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(common::AnyDisabling)>,
+) {
     for (ent, ent_str_id, portal_seri, mut portal_template) in portal_tile_query.iter_mut() {
         let Ok(dimension_entity) = dimension_entity_map.0.get_cloned(&portal_seri.dest_dimension)
         else {
@@ -47,7 +54,6 @@ pub fn replace_dim_string_ref_by_entity_ref(
 
         cmd.entity(ent).remove::<PortalSeri>();
     }
-
 }
 
 #[allow(unused_parens, )]
@@ -59,7 +65,7 @@ pub fn replace_multiple_string_refs_by_entity_refs(
     for (ent, ent_str_id, string_refs, ) in query.iter() {
         let mut entity_set = EntityHashSet::default();
         for str_ref in string_refs.iter() {
-            let Ok(dim_ent) = dimension_entity_map.0.get_cloned(str_ref) 
+            let Ok(dim_ent) = dimension_entity_map.0.get_cloned(str_ref)
             else {
                 error!(target: "dimension_loading", "{}'s MultipleDimensionStringRefs '{}' does not have a corresponding Entity in DimensionEntityMap.", ent_str_id.cloned().unwrap_or_default(), str_ref);
                 continue;
@@ -73,14 +79,15 @@ pub fn replace_multiple_string_refs_by_entity_refs(
     }
 }
 #[allow(unused_parens)]
-pub fn readjust_childof_to_new_dim_if_parent_was_dimension(mut cmd: Commands, 
+pub fn readjust_childof_to_new_dim_if_parent_was_dimension(mut cmd: Commands,
     dimension_query: Query<(Entity),(With<Dimension>)>,
     query: Query<(Entity, &DimensionRef, &ChildOf),(Changed<DimensionRef>, )>,
 ) {
+    let mut new_child_ofs = Vec::new();
     for (ent, dimension_ref, child_of) in query.iter() {
         if dimension_query.get(child_of.parent()).is_ok() {
-            cmd.entity(ent).insert(ChildOf(dimension_ref.0));
+            new_child_ofs.push((ent, ChildOf(dimension_ref.0)));
         }
     }
+    cmd.try_insert_batch(new_child_ofs);
 }
-

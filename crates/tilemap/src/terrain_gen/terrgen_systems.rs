@@ -12,8 +12,8 @@ use ::tilemap_shared::*;
 
 #[allow(unused_parens)]
 pub fn launch_terrain_gen_operations (
-    mut commands: Commands, 
-    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<ReadyForTerrgen>)>, 
+    mut commands: Commands,
+    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<ReadyForTerrgen>)>,
     dimension_query: Query<(&DimensionRootOplist, ), ()>,
     oplists: Query<(Entity, &OplistSize), (With<OperationList>, )>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
@@ -43,7 +43,7 @@ pub fn launch_terrain_gen_operations (
     commands.try_insert_batch(terr_gen_ops);
 }
 #[allow(unused_parens)]
-pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands, 
+pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
     gen_settings: Single<&GlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ( )>,
@@ -441,7 +441,7 @@ fn process_pending_ops_batch(
 
 
 fn spawn_bifurcation_oplists(
-    ev: &mut PendingOp, my_oplist_size: OplistSize, 
+    ev: &mut PendingOp, my_oplist_size: OplistSize,
     new_pending_ops: &mut Vec<PendingOp>, child_oplist: Entity, child_oplist_size: OplistSize,
 ) {
     if my_oplist_size <= child_oplist_size
@@ -450,14 +450,14 @@ fn spawn_bifurcation_oplists(
         {
             new_pending_ops.push(PendingOp{ oplist: child_oplist, ..(*ev).clone()  });
         }
-    } 
+    }
     else{
-        let x_end = my_oplist_size.x() as i32 / child_oplist_size.x() as i32; 
+        let x_end = my_oplist_size.x() as i32 / child_oplist_size.x() as i32;
         let y_end = my_oplist_size.y() as i32 / child_oplist_size.y() as i32;
         for x in 0..x_end {
             for y in 0..y_end {
                 let gpos = ev.gpos + GlobalTilePos::new(x, y);
-                
+
                 new_pending_ops.push(PendingOp{ gpos, oplist: child_oplist, ..(*ev).clone()  });
             }
         }
@@ -485,7 +485,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
             continue;
         }
 
-        let (filtered_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_ref) = 
+        let (filtered_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_ref) =
             (pos_search.operation_filter, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_ref);
 
         let Some(opfilter) = input.opfilter else {
@@ -548,11 +548,11 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
                 }
             }
             ProbePattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turn_parity) => {
-                trace!(target: "pos_search", "Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}", 
+                trace!(target: "pos_search", "Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}",
                     pos, dir_vec, curr_length_in_dir, turn_parity);
 
                 for _ in 0..iterations_per_batch {
-                    pos = pos + GlobalTilePos(dir_vec.saturating_mul(IVec2::splat(step_size as i32)));  
+                    pos = pos + GlobalTilePos(dir_vec.saturating_mul(IVec2::splat(step_size as i32)));
                     new_pending_ops.push(PendingOp {
                         dimension_ref,
                         oplist: opfilter.start_oplist,
@@ -564,7 +564,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
                     steps_taken += 1;
                     if steps_taken >= curr_length_in_dir {
                         steps_taken = 0;
-                        
+
                         dir_vec = dir_vec.perp();
                         curr_length_in_dir = curr_length_in_dir.saturating_add(turn_parity as u64);
                         turn_parity = !turn_parity;
@@ -580,7 +580,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
                     error!(target: "pos_search", "No more batches to search for {:?}", opfilter);
                     search_failed.push(filtered_op);
                 }
-            },   
+            },
         }
     }
 
@@ -592,13 +592,13 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
 }
 
 #[allow(unused_parens)]
-//input: PosSearch messages. output: SearchFailed or SuitablePosFound(emitted in produce_tiles) 
+//input: PosSearch messages. output: SearchFailed or SuitablePosFound(emitted in produce_tiles)
 pub fn search_suitable_positions(
     mut cmd: Commands,
     mut terrain_probe: ResMut<Messages<TerrainProbe>>, mut mwriter_search_failed: MessageWriter<SearchFailed>,
     mut mwriter_pending_ops: MessageWriter<PendingOp>, mut mreader_suitable_pos_found: MessageReader<SuitablePosFound>,
     studied_ops: Query<&OpFilter, ( )>,
-    failed_search_oplist_filter_holder: Single<Entity, (With<FailedSearchOplistFilterHolder>)>,
+    failed_search_oplist_filter_holder: Query<Entity, (With<FailedSearchOplistFilterHolder>)>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
     mut found_suitable_positions: Local<HashSet<Entity>>,
     mut new_pending_ops: Local<Vec<PendingOp>>,
@@ -629,7 +629,9 @@ pub fn search_suitable_positions(
     });
 
     for failed in failed_entities.drain(..) {
-        cmd.entity(failed).try_insert(ChildOf(failed_search_oplist_filter_holder.entity()));
+        if let Ok(failed_search_oplist_filter_holder) = failed_search_oplist_filter_holder.single() {
+            cmd.entity(failed).try_insert(ChildOf(failed_search_oplist_filter_holder));
+        }
     }
 
     if !new_pending_ops.is_empty() {
@@ -656,6 +658,3 @@ pub fn search_suitable_positions(
         process_search_batch(inputs, found)
     }));
 }
-
-
-

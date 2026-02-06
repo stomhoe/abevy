@@ -5,6 +5,5 @@ use player::player_components::OfSelf;
 use crate::{faction_components::Faction, };
 
 common::define_entity_map_systems!(
-    common::common_components::StrId,
     Faction
 );

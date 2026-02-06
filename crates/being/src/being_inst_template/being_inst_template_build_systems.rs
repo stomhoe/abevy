@@ -4,7 +4,7 @@ use common::common_components::*;
 use faction::faction_components::BelongsToFaction;
 use sprite_shared::SampleSpriteEnts;
 
-use crate::{being_inst_template::{BeingInstTemplateEntityMap, being_inst_template_components::*, being_inst_template_resources::*}, body::body_sampler::body_sampler_components::SampleTreeEnt};
+use crate::{being_inst_template::{BeingInstTemplateEntityMap, being_inst_template_components::*, being_inst_template_resources::*}, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};
 
 #[allow(unused_parens, )]
 pub fn build_being_from_being_inst_template_ref(

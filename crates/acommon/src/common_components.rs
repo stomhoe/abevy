@@ -1,5 +1,5 @@
 use bevy::platform::collections::HashMap;
-use bevy::{ecs::entity_disabling::Disabled, prelude::*};
+use bevy::prelude::*;
 #[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
@@ -141,5 +141,32 @@ impl ImageHolderMap {
     }
     pub fn first_handle(&self) -> Handle<Image> {
         self.0.first().cloned().unwrap_or_else(|| Handle::default())
+    }
+}
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+pub enum VisibilityGameState {
+    #[default]
+    Inherited,
+    Visible,
+    Hidden,
+}
+impl From<Visibility> for VisibilityGameState {
+    fn from(vis: Visibility) -> Self {
+        match vis {
+            Visibility::Inherited => VisibilityGameState::Inherited,
+            Visibility::Visible => VisibilityGameState::Visible,
+            Visibility::Hidden => VisibilityGameState::Hidden,
+        }
+    }
+}
+impl From<VisibilityGameState> for Visibility {
+    fn from(rvis: VisibilityGameState) -> Self {
+        match rvis {
+            VisibilityGameState::Inherited => Visibility::Inherited,
+            VisibilityGameState::Visible => Visibility::Visible,
+            VisibilityGameState::Hidden => Visibility::Hidden,
+        }
     }
 }

@@ -1,4 +1,4 @@
-use bevy::{ecs::entity_disabling::Disabled, time::common_conditions::on_timer};
+use bevy::ecs::entity_disabling::Disabled;
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 
@@ -9,15 +9,15 @@ use {bevy::prelude::*,};
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app
-        .add_systems(Update, 
-            (update_img_sizes_on_load, 
-                add_hash_id_from_str_id, 
+        .add_systems(Update,
+            (update_img_sizes_on_load,
+                add_hash_id_from_str_id,
                 add_hashed_tags, ))
         .add_plugins(())
         .insert_state::<AppState>(AppState::NoSession)
         .init_state::<PreGameState>()
         .init_state::<GamePhase>()
-        
+
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
 
@@ -38,7 +38,8 @@ pub fn plugin(app: &mut App) {
         .replicate::<HashId>()
         .replicate::<ImagePathHolder>()
         .replicate::<TagSet>()
-     
+
+        .replicate::<VisibilityGameState>()
 
     ;
 }

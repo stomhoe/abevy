@@ -16,7 +16,6 @@ pub struct SpriteSamplerSystems;
 
 
 define_entity_map_systems!(
-    StrId,
     SpriteWeightedSampler
 );
 

@@ -1,10 +1,9 @@
 use bevy::{prelude::*};
-use bevy_ui_gradients::{BorderGradient, LinearGradient};
 
 use crate::{ui_components::ButtonBackgroundStyle};
 
 //TODO LA FUENTE
-pub fn text_button<T: Into<String>>(base: impl Bundle, text: T, other_children: impl Bundle, style: Option<ButtonBackgroundStyle>,) -> impl Bundle 
+pub fn text_button<T: Into<String>>(base: impl Bundle, text: T, other_children: impl Bundle, style: Option<ButtonBackgroundStyle>,) -> impl Bundle
 {
 
     let implicit_children = (
@@ -50,7 +49,7 @@ pub const fn color_from_triplicate(value: f32) -> Color {
 //     }
 // }
 // pub fn produce_gradient_border(
-//     thickness: f32, 
+//     thickness: f32,
 //     stops_tl: Vec<bevy_ui_gradients::ColorStop>,
 //     stops_br: Vec<bevy_ui_gradients::ColorStop>,
 // ) -> [BorderBundle; 4]

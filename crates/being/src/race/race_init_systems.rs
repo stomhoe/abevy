@@ -6,7 +6,7 @@ use sprite_shared::SampleSpriteEnts;
 use sprite::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
 
 use sex::sex_resources::SexEntityMap;
-use being_shared::BodyTreeStrIdRef;
+use crate::body::BodyTreeStrIdRef;
 use crate::{being_components::MappedSpritesToSample, race::{race_components::*, race_resources::*}, sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 

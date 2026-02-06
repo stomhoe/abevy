@@ -45,7 +45,6 @@ pub fn plugin(app: &mut App) {
         )
         .in_set(ModifierSystems),
     )
-    .add_systems(Update, map_body_tree_id_to_entity)
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (

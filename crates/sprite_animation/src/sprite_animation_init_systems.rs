@@ -3,7 +3,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 use common::common_components::*;
-use sprite::{sprite_components::*, };
+use sprite::{sprite_components::*, sprite_resources::EguiSpriteConfigsHolder, };
 use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
 use ::sprite_shared::sprite_scale_offset::*;
@@ -19,6 +19,7 @@ pub fn init_animations(
     mut seris_assets: ResMut<Assets<AnimationSerialization>>,
     library: Res<AnimationCompEntityMap>,
     sc_holder: Query<Entity, With<EguiSpriteConfigsHolder>>,
+    anim_holder: Query<Entity, With<EguiAnimationCompsHolder>>,
 
     //usar state
 ) {
@@ -28,7 +29,7 @@ pub fn init_animations(
         return;
     }
 
-    let holder = if sc_holder.is_empty() {
+    let sc_holder = if sc_holder.is_empty() {
         debug!(target: "sprite_animation_init", "Creating AnimationsHolder as SpriteConfigsHolder not found.");
         cmd.spawn((EguiSpriteConfigsHolder, )).id()
     }
@@ -36,7 +37,13 @@ pub fn init_animations(
         sc_holder.single().unwrap()
     };
 
-    let holder = cmd.spawn((AnimationsHolder, ChildOf(holder))).id();
+    let anim_holder = if anim_holder.is_empty() {
+        cmd.spawn((EguiAnimationCompsHolder, )).id()
+    }
+    else {
+        anim_holder.single().unwrap()
+    };
+    cmd.entity(anim_holder).try_insert_if_new(ChildOf(sc_holder));
 
     let mut seris = Vec::new();
 
@@ -56,7 +63,7 @@ pub fn init_animations(
         let y_sort = seri.y_sort.clone();
 
         let ent = cmd.spawn_empty().id();
-        main_comps.push((ent, (AnimationComp, str_id.clone(), ChildOf(holder), AcZ(seri.z))));
+        main_comps.push((ent, (AnimationComp, str_id.clone(), ChildOf(anim_holder), AcZ(seri.z))));
 
         if let Some(y_sort) = y_sort {
             cmd.entity(ent).insert(YSortOrigin(y_sort));

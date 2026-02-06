@@ -1,4 +1,4 @@
-use being_shared::{BeingInstTemplate, RaceRef};
+use being_shared::{BeingInstTemplate, };
 use bevy::prelude::*;
 use common::common_components::*;
 use sprite::{
@@ -9,7 +9,7 @@ use ::sprite_shared::*;
 use crate::being_inst_template::{
     being_inst_template_components::*, being_inst_template_resources::*,
 };
-use crate::race::race_resources::RaceEntityMap;
+use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::body_resources::BodyTreeEntityMap;
 use faction::faction_resources::FactionEntityMap;
 use faction::faction_components::BelongsToFaction;

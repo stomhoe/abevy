@@ -1,4 +1,3 @@
-use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 use crate::{
     common_components::*,
@@ -57,7 +56,7 @@ impl Into<BevyError> for StringLengthError {
     }
 }
 
-impl std::fmt::Display for StringLengthError {
+impl Display for StringLengthError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StringLengthError::TooShort(s, min) => write!(

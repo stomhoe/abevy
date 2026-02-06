@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use common::common_states::AssetLoading;
-use being_shared::BodyTreeStrIdRef;
 
 use crate::race::{race_init_systems::*, race_resources::*, race_components::*};
 
@@ -16,18 +15,15 @@ pub fn plugin(app: &mut App) {
     app
         .add_plugins((
             RonAssetPlugin::<RaceSerialization>::new(&["race.ron"]),
-            plugin_race_entity_map,
+            plugin_race,
         ))
         .add_systems(
             OnEnter(AssetLoading::SpawnReplicatedEntities),
             (
-                (init_races, map_race_entity_map_id_to_entity).chain()
+                (init_races, map_race_id_to_entity).chain()
             ).in_set(RaceSystems)
         )
-        .add_systems(Update, (
-            map_race_entity_map_id_to_entity,
-        ))
-        .register_type::<BodyTreeStrIdRef>()
+
     ;
 }
 

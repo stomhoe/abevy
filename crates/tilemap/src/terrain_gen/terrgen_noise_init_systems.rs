@@ -7,24 +7,24 @@ use std::mem::take;
 
 #[allow(unused_parens)]
 pub fn init_noises(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     mut seris_handles: ResMut<NoiseSerisHandles>,
     mut assets: ResMut<Assets<NoiseSerialization>>,
     terrgen_map: Res<TerrgenEntityMap>,
     settings: Query<&GlobalGenSettings>,
-    noise_holder: Query<Entity, With<EguiNoiseHolder>>,
+    noise_holder: Query<Entity, With<EguiTerrgensHolder>>,
 ) {
     if !terrgen_map.0.is_empty() { return; }
 
     let mut fnl_comps_to_insert = Vec::new();
-    
+
     if settings.is_empty(){
         cmd.spawn((GlobalGenSettings::default(), Prefix::trunc("AA_GLOBAL_GEN_SETTINGS")));
     }
     info!(target: "terrgen_init", "Spawning Global Gen Settings entity");
 
     let holder = if noise_holder.is_empty() {
-        cmd.spawn((EguiNoiseHolder,)).id()
+        cmd.spawn((EguiTerrgensHolder,)).id()
     } else {
         noise_holder.single().unwrap()
     };
@@ -37,10 +37,10 @@ pub fn init_noises(
             Err(e) => {
                 error!(target: "terrgen_init", "Failed to create StrId for noise {}: {}", seri.id, e);
                 continue;
-            }    
+            }
         };
         let mut noise = FastNoiseLite::new(str_id.clone());
-        
+
         if let Some(frequency) = seri.frequency {
             if frequency < 0.00000000001 {
                 error!(target: "terrgen_init", "Frequency is too small (< 0.0001) for noise {}", seri.id);
@@ -93,7 +93,7 @@ pub fn init_noises(
                 }
             }));
         }
-        
+
         if let Some(cellular_return_type) = seri.cellular_return_type {
             noise.set_cellular_return_type(Some(match cellular_return_type {
                 0 => CellularReturnType::CellValue,
@@ -104,7 +104,7 @@ pub fn init_noises(
                 5 => CellularReturnType::Distance2Mul,
                 6 => CellularReturnType::Distance2Div,
                 _ => {
-                    error!(target: "terrgen_init", "Unknown cellular return type: {} for noise {}", cellular_return_type, seri.id);   
+                    error!(target: "terrgen_init", "Unknown cellular return type: {} for noise {}", cellular_return_type, seri.id);
                     continue;
                 }
             }));
@@ -139,4 +139,3 @@ pub fn init_noises(
     }
     cmd.insert_batch(fnl_comps_to_insert);
 }
-

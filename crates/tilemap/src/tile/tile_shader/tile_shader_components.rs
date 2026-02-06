@@ -1,7 +1,5 @@
-use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 pub use bevy_ecs_tilemap::tiles::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::{common_components::*, common_states::*};
 use serde::{Serialize, Deserialize};
@@ -19,11 +17,6 @@ pub struct EguiTileShaderHolder;
 
 pub type TileShaderRef = tile::tile_shader::tile_shader_resources::TileShaderRef;
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
-impl TileShaderRef {
-    pub fn is_none(&self) -> bool {
-        self.0 == Entity::PLACEHOLDER
-    }
-}
 
 #[derive(Component, Debug, PartialEq, Eq, Clone, Reflect, Deserialize, Serialize)]
 #[require(AssetScoped, Prefix::trunc("TileShader"), Replicated)]

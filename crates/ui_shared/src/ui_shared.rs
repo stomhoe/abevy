@@ -1,4 +1,4 @@
-use {crate::ui_systems::*, bevy::input_focus::InputFocus, bevy_ui_gradients::UiGradientsPlugin, bevy_ui_text_input::{SubmitText, TextInputPlugin}};
+use {crate::ui_systems::*, bevy::input_focus::InputFocus, bevy_ui_text_input::{SubmitText, TextInputPlugin}};
 use bevy::prelude::*;
 
 #[allow(unused_parens)]

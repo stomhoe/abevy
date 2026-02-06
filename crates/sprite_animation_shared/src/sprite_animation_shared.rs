@@ -69,6 +69,5 @@ pub struct AnimationComp;
 
 
 common::define_entity_map_systems!(
-    StrId,
     AnimationComp
 );

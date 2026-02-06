@@ -20,15 +20,15 @@ pub struct SpriteAnimationSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        SpritesheetAnimationPlugin, 
+        SpritesheetAnimationPlugin,
         RonAssetPlugin::<AnimationSerialization>::new(&["anim.ron"]),
         plugin_animation_comp,
     ))
 
     .add_systems(Update, ((
-           animate_sprite, 
-           update_animstate_for_clients.run_if(in_state(ServerState::Running)),  
-           client_receive_moving_anim.run_if(in_state(ClientState::Connected)),   
+           animate_sprite,
+           update_animstate_for_clients.run_if(in_state(ServerState::Running)),
+           client_receive_moving_anim.run_if(in_state(ClientState::Connected)),
         ).in_set(SpriteAnimationSystems),
     ),
     )
@@ -39,14 +39,14 @@ pub fn plugin(app: &mut App) {
     ))
 
     .configure_sets(Update, ( SpriteAnimationSystems.in_set(SimRunningSystems),))
-    
-    .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (        
+
+    .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         SpriteAnimationSystems.before(AcSpriteSystems)
     ))
 
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         (init_animations, map_animation_comp_id_to_entity).chain()
-    ).in_set(SpriteAnimationSystems)) 
+    ).in_set(SpriteAnimationSystems))
 
     .add_mapped_server_message::<MoveStateUpdated>(Channel::Unordered)
     //.add_observer(client_receive_moving_anim)
@@ -55,7 +55,6 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<MoveAnimActive>()
     .replicate::<AnimationComp>()
     .replicate::<AnimationSerialization>()
-    .replicate::<AnimationsHolder>()
     .replicate_filtered::<ChildOf, With<AnimationComp>>()
 
 
@@ -64,11 +63,10 @@ pub fn plugin(app: &mut App) {
     .register_type::<AnimSerisHandles>()
     .register_type::<AnimationSerialization>()
     .register_type::<AnimationHandle>()
-    
+
     .register_type::<AnimationCompEntityMap>()
     .init_resource::<AnimationCompEntityMap>()
 
 
     ;
 }
-

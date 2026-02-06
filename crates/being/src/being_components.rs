@@ -41,9 +41,6 @@ pub struct InfiniteMorale;
 // pub struct BodyParts(Vec<Entity>);
 // impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
-// #[allow(dead_code)]
-#[derive(Component, Debug, MapEntities, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect, )]
-pub struct RaceRef(#[entities] pub Entity);
 
 #[derive(Component, Default, Deserialize, Serialize)]
 pub struct PlayerDirectControllable;

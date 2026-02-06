@@ -1,58 +1,57 @@
-
-/// Creates an EntityMap struct with systems and plugin.
-/// Generates struct with forward mapping (id -> entity).
-///
-/// # Example
-/// ```ignore
-/// define_entity_map_systems!(
-///     StrId,
-///     ColorSampler
-/// );
-/// ```
-///
 #[macro_export]
 macro_rules! define_entity_map_systems {
     // Simplified version - most common case
     (
-        $id_type:ty,
-        $main_component:ty
+        $main_component:ident
+        $(,)?
     ) => {
-        $crate::define_entity_map_systems!(
-            $id_type,
-            $main_component,
-            (),
-            $main_component,
-            "",
-            ""
-        );
+        $crate::define_entity_map_systems!($main_component, (), $main_component, stringify!($main_component:snake), "", $main_component, common::common_components::StrId);
     };
 
-    // With additional filters
+    // With additional filters (using StrId by default)
     (
-        $id_type:ty,
-        $main_component:ty,
+        $main_component:ident,
         $with_filters:ty
+        $(,)?
+    ) => {
+        $crate::define_entity_map_systems!($main_component, $with_filters, $main_component, stringify!($main_component:snake), "", $main_component, common::common_components::StrId);
+    };
+
+    // With additional filters and custom id type
+    (
+        $main_component:ident,
+        $with_filters:ty,
+        $despawn_trigger:ty
+        $(,)?
     ) => {
         $crate::define_entity_map_systems!(
-            $id_type,
             $main_component,
             $with_filters,
             $main_component,
+            stringify!($main_component:snake),
             "",
-            ""
+            $despawn_trigger,
+            common::common_components::StrId
         );
     };
 
     // Full version with all parameters
     (
-        $id_type:ty,
-        $main_component:ty,
+        $main_component:ident,
         $with_filters:ty,
-        $despawn_trigger:ty,
+        $abbreviation: ident,
         $target:expr,
-        $entity_prefix:expr
+        $entity_prefix:expr,
+        $despawn_trigger:ty,
+        $id_type:ty
+        $(,)?
     ) => {
         paste::paste! {
+
+            #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone, Reflect)]
+            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform)]
+            pub struct [<Egui $abbreviation sHolder>];
+
             #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone, Reflect)]
             #[reflect(Resource)]
             pub struct [<$main_component EntityMap>](pub common::common_types::HashIdToEntityMap);
@@ -64,7 +63,16 @@ macro_rules! define_entity_map_systems {
             }
 
             #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, bevy::ecs::entity::MapEntities, )]
-            pub struct [<$main_component Ref>](#[entities] pub Entity);
+            pub struct [<$abbreviation Ref>](#[entities] pub Entity);
+            impl [<$abbreviation Ref>] {
+                pub fn is_placeholder(&self) -> bool {
+                    self.0 == Entity::PLACEHOLDER
+                }
+            }
+
+            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, )]
+            pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
+
 
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
@@ -122,15 +130,53 @@ macro_rules! define_entity_map_systems {
                 }
             }
 
+            #[allow(unused_parens)]
+            pub fn [<add_ $main_component:snake _ezeros_to_egui_holder>](
+                mut cmd: Commands,
+                holder_query: Query<(Entity, Option<&Children>), (With<[<Egui $abbreviation sHolder>]>)>,
+                query: Query<(Entity), (With<$main_component>, $with_filters, Without<ChildOf>)>,
+            ) {
+                let holders: Vec<_> = holder_query.iter().collect();
+                let holder_id = if holders.is_empty() {
+                    cmd.spawn(([<Egui $abbreviation sHolder>],)).id()
+                } else {
+                    // Find the holder with the most children
+                    let (max_holder, _) = holders.iter()
+                        .map(|(ent, children)| (ent, children.map(|c| c.len()).unwrap_or(0)))
+                        .max_by_key(|(_, child_count)| *child_count)
+                        .unwrap();
+
+                    // Despawn all other holders
+                    for (ent, _) in holders.iter() {
+                        if ent != max_holder {
+                            cmd.entity(*ent).try_despawn();
+                        }
+                    }
+                    *max_holder
+                };
+
+                let mut child_ofs = Vec::with_capacity(query.iter().size_hint().0);
+                for ezero_ent in query.iter() {
+                    child_ofs.push((ezero_ent, ChildOf(holder_id)));
+                }
+                cmd.try_insert_batch(child_ofs);
+            }
+
             pub fn [<plugin_ $main_component:snake>](app: &mut App) {
                 use bevy_replicon::prelude::AppRuleExt;
                 app.init_resource::<[<$main_component EntityMap>]>()
                     .register_type::<[<$main_component EntityMap>]>()
-                    .register_type::<[<$main_component Ref>]>()
-                    .add_systems(Update, [<map_ $main_component:snake _id_to_entity>])
+                    .register_type::<[<$abbreviation Ref>]>()
+                    .register_type::<[<Egui $abbreviation sHolder>]>()
+                    .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
+                         [<add_ $main_component:snake _ezeros_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
+                    ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])
                     .replicate::<$main_component>()
-                    .replicate::<[<$main_component Ref>]>()
+                    .replicate::<[<$abbreviation Ref>]>()
+                    .replicate::<[<Egui $abbreviation sHolder>]>()
+                    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>()
+
                     ;
             }
         }

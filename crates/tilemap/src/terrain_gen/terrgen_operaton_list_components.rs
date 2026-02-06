@@ -12,9 +12,6 @@ use {common::common_components::*, };
 use strum_macros::{AsRefStr, Display, };
 use std::ops::{Index, IndexMut};
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(AssetScoped, Prefix::trunc("EguiOplistHolder"), Replicated, )]
-pub struct EguiOplistHolder;
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
@@ -22,7 +19,7 @@ pub struct ChunkRef(pub Entity);
 
 #[derive(Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
 pub struct Bifurcation{
-    #[entities] pub oplist: Option<Entity>, 
+    #[entities] pub oplist: Option<Entity>,
     #[entities]pub tiles: Vec<Entity>,
 }
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
@@ -93,5 +90,3 @@ impl OperandElement {
 }
 impl Default for OperandElement { fn default() -> Self { Self::Value(0.0) } }
 impl From<f32> for OperandElement { fn from(v: f32) -> Self { Self::Value(v) } }
-
-

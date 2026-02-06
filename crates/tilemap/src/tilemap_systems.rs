@@ -46,7 +46,7 @@ pub struct MapStruct{
     pub storage: TileStorage,
     pub tmap_hash_id_map: HashIdToTexIndex,
 }
-use std::{collections::HashMap, mem::take, time::Duration};
+use std::{collections::HashMap, mem::take, };
 impl MapStruct {
     pub fn take_texture(&mut self) -> TilemapTexture {take(&mut self.texture)}
     pub fn take_storage(&mut self) -> TileStorage {take(&mut self.storage)}
@@ -54,7 +54,7 @@ impl MapStruct {
 }
 
 
-//ESTRATEGIA PERSISTENCIA: DEJAR TODAS LAS TILES MODIFICADAS EN WORLD (COMO ENTITIES), MARCARLAS CON ALGO. 
+//ESTRATEGIA PERSISTENCIA: DEJAR TODAS LAS TILES MODIFICADAS EN WORLD (COMO ENTITIES), MARCARLAS CON ALGO.
 //NO SE PUEDEN GUARDAR EN ESTRUCTURAS DE DATOS COMO HASHMAPS POR LA INFINIDAD DE COMBINACIONES POSIBLES DE COMPONENTES
 
 
@@ -63,7 +63,7 @@ use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 #[derive(SystemParam)]
 pub struct ProcessTilesPreParams<'w, 's> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,
-    
+
 
     pub tilemaps: Query<'w, 's, (
         &'static mut TilemapTexture,
@@ -102,7 +102,7 @@ pub fn on_tilemap_despawn(trig: On<Despawn, (DimensionRef, ChunkPos, AcZ, Oplist
     let Ok((dimension_ref, chunk_pos, ac_z, oplist_size, tile_size, shader_ref)) = query.get(trig.entity) else {
         return;
     };
-    let opt_shader = if shader_ref.is_none() {
+    let opt_shader = if shader_ref.is_placeholder() {
         None
     } else {
         Some(*shader_ref)
@@ -158,7 +158,7 @@ pub fn process_tiles_pre(
     let mut spritetiles_to_remove_bundle = Vec::with_capacity(tiles_len/20);
 
     let mut child_ofs_to_insert: Vec<(Entity, ChildOf)> = Vec::with_capacity(tiles_len);
-    
+
     let mut i = 0;
     while i < params.collected_tiles.0.len() {
         // To avoid borrow checker issues, destructure the entry first, then operate on it
@@ -261,7 +261,7 @@ pub fn process_tiles_pre(
         );
         i += 1;
     }
-    //DEJAR CON IF NEW ASÍ TILES DE TILEMAP PUEDEN SER REPLICADAS 
+    //DEJAR CON IF NEW ASÍ TILES DE TILEMAP PUEDEN SER REPLICADAS
     cmd.try_insert_batch_if_new(take(&mut params.collected_tiles.0));
 
     for tile_ent in spritetiles_to_remove_bundle.drain(..) {
@@ -359,7 +359,7 @@ fn func_process_tile_into_tilemaps(
     let tile_size = match tile_handles {
         Some(_) => tile_size,
         None => {
-            tile_visible.0 = false; 
+            tile_visible.0 = false;
             error!(target: "tilemap_systems", "Tile entity {:?} has no TileHashIdsHandles", tile_ent);
             return;
         }
@@ -368,7 +368,7 @@ fn func_process_tile_into_tilemaps(
 
     if let Some(mapstruct) = tmap_map.get_mut(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;
-        
+
         let (tmap_handles, storage, tmap_hash_id_map) =
         if let Ok((tmap_handles, storage, tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent)
         {
@@ -382,13 +382,13 @@ fn func_process_tile_into_tilemaps(
         let Vector(tmap_handles) = tmap_handles else {
             return;
         };
-        
+
         if storage.get(&position).is_some() {
             //no overwriting, tile must be despawned first
             return;
         }
-        
-        tilemap_id.0 = tmap_ent;//esto activa un draw 
+
+        tilemap_id.0 = tmap_ent;//esto activa un draw
         storage.set(&position, tile_ent);
 
         let Some(tile_handles) = tile_handles else { return; };
