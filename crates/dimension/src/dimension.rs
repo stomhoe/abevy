@@ -31,7 +31,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<DimensionRootOplist>()
         .register_type::<RootInDimensions>()
 
-        .replicate_once_filtered::<Transform, With<Dimension>>()
+        .replicate_once::<Transform>()
 
         .replicate::<Dimension>()
         .replicate::<DimensionRef>()

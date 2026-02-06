@@ -9,8 +9,7 @@ use crate::{
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct MovementSystems;
 
-const MOVEMENT_SCHEDULE: Update = Update;
-
+const MOVEMENT_SCHEDULE: FixedUpdate = FixedUpdate; //LEAVE ON FIXED UPDATE, JITTERS OTHERWISE
 #[allow(unused_parens, path_statements)]
 pub fn plugin(app: &mut App) {
     app.add_systems(
@@ -20,10 +19,10 @@ pub fn plugin(app: &mut App) {
             //(receive_move_input_from_client, ).run_if(in_state(ServerState::Running)),
             update_human_move_input,
             process_input_direction_modifiers,
-            (process_speed_modifiers, prepare_grid_locked_movement).chain(), //reactivarlos causa jittering
-                                                                             //update_facing_dir,
-                                                                             //modify_transform,
-                                                                             //do_free_movement,
+            (process_speed_modifiers, prepare_grid_locked_movement), //reactivarlos causa jittering
+            update_facing_dir,
+            //modify_transform,
+            //do_free_movement,
         )
             .in_set(MovementSystems),),
     )

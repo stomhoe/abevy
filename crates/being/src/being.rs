@@ -53,7 +53,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<Sentient>()
 
     .replicate_filtered::<ChildOf, With<Being>>()
-    .replicate_filtered::<Transform, With<Being>>()
+    //.replicate_filtered::<Transform, With<Being>>()
     ;
 }
 

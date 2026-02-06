@@ -350,11 +350,7 @@ pub fn process_speed_modifiers(
     mut being_query: Query<(
         Entity,
         &AppliedModifiers,
-        &ProcessedInputMoveVector,
-        &FinalMoveVector,
-        Option<&QueuedGridMoveDir>,
         &mut OutputSpeedMagnitude,
-        Option<&mut Direction>,
         Has<ControlledLocally>,
     )>,
     modifiers_query: Query<
@@ -368,17 +364,7 @@ pub fn process_speed_modifiers(
         (With<WalkSpeed>,),
     >,
 ) {
-    for (
-        being_ent,
-        applied,
-        input_vec,
-        move_vec,
-        queued_dir,
-        mut speed_output,
-        mut facing_dir,
-        controlled_locally,
-    ) in being_query.iter_mut()
-    {
+    for (being_ent, applied, mut speed_output, controlled_locally) in being_query.iter_mut() {
         let is_client = state.get() != &ClientState::Disconnected;
         if is_client && !controlled_locally {
             continue;
@@ -437,48 +423,29 @@ pub fn process_speed_modifiers(
             .min(speed_max)
             .max(0.0);
         speed_output.0 = final_speed;
-
-        if let Some(mut facing_dir) = facing_dir {
-            let dir_vec = if move_vec.0.xy() != Vec2::ZERO {
-                move_vec.0.xy()
-            } else if queued_dir.map_or(false, |q| q.0 != Vec2::ZERO) {
-                queued_dir.unwrap().0
-            } else {
-                input_vec.0.xy()
-            };
-
-            if dir_vec != Vec2::ZERO {
-                *facing_dir =
-                    if dir_vec.x.abs() > dir_vec.y.abs() || (dir_vec.x.abs() == dir_vec.y.abs()) {
-                        if dir_vec.x < 0.0 {
-                            Direction::West
-                        } else {
-                            Direction::East
-                        }
-                    } else {
-                        if dir_vec.y <= 0.0 {
-                            Direction::South
-                        } else {
-                            Direction::North
-                        }
-                    };
-            }
-        }
     }
 }
 
 #[allow(unused_parens)]
 pub fn update_facing_dir(
-    mut query: Query<
-        (&ProcessedInputMoveVector, &FinalMoveVector, &mut Direction),
-        (Without<GridLockedMovement>,),
-    >,
+    mut query: Query<(
+        &ProcessedInputMoveVector,
+        &FinalMoveVector,
+        Option<&QueuedGridMoveDir>,
+        &mut Direction,
+    )>,
 ) {
-    for (ProcessedInputMoveVector(input_vec), FinalMoveVector(move_vec), mut facing_dir) in
-        query.iter_mut()
+    for (
+        ProcessedInputMoveVector(input_vec),
+        FinalMoveVector(move_vec),
+        queued_dir,
+        mut facing_dir,
+    ) in query.iter_mut()
     {
         let dir_vec = if move_vec.xy() != Vec2::ZERO {
             move_vec.xy()
+        } else if queued_dir.map_or(false, |q| q.0 != Vec2::ZERO) {
+            queued_dir.unwrap().0
         } else {
             input_vec.xy()
         };

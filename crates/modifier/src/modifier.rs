@@ -11,8 +11,8 @@ use {
 
 pub fn plugin(app: &mut App) {
     app.add_systems(
-        Update,
-        (update_modifier_effective_values.run_if(on_timer(Duration::from_millis(10000))),)
+        FixedUpdate,
+        (update_modifier_effective_values.run_if(on_timer(Duration::from_millis(200))),)
             .in_set(ModifierSystems),
     )
     .register_type::<ModifierTarget>()
