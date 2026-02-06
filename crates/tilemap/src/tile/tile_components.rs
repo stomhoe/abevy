@@ -178,7 +178,7 @@ pub struct MinDistancesMap(pub EntityHashMap<u64>);
 impl MinDistancesMap {
     #[allow(unused_parens, )]
     pub fn check_min_distances(&self, 
-        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZeroRef, DimensionRef, GlobalTilePos)
+        my_pos: (DimensionRef, GlobalTilePos), new: (EntityZeroId, DimensionRef, GlobalTilePos)
     ) -> bool {
         self.0.get(&new.0.0).map_or(true, |&min_dist| {
             my_pos.0 != new.1 || my_pos.1.distance_squared(&new.2) > (min_dist * min_dist) 
@@ -195,7 +195,7 @@ pub struct TileSamplerHolder;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct WalkSpeed(pub f32); //1.0 es velocidad normal
+pub struct WalkSpeedMultIfOnTop(pub f32); //1.0 es velocidad normal
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct BlocksProjectiles;

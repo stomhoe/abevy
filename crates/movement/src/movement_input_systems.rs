@@ -5,7 +5,7 @@ use being_shared::{ControlledBy, ControlledLocally, HumanControlled};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
 
-use modifier::{modifier_components::*, modifier_move_components::*};
+use modifier::{modifier_components::*, modifier_move_components::*, modifier_types::*};
 use player::{player_components::*, player_resources::KeyboardInputMappings};
 
 use crate::{movement_components::*, movement_messages::{SendMoveInput, TransformFromServer}};
@@ -80,7 +80,7 @@ pub fn process_input_direction_modifiers(
     modifiers_query: Query<(
         Entity,
         &ModifierTarget,
-        &CurrFinalValue,
+        &CurrEffectiveValue,
         &ApplyMode,
         Has<InvertMovement>,
     ), ( )>, 
@@ -102,7 +102,7 @@ pub fn process_input_direction_modifiers(
         }
 
         for effect in effects.iter() {
-            if let Ok((_, _, &CurrFinalValue(val), optype, invert)) = modifiers_query.get(*effect) {
+            if let Ok((_, _, &CurrEffectiveValue(val), optype, invert)) = modifiers_query.get(*effect) {
                 match optype {
                     ApplyMode::Add => {
                         if invert {invert_sum += val;}

@@ -5,8 +5,8 @@ use common::common_components::*;
 use game_common::game_common_string_components::*;
 use sprite::sprite_resources::SpriteCfgEntityMap;
 
-use crate::sex::SexEntityMap;
-use crate::{race::{race_components::*, race_resources::*, RaceEntityMap}, };
+use sex::sex_resources::SexEntityMap;
+use crate::{race::{race_components::*, race_resources::*}, sex, };
 
 pub fn init_races(
     mut cmd: Commands,

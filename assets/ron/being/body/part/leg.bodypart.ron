@@ -1,0 +1,17 @@
+(
+    id: "leg",
+    name: Some("Leg"),
+    coverage_weight: Some(35),
+    hp_capacity: Some(22.0),
+    hp_regen_rate: Some(0.8),
+    depth: Some("surface"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.0),
+    bleed_rate: Some(0.7),
+    blood_capacity: Some(13.0),
+    manipulation: Some(0.2),
+    walk_speed: Some(1.2),
+    swim_speed: Some(0.8),
+    mass: Some(7.0),
+    caloric_burn_rate: Some(2.2),
+)

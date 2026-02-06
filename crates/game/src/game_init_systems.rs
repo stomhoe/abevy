@@ -1,13 +1,13 @@
 use being::being_components::*;
 use common::{common_components::StrId, common_states::AppState};
 use faction::{faction_components::*, faction_resources::*};
-use modifier::{modifier_components::*, modifier_move_components::Speed};
+use modifier::{modifier_components::*, modifier_move_bundles::SpeedModifier, modifier_types::WalkSpeed };
 use player::player_components::*;
+use sprite_shared::SampleSpritesFromStrIds;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings};
 
 use bevy::prelude::*;
 use tilemap_shared::GlobalGenSettings;
-use sprite_shared::SpriteConfigStrIds;
 
 
 #[allow(unused_parens, )]
@@ -59,10 +59,10 @@ pub fn host_on_player_added(mut cmd: Commands,
 
                 BelongsToFaction(host_faction.clone()),
                 Transform::from_translation(Vec3::new(5900.0, 900.0, 0.0)),
-                SpriteConfigStrIds::new(["humanhe0", "humanbo0"]),
+                SampleSpritesFromStrIds::new(["humanhe0", "humanbo0"]),
                 
             )).id();
-            cmd.spawn((ModifierTarget(created_character), ChildOf(created_character), Speed, CurrFinalValue(5000.0)));
+            cmd.spawn(SpeedModifier::new(created_character, created_character, 5000.0, ApplyMode::Add));
 
         }else{
             //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER

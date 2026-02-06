@@ -1,0 +1,16 @@
+(
+    id: "spine",
+    name: Some("Spine"),
+    coverage_weight: Some(12),
+    hp_capacity: Some(18.0),
+    hp_regen_rate: Some(0.8),
+    depth: Some("inside"),
+    vital: Some(true),
+    pain_sensitivity: Some(0.0),
+    bleed_rate: Some(1.0),
+    blood_capacity: Some(8.0),
+    manipulation: Some(0.0),
+    walk_speed: Some(0.9),
+    mass: Some(0.7),
+    caloric_burn_rate: Some(1.5),
+)

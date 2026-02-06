@@ -1,0 +1,15 @@
+(
+    id: "heart",
+    name: Some("Heart"),
+    coverage_weight: Some(15),
+    hp_capacity: Some(20.0),
+    hp_regen_rate: Some(0.6),
+    depth: Some("core"),
+    vital: Some(true),
+    pain_sensitivity: Some(0.0),
+    bleed_rate: Some(2.5),
+    blood_capacity: Some(12.0),
+    manipulation: Some(0.0),
+    mass: Some(1.0),
+    caloric_burn_rate: Some(4.0),
+)

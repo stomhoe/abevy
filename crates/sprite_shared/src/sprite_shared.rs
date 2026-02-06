@@ -11,7 +11,7 @@ use crate::sprite_scale_offset::{self, *};
 
 pub fn plugin(app: &mut App) {
     app
-        .register_type::<SpriteConfigStrIds>()
+        //.register_type::<SpriteConfigStrIds>()
         .register_type::<BaseHolderRef>()
         .register_type::<HeldSprites>()
 
@@ -71,15 +71,15 @@ impl<'a> IntoIterator for &'a HeldSprites {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
-/// DON'T REPLICATE
-pub struct SpriteConfigStrIds(Vec<StrId>);
-impl SpriteConfigStrIds {
-    pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-        Self(ids.into_iter().map(|s| StrId::trunc(s)).collect())
-    }
-    pub fn ids(&self) -> &Vec<StrId> { &self.0 }
-}
+// #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+// /// DON'T REPLICATE
+// pub struct SpriteConfigStrIds(Vec<StrId>);
+// impl SpriteConfigStrIds {
+//     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
+//         Self(ids.into_iter().map(|s| StrId::trunc(s)).collect())
+//     }
+//     pub fn ids(&self) -> &Vec<StrId> { &self.0 }
+// }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
 

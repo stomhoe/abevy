@@ -1,13 +1,11 @@
-
-use bevy::{ecs::entity_disabling::Disabled, prelude::*};
-#[allow(unused_imports)] 
-use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashMap;
-use std::{fmt::Formatter, hash::{Hash, }};
+use bevy::{ecs::entity_disabling::Disabled, prelude::*};
+#[allow(unused_imports)]
+use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
+use std::{fmt::Formatter, hash::Hash};
 
 pub use crate::common_id_components::*;
-
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
 pub struct AssetScoped;
@@ -15,15 +13,14 @@ pub struct AssetScoped;
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
 pub struct SparedFromHotReloading;
 
-
-#[derive(Component, Clone, Default, Serialize, Deserialize, Reflect, )]
+#[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
 pub struct DisplayName(pub String);
 
 impl DisplayName {
     pub fn new<S: AsRef<str>>(name: S) -> Self {
         DisplayName(name.as_ref().to_string())
     }
-    pub fn new_trimmed<S: AsRef<str>>(name: S) -> Self {
+    pub fn trunc<S: AsRef<str>>(name: S) -> Self {
         DisplayName(name.as_ref().trim().to_string())
     }
 
@@ -44,12 +41,13 @@ impl Display for DisplayName {
 impl Debug for DisplayName {
     #[inline(always)]
     fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
-        if self.0.is_empty() {write!(f, "")} else {write!(f, "DN({})", self.0)}
+        if self.0.is_empty() {
+            write!(f, "")
+        } else {
+            write!(f, "DN({})", self.0)
+        }
     }
 }
-
-
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct ImagePathHolder(bevy::asset::AssetPath<'static>);
@@ -77,10 +75,14 @@ impl ImagePathHolder {
     }
 }
 impl Display for ImagePathHolder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 impl From<ImagePathHolder> for bevy::asset::AssetPath<'_> {
-    fn from(holder: ImagePathHolder) -> Self { bevy::asset::AssetPath::from(holder.0) }
+    fn from(holder: ImagePathHolder) -> Self {
+        bevy::asset::AssetPath::from(holder.0)
+    }
 }
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct MultipleImagePathHolder(Vec<bevy::asset::AssetPath<'static>>);
@@ -103,11 +105,9 @@ impl MultipleImagePathHolder {
     }
 }
 
-
 #[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq, Reflect)]
 pub struct ImageHolder(pub Handle<Image>);
 impl ImageHolder {
-
     pub fn new<S>(asset_server: &AssetServer, path: S) -> Result<Self, BevyError>
     where
         S: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
@@ -125,13 +125,12 @@ impl ImageHolder {
     }
 }
 
-
-#[derive(Component, Debug, Clone, Default, )]
+#[derive(Component, Debug, Clone, Default)]
 pub struct ImageHolderMap(pub HashIdIndexMap<Handle<Image>>);
 impl ImageHolderMap {
     pub fn from_paths(
-        asset_server: &AssetServer, 
-        img_paths: HashMap<String, String>, 
+        asset_server: &AssetServer,
+        img_paths: HashMap<String, String>,
     ) -> Result<Self, BevyError> {
         let mut map = HashIdIndexMap::default();
         for (key, path) in img_paths {
@@ -143,6 +142,4 @@ impl ImageHolderMap {
     pub fn first_handle(&self) -> Handle<Image> {
         self.0.first().cloned().unwrap_or_else(|| Handle::default())
     }
-   
 }
-

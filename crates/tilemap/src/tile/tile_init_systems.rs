@@ -96,9 +96,9 @@ pub fn init_tiles(
         }
 
         if let Some(ws) = seri.walk_speed {
-            cmd.entity(tile_enti).insert(WalkSpeed(ws));
+            cmd.entity(tile_enti).insert(WalkSpeedMultIfOnTop(ws));
         } else{
-            cmd.entity(tile_enti).insert(WalkSpeed(1.0));
+            cmd.entity(tile_enti).insert(WalkSpeedMultIfOnTop(1.0));
         }
 
         if seri.blocks_projectiles == Some(true) {
@@ -160,7 +160,7 @@ pub fn init_tiles(
                 }
             }
             if !sprite_cfgs.is_empty() {
-                let sprite_cfgs = SpriteConfigStrIds::new(sprite_cfgs);
+                let sprite_cfgs = SampleSpritesFromStrIds::new(sprite_cfgs);
                 cmd.entity(tile_enti).insert(sprite_cfgs);
             }
         }
@@ -178,8 +178,8 @@ pub fn init_tiles(
 pub fn init_childrensprite(mut cmd: Commands, 
     asset_server: Res<AssetServer>,
     ezero_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>),(With<EntityZero>, )>,
-    childrensprite_query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),(Without<AcAnimationProgresses>, 
-        Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>, With<TileChildSprite>,
+    childrensprite_query: Query<(Entity, AnyOf<(&ImagePathHolder, &EntityZeroId)>),(Without<AcAnimationProgresses>, 
+        Or<(Changed<ImagePathHolder>, Changed<EntityZeroId>)>, With<TileChildSprite>,
         Without<Sprite>, Without<TilemapId>, Without<Children>, Without<TileShader>, common::AnyDisabling)>,
     ) {
         let mut to_insert = Vec::new();
@@ -379,9 +379,9 @@ pub fn init_childrensprite(mut cmd: Commands,
     
     #[allow(unused_parens)]
     pub fn instantiate_portal(mut cmd: Commands,
-        new_portals: Query<(Entity, &GlobalTilePos, &DimensionRef, &EntityZeroRef),(With<SeekingPortalOtherEnd>, Without<EntityZero>, )>,
+        new_portals: Query<(Entity, &GlobalTilePos, &DimensionRef, &EntityZeroId),(With<SeekingPortalOtherEnd>, Without<EntityZero>, )>,
         ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>, )>,
-        pending_search: Query<(Entity, &SearchingForSuitablePos, &GlobalTilePos, &DimensionRef, &EntityZeroRef),()>,
+        pending_search: Query<(Entity, &SearchingForSuitablePos, &GlobalTilePos, &DimensionRef, &EntityZeroId),()>,
         dimension_query: Query<(&DimensionRootOplist), ()>,
         mut ew_pos_search: MessageWriter<TerrainProbe>, 
         mut mass_collected: ResMut<MassCollectedTiles>,
@@ -429,7 +429,7 @@ pub fn init_childrensprite(mut cmd: Commands,
         cmd.entity(filtered_op_ent).try_despawn();
         
         
-        let oe_portal_tileref = EntityZeroRef(portal_template.oe_portal_tile);
+        let oe_portal_tileref = EntityZeroId(portal_template.oe_portal_tile);
         
         debug!(target: "portal_init", "OE Portal TileRef: {:?}", oe_portal_tileref);
         

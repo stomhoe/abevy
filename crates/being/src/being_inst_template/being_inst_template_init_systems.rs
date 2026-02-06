@@ -1,13 +1,18 @@
 use being_shared::BeingInstTemplate;
-#[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
+#[allow(unused_imports)]
+use bevy::prelude::*;
+#[allow(unused_imports)]
+use bevy_replicon::prelude::*;
 use common::common_components::*;
-use sprite::{sprite_components::SpriteCfgsToBuild, sprite_resources::SpriteCfgEntityMap, sprite_sampler::SpriteWeightedSamplersMap};
+use sprite::{
+    sprite_components::SpriteCfgsToBuild, sprite_resources::SpriteCfgEntityMap,
+    sprite_sampler::SpriteWeightedSamplersMap,
+};
 use sprite_shared::SampleSprites;
 
-use crate::being_inst_template::{self, being_inst_template_components::*, being_inst_template_resources::*};
-
-
+use crate::being_inst_template::{
+    being_inst_template_components::*, being_inst_template_resources::*,
+};
 
 pub fn init_being_templates(
     mut cmd: Commands,
@@ -30,7 +35,7 @@ pub fn init_being_templates(
                 points: template_seri.points,
             };
 
-            main_comps.push((bit_entity, (being_inst_template, str_id.clone(), )));
+            main_comps.push((bit_entity, (being_inst_template, str_id.clone())));
 
             if let Some(sprites_weight_maps) = template_seri.scs_samplers {
                 let mut samplers = Vec::new();
@@ -38,7 +43,7 @@ pub fn init_being_templates(
                     match sws_emap.0.get_cloned(&weight_map_id) {
                         Ok(sampler_entity) => {
                             samplers.push(sampler_entity);
-                        },
+                        }
                         Err(_) => {
                             warn!(target: "being_template_init", "BeingTemplate '{}' sprite weighted sampler '{}' not found in SpriteWeightedSamplersMap", str_id, weight_map_id);
                         }
@@ -65,7 +70,8 @@ pub fn init_being_templates(
                 if health_multiplier < 0.0 {
                     warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, setting to 0.0", str_id, health_multiplier);
                 }
-                cmd.entity(bit_entity).try_insert(BitHealthMultiplier(health_multiplier.max(0.0)));
+                cmd.entity(bit_entity)
+                    .try_insert(BitHealthMultiplier(health_multiplier.max(0.0)));
             }
         }
     }
@@ -73,4 +79,3 @@ pub fn init_being_templates(
     cmd.try_insert_batch(sprite_distributions_to_insert);
     cmd.try_insert_batch(scs_to_insert);
 }
-

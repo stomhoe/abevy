@@ -1,31 +1,52 @@
 use core::f32;
 
 use being_shared::{ControlledBy, ControlledLocally, HumanControlled};
-#[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
+#[allow(unused_imports)]
+use bevy::prelude::*;
+#[allow(unused_imports)]
+use bevy_replicon::prelude::*;
 
+use dimension_shared::DimensionRef;
 use game_common::game_common_components::Direction;
+use modifier::modifier_types::WalkSpeed;
 use modifier::{modifier_components::*, modifier_move_components::*};
 use player::{player_components::*, player_resources::KeyboardInputMappings};
 use sprite_animation_shared::MoveAnimActive;
-use dimension_shared::DimensionRef;
-use tilemap::tile::tile_components::{ WalkSpeed};
+use tilemap::tile::tile_components::WalkSpeedMultIfOnTop;
 use tilemap::tilemap_resources::TilesAtGpos;
 use tilemap_shared::GlobalTilePos;
 
-use crate::{movement_components::*, movement_messages::{SendMoveInput, TransformFromServer}};
+use crate::{
+    movement_components::*,
+    movement_messages::{SendMoveInput, TransformFromServer},
+};
 
-#[allow(unused_parens, )]///DON'T DELETE THIS
+#[allow(unused_parens)]
+///DON'T DELETE THIS
 pub fn do_free_movement(
-    client_state : Res<State<ClientState>>,
-    
-    mut query: Query<(&mut FinalMoveVector, &ProcessedInputMoveVector, &OutputSpeedMagnitude, Has<ControlledLocally>), (Without<GridLockedMovement>, )>,
+    client_state: Res<State<ClientState>>,
+
+    mut query: Query<
+        (
+            &mut FinalMoveVector,
+            &ProcessedInputMoveVector,
+            &OutputSpeedMagnitude,
+            Has<ControlledLocally>,
+        ),
+        (Without<GridLockedMovement>,),
+    >,
 ) {
-    for (mut final_move_vector, &ProcessedInputMoveVector(input), &OutputSpeedMagnitude(speed_mag), controlled_locally) in query.iter_mut() {
-
-        if *client_state.get() == ClientState::Connected && !controlled_locally { continue; }
-
+    for (
+        mut final_move_vector,
+        &ProcessedInputMoveVector(input),
+        &OutputSpeedMagnitude(speed_mag),
+        controlled_locally,
+    ) in query.iter_mut()
+    {
+        if *client_state.get() == ClientState::Connected && !controlled_locally {
+            continue;
+        }
 
         if final_move_vector.0 != (input * speed_mag) {
             final_move_vector.0 = (input * speed_mag);
@@ -33,66 +54,88 @@ pub fn do_free_movement(
     }
 }
 
-
 #[allow(unused_parens)]
 pub fn modify_transform(
-    mut query: Query<(&mut Transform, &mut MoveAnimActive, Entity, &FinalMoveVector, ), (Without<GridLockedMovement>, )>,
+    mut query: Query<
+        (
+            &mut Transform,
+            &mut MoveAnimActive,
+            Entity,
+            &FinalMoveVector,
+        ),
+        (Without<GridLockedMovement>,),
+    >,
     time: Res<Time>,
     server_state: Res<State<ServerState>>,
     mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
 ) {
     let mut to_write = Vec::new();
 
-    for (mut transform, mut move_anim, being_ent, move_vec ) in query.iter_mut() {
-        
+    for (mut transform, mut move_anim, being_ent, move_vec) in query.iter_mut() {
         if move_vec.0 != Vec2::ZERO {
-            if !move_anim.0 { move_anim.0 = true; }
-        
+            if !move_anim.0 {
+                move_anim.0 = true;
+            }
+
             transform.translation += (move_vec.0 * time.delta_secs()).extend(0.0);
             if server_state.get() == &ServerState::Running {
-                let to_clients = ToClients { 
-                    mode: SendMode::BroadcastExcept(ClientId::Server), 
+                let to_clients = ToClients {
+                    mode: SendMode::BroadcastExcept(ClientId::Server),
                     message: TransformFromServer::new(being_ent, transform.clone(), false),
                 };
                 to_write.push(to_clients);
             }
-        }
-        else{
-            if move_anim.0 { move_anim.0 = false; }
+        } else {
+            if move_anim.0 {
+                move_anim.0 = false;
+            }
         }
     }
-    ewriter.write_batch(to_write);   
+    ewriter.write_batch(to_write);
 }
-
 
 #[allow(unused_parens)]
 pub fn prepare_grid_locked_movement(
-    mut cmd: Commands,
     tiles_at_gpos: Res<TilesAtGpos>,
-    blocking_tiles: Query<&WalkSpeed, ()>,
+    blocking_tiles: Query<&WalkSpeedMultIfOnTop, ()>,
     time: Res<Time>,
     server_state: Res<State<ServerState>>,
     mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
-    mut query: Query<(
-        &mut FinalMoveVector,
-        &mut Transform,
-        &mut MoveAnimActive,
-        Entity,
-        &ProcessedInputMoveVector,
-        &OutputSpeedMagnitude,
-        &DimensionRef,
-        &mut QueuedGridMoveDir,
-        Has<ControlledLocally>,
-        Has<WallPhaser>,
-    ), (With<GridLockedMovement>)>,
+    mut query: Query<
+        (
+            &mut FinalMoveVector,
+            &mut Transform,
+            &mut MoveAnimActive,
+            Entity,
+            &ProcessedInputMoveVector,
+            &OutputSpeedMagnitude,
+            &DimensionRef,
+            &mut QueuedGridMoveDir,
+            Has<ControlledLocally>,
+            Has<WallPhaser>,
+        ),
+        (With<GridLockedMovement>),
+    >,
 ) {
-    for (mut final_move_vector, mut transform, mut move_anim, being_ent, input, output_speed_mag, &dim_ref, mut queued_dir, controlled_locally, can_phase) in query.iter_mut() {
-        
-        if !controlled_locally { continue; }
+    for (
+        mut final_move_vector,
+        mut transform,
+        mut move_anim,
+        being_ent,
+        input,
+        output_speed_mag,
+        &dim_ref,
+        mut queued_dir,
+        controlled_locally,
+        can_phase,
+    ) in query.iter_mut()
+    {
+        if !controlled_locally {
+            continue;
+        }
 
-
-        
-        let snapped_translation: Vec3 = GlobalTilePos::from(transform.translation.truncate()).to_translation(transform.translation.z);
+        let snapped_translation: Vec3 = GlobalTilePos::from(transform.translation.truncate())
+            .to_translation(transform.translation.z);
         let offset = transform.translation - snapped_translation;
         let is_mid_tile = offset.x.abs() > 0.01 || offset.y.abs() > 0.01;
         let raw_input = input.0;
@@ -119,7 +162,8 @@ pub fn prepare_grid_locked_movement(
                 Vec2::new(0.0, 1.0)
             };
 
-            let finish_current_tile_only = axis_input_dir == Vec2::ZERO || axis_input_dir != active_dir;
+            let finish_current_tile_only =
+                axis_input_dir == Vec2::ZERO || axis_input_dir != active_dir;
 
             if axis_input_dir != Vec2::ZERO && axis_input_dir != active_dir {
                 queued_dir.0 = axis_input_dir;
@@ -137,7 +181,9 @@ pub fn prepare_grid_locked_movement(
         if dir_vec == Vec2::ZERO {
             transform.translation = snapped_translation;
             final_move_vector.0 = Vec2::ZERO;
-            if move_anim.0 { move_anim.0 = false; }
+            if move_anim.0 {
+                move_anim.0 = false;
+            }
             continue;
         }
 
@@ -169,7 +215,9 @@ pub fn prepare_grid_locked_movement(
         let mut remaining_distance = distance;
 
         let is_blocked_at = |target_gpos: GlobalTilePos| -> bool {
-            if can_phase { return false; }
+            if can_phase {
+                return false;
+            }
             for &tile_entity in tiles_at_gpos.tiles_at_pos(dim_ref, target_gpos) {
                 if let Ok(walk_speed) = blocking_tiles.get(tile_entity) {
                     if walk_speed.0 == 0.0 {
@@ -191,9 +239,14 @@ pub fn prepare_grid_locked_movement(
         while remaining_distance > 0.0 && safety < 64 {
             safety += 1;
 
-            let current_snapped = GlobalTilePos::from(current_translation.truncate()).to_translation(current_translation.z);
+            let current_snapped = GlobalTilePos::from(current_translation.truncate())
+                .to_translation(current_translation.z);
             let current_offset = current_translation - current_snapped;
-            let step_distance = if current_dir.x != 0.0 { tile_size.x } else { tile_size.y };
+            let step_distance = if current_dir.x != 0.0 {
+                tile_size.x
+            } else {
+                tile_size.y
+            };
 
             let next_target = current_snapped.xy() + (current_dir * step_distance);
             if is_blocked_at(GlobalTilePos::from(next_target)) {
@@ -269,7 +322,9 @@ pub fn prepare_grid_locked_movement(
         transform.translation = current_translation;
         if moved {
             final_move_vector.0 = last_move_dir * output_speed_mag.0;
-            if !move_anim.0 { move_anim.0 = true; }
+            if !move_anim.0 {
+                move_anim.0 = true;
+            }
 
             if server_state.get() == &ServerState::Running {
                 let to_clients = ToClients {
@@ -280,19 +335,18 @@ pub fn prepare_grid_locked_movement(
             }
         } else {
             final_move_vector.0 = Vec2::ZERO;
-            if move_anim.0 { move_anim.0 = false; }
+            if move_anim.0 {
+                move_anim.0 = false;
+            }
         }
-
     }
 }
 
-
 //PARA HACER ANTÍDOTOS Q ATACAN SUSTANCIAS ESPECÍFICAS, HACER OTRO SISTEMA Q AFECTE EL POWER DE OTROS EFECTOS
-
 
 #[allow(unused_parens)]
 pub fn process_speed_modifiers(
-    state : Res<State<ClientState>>,
+    state: Res<State<ClientState>>,
     mut being_query: Query<(
         Entity,
         &AppliedModifiers,
@@ -301,32 +355,48 @@ pub fn process_speed_modifiers(
         Option<&QueuedGridMoveDir>,
         &mut OutputSpeedMagnitude,
         Option<&mut Direction>,
-        Has<ControlledLocally>
-    ), >,
-    modifiers_query: Query<(
-        Entity,
-        &ModifierTarget,
-        &CurrFinalValue,
-        &ApplyMode,
-        Has<Speed>,
-        Has<MitigatingOnly>
-    ), ( )>, 
+        Has<ControlledLocally>,
+    )>,
+    modifiers_query: Query<
+        (
+            Entity,
+            &ModifierTarget,
+            &CurrEffectiveValue,
+            &ApplyMode,
+            Has<MitigatingOnly>,
+        ),
+        (With<WalkSpeed>,),
+    >,
 ) {
-    for (being_ent, applied, input_vec, move_vec, queued_dir, mut speed_output, mut facing_dir, controlled_locally) in being_query.iter_mut() {
+    for (
+        being_ent,
+        applied,
+        input_vec,
+        move_vec,
+        queued_dir,
+        mut speed_output,
+        mut facing_dir,
+        controlled_locally,
+    ) in being_query.iter_mut()
+    {
         let is_client = state.get() != &ClientState::Disconnected;
-        if is_client && !controlled_locally { continue;}
+        if is_client && !controlled_locally {
+            continue;
+        }
 
         let mut speed_max: f32 = f32::INFINITY;
         let mut speed_min: f32 = 0.0;
 
-        let mut speed_scale: f32 = 1.0;//NO RECOMENDADO USAR MULTIPLIERS (MÁS DIFÍCIL DE BALANCEAR)
-        
+        let mut speed_scale: f32 = 1.0; //NO RECOMENDADO USAR MULTIPLIERS (MÁS DIFÍCIL DE BALANCEAR)
+
         let mut speed_neg_sum: f32 = 0.0;
-        let mut slowdown_mitigators_sum: f32 = 0.0; 
-        let mut speed_sum: f32 = 0.0;//ESTE 400.0 ES PROVISORIO, DESPUES CAMBIAR A 0.<---------------------
+        let mut slowdown_mitigators_sum: f32 = 0.0;
+        let mut speed_sum: f32 = 0.0; //ESTE 400.0 ES PROVISORIO, DESPUES CAMBIAR A 0.<---------------------
 
         let mut effects = EntityHashSet::default();
-        applied.entities().iter().for_each(|&ent| { effects.insert(ent); });
+        applied.entities().iter().for_each(|&ent| {
+            effects.insert(ent);
+        });
 
         for (modifier_ent, target, ..) in modifiers_query.iter() {
             if target.0 == being_ent {
@@ -335,36 +405,37 @@ pub fn process_speed_modifiers(
         }
 
         for effect in effects.iter() {
-            if let Ok((_, _, &CurrFinalValue(val), optype, speed, mitigating)) = modifiers_query.get(*effect) {
+            if let Ok((_, _, &CurrEffectiveValue(val), optype, mitigating)) =
+                modifiers_query.get(*effect)
+            {
                 match optype {
                     ApplyMode::Add => {
-                        if speed {
-                            if val > 0.0 {
-                                if mitigating{
-                                    slowdown_mitigators_sum += val;
-                                } else {
-                                    speed_sum += val;
-                                }
+                        if val > 0.0 {
+                            if mitigating {
+                                slowdown_mitigators_sum += val;
                             } else {
-                                speed_neg_sum += val;
+                                speed_sum += val;
                             }
+                        } else {
+                            speed_neg_sum += val;
                         }
-                    },
-                    ApplyMode::Mul => {
-                        if speed { speed_scale *= val.max(0.0); }
                     }
-                    ApplyMode::Min => {
-                        speed_min = speed_min.max(val)
-                    },
+                    ApplyMode::Mul => {
+                        speed_scale *= val.max(0.0);
+                    }
+                    ApplyMode::Min => speed_min = speed_min.max(val),
                     ApplyMode::Max => {
-                        speed_max = speed_max.min(val).max(0.0); 
-                    },
+                        speed_max = speed_max.min(val).max(0.0);
+                    }
                 }
             }
         }
         speed_sum += (speed_neg_sum + slowdown_mitigators_sum);
 
-        let final_speed = (speed_sum * speed_scale).max(speed_min).min(speed_max).max(0.0);
+        let final_speed = (speed_sum * speed_scale)
+            .max(speed_min)
+            .min(speed_max)
+            .max(0.0);
         speed_output.0 = final_speed;
 
         if let Some(mut facing_dir) = facing_dir {
@@ -377,32 +448,57 @@ pub fn process_speed_modifiers(
             };
 
             if dir_vec != Vec2::ZERO {
-                *facing_dir = if dir_vec.x.abs() > dir_vec.y.abs() || (dir_vec.x.abs() == dir_vec.y.abs()) {
-                    if dir_vec.x < 0.0 {Direction::West} else {Direction::East}
-                } else {
-                    if dir_vec.y <= 0.0 {Direction::South} else {Direction::North}
-                };
+                *facing_dir =
+                    if dir_vec.x.abs() > dir_vec.y.abs() || (dir_vec.x.abs() == dir_vec.y.abs()) {
+                        if dir_vec.x < 0.0 {
+                            Direction::West
+                        } else {
+                            Direction::East
+                        }
+                    } else {
+                        if dir_vec.y <= 0.0 {
+                            Direction::South
+                        } else {
+                            Direction::North
+                        }
+                    };
             }
         }
     }
 }
 
-
 #[allow(unused_parens)]
-pub fn update_facing_dir(mut query: Query<(&ProcessedInputMoveVector, &FinalMoveVector, &mut Direction), (Without<GridLockedMovement>, )>) {
-    for (ProcessedInputMoveVector(input_vec), FinalMoveVector(move_vec), mut facing_dir) in query.iter_mut() {
+pub fn update_facing_dir(
+    mut query: Query<
+        (&ProcessedInputMoveVector, &FinalMoveVector, &mut Direction),
+        (Without<GridLockedMovement>,),
+    >,
+) {
+    for (ProcessedInputMoveVector(input_vec), FinalMoveVector(move_vec), mut facing_dir) in
+        query.iter_mut()
+    {
         let dir_vec = if move_vec.xy() != Vec2::ZERO {
             move_vec.xy()
         } else {
             input_vec.xy()
         };
 
-        if dir_vec == Vec2::ZERO {continue;}
+        if dir_vec == Vec2::ZERO {
+            continue;
+        }
 
         *facing_dir = if dir_vec.x.abs() > dir_vec.y.abs() || (dir_vec.x.abs() == dir_vec.y.abs()) {
-            if dir_vec.x < 0.0 {Direction::West} else {Direction::East}
+            if dir_vec.x < 0.0 {
+                Direction::West
+            } else {
+                Direction::East
+            }
         } else {
-            if dir_vec.y <= 0.0 {Direction::South} else {Direction::North}
+            if dir_vec.y <= 0.0 {
+                Direction::South
+            } else {
+                Direction::North
+            }
         };
     }
 }

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
-use common::common_types::HashIdToEntityMap;
+
+use crate::sex::sex_components::Sex;
 
 #[derive(AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
@@ -15,3 +16,10 @@ pub struct SexSerialization {
     pub name: String,
     pub description: Option<String>,
 }
+
+
+common::define_entity_map_systems!(
+    SexEntityMap,
+    common::common_components::StrId,
+    Sex
+);

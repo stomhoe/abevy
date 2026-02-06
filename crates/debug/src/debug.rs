@@ -1,74 +1,63 @@
-#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)]
+use bevy::prelude::*;
 use bevy_fps_counter::FpsCounterPlugin;
-#[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_inspector_egui::bevy_egui::{EguiPrimaryContextPass, };
+use bevy_inspector_egui::bevy_egui::EguiPrimaryContextPass;
+#[allow(unused_imports)]
+use bevy_replicon::prelude::*;
 
 use crate::{
-    being_details_inspector::*,
-    beings_list_window::*,
-    chunk_details_inspector::*,
-    debug_chunking_window::*,
-    debug_fonts::*,
-    debug_messages::*,
-    debug_resources::*,
-    debug_systems::*,
-    debug_window_systems::*,
-    exempted_entity_details_inspector::*,
-    portals_details_inspector::*,
-    portals_list_window::*,
-    regions_list_window::*,
-    region_details_inspector::*,
-    registered_positions_window::*,
-    sprite_details_inspector::*,
-    sprites_list_window::*,
-    terrgen_editor_window::*,
-    tile_details_inspector::*,
+    being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
+    debug_chunking_window::*, debug_fonts::*, debug_messages::*, debug_resources::*,
+    debug_systems::*, debug_window_systems::*, exempted_entity_details_inspector::*,
+    portals_details_inspector::*, portals_list_window::*, region_details_inspector::*,
+    regions_list_window::*, registered_positions_window::*, sprite_details_inspector::*,
+    sprites_list_window::*, terrgen_editor_window::*, tile_details_inspector::*,
     tilemap_details_inspector::*,
 };
 
-#[allow(unused_parens, )]
+#[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
-    app
-    .add_plugins((
-        FpsCounterPlugin
-    ))
-    .add_systems(Update, (
-        setup_debug_fonts,
-        debug_increase_speed,
-        debug_toggle_states_window,
-        debug_toggle_main_menu,
-        receive_increase_speed_from_client.run_if(in_state(ServerState::Running))
-    ))
-    .add_systems(EguiPrimaryContextPass, (
-        main_menu_window,
-        states_window,
-        debug_chunking_window,
-        regions_list_window,
-        beings_list_window,
-        portals_list_window,
-        sprites_list_window,
-        terrgen_editor_window,
-        global_gen_settings_editor_window,
-        registered_positions_window,
-    ))
-    .add_systems(EguiPrimaryContextPass, (
-        tile_details_inspector,
-        chunk_details_inspector,
-        region_details_inspector,
-        portals_details_inspector,
-        tilemap_details_inspector,
-        being_details_inspector,
-        exempted_entity_details_inspector,
-        sprite_details_inspector,
-    ))
-    .init_resource::<DubugWindowsVisibility>()
-    .init_resource::<DebugSelectedEntities>()
-    .init_resource::<DebugFontsInitialized>()
-    .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered)
-    ;
+    app.add_plugins((FpsCounterPlugin))
+        .add_systems(
+            Update,
+            (
+                setup_debug_fonts,
+                debug_increase_speed,
+                debug_toggle_states_window,
+                debug_toggle_main_menu,
+                receive_increase_speed_from_client.run_if(in_state(ServerState::Running)),
+            ),
+        )
+        .add_systems(
+            EguiPrimaryContextPass,
+            (
+                main_menu_window,
+                states_window,
+                debug_chunking_window,
+                regions_list_window,
+                beings_list_window,
+                portals_list_window,
+                sprites_list_window,
+                terrgen_editor_window,
+                global_gen_settings_editor_window,
+                registered_positions_window,
+            ),
+        )
+        .add_systems(
+            EguiPrimaryContextPass,
+            (
+                tile_details_inspector,
+                chunk_details_inspector,
+                region_details_inspector,
+                portals_details_inspector,
+                tilemap_details_inspector,
+                being_details_inspector,
+                exempted_entity_details_inspector,
+                sprite_details_inspector,
+            ),
+        )
+        .init_resource::<DubugWindowsVisibility>()
+        .init_resource::<DebugSelectedEntities>()
+        .init_resource::<DebugFontsInitialized>()
+        .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered);
 }
-
-
-
-
-

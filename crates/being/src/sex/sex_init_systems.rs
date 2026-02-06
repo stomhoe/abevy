@@ -29,24 +29,3 @@ pub fn init_sexes(
     }
 }
 
-pub fn map_sex_id_to_entity(
-    mut cmd: Commands,
-    map: Option<ResMut<SexEntityMap>>,
-    query: Query<(Entity, Option<&Prefix>, &StrId), (Changed<StrId>, With<Sex>)>,
-) {
-    if let Some(mut map) = map {
-        for (entity, prefix, str_id) in query.iter() {
-            if let Err(prev_ent) = map.0.insert(str_id, entity) {
-                if prev_ent.0 == entity {
-                    continue;
-                }
-                error!(target: "sex_init", "{} '{}' already in SexEntityMap with entity {:?}, cannot insert entity {:?}", prefix.cloned().unwrap_or_default(), str_id, prev_ent, entity);
-                cmd.entity(entity).try_despawn();
-            } else {
-                trace!(target: "sex_init", "Inserted sex '{}' into SexEntityMap with entity {:?}", str_id, entity);
-            }
-        }
-    } else {
-        error!(target: "sex_init", "SexEntityMap resource not found when trying to add sex to it.");
-    }
-}

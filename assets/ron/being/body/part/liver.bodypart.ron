@@ -1,0 +1,15 @@
+(
+    id: "liver",
+    name: Some("Liver"),
+    coverage_weight: Some(10),
+    hp_capacity: Some(15.0),
+    hp_regen_rate: Some(1.2),
+    depth: Some("inside"),
+    vital: Some(true),
+    pain_sensitivity: Some(0.0),
+    bleed_rate: Some(1.5),
+    blood_capacity: Some(9.0),
+    manipulation: Some(0.0),
+    mass: Some(70.0),
+    caloric_burn_rate: Some(2.2),
+)

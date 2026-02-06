@@ -9,39 +9,39 @@ use ::sprite_shared::*;
 
 use crate::{sprite_components::*, sprite_resources::* };
 
-#[allow(unused_parens, )]
-pub fn replace_string_ids_by_entities(
-    mut cmd: Commands,
-    query: Query<(Entity, &SpriteConfigStrIds, ), (Changed<SpriteConfigStrIds>,)>,
-    map: Option<Res<SpriteCfgEntityMap>>,
-) {
-    let Some(map) = map else {
-        if ! query.is_empty() {
-            error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
-        }
-        return;
-    };
-    let mut sprite_cfgs_to_build = Vec::new();
+// #[allow(unused_parens, )]
+// pub fn replace_string_ids_by_entities(
+//     mut cmd: Commands,
+//     query: Query<(Entity, &SpriteConfigStrIds, ), (Changed<SpriteConfigStrIds>,)>,
+//     map: Option<Res<SpriteCfgEntityMap>>,
+// ) {
+//     let Some(map) = map else {
+//         if ! query.is_empty() {
+//             error!(target: "sprite_building", "SpriteCfgEntityMap not found, cannot replace string ids");
+//         }
+//         return;
+//     };
+//     let mut sprite_cfgs_to_build = Vec::new();
     
-    query.iter().for_each(|(ent, str_ids)| {
+//     query.iter().for_each(|(ent, str_ids)| {
         
-        debug!(target: "sprite_building", "Replacing string ids for entity {:?}", ent);
-        let mut entities_to_build = EntityHashSet::new();
-        for id in str_ids.ids() {
-            if let Ok(sprite_ent) = map.0.get_cloned(id) {
-                debug!(target: "sprite_building", "Replacing string id '{}' with entity {:?}", id, sprite_ent);
-                entities_to_build.insert(sprite_ent);
-            } else {
-                error!(target: "sprite_building", "ekf SpriteConfigEntityMap does not contain entity for id: {}", id);
-            }
-        }
-        if ! entities_to_build.is_empty() {
+//         debug!(target: "sprite_building", "Replacing string ids for entity {:?}", ent);
+//         let mut entities_to_build = EntityHashSet::new();
+//         for id in str_ids.ids() {
+//             if let Ok(sprite_ent) = map.0.get_cloned(id) {
+//                 debug!(target: "sprite_building", "Replacing string id '{}' with entity {:?}", id, sprite_ent);
+//                 entities_to_build.insert(sprite_ent);
+//             } else {
+//                 error!(target: "sprite_building", "ekf SpriteConfigEntityMap does not contain entity for id: {}", id);
+//             }
+//         }
+//         if ! entities_to_build.is_empty() {
             
-            sprite_cfgs_to_build.push((ent, SpriteCfgsToBuild(entities_to_build)));
-        }
-    });
-    cmd.try_insert_batch(sprite_cfgs_to_build);
-}
+//             sprite_cfgs_to_build.push((ent, SpriteCfgsToBuild(entities_to_build)));
+//         }
+//     });
+//     cmd.try_insert_batch(sprite_cfgs_to_build);
+// }
 
 #[allow(unused_parens)]
 pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
@@ -51,7 +51,7 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
     spritecfgs_query: Query<(Entity, &StrId, Option<&SpriteCfgsToBuild>), 
     (With<SpriteConfig>, common::AnyDisabling)>,
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
-    sprite_config_ref_query: Query<&EntityZeroRef, common::AnyDisabling>,
+    sprite_config_ref_query: Query<&EntityZeroId, common::AnyDisabling>,
 ) {
     father_query.iter().for_each(|(father_to_sprite, to_build, baseholder_ref)| {
         
@@ -76,7 +76,7 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
             } 
             let sprite = cmd.spawn((
                 str_id.clone(),
-                EntityZeroRef(spritecfg_ent),
+                EntityZeroId(spritecfg_ent),
                 Visibility::default(),
                 Transform::default(),
                 AcAnimationProgresses::default(),
@@ -106,9 +106,9 @@ pub fn add_spritechildren_and_comps(//SOLO SERVER PA SYNQUEAR
 #[allow(unused_parens)]
 pub fn become_child_of_sprite_with_tag(
     mut cmd: Commands,
-    new_sprites: Query<(Entity, &BaseHolderRef, &EntityZeroRef), (Without<SpriteConfig>, Changed<EntityZeroRef>,)>,
+    new_sprites: Query<(Entity, &BaseHolderRef, &EntityZeroId), (Without<SpriteConfig>, Changed<EntityZeroId>,)>,
     sprite_holder: Query<&HeldSprites>,
-    other_sprites: Query<(Entity, &EntityZeroRef), (Without<SpriteConfig>, )>,
+    other_sprites: Query<(Entity, &EntityZeroId), (Without<SpriteConfig>, )>,
     becomes_query: Query<(&BecomeChildOfSpriteWithTag), (common::AnyDisabling)>,
     other_cats: Query<&TagSet, (common::AnyDisabling)>,
 ) {

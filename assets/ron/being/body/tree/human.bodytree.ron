@@ -1,0 +1,71 @@
+(
+    id: "human_body",
+    name: "Human Body",
+    tags: Some(["humanoid"]),
+    root: (
+        part_id: "torso",
+        label_override: Some("Torso"),
+        children: [
+            (
+                part_id: "neck",
+                label_override: Some("Neck"),
+                children: [
+                    (
+                        part_id: "head",
+                        label_override: Some("Head"),
+                        children: [
+                            (part_id: "brain", label_override: Some("Brain"), children: []),
+                            (part_id: "eye", label_override: Some("Left Eye"), children: []),
+                            (part_id: "eye", label_override: Some("Right Eye"), children: []),
+                            (part_id: "ear", label_override: Some("Left Ear"), children: []),
+                            (part_id: "ear", label_override: Some("Right Ear"), children: []),
+                            (part_id: "nose", label_override: Some("Nose"), children: []),
+                            (part_id: "mouth", label_override: Some("Mouth"), children: []),
+                        ],
+                    ),
+                ],
+            ),
+            (
+                part_id: "chest",
+                label_override: Some("Chest"),
+                children: [
+                    (part_id: "heart", label_override: Some("Heart"), children: []),
+                    (part_id: "lung", label_override: Some("Lung"), children: []),
+                ],
+            ),
+            (
+                part_id: "abdomen",
+                label_override: Some("Abdomen"),
+                children: [
+                    (part_id: "stomach", label_override: Some("Stomach"), children: []),
+                    (part_id: "liver", label_override: Some("Liver"), children: []),
+                    (part_id: "kidney", label_override: Some("Kidney"), children: []),
+                ],
+            ),
+            (
+                part_id: "spine",
+                label_override: Some("Spine"),
+                children: [],
+            ),
+            (
+                part_id: "pelvis",
+                label_override: Some("Pelvis"),
+                children: [],
+            ),
+            (
+                part_id: "arm",
+                label_override: Some("Arm"),
+                children: [
+                    (part_id: "hand", label_override: Some("Hand"), children: []),
+                ],
+            ),
+            (
+                part_id: "leg",
+                label_override: Some("Leg"),
+                children: [
+                    (part_id: "foot", label_override: Some("Foot"), children: []),
+                ],
+            ),
+        ],
+    ),
+)

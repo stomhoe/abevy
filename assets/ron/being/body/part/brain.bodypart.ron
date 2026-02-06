@@ -1,0 +1,15 @@
+(
+    id: "brain",
+    name: Some("Brain"),
+    coverage_weight: Some(10),
+    hp_capacity: Some(15.0),
+    hp_regen_rate: Some(0.5),
+    depth: Some("core"),
+    vital: Some(true),
+    pain_sensitivity: Some(0.0),
+    bleed_rate: Some(2.0),
+    blood_capacity: Some(8.0),
+    manipulation: Some(0.0),
+    mass: Some(1.0),
+    caloric_burn_rate: Some(5.0),
+)

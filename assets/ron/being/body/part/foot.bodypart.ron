@@ -1,0 +1,17 @@
+(
+    id: "foot",
+    name: Some("Foot"),
+    coverage_weight: Some(12),
+    hp_capacity: Some(14.0),
+    hp_regen_rate: Some(0.8),
+    depth: Some("surface"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.1),
+    bleed_rate: Some(0.6),
+    blood_capacity: Some(8.0),
+    manipulation: Some(0.1),
+    walk_speed: Some(1.3),
+    swim_speed: Some(0.9),
+    mass: Some(0.6),
+    caloric_burn_rate: Some(1.5),
+)

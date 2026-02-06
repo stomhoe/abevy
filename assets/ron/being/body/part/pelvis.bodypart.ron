@@ -1,0 +1,16 @@
+(
+    id: "pelvis",
+    name: Some("Pelvis"),
+    coverage_weight: Some(15),
+    hp_capacity: Some(20.0),
+    hp_regen_rate: Some(0.9),
+    depth: Some("inside"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.0),
+    bleed_rate: Some(0.7),
+    blood_capacity: Some(12.0),
+    manipulation: Some(0.1),
+    swim_speed: Some(0.9),
+    mass: Some(1.0),
+    caloric_burn_rate: Some(1.5),
+)

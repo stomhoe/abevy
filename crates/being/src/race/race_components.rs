@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 
 
-#[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Component, Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize, )]
 #[require(Replicated, Prefix::trunc("Race"))]
 pub struct Race;
 

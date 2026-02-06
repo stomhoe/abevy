@@ -15,5 +15,6 @@
     sentient: Some(true),
     sprite_pool: ["humanbo0", "humanhe0"],
     selectable_sprites: Some(["humanbo0", "humanhe0"]),
+    body_tree: "human_body",
 
 )

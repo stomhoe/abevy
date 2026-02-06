@@ -5,10 +5,6 @@ use bevy::platform::collections::HashMap;
 use common::{common_components::*, common_tag_components::TagSet};
 use serde::{Deserialize, Serialize};
 
-//USAR Name
-
-//USAR CHILDOF PARA Q TENGAN UNA FUENTE Q AL SER BORRADA BORRA LOS EFECTOS. P. ej: LEG
-
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 #[relationship(relationship_target = AppliedModifiers)]
 #[require(AssetScoped, SparedFromHotReloading, Replicated, ApplyMode::Add, Prefix::trunc("Modifier"), )]
@@ -29,27 +25,27 @@ pub type ModifierTags = TagSet;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-pub struct BaseValue(pub f32);//negate for opposite effect or negation
+#[require(CurrEffectiveValue)]
+pub struct BaseValue(pub f32);//negate for opposite effect or mitigation
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 #[require(ApplyMode::Add)]
-pub struct CurrFinalValue(pub f32);
+/// final value after all antidote and OffsetValForSelf and CopyMultOfOthersIntoSelf processing
+pub struct CurrEffectiveValue(pub f32);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 ///poison ID, efectiveness(multiplicador sobre propia Potency, resultado se substrae a la Potency del veneno) 
-pub struct Antidote(pub HashMap<String, f32>);
-//                        HACER UN TIPO HASHMAP ESPECÍFICO PARA ESTE TIPO DE HASHMAP
+pub struct Antidote(pub HashMap<Tag, f32>);
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]//PARA PIERNAS 
-/// offset value for self if other tag is present on the same target as us
-pub struct OffsetValForSelf(pub HashMap<String, f32>);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+/// offset value for self if other tag is present on the same target as us. (could be used for sinergy between modifiers, e.g. a modifier with "leg" tag gives an offset to self's final value if we are both present on the same target)
+pub struct OffsetValForSelf(pub HashMap<Tag, f32>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]//PARA PIERNAS 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 /// copy a portion of value from another modifier into self if present on same target
-pub struct CopyValPortionForSelf(pub HashMap<String, f32>);///f32 entre 0 y 1, se multiplica con el valor presente en la cat y lo devuelto se le suma a la efective potency nuestra
-
+pub struct CopyMultOfOthersIntoSelf(pub HashMap<Tag, f32>);///f32 entre 0 y 1, se multiplica con el valor presente en la cat y lo devuelto se le suma a la efective potency nuestra
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect, )]
 pub struct MinForDamage;
 
@@ -79,7 +75,3 @@ pub struct MitigatingOnly;
 
 
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
-#[require(ModifierTags, )]
-pub struct HandlingCapability;

@@ -1,0 +1,16 @@
+(
+    id: "eye",
+    name: Some("Eye"),
+    coverage_weight: Some(5),
+    hp_capacity: Some(8.0),
+    hp_regen_rate: Some(0.6),
+    depth: Some("surface"),
+    vital: Some(true),
+    pain_sensitivity: Some(2.0),
+    bleed_rate: Some(0.8),
+    blood_capacity: Some(4.0),
+    manipulation: Some(0.0),
+    vision: Some(0.5),
+    mass: Some(0.008),
+    caloric_burn_rate: Some(0.5),
+)

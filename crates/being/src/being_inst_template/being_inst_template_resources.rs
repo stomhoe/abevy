@@ -22,6 +22,11 @@ pub struct BitSerialization {
     pub scs_ids: Option<Vec<String>>, // sprite config ids to directly use
     pub sprites_scale_ranges: Option<HashMap<String, (f32, f32)>>,
     pub health_multiplier: Option<f32>,
+
+    /// overrides race's set of weighted body trees if present
+    pub body_tree: Option<String>,
+
+    pub recruitment_difficulty: Option<i32>,
 }
 
 define_entity_map_systems!(

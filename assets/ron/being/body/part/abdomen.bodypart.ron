@@ -1,0 +1,16 @@
+(
+    id: "abdomen",
+    name: Some("Abdomen"),
+    coverage_weight: Some(25),
+    hp_capacity: Some(28.0),
+    hp_regen_rate: Some(0.9),
+    depth: Some("inside"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.2),
+    bleed_rate: Some(0.9),
+    blood_capacity: Some(16.0),
+    manipulation: Some(0.2),
+    walk_speed: Some(0.7),
+    mass: Some(1.0),
+    caloric_burn_rate: Some(1.8),
+)

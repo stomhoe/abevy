@@ -6,10 +6,5 @@ use crate::modifier_components::{ModifierTags, ApplyMode};
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(ModifierTags, )]
-pub struct Speed;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(ModifierTags, )]
-pub struct InvertMovement;
+

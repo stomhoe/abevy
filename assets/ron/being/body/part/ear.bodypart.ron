@@ -1,0 +1,15 @@
+(
+    id: "ear",
+    name: Some("Ear"),
+    coverage_weight: Some(3),
+    hp_capacity: Some(6.0),
+    hp_regen_rate: Some(0.7),
+    depth: Some("surface"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.2),
+    bleed_rate: Some(0.6),
+    blood_capacity: Some(3.0),
+    manipulation: Some(0.0),
+    mass: Some(1.0),
+    caloric_burn_rate: Some(0.3),
+)

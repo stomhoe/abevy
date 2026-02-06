@@ -1,0 +1,16 @@
+(
+    id: "chest",
+    name: Some("Chest"),
+    coverage_weight: Some(35),
+    hp_capacity: Some(30.0),
+    hp_regen_rate: Some(0.9),
+    depth: Some("inside"),
+    vital: Some(true),
+    pain_sensitivity: Some(1.1),
+    bleed_rate: Some(1.0),
+    blood_capacity: Some(18.0),
+    manipulation: Some(0.3),
+    walk_speed: Some(0.7),
+    mass: Some(5.0),
+    caloric_burn_rate: Some(2.0),
+)

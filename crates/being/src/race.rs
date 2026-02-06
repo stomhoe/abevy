@@ -23,6 +23,9 @@ pub fn plugin(app: &mut App) {
                 (init_races, map_race_entity_map_id_to_entity).chain()
             ).in_set(RaceSystems)
         )
+        .add_systems(Update, (
+            map_race_entity_map_id_to_entity,
+        ))
     ;
 }
 

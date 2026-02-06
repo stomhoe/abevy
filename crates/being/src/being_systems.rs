@@ -7,7 +7,7 @@ use camera::camera_components::CameraTarget;
 use dimension_shared::DimensionRef;
 use faction::faction_components::*;
 use game_common::game_common_components::DespawnTimer;
-use modifier::{modifier_components::{ApplyMode, CurrFinalValue, ModifierTarget}, modifier_move_bundles::TemporalSpeedModifier, modifier_move_components::Speed};
+use modifier::{modifier_components::{ApplyMode, CurrEffectiveValue, ModifierTarget}, modifier_move_bundles::TemporalSpeedModifier,};
 use movement::movement_messages::TransformFromServer;
 use player::player_components::*;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings, tile::tile_components::{PortalTo, Tile}};
@@ -91,7 +91,7 @@ pub fn cross_portal(mut cmd: Commands,
                 (None, true) => {
 
                     cmd.spawn((
-                        TemporalSpeedModifier::new(being_entity, 0.0, ApplyMode::Max, 1.0),
+                        TemporalSpeedModifier::new(being_entity, being_entity, 0.0, ApplyMode::Max, 1.0),
                     ));
 
                     cmd.entity(being_entity).try_insert((TouchingPortal(portal_ent), ));

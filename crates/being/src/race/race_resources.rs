@@ -1,7 +1,6 @@
 
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_asset_loader::prelude::*;
-use common::{common_types::HashIdToEntityMap, define_entity_map_systems};
 use crate::race::Race;
 //CASO DE USO: RECIBIS UN PAQUETE ONLINE SOLO CON NID Y TENES Q VER A Q ENTITY SE REFIERE
 
@@ -29,14 +28,15 @@ pub struct RaceSerialization {
     pub sentient: Option<bool>,
     pub sprite_pool: Vec<String>,
     pub selectable_sprites: Option<Vec<String>>,
-
-    pub hunger_rate: Option<f32>,
+    /// global_caloric_burn_rate_multiplier
+    pub caloric_burn_rate_multiplier: Option<f32>,
     pub can_walk_on: Option<HashSet<String>>, 
-    pub walk_speeds: Option<HashMap<String, f32>>,
+    pub walk_speeds_on_tiles: Option<HashMap<String, f32>>,
 
     pub whitelisted_tiles_for_spawning: Option<HashSet<String>>,
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
 
+    pub body_tree: String,
 }
 
 common::define_entity_map_systems!(

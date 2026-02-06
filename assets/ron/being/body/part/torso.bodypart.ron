@@ -1,0 +1,17 @@
+(
+    id: "torso",
+    name: Some("Torso"),
+    coverage_weight: Some(80),
+    hp_capacity: Some(45.0),
+    hp_regen_rate: Some(1.0),
+    depth: Some("surface"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.0),
+    bleed_rate: Some(0.8),
+    blood_capacity: Some(25.0),
+    manipulation: Some(0.6),
+    walk_speed: Some(0.8),
+    swim_speed: Some(0.6),
+    mass: Some(18.0),
+    caloric_burn_rate: Some(2.5),
+)

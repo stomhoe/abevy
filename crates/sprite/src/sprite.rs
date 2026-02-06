@@ -29,9 +29,9 @@ pub fn plugin(app: &mut App) {
     .add_systems(SPRITES_SCHEDULE, (
         disable_children_sprites_of_disabled,
         (apply_offsets, apply_scales, ).run_if(on_timer(Duration::from_millis(100))), 
-        z_sort_system.run_if(on_timer(Duration::from_millis(500))),
+        z_sort_system.run_if(on_timer(Duration::from_millis(50))),
         // server only
-        (become_child_of_sprite_with_tag, replace_string_ids_by_entities, 
+        (become_child_of_sprite_with_tag, //replace_string_ids_by_entities, 
             add_spritechildren_and_comps, ).run_if(in_state(ClientState::Disconnected)
             .and(in_state(AppState::StatefulGameSession)))
             

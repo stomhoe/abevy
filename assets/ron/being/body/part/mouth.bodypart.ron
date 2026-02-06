@@ -1,0 +1,15 @@
+(
+    id: "mouth",
+    name: Some("Mouth"),
+    coverage_weight: Some(3),
+    hp_capacity: Some(7.0),
+    hp_regen_rate: Some(0.8),
+    depth: Some("surface"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.4),
+    bleed_rate: Some(0.9),
+    blood_capacity: Some(3.5),
+    manipulation: Some(0.1),
+    mass: Some(0.1),
+    caloric_burn_rate: Some(0.4),
+)

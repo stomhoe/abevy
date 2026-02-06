@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_fps_counter::FpsCounter;
 use bevy_replicon::prelude::{ClientState, FromClient};
-use modifier::{modifier_components::*, modifier_move_components::Speed};
+use modifier::{modifier_components::*, modifier_types::WalkSpeed, };
 use being::being_components::{Being, ControlledBy, ControlledLocally};
 
 use crate::debug_messages::UpdateBeingSpeed;
@@ -10,7 +10,7 @@ use crate::debug_messages::UpdateBeingSpeed;
 pub fn debug_increase_speed(
     keys: Res<ButtonInput<KeyCode>>,
     my_being_query: Query<(&Being), (With<ControlledLocally>)>,
-    mut query: Query<(&ModifierTarget, &mut CurrFinalValue),(With<Speed>, )>,
+    mut query: Query<(&ModifierTarget, &mut BaseValue),(With<WalkSpeed>, )>,
     client_state: Res<State<ClientState>>,
     mut writer: MessageWriter<UpdateBeingSpeed>,
 ) {
@@ -54,7 +54,7 @@ pub fn debug_increase_speed(
 pub fn receive_increase_speed_from_client(
     mut events: MessageReader<FromClient<UpdateBeingSpeed>>,
     controlled_beings_query: Query<(&AppliedModifiers, &ControlledBy, ), ()>,
-    mut modifiers_query: Query<(&mut CurrFinalValue),(With<Speed>, )>,
+    mut modifiers_query: Query<(&mut BaseValue),(With<WalkSpeed>, )>,
 ) {
     for from_client in events.read() {
         let UpdateBeingSpeed { value: new_value, being_ent } = from_client.message.clone();
@@ -83,16 +83,3 @@ pub fn receive_increase_speed_from_client(
     }
 }
 
-
-fn mouse_handler(
-    mouse_button_input: Res<ButtonInput<KeyCode>>,
-    mut diags_state: ResMut<FpsCounter>,
-) {
-    if mouse_button_input.pressed(KeyCode::F11) {
-        if diags_state.is_enabled() {
-            diags_state.disable();
-        } else {
-            diags_state.enable();
-        }
-    }
-}

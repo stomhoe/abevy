@@ -17,6 +17,7 @@ sprite_animation_shared = { path = "../sprite_animation_shared" }
 modifier = { path = "../modifier" }
 sprite = { path = "../sprite" }
 sprite_shared = { path = "../sprite_shared" }
+tilemap_shared = { path = "../tilemap_shared" }
 
 bevy = { workspace = true }
 nano-id = { workspace = true }

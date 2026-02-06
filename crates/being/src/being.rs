@@ -5,7 +5,7 @@ use common::common_states::AssetLoading;
 use game_common::{HostSystems, game_common::{GameplaySystems, StatefulSessionSystems} };
 use sprite::AcSpriteSystems;
 
-use crate::{being_components::*, being_resources::*, being_systems::*, being_inst_template::BeingInstTemplateSystems, race::RaceSystems};
+use crate::{being_components::*, being_inst_template::BeingInstTemplateSystems, being_resources::*, being_systems::*, body::{self, BodySystems}, race::RaceSystems};
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
@@ -13,6 +13,7 @@ pub fn plugin(app: &mut App) {
     .add_plugins((
         crate::race::plugin,
         crate::sex::plugin,
+        body::plugin,
     ))
 
     .add_systems(Update, (
@@ -23,6 +24,7 @@ pub fn plugin(app: &mut App) {
     ))
 
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
+        RaceSystems.after(BodySystems),
         RaceSystems.after(AcSpriteSystems),
         BeingInstTemplateSystems.after(RaceSystems)
     ))

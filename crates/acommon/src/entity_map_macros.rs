@@ -59,7 +59,6 @@ macro_rules! define_entity_map_systems {
         $entity_type:expr
     ) => {
         paste::paste! {
-            // Generate the struct with forward mapping only
             #[derive(bevy::prelude::Resource, Debug, Clone, Reflect)]
             #[reflect(Resource)]
             pub struct $map_name(pub common::common_types::HashIdToEntityMap);
@@ -70,11 +69,10 @@ macro_rules! define_entity_map_systems {
                 }
             }
 
-            // Generate the mapping system
             pub fn [<map_ $map_name:snake _id_to_entity>](
                 mut cmd: Commands,
                 map: Option<ResMut<$map_name>>,
-                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type), (With<$watch_component>, $with_filters)>,
+                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type), (Changed<$id_type>, With<$watch_component>, $with_filters)>,
             ) {
                 if let Some(mut map) = map {
                     for (entity, prefix, id) in query.iter() {
@@ -113,7 +111,6 @@ macro_rules! define_entity_map_systems {
                 }
             }
 
-            // Generate the despawn observer
             pub fn [<remove_ $watch_component:snake _from_ $map_name:snake _on_despawn>](
                 trigger: On<bevy::prelude::Despawn, $despawn_trigger>,
                 query: Query<(&$id_type), $with_filters>,
@@ -128,12 +125,14 @@ macro_rules! define_entity_map_systems {
                 }
             }
 
-            // Generate the plugin function
             pub fn [<plugin_ $map_name:snake>](app: &mut App) {
+                use bevy_replicon::prelude::AppRuleExt;
                 app.init_resource::<$map_name>()
                     .register_type::<$map_name>()
                     .add_systems(Update, [<map_ $map_name:snake _id_to_entity>])
-                    .add_observer([<remove_ $watch_component:snake _from_ $map_name:snake _on_despawn>]);
+                    .add_observer([<remove_ $watch_component:snake _from_ $map_name:snake _on_despawn>])
+                    .replicate::<$watch_component>()
+                    ;
             }
         }
     };

@@ -3,7 +3,7 @@
 use common::common_components::Prefix;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Component, Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize, )]
 #[require(Replicated, Prefix::trunc("Sex"))]
 pub struct Sex;
 

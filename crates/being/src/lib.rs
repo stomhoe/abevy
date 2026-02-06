@@ -9,3 +9,5 @@ pub mod being_inst_template;
 
 pub mod race;
 pub mod sex;
+
+pub mod body;
