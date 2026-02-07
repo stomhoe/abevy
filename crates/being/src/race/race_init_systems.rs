@@ -13,7 +13,7 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 pub fn init_races(
     mut cmd: Commands,
     mut seris_handles: ResMut<RaceSerisHandles>,
-    mut assets: ResMut<Assets<RaceSerialization>>,
+    mut assets: ResMut<Assets<RaceSeri>>,
     sprite_map: Res<SpriteConfigEntityMap>,
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sexes_map: Res<SexEntityMap>,

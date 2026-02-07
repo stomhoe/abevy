@@ -24,8 +24,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             map_sex_id_to_entity
         ))
-
-        .register_type::<SexSerialization>();
+    ;
 }
 
 mod sex_init_systems;

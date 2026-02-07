@@ -11,3 +11,5 @@ serde = { workspace = true }
 bevy_spritesheet_animation = { workspace = true }
 bevy_replicon = { workspace = true }
 paste = { workspace = true }
+bevy_asset_loader = { workspace = true }
+bevy_common_assets = { workspace = true }

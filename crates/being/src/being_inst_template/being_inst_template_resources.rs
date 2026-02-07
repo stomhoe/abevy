@@ -2,7 +2,7 @@ use being_shared::BeingInstTemplate;
 use bevy::{asset, platform::collections::{HashMap, HashSet}, prelude::*};
 
 #[derive(serde::Deserialize, Asset, Reflect, Default, Debug)]
-pub struct BitSerialization {
+pub struct BitSeri {
     pub id: String,
     pub fallback_faction: Option<String>,
     pub points: u32,
@@ -22,7 +22,6 @@ pub struct BitSerialization {
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
 }
 
-pub type BitSeri = BitSerialization;
 
 common::define_entity_map_systems!(
     BeingInstTemplate,

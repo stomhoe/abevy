@@ -9,7 +9,7 @@ use sprite::AcSpriteSystems;
 use ::sprite_animation_shared::*;
 
 
-use crate::{sprite_animation_components::*, sprite_animation_messages::*, sprite_animation_resources::*, sprite_animation_init_systems::*, sprite_animation_systems::*};
+use crate::{sprite_animation_components::*, sprite_animation_messages::*, sprite_animation_init_systems::*, sprite_animation_systems::*};
 
 
 
@@ -21,7 +21,6 @@ pub fn plugin(app: &mut App) {
     app
     .add_plugins((
         SpritesheetAnimationPlugin,
-        RonAssetPlugin::<AnimationSerialization>::new(&["anim.ron"]),
         plugin_animation_comp,
     ))
 
@@ -55,7 +54,7 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<AnimationState>()
     .replicate_once::<MoveAnimActive>()
     .replicate::<AnimationComp>()
-    .replicate::<AnimationSerialization>()
+    .replicate::<AnimationSeri>()
     .replicate_filtered::<ChildOf, With<AnimationComp>>()
     .replicate::<ClipStartFrames>()
     .replicate::<AlternatingStartFramesConfig>()
@@ -63,16 +62,11 @@ pub fn plugin(app: &mut App) {
 
     .register_type::<AnimationState>()
     .register_type::<MoveAnimActive>()
-    .register_type::<AnimSerisHandles>()
-    .register_type::<AnimationSerialization>()
     .register_type::<AnimationHandle>()
     .register_type::<ClipStartFrames>()
     .register_type::<SaveAnimationProgress>()
     .register_type::<AlternatingStartFramesConfig>()
     .register_type::<AlternatingStartFramesState>()
-
-    .register_type::<AnimationCompEntityMap>()
-    .init_resource::<AnimationCompEntityMap>()
 
 
     ;

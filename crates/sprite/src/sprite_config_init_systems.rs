@@ -15,7 +15,7 @@ use crate::{sprite_components::*, sprite_resources::*};
 pub fn init_sprite_configs(
     mut cmd: Commands,
     scs_map: Res<SpriteConfigEntityMap>,
-    mut seris_handles: ResMut<SpriteSerisHandles>,
+    mut seris_handles: ResMut<SpriteConfigSerisHandles>,
     mut assets: ResMut<Assets<SpriteConfigSeri>>,
     library: Res<AnimationCompEntityMap>,
     scs_holder: Query<Entity, With<EguiSpriteConfigsHolder>>,

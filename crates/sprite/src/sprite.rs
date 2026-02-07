@@ -72,8 +72,6 @@ pub fn plugin(app: &mut App) {
         ),
     )
     .register_type::<AcZ>()
-    .register_type::<SpriteSerisHandles>()
-    .register_type::<SpriteConfigSeri>()
     .register_type::<MappedAnimations>()
     .register_type::<EguiSpriteConfigsHolder>()
     .register_type::<OffsetForChildren>()

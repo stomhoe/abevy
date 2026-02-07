@@ -72,9 +72,9 @@ pub fn plugin(app: &mut App) {
 
 
     .register_type::<TileSerisHandles>()
-    .register_type::<TileSerialization>()
+    .register_type::<TileSeri>()
     .register_type::<GlobalTilePos>()
-    .register_type::<TileWeightedSamplerHandles>()
+    .register_type::<TileWeightedSamplerSerisHandles>()
     .register_type::<TileWeightedSamplerSeri>()
 
 

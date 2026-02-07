@@ -4,7 +4,7 @@ use bevy_inspector_egui::prelude::*;
 
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
-use crate::{regioning::regioning_sgc_components::{StructuredGenConfig}, terrain_gen::terrgen_messages::OpFilterSerialization};
+use crate::{regioning::regioning_sgc_components::{StructuredGenConfig}, terrain_gen::terrgen_messages::OpFilterSeri};
 use serde::Deserialize;
 
 common::define_entity_map_systems!(
@@ -15,14 +15,14 @@ common::define_entity_map_systems!(
     "SGC",
     StructuredGenConfig,
     common::common_components::StrId,
-    StructureSeri, "ron/tilemap/region/structures", "sgc.ron",
+    SgcSeri, "ron/tilemap/region/structures", "sgc.ron",
 );
 #[derive(Resource, Reflect, InspectorOptions, Default)]
 #[reflect(Resource, Default, InspectorOptions)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 
 #[derive(Deserialize, Asset, Reflect, )]
-pub struct StructuredGenConfigSeri {
+pub struct SgcSeri {
     pub id: String,
     /// village, cave, dungeon, fort, etc
     pub structure_id: String,
@@ -35,7 +35,7 @@ pub struct StructuredGenConfigSeri {
     pub weight: f32,
 
     //expected terr conditions for spawning
-    pub whitelisted_filters: Option<Vec<OpFilterSerialization>>,
+    pub whitelisted_filters: Option<Vec<OpFilterSeri>>,
 
     pub pdisk_mindist_and_tag: Option<Vec<(Option<u8>, String)>>,
 
@@ -52,4 +52,3 @@ pub struct StructuredGenConfigSeri {
 
 }
 
-pub type StructureSeri = StructuredGenConfigSeri;

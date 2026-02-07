@@ -8,7 +8,7 @@ use crate::sex::{SexEntityMap, sex_components::*, sex_resources::*};
 pub fn init_sexes(
     mut cmd: Commands,
     mut seris_handles: ResMut<SexSerisHandles>,
-    mut assets: ResMut<Assets<SexSerialization>>,
+    mut assets: ResMut<Assets<SexSeri>>,
 ) {
     use std::mem::take;
     for handle in take(&mut seris_handles.handles) {

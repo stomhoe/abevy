@@ -38,7 +38,7 @@ impl PartialEq for OpFilter {
 }
 impl Eq for OpFilter {}
 #[derive(Deserialize, Asset, Reflect, )]
-pub struct OpFilterSerialization {
+pub struct OpFilterSeri {
     pub tags: Vec<String>,
     pub op_i: i16,
     pub min_val: f32,

@@ -15,7 +15,7 @@ use std::collections::HashSet;
 #[allow(unused_parens)]
 pub fn init_oplists_from_assets(
     mut cmd: Commands, seris_handles: Res<OpListSerisHandles>,
-    mut assets: ResMut<Assets<OpListSerialization>>,
+    mut assets: ResMut<Assets<OpListSeri>>,
     terr_gen_map: Res<TerrgenEntityMap>,
     samplers_map: Res<TileWeightedSamplerEntityMap>,
     tiles_map: Res<TileEntityMap>,
@@ -227,7 +227,7 @@ pub fn init_oplists_from_assets(
 pub fn init_oplists_bifurcations(
     mut cmd: Commands,
     mut seris_handles: ResMut<OpListSerisHandles>,
-    mut assets: ResMut<Assets<OpListSerialization>>,
+    mut assets: ResMut<Assets<OpListSeri>>,
     oplist_map: Res<OperationListEntityMap>,
     mut oplist_query: Query<(&mut OperationList, )>,
     is_root: Query<(&MultipleDimensionStringRefs)>,

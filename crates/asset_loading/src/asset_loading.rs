@@ -3,9 +3,7 @@
 use bevy_replicon::prelude::ClientState;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
-use dimension::dimension_resources::DimensionSerisHandles;
 use game_common::{GameplaySystems, };
-use sprite_animation::sprite_animation_resources::AnimSerisHandles;
 
 use crate::asset_loading_systems::*;
 
@@ -48,7 +46,5 @@ pub fn plugin(app: &mut App) {
         ))
         .add_loading_state(
             LoadingState::new(AssetLoading::LoadingAssetsIntoHandles).continue_to_state(AssetLoading::SpawnReplicatedEntities)
-            .load_collection::<AnimSerisHandles>()
-            .load_collection::<DimensionSerisHandles>()
         );
 }

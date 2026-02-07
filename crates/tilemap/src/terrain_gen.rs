@@ -17,7 +17,14 @@ pub mod terrgen_messages;
 
 
 common::define_entity_map_systems!(
-    OperationList
+    OperationList,
+    (),
+    OperationList,
+    "operation_list",
+    "",
+    OperationList,
+    common::common_components::StrId,
+    OpListSeri, "ron/tilemap/terrgen/oplist", "oplist.ron"
 );
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -54,9 +61,6 @@ pub fn plugin(app: &mut App) {
             plugin_terrgen,
             plugin_operation_list,
         ))
-
-
-        .replicate::<OperationList>()
         .replicate::<FnlNoiseComp>()
 
         .replicate_filtered::<ChildOf, With<OperationList>>()
@@ -71,10 +75,7 @@ pub fn plugin(app: &mut App) {
         .add_message::<TerrainProbe>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
 
         .register_type::<GlobalGenSettings>()
-        .register_type::<NoiseSerisHandles>().register_type::<NoiseSerialization>()
-        .register_type::<OpListSerisHandles>().register_type::<OpListSerialization>()
         .register_type::<FnlNoiseComp>().register_type::<FastNoiseLite>()
-        .register_type::<OperationList>().register_type::<Operation>()
         .register_type::<Operand>()
         .register_type::<OplistSize>()
         .register_type::<TerrGenOpsLaunched>()

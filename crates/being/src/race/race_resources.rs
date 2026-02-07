@@ -5,7 +5,7 @@ use crate::race::Race;
 
 
 #[derive(serde::Deserialize, Asset, Default, Debug, Reflect)]
-pub struct RaceSerialization {
+pub struct RaceSeri {
     pub id: String,
     pub name: String,
     pub name_generator: Option<String>,
@@ -31,8 +31,6 @@ pub struct RaceSerialization {
     ///can be a body sampler
     pub body_tree: String,
 }
-
-pub type RaceSeri = RaceSerialization;
 
 common::define_entity_map_systems!(
     Race,

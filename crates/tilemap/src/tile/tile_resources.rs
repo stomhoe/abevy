@@ -66,7 +66,7 @@ impl IntoIterator for TileImagePaths {
 
 
 #[derive(Deserialize, Asset, Reflect, Default, Component)]
-pub struct TileSerialization {
+pub struct TileSeri {
     pub id: String,
     pub name: String,
     pub z: f32,
@@ -99,7 +99,6 @@ pub struct TileSerialization {
 
 }
 
-pub type TileSeri = TileSerialization;
 #[derive(Component, Deserialize, Reflect, Default)]
 pub struct PortalSeri{
     pub dest_dimension: String,

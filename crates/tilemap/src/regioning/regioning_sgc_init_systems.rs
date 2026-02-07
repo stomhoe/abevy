@@ -11,8 +11,8 @@ use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*, Str
 pub fn init_structured_gen_configs (
     mut cmd: Commands,
     map: Res<StructuredGenConfigEntityMap>,
-    mut seris_handles: ResMut<StructureSerisHandles>,
-    mut assets: ResMut<Assets<StructuredGenConfigSeri>>,
+    mut seris_handles: ResMut<SgcSerisHandles>,
+    mut assets: ResMut<Assets<SgcSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,
     egui_holder_query: Query<Entity, With<EguiSgcsHolder>>
 
@@ -69,7 +69,7 @@ pub fn init_structured_gen_configs (
                 for opfilter_seri in whitelisted_filters {
 
                     let Ok(tags) = HashedTagsVec::new_error_if_set_empty(opfilter_seri.tags) else {
-                        error!(target: "sgc_init", "OpFilterSerialization within {} has no tags.", structured_gen_seri.id);
+                        error!(target: "sgc_init", "OpFilterSeri within {} has no tags.", structured_gen_seri.id);
                         continue;
                     };
 

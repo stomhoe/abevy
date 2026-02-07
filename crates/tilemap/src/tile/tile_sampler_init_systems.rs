@@ -9,7 +9,7 @@ use crate::tile::{TileWeightedSamplerEntityMap, tile_components::*, tile_resourc
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
     mut cmd: Commands, 
-    seris_handles: ResMut<TileWeightedSamplerHandles>,
+    seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
     assets: Res<Assets<TileWeightedSamplerSeri>>,
     mut map: ResMut<TileWeightedSamplerEntityMap>,
 ) {
@@ -40,7 +40,7 @@ pub fn init_tile_weighted_samplers(
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers_refs(
     mut cmd: Commands, 
-    mut seris_handles: ResMut<TileWeightedSamplerHandles>,
+    mut seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
     mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
     hashpos_weighted_map: Res<TileWeightedSamplerEntityMap>,
     hashpos_query: Query<(&StrId, ), (With<EntityWeightedSampler>)>,

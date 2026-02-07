@@ -31,10 +31,6 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (init_sprite_weighted_samplers, map_sprite_weighted_sampler_id_to_entity, init_sprite_weighted_samplers_refs,)
         ).chain().in_set(SpriteSamplerSystems))
-        .register_type::<SpriteWeightedSamplerHandles>()
-        .register_type::<SpriteWeightedSamplerSeri>()
-
-        
         .replicate::<EguiSpriteSamplerHolder>()
         .replicate::<SpriteWeightedSampler>()
         ;

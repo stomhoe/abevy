@@ -42,13 +42,5 @@ pub fn plugin(app: &mut App) {
     .register_type::<TwoOverlaysExample>()
     .register_type::<WavyMat>()
     .register_type::<RockyTerrainMat>()
-    .register_type::<ShaderRepeatTexSerisHandles>()
-    .register_type::<ShaderRepeatTexSeri>()
-    .register_type::<ShaderVoronoiShuffleSerisHandles>()
-    .register_type::<ShaderVoronoiShuffleSeri>()
-    .register_type::<ShaderWavySerisHandles>()
-    .register_type::<ShaderWavySeri>()
-    .register_type::<ShaderRockyTerrainSerisHandles>()
-    .register_type::<ShaderRockyTerrainSeri>()
     ;
 }

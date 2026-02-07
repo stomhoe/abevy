@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 pub struct DimensionSystems;
 
 common::define_entity_map_systems!(
-    Dimension
+    Dimension,
+    DimensionSeri, "ron/dimension", "dimension.ron"
 );
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
@@ -70,3 +71,15 @@ pub struct WhitelistedStructureGenTags(pub TagSet);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct BlacklistedStructureGenTags(pub TagSet);
+
+#[derive(serde::Deserialize, Asset, TypePath, Default)]
+pub struct DimensionSeri {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    /// this dimension's tags, used for whoever needs it
+    pub tags: Option<HashSet<String>>,
+
+    pub whitelisted_structure_gen_tags: Option<Vec<String>>,
+    pub blacklisted_structure_gen_tags: Option<Vec<String>>,
+}

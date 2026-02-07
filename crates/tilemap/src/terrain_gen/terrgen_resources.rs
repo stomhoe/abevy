@@ -56,7 +56,7 @@ pub struct TerrGenAsyncTasks {
 
 
 #[derive(Deserialize, Asset, Reflect, )]
-pub struct NoiseSerialization {
+pub struct FnlSeri {
     pub id: String,
     /// Default is 0.01
     pub frequency: Option<f32>,
@@ -86,7 +86,6 @@ pub struct NoiseSerialization {
     pub domain_warp_amp: Option<f32>,
 }
 
-pub type NoiseSeri = NoiseSerialization;
 
 #[derive(Deserialize, Asset, Reflect, )]
 pub struct DungeonSeri {
@@ -98,29 +97,24 @@ pub struct DungeonSeri {
 
 
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
-pub struct OpListSerialization {
+pub struct OpListSeri {
     pub id: String,
     pub tags: Option<Vec<String>>,
     pub root_in_dimensions: Vec<String>,
-    /// input variable index, operation name, operands, ouput variable indexs 
+    /// input variable index, operation name, operands, ouput variable indexs
     pub operation_operands: Vec<(String, Vec<String>, u8)>,
     /// oplist id, produced tiles
     pub bifs: Vec<(String, Vec<String>)>,
     pub size: Option<[u32; 2]>
 }
-impl OpListSerialization {
+impl OpListSeri {
     pub fn is_root(&self) -> bool {
         self.root_in_dimensions.iter().any(|s| !s.is_empty())
     }
 }
 
-pub type OpListSeri = OpListSerialization;
-
-
 
 common::define_entity_map_systems!(
     Terrgen,
-    NoiseSeri, "ron/tilemap/terrgen/noise", "fnl.ron",
-    OpListSeri, "ron/tilemap/terrgen/oplist", "oplist.ron",
+    FnlSeri, "ron/tilemap/terrgen/noise", "fnl.ron",
 );
-

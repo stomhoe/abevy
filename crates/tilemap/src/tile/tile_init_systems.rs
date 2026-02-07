@@ -30,7 +30,7 @@ use std::mem::take;
 pub fn init_tiles(
     mut cmd: Commands,
     seris_handles: Res<TileSerisHandles>,
-    mut assets: ResMut<Assets<TileSerialization>>,
+    mut assets: ResMut<Assets<TileSeri>>,
     shader_map: Res<TileShaderEntityMap>,
     tiling_map: Res<TileEntityMap>,
     color_map: Res<ColorSamplerEntityMap>,
@@ -283,7 +283,7 @@ pub fn add_handles(
 pub fn map_min_dist_tiles(
     mut cmd: Commands,
     mut seris_handles: ResMut<TileSerisHandles>,
-    mut assets: ResMut<Assets<TileSerialization>>,
+    mut assets: ResMut<Assets<TileSeri>>,
     tiles_map: Res<TileEntityMap>,
     tile_cats: Res<TileCategories>,
 ) {

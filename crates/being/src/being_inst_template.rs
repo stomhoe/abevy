@@ -29,7 +29,6 @@ pub fn plugin(app: &mut App) {
         build_being_from_being_inst_template_ref,
         convert_bit_strid_ref_to_ent_ref.run_if(on_timer(Duration::from_secs_f32(0.5))),
     ))
-    .register_type::<BitSerialization>()
 
     ;
 }

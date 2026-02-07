@@ -12,7 +12,6 @@ use crate::{
 pub fn plugin(app: &mut App) {
     app
         .add_plugins((
-            RonAssetPlugin::<DimensionSeri>::new(&["dimension.ron"]),
             plugin_dimension,
         ))
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (

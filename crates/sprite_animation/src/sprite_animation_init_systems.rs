@@ -8,15 +8,15 @@ use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
 use ::sprite_shared::sprite_scale_offset::*;
 
-use crate::{sprite_animation_components::*, sprite_animation_resources::*};
+use crate::{sprite_animation_components::*};
 
 
 
 #[allow(unused_parens)]
 pub fn init_animations(
     mut cmd: Commands,
-    mut anim_handles: ResMut<AnimSerisHandles>,
-    mut seris_assets: ResMut<Assets<AnimationSerialization>>,
+    mut anim_handles: ResMut<AnimationSerisHandles>,
+    mut seris_assets: ResMut<Assets<AnimationSeri>>,
     library: Res<AnimationCompEntityMap>,
     sc_holder: Query<Entity, With<EguiSpriteConfigsHolder>>,
     anim_holder: Query<Entity, With<EguiAnimationCompsHolder>>,
@@ -95,7 +95,7 @@ pub fn init_animations(
 pub fn init_animation_sheet_and_handle(mut cmd: Commands,
     asset_server: Res<AssetServer>,
     mut animation_assets: ResMut<Assets<Animation>>,
-    query: Query<(Entity, &StrId, &AnimationSerialization),(With<AnimationSerialization>, Without<AnimationHandle>)>,
+    query: Query<(Entity, &StrId, &AnimationSeri),(With<AnimationSeri>, Without<AnimationHandle>)>,
 ) {
     //trace!(target: "sprite_animation_init", "Initializing animation sheets and handles...");
     for (entity, str_id, seri) in query.iter() {

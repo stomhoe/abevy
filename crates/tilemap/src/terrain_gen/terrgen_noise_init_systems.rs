@@ -8,8 +8,8 @@ use std::mem::take;
 #[allow(unused_parens)]
 pub fn init_noises(
     mut cmd: Commands,
-    mut seris_handles: ResMut<NoiseSerisHandles>,
-    mut assets: ResMut<Assets<NoiseSerialization>>,
+    mut seris_handles: ResMut<FnlSerisHandles>,
+    mut assets: ResMut<Assets<FnlSeri>>,
     terrgen_map: Res<TerrgenEntityMap>,
     settings: Query<&GlobalGenSettings>,
     noise_holder: Query<Entity, With<EguiTerrgensHolder>>,

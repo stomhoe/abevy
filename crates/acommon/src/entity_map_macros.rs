@@ -394,12 +394,12 @@ macro_rules! define_entity_map_systems {
                     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>()
                     .configure_loading_state(
                         bevy_asset_loader::prelude::LoadingStateConfig::new(common::common_states::AssetLoading::LoadingAssetsIntoHandles)
-                            $(.load_collection::<[<$seri_type sHandles>]>() )+
+                            $(.load_collection::<[<$seri_type sHandles>]>() )*
                     )
                     .add_plugins((
                         $(
                             bevy_common_assets::ron::RonAssetPlugin::<$seri_type>::new(&[$ron_suffix]),
-                        )+
+                        )*
                     ))
                     ;
             }
