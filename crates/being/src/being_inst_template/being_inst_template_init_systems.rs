@@ -1,4 +1,5 @@
 use being_shared::{BeingInstTemplate, };
+use bevy::ecs::error;
 use bevy::prelude::*;
 use common::common_components::*;
 use sprite::{
@@ -10,8 +11,8 @@ use crate::being_inst_template::{
     being_inst_template_components::*, being_inst_template_resources::*,
 };
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
-use crate::body::body_resources::BodyTreeEntityMap;
-use faction::faction_resources::FactionEntityMap;
+use crate::body::body_tree_resources::BodyTreeEntityMap;
+use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
 use faction::faction_components::BelongsToFaction;
 
 pub fn init_being_templates(
@@ -19,14 +20,31 @@ pub fn init_being_templates(
     mut seris_handles: ResMut<BitSerisHandles>,
     mut assets: ResMut<Assets<BitSerialization>>,
     sc_emap: Res<SpriteConfigEntityMap>,
-    race_emap: Res<RaceEntityMap>,
-    faction_emap: Res<FactionEntityMap>,
+    race_emap: Option<Res<RaceEntityMap>>,
+    faction_emap: Option<Res<FactionEntityMap>>,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+
 ) {
+    if !bit_map.0.is_empty(){
+        return;
+    }
+
     use std::mem::take;
     let mut main_comps = Vec::new();
     let mut samples = Vec::new();
     let mut race_refs_to_insert = Vec::new();
     let mut faction_refs_to_insert = Vec::new();
+
+    let Some(faction_emap) = faction_emap else {
+        error!("Faction entity map is missing");
+        return;
+    };
+    let Some(race_emap) = race_emap else {
+        error!("Race entity map is missing");
+        return;
+    };
+
+    error!("BeingInstTemplateEntityMap runninnggg");
 
     for handle in take(&mut seris_handles.handles) {
         if let Some(template_seri) = assets.remove(handle.id()) {
@@ -50,11 +68,7 @@ pub fn init_being_templates(
                 if ! faction_str_id.trim().is_empty(){
                     let faction_str_id = StrId::trunc(&faction_str_id);
 
-                    if let Ok(faction_entity) = faction_emap.0.get_cloned(&faction_str_id) {
-                        faction_refs_to_insert.push((bit_entity, BelongsToFaction(faction_entity)));
-                    } else {
-                        warn!(target: "being_template_init", "BeingTemplate '{}' faction '{}' not found in FactionEntityMap", str_id, faction_str_id);
-                    }
+                    faction_refs_to_insert.push((bit_entity, FactionStrIdRef(faction_str_id)));
                 }
             }
 

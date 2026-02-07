@@ -19,7 +19,7 @@ pub fn build_being_from_being_inst_template_ref(
 
     for (being_ent, bit_ref) in beings_to_instantiate.iter() {
         let Ok((template, sample_sprites, race_ref, sample_body_body_tree, belongs_to_fac)) = bit_query.get(bit_ref.0) else {
-            warn!(target: "being_template_build", "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
+            warn!(target: "bit_build", "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
             continue;
         };
 
@@ -46,20 +46,4 @@ pub fn build_being_from_being_inst_template_ref(
     cmd.try_insert_batch(race_refs_to_ins);
     cmd.try_insert_batch(tree_sample_to_ins);
     cmd.try_insert_batch_if_new(belongs_to_fac_refs_to_ins);
-}
-
-pub fn convert_strid_to_ent(
-    mut cmd: Commands,
-    query: Query<(Entity, &BitStrIdRef), (Changed<BitStrIdRef>, common::AnyDisabling)>,
-    bit_emap: Res<BeingInstTemplateEntityMap>,
-) {
-    let mut bit_refs = Vec::new();
-    for (ent, bit_str_id_ref) in query.iter() {
-        let Ok(bit_entity) = bit_emap.0.get_cloned(&bit_str_id_ref.0) else {
-            warn!(target: "being_template_build", "BitStrIdRef '{}' could not be resolved to entity in BeingInstTemplateEntityMap", bit_str_id_ref.0);
-            continue;
-        };
-        bit_refs.push((ent, BitRef(bit_entity)));
-    }
-    cmd.try_insert_batch(bit_refs);
 }

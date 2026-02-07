@@ -2,16 +2,7 @@ use crate::body::BodyPart;
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)]
 use bevy::prelude::*;
-#[allow(unused_imports)]
-use bevy_asset_loader::prelude::*;
 use game_common::game_common_components::EntityZero;
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct BodyPartSerisHandles {
-    #[asset(path = "ron/being/body/part", collection(typed))]
-    pub handles: Vec<Handle<BodyPartSeri>>,
-}
 
 #[derive(Asset, serde::Deserialize, Reflect, Default, Debug, Clone)]
 pub struct BodyPartSeri {
@@ -55,5 +46,6 @@ pub struct BodyPartSeri {
 
 common::define_entity_map_systems!(
     BodyPart,
-    With<EntityZero>
+    With<EntityZero>,
+    BodyPartSeri, "ron/being/body/part", "bodypart.ron",
 );

@@ -40,7 +40,6 @@ pub fn plugin(app: &mut App) {
         .replicate::<TagSet>()
 
         .replicate::<VisibilityGameState>()
-
     ;
 }
 

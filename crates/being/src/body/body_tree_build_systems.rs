@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use modifier::modifier_components::ModifierTarget;
 use crate::being_components::*;
-use crate::body::{body_components::*, body_part::body_part_components::*};
+use crate::body::{body_tree_components::*, body_part::body_part_components::*};
 
 pub fn build_body_tree(
     mut cmd: Commands,

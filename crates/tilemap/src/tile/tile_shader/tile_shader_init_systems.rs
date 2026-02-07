@@ -11,7 +11,7 @@ pub fn init_shaders(
     mut cmd: Commands,
     mut repeat_tex_handles: ResMut<ShaderRepeatTexSerisHandles>,
     mut repeat_assets: ResMut<Assets<ShaderRepeatTexSeri>>,
-    mut voronoi_tex_handles: ResMut<ShaderVoroshuSerisHandles>,
+    mut voronoi_tex_handles: ResMut<ShaderVoronoiShuffleSerisHandles>,
     mut voronoi_assets: ResMut<Assets<ShaderVoronoiShuffleSeri>>,
     mut wavy_handles: ResMut<ShaderWavySerisHandles>,
     mut wavy_assets: ResMut<Assets<ShaderWavySeri>>,
@@ -27,7 +27,7 @@ pub fn init_shaders(
         let Some(seri) = repeat_assets.remove(&handle) else {
           continue;
         };
-        info!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
+        //trace!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
@@ -60,7 +60,7 @@ pub fn init_shaders(
         let Some(seri) = voronoi_assets.remove(&handle) else {
           continue;
         };
-        info!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
+        trace!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
@@ -89,10 +89,9 @@ pub fn init_shaders(
         }
     }
 
-    // Wavy shaders (procedural, no image paths)
     for handle in wavy_handles.handles.drain(..) {
         let Some(seri) = wavy_assets.remove(&handle) else { continue; };
-        info!(target: TILE_SHADER_INIT, "Loading Wavy Shader from handle: {:?}", handle);
+        //trace!(target: TILE_SHADER_INIT, "Loading Wavy Shader from handle: {:?}", handle);
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,
@@ -128,11 +127,9 @@ pub fn init_shaders(
             }
         }
     }
-
-    // Rocky terrain shaders (procedural, no image paths)
     for handle in rocky_handles.handles.drain(..) {
         let Some(seri) = rocky_assets.remove(&handle) else { continue; };
-        info!(target: TILE_SHADER_INIT, "Loading Rocky Terrain Shader from handle: {:?}", handle);
+        //trace!(target: TILE_SHADER_INIT, "Loading Rocky Terrain Shader from handle: {:?}", handle);
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
             Ok(id) => id,

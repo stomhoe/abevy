@@ -4,7 +4,7 @@ use common::common_components::StrId;
 use game_common::game_common_components::EntityZero;
 use modifier::{modifier_components::*, modifier_types::*};
 
-use crate::body::{body_components::*, body_part::body_part_components::*};
+use crate::body::{body_tree_components::*, body_part::body_part_components::*};
 
 #[derive(Default, Clone)]
 struct BodyAggregates {

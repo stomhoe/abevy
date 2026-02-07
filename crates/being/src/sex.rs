@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 use common::common_states::AssetLoading;
 
 use crate::sex::sex_components::*;
@@ -14,7 +13,6 @@ pub struct SexSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_plugins((
-            RonAssetPlugin::<SexSerialization>::new(&["sex.ron"]),
             plugin_sex,
         ))
         .add_systems(

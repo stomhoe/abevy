@@ -1,17 +1,8 @@
 #[allow(unused_imports)]
 use bevy::prelude::*;
-#[allow(unused_imports)]
-use bevy_asset_loader::prelude::*;
 
-use crate::body::body_components::BodyTree;
+use crate::body::body_tree_components::BodyTree;
 use crate::body::body_part::body_part_resources::BodyPartSeri;
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct BodyTreeSerisHandles {
-    #[asset(path = "ron/being/body/tree", collection(typed))]
-    pub handles: Vec<Handle<BodyTreeSeri>>,
-}
 
 #[derive(serde::Deserialize, Asset, Reflect, Default, Debug)]
 pub struct BodyTreeNodeSeri {
@@ -29,5 +20,6 @@ pub struct BodyTreeSeri {
 }
 
 common::define_entity_map_systems!(
-    BodyTree
+    BodyTree,
+    BodyTreeSeri, "ron/being/body/tree", "bodytree.ron",
 );

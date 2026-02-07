@@ -1,7 +1,6 @@
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::f32, platform::collections::{HashMap, HashSet}, };
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-#[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
 use common::{common_components::Tag, };
 use game_common::game_common_components::EntityZero;
@@ -13,6 +12,7 @@ common::define_entity_map_systems!(
     Tile,
     (With<EntityZero>, common::AnyDisabling),
     (Tile, EntityZero),
+    TileSeri, "ron/tilemap/tiling/tile", "tile.ron",
 );
 
 
@@ -22,12 +22,6 @@ pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
 
 
 
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct TileSerisHandles {
-    #[asset(path = "ron/tilemap/tiling/tile", collection(typed))]
-    pub handles: Vec<Handle<TileSerialization>>,
-}
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct TileImagePaths(
     pub Vec<(String, String)>, //key, path
@@ -104,6 +98,8 @@ pub struct TileSerialization {
     pub blocks_projectiles: Option<bool>,
 
 }
+
+pub type TileSeri = TileSerialization;
 #[derive(Component, Deserialize, Reflect, Default)]
 pub struct PortalSeri{
     pub dest_dimension: String,

@@ -1,22 +1,21 @@
-pub use body_components::*;
+pub use body_tree_components::*;
 pub use body_part::body_part_components::*;
-pub use body_resources::*;
+pub use body_tree_resources::*;
 use bevy::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::game_common::ModifierSystems;
 use crate::body::{
-    body_resources::*,
+    body_tree_resources::*,
     body_systems::*,
     body_tree_build_systems::*,
     body_tree_ezero_init_systems::*,
 };
 use body_sampler::BodySamplerSystems;
 
-pub mod body_components;
+pub mod body_tree_components;
 pub mod body_part;
-pub mod body_resources;
+pub mod body_tree_resources;
 pub mod body_sampler;
 mod body_systems;
 mod body_tree_build_systems;
@@ -29,7 +28,6 @@ pub struct BodySystems;
 #[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
     app.add_plugins((
-        RonAssetPlugin::<BodyTreeSeri>::new(&["bodytree.ron"]),
         body_sampler::plugin,
         body_part::plugin,
         plugin_body_tree,
@@ -64,7 +62,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<BodyHealth>()
     .register_type::<BodyDead>()
     .register_type::<BodyDamage>()
-    .replicate::<BodyTreesHolder>()
+
     .replicate::<BodyTree>()
     .replicate::<BodyHealth>()
     .replicate::<BodyDead>()

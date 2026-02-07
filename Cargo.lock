@@ -3547,6 +3547,7 @@ version = "0.1.0"
 dependencies = [
  "bevy 0.18.0",
  "bevy-inspector-egui",
+ "bevy_asset_loader",
  "bevy_common_assets",
  "bevy_replicon",
  "bevy_replicon_renet",

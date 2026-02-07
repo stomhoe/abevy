@@ -1,4 +1,3 @@
-use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
@@ -18,7 +17,6 @@ pub struct BodySamplerSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_plugins((
-            RonAssetPlugin::<BodyWeightedSamplerSeri>::new(&["sampler.ron"]),
             plugin_body_weighted_sampler,
         ))
         .add_systems(Update, (

@@ -1,19 +1,11 @@
 
 
-use being::body::body_part::BodyPartSerisHandles;
-use being::body::body_sampler::body_sampler_resources::BodyWeightedSamplerHandles;
 use bevy_replicon::prelude::ClientState;
-use color_sampler::color_sampler_resources::ColorWeightedSamplerHandles;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use dimension::dimension_resources::DimensionSerisHandles;
 use game_common::{GameplaySystems, };
-use sprite::{sprite_resources::*, sprite_sampler::sprite_sampler_resources::SpriteWeightedSamplerHandles};
 use sprite_animation::sprite_animation_resources::AnimSerisHandles;
-use being::{body::body_part::BodyPartSeri, race::race_resources::RaceSerisHandles};
-use being::sex::sex_resources::SexSerisHandles;
-use being::body::body_resources::BodyTreeSerisHandles;
-use tilemap::{regioning::regioning_resources::*, terrain_gen::terrgen_resources::*, tile::{tile_resources::*, tile_sampler_resources::*, tile_shader::tile_shader_resources::*}};
 
 use crate::asset_loading_systems::*;
 
@@ -34,16 +26,16 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             reload_assets_while_ingame,
         ))
-        .add_systems(OnExit(AppState::StatefulGameSession), 
+        .add_systems(OnExit(AppState::StatefulGameSession),
             despawn_asset_scoped_entities
         )
-        .add_systems(OnEnter(ClientState::Connecting), 
+        .add_systems(OnEnter(ClientState::Connecting),
             despawn_asset_scoped_entities
         )
-        .add_systems(OnEnter(AssetLoading::LoadingAssetsIntoHandles), 
+        .add_systems(OnEnter(AssetLoading::LoadingAssetsIntoHandles),
             despawn_asset_scoped_entities_except_spared
         )
-        .add_systems(OnEnter(AssetLoading::NotStarted), 
+        .add_systems(OnEnter(AssetLoading::NotStarted),
             despawn_asset_scoped_entities
         )
         // Don't use OnExit(AssetLoading::SpawnReplicatedEntities) because clients aren't in that state
@@ -56,29 +48,7 @@ pub fn plugin(app: &mut App) {
         ))
         .add_loading_state(
             LoadingState::new(AssetLoading::LoadingAssetsIntoHandles).continue_to_state(AssetLoading::SpawnReplicatedEntities)
-            .load_collection::<ShaderRepeatTexSerisHandles>()
-            .load_collection::<ShaderVoroshuSerisHandles>()
-            .load_collection::<ShaderWavySerisHandles>()
-            .load_collection::<ShaderRockyTerrainSerisHandles>()
-            .load_collection::<TileSerisHandles>()
             .load_collection::<AnimSerisHandles>()
-            .load_collection::<SpriteSerisHandles>()
-            .load_collection::<ColorWeightedSamplerHandles>()
-            .load_collection::<TileWeightedSamplerHandles>()
-            .load_collection::<NoiseSerisHandles>()
-            .load_collection::<OpListSerisHandles>()
             .load_collection::<DimensionSerisHandles>()
-            .load_collection::<StructureSerisHandles>()
-            .load_collection::<RaceSerisHandles>()
-            .load_collection::<SexSerisHandles>()
-            .load_collection::<BodyTreeSerisHandles>()
-            .load_collection::<SpriteWeightedSamplerHandles>()
-            .load_collection::<BodyWeightedSamplerHandles>()
-            .load_collection::<BodyPartSerisHandles>()
-
-
-        )
-
-    ;
+        );
 }
-

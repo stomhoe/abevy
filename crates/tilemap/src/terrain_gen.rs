@@ -1,5 +1,4 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use dimension_shared::RootInDimensions;
@@ -52,8 +51,6 @@ pub fn plugin(app: &mut App) {
         .init_resource::<TerrGenAsyncTasks>()
 
         .add_plugins((
-            RonAssetPlugin::<NoiseSerialization>::new(&["fnl.ron"]),
-            RonAssetPlugin::<OpListSerialization>::new(&["oplist.ron"]),
             plugin_terrgen,
             plugin_operation_list,
         ))

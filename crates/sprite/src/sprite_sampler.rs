@@ -1,7 +1,5 @@
-use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::common_components::StrId;
 use common::common_states::AssetLoading;
 use common::define_entity_map_systems;
 use game_common::HostSystems;
@@ -16,13 +14,15 @@ pub struct SpriteSamplerSystems;
 
 
 define_entity_map_systems!(
-    SpriteWeightedSampler
+    SpriteWeightedSampler,
+    SpriteWeightedSamplerSeri, "ron/sprite/sampler", "sampler.ron",
 );
+
+pub type SpriteWeightedSamplerHandles = SpriteWeightedSamplerSerisHandles;
 
 pub fn plugin(app: &mut App) {
     app
         .add_plugins((
-            RonAssetPlugin::<SpriteWeightedSamplerSeri>::new(&["sampler.ron"]),
             plugin_sprite_weighted_sampler,
         ))
         .add_systems(Update, (

@@ -1,7 +1,8 @@
+use std::time::Duration;
+
 use ::being_shared::*;
-use bevy::prelude::*;
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 use common::{common_states::AssetLoading, };
 
 use crate::{being_inst_template::{being_inst_template_components::*, being_inst_template_init_systems::*, being_inst_template_build_systems::*, being_inst_template_resources::*}, };
@@ -14,7 +15,6 @@ pub struct BeingInstTemplateSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        RonAssetPlugin::<BitSerialization>::new(&["being_template.ron"]),
         plugin_being_inst_template,
     ))
     .add_systems(
@@ -27,14 +27,9 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         build_being_from_being_inst_template_ref,
-        convert_strid_to_ent,
+        convert_bit_strid_ref_to_ent_ref.run_if(on_timer(Duration::from_secs_f32(0.5))),
     ))
     .register_type::<BitSerialization>()
-    .register_type::<BitRef>()
-
-    .replicate::<BeingInstTemplate>()
-    .replicate::<BitRef>()
-
 
     ;
 }

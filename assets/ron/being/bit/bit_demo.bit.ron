@@ -1,0 +1,17 @@
+(
+    id: "bit_demo",
+    fallback_faction: Some("host"),
+    points: 10,
+
+    consecutive_name_weighted_distributions: None,
+    race: "bit_demo_race",
+    scs_samplers: Some(["humanhe0", "humanbo0"]),
+    sprites_scale_ranges: None,
+    health_multiplier: Some(1.0),
+
+    body_tree: None,
+    recruitment_difficulty: None,
+
+    whitelisted_tiles_for_spawning: None,
+    blacklisted_tiles_for_spawning: None,
+)

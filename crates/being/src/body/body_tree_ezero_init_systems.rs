@@ -8,8 +8,8 @@ use common::{common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 
 use crate::body::{
-    body_components::*, body_part::body_part_components::*, body_part::body_part_resources::*,
-    body_resources::*,
+    body_tree_components::*, body_part::body_part_components::*, body_part::body_part_resources::*,
+    body_tree_resources::*,
 };
 
 #[allow(unused_parens)]
@@ -19,18 +19,10 @@ pub fn init_ezero_body_trees(
     part_map: Res<BodyPartEntityMap>,
     mut seris_handles: ResMut<BodyTreeSerisHandles>,
     mut assets: ResMut<Assets<BodyTreeSeri>>,
-    holder_query: Query<Entity, With<BodyTreesHolder>>,
 ) {
     if !body_map.0.is_empty() {
         return;
     }
-
-    let egui_holder = if holder_query.is_empty() {
-        debug!(target: "body_init", "Creating BodyConfigsHolder.");
-        cmd.spawn((BodyTreesHolder,)).id()
-    } else {
-        holder_query.single().unwrap()
-    };
 
     for handle in take(&mut seris_handles.handles) {
         let Some(mut seri) = assets.remove(&handle) else {
@@ -51,7 +43,6 @@ pub fn init_ezero_body_trees(
             body_id.clone(),
             BodyTree,
             EntityZero,
-            ChildOf(egui_holder),
         ));
 
         if seri.name.trim().is_empty() {

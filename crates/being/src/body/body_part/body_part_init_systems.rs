@@ -9,7 +9,7 @@ use game_common::game_common_components::EntityZero;
 use modifier::{modifier_components::*, modifier_types::*};
 
 use crate::body::{
-    body_part::body_part_components::*, body_part::body_part_resources::*, body_resources::*,
+    body_part::body_part_components::*, body_part::body_part_resources::*, body_tree_resources::*,
 };
 
 #[allow(unused_parens)]

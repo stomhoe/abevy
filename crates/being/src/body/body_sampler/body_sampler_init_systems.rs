@@ -4,12 +4,12 @@
 use common::common_components::StrId;
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 
-use crate::body::{body_resources::*, body_sampler::{body_sampler_components::*, body_sampler_resources::*}};
+use crate::body::{body_tree_resources::*, body_sampler::{body_sampler_components::*, body_sampler_resources::*}};
 
 
 #[allow(unused_parens)]
 pub fn init_body_weighted_samplers(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     seris_handles: ResMut<BodyWeightedSamplerHandles>,
     assets: Res<Assets<BodyWeightedSamplerSeri>>,
     map: Res<BodyWeightedSamplerEntityMap>,
@@ -18,7 +18,7 @@ pub fn init_body_weighted_samplers(
     let holder = cmd.spawn((EguiBodySamplerHolder, )).id();
 
     let mut comps_to_insert = Vec::new();
-    
+
     for handle in seris_handles.handles.iter() {
         if let Some(seri) = assets.get(handle) {
             if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
@@ -33,11 +33,11 @@ pub fn init_body_weighted_samplers(
         }
     }
     cmd.insert_batch(comps_to_insert);
-} 
+}
 
 #[allow(unused_parens)]
 pub fn init_body_weighted_samplers_refs(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     mut seris_handles: ResMut<BodyWeightedSamplerHandles>,
     mut assets: ResMut<Assets<BodyWeightedSamplerSeri>>,
     body_weighted_map: Res<BodyWeightedSamplerEntityMap>,

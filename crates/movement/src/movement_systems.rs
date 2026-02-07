@@ -321,10 +321,6 @@ pub fn prepare_grid_locked_movement(
         if moved {
             move_anim.set(true, being_ent, &mut being_changed_state_set);
 
-            if is_client && controlled_locally {
-                info!(target: "grid_movement", "Client character moved to {:?}", current_translation);
-            }
-
             if !is_client {
                 let to_clients = ToClients {
                     mode: SendMode::BroadcastExcept(ClientId::Server),
@@ -334,11 +330,9 @@ pub fn prepare_grid_locked_movement(
             }
         } else {
             move_anim.set(false, being_ent, &mut being_changed_state_set);
-            info!(target: "grid_movement", "Character did not move");
         }
     }
     beings_changed_anim_move_state_writer.write_batch(being_changed_state_set);
-
 }
 
 pub fn process_speed_modifiers(

@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 use common::common_states::AssetLoading;
 
 use crate::race::{race_build_being_systems::build_beings_from_race_ref, race_components::*, race_init_systems::*, race_resources::*};
@@ -14,7 +13,6 @@ pub struct RaceSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_plugins((
-            RonAssetPlugin::<RaceSerialization>::new(&["race.ron"]),
             plugin_race,
         ))
         .add_systems(

@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_tilemap::prelude::MaterialTilemapPlugin;
 use bevy_replicon::prelude::*;
 use common::{common_states::AssetLoading};
@@ -36,11 +35,6 @@ pub fn plugin(app: &mut App) {
         MaterialTilemapPlugin::<VoronoiTextureOverlayMat>::default(),
         MaterialTilemapPlugin::<WavyMat>::default(),
         MaterialTilemapPlugin::<RockyTerrainMat>::default(),
-
-        RonAssetPlugin::<ShaderRepeatTexSeri>::new(&["rep1shader.ron"]),
-        RonAssetPlugin::<ShaderVoronoiShuffleSeri>::new(&["voroshu.ron"]),
-        RonAssetPlugin::<ShaderWavySeri>::new(&["wavy.ron"]),
-        RonAssetPlugin::<ShaderRockyTerrainSeri>::new(&["rocky.ron"]),
     ))
 
     .register_type::<MonoRepeatTextureOverlayMat>()
@@ -50,7 +44,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<RockyTerrainMat>()
     .register_type::<ShaderRepeatTexSerisHandles>()
     .register_type::<ShaderRepeatTexSeri>()
-    .register_type::<ShaderVoroshuSerisHandles>()
+    .register_type::<ShaderVoronoiShuffleSerisHandles>()
     .register_type::<ShaderVoronoiShuffleSeri>()
     .register_type::<ShaderWavySerisHandles>()
     .register_type::<ShaderWavySeri>()

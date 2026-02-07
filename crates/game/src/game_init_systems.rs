@@ -1,9 +1,9 @@
 use being::being_components::*;
+use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use common::{common_components::StrId, common_states::AppState};
 use faction::{faction_components::*, faction_resources::*};
 use modifier::{modifier_components::*, modifier_move_bundles::SpeedModifier, modifier_types::WalkSpeed };
 use player::player_components::*;
-use sprite_shared::SampleSpritesFromStrIds;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings};
 
 use bevy::prelude::*;
@@ -63,11 +63,9 @@ pub fn host_on_player_added(mut cmd: Commands,
             let created_character = cmd.spawn((Being::default(), username.clone(),
                 ControlledBy { client: player_ent },
                 CharacterCreatedBy { player: player_ent },
-
+                Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+                BitStrIdRef(StrId::trunc("bit_demo")),
                 BelongsToFaction(host_faction),
-                Transform::from_translation(Vec3::new(5900.0, 900.0, 0.0)),
-                SampleSpritesFromStrIds::new(["humanhe0", "humanbo0"]),
-
             )).id();
             cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));
 

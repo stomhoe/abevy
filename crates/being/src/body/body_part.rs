@@ -1,5 +1,4 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 pub use body_part_components::*;
@@ -19,8 +18,6 @@ pub struct BodyPartSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-		RonAssetPlugin::<BodyPartSeri>::new(&["bodypart.ron"]),
-
         plugin_body_part,
     ))
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (

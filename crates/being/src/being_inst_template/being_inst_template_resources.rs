@@ -1,13 +1,5 @@
 use being_shared::BeingInstTemplate;
-use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
-use bevy_asset_loader::prelude::*;
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct BitSerisHandles {
-    #[asset(path = "ron/being/template", collection(typed))]
-    pub handles: Vec<Handle<BitSerialization>>,
-}
+use bevy::{asset, platform::collections::{HashMap, HashSet}, prelude::*};
 
 #[derive(serde::Deserialize, Asset, Reflect, Default, Debug)]
 pub struct BitSerialization {
@@ -30,6 +22,8 @@ pub struct BitSerialization {
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
 }
 
+pub type BitSeri = BitSerialization;
+
 common::define_entity_map_systems!(
     BeingInstTemplate,
     (),
@@ -38,4 +32,5 @@ common::define_entity_map_systems!(
     "BIT",
     BeingInstTemplate,
     common::common_components::StrId,
+    BitSeri, "ron/being/bit", "bit.ron",
 );

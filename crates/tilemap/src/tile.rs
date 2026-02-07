@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use bevy::{time::common_conditions::on_timer};
-use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
 use common::{common_states::AssetLoading, };
@@ -67,9 +66,6 @@ pub fn plugin(app: &mut App) {
 
     .add_plugins((
         tile_shader::plugin,
-
-        RonAssetPlugin::<TileSerialization>::new(&["tile.ron"]),
-        RonAssetPlugin::<TileWeightedSamplerSeri>::new(&["tsampler.ron"]),
         plugin_tile,
         plugin_tile_weighted_sampler,
     ))

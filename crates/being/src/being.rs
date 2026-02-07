@@ -24,6 +24,7 @@ pub fn plugin(app: &mut App) {
         crate::race::plugin,
         crate::sex::plugin,
         body::plugin,
+        crate::being_inst_template::plugin,
     ))
 
     .add_systems(Update, (

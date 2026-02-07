@@ -5,7 +5,7 @@ use dimension_shared::DimensionRef;
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
 
-use crate::{body::{body_components::*, body_resources::*, body_sampler::{BodyWeightedSamplerEntityMap, body_sampler_components::*}, }, race::race_components::Race};
+use crate::{body::{body_tree_components::*, body_tree_resources::*, body_sampler::{BodyWeightedSamplerEntityMap, body_sampler_components::*}, }, race::race_components::Race};
 
 /// Resolves SampleBodiesFromStrIds into SampleBodies by converting string IDs to entities
 #[allow(unused_parens)]

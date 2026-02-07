@@ -4,7 +4,6 @@ use ::sprite_shared::*;
 #[allow(unused_imports)]
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
-use bevy_common_assets::ron::RonAssetPlugin;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{
@@ -34,7 +33,6 @@ const SPRITES_SCHEDULE: FixedUpdate = FixedUpdate;
 #[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
     app.add_plugins((
-        RonAssetPlugin::<SpriteConfigSeri>::new(&["sprite.ron"]),
         sprite_sampler::plugin,
         plugin_sprite_config,
     ))

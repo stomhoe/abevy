@@ -1,7 +1,6 @@
 #[allow(unused_imports)] use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
-use bevy_asset_loader::asset_collection::AssetCollection;
 
 use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
@@ -16,17 +15,12 @@ common::define_entity_map_systems!(
     "SGC",
     StructuredGenConfig,
     common::common_components::StrId,
+    StructureSeri, "ron/tilemap/region/structures", "sgc.ron",
 );
 #[derive(Resource, Reflect, InspectorOptions, Default)]
 #[reflect(Resource, Default, InspectorOptions)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct StructureSerisHandles {
-    #[asset(path = "ron/tilemap/region/structures", collection(typed))]
-    pub handles: Vec<Handle<StructuredGenConfigSeri>>,
-}
 #[derive(Deserialize, Asset, Reflect, )]
 pub struct StructuredGenConfigSeri {
     pub id: String,
@@ -57,3 +51,5 @@ pub struct StructuredGenConfigSeri {
     pub max_per_region: Option<u32>,
 
 }
+
+pub type StructureSeri = StructuredGenConfigSeri;

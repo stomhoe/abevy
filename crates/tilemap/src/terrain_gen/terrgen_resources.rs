@@ -1,6 +1,5 @@
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task};
-use bevy_asset_loader::asset_collection::AssetCollection;
 use common::{common_components::{HashId}, common_types::HashIdToEntityMap};
 
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}}, tile::{tile_components::{KeepDistanceFrom, MinDistancesMap, }, }, tilemap_resources};
@@ -56,12 +55,6 @@ pub struct TerrGenAsyncTasks {
 }
 
 
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct NoiseSerisHandles {
-    #[asset(path = "ron/tilemap/terrgen/noise", collection(typed))]
-    pub handles: Vec<Handle<NoiseSerialization>>,
-}
 #[derive(Deserialize, Asset, Reflect, )]
 pub struct NoiseSerialization {
     pub id: String,
@@ -93,6 +86,8 @@ pub struct NoiseSerialization {
     pub domain_warp_amp: Option<f32>,
 }
 
+pub type NoiseSeri = NoiseSerialization;
+
 #[derive(Deserialize, Asset, Reflect, )]
 pub struct DungeonSeri {
     pub id: String,
@@ -102,12 +97,6 @@ pub struct DungeonSeri {
 
 
 
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct OpListSerisHandles {
-    #[asset(path ="ron/tilemap/terrgen/oplist", collection(typed))]
-    pub handles: Vec<Handle<OpListSerialization>>,
-}
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct OpListSerialization {
     pub id: String,
@@ -125,9 +114,13 @@ impl OpListSerialization {
     }
 }
 
+pub type OpListSeri = OpListSerialization;
+
 
 
 common::define_entity_map_systems!(
-    Terrgen
+    Terrgen,
+    NoiseSeri, "ron/tilemap/terrgen/noise", "fnl.ron",
+    OpListSeri, "ron/tilemap/terrgen/oplist", "oplist.ron",
 );
 

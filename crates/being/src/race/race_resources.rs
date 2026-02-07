@@ -1,13 +1,6 @@
 
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
-use bevy_asset_loader::prelude::*;
 use crate::race::Race;
-
-#[derive(AssetCollection, Resource, Default, )]
-pub struct RaceSerisHandles {
-    #[asset(path = "ron/being/race", collection(typed))]
-    pub handles: Vec<Handle<RaceSerialization>>,
-}
 
 
 
@@ -39,6 +32,9 @@ pub struct RaceSerialization {
     pub body_tree: String,
 }
 
+pub type RaceSeri = RaceSerialization;
+
 common::define_entity_map_systems!(
-    Race
+    Race,
+    RaceSeri, "ron/being/race", "race.ron",
 );

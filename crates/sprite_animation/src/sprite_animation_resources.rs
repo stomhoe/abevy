@@ -1,9 +1,9 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_asset_loader::prelude::*;
+#[allow(unused_imports)] use bevy_asset_loader::prelude::AssetCollection;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(AssetCollection, Resource, Default, Reflect)]
+#[derive(bevy_asset_loader::asset_collection::AssetCollection, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
 pub struct AnimSerisHandles {
     #[asset(path = "ron/sprite/animation", collection(typed))]

@@ -1,9 +1,7 @@
 use bevy::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use common::{define_entity_map_systems, common_components::StrId};
 use crate::{chunking::chunking_spawn_systems::*, regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*, regioning_sgc_components::StructuredGenConfig}, terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::tile_systems::despawn_if_not_excepted, tilemap_systems::process_tiles_pre};
 
 
@@ -17,7 +15,6 @@ pub struct StructureBuildingSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        RonAssetPlugin::<StructuredGenConfigSeri>::new(&["sgc.ron"]),
         plugin_structured_gen_config,
     ))
     .add_systems(Update, (

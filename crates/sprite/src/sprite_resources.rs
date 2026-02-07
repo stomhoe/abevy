@@ -1,22 +1,10 @@
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
-#[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
 
 use::serde::{Deserialize, Serialize};
 
 use crate::sprite_components::SpriteConfig;
-
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct SpriteSerisHandles {
-    #[asset(path = "ron/sprite/config", collection(typed))]
-    pub handles: Vec<Handle<SpriteConfigSeri>>,
-}
-
-
-
 
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct SpriteConfigSeri {
@@ -50,7 +38,10 @@ pub struct SpriteConfigSeri {
 }
 // PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)
 
+pub type SpriteSeri = SpriteConfigSeri;
+
 common::define_entity_map_systems!(
     SpriteConfig,
-    (With<game_common::game_common_components::EntityZero>, )
+    (With<game_common::game_common_components::EntityZero>, ),
+    SpriteSeri, "ron/sprite/config", "sprite.ron",
 );

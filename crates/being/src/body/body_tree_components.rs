@@ -7,17 +7,6 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Default, Serialize, Deserialize, Clone, Reflect)]
-#[require(
-    SparedFromHotReloading,
-    AssetScoped,
-    Replicated,
-    Prefix::trunc("BodyTrees"),
-    Visibility,
-    Transform
-)]
-pub struct BodyTreesHolder;
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 #[require(
     SparedFromHotReloading,

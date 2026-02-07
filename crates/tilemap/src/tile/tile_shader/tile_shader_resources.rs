@@ -7,14 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::tile::tile_shader::tile_shader_components::TileShader;
 
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
-pub struct ShaderRepeatTexSerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader/rep1" , collection(typed))] 
-    pub handles: Vec<Handle<ShaderRepeatTexSeri>>,
-}
-
-
 #[derive(Deserialize, Asset, Reflect, Default)]
 pub struct ShaderRepeatTexSeri {
     pub id: String,
@@ -22,14 +14,6 @@ pub struct ShaderRepeatTexSeri {
     pub scale: f32,
     pub mask_color: [f32; 4],
 }
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
-pub struct ShaderVoroshuSerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader/voroshu" , collection(typed))] 
-    pub handles: Vec<Handle<ShaderVoronoiShuffleSeri>>,
-}
-
 
 #[derive(Deserialize, Asset, Reflect, Default)]
 pub struct ShaderVoronoiShuffleSeri {
@@ -43,13 +27,6 @@ pub struct ShaderVoronoiShuffleSeri {
 }
 
 
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
-pub struct ShaderWavySerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader/wavy" , collection(typed))] 
-    pub handles: Vec<Handle<ShaderWavySeri>>,
-}
-
 #[derive(Deserialize, Asset, Reflect, Default)]
 pub struct ShaderWavySeri {
     pub id: String,
@@ -60,13 +37,6 @@ pub struct ShaderWavySeri {
     pub time: f32,
     pub speed: f32,
     pub debug_mode: f32,
-}
-
-#[derive(AssetCollection, Resource, Default, Reflect)]
-#[reflect(Resource, Default)] 
-pub struct ShaderRockyTerrainSerisHandles {
-    #[asset(path ="ron/tilemap/tiling/shader/rocky" , collection(typed))] 
-    pub handles: Vec<Handle<ShaderRockyTerrainSeri>>,
 }
 
 #[derive(Deserialize, Asset, Reflect, Default)]
@@ -80,5 +50,9 @@ pub struct ShaderRockyTerrainSeri {
 }
 
 common::define_entity_map_systems!(
-    TileShader
+    TileShader,
+    ShaderRepeatTexSeri, "ron/tilemap/tiling/shader/rep1", "rep1shader.ron",
+    ShaderVoronoiShuffleSeri, "ron/tilemap/tiling/shader/voroshu", "voroshu.ron",
+    ShaderWavySeri, "ron/tilemap/tiling/shader/wavy", "wavy.ron",
+    ShaderRockyTerrainSeri, "ron/tilemap/tiling/shader/rocky", "rocky.ron",
 );
