@@ -124,30 +124,49 @@ pub fn prepare_grid_locked_movement(
         let axis_input_dir = normalize_to_axis_dir(raw_input);
 
         let (mut dir_vec, finish_current_tile_only) = if is_mid_tile {
-            let last_move = move_state.norm_move_dir * move_state.speed_magnitude;
-            let active_dir = normalize_to_axis_dir(last_move);
-
-            if active_dir == Vec2::ZERO && offset.x.abs() >= offset.y.abs() {
-                Vec2::new(1.0, 0.0)
-            } else if active_dir == Vec2::ZERO {
-                Vec2::new(0.0, 1.0)
-            } else {
-                active_dir
-            };
-
-            let finish_current_tile_only =
-                axis_input_dir == Vec2::ZERO || axis_input_dir != active_dir;
-
-            if axis_input_dir != Vec2::ZERO && axis_input_dir != active_dir {
-                glm.queued_move_dir = axis_input_dir;
+            let mut active_dir = glm.active_move_dir;
+            if active_dir == Vec2::ZERO {
+                active_dir = axis_input_dir;
+            }
+            if active_dir == Vec2::ZERO {
+                if offset.x.abs() >= offset.y.abs() {
+                    active_dir = Vec2::new(offset.x.signum(), 0.0);
+                } else {
+                    active_dir = Vec2::new(0.0, offset.y.signum());
+                }
             }
 
-            (active_dir, finish_current_tile_only)
+            if axis_input_dir == Vec2::ZERO {
+                if active_dir != Vec2::ZERO {
+                    glm.active_move_dir = active_dir;
+                }
+                (active_dir, true)
+            } else if active_dir == Vec2::ZERO {
+                glm.active_move_dir = axis_input_dir;
+                (axis_input_dir, false)
+            } else if axis_input_dir == active_dir {
+                glm.active_move_dir = active_dir;
+                (active_dir, false)
+            } else if axis_input_dir == -active_dir {
+                glm.queued_move_dir = Vec2::ZERO;
+                glm.active_move_dir = axis_input_dir;
+                (axis_input_dir, false)
+            } else {
+                glm.queued_move_dir = axis_input_dir;
+                glm.active_move_dir = active_dir;
+                (active_dir, true)
+            }
         } else if glm.queued_move_dir != Vec2::ZERO {
             let queued = glm.queued_move_dir;
             glm.queued_move_dir = Vec2::ZERO;
+            glm.active_move_dir = queued;
             (queued, false)
         } else {
+            if axis_input_dir != Vec2::ZERO {
+                glm.active_move_dir = axis_input_dir;
+            } else {
+                glm.active_move_dir = Vec2::ZERO;
+            }
             (axis_input_dir, false)
         };
 
@@ -220,6 +239,7 @@ pub fn prepare_grid_locked_movement(
             let next_target = current_snapped.xy() + (current_dir * step_distance);
             if is_blocked_at(GlobalTilePos::from(next_target)) {
                 glm.queued_move_dir = Vec2::ZERO;
+                glm.active_move_dir = Vec2::ZERO;
                 if !moved {
                     current_translation = current_snapped;
                 }
@@ -246,6 +266,7 @@ pub fn prepare_grid_locked_movement(
                 let target = current_snapped.xy() + (current_dir * step_distance);
                 if is_blocked_at(GlobalTilePos::from(target)) {
                     glm.queued_move_dir = Vec2::ZERO;
+                    glm.active_move_dir = Vec2::ZERO;
                     if !moved {
                         current_translation = current_snapped;
                     }
@@ -262,6 +283,7 @@ pub fn prepare_grid_locked_movement(
                 let target = current_snapped.xy() + (current_dir * step_distance);
                 if is_blocked_at(GlobalTilePos::from(target)) {
                     glm.queued_move_dir = Vec2::ZERO;
+                    glm.active_move_dir = Vec2::ZERO;
                     if !moved {
                         current_translation = current_snapped;
                     }
@@ -275,6 +297,7 @@ pub fn prepare_grid_locked_movement(
                 //client never reaches this point
 
                 if finish_current_tile_only && glm.queued_move_dir == Vec2::ZERO {
+                    glm.active_move_dir = Vec2::ZERO;
                     trace!("Movement finished");
                     break;
                 }
@@ -282,6 +305,7 @@ pub fn prepare_grid_locked_movement(
                 if glm.queued_move_dir != Vec2::ZERO {
                     current_dir = glm.queued_move_dir;
                     glm.queued_move_dir = Vec2::ZERO;
+                    glm.active_move_dir = current_dir;
                 }
             } else {
                 current_translation += (current_dir * step).extend(0.0);
@@ -406,14 +430,16 @@ pub fn update_facing_dir(
 ) {
     for (input_dir, move_state, glm, mut facing_dir) in query.iter_mut() {
         let move_vec = move_state.norm_move_dir * move_state.speed_magnitude;
-        let dir_vec = if move_vec != Vec2::ZERO {
-            move_vec
-        } else if let Some(glm) = glm {
-            if glm.queued_move_dir != Vec2::ZERO {
-                glm.queued_move_dir
+        let dir_vec = if let Some(glm) = glm {
+            if glm.active_move_dir != Vec2::ZERO {
+                glm.active_move_dir
+            } else if move_vec != Vec2::ZERO {
+                move_vec
             } else {
                 input_dir.0
             }
+        } else if move_vec != Vec2::ZERO {
+            move_vec
         } else {
             input_dir.0
         };

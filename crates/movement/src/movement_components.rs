@@ -16,6 +16,7 @@ pub struct MoveVecMag {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct GridLockedMovement{
     pub queued_move_dir: Vec2,
+    pub active_move_dir: Vec2,
 }
 
 //PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
