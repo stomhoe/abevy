@@ -1,16 +1,12 @@
 use bevy::platform::collections::{HashMap, HashSet};
-#[allow(unused_imports)] use bevy::prelude::*;
+use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
 use bevy_spritesheet_animation::prelude::{Animation, AnimationProgress, Spritesheet};
-use common::{common_components::{AssetScoped, Prefix, SparedFromHotReloading, StrId}, common_types::*};
+use common::{common_components::{AssetScoped, Prefix, SparedFromHotReloading, StrId}, };
 use serde::{Deserialize, Serialize};
 
 
-#[allow(unused_imports)] use {bevy::prelude::*, };
 
-pub fn plugin(app: &mut App) {
-
-}
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, )]
 pub struct PlayingSpeed(pub f32);
@@ -77,12 +73,12 @@ pub struct AnimationSheet(pub Spritesheet,);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Reflect)]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("Animation"),   )]
-pub struct AnimationComp;
+pub struct AcAnimation;
 
 
 
 common::define_entity_map_systems!(
-    AnimationComp,
+    AcAnimation,
     AnimationSeri, "ron/sprite/animation", "anim.ron"
 );
 

@@ -3,11 +3,11 @@ use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{common_components::StrId, common_id_components::HashId};
 use dimension_shared::DimensionRef;
-use game_common::game_common_components_samplers::EntityWeightedSampler;
+use game_common::{game_common_components::EntityZero, game_common_components_samplers::EntityWeightedSampler};
 use sprite_shared::{SampleSpriteEnts, SampleSpritesFromStrIds};
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
 
-use crate::{sprite_components::ScrsToBuild, sprite_resources::*, sprite_sampler::SpriteWeightedSamplerEntityMap};
+use crate::{sprite_components::ScsToBuild, sprite_resources::*, sprite_sampler::SpriteWeightedSamplerEntityMap};
 
 /// Resolves SampleSpritesFromStrIds into SampleSprites by converting string IDs to entities
 #[allow(unused_parens)]
@@ -58,9 +58,7 @@ pub fn replace_sampler_string_ids_by_entities(
 pub fn sample_from_sprite_entities(
     mut cmd: Commands,
     global_gen_settings: Query<&GlobalGenSettings>,
-    being_query: Query<(Entity, &SampleSpriteEnts, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleSpriteEnts>,
-        Without<BeingInstTemplate>
-    )>,
+    being_query: Query<(Entity, &SampleSpriteEnts, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleSpriteEnts>, Without<BeingInstTemplate>, Without<EntityZero>)>,
     samplers_query: Query<&EntityWeightedSampler>,
     dimension_hash_query: Query<&HashId, common::AnyDisabling>,
 ) {
@@ -101,7 +99,7 @@ pub fn sample_from_sprite_entities(
         }
 
         if !sampled_configs.is_empty() {
-            configs_to_build.push((ent, ScrsToBuild(sampled_configs)));
+            configs_to_build.push((ent, ScsToBuild(sampled_configs)));
         }
     }
 

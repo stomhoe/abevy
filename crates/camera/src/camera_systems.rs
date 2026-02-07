@@ -24,10 +24,14 @@ pub fn camera_follow_target(
     target: Query<&Transform, With<CameraTarget>>,
     mut camera_query: Query<&mut Transform, (With<Camera>, Without<CameraTarget>)>,
 ) {
-    let Ok(target) = target.single() else {
-        error!("Failed to get camera target");
+    if target.is_empty() {
         return;
-    };
+    }
+    let target = target.iter().next().unwrap();
+    if camera_query.is_empty() {
+        error!("Camera is missing");
+        return;
+    }
     let Ok(mut camera_query) = camera_query.single_mut() else {
         error!("Failed to get camera query");
         return;

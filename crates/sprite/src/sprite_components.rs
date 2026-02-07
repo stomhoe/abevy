@@ -43,8 +43,7 @@ impl AnimType {
         }
     }
 }
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct SpriteConfigNotFound;
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct ExcludedFromBaseAnimPickingSystem;
@@ -67,10 +66,10 @@ pub struct BecomeChildOfSpriteWithTag (pub Tag);
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities, Default )]
-pub struct ScrsToBuild(#[entities] pub EntityHashSet);
-impl ScrsToBuild {
+pub struct ScsToBuild(#[entities] pub EntityHashSet);
+impl ScsToBuild {
     pub fn with_capacity(capacity: usize) -> Self {
-        ScrsToBuild(EntityHashSet::with_capacity(capacity))
+        ScsToBuild(EntityHashSet::with_capacity(capacity))
     }
 }
 
@@ -118,3 +117,7 @@ impl AppliesOnSpriteDirection {
         }
     }
 }
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct SpriteConfigNotFound;

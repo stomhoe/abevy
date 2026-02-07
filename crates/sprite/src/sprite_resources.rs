@@ -2,15 +2,13 @@ use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 
 
-use::serde::{Deserialize, Serialize};
-
 use crate::sprite_components::SpriteConfig;
 
 #[derive(serde::Deserialize, Asset, Reflect, Default)]
 pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,
-    pub mapped_anims: HashMap<(String, String, String, String), String>, 
+    pub mapped_anims: HashMap<(String, String, String, String), String>,
     pub parent_cat: Option<String>, //adds ChildOf referencing other brother entity sprite possessing this tag
     pub tags: Option<HashSet<String>>,
     pub shares_tag: Option<Vec<bool>>,//asignar un componente
@@ -18,7 +16,7 @@ pub struct SpriteConfigSeri {
     pub directionable: Option<bool>,
     pub movement_based: Option<bool>,
     pub grounding_based: Option<bool>,
-    
+
     //use fly animation when standing still
     pub visibility: Option<u8>, //0: inherited, 1: visible, 2: invisible
     pub offset4children: Option<HashMap<String, (f32, f32, String)>>,//k:tag, v:(offset, direction(s)) in which it is applied
@@ -29,7 +27,7 @@ pub struct SpriteConfigSeri {
     pub scale_up_down: Option<(f32, f32)>,
     pub scale_sideways: Option<(f32, f32)>,
     pub flip_horiz_if_dir: Option<u8>, //Left, Right, Any
-    pub offset_up_down: Option<(f32, f32)>, 
+    pub offset_up_down: Option<(f32, f32)>,
     pub offset_down: Option<(f32, f32)>,
     pub offset_up: Option<(f32, f32)>,
     pub offset_sideways: Option<(f32, f32)>,
@@ -42,5 +40,12 @@ pub struct SpriteConfigSeri {
 common::define_entity_map_systems!(
     SpriteConfig,
     (With<game_common::game_common_components::EntityZero>, ),
-    SpriteConfigSeri, "ron/sprite/config", "sprite.ron",
+    Sc,
+    "sprite_config",
+    "",
+    SpriteConfig,
+    common::common_components::StrId,
+    SpriteConfigSeri,
+    "ron/sprite/config",
+    "sprite.ron",
 );

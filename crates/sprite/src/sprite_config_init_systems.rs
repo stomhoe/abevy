@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::*;
-use sprite_animation_shared::AnimationCompEntityMap;
+use sprite_animation_shared::AcAnimationEntityMap;
 
 use crate::{sprite_components::*, sprite_resources::*};
 
@@ -17,8 +17,8 @@ pub fn init_sprite_configs(
     scs_map: Res<SpriteConfigEntityMap>,
     mut seris_handles: ResMut<SpriteConfigSerisHandles>,
     mut assets: ResMut<Assets<SpriteConfigSeri>>,
-    library: Res<AnimationCompEntityMap>,
-    scs_holder: Query<Entity, With<EguiSpriteConfigsHolder>>,
+    library: Res<AcAnimationEntityMap>,
+    scs_holder: Query<Entity, With<EguiScsHolder>>,
 ) {
     if !scs_map.0.is_empty() {
         return;
@@ -149,7 +149,7 @@ pub fn init_sprite_configs(
                 let anim_type = AnimType::from_tuple(anim_type);
                 let anim_id = StrId::trunc(anim_id);
                 let Ok(&anim_ent) = library.0.get(&anim_id) else {
-                    error!(target: "sprite_init", "SpriteConfig {}: AnimationCompEntityMap does not contain: {} ", str_id, anim_id);
+                    error!(target: "sprite_init", "SpriteConfig {}: AcAnimationEntityMap does not contain: {} ", str_id, anim_id);
                     continue;
                 };
                 anims_map.0.insert(anim_type, anim_ent);

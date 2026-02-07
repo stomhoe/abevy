@@ -8,6 +8,9 @@ use crate::race::Race;
 pub struct RaceSeri {
     pub id: String,
     pub name: String,
+    
+    ///can be a body sampler
+    pub body_tree: String,
     pub name_generator: Option<String>,
     pub icon_path: Option<String>,
     pub description: Option<String>,
@@ -27,9 +30,6 @@ pub struct RaceSeri {
 
     pub whitelisted_tiles_for_spawning: Option<HashSet<String>>,
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
-
-    ///can be a body sampler
-    pub body_tree: String,
 }
 
 common::define_entity_map_systems!(

@@ -18,12 +18,7 @@ pub fn build_beings_from_race_ref(
     mut cmd: Commands,
     global_gen_settings: Query<&GlobalGenSettings>,
     dimension_hash_query: Query<&HashId, common::AnyDisabling>,
-    race_query: Query<(
-        Option<&SexesSampler>,
-        Option<&MappedSpritesToSample>,
-        Option<&BodyTreeStrIdRef>,
-    ), With<Race>>,
-    query: Query<(
+    beings_query: Query<(
         Entity,
         &RaceRef,
         AnyOf<(&GlobalTilePos, &Transform)>,
@@ -32,8 +27,13 @@ pub fn build_beings_from_race_ref(
         Option<&SampleTreeEnt>,
         Option<&SampleBodyFromStrId>,
     ), (Changed<RaceRef>, With<Being>)>,
+    race_query: Query<(
+        Option<&SexesSampler>,
+        Option<&MappedSpritesToSample>,
+        Option<&BodyTreeStrIdRef>,
+    ), With<Race>>,
 ) {
-    if query.is_empty() {
+    if beings_query.is_empty() {
         return;
     }
     let Ok(global_gen_settings) = global_gen_settings.single() else {
@@ -43,7 +43,7 @@ pub fn build_beings_from_race_ref(
     let mut sample_sprites_to_ins: Vec<(Entity, SampleSpriteEnts)> = Vec::new();
     let mut sample_bodies_to_ins: Vec<(Entity, SampleBodyFromStrId)> = Vec::new();
 
-    for (ent, race_ref, (gpos, transform), dimension_ref, sample_sprites, sample_tree, sample_body_strid) in query.iter() {
+    for (ent, race_ref, (gpos, transform), dimension_ref, sample_sprites, sample_tree, sample_body_strid) in beings_query.iter() {
         let Ok((sexes_sampler, mapped_sprites, body_tree_str_id_ref)) = race_query.get(race_ref.0) else {
             warn!(target: "race_build", "RaceRef entity {:?} could not be resolved to a Race entity", race_ref.0);
             continue;

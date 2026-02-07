@@ -74,6 +74,9 @@ macro_rules! define_entity_map_systems {
             #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
             pub struct [<DoNotRetryConvert $abbreviation StrIdRef>](pub common::common_components::StrId);
 
+            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
+            pub struct [<DoNotRetryBuild $abbreviation Ref>];
+
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
                 map: Option<ResMut<[<$main_component EntityMap>]>>,
@@ -168,23 +171,24 @@ macro_rules! define_entity_map_systems {
             pub fn [<convert_ $abbreviation:snake _strid_ref_to_ent_ref>](
                 mut cmd: Commands,
                 query: Query<(Entity, &[<$abbreviation StrIdRef>]), (Without<[<DoNotRetryConvert $abbreviation StrIdRef>]>)>,
-                bit_emap: Option<Res<[<$main_component EntityMap>]>>,
+                emap: Option<Res<[<$main_component EntityMap>]>>,
             ) {
                 if query.is_empty() {
                     return;
                 }
-                let Some(bit_emap) = bit_emap else {
+                let Some(emap) = emap else {
                     error!(target: $target, "{} EntityMap does not exist, inject {} into bevy", stringify!($main_component), stringify!([<plugin_ $main_component:snake>]));
                     return;
                 };
                 let mut refs = Vec::with_capacity(query.iter().size_hint().0);
                 for (customer_ent, str_id_ref) in query.iter() {
-                    let Ok(bit_entity) = bit_emap.0.get_cloned(&str_id_ref.0) else {
+                    let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
                         error!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         cmd.entity(customer_ent).try_insert(([<DoNotRetryConvert $abbreviation StrIdRef>]::default()));
                         continue;
                     };
                     refs.push((customer_ent, [<$abbreviation Ref>](bit_entity)));
+                    cmd.entity(customer_ent).try_remove::<[<$abbreviation StrIdRef>]>();
                 }
                 cmd.try_insert_batch(refs);
             }
@@ -204,6 +208,7 @@ macro_rules! define_entity_map_systems {
                     .replicate::<$main_component>()
                     .replicate::<[<$abbreviation Ref>]>()
                     .replicate::<[<Egui $abbreviation sHolder>]>()
+                    .replicate::<[<DoNotRetryBuild $abbreviation Ref>]>()
                     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>()
                     ;
             }
@@ -259,6 +264,9 @@ macro_rules! define_entity_map_systems {
             #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
             pub struct [<DoNotRetryConvert $abbreviation StrIdRef>](pub common::common_components::StrId);
 
+            #[derive(Component, std::fmt::Debug, Clone, Copy, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
+            pub struct [<DoNotRetryBuild $abbreviation Ref>];
+
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
                 map: Option<ResMut<[<$main_component EntityMap>]>>,
@@ -343,7 +351,7 @@ macro_rules! define_entity_map_systems {
             }
             pub fn [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>](
                 mut cmd: Commands,
-                query: Query<(Entity), (Changed<[<$abbreviation StrIdRef>]>)>,
+                query: Query<(Entity), (Added<[<$abbreviation StrIdRef>]>, With<[<DoNotRetryConvert $abbreviation StrIdRef>]>)>,
             ) {
                 for (customer_ent) in query.iter() {
                     cmd.entity(customer_ent).try_remove::<[<DoNotRetryConvert $abbreviation StrIdRef>]>();
@@ -352,24 +360,25 @@ macro_rules! define_entity_map_systems {
 
             pub fn [<convert_ $abbreviation:snake _strid_ref_to_ent_ref>](
                 mut cmd: Commands,
-                query: Query<(Entity, &[<$abbreviation StrIdRef>]), (Without<[<DoNotRetryConvert $abbreviation StrIdRef>]>)>,
-                bit_emap: Option<Res<[<$main_component EntityMap>]>>,
+                query: Query<(Entity, &[<$abbreviation StrIdRef>]), (Without<[<DoNotRetryConvert $abbreviation StrIdRef>]>, )>,
+                emap: Option<Res<[<$main_component EntityMap>]>>,
             ) {
                 if query.is_empty() {
                     return;
                 }
-                let Some(bit_emap) = bit_emap else {
-                    error!(target: $target, "{} EntityMap does not exist, inject {} into bevy", stringify!($main_component), stringify!([<plugin_ $main_component:snake>]));
+                let Some(emap) = emap else {
+                    error!(target: $target, "{} EntityMap does not exist, inject {} into app", stringify!($main_component), stringify!([<plugin_ $main_component:snake>]));
                     return;
                 };
                 let mut refs = Vec::with_capacity(query.iter().size_hint().0);
                 for (customer_ent, str_id_ref) in query.iter() {
-                    let Ok(bit_entity) = bit_emap.0.get_cloned(&str_id_ref.0) else {
+                    let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
                         error!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         cmd.entity(customer_ent).try_insert(([<DoNotRetryConvert $abbreviation StrIdRef>]::default()));
                         continue;
                     };
                     refs.push((customer_ent, [<$abbreviation Ref>](bit_entity)));
+                    cmd.entity(customer_ent).try_remove::<[<$abbreviation StrIdRef>]>();
                 }
                 cmd.try_insert_batch(refs);
             }
@@ -391,6 +400,7 @@ macro_rules! define_entity_map_systems {
                     .replicate::<$main_component>()
                     .replicate::<[<$abbreviation Ref>]>()
                     .replicate::<[<Egui $abbreviation sHolder>]>()
+                    .replicate::<[<DoNotRetryBuild $abbreviation Ref>]>()
                     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>()
                     .configure_loading_state(
                         bevy_asset_loader::prelude::LoadingStateConfig::new(common::common_states::AssetLoading::LoadingAssetsIntoHandles)

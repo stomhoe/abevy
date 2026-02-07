@@ -2,7 +2,6 @@ use ::sprite_shared::*;
 use being_shared::BeingInstTemplate;
 #[allow(unused_imports)]
 use bevy::prelude::*;
-use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet};
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
@@ -15,36 +14,36 @@ use crate::{sprite_components::*, sprite_resources::*};
 pub fn add_spritechildren_and_comps(
     mut cmd: Commands,
     father_query: Query<
-        (Entity, &ScrsToBuild, Option<&BaseHolderRef>),
+        (Entity, &ScsToBuild, Option<&BaseHolderRef>),
         (
             Without<SpriteConfig>,
             Without<BeingInstTemplate>,
-            Changed<ScrsToBuild>,
+            Changed<ScsToBuild>,
+            Without<DoNotRetryBuildScRef>,
         ),
     >,
     spritecfgs_query: Query<
-        (Entity, &StrId, Option<&ScrsToBuild>),
+        (Entity, &StrId, Option<&ScsToBuild>),
         (With<SpriteConfig>, common::AnyDisabling),
     >,
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
     sprite_config_ref_query: Query<&EntityZeroRef, common::AnyDisabling>,
 ) {
-    father_query.iter().for_each(|(father_to_sprite, to_build, baseholder_ref)| {
-
-
+    father_query.iter().for_each(|(parent_of_sprite, to_build, baseholder_ref)| {
         spritecfgs_query.iter_many(to_build.0.iter()).for_each(|(spritecfg_ent, str_id, extra_to_build)| {
             info!(target: "sprite_building", "Building sprite {}", str_id);
 
             let baseholder_ref = if let Some(baseholder_ref) = baseholder_ref {
                 baseholder_ref.clone()
             } else {
-                BaseHolderRef{ base: father_to_sprite }
+                BaseHolderRef{ base: parent_of_sprite }
             };
             if let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) {
                 for &sprite_ent in held_sprites.entities() {
                     if let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) {
                         if sprite_cfg_ref.0 == spritecfg_ent {
                             warn!(target: "sprite_building", "SpriteConfig '{}' already present in HeldSprites of base holder {:?}, skipping.", str_id, baseholder_ref.base);
+                            //cmd.entity(parent_of_sprite).insert(DoNotRetryBuildScRef);
                             return;
                         }
                     }
@@ -57,7 +56,7 @@ pub fn add_spritechildren_and_comps(
                 Transform::default(),
                 AcAnimationProgresses::default(),
 
-                ChildOf(father_to_sprite),
+                ChildOf(parent_of_sprite),
                 Replicated,
             )).id();
 
@@ -73,7 +72,7 @@ pub fn add_spritechildren_and_comps(
             // }
         });
 
-        //cmd.entity(father_to_sprite).remove::<SpriteCfgsToBuild>();
+        //cmd.entity(parent_of_sprite).remove::<SpriteCfgsToBuild>();
         //NO HACER ESO PORQ HACE FALTA PARA LA REPLICACIÓN ^^
     });
 }

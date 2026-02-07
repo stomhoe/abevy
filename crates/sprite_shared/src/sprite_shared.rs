@@ -1,32 +1,11 @@
 use bevy::{ecs::entity::MapEntities, platform::collections::HashMap};
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon::prelude::*;
 use common::{common_components::*, common_types::*, define_entity_map_systems};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
-use crate::sprite_scale_offset::{self, *};
 
 #[allow(unused_imports)] use {bevy::prelude::*, };
-
-pub fn plugin(app: &mut App) {
-    app
-        //.register_type::<SpriteConfigStrIds>()
-        .register_type::<BaseHolderRef>()
-        .register_type::<HeldSprites>()
-
-        .replicate::<BaseHolderRef>()
-
-        .replicate_once_filtered::<Transform, With<BaseHolderRef>>()
-        .replicate_once_filtered::<ChildOf, With<BaseHolderRef>>()
-        .replicate::<MovementBased>()
-        .replicate::<GroundingBased>()
-
-    ;
-    sprite_scale_offset::plugin(app);
-}
-
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct MovementBased;

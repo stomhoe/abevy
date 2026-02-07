@@ -3,7 +3,7 @@ use bevy::ecs::error;
 use bevy::prelude::*;
 use common::common_components::*;
 use sprite::{
-    sprite_components::ScrsToBuild, sprite_resources::SpriteConfigEntityMap,
+    sprite_components::ScsToBuild, sprite_resources::SpriteConfigEntityMap,
 };
 use ::sprite_shared::*;
 
@@ -43,8 +43,6 @@ pub fn init_being_templates(
         error!("Race entity map is missing");
         return;
     };
-
-    error!("BeingInstTemplateEntityMap runninnggg");
 
     for handle in take(&mut seris_handles.handles) {
         if let Some(template_seri) = assets.remove(handle.id()) {

@@ -1,5 +1,4 @@
 
-use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 #[allow(unused_imports)] use bevy::prelude::*;
@@ -21,7 +20,7 @@ pub fn plugin(app: &mut App) {
     app
     .add_plugins((
         SpritesheetAnimationPlugin,
-        plugin_animation_comp,
+        plugin_ac_animation,
     ))
 
     .add_systems(Update, ((
@@ -44,7 +43,7 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-        (init_animations, map_animation_comp_id_to_entity).chain()
+        (init_animations, map_ac_animation_id_to_entity).chain()
     ).in_set(SpriteAnimationSystems))
 
     .add_mapped_server_message::<SyncMoveState>(Channel::Unordered)
@@ -53,9 +52,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate_once::<AnimationState>()
     .replicate_once::<MoveAnimActive>()
-    .replicate::<AnimationComp>()
-    .replicate::<AnimationSeri>()
-    .replicate_filtered::<ChildOf, With<AnimationComp>>()
+    .replicate_filtered::<ChildOf, With<AcAnimation>>()
     .replicate::<ClipStartFrames>()
     .replicate::<AlternatingStartFramesConfig>()
     //.replicate::<AlternatingStartFramesState>()

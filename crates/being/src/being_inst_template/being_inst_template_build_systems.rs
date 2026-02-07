@@ -1,16 +1,14 @@
 use ::being_shared::*;
 use bevy::prelude::*;
-use common::common_components::*;
 use faction::faction_components::BelongsToFaction;
 use sprite_shared::SampleSpriteEnts;
 
-use crate::{being_inst_template::{BeingInstTemplateEntityMap, being_inst_template_components::*, being_inst_template_resources::*}, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};
+use crate::{being_inst_template::{being_inst_template_components::*, being_inst_template_resources::*}, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};
 
 #[allow(unused_parens, )]
-pub fn build_being_from_being_inst_template_ref(
-    mut cmd: Commands,
-    bit_query: Query<(&BeingInstTemplate, Option<&SampleSpriteEnts>, Option<&RaceRef>, Option<&SampleTreeEnt>, Option<&BelongsToFaction>), >,
+pub fn build_being_from_being_inst_template_ref(mut cmd: Commands,
     beings_to_instantiate: Query<(Entity, &BitRef), (Changed<BitRef>)>,
+    bit_query: Query<(&BeingInstTemplate, Option<&SampleSpriteEnts>, Option<&RaceRef>, Option<&SampleTreeEnt>, Option<&BelongsToFaction>), >,
 ) {
     let mut sample_sprites_to_ins = Vec::new();
     let mut race_refs_to_ins = Vec::new();

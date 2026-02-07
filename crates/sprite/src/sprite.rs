@@ -35,6 +35,7 @@ pub fn plugin(app: &mut App) {
     app.add_plugins((
         sprite_sampler::plugin,
         plugin_sprite_config,
+        sprite_scale_offset::plugin,
     ))
     .add_systems(
         SPRITES_SCHEDULE,
@@ -71,19 +72,20 @@ pub fn plugin(app: &mut App) {
             SpriteSamplerSystems.before(GameplaySystems),
         ),
     )
-    .register_type::<AcZ>()
-    .register_type::<MappedAnimations>()
-    .register_type::<EguiSpriteConfigsHolder>()
-    .register_type::<OffsetForChildren>()
-    .register_type::<SpriteConfigNotFound>()
-    .replicate::<AcZ>()
-    .replicate::<SpriteConfig>()
-    .replicate::<SpriteConfigNotFound>()
-    .replicate::<MappedAnimations>()
-    .replicate::<YSortOrigin>()
-    //.replicate::<SpriteConfigRef>()
-    .replicate::<OffsetForChildren>()
+    .replicate::<AcZ>().register_type::<AcZ>()
+    .replicate::<MappedAnimations>().register_type::<MappedAnimations>()
+    .replicate::<OffsetForChildren>().register_type::<OffsetForChildren>()
+    .replicate::<SpriteConfigNotFound>().register_type::<SpriteConfigNotFound>()
+    .replicate::<YSortOrigin>().register_type::<YSortOrigin>()
+
     .replicate_filtered::<ChildOf, With<SpriteConfig>>()
     .replicate_filtered::<Transform, With<SpriteConfig>>()
-    .replicate::<EguiSpriteConfigsHolder>();
+
+    .replicate::<BaseHolderRef>().register_type::<BaseHolderRef>()
+    .register_type::<HeldSprites>()
+    .replicate_filtered::<ChildOf, With<BaseHolderRef>>()
+    .replicate::<MovementBased>()
+    .replicate::<GroundingBased>()
+
+    ;
 }
