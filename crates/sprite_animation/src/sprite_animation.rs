@@ -9,7 +9,7 @@ use sprite::AcSpriteSystems;
 use ::sprite_animation_shared::*;
 
 
-use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*, sprite_animation_init_systems::*, sprite_animation_systems::*};
+use crate::{sprite_animation_components::*, sprite_animation_messages::*, sprite_animation_resources::*, sprite_animation_init_systems::*, sprite_animation_systems::*};
 
 
 
@@ -48,21 +48,28 @@ pub fn plugin(app: &mut App) {
         (init_animations, map_animation_comp_id_to_entity).chain()
     ).in_set(SpriteAnimationSystems))
 
-    .add_mapped_server_message::<MoveStateUpdated>(Channel::Unordered)
-    //.add_observer(client_receive_moving_anim)
+    .add_mapped_server_message::<SyncMoveState>(Channel::Unordered)
+
+    .add_message::<BeingChangedMoveState>()
 
     .replicate_once::<AnimationState>()
     .replicate_once::<MoveAnimActive>()
     .replicate::<AnimationComp>()
     .replicate::<AnimationSerialization>()
     .replicate_filtered::<ChildOf, With<AnimationComp>>()
-
+    .replicate::<ClipStartFrames>()
+    .replicate::<AlternatingStartFramesConfig>()
+    //.replicate::<AlternatingStartFramesState>()
 
     .register_type::<AnimationState>()
     .register_type::<MoveAnimActive>()
     .register_type::<AnimSerisHandles>()
     .register_type::<AnimationSerialization>()
     .register_type::<AnimationHandle>()
+    .register_type::<ClipStartFrames>()
+    .register_type::<SaveAnimationProgress>()
+    .register_type::<AlternatingStartFramesConfig>()
+    .register_type::<AlternatingStartFramesState>()
 
     .register_type::<AnimationCompEntityMap>()
     .init_resource::<AnimationCompEntityMap>()

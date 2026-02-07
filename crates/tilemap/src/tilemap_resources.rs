@@ -11,18 +11,19 @@ use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
 
+use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 
 
 #[derive(Resource, Debug, Reflect, Default, Clone, )]
 #[reflect(Resource, Default)]
-pub struct ImportantRegisteredPositions { registered: EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>, pub exempted: EntityHashSet, } 
+pub struct ImportantRegisteredPositions { registered: EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>, pub exempted: EntityHashSet, }
 impl ImportantRegisteredPositions {
-    
+
     pub fn clear(&mut self) {
         self.registered.clear();
         self.exempted.clear();
     }
-    
+
     pub fn exempt_entity_from_mindist_checks(&mut self, ent: Entity) {
         self.exempted.insert(ent);
     }
@@ -34,31 +35,31 @@ impl ImportantRegisteredPositions {
             positions.iter().any(|(d, p)| *d == dim && *p == pos)
         })
     }
-    
+
     pub fn get_exempted_entities(&self) -> &EntityHashSet {
         &self.exempted
     }
-    
+
     pub fn get_registered_entries(&self) -> &EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>> {
         &self.registered
     }
-    
+
     #[allow(unused_parens, )]
     pub fn check_min_distances(&mut self, cmd: &mut Commands, is_host: bool,
-        new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>), 
+        new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>),
         min_dists_query: Query<(&MinDistancesMap), (common::AnyDisabling)>,
     ) -> bool {
-        
-        
+
+
         let (new_tile, new_tile_ezero, new_dim, new_pos, new_min_distances, keep_distance) = new;
-        
+
         if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
             return false;
         }
         if keep_distance.is_none() && new_min_distances.is_none() {
             return true;
         }
-        
+
         if ! self.exempted.contains(&new_tile) {
             if let Some(new_min_distances) = new_min_distances {
                 for (&ezero_ent, min_dist) in new_min_distances.0.iter() {
@@ -84,12 +85,12 @@ impl ImportantRegisteredPositions {
         } else if new_min_distances.is_none() && keep_distance.is_none() {
             return true;
         }
-        
+
         self.registered.entry(new_tile_ezero.0).or_default().push((new_dim, new_pos));
-        
+
         cmd.entity(new_tile).try_insert(Replicated);
-        
-        
+
+
         true
     }
 }
@@ -103,14 +104,14 @@ pub struct TileMassSpawnBundle{
     pub tile_bundle: bevy_ecs_tilemap::prelude::TileBundle,
     pub initial_pos: InitialPos,
     pub prev_gpos: PrevGlobalTilePos,
-    pub prev_dim_ref: PrevDimensionRef,   
+    pub prev_dim_ref: PrevDimensionRef,
 }
 
 #[derive(Debug, Clone, Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
 pub struct MassCollectedTiles  (pub Vec<(Entity, TileMassSpawnBundle)>);
 impl MassCollectedTiles {
-    
+
     /// for iterable collections
     pub fn add_tiles_from_ezeros(
         &mut self,
@@ -133,7 +134,7 @@ impl MassCollectedTiles {
         ezero_ref: EntityZeroRef,
         gpos: GlobalTilePos,
         dim_ref: DimensionRef,
-        
+
         oplist_size: OplistSize,
     ) -> Entity {
         let tile_instance = cmd.entity(ezero_ref.0).clone_and_spawn_with_opt_out(|builder|{
@@ -156,7 +157,7 @@ impl MassCollectedTiles {
         self.0.push((tile_instance, helper));
         tile_instance
     }
-    
+
     fn collect_tiles_rec(
         &mut self,
         cmd: &mut Commands,
@@ -182,7 +183,7 @@ impl MassCollectedTiles {
         }
     }
     ///used by terr gen
-    pub fn collect_tiles(&mut self, 
+    pub fn collect_tiles(&mut self,
         cmd: &mut Commands,
         bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &GlobalGenSettings,
         dim_hash_id: HashId,
@@ -191,12 +192,12 @@ impl MassCollectedTiles {
             self.collect_tiles_rec(cmd, tile, ev.gpos, dim_hash_id, ev.dimension_ref, oplist_size, weight_maps, gen_settings, 0);
         }
     }
-    
+
 }
 
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]
-pub struct TilesAtGpos  { 
+pub struct TilesAtGpos  {
     pub map: bevy::platform::collections::HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>,
     pub reverse_map: bevy::ecs::entity::EntityHashMap<(DimensionRef, GlobalTilePos, Option<TilePos>, bevy_ecs_tilemap::map::TilemapId)>,
 }
@@ -225,3 +226,31 @@ impl TilesAtGpos {
         })
     }
 }
+
+impl InspectorPrimitive for TilesAtGpos {
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _: &dyn std::any::Any,
+        _: egui::Id,
+        _: InspectorUi<'_, '_>,
+    ) -> bool {
+        ui.collapsing("TilesAtGpos", |ui| {
+            ui.label(format!("Entries: {}", self.map.len()));
+        });
+        false
+    }
+    fn ui_readonly(
+        &self,
+        ui: &mut egui::Ui,
+        _: &dyn std::any::Any,
+        _: egui::Id,
+        _: InspectorUi<'_, '_>,
+    ) {
+        ui.collapsing("TilesAtGpos", |ui| {
+            ui.label(format!("Entries: {}", self.map.len()));
+        });
+    }
+}
+
+

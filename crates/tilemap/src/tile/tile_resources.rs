@@ -12,7 +12,7 @@ use crate::tile::tile_components::Tile;
 common::define_entity_map_systems!(
     Tile,
     (With<EntityZero>, common::AnyDisabling),
-    EntityZero,
+    (Tile, EntityZero),
 );
 
 

@@ -56,10 +56,5 @@ pub fn plugin(app: &mut App) {
     .register_type::<ShaderWavySeri>()
     .register_type::<ShaderRockyTerrainSerisHandles>()
     .register_type::<ShaderRockyTerrainSeri>()
-    .register_type::<TileShader>()
-    .register_type::<EguiTileShaderHolder>()
-
-    .replicate::<TileShader>()
-    .replicate::<EguiTileShaderHolder>()
     ;
 }

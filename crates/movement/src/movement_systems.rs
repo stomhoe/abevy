@@ -2,6 +2,7 @@ use core::f32;
 
 use being_shared::ControlledLocally;
 use bevy::ecs::entity::EntityHashSet;
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
@@ -9,7 +10,7 @@ use dimension_shared::DimensionRef;
 use game_common::game_common_components::CardinalDirection;
 use modifier::modifier_types::WalkSpeed;
 use modifier::{modifier_components::*, modifier_move_components::*};
-use sprite_animation_shared::MoveAnimActive;
+use sprite_animation_shared::{MoveAnimActive, BeingChangedMoveState};
 use tilemap::tile::tile_components::WalkSpeedMultIfOnTop;
 use tilemap::tilemap_resources::TilesAtGpos;
 use tilemap_shared::GlobalTilePos;
@@ -18,6 +19,8 @@ use crate::{
     movement_components::*,
     movement_messages::TransformFromServer,
 };
+
+
 
 fn normalize_to_axis_dir(input: Vec2) -> Vec2 {
     if input == Vec2::ZERO {
@@ -29,31 +32,31 @@ fn normalize_to_axis_dir(input: Vec2) -> Vec2 {
     }
 }
 
-fn set_animation_active(anim: &mut MoveAnimActive, is_active: bool) {
-    if anim.0 != is_active { anim.0 = is_active; }
-}
-
 pub fn do_free_movement(
     mut query: Query<
-        (&mut Transform, &mut MoveAnimActive, &MoveState),
+        (Entity, &mut Transform, &mut MoveAnimActive, &MoveVecMag),
         (Without<GridLockedMovement>,),
     >,
     time: Res<Time>,
+    mut writer: MessageWriter<BeingChangedMoveState>,
 ) {
-    for (mut transform, mut move_anim, move_state) in query.iter_mut() {
+    let mut move_anim_msgs = HashSet::new();
+    for (being_ent, mut transform, mut move_anim, move_state) in query.iter_mut() {
         let velocity = move_state.norm_move_dir * move_state.speed_magnitude;
         if velocity != Vec2::ZERO {
-            set_animation_active(&mut move_anim, true);
+            move_anim.set(true, being_ent, &mut move_anim_msgs);
+
             transform.translation += (velocity * time.delta_secs()).extend(0.0);
         } else {
-            set_animation_active(&mut move_anim, false);
+            move_anim.set(false, being_ent, &mut move_anim_msgs);
         }
     }
+    writer.write_batch(move_anim_msgs);
 }
 
 pub fn sync_movement_to_server(
     query: Query<
-        (Entity, &Transform, &MoveState),
+        (Entity, &Transform, &MoveVecMag),
         (Without<GridLockedMovement>, Changed<Transform>),
     >,
     server_state: Res<State<ServerState>>,
@@ -76,34 +79,38 @@ pub fn prepare_grid_locked_movement(
     tiles_at_gpos: Res<TilesAtGpos>,
     blocking_tiles: Query<&WalkSpeedMultIfOnTop, ()>,
     time: Res<Time>,
-    server_state: Res<State<ServerState>>,
-    mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
+    client_state: Res<State<ClientState>>,
+    mut tsf_from_server_writer: MessageWriter<ToClients<TransformFromServer>>,
+    mut beings_changed_anim_move_state_writer: MessageWriter<BeingChangedMoveState>,
+
     mut query: Query<
         (
             &mut Transform,
             &mut MoveAnimActive,
             Entity,
-            &MoveState,
+            &MoveVecMag,
             &DimensionRef,
-            &mut QueuedGridMoveDir,
+            &mut GridLockedMovement,
             Has<ControlledLocally>,
             Has<WallPhaser>,
         ),
-        (With<GridLockedMovement>,),
     >,
 ) {
+    let is_client = client_state.get() == &ClientState::Connected;
+    let mut being_changed_state_set: HashSet<BeingChangedMoveState> = HashSet::new();
+
     for (
         mut transform,
         mut move_anim,
         being_ent,
         move_state,
         &dim_ref,
-        mut queued_dir,
+        mut glm,
         controlled_locally,
         can_phase,
     ) in query.iter_mut()
     {
-        if !controlled_locally {
+        if !controlled_locally && is_client {
             continue;
         }
 
@@ -112,6 +119,7 @@ pub fn prepare_grid_locked_movement(
         let offset = transform.translation - snapped_translation;
         let is_mid_tile = offset.x.abs() > 0.01 || offset.y.abs() > 0.01;
         let raw_input = move_state.norm_move_dir;
+
 
         let axis_input_dir = normalize_to_axis_dir(raw_input);
 
@@ -131,13 +139,13 @@ pub fn prepare_grid_locked_movement(
                 axis_input_dir == Vec2::ZERO || axis_input_dir != active_dir;
 
             if axis_input_dir != Vec2::ZERO && axis_input_dir != active_dir {
-                queued_dir.0 = axis_input_dir;
+                glm.queued_move_dir = axis_input_dir;
             }
 
             (active_dir, finish_current_tile_only)
-        } else if queued_dir.0 != Vec2::ZERO {
-            let queued = queued_dir.0;
-            queued_dir.0 = Vec2::ZERO;
+        } else if glm.queued_move_dir != Vec2::ZERO {
+            let queued = glm.queued_move_dir;
+            glm.queued_move_dir = Vec2::ZERO;
             (queued, false)
         } else {
             (axis_input_dir, false)
@@ -145,7 +153,7 @@ pub fn prepare_grid_locked_movement(
 
         if dir_vec == Vec2::ZERO {
             transform.translation = snapped_translation;
-            set_animation_active(&mut move_anim, false);
+            move_anim.set(false, being_ent, &mut being_changed_state_set);
             continue;
         }
 
@@ -174,6 +182,7 @@ pub fn prepare_grid_locked_movement(
         let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
         let distance = move_state.speed_magnitude * delta;
         let mut remaining_distance = distance;
+
 
         let is_blocked_at = |target_gpos: GlobalTilePos| -> bool {
             if can_phase {
@@ -210,10 +219,11 @@ pub fn prepare_grid_locked_movement(
 
             let next_target = current_snapped.xy() + (current_dir * step_distance);
             if is_blocked_at(GlobalTilePos::from(next_target)) {
-                queued_dir.0 = Vec2::ZERO;
+                glm.queued_move_dir = Vec2::ZERO;
                 if !moved {
                     current_translation = current_snapped;
                 }
+                trace!("blockedbreak");
                 break;
             }
 
@@ -235,10 +245,11 @@ pub fn prepare_grid_locked_movement(
                 current_translation = current_snapped;
                 let target = current_snapped.xy() + (current_dir * step_distance);
                 if is_blocked_at(GlobalTilePos::from(target)) {
-                    queued_dir.0 = Vec2::ZERO;
+                    glm.queued_move_dir = Vec2::ZERO;
                     if !moved {
                         current_translation = current_snapped;
                     }
+                    trace!("rmeboundarybreak");
                     break;
                 }
                 remaining_to_boundary = step_distance;
@@ -250,48 +261,60 @@ pub fn prepare_grid_locked_movement(
             if will_reach_boundary {
                 let target = current_snapped.xy() + (current_dir * step_distance);
                 if is_blocked_at(GlobalTilePos::from(target)) {
-                    queued_dir.0 = Vec2::ZERO;
+                    glm.queued_move_dir = Vec2::ZERO;
                     if !moved {
                         current_translation = current_snapped;
                     }
+                    trace!("willreachboundary");
                     break;
                 }
 
                 current_translation += (current_dir * remaining_to_boundary).extend(0.0);
                 remaining_distance -= remaining_to_boundary;
                 moved |= remaining_to_boundary > 0.0;
+                //client never reaches this point
 
-                if finish_current_tile_only && queued_dir.0 == Vec2::ZERO {
+                if finish_current_tile_only && glm.queued_move_dir == Vec2::ZERO {
+                    trace!("Movement finished");
                     break;
                 }
 
-                if queued_dir.0 != Vec2::ZERO {
-                    current_dir = queued_dir.0;
-                    queued_dir.0 = Vec2::ZERO;
+                if glm.queued_move_dir != Vec2::ZERO {
+                    current_dir = glm.queued_move_dir;
+                    glm.queued_move_dir = Vec2::ZERO;
                 }
             } else {
                 current_translation += (current_dir * step).extend(0.0);
                 remaining_distance -= step;
                 moved |= step > 0.0;
+                trace!("last exit {:?}", current_translation);
                 break;
             }
+            trace!("end loop iter");
         }
 
         transform.translation = current_translation;
         if moved {
-            set_animation_active(&mut move_anim, true);
+            move_anim.set(true, being_ent, &mut being_changed_state_set);
 
-            if server_state.get() == &ServerState::Running {
+            if is_client && controlled_locally {
+                info!(target: "grid_movement", "Client character moved to {:?}", current_translation);
+            }
+
+            if !is_client {
                 let to_clients = ToClients {
                     mode: SendMode::BroadcastExcept(ClientId::Server),
                     message: TransformFromServer::new(being_ent, transform.clone(), false),
                 };
-                ewriter.write(to_clients);
+                tsf_from_server_writer.write(to_clients);
             }
         } else {
-            set_animation_active(&mut move_anim, false);
+            move_anim.set(false, being_ent, &mut being_changed_state_set);
+            info!(target: "grid_movement", "Character did not move");
         }
     }
+    beings_changed_anim_move_state_writer.write_batch(being_changed_state_set);
+
 }
 
 pub fn process_speed_modifiers(
@@ -299,7 +322,7 @@ pub fn process_speed_modifiers(
     mut being_query: Query<(
         Entity,
         &AppliedModifiers,
-        &mut MoveState,
+        &mut MoveVecMag,
         Has<ControlledLocally>,
     )>,
     modifiers_query: Query<
@@ -314,7 +337,7 @@ pub fn process_speed_modifiers(
     >,
 ) {
     for (being_ent, applied, mut move_state, controlled_locally) in being_query.iter_mut() {
-        let is_client = state.get() != &ClientState::Disconnected;
+        let is_client = state.get() == &ClientState::Connected;
         if is_client && !controlled_locally {
             continue;
         }
@@ -376,18 +399,18 @@ pub fn process_speed_modifiers(
 pub fn update_facing_dir(
     mut query: Query<(
         &InputDirection,
-        &MoveState,
-        Option<&QueuedGridMoveDir>,
+        &MoveVecMag,
+        Option<&GridLockedMovement>,
         &mut CardinalDirection,
     )>,
 ) {
-    for (input_dir, move_state, queued_dir, mut facing_dir) in query.iter_mut() {
+    for (input_dir, move_state, glm, mut facing_dir) in query.iter_mut() {
         let move_vec = move_state.norm_move_dir * move_state.speed_magnitude;
         let dir_vec = if move_vec != Vec2::ZERO {
             move_vec
-        } else if let Some(q) = queued_dir {
-            if q.0 != Vec2::ZERO {
-                q.0
+        } else if let Some(glm) = glm {
+            if glm.queued_move_dir != Vec2::ZERO {
+                glm.queued_move_dir
             } else {
                 input_dir.0
             }
@@ -399,7 +422,7 @@ pub fn update_facing_dir(
             continue;
         }
 
-        *facing_dir = if dir_vec.x.abs() > dir_vec.y.abs() || (dir_vec.x.abs() == dir_vec.y.abs()) {
+        let new_dir = if dir_vec.x.abs() > dir_vec.y.abs() || (dir_vec.x.abs() == dir_vec.y.abs()) {
             if dir_vec.x < 0.0 {
                 CardinalDirection::West
             } else {
@@ -412,5 +435,8 @@ pub fn update_facing_dir(
                 CardinalDirection::North
             }
         };
+        if new_dir != *facing_dir {
+            *facing_dir = new_dir;
+        }
     }
 }

@@ -1,4 +1,4 @@
-use bevy::platform::collections::HashMap;
+use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
 use bevy_spritesheet_animation::prelude::{Animation, AnimationProgress, Spritesheet};
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[allow(unused_imports)] use {bevy::prelude::*, };
 
 pub fn plugin(app: &mut App) {
-    
+
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, )]
@@ -31,7 +31,19 @@ pub struct AcAnimationProgresses(
 );
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, Hash, PartialEq, Eq, Default)]
-pub struct MoveAnimActive(pub bool);
+pub struct MoveAnimActive(bool);
+impl MoveAnimActive {
+    pub fn set(&mut self, state: bool, being_ent: Entity, hash_set: &mut HashSet<BeingChangedMoveState>) {
+        if self.0 != state {
+            self.0 = state;
+            hash_set.insert(BeingChangedMoveState(being_ent));
+        }
+    }
+    pub fn get(&self) -> bool {
+        self.0
+    }
+}
+
 impl From<&str> for MoveAnimActive {
     fn from(value: &str) -> Self {
         match value.to_lowercase().as_str() {
@@ -45,7 +57,7 @@ impl From<&str> for MoveAnimActive {
 //NO VA REPLICATED, SE HACE LOCALMENTE EN CADA PC SEGÚN LOS INPUTS RECIBIDOS DE OTROS PLAYERS
 pub struct AnimationState(pub StrId);
 impl AnimationState {
-    
+
     pub fn new<S: AsRef<str>>(state: S) -> Self {
         Self(StrId::trunc(state.as_ref()))
     }
@@ -71,3 +83,7 @@ pub struct AnimationComp;
 common::define_entity_map_systems!(
     AnimationComp
 );
+
+
+#[derive(Message, Clone, PartialEq, Eq, Hash)]
+pub struct BeingChangedMoveState(pub Entity);

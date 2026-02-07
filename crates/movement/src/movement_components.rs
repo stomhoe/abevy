@@ -7,21 +7,16 @@ pub struct InputDirection(pub Vec2);
 
 /// Processed movement state - direction after modifiers and calculated speed
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct MoveState {
+pub struct MoveVecMag {
     pub norm_move_dir: Vec2,
     pub speed_magnitude: f32,
 }
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(QueuedGridMoveDir)]
-pub struct GridLockedMovement;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct QueuedGridMoveDir(pub Vec2);
-
-
-
+pub struct GridLockedMovement{
+    pub queued_move_dir: Vec2,
+}
 
 //PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
 //UTIL PARA RAZAS DE IGUANAS O ARAÑAS

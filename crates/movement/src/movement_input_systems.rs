@@ -82,14 +82,15 @@ pub fn receive_move_input_from_client(
 pub fn process_input_direction_modifiers(
     state: Res<State<ClientState>>,
     mut being_query: Query<
-        (Entity, &AppliedModifiers, &InputDirection, &mut MoveState, Has<ControlledLocally>),
+        (Entity, &AppliedModifiers, &InputDirection, &mut MoveVecMag, Has<ControlledLocally>),
     >,
     modifiers_query: Query<
         (Entity, &ModifierTarget, &CurrEffectiveValue, &ApplyMode, Has<InvertMovement>),
     >,
 ) {
+    let is_client = state.get() == &ClientState::Connected;
+
     for (being_ent, applied, input_dir, mut move_state, controlled_locally) in being_query.iter_mut() {
-        let is_client = state.get() != &ClientState::Disconnected;
         if is_client && !controlled_locally { continue; }
 
         let mut invert_sum: f32 = 0.0;

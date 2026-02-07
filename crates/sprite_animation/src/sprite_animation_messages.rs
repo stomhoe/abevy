@@ -4,8 +4,8 @@ use game_common::game_common_components::CardinalDirection;
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Deserialize, Message, Serialize, Clone, Component, MapEntities)]
-pub struct MoveStateUpdated {
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
+pub struct SyncMoveState {
     #[entities]pub being_ent: Entity,
     pub moving: bool,
     pub grounding: Option<Grounding>,

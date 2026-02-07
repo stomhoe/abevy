@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
+use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use dimension_shared::DimensionSystems;
@@ -15,7 +16,7 @@ pub struct ChunkSystems;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((
-        bevy_ecs_tilemap::TilemapPlugin, 
+        bevy_ecs_tilemap::TilemapPlugin,
         terrain_gen::plugin,
         tile::plugin,
         regioning::plugin,
@@ -48,18 +49,20 @@ pub fn plugin(app: &mut App) {
     .register_type::<PoissonDisk>()
     .register_type::<TmapMap>()
     .register_type::<ImportantRegisteredPositions>()
-    
+
     .init_resource::<MassCollectedTiles>()
     .init_resource::<TmapMap>()
     .init_resource::<ImportantRegisteredPositions>()
 
     .init_resource::<TilesAtGpos>()
+    .register_type::<TilesAtGpos>().register_type_data::<TilesAtGpos, InspectorEguiImpl>()
+
 
     .replicate::<PoissonDisk>()
-    
 
-    
 
-    
+
+
+
 ;
 }

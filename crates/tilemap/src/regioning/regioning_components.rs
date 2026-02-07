@@ -182,6 +182,7 @@ impl<T: Copy> Default for RegionGrid<T> {
         }
     }
 }
+
 impl<T: Copy> RegionGrid<T> {
     #[inline]
     fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError<T>> {

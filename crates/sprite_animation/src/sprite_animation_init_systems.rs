@@ -80,6 +80,9 @@ pub fn init_animations(
             cmd.entity(ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
         }
 
+        let save_anim_progress = SaveAnimationProgress(seri.save_animation_progress);
+        cmd.entity(ent).insert(save_anim_progress);
+
         seris.push((ent, seri));
     }
     cmd.try_insert_batch(seris);
@@ -153,11 +156,20 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
             );
 
         let clips_len = seri.clips.len();
+        let mut clip_start_frames = Vec::new();
+        let mut alternating_start_frames_config = Vec::new();
+        let mut alternating_start_frames_state = Vec::new();
 
         if clips_len == 0 {
             animation = animation.add_row(0);
+            clip_start_frames.push(0);
+            alternating_start_frames_config.push(None);
+            alternating_start_frames_state.push(0);
         } else {
             for (i, cfg) in seri.clips.iter().enumerate() {
+                clip_start_frames.push(cfg.start_frame.unwrap_or(0));
+                alternating_start_frames_config.push(cfg.alternating_start_frames);
+                alternating_start_frames_state.push(0);
                 animation = if cfg.is_row {
                     match cfg.partial {
                         Some((start, end)) => animation.add_partial_row(cfg.target, start..=end),
@@ -190,7 +202,7 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
             }
         }
         let handle: Handle<Animation> = animation_assets.add(animation.build());
-        cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet), ));
+        cmd.entity(entity).insert((AnimationHandle(handle), AnimationSheet(sheet), ClipStartFrames(clip_start_frames), AlternatingStartFramesConfig(alternating_start_frames_config), AlternatingStartFramesState(alternating_start_frames_state)));
 
 
     }

@@ -32,16 +32,16 @@ pub fn plugin(app: &mut App) {
 
         //despawn systems
         periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_secs(2))),
-        detect_activators_with_pos_changes, 
-        
+        detect_activators_with_pos_changes,
+
         //visibility systems
         update_chunk_visib,
-        detect_camera_change_pos_visib, 
+        detect_camera_change_pos_visib,
         periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
 
     ).in_set(ChunkSystems),
-        despawn_chunks, 
-        rem_outofrange_chunks_from_activators, 
+        despawn_chunks,
+        rem_outofrange_chunks_from_activators,
 
     ))
     .register_type::<LoadedChunks>()

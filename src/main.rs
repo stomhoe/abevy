@@ -9,10 +9,11 @@ use tracing::Level;
 use common::log_targets;
 use tilemap_shared::GlobalTilePos;
 
-const LOG_ERROR: &str = "error";
-const LOG_WARN: &str = "warn";
-const LOG_INFO: &str = "info";
-const LOG_DEBUG: &str = "debug";
+const ERROR: &str = "error";
+const WARN: &str = "warn";
+const INFO: &str = "info";
+const DEBUG: &str = "debug";
+const TRACE: &str = "trace";
 
 fn build_filter() -> String {
     format!(
@@ -73,64 +74,64 @@ fn build_filter() -> String {
         {}={},\
         {}={},\
         {}={},",
-        log_targets::NAGA, LOG_ERROR,
-        log_targets::WGPU_HAL, LOG_ERROR,
-        log_targets::BEVY_ECS_TILEMAP, LOG_WARN,
-        log_targets::WGPU_CORE, LOG_ERROR,
-        log_targets::BEVY_EGUI, LOG_WARN,
-        log_targets::BEVY_REPLICON, LOG_WARN,
-        log_targets::BEVY_RENDER, LOG_WARN,
-        log_targets::BEVY_APP, LOG_WARN,
-        log_targets::COSMIC_TEXT, LOG_WARN,
-        log_targets::OFFSET_ALLOCATOR, LOG_WARN,
-        log_targets::BEVY_ASSET_LOADER, LOG_WARN,
-        log_targets::BEVY_ECS_RELATIONSHIP, LOG_ERROR,
-        log_targets::CALLOOP_LOOP_LOGIC, LOG_ERROR,
-        
-        log_targets::PORTAL_INIT, LOG_WARN,
-        log_targets::POSITION_SEARCH, LOG_INFO,
-        log_targets::CHILDRENSPRITE_INIT, LOG_INFO,
+        log_targets::NAGA, ERROR,
+        log_targets::WGPU_HAL, ERROR,
+        log_targets::BEVY_ECS_TILEMAP, WARN,
+        log_targets::WGPU_CORE, ERROR,
+        log_targets::BEVY_EGUI, WARN,
+        log_targets::BEVY_REPLICON, WARN,
+        log_targets::BEVY_RENDER, WARN,
+        log_targets::BEVY_APP, WARN,
+        log_targets::COSMIC_TEXT, WARN,
+        log_targets::OFFSET_ALLOCATOR, WARN,
+        log_targets::BEVY_ASSET_LOADER, WARN,
+        log_targets::BEVY_ECS_RELATIONSHIP, ERROR,
+        log_targets::CALLOOP_LOOP_LOGIC, ERROR,
 
-        log_targets::OPLIST_INIT, LOG_WARN,
-        log_targets::TERRGEN_INIT, LOG_WARN,
-        log_targets::SGC_INIT, LOG_WARN,
+        log_targets::PORTAL_INIT, WARN,
+        log_targets::POSITION_SEARCH, INFO,
+        log_targets::CHILDRENSPRITE_INIT, INFO,
 
-        log_targets::TERRGEN_SYSTEM, LOG_INFO,
-        log_targets::TERRGEN_PROCESS, LOG_INFO,
-        log_targets::STRUCTURE_SPAWN, LOG_WARN,
-        log_targets::TILEMAP_SYSTEM, LOG_WARN,
-        log_targets::TILEMAP_SYSTEM, LOG_WARN,
-        log_targets::GPOS_MAP, LOG_WARN,
+        log_targets::OPLIST_INIT, WARN,
+        log_targets::TERRGEN_INIT, WARN,
+        log_targets::SGC_INIT, WARN,
 
-        log_targets::CHUNK_DESPAWN, LOG_INFO,
+        log_targets::TERRGEN_SYSTEM, INFO,
+        log_targets::TERRGEN_PROCESS, INFO,
+        log_targets::STRUCTURE_SPAWN, WARN,
+        log_targets::TILEMAP_SYSTEM, WARN,
+        log_targets::TILEMAP_SYSTEM, WARN,
+        log_targets::GPOS_MAP, WARN,
 
-        log_targets::DEBUG, LOG_INFO,
+        log_targets::CHUNK_DESPAWN, INFO,
 
-        log_targets::Z_LEVEL_SYSTEM, LOG_INFO,
-        log_targets::MOVEMENT_SYSTEM, LOG_WARN,
-        "grid_movement", LOG_DEBUG,
-        log_targets::SPRITE_INIT, LOG_WARN,
-        log_targets::SPRITE_BUILD, LOG_INFO,
-        log_targets::SPRITE_SYSTEM, LOG_WARN,
-        log_targets::SPRITE_SYSTEM, LOG_WARN,
+        log_targets::DEBUG, INFO,
 
-        log_targets::BEING_CONTROL, LOG_INFO,
-        log_targets::GAME_INIT, LOG_WARN,
-        
-        log_targets::SPRITE_ANIMATION_INIT, LOG_WARN,
-        log_targets::ENTITY_ZERO_SYSTEM, LOG_INFO,
-        log_targets::DUNGEONING_SYSTEM, LOG_WARN,
-        log_targets::SGC_CHUNK_CLAIM, LOG_WARN,
+        log_targets::Z_LEVEL_SYSTEM, INFO,
+        log_targets::MOVEMENT_SYSTEM, WARN,
+        "grid_movement", DEBUG,
+        log_targets::SPRITE_INIT, WARN,
+        log_targets::SPRITE_BUILD, INFO,
+        log_targets::SPRITE_SYSTEM, WARN,
 
-        log_targets::TILE_INIT, LOG_INFO,
-        log_targets::ASSET_LOAD, LOG_WARN,
-        log_targets::TILEMAP_LOAD, LOG_WARN,
-        log_targets::DIMENSION_LOAD, LOG_WARN,
-        log_targets::CONTROL, LOG_WARN,
-        log_targets::BEING_SYSTEM, LOG_WARN,
-        log_targets::FACTION_SYSTEM, LOG_WARN,
-        log_targets::Z_SORT_SYSTEM, LOG_WARN,
-        log_targets::INSPECTOR, LOG_WARN,
+        log_targets::BEING_CONTROL, INFO,
+        log_targets::GAME_INIT, WARN,
+
+        log_targets::SPRITE_ANIMATION_INIT, WARN,
+        log_targets::SPRITE_ANIMATION_SYSTEM, WARN,
+        log_targets::ENTITY_ZERO_SYSTEM, INFO,
+        log_targets::DUNGEONING_SYSTEM, WARN,
+        log_targets::SGC_CHUNK_CLAIM, WARN,
+
+        log_targets::TILE_INIT, INFO,
+        log_targets::ASSET_LOAD, WARN,
+        log_targets::TILEMAP_LOAD, WARN,
+        log_targets::DIMENSION_LOAD, WARN,
+        log_targets::CONTROL, WARN,
+        log_targets::BEING_SYSTEM, WARN,
+        log_targets::FACTION_SYSTEM, WARN,
+        log_targets::Z_SORT_SYSTEM, WARN,
+        log_targets::INSPECTOR, WARN,
     )
 }
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
@@ -142,7 +143,7 @@ cargo run -r --features bevy/trace_tracy,bevy/debug
 */
 
 fn main() {
-    
+
     App::new()
         .set_error_handler(warn)
         .add_plugins((
@@ -159,7 +160,7 @@ fn main() {
             PhysicsPlugins::default().with_length_unit(GlobalTilePos::TILE_SIZE_PXS.x as f32),
         ))
         .add_plugins((
-            multiplayer_shared::plugin, //VA ARRIBA    
+            multiplayer_shared::plugin, //VA ARRIBA
             host::plugin,
             client::plugin,
         ))
@@ -207,5 +208,3 @@ Get-ChildItem target\debug -Recurse -File |
     Remove-Item -Force
 
 */
-
-

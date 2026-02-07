@@ -8,6 +8,9 @@ use bevy::ecs::entity::MapEntities;
 #[derive(Component, Debug, Default, )]
 pub struct ControlledLocally;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct ControlledByClient;
+
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]

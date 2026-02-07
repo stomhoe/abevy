@@ -22,9 +22,14 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 setup_debug_fonts,
-                debug_increase_speed,
                 debug_toggle_states_window,
                 debug_toggle_main_menu,
+            ),
+        )
+        .add_systems(
+            FixedUpdate,
+            (
+                debug_increase_speed,
                 receive_increase_speed_from_client.run_if(in_state(ServerState::Running)),
             ),
         )

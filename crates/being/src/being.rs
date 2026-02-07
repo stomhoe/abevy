@@ -1,4 +1,4 @@
-use being_shared::{Grounding, Sentient};
+use being_shared::{ControlledByClient, Grounding, Sentient};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
@@ -62,9 +62,11 @@ pub fn plugin(app: &mut App) {
     .replicate::<FollowerOf>()
     .replicate::<Sentient>()
 
-    .replicate_filtered::<Transform, With<Being>>()
     .replicate::<MappedSpritesToSample>()
-
+    .replicate::<ControlledByClient>()
     .replicate_filtered::<ChildOf, With<Being>>()
+
+
+    .replicate_filtered::<Transform, With<Being>>()
     ;
 }

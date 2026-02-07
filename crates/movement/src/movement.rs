@@ -38,14 +38,14 @@ pub fn plugin(app: &mut App) {
         .add_mapped_client_message::<SendMoveInput>(Channel::Unreliable)
         .add_mapped_server_message::<TransformFromServer>(Channel::Unreliable)
         .register_type::<InputDirection>()
-        .register_type::<MoveState>()
+        .register_type::<MoveVecMag>()
         .register_type::<GridLockedMovement>()
         .replicate::<WallPhaser>()
         .replicate::<LandWalker>()
         .replicate::<Swimmer>()
         .replicate::<Flier>()
-        .replicate_once::<QueuedGridMoveDir>()
-        .replicate_filtered::<CardinalDirection, (Without<MoveState>, Without<InputDirection>)>()
+        .replicate_once::<GridLockedMovement>()
+        .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>, Without<InputDirection>)>()
 
     ;
 }

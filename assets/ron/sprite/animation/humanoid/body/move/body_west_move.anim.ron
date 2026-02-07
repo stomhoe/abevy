@@ -7,6 +7,7 @@
             target: 2,
             is_row: true,
             partial: Some((0, 4)),
+            alternating_start_frames: Some((1, 3)),
         )
     ],
     z: 1000,

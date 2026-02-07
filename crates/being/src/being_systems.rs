@@ -1,6 +1,7 @@
 
 
 
+use being_shared::ControlledByClient;
 use bevy::{ecs::entity_disabling::Disabled, prelude::*};
 use bevy_replicon::prelude::{SendMode, ToClients};
 use camera::camera_components::CameraTarget;
@@ -33,28 +34,39 @@ pub fn on_control_change(
     self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<Mine>)>,
 
     query: Query<(Entity, &ControlledBy, &IsHumanControlled, Has<CameraTarget>),(Or<(Changed<ControlledBy>, Changed<IsHumanControlled>)>)>,
-    mut removed: RemovedComponents<ControlledBy>,
+    mut removed_controlled_by: RemovedComponents<ControlledBy>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
-    for ent in removed.read() {
-        commands.entity(ent).try_remove::<ControlledLocally>();
+    for being_ent in removed_controlled_by.read() {
+        commands.entity(being_ent).try_remove::<ControlledLocally>();
     }
-    let (self_entity, is_host) = self_player.single().unwrap();
-    query.iter().for_each(|(ent, controlled_by, human_controlled, is_camera_target)| {
+    let Ok((self_entity, is_host)) = self_player.single() else {
+        error!("No self player found when trying to update control changes");
+        return;
+    };
+    query.iter().for_each(|(being_ent, controlled_by, human_controlled, is_camera_target)| {
         if controlled_by.client == self_entity {
-            info!(target: "being_control", "debug {:?} is now controlled locally by self", ent);
-            commands.entity(ent).try_insert_if_new((ControlledLocally::default(), ActivatingChunks::new(&chunk_range)));
+            info!(target: "being_control", "debug {:?} is now controlled locally by self", being_ent);
+            commands.entity(being_ent).try_insert_if_new((ControlledLocally::default(), ActivatingChunks::new(&chunk_range)));
             if human_controlled.0 {//PROVISORIO
-                debug!(target: "being_control", "Entity {:?} is now a CameraTarget", ent);
-                commands.entity(ent).try_insert(CameraTarget::default());
+                debug!(target: "being_control", "Entity {:?} is now a CameraTarget", being_ent);
+                commands.entity(being_ent).try_insert(CameraTarget::default());
             } else {
-                debug!(target: "being_control", "Entity {:?} is no longer a CameraTarget", ent);
-                commands.entity(ent).try_remove::<CameraTarget>();
+                debug!(target: "being_control", "Entity {:?} is no longer a CameraTarget", being_ent);
+                commands.entity(being_ent).try_remove::<CameraTarget>();
             }//PROVISORIO
+            if is_host {
+                commands.entity(being_ent).try_remove::<ControlledByClient>();
+            }
         } else {
-            commands.entity(ent).try_remove::<ControlledLocally>();
-            if !is_camera_target && !is_host {
-                commands.entity(ent).try_remove::<ActivatingChunks>();
+            commands.entity(being_ent).try_remove::<ControlledLocally>();
+            if !is_host{
+                if !is_camera_target{
+                    commands.entity(being_ent).try_remove::<ActivatingChunks>();
+                }
+            }
+            else{
+                commands.entity(being_ent).try_insert(ControlledByClient);
             }
         }
     });

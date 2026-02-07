@@ -13,7 +13,7 @@ use sprite_animation_shared::MoveAnimActive;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities, Default)]
 
-#[require(InputDirection, MoveState, Replicated, MoveAnimActive,
+#[require(InputDirection, MoveVecMag, Replicated, MoveAnimActive,
 Grounding, Visibility, CardinalDirection, AppliedModifiers, Transform,
 Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading,
 GridLockedMovement )]
@@ -60,6 +60,9 @@ pub type IsHumanControlled = being_shared::HumanControlled;
 
 pub type Controls = being_shared::Controls;
 pub type ControlledBy = being_shared::ControlledBy;
+
+
+
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, Hash, PartialEq, Eq, )]
 #[relationship(relationship_target = Followers)]

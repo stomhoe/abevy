@@ -6,6 +6,7 @@
         (
             target: 1,
             is_row: true,
+            alternating_start_frames: Some((1, 4)),
         )
     ],
     z: 1000,

@@ -4,16 +4,9 @@ pub use bevy_ecs_tilemap::tiles::*;
 use common::{common_components::*, common_states::*};
 use serde::{Serialize, Deserialize};
 
-use crate::tile::tile_shader::tile_material::prelude::*;
 use crate::tile::{self, tile_shader::*};
 
 
-
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-#[require(AssetScoped, Prefix::trunc("TileShaders"), Replicated)]
-pub struct EguiTileShaderHolder;
 
 pub type TileShaderRef = tile::tile_shader::tile_shader_resources::TileShaderRef;
 impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }

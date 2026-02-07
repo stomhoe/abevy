@@ -69,7 +69,7 @@ pub fn host_on_player_added(mut cmd: Commands,
                 SampleSpritesFromStrIds::new(["humanhe0", "humanbo0"]),
 
             )).id();
-            cmd.spawn(SpeedModifier::new(created_character, created_character, 5000.0, ApplyMode::Add));
+            cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));
 
         }else{
             //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER

@@ -56,11 +56,7 @@ macro_rules! define_entity_map_systems {
             #[reflect(Resource)]
             pub struct [<$main_component EntityMap>](pub common::common_types::HashIdToEntityMap);
 
-            impl Default for [<$main_component EntityMap>] {
-                fn default() -> Self {
-                    Self(Default::default())
-                }
-            }
+            impl Default for [<$main_component EntityMap>] { fn default() -> Self { Self(Default::default()) } }
 
             #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, bevy::ecs::entity::MapEntities, )]
             pub struct [<$abbreviation Ref>](#[entities] pub Entity);
@@ -69,7 +65,6 @@ macro_rules! define_entity_map_systems {
                     self.0 == Entity::PLACEHOLDER
                 }
             }
-
             #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, )]
             pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
 
@@ -115,7 +110,6 @@ macro_rules! define_entity_map_systems {
                     );
                 }
             }
-
             pub fn [<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>](
                 trigger: On<bevy::prelude::Despawn, $despawn_trigger>,
                 query: Query<(&$id_type), $with_filters>,
@@ -129,7 +123,6 @@ macro_rules! define_entity_map_systems {
                     }
                 }
             }
-
             #[allow(unused_parens)]
             pub fn [<add_ $main_component:snake _ezeros_to_egui_holder>](
                 mut cmd: Commands,

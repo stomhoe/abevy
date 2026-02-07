@@ -100,6 +100,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<PrevGlobalTilePos>()
     .replicate::<PortalsZeroEguiHolder>()
     .replicate::<BlocksProjectiles>()
+    .replicate::<WalkSpeedMultIfOnTop>()
 
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()
