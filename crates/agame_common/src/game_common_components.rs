@@ -56,56 +56,56 @@ pub struct Persisted;
     Copy,
 )]
 #[strum(serialize_all = "lowercase")]
-pub enum Direction {
+pub enum CardinalDirection {
     #[default]
     South,
     West,
     East,
     North,
 }
-impl Direction {
-    pub fn next_clockwise(&self) -> Direction {
+impl CardinalDirection {
+    pub fn next_clockwise(&self) -> CardinalDirection {
         match self {
-            Direction::South => Direction::West,
-            Direction::West => Direction::North,
-            Direction::North => Direction::East,
-            Direction::East => Direction::South,
+            CardinalDirection::South => CardinalDirection::West,
+            CardinalDirection::West => CardinalDirection::North,
+            CardinalDirection::North => CardinalDirection::East,
+            CardinalDirection::East => CardinalDirection::South,
         }
     }
     pub fn to_dir_vec(&self) -> IVec2 {
         match self {
-            Direction::South => IVec2::new(0, 1),
-            Direction::West => IVec2::new(-1, 0),
-            Direction::North => IVec2::new(0, -1),
-            Direction::East => IVec2::new(1, 0),
+            CardinalDirection::South => IVec2::new(0, 1),
+            CardinalDirection::West => IVec2::new(-1, 0),
+            CardinalDirection::North => IVec2::new(0, -1),
+            CardinalDirection::East => IVec2::new(1, 0),
         }
     }
 }
-impl From<u8> for Direction {
+impl From<u8> for CardinalDirection {
     fn from(value: u8) -> Self {
         match value {
-            0 => Direction::South,
-            1 => Direction::West,
-            2 => Direction::East,
-            3 => Direction::North,
-            _ => Direction::South, // unreachable, but for completeness
+            0 => CardinalDirection::South,
+            1 => CardinalDirection::West,
+            2 => CardinalDirection::East,
+            3 => CardinalDirection::North,
+            _ => CardinalDirection::South, // unreachable, but for completeness
         }
     }
 }
-impl From<&str> for Direction {
+impl From<&str> for CardinalDirection {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
-            "south" | "down" | "sur" | "s" => Direction::South,
-            "west" | "left" | "lef" | "w" => Direction::West,
-            "east" | "right" | "rig" | "e" => Direction::East,
-            "north" | "up" | "n" => Direction::North,
-            _ => Direction::South,
+            "south" | "down" | "sur" | "s" => CardinalDirection::South,
+            "west" | "left" | "lef" | "w" => CardinalDirection::West,
+            "east" | "right" | "rig" | "e" => CardinalDirection::East,
+            "north" | "up" | "n" => CardinalDirection::North,
+            _ => CardinalDirection::South,
         }
     }
 }
-impl From<String> for Direction {
+impl From<String> for CardinalDirection {
     fn from(s: String) -> Self {
-        Direction::from(s.as_str())
+        CardinalDirection::from(s.as_str())
     }
 }
 

@@ -57,13 +57,20 @@ pub fn replace_sampler_string_ids_by_entities(
 #[allow(unused_parens)]
 pub fn sample_from_sprite_entities(
     mut cmd: Commands,
-    global_gen_settings: Single<&GlobalGenSettings>,
+    global_gen_settings: Query<&GlobalGenSettings>,
     being_query: Query<(Entity, &SampleSpriteEnts, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleSpriteEnts>,
         Without<BeingInstTemplate>
     )>,
     samplers_query: Query<&EntityWeightedSampler>,
     dimension_hash_query: Query<&HashId, common::AnyDisabling>,
 ) {
+    if being_query.is_empty() {
+        return;
+    }
+    let Ok(global_gen_settings) = global_gen_settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
     let mut configs_to_build = Vec::new();
 
     for (ent, sample_sprites, (gpos, transform), dimension_ref) in being_query.iter() {

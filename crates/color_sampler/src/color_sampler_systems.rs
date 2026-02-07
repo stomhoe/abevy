@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::tiles::TileColor;
 use common::common_components::*;
 use ::tilemap_shared::*;
 use dimension_shared::DimensionRef;
-use crate::{ColorSamplerEntityMap, color_sampler_components::*, color_sampler_resources::* };
+use crate::{ColorSamplerEntityMap, ColorSamplerRef, color_sampler_components::*, color_sampler_resources::* };
 
 #[allow(unused_parens)]
 pub fn init_color_samplers(
@@ -46,7 +46,7 @@ pub fn init_color_samplers(
         }
         let wmap = ColorSampler::new(&seri.weights);
 
-        let ent = cmd.spawn_empty().id(); 
+        let ent = cmd.spawn_empty().id();
 
         wmap_to_insert.push((ent, (str_id, wmap.clone())));
 
@@ -57,14 +57,21 @@ pub fn init_color_samplers(
 
 
 #[allow(unused_parens)]
-pub fn apply_pos_sampled_color(mut cmd: Commands, 
-    gen_settings: Single<&GlobalGenSettings>,
+pub fn apply_pos_sampled_color(mut cmd: Commands,
+    gen_settings: Query<&GlobalGenSettings>,
     samplers: Query<&ColorSampler>,
     dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut query: Query<(Entity, &ColorSamplerRef, &GlobalTilePos, Option<&DimensionRef>, AnyOf<(&mut Sprite, &mut TileColor)>), (Or<(Changed<ColorSamplerRef>, Added<Sprite> )>, )>,
 ) {
+    if query.is_empty() {
+        return;
+    }
+    let Ok(gen_settings) = gen_settings.single() else {
+        error!("Failed to get gen settings");
+        return;
+    };
     query.iter_mut().for_each(|(entity, color_sampler, &global_tile_pos, dimension_ref, (sprite, tile_color))| {
-        let Ok(sampler) = samplers.get(color_sampler.0) 
+        let Ok(sampler) = samplers.get(color_sampler.0)
         else {return;};
 
         let dimension_hash = dimension_ref
@@ -82,4 +89,3 @@ pub fn apply_pos_sampled_color(mut cmd: Commands,
         cmd.entity(entity).try_remove::<ColorSamplerRef>();
     });
 }
-

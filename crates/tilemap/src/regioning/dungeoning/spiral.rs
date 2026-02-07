@@ -1,3 +1,4 @@
+use core::error;
 use std::collections::VecDeque;
 #[allow(unused_imports)] use bevy::prelude::*;
 
@@ -21,34 +22,40 @@ pub fn spiral_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
-    settings: Single<&GlobalGenSettings>,
+    settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {
     let mut compliances_to_emit = Vec::new();
+
+    let Ok(settings) = settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
+
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) else { continue; };
-        
+
         if structured_gen_cfg.structure_hash_id() != SPIRAL {
             continue;
         }
-        
+
         let floor_tile_id = structured_gen_cfg.args
             .get("floor_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
+
         let wall_tile_id = structured_gen_cfg.args
             .get("wall_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("gray"));
-        
+
         let lava_tile_id = structured_gen_cfg.args
             .get("lava_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()));
-        
+
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
@@ -56,7 +63,7 @@ pub fn spiral_dungeon_building_system(
                 continue;
             }
         };
-        
+
         let wall_entity = match ezeros_map.0.get_cloned(wall_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
             Err(_) => {
@@ -64,26 +71,26 @@ pub fn spiral_dungeon_building_system(
                 continue;
             }
         };
-        
+
         let lava_entity = lava_tile_id.and_then(|id| ezeros_map.0.get_cloned(id).ok()).map(EntityZeroRef);
-        
+
         let chunk_positions = &build_order.chunks_gpos;
         if chunk_positions.is_empty() { continue; }
-        
+
         let min_chunk_x = chunk_positions.iter().map(|chunk| chunk.x()).min().unwrap();
         let max_chunk_x = chunk_positions.iter().map(|chunk| chunk.x()).max().unwrap();
         let min_chunk_y = chunk_positions.iter().map(|chunk| chunk.y()).min().unwrap();
         let max_chunk_y = chunk_positions.iter().map(|chunk| chunk.y()).max().unwrap();
-        
+
         let chunk_width = (max_chunk_x - min_chunk_x + 1) as usize;
         let chunk_height = (max_chunk_y - min_chunk_y + 1) as usize;
         let tile_width = chunk_width * ChunkPos::CHUNK_SIZE.x as usize;
         let tile_height = chunk_height * ChunkPos::CHUNK_SIZE.y as usize;
         if tile_width == 0 || tile_height == 0 { continue; }
-        
+
         let origin_chunk = ChunkPos::new(min_chunk_x, min_chunk_y);
         let origin_tile = origin_chunk.to_tilepos();
-        
+
         let tile_map_size = tile_width * tile_height;
         let mut floor_map = vec![false; tile_map_size];
         let mut hazard_map = vec![false; tile_map_size];
@@ -91,15 +98,15 @@ pub fn spiral_dungeon_building_system(
         if tile_width <= carve_margin * 2 || tile_height <= carve_margin * 2 {
             continue;
         }
-        
+
         let Ok(&dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
             error!(target: "dungeoning", "Dimension entity {:?} has no HashId component for spiral dungeon", build_order.dimension_ref);
             continue;
         };
-        
+
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
-        
+
         let corridor_width_min = structured_gen_cfg
             .args
             .parse_arg("spiral_corridor_width_min", 3)
@@ -115,7 +122,7 @@ pub fn spiral_dungeon_building_system(
         };
         let corridor_width = rng.random_range(corridor_width_min..=corridor_width_max) as usize;
         let corridor_radius = (corridor_width as i32) / 2;
-        
+
         let max_room_radius = (tile_width.min(tile_height) as i32 / 4).max(2);
         let room_radius = structured_gen_cfg
             .args
@@ -125,12 +132,12 @@ pub fn spiral_dungeon_building_system(
             .args
             .parse_arg("spiral_center_wall_thickness", 1)
             .clamp(1, 6);
-        
+
         let center_x = (tile_width as i32) / 2;
         let center_y = (tile_height as i32) / 2;
         let inner_radius = room_radius;
         let outer_radius = room_radius + wall_thickness;
-        
+
         carve_room_circle(
             &mut floor_map,
             tile_width,
@@ -140,7 +147,7 @@ pub fn spiral_dungeon_building_system(
             inner_radius * 2 + 1,
             inner_radius * 2 + 1,
         );
-        
+
         let mut wall_ring_map = vec![false; tile_map_size];
         for y in 0..tile_height {
             for x in 0..tile_width {
@@ -195,7 +202,7 @@ pub fn spiral_dungeon_building_system(
                 center_wall_ring_map[yi as usize * tile_width + xi as usize] = true;
             }
         }
-        
+
         let can_step = |nx: i32, ny: i32| {
             nx >= carve_margin as i32
             && ny >= carve_margin as i32
@@ -229,17 +236,17 @@ pub fn spiral_dungeon_building_system(
         if turns > 0.0 {
             max_theta = max_theta.min(std::f32::consts::TAU * turns.max(1.0));
         }
-        
+
         let mut theta = 0.0f32;
         let mut radius = start_radius;
-        
+
         let mut out_of_bounds_steps = 0u32;
         while theta <= max_theta && radius <= max_radius as f32 {
             let x = center_x as f32 + radius * theta.cos();
             let y = center_y as f32 + radius * theta.sin();
             let xi = x.round() as i32;
             let yi = y.round() as i32;
-            
+
             if can_step(xi, yi) {
                 out_of_bounds_steps = 0;
                 for dy in -corridor_radius..=corridor_radius {
@@ -258,11 +265,11 @@ pub fn spiral_dungeon_building_system(
                     break;
                 }
             }
-            
+
             theta += angle_step;
             radius += radius_per_rad * angle_step;
         }
-        
+
         // Bridge thin walls between adjacent spiral arms
         let mut bridged = floor_map.clone();
         for y in 1..tile_height - 1 {
@@ -279,7 +286,7 @@ pub fn spiral_dungeon_building_system(
             }
         }
         floor_map = bridged;
-        
+
         // Remove disconnected floor islands
         let mut visited = vec![false; tile_map_size];
         let mut queue = VecDeque::new();
@@ -337,7 +344,7 @@ pub fn spiral_dungeon_building_system(
                 }
             }
         }
-        
+
         // Create wall outlines only (around floor tiles)
         let mut wall_map = vec![false; tile_map_size];
         for y in 0..tile_height {
@@ -406,7 +413,7 @@ pub fn spiral_dungeon_building_system(
             }
         }
         wall_map = closed_wall_map;
-        
+
         let delete_template = DeleteOtherTiles::default();
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
@@ -427,7 +434,7 @@ pub fn spiral_dungeon_building_system(
                     tiles4chunk.push((tile_pos, wall_entity, Some(delete_template.clone())));
                 }
             }
-            
+
             chunk_tiles.push((chunk_pos, tiles4chunk));
         }
         compliances_to_emit.push(StructureBuildCompliance {

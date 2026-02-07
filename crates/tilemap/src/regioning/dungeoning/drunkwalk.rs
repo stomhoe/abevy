@@ -21,12 +21,16 @@ pub fn drunkwalk_dungeon_building_system(
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
     dimension_hash: Query<&HashId>,
-    settings: Single<&GlobalGenSettings>,
+    settings: Query<&GlobalGenSettings>,
 ) {
-    let mut compliances_to_emit = Vec::new();    
+    let Ok(settings) = settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
+    let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
-        let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) 
-        else { 
+        let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent)
+        else {
             error!(target: "dungeoning", "StructuredGenConfig entity {:?} not found when making DrunkwalkDungeon, skipping structure spawn", build_order.structured_gen_cfg_ent);
             continue; };
 
@@ -39,13 +43,13 @@ pub fn drunkwalk_dungeon_building_system(
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
+
         let wall_tile_id = structured_gen_cfg.args
             .get("wall_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("gray"));
-        
+
         let lava_tile_id = structured_gen_cfg.args
             .get("lava_tile_id")
             .and_then(|v| v.first())
@@ -97,15 +101,15 @@ pub fn drunkwalk_dungeon_building_system(
         if tile_width <= carve_margin * 2 || tile_height <= carve_margin * 2 {
             continue;
         }
-        
+
         let Ok(&dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
             error!(target: "dungeoning", "Dimension entity {:?} has no HashId component when making DrunkwalkDungeon, skipping structure spawn", build_order.dimension_ref);
             continue;
         };
-        
+
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
-        
+
         let corridor_wiggle_chance: f32 = structured_gen_cfg
             .args
             .parse_arg("corridor_wiggle_chance", 0.35);
@@ -137,7 +141,7 @@ pub fn drunkwalk_dungeon_building_system(
 
             for _ in 0..walker_steps {
                 if carved >= target_floor_tiles { break; }
-                
+
                 // Carve a wider path
                 for dy in -(path_width as i32)..=path_width as i32 {
                     for dx in -(path_width as i32)..=path_width as i32 {
@@ -208,7 +212,7 @@ pub fn drunkwalk_dungeon_building_system(
         if chambers.len() > 1 {
             let mut sorted_chambers = chambers.clone();
             sorted_chambers.sort_by_key(|c| (c.center_x, c.center_y));
-            
+
             for i in 1..sorted_chambers.len() {
                 let from = sorted_chambers[i - 1];
                 let to = sorted_chambers[i];
@@ -216,7 +220,7 @@ pub fn drunkwalk_dungeon_building_system(
                     let normal = Normal::new(1.5, 1.0).unwrap();
                     (normal.sample(&mut rng) as i32).clamp(1, 5) as usize
                 };
-                
+
                 let from_x = from.center_x as i32;
                 let from_y = from.center_y as i32;
                 let to_x = to.center_x as i32;

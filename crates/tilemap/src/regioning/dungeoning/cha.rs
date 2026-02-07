@@ -24,9 +24,13 @@ pub fn corridor_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
-    settings: Single<&GlobalGenSettings>,
+    settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {
+    let Ok(settings) = settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
 
@@ -40,13 +44,13 @@ pub fn corridor_dungeon_building_system(
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
+
         let wall_tile_id = structured_gen_cfg.args
             .get("wall_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("gray"));
-        
+
         let lava_tile_id = structured_gen_cfg.args
             .get("lava_tile_id")
             .and_then(|v| v.first())
@@ -285,7 +289,7 @@ pub fn corridor_dungeon_building_system(
                 RoomShape::Triangle => {
                     // Randomly choose triangle type
                     let triangle_type = rng.random_range(0..3);
-                    
+
                     let (v0, v1, v2) = match triangle_type {
                         0 => {
                             // Isosceles triangles - randomly choose orientation
@@ -380,11 +384,11 @@ pub fn corridor_dungeon_building_system(
         let corridor_wiggle_step_max = structured_gen_cfg
             .args
             .parse_opt_arg("corridor_wiggle_step_max");
-        
+
         if !rooms.is_empty() {
             let mut centers: Vec<(i32,i32)> = rooms.iter().map(|r| (r.x + r.w/2, r.y + r.h/2)).collect();
             centers.sort_by_key(|c| (c.0, c.1));
-            
+
             for i in 1..centers.len() {
                 let (x0,y0) = centers[i-1];
                 let (x1,y1) = centers[i];
@@ -492,7 +496,7 @@ pub fn corridor_dungeon_building_system(
                 if pit_w >= r.w - 2 || pit_h >= r.h - 2 { continue; }
                 let px = rng.random_range(r.x + 1..=(r.x + r.w - pit_w - 1));
                 let py = rng.random_range(r.y + 1..=(r.y + r.h - pit_h - 1));
-                
+
                 for yy in py..py + pit_h {
                     for xx in px..px + pit_w {
                         if (xx as usize) < tile_width && (yy as usize) < tile_height {
@@ -561,7 +565,7 @@ pub fn corridor_dungeon_building_system(
                 let idx_y = local_tile.y as usize;
                 if idx_x >= tile_width || idx_y >= tile_height { continue; }
                 let map_idx = idx_y * tile_width + idx_x;
-                
+
                 if hazard_map[map_idx] {
                     let ezero_ref = if let Some(lava) = lava_entity { lava } else { wall_entity };
                     tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));

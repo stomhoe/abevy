@@ -36,10 +36,10 @@ pub fn lobby_button_interaction(
     mut game_setup_screen: ResMut<NextState<GameSetupScreen>>,
     mut app_state: ResMut<NextState<AppState>>,
     mut game_phase:  ResMut<NextState<GamePhase>>,
-) 
+)
 {
     for (interaction, menu_button_action) in &interaction_query {
-        
+
         if *interaction == Interaction::Pressed {
             match menu_button_action {
                 LobbyButtonId::Leave => {
@@ -68,7 +68,7 @@ pub fn lobby_button_interaction(
 pub fn on_player_disconnect(
     trigger: On<Despawn, Player>,
     //state:
-    //created_character_query: Query<(&CreatedCharacter, ), ()>, 
+    //created_character_query: Query<(&CreatedCharacter, ), ()>,
     players: Query<(&StrId, &LobbyPlayerUiNode), With<Player>>,
     mut commands: Commands)
 {
@@ -77,7 +77,7 @@ pub fn on_player_disconnect(
     if let Ok((player_name, player_name_entry)) = players.get(trigger.entity) {
         info!("Client `{}` disconnected", player_name);
         commands.entity(player_name_entry.0).try_despawn();
-    
+
         //TODO MARCAR SU BEING PARA DESPAWN PARA CUANDO EMPEIZA LA PARTIDA
         //ASI SI SE REUNE PUEDE RECUPERARLO EN SU ESTADO ORIGINAL
     } else {
@@ -89,18 +89,22 @@ pub fn on_player_disconnect(
 
 
 #[allow(unused_parens)]
-pub fn all_on_player_added(mut cmd: Commands, 
+pub fn all_on_player_added(mut cmd: Commands,
     my_data: Res<PlayerData>,
-    player_listing: Single<Entity, With<LobbyPlayerListing>>, 
+    player_listing: Query<Entity, With<LobbyPlayerListing>>,
     query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>) {
-    
+    let Ok(player_listing) = player_listing.single() else {
+        error!("Failed to get player listing");
+        return;
+    };
+
     for (player_ent, username) in query.iter() {
         if username == &my_data.username {
-            cmd.entity(player_ent).insert(OfSelf);
-        } 
+            cmd.entity(player_ent).insert(Mine);
+        }
 
         let pne = cmd.spawn((
-            ChildOf(*player_listing),
+            ChildOf(player_listing),
             Node {
                 width: Val::Percent(100.),
                 height: Val::Px(50.),
@@ -115,8 +119,7 @@ pub fn all_on_player_added(mut cmd: Commands,
 
 
         cmd.entity(player_ent).insert((
-            LobbyPlayerUiNode(pne), 
+            LobbyPlayerUiNode(pne),
         ));
     }
 }
-

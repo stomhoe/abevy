@@ -16,7 +16,7 @@ use crate::race::race_resources::RaceRef;
 #[allow(unused_parens)]
 pub fn build_beings_from_race_ref(
     mut cmd: Commands,
-    global_gen_settings: Single<&GlobalGenSettings>,
+    global_gen_settings: Query<&GlobalGenSettings>,
     dimension_hash_query: Query<&HashId, common::AnyDisabling>,
     race_query: Query<(
         Option<&SexesSampler>,
@@ -32,8 +32,14 @@ pub fn build_beings_from_race_ref(
         Option<&SampleTreeEnt>,
         Option<&SampleBodyFromStrId>,
     ), (Changed<RaceRef>, With<Being>)>,
-)
-{
+) {
+    if query.is_empty() {
+        return;
+    }
+    let Ok(global_gen_settings) = global_gen_settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
     let mut sample_sprites_to_ins: Vec<(Entity, SampleSpriteEnts)> = Vec::new();
     let mut sample_bodies_to_ins: Vec<(Entity, SampleBodyFromStrId)> = Vec::new();
 

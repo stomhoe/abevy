@@ -5,7 +5,7 @@ use being_shared::{Grounding, ControlledBy};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
 use common::common_components::*;
-use game_common::game_common_components::{Directionable, EntityZeroRef, Direction};
+use game_common::game_common_components::{Directionable, EntityZeroRef, CardinalDirection};
 use player::player_components::*;
 use sprite::sprite_components::*;
 use ::sprite_animation_shared::*;
@@ -14,31 +14,31 @@ use ::sprite_shared::*;
 #[allow(unused_imports, )]
 use crate::{sprite_animation_components::*, sprite_animation_events::MoveStateUpdated, sprite_animation_resources::*};
 
-//TODO hacer animation speed para walking proporcional a la velocidad real del being 
+//TODO hacer animation speed para walking proporcional a la velocidad real del being
 
 #[allow(unused_parens, )]
 pub fn animate_sprite(
     mut cmd: Commands,
-    base: Query<(&HeldSprites, Option<&Direction>, Option<&MoveAnimActive>, &Grounding, ), (
+    base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, &Grounding, ), (
         Or<(
-            Changed<HeldSprites>, Changed<Direction>, 
+            Changed<HeldSprites>, Changed<CardinalDirection>,
             Changed<MoveAnimActive>, Changed<Grounding>,
         )>,
     )>,
-    mut sprites_query: Query<(Entity, Option<&SpritesheetAnimation>, &EntityZeroRef, 
+    mut sprites_query: Query<(Entity, Option<&SpritesheetAnimation>, &EntityZeroRef,
         Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AcAnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
-    
+
     spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), ()>,
-    
+
     animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>),()>,
-    
+
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    images: Res<Assets<Image>>, 
+    images: Res<Assets<Image>>,
 ) {
 
     for (held_sprites, direction, moving, grounding) in base.iter() {
         for held_sprite in held_sprites.entities() {
-            let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses, has_sprite_config_not_found)) = sprites_query.get_mut(*held_sprite) 
+            let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses, has_sprite_config_not_found)) = sprites_query.get_mut(*held_sprite)
             else { error!(target: "sprite_animation", "Failed to get sprite entity {:?}", held_sprite); continue };
 
             if has_sprite_config_not_found {
@@ -49,7 +49,7 @@ pub fn animate_sprite(
             else { error!(target: "sprite_animation", "Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0); continue };
 
             let anim_type = AnimType {
-                direction: if directionable { direction.copied().unwrap_or_default() } else { Direction::default() },
+                direction: if directionable { direction.copied().unwrap_or_default() } else { CardinalDirection::default() },
                 moving: if movement_based { moving.copied().unwrap_or_default() } else { MoveAnimActive::default() },
                 grounding: if grounding_based { *grounding } else { Grounding::default() },
                 state_id: state_id.cloned(),
@@ -72,7 +72,7 @@ pub fn animate_sprite(
             };
             let sprite = sprite.sprite(&mut atlas_layouts);
 
-            let mut spritesheet_animation = 
+            let mut spritesheet_animation =
             SpritesheetAnimation{
                 animation: anim_handle.0.clone(),
                 progress: AnimationProgress {
@@ -107,8 +107,8 @@ pub fn animate_sprite(
 
             if insert_needed {
                 cmd.entity(ent).try_insert((sprite, spritesheet_animation, z.clone(), y_sort.cloned().unwrap_or_default()));
- 
-            }  
+
+            }
         }
     }
 }
@@ -116,9 +116,9 @@ pub fn animate_sprite(
 
 #[allow(unused_parens)]
 pub fn update_animstate_for_clients(
-    connected: Query<&Player, Without<OfSelf>>,
-    started_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&Direction>, Option<&StrId>), 
-    Or<(Changed<MoveAnimActive>, Changed<Grounding>, Changed<Direction>, )>,>,
+    connected: Query<&Player, Without<Mine>>,
+    started_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>),
+    Or<(Changed<MoveAnimActive>, Changed<Grounding>, Changed<CardinalDirection>, )>,>,
     controller: Query<&ControlledBy>,
     mut mwriter: MessageWriter<ToClients<MoveStateUpdated>>,
 ){
@@ -149,13 +149,13 @@ pub fn update_animstate_for_clients(
 pub fn client_receive_moving_anim(
     mut mreader: MessageReader<MoveStateUpdated>,
 
-    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut Direction)>,
+    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection)>,
 ) {
 
     for message in mreader.par_read() {
         let MoveStateUpdated { being_ent, moving, grounding, direction } = message.0;
         trace!(target: "sprite_animation", "Received moving {} for entity {:?}", moving, being_ent);
-    
+
         if let Ok((mut move_anim, mut grounding_comp, mut direction_comp)) = query.get_mut(*being_ent) {
             move_anim.0 = *moving;
             if let Some(grounding) = grounding {

@@ -12,7 +12,7 @@ use super::chunking_resources::*;
 #[allow(unused_parens)]
 pub fn update_chunk_visib(
     mut reader: MessageReader<RecheckChunksVisibility>,
-    camera_query: Single<(&GlobalTransform, &DimensionRef), (With<CameraTarget>)>,
+    camera_query: Query<(&GlobalTransform, &DimensionRef), With<CameraTarget>>,
     mut chunks_query: Query<(&mut Visibility, &ChunkPos, &DimensionRef, &Children), With<Chunk>>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
     mut event_writer: MessageWriter<DrawTilemap>,
@@ -24,8 +24,11 @@ pub fn update_chunk_visib(
     to_draw.reserve(reader.read().size_hint().0);
     reader.clear();
 
-    let (camera_transform, camera_dimension) = *camera_query;
-    
+    let Ok((camera_transform, camera_dimension)) = camera_query.single() else {
+        error!("Failed to get singular camera target");
+        return;
+    };
+
     let camera_chunk_pos = ChunkPos::from(camera_transform.translation().xy());
 
     chunks_query.iter_mut().for_each(|(mut visibility, &chunk_pos, &chunk_dimension, children)| {
@@ -33,7 +36,7 @@ pub fn update_chunk_visib(
         let different_dimension = camera_dimension != &chunk_dimension;
         let out_of_visible = chunkrange_settings.out_of_visible_range(camera_transform, chunk_pos);
         let out_of_discovery = chunkrange_settings.out_of_discovery_range(camera_chunk_pos, chunk_pos);
-        
+
         if different_dimension || (out_of_visible && out_of_discovery) {
             if *visibility != Visibility::Hidden {
                 *visibility = Visibility::Hidden;
@@ -54,9 +57,16 @@ pub struct RecheckChunksVisibility;
 
 #[allow(unused_parens)]
 pub fn detect_camera_change_pos_visib(
-    _: Single<(&CameraTarget), (Or<(Changed<GlobalTransform>, Added<CameraTarget>, Changed<DimensionRef>, )>, )>,
+    camera_target: Query<&CameraTarget, Or<(Changed<GlobalTransform>, Added<CameraTarget>, Changed<DimensionRef>)>>,
     mut recheck_writer: MessageWriter<RecheckChunksVisibility>,
 ) {
+    if camera_target.is_empty() {
+        return;
+    }
+    let Ok(_) = camera_target.single() else {
+        error!("More than one active camera target");
+        return;
+    };
     recheck_writer.write(RecheckChunksVisibility);
     trace!(target: "chunk_visibility", "Camera position or dimension changed, rechecking chunk visibility.");
 }
@@ -67,4 +77,3 @@ pub fn periodically_recheck_chunk_visibility(
     recheck_writer.write(RecheckChunksVisibility);
     trace!(target: "chunk_visibility", "Rechecking chunk visibility due to timer.");
 }
-

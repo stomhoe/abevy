@@ -16,9 +16,13 @@ pub fn archimedes_spiral_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
-    settings: Single<&GlobalGenSettings>,
+    settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {
+    let Ok(settings) = settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) else { continue; };
@@ -32,7 +36,7 @@ pub fn archimedes_spiral_building_system(
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
+
         let wall_tile_id = structured_gen_cfg.args
             .get("wall_tile_id")
             .and_then(|v| v.first())

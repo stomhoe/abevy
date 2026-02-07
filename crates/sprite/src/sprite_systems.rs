@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use common::{common_tag_components::TagSet};
-use game_common::game_common_components::{EntityZero, EntityZeroRef, Direction};
+use game_common::game_common_components::{EntityZero, EntityZeroRef, CardinalDirection};
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::sprite_components::*;
@@ -13,32 +13,32 @@ use crate::sprite_components::*;
 pub fn apply_scales(
     mut sprite_que: Query<(&BaseHolderRef, &mut Sprite, &EntityZeroRef, &mut Transform,
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
-    ),>, 
-    sprite_config_query: Query<(Option<&FlipHorizIfDir>, &Scale2D, &ScaleLookUpDown, &ScaleSideways,), ()>, 
-    baseholder_query: Query<&Direction>, 
+    ),>,
+    sprite_config_query: Query<(Option<&FlipHorizIfDir>, &Scale2D, &ScaleLookUpDown, &ScaleSideways,), ()>,
+    baseholder_query: Query<&CardinalDirection>,
 ) {
     for (
-        spriteholder, mut sprite, &EntityZeroRef(spritecfg_ent), 
+        spriteholder, mut sprite, &EntityZeroRef(spritecfg_ent),
         mut transform, scale, scale_look_up_down, scale_look_sideways,
     ) in sprite_que.iter_mut() {
         let mut total_scale = scale.copied().unwrap_or_default();
 
         if let Ok((ref_flip_horiz_if_dir, &ref_scale, &ref_scale_updown, &ref_scale_sideways)) = sprite_config_query.get(spritecfg_ent) {
             total_scale *= ref_scale;
-        
+
             if let Ok(base_direction) = baseholder_query.get(spriteholder.base) {
-    
+
                 match base_direction {
-                    Direction::West => {
+                    CardinalDirection::West => {
                         total_scale *= ref_scale_sideways * scale_look_sideways.copied().unwrap_or_default();
-                        
+
                         if let Some(&flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
                                 FlipHorizIfDir::Left => true, _ => true,
                             };
                         }
                     },
-                    Direction::East => {
+                    CardinalDirection::East => {
                         total_scale *= ref_scale_sideways * scale_look_sideways.copied().unwrap_or_default();
 
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
@@ -47,7 +47,7 @@ pub fn apply_scales(
                             };
                         }
                     },
-                    Direction::North => {
+                    CardinalDirection::North => {
                         total_scale *= ref_scale_updown * scale_look_up_down.copied().unwrap_or_default();
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -55,7 +55,7 @@ pub fn apply_scales(
                             };
                         }
                     },
-                    Direction::South => {
+                    CardinalDirection::South => {
                         total_scale *= ref_scale_updown * scale_look_up_down.copied().unwrap_or_default();
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -81,31 +81,31 @@ pub fn apply_offsets(
     mut sprite_query: Query<(
         &mut Transform,
         Entity,
-        &BaseHolderRef, 
+        &BaseHolderRef,
         &ChildOf,
         Option<&EntityZeroRef>,
-        Option<&Offset2D>, 
+        Option<&Offset2D>,
         Has<SpriteConfigNotFound>,
     ), (Without<EntityZero>, )>,
     sprite_config_query: Query<(
         Option<&TagSet>,
         Option<&Offset2D>,
         Option<&OffsetSideways>,
-        Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>, 
+        Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>,
         Option<&OffsetForChildren>,
-    ),()>, 
+    ),()>,
     parent_sprite_query: Query<&EntityZeroRef>,
-    base_query: Query<&Direction>,
+    base_query: Query<&CardinalDirection>,
 ) {
     for (
-        mut transform, sprite_entity, baseholder, child_of, sprite_config_ref, 
+        mut transform, sprite_entity, baseholder, child_of, sprite_config_ref,
         offset, has_sprite_config_not_found
     ) in sprite_query.iter_mut() {
 
         let mut total_offset = Offset2D::default();
 
         if let Some(EntityZeroRef(sprite_config)) = sprite_config_ref.cloned() {
-            let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _offset4children)) = sprite_config_query.get(sprite_config) 
+            let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _offset4children)) = sprite_config_query.get(sprite_config)
             else {
                 if !has_sprite_config_not_found {
                     error!("Failed to get sprite config for entity {:?}", sprite_config);
@@ -122,17 +122,17 @@ pub fn apply_offsets(
 
             if let Ok(direction) = base_query.get(baseholder.base) {
                 match direction {
-                    Direction::West => {
+                    CardinalDirection::West => {
                         total_offset += offset_sideways.cloned().unwrap_or_default();
                     },
-                    Direction::East => {
+                    CardinalDirection::East => {
                         total_offset += offset_sideways.cloned().unwrap_or_default();
                     },
-                    Direction::North => {
+                    CardinalDirection::North => {
                         total_offset += offset_updown.cloned().unwrap_or_default();
                         total_offset += offset_up.cloned().unwrap_or_default();
                     },
-                    Direction::South => {
+                    CardinalDirection::South => {
                         total_offset += offset_updown.cloned().unwrap_or_default();
                         total_offset += offset_down.cloned().unwrap_or_default();
                     }
@@ -163,7 +163,7 @@ pub fn apply_offsets(
 
 
 #[allow(unused_parens)]
-pub fn disable_children_sprites_of_disabled(mut cmd: Commands, 
+pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
     ezero_bases: Query<(&HeldSprites),(With<EntityZero>, Added<Disabled>)>,
     non_ezero_bases: Query<(&HeldSprites),(Without<EntityZero>,)>,
     mut removed: RemovedComponents<Disabled>,
@@ -188,14 +188,14 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
 
 #[allow(unused_parens, )]
 pub fn z_sort_system(
-    
-    mut query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>, 
-        AnyOf<(&AcZ, &EntityZeroRef)>, Has<TilemapAnchor>, &ChildOf, ), 
-        (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>,)>, 
+
+    mut query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>,
+        AnyOf<(&AcZ, &EntityZeroRef)>, Has<TilemapAnchor>, &ChildOf, ),
+        (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>,)>,
         Or<(With<Sprite>, With<TilemapAnchor>, )>)>,
-        
+
     parent_sprite_query: Query<&Sprite, (common::AnyDisabling,)>,
-    
+
     ezero_query: Query<(&AcZ, Option<&YSortOrigin>), ()>,
 
     mut mw_draw_tmap: MessageWriter<DrawTilemap>,

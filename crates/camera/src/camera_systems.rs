@@ -8,7 +8,7 @@ pub fn spawn_camera(mut commands: Commands, ) {
     commands.spawn(Camera2d::default());
 }
 
-pub fn enforce_single_camera_target(
+pub fn delete_prev_camera_target(
     mut commands: Commands,
     new_camera: Single<Entity, Added<CameraTarget>>,
     existing_cameras: Query<Entity, With<CameraTarget>>,
@@ -21,9 +21,17 @@ pub fn enforce_single_camera_target(
 }
 
 pub fn camera_follow_target(
-    target: Single<&Transform, With<CameraTarget>>,
-    mut camera_query: Single<&mut Transform, (With<Camera>, Without<CameraTarget>)>,
+    target: Query<&Transform, With<CameraTarget>>,
+    mut camera_query: Query<&mut Transform, (With<Camera>, Without<CameraTarget>)>,
 ) {
+    let Ok(target) = target.single() else {
+        error!("Failed to get camera target");
+        return;
+    };
+    let Ok(mut camera_query) = camera_query.single_mut() else {
+        error!("Failed to get camera query");
+        return;
+    };
     camera_query.translation.x = target.translation.x; camera_query.translation.y = target.translation.y;
     camera_query.translation.z = 0.0;
 }
@@ -32,7 +40,7 @@ pub fn camera_zoom_system(
     mut mouse_wheel_events: MessageReader<MouseWheel>,
     mut camera_query: Query<&mut Transform, With<Camera>>,
 ) {
-    let zoom_speed = 0.1; let min_zoom = 0.0001; let max_zoom = 100.0; 
+    let zoom_speed = 0.1; let min_zoom = 0.0001; let max_zoom = 100.0;
 
     let mut zoom_delta = 0.0;
     for event in mouse_wheel_events.read() {
@@ -50,9 +58,16 @@ pub fn camera_zoom_system(
 
 #[allow(unused_parens, )]
 pub fn hide_nonvisualized_dimension(
-    camera_curr_dimension: Single<(&DimensionRef), (With<CameraTarget>,)>,
+    camera_curr_dimension: Query<&DimensionRef, With<CameraTarget>>,
     mut dimensions: Query<(Entity, &mut Visibility, ), (With<Dimension>)>,
 ) {
+    if camera_curr_dimension.is_empty() {
+        return;
+    }
+    let Ok(camera_curr_dimension) = camera_curr_dimension.single() else {
+        error!("Failed to get camera current dimension, multiple camera targets");
+        return;
+    };
     for (dimension_ent, mut visibility, ) in dimensions.iter_mut() {
         if camera_curr_dimension.0 != dimension_ent {
             *visibility = Visibility::Hidden;

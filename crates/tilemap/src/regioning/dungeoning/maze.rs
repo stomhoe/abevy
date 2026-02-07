@@ -19,9 +19,13 @@ pub fn maze_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
-    settings: Single<&GlobalGenSettings>,
+    settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {
+    let Ok(settings) = settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent) else { continue; };
@@ -35,13 +39,13 @@ pub fn maze_dungeon_building_system(
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("dunewbie"));
-        
+
         let wall_tile_id = structured_gen_cfg.args
             .get("wall_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("gray"));
-        
+
         let lava_tile_id = structured_gen_cfg.args
             .get("lava_tile_id")
             .and_then(|v| v.first())
@@ -93,7 +97,7 @@ pub fn maze_dungeon_building_system(
 
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
-        
+
         let corridor_wiggle_chance: f32 = structured_gen_cfg
             .args
             .parse_arg("corridor_wiggle_chance", 0.0);
@@ -136,7 +140,7 @@ pub fn maze_dungeon_building_system(
         } else {
             1
         };
-        
+
         let mut island_seeds: Vec<(usize, usize, ShapeType)> = Vec::new();
         let margin = 4;
         if tile_width >= margin * 2 && tile_height >= margin * 2 {
@@ -148,11 +152,11 @@ pub fn maze_dungeon_building_system(
                 } else {
                     0
                 };
-                
+
                 while !valid_pos && attempts < 30 {
                     let island_x = rng.random_range(margin..tile_width.saturating_sub(margin));
                     let island_y = rng.random_range(margin..tile_height.saturating_sub(margin));
-                
+
                     let mut too_close = false;
                     for &(ex_x, ex_y, _) in &island_seeds {
                         let dx = (island_x as i32 - ex_x as i32).abs();
@@ -162,7 +166,7 @@ pub fn maze_dungeon_building_system(
                             break;
                         }
                     }
-                    
+
                     if !too_close {
                         let shape_types = [
                             ShapeType::Circle,
@@ -186,7 +190,7 @@ pub fn maze_dungeon_building_system(
             let island_size_multiplier = if island_seeds.len() == 1 { 0.95 } else { 0.75 };
             let max_island_size = ((max_available_width.min(max_available_height) as f32 * island_size_multiplier) as usize).max(50);
             let min_island_size = (max_island_size / 3).max(30);
-            
+
             let island_size = rng.random_range(min_island_size..=max_island_size);
             let maze_width = island_size | 1;
             let maze_height = island_size | 1;
@@ -207,7 +211,7 @@ pub fn maze_dungeon_building_system(
             let start_range_y = ((actual_maze_height.saturating_sub(2)) / 2).max(1);
             let start_x = (rng.random_range(0..start_range_x) * 2 + 1).min(actual_maze_width - 2);
             let start_y = (rng.random_range(0..start_range_y) * 2 + 1).min(actual_maze_height - 2);
-            
+
             if start_x < actual_maze_width && start_y < actual_maze_height {
                 maze[start_y * actual_maze_width + start_x] = 0;
                 stack.push((start_x, start_y));
@@ -346,7 +350,7 @@ pub fn maze_dungeon_building_system(
                 let break_x = island_x_start + rng.random_range(0..actual_maze_width);
                 let break_y = island_y_start + rng.random_range(0..actual_maze_height);
                 let break_size = rng.random_range(1..=2);
-                
+
                 for dy in 0..break_size {
                     for dx in 0..break_size {
                         let tx = break_x + dx;
@@ -362,21 +366,21 @@ pub fn maze_dungeon_building_system(
             for &(room_x, room_y) in &room_positions {
                 let search_radius = 8;
                 let mut found_connection = false;
-                
+
                 for dy in -search_radius..=search_radius {
                     if found_connection { break; }
                     for dx in -search_radius..=search_radius {
                         let cx = (room_x as i32 + dx).max(0) as usize;
                         let cy = (room_y as i32 + dy).max(0) as usize;
                         if cx >= tile_width || cy >= tile_height { continue; }
-                        
+
                         let idx = cy * tile_width + cx;
                         if floor_map[idx] && (dx.abs() > 2 || dy.abs() > 2) {
                             let corridor_x_start = (room_x as i32).min(cx as i32);
                             let corridor_x_end = (room_x as i32).max(cx as i32);
                             let corridor_y_start = (room_y as i32).min(cy as i32);
                             let corridor_y_end = (room_y as i32).max(cy as i32);
-                            
+
                             for x in corridor_x_start..=corridor_x_end {
                                 let mut yy = room_y as i32;
                                 if rng.random_range(0.0..1.0) < corridor_wiggle_chance {
@@ -386,7 +390,7 @@ pub fn maze_dungeon_building_system(
                                     floor_map[(yy as usize * tile_width) + (x as usize)] = true;
                                 }
                             }
-                            
+
                             for y in corridor_y_start..=corridor_y_end {
                                 let mut xx = cx as i32;
                                 if rng.random_range(0.0..1.0) < corridor_wiggle_chance {
@@ -396,7 +400,7 @@ pub fn maze_dungeon_building_system(
                                     floor_map[(y as usize * tile_width) + (xx as usize)] = true;
                                 }
                             }
-                            
+
                             found_connection = true;
                             break;
                         }
@@ -411,10 +415,10 @@ pub fn maze_dungeon_building_system(
                 for start_x in (0..tile_width).step_by(scan_size) {
                     let end_x = (start_x + scan_size).min(tile_width);
                     let end_y = (start_y + scan_size).min(tile_height);
-                    
+
                     let mut wall_count = 0;
                     let region_size = (end_x - start_x) * (end_y - start_y);
-                    
+
                     for y in start_y..end_y {
                         for x in start_x..end_x {
                             if !floor_map[y * tile_width + x] {
@@ -422,7 +426,7 @@ pub fn maze_dungeon_building_system(
                             }
                         }
                     }
-                    
+
                     let wall_density = (wall_count as f32) / (region_size as f32);
                     if wall_density > 0.02 && wall_density < 0.20 {
                         for y in start_y..end_y {
@@ -438,7 +442,7 @@ pub fn maze_dungeon_building_system(
         if island_seeds.len() > 1 {
             let mut sorted_islands = island_seeds.clone();
             sorted_islands.sort_by_key(|c| (c.0, c.1));
-            
+
             for i in 1..sorted_islands.len() {
                 let from = sorted_islands[i - 1];
                 let to = sorted_islands[i];
@@ -448,7 +452,7 @@ pub fn maze_dungeon_building_system(
                 } else {
                     (to.0, from.0)
                 };
-                
+
                 for x in sx..=ex {
                     let mut y = from.1 as i32;
                     if rng.random_range(0.0..1.0) < corridor_wiggle_chance {
@@ -464,7 +468,7 @@ pub fn maze_dungeon_building_system(
                 } else {
                     (to.1, from.1)
                 };
-                
+
                 for y in sy..=ey {
                     let mut x = to.0 as i32;
                     if rng.random_range(0.0..1.0) < corridor_wiggle_chance {
@@ -481,7 +485,7 @@ pub fn maze_dungeon_building_system(
             let hazard_count = rng.random_range(0..=4);
             for _ in 0..hazard_count {
                 if rng.random_range(0..100) > 40 { continue; }
-                
+
                 let haz_x = rng.random_range(4..tile_width.saturating_sub(4));
                 let haz_y = rng.random_range(4..tile_height.saturating_sub(4));
                 let hazard_radius = rng.random_range(1..=3) as i32;
@@ -541,7 +545,7 @@ pub fn maze_dungeon_building_system(
                 let idx_y = local_tile.y as usize;
                 if idx_x >= tile_width || idx_y >= tile_height { continue; }
                 let map_idx = idx_y * tile_width + idx_x;
-                
+
                 if hazard_map[map_idx] {
                     let ezero_ref = if let Some(lava) = lava_entity { lava } else { wall_entity };
                     tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
@@ -551,7 +555,7 @@ pub fn maze_dungeon_building_system(
                     tiles4chunk.push((tile_pos, wall_entity, Some(delete_template.clone())));
                 }
             }
-            
+
             chunk_tiles.push((chunk_pos, tiles4chunk));
         }
         compliances_to_emit.push(StructureBuildCompliance {

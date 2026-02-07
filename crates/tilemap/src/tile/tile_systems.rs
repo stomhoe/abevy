@@ -23,7 +23,7 @@ use tilemap_shared::{
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
-    settings: Single<&GlobalGenSettings>,
+    settings: Query<&GlobalGenSettings>,
     dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut query: Query<
         (
@@ -40,6 +40,13 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
     >,
     mut sprites_query: Query<(&mut Sprite), (common::AnyDisabling, Without<InitialPos>)>,
 ) {
+    if query.is_empty() {
+        return;
+    }
+    let Ok(settings) = settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
     query.iter_mut().for_each(
         |((tile_flip, sprite, held_sprites, children), initial_pos, dimension_ref)| {
             let dimension_hash = dimension_ref
@@ -47,7 +54,7 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
                 .cloned()
                 .unwrap_or_default();
 
-            let should_flip = initial_pos.0.hash_true_false(&settings, dimension_hash, 0);
+            let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 0);
             if let Some(mut flip) = tile_flip {
                 flip.x = should_flip;
             }

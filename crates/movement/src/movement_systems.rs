@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
 use dimension_shared::DimensionRef;
-use game_common::game_common_components::Direction;
+use game_common::game_common_components::CardinalDirection;
 use modifier::modifier_types::WalkSpeed;
 use modifier::{modifier_components::*, modifier_move_components::*};
 use sprite_animation_shared::MoveAnimActive;
@@ -378,7 +378,7 @@ pub fn update_facing_dir(
         &InputDirection,
         &MoveState,
         Option<&QueuedGridMoveDir>,
-        &mut Direction,
+        &mut CardinalDirection,
     )>,
 ) {
     for (input_dir, move_state, queued_dir, mut facing_dir) in query.iter_mut() {
@@ -401,15 +401,15 @@ pub fn update_facing_dir(
 
         *facing_dir = if dir_vec.x.abs() > dir_vec.y.abs() || (dir_vec.x.abs() == dir_vec.y.abs()) {
             if dir_vec.x < 0.0 {
-                Direction::West
+                CardinalDirection::West
             } else {
-                Direction::East
+                CardinalDirection::East
             }
         } else {
             if dir_vec.y <= 0.0 {
-                Direction::South
+                CardinalDirection::South
             } else {
-                Direction::North
+                CardinalDirection::North
             }
         };
     }

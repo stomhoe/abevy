@@ -6,17 +6,22 @@ use player::player_components::*;
 
 use crate::{faction_components::*, faction_resources::*, };
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
-#[allow(unused_parens)]
-pub fn set_stuff_as_self_faction(mut cmd: Commands, 
-    thingss_query: Query<(Entity, &BelongsToFaction), (Changed<BelongsToFaction>, )>,
-    selfplayer_query: Single<(&BelongsToFaction), (With<Player>, With<OfSelf>, )>,
+
+#[allow(unused_parens)]///todo arreglar, se puede ejecutar antes de que se le ponga Mine a nuestra faccion
+pub fn set_stuff_as_self_faction(mut cmd: Commands,
+    things_query: Query<(Entity, &BelongsToFaction), (Changed<BelongsToFaction>, )>,
+    selfplayer_query: Query<&BelongsToFaction, (With<Player>, With<Mine>)>,
     player_factions: Query<(&PlayerMembers),>,
 
 ) {
-    let selfplayer_faction = selfplayer_query.into_inner();
-    for (thing_ent, otherthing_faction) in thingss_query.iter() {
+    if things_query.is_empty() {
+        return;
+    }
+    let Ok(selfplayer_faction) = selfplayer_query.single() else {
+        error!("Failed to get my player faction");
+        return;
+    };
+    for (thing_ent, otherthing_faction) in things_query.iter() {
         if player_factions.get(otherthing_faction.0).is_ok() {
             cmd.entity(thing_ent).try_insert(BelongsToAPlayerFaction);
 
@@ -32,11 +37,11 @@ pub fn set_stuff_as_self_faction(mut cmd: Commands,
 
 }
 #[allow(unused_parens, )]
-pub fn update_as_belonging_to_player_faction(mut cmd: Commands, 
+pub fn update_as_belonging_to_player_faction(mut cmd: Commands,
     player_factions: Query<(&FactionThings), (Added<PlayerMembers>)>,
     faction_things: Query<&FactionThings>,
     mut removed_player_factions: RemovedComponents<PlayerMembers>,
-    
+
 ) {
     for faction_things in player_factions.iter() {
         for &thing_ent in faction_things.entities() {
@@ -55,16 +60,26 @@ pub fn update_as_belonging_to_player_faction(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn update_ofself_faction(mut cmd: Commands, //EL SINGLE ASE Q NO SE EJECUTE ESTE SISTEMA SI NO CAMBIÓ ASÍ Q TA BIEN
-    selfplayer_query: Single<(&BelongsToFaction), (With<Player>, With<OfSelf>, Changed<BelongsToFaction>,)>,
-    fac_query: Single<(Entity, ), (With<Faction>, With<OfSelf>)>,
+    selfplayer_query: Query<(&BelongsToFaction), (With<Player>, With<Mine>, Changed<BelongsToFaction>,)>,
+    fac_query: Query<(Entity), (With<Faction>, With<Mine>)>,
 ) {
-    cmd.entity(fac_query.0).try_remove::<OfSelf>();
-    let selfplayer_faction = selfplayer_query.into_inner();
-    cmd.entity(selfplayer_faction.0).insert(OfSelf);
+    if selfplayer_query.is_empty(){
+        return;
+    }
+    let Ok(selfplayer_faction) = selfplayer_query.single() else {
+        error!("More than one player with Mine");
+        return;
+    };
+    for (faction_ent) in fac_query.iter() {
+        if faction_ent != selfplayer_faction.0 {
+            cmd.entity(faction_ent).try_remove::<Mine>();
+        }
+    }
+    cmd.entity(selfplayer_faction.0).try_insert(Mine);
 }
 
 #[allow(unused_parens)]
-pub fn set_player_of_faction(mut cmd: Commands, 
+pub fn set_player_of_faction(mut cmd: Commands,
     query: Query<(Entity, &BelongsToFaction, ), (With<Player>, Changed<BelongsToFaction>,)>,
     mut removed: RemovedComponents<BelongsToFaction>,
 ) {

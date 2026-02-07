@@ -13,7 +13,7 @@ use crate::client_systems::*;
 pub fn plugin(app: &mut App) {
     app
     .add_plugins((ClientPlugin, ClientMessagePlugin, RepliconRenetClientPlugin ))
-    
+
     .add_observer(attempt_join)
 
     .add_systems(
@@ -22,8 +22,9 @@ pub fn plugin(app: &mut App) {
             client_cleanup,
         )
     )
-    .add_systems(OnEnter(ClientState::Connected), (client_on_connect_succesful)) 
-    .add_systems(OnEnter(ClientState::Disconnected), (client_on_disconnect.run_if(not(in_state(ServerState::Running))))) 
+
+    .add_systems(OnEnter(ClientState::Connected), (client_on_connect_successful, add_mine_to_player))
+    .add_systems(OnEnter(ClientState::Disconnected), (client_on_disconnect.run_if(not(in_state(ServerState::Running)))))
 
 
 

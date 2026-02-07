@@ -16,7 +16,7 @@ use crate::{being_components::*,};
 
 #[allow(unused_parens)]
 // A L CENTRO DE LA BASE VA A HABER Q PONERLE UNO DE ALGUNA FORMA
-pub fn add_activates_chunks(mut cmd: Commands, 
+pub fn add_activates_chunks(mut cmd: Commands,
     query: Query<(Entity),(With<Being>, Added<BelongsToAPlayerFaction>)>,
     mut removed: RemovedComponents<BelongsToAPlayerFaction>,
     chunk_range: Res<AaChunkRangeSettings>,
@@ -29,9 +29,9 @@ pub fn add_activates_chunks(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn on_control_change(
-    mut commands: Commands, 
-    self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<OfSelf>)>,
-    
+    mut commands: Commands,
+    self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<Mine>)>,
+
     query: Query<(Entity, &ControlledBy, &IsHumanControlled, Has<CameraTarget>),(Or<(Changed<ControlledBy>, Changed<IsHumanControlled>)>)>,
     mut removed: RemovedComponents<ControlledBy>,
     chunk_range: Res<AaChunkRangeSettings>,
@@ -58,20 +58,20 @@ pub fn on_control_change(
             }
         }
     });
-    
+
 }
 
 #[allow(unused_parens)]
-pub fn cross_portal(mut cmd: Commands, 
+pub fn cross_portal(mut cmd: Commands,
     mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
     portal_query: Query<(Entity, &DimensionRef, &PortalTo, &GlobalTransform), (Without<Being>)>,
     mut being_query: Query<(Entity, &mut DimensionRef, &mut Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
 ) {
     let mut to_write = Vec::new();
-    for (being_entity, mut being_dimension_ref, mut being_transform, being_globtransform, touching_portal) 
+    for (being_entity, mut being_dimension_ref, mut being_transform, being_globtransform, touching_portal)
     in being_query.iter_mut() {
         portal_query.iter().for_each(|(portal_ent, &dimension_ref, portal_instance, portal_transform)| {
-            if being_dimension_ref.clone() != dimension_ref 
+            if being_dimension_ref.clone() != dimension_ref
             { return; }
 
             let distance = being_globtransform.translation().distance(portal_transform.translation());
@@ -86,7 +86,7 @@ pub fn cross_portal(mut cmd: Commands,
                     if portal_ent != touching_portal {
                         cmd.entity(being_entity).try_insert(TouchingPortal(portal_ent));
                     }
-                    
+
                 },
                 (None, true) => {
 
@@ -95,23 +95,23 @@ pub fn cross_portal(mut cmd: Commands,
                     ));
 
                     cmd.entity(being_entity).try_insert((TouchingPortal(portal_ent), ));
-                    
+
                     let Ok((_, &oe_dim_ref, _oe_portal_instance, oe_portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
                         error!("Portal entity {:?} not found in portal query", portal_instance.dest_portal);//TA DISABLED POR ALGUNA RAZÓN
                         return;
                     };
-                    
+
                     being_dimension_ref.0 = oe_dim_ref.0;
                     being_transform.translation = oe_portal_transform.translation().xy().extend(being_transform.translation.z);
-                    
-                    let to_clients = ToClients { 
-                        mode: SendMode::Broadcast, 
+
+                    let to_clients = ToClients {
+                        mode: SendMode::Broadcast,
                         message: TransformFromServer::new(being_entity, being_transform.clone(), false),
                     };
                     to_write.push(to_clients);
                 },
             }
-            
+
         });
     }
     ewriter.write_batch(to_write);

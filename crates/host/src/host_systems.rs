@@ -6,14 +6,14 @@ use faction::faction_components::{BelongsToFaction, Faction};
 use bevy_replicon::prelude::*;
 use common::common_states::{AssetLoading, GamePhase} ;
 use multiplayer_shared::multiplayer_events::{SendUsername, AttemptHostServer, StartServerFailed};
-use player::player_components::{OfSelf, Player};
+use player::player_components::{Mine, Player};
 
 use crate::host_functions::host_server;
 
 
 pub fn attempt_host(
     start_server: On<AttemptHostServer>,
-    mut cmd: Commands, 
+    mut cmd: Commands,
     channels: Res<RepliconChannels>,
 ) {
 
@@ -33,16 +33,16 @@ pub fn on_server_start_successful(
 
     cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
     cmd.spawn((Name::new("HOOOOOOOOOOOOOSTIIIIIIIIING"),));
- 
+
 }
 
 
 
 #[allow(unused_parens, )]
-pub fn host_on_player_connect(on_connected_client: On<Add, ConnectedClient>, 
-    mut cmd: Commands, host_faction: Query<(Entity ), (With<Faction>, With<OfSelf>)>,
+pub fn host_on_player_connect(on_connected_client: On<Add, ConnectedClient>,
+    mut cmd: Commands, host_faction: Query<(Entity ), (With<Faction>, With<Mine>)>,
 ) {
-    
+
     let Ok(host_faction) = host_faction.single()
     else {
         error!(target: "host_systems", "Failed to get host faction for assigning to connected client");
@@ -55,8 +55,8 @@ pub fn host_on_player_connect(on_connected_client: On<Add, ConnectedClient>,
 }
 
 #[allow(unused_parens)]
-pub fn host_receive_client_name(mut on_receive_username: On<FromClient<SendUsername>>, 
-    mut cmd: Commands, 
+pub fn host_receive_client_name(mut on_receive_username: On<FromClient<SendUsername>>,
+    mut cmd: Commands,
 ) {
     let username = mem::take(&mut on_receive_username.event_mut().0);
 
@@ -67,14 +67,14 @@ pub fn host_receive_client_name(mut on_receive_username: On<FromClient<SendUsern
 
     cmd.entity(entity).insert(username.clone());
     //TODO chequear el estado actual de la partida (new game o loaded (cargar su character si ya tiene)) y los Res<State<GamePhase>> antes de hacer esto
-   
+
 }
 
 
 
 
 pub fn server_cleanup(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     server: Option<ResMut<RenetServer>>,
 ) {
     debug!(target: "server_cleanup", "Cleaning up server resources");

@@ -286,7 +286,7 @@ warning: unused variable: `modis_query`
 warning: variable does not need to be mutable
   --> crates/modifier/src/modifier_systems.rs:50:37
    |
-50 | pub fn despawn_modifiers_on_time_up(mut cmd: Commands, 
+50 | pub fn despawn_modifiers_on_time_up(mut cmd: Commands,
    |                                     ----^^^
    |                                     |
    |                                     help: remove this `mut`
@@ -302,7 +302,7 @@ warning: variable does not need to be mutable
 warning: unused variable: `cmd`
   --> crates/modifier/src/modifier_systems.rs:50:37
    |
-50 | pub fn despawn_modifiers_on_time_up(mut cmd: Commands, 
+50 | pub fn despawn_modifiers_on_time_up(mut cmd: Commands,
    |                                     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_cmd`
 
 warning: unused variable: `item`
@@ -322,7 +322,7 @@ warning: function `apply_antidotes` is never used
 warning: function `despawn_modifiers_on_time_up` is never used
   --> crates/modifier/src/modifier_systems.rs:50:8
    |
-50 | pub fn despawn_modifiers_on_time_up(mut cmd: Commands, 
+50 | pub fn despawn_modifiers_on_time_up(mut cmd: Commands,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `dimension_shared` (lib) generated 5 warnings (run `cargo fix --lib -p dimension_shared` to apply 5 suggestions)
@@ -831,7 +831,7 @@ warning: variable does not need to be mutable
 warning: variable does not need to be mutable
    --> crates/tilemap/src/tile/tile_systems.rs:301:42
     |
-301 | pub fn tile_adjacency_retexturing_system(mut cmd: Commands, 
+301 | pub fn tile_adjacency_retexturing_system(mut cmd: Commands,
     |                                          ----^^^
     |                                          |
     |                                          help: remove this `mut`
@@ -847,7 +847,7 @@ warning: variable does not need to be mutable
 warning: unused variable: `cmd`
    --> crates/tilemap/src/tile/tile_systems.rs:301:42
     |
-301 | pub fn tile_adjacency_retexturing_system(mut cmd: Commands, 
+301 | pub fn tile_adjacency_retexturing_system(mut cmd: Commands,
     |                                          ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_cmd`
 
 warning: unused variable: `ezero_query`
@@ -908,7 +908,7 @@ warning: methods `dim_ref`, `chunk_pos`, `ac_z`, `oplist_size`, and `tile_size` 
 warning: struct `ToDenyOnReleaseBuild` is never constructed
   --> crates/tilemap/src/tile/tile_components.rs:42:8
    |
-42 | struct ToDenyOnReleaseBuild( 
+42 | struct ToDenyOnReleaseBuild(
    |        ^^^^^^^^^^^^^^^^^^^^
 
 warning: `tilemap` (lib) generated 68 warnings (run `cargo fix --lib -p tilemap` to apply 65 suggestions)
@@ -924,13 +924,6 @@ warning: unused imports: `DisplayName`, `Prefix`, `StrId`, and `common_types::Ha
  --> crates/faction/src/faction_resources.rs:2:34
   |
 2 | use common::{common_components::{DisplayName, Prefix, StrId}, common_types::HashIdToEntityMap};
-  |                                  ^^^^^^^^^^^  ^^^^^^  ^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: unused import: `player::player_components::OfSelf`
- --> crates/faction/src/faction_resources.rs:3:5
-  |
-3 | use player::player_components::OfSelf;
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused import: `StrId`
  --> crates/faction/src/faction_systems.rs:4:33

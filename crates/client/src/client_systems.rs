@@ -15,7 +15,7 @@ use crate::{client_functions::*, };
 
 pub fn attempt_join(
     event: On<JoinServer>,
-    mut cmd: Commands, 
+    mut cmd: Commands,
     channels: Res<RepliconChannels>,
     target_join_server: Option<Res<TargetJoinServer>>,
 ) -> Result {
@@ -33,24 +33,40 @@ pub fn attempt_join(
     Ok(())
 }
 
-pub fn client_on_connect_succesful(
-    mut cmd: Commands, 
+pub fn client_on_connect_successful(
+    mut cmd: Commands,
     mut app_state: ResMut<NextState<AppState>>,
     player_data: Res<PlayerData>,
     mut game_phase: ResMut<NextState<GamePhase>>,
 
-    
+
 ) {
 
     app_state.set(AppState::StatefulGameSession);
     let name = player_data.username.clone();
     info!("connected as Client {name}");
     game_phase.set(GamePhase::Setup);
-
-
     cmd.client_trigger(SendUsername(name));
-
 }
+
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+
+#[allow(unused_parens)]
+/// provisorio
+pub fn add_mine_to_player(mut cmd: Commands,
+    mine_query: Query<(&Player), (With<Mine>)>,
+    query: Query<(Entity), (Without<HostPlayer>, With<Player>, )>)
+{
+    if ! mine_query.is_empty(){
+        return;
+    }
+
+    for entity in query.iter() {
+        cmd.entity(entity).insert(Mine);
+    }
+}
+
+
 
 pub fn client_on_connect_failed(
     mut commands: Commands,
@@ -71,7 +87,7 @@ pub fn client_on_disconnect(
 
     if let Some(transport) = netcode_client_transport {
         match transport.disconnect_reason() {
-            Some(reason) => 
+            Some(reason) =>
             {
                 info!("Client (self) has disconnected with reason: {:?}", reason);
                 match reason{
@@ -125,7 +141,7 @@ pub fn client_cleanup(
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 //                                                       ^^^^
 // #[allow(unused_parens)]
-// pub fn set_activates_chunk_on_camera_target(mut cmd: Commands, 
+// pub fn set_activates_chunk_on_camera_target(mut cmd: Commands,
 //     mut query: Query<(Entity),(Added<CameraTarget>)>,
 //     mut removed_camera_targets: RemovedComponents<CameraTarget>,
 // ) {
@@ -141,4 +157,3 @@ pub fn client_cleanup(
 // HACER Q CADA UNA DE ESTAS ENTITIES APAREZCA EN LOS SETTINGS EN SETUP Y SEA CONFIGURABLE
 
 // PARA HACER ISLAS CON FORMA CUSTOM (P. EJ CIRCULAR O DISCO O ALGO RARO Q NO SE PUEDE HACER CON NOISE), MARCAR EN UN PUNTO EXTREMADAMENTE OCÉANICO CON UNA TILE MARKER Y DESP HACER OTRO SISTEMA Q LO PONGA TODO POR ENCIMA, SOBREESCRIBIENDO LO Q HABÍA ANTES
- 

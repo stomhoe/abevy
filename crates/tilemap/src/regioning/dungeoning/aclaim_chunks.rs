@@ -18,7 +18,7 @@ pub const ADMITTED_STRUCTURE_IDS_FOR_CLAIMING: &[HashId] = &[
     CHAMBERS_CORRIDORS,
     MAZE,
     SPIRAL,
-    ARCHI,   
+    ARCHI,
 ];
 // pub const ADMITTED_STRUCTURE_IDS_FOR_CLAIMING: &[HashId] = &[
 
@@ -29,9 +29,13 @@ pub fn claim_chunks_for_various_dungeon_types(
     region_dimension: Query<&DimensionRef>,
     structured_gens: Query<(&StructuredGenConfig,)>,
     dimension_hash: Query<&HashId>,
-    settings: Single<&GlobalGenSettings>,
+    settings: Query<&GlobalGenSettings>,
     mut claimlists: Query<&mut ClaimList>,
 ) {
+    let Ok(settings) = settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
     let mut claims_to_emit = Vec::new();
     let mut already_claimed: HashSet<ChunkPos> = HashSet::new();
 
@@ -40,10 +44,10 @@ pub fn claim_chunks_for_various_dungeon_types(
             claimlist.skipped_is.insert(i as usize);
         }
     };
-    
+
     for offer in offered_chunks.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(offer.structured_gen_cfg_ent)
-        else { 
+        else {
             error!(target: "dungeoning", "StructuredGenConfig entity {:?} not found when making DrunkwalkDungeon, skipping structure spawn", offer.structured_gen_cfg_ent);
             mark_skipped(offer.region_ent, offer.i);
             continue; };

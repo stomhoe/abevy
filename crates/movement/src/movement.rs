@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use game_common::game_common::{GameplaySystems, SimRunningSystems};
+use game_common::{game_common::SimRunningSystems, game_common_components::CardinalDirection};
 
 use crate::{
     movement_components::*, movement_input_systems::*, movement_messages::*, movement_systems::*,
@@ -13,12 +13,10 @@ const MOVEMENT_SCHEDULE: FixedUpdate = FixedUpdate;
 
 pub fn plugin(app: &mut App) {
     app
-        // Input capture in Update schedule (high frequency)
         .add_systems(
             Update,
             update_human_move_input,
         )
-        // Movement processing in FixedUpdate schedule
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
@@ -33,9 +31,10 @@ pub fn plugin(app: &mut App) {
                 update_facing_dir,
                 sync_movement_to_server.run_if(in_state(ServerState::Running)),
             )
-                .in_set(MovementSystems),
+            .in_set(MovementSystems),
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
+        .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendMoveInput>(Channel::Unreliable)
         .add_mapped_server_message::<TransformFromServer>(Channel::Unreliable)
         .register_type::<InputDirection>()
@@ -45,5 +44,8 @@ pub fn plugin(app: &mut App) {
         .replicate::<LandWalker>()
         .replicate::<Swimmer>()
         .replicate::<Flier>()
+        .replicate_once::<QueuedGridMoveDir>()
+        .replicate_filtered::<CardinalDirection, (Without<MoveState>, Without<InputDirection>)>()
+
     ;
 }

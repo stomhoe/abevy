@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 
 
 
-#[derive(Component, Debug,)]
-pub struct OfSelf;
+#[derive(Component, Debug, Reflect)]
+pub struct Mine;
 
 
 #[derive(Debug, Component, Default, Serialize, Deserialize)]
@@ -25,11 +25,3 @@ pub struct TrustedMovement;
 #[derive(Debug, Component, Default, Serialize, Deserialize)]
 #[require(Player)]
 pub struct HostPlayer;
-
-
-          
-
-
-
-
-

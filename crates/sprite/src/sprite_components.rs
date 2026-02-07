@@ -4,7 +4,7 @@ use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use game_common::game_common_components::{Direction};
+use game_common::game_common_components::{CardinalDirection};
 use serde::{Deserialize, Serialize};
 use sprite_animation_shared::{AnimationState, MoveAnimActive};
 use sprite_shared::sprite_scale_offset::Offset2D;
@@ -23,7 +23,7 @@ pub struct MappedAnimations (
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, Reflect, MapEntities)]
 pub struct AnimType {
-    pub direction: Direction,
+    pub direction: CardinalDirection,
     pub moving: MoveAnimActive,
     pub grounding: Grounding,
     pub state_id: Option<AnimationState>,
@@ -32,7 +32,7 @@ impl AnimType {
     pub fn from_tuple(tuple: (String, String, String, String)) -> Self {
         let (direction, moving, grounding, state_id) = tuple;
         AnimType {
-            direction: Direction::from(direction),
+            direction: CardinalDirection::from(direction),
             moving: MoveAnimActive::from(moving.as_str()),
             grounding: Grounding::from(grounding),
             state_id: if !state_id.is_empty() {
@@ -105,15 +105,15 @@ impl AppliesOnSpriteDirection {
             _ => AppliesOnSpriteDirection::Any,
         }
     }
-    pub fn applies_on_direction(&self, direction: Direction) -> bool {
+    pub fn applies_on_direction(&self, direction: CardinalDirection) -> bool {
         match self {
             AppliesOnSpriteDirection::None => false,
-            AppliesOnSpriteDirection::Up => direction == Direction::North,
-            AppliesOnSpriteDirection::Down => direction == Direction::South,
-            AppliesOnSpriteDirection::Left => direction == Direction::West,
-            AppliesOnSpriteDirection::Right => direction == Direction::East,
-            AppliesOnSpriteDirection::UpDown => direction == Direction::North || direction == Direction::South,
-            AppliesOnSpriteDirection::Sideways => direction == Direction::West || direction == Direction::East,
+            AppliesOnSpriteDirection::Up => direction == CardinalDirection::North,
+            AppliesOnSpriteDirection::Down => direction == CardinalDirection::South,
+            AppliesOnSpriteDirection::Left => direction == CardinalDirection::West,
+            AppliesOnSpriteDirection::Right => direction == CardinalDirection::East,
+            AppliesOnSpriteDirection::UpDown => direction == CardinalDirection::North || direction == CardinalDirection::South,
+            AppliesOnSpriteDirection::Sideways => direction == CardinalDirection::West || direction == CardinalDirection::East,
             AppliesOnSpriteDirection::Any => true,
         }
     }

@@ -11,28 +11,28 @@ use tilemap_shared::GlobalGenSettings;
 
 
 #[allow(unused_parens, )]
-pub fn server_or_singleplayer_setup(mut cmd: Commands, 
+pub fn server_or_singleplayer_setup(mut cmd: Commands,
     mut map: ResMut<FactionEntityMap>,
     mut settings: Query<&mut GlobalGenSettings>,
     mut app_state: ResMut<NextState<AppState>>,
-) 
+)
 {
     let Ok(mut settings) = settings.single_mut()
     else {
         error!(target: "game_init_systems", "Failed to get AaGlobalGenSettings");
         return;
     };
-    
 
-    
+
+
     let host_faction_id = StrId::trunc("host");
-    let host_faction = cmd.spawn((Faction, host_faction_id.clone(), OfSelf)).id();
-    
+    let host_faction = cmd.spawn((Faction, host_faction_id.clone(), Mine)).id();
+
     map.0.overwrite(host_faction_id, host_faction);
 
-    
+
     cmd.spawn((
-        OfSelf, HostPlayer,
+        Mine, HostPlayer,
         StrId::trunc("HOOOOOST"),
         BelongsToFaction(host_faction),
     ));
@@ -40,27 +40,34 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 }
 
 #[allow(unused_parens)]
-pub fn host_on_player_added(mut cmd: Commands, 
+pub fn host_on_player_added(mut cmd: Commands,
     query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>,
     player_query: Query<(&CreatedCharacters)>,
 
-    host_faction: Single<(Entity), (With<Faction>, With<OfSelf>)>,
-) -> Result {
-    let host_faction = host_faction.into_inner();
+    host_faction: Query<Entity, (With<Faction>, With<Mine>)>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let Ok(host_faction) = host_faction.single() else {
+        error!("Failed to get host faction");
+        return;
+    };
     for (player_ent, username) in query.iter() {
 
         if player_query.get(player_ent).is_err() {
 
             //USAR EL DEFAULT ASE Q SE DESPAWNEE
-            
-            let created_character = cmd.spawn((Being::default(), username.clone(), 
-                ControlledBy { client: player_ent }, 
+
+            let created_character = cmd.spawn((Being::default(), username.clone(),
+                ControlledBy { client: player_ent },
                 CharacterCreatedBy { player: player_ent },
 
-                BelongsToFaction(host_faction.clone()),
+                BelongsToFaction(host_faction),
                 Transform::from_translation(Vec3::new(5900.0, 900.0, 0.0)),
                 SampleSpritesFromStrIds::new(["humanhe0", "humanbo0"]),
-                
+
             )).id();
             cmd.spawn(SpeedModifier::new(created_character, created_character, 5000.0, ApplyMode::Add));
 
@@ -68,13 +75,12 @@ pub fn host_on_player_added(mut cmd: Commands,
             //TODO ASIGNARLE SU CHARACTER SI TIENE EL MISMO OWNER
         }
     }
-    Ok(())
 }
 
 #[allow(unused_parens, )]
 pub fn put_player_beings_on_map(
     mut cmd: Commands,
-    players: Query<(Entity, &CreatedCharacters, Has<OfSelf>), (With<Player>)>,
+    players: Query<(Entity, &CreatedCharacters, Has<Mine>), (With<Player>)>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
     for (player_ent, created_characters, self_player) in players.iter() {
@@ -89,8 +95,7 @@ pub fn put_player_beings_on_map(
         if self_player {
             debug!(target: "game_init", "Spawning self player being:");
 
-        } 
+        }
     }
 
 }
-

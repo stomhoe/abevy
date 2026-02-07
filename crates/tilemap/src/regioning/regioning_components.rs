@@ -1,4 +1,4 @@
-use game_common::game_common_components::{Direction, EntityZeroRef};
+use game_common::game_common_components::{CardinalDirection, EntityZeroRef};
 use serde::{Deserialize, Serialize};
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use tilemap_shared::{ChunkPos, GlobalTilePos, HashablePosVec, REGION_SIZE_IN_CHUNKS, RegionPos};
@@ -25,7 +25,7 @@ impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 #[derive(Component, Debug, Reflect)]
 #[require(CountsOfSgcs, GridOfSgcs)]
-pub struct ClaimList { 
+pub struct ClaimList {
     pub processed_up_to_i: usize,
     pub claims: [Option<ChunksClaim>; MAX_CLAIMS],
     pub skipped_is: HashSet<usize>,
@@ -42,7 +42,7 @@ impl ClaimList {
 }
 impl Default for ClaimList {
     fn default() -> Self {
-        Self { 
+        Self {
             claims: [(); MAX_CLAIMS].map(|_| None),
             processed_up_to_i: 0,
             skipped_is: HashSet::new(),
@@ -64,7 +64,7 @@ pub struct PendingBuildOrder {
 }
 
 #[derive(Component, Debug, Default)]
-pub struct RegionPlannedTiles { 
+pub struct RegionPlannedTiles {
     tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, TilesFromBuilder>,
     // store pending build orders along with their timeout timer
     pending_build_orders: HashMap<u64, PendingBuildOrder>,
@@ -91,14 +91,14 @@ impl RegionPlannedTiles {
             self.pending_chunks.insert(pos);
         }
     }
-    
+
     pub fn is_chunk_pending_build(&self, chunk_pos: ChunkPos) -> bool {
         self.pending_chunks.contains(&chunk_pos)
     }
     pub fn pending_chunks_count(&self) -> usize {
         self.pending_chunks.len()
     }
-    
+
     pub fn add_planned_tiles_and_remove_from_pending(
         &mut self,
         order_i: u64,
@@ -132,11 +132,11 @@ impl RegionPlannedTiles {
         }
         Ok(self.pending_build_orders.is_empty())
     }
-    
+
     pub fn get(&self, chunk_pos: &ChunkPos,) -> Option<&TilesFromBuilder> {
         self.tiles_to_spawn_on_chunk_load_map.get(chunk_pos)
     }
-    
+
     pub fn pending_build_orders_iter(&self) -> impl Iterator<Item = (&u64, &PendingBuildOrder)> {
         self.pending_build_orders.iter()
     }
@@ -148,12 +148,12 @@ impl RegionPlannedTiles {
     pub fn take_pending_build_order(&mut self, order_i: u64) -> Option<PendingBuildOrder> {
         self.pending_build_orders.remove(&order_i)
     }
-    
+
     pub fn mark_chunk_timed_out(&mut self, chunk_pos: ChunkPos) {
         self.pending_chunks.remove(&chunk_pos);
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
     }
-    
+
 }
 
 pub const MAX_CLAIMS: usize = REGION_SIZE_IN_CHUNKS.area_usize();
@@ -187,10 +187,10 @@ impl<T: Copy> RegionGrid<T> {
     fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError<T>> {
         let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
         match (local_chunk_pos.0.x < 0, local_chunk_pos.0.x >= REGION_SIZE_IN_CHUNKS.x(), local_chunk_pos.0.y < 0, local_chunk_pos.0.y >= REGION_SIZE_IN_CHUNKS.y()) {
-            (true, _, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::West)),
-            (_, true, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::East)),
-            (_, _, true, _) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::South)),
-            (_, _, _, true) => Err(ChunkOccupyError::OutOfRegionBounds(Direction::North)),
+            (true, _, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(CardinalDirection::West)),
+            (_, true, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(CardinalDirection::East)),
+            (_, _, true, _) => Err(ChunkOccupyError::OutOfRegionBounds(CardinalDirection::South)),
+            (_, _, _, true) => Err(ChunkOccupyError::OutOfRegionBounds(CardinalDirection::North)),
             _ => Ok((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize)),
         }
     }
@@ -204,7 +204,7 @@ impl<T: Copy> RegionGrid<T> {
     }
     pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) -> Result<(), ChunkOccupyError<T>> {
         let (x, y) = self.get_local_pos(global_chunk_pos, region_pos)?;
-        
+
         match self.grid[y][x] {
             None => {
                 self.grid[y][x] = Some(value);
@@ -228,7 +228,7 @@ impl<T: Copy> RegionGrid<T> {
 }
 pub enum ChunkOccupyError<T> {
     AlreadyOccupied(T),
-    OutOfRegionBounds(Direction),
+    OutOfRegionBounds(CardinalDirection),
 }
 
 #[derive(Component, Debug, Reflect, Default)]
@@ -242,10 +242,10 @@ impl GridOfSgcs {
         .show(ui, |ui| {
             let prev_item_spacing = ui.spacing_mut().item_spacing;
             ui.spacing_mut().item_spacing.x = 0.0;
-            
+
             let base = ui.text_style_height(&egui::TextStyle::Monospace);
             let cell_size = egui::vec2(base * 1.25, base * 1.25);
-            
+
             const ARRAY_OF_LEGIBLE_CHARS: &[char] = &[
             '0','1','2','3','4','5','6','7','8','9',
             'A','B','C','D','E','F','G','H','I','J','K','L','M',
@@ -266,11 +266,11 @@ impl GridOfSgcs {
             ];
             let mut entity_to_char: EntityHashMap<char> = EntityHashMap::default();
             let mut char_index = 0;
-            
+
             // Compute local position if we have both current position and region position
             let local_pos = if let (Some(chunk_pos), Some(region_pos)) = (current_position, region_pos) {
                 let local_chunk_pos = chunk_pos - region_pos.to_chunkpos();
-                let is_in_bounds = local_chunk_pos.0.x >= 0 && local_chunk_pos.0.x < REGION_SIZE_IN_CHUNKS.x() 
+                let is_in_bounds = local_chunk_pos.0.x >= 0 && local_chunk_pos.0.x < REGION_SIZE_IN_CHUNKS.x()
                     && local_chunk_pos.0.y >= 0 && local_chunk_pos.0.y < REGION_SIZE_IN_CHUNKS.y();
                 if is_in_bounds {
                     Some((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize))
@@ -280,7 +280,7 @@ impl GridOfSgcs {
             } else {
                 None
             };
-            
+
             for (display_y, row) in self.0.grid.iter().rev().enumerate() {
                 for (x, cell) in row.iter().enumerate() {
                     let symbol = match cell {
@@ -293,7 +293,7 @@ impl GridOfSgcs {
                         }
                         None => "·".to_string(),
                     };
-                    
+
                     // Determine whether this cell should be highlighted
                     let mut is_highlight = false;
                     if let Some((local_x, local_y)) = local_pos {
@@ -320,7 +320,7 @@ impl GridOfSgcs {
                 }
                 ui.end_row();
             }
-            
+
             ui.spacing_mut().item_spacing = prev_item_spacing;
         });
     }

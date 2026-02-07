@@ -69,13 +69,20 @@ fn resolve_sampler_id_no_sample(
 #[allow(unused_parens)]
 pub fn sample_from_body_entities(
     mut cmd: Commands,
-    global_gen_settings: Single<&GlobalGenSettings>,
+    global_gen_settings: Query<&GlobalGenSettings>,
     query: Query<(Entity, &SampleTreeEnt, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleTreeEnt>,
         Without<BeingInstTemplate>, Without<Race>
     )>,
     sampler_query: Query<&EntityWeightedSampler>,
     dimension_hash_query: Query<&HashId, common::AnyDisabling>,
 ) {
+    if query.is_empty() {
+        return;
+    }
+    let Ok(global_gen_settings) = global_gen_settings.single() else {
+        error!("Failed to get global gen settings");
+        return;
+    };
     let mut configs_to_build = Vec::new();
 
     for (ent, sample_body, (gpos, transform), dimension_ref) in query.iter() {
@@ -97,7 +104,7 @@ pub fn sample_from_body_entities(
             *sample_body.entity(),
             &sampler_query,
             pos,
-            &global_gen_settings,
+            global_gen_settings,
             dim_hash,
         ) {
             configs_to_build.push((ent, BodyTreeToBuild(resolved_config)));

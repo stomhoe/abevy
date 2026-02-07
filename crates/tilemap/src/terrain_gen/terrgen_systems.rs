@@ -45,7 +45,7 @@ pub fn launch_terrain_gen_operations (
 #[allow(unused_parens)]
 pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
-    gen_settings: Single<&GlobalGenSettings>,
+    gen_settings: Query<&GlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ( )>,
     fnl_noises: Query<&FnlNoiseComp,>,
     op_filters: Query<&OpFilter,>,
@@ -59,6 +59,10 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     mut tile_requests: Local<Vec<TerrGenTileRequest>>,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
 ) {
+    let Ok(gen_settings) = gen_settings.single() else {
+        error!("Failed to get gen settings");
+        return;
+    };
     pending_ops_batch.clear();
     sampled_value_events.clear();
     tile_requests.clear();
@@ -106,7 +110,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
         }));
     }
 
-    let gen_settings = (*gen_settings).clone();
+    let gen_settings = gen_settings.clone();
     pending_ops_batch.extend(pending_ops_events.drain());
     if pending_ops_batch.is_empty() { return; }
 

@@ -3,7 +3,7 @@ use bevy::{ecs::entity::{EntityHashSet, MapEntities}, platform::collections::Has
 use bevy_replicon::prelude::{ClientState, Replicated};
 
 use dimension_shared::DimensionStrIdRef;
-use game_common::game_common_components::{Direction, };
+use game_common::game_common_components::{CardinalDirection, };
 use modifier::modifier_components::AppliedModifiers;
 use movement::movement_components::*;
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ use sprite_animation_shared::MoveAnimActive;
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities, Default)]
 
 #[require(InputDirection, MoveState, Replicated, MoveAnimActive,
-Grounding, Visibility, Direction, AppliedModifiers, Transform,
+Grounding, Visibility, CardinalDirection, AppliedModifiers, Transform,
 Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading,
 GridLockedMovement )]
 pub struct Being;
