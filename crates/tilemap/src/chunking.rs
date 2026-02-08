@@ -16,7 +16,7 @@ pub use chunking_resources::*;
 pub use chunking_spawn_systems::*;
 pub use chunking_visibility_systems::*;
 pub use chunking_despawn_systems::*;
-use tilemap_shared::{ChunkPos, ForceAllChunksDespawn};
+use tilemap_shared::{ChunkPos, ForceAllChunksDespawn, LoadedChunks, TilemapOf, Tilemaps};
 
 use crate::{ChunkSystems, tile::tile_systems::despawn_if_not_excepted};
 
@@ -51,6 +51,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<ChunkDespawnTimer>()
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<LoadedChunks>()
+    .register_type::<TilemapOf>().register_type::<Tilemaps>()
 
     .add_observer(on_chunk_despawn)
 

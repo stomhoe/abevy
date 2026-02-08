@@ -1,11 +1,11 @@
 use bevy::prelude::*;
-use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use ::dimension_shared::*;
 use game_common::{GameplaySystems, StatefulSessionSystems};
+use tilemap_shared::plugin_dimension;
 use crate::{
-    dimension_resources::*, dimension_systems::*, dimension_init_systems::*
+    dimension_systems::*, dimension_init_systems::*
 //    dimension_events::*,
 };
 
@@ -29,9 +29,7 @@ pub fn plugin(app: &mut App) {
         .register_type::<DimensionRootOplist>()
         .register_type::<RootInDimensions>()
 
-        .replicate_once::<Transform>()
 
-        .replicate::<Dimension>()
         .replicate::<MultipleDimensionRefs>()
         .replicate::<DimensionRootOplist>()
         .replicate::<WhitelistedStructureGenTags>()

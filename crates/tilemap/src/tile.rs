@@ -5,9 +5,8 @@ use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
 use common::{common_states::AssetLoading, };
 use bevy_ecs_tilemap::prelude::*;
-use game_common::{game_common_components::{EntityZero, EntityZeroRef, }, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::{EntityZeroRef, }, game_common_components_samplers::EntityWeightedSampler};
 use sprite::AcSpriteSystems;
-use tilemap_shared::{GlobalTilePos, OplistSize, PrevGlobalTilePos};
 use bevy::prelude::*;
 
 use crate::tile::{
@@ -22,7 +21,7 @@ pub mod tile_sampler_resources;
 pub mod tile_sampler_components;
 pub mod tile_messages;
 pub mod tile_shader;
-
+use ::tilemap_shared::*;
 use crate::tile::tile_components::TileStrId;
 
 
@@ -48,8 +47,8 @@ pub fn plugin(app: &mut App) {
         init_childrensprite,
         emit_global_tile_pos_change,
         validate_portal_recipes,
-        remove_tile_from_gpos_map_on_despawn,
     ))
+    .add_observer(on_spritetile_despawn)
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
@@ -87,6 +86,7 @@ pub fn plugin(app: &mut App) {
 
 
     .replicate::<Tile>()
+    .replicate::<SpriteTile>()
     .replicate::<TileChildSprite>()
     .replicate::<TileStrId>()
     .replicate::<TileImagePaths>()

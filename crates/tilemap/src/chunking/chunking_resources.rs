@@ -1,13 +1,9 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use bevy_inspector_egui::prelude::*;
-use dimension_shared::DimensionRef
-;
+use tilemap_shared::DimensionRef;
 use tilemap_shared::ChunkPos;
 
 
-#[derive(Resource, Reflect, InspectorOptions, Default)]
-#[reflect(Resource, Default, InspectorOptions)]
-pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 
 #[derive(Resource, Reflect, InspectorOptions)]
 #[reflect(Resource, Default, InspectorOptions)]

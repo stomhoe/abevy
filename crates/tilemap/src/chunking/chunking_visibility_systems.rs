@@ -2,7 +2,7 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{DrawTilemap, tiles::TileStorage};
 use camera::camera_components::CameraTarget;
-use dimension_shared::DimensionRef;
+use tilemap_shared::DimensionRef;
 use tilemap_shared::ChunkPos;
 
 use super::chunking_components::*;
@@ -23,7 +23,9 @@ pub fn update_chunk_visib(
     }
     to_draw.reserve(reader.read().size_hint().0);
     reader.clear();
-
+    if camera_query.is_empty() {
+        return;
+    }
     let Ok((camera_transform, camera_dimension)) = camera_query.single() else {
         error!("Failed to get singular camera target");
         return;

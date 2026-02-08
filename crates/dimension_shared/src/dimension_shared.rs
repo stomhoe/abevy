@@ -10,17 +10,10 @@ use serde::{Deserialize, Serialize};
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct DimensionSystems;
 
-common::define_entity_map_systems!(
-    Dimension,
-    DimensionSeri, "ron/dimension", "dimension.ron"
-);
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 pub struct PrevDimensionRef(#[entities] pub Entity);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
-pub struct Dimension;
 
 
 
@@ -34,16 +27,6 @@ pub struct RootInDimensions(EntityHashSet);
 impl RootInDimensions { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 
 
-impl DimensionStrIdRef {
-    pub fn new<S: AsRef<str>>(id: S) -> Result<Self, BevyError> {
-        let str_id = StrId::new_with_result(id, 2).map_err(|e| BevyError::from(e.to_string()))?;
-        Ok(DimensionStrIdRef(str_id))
-    }
-    pub fn overworld_fallback() -> Self {
-        warn!("Using overworld fallback for DimensionStrIdRef");
-        DimensionStrIdRef(StrId::trunc("ow"))
-    }
-}
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
 pub struct MultipleDimensionStringRefs(Vec<String>);
@@ -71,15 +54,3 @@ pub struct WhitelistedStructureGenTags(pub TagSet);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
 pub struct BlacklistedStructureGenTags(pub TagSet);
-
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
-pub struct DimensionSeri {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    /// this dimension's tags, used for whoever needs it
-    pub tags: Option<HashSet<String>>,
-
-    pub whitelisted_structure_gen_tags: Option<Vec<String>>,
-    pub blacklisted_structure_gen_tags: Option<Vec<String>>,
-}

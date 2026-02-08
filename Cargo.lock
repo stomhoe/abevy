@@ -303,6 +303,7 @@ dependencies = [
  "modifier",
  "movement",
  "multiplayer_shared",
+ "param_sets",
  "player",
  "pregame_screen",
  "setup_screen",
@@ -3350,9 +3351,9 @@ version = "0.1.0"
 dependencies = [
  "bevy 0.18.0",
  "common",
- "dimension_shared",
  "game_common",
  "sprite",
+ "tilemap_shared",
 ]
 
 [[package]]
@@ -5578,6 +5579,7 @@ dependencies = [
  "dimension_shared",
  "game_common",
  "modifier",
+ "param_sets",
  "player",
  "serde",
  "sprite_animation_shared",
@@ -6356,6 +6358,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36820e9051aca1014ddc75770aab4d68bc1e9e632f0f5627c4086bc216fb583b"
 dependencies = [
  "ttf-parser 0.25.1",
+]
+
+[[package]]
+name = "param_sets"
+version = "0.1.0"
+dependencies = [
+ "being_shared",
+ "bevy 0.18.0",
+ "bevy_asset_loader",
+ "bevy_common_assets",
+ "bevy_replicon",
+ "bevy_replicon_renet",
+ "bevy_simple_scroll_view",
+ "bevy_ui_text_input",
+ "common",
+ "delegate",
+ "game_common",
+ "indexmap",
+ "nano-id",
+ "paste",
+ "serde",
+ "sprite",
+ "sprite_shared",
+ "strum 0.27.2",
+ "strum_macros 0.27.2",
+ "tilemap_shared",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -7885,6 +7915,8 @@ version = "0.1.0"
 dependencies = [
  "bevy 0.18.0",
  "bevy-inspector-egui",
+ "bevy_asset_loader",
+ "bevy_common_assets",
  "bevy_ecs_tilemap",
  "bevy_replicon",
  "bevy_replicon_renet",
@@ -7892,6 +7924,7 @@ dependencies = [
  "delegate",
  "indexmap",
  "noiz",
+ "paste",
  "rand 0.9.2",
  "rand_distr 0.5.1",
  "rand_pcg",

@@ -14,7 +14,7 @@ pub fn apply_scales(
     mut sprite_que: Query<(&BaseHolderRef, &mut Sprite, &EntityZeroRef, &mut Transform,
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
     ),>,
-    sprite_config_query: Query<(Option<&FlipHorizIfDir>, &Scale2D, &ScaleLookUpDown, &ScaleSideways,), ()>,
+    sprite_config_query: Query<(Option<&FlipHorizIfDir>, Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,), ()>,
     baseholder_query: Query<&CardinalDirection>,
 ) {
     for (
@@ -23,14 +23,14 @@ pub fn apply_scales(
     ) in sprite_que.iter_mut() {
         let mut total_scale = scale.copied().unwrap_or_default();
 
-        if let Ok((ref_flip_horiz_if_dir, &ref_scale, &ref_scale_updown, &ref_scale_sideways)) = sprite_config_query.get(spritecfg_ent) {
-            total_scale *= ref_scale;
+        if let Ok((ref_flip_horiz_if_dir, ref_scale, ref_scale_updown, ref_scale_sideways)) = sprite_config_query.get(spritecfg_ent) {
+            total_scale *= ref_scale.copied().unwrap_or_default();
 
             if let Ok(base_direction) = baseholder_query.get(spriteholder.base) {
 
                 match base_direction {
                     CardinalDirection::West => {
-                        total_scale *= ref_scale_sideways * scale_look_sideways.copied().unwrap_or_default();
+                        total_scale *= ref_scale_sideways.copied().unwrap_or_default() * scale_look_sideways.copied().unwrap_or_default();
 
                         if let Some(&flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -39,7 +39,7 @@ pub fn apply_scales(
                         }
                     },
                     CardinalDirection::East => {
-                        total_scale *= ref_scale_sideways * scale_look_sideways.copied().unwrap_or_default();
+                        total_scale *= ref_scale_sideways.copied().unwrap_or_default() * scale_look_sideways.copied().unwrap_or_default();
 
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
@@ -48,7 +48,7 @@ pub fn apply_scales(
                         }
                     },
                     CardinalDirection::North => {
-                        total_scale *= ref_scale_updown * scale_look_up_down.copied().unwrap_or_default();
+                        total_scale *= ref_scale_updown.copied().unwrap_or_default() * scale_look_up_down.copied().unwrap_or_default();
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
                                 FlipHorizIfDir::Any => true, _ => false,
@@ -56,7 +56,7 @@ pub fn apply_scales(
                         }
                     },
                     CardinalDirection::South => {
-                        total_scale *= ref_scale_updown * scale_look_up_down.copied().unwrap_or_default();
+                        total_scale *= ref_scale_updown.copied().unwrap_or_default() * scale_look_up_down.copied().unwrap_or_default();
                         if let Some(flip_horiz) = ref_flip_horiz_if_dir {
                             sprite.flip_x = match flip_horiz {
                                 FlipHorizIfDir::Any => true, _ => false,

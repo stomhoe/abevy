@@ -3,7 +3,6 @@ use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task}
 use common::{common_components::{HashId}, common_types::HashIdToEntityMap};
 
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}}, tile::{tile_components::{KeepDistanceFrom, MinDistancesMap, }, }, tilemap_resources};
-use dimension_shared::DimensionRef;
 
 use ::tilemap_shared::*;
 use game_common::{game_common_components::*};

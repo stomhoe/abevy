@@ -1,7 +1,4 @@
-use std::time::Duration;
-
-use bevy::{prelude::*, time::common_conditions::on_timer};
-use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
+use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use dimension_shared::DimensionSystems;
@@ -54,10 +51,9 @@ pub fn plugin(app: &mut App) {
     .init_resource::<TmapMap>()
     .init_resource::<ImportantRegisteredPositions>()
 
-    .init_resource::<TilesAtGpos>()
-    .register_type::<TilesAtGpos>().register_type_data::<TilesAtGpos, InspectorEguiImpl>()
+    //.register_type::<TilesAtGpos>().register_type_data::<TilesAtGpos, InspectorEguiImpl>()
 
-
+    .init_resource::<SpriteTilesAtGpos>()
     .replicate::<PoissonDisk>()
 
 

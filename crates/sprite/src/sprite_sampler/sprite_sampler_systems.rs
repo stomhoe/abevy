@@ -2,10 +2,10 @@ use being_shared::BeingInstTemplate;
 use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{common_components::StrId, common_id_components::HashId};
-use dimension_shared::DimensionRef;
+
 use game_common::{game_common_components::EntityZero, game_common_components_samplers::EntityWeightedSampler};
 use sprite_shared::{SampleSpriteEnts, SampleSpritesFromStrIds};
-use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
+use tilemap_shared::{DimensionRef, GlobalGenSettings, GlobalTilePos};
 
 use crate::{sprite_components::ScsToBuild, sprite_resources::*, sprite_sampler::SpriteWeightedSamplerEntityMap};
 
@@ -13,10 +13,13 @@ use crate::{sprite_components::ScsToBuild, sprite_resources::*, sprite_sampler::
 #[allow(unused_parens)]
 pub fn replace_sampler_string_ids_by_entities(
     mut cmd: Commands,
-    query: Query<(Entity, &SampleSpritesFromStrIds, Option<&StrId>), (Changed<SampleSpritesFromStrIds>,)>,
+    query: Query<(Entity, &SampleSpritesFromStrIds, Option<&StrId>), (Added<SampleSpritesFromStrIds>,)>,
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sprite_map: Option<Res<SpriteConfigEntityMap>>,
 ) {
+    if query.is_empty() {
+        return;
+    }
     let Some(sprite_map) = sprite_map else {
         if !query.is_empty() {
             error!(target: "sprite_sampler_systems", "SpriteConfigEntityMap not found, cannot replace sampler string ids");

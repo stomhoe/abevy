@@ -2,7 +2,6 @@ use ::being_shared::*;
 use bevy::{ecs::entity::{EntityHashSet, MapEntities}, platform::collections::HashMap, prelude::*};
 use bevy_replicon::prelude::{ClientState, Replicated};
 
-use dimension_shared::DimensionStrIdRef;
 use game_common::game_common_components::{CardinalDirection, };
 use modifier::modifier_components::AppliedModifiers;
 use movement::movement_components::*;
@@ -100,6 +99,7 @@ impl CreatedCharacters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 use bevy::ecs::entity::EntityHashMap;
 use sprite_shared::SampleSpriteEnts;
+use ::tilemap_shared::*;
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities, )]
 pub struct MappedSpritesToSample(
     /// sexent - samplespriteents

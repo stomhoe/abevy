@@ -1,14 +1,14 @@
-use bevy::{ecs::system::SystemParam, math::U16Vec2, platform::collections::HashSet, prelude::*, render::sync_world::SyncToRenderWorld};
+use bevy::{ecs::system::SystemParam, math::U16Vec2, platform::collections::HashSet, prelude::*, };
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::{HashId}, common_resources::ImageSizeMap, };
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{DespawnTimer, Persisted, };
+use game_common::game_common_components::{Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
-use dimension_shared::DimensionRef;
 
-use crate::{chunking::chunking_resources::*, terrain_gen::terrgen_resources::*, tile::{self, tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_components::*, tilemap_resources::*};
+
+use crate::{chunking::{chunking_resources::*}, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_components::*, tilemap_resources::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct MapKey {
@@ -30,11 +30,6 @@ impl MapKey {
     ) -> Self {
         Self { dim_ref, chunk_pos, ac_z, oplist_size, tile_size, shader_ref }
     }
-    pub fn dim_ref(&self) -> DimensionRef { self.dim_ref }
-    pub fn chunk_pos(&self) -> ChunkPos { self.chunk_pos }
-    pub fn ac_z(&self) -> AcZ {self.ac_z}
-    pub fn oplist_size(&self) -> OplistSize {self.oplist_size}
-    pub fn tile_size(&self) -> U16Vec2 {self.tile_size}
     pub fn shader_ref(&self) -> Option<TileShaderRef> {self.shader_ref}
 }
 
@@ -352,7 +347,7 @@ fn func_process_tile_into_tilemaps(
     dim_ref: DimensionRef,
     tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut HashIdToTexIndex)>,
     changed_structs: &mut HashSet<MapKey>,
-    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, ChildOf, DimensionRef, TileShaderRef))>,
+    tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, ChildOf, TilemapOf, DimensionRef, TileShaderRef))>,
     y_sort: bool,
     childofs: &mut Vec<(Entity, ChildOf)>,
 ) {
@@ -433,6 +428,7 @@ fn func_process_tile_into_tilemaps(
             (
                 TilemapConfig::new(oplist_size, tile_size, chunk_pos, tile_z_index, y_sort),
                 ChildOf(chunk),
+                TilemapOf::new(chunk),
                 dim_ref,
                 shader_ref.copied().unwrap_or_default(),
             ))

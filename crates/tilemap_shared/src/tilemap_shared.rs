@@ -1,11 +1,21 @@
 use std::{hash::{DefaultHasher, Hash, Hasher}};
 
+use bevy::ecs::system::SystemParam;
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_ecs_tilemap::prelude::*;
+use bevy_inspector_egui::InspectorOptions;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{HashId, Prefix};
+use common::common_components::{AssetScoped, HashId, Prefix, SparedFromHotReloading};
 use serde::{Deserialize, Serialize};
+use bevy::platform::collections::{HashSet, HashMap};
+use bevy_inspector_egui::prelude::*;
 
-use crate::tilemap_positioning::{GlobalTilePos, HashablePosVec, OplistSize};
+use crate::{tilemap_positioning::*};
+
+
+#[derive(Resource, Reflect, InspectorOptions, Default)]
+#[reflect(Resource, Default, InspectorOptions)]
+pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 
 #[derive(Component, Debug, Reflect, Deserialize, Serialize, Clone, )]
 #[require(Replicated, Prefix::trunc("GlobalGenSettings"))]
@@ -100,3 +110,165 @@ impl PoissonDisk {
         }
 }
 impl Default for PoissonDisk { fn default() -> Self { Self { mindists_seeds: vec![(1, 0)] } } }
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
+#[relationship(relationship_target = Tilemaps)]
+pub struct TilemapOf {
+    #[relationship] #[entities]
+    pub chunk: Entity,
+}
+impl TilemapOf {
+    pub fn new(chunk: Entity) -> Self {
+        Self { chunk }
+    }
+}
+
+#[derive(Component, Debug, Reflect)]
+#[relationship_target(relationship = TilemapOf)]
+pub struct Tilemaps(Vec<Entity>);
+impl Tilemaps { pub fn entities(&self) -> &[Entity] { &self.0 } }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+#[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
+pub struct Dimension;
+
+
+common::define_entity_map_systems!(
+    Dimension,
+    DimensionSeri, "ron/dimension", "dimension.ron"
+);
+
+#[derive(serde::Deserialize, Asset, TypePath, Default)]
+pub struct DimensionSeri {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    /// this dimension's tags, used for whoever needs it
+    pub tags: Option<HashSet<String>>,
+
+    pub whitelisted_structure_gen_tags: Option<Vec<String>>,
+    pub blacklisted_structure_gen_tags: Option<Vec<String>>,
+}
+
+impl DimensionStrIdRef {
+
+    pub fn overworld_fallback() -> Self {
+        warn!("Using overworld fallback for DimensionStrIdRef");
+        DimensionStrIdRef(common::common_components::StrId::trunc("ow"))
+    }
+}
+#[derive(Debug, )]
+pub struct ChunkEntityMatrix {
+    cells: Box<[Vec<Entity>; ChunkPos::CHUNK_AREA]>,
+}
+impl ChunkEntityMatrix {
+    pub fn new() -> Self {
+        let cells = std::array::from_fn(|_| Vec::new());
+        Self {
+            cells: Box::new(cells),
+        }
+    }
+    fn index(local: UVec2) -> usize {
+        let width = ChunkPos::CHUNK_SIZE.x as usize;
+        (local.y as usize * width) + local.x as usize
+    }
+    pub fn get(&self, local: UVec2) -> &[Entity] {
+        self.cells.get(Self::index(local)).map_or(&[], |cell| cell.as_slice())
+    }
+    pub fn push(&mut self, local: UVec2, entity: Entity) {
+        if let Some(cell) = self.cells.get_mut(Self::index(local)) {
+            cell.push(entity);
+        }
+    }
+    pub fn swap_remove(&mut self, local: UVec2, entity: Entity) -> Option<()> {
+        let cell = self.cells.get_mut(Self::index(local))?;
+        let idx = cell.iter().position(|&e| e == entity)?;
+        cell.swap_remove(idx);
+        Some(())
+    }
+}
+impl Default for ChunkEntityMatrix {
+    fn default() -> Self {
+        let cells = std::array::from_fn(|_| Vec::new());
+        Self {
+            cells: Box::new(cells),
+        }
+    }
+}
+
+#[derive(Resource, Debug, Default)]
+/// TODO solo meter y extraer spritetiles en esto
+pub struct SpriteTilesAtGpos  {
+    pub map: bevy::platform::collections::HashMap<(DimensionRef, ChunkPos), ChunkEntityMatrix>,
+}
+impl SpriteTilesAtGpos {
+    fn chunk_and_local(gpos: GlobalTilePos) -> (ChunkPos, UVec2) {
+        let chunk = gpos.to_chunkpos();
+        let chunk_origin = chunk.to_tilepos();
+        let local = (gpos.0 - chunk_origin.0).as_uvec2();
+        (chunk, local)
+    }
+
+    pub fn tiles_at_pos(&self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
+        let (chunk, local) = Self::chunk_and_local(gpos);
+        self.map
+            .get(&(dim_ref, chunk))
+            .map(|matrix| matrix.get(local))
+            .unwrap_or(&[])
+    }
+    pub fn remove_tile(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, tile_ent: Entity) {
+        let (chunk, local) = Self::chunk_and_local(gpos);
+        if let Some(matrix) = self.map.get_mut(&(dim_ref, chunk)) {
+            matrix.swap_remove(local, tile_ent);
+        }
+    }
+
+    pub fn reserve_capacity(&mut self, additional: usize) {
+        self.map.reserve(additional);
+    }
+    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, ) {
+        let (chunk, local) = Self::chunk_and_local(gpos);
+        let matrix = self.map.entry((dimension_ref, chunk)).or_insert_with(ChunkEntityMatrix::new);
+        matrix.push(local, entity);
+    }
+
+}
+
+#[derive(SystemParam)]
+pub struct TileGatheringParamSet<'w, 's> {
+    loaded_chunks: Res<'w, LoadedChunks>,
+    chunk_children: Query<'w, 's, (&'static Tilemaps)>,
+    tilemap_data: Query<'w, 's, (&'static OplistSize, &'static TileStorage)>,
+    spritetiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
+}
+impl<'w, 's> TileGatheringParamSet<'w, 's> {
+    pub fn gather_tiles_at(&self, dim: DimensionRef, gpos: GlobalTilePos) -> Vec<Entity> {
+        let chunk_pos = gpos.to_chunkpos();
+        let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
+            return Vec::new();
+        };
+
+        let mut gathered_tiles: Vec<Entity> = Vec::new();
+        if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
+            gathered_tiles.reserve(tilemaps.entities().len() + 4);
+            for &tmap_ent in tilemaps.entities() {
+                let Ok((&oplist_size, storage)) = self.tilemap_data.get(tmap_ent) else {
+                    continue;
+                };
+                let tpos = gpos.to_tilepos(oplist_size);
+                if let Some(tile_ent) = storage.get(&tpos) {
+                    gathered_tiles.push(tile_ent);
+                }
+            }
+        }
+        for &tile_ent in self.spritetiles_at_gpos.tiles_at_pos(dim, gpos) {
+            gathered_tiles.push(tile_ent);
+        }
+
+        gathered_tiles
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct WalkSpeedMultIfOnTop(pub f32); //1.0 es velocidad normal

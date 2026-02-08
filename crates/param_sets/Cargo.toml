@@ -1,0 +1,29 @@
+[package]
+name = "param_sets"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+game_common = { path = "../agame_common" }
+being_shared = { path = "../being_shared" }
+sprite = { path = "../sprite" }
+sprite_shared = { path = "../sprite_shared" }
+tilemap_shared = { path = "../tilemap_shared" }
+
+bevy = { workspace = true }
+nano-id = { workspace = true }
+serde = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+bevy_simple_scroll_view = { workspace = true }
+bevy_ui_text_input = { workspace = true }
+bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }
+bevy_common_assets = { workspace = true }
+bevy_asset_loader = { workspace = true }
+indexmap = { workspace = true }
+delegate = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+paste = { workspace = true }

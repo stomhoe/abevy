@@ -21,6 +21,11 @@ pub struct SaveTile {
     pub chunk_pos: ChunkPos,//NO HACE FALTA PORQ EL CHUNKPOS SE PUEDE CALCULAR A PARTIR DE GLOBAL POS
 }
 
+/*
+           .replicate::<TilemapOf>()
+
+*/
+
 
 
 #[derive(Component, Debug, Reflect, Default,)]
@@ -53,7 +58,7 @@ pub struct ActivatingChunks {
 }
 
 impl ActivatingChunks {
-    pub fn new(chunkrange: &AaChunkRangeSettings) -> Self { 
+    pub fn new(chunkrange: &AaChunkRangeSettings) -> Self {
         Self {
             entities: Vec::with_capacity((chunkrange.approximate_number_of_chunks(1.2)) as usize),
             reactivation_timer: Timer::from_seconds(1.0, TimerMode::Repeating),

@@ -1,0 +1,113 @@
+([(
+    id: "pig_south_idle",
+    rows_cols: Some((4, 8)),
+    speed: Some(0.),
+    img_path: "texture/being/npc/pig.png",
+    clips: [
+        (
+            target: 0,
+            is_row: true,
+            partial: Some((0, 0)),
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),(
+    id: "pig_south_move",
+    rows_cols: Some((4, 8)),
+    img_path: "texture/being/npc/pig.png",
+    alternating_start_frames: Some((1, 5)),
+    clips: [
+        (
+            target: 0,
+            is_row: true,
+            start_frame: Some(1),
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),(
+    id: "pig_north_idle",
+    rows_cols: Some((4, 8)),
+    speed: Some(0.),
+    img_path: "texture/being/npc/pig.png",
+    clips: [
+        (
+            target: 1,
+            is_row: true,
+            partial: Some((0, 0)),
+        ),
+    ],z: 1000,
+    y_sort: Some(0),
+
+),(
+    id: "pig_north_move",
+    rows_cols: Some((4, 8)),
+    img_path: "texture/being/npc/pig.png",
+    alternating_start_frames: Some((1, 5)),
+    clips: [
+        (
+            target: 1,
+            start_frame: Some(1),
+            is_row: true,
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),(
+    id: "pig_west_idle",
+    rows_cols: Some((4, 8)),
+    speed: Some(0.),
+    img_path: "texture/being/npc/pig.png",
+    clips: [
+        (
+            target: 2,
+            is_row: true,
+            partial: Some((0, 0)),
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),(
+    id: "pig_west_move",
+    rows_cols: Some((4, 8)),
+    img_path: "texture/being/npc/pig.png",
+    alternating_start_frames: Some((1, 5)),
+    clips: [
+        (
+            target: 2,
+            is_row: true,
+            start_frame: Some(1),
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),(
+    id: "pig_east_idle",
+    rows_cols: Some((4, 8)),
+    speed: Some(0.),
+    img_path: "texture/being/npc/pig.png",
+    clips: [
+        (
+            target: 3,
+            is_row: true,
+            partial: Some((0, 0)),
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),(
+    id: "pig_east_move",
+    rows_cols: Some((4, 8)),
+    img_path: "texture/being/npc/pig.png",
+    alternating_start_frames: Some((1, 5)),
+    clips: [
+        (
+            target: 3,
+            is_row: true,
+            start_frame: Some(1),
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+)])

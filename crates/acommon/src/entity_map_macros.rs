@@ -70,6 +70,13 @@ macro_rules! define_entity_map_systems {
             }
             #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, )]
             pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
+            impl [<$abbreviation StrIdRef>] {
+                pub fn asd<S: AsRef<str>>(id: S) -> Self {
+                    let str_id = StrId::trunc(id.as_ref());
+                    Self(str_id)
+                }
+
+            }
 
             #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
             pub struct [<DoNotRetryConvert $abbreviation StrIdRef>](pub common::common_components::StrId);

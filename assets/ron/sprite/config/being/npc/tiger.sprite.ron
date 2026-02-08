@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "tiger",
+    name: "tiger",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "tiger_south_idle",
+        ("west", "idle", "g", "") : "tiger_west_idle",
+        ("east", "idle", "g", "") : "tiger_east_idle",
+        ("north", "idle", "g", "") : "tiger_north_idle",
+        ("south", "move", "g", "") : "tiger_south_move",
+        ("west", "move", "g", "") : "tiger_west_move",
+        ("east", "move", "g", "") : "tiger_east_move",
+        ("north", "move", "g", "") : "tiger_north_move",
+    },
+    children_sprites: Some([]),
+    shares_tag: Some([]),
+    directionable: Some(true),
+    movement_based: Some(true),
+    grounding_based: Some(false),
+    offset: Some((0., 6.)),//ta bien
+    scale: Some((1.2, 1.2)),
+)
+
+// TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld

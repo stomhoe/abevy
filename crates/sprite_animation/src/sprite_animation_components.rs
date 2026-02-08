@@ -1,5 +1,4 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::common_components::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Reflect, Default, Clone, Debug, Deserialize, Serialize)]
@@ -19,4 +18,4 @@ pub struct AlternatingStartFramesState(pub Vec<usize>);
 /// Some(true): save and restore animation progress between clips.
 /// Some(false) or None: don't save animation progress.
 #[derive(Component, Reflect, Default, Clone, Copy, Debug)]
-pub struct SaveAnimationProgress(pub Option<bool>);
+pub struct SaveAnimationProgress;

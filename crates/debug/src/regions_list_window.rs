@@ -5,7 +5,6 @@ use std::collections::{BTreeMap, HashMap};
 
 use camera::camera_components::CameraTarget;
 use common::common_components::*;
-use dimension_shared::DimensionRef;
 use game_common::game_common_components::DespawnTimer;
 use tilemap::regioning::regioning_components::*;
 use ::tilemap_shared::*;

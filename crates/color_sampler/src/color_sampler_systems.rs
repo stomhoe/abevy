@@ -3,7 +3,6 @@ use bevy_ecs_tilemap::tiles::TileColor;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use ::tilemap_shared::*;
-use dimension_shared::DimensionRef;
 use crate::{ColorSamplerEntityMap, ColorSamplerRef, color_sampler_components::*, color_sampler_resources::* };
 
 #[allow(unused_parens)]

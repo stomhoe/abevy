@@ -13,7 +13,7 @@ use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
 
 #[allow(unused_imports, )]
-use crate::{sprite_animation_components::*, sprite_animation_messages::*, sprite_animation_resources::*};
+use crate::{sprite_animation_components::*, sprite_animation_messages::*, };
 
 //TODO hacer animation speed para walking proporcional a la velocidad real del being
 
@@ -22,7 +22,7 @@ pub fn animate_sprite(
     mut cmd: Commands,
 
     mut move_anims_changed: MessageReader<BeingChangedMoveState>,
-    changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<CardinalDirection>, Changed<Grounding>, )>>,
+    changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
 
     base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, &Grounding, ), ()>,
 
@@ -31,7 +31,7 @@ pub fn animate_sprite(
 
     spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), ()>,
 
-    mut animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>, Option<&ClipStartFrames>, Option<&SaveAnimationProgress>, Option<&AlternatingStartFramesConfig>, Option<&mut AlternatingStartFramesState>),()>,
+    mut animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>, Option<&ClipStartFrames>, Has<SaveAnimationProgress>, Option<&AlternatingStartFramesConfig>, Option<&mut AlternatingStartFramesState>, Option<&PlayingSpeed>, Option<&AnimationSeri>),()>,
 
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     images: Res<Assets<Image>>,
@@ -66,7 +66,7 @@ pub fn animate_sprite(
                 continue;
             };
 
-            let Ok((_, anim_handle, anim_sheet, z, y_sort, clip_start_frames, save_anim_progress, alternating_config, mut alternating_state )) = animation_query.get_mut(*anim_ent) else {
+            let Ok((_, anim_handle, anim_sheet, z, y_sort, clip_start_frames, should_save_anim_progress, alternating_config, mut alternating_state, anim_playing_speed, anim_seri )) = animation_query.get_mut(*anim_ent) else {
                 error!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?}", anim_ent);
                 continue;
             };
@@ -78,30 +78,35 @@ pub fn animate_sprite(
             let sprite = sprite.sprite(&mut atlas_layouts);
 
             let (start_frame, should_update_alternating_state) = {
-                // Check if we should use alternating start frames (prioritize this)
+                let base_frame = clip_start_frames
+                    .and_then(|csf| csf.0.first().copied())
+                    .unwrap_or(0);
+
+                // Global alternating start frames (animation-level)
                 if let Some(alt_config) = alternating_config {
-                    if let Some(Some((frame1, frame2))) = alt_config.0.first() {
+                    if let Some((frame1, frame2)) = alt_config.0.first().copied().flatten() {
                         if let Some(ref alt_state) = alternating_state {
                             let current_index = alt_state.0.get(0).copied().unwrap_or(0);
-                            let frame = if current_index == 0 { *frame1 } else { *frame2 };
+                            let frame = if current_index == 0 { frame1 } else { frame2 };
                             (frame, true)
                         } else {
                             // Fallback if no alternating state (shouldn't happen)
-                            (*frame1, false)
+                            (frame1, false)
                         }
                     } else {
-                        // No alternating frames defined, use base frame
-                        (clip_start_frames
-                            .and_then(|csf| csf.0.first().copied())
-                            .unwrap_or(0), false)
+                        (base_frame, false)
                     }
                 } else {
-                    // No alternating config, use base frame
-                    (clip_start_frames
-                        .and_then(|csf| csf.0.first().copied())
-                        .unwrap_or(0), false)
+                    (base_frame, false)
                 }
             };
+
+            let speed_factor = playing_speed
+                .map(|speed| speed.0)
+                .or_else(|| anim_playing_speed.map(|speed| speed.0))
+                .unwrap_or_else(|| PlayingSpeed::default().0);
+
+            let playing = !matches!(anim_seri.and_then(|seri| seri.paused), Some(true));
 
             let mut spritesheet_animation =
             SpritesheetAnimation{
@@ -110,18 +115,17 @@ pub fn animate_sprite(
                     frame: start_frame,
                     repetition: 0,
                 },
-                playing: true,
-                speed_factor: playing_speed.cloned().unwrap_or_default().0,
+                playing,
+                speed_factor,
             };
 
             let mut insert_needed = false;
 
-            let should_save_progress = save_anim_progress.map(|sap| sap.0).flatten() == Some(true);
 
             if let Some(prev_animation) = prev_animation {
                 if prev_animation.animation != anim_handle.0 {
                     if let Some(mut anim_progresses) = animation_progresses {
-                        if should_save_progress {
+                        if should_save_anim_progress {
                             anim_progresses.0.insert(prev_animation.animation.clone(), prev_animation.progress);
 
                             if let Some(stored_progress) = anim_progresses.0.get(&anim_handle.0) {
@@ -132,7 +136,7 @@ pub fn animate_sprite(
                     insert_needed = true;
                 }
             } else {
-                if should_save_progress {
+                if should_save_anim_progress {
                     if let Some(anim_progresses) = animation_progresses {
                         if let Some(stored_progress) = anim_progresses.0.get(&anim_handle.0) {
                             spritesheet_animation.progress = *stored_progress;
@@ -157,13 +161,11 @@ pub fn animate_sprite(
         }
     }
 }
-
-
 #[allow(unused_parens)]
 pub fn update_animstate_for_clients(
     connected: Query<&Player, Without<Mine>>,
     mut move_anims_changed: MessageReader<BeingChangedMoveState>,
-    changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<CardinalDirection>, Changed<Grounding>, )>>,
+    changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
 
     bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>)>,
     controller: Query<&ControlledBy>,
@@ -193,8 +195,6 @@ pub fn update_animstate_for_clients(
     }
     mwriter.write_batch(messages_to_send);
 }
-
-// //#[cfg(not(feature = "headless_server"))]
 #[allow(unused_parens, )]
 pub fn client_receive_moving_anim(
     mut mreader: MessageReader<SyncMoveState>,

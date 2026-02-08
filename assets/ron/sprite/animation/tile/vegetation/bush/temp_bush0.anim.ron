@@ -1,7 +1,0 @@
-(
-    id: "temp_bush0",
-    img_path: "texture/world/veg/bush/bush0.png",
-    clips: [],
-    z: 1000,
-    y_sort: Some(0),
-)

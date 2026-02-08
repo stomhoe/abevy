@@ -146,6 +146,7 @@ pub fn init_tiles(
             cmd.entity(tile_enti).insert((
                 Transform::from_translation(Vec2::splat(f32::INFINITY).extend(0.)),
                 Visibility::default(),
+                SpriteTile
             ));
             let mut sprite_cfgs = Vec::new();
             for (key, path) in seri.img_paths.iter_mut() {

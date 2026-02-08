@@ -86,6 +86,8 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<ChildOf, With<BaseHolderRef>>()
     .replicate::<MovementBased>()
     .replicate::<GroundingBased>()
+    .replicate::<ExcludedFromNormalSizeModifier>()
+
 
     ;
 }

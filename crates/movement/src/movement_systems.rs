@@ -6,19 +6,20 @@ use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
-use dimension_shared::DimensionRef;
 use game_common::game_common_components::CardinalDirection;
 use modifier::modifier_types::WalkSpeed;
 use modifier::{modifier_components::*, modifier_move_components::*};
+use param_sets::BlockingTileParamSet;
 use sprite_animation_shared::{MoveAnimActive, BeingChangedMoveState};
-use tilemap::tile::tile_components::WalkSpeedMultIfOnTop;
-use tilemap::tilemap_resources::TilesAtGpos;
-use tilemap_shared::GlobalTilePos;
+use tilemap::tile::tile_components::{TileStorage, };
+use ::tilemap_shared::*;
 
 use crate::{
     movement_components::*,
     movement_messages::TransformFromServer,
 };
+
+
 
 
 
@@ -76,12 +77,14 @@ pub fn sync_movement_to_server(
 }
 
 pub fn prepare_grid_locked_movement(
-    tiles_at_gpos: Res<TilesAtGpos>,
+    param_set: BlockingTileParamSet,
+
     blocking_tiles: Query<&WalkSpeedMultIfOnTop, ()>,
     time: Res<Time>,
     client_state: Res<State<ClientState>>,
     mut tsf_from_server_writer: MessageWriter<ToClients<TransformFromServer>>,
     mut beings_changed_anim_move_state_writer: MessageWriter<BeingChangedMoveState>,
+    mut being_changed_state_set: Local<HashSet<BeingChangedMoveState>>,
 
     mut query: Query<
         (
@@ -92,12 +95,12 @@ pub fn prepare_grid_locked_movement(
             &DimensionRef,
             &mut GridLockedMovement,
             Has<ControlledLocally>,
-            Has<WallPhaser>,
         ),
     >,
 ) {
+    being_changed_state_set.reserve(query.iter().size_hint().0);
+
     let is_client = client_state.get() == &ClientState::Connected;
-    let mut being_changed_state_set: HashSet<BeingChangedMoveState> = HashSet::new();
 
     for (
         mut transform,
@@ -107,7 +110,6 @@ pub fn prepare_grid_locked_movement(
         &dim_ref,
         mut glm,
         controlled_locally,
-        can_phase,
     ) in query.iter_mut()
     {
         if !controlled_locally && is_client {
@@ -202,23 +204,6 @@ pub fn prepare_grid_locked_movement(
         let distance = move_state.speed_magnitude * delta;
         let mut remaining_distance = distance;
 
-
-        let is_blocked_at = |target_gpos: GlobalTilePos| -> bool {
-            if can_phase {
-                return false;
-            }
-            for &tile_entity in tiles_at_gpos.tiles_at_pos(dim_ref, target_gpos) {
-                if let Ok(walk_speed) = blocking_tiles.get(tile_entity) {
-                    if walk_speed.0 == 0.0 {
-                        return true;
-                    }
-                } else {
-                    return true;
-                }
-            }
-            false
-        };
-
         let mut current_translation = transform.translation;
         let mut current_dir = input;
         let mut moved = false;
@@ -237,7 +222,7 @@ pub fn prepare_grid_locked_movement(
             };
 
             let next_target = current_snapped.xy() + (current_dir * step_distance);
-            if is_blocked_at(GlobalTilePos::from(next_target)) {
+            if param_set.is_blocked_at(dim_ref, GlobalTilePos::from(next_target), being_ent) {
                 glm.queued_move_dir = Vec2::ZERO;
                 glm.active_move_dir = Vec2::ZERO;
                 if !moved {
@@ -264,7 +249,7 @@ pub fn prepare_grid_locked_movement(
             if remaining_to_boundary <= 0.0001 {
                 current_translation = current_snapped;
                 let target = current_snapped.xy() + (current_dir * step_distance);
-                if is_blocked_at(GlobalTilePos::from(target)) {
+                if param_set.is_blocked_at(dim_ref, GlobalTilePos::from(target), being_ent) {
                     glm.queued_move_dir = Vec2::ZERO;
                     glm.active_move_dir = Vec2::ZERO;
                     if !moved {
@@ -281,7 +266,7 @@ pub fn prepare_grid_locked_movement(
 
             if will_reach_boundary {
                 let target = current_snapped.xy() + (current_dir * step_distance);
-                if is_blocked_at(GlobalTilePos::from(target)) {
+                if param_set.is_blocked_at(dim_ref, GlobalTilePos::from(target), being_ent) {
                     glm.queued_move_dir = Vec2::ZERO;
                     glm.active_move_dir = Vec2::ZERO;
                     if !moved {
@@ -332,7 +317,7 @@ pub fn prepare_grid_locked_movement(
             move_anim.set(false, being_ent, &mut being_changed_state_set);
         }
     }
-    beings_changed_anim_move_state_writer.write_batch(being_changed_state_set);
+    beings_changed_anim_move_state_writer.write_batch(being_changed_state_set.drain());
 }
 
 pub fn process_speed_modifiers(
@@ -354,6 +339,7 @@ pub fn process_speed_modifiers(
         (With<WalkSpeed>,),
     >,
 ) {
+
     for (being_ent, applied, mut move_state, controlled_locally) in being_query.iter_mut() {
         let is_client = state.get() == &ClientState::Connected;
         if is_client && !controlled_locally {
@@ -416,13 +402,17 @@ pub fn process_speed_modifiers(
 
 pub fn update_facing_dir(
     mut query: Query<(
+        Entity,
         &InputDirection,
         &MoveVecMag,
         Option<&GridLockedMovement>,
         &mut CardinalDirection,
     )>,
+    mut beings_changed_anim_move_state_writer: MessageWriter<BeingChangedMoveState>,
+    mut being_changed_state_set: Local<HashSet<BeingChangedMoveState>>,
 ) {
-    for (input_dir, move_state, glm, mut facing_dir) in query.iter_mut() {
+    being_changed_state_set.reserve(query.iter().size_hint().0);
+    for (being_ent, input_dir, move_state, glm, mut facing_dir) in query.iter_mut() {
         let move_vec = move_state.norm_move_dir * move_state.speed_magnitude;
         let dir_vec = if let Some(glm) = glm {
             if glm.active_move_dir != Vec2::ZERO {
@@ -457,6 +447,8 @@ pub fn update_facing_dir(
         };
         if new_dir != *facing_dir {
             *facing_dir = new_dir;
+            being_changed_state_set.insert(BeingChangedMoveState(being_ent));
         }
     }
+    beings_changed_anim_move_state_writer.write_batch(being_changed_state_set.drain());
 }

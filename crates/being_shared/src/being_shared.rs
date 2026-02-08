@@ -21,6 +21,12 @@ pub struct HumanControlled(pub bool);
 pub struct Controls(Vec<Entity>);
 impl Controls {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+pub enum NormalDistSizeMultiplier {
+    Both(f32, f32),
+    Horizontal(f32),
+    Vertical(f32),
+}
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
 #[relationship(relationship_target = Controls)]
@@ -80,3 +86,7 @@ pub struct BeingInstTemplate{
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
 pub struct Sentient;
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct WallPhaser;

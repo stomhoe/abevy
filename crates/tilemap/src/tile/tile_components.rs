@@ -11,7 +11,7 @@ pub use bevy_ecs_tilemap::tiles::*;
 use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::{HashedTagsVec, TagSet};
-use dimension_shared::DimensionRef;
+
 use game_common::game_common_components::*;
 use game_common::game_common_string_components::{Description, GameCommonStringComponentsBundle};
 
@@ -65,6 +65,10 @@ impl Tile {
     pub const MIN_ID_LENGTH: u8 = 3;
 }
 pub type TileStrId = StrId;
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct SpriteTile;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct TileChildSprite;
@@ -233,8 +237,7 @@ pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 #[require(Terrgen, Prefix::trunc("TileSamplers"))]
 pub struct TileSamplerHolder;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct WalkSpeedMultIfOnTop(pub f32); //1.0 es velocidad normal
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct BlocksProjectiles;

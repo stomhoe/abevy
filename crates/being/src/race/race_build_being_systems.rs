@@ -1,8 +1,6 @@
-use bevy::ecs::query::{Changed, With};
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::common_id_components::HashId;
-use dimension_shared::DimensionRef;
-use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
+use ::tilemap_shared::*;
 
 use crate::body::BodyTreeStrIdRef;
 use sprite_shared::SampleSpriteEnts;

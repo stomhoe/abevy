@@ -1,6 +1,5 @@
 
 use bevy::{input::mouse::MouseWheel, prelude::*};
-use dimension_shared::{Dimension, DimensionRef};
 
 use crate::camera_components::*;
 
@@ -59,6 +58,8 @@ pub fn camera_zoom_system(
         }
     }
 }
+
+use tilemap_shared::{Dimension, DimensionRef };
 
 #[allow(unused_parens, )]
 pub fn hide_nonvisualized_dimension(

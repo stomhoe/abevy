@@ -1,6 +1,6 @@
 use bevy::{prelude::*};
 use common::{common_components::HashId, common_tag_components::HashedTagsVec};
-use dimension_shared::DimensionRef;
+
 use serde::Deserialize;
 use ::tilemap_shared::*;
 use std::hash::Hash;
@@ -91,7 +91,6 @@ pub struct SuitablePosFound { pub op_filter_ent: Entity, pub val: f32, pub found
 pub struct SearchFailed (pub Entity);
 
 #[derive(Message, Debug, Clone)]
-pub struct PendingOp {pub oplist: Entity, pub dimension_ref: DimensionRef, pub gpos: GlobalTilePos, 
+pub struct PendingOp {pub oplist: Entity, pub dimension_ref: DimensionRef, pub gpos: GlobalTilePos,
     pub variables: VariablesArray, pub filtered_op: Entity
 }
-

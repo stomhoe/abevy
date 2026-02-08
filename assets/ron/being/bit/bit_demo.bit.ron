@@ -5,7 +5,7 @@
 
     consecutive_name_weighted_distributions: None,
     race: "bit_demo_race",
-    scs_samplers: Some(["humanhe0", "humanbo0"]),
+    scs_samplers: Some(["pig", ""]),
     sprites_scale_ranges: None,
     health_multiplier: Some(1.0),
 

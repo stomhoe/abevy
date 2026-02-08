@@ -36,7 +36,7 @@ impl AnimType {
             moving: MoveAnimActive::from(moving.as_str()),
             grounding: Grounding::from(grounding),
             state_id: if !state_id.is_empty() {
-                Some(AnimationState::new(&state_id))
+                Some(AnimationState::new(state_id))
             } else {
                 None
             },

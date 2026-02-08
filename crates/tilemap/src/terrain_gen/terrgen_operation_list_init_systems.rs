@@ -4,7 +4,7 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 use common::{common_components::{Prefix, StrId}, common_tag_components::TagSet};
-use dimension_shared::{Dimension, DimensionEntityMap, DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
+use dimension_shared::{ DimensionRootOplist, MultipleDimensionRefs, MultipleDimensionStringRefs};
 
 use crate::{terrain_gen::*, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerEntityMap}};
 use ::tilemap_shared::*;

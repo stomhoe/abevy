@@ -1,12 +1,11 @@
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::U16Vec2, platform::collections::HashMap, prelude::*, tasks::Task};
 use bevy_ecs_tilemap::{map::TilemapId, tiles::*};
 use bevy_replicon::prelude::Replicated;
-use common::common_components::HashId;
+use common::{AnyDisabling, common_components::HashId};
 
-use crate::{terrain_gen::terrgen_messages::PendingOp, };
-use dimension_shared::{DimensionRef, PrevDimensionRef};
-use crate::tile::{tile_components::*, tile_shader::tile_shader_components::TileShaderRef};
-use sprite_shared::AcZ;
+use crate::{terrain_gen::terrgen_messages::PendingOp };
+use dimension_shared::{PrevDimensionRef};
+use crate::tile::{tile_components::*, };
 
 use ::tilemap_shared::*;
 use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
@@ -195,62 +194,43 @@ impl MassCollectedTiles {
 
 }
 
-#[derive(Resource, Debug, Reflect, Default)]
-#[reflect(Resource, Default)]
-pub struct TilesAtGpos  {
-    pub map: bevy::platform::collections::HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>,
-    pub reverse_map: bevy::ecs::entity::EntityHashMap<(DimensionRef, GlobalTilePos, Option<TilePos>, bevy_ecs_tilemap::map::TilemapId)>,
-}
-impl TilesAtGpos {
-    pub fn tiles_at_pos(&self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
-        self.map.get(&(dim_ref, gpos)).map_or(&[], |ents| ents.as_slice())
-    }
 
-    pub fn reserve_capacity(&mut self, additional: usize) {
-        self.map.reserve(additional);
-        self.reverse_map.reserve(additional);
-    }
-    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, tpos: Option<TilePos>, tilemap_id: Option<bevy_ecs_tilemap::map::TilemapId>, ) {
-        self.map.entry((dimension_ref, gpos)).or_default().push(entity);
-        self.reverse_map.insert(entity, (dimension_ref, gpos, tpos, tilemap_id.unwrap_or_default()));
-    }
-    pub fn remove_entity_and_get_data(&mut self, entity: Entity) -> Option<(Option<TilePos>, bevy_ecs_tilemap::map::TilemapId)> {
-        self.reverse_map.remove(&entity).and_then(|(dimension_ref, gpos, tpos, tilemap_id)| {
-            if let Some(entities) = self.map.get_mut(&(dimension_ref, gpos)) {
-                entities.swap_remove(entities.iter().position(|&e| e == entity)?);
-                if entities.is_empty() {
-                    self.map.remove(&(dimension_ref, gpos));
-                }
-            }
-            Some((tpos, tilemap_id))
-        })
-    }
-}
 
-impl InspectorPrimitive for TilesAtGpos {
-    fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) -> bool {
-        ui.collapsing("TilesAtGpos", |ui| {
-            ui.label(format!("Entries: {}", self.map.len()));
-        });
-        false
+#[derive(Debug, )]
+pub struct ChunkEntityMatrix {
+    cells: Box<[Vec<Entity>; ChunkPos::CHUNK_AREA]>,
+}
+impl ChunkEntityMatrix {
+    pub fn new() -> Self {
+        let cells = std::array::from_fn(|_| Vec::new());
+        Self {
+            cells: Box::new(cells),
+        }
     }
-    fn ui_readonly(
-        &self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) {
-        ui.collapsing("TilesAtGpos", |ui| {
-            ui.label(format!("Entries: {}", self.map.len()));
-        });
+    fn index(local: UVec2) -> usize {
+        let width = ChunkPos::CHUNK_SIZE.x as usize;
+        (local.y as usize * width) + local.x as usize
+    }
+    pub fn get(&self, local: UVec2) -> &[Entity] {
+        self.cells.get(Self::index(local)).map_or(&[], |cell| cell.as_slice())
+    }
+    pub fn push(&mut self, local: UVec2, entity: Entity) {
+        if let Some(cell) = self.cells.get_mut(Self::index(local)) {
+            cell.push(entity);
+        }
+    }
+    pub fn swap_remove(&mut self, local: UVec2, entity: Entity) -> Option<()> {
+        let cell = self.cells.get_mut(Self::index(local))?;
+        let idx = cell.iter().position(|&e| e == entity)?;
+        cell.swap_remove(idx);
+        Some(())
     }
 }
-
-
+impl Default for ChunkEntityMatrix {
+    fn default() -> Self {
+        let cells = std::array::from_fn(|_| Vec::new());
+        Self {
+            cells: Box::new(cells),
+        }
+    }
+}

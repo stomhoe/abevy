@@ -3,7 +3,7 @@ use bevy::{math::U16Vec2, render::sync_world::SyncToRenderWorld, transform};
 use bevy_ecs_tilemap::{FrustumCulling, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_states::*};
-use dimension_shared::DimensionRef;
+
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 

@@ -9,26 +9,23 @@ use ::sprite_shared::*;
 use ::sprite_shared::sprite_scale_offset::*;
 
 use crate::{sprite_animation_components::*};
-
-
+use std::mem::take;
 
 #[allow(unused_parens)]
 pub fn init_animations(
     mut cmd: Commands,
-    mut anim_handles: ResMut<AnimationSerisHandles>,
-    mut seris_assets: ResMut<Assets<AnimationSeri>>,
+    //mut anim_handles: ResMut<AnimationSerisHandles>,
+    //mut seris_assets: ResMut<Assets<AnimationSeri>>,
+    mut mult_anim_handles: ResMut<MultipleAnimationSerisHandles>,
+    mut multiple_seris_assets: ResMut<Assets<MultipleAnimationSeri>>,
     library: Res<AcAnimationEntityMap>,
     sc_holder: Query<Entity, With<EguiScsHolder>>,
     anim_holder: Query<Entity, With<EguiAcAnimationsHolder>>,
-
     //usar state
 ) {
-    use std::mem::take;
-
     if !library.0.is_empty() {
         return;
     }
-
     let sc_holder = if sc_holder.is_empty() {
         debug!(target: "sprite_animation_init", "Creating AnimationsHolder as SpriteConfigsHolder not found.");
         cmd.spawn((EguiScsHolder, )).id()
@@ -45,24 +42,39 @@ pub fn init_animations(
     };
     cmd.entity(anim_holder).try_insert_if_new(ChildOf(sc_holder));
 
-    let mut seris = Vec::new();
-
     let mut main_comps = Vec::new();
 
-    for handle in take(&mut anim_handles.handles) {
-        let Some(mut seri) = seris_assets.remove(&handle) else { continue };
+    let mut merged_seris_vec: Vec<(Entity, AnimationSeri)> =
+        take(&mut mult_anim_handles.handles)
+            .into_iter()
+            .filter_map(|handle| multiple_seris_assets.remove(&handle))
+            .flat_map(|seris| seris.0.into_iter().map(|seri| (Entity::PLACEHOLDER, seri)))
+            /*
+        .chain(
+            take(&mut anim_handles.handles)
+            .into_iter()
+            .filter_map(|handle| seris_assets.remove(&handle).map(|seri| (Entity::PLACEHOLDER, seri)))
+        )
+             */
+        .collect();
+
+    let mut i = 0;
+    while i < merged_seris_vec.len() {
+        let (ent, seri) = &mut merged_seris_vec[i];
 
         let Ok(_) = ImagePathHolder::validate_path_exists(seri.img_path.clone()) else {
             let err = BevyError::from(format!("Failed to find image for Animation {}: {}", seri.id, "invalid image path"));
             error!(target: "sprite_animation_init", "{}", err);
+            merged_seris_vec.remove(i);
             continue;
         };
-
         let str_id = StrId::trunc(take(&mut seri.id));
 
         let y_sort = seri.y_sort.clone();
 
-        let ent = cmd.spawn_empty().id();
+        *ent = cmd.spawn_empty().id();
+        let ent = *ent;
+
         main_comps.push((ent, (AcAnimation, str_id.clone(), ChildOf(anim_holder), AcZ(seri.z))));
 
         if let Some(y_sort) = y_sort {
@@ -74,23 +86,21 @@ pub fn init_animations(
         if let Some(scale) = seri.scale {
             cmd.entity(ent).insert(Scale2D::from(scale));
         }
-
+        if let Some(play_speed) = seri.speed {
+            cmd.entity(ent).insert(PlayingSpeed(play_speed));
+        }
         if let Some(color) = seri.color {
             let (red, green, blue, alpha) = color.into();
             cmd.entity(ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
         }
-
-        let save_anim_progress = SaveAnimationProgress(seri.save_animation_progress);
-        cmd.entity(ent).insert(save_anim_progress);
-
-        seris.push((ent, seri));
+        if let Some(true) = seri.save_animation_progress {
+            cmd.entity(ent).insert(SaveAnimationProgress);
+        }
+        i += 1;
     }
-    cmd.try_insert_batch(seris);
+    cmd.try_insert_batch(merged_seris_vec);
     cmd.try_insert_batch(main_comps);
 }
-
-
-
 #[allow(unused_parens)]
 pub fn init_animation_sheet_and_handle(mut cmd: Commands,
     asset_server: Res<AssetServer>,
@@ -163,12 +173,12 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
         if clips_len == 0 {
             animation = animation.add_row(0);
             clip_start_frames.push(0);
-            alternating_start_frames_config.push(None);
+            alternating_start_frames_config.push(seri.alternating_start_frames);
             alternating_start_frames_state.push(0);
         } else {
             for (i, cfg) in seri.clips.iter().enumerate() {
                 clip_start_frames.push(cfg.start_frame.unwrap_or(0));
-                alternating_start_frames_config.push(cfg.alternating_start_frames);
+                alternating_start_frames_config.push(seri.alternating_start_frames);
                 alternating_start_frames_state.push(0);
                 animation = if cfg.is_row {
                     match cfg.partial {

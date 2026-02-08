@@ -2,7 +2,6 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
 
-use dimension_shared::DimensionRef;
 use ::tilemap_shared::*;
 use crate::{regioning::regioning_sgc_components::{StructuredGenConfig}, terrain_gen::terrgen_messages::OpFilterSeri};
 use serde::Deserialize;
@@ -51,4 +50,3 @@ pub struct SgcSeri {
     pub max_per_region: Option<u32>,
 
 }
-

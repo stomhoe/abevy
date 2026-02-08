@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 
-
 bevy = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
@@ -20,5 +19,6 @@ rand_distr = { workspace = true }
 rand_seeder = { workspace = true }
 rand_pcg = { workspace = true }
 noiz = { workspace = true }
-
-
+bevy_common_assets = { workspace = true }
+bevy_asset_loader = { workspace = true }
+paste = { workspace = true }

@@ -1,4 +1,4 @@
-use being_shared::{ControlledByClient, Grounding, Sentient};
+use being_shared::{ControlledByClient, Grounding, NormalDistSizeMultiplier, Sentient};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
@@ -8,10 +8,10 @@ use game_common::{
 };
 use sprite::AcSpriteSystems;
 
+
 use crate::{
     being_components::*,
     being_inst_template::BeingInstTemplateSystems,
-    being_resources::*,
     being_systems::*,
     body::{self, BodySystems},
     race::RaceSystems,
@@ -65,6 +65,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<MappedSpritesToSample>()
     .replicate::<ControlledByClient>()
+    .replicate::<NormalDistSizeMultiplier>()
     .replicate_filtered::<ChildOf, With<Being>>()
 
 

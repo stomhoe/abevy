@@ -104,8 +104,11 @@ pub fn plugin(app: &mut App) {
     .replicate::<EntityWeightedSampler>()
     .replicate::<Description>()
     .replicate_once::<GlobalTransform>()
+    .replicate_once::<Transform>()
     .replicate::<EntityZero>()
     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EntityZero>,)>()
     .replicate_once_as::<Visibility, common::common_components::VisibilityGameState>()
-    .replicate::<EntityZeroRef>();
+    .replicate::<EntityZeroRef>()
+    .replicate::<CappedNormalDistribution>()
+    ;
 }

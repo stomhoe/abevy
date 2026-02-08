@@ -22,6 +22,12 @@ pub struct SpriteConfigSeri {
     pub offset4children: Option<HashMap<String, (f32, f32, String)>>,//k:tag, v:(offset, direction(s)) in which it is applied
     pub exclude_from_sys: Option<bool>,
 
+    // Being's speed ratio over this is used as speedup for anim
+    pub base_movement_speed: Option<f32>,
+
+    pub exclude_from_normal_size_modifier: Option<bool>,
+
+
     pub offset: Option<(f32, f32)>,
     pub scale: Option<(f32, f32)>,
     pub scale_up_down: Option<(f32, f32)>,
@@ -32,6 +38,8 @@ pub struct SpriteConfigSeri {
     pub offset_up: Option<(f32, f32)>,
     pub offset_sideways: Option<(f32, f32)>,
 
+    /// TODO
+    pub extra_y_offset_per_scale_inc: Option<f32>,
 
 }
 // PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)

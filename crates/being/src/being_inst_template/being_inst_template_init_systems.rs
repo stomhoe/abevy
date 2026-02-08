@@ -6,6 +6,7 @@ use sprite::{
     sprite_components::ScsToBuild, sprite_resources::SpriteConfigEntityMap,
 };
 use ::sprite_shared::*;
+use game_common::game_common_components::CappedNormalDistribution;
 
 use crate::being_inst_template::{
     being_inst_template_components::*, being_inst_template_resources::*,
@@ -13,7 +14,6 @@ use crate::being_inst_template::{
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::body_tree_resources::BodyTreeEntityMap;
 use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
-use faction::faction_components::BelongsToFaction;
 
 pub fn init_being_templates(
     mut cmd: Commands,
@@ -68,6 +68,9 @@ pub fn init_being_templates(
 
                     faction_refs_to_insert.push((bit_entity, FactionStrIdRef(faction_str_id)));
                 }
+            }
+            if let Some(normal_variation) = template_seri.normal_variation {
+                cmd.entity(bit_entity).insert(CappedNormalDistribution::from_seri(normal_variation));
             }
 
             // Resolve race entity from race string

@@ -2,7 +2,6 @@ use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
-use dimension_shared::DimensionRef;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;

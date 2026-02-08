@@ -1,5 +1,4 @@
 use crate::{
-    chunking::chunking_resources::LoadedChunks,
     tile::{tile_components::*, tile_messages::GlobalTilePosChanged},
     tilemap_components::*,
     tilemap_resources::*,
@@ -14,11 +13,11 @@ use bevy_asset_loader::prelude::*;
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, tiles::TileFlip};
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
-use common::{common_components::HashId, common_tag_components::TagSet};
-use dimension_shared::{DimensionRef, PrevDimensionRef};
+use common::{AnyDisabling, common_components::HashId, common_tag_components::TagSet};
+use dimension_shared::{PrevDimensionRef};
 use game_common::game_common_components::*;
 use tilemap_shared::{
-    ChunkPos, GlobalGenSettings, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos,
+    ChunkPos, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, LoadedChunks, OplistSize, PrevGlobalTilePos, SpriteTilesAtGpos, TileGatheringParamSet
 };
 
 #[allow(unused_parens)]
@@ -179,17 +178,14 @@ pub fn emit_global_tile_pos_change(
 
 #[allow(unused_parens)]
 pub fn add_spawned_tiles_to_gpos_map(
-    mut map: ResMut<TilesAtGpos>,
+    mut map: ResMut<SpriteTilesAtGpos>,
     query: Query<
         (
             Entity,
             &DimensionRef,
             &GlobalTilePos,
-            Option<&TilePos>,
-            Option<&TilemapId>,
-            Option<&OplistSize>,
         ),
-        (common::AnyDisabling, Without<EntityZero>),
+        (common::AnyDisabling, Without<EntityZero>, Without<TilemapId>),
     >,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
 ) {
@@ -200,51 +196,24 @@ pub fn add_spawned_tiles_to_gpos_map(
     map.reserve_capacity(entities.len());
 
     query.iter_many(entities).for_each(
-        |(ent, &dimension_ref, &gpos, tpos, tilemap_id, _oplist_size)| {
-            map.insert(ent, dimension_ref, gpos, tpos.copied(), tilemap_id.copied());
+        |(ent, &dimension_ref, &gpos, )| {
+            map.insert(ent, dimension_ref, gpos,);
         },
     );
 }
 
-pub fn remove_tile_from_gpos_map_on_despawn(
-    mut removed_tiles: RemovedComponents<Tile>,
-    mut tmap_query: Query<(&mut TileStorage,), (common::AnyDisabling,)>,
-    mut map: ResMut<TilesAtGpos>,
+// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
+
+#[allow(unused_parens)]
+pub fn on_spritetile_despawn(
+    trig: On<Despawn, (Tile, Transform, SpriteTile)>,
+    query: Query<(&DimensionRef, &GlobalTilePos, ), (Without<TilemapId>, Without<TilePos>, Without<EntityZero>, AnyDisabling)>,
+    mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
 ) {
-    for tile_ent in removed_tiles.read() {
-        let Some((tile_pos, tilemap_id)) = map.remove_entity_and_get_data(tile_ent) else {
-            continue;
-        };
-        // Remove from OplistSize positions if applicable
-        // if let Some(oplist_size) = oplist_size {
-        //     for dy in 0..oplist_size.x() {
-        //         for dx in 0..oplist_size.y() {
-        //             if dx == 0 && dy == 0 { continue; } // Already handled above
-        //             let offset_pos = gpos + IVec2::new(dx as i32, dy as i32);
-        //             if let Some(ents_vec) = map.map.get_mut(&(dim, offset_pos)) {
-        //                 if let Some(i) = ents_vec.iter().position(|&e| e == removed_tile.entity) {
-        //                     ents_vec.swap_remove(i);
-        //                     if ents_vec.is_empty() {
-        //                         map.map.remove(&(dim, offset_pos));
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-        let Some(tile_pos) = tile_pos else {
-            continue;
-        };
-        let Ok((mut tile_storage,)) = tmap_query.get_mut(tilemap_id.0) else {
-            continue;
-        };
-        let Some(stored_tile_entity) = tile_storage.get(&tile_pos) else {
-            continue;
-        };
-        if stored_tile_entity == tile_ent {
-            tile_storage.remove(&tile_pos);
-        }
-    }
+    let Ok((&dim_ref, &gpos)) = query.get(trig.entity) else {
+        return;
+    };
+    spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity);
 }
 
 #[allow(unused_parens)]
@@ -297,8 +266,8 @@ pub fn despawn_if_not_excepted(
         (&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),
         (common::AnyDisabling, Without<EntityZero>),
     >,
-    tiles_at_gpos: Res<TilesAtGpos>,
     registered_positions: Res<ImportantRegisteredPositions>,
+    tmap_chunk_params: TileGatheringParamSet,
 ) {
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
@@ -310,7 +279,8 @@ pub fn despawn_if_not_excepted(
             return;
         };
 
-        if let Some(otile_ents) = tiles_at_gpos.map.get(&(dim, gpos)) {
+        let otile_ents = tmap_chunk_params.gather_tiles_at(dim, gpos);
+        if !otile_ents.is_empty() {
             otile_ents.iter().for_each(|&otile_ent| {
                 if otile_ent == newtile_ent {
                     return;

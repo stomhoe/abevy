@@ -77,7 +77,7 @@ pub trait HashablePosVec: Hash {
     fn normalized_hash_value(&self, settings: &GlobalGenSettings, dimension_hash: HashId, seed: u64) -> f64 {
         self.hash_value(settings, dimension_hash, seed) as f64 / u64::MAX as f64
     }
-    
+
     fn x(&self) -> i32;
     fn y(&self) -> i32;
 }
@@ -137,7 +137,7 @@ pub const TILEMAP_SCALE: f32 = 1.0;
 
 impl GlobalTilePos {
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 32, y: 32 };
-    
+
     pub fn to_tilepos(&self, oplist_size: OplistSize) -> TilePos {
         let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
         let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) / oplist_size.inner().as_ivec2();
@@ -146,7 +146,7 @@ impl GlobalTilePos {
     pub fn to_chunkpos(&self) -> ChunkPos {
         ChunkPos(Into::<IVec2>::into(*self) / ChunkPos::CHUNK_SIZE.as_ivec2())
     }
-    
+
     pub fn to_translation(&self, prev_transform_z: f32) -> Vec3 {
         let vec2: Vec2 = (*self).into();
         vec2.extend(prev_transform_z)
@@ -183,7 +183,8 @@ impl ChunkPos {
         Self(region_pos.0 * REGION_SIZE_IN_CHUNKS.0 + IVec2::new(local_x, local_y))
     }
     pub const CHUNK_SIZE: UVec2 = UVec2::splat(30);//may change later. fed
-    
+    pub const CHUNK_AREA: usize = (Self::CHUNK_SIZE.x * Self::CHUNK_SIZE.y) as usize;
+
     pub fn to_pixelpos(&self) -> Vec2 {
         self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2() * Self::CHUNK_SIZE.as_vec2()
     }
@@ -193,7 +194,7 @@ impl ChunkPos {
     pub fn to_region_pos(&self) -> RegionPos {
         RegionPos(self.0.div_euclid(REGION_SIZE_IN_CHUNKS.0))
     }
-    
+
     pub fn chunk_pos_from_flat_index_within_region(index: usize, region_pos: RegionPos) -> Self {
         let x = (index as i32 % REGION_SIZE_IN_CHUNKS.x()) as i32;
         let y = (index as i32 / REGION_SIZE_IN_CHUNKS.x()) as i32;
@@ -347,7 +348,7 @@ impl RegionPos {
     pub fn to_chunkpos(&self) -> ChunkPos {
         ChunkPos(self.0 * REGION_SIZE_IN_CHUNKS.0)
     }
-    
+
 }
 
 pub mod prelude {

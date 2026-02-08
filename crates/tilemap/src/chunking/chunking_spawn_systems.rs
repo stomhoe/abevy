@@ -1,7 +1,7 @@
 
 use bevy::prelude::*;
 use common::common_components::{StrId20B};
-use dimension_shared::DimensionRef;
+use tilemap_shared::{DimensionRef, LoadedChunks};
 use tilemap_shared::{ChunkPos, HashablePosVec};
 
 use super::chunking_components::*;
@@ -12,19 +12,19 @@ use crate::regioning::{regioning_components::Region, regioning_resources::Loaded
 
 #[allow(unused_parens, )]
 pub fn spawn_chunks_around_activators(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     mut query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), ()>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     tilemap_settings: Res<AaChunkRangeSettings>,
     mut loaded_regions: ResMut<LoadedRegions>,
     mut reader: MessageReader<ReactivateChunksFor>,
 ) {
-    let cnt = tilemap_settings.discovery_range as i32;   
+    let cnt = tilemap_settings.discovery_range as i32;
     let range_len = (2 * cnt - 1).max(0) as usize;
     let approx_chunks = range_len.saturating_mul(range_len);
     let mut comps_for_region_ents = Vec::new();
     let mut comps_for_chunk_ents = Vec::new();
-    
+
     for msg in reader.read() {
         let Ok((transform, mut activates_chunks, &dimension_ref)) = query.get_mut(msg.0) else {
             error!(target: "chunk_activation", "Activator entity {:?} not found when reactivating chunks", msg.0);
@@ -33,12 +33,12 @@ pub fn spawn_chunks_around_activators(
         comps_for_chunk_ents.reserve(approx_chunks);
         comps_for_region_ents.reserve(approx_chunks / 8);
         let center_chunk_pos = ChunkPos::from(transform.translation().xy());
-        
+
         activates_chunks.reactivation_timer.reset();
-        
+
         for y in (center_chunk_pos.y() - cnt + 1)..(center_chunk_pos.y() + cnt) {
             for x in (center_chunk_pos.x() - cnt + 1)..(center_chunk_pos.x() + cnt) {
-                
+
                 let chunk_pos = ChunkPos::new(x, y);
                 let key = (dimension_ref, chunk_pos);
                 let chunk_ent = loaded_chunks.0.get(&key)
@@ -65,7 +65,7 @@ pub fn spawn_chunks_around_activators(
                             region_ent
                         })
                     };
-                    
+
                     let chunk_ent = cmd.spawn_empty().id();
                     loaded_chunks.0.insert(key, chunk_ent);
                     comps_for_chunk_ents.push((chunk_ent, (
@@ -115,7 +115,7 @@ pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 se
 }
 #[allow(unused_parens, )]
 pub fn detect_activators_with_pos_changes(
-    query: Query<(Entity), 
+    query: Query<(Entity),
     (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>,)>, With <ActivatingChunks>)>,
     mut writer: MessageWriter<ReactivateChunksFor>,
     mut msgs: Local<Vec<ReactivateChunksFor>>,

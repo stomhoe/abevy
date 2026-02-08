@@ -1,5 +1,6 @@
 
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
+use game_common::game_common_components::NormalVariationSeri;
 use crate::race::Race;
 
 
@@ -8,7 +9,7 @@ use crate::race::Race;
 pub struct RaceSeri {
     pub id: String,
     pub name: String,
-    
+
     ///can be a body sampler
     pub body_tree: String,
     pub name_generator: Option<String>,
@@ -30,6 +31,9 @@ pub struct RaceSeri {
 
     pub whitelisted_tiles_for_spawning: Option<HashSet<String>>,
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
+
+    /// overriden by being instantiation template's NormalVariation (if present)
+    pub normal_variation: Option<NormalVariationSeri>,
 }
 
 common::define_entity_map_systems!(

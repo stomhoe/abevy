@@ -3,7 +3,7 @@
 use bevy_replicon::prelude::*;
 use bevy::ecs::entity::MapEntities;
 
-use dimension_shared::DimensionRef;
+use tilemap_shared::DimensionRef;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos, OplistSize};
 use std::hash::{Hasher, Hash};
@@ -21,11 +21,10 @@ pub struct GlobalTilePosChanged {
 }
 
 // #[derive(Debug, Deserialize, Message, Serialize, MapEntities, Hash, PartialEq, Eq, Clone)]
-// pub struct SpawnSyncTile  { 
-//     #[entities] pub orig_ref: Entity, pub oplist_size: OplistSize, pub dim: DimensionRef, pub global_pos: GlobalTilePos, pub serv_tile_ent: Entity 
+// pub struct SpawnSyncTile  {
+//     #[entities] pub orig_ref: Entity, pub oplist_size: OplistSize, pub dim: DimensionRef, pub global_pos: GlobalTilePos, pub serv_tile_ent: Entity
 // }
 // impl SpawnSyncTile {
 //     pub fn new(orig_ref: Entity, oplist_size: OplistSize, dim: DimensionRef, global_pos: GlobalTilePos, serv_tile_ent: Entity)
 //     -> Self {Self { orig_ref, oplist_size, dim, global_pos, serv_tile_ent }}
 // }
-

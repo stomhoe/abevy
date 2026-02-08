@@ -1,0 +1,25 @@
+SpriteConfigSeri(
+    id: "mahubo0",
+    name: "Human male body 0",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "mahubo0_south_idle",
+        ("west", "idle", "g", "") : "mahubo0_west_idle",
+        ("east", "idle", "g", "") : "mahubo0_east_idle",
+        ("north", "idle", "g", "") : "mahubo0_north_idle",
+        ("south", "move", "g", "") : "mahubo0_south_move",
+        ("west", "move", "g", "") : "mahubo0_west_move",
+        ("east", "move", "g", "") : "mahubo0_east_move",
+        ("north", "move", "g", "") : "mahubo0_north_move",
+    },
+    parent_cat: None,
+    tags: Some(["body"]),
+    children_sprites: Some([]),
+    shares_tag: Some([]),
+    directionable: Some(true),
+    movement_based: Some(true),
+    grounding_based: Some(false),
+    offset: Some((0., 16.)),//ta bien
+    offset4children: Some({
+        "head": (0., 21., "")
+    }),
+)

@@ -1,0 +1,19 @@
+SpriteConfigSeri(
+    id: "mahuhe0",
+    name: "Human male head 0",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "mahuhe0_south_idle",
+        ("west", "idle", "g", "") : "mahuhe0_west_idle",
+        ("east", "idle", "g", "") : "mahuhe0_east_idle",
+        ("north", "idle", "g", "") : "mahuhe0_north_idle",
+    },
+    parent_cat: Some("body"),
+    tags: Some(["head"]),
+    children_sprites: Some([]),
+    shares_tag: Some([]),
+    directionable: Some(true),
+    movement_based: Some(false),
+    grounding_based: Some(false),
+)
+
+// TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld

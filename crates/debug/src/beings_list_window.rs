@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
+use ::tilemap_shared::*;
 use std::collections::BTreeMap;
 
 use being::being_components::Being;
 use camera::camera_components::CameraTarget;
-use dimension_shared::DimensionRef;
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use crate::debug_resources::*;
 
 #[allow(unused_parens)]
 pub fn beings_list_window(

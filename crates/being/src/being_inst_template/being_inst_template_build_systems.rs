@@ -36,6 +36,7 @@ pub fn build_being_from_being_inst_template_ref(mut cmd: Commands,
             race_refs_to_ins.push((being_ent, race_ref.clone()));
         }
 
+
         if template.extra_health_multiplier != 1. {
             //add in a modifier
         }

@@ -54,7 +54,14 @@ impl<'a> IntoIterator for &'a HeldSprites {
 pub struct SampleSpritesFromStrIds(Vec<StrId>); // correct to be multiple
 impl SampleSpritesFromStrIds {
     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
-        Self(ids.into_iter().map(|s| StrId::trunc(s)).collect())
+        Self(ids.into_iter().filter_map(|s| {
+            let trimmed = s.as_ref().trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(StrId::trunc(trimmed))
+            }
+        }).collect())
     }
     pub fn ids(&self) -> &Vec<StrId> { &self.0 }
 }
@@ -97,3 +104,6 @@ impl Hash for AcZ {
         self.0.to_bits().hash(state)
     }
 }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+pub struct ExcludedFromNormalSizeModifier;

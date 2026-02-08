@@ -1,12 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::{DisplayName, Prefix, HashId, StrId}, common_tag_components::TagSet};
-use crate::{
-    dimension_resources::*,
-/*
-    dimension_events::*,
-*/
-};
+use ::tilemap_shared::*;
 use ::dimension_shared::*;
 
 #[allow(unused_parens)]
