@@ -22,7 +22,7 @@
     ],
 
     bifs: [
-        ("", ["nw"]),                     //index 0: lake branch
+        ("", ["lake"]),                     //index 0: lake branch
         ("", ["orange"]),                    //index 1: river branch
         ("normal4", ["tempgrass"]),         //index 2: tempgrass branch (goes to normal4)
     ],
