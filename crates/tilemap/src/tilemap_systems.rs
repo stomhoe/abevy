@@ -87,8 +87,6 @@ pub struct TmapMap (
     pub HashMap<MapKey, MapStruct>
 );
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-
 #[allow(unused_parens)]
 pub fn on_tilemap_despawn(trig: On<Despawn, (DimensionRef, ChunkPos, AcZ, OplistSize, TilemapTileSize, TileShaderRef)>,
     query: Query<(&DimensionRef, &ChunkPos, &AcZ, &OplistSize, &TilemapTileSize, &TileShaderRef)>,
@@ -130,10 +128,12 @@ pub fn process_tiles_pre(
         Option<&AcZ>,
         Option<&TileHashIdsHandles>,
         Option<&TileShaderRef>,
-        Option<&Transform>,
+        Has<SpriteTile>,
         Option<&TileColor>,
         Has<YSortOrigin>,
     ), common::AnyDisabling>,
+    mut spritetiles_map: ResMut<SpriteTilesAtGpos>,
+
 )
 {
     let is_host = *params.state.get() == ClientState::Disconnected;
@@ -173,7 +173,7 @@ pub fn process_tiles_pre(
             params.collected_tiles.0.swap_remove(i);
             continue;
         }
-        let (tile_strid, hash_id, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, transform, color, y_sort) = query_result.unwrap();
+        let (tile_strid, hash_id, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, is_spritetile, color, y_sort) = query_result.unwrap();
 
         if !params.regpos_map.check_min_distances(
             &mut cmd,
@@ -204,8 +204,9 @@ pub fn process_tiles_pre(
             }
         }
 
-        if transform.is_some() {
+        if is_spritetile {
             spritetiles_to_remove_bundle.push(tile_ent);
+            spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos);
             i += 1;
             continue;
         }

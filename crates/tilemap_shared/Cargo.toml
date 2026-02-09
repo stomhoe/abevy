@@ -22,3 +22,4 @@ noiz = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
 paste = { workspace = true }
+smallvec = { workspace = true }

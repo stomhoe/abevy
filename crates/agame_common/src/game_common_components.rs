@@ -294,7 +294,7 @@ impl CappedNormalDistribution {
         let mut min = min.max(0.01);
         let mut max = max.max(0.01);
         let mut mean = mean;
-        let mut std_dev = std_dev.max(0.01);
+        let std_dev = std_dev.max(0.01);
 
         // Validate that min <= max
         if min > max {

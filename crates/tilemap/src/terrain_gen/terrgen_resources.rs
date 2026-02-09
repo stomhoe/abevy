@@ -1,6 +1,6 @@
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task};
-use common::{common_components::{HashId}, common_types::HashIdToEntityMap};
+use common::{common_components::{HashId}, };
 
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}}, tile::{tile_components::{KeepDistanceFrom, MinDistancesMap, }, }, tilemap_resources};
 

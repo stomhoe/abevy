@@ -553,6 +553,7 @@ dependencies = [
  "paste",
  "player",
  "serde",
+ "smallvec",
  "sprite",
  "sprite_animation_shared",
  "sprite_shared",
@@ -7899,6 +7900,7 @@ dependencies = [
  "rand_pcg",
  "rand_seeder",
  "serde",
+ "smallvec",
  "sprite",
  "sprite_animation_shared",
  "sprite_shared",
@@ -7930,6 +7932,7 @@ dependencies = [
  "rand_pcg",
  "rand_seeder",
  "serde",
+ "smallvec",
 ]
 
 [[package]]

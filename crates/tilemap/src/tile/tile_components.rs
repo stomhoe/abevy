@@ -67,8 +67,7 @@ impl Tile {
 pub type TileStrId = StrId;
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct SpriteTile;
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct TileChildSprite;

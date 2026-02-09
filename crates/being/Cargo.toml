@@ -35,3 +35,4 @@ delegate = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 paste = { workspace = true }
+smallvec = { workspace = true }

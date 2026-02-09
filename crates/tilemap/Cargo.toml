@@ -42,4 +42,4 @@ avian2d = { workspace = true }
 
 noiz = { workspace = true }
 
-
+smallvec = { workspace = true }

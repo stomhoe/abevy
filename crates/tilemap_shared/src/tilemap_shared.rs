@@ -9,6 +9,7 @@ use common::common_components::{AssetScoped, HashId, Prefix, SparedFromHotReload
 use serde::{Deserialize, Serialize};
 use bevy::platform::collections::{HashSet, HashMap};
 use bevy_inspector_egui::prelude::*;
+use smallvec::SmallVec;
 
 use crate::{tilemap_positioning::*};
 
@@ -160,14 +161,11 @@ impl DimensionStrIdRef {
 }
 #[derive(Debug, )]
 pub struct ChunkEntityMatrix {
-    cells: Box<[Vec<Entity>; ChunkPos::CHUNK_AREA]>,
+    cells: Box<[SmallVec::<[Entity; 16]>; ChunkPos::CHUNK_AREA]>,
 }
 impl ChunkEntityMatrix {
     pub fn new() -> Self {
-        let cells = std::array::from_fn(|_| Vec::new());
-        Self {
-            cells: Box::new(cells),
-        }
+        Self::default()
     }
     fn index(local: UVec2) -> usize {
         let width = ChunkPos::CHUNK_SIZE.x as usize;
@@ -190,7 +188,7 @@ impl ChunkEntityMatrix {
 }
 impl Default for ChunkEntityMatrix {
     fn default() -> Self {
-        let cells = std::array::from_fn(|_| Vec::new());
+        let cells = std::array::from_fn(|_| SmallVec::new());
         Self {
             cells: Box::new(cells),
         }
@@ -235,21 +233,25 @@ impl SpriteTilesAtGpos {
 
 }
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct SpriteTile;
+
 #[derive(SystemParam)]
+#[allow(unused_parens, )]
 pub struct TileGatheringParamSet<'w, 's> {
     loaded_chunks: Res<'w, LoadedChunks>,
     chunk_children: Query<'w, 's, (&'static Tilemaps)>,
-    tilemap_data: Query<'w, 's, (&'static OplistSize, &'static TileStorage)>,
+    tilemap_data: Query<'w, 's, (&'static OplistSize, &'static mut TileStorage),>,
     spritetiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
-    pub fn gather_tiles_at(&self, dim: DimensionRef, gpos: GlobalTilePos) -> Vec<Entity> {
+    pub fn gather_tiles_at(&self, dim: DimensionRef, gpos: GlobalTilePos) -> SmallVec::<[Entity; 16]> {
         let chunk_pos = gpos.to_chunkpos();
         let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
-            return Vec::new();
+            return SmallVec::new();
         };
 
-        let mut gathered_tiles: Vec<Entity> = Vec::new();
+        let mut gathered_tiles = SmallVec::<[Entity; 16]>::new();
         if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
             gathered_tiles.reserve(tilemaps.entities().len() + 4);
             for &tmap_ent in tilemaps.entities() {
@@ -267,6 +269,26 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
         }
 
         gathered_tiles
+    }
+    pub fn safe_despawn_tile_at(&mut self, cmd: &mut Commands, dim: DimensionRef, gpos: GlobalTilePos, tile_ent: Entity) {
+        cmd.entity(tile_ent).try_despawn();
+        let chunk_pos = gpos.to_chunkpos();
+        let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
+            return;
+        };
+        if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
+            for &tmap_ent in tilemaps.entities() {
+                let Ok((&oplist_size, mut storage)) = self.tilemap_data.get_mut(tmap_ent) else {
+                    continue;
+                };
+                let tpos = gpos.to_tilepos(oplist_size);
+                if let Some(found_tile_ent) = storage.get(&tpos) {
+                    if tile_ent == found_tile_ent {
+                        storage.remove(&tpos);
+                    }
+                }
+            }
+        }
     }
 }
 

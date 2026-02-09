@@ -6,19 +6,13 @@ use crate::{
 use ::sprite_shared::*;
 use avian2d::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-#[allow(unused_imports)]
 use bevy::prelude::*;
-#[allow(unused_imports)]
-use bevy_asset_loader::prelude::*;
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, tiles::TileFlip};
-#[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{AnyDisabling, common_components::HashId, common_tag_components::TagSet};
 use dimension_shared::{PrevDimensionRef};
 use game_common::game_common_components::*;
-use tilemap_shared::{
-    ChunkPos, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, LoadedChunks, OplistSize, PrevGlobalTilePos, SpriteTilesAtGpos, TileGatheringParamSet
-};
+use ::tilemap_shared::*;
 
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
@@ -189,20 +183,17 @@ pub fn add_spawned_tiles_to_gpos_map(
     >,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
 ) {
-    let iter = changed_pos.read().map(|msg| msg.entity);
-    let mut entities = Vec::with_capacity(iter.size_hint().0);
-    entities.extend(iter);
-
-    map.reserve_capacity(entities.len());
-
+    let mut entities = Vec::with_capacity(changed_pos.len());
+    for changed_pos in changed_pos.read() {
+        map.remove_tile(changed_pos.old_dim, changed_pos.old_gpos, changed_pos.entity);
+        entities.push(changed_pos.entity);
+    }
     query.iter_many(entities).for_each(
         |(ent, &dimension_ref, &gpos, )| {
             map.insert(ent, dimension_ref, gpos,);
         },
     );
 }
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 
 #[allow(unused_parens)]
 pub fn on_spritetile_despawn(
@@ -267,7 +258,7 @@ pub fn despawn_if_not_excepted(
         (common::AnyDisabling, Without<EntityZero>),
     >,
     registered_positions: Res<ImportantRegisteredPositions>,
-    tmap_chunk_params: TileGatheringParamSet,
+    mut params: TileGatheringParamSet,
 ) {
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
@@ -279,17 +270,17 @@ pub fn despawn_if_not_excepted(
             return;
         };
 
-        let otile_ents = tmap_chunk_params.gather_tiles_at(dim, gpos);
+        let otile_ents = params.gather_tiles_at(dim, gpos);
         if !otile_ents.is_empty() {
             otile_ents.iter().for_each(|&otile_ent| {
                 if otile_ent == newtile_ent {
                     return;
                 }
-                let Ok((ezero_ref, otile_tag_hashset, otile_delete_others_excp)) = otile_query.get(otile_ent) else {
+                let Ok((otile_ezero_ref, otile_tag_hashset, otile_delete_others_excp)) = otile_query.get(otile_ent) else {
                     trace!(target: "tilemap", "Failed to get prev tile entity {:?}, skipping despawn check", otile_ent);
                     return;
                 };
-                let Ok((otile_z, ezero_otile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
+                let Ok((otile_z, ezero_otile_delete_others_excp)) = ezero_query.get(otile_ezero_ref.0) else {
                     trace!(target: "tilemap", "Failed to get EntityZero for tile entity {:?}, skipping despawn check", otile_ent);
                     return;
                 };
@@ -312,8 +303,8 @@ pub fn despawn_if_not_excepted(
                     else {
                         trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
                         // Don't despawn if the tile's EntityZero is registered or exempted
-                        if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
-                            cmd.entity(otile_ent).try_despawn();
+                        if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
+                            params.safe_despawn_tile_at(&mut cmd, dim, gpos, otile_ent);
                         }
                         return;
                     }
@@ -334,7 +325,7 @@ pub fn despawn_if_not_excepted(
                         trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
                         // Don't despawn if the new tile's EntityZero is registered or exempted
                         if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
-                            cmd.entity(newtile_ent).try_despawn();
+                            params.safe_despawn_tile_at(&mut cmd, dim, gpos, newtile_ent);
                         }
                     }
                 }
@@ -390,11 +381,12 @@ pub fn make_spritetile_child_of_chunk(
 
 #[allow(unused_parens)]
 //todo que se triggeree con un evento cuando el tilemap esté listo, sino puede q las tiles adyacentes no esten cargadas todavia
-pub fn tile_adjacency_retexturing_system(
+pub fn tile_adjacency_retexturing_system(//TODO agregar change detection sino loopea sin parar
     mut cmd: Commands,
     ezero_query: Query<(&EntityZero), (common::AnyDisabling,)>,
     tilemap_query: Query<(&TileStorage, &HashIdToTexIndex), ()>,
     mut tile_query: Query<(&EntityZeroRef, &mut TileTextureIndex), ()>,
 ) {
+    return;
     for mut item in tile_query.iter_mut() {}
 }
