@@ -1,6 +1,6 @@
 (
-    id: "ducatas",
-    img_path: "texture/world/terr/dungeon/ducatas.png",
+    id: "ca",
+    img_path: "texture/world/terr/dungeon/ca.png",
     scale: 17,
     mask_color: (255., 0, 0, 255.),
 )

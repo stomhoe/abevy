@@ -161,7 +161,7 @@ impl DimensionStrIdRef {
 }
 #[derive(Debug, )]
 pub struct ChunkEntityMatrix {
-    cells: Box<[SmallVec::<[Entity; 16]>; ChunkPos::CHUNK_AREA]>,
+    cells: Box<[ReturnedVec; ChunkPos::CHUNK_AREA]>,
 }
 impl ChunkEntityMatrix {
     pub fn new() -> Self {
@@ -188,7 +188,7 @@ impl ChunkEntityMatrix {
 }
 impl Default for ChunkEntityMatrix {
     fn default() -> Self {
-        let cells = std::array::from_fn(|_| SmallVec::new());
+        let cells = std::array::from_fn(|_| ReturnedVec::new());
         Self {
             cells: Box::new(cells),
         }
@@ -236,6 +236,8 @@ impl SpriteTilesAtGpos {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct SpriteTile;
 
+pub type ReturnedVec = SmallVec<[Entity; 16]>;
+
 #[derive(SystemParam)]
 #[allow(unused_parens, )]
 pub struct TileGatheringParamSet<'w, 's> {
@@ -245,31 +247,29 @@ pub struct TileGatheringParamSet<'w, 's> {
     spritetiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
-    pub fn gather_tiles_at(&self, dim: DimensionRef, gpos: GlobalTilePos) -> SmallVec::<[Entity; 16]> {
-        let chunk_pos = gpos.to_chunkpos();
-        let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
-            return SmallVec::new();
-        };
+    /// use drain on the vec
+    pub fn gather_tiles_at(&self, vec_to_drain: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
+            let chunk_pos = gpos.to_chunkpos();
+            let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
+                //error!("Chunk not loaded, {:?}{:?}", gpos, chunk_pos);
+                return;
+            };
 
-        let mut gathered_tiles = SmallVec::<[Entity; 16]>::new();
-        if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
-            gathered_tiles.reserve(tilemaps.entities().len() + 4);
-            for &tmap_ent in tilemaps.entities() {
-                let Ok((&oplist_size, storage)) = self.tilemap_data.get(tmap_ent) else {
-                    continue;
-                };
-                let tpos = gpos.to_tilepos(oplist_size);
-                if let Some(tile_ent) = storage.get(&tpos) {
-                    gathered_tiles.push(tile_ent);
+            if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
+                //vec_to_drain.reserve(tilemaps.entities().len() + 4);
+                for &tmap_ent in tilemaps.entities() {
+                    let Ok((&oplist_size, storage)) = self.tilemap_data.get(tmap_ent) else {
+                        continue;
+                    };
+                    let tpos = gpos.to_tilepos(oplist_size);
+
+                    if let Some(tile_ent) = storage.get(&tpos) {
+                        vec_to_drain.extend(std::iter::once(tile_ent));
+                    }
                 }
             }
+            vec_to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
         }
-        for &tile_ent in self.spritetiles_at_gpos.tiles_at_pos(dim, gpos) {
-            gathered_tiles.push(tile_ent);
-        }
-
-        gathered_tiles
-    }
     pub fn safe_despawn_tile_at(&mut self, cmd: &mut Commands, dim: DimensionRef, gpos: GlobalTilePos, tile_ent: Entity) {
         cmd.entity(tile_ent).try_despawn();
         let chunk_pos = gpos.to_chunkpos();

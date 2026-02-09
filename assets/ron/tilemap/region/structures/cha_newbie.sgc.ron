@@ -6,7 +6,7 @@
     tags: Some([ "dungeon", "" ]),
     args: Some({
         "floor_tile_id": ["dunewbie"],
-        "wall_tile_id": ["newbiewall"],
+        "wall_tile_id": ["nw"],
         "lava_tile_id": ["lava"],
         // Room shape weights (relative probabilities)
         "room_shape_weight_rectangle": ["1.0"],

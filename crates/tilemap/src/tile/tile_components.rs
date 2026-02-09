@@ -62,7 +62,7 @@ pub struct KeepDisabled;
 //no poner Replicated acá, sino el deny de Replicated quita el Tile
 pub struct Tile;
 impl Tile {
-    pub const MIN_ID_LENGTH: u8 = 3;
+    pub const MIN_ID_LENGTH: u8 = 1;
 }
 pub type TileStrId = StrId;
 

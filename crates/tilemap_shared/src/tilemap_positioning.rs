@@ -144,7 +144,7 @@ impl GlobalTilePos {
         TilePos::from(ivec2.as_uvec2())
     }
     pub fn to_chunkpos(&self) -> ChunkPos {
-        ChunkPos(Into::<IVec2>::into(*self) / ChunkPos::CHUNK_SIZE.as_ivec2())
+        ChunkPos(Into::<IVec2>::into(*self).div_euclid(ChunkPos::CHUNK_SIZE.as_ivec2()))
     }
 
     pub fn to_translation(&self, prev_transform_z: f32) -> Vec3 {

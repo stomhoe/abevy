@@ -97,6 +97,7 @@ pub fn prepare_grid_locked_movement(
             Has<ControlledLocally>,
         ),
     >,
+    mut to_drain: Local<Vec<Entity>>,
 ) {
     being_changed_state_set.reserve(query.iter().size_hint().0);
 
@@ -222,7 +223,7 @@ pub fn prepare_grid_locked_movement(
             };
 
             let next_target = current_snapped.xy() + (current_dir * step_distance);
-            if param_set.is_blocked_at(dim_ref, GlobalTilePos::from(next_target), being_ent) {
+            if param_set.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(next_target), being_ent) {
                 glm.queued_move_dir = Vec2::ZERO;
                 glm.active_move_dir = Vec2::ZERO;
                 if !moved {
@@ -249,7 +250,7 @@ pub fn prepare_grid_locked_movement(
             if remaining_to_boundary <= 0.0001 {
                 current_translation = current_snapped;
                 let target = current_snapped.xy() + (current_dir * step_distance);
-                if param_set.is_blocked_at(dim_ref, GlobalTilePos::from(target), being_ent) {
+                if param_set.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
                     glm.queued_move_dir = Vec2::ZERO;
                     glm.active_move_dir = Vec2::ZERO;
                     if !moved {
@@ -266,7 +267,7 @@ pub fn prepare_grid_locked_movement(
 
             if will_reach_boundary {
                 let target = current_snapped.xy() + (current_dir * step_distance);
-                if param_set.is_blocked_at(dim_ref, GlobalTilePos::from(target), being_ent) {
+                if param_set.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
                     glm.queued_move_dir = Vec2::ZERO;
                     glm.active_move_dir = Vec2::ZERO;
                     if !moved {

@@ -5,8 +5,8 @@
     weight: 1.0,
     tags: Some([ "dungeon", "" ]),
     args: Some({
-        "floor_tile_id": ["ducatas"],
-        "wall_tile_id": ["newbiewall"],
+        "floor_tile_id": ["ca"],
+        "wall_tile_id": ["nw"],
         "lava_tile_id": ["lava"],
         "claim_square_min_side_length": ["8"],
         "claim_square_max_side_length": ["10"],

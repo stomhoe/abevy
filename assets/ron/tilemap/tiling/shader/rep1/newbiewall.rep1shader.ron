@@ -1,6 +1,6 @@
 (
-    id: "newbiewall",
-    img_path: "texture/world/terr/dungeon/newbiewall.png",
+    id: "nw",
+    img_path: "texture/world/terr/dungeon/nw.png",
     scale: 10,
     mask_color: (255., 0, 0, 255.),
 )

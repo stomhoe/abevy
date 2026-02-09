@@ -1,11 +1,11 @@
 (
-    id: "newbiewall",
+    id: "nw",
     name: "Dungeon newbie wall",
     z: -700,
     img_paths: [
         ("", "texture/world/white.png"),
     ],
-    //shader: Some("newbiewall"),
+    //shader: Some("nw"),
     color: Some((255, 0, 0, 255)),
     y_sort: Some(0),
     walk_speed: Some(0),

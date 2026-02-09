@@ -29,7 +29,7 @@ pub fn init_shaders(
         };
         //trace!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
 
-        let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
+        let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
             Ok(id) => id,
             Err(err) => {
                 error!(target: TILE_SHADER_INIT, "Failed to create StrId for shader '{}': {}", seri.id, err);

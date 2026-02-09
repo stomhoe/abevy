@@ -5,8 +5,8 @@
     weight: 1.0,
     tags: Some([ "dungeon", "" ]),
     args: Some({
-        "floor_tile_id": ["ducatas"],
-        "wall_tile_id": ["newbiewall"],
+        "floor_tile_id": ["ca"],
+        "wall_tile_id": ["nw"],
         "lava_tile_id": ["lava"],
         // Room shape weights (relative probabilities)
         "room_shape_weight_rectangle": ["1.0"],

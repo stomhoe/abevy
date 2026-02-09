@@ -259,6 +259,7 @@ pub fn despawn_if_not_excepted(
     >,
     registered_positions: Res<ImportantRegisteredPositions>,
     mut params: TileGatheringParamSet,
+    mut otile_ents: Local<Vec<Entity>>,
 ) {
     changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
@@ -270,67 +271,65 @@ pub fn despawn_if_not_excepted(
             return;
         };
 
-        let otile_ents = params.gather_tiles_at(dim, gpos);
-        if !otile_ents.is_empty() {
-            otile_ents.iter().for_each(|&otile_ent| {
-                if otile_ent == newtile_ent {
+        params.gather_tiles_at(&mut *otile_ents, dim, gpos);
+        otile_ents.drain(..).for_each(|otile_ent| {
+            if otile_ent == newtile_ent {
+                return;
+            }
+            let Ok((otile_ezero_ref, otile_tag_hashset, otile_delete_others_excp)) = otile_query.get(otile_ent) else {
+                trace!(target: "tilemap", "Failed to get prev tile entity {:?}, skipping despawn check", otile_ent);
+                return;
+            };
+            let Ok((otile_z, ezero_otile_delete_others_excp)) = ezero_query.get(otile_ezero_ref.0) else {
+                trace!(target: "tilemap", "Failed to get EntityZero for tile entity {:?}, skipping despawn check", otile_ent);
+                return;
+            };
+            let Some(otile_z) = otile_z else {
+                trace!(target: "tilemap", "Tile entity {:?} has no AcZ, skipping despawn check", otile_ent);
+                return;
+            };
+
+
+            let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
+            if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
+                if newtile_delete_others_excp.spared_z.contains(otile_z) {
                     return;
                 }
-                let Ok((otile_ezero_ref, otile_tag_hashset, otile_delete_others_excp)) = otile_query.get(otile_ent) else {
-                    trace!(target: "tilemap", "Failed to get prev tile entity {:?}, skipping despawn check", otile_ent);
+                else if let Some(otile_tag_hashset) = otile_tag_hashset
+                && newtile_delete_others_excp.spared_tags.intersects(otile_tag_hashset)
+                {
                     return;
-                };
-                let Ok((otile_z, ezero_otile_delete_others_excp)) = ezero_query.get(otile_ezero_ref.0) else {
-                    trace!(target: "tilemap", "Failed to get EntityZero for tile entity {:?}, skipping despawn check", otile_ent);
+                }
+                else {
+                    trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
+                    // Don't despawn if the tile's EntityZero is registered or exempted
+                    if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
+                        params.safe_despawn_tile_at(&mut cmd, dim, gpos, otile_ent);
+                    }
                     return;
-                };
-                let Some(otile_z) = otile_z else {
-                    trace!(target: "tilemap", "Tile entity {:?} has no AcZ, skipping despawn check", otile_ent);
-                    return;
-                };
+                }
+            }
 
-
-                let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
-                if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
-                    if newtile_delete_others_excp.spared_z.contains(otile_z) {
-                        return;
-                    }
-                    else if let Some(otile_tag_hashset) = otile_tag_hashset
-                    && newtile_delete_others_excp.spared_tags.intersects(otile_tag_hashset)
-                    {
-                        return;
-                    }
-                    else {
-                        trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
-                        // Don't despawn if the tile's EntityZero is registered or exempted
-                        if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
-                            params.safe_despawn_tile_at(&mut cmd, dim, gpos, otile_ent);
-                        }
-                        return;
-                    }
+            let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp);
+            if let Some(otile_delete_others_excp) = otile_delete_others_excp {
+                if otile_delete_others_excp.spared_z.contains(newtile_z) {
+                    return;
+                }
+                else if let Some(newtile_tag_hashset) = newtile_tag_hashset
+                && otile_delete_others_excp.spared_tags.intersects(newtile_tag_hashset)
+                {
+                    return;
                 }
 
-                let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp);
-                if let Some(otile_delete_others_excp) = otile_delete_others_excp {
-                    if otile_delete_others_excp.spared_z.contains(newtile_z) {
-                        return;
-                    }
-                    else if let Some(newtile_tag_hashset) = newtile_tag_hashset
-                    && otile_delete_others_excp.spared_tags.intersects(newtile_tag_hashset)
-                    {
-                        return;
-                    }
-
-                    else {
-                        trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
-                        // Don't despawn if the new tile's EntityZero is registered or exempted
-                        if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
-                            params.safe_despawn_tile_at(&mut cmd, dim, gpos, newtile_ent);
-                        }
+                else {
+                    trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
+                    // Don't despawn if the new tile's EntityZero is registered or exempted
+                    if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
+                        params.safe_despawn_tile_at(&mut cmd, dim, gpos, newtile_ent);
                     }
                 }
-            });
-        }
+            }
+        });
     });
 }
 

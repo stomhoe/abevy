@@ -20,9 +20,9 @@
         ("idxmax", ["$3", "$4", "$1"], 0),  //compare lake vs river vs tempgrass
 
     ],
-   
+
     bifs: [
-        ("", ["lake"]),                     //index 0: lake branch
+        ("", ["nw"]),                     //index 0: lake branch
         ("", ["orange"]),                    //index 1: river branch
         ("normal4", ["tempgrass"]),         //index 2: tempgrass branch (goes to normal4)
     ],
