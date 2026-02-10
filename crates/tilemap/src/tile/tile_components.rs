@@ -1,6 +1,7 @@
 use ::sprite_shared::*;
 use bevy::ecs::entity::EntityHashMap;
 use bevy::ecs::entity::MapEntities;
+#[allow(unused_imports, )]
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)]
 use bevy::prelude::*;
@@ -13,7 +14,7 @@ use common::common_components::*;
 use common::common_tag_components::{HashedTagsVec, TagSet};
 
 use game_common::game_common_components::*;
-use game_common::game_common_string_components::{Description, GameCommonStringComponentsBundle};
+use game_common::game_common_string_components::*;
 
 use ::tilemap_shared::*;
 use serde::{Deserialize, Serialize};
@@ -52,6 +53,7 @@ pub struct ToDenyOnTileClone(
 ); //Disabled no porque se elimina posteriormente
 
 #[derive(Bundle)]
+#[allow(unused, )]
 struct ToDenyOnReleaseBuild(Name);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
@@ -246,4 +248,6 @@ pub struct DeleteOtherTiles {
     pub spared_z: HashSet<AcZ>,
     pub spared_tags: TagSet,
     pub extra_radius: u32,
+    /// use this only if both delete each other and they don't spare each other. the one with higher priority doesn't get deleted
+    pub priority: u32,
 }

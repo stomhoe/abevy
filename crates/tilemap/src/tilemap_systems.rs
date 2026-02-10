@@ -73,9 +73,9 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub rocky_mat: ResMut<'w, Assets<RockyTerrainMat>>,
     pub chunkrange: Res<'w, AaChunkRangeSettings>,
 
-    pub min_dists_query: Query<'w, 's, (&'static MinDistancesMap), common::AnyDisabling>,
+    pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
     pub regpos_map: ResMut<'w, ImportantRegisteredPositions>,
-    pub shader_query: Query<'w, 's, (&'static TileShader), ()>,
+    pub shader_query: Query<'w, 's, &'static TileShader, ()>,
 
     pub loaded_chunks: Res<'w, LoadedChunks>,
     pub state: Res<'w, State<ClientState>>,
@@ -173,7 +173,7 @@ pub fn process_tiles_pre(
             params.collected_tiles.0.swap_remove(i);
             continue;
         }
-        let (tile_strid, hash_id, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, is_spritetile, color, y_sort) = query_result.unwrap();
+        let (_tile_strid, hash_id, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, is_spritetile, color, y_sort) = query_result.unwrap();
 
         if !params.regpos_map.check_min_distances(
             &mut cmd,

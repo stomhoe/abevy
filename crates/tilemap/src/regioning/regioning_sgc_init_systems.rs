@@ -1,8 +1,7 @@
 
 use bevy::prelude::*;
 use common::{common_components::*, common_tag_components::{HashedTagsVec, TagSet}};
-use ::dimension_shared::*;
-use game_common::{game_common_components::ArgsMap, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::ArgsDict, game_common_components_samplers::EntityWeightedSampler};
 use ::tilemap_shared::*;
 
 use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*, StructuredGenConfigEntityMap}, terrain_gen::terrgen_messages::OpFilter};
@@ -52,7 +51,7 @@ pub fn init_structured_gen_configs (
             gen_cfg.max_per_region = max_per_region;
         }
         if let Some(args) = structured_gen_seri.args.clone() {
-            gen_cfg.args = ArgsMap::with_capacity(args.len());
+            gen_cfg.args = ArgsDict::with_capacity(args.len());
             for (key, val_vec) in args {
                 gen_cfg.args.insert(key, val_vec);
             }

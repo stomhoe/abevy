@@ -6,7 +6,6 @@ use crate::{
 //    common_layout::*,
 //    common_events::*,
 };
-use serde::{Deserialize, Serialize};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use std::fmt::Display;
 

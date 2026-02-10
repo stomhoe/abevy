@@ -78,8 +78,6 @@ pub fn sync_movement_to_server(
 
 pub fn prepare_grid_locked_movement(
     param_set: BlockingTileParamSet,
-
-    blocking_tiles: Query<&WalkSpeedMultIfOnTop, ()>,
     time: Res<Time>,
     client_state: Res<State<ClientState>>,
     mut tsf_from_server_writer: MessageWriter<ToClients<TransformFromServer>>,
@@ -172,13 +170,11 @@ pub fn prepare_grid_locked_movement(
             }
             (axis_input_dir, false)
         };
-
         if dir_vec == Vec2::ZERO {
             transform.translation = snapped_translation;
             move_anim.set(false, being_ent, &mut being_changed_state_set);
             continue;
         }
-
         let input = {
             if dir_vec.x.abs() >= dir_vec.y.abs() {
                 dir_vec.y = 0.0;
@@ -295,9 +291,7 @@ pub fn prepare_grid_locked_movement(
                 }
             } else {
                 current_translation += (current_dir * step).extend(0.0);
-                remaining_distance -= step;
                 moved |= step > 0.0;
-                trace!("last exit {:?}", current_translation);
                 break;
             }
             trace!("end loop iter");

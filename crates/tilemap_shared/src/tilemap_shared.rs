@@ -5,13 +5,14 @@ use bevy::ecs::system::SystemParam;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_inspector_egui::InspectorOptions;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{AssetScoped, HashId, Prefix, SparedFromHotReloading};
+use common::common_components::*;
 use serde::{Deserialize, Serialize};
+#[allow(unused_imports, )]
 use bevy::platform::collections::{HashSet, HashMap};
 use bevy_inspector_egui::prelude::*;
 use smallvec::SmallVec;
 
-use crate::{tilemap_positioning::*};
+use crate::{DimensionRef, tilemap_positioning::*};
 
 
 #[derive(Resource, Reflect, InspectorOptions, Default)]
@@ -27,12 +28,13 @@ pub struct GlobalGenSettings {
     /// Timeout in seconds to wait for StructureBuildCompliance before giving up
     pub structure_build_timeout_secs: f64,
 }
+const DONT_TOUCH: f32 = 100.;
 impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self {
             seed: 3,
             world_freq: 6.
-            /100.,//<-DON'T TOUCH
+            /DONT_TOUCH,
             structure_build_timeout_secs: 4.0,
         }
     }
@@ -130,35 +132,6 @@ impl TilemapOf {
 pub struct Tilemaps(Vec<Entity>);
 impl Tilemaps { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-#[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
-pub struct Dimension;
-
-
-common::define_entity_map_systems!(
-    Dimension,
-    DimensionSeri, "ron/dimension", "dimension.ron"
-);
-
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
-pub struct DimensionSeri {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    /// this dimension's tags, used for whoever needs it
-    pub tags: Option<HashSet<String>>,
-
-    pub whitelisted_structure_gen_tags: Option<Vec<String>>,
-    pub blacklisted_structure_gen_tags: Option<Vec<String>>,
-}
-
-impl DimensionStrIdRef {
-
-    pub fn overworld_fallback() -> Self {
-        warn!("Using overworld fallback for DimensionStrIdRef");
-        DimensionStrIdRef(common::common_components::StrId::trunc("ow"))
-    }
-}
 #[derive(Debug, )]
 pub struct ChunkEntityMatrix {
     cells: Box<[ReturnedVec; ChunkPos::CHUNK_AREA]>,
@@ -196,7 +169,6 @@ impl Default for ChunkEntityMatrix {
 }
 
 #[derive(Resource, Debug, Default)]
-/// TODO solo meter y extraer spritetiles en esto
 pub struct SpriteTilesAtGpos  {
     pub map: bevy::platform::collections::HashMap<(DimensionRef, ChunkPos), ChunkEntityMatrix>,
 }
@@ -207,7 +179,6 @@ impl SpriteTilesAtGpos {
         let local = (gpos.0 - chunk_origin.0).as_uvec2();
         (chunk, local)
     }
-
     pub fn tiles_at_pos(&self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
         let (chunk, local) = Self::chunk_and_local(gpos);
         self.map
@@ -221,7 +192,6 @@ impl SpriteTilesAtGpos {
             matrix.swap_remove(local, tile_ent);
         }
     }
-
     pub fn reserve_capacity(&mut self, additional: usize) {
         self.map.reserve(additional);
     }
@@ -230,7 +200,6 @@ impl SpriteTilesAtGpos {
         let matrix = self.map.entry((dimension_ref, chunk)).or_insert_with(ChunkEntityMatrix::new);
         matrix.push(local, entity);
     }
-
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
@@ -238,27 +207,44 @@ pub struct SpriteTile;
 
 pub type ReturnedVec = SmallVec<[Entity; 16]>;
 
+#[derive(Component, Debug, Clone, Default, Reflect)]
+/// maps handle's ids to texture index to use within tilemap as a tile belonging to it
+pub struct HashIdToTexIndex(HashIdMap<TileTextureIndex>);
+impl HashIdToTexIndex {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashIdMap::with_capacity(capacity))
+    }
+    pub fn reserve(&mut self, additional: usize) {
+        self.0.reserve(additional);
+    }
+    pub fn insert(&mut self, tile_hid: HashId, handle_hid: HashId, tex_index: TileTextureIndex) {
+        let _ = self.0.insert(tile_hid.merge(handle_hid), tex_index);
+    }
+    pub fn get(&self, tile_hid: HashId, handle_hid: HashId) -> Result<TileTextureIndex, ()> {
+        let merged = tile_hid.merge(handle_hid);
+        self.0.get(merged).cloned()
+    }
+}
+
+
 #[derive(SystemParam)]
 #[allow(unused_parens, )]
 pub struct TileGatheringParamSet<'w, 's> {
-    loaded_chunks: Res<'w, LoadedChunks>,
-    chunk_children: Query<'w, 's, (&'static Tilemaps)>,
-    tilemap_data: Query<'w, 's, (&'static OplistSize, &'static mut TileStorage),>,
     spritetiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
+    loaded_chunks: Res<'w, LoadedChunks>,
+    chunk_children: Query<'w, 's, &'static Tilemaps>,
+    pub tilemap_query: Query<'w, 's, (&'static OplistSize, &'static mut TileStorage, &'static HashIdToTexIndex),>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
-    /// use drain on the vec
     pub fn gather_tiles_at(&self, vec_to_drain: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
             let chunk_pos = gpos.to_chunkpos();
+            vec_to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
             let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
-                //error!("Chunk not loaded, {:?}{:?}", gpos, chunk_pos);
                 return;
             };
-
             if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
-                //vec_to_drain.reserve(tilemaps.entities().len() + 4);
                 for &tmap_ent in tilemaps.entities() {
-                    let Ok((&oplist_size, storage)) = self.tilemap_data.get(tmap_ent) else {
+                    let Ok((&oplist_size, storage, ..)) = self.tilemap_query.get(tmap_ent) else {
                         continue;
                     };
                     let tpos = gpos.to_tilepos(oplist_size);
@@ -268,7 +254,6 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
                     }
                 }
             }
-            vec_to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
         }
     pub fn safe_despawn_tile_at(&mut self, cmd: &mut Commands, dim: DimensionRef, gpos: GlobalTilePos, tile_ent: Entity) {
         cmd.entity(tile_ent).try_despawn();
@@ -278,7 +263,7 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
         };
         if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
             for &tmap_ent in tilemaps.entities() {
-                let Ok((&oplist_size, mut storage)) = self.tilemap_data.get_mut(tmap_ent) else {
+                let Ok((&oplist_size, mut storage, ..)) = self.tilemap_query.get_mut(tmap_ent) else {
                     continue;
                 };
                 let tpos = gpos.to_tilepos(oplist_size);
@@ -294,3 +279,6 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct WalkSpeedMultIfOnTop(pub f32); //1.0 es velocidad normal
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct SearchingForSuitablePos { pub filtered_op_ent: Entity, }

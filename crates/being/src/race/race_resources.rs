@@ -1,6 +1,6 @@
 
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
-use game_common::game_common_components::NormalVariationSeri;
+use game_common::game_common_seris::NormalDistSeri;
 use crate::race::Race;
 
 
@@ -22,6 +22,22 @@ pub struct RaceSeri {
     pub sentient: Option<bool>,
     pub fallback_sprites_to_sample: Vec<String>,
 
+
+    pub scale_hp_and_strength_with_size: Option<bool>,
+
+
+
+    ///multiplies both hp and sprite size (both vertically and horizontally, multiplies with the other sprite normalvariation multiplier, generated multipliers should be in the range of (0.8, 1.2))
+    /// overriden by being inst template's NormalVariation (if present)
+    pub size_variation: Option<NormalDistSeri>,
+
+    // only affects sprite width (should generate multipliers close to 1 to avoid weird rsults (0.95, 1.05))
+    /// overriden by being inst template's NormalVariation (if present)
+    pub hori_variation: Option<NormalDistSeri>,
+    // only affects sprite height (should generate multipliers close to 1 to avoid weird rsults (0.95, 1.05))
+    /// overriden by being inst template's NormalVariation (if present)
+    pub vert_variation: Option<NormalDistSeri>,
+
     /// Each vec entry is a tuple of (group_name (face, hair, skin color) and the choosable sprites. from the group (HashSet<String>) you are supposed to choose only one). fallbacks to sprites_to_sample when offering sprites to select to player if None
     pub sets_of_choosable_sprites: Option<Vec<(String, HashSet<String>)>>,
     /// global_caloric_burn_rate_multiplier
@@ -31,9 +47,6 @@ pub struct RaceSeri {
 
     pub whitelisted_tiles_for_spawning: Option<HashSet<String>>,
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
-
-    /// overriden by being instantiation template's NormalVariation (if present)
-    pub normal_variation: Option<NormalVariationSeri>,
 }
 
 common::define_entity_map_systems!(

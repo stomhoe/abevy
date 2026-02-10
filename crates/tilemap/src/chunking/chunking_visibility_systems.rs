@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use bevy_ecs_tilemap::{DrawTilemap, tiles::TileStorage};
+use bevy_ecs_tilemap::{DrawTilemap,};
 use camera::camera_components::CameraTarget;
 use tilemap_shared::DimensionRef;
 use tilemap_shared::ChunkPos;

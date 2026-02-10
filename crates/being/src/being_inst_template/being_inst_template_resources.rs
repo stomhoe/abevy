@@ -1,6 +1,6 @@
 use being_shared::BeingInstTemplate;
 use bevy::{asset, platform::collections::{HashMap, HashSet}, prelude::*};
-use game_common::game_common_components::NormalVariationSeri;
+use game_common::game_common_seris::NormalDistSeri;
 
 #[derive(serde::Deserialize, Asset, Reflect, Default, Debug)]
 pub struct BitSeri {
@@ -12,8 +12,15 @@ pub struct BitSeri {
     pub race: String,
     pub scs_samplers: Option<Vec<String>>, // sprite weighted sampler ids, or scs ids directly
     pub sprites_scale_ranges: Option<HashMap<String, (f32, f32)>>,//additional
-    ///multiplies both hp and sprite size
-    pub normal_variation: Option<NormalVariationSeri>,
+
+    ///multiplies both hp and sprite size (both vertically and horizontally, multiplies with the other sprite normalvariation multiplier, generated multipliers should be in the range of (0.8, 1.2))
+    pub size_variation: Option<NormalDistSeri>,
+
+    // only affects sprite width (should generate multipliers close to 1 to avoid weird rsults (0.95, 1.05))
+    pub hori_variation: Option<NormalDistSeri>,
+    // only affects sprite height (should generate multipliers close to 1 to avoid weird rsults (0.95, 1.05))
+    pub vert_variation: Option<NormalDistSeri>,
+
     pub health_multiplier: Option<f32>,
 
     /// overrides race's set of weighted body trees if present

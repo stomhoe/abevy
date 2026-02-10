@@ -2,6 +2,8 @@
 use bevy::{ecs::entity::MapEntities, prelude::*};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use::tilemap_shared::*;
+use crate::game_common_components::CappedNormalDist;
+use crate::game_common_seris::NormalDistSeri;
 #[macro_export]
 macro_rules! define_weightedsampler_impl {
     ($ty:ident, $inner:ty) => {
@@ -168,4 +170,32 @@ impl MapEntities for EntityWeightedSampler {
 pub struct WeightedSamplerRef(#[entities] pub Entity);
 
 
-define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");            
+define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");
+
+macro_rules! define_sprite_normal_dist {
+    ($dist_name:ident) => {
+        ::paste::paste! {
+            #[derive(Component, Reflect, Default, Debug, Clone, Deserialize, Serialize)]
+            pub struct $dist_name(pub CappedNormalDist);
+            impl $dist_name {
+                pub fn new(seri: NormalDistSeri) -> Self {
+                    Self(CappedNormalDist::from_seri(seri))
+                }
+                pub fn sample(&self, rng: &mut impl rand::Rng) -> [<$dist_name Result>] {
+                    [<$dist_name Result>](self.0.sample(rng))
+                }
+            }
+
+            #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+            /// must be inserted into Being entities after sampling
+            pub struct [<$dist_name Result>](pub f32);
+        }
+    };
+}
+
+define_sprite_normal_dist!(SpriteHoriNormalDist);
+define_sprite_normal_dist!(SpriteVertNormalDist);
+define_sprite_normal_dist!(SpriteGlobalNormalDist);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+pub struct ScaleHpAndStrengthWithSize;

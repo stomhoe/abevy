@@ -6,16 +6,15 @@ use std::hash::Hash;
 use std::time::Duration;
 use strum_macros::{AsRefStr, Display};
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct SearchingForSuitablePos {
-    pub filtered_op_ent: Entity,
-}
+use crate::game_common_seris::NormalDistSeri;
+pub use crate::entity_zero_components::*;
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
 pub struct Directionable;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct EntityZero;
+
 
 #[derive(Component, Debug, Reflect)]
 /// runs when simulation is running or not
@@ -40,21 +39,7 @@ impl SimRunningDespawnTimer {
 pub struct Persisted;
 
 #[allow(unused_parens)]
-#[derive(
-    Component,
-    Debug,
-    Deserialize,
-    Serialize,
-    Default,
-    AsRefStr,
-    Display,
-    Reflect,
-    Eq,
-    PartialEq,
-    Hash,
-    Clone,
-    Copy,
-)]
+#[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, Eq, PartialEq, Hash, Clone, Copy)]
 #[strum(serialize_all = "lowercase")]
 pub enum CardinalDirection {
     #[default]
@@ -104,24 +89,20 @@ impl From<&str> for CardinalDirection {
     }
 }
 impl From<String> for CardinalDirection {
-    fn from(s: String) -> Self {
-        CardinalDirection::from(s.as_str())
-    }
+    fn from(s: String) -> Self { CardinalDirection::from(s.as_str()) }
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, MapEntities)]
 pub struct SourceDest {
-    pub source: Entity,
-    pub destination: Entity,
+    #[entities] pub source: Entity, #[entities]pub destination: Entity,
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, Default)]
-pub struct ArgsMap(HashMap<StrId, Vec<String>>);
-impl ArgsMap {
+pub struct ArgsDict(HashMap<StrId, Vec<String>>);
+impl ArgsDict {
     pub fn with_capacity(capacity: usize) -> Self {
         Self(HashMap::with_capacity(capacity))
     }
-
     pub fn insert<T: Into<StrId>, U: Into<String>>(&mut self, key: T, val: Vec<U>) {
         let val_strs: Vec<String> = val.into_iter().map(|v| v.into()).collect();
         self.0.insert(key.into(), val_strs);
@@ -129,7 +110,6 @@ impl ArgsMap {
     pub fn get<T: Into<StrId>>(&self, key: T) -> Option<&Vec<String>> {
         self.0.get(&key.into())
     }
-
     pub fn parse_arg<T: std::str::FromStr + Clone, K: Into<StrId>>(&self, key: K, default: T) -> T {
         self.get(key)
             .and_then(|v| v.first())
@@ -161,11 +141,7 @@ pub struct ClonedSpawned(pub Vec<Entity>);
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
 
-#[derive(
-    Component, Debug, Clone, Deserialize, Serialize, Reflect, Copy, PartialEq, Eq, Hash, MapEntities,
-)]
-/// DON'T FORGET TO ADD <DISABLED> TO THE QUERY
-pub struct EntityZeroRef(#[entities] pub Entity);
+
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub enum FunctionType {
@@ -281,60 +257,47 @@ impl TickMultFactor {
     }
 }
 
+
+
 #[derive(Component, Reflect, Default, Debug, Clone, Deserialize, Serialize)]
-pub struct CappedNormalDistribution {
+pub struct CappedNormalDist {
     pub min: f32,
     pub max: f32,
     pub mean: f32,
     pub std_dev: f32,
 }
-
-impl CappedNormalDistribution {
+impl CappedNormalDist {
     pub fn new(min: f32, max: f32, mean: f32, std_dev: f32) -> Self {
         let mut min = min.max(0.01);
         let mut max = max.max(0.01);
         let mut mean = mean;
         let std_dev = std_dev.max(0.01);
-
-        // Validate that min <= max
         if min > max {
             error!(
-                "CappedNormalDistribution: min ({}) is greater than max ({}). Swapping values.",
+                "CappedNormalDist: min ({}) is greater than max ({}). Swapping values.",
                 min, max
             );
             std::mem::swap(&mut min, &mut max);
         }
-
-        // Validate that mean is within [min, max]
         if mean < min || mean > max {
             error!(
-                "CappedNormalDistribution: mean ({}) is outside the range [{}, {}]. Clamping to range.",
+                "CappedNormalDist: mean ({}) is outside the range [{}, {}]. Clamping to range.",
                 mean, min, max
             );
             mean = mean.clamp(min, max);
         }
-
-        // Warn if std_dev is too large relative to range
         let range = max - min;
         if std_dev > range {
             error!(
-                "CappedNormalDistribution: std_dev ({}) is larger than the range ({} - {} = {}). \
+                "CappedNormalDist: std_dev ({}) is larger than the range ({} - {} = {}). \
                  Most samples will be clamped.",
                 std_dev, max, min, range
             );
         }
-
-        Self {
-            min,
-            max,
-            mean,
-            std_dev,
-        }
+        Self {min, max, mean, std_dev,}
     }
 
-    pub fn from_seri(seri: NormalVariationSeri) -> Self {
-        Self::new(seri.min, seri.max, seri.mean, seri.std_dev)
-    }
+
 
     pub fn sample(&self, rng: &mut impl rand::Rng) -> f32 {
         use rand_distr::{Normal, Distribution};
@@ -343,14 +306,14 @@ impl CappedNormalDistribution {
             Ok(dist) => dist,
             Err(e) => {
                 error!(
-                    "CappedNormalDistribution: Failed to create normal distribution with mean={}, std_dev={}: {}. \
+                    "CappedNormalDist: Failed to create normal distribution with mean={}, std_dev={}: {}. \
                      Using fallback distribution.",
                     self.mean, self.std_dev, e
                 );
                 Normal::new(self.mean, 0.1)
                     .unwrap_or_else(|_| {
                         error!(
-                            "CappedNormalDistribution: Fallback distribution also failed. Returning mean value."
+                            "CappedNormalDist: Fallback distribution also failed. Returning mean value."
                         );
                         Normal::new(self.mean, 0.01)
                             .expect("Final fallback should always work")
@@ -360,23 +323,7 @@ impl CappedNormalDistribution {
 
         normal.sample(rng).clamp(self.min, self.max)
     }
-}
-
-impl From<CappedNormalDistribution> for NormalVariationSeri {
-    fn from(value: CappedNormalDistribution) -> Self {
-        Self {
-            min: value.min,
-            max: value.max,
-            mean: value.mean,
-            std_dev: value.std_dev,
-        }
+    pub fn from_seri(seri: NormalDistSeri) -> Self {
+        Self::new(seri.min, seri.max, seri.mean, seri.std_dev)
     }
-}
-
-#[derive(Asset, Reflect, Default, Debug, Clone, Deserialize, )]
-pub struct NormalVariationSeri {
-    pub min: f32,
-    pub max: f32,
-    pub mean: f32,
-    pub std_dev: f32,
 }

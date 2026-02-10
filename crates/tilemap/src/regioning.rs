@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use crate::{chunking::chunking_spawn_systems::*, regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*, regioning_sgc_components::StructuredGenConfig}, terrain_gen::terrgen_systems::process_pending_ops_and_collect_tiles, tile::tile_systems::despawn_if_not_excepted, tilemap_systems::process_tiles_pre};
+use crate::{ regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*, regioning_sgc_components::StructuredGenConfig}, };
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -36,7 +36,7 @@ pub fn plugin(app: &mut App) {
             advance_i_on_claimlist_timeout,
 
             clonespawn_tiles_on_chunk_spawn
-            .before(process_tiles_pre)//removing this breaks it
+            .before(crate::tilemap_systems::process_tiles_pre)//removing this breaks it
             ,
 
         ).in_set(RegioningSystems),

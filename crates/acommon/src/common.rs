@@ -4,6 +4,8 @@ use bevy_replicon::prelude::AppRuleExt;
 
 use crate::{common_components::*, common_resources::*, common_states::*, common_systems::*, common_tag_components::TagSet, common_tag_systems::*, common_types::*};
 
+use crate::qol::AppRegisterAndReplicateExt;
+
 use {bevy::prelude::*,};
 
 #[allow(unused_parens, path_statements, )]
@@ -21,25 +23,21 @@ pub fn plugin(app: &mut App) {
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
 
-        .register_type::<Prefix>().register_type_data::<Prefix, InspectorEguiImpl>()
-        .register_type::<DisplayName>()
-        .register_type::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
-        .register_type::<HashIdToEntityMap>()
-        .register_type::<Tag>().register_type_data::<Tag, InspectorEguiImpl>()
-        .register_type::<ImagePathHolder>()
-        .register_type::<TagSet>()
-
-
         .replicate::<Name>()
-        .replicate::<Prefix>()
-        .replicate::<StrId>()
-        .replicate::<Tag>()
-        .replicate::<DisplayName>()
-        .replicate::<HashId>()
-        .replicate::<ImagePathHolder>()
-        .replicate::<TagSet>()
+        .regrepli::<Prefix>()
+        .register_type_data::<Prefix, InspectorEguiImpl>()
+        .regrepli::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
+        .regrepli::<ImagePathHolder>()
+        .regrepli::<DisplayName>()
+        .regrepli::<HashId>()
+        .regrepli::<StrId>()
+        .regrepli::<HashIdToEntityMap>()
+        .regrepli::<Tag>().register_type_data::<Tag, InspectorEguiImpl>()
+        .regrepli::<TagSet>()
+        .regrepli::<VisibilityGameState>()
 
-        .replicate::<VisibilityGameState>()
+
+
     ;
 }
 

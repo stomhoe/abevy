@@ -16,7 +16,7 @@ pub fn plugin(app: &mut App) {
             plugin_sex,
         ))
         .add_systems(
-            OnEnter(AssetLoading::SpawnReplicatedEntities), 
+            OnEnter(AssetLoading::SpawnReplicatedEntities),
             (
                 (init_sexes, map_sex_id_to_entity).chain()
             ).in_set(SexSystems)

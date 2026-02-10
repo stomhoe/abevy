@@ -12,7 +12,7 @@ use crate::{
 
 
 #[allow(unused_parens)]
-pub fn add_hash_id_from_str_id(mut cmd: Commands, 
+pub fn add_hash_id_from_str_id(mut cmd: Commands,
     query: Query<(Entity, AnyOf<(&StrId, &StrId20B)>),(Or<(Changed<StrId>, Changed<StrId20B>)>, With<AddHashIdFromStrId>, Without<HashId>, crate::AnyDisabling)>,
 ) {
     let to_add: Vec<_> = query
@@ -31,10 +31,10 @@ pub fn add_hash_id_from_str_id(mut cmd: Commands,
 }
 
 
-pub fn update_img_sizes_on_load(mut events: MessageReader<AssetEvent<Image>>, assets: Res<Assets<Image>>, 
+pub fn update_img_sizes_on_load(mut messages: MessageReader<AssetEvent<Image>>, assets: Res<Assets<Image>>,
     mut map: ResMut<ImageSizeMap>,) {
-    for ev in events.read() {
-        match ev {
+    for msg in messages.read() {
+        match msg {
             AssetEvent::Added { id } => {
                 if let Some(img) = assets.get(*id) {
                     let img_size = UVec2::new(img.texture_descriptor.size.width, img.texture_descriptor.size.height);

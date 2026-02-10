@@ -18,7 +18,7 @@ pub use chunking_visibility_systems::*;
 pub use chunking_despawn_systems::*;
 use tilemap_shared::{ChunkPos, ForceAllChunksDespawn, LoadedChunks, TilemapOf, Tilemaps};
 
-use crate::{ChunkSystems, tile::tile_systems::despawn_if_not_excepted};
+use crate::{ChunkSystems, };
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {

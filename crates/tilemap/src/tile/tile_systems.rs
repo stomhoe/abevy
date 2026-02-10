@@ -1,6 +1,6 @@
 use crate::{
     tile::{tile_components::*, tile_messages::GlobalTilePosChanged},
-    tilemap_components::*,
+
     tilemap_resources::*,
 };
 use ::sprite_shared::*;
@@ -10,7 +10,6 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, tiles::TileFlip};
 use bevy_replicon::prelude::*;
 use common::{AnyDisabling, common_components::HashId, common_tag_components::TagSet};
-use dimension_shared::{PrevDimensionRef};
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
 
@@ -379,12 +378,13 @@ pub fn make_spritetile_child_of_chunk(
 }
 
 #[allow(unused_parens)]
-//todo que se triggeree con un evento cuando el tilemap esté listo, sino puede q las tiles adyacentes no esten cargadas todavia
+
 pub fn tile_adjacency_retexturing_system(//TODO agregar change detection sino loopea sin parar
     mut cmd: Commands,
     ezero_query: Query<(&EntityZero), (common::AnyDisabling,)>,
     tilemap_query: Query<(&TileStorage, &HashIdToTexIndex), ()>,
     mut tile_query: Query<(&EntityZeroRef, &mut TileTextureIndex), ()>,
+    params: TileGatheringParamSet
 ) {
     return;
     for mut item in tile_query.iter_mut() {}

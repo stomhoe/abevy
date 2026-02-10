@@ -1,6 +1,6 @@
 use core::f32;
 
-use being_shared::{ControlledBy, ControlledLocally, HumanControlled};
+use ::being_shared::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
@@ -13,7 +13,7 @@ use crate::{movement_components::*, movement_messages::SendMoveInput};
 pub fn update_human_move_input(
     keys: Res<ButtonInput<KeyCode>>,
     input_mappings: Res<KeyboardInputMappings>,
-    mut move_input: Query<(&mut InputDirection, &HumanControlled), With<ControlledLocally>>,
+    mut move_input: Query<(&mut InputDirection, &IsHumanControlled), With<ControlledLocally>>,
 ) {
     let mut input_dir = Vec2::ZERO;
     if keys.pressed(input_mappings.move_up) {

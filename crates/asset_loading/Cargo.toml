@@ -11,7 +11,6 @@ sprite_animation = { path = "../sprite_animation" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 sprite = { path = "../sprite" }
 dimension = { path = "../dimension" }
-dimension_shared = { path = "../dimension_shared" }
 being = { path = "../being" }
 color_sampler = { path = "../color_sampler" }
 tilemap_shared = { path = "../tilemap_shared" }

@@ -1,12 +1,9 @@
 
-#[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon::prelude::*;
+use bevy::prelude::*;
+#[allow(unused_imports)]
 use bevy::ecs::entity::MapEntities;
 
-use tilemap_shared::DimensionRef;
-use serde::{Deserialize, Serialize};
-use tilemap_shared::{GlobalGenSettings, GlobalTilePos, OplistSize};
-use std::hash::{Hasher, Hash};
+use ::tilemap_shared::*;
 
 
 

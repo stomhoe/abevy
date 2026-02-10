@@ -1,7 +1,8 @@
-use being_shared::{ControlledByClient, Grounding, NormalDistSizeMultiplier, Sentient};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::common_states::AssetLoading;
+use ::being_shared::*;
+
+use common::{AppRegisterAndReplicateExt, common_states::AssetLoading};
 use game_common::{
     HostSystems,
     game_common::{GameplaySystems, StatefulSessionSystems},
@@ -39,36 +40,22 @@ pub fn plugin(app: &mut App) {
         RaceSystems.after(AcSpriteSystems),
         BeingInstTemplateSystems.after(RaceSystems)
     ))
+    .regrepli::<Being>()
+    .regrepli::<ControlledBy>()
+    .regrepli::<Grounding>()
+    .regrepli::<FollowerOf>()
+    .regrepli::<CharacterCreatedBy>()
+    .regrepli::<PlayerDirectControllable>()
 
 
-
-    .register_type::<Being>()
-    .register_type::<ControlledBy>()
-    .register_type::<Grounding>()
-    .register_type::<Controls>()
-
-    .register_type::<FollowerOf>()
-    .register_type::<Followers>()
-    .register_type::<CharacterCreatedBy>()
-    .register_type::<CreatedCharacters>()
-    .register_type::<IsHumanControlled>()
-
-    .replicate::<PlayerDirectControllable>()
-
-    .replicate::<CharacterCreatedBy>()
-    .replicate::<IsHumanControlled>()
-    .replicate::<Being>()
-    .replicate::<ControlledBy>()
-    .replicate::<Grounding>()
-    .replicate::<FollowerOf>()
-    .replicate::<Sentient>()
-
-    .replicate::<MappedSpritesToSample>()
-    .replicate::<ControlledByClient>()
-    .replicate::<NormalDistSizeMultiplier>()
+    .regrepli::<Sentient>()
+    .regrepli::<MappedSpritesToSample>()
+    .regrepli::<ControlledByClient>()
+    .regrepli::<NormalDistSizeMultiplier>()
     .replicate_filtered::<ChildOf, With<Being>>()
 
+    .register_type::<CreatedCharacters>()
+    .register_type::<ControlledBeings>()
 
-    .replicate_filtered::<Transform, With<Being>>()
     ;
 }

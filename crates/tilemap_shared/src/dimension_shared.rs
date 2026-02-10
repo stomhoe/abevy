@@ -1,11 +1,44 @@
-use bevy::platform::collections::HashSet;
-use bevy::{ecs::entity::EntityHashSet, platform::collections::HashMap, prelude::*};
-use bevy::{ecs::entity::MapEntities, prelude::*};
-
-use bevy_replicon::prelude::Replicated;
+use std::{hash::{Hash, }};
+use bevy::prelude::*;
+use bevy_replicon::prelude::*;
 use common::common_components::*;
-use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
+#[allow(unused_imports, )]
+use bevy::platform::collections::{HashSet, HashMap};
+use bevy::{ecs::entity::{EntityHashSet, MapEntities}, };
+use common::common_tag_components::TagSet;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+#[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
+pub struct Dimension;
+
+
+common::define_entity_map_systems!(
+    Dimension,
+    DimensionSeri, "ron/dimension", "dimension.ron"
+);
+
+#[derive(serde::Deserialize, Asset, TypePath, Default)]
+pub struct DimensionSeri {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    /// this dimension's tags, used for whoever needs it
+    pub tags: Option<HashSet<String>>,
+
+    pub whitelisted_structure_gen_tags: Option<Vec<String>>,
+    pub blacklisted_structure_gen_tags: Option<Vec<String>>,
+}
+
+impl DimensionStrIdRef {
+
+    pub fn overworld_fallback() -> Self {
+        warn!("Using overworld fallback for DimensionStrIdRef");
+        DimensionStrIdRef(common::common_components::StrId::trunc("ow"))
+    }
+}
+
+
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct DimensionSystems;

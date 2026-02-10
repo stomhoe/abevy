@@ -1,14 +1,15 @@
 use ::being_shared::*;
 use bevy::prelude::*;
 use faction::faction_components::BelongsToFaction;
+use game_common::game_common_components::{CappedNormalDist};
 use sprite_shared::SampleSpriteEnts;
 
-use crate::{being_inst_template::{being_inst_template_components::*, being_inst_template_resources::*}, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};
+use crate::{being_inst_template::{ being_inst_template_resources::*}, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};
 
 #[allow(unused_parens, )]
 pub fn build_being_from_being_inst_template_ref(mut cmd: Commands,
     beings_to_instantiate: Query<(Entity, &BitRef), (Changed<BitRef>)>,
-    bit_query: Query<(&BeingInstTemplate, Option<&SampleSpriteEnts>, Option<&RaceRef>, Option<&SampleTreeEnt>, Option<&BelongsToFaction>), >,
+    bit_query: Query<(&BeingInstTemplate, Option<&SampleSpriteEnts>, Option<&RaceRef>, Option<&SampleTreeEnt>, Option<&BelongsToFaction>, Option<&CappedNormalDist>), ()>,
 ) {
     let mut sample_sprites_to_ins = Vec::new();
     let mut race_refs_to_ins = Vec::new();
@@ -16,7 +17,7 @@ pub fn build_being_from_being_inst_template_ref(mut cmd: Commands,
     let mut belongs_to_fac_refs_to_ins = Vec::new();
 
     for (being_ent, bit_ref) in beings_to_instantiate.iter() {
-        let Ok((template, sample_sprites, race_ref, sample_body_body_tree, belongs_to_fac)) = bit_query.get(bit_ref.0) else {
+        let Ok((template, sample_sprites, race_ref, sample_body_body_tree, belongs_to_fac, norm_dist)) = bit_query.get(bit_ref.0) else {
             warn!(target: "bit_build", "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
             continue;
         };

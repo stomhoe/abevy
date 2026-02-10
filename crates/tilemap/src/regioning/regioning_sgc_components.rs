@@ -1,7 +1,8 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
-use game_common::game_common_components::ArgsMap;
+use game_common::game_common_components::ArgsDict;
 use serde::{Deserialize, Serialize};
+
 use bevy::{ecs::entity::MapEntities, platform::collections::HashMap};
 
 
@@ -17,7 +18,7 @@ pub struct StructuredGenConfig{
     /// the structure's HaId, not the sgc's
     structure_hash_id: HashId,
     pub max_per_region: u32,
-    pub args: ArgsMap,
+    pub args: ArgsDict,
 }
 impl StructuredGenConfig {
     pub fn new<S: AsRef<str>>(structure_id: S) -> Self {
@@ -25,7 +26,7 @@ impl StructuredGenConfig {
             structure_id: StrId::trunc(structure_id.as_ref()),
             structure_hash_id: HashId::hash(structure_id.as_ref()),
             max_per_region: 1024,
-            args: ArgsMap::default(),
+            args: ArgsDict::default(),
         }
     }
     pub fn structure_id(&self) -> &StrId {

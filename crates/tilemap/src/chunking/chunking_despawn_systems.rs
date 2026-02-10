@@ -81,7 +81,7 @@ pub fn periodically_check_despawn_unreferenced_chunks(
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
-    chunks_query: Query<(Option<&Children>, Option<&TilesToSave>), >,
+    chunks_query: Query<(Option<&Tilemaps>, Option<&TilesToSave>), >,
     mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
     mut force_despawn_reader: MessageReader<ForceChunkDespawn>,
@@ -112,7 +112,7 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
             continue;
         };
         if let Some(children) = children.as_ref() {
-            for child in children.iter() {
+            for _child in children.iter() {
                 // if tiles_to_save.entities().contains(&child) {
                 //     cmd.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
                 //     tosave_events.push(SavedTileHadChunkDespawn(child));

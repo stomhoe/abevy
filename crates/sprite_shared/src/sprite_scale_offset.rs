@@ -1,8 +1,6 @@
 
-use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::common_components::Tag;
 use serde::{Deserialize, Serialize};
 
 
@@ -135,8 +133,6 @@ macro_rules! impl_cross_sum {
         }
     };
 }
-
-// Cross-sum for all pairs (excluding reflexive, already covered)
 impl_cross_sum!(Offset2D, OffsetUpDown);
 impl_cross_sum!(Offset2D, OffsetDown);
 impl_cross_sum!(Offset2D, OffsetUp);

@@ -4,6 +4,7 @@ use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 use bevy::ecs::entity_disabling::Disabled;
 use common::{common_tag_components::TagSet};
 use game_common::game_common_components::{EntityZero, EntityZeroRef, CardinalDirection};
+use game_common::game_common_components_samplers::{SpriteGlobalNormalDistResult, SpriteHoriNormalDistResult, SpriteVertNormalDistResult};
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::sprite_components::*;
@@ -14,8 +15,8 @@ pub fn apply_scales(
     mut sprite_que: Query<(&BaseHolderRef, &mut Sprite, &EntityZeroRef, &mut Transform,
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
     ),>,
-    sprite_config_query: Query<(Option<&FlipHorizIfDir>, Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,), ()>,
-    baseholder_query: Query<&CardinalDirection>,
+    sprite_config_query: Query<(Option<&FlipHorizIfDir>, Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,  ), ()>,
+    baseholder_query: Query<(&CardinalDirection, Option<&SpriteGlobalNormalDistResult>, Option<&SpriteHoriNormalDistResult>, Option<&SpriteVertNormalDistResult>)>,
 ) {
     for (
         spriteholder, mut sprite, &EntityZeroRef(spritecfg_ent),
@@ -26,7 +27,11 @@ pub fn apply_scales(
         if let Ok((ref_flip_horiz_if_dir, ref_scale, ref_scale_updown, ref_scale_sideways)) = sprite_config_query.get(spritecfg_ent) {
             total_scale *= ref_scale.copied().unwrap_or_default();
 
-            if let Ok(base_direction) = baseholder_query.get(spriteholder.base) {
+            if let Ok((base_direction, ref_sprite_global_normal_dist_result, ref_sprite_hori_normal_dist_result, ref_sprite_vert_normal_dist_result)) = baseholder_query.get(spriteholder.base) {
+                let global_mult = ref_sprite_global_normal_dist_result.map(|v| v.0).unwrap_or(1.0);
+                let hori_mult = ref_sprite_hori_normal_dist_result.map(|v| v.0).unwrap_or(1.0);
+                let vert_mult = ref_sprite_vert_normal_dist_result.map(|v| v.0).unwrap_or(1.0);
+                total_scale *= Scale2D::from((global_mult * hori_mult, global_mult * vert_mult));
 
                 match base_direction {
                     CardinalDirection::West => {

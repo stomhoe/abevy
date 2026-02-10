@@ -8,18 +8,18 @@ use bevy::ecs::entity::MapEntities;
 #[derive(Component, Debug, Default, )]
 pub struct ControlledLocally;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
 pub struct ControlledByClient;
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
-pub struct HumanControlled(pub bool);
+pub struct IsHumanControlled(pub bool);
 
 #[derive(Component, Debug, Reflect, )]
 #[relationship_target(relationship = ControlledBy)]
-pub struct Controls(Vec<Entity>);
-impl Controls {pub fn being_ents(&self) -> &[Entity] {&self.0}}
+pub struct ControlledBeings(Vec<Entity>);
+impl ControlledBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
 pub enum NormalDistSizeMultiplier {
@@ -29,7 +29,7 @@ pub enum NormalDistSizeMultiplier {
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
-#[relationship(relationship_target = Controls)]
+#[relationship(relationship_target = ControlledBeings)]
 pub struct ControlledBy  {
     #[relationship] #[entities]
     pub client: Entity

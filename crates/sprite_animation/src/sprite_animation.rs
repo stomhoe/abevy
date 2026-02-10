@@ -53,6 +53,7 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<AnimationState>()
     .replicate_once::<MoveAnimActive>()
     .replicate_filtered::<ChildOf, With<AcAnimation>>()
+    .replicate::<AnimationSeri>()
     .replicate::<ClipStartFrames>()
     .replicate::<AlternatingStartFramesConfig>()
     //.replicate::<AlternatingStartFramesState>()

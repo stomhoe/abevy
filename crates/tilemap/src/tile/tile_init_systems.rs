@@ -1,5 +1,5 @@
-use ::dimension_shared::*;
-use ::game_common::{game_common_components::*, game_common_components_samplers::*, *};
+
+use ::game_common::{game_common_components::*, };
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
@@ -47,7 +47,7 @@ pub fn init_tiles(
 
     let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();
 
-    let mut res_tile_cats = TileCategories::default();
+    let mut res_tile_cats = TileEntsWithinTag::default();
 
     seris_handles.handles.iter().for_each(|handle| {
         let Some(seri) = assets.get_mut(handle) else { return; };
@@ -72,12 +72,15 @@ pub fn init_tiles(
         )).id();
 
         if let Some(tags) = &seri.tags {
-            let mut tag_hashset = TagSet::default();
-            for tag_str in tags {
-                if tag_str.trim().is_empty() { continue; }
-                tag_hashset.insert(Tag::trunc(tag_str));
+            let mut tag_set = TagSet::default();
+            for tag_string in tags {
+                let tag_str = tag_string.trim();
+                if tag_str.is_empty() { continue; }
+                let tag = Tag::trunc(tag_str);
+                tag_set.insert(tag.clone());
+                res_tile_cats.0.entry(tag).or_default().insert(tile_enti);
             }
-            cmd.entity(tile_enti).insert(tag_hashset);
+            cmd.entity(tile_enti).insert(tag_set);
         }
 
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
@@ -98,7 +101,7 @@ pub fn init_tiles(
                     Ok(color_sampler_ent) => {
                         cmd.entity(tile_enti).insert(ColorSamplerRef(color_sampler_ent));
                     }
-                    Err(err) => {
+                    Err(_err) => {
                         error!("Tile '{}': Weighted color sampler with id '{}' not found in ColorSamplerEntityMap", str_id, color_map_str);
                     }
                 }
@@ -149,21 +152,29 @@ pub fn init_tiles(
                 SpriteTile
             ));
             let mut sprite_cfgs = Vec::new();
+            let mut processing_as_sprite_cfgs = None;
+
+            let len = seri.img_paths.len();
             for (key, path) in seri.img_paths.iter_mut() {
-                let path_holder = ImagePathHolder::new(take(path));
-                if (path.trim().is_empty() || path_holder.is_err()) && !key.trim().is_empty() {
+                let path_holder = ImagePathHolder::new(path.clone());
+                let spritecfg_str_id_present = !key.trim().is_empty();
+
+                if path_holder.is_err() && spritecfg_str_id_present
+                && processing_as_sprite_cfgs != Some(false) {
+                    sprite_cfgs.reserve(len);
                     sprite_cfgs.push(take(key));
-                } else {
+                    processing_as_sprite_cfgs = Some(true);
+                } else if processing_as_sprite_cfgs != Some(true) {
                     let path_holder = path_holder.unwrap();
 
                     let child_sprite = cmd.spawn((
-                        StrId::trunc(format!("{}", path_holder).replace("texture/", "")),
-                        Replicated,
-                        EntityZero,
                         TileChildSprite,
-                        path_holder,
                         ChildOf(tile_enti),
                         BaseHolderRef{ base: tile_enti },
+                        StrId::trunc(format!("{}", path_holder).replace("texture/", "")),
+                        EntityZero,
+                        path_holder,
+                        Replicated,
                         my_z.clone(),
                     )).id();
 
@@ -173,19 +184,13 @@ pub fn init_tiles(
                     if let Some(y_sort_origin) = seri.y_sort {
                         cmd.entity(child_sprite).insert(YSortOrigin(seri.offset.unwrap_or_default().1 + y_sort_origin - 10.0));
                     }
-                    break;
+                    processing_as_sprite_cfgs = Some(false);
                 }
             }
             if !sprite_cfgs.is_empty() {
-                let sprite_cfgs = SampleSpritesFromStrIds::new(sprite_cfgs);
-                cmd.entity(tile_enti).insert(sprite_cfgs);
+                let sprite_cfgs_str_ids = SampleSpritesFromStrIds::new(sprite_cfgs);
+                cmd.entity(tile_enti).insert(sprite_cfgs_str_ids);
             }
-        }
-        if let Some(cats) = &seri.cats {
-            cats.iter().for_each(|cat| {
-                if cat.trim().is_empty() { return; }
-                res_tile_cats.0.entry(Tag::trunc(cat)).or_default().insert(tile_enti);
-            });
         }
     });
     cmd.insert_resource(res_tile_cats);
@@ -286,7 +291,7 @@ pub fn map_min_dist_tiles(
     mut seris_handles: ResMut<TileSerisHandles>,
     mut assets: ResMut<Assets<TileSeri>>,
     tiles_map: Res<TileEntityMap>,
-    tile_cats: Res<TileCategories>,
+    tile_cats: Res<TileEntsWithinTag>,
 ) {
     let mut keep_away: EntityHashMap<HashSet<Entity>> = EntityHashMap::default();
     let mut comps = Vec::with_capacity(seris_handles.handles.len() / 10);
@@ -524,11 +529,11 @@ pub fn instantiate_portal(
             .try_remove::<(SearchingForSuitablePos, SeekingPortalOtherEnd)>();
 
         cmd.entity(oe_portal).try_remove::<(SeekingPortalOtherEnd)>()
-        // .try_insert(DeleteOtherTiles {
-        //     spared_z: HashSet::from_iter(vec![AcZ::new(-900.0)]),
-        //     extra_radius: 2,
-        //     ..Default::default()
-        // })
+        .try_insert(DeleteOtherTiles {
+            spared_z: HashSet::from_iter(vec![AcZ::new(-900.0)]),
+            extra_radius: 2,
+            ..Default::default()
+        })
         ;
 
         if portal_template.one_way == false {

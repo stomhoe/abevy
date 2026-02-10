@@ -2,6 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use game_common::game_common_components::EntityZero;
+use game_common::game_common_components_samplers::*;
 use game_common::game_common_string_components::*;
 use sprite_shared::SampleSpriteEnts;
 use sprite::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
@@ -129,6 +130,16 @@ pub fn init_races(
                 entity_cmds.insert(selectable);
             }
 
+            if let Some(size_variation) = race_seri.size_variation {
+                entity_cmds.insert(SpriteGlobalNormalDist::new(size_variation));
+            }
+            if let Some(hori_variation) = race_seri.hori_variation {
+                entity_cmds.insert(SpriteHoriNormalDist::new(hori_variation));
+            }
+            if let Some(vert_variation) = race_seri.vert_variation {
+                entity_cmds.insert(SpriteVertNormalDist::new(vert_variation));
+            }
+
             let entity = entity_cmds.id();
 
             if !race_seri.sexes.is_empty() {
@@ -168,6 +179,9 @@ pub fn init_races(
                     let sex_sampler = SexesSampler::new(&sex_entities_weights);
                     cmd.entity(entity).insert(sex_sampler);
                 }
+            }
+            if Some(false) != race_seri.scale_hp_and_strength_with_size {
+                cmd.entity(entity).insert(ScaleHpAndStrengthWithSize);
             }
 
             cmd.entity(entity)

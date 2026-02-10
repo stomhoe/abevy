@@ -2,15 +2,13 @@
 
 use bevy::prelude::*;
 use indexmap::IndexMap;
-#[allow(unused_imports)] 
+#[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
 use bevy::platform::collections::HashMap;
 use std::hash::{Hash, };
 use crate::{common_types::*};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use std::fmt::{Debug, Display};
-
-
 
 macro_rules! define_fixedstr_id {
     ($ty:ident, $len:expr) => {
@@ -20,8 +18,8 @@ macro_rules! define_fixedstr_id {
         impl $ty {
             pub const SIZE: usize = $len;
 
-            pub fn trunc<S: AsRef<str>>(id: S) -> Self { 
-                Self(FixedStr::<$len>::trunc(id.as_ref().trim())) 
+            pub fn trunc<S: AsRef<str>>(id: S) -> Self {
+                Self(FixedStr::<$len>::trunc(id.as_ref().trim()))
             }
             pub fn new_with_result<S: AsRef<str>>(id: S, min_length: u8) -> Result<Self, StringLengthError> {
                 FixedStr::<$len>::new_with_result(id.as_ref().trim(), min_length).map(Self)
@@ -88,13 +86,6 @@ macro_rules! define_fixedstr_id {
 define_fixedstr_id!(StrId20B, 20);
 define_fixedstr_id!(Tag, 32);
 define_fixedstr_id!(StrId, 32);
-
-macro_rules! new_strid {
-    ($id:expr) => {
-        StrId::from($id)
-    };
-}
-
 
 
 define_fixedstr_id!(Prefix, 32);

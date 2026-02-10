@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use common::common_components::{ImagePathHolder, MultipleImagePathHolder, StrId};
+use common::common_components::{ImagePathHolder, MultipleImagePathHolder, };
 
 use crate::tile::tile_shader::{tile_material::wavy::WavyMat, tile_shader_components::*, };
 
@@ -15,6 +15,7 @@ pub fn add_image_handle_to_tile_shader(
         } else if let Some(multiple_img_path) = multiple_img_path {
             let paths = multiple_img_path.paths();
             let handles: Vec<Handle<Image>> = paths.iter().map(|path| asset_server.load(path)).collect();
+            todo!("Implement multiple image handling");
             //tile_shader.set_multiple_image_handles(handles);
 
         }
@@ -27,4 +28,3 @@ pub fn update_wavy_time(time: Res<Time>, mut mats: ResMut<Assets<WavyMat>>) {
         mat.time = t as f32;
     }
 }
-

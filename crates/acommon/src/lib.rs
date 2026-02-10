@@ -14,5 +14,7 @@ pub mod common_resources;
 mod common_systems;
 mod common_tag_systems;
 pub mod entity_map_macros;
-pub mod log_targets;
+pub mod qol;
+pub use qol::*;
 
+pub mod log_targets;

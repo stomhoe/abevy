@@ -10,10 +10,10 @@ movement = { path = "../movement" }
 modifier = { path = "../modifier" }
 player = { path = "../player" }
 being = { path = "../being" }
+being_shared = { path = "../being_shared" }
 camera = { path = "../camera" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
-dimension_shared = { path = "../dimension_shared" }
 sprite_shared = { path = "../sprite_shared" }
 sprite = { path = "../sprite" }
 
@@ -31,4 +31,3 @@ rand_seeder = { workspace = true }
 rand_pcg = { workspace = true }
 noiz = { workspace = true }
 bevy-fps-counter = { workspace = true }
-

@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use common::common_states::*;
+use common::{AppRegisterAndReplicateExt, common_states::*};
 
 use crate::{
     game_common_components::*, game_common_components_samplers::*, game_common_states::*,
     game_common_string_components::Description, game_common_systems::*,
 };
+
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct StatefulSessionSystems;
@@ -93,22 +94,26 @@ pub fn plugin(app: &mut App) {
     )
     .init_state::<GameSetupScreen>()
     .init_state::<SimulationState>()
-    .register_type::<Description>()
-    .register_type::<CardinalDirection>()
-    .register_type::<WeightedSamplerRef>()
-    .register_type::<EntityZeroRef>()
-    .register_type::<EntityWeightedSampler>()
-    .replicate::<Persisted>()
-    .replicate_once::<CardinalDirection>()
-    .replicate::<Directionable>()
-    .replicate::<EntityWeightedSampler>()
-    .replicate::<Description>()
+    .regrepli::<Description>()
+    .regrepli::<WeightedSamplerRef>()
+    .regrepli::<EntityZero>()
+    .regrepli::<EntityZeroRef>()
+    .regrepli::<CappedNormalDist>()
+    .regrepli::<Directionable>()
+    .regrepli::<EntityWeightedSampler>()
+    .regrepli::<Persisted>()
+    .regrepli::<SpriteGlobalNormalDist>()
+    .regrepli::<SpriteVertNormalDist>()
+    .regrepli::<SpriteHoriNormalDist>()
+    .regrepli::<SpriteHoriNormalDistResult>()
+    .regrepli::<SpriteVertNormalDistResult>()
+    .regrepli::<SpriteGlobalNormalDistResult>()
+    .regrepli::<ScaleHpAndStrengthWithSize>()
+
+    .regrepli_once::<CardinalDirection>()
     .replicate_once::<GlobalTransform>()
     .replicate_once::<Transform>()
-    .replicate::<EntityZero>()
     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EntityZero>,)>()
     .replicate_once_as::<Visibility, common::common_components::VisibilityGameState>()
-    .replicate::<EntityZeroRef>()
-    .replicate::<CappedNormalDistribution>()
     ;
 }

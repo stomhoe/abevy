@@ -1,5 +1,5 @@
 use bevy::{
-    camera::primitives::{Aabb, Frustum}, ecs::entity::EntityHashSet, math::Affine3A, platform::collections::HashMap, prelude::*, render::{
+    camera::primitives::{Aabb, Frustum}, ecs::entity::EntityHashSet, math::Affine3A, prelude::*, render::{
         Extract,
         render_resource::{FilterMode, TextureFormat},
         sync_world::RenderEntity,
@@ -226,7 +226,7 @@ pub fn extract(//TODO EXPONER UN EVENTO
 
     let mut extracted_tiles = Vec::with_capacity(changed_tiles_query.iter().size_hint().0);
 
-    let mut extracted_tilemaps_keys = EntityHashSet::with_capacity(event_reader.len()); 
+    let mut extracted_tilemaps_keys = EntityHashSet::with_capacity(event_reader.len());
     let mut extracted_tilemaps: Vec<(Entity, ExtractedTilemapBundle)> = Vec::with_capacity(event_reader.len());
 
     let mut extracted_tilemap_textures = Vec::new();
@@ -289,7 +289,7 @@ pub fn extract(//TODO EXPONER UN EVENTO
                 },
             ));
         }
-        
+
         extracted_tiles.push((
             render_entity.id(),
             ExtractedTileBundle {

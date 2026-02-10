@@ -1,15 +1,13 @@
 use being_shared::{BeingInstTemplate, };
-use bevy::ecs::error;
 use bevy::prelude::*;
 use common::common_components::*;
 use sprite::{
-    sprite_components::ScsToBuild, sprite_resources::SpriteConfigEntityMap,
+    sprite_resources::SpriteConfigEntityMap,
 };
 use ::sprite_shared::*;
-use game_common::game_common_components::CappedNormalDistribution;
+use game_common::game_common_components_samplers::*;
 
-use crate::being_inst_template::{
-    being_inst_template_components::*, being_inst_template_resources::*,
+use crate::being_inst_template::{being_inst_template_resources::*,
 };
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::body_tree_resources::BodyTreeEntityMap;
@@ -69,8 +67,14 @@ pub fn init_being_templates(
                     faction_refs_to_insert.push((bit_entity, FactionStrIdRef(faction_str_id)));
                 }
             }
-            if let Some(normal_variation) = template_seri.normal_variation {
-                cmd.entity(bit_entity).insert(CappedNormalDistribution::from_seri(normal_variation));
+            if let Some(size_variation) = template_seri.size_variation {
+                cmd.entity(bit_entity).insert(SpriteGlobalNormalDist::new(size_variation));
+            }
+            if let Some(hori_variation) = template_seri.hori_variation {
+                cmd.entity(bit_entity).insert(SpriteHoriNormalDist::new(hori_variation));
+            }
+            if let Some(vert_variation) = template_seri.vert_variation {
+                cmd.entity(bit_entity).insert(SpriteVertNormalDist::new(vert_variation));
             }
 
             // Resolve race entity from race string

@@ -19,7 +19,7 @@ pub fn init_sexes(
             let description = sex_seri.description.as_ref().map(|d| Description(d.clone()));
 
             let mut entity_cmds = cmd.spawn((Sex, str_id.clone(), ingame_name));
-            
+
             if let Some(desc) = description {
                 entity_cmds.insert(desc);
             }
@@ -28,4 +28,3 @@ pub fn init_sexes(
         }
     }
 }
-

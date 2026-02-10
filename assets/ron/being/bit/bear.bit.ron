@@ -1,0 +1,19 @@
+(
+    id: "bear",
+    fallback_faction: Some("host"),
+    points: 10,
+
+    race: "bear",
+    scs_samplers: Some(["bear"]),
+    sprites_scale_ranges: None,
+    health_multiplier: Some(1.0),
+
+    body_tree: None,
+    recruitment_difficulty: None,
+
+    whitelisted_tiles_for_spawning: None,
+    blacklisted_tiles_for_spawning: None,
+    size_variation: Some((min: 0.7, max: 3.0, mean: 1.0, std_dev: 0.1)),
+    hori_variation: Some((min: 0.95, max: 1.05, mean: 1.0, std_dev: 0.05)),
+    vert_variation: Some((min: 0.95, max: 1.05, mean: 1.0, std_dev: 0.05)),
+)

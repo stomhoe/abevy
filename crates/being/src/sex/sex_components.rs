@@ -9,5 +9,3 @@ pub struct Sex;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct SexWeight(pub f32);
-
-

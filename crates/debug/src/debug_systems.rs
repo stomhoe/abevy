@@ -1,8 +1,8 @@
 use bevy::prelude::*;
-use bevy_fps_counter::FpsCounter;
 use bevy_replicon::prelude::{ClientState, FromClient};
 use modifier::{modifier_components::*, modifier_types::WalkSpeed, };
-use being::being_components::{Being, ControlledBy, ControlledLocally};
+use ::being::being_components::*;
+use ::being_shared::*;
 
 use crate::debug_messages::UpdateBeingSpeed;
 
@@ -58,12 +58,12 @@ pub fn receive_increase_speed_from_client(
 ) {
     for from_client in events.read() {
         let UpdateBeingSpeed { value: new_value, being_ent } = from_client.message.clone();
-        info!(target: "debug", "Received speed update for being {:?} with value {:?}", being_ent, new_value);
+        trace!(target: "debug", "Received speed update for being {:?} with value {:?}", being_ent, new_value);
 
         if let Ok((applied_modifiers, controlled_by, )) = controlled_beings_query.get(being_ent) {
 
             let Some(client_entity) = from_client.client_id.entity() else { continue; };
-            
+
             if controlled_by.client == client_entity {
                 for modifier_ent in applied_modifiers.entities() {
                     if let Ok(mut effective_value) = modifiers_query.get_mut(*modifier_ent) {
@@ -82,4 +82,3 @@ pub fn receive_increase_speed_from_client(
         }
     }
 }
-

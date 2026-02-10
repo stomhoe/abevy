@@ -11,7 +11,6 @@ faction = { path = "../faction" }
 tilemap = { path = "../tilemap" }
 camera = { path = "../camera" }
 movement = { path = "../movement" }
-dimension_shared = { path = "../dimension_shared" }
 being_shared = { path = "../being_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 modifier = { path = "../modifier" }
@@ -29,6 +28,7 @@ bevy_ui_text_input = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_replicon_renet = { workspace = true }
 bevy_common_assets = { workspace = true }
+rand = { workspace = true }
 bevy_asset_loader = { workspace = true }
 indexmap = { workspace = true }
 delegate = { workspace = true }

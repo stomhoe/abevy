@@ -1,9 +1,6 @@
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
-use tilemap_shared::DimensionRef;
-use tilemap_shared::ChunkPos;
-
-
+use ::tilemap_shared::*;
 
 #[derive(Resource, Reflect, InspectorOptions)]
 #[reflect(Resource, Default, InspectorOptions)]
@@ -19,7 +16,7 @@ pub struct AaChunkRangeSettings {
 }
 impl Default for AaChunkRangeSettings {
     fn default() -> Self {
-        NORMAL_CHUNK_RANGE_SETTINGS
+        TWO_CHUNK_RANGE_SETTINGS
     }
 }
 
@@ -55,6 +52,12 @@ pub const ONE_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings 
     chunk_visib_max_dist: 1000.0,
     chunk_active_max_dist: 250.0,
     discovery_range: 1,
+};
+
+pub const TWO_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
+    chunk_visib_max_dist: 2000.0,
+    chunk_active_max_dist: 100.0,
+    discovery_range: 2,
 };
 
 pub const NORMAL_CHUNK_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {

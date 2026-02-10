@@ -18,7 +18,7 @@ common::define_entity_map_systems!(
 
 #[derive(Resource, Debug, Reflect, Default)]
 #[reflect(Resource, Default)]
-pub struct TileCategories (pub HashMap<Tag, EntityHashSet>);
+pub struct TileEntsWithinTag (pub HashMap<Tag, EntityHashSet>);
 
 
 
@@ -71,9 +71,8 @@ pub struct TileSeri {
     pub name: String,
     pub z: f32,
     pub img_paths: Vec<(String, String)>,
-    pub tags: Option<Vec<String>>,
+    pub tags: Option<HashSet<String>>,
     pub y_sort: Option<f32>,
-    pub cats: Option<HashSet<String>>,
     /// persisted only when state gets altered from starting state
     pub persisted: Option<bool>,
     pub shader: Option<String>,

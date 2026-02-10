@@ -18,6 +18,7 @@ dimension = { path = "../dimension" }
 faction = { path = "../faction" }
 player = { path = "../player" }
 being = { path = "../being" }
+being_shared = { path = "../being_shared" }
 
 
 bevy = { workspace = true }

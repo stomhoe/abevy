@@ -83,7 +83,7 @@ pub struct BeingChangedMoveState(pub Entity);
 
 // TODO: hacer shaders aplicables? (para meditacion por ej)
 // TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld. hacer un mapa color-algo
-#[derive(Component, Deserialize, Serialize, Asset, Reflect, Default, )]
+#[derive(Component, Deserialize, Asset, Reflect, Default, )]
 pub struct MultipleAnimationSeri (pub Vec<AnimationSeri>);
 
 #[derive(Component, Deserialize, Serialize, Asset, Reflect, Default, )]

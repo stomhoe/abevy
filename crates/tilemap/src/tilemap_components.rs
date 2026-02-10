@@ -1,8 +1,8 @@
-use bevy::{math::U16Vec2, render::sync_world::SyncToRenderWorld, transform};
+use bevy::{math::U16Vec2, render::sync_world::SyncToRenderWorld, };
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::{FrustumCulling, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::{common_components::*, common_states::*};
+use common::{common_components::*, };
 
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
@@ -53,24 +53,5 @@ impl TilemapConfig {
     }
     pub fn new_storage(oplist_size: OplistSize) -> TileStorage {
         TileStorage::empty((ChunkPos::CHUNK_SIZE / oplist_size.inner()).into())
-    }
-}
-
-
-#[derive(Component, Debug, Clone, Default, Reflect)]
-pub struct HashIdToTexIndex(HashIdMap<TileTextureIndex>);
-impl HashIdToTexIndex {
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self(HashIdMap::with_capacity(capacity))
-    }
-    pub fn reserve(&mut self, additional: usize) {
-        self.0.reserve(additional);
-    }
-    pub fn insert(&mut self, tile_hid: HashId, handle_hid: HashId, tex_index: TileTextureIndex) {
-        let _ = self.0.insert(tile_hid.merge(handle_hid), tex_index);
-    }
-    pub fn get(&self, tile_hid: HashId, handle_hid: HashId) -> Result<TileTextureIndex, ()> {
-        let merged = tile_hid.merge(handle_hid);
-        self.0.get(merged).cloned()
     }
 }

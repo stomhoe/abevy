@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, };
 
 use crate::tile::tile_shader::tile_shader_components::TileShader;
 

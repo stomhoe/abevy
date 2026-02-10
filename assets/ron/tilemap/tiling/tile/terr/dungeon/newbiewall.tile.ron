@@ -3,10 +3,10 @@
     name: "Dungeon newbie wall",
     z: -700,
     img_paths: [
-        ("", "texture/world/white.png"),
+        ("", "texture/world/terr/dungeon/newbie_wall.png"),
     ],
     //shader: Some("nw"),
-    color: Some((255, 0, 0, 255)),
+    color: Some((255, 255, 255, 255)),
     y_sort: Some(0),
     walk_speed: Some(0),
     blocks_projectiles: Some(true),

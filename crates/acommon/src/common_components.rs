@@ -62,10 +62,14 @@ impl ImagePathHolder {
         Ok(ImagePathHolder(asset_path))
     }
     pub fn validate_path_exists<S: AsRef<str>>(path: S) -> Result<(), BevyError> {
-        let img_path = format!("assets/{}", path.as_ref());
-        if !std::path::Path::new(&img_path).exists() {
-            let err = BevyError::from(format!("Image path does not exist: {}", img_path));
-            error!(target: "image_loading", "{}", err);
+        let path = path.as_ref().trim();
+        if path.is_empty() {
+            let err = BevyError::from("Image path is empty");
+            return Err(err);
+        }
+        let path = format!("assets/{}", path);
+        if !std::path::Path::new(&path).exists() {
+            let err = BevyError::from(format!("Image path does not exist: {}", path));
             return Err(err);
         }
         Ok(())

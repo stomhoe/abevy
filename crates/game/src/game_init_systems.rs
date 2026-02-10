@@ -1,8 +1,9 @@
 use being::being_components::*;
 use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
+use ::being_shared::*;
 use common::{common_components::StrId, common_states::AppState};
 use faction::{faction_components::*, faction_resources::*};
-use modifier::{modifier_components::*, modifier_move_bundles::SpeedModifier, modifier_types::WalkSpeed };
+use modifier::{modifier_components::*, modifier_move_bundles::SpeedModifier,};
 use player::player_components::*;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings};
 
@@ -64,7 +65,7 @@ pub fn host_on_player_added(mut cmd: Commands,
                 ControlledBy { client: player_ent },
                 CharacterCreatedBy { player: player_ent },
                 Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-                BitStrIdRef(StrId::trunc("bit_demo")),
+                BitStrIdRef(StrId::trunc("bear")),
                 BelongsToFaction(host_faction),
             )).id();
             cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));

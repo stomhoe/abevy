@@ -41,7 +41,7 @@ pub struct InfiniteMorale;
 // impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
 
-#[derive(Component, Default, Deserialize, Serialize)]
+#[derive(Component, Default, Deserialize, Serialize, Reflect)]
 pub struct PlayerDirectControllable;
 
 #[derive(Component, Reflect, MapEntities, )]
@@ -52,15 +52,6 @@ pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si e
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities, )]
 pub struct TouchingPortal(#[entities] pub Entity);
-
-
-pub type ControlledLocally = being_shared::ControlledLocally;
-pub type IsHumanControlled = being_shared::HumanControlled;
-
-pub type Controls = being_shared::Controls;
-pub type ControlledBy = being_shared::ControlledBy;
-
-
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, Hash, PartialEq, Eq, )]
@@ -86,7 +77,7 @@ impl TargetSpawnPos {
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities, )]
 #[relationship(relationship_target = CreatedCharacters)]
-#[require(PlayerDirectControllable, being_shared::HumanControlled(true))]
+#[require(PlayerDirectControllable, being_shared::IsHumanControlled(true))]
 pub struct CharacterCreatedBy {
     #[relationship] #[entities] pub player: Entity,
 }

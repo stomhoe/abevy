@@ -407,6 +407,8 @@ macro_rules! define_entity_map_systems {
                     .replicate::<$main_component>()
                     .replicate::<[<$abbreviation Ref>]>()
                     .replicate::<[<Egui $abbreviation sHolder>]>()
+                    .replicate_once_filtered::<Transform, With<[<Egui $abbreviation sHolder>]>>()
+
                     .replicate::<[<DoNotRetryBuild $abbreviation Ref>]>()
                     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>()
                     .configure_loading_state(

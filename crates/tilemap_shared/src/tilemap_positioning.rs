@@ -133,7 +133,6 @@ impl_display_debug!(GlobalTilePos, "Global pos","Gpos");
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug)]
 pub struct PrevGlobalTilePos(pub GlobalTilePos);
 
-pub const TILEMAP_SCALE: f32 = 1.0;
 
 impl GlobalTilePos {
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 32, y: 32 };
@@ -354,6 +353,6 @@ impl RegionPos {
 pub mod prelude {
     pub use super::{
         ChunkPos, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos, RegionPos,
-        REGION_SIZE_IN_CHUNKS, TILEMAP_SCALE,
+        REGION_SIZE_IN_CHUNKS,
     };
 }

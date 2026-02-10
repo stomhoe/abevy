@@ -5,7 +5,7 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::*;
 use common::{common_states::AssetLoading, };
 
-use crate::{being_inst_template::{being_inst_template_components::*, being_inst_template_init_systems::*, being_inst_template_build_systems::*, being_inst_template_resources::*}, };
+use crate::{being_inst_template::{ being_inst_template_init_systems::*, being_inst_template_build_systems::*, being_inst_template_resources::*}, };
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -35,5 +35,4 @@ pub fn plugin(app: &mut App) {
 
 mod being_inst_template_init_systems;
 mod being_inst_template_build_systems;
-pub mod being_inst_template_components;
 pub mod being_inst_template_resources;
