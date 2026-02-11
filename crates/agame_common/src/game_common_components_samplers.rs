@@ -189,6 +189,13 @@ macro_rules! define_sprite_normal_dist {
             #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
             /// must be inserted into Being entities after sampling
             pub struct [<$dist_name Result>](pub f32);
+
+            pub fn [<plugin_ $dist_name:snake>](app: &mut App) {
+                use common::AppRegisterAndReplicateExt;
+                app
+                    .regrepli::<$dist_name>()
+                    .regrepli::<[<$dist_name Result>]>();
+            }
         }
     };
 }

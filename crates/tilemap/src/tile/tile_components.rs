@@ -50,10 +50,10 @@ pub struct ToDenyOnTileClone(
     AssetScoped,
     SparedFromHotReloading,
     GameCommonStringComponentsBundle,
+    WalkSpeedMultIfOnTop,
 ); //Disabled no porque se elimina posteriormente
 
-#[derive(Bundle)]
-#[allow(unused, )]
+#[derive(Bundle)] #[allow(unused, )]
 struct ToDenyOnReleaseBuild(Name);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
@@ -70,7 +70,6 @@ pub type TileStrId = StrId;
 
 
 
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct TileChildSprite;
 
@@ -81,7 +80,7 @@ pub struct LocalChunkRef(#[entities] pub Entity);
 #[require(
     Replicated,
     AssetScoped,
-    Prefix::trunc("PortalsZero"),
+    Prefix::trunc("EguiPortalsZeroHolder"),
     Name,
     Transform,
     Visibility
@@ -164,7 +163,6 @@ pub struct TileHashIdsHandles {
     ids: Vec<HashId>,
     handles: Vec<Handle<Image>>,
 }
-
 impl TileHashIdsHandles {
     pub fn from_paths(
         asset_server: &AssetServer,
@@ -191,25 +189,21 @@ impl TileHashIdsHandles {
         if ids.is_empty() {
             return Err(BevyError::from("No valid entries"));
         }
-
         Ok(Self { ids, handles })
     }
     pub fn len(&self) -> usize {
         self.handles.len()
     }
-
     pub fn first_handle(&self) -> Handle<Image> {
         self.handles
             .first()
             .cloned()
             .unwrap_or_else(|| Handle::default())
     }
-
     /// NO HACER take() porque lo necesitan multiples isntancias de tiles
     pub fn handles(&self) -> &Vec<Handle<Image>> {
         &self.handles
     }
-
     pub fn iter(&self) -> impl Iterator<Item = (HashId, &Handle<Image>)> {
         self.ids.iter().cloned().zip(self.handles.iter())
     }

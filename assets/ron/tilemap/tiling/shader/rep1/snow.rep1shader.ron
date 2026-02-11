@@ -1,6 +1,6 @@
 (
     id: "snow",
     img_path: "texture/world/terr/snow.png",
-    scale: 10,
+    scale: 11,
     mask_color: (255., 0, 0, 255.),
 )

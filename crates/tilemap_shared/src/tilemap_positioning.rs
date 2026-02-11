@@ -58,7 +58,6 @@ macro_rules! impl_display_debug {
         }
     };
 }
-
 pub trait HashablePosVec: Hash {
     fn hash_value(&self, settings: &GlobalGenSettings, dimension_hash: HashId, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();
@@ -77,7 +76,6 @@ pub trait HashablePosVec: Hash {
     fn normalized_hash_value(&self, settings: &GlobalGenSettings, dimension_hash: HashId, seed: u64) -> f64 {
         self.hash_value(settings, dimension_hash, seed) as f64 / u64::MAX as f64
     }
-
     fn x(&self) -> i32;
     fn y(&self) -> i32;
 }
@@ -112,7 +110,6 @@ macro_rules! impl_basic_funcs {
         }
     };
 }
-
 macro_rules! impl_hashed_position {
     ($t:ty) => {
         impl HashablePosVec for $t {

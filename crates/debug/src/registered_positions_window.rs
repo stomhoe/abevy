@@ -12,7 +12,6 @@ pub fn registered_positions_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
     registered_positions: Res<ImportantRegisteredPositions>,
-    id_query: Query<&StrId>,
 ) {
     if !window_visible.registered_positions {
         return;

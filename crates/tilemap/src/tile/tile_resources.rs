@@ -86,7 +86,8 @@ pub struct TileSeri {
     pub portal: Option<PortalSeri>,
     pub offset: Option<(f32, f32)>,
 
-    // CHATGPT, IMPROVE IF NECESSARY!!
+    pub tile_occupancy: Option<(usize, usize)>,
+
 
     ///if Some, is a ground tile and f32 the is walk speed modifier. if None or Some(0.0) is impassable tile
     pub walk_speed: Option<f32>,

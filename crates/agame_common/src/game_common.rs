@@ -102,12 +102,6 @@ pub fn plugin(app: &mut App) {
     .regrepli::<Directionable>()
     .regrepli::<EntityWeightedSampler>()
     .regrepli::<Persisted>()
-    .regrepli::<SpriteGlobalNormalDist>()
-    .regrepli::<SpriteVertNormalDist>()
-    .regrepli::<SpriteHoriNormalDist>()
-    .regrepli::<SpriteHoriNormalDistResult>()
-    .regrepli::<SpriteVertNormalDistResult>()
-    .regrepli::<SpriteGlobalNormalDistResult>()
     .regrepli::<ScaleHpAndStrengthWithSize>()
 
     .regrepli_once::<CardinalDirection>()
@@ -115,5 +109,11 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<Transform>()
     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EntityZero>,)>()
     .replicate_once_as::<Visibility, common::common_components::VisibilityGameState>()
+
+    .add_plugins((
+        plugin_sprite_vert_normal_dist,
+        plugin_sprite_hori_normal_dist,
+        plugin_sprite_global_normal_dist,
+    ))
     ;
 }

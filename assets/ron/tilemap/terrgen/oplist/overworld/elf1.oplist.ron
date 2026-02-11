@@ -3,11 +3,11 @@
     id: "elf1",
     operation_operands: [
         ("max", ["fnl.conti.s4","fnl.penin.s4",], 1),
-        ("*", ["$2","$4",], 1),
+        ("*", ["$2","$5",], 1),
         ("idxmax", ["0.3", "$1"], 0),
 
     ],
-   
+
     bifs: [
         ("", ["ocean"]),//pink
         ("elf2", [""]),

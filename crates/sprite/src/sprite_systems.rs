@@ -1,169 +1,35 @@
+use std::collections::HashSet;
+
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use common::{common_tag_components::TagSet};
 use game_common::game_common_components::{EntityZero, EntityZeroRef, CardinalDirection};
-use game_common::game_common_components_samplers::{SpriteGlobalNormalDistResult, SpriteHoriNormalDistResult, SpriteVertNormalDistResult};
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::sprite_components::*;
 
 
+#[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]
+pub struct SpriteChanged(pub Entity);
+
 #[allow(unused_parens)]
-pub fn apply_scales(
-    mut sprite_que: Query<(&BaseHolderRef, &mut Sprite, &EntityZeroRef, &mut Transform,
-        Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
-    ),>,
-    sprite_config_query: Query<(Option<&FlipHorizIfDir>, Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,  ), ()>,
-    baseholder_query: Query<(&CardinalDirection, Option<&SpriteGlobalNormalDistResult>, Option<&SpriteHoriNormalDistResult>, Option<&SpriteVertNormalDistResult>)>,
-) {
-    for (
-        spriteholder, mut sprite, &EntityZeroRef(spritecfg_ent),
-        mut transform, scale, scale_look_up_down, scale_look_sideways,
-    ) in sprite_que.iter_mut() {
-        let mut total_scale = scale.copied().unwrap_or_default();
-
-        if let Ok((ref_flip_horiz_if_dir, ref_scale, ref_scale_updown, ref_scale_sideways)) = sprite_config_query.get(spritecfg_ent) {
-            total_scale *= ref_scale.copied().unwrap_or_default();
-
-            if let Ok((base_direction, ref_sprite_global_normal_dist_result, ref_sprite_hori_normal_dist_result, ref_sprite_vert_normal_dist_result)) = baseholder_query.get(spriteholder.base) {
-                let global_mult = ref_sprite_global_normal_dist_result.map(|v| v.0).unwrap_or(1.0);
-                let hori_mult = ref_sprite_hori_normal_dist_result.map(|v| v.0).unwrap_or(1.0);
-                let vert_mult = ref_sprite_vert_normal_dist_result.map(|v| v.0).unwrap_or(1.0);
-                total_scale *= Scale2D::from((global_mult * hori_mult, global_mult * vert_mult));
-
-                match base_direction {
-                    CardinalDirection::West => {
-                        total_scale *= ref_scale_sideways.copied().unwrap_or_default() * scale_look_sideways.copied().unwrap_or_default();
-
-                        if let Some(&flip_horiz) = ref_flip_horiz_if_dir {
-                            sprite.flip_x = match flip_horiz {
-                                FlipHorizIfDir::Left => true, _ => true,
-                            };
-                        }
-                    },
-                    CardinalDirection::East => {
-                        total_scale *= ref_scale_sideways.copied().unwrap_or_default() * scale_look_sideways.copied().unwrap_or_default();
-
-                        if let Some(flip_horiz) = ref_flip_horiz_if_dir {
-                            sprite.flip_x = match flip_horiz {
-                                FlipHorizIfDir::Left => false, _ => true,
-                            };
-                        }
-                    },
-                    CardinalDirection::North => {
-                        total_scale *= ref_scale_updown.copied().unwrap_or_default() * scale_look_up_down.copied().unwrap_or_default();
-                        if let Some(flip_horiz) = ref_flip_horiz_if_dir {
-                            sprite.flip_x = match flip_horiz {
-                                FlipHorizIfDir::Any => true, _ => false,
-                            };
-                        }
-                    },
-                    CardinalDirection::South => {
-                        total_scale *= ref_scale_updown.copied().unwrap_or_default() * scale_look_up_down.copied().unwrap_or_default();
-                        if let Some(flip_horiz) = ref_flip_horiz_if_dir {
-                            sprite.flip_x = match flip_horiz {
-                                FlipHorizIfDir::Any => true, _ => false,
-                            };
-                        }
-                    },
-                }
-            }
-        }
-        let total_scale_vec2 = total_scale.as_vec2();
-        if total_scale_vec2.x == 0.0 || total_scale_vec2.y == 0.0 {
-            warn!("total_scale is zero for sprite entity");
-        }
-        transform.scale.x = total_scale_vec2.x;
-        transform.scale.y = total_scale_vec2.y;
+pub fn sprite_change_detection(
+    sprite_query: Query<(Entity), (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<EntityZeroRef> , Changed<Offset2D>, Added<Sprite>)>)>,
+    baseholder_query: Query<(&HeldSprites), (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Changed<HeldSprites>)>)>,
+    mut writer: MessageWriter<SpriteChanged>,
+    mut changed: Local<HashSet<SpriteChanged>>,
+)
+{
+    for sprite_ent in sprite_query.iter() {
+        changed.insert(SpriteChanged(sprite_ent));
     }
-}
-
-#[allow(unused_parens, )]
-pub fn apply_offsets(
-    mut cmd: Commands,
-    mut sprite_query: Query<(
-        &mut Transform,
-        Entity,
-        &BaseHolderRef,
-        &ChildOf,
-        Option<&EntityZeroRef>,
-        Option<&Offset2D>,
-        Has<SpriteConfigNotFound>,
-    ), (Without<EntityZero>, )>,
-    sprite_config_query: Query<(
-        Option<&TagSet>,
-        Option<&Offset2D>,
-        Option<&OffsetSideways>,
-        Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>,
-        Option<&OffsetForChildren>,
-    ),()>,
-    parent_sprite_query: Query<&EntityZeroRef>,
-    base_query: Query<&CardinalDirection>,
-) {
-    for (
-        mut transform, sprite_entity, baseholder, child_of, sprite_config_ref,
-        offset, has_sprite_config_not_found
-    ) in sprite_query.iter_mut() {
-
-        let mut total_offset = Offset2D::default();
-
-        if let Some(EntityZeroRef(sprite_config)) = sprite_config_ref.cloned() {
-            let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _offset4children)) = sprite_config_query.get(sprite_config)
-            else {
-                if !has_sprite_config_not_found {
-                    error!("Failed to get sprite config for entity {:?}", sprite_config);
-                    cmd.entity(sprite_entity).try_insert(SpriteConfigNotFound);
-                }
-                transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
-                continue;
-            };
-            if has_sprite_config_not_found {
-                cmd.entity(sprite_entity).try_remove::<SpriteConfigNotFound>();
-            }
-
-            total_offset += offset.cloned().unwrap_or_default();
-
-            if let Ok(direction) = base_query.get(baseholder.base) {
-                match direction {
-                    CardinalDirection::West => {
-                        total_offset += offset_sideways.cloned().unwrap_or_default();
-                    },
-                    CardinalDirection::East => {
-                        total_offset += offset_sideways.cloned().unwrap_or_default();
-                    },
-                    CardinalDirection::North => {
-                        total_offset += offset_updown.cloned().unwrap_or_default();
-                        total_offset += offset_up.cloned().unwrap_or_default();
-                    },
-                    CardinalDirection::South => {
-                        total_offset += offset_updown.cloned().unwrap_or_default();
-                        total_offset += offset_down.cloned().unwrap_or_default();
-                    }
-                }
-
-                if let Some(my_cats) = my_cats {
-                    if let Ok(EntityZeroRef(ent)) = parent_sprite_query.get(child_of.parent()) {
-                        if let Ok((//TA BIEN DE ESTA FORMA REBUSCADA, OffsetAsChild NO SIRVE POR EL ORDEN DE APLICACION INDETERMINISTA. ES MUCHO MAS BUG PRONE CON CHANGE DETECTION
-                            _, _, _, _, _, _, offset_for_children
-                        )) = sprite_config_query.get(*ent) {
-                            if let Some(offset_for_children) = offset_for_children {
-                                for (offset_cat, &(offset, dir)) in offset_for_children.0.iter() {
-                                    if my_cats.0.contains(offset_cat) {
-                                        total_offset += offset;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else{
-            total_offset += offset.cloned().unwrap_or_default();
+    for held_sprites in baseholder_query.iter() {
+        for &sprite_ent in held_sprites.entities() {
+            changed.insert(SpriteChanged(sprite_ent));
         }
-        transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
     }
+    writer.write_batch(changed.drain());
 }
 
 
@@ -190,6 +56,8 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
     }
     cmd.try_insert_batch(disableds);
 }
+
+
 
 #[allow(unused_parens, )]
 pub fn z_sort_system(

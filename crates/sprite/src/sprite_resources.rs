@@ -22,7 +22,7 @@ pub struct SpriteConfigSeri {
     pub offset4children: Option<HashMap<String, (f32, f32, String)>>,//k:tag, v:(offset, direction(s)) in which it is applied
     pub exclude_from_sys: Option<bool>,
 
-    // Being's speed ratio over this is used as speedup for anim
+    // Being's speed ratio over this is used as speedup multiplier for anim
     pub base_movement_speed: Option<f32>,
 
     pub exclude_from_normal_size_modifier: Option<bool>,

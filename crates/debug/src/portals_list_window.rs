@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 
 use camera::camera_components::CameraTarget;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
-use tilemap::regioning::regioning_components::*;
 use tilemap::tile::tile_components::{PortalTo, TileStrId};
 use ::tilemap_shared::*;
 
