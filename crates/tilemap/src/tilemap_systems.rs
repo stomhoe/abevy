@@ -188,15 +188,21 @@ pub fn process_tiles_pre(
 
         if to_persist {
             if is_host {
+                child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
                 to_insert_replicated.push((tile_ent, Replicated));
+                if is_spritetile{
+                    spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos);
+                    spritetiles_to_remove_bundle.push(tile_ent);
+                    i += 1;
+                    continue;
+                }
             } else {
                 cmd.entity(tile_ent).try_despawn();
                 params.collected_tiles.0.swap_remove(i);
-                child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
-
                 continue;
             }
         }
+
         let Some(chunk_ent) = params.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied()
         else{
             cmd.entity(tile_ent).try_despawn();
@@ -248,6 +254,7 @@ pub fn process_tiles_pre(
             &mut tilemap_bundles,
             y_sort,
             &mut child_ofs_to_insert,
+            to_persist,
         );
         i += 1;
     }
@@ -341,6 +348,8 @@ fn process_tile_into_corresponding_tilemap(
     tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, ChildOf, TilemapOf, DimensionRef, TileShaderRef))>,
     y_sort: bool,
     childofs: &mut Vec<(Entity, ChildOf)>,
+    to_persist: bool,
+
 ) {
     let tile_size = match tile_handles {
         Some(_) => img_size,
@@ -396,7 +405,9 @@ fn process_tile_into_corresponding_tilemap(
         }
         texture_index.0 = first_matching_texture_index.unwrap_or_default().0;
 
-        childofs.push((tile_ent, ChildOf(tmap_ent)));
+        if ! to_persist {
+            childofs.push((tile_ent, ChildOf(tmap_ent)));
+        }
 
     } else {
         let mut tmap_hash_id_map = HashIdToTexIndex::with_capacity(0);
@@ -423,9 +434,7 @@ fn process_tile_into_corresponding_tilemap(
                 shader_ref.copied().unwrap_or_default(),
             ))
         );
-
         tilemap_id.0 = tmap_ent;
-
 
         let mut storage = TilemapConfig::new_storage(size_in_tiles);
         storage.set(&position, tile_ent);
@@ -435,6 +444,8 @@ fn process_tile_into_corresponding_tilemap(
             storage,
             tmap_hash_id_map,
             });
-        childofs.push((tile_ent, ChildOf(tmap_ent)));
+        if ! to_persist {
+            childofs.push((tile_ent, ChildOf(tmap_ent)));
+        }
     }
 }

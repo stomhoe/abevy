@@ -14,14 +14,10 @@ player = { path = "../player" }
 tilemap_shared = { path = "../tilemap_shared" }
 
 bevy = { workspace = true }
-debug_unwraps = { workspace = true }
+# UNUSED (cargo-machete): debug_unwraps = { workspace = true }
 serde = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_spritesheet_animation = { workspace = true }
 bevy_replicon = { workspace = true }
-bevy_replicon_renet = { workspace = true }
 bevy_asset_loader = { workspace = true }
-delegate = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 paste = { workspace = true }

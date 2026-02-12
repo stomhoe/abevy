@@ -6,9 +6,9 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
-movement = { path = "../movement" }
+# UNUSED (cargo-machete): movement = { path = "../movement" }
 modifier = { path = "../modifier" }
-player = { path = "../player" }
+# UNUSED (cargo-machete): player = { path = "../player" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
 camera = { path = "../camera" }
@@ -20,14 +20,14 @@ sprite = { path = "../sprite" }
 bevy = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
-bevy_replicon_renet = { workspace = true }
-indexmap = { workspace = true }
-delegate = { workspace = true }
+# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
+# UNUSED (cargo-machete): indexmap = { workspace = true }
+# UNUSED (cargo-machete): delegate = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }
 bevy-inspector-egui = { workspace = true }
 rand = { workspace = true }
-rand_distr = { workspace = true }
-rand_seeder = { workspace = true }
-rand_pcg = { workspace = true }
-noiz = { workspace = true }
+# UNUSED (cargo-machete): rand_distr = { workspace = true }
+# UNUSED (cargo-machete): rand_seeder = { workspace = true }
+# UNUSED (cargo-machete): rand_pcg = { workspace = true }
+# UNUSED (cargo-machete): noiz = { workspace = true }
 bevy-fps-counter = { workspace = true }

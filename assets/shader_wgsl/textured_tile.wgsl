@@ -6,6 +6,7 @@
 @group(3) @binding(2) var overlay_sampler: sampler;
 @group(3) @binding(3) var<uniform> mask_color: vec4<f32>;
 @group(3) @binding(4) var<uniform> scale: f32;
+@group(3) @binding(5) var<uniform> tint_color: vec4<f32>;
 
 fn almost_equal(a: vec4<f32>, b: vec4<f32>, epsilon: f32) -> bool {
     return all(abs(a - b) < vec4<f32>(epsilon));
@@ -14,7 +15,10 @@ fn almost_equal(a: vec4<f32>, b: vec4<f32>, epsilon: f32) -> bool {
 @fragment
 fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
     let color = process_fragment(in);
-    let tex_color = textureSample(overlay_texture, overlay_sampler, fract(in.world_position.xy * scale / 10000.0));
+    var tex_color = textureSample(overlay_texture, overlay_sampler, fract(in.world_position.xy * scale / 10000.0));
+    if tint_color.a > 0.0 {
+        tex_color = vec4<f32>(tex_color.rgb * tint_color.rgb, tex_color.a);
+    }
     if almost_equal(color, mask_color, 0.00001) {
         return tex_color;
     }

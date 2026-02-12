@@ -7,22 +7,19 @@ edition = "2024"
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
-player = { path = "../player" }
+# UNUSED (cargo-machete): player = { path = "../player" }
 being_shared = { path = "../being_shared" }
 sprite_shared = { path = "../sprite_shared" }
 tilemap_shared = { path = "../tilemap_shared" }
 
-bevy_spritesheet_animation = { workspace = true }
+# UNUSED (cargo-machete): bevy_spritesheet_animation = { workspace = true }
 
 bevy_ecs_tilemap = { workspace = true }
 bevy = { workspace = true }
-debug_unwraps = { workspace = true }
+# UNUSED (cargo-machete): debug_unwraps = { workspace = true }
 paste = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
-delegate = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 rand = { workspace = true }

@@ -4,18 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-common = { path = "../acommon" }
+# UNUSED (cargo-machete): common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 being_shared = { path = "../being_shared" }
 player = { path = "../player" }
 modifier = { path = "../modifier" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
-tilemap = { path = "../tilemap" }
+# UNUSED (cargo-machete): tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 param_sets = { path = "../param_sets" }
 
 bevy = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
-bevy_replicon_renet = { workspace = true }
-avian2d = { workspace = true }
+
+# UNUSED (cargo-machete): avian2d = { workspace = true }

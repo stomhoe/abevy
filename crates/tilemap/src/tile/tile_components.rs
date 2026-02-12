@@ -35,7 +35,7 @@ pub type TileStrId = StrId;
 pub struct TileChildSprite;
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, MapEntities)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct AdjRetexConfig(
     pub Vec<(Vec<(DiagonalCardinalDirection, HashId)>, HashId)>,
 );
@@ -83,10 +83,10 @@ impl AdjRetexConfig {
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
-#[derive(Component, Debug, Default, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct SeekingPortalOtherEnd;
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities)]
+#[derive(Component, Debug, Clone, )]
 pub struct PortalRecipe {
     #[entities]
     pub dest_dimension: Entity,
@@ -124,9 +124,9 @@ impl Default for PortalRecipe {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
 pub struct PortalTo {
-    #[entities]
+
     pub dest_portal: Entity,
 }
 impl PortalTo {
@@ -145,7 +145,7 @@ pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &GlobalGenSettings)
 #[derive(Component, Deserialize, Serialize, Default, Debug,)]
 pub struct FlipHorizontallyBasedOnHash;
 
-#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug,)]
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Debug,)]
 pub struct InitialPos(pub GlobalTilePos);
 
 #[derive(Component, Debug, Clone, Default)]

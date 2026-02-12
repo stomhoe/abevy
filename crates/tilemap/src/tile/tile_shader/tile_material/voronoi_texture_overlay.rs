@@ -6,7 +6,7 @@ use serde::ser::SerializeStruct;
 use bevy_inspector_egui::prelude::*;
 
 #[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions)]
-#[reflect(Default, InspectorOptions)] 
+#[reflect(Default, InspectorOptions)]
 pub struct VoronoiTextureOverlayMat {
     #[texture(1)]
     #[sampler(2)]

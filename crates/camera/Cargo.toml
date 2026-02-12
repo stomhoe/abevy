@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-common = { path = "../acommon" }
+# UNUSED (cargo-machete): common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 tilemap_shared = { path = "../tilemap_shared" }
-sprite = { path = "../sprite" }
+# UNUSED (cargo-machete): sprite = { path = "../sprite" }
 
 bevy = { workspace = true }

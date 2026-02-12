@@ -18,11 +18,11 @@ bevy = { version = "0.18", features = [
     "jpeg",
 ] }
 
-nano-id = "0.4.0"
 strum = "0.27.2"
 strum_macros = "0.27.2"
 #vec-collections = "0.4.3"
 debug_unwraps = "0.1.0"
+nano-id = "0.4.0"
 rand = "0.9.2"
 rand_distr = "0.5.1"
 rand_seeder = "*"
@@ -77,8 +77,8 @@ movement = { path = "crates/movement" }
 being = { path = "crates/being" }
 camera = { path = "crates/camera" }
 dimension = { path = "crates/dimension" }
-sprite_animation_shared = { path = "crates/sprite_animation_shared" }
-sprite_shared = { path = "crates/sprite_shared" }
+# UNUSED (cargo-machete): sprite_animation_shared = { path = "crates/sprite_animation_shared" }
+# UNUSED (cargo-machete): sprite_shared = { path = "crates/sprite_shared" }
 sprite_animation = { path = "crates/sprite_animation" }
 sprite = { path = "crates/sprite" }
 faction = { path = "crates/faction" }
@@ -88,12 +88,12 @@ shader = { path = "crates/shader" }
 ui_shared = { path = "crates/ui_shared" }
 pregame_screen = { path = "crates/pregame_screen" }
 setup_screen = { path = "crates/setup_screen" }
-param_sets = { path = "crates/param_sets" }
+# UNUSED (cargo-machete): param_sets = { path = "crates/param_sets" }
 
 bevy = { workspace = true }
 bevy-inspector-egui = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
 avian2d = { workspace = true }
 
 #log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # Improve Runtime Performance (Optional)

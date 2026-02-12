@@ -12,10 +12,12 @@ pub struct ShaderRepeatTexSeri {
     pub img_path: String,
     pub scale: f32,
     pub mask_color: [f32; 4],
+    pub tint_color: Option<[f32; 4]>,
 }
 
 #[derive(Deserialize, Asset, TypePath, Default)]
-pub struct ShaderVoronoiShuffleSeri {
+///dont delete, placeholder for putting a new shader in here
+pub struct PlaceholderSeri {
     pub id: String,
     pub img_path: String,
     pub scale: f32,
@@ -51,7 +53,7 @@ pub struct ShaderRockyTerrainSeri {
 common::define_entity_map_systems!(
     TileShader,
     ShaderRepeatTexSeri, "ron/tilemap/tiling/shader/rep1", "rep1shader.ron",
-    ShaderVoronoiShuffleSeri, "ron/tilemap/tiling/shader/voroshu", "voroshu.ron",
+    PlaceholderSeri, "ron/tilemap/tiling/shader/voroshu", "voroshu.ron",
     ShaderWavySeri, "ron/tilemap/tiling/shader/wavy", "wavy.ron",
     ShaderRockyTerrainSeri, "ron/tilemap/tiling/shader/rocky", "rocky.ron",
 );

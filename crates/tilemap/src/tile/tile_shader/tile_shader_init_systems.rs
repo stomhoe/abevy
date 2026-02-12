@@ -11,8 +11,8 @@ pub fn init_shaders(
     mut cmd: Commands,
     mut repeat_tex_handles: ResMut<ShaderRepeatTexSerisHandles>,
     mut repeat_assets: ResMut<Assets<ShaderRepeatTexSeri>>,
-    mut voronoi_tex_handles: ResMut<ShaderVoronoiShuffleSerisHandles>,
-    mut voronoi_assets: ResMut<Assets<ShaderVoronoiShuffleSeri>>,
+    mut voronoi_tex_handles: ResMut<PlaceholderSerisHandles>,
+    mut voronoi_assets: ResMut<Assets<PlaceholderSeri>>,
     mut wavy_handles: ResMut<ShaderWavySerisHandles>,
     mut wavy_assets: ResMut<Assets<ShaderWavySeri>>,
     mut rocky_handles: ResMut<ShaderRockyTerrainSerisHandles>,
@@ -45,7 +45,10 @@ pub fn init_shaders(
                 shader_comps_to_insert.push((ent, (
                     str_id.clone(),
                     TileShader::TexRepeat(MonoRepeatTextureOverlayMat::new(
-                        Handle::default(), seri.mask_color.into(), seri.scale,
+                        Handle::default(),
+                        seri.mask_color.into(),
+                        seri.scale,
+                        seri.tint_color.unwrap_or([1.0, 1.0, 1.0, 0.0]).into(),
                     )),
                 )));
                 path_holders_to_insert.push((ent, path_holder));

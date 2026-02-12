@@ -142,7 +142,7 @@ macro_rules! define_weightedsampler_impl {
 macro_rules! define_weightedsampler {
     ($ty:ident, $inner:ty, $entityprefix:expr) => {
         use common::common_components::{Prefix, AssetScoped};
-        #[derive(Debug, Clone, Reflect, Component)]
+        #[derive(Debug, Clone, Component)]
         #[require(Prefix::trunc($entityprefix), bevy_replicon::shared::replication::Replicated, AssetScoped, )]
         pub struct $ty {
             weights: Vec<($inner, f32)>,
@@ -152,7 +152,7 @@ macro_rules! define_weightedsampler {
         $crate::define_weightedsampler_impl!($ty, $inner);
     };
 }
-#[derive(Debug, Clone, Component, Default, Reflect)]
+#[derive(Debug, Clone, Component, Default, )]
 #[component(map_entities)]
 pub struct EntityWeightedSampler {
     weights: Vec<(Entity, f32)>,
@@ -204,5 +204,5 @@ define_sprite_normal_dist!(SpriteHoriNormalDist);
 define_sprite_normal_dist!(SpriteVertNormalDist);
 define_sprite_normal_dist!(SpriteGlobalNormalDist);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct ScaleHpAndStrengthWithSize;

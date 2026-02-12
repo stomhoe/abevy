@@ -89,6 +89,8 @@ pub fn plugin(app: &mut App) {
     .replicate::<BlocksProjectiles>()
     .replicate::<WalkSpeedMultIfOnTop>()
     .replicate::<GlobalTilePos>()
+    .replicate::<PortalTo>()
+    .replicate::<SeekingPortalOtherEnd>()
 
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()

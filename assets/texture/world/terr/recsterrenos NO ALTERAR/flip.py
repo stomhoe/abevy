@@ -11,7 +11,7 @@ from PIL import (  # pyright: ignore[reportMissingImports]
     ImageFilter,
 )
 
-TILE_SIZE = 512
+TILE_SIZE = 128
 GRID_PROB = 0.7      # % of patches aligned to tile grid
 JITTER = 6           # pixel jitter when grid-aligned
 COVERAGE_BIAS = 0.6  # % of patches biased toward low-coverage tiles
@@ -100,22 +100,22 @@ def main():
     parser.add_argument("--max-flips", type=int, default=20,
                         help="Maximum number of patch operations")
 
-    parser.add_argument("--min-patch", type=int, default=16,
+    parser.add_argument("--min-patch", type=int, default=30,
                         help="Minimum patch size in pixels")
-    parser.add_argument("--max-patch", type=int, default=256,
+    parser.add_argument("--max-patch", type=int, default=120,
                         help="Maximum patch size in pixels")
 
-    parser.add_argument("--feather", type=int, default=2,
+    parser.add_argument("--feather", type=int, default=0,
                         help="Feather size (px) when pasting patches (default: 12)")
 
     parser.add_argument("--seam-heal", type=int, default=0,
                         help="Number of seam-heal passes (default: 2)")
     parser.add_argument("--seam-size", type=int, default=0,
                         help="Half-width of seam healing band in pixels (default: 12)")
-    parser.add_argument("--seam-jitter", type=int, default=8,
+    parser.add_argument("--seam-jitter", type=int, default=0,
                         help="Pixel jitter for seam healing source (default: 8)")
 
-    parser.add_argument("--noise", type=float, default=3.0,
+    parser.add_argument("--noise", type=float, default=0.0,
                         help="Optional noise strength to break repetition (0 disables)")
 
     parser.add_argument("--seed", type=int, default=None,

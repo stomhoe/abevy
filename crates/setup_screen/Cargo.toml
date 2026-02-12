@@ -8,16 +8,16 @@ common = { path = "../acommon" }
 ui_shared = { path = "../ui_shared" }
 multiplayer_shared = { path = "../multiplayer_shared" }
 game_common = { path = "../agame_common" }
-game = { path = "../game" }
+# UNUSED (cargo-machete): game = { path = "../game" }
 player = { path = "../player" }
 
 bevy = { workspace = true }
 bevy_simple_scroll_view = { workspace = true }
 bevy_ui_text_input = { workspace = true }
 bevy_replicon = { workspace = true }
-bevy_replicon_renet = { workspace = true }
+# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
 serde = { workspace = true }
 bevy-ui-gradients = { workspace = true }
-delegate = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+# UNUSED (cargo-machete): delegate = { workspace = true }
+# UNUSED (cargo-machete): tracing = { workspace = true }
+# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }

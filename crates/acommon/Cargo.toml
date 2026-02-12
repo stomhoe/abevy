@@ -6,22 +6,21 @@ edition = "2024"
 [dependencies]
 bevy = { workspace = true }
 serde = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+# UNUSED (cargo-machete): tracing = { workspace = true }
+# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
 bevy_replicon = { workspace = true }
-bevy_replicon_renet = { workspace = true }
-nano-id = { workspace = true }
-strum = { workspace = true }
-strum_macros = { workspace = true }
-debug_unwraps = { workspace = true }
+# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
+
+# UNUSED (cargo-machete): strum = { workspace = true }
+# UNUSED (cargo-machete): strum_macros = { workspace = true }
+# UNUSED (cargo-machete): debug_unwraps = { workspace = true }
 rand = { workspace = true }
-rand_distr = { workspace = true }
-rand_seeder = { workspace = true }
-rand_pcg = { workspace = true }
+# UNUSED (cargo-machete): rand_distr = { workspace = true }
+# UNUSED (cargo-machete): rand_seeder = { workspace = true }
+# UNUSED (cargo-machete): rand_pcg = { workspace = true }
 indexmap = { workspace = true }
 delegate = { workspace = true }
 paste = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
 bevy-inspector-egui = { workspace = true }
-

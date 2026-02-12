@@ -4,21 +4,21 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-common = { path = "../acommon" }
+# UNUSED (cargo-machete): common = { path = "../acommon" }
 
 
 bevy = { workspace = true }
-serde = { workspace = true }
+# UNUSED (cargo-machete): serde = { workspace = true }
 bevy_replicon = { workspace = true }
-bevy_replicon_renet = { workspace = true }
-indexmap = { workspace = true }
-delegate = { workspace = true }
-bevy_ecs_tilemap = { workspace = true }
-bevy-inspector-egui = { workspace = true }
+# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
+# UNUSED (cargo-machete): indexmap = { workspace = true }
+# UNUSED (cargo-machete): delegate = { workspace = true }
+# UNUSED (cargo-machete): bevy_ecs_tilemap = { workspace = true }
+# UNUSED (cargo-machete): bevy-inspector-egui = { workspace = true }
 rand = { workspace = true }
-rand_distr = { workspace = true }
-rand_seeder = { workspace = true }
-rand_pcg = { workspace = true }
-noiz = { workspace = true }
+# UNUSED (cargo-machete): rand_distr = { workspace = true }
+# UNUSED (cargo-machete): rand_seeder = { workspace = true }
+# UNUSED (cargo-machete): rand_pcg = { workspace = true }
+# UNUSED (cargo-machete): noiz = { workspace = true }
 
 

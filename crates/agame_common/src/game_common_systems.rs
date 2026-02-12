@@ -114,7 +114,7 @@ pub fn despawn_sprites_without_childof(
         .for_each(|sprite_ent| cmd.entity(sprite_ent).try_despawn());
 }
 
-/// DEACTIVATE THIS SYSTEM IN RELEASE BUILDS !!!!
+/// DEACTIVATE THIS SYSTEM IN RELEASE BUILDS
 #[allow(unused_parens)]
 pub fn set_entity_name(
     ezeros_query: Query<

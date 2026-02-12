@@ -7,21 +7,21 @@ edition = "2024"
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 tilemap = { path = "../tilemap" }
-sprite_animation = { path = "../sprite_animation" }
-sprite_animation_shared = { path = "../sprite_animation_shared" }
-sprite = { path = "../sprite" }
-dimension = { path = "../dimension" }
-being = { path = "../being" }
-color_sampler = { path = "../color_sampler" }
+# UNUSED (cargo-machete): sprite_animation = { path = "../sprite_animation" }
+# UNUSED (cargo-machete): sprite_animation_shared = { path = "../sprite_animation_shared" }
+# UNUSED (cargo-machete): sprite = { path = "../sprite" }
+# UNUSED (cargo-machete): dimension = { path = "../dimension" }
+# UNUSED (cargo-machete): being = { path = "../being" }
+# UNUSED (cargo-machete): color_sampler = { path = "../color_sampler" }
 tilemap_shared = { path = "../tilemap_shared" }
 
 
 bevy = { workspace = true }
-serde = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-bevy_spritesheet_animation = { workspace = true }
+# UNUSED (cargo-machete): serde = { workspace = true }
+# UNUSED (cargo-machete): tracing = { workspace = true }
+# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+# UNUSED (cargo-machete): bevy_spritesheet_animation = { workspace = true }
 bevy_replicon = { workspace = true }
-bevy_replicon_renet = { workspace = true }
+# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }

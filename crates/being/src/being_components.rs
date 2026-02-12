@@ -9,7 +9,7 @@ use common::common_components::*;
 use sprite_animation_shared::MoveAnimActive;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Deserialize, Serialize, Default)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Default)]
 
 #[require(InputDirection, MoveVecMag, Replicated, MoveAnimActive,
 Grounding, Visibility, CardinalDirection, AppliedModifiers, Transform,
@@ -52,7 +52,7 @@ pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si e
 #[derive(Component, Debug, Copy, Clone, MapEntities)]
 pub struct TouchingPortal(#[entities] pub Entity);
 
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, )]
 #[relationship(relationship_target = Followers)]
 pub struct FollowerOf {#[relationship] #[entities] pub master: Entity,}
 
@@ -72,7 +72,7 @@ impl TargetSpawnPos {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, )]
 #[relationship(relationship_target = CreatedCharacters)]
 #[require(PlayerDirectControllable, being_shared::IsHumanControlled(true))]
 pub struct CharacterCreatedBy {
