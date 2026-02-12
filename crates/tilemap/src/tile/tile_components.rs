@@ -223,7 +223,7 @@ pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct BlocksProjectiles;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct DeleteOtherTiles {
     pub spared_z: HashSet<AcZ>,
     pub spared_tags: TagSet,

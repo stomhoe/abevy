@@ -12,7 +12,7 @@ pub struct BodyWeightedSampler;
 #[require(AssetScoped, Replicated, Prefix::trunc("BodySamplerHolder"), )]
 pub struct EguiBodySamplerHolder;
 
-#[derive(Component, Debug, Default, Clone, Reflect)]
+#[derive(Component, Debug, Default, Clone, )]
 pub struct SampleBodyFromStrId(StrId);
 impl SampleBodyFromStrId {
     pub fn new<S: AsRef<str>>(id: S) -> Self {
@@ -23,7 +23,7 @@ impl SampleBodyFromStrId {
     }
 }
 
-#[derive(Component, Debug, Clone, Reflect, MapEntities)]
+#[derive(Component, Debug, Clone, MapEntities)]
 pub struct SampleTreeEnt(#[entities]pub Entity);
 impl SampleTreeEnt {
     pub fn new(entity: Entity) -> Self { Self(entity) }

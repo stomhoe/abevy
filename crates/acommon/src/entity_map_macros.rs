@@ -68,7 +68,9 @@ macro_rules! define_entity_map_systems {
                     self.0 == Entity::PLACEHOLDER
                 }
             }
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, )]
+            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq,
+                //Reflect
+            )]
             pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
             impl [<$abbreviation StrIdRef>] {
                 pub fn asd<S: AsRef<str>>(id: S) -> Self {
@@ -78,10 +80,10 @@ macro_rules! define_entity_map_systems {
 
             }
 
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
+            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
             pub struct [<DoNotRetryConvert $abbreviation StrIdRef>](pub common::common_components::StrId);
 
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
+            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
             pub struct [<DoNotRetryBuild $abbreviation Ref>];
 
             pub fn [<map_ $main_component:snake _id_to_entity>](
@@ -268,7 +270,9 @@ macro_rules! define_entity_map_systems {
             )]
             pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
 
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, Default)]
+            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Default,
+                //Reflect,
+            )]
             pub struct [<DoNotRetryConvert $abbreviation StrIdRef>](pub common::common_components::StrId);
 
             #[derive(Component, std::fmt::Debug, Clone, Copy, Default)]

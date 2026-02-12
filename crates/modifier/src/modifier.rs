@@ -16,7 +16,6 @@ pub fn plugin(app: &mut App) {
             .in_set(ModifierSystems),
     )
     .register_type::<AppliedModifiers>()
-    .register_type::<ModifierTags>()
 
     .replicate::<ModifierTarget>()
     .replicate::<BaseValue>()

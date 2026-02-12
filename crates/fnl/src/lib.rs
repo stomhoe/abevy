@@ -76,7 +76,7 @@ type Float = f64;
 use core::hash::{Hash, Hasher};
 use std::hash::DefaultHasher;
 
-use bevy::{math::{IVec2, Vec2}, reflect::Reflect};
+use bevy::{math::{IVec2, Vec2}, };
 use common::common_components::StrId;
 // Use the `num-traits` crate's `Float` trait if the user has enabled the `libm` feature flag
 #[cfg(feature = "libm")]

@@ -1,7 +1,7 @@
 
 
 use bevy::prelude::*;
-#[allow(unused_imports)] 
+#[allow(unused_imports)]
 
 use bevy::platform::collections::HashSet;
 use std::hash::{Hash, };
@@ -17,7 +17,7 @@ macro_rules! impl_tags_common_methods {
                 .filter_map(|id| {
                     let id_str = id.as_ref().trim();
                     if id_str.is_empty() { None } else { Some(<$tag_type>::from(id_str)) }
-                    
+
                 })
                 .collect();
                 if collection.is_empty() {
@@ -31,7 +31,7 @@ macro_rules! impl_tags_common_methods {
                 .filter_map(|id| {
                     let id_str = id.as_ref().trim();
                     if id_str.is_empty() { None } else { Some(<$tag_type>::from(id_str)) }
-                    
+
                 })
                 .collect();
                 Self(collection)
@@ -95,7 +95,7 @@ macro_rules! impl_tag_hashset_methods {
 }
 macro_rules! define_tag_hashset_and_impl_methods {
     ($name:ident, $tag_type:ty) => {
-        #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, Default, PartialEq, Eq)]
+        #[derive(Component, Debug, Deserialize, Serialize, Clone, Default, PartialEq, Eq)]
         pub struct $name(pub HashSet<$tag_type>);
         impl_tag_hashset_methods!($name, $tag_type);
     };

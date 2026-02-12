@@ -9,7 +9,7 @@ use common::common_components::*;
 use sprite_animation_shared::MoveAnimActive;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Default)]
+#[derive(Component, Debug, Deserialize, Serialize, Default)]
 
 #[require(InputDirection, MoveVecMag, Replicated, MoveAnimActive,
 Grounding, Visibility, CardinalDirection, AppliedModifiers, Transform,
@@ -44,15 +44,15 @@ pub struct InfiniteMorale;
 #[derive(Component, Default, Deserialize, Serialize)]
 pub struct PlayerDirectControllable;
 
-#[derive(Component, Reflect, MapEntities, )]
+#[derive(Component, MapEntities, )]
 //no insertar este component si no se quiere restringir quien puede tomar control
 /// entities: whitelisted players
 pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si es de la misma facción antes de intentar tomar control
 
-#[derive(Component, Debug, Copy, Clone, Reflect, MapEntities)]
+#[derive(Component, Debug, Copy, Clone, MapEntities)]
 pub struct TouchingPortal(#[entities] pub Entity);
 
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, Hash, PartialEq, Eq, )]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
 #[relationship(relationship_target = Followers)]
 pub struct FollowerOf {#[relationship] #[entities] pub master: Entity,}
 
@@ -72,14 +72,14 @@ impl TargetSpawnPos {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
 #[relationship(relationship_target = CreatedCharacters)]
 #[require(PlayerDirectControllable, being_shared::IsHumanControlled(true))]
 pub struct CharacterCreatedBy {
     #[relationship] #[entities] pub player: Entity,
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = CharacterCreatedBy)]
 pub struct CreatedCharacters(Vec<Entity>);
 impl CreatedCharacters { pub fn entities(&self) -> &[Entity] { &self.0 } }

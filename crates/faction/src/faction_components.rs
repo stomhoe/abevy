@@ -26,12 +26,12 @@ pub struct BelongsToFaction(
     pub Entity,
 );
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = BelongsToFaction)]
 pub struct FactionThings(Vec<Entity>);
 impl FactionThings { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, )]
 #[relationship(relationship_target = PlayerMembers)]
 pub struct PlayerOfFaction {
     #[relationship] #[entities]
@@ -39,7 +39,7 @@ pub struct PlayerOfFaction {
 }
 impl PlayerOfFaction {pub fn new(faction: Entity) -> Self {PlayerOfFaction { faction }}}
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = PlayerOfFaction)]
 pub struct PlayerMembers(Vec<Entity>);
 impl PlayerMembers { pub fn entities(&self) -> &[Entity] { &self.0 } }
@@ -88,4 +88,3 @@ pub enum Ally{
     Defense,
     Attack
 }
-

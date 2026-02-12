@@ -7,13 +7,12 @@ use indexmap::IndexMap;
 use bevy::platform::collections::HashMap;
 use std::hash::{Hash, };
 use crate::{common_types::*};
-use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use std::fmt::{Debug, Display};
 use serde::{Deserialize, Serialize};
 
 macro_rules! define_fixedstr_id {
     ($ty:ident, $len:expr) => {
-        #[derive(Component, Deserialize, Serialize, Clone, Hash, Reflect, PartialEq, Eq, )]
+        #[derive(Component, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, )]
         #[require(Name)]
         pub struct $ty(FixedStr<$len>);
         impl $ty {
@@ -44,6 +43,7 @@ macro_rules! define_fixedstr_id {
                 if self.0.is_empty() { write!(f, "") } else { write!(f, "{}", self.0) }
             }
         }
+        /*
         impl InspectorPrimitive for $ty {
             fn ui(&mut self, ui: &mut egui::Ui, _: &dyn std::any::Any, _: egui::Id, _: InspectorUi<'_, '_>) -> bool {
                 let mut s = self.0.as_str().to_string();
@@ -60,6 +60,7 @@ macro_rules! define_fixedstr_id {
                 ui.label(self.0.as_str());
             }
         }
+         */
         impl AsRef<str> for $ty { fn as_ref(&self) -> &str { self.0.as_str() } }
         /// Allow comparison with &str using PartialEq
         impl PartialEq<&str> for $ty {

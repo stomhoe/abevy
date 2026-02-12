@@ -25,8 +25,5 @@ pub fn plugin(app: &mut App) {
     .replicate::<BelongsToFaction>()
 
     .register_type::<BelongsToFaction>()
-    .register_type::<PlayerOfFaction>()
-    .register_type::<PlayerMembers>()
-    .register_type::<FactionThings>()
     ;
 }

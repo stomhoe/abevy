@@ -25,14 +25,14 @@ pub fn plugin(app: &mut App) {
 
         .replicate::<Name>()
         .replicate::<Prefix>()
-        .register_type_data::<Prefix, InspectorEguiImpl>()
-        .replicate::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
+        //.register_type_data::<Prefix, InspectorEguiImpl>()
+        .replicate::<StrId>()//.register_type_data::<StrId, InspectorEguiImpl>()
         .replicate::<ImagePathHolder>()
         .replicate::<DisplayName>()
         .replicate::<HashId>()
         .replicate::<StrId>()
         .replicate::<HashIdToEntityMap>()
-        .replicate::<Tag>().register_type_data::<Tag, InspectorEguiImpl>()
+        .replicate::<Tag>()//.register_type_data::<Tag, InspectorEguiImpl>()
         .replicate::<TagSet>()
         .replicate::<VisibilityGameState>()
 

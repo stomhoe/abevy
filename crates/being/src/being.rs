@@ -55,7 +55,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate_filtered::<ChildOf, With<Being>>()
 
-    .register_type::<CreatedCharacters>()
+
 
 
     ;

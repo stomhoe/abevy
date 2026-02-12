@@ -30,7 +30,7 @@ pub struct BodyPartParent {#[relationship] #[entities] pub parent: Entity,}
 pub struct BodyPartChildren(Vec<Entity>);
 impl BodyPartChildren { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
-#[derive(Component, Debug, Default, Clone, Reflect)]
+#[derive(Component, Debug, Default, Clone, )]
 pub struct BodyPartSlots(pub Vec<StrId>);
 impl BodyPartSlots {
     pub fn new<S: AsRef<str>>(slots: impl IntoIterator<Item = S>) -> Self {

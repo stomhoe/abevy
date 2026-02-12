@@ -22,7 +22,7 @@ pub struct ControlledBeings(Vec<Entity>);
 impl ControlledBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, MapEntities, )]
 #[relationship(relationship_target = ControlledBeings)]
 pub struct ControlledBy  {
     #[relationship] #[entities]
