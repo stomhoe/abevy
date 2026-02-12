@@ -1,12 +1,14 @@
 use crate::{
-    tile::{tile_components::*, tile_messages::GlobalTilePosChanged},
+    tile::{tile_components::*, tile_messages::*, tile_resources::{TileAdjRetexAsyncTasks, TileAdjRetexTaskResult}},
 
     tilemap_resources::*,
 };
 use ::sprite_shared::*;
 use avian2d::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
+use bevy::tasks::{futures_lite::future, AsyncComputeTaskPool};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, tiles::TileFlip};
 use bevy_replicon::prelude::*;
 use common::{AnyDisabling, common_components::HashId, common_tag_components::TagSet};
@@ -74,30 +76,7 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn spritetile_snap_transform_to_global_pos(
     mut cmd: Commands,
-    mut query: Query<
-        (
-            Entity,
-            &mut Transform,
-            &GlobalTilePos,
-            Option<&mut Visibility>,
-            Option<&ChildOf>,
-            &EntityZeroRef,
-            Has<Replicated>,
-            Has<KeepDisabled>,
-        ),
-        (
-            Or<(
-                Changed<GlobalTilePos>,
-                Changed<EntityZeroRef>,
-                Changed<ChildOf>,
-                Added<Replicated>,
-            )>,
-            common::AnyDisabling,
-            Without<EntityZero>,
-            Without<TilemapAnchor>,
-            With<Tile>,
-        ),
-    >,
+    mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>), (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, common::AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, With<Tile>)>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
     parent_query: Query<&GlobalTransform, common::AnyDisabling>,
     state: Res<State<ClientState>>,
@@ -153,41 +132,41 @@ pub fn emit_global_tile_pos_change(
         ),
     >,
     mut mwriter: MessageWriter<GlobalTilePosChanged>,
+    mut changed: Local<Vec<GlobalTilePosChanged>>,
 ) {
-    let mut write = Vec::new();
-    for (entity, mut prev_tile_pos, mut prev_dim_ref, global_tile_pos, dimension_ref) in
+    changed.reserve(query.iter().size_hint().0);
+    for (entity, mut prev_tile_pos, mut prev_dim_ref, global_tile_pos, &dimension_ref) in
         query.iter_mut()
     {
-        write.push(GlobalTilePosChanged {
-            entity,
-            old_gpos: prev_tile_pos.0,
-            old_dim: DimensionRef(prev_dim_ref.0),
-        });
-        prev_tile_pos.0 = *global_tile_pos;
-        prev_dim_ref.0 = dimension_ref.0;
+        if global_tile_pos != &prev_tile_pos.0 || dimension_ref.0 != prev_dim_ref.0 {
+            changed.push(GlobalTilePosChanged {
+                entity,
+                old_gpos: prev_tile_pos.0,
+                old_dim: DimensionRef(prev_dim_ref.0),
+            });
+            prev_tile_pos.0 = *global_tile_pos;
+            prev_dim_ref.0 = dimension_ref.0;
+        }
     }
-    mwriter.write_batch(write);
+    mwriter.write_batch(changed.drain(..));
 }
 
 #[allow(unused_parens)]
 pub fn add_spawned_tiles_to_gpos_map(
     mut map: ResMut<SpriteTilesAtGpos>,
+    mut changed_pos: MessageReader<GlobalTilePosChanged>,
     query: Query<
-        (
-            Entity,
-            &DimensionRef,
-            &GlobalTilePos,
-        ),
+        (Entity, &DimensionRef, &GlobalTilePos),
         (common::AnyDisabling, Without<EntityZero>, Without<TilemapId>),
     >,
-    mut changed_pos: MessageReader<GlobalTilePosChanged>,
+    mut entities: Local<Vec<Entity>>,
 ) {
-    let mut entities = Vec::with_capacity(changed_pos.len());
+    entities.reserve(changed_pos.len());
     for changed_pos in changed_pos.read() {
         map.remove_tile(changed_pos.old_dim, changed_pos.old_gpos, changed_pos.entity);
         entities.push(changed_pos.entity);
     }
-    query.iter_many(entities).for_each(
+    query.iter_many(entities.drain(..)).for_each(
         |(ent, &dimension_ref, &gpos, )| {
             map.insert(ent, dimension_ref, gpos,);
         },
@@ -232,35 +211,29 @@ pub fn add_projectile_colliders_to_tiles(
 }
 
 pub fn despawn_if_not_excepted(
-    mut cmd: Commands,
     ezero_query: Query<
         (Option<&AcZ>, Option<&DeleteOtherTiles>),
         (With<EntityZero>, common::AnyDisabling),
     >,
-    changed_query: Query<
+    query: Query<
         (
-            Entity,
-            &DimensionRef,
-            &GlobalTilePos,
-            &EntityZeroRef,
-            Option<&TagSet>,
-            Option<&DeleteOtherTiles>,
+            Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef,
+            Option<&TagSet>, Option<&DeleteOtherTiles>,
         ),
-        (
-            Or<(Changed<DimensionRef>, Changed<GlobalTilePos>)>,
-            common::AnyDisabling,
-            Without<EntityZero>,
-        ),
+        (common::AnyDisabling, Without<EntityZero>),
     >,
     otile_query: Query<
         (&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),
         (common::AnyDisabling, Without<EntityZero>),
     >,
+    mut changed_pos: MessageReader<GlobalTilePosChanged>,
     registered_positions: Res<ImportantRegisteredPositions>,
-    mut params: TileGatheringParamSet,
+    params: TileGatheringParamSet,
     mut otile_ents: Local<Vec<Entity>>,
+    mut writer: MessageWriter<SafeDespawn>,
+    mut msgs: Local<Vec<SafeDespawn>>,
 ) {
-    changed_query.iter().for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
+    query.iter_many(changed_pos.read().map(|msg| msg.entity)).for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
         let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
             warn!(target: common::DEBUG_TILE, "Failed to get EntityZero for tile entity {:?}, skipping despawn check", newtile_ent);
             return;
@@ -269,7 +242,6 @@ pub fn despawn_if_not_excepted(
             warn!(target: "tilemap", "Tile entity {:?} has no AcZ, skipping despawn check", newtile_ent);
             return;
         };
-
         params.gather_tiles_at(&mut *otile_ents, dim, gpos);
         otile_ents.drain(..).for_each(|otile_ent| {
             if otile_ent == newtile_ent {
@@ -287,8 +259,6 @@ pub fn despawn_if_not_excepted(
                 trace!(target: "tilemap", "Tile entity {:?} has no AcZ, skipping despawn check", otile_ent);
                 return;
             };
-
-
             let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
             if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
                 if newtile_delete_others_excp.spared_z.contains(otile_z) {
@@ -301,91 +271,206 @@ pub fn despawn_if_not_excepted(
                 }
                 else {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
-                    // Don't despawn if the tile's EntityZero is registered or exempted
                     if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
-                        params.safe_despawn_tile_at(&mut cmd, dim, gpos, otile_ent);
+                        msgs.push(SafeDespawn(otile_ent));
                     }
                     return;
                 }
             }
-
             let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp);
             if let Some(otile_delete_others_excp) = otile_delete_others_excp {
                 if otile_delete_others_excp.spared_z.contains(newtile_z) {
                     return;
                 }
                 else if let Some(newtile_tag_hashset) = newtile_tag_hashset
-                && otile_delete_others_excp.spared_tags.intersects(newtile_tag_hashset)
-                {
+                && otile_delete_others_excp.spared_tags.intersects(newtile_tag_hashset) {
                     return;
                 }
-
                 else {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
-                    // Don't despawn if the new tile's EntityZero is registered or exempted
                     if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
-                        params.safe_despawn_tile_at(&mut cmd, dim, gpos, newtile_ent);
+                        msgs.push(SafeDespawn(newtile_ent));
                     }
                 }
             }
         });
     });
+    writer.write_batch(msgs.drain(..));
 }
-
 #[allow(unused_parens)]
-pub fn make_spritetile_child_of_chunk(
-    mut cmd: Commands,
-    query: Query<
-        (
-            Entity,
-            &GlobalTilePos,
-            &DimensionRef,
-            Has<Persisted>,
-            Has<PortalTo>,
-        ),
-        (
-            With<Tile>,
-            Without<TilemapId>,
-            common::AnyDisabling,
-            Without<EntityZero>,
-            Without<ChildOf>,
-        ),
-    >,
-    loaded_chunks: Res<LoadedChunks>,
+pub fn reckeck_adjacency_for(
+    mut reader: MessageReader<GlobalTilePosChanged>,
+    mut writer: MessageWriter<RecheckTileAdjacency>,
+    tiles_query: Query<(&DimensionRef, &GlobalTilePos), (With<Tile>, common::AnyDisabling)>,
+    mut msgs: Local<Vec<RecheckTileAdjacency>>,
 ) {
-    let mut child_ofs = Vec::new();
-    query.iter().for_each(|(ent, &global_pos, &dim_ref, to_persist, portal_to)| {
-        let chunk_pos: ChunkPos = global_pos.into();
-
-        if to_persist {
-            child_ofs.push((ent, ChildOf(dim_ref.0)));
-        } else {
-            let Some(&chunk) = loaded_chunks.0.get(&(dim_ref, chunk_pos)) else {
-                if portal_to {
-                    error!(target: "tilemap", "Portal tile entity {:?} at gpos {:?} in dimension {:?} has no loaded chunk to be child of!", ent, global_pos, dim_ref);
-                    error!(target: "tilemap", "Portal tile entity {:?} at gpos {:?} in dimension {:?} has no loaded chunk to be child of!", ent, global_pos, dim_ref);
-                    error!(target: "tilemap", "Portal tile entity {:?} at gpos {:?} in dimension {:?} has no loaded chunk to be child of!", ent, global_pos, dim_ref);
-
-                }
-
-                cmd.entity(ent).try_despawn();
-                return;
-            };
-            child_ofs.push((ent, ChildOf(chunk)));
+    for read in reader.read() {
+        if read.old_gpos != PrevGlobalTilePos::PLACEHOLDER_I32_MAX.0 {
+            RecheckTileAdjacency::append_all_adjacent_pos(&mut msgs, read.old_dim, read.old_gpos, );
         }
+        if let Ok((&new_dim, &new_gpos)) = tiles_query.get(read.entity) {
+            msgs.push(RecheckTileAdjacency {
+                dim: new_dim,
+                gpos: new_gpos,
+            });
+            RecheckTileAdjacency::append_all_adjacent_pos(&mut msgs, new_dim, new_gpos, );
+        }
+    }
+    writer.write_batch(msgs.drain(..));
+}
+#[allow(unused_parens)]
+/// should implement something similar to Godot's autotiling system
+pub fn tile_adjacency_retexturing_system(
+    mut reader: MessageReader<RecheckTileAdjacency>,
+    mut tile_query: Query<(&EntityZeroRef, &DimensionRef, &GlobalTilePos, Option<&mut sprite_animation_shared::AnimExtraState>, Option<&TilemapId>, Option<&mut TileTextureIndex>), ()>,
+    ezero_query: Query<(&HashId, Option<&AdjRetexConfig>), ()>,
+    hash2tex_query: Query<(&HashIdToTexIndex), ()>,
+    mut retex_tasks: ResMut<TileAdjRetexAsyncTasks>,
+    params: TileGatheringParamSet,
+    mut adj_tiles_ezeros_hash_ids: Local<Vec<(DiagonalCardinalDirection, HashId)>>,
+    mut north_adj_tiles_ezeros: Local<Vec<Entity>>,
+    mut south_adj_tiles_ezeros: Local<Vec<Entity>>,
+    mut west_adj_tiles_ezeros: Local<Vec<Entity>>,
+    mut east_adj_tiles_ezeros: Local<Vec<Entity>>,
+    mut northeast_adj_tiles_ezeros: Local<Vec<Entity>>,
+    mut northwest_adj_tiles_ezeros: Local<Vec<Entity>>,
+    mut southeast_adj_tiles_ezeros: Local<Vec<Entity>>,
+    mut southwest_adj_tiles_ezeros: Local<Vec<Entity>>,
+    mut unique_rechecks: Local<HashSet<(DimensionRef, GlobalTilePos)>>,
+) {
+    retex_tasks.0.retain_mut(|task| {
+        let Some(result) = future::block_on(future::poll_once(task)) else {
+            return true;
+        };
+        let Some(hid_to_use) = result.hid_to_use else {
+            return false;
+        };
+        let Ok((ezero_ref, .., anim_state, tmap_id, tex_idx)) = tile_query.get_mut(result.tile_ent) else {
+            return false;
+        };
+        let Ok((&tile_hid, ..)) = ezero_query.get(ezero_ref.0) else {
+            return false;
+        };
+        if let (Some(mut tex_idx), Some(&tmap_ent)) = (tex_idx, tmap_id) {
+            let Ok(hash2tex) = hash2tex_query.get(tmap_ent.0) else {
+                return false;
+            };
+            if let Ok(new_tex_idx) = hash2tex.get(tile_hid, hid_to_use) {
+                *tex_idx = new_tex_idx;
+            }
+        } else if let Some(mut anim_state) = anim_state {
+            anim_state.0 = hid_to_use;
+        }
+        false
     });
-    cmd.try_insert_batch(child_ofs);
+
+    let task_pool = AsyncComputeTaskPool::get();
+
+    unique_rechecks.clear();
+    for msg in reader.read() {
+        let key = (msg.dim, msg.gpos);
+        if !unique_rechecks.insert(key) {
+            continue;
+        }
+        north_adj_tiles_ezeros.clear();
+        params.gather_tiles_at(&mut *north_adj_tiles_ezeros, msg.dim, msg.gpos);
+        let mut tiles_to_recheck: Vec<Entity> = north_adj_tiles_ezeros.drain(..).collect();
+
+        for tile_ent in tiles_to_recheck.drain(..) {
+            let Ok((ezero_ref, &dim, &gpos, ..)) = tile_query.get(tile_ent) else {
+                continue;
+            };
+            let Ok((_, Some(adj_retex_config))) = ezero_query.get(ezero_ref.0) else {
+                continue;
+            };
+            north_adj_tiles_ezeros.clear();
+            south_adj_tiles_ezeros.clear();
+            west_adj_tiles_ezeros.clear();
+            east_adj_tiles_ezeros.clear();
+            northeast_adj_tiles_ezeros.clear();
+            northwest_adj_tiles_ezeros.clear();
+            southeast_adj_tiles_ezeros.clear();
+            southwest_adj_tiles_ezeros.clear();
+            adj_tiles_ezeros_hash_ids.clear();
+
+            params.gather_tiles_at(&mut *north_adj_tiles_ezeros, dim, gpos.adjacent_north());
+            params.gather_tiles_at(&mut *south_adj_tiles_ezeros, dim, gpos.adjacent_south());
+            params.gather_tiles_at(&mut *west_adj_tiles_ezeros, dim, gpos.adjacent_west());
+            params.gather_tiles_at(&mut *east_adj_tiles_ezeros, dim, gpos.adjacent_east());
+            params.gather_tiles_at(&mut *northeast_adj_tiles_ezeros, dim, gpos.adjacent_northeast());
+            params.gather_tiles_at(&mut *northwest_adj_tiles_ezeros, dim, gpos.adjacent_northwest());
+            params.gather_tiles_at(&mut *southeast_adj_tiles_ezeros, dim, gpos.adjacent_southeast());
+            params.gather_tiles_at(&mut *southwest_adj_tiles_ezeros, dim, gpos.adjacent_southwest());
+
+            let mut process_adjacent_tiles = |direction: DiagonalCardinalDirection, adj_tiles: &mut Vec<Entity>| {
+                for adj_tile_ent in adj_tiles.drain(..) {
+                    let Ok((ezero_ref, ..)) = tile_query.get(adj_tile_ent) else {
+                        continue;
+                    };
+                    let Ok((&hid, ..)) = ezero_query.get(ezero_ref.0) else {
+                        continue;
+                    };
+                    adj_tiles_ezeros_hash_ids.push((direction, hid));
+                }
+            };
+            process_adjacent_tiles(DiagonalCardinalDirection::North, &mut north_adj_tiles_ezeros);
+            process_adjacent_tiles(DiagonalCardinalDirection::South, &mut south_adj_tiles_ezeros);
+            process_adjacent_tiles(DiagonalCardinalDirection::West, &mut west_adj_tiles_ezeros);
+            process_adjacent_tiles(DiagonalCardinalDirection::East, &mut east_adj_tiles_ezeros);
+            process_adjacent_tiles(DiagonalCardinalDirection::NorthEast, &mut northeast_adj_tiles_ezeros);
+            process_adjacent_tiles(DiagonalCardinalDirection::NorthWest, &mut northwest_adj_tiles_ezeros);
+            process_adjacent_tiles(DiagonalCardinalDirection::SouthEast, &mut southeast_adj_tiles_ezeros);
+            process_adjacent_tiles(DiagonalCardinalDirection::SouthWest, &mut southwest_adj_tiles_ezeros);
+
+            let adj_state = adj_tiles_ezeros_hash_ids.clone();
+            let adj_retex_config = adj_retex_config.clone();
+            retex_tasks.0.push(task_pool.spawn(async move {
+                let hid_to_use = adj_retex_config.get_tex_in_curr_adjacency_state(&adj_state);
+                TileAdjRetexTaskResult { tile_ent, hid_to_use }
+            }));
+        }
+    }
 }
 
-#[allow(unused_parens)]
-
-pub fn tile_adjacency_retexturing_system(//TODO agregar change detection sino loopea sin parar
+pub fn safe_despawn_tile_at(
     mut cmd: Commands,
-    ezero_query: Query<(&EntityZero), (common::AnyDisabling,)>,
-    tilemap_query: Query<(&TileStorage, &HashIdToTexIndex), ()>,
-    mut tile_query: Query<(&EntityZeroRef, &mut TileTextureIndex), ()>,
-    params: TileGatheringParamSet
+    mut reader: MessageReader<SafeDespawn>,
+    mut recheck_writer: MessageWriter<RecheckTileAdjacency>,
+    loaded_chunks: Res<LoadedChunks>,
+    chunk_children: Query<&Tilemaps>,
+    mut tilemap_query: Query<(&SizeInTiles, &mut TileStorage, &HashIdToTexIndex)>,
+    tile_query: Query<(&DimensionRef, &GlobalTilePos), (With<Tile>, common::AnyDisabling)>,
+    mut rechecks: Local<Vec<RecheckTileAdjacency>>,
 ) {
-    return;
-    for mut item in tile_query.iter_mut() {}
+    for &SafeDespawn(tile_ent) in reader.read() {
+        let Ok((&dim, &gpos)) = tile_query.get(tile_ent) else {
+            cmd.entity(tile_ent).try_despawn();
+            continue;
+        };
+
+        cmd.entity(tile_ent).try_despawn();
+        rechecks.push(RecheckTileAdjacency { dim, gpos });
+        RecheckTileAdjacency::append_all_adjacent_pos(&mut rechecks, dim, gpos);
+
+        let chunk_pos = gpos.to_chunkpos();
+        let Some(&chunk_ent) = loaded_chunks.0.get(&(dim, chunk_pos)) else {
+            continue;
+        };
+        let Ok(tilemaps) = chunk_children.get(chunk_ent) else {
+            continue;
+        };
+        for &tmap_ent in tilemaps.entities() {
+            let Ok((&size_in_tiles, mut storage, ..)) = tilemap_query.get_mut(tmap_ent) else {
+                continue;
+            };
+            let tpos = gpos.to_tilepos(size_in_tiles);
+            let Some(found_tile_ent) = storage.get(&tpos) else {
+                continue;
+            };
+            if tile_ent == found_tile_ent {
+                storage.remove(&tpos);
+            }
+        }
+    }
+    recheck_writer.write_batch(rechecks.drain(..));
 }

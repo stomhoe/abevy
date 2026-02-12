@@ -25,8 +25,6 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (init_body_weighted_samplers, map_body_weighted_sampler_id_to_entity, init_body_weighted_samplers_refs,)
         ).chain().in_set(BodySamplerSystems))
-        .register_type::<BodyWeightedSamplerHandles>()
-        .register_type::<BodyWeightedSamplerSeri>()
         .replicate::<EguiBodySamplerHolder>()
         .replicate::<BodyWeightedSampler>()
         ;

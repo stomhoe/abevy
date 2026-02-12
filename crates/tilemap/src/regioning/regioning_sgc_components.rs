@@ -1,16 +1,13 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::Replicated;
 use game_common::game_common_components::ArgsDict;
-use serde::{Deserialize, Serialize};
 
-use bevy::{ecs::entity::MapEntities, platform::collections::HashMap};
-
-
+use bevy::{ecs::entity::MapEntities, };
 
 use common::{common_components::*, };
+use serde::{Deserialize, Serialize};
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGC"), )]
 pub struct StructuredGenConfig{
     // the structure's id, not the sgc's
@@ -37,7 +34,7 @@ impl StructuredGenConfig {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
 #[relationship(relationship_target = AcceptedFilters)]
 pub struct WhitelistedFilterOf {
     #[relationship] #[entities]
@@ -49,12 +46,11 @@ impl WhitelistedFilterOf{
     }
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = WhitelistedFilterOf)]
 pub struct AcceptedFilters(Vec<Entity>);
 impl AcceptedFilters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGCsWeightedSampler"), )]
 pub struct SgcsWeightedSampler;

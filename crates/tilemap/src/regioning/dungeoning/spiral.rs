@@ -92,7 +92,7 @@ pub fn spiral_dungeon_building_system(
 
         let tile_map_size = tile_width * tile_height;
         let mut floor_map = vec![false; tile_map_size];
-        let mut hazard_map = vec![false; tile_map_size];
+        let hazard_map = vec![false; tile_map_size];
         let carve_margin: usize = 1;
         if tile_width <= carve_margin * 2 || tile_height <= carve_margin * 2 {
             continue;
@@ -417,7 +417,7 @@ pub fn spiral_dungeon_building_system(
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
-            for tile_pos in chunk_pos.get_tilepositions_within_chunk(OplistSize::default()) {
+            for tile_pos in chunk_pos.get_tilepositions_within_chunk(SizeInTiles::default()) {
                 let local_tile = tile_pos.0 - origin_tile.0;
                 if local_tile.x < 0 || local_tile.y < 0 { continue; }
                 let idx_x = local_tile.x as usize;

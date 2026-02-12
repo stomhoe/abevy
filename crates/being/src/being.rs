@@ -40,22 +40,23 @@ pub fn plugin(app: &mut App) {
         RaceSystems.after(AcSpriteSystems),
         BeingInstTemplateSystems.after(RaceSystems)
     ))
-    .regrepli::<Being>()
-    .regrepli::<ControlledBy>()
-    .regrepli::<Grounding>()
-    .regrepli::<FollowerOf>()
-    .regrepli::<CharacterCreatedBy>()
-    .regrepli::<PlayerDirectControllable>()
+    .replicate::<Being>()
+    .replicate::<ControlledBy>()
+    .replicate::<Grounding>()
+    .replicate::<FollowerOf>()
+    .replicate::<CharacterCreatedBy>()
+    .replicate::<PlayerDirectControllable>()
+    .replicate::<BodyCollisionRadius>()
 
 
-    .regrepli::<Sentient>()
-    .regrepli::<MappedSpritesToSample>()
-    .regrepli::<ControlledByClient>()
-    .regrepli::<NormalDistSizeMultiplier>()
+    .replicate::<Sentient>()
+    .replicate::<MappedSpritesToSample>()
+    .replicate::<ControlledByClient>()
+
     .replicate_filtered::<ChildOf, With<Being>>()
 
     .register_type::<CreatedCharacters>()
-    .register_type::<ControlledBeings>()
+
 
     ;
 }

@@ -50,17 +50,6 @@ pub fn plugin(app: &mut App) {
 
     .init_resource::<LoadedRegions>()
 
-    .register_type::<LoadedRegions>()
-    .register_type::<StructuredGenConfigEntityMap>()
-    .register_type::<WhitelistedFilterOf>()
-    .register_type::<AcceptedFilters>()
-
-    .register_type::<WhitelistedFilterOf>()
-    .register_type::<StructuredGenConfig>()
-    .register_type::<ClaimList>().register_type_data::<GridOfSgcs, InspectorEguiImpl>()
-    .register_type::<GridOfSgcs>()
-    .register_type::<CountsOfSgcs>()
-
     .replicate::<WhitelistedFilterOf>()
     .replicate::<StructuredGenConfig>()
     .replicate::<SgcsWeightedSampler>()

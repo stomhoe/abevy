@@ -7,7 +7,7 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(
     SparedFromHotReloading,
     AssetScoped,
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct BodyTree;
 
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities)]
+#[derive(Component, Debug, )]
 #[relationship(relationship_target = Bodies)]
 pub struct BodyOf {
     #[relationship]
@@ -33,10 +33,10 @@ impl Bodies {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities)]
+#[derive(Component, Debug, Clone, MapEntities)]
 pub struct BodyTreeToBuild(#[entities] pub Entity);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BodyHealth {
     pub total_hp: f32,
     pub current_hp: f32,
@@ -48,10 +48,10 @@ pub struct BodyHealth {
     pub vision: f32,
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct BodyDead;
 
-#[derive(Debug, Deserialize, Serialize, Copy, Clone, Reflect, Message)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone, Message)]
 pub struct BodyDamage {
     pub body: Entity,
     pub amount: f32,

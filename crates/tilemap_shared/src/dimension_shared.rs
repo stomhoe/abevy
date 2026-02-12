@@ -8,7 +8,7 @@ use bevy::platform::collections::{HashSet, HashMap};
 use bevy::{ecs::entity::{EntityHashSet, MapEntities}, };
 use common::common_tag_components::TagSet;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, )]
 #[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
 pub struct Dimension;
 
@@ -44,7 +44,7 @@ impl DimensionStrIdRef {
 pub struct DimensionSystems;
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, )]
 pub struct PrevDimensionRef(#[entities] pub Entity);
 
 
@@ -54,14 +54,14 @@ pub struct PrevDimensionRef(#[entities] pub Entity);
 #[relationship(relationship_target = RootInDimensions)]
 pub struct DimensionRootOplist(#[relationship]#[entities]pub Entity);
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = DimensionRootOplist)]
 pub struct RootInDimensions(EntityHashSet);
 impl RootInDimensions { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 pub struct MultipleDimensionStringRefs(Vec<String>);
 
 impl MultipleDimensionStringRefs {
@@ -74,16 +74,16 @@ impl MultipleDimensionStringRefs {
     }
 }
 
-#[derive(Component, Debug, Default, Serialize, Deserialize, Reflect, MapEntities, )]
+#[derive(Component, Debug, Default, Serialize, Deserialize, MapEntities, )]
 pub struct MultipleDimensionRefs(#[entities] pub EntityHashSet,);
 
 #[derive(Debug, Message)]
 pub struct ReassignDimensionToEntity (pub Entity);
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct WhitelistedStructureGenTags(pub TagSet);
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct BlacklistedStructureGenTags(pub TagSet);

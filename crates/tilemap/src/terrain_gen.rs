@@ -73,14 +73,6 @@ pub fn plugin(app: &mut App) {
         .add_message::<PendingOp>()
         .add_message::<TerrainProbe>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()
 
-        .register_type::<GlobalGenSettings>()
-        .register_type::<FnlNoiseComp>().register_type::<FastNoiseLite>()
-        .register_type::<Operand>()
-        .register_type::<OplistSize>()
-        .register_type::<TerrGenOpsLaunched>()
-        .register_type::<ChunkRef>()
-        .register_type::<RootInDimensions>()
-        .register_type::<OpFilter>()
 
         ;
 

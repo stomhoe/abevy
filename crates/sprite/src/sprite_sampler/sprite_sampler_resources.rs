@@ -3,7 +3,7 @@ use bevy::platform::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(serde::Deserialize, Asset, Reflect, Default, Debug)]
+#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct SpriteWeightedSamplerSeri {
     pub id: String,
     pub weights: Vec<(String, f32)>, // sprite_id or sampler_id* with weight

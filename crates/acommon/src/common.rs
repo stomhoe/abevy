@@ -24,17 +24,17 @@ pub fn plugin(app: &mut App) {
         .init_resource::<GlobalEntityMap>()
 
         .replicate::<Name>()
-        .regrepli::<Prefix>()
+        .replicate::<Prefix>()
         .register_type_data::<Prefix, InspectorEguiImpl>()
-        .regrepli::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
-        .regrepli::<ImagePathHolder>()
-        .regrepli::<DisplayName>()
-        .regrepli::<HashId>()
-        .regrepli::<StrId>()
-        .regrepli::<HashIdToEntityMap>()
-        .regrepli::<Tag>().register_type_data::<Tag, InspectorEguiImpl>()
-        .regrepli::<TagSet>()
-        .regrepli::<VisibilityGameState>()
+        .replicate::<StrId>().register_type_data::<StrId, InspectorEguiImpl>()
+        .replicate::<ImagePathHolder>()
+        .replicate::<DisplayName>()
+        .replicate::<HashId>()
+        .replicate::<StrId>()
+        .replicate::<HashIdToEntityMap>()
+        .replicate::<Tag>().register_type_data::<Tag, InspectorEguiImpl>()
+        .replicate::<TagSet>()
+        .replicate::<VisibilityGameState>()
 
 
 

@@ -206,7 +206,7 @@ macro_rules! define_entity_map_systems {
                     .init_resource::<[<$main_component EntityMap>]>()
                     .register_type::<[<$main_component EntityMap>]>()
                     .register_type::<[<$abbreviation Ref>]>()
-                    .register_type::<[<Egui $abbreviation sHolder>]>()
+                    //.register_type::<[<Egui $abbreviation sHolder>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
                          [<add_ $main_component:snake _ezeros_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1))),
                          [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>],
@@ -239,8 +239,7 @@ macro_rules! define_entity_map_systems {
             use bevy_asset_loader::prelude::AssetCollection;
 
             $(
-                #[derive(bevy_asset_loader::asset_collection::AssetCollection, Resource, Default, Reflect)]
-                #[reflect(Resource, Default)]
+                #[derive(bevy_asset_loader::asset_collection::AssetCollection, Resource, Default, )]
                 pub struct [<$seri_type sHandles>] {
                     #[asset(path = $ron_dir)]
                     #[asset(collection(typed))]
@@ -248,12 +247,11 @@ macro_rules! define_entity_map_systems {
                 }
             )+
 
-            #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone, Reflect)]
+            #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, )]
             #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform)]
             pub struct [<Egui $abbreviation sHolder>];
 
-            #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone, Reflect)]
-            #[reflect(Resource)]
+            #[derive(bevy::prelude::Resource, Clone, )]
             pub struct [<$main_component EntityMap>](pub common::common_types::HashIdToEntityMap);
 
             impl Default for [<$main_component EntityMap>] { fn default() -> Self { Self(Default::default()) } }
@@ -265,13 +263,15 @@ macro_rules! define_entity_map_systems {
                     self.0 == Entity::PLACEHOLDER
                 }
             }
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, )]
+            #[derive(Component, std::fmt::Debug, Clone,
+                //Reflect,
+            )]
             pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
 
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
+            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Reflect, Default)]
             pub struct [<DoNotRetryConvert $abbreviation StrIdRef>](pub common::common_components::StrId);
 
-            #[derive(Component, std::fmt::Debug, Clone, Copy, PartialEq, Eq, Reflect, serde::Deserialize, serde::Serialize, Default)]
+            #[derive(Component, std::fmt::Debug, Clone, Copy, Default)]
             pub struct [<DoNotRetryBuild $abbreviation Ref>];
 
             pub fn [<map_ $main_component:snake _id_to_entity>](
@@ -396,9 +396,8 @@ macro_rules! define_entity_map_systems {
 
                 app
                     .init_resource::<[<$main_component EntityMap>]>()
-                    .register_type::<[<$main_component EntityMap>]>()
+                    //.register_type::<[<$main_component EntityMap>]>()
                     .register_type::<[<$abbreviation Ref>]>()
-                    .register_type::<[<Egui $abbreviation sHolder>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
                          [<add_ $main_component:snake _ezeros_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1))),
                          [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>],
@@ -406,10 +405,9 @@ macro_rules! define_entity_map_systems {
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])
                     .replicate::<$main_component>()
                     .replicate::<[<$abbreviation Ref>]>()
-                    .replicate::<[<Egui $abbreviation sHolder>]>()
+                    .replicate_once::<[<Egui $abbreviation sHolder>]>()
                     .replicate_once_filtered::<Transform, With<[<Egui $abbreviation sHolder>]>>()
 
-                    .replicate::<[<DoNotRetryBuild $abbreviation Ref>]>()
                     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>()
                     .configure_loading_state(
                         bevy_asset_loader::prelude::LoadingStateConfig::new(common::common_states::AssetLoading::LoadingAssetsIntoHandles)

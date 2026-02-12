@@ -6,7 +6,7 @@ use serde::ser::SerializeStruct;
 use bevy_inspector_egui::prelude::*;
 
 #[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions)]
-#[reflect(Default, InspectorOptions)] 
+#[reflect(Default, InspectorOptions)]
 pub struct MonoRepeatTextureOverlayMat {
     #[texture(1)]
     #[sampler(2)]
@@ -59,7 +59,7 @@ impl Eq for MonoRepeatTextureOverlayMat {}
 
 impl Default for MonoRepeatTextureOverlayMat {
     fn default() -> Self {
-        Self { 
+        Self {
             texture_overlay: Handle::default(),
             mask_color: Vec4::new(1.0, 0.0, 0.0, 1.0),
             scale: 1e-5,

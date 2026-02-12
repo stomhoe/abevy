@@ -8,25 +8,19 @@ use bevy::ecs::entity::MapEntities;
 #[derive(Component, Debug, Default, )]
 pub struct ControlledLocally;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct ControlledByClient;
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 pub struct IsHumanControlled(pub bool);
 
-#[derive(Component, Debug, Reflect, )]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = ControlledBy)]
 pub struct ControlledBeings(Vec<Entity>);
 impl ControlledBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
-pub enum NormalDistSizeMultiplier {
-    Both(f32, f32),
-    Horizontal(f32),
-    Vertical(f32),
-}
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
 #[relationship(relationship_target = ControlledBeings)]
@@ -71,7 +65,7 @@ impl From<&str> for Grounding {
 }
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 #[require(Replicated, Prefix::trunc("BeingInstTemplate"))]
 pub struct BeingInstTemplate{
     pub points: u32,
@@ -84,9 +78,9 @@ pub struct BeingInstTemplate{
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct Sentient;
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize,)]
 pub struct WallPhaser;

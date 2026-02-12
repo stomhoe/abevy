@@ -3,12 +3,13 @@
 use bevy::prelude::*;
 use indexmap::IndexMap;
 #[allow(unused_imports)]
-use serde::{Deserialize, Serialize};
+
 use bevy::platform::collections::HashMap;
 use std::hash::{Hash, };
 use crate::{common_types::*};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use std::fmt::{Debug, Display};
+use serde::{Deserialize, Serialize};
 
 macro_rules! define_fixedstr_id {
     ($ty:ident, $len:expr) => {
@@ -87,10 +88,9 @@ define_fixedstr_id!(StrId20B, 20);
 define_fixedstr_id!(Tag, 32);
 define_fixedstr_id!(StrId, 32);
 
-
 define_fixedstr_id!(Prefix, 32);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Copy, Clone)]
 pub struct AddHashIdFromStrId;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect)]
@@ -137,7 +137,6 @@ impl Debug for HashId {
         write!(f, "HId({:05})", self.0)
     }
 }
-
 
 #[derive(Component, Deserialize, Serialize, Clone, Debug, Reflect)]
 pub struct HashIdMap<T>(pub HashMap<HashId, T>);

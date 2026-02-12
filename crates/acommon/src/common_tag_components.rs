@@ -2,11 +2,12 @@
 
 use bevy::prelude::*;
 #[allow(unused_imports)] 
-use serde::{Deserialize, Serialize};
+
 use bevy::platform::collections::HashSet;
 use std::hash::{Hash, };
 use crate::common_components::{HashId, Tag};
 use std::fmt::{Debug, };
+use serde::{Deserialize, Serialize};
 
 macro_rules! impl_tags_common_methods {
     ($collection_type_name:ty, $tag_type:ty, $collection_kind:ident) => {
@@ -110,11 +111,11 @@ macro_rules! define_tag_vec_and_impl_methods {
 
 define_tag_hashset_and_impl_methods!(TagSet, Tag);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Copy, Clone)]
 #[require(HashedTagsVec)]
 pub struct AddSameHashedTags;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, Hash, PartialEq, Eq, )]
+#[derive(Component, Debug, Default, Clone, Reflect, Hash, PartialEq, Eq)]
 pub struct HashedTagsVec(pub Vec<HashId>);
 impl_tag_vec_methods!(HashedTagsVec, HashId);
 

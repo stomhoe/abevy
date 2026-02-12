@@ -8,15 +8,15 @@ use std::hash::Hash;
 
 #[allow(unused_imports)] use {bevy::prelude::*, };
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct MovementBased;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct GroundingBased;
 
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, )]
 #[relationship(relationship_target = HeldSprites)]
 #[require(Prefix::trunc("Sprite"), )]
 pub struct BaseHolderRef {#[relationship]#[entities]pub base: Entity, }
@@ -51,7 +51,7 @@ impl<'a> IntoIterator for &'a HeldSprites {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Clone, )]
 pub struct SampleSpritesFromStrIds(Vec<StrId>); // correct to be multiple
 impl SampleSpritesFromStrIds {
     pub fn new<S: AsRef<str>>(ids: impl IntoIterator<Item = S>) -> Self {
@@ -67,7 +67,7 @@ impl SampleSpritesFromStrIds {
     pub fn ids(&self) -> &Vec<StrId> { &self.0 }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities, )]
 
 pub struct SampleSpriteEnts(#[entities]pub Vec<Entity>);
 impl SampleSpriteEnts {
@@ -106,5 +106,5 @@ impl Hash for AcZ {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct ExcludedFromNormalSizeModifier;

@@ -10,8 +10,8 @@ use crate::{
     debug_chunking_window::*, debug_fonts::*, debug_messages::*, debug_resources::*,
     debug_systems::*, debug_window_systems::*, exempted_entity_details_inspector::*,
     portals_details_inspector::*, portals_list_window::*, region_details_inspector::*,
-    regions_list_window::*, registered_positions_window::*, sprite_details_inspector::*,
-    sprites_list_window::*, terrgen_editor_window::*, tile_details_inspector::*,
+    regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
+    sprite_cfgs_list_window::*, terrgen_editor_window::*, tile_details_inspector::*,
     tilemap_details_inspector::*,
 };
 

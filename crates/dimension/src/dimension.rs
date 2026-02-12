@@ -24,9 +24,7 @@ pub fn plugin(app: &mut App) {
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
 
-        .register_type::<MultipleDimensionRefs>()
         .register_type::<DimensionRootOplist>()
-        .register_type::<RootInDimensions>()
 
 
         .replicate::<MultipleDimensionRefs>()

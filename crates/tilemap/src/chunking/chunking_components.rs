@@ -1,22 +1,20 @@
-use serde::{Deserialize, Serialize};
+
 use bevy::{ecs::{entity::EntityHashSet, }, prelude::*};
 
 use super::chunking_resources::AaChunkRangeSettings;
 use crate::regioning::regioning_components::ChunksActiveInRegion;
 use ::tilemap_shared::*;
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
+use serde::{Deserialize, Serialize};
 
-
-
-#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
+#[derive(Component, Debug, )]
 #[relationship(relationship_target = ChunksActiveInRegion)]
 pub struct Chunk {
     #[relationship]
     pub region_ent: Entity,
 }
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Copy, Clone, )]
 pub struct SaveTile {
     pub chunk_pos: ChunkPos,//NO HACE FALTA PORQ EL CHUNKPOS SE PUEDE CALCULAR A PARTIR DE GLOBAL POS
 }
@@ -26,23 +24,20 @@ pub struct SaveTile {
 
 */
 
-
-
-#[derive(Component, Debug, Reflect, Default,)]
+#[derive(Component, Debug, Default,)]
 pub struct TilesToSave(pub EntityHashSet);
 impl TilesToSave { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct TerrGenOpsLaunched;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct ReadyForTerrgen;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct TerrGenDisabled;
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 pub struct ChunkDespawnTimer(pub Timer);
 
 impl ChunkDespawnTimer {
@@ -51,7 +46,7 @@ impl ChunkDespawnTimer {
     }
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 pub struct ActivatingChunks {
     pub reactivation_timer: Timer,
     pub entities: Vec<Entity>,
@@ -95,27 +90,5 @@ impl ActivatingChunks {
             egui::Color32::BLACK,
             );
         }
-    }
-}
-
-impl InspectorPrimitive for ActivatingChunks {
-    fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) -> bool {
-        self.render_grid(ui, );
-        false
-    }
-    fn ui_readonly(
-        &self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) {
-        self.render_grid(ui, );
     }
 }

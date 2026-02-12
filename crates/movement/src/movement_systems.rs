@@ -6,7 +6,6 @@ use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 
-use game_common::game_common_components::CardinalDirection;
 use modifier::modifier_types::WalkSpeed;
 use modifier::{modifier_components::*, modifier_move_components::*};
 use param_sets::BlockingTileParamSet;

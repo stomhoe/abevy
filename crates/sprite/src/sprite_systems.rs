@@ -4,7 +4,9 @@ use std::collections::HashSet;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use game_common::game_common_components::{EntityZero, EntityZeroRef, CardinalDirection};
+use game_common::game_common_components::{EntityZero, EntityZeroRef, };
+use ::tilemap_shared::directions::*;
+
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::sprite_components::*;

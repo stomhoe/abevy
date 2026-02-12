@@ -65,7 +65,7 @@ pub fn host_on_player_added(mut cmd: Commands,
                 ControlledBy { client: player_ent },
                 CharacterCreatedBy { player: player_ent },
                 Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-                BitStrIdRef(StrId::trunc("bear")),
+                BitStrIdRef(StrId::trunc("pig")),
                 BelongsToFaction(host_faction),
             )).id();
             cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));

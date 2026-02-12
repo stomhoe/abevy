@@ -1,6 +1,5 @@
 #[allow(unused_imports)] use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy_inspector_egui::prelude::*;
 
 use ::tilemap_shared::*;
 use crate::{regioning::regioning_sgc_components::{StructuredGenConfig}, terrain_gen::terrgen_messages::OpFilterSeri};
@@ -16,11 +15,10 @@ common::define_entity_map_systems!(
     common::common_components::StrId,
     SgcSeri, "ron/tilemap/region/structures", "sgc.ron",
 );
-#[derive(Resource, Reflect, InspectorOptions, Default)]
-#[reflect(Resource, Default, InspectorOptions)]
+#[derive(Resource, Default)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 
-#[derive(Deserialize, Asset, Reflect, )]
+#[derive(Deserialize, Asset, TypePath, )]
 pub struct SgcSeri {
     pub id: String,
     /// village, cave, dungeon, fort, etc

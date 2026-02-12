@@ -1,0 +1,17 @@
+(
+    id: "tail",
+    name: Some("Tail"),
+    coverage_weight: Some(10),
+    hp_capacity: Some(10.0),
+    hp_regen_rate: Some(0.8),
+    depth: Some("surface"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.1),
+    bleed_rate: Some(0.6),
+    blood_capacity: Some(6.0),
+    manipulation: Some(0.0),
+    walk_speed: Some(0.1),
+    swim_speed: Some(0.2),
+    mass: Some(0.6),
+    caloric_burn_rate: Some(0.4),
+)

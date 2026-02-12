@@ -1,0 +1,16 @@
+(
+    id: "snout",
+    name: Some("Snout"),
+    coverage_weight: Some(18),
+    hp_capacity: Some(14.0),
+    hp_regen_rate: Some(0.8),
+    depth: Some("surface"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.2),
+    bleed_rate: Some(0.9),
+    blood_capacity: Some(9.0),
+    manipulation: Some(0.1),
+    smell: Some(1.4),
+    mass: Some(1.2),
+    caloric_burn_rate: Some(1.0),
+)

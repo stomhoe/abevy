@@ -1,6 +1,7 @@
 
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Component)]
 #[relationship(relationship_target = Inventory)]
@@ -14,8 +15,6 @@ pub struct HeldIn {
 pub struct Inventory(
     Vec<Entity>
 );
-
-
 
 #[derive(Component, Default)]
 pub enum Handling {

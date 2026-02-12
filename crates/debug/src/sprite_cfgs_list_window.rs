@@ -12,7 +12,7 @@ pub fn sprites_list_window(
     mut selected_entities: ResMut<DebugSelectedEntities>,
     sprite_query: Query<(Entity, Option<&Name>), With<SpriteConfig>>,
 ) {
-    if !window_visible.sprites_list {
+    if !window_visible.sprite_configs_list {
         return;
     }
 
@@ -24,23 +24,22 @@ pub fn sprites_list_window(
     let default_x = screen_rect.right() - 300.0;
     let default_y = screen_rect.bottom() - 400.0;
 
-    // Collect sprites
     let sprites: Vec<(Entity, Option<Name>)> = sprite_query
         .iter()
         .map(|(entity, name)| (entity, name.map(|n| n.clone())))
         .collect();
 
-    egui::Window::new("Sprites List")
+    egui::Window::new("Sprite Configs List")
         .default_pos([default_x, default_y])
         .resizable(true)
         .movable(true)
         .default_width(300.0)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.heading(format!("Sprites: {}", sprites.len()));
+                ui.heading(format!("Sprite configs: {}", sprites.len()));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.button("✖").clicked() {
-                        window_visible.sprites_list = false;
+                        window_visible.sprite_configs_list = false;
                     }
                 });
             });

@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::game_common_components::CappedNormalDist;
 
-#[derive(Asset, Reflect, Default, Debug, Clone, Deserialize, )]
+#[derive(Asset, TypePath, Default, Debug, Clone, Deserialize, )]
 pub struct NormalDistSeri {
     pub min: f32,
     pub max: f32,

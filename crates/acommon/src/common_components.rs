@@ -1,16 +1,17 @@
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 #[allow(unused_imports)]
-use serde::{Deserialize, Serialize};
+
 use std::fmt::{Debug, Display};
 use std::{fmt::Formatter, hash::Hash};
+use serde::{Deserialize, Serialize};
 
 pub use crate::common_id_components::*;
 
-#[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
+#[derive(Component, Clone, Default)]
 pub struct AssetScoped;
 
-#[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
+#[derive(Component, Clone, Default)]
 pub struct SparedFromHotReloading;
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
@@ -88,7 +89,7 @@ impl From<ImagePathHolder> for bevy::asset::AssetPath<'_> {
         bevy::asset::AssetPath::from(holder.0)
     }
 }
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Clone, Reflect)]
 pub struct MultipleImagePathHolder(Vec<bevy::asset::AssetPath<'static>>);
 impl MultipleImagePathHolder {
     pub fn new<S, I>(paths: I) -> Result<Self, BevyError>
@@ -147,7 +148,6 @@ impl ImageHolderMap {
         self.0.first().cloned().unwrap_or_else(|| Handle::default())
     }
 }
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 pub enum VisibilityGameState {

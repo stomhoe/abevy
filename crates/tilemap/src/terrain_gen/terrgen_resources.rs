@@ -2,15 +2,11 @@
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task};
 use common::{common_components::{HashId}, };
 
-use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}}, tile::{tile_components::{KeepDistanceFrom, MinDistancesMap, }, }, tilemap_resources};
+use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}}, };
 
 use ::tilemap_shared::*;
-use game_common::{game_common_components::*};
 
-use serde::{Deserialize, Serialize};
-
-
-
+use serde::{Deserialize, };
 
 #[derive(Debug, Clone)]
 pub struct TerrGenLaunchWork {
@@ -54,7 +50,7 @@ pub struct TerrGenAsyncTasks {
 }
 
 
-#[derive(Deserialize, Asset, Reflect, )]
+#[derive(Deserialize, Asset, TypePath, )]
 pub struct FnlSeri {
     pub id: String,
     /// Default is 0.01
@@ -86,7 +82,7 @@ pub struct FnlSeri {
 }
 
 
-#[derive(Deserialize, Asset, Reflect, )]
+#[derive(Deserialize, Asset, TypePath, )]
 pub struct DungeonSeri {
     pub id: String,
     pub name: String,
@@ -95,7 +91,7 @@ pub struct DungeonSeri {
 
 
 
-#[derive(serde::Deserialize, Asset, Reflect, Default)]
+#[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct OpListSeri {
     pub id: String,
     pub tags: Option<Vec<String>>,

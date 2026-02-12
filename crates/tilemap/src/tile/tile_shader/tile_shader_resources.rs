@@ -6,7 +6,7 @@ use serde::{Deserialize, };
 
 use crate::tile::tile_shader::tile_shader_components::TileShader;
 
-#[derive(Deserialize, Asset, Reflect, Default)]
+#[derive(Deserialize, Asset, TypePath, Default)]
 pub struct ShaderRepeatTexSeri {
     pub id: String,
     pub img_path: String,
@@ -14,7 +14,7 @@ pub struct ShaderRepeatTexSeri {
     pub mask_color: [f32; 4],
 }
 
-#[derive(Deserialize, Asset, Reflect, Default)]
+#[derive(Deserialize, Asset, TypePath, Default)]
 pub struct ShaderVoronoiShuffleSeri {
     pub id: String,
     pub img_path: String,
@@ -26,7 +26,7 @@ pub struct ShaderVoronoiShuffleSeri {
 }
 
 
-#[derive(Deserialize, Asset, Reflect, Default)]
+#[derive(Deserialize, Asset, TypePath, Default)]
 pub struct ShaderWavySeri {
     pub id: String,
     // Path to overlay texture (use "placeholder" if unknown)
@@ -38,7 +38,7 @@ pub struct ShaderWavySeri {
     pub debug_mode: f32,
 }
 
-#[derive(Deserialize, Asset, Reflect, Default)]
+#[derive(Deserialize, Asset, TypePath, Default)]
 pub struct ShaderRockyTerrainSeri {
     pub id: String,
     pub roughness: f32,

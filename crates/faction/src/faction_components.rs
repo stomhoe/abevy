@@ -1,29 +1,23 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_components::{AssetScoped, Prefix, SparedFromHotReloading };
-
 use serde::{Deserialize, Serialize};
 
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
 #[require(Replicated, Prefix::trunc("Faction"), AssetScoped, SparedFromHotReloading,)]
 pub struct Faction;
 
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Component, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct FactionOwner { #[entities]pub player: Entity }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Component, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct FactionLeader { #[entities]pub being: Entity }
 
 #[derive(Component, Debug,)]
 pub struct IsAffiliatedToMyFaction;
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
+#[derive(Component, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct BelongsToAPlayerFaction;
-
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 #[relationship(relationship_target = FactionThings)]
@@ -37,7 +31,7 @@ pub struct BelongsToFaction(
 pub struct FactionThings(Vec<Entity>);
 impl FactionThings { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
 #[relationship(relationship_target = PlayerMembers)]
 pub struct PlayerOfFaction {
     #[relationship] #[entities]
@@ -50,8 +44,6 @@ impl PlayerOfFaction {pub fn new(faction: Entity) -> Self {PlayerOfFaction { fac
 pub struct PlayerMembers(Vec<Entity>);
 impl PlayerMembers { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-
-
 #[derive(Component, Debug, PartialEq, Eq, Hash, )]
 pub struct InterFactionEvent(u32);
 impl InterFactionEvent {
@@ -61,7 +53,6 @@ impl InterFactionEvent {
     pub fn nid(&self) -> u32 {self.0}
 }
 
-
 // #[derive(Bundle, Debug, )]
 // pub struct InterFactionEventBundle{
 //     pub good_will_event: InterFactionEvent,
@@ -69,11 +60,8 @@ impl InterFactionEvent {
 //     pub inclination: Inclination,
 // }
 
-
 #[derive(Component, Debug, Default, )]
 pub struct Inclination(i32);
-
-
 
 //cada relationship es una entidad, se supone que es hacia una dirección porque uno puede ser defense ally del otro y el otro no (por ej mercenarios)
 #[derive(Component, Debug, )]
@@ -94,14 +82,10 @@ pub enum RelationShipStatus {
     Ally(Ally)
 }
 
-
-
 #[derive(Component, Debug, Default)]
 pub enum Ally{
     #[default]
     Defense,
     Attack
 }
-
-
 

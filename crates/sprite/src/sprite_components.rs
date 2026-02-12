@@ -1,32 +1,30 @@
-use being_shared::Grounding;
+use ::being_shared::*;
 use bevy::ecs::entity::{EntityHashSet, MapEntities};
 use bevy::platform::collections::{HashMap, };
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use game_common::game_common_components::{CardinalDirection};
-use serde::{Deserialize, Serialize};
-use sprite_animation_shared::{AnimationState, MoveAnimActive};
+
+use sprite_animation_shared::{AnimExtraState, MoveAnimActive};
 use sprite_shared::sprite_scale_offset::Offset2D;
 
+use ::tilemap_shared::directions::*;
+use serde::{Deserialize, Serialize};
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpriteConfig"), )]
+#[derive(Component, Debug, Default, Serialize, Deserialize)]
+#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpCfg"), )]
 pub struct SpriteConfig;
 
-
-#[derive(Component, Default, Deserialize, Serialize, Debug, Reflect, MapEntities)]
+#[derive(Component, Default, Deserialize, Serialize, Debug, MapEntities)]
 pub struct MappedAnimations (
     #[entities]pub HashMap<AnimType, Entity>
 );
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, Reflect, MapEntities)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, MapEntities)]
 pub struct AnimType {
     pub direction: CardinalDirection,
     pub moving: MoveAnimActive,
     pub grounding: Grounding,
-    pub state_id: Option<AnimationState>,
+    pub state_id: Option<AnimExtraState>,
 }
 impl AnimType {
     pub fn from_tuple(tuple: (String, String, String, String)) -> Self {
@@ -36,7 +34,7 @@ impl AnimType {
             moving: MoveAnimActive::from(moving.as_str()),
             grounding: Grounding::from(grounding),
             state_id: if !state_id.is_empty() {
-                Some(AnimationState::new(state_id))
+                Some(AnimExtraState::new(state_id))
             } else {
                 None
             },
@@ -44,28 +42,22 @@ impl AnimType {
     }
 }
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default)]
 pub struct ExcludedFromBaseAnimPickingSystem;
 
-
-#[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub enum FlipHorizIfDir{Left, Right, Any,}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+#[derive(Component, Debug, Default, Clone, Reflect)]
 pub struct ColorHolder(pub Color);
 
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Clone)]
 pub struct Exclusive;
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Component, Debug, Clone, PartialEq, Eq)]
 pub struct BecomeChildOfSpriteWithTag (pub Tag);
 
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities, Default )]
+#[derive(Component, Debug, Clone, MapEntities, Default)]
 pub struct ScsToBuild(#[entities] pub EntityHashSet);
 impl ScsToBuild {
     pub fn with_capacity(capacity: usize) -> Self {
@@ -73,11 +65,10 @@ impl ScsToBuild {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct OffsetForChildren(pub HashMap<Tag, (Offset2D, AppliesOnSpriteDirection)>);
 
-
-#[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize,  Clone, Copy, )]
 pub enum AppliesOnSpriteDirection{None, Up, Down, UpDown, Left, Right, Sideways, Any,}
 impl From<&str> for AppliesOnSpriteDirection {
     fn from(s: &str) -> Self {
@@ -118,6 +109,5 @@ impl AppliesOnSpriteDirection {
     }
 }
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct SpriteConfigNotFound;

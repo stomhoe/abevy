@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
-use common::common_states::*;
+use common::{AppRegisterAndReplicateExt, common_states::*};
 
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
-use crate::{chunking::{self, chunking_despawn_systems::despawn_chunks}, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, tile_systems::despawn_if_not_excepted}, tilemap_components::*, tilemap_resources::*, tilemap_systems::*};
+use crate::{chunking::{self, chunking_despawn_systems::despawn_chunks}, regioning::{self, RegioningSystems}, terrain_gen::{self,  *}, tile::{self, tile_systems::despawn_if_not_excepted}, tilemap_resources::*, tilemap_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -41,16 +41,12 @@ pub fn plugin(app: &mut App) {
         )
     )
 
-    .register_type::<HashIdToTexIndex>()
-    .register_type::<MassCollectedTiles>().register_type::<TileMassSpawnBundle>()
-    .register_type::<PoissonDisk>()
-    .register_type::<TmapMap>()
-    .register_type::<ImportantRegisteredPositions>()
-
     .init_resource::<MassCollectedTiles>()
     .init_resource::<TmapMap>()
     .init_resource::<ImportantRegisteredPositions>()
 
+    .replicate_once::<CardinalDirection>()
+    .replicate_once::<DiagonalCardinalDirection>()
     //.register_type::<TilesAtGpos>().register_type_data::<TilesAtGpos, InspectorEguiImpl>()
 
     .init_resource::<SpriteTilesAtGpos>()

@@ -4,6 +4,7 @@ use game_common::game_common_components::*;
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
 use crate::{sprite_components::*, sprite_systems::SpriteChanged};
+use ::tilemap_shared::directions::*;
 
 #[allow(unused_parens, )]
 pub fn apply_offsets(

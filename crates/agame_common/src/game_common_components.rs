@@ -1,20 +1,16 @@
 use bevy::{ecs::entity::MapEntities, platform::collections::HashMap, prelude::*};
 use common::common_components::*;
-use serde::{Deserialize, Serialize};
+
 use splines::{Interpolation, Key, Spline};
 use std::hash::Hash;
 use std::time::Duration;
-use strum_macros::{AsRefStr, Display};
 
 use crate::game_common_seris::NormalDistSeri;
+use serde::{Deserialize, Serialize};
 pub use crate::entity_zero_components::*;
 
-
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
-
-
 
 #[derive(Component, Debug, Reflect)]
 /// runs when simulation is running or not
@@ -38,66 +34,12 @@ impl SimRunningDespawnTimer {
 /// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state
 pub struct Persisted;
 
-#[allow(unused_parens)]
-#[derive(Component, Debug, Deserialize, Serialize, Default, AsRefStr, Display, Reflect, Eq, PartialEq, Hash, Clone, Copy)]
-#[strum(serialize_all = "lowercase")]
-pub enum CardinalDirection {
-    #[default]
-    South,
-    West,
-    East,
-    North,
-}
-impl CardinalDirection {
-    pub fn next_clockwise(&self) -> CardinalDirection {
-        match self {
-            CardinalDirection::South => CardinalDirection::West,
-            CardinalDirection::West => CardinalDirection::North,
-            CardinalDirection::North => CardinalDirection::East,
-            CardinalDirection::East => CardinalDirection::South,
-        }
-    }
-    pub fn to_dir_vec(&self) -> IVec2 {
-        match self {
-            CardinalDirection::South => IVec2::new(0, 1),
-            CardinalDirection::West => IVec2::new(-1, 0),
-            CardinalDirection::North => IVec2::new(0, -1),
-            CardinalDirection::East => IVec2::new(1, 0),
-        }
-    }
-}
-impl From<u8> for CardinalDirection {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => CardinalDirection::South,
-            1 => CardinalDirection::West,
-            2 => CardinalDirection::East,
-            3 => CardinalDirection::North,
-            _ => CardinalDirection::South, // unreachable, but for completeness
-        }
-    }
-}
-impl From<&str> for CardinalDirection {
-    fn from(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            "south" | "down" | "sur" | "s" => CardinalDirection::South,
-            "west" | "left" | "lef" | "w" => CardinalDirection::West,
-            "east" | "right" | "rig" | "e" => CardinalDirection::East,
-            "north" | "up" | "n" => CardinalDirection::North,
-            _ => CardinalDirection::South,
-        }
-    }
-}
-impl From<String> for CardinalDirection {
-    fn from(s: String) -> Self { CardinalDirection::from(s.as_str()) }
-}
-
 #[derive(Component, Debug, MapEntities)]
 pub struct SourceDest {
     #[entities] pub source: Entity, #[entities]pub destination: Entity,
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, Default)]
+#[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ArgsDict(HashMap<StrId, Vec<String>>);
 impl ArgsDict {
     pub fn with_capacity(capacity: usize) -> Self {
@@ -132,15 +74,6 @@ pub struct PhysicallyImmune();
 
 #[derive(Component, Debug)]
 pub struct MagicallyInvulnerable();
-
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
-pub struct ClonedSpawned(pub Vec<Entity>);
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone)]
-pub struct ClonedSpawnedAsChildren(pub Vec<Entity>);
-
 
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
@@ -232,7 +165,7 @@ impl TimeBasedMultiplier {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Component, Debug, Default, Clone, PartialEq)]
 pub struct TickMultFactors(pub Vec<TickMultFactor>);
 
 impl TickMultFactors {
@@ -245,7 +178,7 @@ impl TickMultFactors {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq)]
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
 pub struct TickMultFactor(f32);
 
 impl TickMultFactor {
@@ -257,9 +190,7 @@ impl TickMultFactor {
     }
 }
 
-
-
-#[derive(Component, Reflect, Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Component, Default, Debug, Clone, Deserialize, Serialize)]
 pub struct CappedNormalDist {
     pub min: f32,
     pub max: f32,
@@ -296,8 +227,6 @@ impl CappedNormalDist {
         }
         Self {min, max, mean, std_dev,}
     }
-
-
 
     pub fn sample(&self, rng: &mut impl rand::Rng) -> f32 {
         use rand_distr::{Normal, Distribution};

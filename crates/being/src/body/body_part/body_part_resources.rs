@@ -4,7 +4,8 @@ use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use game_common::game_common_components::EntityZero;
 
-#[derive(Asset, serde::Deserialize, Reflect, Default, Debug, Clone)]
+#[derive(Asset, serde::Deserialize, TypePath, Default, Debug, Clone)]
+/// TODO hacer que el peso/hitpoints de cada bodypart se le pueda aplicar un multiplier por el body size del animal para reducir o aumentar su respectivo valor. asi no hay que crear tantas bodyparts similares que lo unico que cambia es el peso y hp y la blood capacity
 pub struct BodyPartSeri {
     pub id: String,
     pub name: Option<String>,

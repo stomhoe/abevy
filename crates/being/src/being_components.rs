@@ -2,15 +2,14 @@ use ::being_shared::*;
 use bevy::{ecs::entity::{EntityHashSet, MapEntities}, platform::collections::HashMap, prelude::*};
 use bevy_replicon::prelude::{ClientState, Replicated};
 
-use game_common::game_common_components::{CardinalDirection, };
 use modifier::modifier_components::AppliedModifiers;
 use movement::movement_components::*;
-use serde::{Deserialize, Serialize};
+
 use common::common_components::*;
 use sprite_animation_shared::MoveAnimActive;
+use serde::{Deserialize, Serialize};
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities, Default)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Default)]
 
 #[require(InputDirection, MoveVecMag, Replicated, MoveAnimActive,
 Grounding, Visibility, CardinalDirection, AppliedModifiers, Transform,
@@ -28,11 +27,13 @@ impl Being {
     pub const Z_LEVEL: f32 = 1_000.;
 }
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyCollisionRadius(pub u32);
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
+#[derive(Component, Debug, Clone, Copy, Hash, PartialEq)]
 pub struct MainCharacter{#[entities] created_by: Entity}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Hash, PartialEq,  )]
+#[derive(Component, Debug, Default, Clone, Copy, Hash, PartialEq)]
 pub struct InfiniteMorale;
 
 // #[derive(Component)]
@@ -40,8 +41,7 @@ pub struct InfiniteMorale;
 // pub struct BodyParts(Vec<Entity>);
 // impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
-
-#[derive(Component, Default, Deserialize, Serialize, Reflect)]
+#[derive(Component, Default, Deserialize, Serialize)]
 pub struct PlayerDirectControllable;
 
 #[derive(Component, Reflect, MapEntities, )]
@@ -49,10 +49,8 @@ pub struct PlayerDirectControllable;
 /// entities: whitelisted players
 pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si es de la misma facción antes de intentar tomar control
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities, )]
+#[derive(Component, Debug, Copy, Clone, Reflect, MapEntities)]
 pub struct TouchingPortal(#[entities] pub Entity);
-
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, Hash, PartialEq, Eq, )]
 #[relationship(relationship_target = Followers)]
@@ -66,8 +64,7 @@ impl Followers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
 #[derive(Component, Debug)]
 pub struct LearningMultiplier(pub HashMap<Entity, f32>);
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Clone)]
 pub struct TargetSpawnPos(pub Vec2);//NO SÉ SI PONERLE UN FIELD Q SEA LA DIMENSIÓN
 impl TargetSpawnPos {
     pub fn new(x: f32, y: f32) -> Self {
@@ -87,11 +84,10 @@ pub struct CharacterCreatedBy {
 pub struct CreatedCharacters(Vec<Entity>);
 impl CreatedCharacters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-
 use bevy::ecs::entity::EntityHashMap;
 use sprite_shared::SampleSpriteEnts;
 use ::tilemap_shared::*;
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities, )]
 pub struct MappedSpritesToSample(
     /// sexent - samplespriteents
     #[entities] pub EntityHashMap<SampleSpriteEnts>,

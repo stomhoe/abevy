@@ -6,7 +6,6 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::game_common::ModifierSystems;
 use crate::body::{
-    body_tree_resources::*,
     body_systems::*,
     body_tree_build_systems::*,
     body_tree_ezero_init_systems::*,
@@ -57,11 +56,9 @@ pub fn plugin(app: &mut App) {
             BodySystems.before(BodySamplerSystems),
         ),
     )
-    .register_type::<BodyTreeSerisHandles>()
-    .register_type::<BodyTreeSeri>()
-    .register_type::<BodyHealth>()
-    .register_type::<BodyDead>()
-    .register_type::<BodyDamage>()
+
+
+
 
     .replicate::<BodyTree>()
     .replicate::<BodyHealth>()

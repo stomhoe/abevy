@@ -3,97 +3,90 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports, )]
 use bevy::platform::collections::{HashMap, HashSet};
-#[allow(unused_imports)]
 use bevy::prelude::*;
-#[allow(unused_imports)]
-use bevy_asset_loader::prelude::*;
 pub use bevy_ecs_tilemap::tiles::*;
-#[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::{HashedTagsVec, TagSet};
 
 use game_common::game_common_components::*;
-use game_common::game_common_string_components::*;
 
 use ::tilemap_shared::*;
 use serde::{Deserialize, Serialize};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use crate::terrain_gen::{terrgen_components::Terrgen, terrgen_messages::OpFilter};
-use crate::tile::tile_resources::{PortalSeri, TileImagePaths};
-use crate::tile::tile_shader::tile_shader_components::*;
+use crate::terrain_gen::{terrgen_messages::OpFilter};
+use crate::tile::tile_resources::{AdjRetexConfigSeri, PortalSeri, TileImagePaths};
 
-#[derive(Bundle)]
-pub struct ToDenyOnTileClone(
-    MinDistancesMap,
-    KeepDistanceFrom,
-    TileHashIdsHandles,
-    Replicated,
-    TileShaderRef,
-    AcZ,
-    YSortOrigin,
-    ChildOf,
-    TileColor,
-    ImagePathHolder,
-    DeleteOtherTiles,
-    PortalRecipe,
-    PortalSeri,
-    TagSet,
-    HashedTagsVec,
-    //children entities don't get cloned
-    Children,
-    EntityZero,
-    AddHashIdFromStrId,
-    HashId,
-    TileImagePaths,
-    AssetScoped,
-    SparedFromHotReloading,
-    GameCommonStringComponentsBundle,
-    WalkSpeedMultIfOnTop,
-); //Disabled no porque se elimina posteriormente
 
-#[derive(Bundle)] #[allow(unused, )]
-struct ToDenyOnReleaseBuild(Name);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-//NO PONER REQUIRE ENTITYPREFIX ACA PORQ SE LO FUERZA A LOS CLONES
-//no poner Replicated acá, sino el deny de Replicated quita el Tile
+//Don't add RequiredComponents here because it is forced onto clones and when removed it despawns the new entity
 pub struct Tile;
 impl Tile {
     pub const MIN_ID_LENGTH: u8 = 1;
 }
 pub type TileStrId = StrId;
 
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct TileChildSprite;
 
-#[derive(Component, Debug, Copy, Clone, Hash, Reflect, MapEntities)]
-pub struct LocalChunkRef(#[entities] pub Entity);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(
-    Replicated,
-    AssetScoped,
-    Prefix::trunc("EguiPortalsZeroHolder"),
-    Name,
-    Transform,
-    Visibility
-)]
-pub struct PortalsZeroEguiHolder;
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, MapEntities)]
+pub struct AdjRetexConfig(
+    pub Vec<(Vec<(DiagonalCardinalDirection, HashId)>, HashId)>,
+);
+
+
+impl AdjRetexConfig {
+    pub fn new(seri: AdjRetexConfigSeri) -> Self {
+        let mut parsed_rules: Vec<(Vec<(DiagonalCardinalDirection, HashId)>, HashId)> = Vec::with_capacity(seri.0.len());
+        for (rule_i, (adj_state_seri, out_hash_seri)) in seri.0.into_iter().enumerate() {
+            let mut parsed_adj_state: Vec<(DiagonalCardinalDirection, HashId)> = Vec::with_capacity(adj_state_seri.len());
+            let mut invalid_rule = false;
+            for (dir_seri, hash_seri) in adj_state_seri.into_iter() {
+                let Some(dir) = DiagonalCardinalDirection::parse(&dir_seri) else {
+                    warn!(
+                        target: "tilemap",
+                        "Invalid adj-retex direction '{}' in rule {}, skipping full rule",
+                        dir_seri,
+                        rule_i
+                    );
+                    invalid_rule = true;
+                    break;
+                };
+                parsed_adj_state.push((dir, HashId::from(hash_seri)));
+            }
+            if invalid_rule {
+                continue;
+            }
+            parsed_rules.push((parsed_adj_state, HashId::from(out_hash_seri)));
+        }
+        Self(parsed_rules)
+    }
+
+    /// Uses first-match priority: rules are evaluated in order and the first rule whose requirements are all present wins.
+    pub fn get_tex_in_curr_adjacency_state(&self, tile_adjacency_state: &[(DiagonalCardinalDirection, HashId)]) -> Option<HashId> {
+        let state_set: HashSet<(DiagonalCardinalDirection, HashId)> = tile_adjacency_state.iter().copied().collect();
+        for (reqs, hash_id) in self.0.iter() {
+            if reqs.iter().all(|req| state_set.contains(req)) {
+                return Some(*hash_id);
+            }
+        }
+        None
+    }
+}
 
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, )]
 pub struct SeekingPortalOtherEnd;
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities)]
 pub struct PortalRecipe {
     #[entities]
     pub dest_dimension: Entity,
@@ -149,12 +142,10 @@ pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &GlobalGenSettings)
     (hasher.finish() as f64 / u64::MAX as f64).abs() as f32
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Deserialize, Serialize, Default, Debug,)]
 pub struct FlipHorizontallyBasedOnHash;
 
-#[derive(
-    Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug,
-)]
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug,)]
 pub struct InitialPos(pub GlobalTilePos);
 
 #[derive(Component, Debug, Clone, Default)]
@@ -209,7 +200,7 @@ impl TileHashIdsHandles {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Reflect, Default)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Default)]
 pub struct MinDistancesMap(pub EntityHashMap<u64>);
 
 impl MinDistancesMap {
@@ -225,16 +216,11 @@ impl MinDistancesMap {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-#[require(Terrgen, Prefix::trunc("TileSamplers"))]
-pub struct TileSamplerHolder;
 
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
 pub struct BlocksProjectiles;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
@@ -245,3 +231,8 @@ pub struct DeleteOtherTiles {
     /// use this only if both delete each other and they don't spare each other. the one with higher priority doesn't get deleted
     pub priority: u32,
 }
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[require(Replicated, AssetScoped, Prefix::trunc("EguiPortalsZeroHolder"), Transform, Visibility)]
+pub struct PortalsZeroEguiHolder;

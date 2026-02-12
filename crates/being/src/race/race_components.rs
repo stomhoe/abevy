@@ -5,14 +5,12 @@ use common::common_components::{Prefix, StrId};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 use serde::{Deserialize, Serialize};
 
-
-
-#[derive(Component, Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize, )]
+#[derive(Component, Serialize, Deserialize)]
 #[require(Replicated, Prefix::trunc("Race"))]
 pub struct Race;
 
 /// do not insert this into beings
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, )]
+#[derive(Component, Debug, Default, )]
 #[component(map_entities)]
 pub struct SetsOfPlayerMonoChoosableSprites(#[entities] pub Vec<(StrId, EntityHashSet)>);
 impl MapEntities for SetsOfPlayerMonoChoosableSprites {
@@ -28,7 +26,7 @@ impl MapEntities for SetsOfPlayerMonoChoosableSprites {
         }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, MapEntities)]
+#[derive(Component, Debug, Default, MapEntities)]
 pub struct SexesSampler(#[entities] pub EntityWeightedSampler);
 impl SexesSampler {
     pub fn new(weights: &Vec<(Entity, f32)>) -> Self {

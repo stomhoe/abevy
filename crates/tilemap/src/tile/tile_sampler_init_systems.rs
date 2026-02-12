@@ -4,56 +4,42 @@
 use common::common_components::{StrId};
 use game_common::game_common_components_samplers::EntityWeightedSampler;
 
-use crate::tile::{TileWeightedSamplerEntityMap, tile_components::*, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
+use crate::tile::{TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
 
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
     assets: Res<Assets<TileWeightedSamplerSeri>>,
-    mut map: ResMut<TileWeightedSamplerEntityMap>,
+    map: Res<TileWeightedSamplerEntityMap>,
 ) {
     if ! map.0.is_empty() { return; }
-    let holder = cmd.spawn((TileSamplerHolder, )).id();
 
     let mut comps_to_insert = Vec::new();
-    
-    for handle in seris_handles.handles.iter() {
-        if let Some(seri) = assets.get(handle) {
-            //info!("Loading TileWeightedSamplerSeri from handle: {:?}", handle);
-            
-            if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
 
-                if let Ok(ent) = map.0.get_cloned(&str_id) {
-                    error!("TileWeightedSampler '{}' already in TileWeightedSamplerEntityMap : {:?}", str_id, ent);
-                    continue;
-                }
-                let ent = cmd.spawn_empty().id();
-                map.0.overwrite(&str_id, ent);
-                comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), TileWeightedSampler, )));
-            }
-        }
+    for handle in seris_handles.handles.iter() {
+        let Some(seri) = assets.get(handle) else { continue };
+        let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) else { continue };
+        let ent = cmd.spawn_empty().id();
+        comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), TileWeightedSampler, )));
     }
     cmd.insert_batch(comps_to_insert);
-} 
+}
 
 #[allow(unused_parens)]
-pub fn init_tile_weighted_samplers_refs(
-    mut cmd: Commands, 
+pub fn init_tile_weighted_samplers_part_two(
+    mut cmd: Commands,
     mut seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
     mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
     hashpos_weighted_map: Res<TileWeightedSamplerEntityMap>,
-    hashpos_query: Query<(&StrId, ), (With<EntityWeightedSampler>)>,
     tile_ents_map: Res<TileEntityMap>,
 ) {
     for handle in seris_handles.handles.drain(..) {
         let Some(mut seri) = assets.remove(&handle) else { continue };
-
         let Ok(wmap_ent) = hashpos_weighted_map.0.get_cloned(&seri.id) else {
             error!("TileWeightedSamplerSeri '{}' not found in TileWeightedSamplerEntityMap", seri.id);
             continue;
         };
-
         let str_id = &seri.id;
         let mut weights: Vec<(Entity, f32)> = Vec::new();
 

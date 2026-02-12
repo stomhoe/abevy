@@ -6,11 +6,12 @@ use being_shared::{Grounding, ControlledBy};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
-use game_common::game_common_components::{Directionable, EntityZeroRef, CardinalDirection};
+use game_common::game_common_components::{Directionable, EntityZeroRef, };
 use player::player_components::*;
 use sprite::sprite_components::*;
 use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
+use ::tilemap_shared::directions::*;
 
 #[allow(unused_imports, )]
 use crate::{sprite_animation_components::*, sprite_animation_messages::*, };
@@ -27,7 +28,7 @@ pub fn animate_sprite(
     base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, &Grounding, ), ()>,
 
     mut sprites_query: Query<(Entity, Option<&mut SpritesheetAnimation>, &EntityZeroRef,
-        Option<&AnimationState>, Option<&PlayingSpeed>, Option<&mut AcAnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
+        Option<&AnimExtraState>, Option<&PlayingSpeed>, Option<&mut AcAnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
 
     spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), ()>,
 

@@ -9,7 +9,7 @@ use crate::{terrain_gen::{terrgen_operaton_list_components::VariablesArray, }, }
 
 
 
-#[derive(Debug, Clone, Component, Reflect)]
+#[derive(Debug, Clone, Component, TypePath)]
 pub struct OpFilter{
     pub start_oplist: Entity,
     pub tags: HashedTagsVec,
@@ -37,7 +37,7 @@ impl PartialEq for OpFilter {
     }
 }
 impl Eq for OpFilter {}
-#[derive(Deserialize, Asset, Reflect, )]
+#[derive(Deserialize, Asset, TypePath, )]
 pub struct OpFilterSeri {
     pub tags: Vec<String>,
     pub op_i: i16,

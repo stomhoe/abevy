@@ -3,24 +3,21 @@ use std::{hash::{DefaultHasher, Hash, Hasher}};
 use bevy::ecs::system::SystemParam;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-use bevy_inspector_egui::InspectorOptions;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
 #[allow(unused_imports, )]
 use bevy::platform::collections::{HashSet, HashMap};
-use bevy_inspector_egui::prelude::*;
 use smallvec::SmallVec;
 
 
-use crate::{DimensionRef, tilemap_positioning::*};
+use crate::{DiagonalCardinalDirection, DimensionRef, tilemap_positioning::*};
 
 
-#[derive(Resource, Reflect, InspectorOptions, Default)]
-#[reflect(Resource, Default, InspectorOptions)]
+#[derive(Resource, Default)]
 pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 
-#[derive(Component, Debug, Reflect, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 #[require(Replicated, Prefix::trunc("GlobalGenSettings"))]
 pub struct GlobalGenSettings {
 
@@ -45,7 +42,7 @@ impl Default for GlobalGenSettings {
 pub struct ForceAllChunksDespawn;
 
 type PDiskDistType = i64;
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, Component, )]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Component, )]
 pub struct PoissonDisk { pub mindists_seeds: Vec<(PDiskDistType, u64)>, }
 impl PoissonDisk {
     pub fn new(min_distance: u8, seed: u64) -> Result<Self, BevyError> {
@@ -76,18 +73,18 @@ impl PoissonDisk {
         }
         Ok(Self { mindists_seeds })
     }
-    pub fn is_allowed_position<T: HashablePosVec>(&self, pos: T, settings: &GlobalGenSettings, dim_hash: HashId, check_within_radius: bool, oplist_size: OplistSize) -> bool {
-        self.sample(pos, settings, dim_hash, check_within_radius, oplist_size) > 0.0
+    pub fn is_allowed_position<T: HashablePosVec>(&self, pos: T, settings: &GlobalGenSettings, dim_hash: HashId, check_within_radius: bool, size_in_tiles: OplistSize) -> bool {
+        self.sample(pos, settings, dim_hash, check_within_radius, size_in_tiles) > 0.0
     }
 
-    pub fn sample<T: HashablePosVec>(&self, pos: T, settings: &GlobalGenSettings, dim_hash: HashId, check_within_radius: bool, oplist_size: OplistSize) -> f64 {
+    pub fn sample<T: HashablePosVec>(&self, pos: T, settings: &GlobalGenSettings, dim_hash: HashId, check_within_radius: bool, size_in_tiles: OplistSize) -> f64 {
 
         let mut sum = 0.0;
         for &(min_distance, seed) in self.mindists_seeds.iter() {
             let val = pos.normalized_hash_value(settings, dim_hash, seed);
             sum += val;
-            let added_sample_distance_x = oplist_size.x() as i32 - 1;
-            let added_sample_distance_y = oplist_size.y() as i32 - 1;
+            let added_sample_distance_x = size_in_tiles.x() as i32 - 1;
+            let added_sample_distance_y = size_in_tiles.y() as i32 - 1;
 
             for dy in -(min_distance as i32)..=(min_distance as i32) {
                 for dx in -(min_distance as i32)..=(min_distance as i32) {
@@ -116,10 +113,10 @@ impl PoissonDisk {
 impl Default for PoissonDisk { fn default() -> Self { Self { mindists_seeds: vec![(1, 0)] } } }
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, )]
+#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, )]
 #[relationship(relationship_target = Tilemaps)]
 pub struct TilemapOf {
-    #[relationship] #[entities]
+    #[relationship]
     pub chunk: Entity,
 }
 impl TilemapOf {
@@ -128,7 +125,7 @@ impl TilemapOf {
     }
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = TilemapOf)]
 pub struct Tilemaps(Vec<Entity>);
 impl Tilemaps { pub fn entities(&self) -> &[Entity] { &self.0 } }
@@ -208,7 +205,7 @@ pub struct SpriteTile;
 
 pub type ReturnedVec = SmallVec<[Entity; 16]>;
 
-#[derive(Component, Debug, Clone, Default, Reflect)]
+#[derive(Component, Debug, Clone, Default, )]
 /// maps handle's ids to texture index to use within tilemap as a tile belonging to it
 pub struct HashIdToTexIndex(HashIdMap<TileTextureIndex>);
 impl HashIdToTexIndex {
@@ -234,44 +231,24 @@ pub struct TileGatheringParamSet<'w, 's> {
     spritetiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
     loaded_chunks: Res<'w, LoadedChunks>,
     chunk_children: Query<'w, 's, &'static Tilemaps>,
-    pub tilemap_query: Query<'w, 's, (&'static OplistSize, &'static mut TileStorage, &'static HashIdToTexIndex),>,
+    pub tilemap_query: Query<'w, 's, (&'static SizeInTiles, &'static mut TileStorage, &'static HashIdToTexIndex),>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
     pub fn gather_tiles_at(&self, vec_to_drain: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
-            let chunk_pos = gpos.to_chunkpos();
-            vec_to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
-            let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
-                return;
-            };
-            if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
-                for &tmap_ent in tilemaps.entities() {
-                    let Ok((&oplist_size, storage, ..)) = self.tilemap_query.get(tmap_ent) else {
-                        continue;
-                    };
-                    let tpos = gpos.to_tilepos(oplist_size);
-
-                    if let Some(tile_ent) = storage.get(&tpos) {
-                        vec_to_drain.extend(std::iter::once(tile_ent));
-                    }
-                }
-            }
-        }
-    pub fn safe_despawn_tile_at(&mut self, cmd: &mut Commands, dim: DimensionRef, gpos: GlobalTilePos, tile_ent: Entity) {
-        cmd.entity(tile_ent).try_despawn();
         let chunk_pos = gpos.to_chunkpos();
+        vec_to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
         let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
             return;
         };
         if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
             for &tmap_ent in tilemaps.entities() {
-                let Ok((&oplist_size, mut storage, ..)) = self.tilemap_query.get_mut(tmap_ent) else {
+                let Ok((&size_in_tiles, storage, ..)) = self.tilemap_query.get(tmap_ent) else {
                     continue;
                 };
-                let tpos = gpos.to_tilepos(oplist_size);
-                if let Some(found_tile_ent) = storage.get(&tpos) {
-                    if tile_ent == found_tile_ent {
-                        storage.remove(&tpos);
-                    }
+                let tpos = gpos.to_tilepos(size_in_tiles);
+
+                if let Some(tile_ent) = storage.get(&tpos) {
+                    vec_to_drain.extend(std::iter::once(tile_ent));
                 }
             }
         }
@@ -283,3 +260,24 @@ pub struct WalkSpeedMultIfOnTop(pub f32); //1.0 es velocidad normal
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct SearchingForSuitablePos { pub filtered_op_ent: Entity, }
+
+
+#[derive(Message, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub struct RecheckTileAdjacency {
+    pub dim: DimensionRef,
+    pub gpos: GlobalTilePos,
+}
+impl RecheckTileAdjacency {
+    pub fn append_all_adjacent_pos(msgs: &mut Vec<RecheckTileAdjacency>, dim: DimensionRef, base_pos: GlobalTilePos,) {
+        for dir in DiagonalCardinalDirection::ALL_DIRS {
+            msgs.push(RecheckTileAdjacency {
+                dim,
+                gpos: base_pos.adjacent_dir(dir),
+            });
+        }
+    }
+}
+
+#[derive(Message, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+/// Despawn with removal from SpriteTilesAtGpos (if spritetile) and tile adjacency recheck
+pub struct SafeDespawn(pub Entity);

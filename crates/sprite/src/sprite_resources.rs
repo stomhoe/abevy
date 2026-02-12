@@ -4,7 +4,7 @@ use bevy::platform::collections::{HashMap, HashSet};
 
 use crate::sprite_components::SpriteConfig;
 
-#[derive(serde::Deserialize, Asset, Reflect, Default)]
+#[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,

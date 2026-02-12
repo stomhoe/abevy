@@ -20,7 +20,7 @@ pub struct DubugWindowsVisibility{
     pub being_details: bool,
     pub registered_positions: bool,
     pub exempted_entity_details: bool,
-    pub sprites_list: bool,
+    pub sprite_configs_list: bool,
     pub sprite_details: bool,
 }
 
@@ -43,7 +43,7 @@ impl Default for DubugWindowsVisibility {
             being_details: false,
             registered_positions: false,
             exempted_entity_details: false,
-            sprites_list: false,
+            sprite_configs_list: false,
             sprite_details: false,
         }
     }

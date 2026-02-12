@@ -1,0 +1,17 @@
+(
+    id: "paw",
+    name: Some("Paw"),
+    coverage_weight: Some(14),
+    hp_capacity: Some(16.0),
+    hp_regen_rate: Some(0.8),
+    depth: Some("surface"),
+    vital: Some(false),
+    pain_sensitivity: Some(1.1),
+    bleed_rate: Some(0.7),
+    blood_capacity: Some(9.0),
+    manipulation: Some(0.4),
+    walk_speed: Some(1.4),
+    swim_speed: Some(1.0),
+    mass: Some(0.8),
+    caloric_burn_rate: Some(1.6),
+)

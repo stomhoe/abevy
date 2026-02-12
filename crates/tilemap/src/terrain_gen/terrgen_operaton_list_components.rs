@@ -5,24 +5,20 @@ use bevy_replicon::prelude::*;
 use common::common_tag_components::AddSameHashedTags;
 use fnl::{FastNoiseLite, NoiseSampleRange};
 
-use serde::{Deserialize, Serialize};
 use ::tilemap_shared::*;
 
 use {common::common_components::*, };
 use strum_macros::{AsRefStr, Display, };
 use std::ops::{Index, IndexMut};
+use serde::{Deserialize, Serialize};
 
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Reflect)]
-pub struct ChunkRef(pub Entity);
-
-#[derive(Debug, Deserialize, Serialize, Clone, Reflect, MapEntities)]
+#[derive(Debug, Deserialize, Serialize, Clone, MapEntities)]
 pub struct Bifurcation{
     #[entities] pub oplist: Option<Entity>,
     #[entities]pub tiles: Vec<Entity>,
 }
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Clone, Serialize, Deserialize)]
 #[require(Prefix::trunc("OpList"), Replicated, AssetScoped, AddSameHashedTags)]
 #[component(map_entities)]
 pub struct OperationList {
@@ -47,7 +43,7 @@ impl MapEntities for OperationList {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect )]
+#[derive(Component, Debug, Default, Clone, )]
 pub struct VariablesArray(pub [f32; Self::SIZE as usize]);
 
 impl VariablesArray {
@@ -62,20 +58,19 @@ impl IndexMut<u8> for VariablesArray {
     fn index_mut(&mut self, index: u8) -> &mut Self::Output {unsafe { self.0.get_unchecked_mut(index as usize) }}
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, AsRefStr, Display, PartialEq, Reflect, )]
+#[derive(Debug, Deserialize, Serialize, Clone, AsRefStr, Display, PartialEq, )]
 #[allow(non_camel_case_types)]
 pub enum Operation {
     Add, Subtract, Multiply, Divide, MultiplyOpo, Min, Max, Average, Abs, MultiplyNormalized, MultiplyNormalizedAbs, i_Max, Linear, i_Norm, Clamp,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, MapEntities)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, MapEntities)]
 pub struct Operand {
     pub complement: bool,
     pub element: OperandElement,
 }
 
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Reflect, MapEntities)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, MapEntities)]
 pub enum OperandElement {
     StackArray(u8),
     Value(f32),

@@ -39,7 +39,7 @@ pub fn states_window(
 ) {
     if !window_visible.states {
         return;
-    }           
+    }
 
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -47,7 +47,7 @@ pub fn states_window(
 
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.right() - 300.0; // 300 pixels from right edge
-    
+
     egui::Window::new("States Inspector")
         .default_pos([default_x, 10.0])
         .resizable(true)
@@ -62,14 +62,14 @@ pub fn states_window(
                 });
             });
             ui.separator();
-            
+
             ui.label(format!("AppState: {:?}", app_state.get()));
             ui.label(format!("PreGameState: {:?}", pre_game_state.get()));
             ui.label(format!("GamePhase: {:?}", game_phase.get()));
-            
+
             ui.separator();
             ui.label(format!("AssetLoading: {:?}", asset_loading.get()));
-            
+
             ui.separator();
             ui.heading("Sub States (Setup)");
             if let Some(setup_screen) = game_setup_screen {
@@ -77,7 +77,7 @@ pub fn states_window(
             } else {
                 ui.label("GameSetupScreen: Not active");
             }
-            
+
             ui.separator();
             ui.heading("Sub States (Active Game)");
             if let Some(sim_state) = simulation_state {
@@ -140,8 +140,8 @@ pub fn main_menu_window(
                 window_visible.portals_list = !window_visible.portals_list;
             }
 
-            if ui.button(egui::RichText::new("� Sprites").size(16.0)).clicked() {
-                window_visible.sprites_list = !window_visible.sprites_list;
+            if ui.button(egui::RichText::new("� Sprite Configs").size(16.0)).clicked() {
+                window_visible.sprite_configs_list = !window_visible.sprite_configs_list;
             }
 
             if ui.button(egui::RichText::new("�🌍 Terrain generation editor").size(16.0)).clicked() {
@@ -197,7 +197,7 @@ pub fn global_gen_settings_editor_window(
             });
 
             ui.separator();
-            
+
             ui.horizontal(|ui| {
                 ui.label("Seed:");
                 ui.add(egui::Slider::new(&mut gen_settings.seed, -1000..=1000));

@@ -1,21 +1,19 @@
 use bevy::{ecs::system::SystemParam, math::U16Vec2, platform::collections::HashSet, prelude::*, };
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::prelude::{*, TilemapTexture::Vector};
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{common_components::{HashId}, common_resources::ImageSizeMap, };
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
+use crate::{chunking::{chunking_resources::*}, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_bundles::*, tilemap_resources::*};
 
-
-use crate::{chunking::{chunking_resources::*}, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_components::*, tilemap_resources::*};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, )]
 pub struct MapKey {
     dim_ref: DimensionRef,
     chunk_pos: ChunkPos,
     ac_z: AcZ,
-    oplist_size: OplistSize,
+    size_in_tiles: SizeInTiles,
     tile_size: U16Vec2,
     shader_ref: Option<TileShaderRef>,
 }
@@ -24,17 +22,16 @@ impl MapKey {
         dim_ref: DimensionRef,
         chunk_pos: ChunkPos,
         ac_z: AcZ,
-        oplist_size: OplistSize,
+        size_in_tiles: SizeInTiles,
         tile_size: U16Vec2,
         shader_ref: Option<TileShaderRef>,
     ) -> Self {
-        Self { dim_ref, chunk_pos, ac_z, oplist_size, tile_size, shader_ref }
+        Self { dim_ref, chunk_pos, ac_z, size_in_tiles, tile_size, shader_ref }
     }
     pub fn shader_ref(&self) -> Option<TileShaderRef> {self.shader_ref}
 }
 
-#[derive(Debug, Clone, Reflect)]
-/// NO BORRAR ESTE STRUCT, DENTRO DE UNA INSTANCIA DE EJECUCIÓN DE FUNCIÓN LAS QUERIES NO SE ACTUALIZAN HASTA Q SE SALE DE LA FUNCIÓN. HACE FALTA ESTO
+#[derive(Debug, Clone, )]
 pub struct MapStruct{
     pub tmap_ent: Entity,
     pub texture: TilemapTexture,
@@ -52,8 +49,6 @@ impl MapStruct {
 //ESTRATEGIA PERSISTENCIA: DEJAR TODAS LAS TILES MODIFICADAS EN WORLD (COMO ENTITIES), MARCARLAS CON ALGO.
 //NO SE PUEDEN GUARDAR EN ESTRUCTURAS DE DATOS COMO HASHMAPS POR LA INFINIDAD DE COMBINACIONES POSIBLES DE COMPONENTES
 
-
-use bevy_ecs_tilemap::prelude::TilemapTexture::Vector;
 
 #[derive(SystemParam)]
 pub struct ProcessTilesPreParams<'w, 's> {
@@ -81,18 +76,18 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub state: Res<'w, State<ClientState>>,
 }
 
-#[derive(Resource, Debug, Reflect, Default, )]
-#[reflect(Resource, Default)]
+#[derive(Resource, Debug, Default, )]
 pub struct TmapMap (
     pub HashMap<MapKey, MapStruct>
 );
 
 #[allow(unused_parens)]
-pub fn on_tilemap_despawn(trig: On<Despawn, (DimensionRef, ChunkPos, AcZ, OplistSize, TilemapTileSize, TileShaderRef)>,
-    query: Query<(&DimensionRef, &ChunkPos, &AcZ, &OplistSize, &TilemapTileSize, &TileShaderRef)>,
+pub fn on_tilemap_despawn(trig: On<Despawn, (TilemapTileSize, TileShaderRef)>,
+    query: Query<(&DimensionRef, &ChunkPos, &AcZ, &SizeInTiles, &TilemapTileSize, &TileShaderRef)>,
     mut tmap_map: ResMut<TmapMap>,
 ) {
-    let Ok((dimension_ref, chunk_pos, ac_z, oplist_size, tile_size, shader_ref)) = query.get(trig.entity) else {
+    let Ok((dimension_ref, chunk_pos, ac_z, size_in_tiles, tile_size, shader_ref)) = query.get(trig.entity)
+    else {
         return;
     };
     let opt_shader = if shader_ref.is_placeholder() {
@@ -101,27 +96,26 @@ pub fn on_tilemap_despawn(trig: On<Despawn, (DimensionRef, ChunkPos, AcZ, Oplist
         Some(*shader_ref)
     };
     let tile_size_u16vec2 = U16Vec2::new(tile_size.x as u16, tile_size.y as u16);
-
     let map_key = MapKey::new(
         *dimension_ref,
         *chunk_pos,
         *ac_z,
-        *oplist_size,
+        *size_in_tiles,
         tile_size_u16vec2,
         opt_shader,
     );
     tmap_map.0.remove(&map_key);
+
 }
 
-
-#[allow(unused_parens, )]//TODO: USAR try_insert_bundle
+#[allow(unused_parens, )]
 pub fn process_tiles_pre(
     mut cmd: Commands,
     mut params: ProcessTilesPreParams,
-    mut tmap_map: ResMut<TmapMap>,
     ezero_query: Query<(
         &TileStrId,
         &HashId,
+        Option<&SizeInTiles>,
         Option<&MinDistancesMap>,
         Option<&KeepDistanceFrom>,
         Has<Persisted>,
@@ -133,18 +127,16 @@ pub fn process_tiles_pre(
         Has<YSortOrigin>,
     ), common::AnyDisabling>,
     mut spritetiles_map: ResMut<SpriteTilesAtGpos>,
-
-)
-{
+    mut tmap_map: ResMut<TmapMap>,
+    mut changed_structs: Local<HashSet<MapKey>>,
+) {
     let is_host = *params.state.get() == ClientState::Disconnected;
 
     if params.collected_tiles.0.is_empty() { return; }
 
     let reserved = params.chunkrange.approximate_number_of_chunks(0.06);
     let tiles_len = params.collected_tiles.0.len();
-
-    let mut changed_structs: HashSet<MapKey> = HashSet::with_capacity(reserved);
-
+    changed_structs.reserve(reserved);
 
     let mut tilemap_bundles = Vec::with_capacity(200);//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
 
@@ -173,7 +165,7 @@ pub fn process_tiles_pre(
             params.collected_tiles.0.swap_remove(i);
             continue;
         }
-        let (_tile_strid, hash_id, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, is_spritetile, color, y_sort) = query_result.unwrap();
+        let (_tile_strid, hash_id, size_in_tiles, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, is_spritetile, color, y_sort) = query_result.unwrap();
 
         if !params.regpos_map.check_min_distances(
             &mut cmd,
@@ -200,29 +192,31 @@ pub fn process_tiles_pre(
             } else {
                 cmd.entity(tile_ent).try_despawn();
                 params.collected_tiles.0.swap_remove(i);
+                child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
+
                 continue;
             }
         }
+        let Some(chunk_ent) = params.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied()
+        else{
+            cmd.entity(tile_ent).try_despawn();
+            params.collected_tiles.0.swap_remove(i);
+            continue;
+        };
 
         if is_spritetile {
             spritetiles_to_remove_bundle.push(tile_ent);
             spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos);
+            child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
             i += 1;
             continue;
         }
 
         bundle.tile_bundle.color = color.cloned().unwrap_or_default();
 
-        let chunk_opt = params.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied();
-        if chunk_opt.is_none() {
-            cmd.entity(tile_ent).try_despawn();
-            params.collected_tiles.0.swap_remove(i);
-            continue;
-        }
-        let chunk = chunk_opt.unwrap();
         let chunk_pos = ChunkPos::from(bundle.gpos);
 
-        let tile_size = if let Some(ref handles) = tile_handles {
+        let tile_img_size = if let Some(ref handles) = tile_handles {
             params.image_size_map
                 .0
                 .get(&handles.first_handle().id())
@@ -232,21 +226,21 @@ pub fn process_tiles_pre(
             U16Vec2::ONE
         };
 
-        func_process_tile_into_tilemaps(
+        process_tile_into_corresponding_tilemap(
             &mut cmd,
             tile_ent,
             *hash_id,
+            size_in_tiles.cloned().unwrap_or_default(),
             &mut bundle.tile_bundle.visible,
             &mut bundle.tile_bundle.texture_index,
             &mut bundle.tile_bundle.tilemap_id,
-            bundle.oplist_size,
             bundle.tile_bundle.position,
             tile_z_index.cloned().unwrap_or_default(),
             tile_handles,
             shader_ref,
-            tile_size,
+            tile_img_size,
             &mut tmap_map.0,
-            chunk,
+            chunk_ent,
             chunk_pos,
             bundle.dim_ref,
             &mut params.tilemaps,
@@ -275,9 +269,8 @@ pub fn process_tiles_pre(
     let mut texture_overlay_mats = Vec::with_capacity(changed_structs.len());
     let mut rocky_mats = Vec::with_capacity(changed_structs.len());
 
-    for mapkey in changed_structs.iter() {
-        //trace!(target: "tilemap_systems", "Changed tilemap {:?} in chunk {:?}", mapkey, mapkey.chunk_pos());
-        let Some(mapstruct) = tmap_map.0.get_mut(mapkey) else {
+    for mapkey in changed_structs.drain() {
+        let Some(mapstruct) = tmap_map.0.get_mut(&mapkey) else {
             continue;
         };
         let tmap_ent = mapstruct.tmap_ent;
@@ -295,7 +288,6 @@ pub fn process_tiles_pre(
             None
         };
         if let Some(shader) = shader {
-            //trace!(target: "tilemap_systems", "Inserting tmapshader {:?} for tilemap entity {:?}", shader, tmap_ent);
             match shader {
                 TileShader::TexRepeat(handle) => {
                     let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(handle));
@@ -325,23 +317,21 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch(wavy_mats);
     cmd.try_insert_batch(insert2tmaps);
     cmd.try_insert_batch(rocky_mats);
-
 }
-
 #[allow(clippy::too_many_arguments)]
-fn func_process_tile_into_tilemaps(
+fn process_tile_into_corresponding_tilemap(
     cmd: &mut Commands,
     tile_ent: Entity,
     tile_hid: HashId,
+    size_in_tiles: SizeInTiles,
     tile_visible: &mut TileVisible,
     texture_index: &mut TileTextureIndex,
     tilemap_id: &mut TilemapId,
-    oplist_size: OplistSize,
     position: TilePos,
     tile_z_index: AcZ,
     tile_handles: Option<&TileHashIdsHandles>,
     shader_ref: Option<&TileShaderRef>,
-    tile_size: U16Vec2,
+    img_size: U16Vec2,
     tmap_map: &mut HashMap<MapKey, MapStruct>,
     chunk: Entity,
     chunk_pos: ChunkPos,
@@ -353,14 +343,14 @@ fn func_process_tile_into_tilemaps(
     childofs: &mut Vec<(Entity, ChildOf)>,
 ) {
     let tile_size = match tile_handles {
-        Some(_) => tile_size,
+        Some(_) => img_size,
         None => {
             tile_visible.0 = false;
             error!(target: "tilemap_systems", "Tile entity {:?} has no TileHashIdsHandles", tile_ent);
             return;
         }
     };
-    let map_key = MapKey::new(dim_ref, chunk_pos, tile_z_index, oplist_size, tile_size, shader_ref.copied());
+    let map_key = MapKey::new(dim_ref, chunk_pos, tile_z_index, size_in_tiles, tile_size, shader_ref.copied());
 
     if let Some(mapstruct) = tmap_map.get_mut(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;
@@ -368,7 +358,6 @@ fn func_process_tile_into_tilemaps(
         let (tmap_handles, storage, tmap_hash_id_map) =
         if let Ok((tmap_handles, storage, tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent)
         {
-            //no insertion into changed structs needed since tilemap's components are getting edited directly
             (tmap_handles.into_inner(), storage.into_inner(), tmap_hash_id_map.into_inner())
         } else {
             changed_structs.insert(map_key.clone());
@@ -379,9 +368,8 @@ fn func_process_tile_into_tilemaps(
             return;
         };
 
-        if storage.get(&position).is_some() {
-            //no overwriting, tile must be despawned first
-            return;
+        if let Some(prev_tile_ent) = storage.get(&position) {
+            cmd.entity(prev_tile_ent).try_despawn();
         }
 
         tilemap_id.0 = tmap_ent;//esto activa un draw
@@ -389,7 +377,7 @@ fn func_process_tile_into_tilemaps(
 
         let Some(tile_handles) = tile_handles else { return; };
 
-        let mut first_texture_index = None;
+        let mut first_matching_texture_index = None;
 
         for (handle_hid, handle) in tile_handles.iter() {
             let texture_index = tmap_handles
@@ -401,11 +389,12 @@ fn func_process_tile_into_tilemaps(
                     TileTextureIndex((tmap_handles.len() - 1) as u32)
                 });
             tmap_hash_id_map.insert(tile_hid, handle_hid, texture_index);
-            if first_texture_index.is_none() {
-                first_texture_index = Some(texture_index);
+            if first_matching_texture_index.is_none() {
+                first_matching_texture_index = Some(texture_index);
+                //don't do break
             }
         }
-        texture_index.0 = first_texture_index.unwrap_or_default().0;
+        texture_index.0 = first_matching_texture_index.unwrap_or_default().0;
 
         childofs.push((tile_ent, ChildOf(tmap_ent)));
 
@@ -427,7 +416,7 @@ fn func_process_tile_into_tilemaps(
         tilemap_bundles.push(
             (tmap_ent,
             (
-                TilemapConfig::new(oplist_size, tile_size, chunk_pos, tile_z_index, y_sort),
+                TilemapConfig::new(size_in_tiles, tile_size, chunk_pos, tile_z_index, y_sort),
                 ChildOf(chunk),
                 TilemapOf::new(chunk),
                 dim_ref,
@@ -438,7 +427,7 @@ fn func_process_tile_into_tilemaps(
         tilemap_id.0 = tmap_ent;
 
 
-        let mut storage = TilemapConfig::new_storage(oplist_size);
+        let mut storage = TilemapConfig::new_storage(size_in_tiles);
         storage.set(&position, tile_ent);
         tmap_map.insert(map_key, MapStruct {
             tmap_ent,

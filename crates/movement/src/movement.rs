@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use game_common::{game_common::SimRunningSystems, game_common_components::CardinalDirection};
+use game_common::{game_common::SimRunningSystems, };
+use tilemap_shared::CardinalDirection;
 
 use crate::{
     movement_components::*, movement_input_systems::*, movement_messages::*, movement_systems::*,
@@ -37,9 +38,6 @@ pub fn plugin(app: &mut App) {
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendMoveInput>(Channel::Unreliable)
         .add_mapped_server_message::<TransformFromServer>(Channel::Unreliable)
-        .register_type::<InputDirection>()
-        .register_type::<MoveVecMag>()
-        .register_type::<GridLockedMovement>()
         .replicate::<WallPhaser>()
         .replicate::<LandWalker>()
         .replicate::<Swimmer>()

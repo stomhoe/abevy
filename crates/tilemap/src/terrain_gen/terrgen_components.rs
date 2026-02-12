@@ -4,17 +4,18 @@ use bevy_replicon::prelude::*;
 use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use noiz::DynamicConfigurableSampleable;
-use serde::{Deserialize, Serialize};
+
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
 use std::hash::{Hasher, Hash};
 
 use {common::common_components::*, };
+use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+#[derive(Component, Debug, Default, Clone, Hash, PartialEq, Serialize, Deserialize)]
 #[require(AssetScoped, Replicated, )]
 pub struct Terrgen;
 
-#[derive(Component, Default, Reflect, Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Component, Default, Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[require(Terrgen, Prefix::trunc("Noise"), )]
 pub struct FnlNoiseComp(pub FastNoiseLite);
 impl FnlNoiseComp {
@@ -26,12 +27,10 @@ impl FnlNoiseComp {
     }
 }
 
-
 //             .replicate::<NoizRef>()
 #[derive(Component, )]
 pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sync >);
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Copy, Clone)]
 #[require(Replicated, Prefix::trunc("FailedSearches"), AssetScoped, )]
 pub struct FailedSearchOplistFilterHolder;

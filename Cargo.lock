@@ -7564,6 +7564,7 @@ dependencies = [
  "sprite",
  "sprite_animation_shared",
  "sprite_shared",
+ "tilemap_shared",
  "tracing",
  "tracing-subscriber",
 ]
@@ -7911,6 +7912,8 @@ dependencies = [
  "rand_seeder",
  "serde",
  "smallvec",
+ "strum 0.27.2",
+ "strum_macros 0.27.2",
 ]
 
 [[package]]

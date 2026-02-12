@@ -1,8 +1,8 @@
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::f32, platform::collections::{HashMap, HashSet}, };
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::f32, platform::collections::{HashMap, HashSet}, tasks::Task, };
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use common::{common_components::Tag, };
+use common::{common_components::{HashId, Tag}, };
 use game_common::game_common_components::EntityZero;
 use serde::{Deserialize, Serialize};
 
@@ -16,13 +16,21 @@ common::define_entity_map_systems!(
 );
 
 
-#[derive(Resource, Debug, Reflect, Default)]
-#[reflect(Resource, Default)]
+#[derive(Resource, Debug, Default)]
 pub struct TileEntsWithinTag (pub HashMap<Tag, EntityHashSet>);
 
+#[derive(Debug)]
+pub struct TileAdjRetexTaskResult {
+    pub tile_ent: Entity,
+    pub hid_to_use: Option<HashId>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct TileAdjRetexAsyncTasks(pub Vec<Task<TileAdjRetexTaskResult>>);
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct TileImagePaths(
     pub Vec<(String, String)>, //key, path
 );
@@ -64,8 +72,15 @@ impl IntoIterator for TileImagePaths {
     }
 }
 
+#[derive(Deserialize, Asset, TypePath, Default, )]
+/// something similar to godot's autotiling
+pub struct AdjRetexConfigSeri (
+    //(Vec(direction_str, tile_ezero_id)) -> animation ID or texture ID
+    // higher in this, higher priority
+    pub Vec<(Vec<(String, String)>, String)>,
+);
 
-#[derive(Deserialize, Asset, Reflect, Default, Component)]
+#[derive(Deserialize, Asset, TypePath, Default, )]
 pub struct TileSeri {
     pub id: String,
     pub name: String,
@@ -86,9 +101,9 @@ pub struct TileSeri {
     pub portal: Option<PortalSeri>,
     pub offset: Option<(f32, f32)>,
 
-    pub tile_occupancy: Option<(usize, usize)>,
+    pub size_in_tiles: Option<(u32, u32)>,
 
-
+    pub adj_retex: Option<AdjRetexConfigSeri>,
     ///if Some, is a ground tile and f32 the is walk speed modifier. if None or Some(0.0) is impassable tile
     pub walk_speed: Option<f32>,
     /// to be used by other systems to factor in their own walkspeed on top if a certain tag is present on this tile
@@ -99,7 +114,7 @@ pub struct TileSeri {
 
 }
 
-#[derive(Component, Deserialize, Reflect, Default)]
+#[derive(Component, Deserialize, TypePath, Default)]
 pub struct PortalSeri{
     pub dest_dimension: String,
     pub oe_tile: String,
@@ -112,7 +127,7 @@ pub struct PortalSeri{
     pub dungeon: String,
 }
 
-#[derive(Deserialize, Asset, Reflect, )]
+#[derive(Deserialize, Asset, TypePath, )]
 pub struct DungeonSeri {
     pub id: String,
     pub name: String,

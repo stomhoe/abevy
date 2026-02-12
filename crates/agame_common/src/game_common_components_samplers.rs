@@ -4,6 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use::tilemap_shared::*;
 use crate::game_common_components::CappedNormalDist;
 use crate::game_common_seris::NormalDistSeri;
+use bevy_replicon::prelude::*;
 #[macro_export]
 macro_rules! define_weightedsampler_impl {
     ($ty:ident, $inner:ty) => {
@@ -166,8 +167,7 @@ impl MapEntities for EntityWeightedSampler {
         }
     }
 }
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
-pub struct WeightedSamplerRef(#[entities] pub Entity);
+
 
 
 define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");
@@ -175,7 +175,7 @@ define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");
 macro_rules! define_sprite_normal_dist {
     ($dist_name:ident) => {
         ::paste::paste! {
-            #[derive(Component, Reflect, Default, Debug, Clone, Deserialize, Serialize)]
+            #[derive(Component, Default, Debug, Clone, Deserialize, Serialize)]
             pub struct $dist_name(pub CappedNormalDist);
             impl $dist_name {
                 pub fn new(seri: NormalDistSeri) -> Self {
@@ -193,7 +193,7 @@ macro_rules! define_sprite_normal_dist {
             pub fn [<plugin_ $dist_name:snake>](app: &mut App) {
                 use common::AppRegisterAndReplicateExt;
                 app
-                    .regrepli::<$dist_name>()
+                    .replicate::<$dist_name>()
                     .regrepli::<[<$dist_name Result>]>();
             }
         }

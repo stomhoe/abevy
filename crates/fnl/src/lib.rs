@@ -113,7 +113,7 @@ use serde::{Deserialize, Serialize};
 // Option enums for FastNoise Lite settings
 // ========================================
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Reflect)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, )]
 pub enum NoiseType {
     OpenSimplex2,
     OpenSimplex2S,
@@ -123,14 +123,14 @@ pub enum NoiseType {
     Value,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Reflect)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, )]
 pub enum RotationType3D {
     None,
     ImproveXYPlanes,
     ImproveXZPlanes,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Reflect)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, )]
 pub enum FractalType {
     None,
     FBm,
@@ -140,7 +140,7 @@ pub enum FractalType {
     DomainWarpIndependent,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Reflect)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, )]
 pub enum CellularDistanceFunction {
     Euclidean,
     EuclideanSq,
@@ -148,7 +148,7 @@ pub enum CellularDistanceFunction {
     Hybrid,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize, Reflect)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize, )]
 pub enum CellularReturnType {
     CellValue = 0,
     Distance = 1,
@@ -159,14 +159,14 @@ pub enum CellularReturnType {
     Distance2Div = 6,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize, Reflect)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize, )]
 pub enum DomainWarpType {
     OpenSimplex2,
     OpenSimplex2Reduced,
     BasicGrid,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize, Reflect)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize, )]
 pub enum TransformType3D {
     None,
     ImproveXYPlanes,
@@ -175,7 +175,7 @@ pub enum TransformType3D {
 }
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub enum NoiseSampleRange {
     #[default]
     ZeroToOne,
@@ -183,7 +183,7 @@ pub enum NoiseSampleRange {
 }
 
 
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct FastNoiseLite {
     pub seed: i32,
     pub offset: IVec2,
@@ -405,7 +405,7 @@ impl FastNoiseLite {
             FractalType::Ridged => self.gen_fractal_ridged_2d(x, y),
             FractalType::PingPong => self.gen_fractal_ping_pong_2d(x, y),
             _ => self.gen_noise_single_2d(self.seed.wrapping_add(seed), x, y),
-        } 
+        }
     }
 
     fn get_noise_2d_1_1_compl(&self, pos: IVec2, seed: i32, world_frequency: f32) -> f32 {
@@ -481,7 +481,7 @@ impl FastNoiseLite {
     // =================
     // Lookup table data
     // =================
-    
+
     #[rustfmt::skip]
     const GRADIENTS_2D: [f32; 256] = [
          0.130526192220052,  0.99144486137381,   0.38268343236509,   0.923879532511287,  0.608761429008721,  0.793353340291235,  0.793353340291235,  0.608761429008721,
@@ -858,7 +858,7 @@ impl FastNoiseLite {
     fn transform_noise_coordinate_2d(&self, pos: Vec2, world_frequency: f32) -> (Float, Float) {
         let (x, y) = pos.into();
 
-        let multiplier: Float = 
+        let multiplier: Float =
             match self.noise_type {
                 NoiseType::Cellular => 0.9,
                 NoiseType::Perlin => 2.0,

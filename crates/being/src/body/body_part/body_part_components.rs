@@ -5,38 +5,32 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 
-
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 #[require(Replicated, Prefix::trunc("BodyPart"), )]
 pub struct BodyPart;
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct BodyRootPart;
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, MapEntities, )]
 #[relationship(relationship_target = BodyParts)]
 pub struct BodyPartOf {#[relationship] #[entities] pub body: Entity,}
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = BodyPartOf)]
 pub struct BodyParts(Vec<Entity>);
 impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
-
-#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, MapEntities, )]
 #[relationship(relationship_target = BodyPartChildren)]
 pub struct BodyPartParent {#[relationship] #[entities] pub parent: Entity,}
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = BodyPartParent)]
 pub struct BodyPartChildren(Vec<Entity>);
 impl BodyPartChildren { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect, )]
+#[derive(Component, Debug, Default, Clone, Reflect)]
 pub struct BodyPartSlots(pub Vec<StrId>);
 impl BodyPartSlots {
     pub fn new<S: AsRef<str>>(slots: impl IntoIterator<Item = S>) -> Self {
@@ -44,24 +38,19 @@ impl BodyPartSlots {
     }
 }
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Copy, Clone, )]
 pub struct BodyPartCoverageWeight(pub u16);
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct BodyPartVital;
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct BodyPartMissing;
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct BodyPartDamage(pub f32);
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub enum BodyPartDepth {
     #[default]
     Surface,
@@ -85,9 +74,7 @@ impl From<String> for BodyPartDepth {
     }
 }
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Clone, )]
 pub struct BodyPartKind(pub StrId);
-
 
 pub type BodyPartTags = TagSet;

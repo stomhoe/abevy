@@ -5,7 +5,7 @@ use crate::race::Race;
 
 
 
-#[derive(serde::Deserialize, Asset, Default, Debug, Reflect)]
+#[derive(serde::Deserialize, Asset, TypePath, Default, Debug, )]
 pub struct RaceSeri {
     pub id: String,
     pub name: String,

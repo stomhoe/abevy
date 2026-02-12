@@ -68,6 +68,7 @@ pub fn init_tiles(
             AddHashIdFromStrId,
             ChildOf(holder),
             AssetScoped,
+            SizeInTiles::new(seri.size_in_tiles),
             //SparedFromHotReloading,
         )).id();
 
@@ -95,6 +96,11 @@ pub fn init_tiles(
         if seri.img_paths.is_empty() {
             warn!("Tile '{}' has no img_paths entries", str_id);
         }
+
+        if let Some(ref mut adj_retex_config) = seri.adj_retex {
+            cmd.entity(tile_enti).insert(AdjRetexConfig::new(take(adj_retex_config)));
+        }
+
         if let Some(ref color_map_str) = seri.color_map {
             if !color_map_str.is_empty() {
                 match color_map.0.get_cloned(color_map_str) {
@@ -470,6 +476,7 @@ pub fn instantiate_portal(
     mut mreader_search_failed: MessageReader<SearchFailed>,
     mut register_pos: ResMut<ImportantRegisteredPositions>,
     mut successful_searches: Local<EntityHashSet>,
+    clone_spawn_param_set: CloneSpawnParamSet,
 ) {
     let mut started_searches: EntityHashMap<Entity> = EntityHashMap::new();
     let mut pos_searches = Vec::new();
@@ -519,7 +526,7 @@ pub fn instantiate_portal(
             oe_portal_tileref,
             found_pos,
             oe_dim_ref,
-            OplistSize::default(),
+            &clone_spawn_param_set,
         );
         register_pos.exempt_entity_from_mindist_checks(oe_portal);
 

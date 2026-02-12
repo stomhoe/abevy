@@ -1,8 +1,7 @@
 
 use bevy::prelude::*;
 use common::common_components::*;
-use serde::{Deserialize, Serialize, };
-
+use serde::{Deserialize, Serialize};
 
 #[derive(Bundle)]
 /// for denying on cloning
@@ -21,11 +20,11 @@ pub struct GameCommonStringComponentsBundle {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
 pub struct Description(pub String);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
+#[derive(Component, Debug, Default, )]
 pub struct Demonym(pub StrId);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
+#[derive(Component, Debug, Default, )]
 pub struct SingularDenomination(pub StrId);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
+#[derive(Component, Debug, Default, )]
 pub struct PluralDenomination(pub StrId);

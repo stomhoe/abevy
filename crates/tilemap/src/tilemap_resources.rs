@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::{tiles::*};
 use bevy_replicon::prelude::Replicated;
 use common::{common_components::HashId};
 
-use crate::{terrain_gen::terrgen_messages::PendingOp };
+use crate::{terrain_gen::terrgen_messages::PendingOp, tile::tile_bundles::* };
 use crate::tile::{tile_components::*, };
 
 use ::tilemap_shared::*;
@@ -11,8 +11,7 @@ use game_common::{game_common_components::*, game_common_components_samplers::En
 
 
 
-#[derive(Resource, Debug, Reflect, Default, Clone, )]
-#[reflect(Resource, Default)]
+#[derive(Resource, Debug, Default, Clone, )]
 pub struct ImportantRegisteredPositions { registered: EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>>, pub exempted: EntityHashSet, }
 impl ImportantRegisteredPositions {
 
@@ -46,8 +45,6 @@ impl ImportantRegisteredPositions {
         new: (Entity, EntityZeroRef, DimensionRef, GlobalTilePos, Option<&MinDistancesMap>, Option<&KeepDistanceFrom>),
         min_dists_query: Query<(&MinDistancesMap), (common::AnyDisabling)>,
     ) -> bool {
-
-
         let (new_tile, new_tile_ezero, new_dim, new_pos, new_min_distances, keep_distance) = new;
 
         if (keep_distance.is_some() || new_min_distances.is_some()) && !is_host {
@@ -56,7 +53,6 @@ impl ImportantRegisteredPositions {
         if keep_distance.is_none() && new_min_distances.is_none() {
             return true;
         }
-
         if ! self.exempted.contains(&new_tile) {
             if let Some(new_min_distances) = new_min_distances {
                 for (&ezero_ent, min_dist) in new_min_distances.0.iter() {
@@ -92,20 +88,18 @@ impl ImportantRegisteredPositions {
     }
 }
 
-#[derive(Bundle, Debug, Clone, Reflect,)]
+#[derive(Bundle, Debug, Clone, )]
 pub struct TileMassSpawnBundle{
     pub ezero_ref: EntityZeroRef,
     pub gpos: GlobalTilePos,
     pub dim_ref: DimensionRef,
-    pub oplist_size: OplistSize,
     pub tile_bundle: bevy_ecs_tilemap::prelude::TileBundle,
     pub initial_pos: InitialPos,
     pub prev_gpos: PrevGlobalTilePos,
     pub prev_dim_ref: PrevDimensionRef,
 }
 
-#[derive(Debug, Clone, Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
+#[derive(Debug, Clone, Resource, Default, )]
 pub struct MassCollectedTiles  (pub Vec<(Entity, TileMassSpawnBundle)>);
 impl MassCollectedTiles {
 
@@ -116,12 +110,13 @@ impl MassCollectedTiles {
         ezeros: impl IntoIterator<Item = EntityZeroRef>,
         global_pos: GlobalTilePos,
         dim_ref: DimensionRef,
-        oplist_size: OplistSize,
+        param_set: &CloneSpawnParamSet,
     ) -> Vec<Entity> {
         let ezeros_iter = ezeros.into_iter();
         let mut spawned = Vec::with_capacity(ezeros_iter.size_hint().0);
         spawned.extend(ezeros_iter.map(|ezero| {
-            self.clonespawn_and_push_tile(cmd, ezero, global_pos, dim_ref, oplist_size, )
+
+            self.clonespawn_and_push_tile(cmd, ezero, global_pos, dim_ref, param_set)
         }));
         spawned
     }
@@ -131,24 +126,24 @@ impl MassCollectedTiles {
         ezero_ref: EntityZeroRef,
         gpos: GlobalTilePos,
         dim_ref: DimensionRef,
-
-        oplist_size: OplistSize,
+        param_set: &CloneSpawnParamSet,
     ) -> Entity {
         let tile_instance = cmd.entity(ezero_ref.0).clone_and_spawn_with_opt_out(|builder|{
             builder.deny::<ToDenyOnTileClone>();
             //builder.deny::<BundleToDenyOnReleaseBuild>();
         }).id();
+        let tile_size = param_set.size_in_tiles.get(ezero_ref.0).cloned().unwrap_or_default();
+
         let tile_bundle = TileBundle {
-            position: gpos.to_tilepos(oplist_size), ..Default::default()
+            position: gpos.to_tilepos(tile_size), ..Default::default()
         };
         let helper = TileMassSpawnBundle {
             ezero_ref,
             gpos,
             dim_ref,
-            oplist_size,
             tile_bundle,
             initial_pos: InitialPos(gpos),
-            prev_gpos: PrevGlobalTilePos(gpos),
+            prev_gpos: PrevGlobalTilePos::default(),
             prev_dim_ref: PrevDimensionRef(dim_ref.0),
         };
         self.0.push((tile_instance, helper));
@@ -162,32 +157,43 @@ impl MassCollectedTiles {
         global_pos: GlobalTilePos,
         dim_hash_id: HashId,
         dim_ref: DimensionRef,
-        oplist_size: OplistSize,
-        weight_maps: &Query<(&EntityWeightedSampler,), ()>,
-        gen_settings: &GlobalGenSettings,
+        param_set: &CloneSpawnParamSet,
         depth: u32
     ) {
-        if let Ok((wmap, )) = weight_maps.get(tiling_ent) {
+        if let Ok(wmap) = param_set.weight_maps.get(tiling_ent) {
+            let Ok(gen_settings) = param_set.gen_settings.single() else {
+                error!("Failed to get gen_settings");
+                return;
+            };
+
             if let Some(tiling_ent) = wmap.sample_with_pos(global_pos, gen_settings, dim_hash_id) {
                 if depth > 6 {
                     warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_ent);
                     return;
                 }
-                self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_hash_id, dim_ref, oplist_size, weight_maps, gen_settings, depth + 1);
+                self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_hash_id, dim_ref, param_set, depth + 1);
             }
         } else {
-            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, oplist_size, );
+            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, param_set, );
         }
     }
-    ///used by terr gen
     pub fn collect_tiles(&mut self,
         cmd: &mut Commands,
-        bif_tiles: &Vec<Entity>, ev: &PendingOp, oplist_size: OplistSize, weight_maps: &Query<(&EntityWeightedSampler,), ()>, gen_settings: &GlobalGenSettings,
+        ezero_refs: impl IntoIterator<Item = Entity>,
+        ev: &PendingOp,
+        param_set: &CloneSpawnParamSet,
         dim_hash_id: HashId,
     )  {
-        for tile in bif_tiles.iter().cloned() {
-            self.collect_tiles_rec(cmd, tile, ev.gpos, dim_hash_id, ev.dimension_ref, oplist_size, weight_maps, gen_settings, 0);
+        for tile_ent in ezero_refs {
+            self.collect_tiles_rec(cmd, tile_ent, ev.gpos, dim_hash_id, ev.dimension_ref, param_set, 0);
         }
     }
 
+}
+#[derive(bevy::ecs::system::SystemParam)]
+#[allow(unused_parens, )]
+pub struct CloneSpawnParamSet<'w, 's> {
+    pub weight_maps: Query<'w, 's, &'static EntityWeightedSampler>,
+    pub gen_settings: Query<'w, 's, &'static GlobalGenSettings>,
+    pub size_in_tiles: Query<'w, 's, &'static SizeInTiles>,
 }

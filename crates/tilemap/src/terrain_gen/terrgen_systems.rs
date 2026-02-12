@@ -5,7 +5,7 @@ use bevy::{prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use common::{common_components::{HashId}, common_tag_components::HashedTagsVec, };
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components_samplers::EntityWeightedSampler;
-use crate::{chunking::chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_operaton_list_components::*, terrgen_resources::*}, tilemap_resources::MassCollectedTiles };
+use crate::{chunking::chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_operaton_list_components::*, terrgen_resources::*}, tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles} };
 use std::{collections::{HashMap, HashSet}, f32::consts::PI, mem::take};
 use ::tilemap_shared::*;
 
@@ -44,11 +44,10 @@ pub fn launch_terrain_gen_operations (
 #[allow(unused_parens)]
 pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     mut pending_ops_events: ResMut<Messages<PendingOp>>,
-    gen_settings: Query<&GlobalGenSettings>,
     oplist_query: Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ( )>,
     fnl_noises: Query<&FnlNoiseComp,>,
     op_filters: Query<&OpFilter,>,
-    weight_maps: Query<(&EntityWeightedSampler, ), ( )>,
+    param_set: CloneSpawnParamSet,
     dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut collected: ResMut<MassCollectedTiles>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
@@ -58,7 +57,7 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     mut tile_requests: Local<Vec<TerrGenTileRequest>>,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
 ) {
-    let Ok(gen_settings) = gen_settings.single() else {
+    let Ok(gen_settings) = param_set.gen_settings.single() else {
         error!("Failed to get gen settings");
         return;
     };
@@ -88,11 +87,9 @@ pub fn process_pending_ops_and_collect_tiles(mut cmd: Commands,
     for request in tile_requests.drain(..) {
         collected.collect_tiles(
             &mut cmd,
-            &request.bif_tiles,
+            request.bif_tiles,
             &request.pending,
-            request.oplist_size,
-            &weight_maps,
-            &gen_settings,
+            &param_set,
             request.dimension_hash,
         );
     }

@@ -2,7 +2,7 @@ use being_shared::BeingInstTemplate;
 use bevy::{asset, platform::collections::{HashMap, HashSet}, prelude::*};
 use game_common::game_common_seris::NormalDistSeri;
 
-#[derive(serde::Deserialize, Asset, Reflect, Default, Debug)]
+#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BitSeri {
     pub id: String,
     pub fallback_faction: Option<String>,

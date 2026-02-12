@@ -16,7 +16,7 @@ pub use chunking_resources::*;
 pub use chunking_spawn_systems::*;
 pub use chunking_visibility_systems::*;
 pub use chunking_despawn_systems::*;
-use tilemap_shared::{ChunkPos, ForceAllChunksDespawn, LoadedChunks, TilemapOf, Tilemaps};
+use ::tilemap_shared::*;
 
 use crate::{ChunkSystems, };
 
@@ -44,14 +44,8 @@ pub fn plugin(app: &mut App) {
         rem_outofrange_chunks_from_activators,
 
     ))
-    .register_type::<LoadedChunks>()
-    .register_type::<ActivatingChunks>().register_type_data::<ActivatingChunks, InspectorEguiImpl>()
-    .register_type::<ChunkPos>()
-    .register_type::<AaChunkRangeSettings>()
-    .register_type::<ChunkDespawnTimer>()
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<LoadedChunks>()
-    .register_type::<TilemapOf>().register_type::<Tilemaps>()
 
     .add_observer(on_chunk_despawn)
 

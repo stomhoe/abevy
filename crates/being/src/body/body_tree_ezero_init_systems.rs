@@ -84,7 +84,7 @@ fn walk_body_tree(
     part_map: &Res<BodyPartEntityMap>,
     body_ent: Entity,
     body_id: &StrId,
-    node: BodyTreeNodeSeri,
+    node: BodyNodeSeri,
     parent_ent: Option<Entity>,
 ) -> Option<Entity> {
     let part_id = StrId::trunc(node.part_id.as_str());

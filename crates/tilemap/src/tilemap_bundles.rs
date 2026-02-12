@@ -15,7 +15,7 @@ pub struct TilemapConfig {
     map_type: TilemapType,
     map_size: TilemapSize,
     spacing: TilemapSpacing,
-    pub tile_size: TilemapTileSize,
+    img_px_size: TilemapTileSize,
     transform: Transform,
     chunk_pos: ChunkPos,
     global_transform: GlobalTransform,
@@ -27,31 +27,30 @@ pub struct TilemapConfig {
     sync: SyncToRenderWorld,
     anchor: TilemapAnchor,
     ac_z: AcZ,
-    oplist_size: OplistSize,
+    size_in_tiles: SizeInTiles,
     /*
 */
 }
 
 impl TilemapConfig {
-    pub fn new(oplist_size: OplistSize, tile_size: U16Vec2, chunk_pos: ChunkPos, ac_z: AcZ, y_sort: bool) -> Self {
-        let oplist_size_val = oplist_size.inner();
+    pub fn new(size_in_tiles: SizeInTiles, img_px_size: U16Vec2, chunk_pos: ChunkPos, ac_z: AcZ, y_sort: bool) -> Self {
         Self {
             entity_prefix: Prefix::trunc("Tilemap"),
-            tile_size: TilemapTileSize::from(tile_size.as_vec2()),
-            grid_size: TilemapGridSize::from(GlobalTilePos::TILE_SIZE_PXS.as_vec2() * oplist_size_val.as_vec2()),
-            map_size: TilemapSize::from(ChunkPos::CHUNK_SIZE / oplist_size_val),
+            img_px_size: TilemapTileSize::from(img_px_size.as_vec2()),
+            grid_size: TilemapGridSize::from( size_in_tiles.to_pixel_size()),
+            map_size: size_in_tiles.tilemap_size(),
             render_settings: TilemapRenderSettings {
-                render_chunk_size: ChunkPos::CHUNK_SIZE * 2 / oplist_size_val,
+                render_chunk_size: size_in_tiles.render_chunk_size(),
                 y_sort,
             },
             transform: Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
             chunk_pos,
             ac_z,
-            oplist_size,
+            size_in_tiles,
             ..Default::default()
         }
     }
-    pub fn new_storage(oplist_size: OplistSize) -> TileStorage {
+    pub fn new_storage(oplist_size: SizeInTiles) -> TileStorage {
         TileStorage::empty((ChunkPos::CHUNK_SIZE / oplist_size.inner()).into())
     }
 }

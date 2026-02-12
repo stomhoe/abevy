@@ -1,4 +1,4 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
+use std::{hash::{DefaultHasher, Hash, Hasher}, i32};
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
@@ -6,58 +6,8 @@ use common::common_components::HashId;
 use rand::{Rng, seq::SliceRandom};
 use serde::{Deserialize, Serialize};
 
-use crate::tilemap_shared::GlobalGenSettings;
+use crate::{*, tilemap_shared::GlobalGenSettings};
 
-macro_rules! impl_position_conversions {
-    ($t:ty) => {
-        impl Into<IVec2> for $t {
-            fn into(self) -> IVec2 {
-                self.0
-            }
-        }
-        impl From<IVec2> for $t {
-            fn from(ivec2: IVec2) -> Self {
-                Self(ivec2)
-            }
-        }
-    };
-}
-macro_rules! impl_position_ops {
-    ($t:ty) => {
-        impl std::ops::Add for $t {
-            type Output = Self;
-            fn add(self, other: Self) -> Self {
-                Self(self.0 + other.0)
-            }
-        }
-        impl std::ops::Sub for $t {
-            type Output = Self;
-            fn sub(self, other: Self) -> Self {
-                Self(self.0 - other.0)
-            }
-        }
-        impl std::ops::Add<IVec2> for $t {
-            type Output = Self;
-            fn add(self, other: IVec2) -> Self {
-                Self(self.0 + other)
-            }
-        }
-    };
-}
-macro_rules! impl_display_debug {
-    ($t:ty, $display_name:expr, $debug_name:expr) => {
-        impl std::fmt::Display for $t {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}({}, {})", $display_name, self.0.x, self.0.y)
-            }
-        }
-        impl std::fmt::Debug for $t {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}({}, {})", $debug_name, self.0.x, self.0.y)
-            }
-        }
-    };
-}
 pub trait HashablePosVec: Hash {
     fn hash_value(&self, settings: &GlobalGenSettings, dimension_hash: HashId, seed: u64) -> u64 {
         let mut hasher = DefaultHasher::new();
@@ -79,45 +29,6 @@ pub trait HashablePosVec: Hash {
     fn x(&self) -> i32;
     fn y(&self) -> i32;
 }
-macro_rules! impl_basic_funcs {
-    ($t:ty) => {
-        impl $t {
-            pub const fn new(x: i32, y: i32) -> Self {
-                Self(IVec2::new(x, y))
-            }
-            pub const fn splat(value: i32) -> Self {
-                Self(IVec2::splat(value))
-            }
-            pub fn distance(&self, other: &Self) -> f32 {
-                let dx = self.0.x - other.0.x;
-                let dy = self.0.y - other.0.y;
-                ((dx * dx + dy * dy) as f32).sqrt()
-            }
-            pub const fn distance_squared(&self, other: &Self) -> u64 {
-                let dx = self.0.x - other.0.x;
-                let dy = self.0.y - other.0.y;
-                (dx * dx + dy * dy) as u64
-            }
-            pub const fn element_product(&self) -> i64 {
-                self.0.x as i64 * self.0.y as i64
-            }
-            pub const fn area(&self) -> u64 {
-                self.element_product().abs() as u64
-            }
-            pub const fn area_usize(&self) -> usize {
-                self.element_product().abs() as usize
-            }
-        }
-    };
-}
-macro_rules! impl_hashed_position {
-    ($t:ty) => {
-        impl HashablePosVec for $t {
-            fn x(&self) -> i32 { self.0.x }
-            fn y(&self) -> i32 { self.0.y }
-        }
-    };
-}
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
 pub struct GlobalTilePos(pub IVec2);
@@ -127,16 +38,25 @@ impl_position_conversions!(GlobalTilePos);
 impl_position_ops!(GlobalTilePos);
 impl_display_debug!(GlobalTilePos, "Global pos","Gpos");
 
-#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, Debug)]
+#[derive(Component, Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Copy, Reflect, Debug)]
 pub struct PrevGlobalTilePos(pub GlobalTilePos);
+impl PrevGlobalTilePos {
+    pub const PLACEHOLDER_I32_MAX: PrevGlobalTilePos = PrevGlobalTilePos(GlobalTilePos::new(i32::MAX, i32::MAX));
+}
+
+impl Default for PrevGlobalTilePos {
+    fn default() -> Self {
+        Self::PLACEHOLDER_I32_MAX
+    }
+}
 
 
 impl GlobalTilePos {
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 32, y: 32 };
 
-    pub fn to_tilepos(&self, oplist_size: OplistSize) -> TilePos {
+    pub fn to_tilepos(&self, size_in_tiles: SizeInTiles) -> TilePos {
         let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
-        let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) / oplist_size.inner().as_ivec2();
+        let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) / size_in_tiles.inner().as_ivec2();
         TilePos::from(ivec2.as_uvec2())
     }
     pub fn to_chunkpos(&self) -> ChunkPos {
@@ -147,6 +67,7 @@ impl GlobalTilePos {
         let vec2: Vec2 = (*self).into();
         vec2.extend(prev_transform_z)
     }
+    impl_adjacent_position_methods!();
 }
 impl From<ChunkPos> for GlobalTilePos {
     fn from(chunk_pos: ChunkPos) -> Self {
@@ -164,7 +85,7 @@ impl Into<Vec2> for GlobalTilePos {
     }
 }
 
-#[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, )]
 pub struct ChunkPos(pub IVec2);
 impl_basic_funcs!(ChunkPos);
 impl_hashed_position!(ChunkPos);
@@ -201,11 +122,11 @@ impl ChunkPos {
         (local_pos.0.y * REGION_SIZE_IN_CHUNKS.x() + local_pos.0.x) as usize
     }
 
-    pub fn get_tilepositions_within_chunk(&self, oplist_size: OplistSize) -> Vec<GlobalTilePos> {
-        let mut tiles = Vec::with_capacity((Self::CHUNK_SIZE.x / oplist_size.x() * Self::CHUNK_SIZE.y / oplist_size.y()) as usize);
+    pub fn get_tilepositions_within_chunk(&self, oplist_size: SizeInTiles) -> Vec<GlobalTilePos> {
+        let mut tiles = Vec::with_capacity((oplist_size.tiles_per_chunk().element_product()) as usize);
         let chunk_origin = self.to_tilepos();
-        for y in (0..Self::CHUNK_SIZE.y).step_by(oplist_size.y() as usize) {
-            for x in (0..Self::CHUNK_SIZE.x).step_by(oplist_size.x() as usize) {
+        for y in (0..Self::CHUNK_SIZE.y).step_by(oplist_size.y()) {
+            for x in (0..Self::CHUNK_SIZE.x).step_by(oplist_size.x()) {
                 let tile_pos = GlobalTilePos(IVec2::new(chunk_origin.0.x + x as i32, chunk_origin.0.y + y as i32));
                 tiles.push(tile_pos);
             }
@@ -258,7 +179,7 @@ impl From<Vec3> for ChunkPos {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, )]
 /// IMPORTANTE: va asociado a cada tile instance, no a la tile original
 pub struct OplistSize(UVec2);
 impl OplistSize {
@@ -308,7 +229,7 @@ impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 
 pub const REGION_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::new(32, 32);
 
-#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Reflect, )]
+#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, )]
 pub struct RegionPos(pub IVec2);
 impl_basic_funcs!(RegionPos);
 impl_hashed_position!(RegionPos);
@@ -352,4 +273,56 @@ pub mod prelude {
         ChunkPos, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos, RegionPos,
         REGION_SIZE_IN_CHUNKS,
     };
+}
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, PartialEq, Eq, Hash)]
+pub struct SizeInTiles(pub UVec2);
+impl SizeInTiles{
+    pub fn new(size_in_tiles: Option<(u32, u32)>) -> Self {
+        let (mut x, mut y) = size_in_tiles.unwrap_or((1, 1));
+        if x == 0 {
+            error!("TileOccupancy width must be greater than 0");
+            x = 1;
+        }
+        if y == 0 {
+            error!("TileOccupancy height must be greater than 0");
+            y = 1;
+        }
+        if x > 6 {
+            error!("TileOccupancy width must be less than 7");
+            x = 6
+        }
+        if y > 6 {
+            error!("TileOccupancy height must be less than 7");
+            y = 6;
+        }
+        Self(UVec2::new(x, y))
+    }
+    pub fn inner(&self) -> UVec2 {
+        self.0
+    }
+    pub fn to_pixel_size(&self) -> Vec2 {
+       (self.0 * GlobalTilePos::TILE_SIZE_PXS).as_vec2()
+    }
+    pub fn tiles_per_chunk(&self) -> UVec2 {
+        ChunkPos::CHUNK_SIZE / self.0
+    }
+    pub fn tilemap_size(&self) -> bevy_ecs_tilemap::map::TilemapSize {
+        bevy_ecs_tilemap::map::TilemapSize::from(self.tiles_per_chunk())
+    }
+    pub fn render_chunk_size(&self) -> UVec2 {
+        self.tiles_per_chunk() * 2
+    }
+    pub fn x(&self) -> usize {
+        self.0.x as usize
+    }
+    pub fn y(&self) -> usize {
+        self.0.y as usize
+    }
+}
+impl Default for SizeInTiles {
+    fn default() -> Self {
+        Self(UVec2::ONE)
+    }
 }

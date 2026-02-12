@@ -1,29 +1,24 @@
-use game_common::game_common_components::{CardinalDirection, EntityZeroRef};
-use serde::{Deserialize, Serialize};
+use game_common::game_common_components::{ EntityZeroRef};
+
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
-use tilemap_shared::{ChunkPos, GlobalTilePos, HashablePosVec, REGION_SIZE_IN_CHUNKS, RegionPos};
+use ::tilemap_shared::*;
 
 use crate::{chunking::chunking_components::Chunk, regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 
-
 use common::{common_components::*, };
+use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 #[require(ClaimList, RegionPlannedTiles, Visibility, Transform, AssetScoped)]
 pub struct Region;
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[relationship_target(relationship = Chunk)]
 pub struct ChunksActiveInRegion(Vec<Entity>);
 impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-
-
-
-
-
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 #[require(CountsOfSgcs, GridOfSgcs)]
 pub struct ClaimList {
     pub processed_up_to_i: usize,
@@ -51,9 +46,8 @@ impl Default for ClaimList {
     }
 }
 
-#[derive(Component, Debug, Reflect, Default)]
+#[derive(Component, Debug, Default)]
 pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
-
 
 pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
 
@@ -158,21 +152,18 @@ impl RegionPlannedTiles {
 
 pub const MAX_CLAIMS: usize = REGION_SIZE_IN_CHUNKS.area_usize();
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Copy, Clone)]
 pub struct AllTilesPrepared;
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Copy, Clone)]
 pub struct BuildingStarted;
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, )]
 pub struct PendingOfferTimeout {
     pub timeout_timer: Timer,
 }
 
-
-#[derive(Debug, Reflect, )]
+#[derive(Debug, )]
 pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u64, }
 impl<T: Copy> Default for RegionGrid<T> {
     fn default() -> Self {
@@ -232,7 +223,7 @@ pub enum ChunkOccupyError<T> {
     OutOfRegionBounds(CardinalDirection),
 }
 
-#[derive(Component, Debug, Reflect, Default)]
+#[derive(Component, Debug, Default)]
 pub struct GridOfSgcs(pub RegionGrid<Entity>);
 
 impl GridOfSgcs {
@@ -326,27 +317,6 @@ impl GridOfSgcs {
         });
     }
 }
-impl InspectorPrimitive for GridOfSgcs {
-    fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) -> bool {
-        self.render_grid(ui, None, None);
-        false
-    }
-    fn ui_readonly(
-        &self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) {
-        self.render_grid(ui, None, None);
-    }
-}
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Default, Copy, Clone)]
 pub struct AllClaimsProcessed;

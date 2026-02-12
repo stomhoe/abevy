@@ -1,7 +1,8 @@
 use being_shared::Grounding;
 use bevy::{ecs::entity::MapEntities, prelude::*};
-use game_common::game_common_components::CardinalDirection;
+
 use serde::{Deserialize, Serialize};
+use tilemap_shared::CardinalDirection;
 
 
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]

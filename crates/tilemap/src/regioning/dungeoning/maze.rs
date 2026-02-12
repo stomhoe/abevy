@@ -538,7 +538,7 @@ pub fn maze_dungeon_building_system(
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
-            for tile_pos in chunk_pos.get_tilepositions_within_chunk(OplistSize::default()) {
+            for tile_pos in chunk_pos.get_tilepositions_within_chunk(SizeInTiles::default()) {
                 let local_tile = tile_pos.0 - origin_tile.0;
                 if local_tile.x < 0 || local_tile.y < 0 { continue; }
                 let idx_x = local_tile.x as usize;

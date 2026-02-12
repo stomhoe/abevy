@@ -1,8 +1,8 @@
 #[allow(unused_imports)] use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, )]
 pub struct LobbyPlayerListing;
-
 
 #[derive(Component, Debug, )]
 pub struct LobbyPlayerUiNode(pub Entity);
@@ -18,7 +18,6 @@ pub enum LobbyButtonId {
 
 #[derive(Component)]
 pub enum LobbyLineEdit {Chat, LobbyName}
-
 
 #[derive(Component)]
 pub enum LobbySlider {ChatHistory, Settings}

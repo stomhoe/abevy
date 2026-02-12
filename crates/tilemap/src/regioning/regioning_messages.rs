@@ -16,7 +16,7 @@ pub struct OfferChunk {
     pub start_pos: ChunkPos,
 }
 
-#[derive(Message, Debug, Clone, Hash, PartialEq, Eq, Reflect)]
+#[derive(Message, Debug, Clone, Hash, PartialEq, Eq, )]
 pub struct ChunksClaim {
     pub i: u64,
     pub region_ent: Entity,

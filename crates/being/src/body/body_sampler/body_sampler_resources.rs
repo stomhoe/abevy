@@ -4,7 +4,7 @@ use bevy::platform::collections::HashMap;
 use crate::body::body_sampler::body_sampler_components::BodyWeightedSampler;
 
 
-#[derive(serde::Deserialize, Asset, Reflect, Default, Debug)]
+#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BodyWeightedSamplerSeri {
     pub id: String,
     pub weights: Vec<(String, f32)>,
