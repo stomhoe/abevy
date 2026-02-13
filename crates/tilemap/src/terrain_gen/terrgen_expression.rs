@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::sync::{Mutex, OnceLock};
 use tilemap_shared::{GlobalTilePos, OplistSize, GlobalGenSettings, HashablePosVec, PoissonDisk};
 use crate::terrain_gen::terrgen_components::FnlNoiseComp;
 use common::common_components::HashId;
@@ -88,6 +90,7 @@ impl Expr {
             Expr::NoiseByName { .. } => {
                 // NoiseByName should be resolved to Noise during init
                 // If we reach here, it means resolution failed
+                warn!(target: "oplist_eval", "Unresolved NoiseByName reached runtime eval; returning 0.0");
                 0.0
             }
 
@@ -132,7 +135,20 @@ impl Expr {
             }
 
             Expr::Variable { name } => {
-                context.variables.get(name).copied().unwrap_or(0.0)
+                if let Some(v) = context.variables.get(name) {
+                    *v
+                } else {
+                    static MISSING_VARS_WARNED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+                    let warned = MISSING_VARS_WARNED.get_or_init(|| Mutex::new(HashSet::new()));
+                    if let Ok(mut set) = warned.lock() && set.insert(name.clone()) {
+                        warn!(
+                            target: "oplist_eval",
+                            "Missing variable '{}' during expr eval; defaulting to 0.0",
+                            name
+                        );
+                    }
+                    0.0
+                }
             }
 
             Expr::Add { left, right } => left.eval(context) + right.eval(context),
@@ -147,9 +163,7 @@ impl Expr {
                 }
             }
 
-            Expr::MultiplyOpo { value } => {
-                value.eval(context)
-            }
+            Expr::MultiplyOpo { value } => 1.0 - value.eval(context),
 
             Expr::Min { values } => {
                 values.iter()
@@ -199,13 +213,16 @@ impl Expr {
             }
 
             Expr::Linear { values } => {
-                // Linear interpolation formula
-                // Matches the old "lin" operation behavior
-                if values.is_empty() {
+                // Legacy terrain-gen "lin" behavior:
+                // lin(x, a, b, m1, m2, ...) = sigmoid(a*x + b) * m1 * m2 * ...
+                if values.len() < 3 {
                     return 0.0;
                 }
-                let mut result = values[0].eval(context);
-                for expr in &values[1..] {
+                let x = values[0].eval(context);
+                let a = values[1].eval(context);
+                let b = values[2].eval(context);
+                let mut result = 1.0 / (1.0 + (-(a * x + b)).exp());
+                for expr in &values[3..] {
                     result *= expr.eval(context);
                 }
                 result

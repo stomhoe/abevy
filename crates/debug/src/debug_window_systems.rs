@@ -148,6 +148,10 @@ pub fn main_menu_window(
                 window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
 
+            if ui.button(egui::RichText::new("🧮 Terrain values grid").size(16.0)).clicked() {
+                window_visible.terrgen_values = !window_visible.terrgen_values;
+            }
+
             if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;
             }

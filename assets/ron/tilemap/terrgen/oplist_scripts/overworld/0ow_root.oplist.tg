@@ -10,7 +10,7 @@ let normal_diff = -(normal_continentness, elf_continentness, antarctica_continen
 let elf_diff = -(elf_continentness, normal_continentness, antarctica_continentness)
 let antarctica_diff = -(antarctica_continentness, normal_continentness, elf_continentness)
 
-out = idxmax(normal_diff, elf_diff, antarctica_diff, 0.15)
+out = idxmax(normal_diff, elf_diff, antarctica_diff, 0.005)
 
 bif normal1 -> []
 bif elf1 -> []

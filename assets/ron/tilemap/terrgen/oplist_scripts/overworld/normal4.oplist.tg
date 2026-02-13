@@ -3,7 +3,7 @@ tags: [portal]
 size: (3, 3)
 
 let sandy_beach_farness = *(COMP gravelness, 1.1)
-let shared_pd = +(pd299)
+let shared_pd = pd299
 
 let tree_feature = idxmax(hp81, 0.05)
 let tree_feature = max(fnl.forest, tree_feature, water_proximity)

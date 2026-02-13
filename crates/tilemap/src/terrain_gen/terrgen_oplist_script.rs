@@ -37,9 +37,10 @@ pub fn load_tg_oplists(
         };
 
         let compiled = match parse_tg_script_to_expr_tree(&source, &file) {
-            Ok((id, roots, tags, size, bifs, expr_tree)) => OpListSeri {
+            Ok((id, roots, tags, debug_vars, size, bifs, expr_tree)) => OpListSeri {
                 id,
                 tags,
+                debug_vars,
                 root_in_dimensions: roots,
                 bifs,
                 size,
@@ -64,13 +65,10 @@ pub fn load_tg_oplists(
         return;
     }
 
-    let override_ids: HashSet<String> = compiled_by_id.keys().cloned().collect();
-    seris_handles.handles.retain(|handle| {
-        let Some(existing) = assets.get(handle) else {
-            return true;
-        };
-        !override_ids.contains(&existing.id)
-    });
+    // TG scripts are the canonical oplist source in the new system.
+    // Drop previously tracked handles (including legacy .ron variants)
+    // so duplicate ids cannot resolve to stale assets.
+    seris_handles.handles.clear();
 
     let mut added = 0usize;
     for (_, seri) in compiled_by_id {
@@ -128,9 +126,10 @@ fn collect_tg_files(dir: &Path, out: &mut Vec<PathBuf>) {
 pub fn parse_tg_script_to_expr_tree(
     source: &str,
     path: &Path,
-) -> Result<(String, Vec<String>, Option<Vec<String>>, Option<[u32; 2]>, Vec<(String, Vec<String>)>, ExprOpList), String> {
+) -> Result<(String, Vec<String>, Option<Vec<String>>, Vec<String>, Option<[u32; 2]>, Vec<(String, Vec<String>)>, ExprOpList), String> {
     let mut id: Option<String> = None;
     let mut tags: Option<Vec<String>> = None;
+    let mut debug_vars: Vec<String> = Vec::new();
     let mut roots: Option<Vec<String>> = None;
     let mut size: Option<[u32; 2]> = None;
     let mut bifs: Vec<(String, Vec<String>)> = Vec::new();
@@ -161,6 +160,12 @@ pub fn parse_tg_script_to_expr_tree(
         }
         if let Some(value) = key_value(line, "tags") {
             tags = Some(parse_string_list(value));
+            continue;
+        }
+        if let Some(value) = key_value(line, "debug")
+            .or_else(|| key_value(line, "debug_vars"))
+        {
+            debug_vars = parse_string_list(value);
             continue;
         }
         if let Some(value) = key_value(line, "size") {
@@ -233,6 +238,7 @@ pub fn parse_tg_script_to_expr_tree(
         id,
         root_in_dimensions,
         tags,
+        debug_vars,
         size,
         bifs,
         ExprOpList {
@@ -250,12 +256,12 @@ fn parse_expr_from_string(
 ) -> Result<Expr, String> {
     let expr = expr_str.trim().trim_end_matches(';').trim();
 
-    if !expr.contains('(') && !expr.contains(' ') {
-        return build_operand_expr(expr, aliases, path, line_no);
+    if let Some(arith_expr) = try_parse_inline_arithmetic(expr, aliases, path, line_no)? {
+        return Ok(arith_expr);
     }
 
-    if let Some(arith_expr) = try_parse_inline_arithmetic(expr, aliases)? {
-        return Ok(arith_expr);
+    if !expr.contains('(') && !expr.contains(' ') {
+        return build_operand_expr(expr, aliases, path, line_no);
     }
 
     let (op_raw, args_raw) = if let Some(open_idx) = expr.find('(') {
@@ -287,7 +293,7 @@ fn parse_expr_from_string(
         if arg.is_empty() {
             continue;
         }
-        let operand_expr = build_operand_expr(arg, aliases, path, line_no)?;
+        let operand_expr = parse_expr_from_string(arg, aliases, path, line_no)?;
         operands.push(operand_expr);
     }
 
@@ -397,6 +403,11 @@ fn build_expression_tree(operation: &str, operands: Vec<Expr>) -> Result<Expr, S
             if operands.is_empty() {
                 return Err("MultiplyOpo requires at least 1 operand".to_string());
             }
+            if operands.len() == 1 {
+                return Ok(Expr::Complement {
+                    value: Box::new(operands[0].clone()),
+                });
+            }
             let mut result = operands[0].clone();
             for operand in &operands[1..] {
                 result = Expr::Multiply {
@@ -490,39 +501,60 @@ fn fold_binary(operands: Vec<Expr>, op: &str) -> Result<Expr, String> {
 fn try_parse_inline_arithmetic(
     expr: &str,
     aliases: &HashMap<String, String>,
+    path: &Path,
+    line_no: usize,
 ) -> Result<Option<Expr>, String> {
     let expr = expr.trim();
-    let has_arithmetic = expr.contains('*') || expr.contains('/') ||
-                         (expr.contains('+') && !expr.starts_with('+')) ||
-                         (expr.contains('-') && !expr.starts_with('-') && expr.chars().filter(|c| *c == '-').count() > 1);
+    let mut depth = 0i32;
+    let mut op_at: Option<(usize, char)> = None;
+    for (idx, ch) in expr.char_indices().rev() {
+        match ch {
+            ')' => depth += 1,
+            '(' => depth -= 1,
+            '+' | '-' | '*' | '/' if depth == 0 => {
+                if idx == 0 {
+                    continue;
+                }
+                op_at = Some((idx, ch));
+                break;
+            }
+            _ => {}
+        }
+    }
 
-    if !has_arithmetic {
+    let (idx, op) = match op_at {
+        Some(found) => found,
+        None => return Ok(None),
+    };
+
+    let left = expr[..idx].trim();
+    let right = expr[idx + 1..].trim();
+    if left.is_empty() || right.is_empty() {
         return Ok(None);
     }
 
-    let (left, op, right) = if let Some(idx) = expr.rfind('*') {
-        (&expr[..idx], "*", &expr[idx + 1..])
-    } else if let Some(idx) = expr.rfind('/') {
-        (&expr[..idx], "/", &expr[idx + 1..])
-    } else if let Some(idx) = expr.rfind('+').filter(|&i| i > 0) {
-        (&expr[..idx], "+", &expr[idx + 1..])
-    } else if let Some(idx) = expr.rfind('-').filter(|&i| i > 0 && !expr[..i].trim().is_empty()) {
-        (&expr[..idx], "-", &expr[idx + 1..])
-    } else {
-        return Ok(None);
-    };
-
-    let left_expr = build_operand_expr(left.trim(), aliases, Path::new("<inline>"), 0)?;
-    let right_expr = build_operand_expr(right.trim(), aliases, Path::new("<inline>"), 0)?;
+    let left_expr = parse_expr_from_string(left, aliases, path, line_no)?;
+    let right_expr = parse_expr_from_string(right, aliases, path, line_no)?;
 
     let result = match op {
-        "*" => Expr::Multiply { left: Box::new(left_expr), right: Box::new(right_expr) },
-        "/" => Expr::Divide { left: Box::new(left_expr), right: Box::new(right_expr) },
-        "+" => Expr::Add { left: Box::new(left_expr), right: Box::new(right_expr) },
-        "-" => Expr::Subtract { left: Box::new(left_expr), right: Box::new(right_expr) },
+        '*' => Expr::Multiply {
+            left: Box::new(left_expr),
+            right: Box::new(right_expr),
+        },
+        '/' => Expr::Divide {
+            left: Box::new(left_expr),
+            right: Box::new(right_expr),
+        },
+        '+' => Expr::Add {
+            left: Box::new(left_expr),
+            right: Box::new(right_expr),
+        },
+        '-' => Expr::Subtract {
+            left: Box::new(left_expr),
+            right: Box::new(right_expr),
+        },
         _ => return Ok(None),
     };
-
     Ok(Some(result))
 }
 

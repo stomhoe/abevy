@@ -158,7 +158,7 @@ fn main() {
                 })
             .set(ImagePlugin::default_nearest(),),
             EguiPlugin::default(),
-            WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
+            WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::Escape)),
             PhysicsPlugins::default().with_length_unit(GlobalTilePos::TILE_SIZE_PXS.x as f32),
         ))
         .add_plugins((

@@ -63,6 +63,7 @@ pub fn plugin(app: &mut App) {
 
         .init_resource::<TerrGenLaunchQueue>()
         .init_resource::<TerrGenAsyncTasks>()
+        .init_resource::<TerrGenDebugGrid>()
         .init_resource::<OpListSerisHandles>()
         .init_asset::<OpListSeri>()
 

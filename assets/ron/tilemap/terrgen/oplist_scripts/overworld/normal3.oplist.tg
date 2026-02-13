@@ -5,8 +5,12 @@ let lakeness = max(fnl.lakesmol, fnl.lakebig)
 let lakeness = *(lakeness, continentness, 0.5)
 let lakeness = *opo(lakeness, beachness)
 
-let riverness = idxmax(0.8, fnl.river.s7)
-let riverness = *(riverness, 1.0)
+let inlandness = *opo(water_proximity)
+let bank_farness = *opo(beachness)
+let river_noise = max(fnl.river, fnl.river.s7)
+let riverness = *(river_noise, inlandness, bank_farness, continentness, 0.6)
+let riverness = riverness * clamp(1.0 - continentness, 0.0, 1.0)
+let riverness = clamp(riverness, 0.0, 0.6)
 
 out = idxmax(lakeness, riverness, continentness)
 

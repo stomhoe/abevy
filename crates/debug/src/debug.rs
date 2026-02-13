@@ -4,6 +4,7 @@ use bevy_fps_counter::FpsCounterPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPrimaryContextPass;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
+use tilemap::terrain_gen::terrgen_systems::terrgen_debug_window_system;
 
 use crate::{
     being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
@@ -46,6 +47,8 @@ pub fn plugin(app: &mut App) {
                 terrgen_editor_window,
                 global_gen_settings_editor_window,
                 registered_positions_window,
+                terrgen_debug_window_system
+                    .run_if(|visible: Res<DubugWindowsVisibility>| visible.terrgen_values),
             ),
         )
         .add_systems(

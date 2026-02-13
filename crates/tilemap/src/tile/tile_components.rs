@@ -34,6 +34,11 @@ pub type TileStrId = StrId;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct TileChildSprite;
 
+#[derive(Component, Debug, Default, Clone)]
+pub struct DebugValue{
+    pub name: String,
+    pub value: f32,
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct AdjRetexConfig(

@@ -3,15 +3,15 @@ roots: [dungeon]
 size: (1, 1)
 
 // Two different continentness variations
-let 1 = +(fnl.conti_nofract, 0.0)
-let 2 = +(fnl.conti_nofract.s2, 0.0)
+let variant_a = +(fnl.conti_nofract, 0.0)
+let variant_b = +(fnl.conti_nofract.s2, 0.0)
 
 // Calculate differences between variants
-let 3 = -($1, $2)
-let 4 = -($2, $1)
+let a_diff = -(variant_a, variant_b)
+let b_diff = -(variant_b, variant_a)
 
 // Select strongest variant or default to black
-out = idxmax($3, $4, 0.3)
+out = idxmax(a_diff, b_diff, 0.3)
 
 bif a1 -> []
 bif b1 -> []

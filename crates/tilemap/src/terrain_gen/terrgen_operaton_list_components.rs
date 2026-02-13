@@ -19,7 +19,12 @@ pub struct Bifurcation{
 pub struct OperationList {
     /// Expression tree representation (slot-free runtime system)
     pub expr_tree: crate::terrain_gen::terrgen_expression::ExprOpList,
+    /// Variable names to keep in runtime debug capture for this oplist.
+    pub debug_vars: Vec<String>,
     pub bifurcations: Vec<Bifurcation>,
+    /// Precompiled branch tree with child oplists inlined for fast recursive eval.
+    #[serde(skip, default)]
+    pub compiled_branch_ast: Option<CompiledBranchNode>,
 }
 
 impl Default for OperationList {
@@ -29,7 +34,9 @@ impl Default for OperationList {
                 assignments: Vec::new(),
                 output: crate::terrain_gen::terrgen_expression::Expr::Literal(0.0),
             },
+            debug_vars: Vec::new(),
             bifurcations: Vec::new(),
+            compiled_branch_ast: None,
         }
     }
 }
@@ -44,7 +51,24 @@ impl MapEntities for OperationList {
             bifur.oplist = bifur.oplist.map(|oplist_entity| entity_mapper.get_mapped(oplist_entity));
             bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = entity_mapper.get_mapped(*tile_entity));
         }
+        if let Some(ast) = self.compiled_branch_ast.as_mut() {
+            map_compiled_branch_entities(ast, entity_mapper);
+        }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledBranchNode {
+    pub source_oplist: Entity,
+    pub expr_tree: crate::terrain_gen::terrgen_expression::ExprOpList,
+    pub branches: Vec<CompiledBranch>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledBranch {
+    pub tiles: Vec<Entity>,
+    pub child_size: Option<tilemap_shared::OplistSize>,
+    pub child: Option<Box<CompiledBranchNode>>,
 }
 
 fn map_expr_entities<E: EntityMapper>(
@@ -93,5 +117,24 @@ fn map_expr_entities<E: EntityMapper>(
         | Expr::HashPos { .. }
         | Expr::PoissonDisk { .. }
         | Expr::Variable { .. } => {}
+    }
+}
+
+fn map_compiled_branch_entities<E: EntityMapper>(
+    node: &mut CompiledBranchNode,
+    entity_mapper: &mut E,
+) {
+    node.source_oplist = entity_mapper.get_mapped(node.source_oplist);
+    for assignment in node.expr_tree.assignments.iter_mut() {
+        map_expr_entities(&mut assignment.expr, entity_mapper);
+    }
+    map_expr_entities(&mut node.expr_tree.output, entity_mapper);
+    for branch in node.branches.iter_mut() {
+        for tile in branch.tiles.iter_mut() {
+            *tile = entity_mapper.get_mapped(*tile);
+        }
+        if let Some(child) = branch.child.as_mut() {
+            map_compiled_branch_entities(child, entity_mapper);
+        }
     }
 }

@@ -2,11 +2,16 @@ id: elf2
 size: (1, 1)
 
 let beachness = max(fnl.beachbig, fnl.beachsmol)
-let beachness = avg(beachness, 0.5)
+let beachness = avg(beachness, 0.45)
 
-let beachness = lin(continentness, -15.8, 5.54, beachness)
+let beach_avg_noise = avg(fnl.beachsmol, fnl.beachbig)
+let branch_strength = max(elf_diff, 0.05)
+let shore_base = *(1.0 - continentness, branch_strength, 2.1)
+let shore_signal = +(shore_base, *(beach_avg_noise, 0.35))
+let shore_proximity = clamp(shore_signal, 0.0, 1.0)
+let beachness = *(beachness, shore_proximity, 1.1, 0.95)
 
-out = idxmax(0.4, beachness)
+out = idxmax(0.2, beachness)
 
 bif elf3 -> []
 bif "" -> [sand]

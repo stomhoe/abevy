@@ -9,7 +9,9 @@ use crate::{terrain_gen::*, tile::{tile_resources::*, tile_sampler_resources::Ti
 use ::tilemap_shared::*;
 
 use std::mem::take;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+use crate::terrain_gen::terrgen_operaton_list_components::{CompiledBranch, CompiledBranchNode};
 
 /// Resolve NoiseByName variants in expression tree to actual Noise entities
 fn resolve_noise_names_in_expr(
@@ -29,7 +31,7 @@ fn resolve_noise_names_in_expr(
                     seed_offset: *seed_offset,
                 };
             } else {
-                warn!(target: "oplist_init", "Noise entity not found: {}", name_clone);
+                error!(target: "oplist_init", "Noise entity not found while resolving TG expr: '{}'", name_clone);
             }
         }
         Expr::Add { left, right }
@@ -151,6 +153,7 @@ pub fn init_oplists_from_assets(
         }
         resolve_noise_names_in_expr(&mut expr_tree.output, &terr_gen_map);
         oplist.expr_tree = expr_tree;
+        oplist.debug_vars = seri.debug_vars.clone();
 
         oplist_comps.push((spawned_oplist, (str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
         if seri.is_root() {
@@ -181,7 +184,7 @@ pub fn init_oplists_bifurcations(
     mut seris_handles: ResMut<OpListSerisHandles>,
     mut assets: ResMut<Assets<OpListSeri>>,
     oplist_map: Res<OperationListEntityMap>,
-    mut oplist_query: Query<&mut OperationList>,
+    mut oplist_query: Query<(Entity, &mut OperationList, &OplistSize)>,
     is_root: Query<&MultipleDimensionRefs>,
 ) -> Result {
     for handle in take(&mut seris_handles.handles) {
@@ -194,7 +197,10 @@ pub fn init_oplists_bifurcations(
                 );
                 continue;
             };
-            let mut oplist = oplist_query.get_mut(oplist_ent)?;
+            let Ok((_, mut oplist, _)) = oplist_query.get_mut(oplist_ent) else {
+                error!(target: "oplist_init", "oplist entity '{}' missing OperationList component", seri.id);
+                continue;
+            };
 
             for (i, seri_bifurcation) in seri.bifs.iter().enumerate() {
                 let bifurcation_str = seri_bifurcation.0.trim();
@@ -222,7 +228,66 @@ pub fn init_oplists_bifurcations(
             }
         }
     }
+
+    let mut snapshots: HashMap<Entity, (crate::terrain_gen::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)> =
+        HashMap::new();
+    for (ent, oplist, &size) in oplist_query.iter() {
+        snapshots.insert(ent, (oplist.expr_tree.clone(), oplist.bifurcations.clone(), size));
+    }
+
+    let mut cache: HashMap<Entity, CompiledBranchNode> = HashMap::new();
+    for ent in snapshots.keys().copied() {
+        let mut stack = HashSet::new();
+        let _ = compile_branch_node(ent, &snapshots, &mut cache, &mut stack);
+    }
+
+    for (ent, mut oplist, _) in oplist_query.iter_mut() {
+        oplist.compiled_branch_ast = cache.get(&ent).cloned();
+    }
     Ok(())
+}
+
+fn compile_branch_node(
+    ent: Entity,
+    snapshots: &HashMap<Entity, (crate::terrain_gen::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)>,
+    cache: &mut HashMap<Entity, CompiledBranchNode>,
+    stack: &mut HashSet<Entity>,
+) -> Option<CompiledBranchNode> {
+    if let Some(found) = cache.get(&ent) {
+        return Some(found.clone());
+    }
+    if !stack.insert(ent) {
+        error!(target: "oplist_init", "Cycle detected while compiling branch AST at entity {:?}", ent);
+        return None;
+    }
+    let Some((expr_tree, bifurcations, _)) = snapshots.get(&ent) else {
+        stack.remove(&ent);
+        return None;
+    };
+
+    let mut branches = Vec::with_capacity(bifurcations.len());
+    for bif in bifurcations {
+        let (child, child_size) = if let Some(child_ent) = bif.oplist {
+            let child_size = snapshots.get(&child_ent).map(|(_, _, size)| *size);
+            let child = compile_branch_node(child_ent, snapshots, cache, stack).map(Box::new);
+            (child, child_size)
+        } else {
+            (None, None)
+        };
+        branches.push(CompiledBranch {
+            tiles: bif.tiles.clone(),
+            child_size,
+            child,
+        });
+    }
+    let compiled = CompiledBranchNode {
+        source_oplist: ent,
+        expr_tree: expr_tree.clone(),
+        branches,
+    };
+    cache.insert(ent, compiled.clone());
+    stack.remove(&ent);
+    Some(compiled)
 }
 
 #[allow(unused_parens)]

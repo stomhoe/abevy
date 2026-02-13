@@ -7,6 +7,7 @@ use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{Pendin
 use ::tilemap_shared::*;
 
 use serde::{Deserialize, };
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct TerrGenLaunchWork {
@@ -33,6 +34,7 @@ pub struct TerrGenOpTaskResult {
     pub new_pending_ops: Vec<PendingOp>,
     pub sampled_value_events: Vec<SuitablePosFound>,
     pub tile_requests: Vec<TerrGenTileRequest>,
+    pub debug_samples: Vec<TerrGenDebugSample>,
 }
 
 #[derive(Debug, Default)]
@@ -47,6 +49,68 @@ pub struct TerrGenAsyncTasks {
     pub launch_tasks: Vec<Task<Vec<PendingOp>>>,
     pub op_tasks: Vec<Task<TerrGenOpTaskResult>>,
     pub search_tasks: Vec<Task<TerrGenSearchTaskResult>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TerrGenDebugSample {
+    pub dimension_ref: DimensionRef,
+    pub gpos: GlobalTilePos,
+    pub oplist: Entity,
+    pub oplist_id: String,
+    pub output: f32,
+    pub variables: HashMap<String, f32>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TerrGenTileDebugInfo {
+    pub oplist: Entity,
+    pub oplist_id: String,
+    pub output: f32,
+    pub variables: HashMap<String, f32>,
+}
+impl Default for TerrGenTileDebugInfo {
+    fn default() -> Self {
+        Self {
+            oplist: Entity::PLACEHOLDER,
+            oplist_id: String::new(),
+            output: 0.0,
+            variables: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TerrGenDebugTileKey {
+    pub dimension: Entity,
+    pub gpos: IVec2,
+    pub oplist: Entity,
+}
+
+#[derive(Resource, Debug)]
+pub struct TerrGenDebugGrid {
+    pub enabled: bool,
+    pub selected_metric: String,
+    pub oplist_filter: Option<String>,
+    pub max_entries: usize,
+    pub bucket_size_tiles: i32,
+    pub bucket_radius: i32,
+    pub capture_margin_buckets: i32,
+    pub tiles: HashMap<TerrGenDebugTileKey, TerrGenTileDebugInfo>,
+}
+
+impl Default for TerrGenDebugGrid {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            selected_metric: "shore_proximity".to_string(),
+            oplist_filter: None,
+            max_entries: 150_000,
+            bucket_size_tiles: 10,
+            bucket_radius: 18,
+            capture_margin_buckets: 8,
+            tiles: HashMap::new(),
+        }
+    }
 }
 
 
@@ -95,6 +159,8 @@ pub struct DungeonSeri {
 pub struct OpListSeri {
     pub id: String,
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub debug_vars: Vec<String>,
     pub root_in_dimensions: Vec<String>,
     /// oplist id, produced tiles
     pub bifs: Vec<(String, Vec<String>)>,
