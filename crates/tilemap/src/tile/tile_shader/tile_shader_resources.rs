@@ -53,7 +53,7 @@ pub struct ShaderRockyTerrainSeri {
 common::define_entity_map_systems!(
     TileShader,
     ShaderRepeatTexSeri, "ron/tilemap/tiling/shader/rep1", "rep1shader.ron",
-    PlaceholderSeri, "ron/tilemap/tiling/shader/voroshu", "voroshu.ron",
+    //PlaceholderSeri, "ron/tilemap/tiling/shader/voroshu", "voroshu.ron",
     ShaderWavySeri, "ron/tilemap/tiling/shader/wavy", "wavy.ron",
     ShaderRockyTerrainSeri, "ron/tilemap/tiling/shader/rocky", "rocky.ron",
 );

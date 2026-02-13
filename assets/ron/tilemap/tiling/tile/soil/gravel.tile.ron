@@ -1,0 +1,10 @@
+(
+    id: "gravel",
+    name: "Gravel",
+    z: -1000,
+    img_paths: [
+        ("", "texture/world/white.png"),
+    ],
+    shader: Some("gravel"),
+    color: Some((255, 0, 0, 255)),
+)

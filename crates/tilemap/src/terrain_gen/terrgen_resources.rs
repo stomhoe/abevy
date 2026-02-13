@@ -91,20 +91,24 @@ pub struct DungeonSeri {
 
 
 
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, TypePath)]
 pub struct OpListSeri {
     pub id: String,
     pub tags: Option<Vec<String>>,
     pub root_in_dimensions: Vec<String>,
-    /// input variable index, operation name, operands, ouput variable indexs
-    pub operation_operands: Vec<(String, Vec<String>, u8)>,
     /// oplist id, produced tiles
     pub bifs: Vec<(String, Vec<String>)>,
-    pub size: Option<[u32; 2]>
+    pub size: Option<[u32; 2]>,
+    /// Expression tree representation (slot-free system)
+    pub expr_tree: super::terrgen_expression::ExprOpList,
 }
 impl OpListSeri {
     pub fn is_root(&self) -> bool {
         self.root_in_dimensions.iter().any(|s| !s.is_empty())
+    }
+
+    pub fn is_expr_based(&self) -> bool {
+        true
     }
 }
 

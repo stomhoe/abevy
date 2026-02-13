@@ -1,0 +1,15 @@
+id: b1
+tags: [portal]
+size: (1, 1)
+
+// Calculate max continentness from base continent and peninsula noises (with seed 4)
+let 1 = max(fnl.conti.s4, fnl.penin.s4)
+
+// Multiply $2 (variant_b from root) by $4 (b_diff from root)
+let 1 = *($2, $4)
+
+// Determine dungeon floor vs wall based on threshold
+out = idxmax(0.3, $1)
+
+bif "" -> [dublack]
+bif "" -> [dublack]

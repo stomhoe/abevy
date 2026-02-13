@@ -1,0 +1,12 @@
+id: elf2
+size: (1, 1)
+
+let beachness = max(fnl.beachbig, fnl.beachsmol)
+let beachness = avg(beachness, 0.5)
+
+let beachness = lin(continentness, -15.8, 5.54, beachness)
+
+out = idxmax(0.4, beachness)
+
+bif elf3 -> []
+bif "" -> [sand]

@@ -1,0 +1,15 @@
+id: a1
+tags: [dungeon]
+size: (1, 1)
+
+// Calculate max continentness from base continent and peninsula noises
+let 1 = max(fnl.conti, fnl.penin)
+
+// Multiply by inherited variable $3 (a_diff from root)
+let 1 = *($1, $3)
+
+// Determine dungeon floor vs wall based on threshold
+out = idxmax(0.3, $1)
+
+bif "" -> [dublack]
+bif "" -> [dublack]

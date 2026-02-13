@@ -26,12 +26,12 @@ pub struct GlobalGenSettings {
     /// Timeout in seconds to wait for StructureBuildCompliance before giving up
     pub structure_build_timeout_secs: f64,
 }
-const DONT_TOUCH: f32 = 100.;
+const DONT_TOUCH: f32 = 1000.;
 impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self {
             seed: 3,
-            world_freq: 6.
+            world_freq: 20.
             /DONT_TOUCH,
             structure_build_timeout_secs: 4.0,
         }

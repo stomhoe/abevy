@@ -2,22 +2,177 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 
 use tilemap::terrain_gen::terrgen_components::{FnlNoiseComp, Terrgen};
-use tilemap::terrain_gen::terrgen_operaton_list_components::*;
-use ::tilemap_shared::*;
-
+use tilemap::terrain_gen::terrgen_operaton_list_components::OperationList;
+use tilemap::terrain_gen::terrgen_expression::Expr;
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+
+/// Format an expression tree into a readable string representation
+fn format_expr(expr: &Expr, indent: usize) -> String {
+    let prefix = "  ".repeat(indent);
+    match expr {
+        Expr::Literal(v) => format!("{:.3}", v),
+        Expr::Noise { complement, seed_offset, .. } => {
+            let comp = if *complement { "!" } else { "" };
+            format!("{}Noise(seed: {}){}", prefix, seed_offset, comp)
+        }
+        Expr::NoiseByName { name, complement, .. } => {
+            let comp = if *complement { "!" } else { "" };
+            format!("{}NoiseByName({}){}", prefix, name, comp)
+        }
+        Expr::Variable { name } => format!("${}", name),
+        Expr::Add { left, right } => {
+            format!("({} + {})",
+                format_expr_compact(left),
+                format_expr_compact(right))
+        }
+        Expr::Subtract { left, right } => {
+            format!("({} - {})",
+                format_expr_compact(left),
+                format_expr_compact(right))
+        }
+        Expr::Multiply { left, right } => {
+            format!("({} * {})",
+                format_expr_compact(left),
+                format_expr_compact(right))
+        }
+        Expr::Divide { left, right } => {
+            format!("({} / {})",
+                format_expr_compact(left),
+                format_expr_compact(right))
+        }
+        Expr::MultiplyOpo { value } => {
+            format!("*opo({})", format_expr_compact(value))
+        }
+        Expr::Min { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("min({})", args)
+        }
+        Expr::Max { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("max({})", args)
+        }
+        Expr::Average { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("avg({})", args)
+        }
+        Expr::Abs { value } => {
+            format!("abs({})", format_expr_compact(value))
+        }
+        Expr::MultiplyNormalized { left, right } => {
+            format!("*nm({}, {})",
+                format_expr_compact(left),
+                format_expr_compact(right))
+        }
+        Expr::MultiplyNormalizedAbs { left, right } => {
+            format!("*nmabs({}, {})",
+                format_expr_compact(left),
+                format_expr_compact(right))
+        }
+        Expr::IndexMax { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("idxmax({})", args)
+        }
+        Expr::IndexNorm { value, multiplier } => {
+            format!("idxnorm({}, {})",
+                format_expr_compact(value),
+                format_expr_compact(multiplier))
+        }
+        Expr::Linear { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("lin({})", args)
+        }
+        Expr::Clamp { value, min, max } => {
+            format!("clamp({}, {}, {})",
+                format_expr_compact(value),
+                format_expr_compact(min),
+                format_expr_compact(max))
+        }
+        Expr::Complement { value } => {
+            format!("!{}", format_expr_compact(value))
+        }
+        Expr::HashPos { seed } => format!("hp{}", seed),
+        Expr::PoissonDisk { min_dist, seed } => format!("pd{}_{}", min_dist, seed),
+    }
+}
+
+/// Format an expression compactly (single line, no indentation)
+fn format_expr_compact(expr: &Expr) -> String {
+    match expr {
+        Expr::Literal(v) => format!("{:.3}", v),
+        Expr::Noise { complement, .. } => {
+            if *complement { "!noise" } else { "noise" }.to_string()
+        }
+        Expr::NoiseByName { name, complement, .. } => {
+            if *complement { format!("!{}", name) } else { name.clone() }
+        }
+        Expr::Variable { name } => format!("${}", name),
+        Expr::Add { left, right } => {
+            format!("({} + {})", format_expr_compact(left), format_expr_compact(right))
+        }
+        Expr::Subtract { left, right } => {
+            format!("({} - {})", format_expr_compact(left), format_expr_compact(right))
+        }
+        Expr::Multiply { left, right } => {
+            format!("({} * {})", format_expr_compact(left), format_expr_compact(right))
+        }
+        Expr::Divide { left, right } => {
+            format!("({} / {})", format_expr_compact(left), format_expr_compact(right))
+        }
+        Expr::Min { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("min({})", args)
+        }
+        Expr::Max { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("max({})", args)
+        }
+        Expr::IndexMax { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("idxmax({})", args)
+        }
+        Expr::Linear { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("lin({})", args)
+        }
+        _ => format_expr(expr, 0),
+    }
+}
 
 #[allow(unused_parens)]
 pub fn terrgen_editor_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    mut queries: ParamSet<(
-        Query<(Entity, Option<&Name>, &OperationList)>,
-        Query<&mut OperationList>,
-        Query<&mut FnlNoiseComp, With<Terrgen>>,
-        Query<(Entity, Option<&Name>, &FnlNoiseComp), With<Terrgen>>,
-    )>,
+    oplist_query: Query<(Entity, Option<&Name>, &OperationList)>,
+    noise_name_query: Query<(Entity, Option<&Name>), With<Terrgen>>,
+    mut noise_edit_query: Query<&mut FnlNoiseComp, With<Terrgen>>,
 ) {
     if !window_visible.terrgen_editor {
         return;
@@ -32,19 +187,20 @@ pub fn terrgen_editor_window(
     let default_y = screen_rect.top() + 10.0;
 
     // Pre-collect noise data to avoid borrow conflicts
-    let noise_data: Vec<(Entity, String)> = queries.p3().iter()
-        .map(|(ent, name, _)| {
-            let label = if let Some(n) = name {
-                format!("{}", n)
-            } else {
-                format!("{:?}", ent)
-            };
+    let noise_data: Vec<(Entity, String)> = noise_name_query.iter()
+        .map(|(ent, name)| {
+            let fallback = format!("{:?}", ent);
+            let label = name
+                .map(Name::as_str)
+                .unwrap_or_default()
+                .to_string();
+            let label = if label.is_empty() { fallback } else { label };
             (ent, label)
         })
         .collect();
 
     // Pre-collect operationlist data
-    let operationlist_vec: Vec<(Entity, String)> = queries.p0().iter()
+    let operationlist_vec: Vec<(Entity, String)> = oplist_query.iter()
         .map(|(ent, name, _)| {
             let label = if let Some(n) = name {
                 format!("{} ({:?})", n, ent)
@@ -114,237 +270,131 @@ pub fn terrgen_editor_window(
 
             ui.separator();
 
-            // Side-by-side layout for editors
-            ui.columns(2, |columns| {
-                // LEFT COLUMN: OperationList Editor
-                columns[0].heading("Operations:");
+            // AST TREE DISPLAY (if available)
+            if let Some(oplist_entity) = selected_entities.selected_operationlist {
+                if let Ok((_, _, oplist)) = oplist_query.get(oplist_entity) {
+                    let expr_tree = &oplist.expr_tree;
+                        ui.heading("AST Expression Tree:");
+                        ui.label(format!("Assignments: {}", expr_tree.assignments.len()));
 
-                if let Some(oplist_entity) = selected_entities.selected_operationlist {
-                    if let Ok(mut oplist) = queries.p1().get_mut(oplist_entity) {
-                        let trunk_len = oplist.trunk.len();
-                        let mut remove_op_idx = None;
-
-                        for idx in 0..trunk_len {
-                            let op_str = oplist.trunk[idx].0.as_ref().to_string();
-                            let var_idx = oplist.trunk[idx].2;
-
-                            columns[0].horizontal(|ui| {
-                                ui.label(format!("Op {}: {} (Var{})", idx, op_str, var_idx));
-
-                                if idx > 0 && ui.button("⬆").clicked() {
-                                    oplist.trunk.swap(idx, idx - 1);
-                                }
-
-                                if idx < trunk_len - 1 && ui.button("⬇").clicked() {
-                                    oplist.trunk.swap(idx, idx + 1);
-                                }
-
-                                if ui.button("✕").clicked() {
-                                    remove_op_idx = Some(idx);
-                                }
-                            });
-
-                            columns[0].horizontal(|ui| {
-                                ui.label("  Operands:");
-                                if ui.button("+ Add").clicked() {
-                                    oplist.trunk[idx].1.push(Operand {
-                                        complement: false,
-                                        element: OperandElement::default(),
-                                    });
-                                }
-                            });
-
-                            let op_count = oplist.trunk[idx].1.len();
-                            let mut remove_opd_idx = None;
-
-                            for opd_idx in 0..op_count {
-                                let mut removed = false;
-                                columns[0].horizontal(|ui| {
-                                    if ui.button("✕").clicked() {
-                                        removed = true;
-                                    }
-
-                                    ui.checkbox(&mut oplist.trunk[idx].1[opd_idx].complement, "Complement");
-                                    ui.label(format!("Opd {}:", opd_idx));
-
-                                    let current_type = match &oplist.trunk[idx].1[opd_idx].element {
-                                        OperandElement::Value(_) => "Value",
-                                        OperandElement::StackArray(_) => "StackArray",
-                                        OperandElement::NoiseEntity(_, _, _, _) => "NoiseEntity",
-                                        OperandElement::HashPos(_) => "HashPos",
-                                        OperandElement::PoissonDisk(_) => "PoissonDisk",
-                                    };
-
-                                    let combo_id = (idx as u64) * 1000 + (opd_idx as u64);
-                                    egui::ComboBox::from_id_salt(combo_id)
-                                        .selected_text(current_type)
-                                        .width(100.0)
-                                        .show_ui(ui, |ui| {
-                                            ui.selectable_value(&mut oplist.trunk[idx].1[opd_idx].element, OperandElement::Value(0.0), "Value");
-                                            ui.selectable_value(&mut oplist.trunk[idx].1[opd_idx].element, OperandElement::StackArray(0), "StackArray");
-                                            ui.selectable_value(&mut oplist.trunk[idx].1[opd_idx].element, OperandElement::NoiseEntity(Entity::PLACEHOLDER, Default::default(), false, 0), "NoiseEntity");
-                                            ui.selectable_value(&mut oplist.trunk[idx].1[opd_idx].element, OperandElement::HashPos(0), "HashPos");
-                                            ui.selectable_value(&mut oplist.trunk[idx].1[opd_idx].element, OperandElement::PoissonDisk(PoissonDisk::new(1, 0).unwrap_or_default()), "PoissonDisk");
+                        egui::Frame::default()
+                            .fill(egui::Color32::from_rgb(20, 20, 20))
+                            .stroke(egui::Stroke { width: 1.0, color: egui::Color32::DARK_GRAY })
+                            .inner_margin(egui::Margin { left: 8, right: 8, top: 4, bottom: 4 })
+                            .show(ui, |ui| {
+                                ui.vertical(|ui| {
+                                    // Display assignments
+                                    for (i, assignment) in expr_tree.assignments.iter().enumerate() {
+                                        let expr_str = format_expr_compact(&assignment.expr);
+                                        ui.horizontal(|ui| {
+                                            ui.label(format!("${}", assignment.name));
+                                            ui.label("=");
+                                            ui.label(egui::RichText::new(&expr_str).color(egui::Color32::from_rgb(100, 200, 255)));
                                         });
-                                });
-
-                                columns[0].horizontal(|ui| {
-                                    if ui.button("✕").clicked() {
-                                        removed = true;
                                     }
 
-                                    match &mut oplist.trunk[idx].1[opd_idx].element {
-                                        OperandElement::Value(v) => {
-                                            ui.label("Val:");
-                                            ui.add(egui::DragValue::new(v).speed(0.1));
-                                        }
-                                        OperandElement::StackArray(idx_val) => {
-                                            ui.label("Idx:");
-                                            ui.add(egui::DragValue::new(idx_val).speed(1.0));
-                                        }
-                                        OperandElement::NoiseEntity(entity_ref, _range, _complementary, seed) => {
-                                            let noise_label = noise_data
-                                                .iter()
-                                                .find(|(ent, _)| *ent == *entity_ref)
-                                                .map(|(_, label)| label.clone())
-                                                .unwrap_or_else(|| "None".to_string());
-
-                                            let noise_combo_id = (idx as u64) * 10000 + (opd_idx as u64) * 100 + 50;
-                                            egui::ComboBox::from_id_salt(noise_combo_id)
-                                                .selected_text(&noise_label)
-                                                .width(120.0)
-                                                .show_ui(ui, |ui| {
-                                                    for (noise_ent, noise_label) in noise_data.iter() {
-                                                        ui.selectable_value(entity_ref, *noise_ent, noise_label);
-                                                    }
-                                                });
-
-                                            ui.add(egui::DragValue::new(seed).speed(1.0).prefix("S:"));
-                                        }
-                                        OperandElement::HashPos(hash) => {
-                                            ui.label("Hash:");
-                                            ui.add(egui::DragValue::new(hash).speed(1.0));
-                                        }
-                                        OperandElement::PoissonDisk(_) => {
-                                            ui.label("PoissonDisk");
-                                        }
+                                    // Display output expression
+                                    if !expr_tree.assignments.is_empty() {
+                                        ui.separator();
                                     }
+                                    let output_str = format_expr_compact(&expr_tree.output);
+                                    ui.horizontal(|ui| {
+                                        ui.label(egui::RichText::new("out").color(egui::Color32::from_rgb(100, 255, 100)).strong());
+                                        ui.label("=");
+                                        ui.label(egui::RichText::new(&output_str).color(egui::Color32::from_rgb(255, 255, 100)));
+                                    });
                                 });
+                            });
 
-                                if removed {
-                                    remove_opd_idx = Some(opd_idx);
-                                }
-                            }
+                        ui.separator();
 
-                            if let Some(opd_idx) = remove_opd_idx {
-                                oplist.trunk[idx].1.remove(opd_idx);
-                            }
-                        }
+                }
+            }
 
-                        if let Some(op_idx) = remove_op_idx {
-                            oplist.trunk.remove(op_idx);
-                        }
-
-                        columns[0].separator();
-
-                        if columns[0].button("+ Add Operation").clicked() {
-                            oplist.trunk.push((Operation::Add, vec![], 0));
-                        }
-
-                        columns[0].separator();
-                        columns[0].heading(format!("Bifurcations: {}", oplist.bifurcations.len()));
-                        for (bif_idx, bifur) in oplist.bifurcations.iter().enumerate() {
-                            if let Some(oplist_ent) = bifur.oplist {
-                                columns[0].label(format!("Bif {}: OpList({:?}), Tiles: {}",
-                                    bif_idx, oplist_ent, bifur.tiles.len()));
-                            } else {
-                                columns[0].label(format!("Bif {}: No OpList, Tiles: {}",
-                                    bif_idx, bifur.tiles.len()));
+            // Side-by-side layout for bifurcations and noise editing
+            ui.columns(2, |columns| {
+                columns[0].heading("Bifurcations");
+                if let Some(oplist_entity) = selected_entities.selected_operationlist {
+                    if let Ok((_, _, oplist)) = oplist_query.get(oplist_entity) {
+                        if oplist.bifurcations.is_empty() {
+                            columns[0].label("No bifurcations defined");
+                        } else {
+                            for (idx, bifurcation) in oplist.bifurcations.iter().enumerate() {
+                                let child_info = bifurcation
+                                    .oplist
+                                    .map(|child| format!("Child: {:?}", child))
+                                    .unwrap_or_else(|| "Child: None".to_string());
+                                let tile_info = format!("Tiles: {}", bifurcation.tiles.len());
+                                columns[0].vertical(|ui| {
+                                    ui.label(format!("Branch {}", idx));
+                                    ui.label(child_info);
+                                    ui.label(tile_info);
+                                });
+                                columns[0].separator();
                             }
                         }
                     }
+                } else {
+                    columns[0].label("Select an OperationList to inspect");
                 }
 
-                // RIGHT COLUMN: Noise Component Editor
-                columns[1].heading("Noise Component:");
-
-                columns[1].separator();
-
+                columns[1].heading("Noise Component");
                 if let Some(noise_entity) = selected_entities.selected_noise {
-                    if let Ok(mut noise_comp) = queries.p2().get_mut(noise_entity) {
+                    if let Ok(mut noise_comp) = noise_edit_query.get_mut(noise_entity) {
                         columns[1].horizontal(|ui| {
                             ui.label("Seed:");
                             ui.add(egui::DragValue::new(&mut noise_comp.0.seed).speed(1));
                         });
-
                         columns[1].horizontal(|ui| {
                             ui.label("Offset X:");
                             ui.add(egui::DragValue::new(&mut noise_comp.0.offset.x).speed(1));
                         });
-
                         columns[1].horizontal(|ui| {
                             ui.label("Offset Y:");
                             ui.add(egui::DragValue::new(&mut noise_comp.0.offset.y).speed(1));
                         });
-
                         columns[1].separator();
-                        columns[1].heading("Noise Type");
-                        let current_type = format!("{:?}", noise_comp.0.noise_type);
-                        columns[1].label(format!("Current: {}", current_type));
-
+                        columns[1].label(format!("Noise Type: {:?}", noise_comp.0.noise_type));
                         columns[1].separator();
-                        columns[1].heading("Fractal Settings");
-                        let current_fractal = format!("{:?}", noise_comp.0.fractal_type);
-                        columns[1].label(format!("Type: {}", current_fractal));
-
+                        columns[1].label(format!("Fractal Type: {:?}", noise_comp.0.fractal_type));
                         columns[1].horizontal(|ui| {
                             ui.label("Octaves:");
                             ui.add(egui::Slider::new(&mut noise_comp.0.octaves, 1..=10));
                         });
-
                         columns[1].horizontal(|ui| {
                             ui.label("Lacunarity:");
                             ui.add(egui::Slider::new(&mut noise_comp.0.lacunarity, 0.1..=4.0).step_by(0.01));
                         });
-
                         columns[1].horizontal(|ui| {
                             ui.label("Gain:");
                             ui.add(egui::Slider::new(&mut noise_comp.0.gain, 0.0..=1.0).step_by(0.01));
                         });
-
                         columns[1].horizontal(|ui| {
                             ui.label("Weighted Strength:");
                             ui.add(egui::Slider::new(&mut noise_comp.0.weighted_strength, 0.0..=1.0).step_by(0.01));
                         });
-
                         columns[1].horizontal(|ui| {
                             ui.label("Ping Pong:");
                             ui.add(egui::Slider::new(&mut noise_comp.0.ping_pong_strength, 0.0..=4.0).step_by(0.01));
                         });
-
                         columns[1].separator();
-                        columns[1].heading("Cellular Settings");
-                        let current_cellular_dist = format!("{:?}", noise_comp.0.cellular_distance_function);
-                        columns[1].label(format!("Dist: {}", current_cellular_dist));
-
-                        let current_cellular_return = format!("{:?}", noise_comp.0.cellular_return_type);
-                        columns[1].label(format!("Return: {}", current_cellular_return));
-
+                        columns[1].label(format!("Cellular Distance: {:?}", noise_comp.0.cellular_distance_function));
+                        columns[1].label(format!("Cellular Return: {:?}", noise_comp.0.cellular_return_type));
                         columns[1].horizontal(|ui| {
                             ui.label("Jitter:");
                             ui.add(egui::Slider::new(&mut noise_comp.0.cellular_jitter_modifier, 0.0..=2.0).step_by(0.01));
                         });
-
                         columns[1].separator();
-                        columns[1].heading("Domain Warp");
-                        let current_warp_type = format!("{:?}", noise_comp.0.domain_warp_type);
-                        columns[1].label(format!("Type: {}", current_warp_type));
-
+                        columns[1].label(format!("Domain Warp: {:?}", noise_comp.0.domain_warp_type));
                         columns[1].horizontal(|ui| {
                             ui.label("Amplitude:");
                             ui.add(egui::Slider::new(&mut noise_comp.0.domain_warp_amp, 0.0..=2.0).step_by(0.01));
                         });
+                    } else {
+                        columns[1].label("Selected noise component unavailable");
                     }
+                } else {
+                    columns[1].label("Select a noise component to edit");
                 }
             })
         });

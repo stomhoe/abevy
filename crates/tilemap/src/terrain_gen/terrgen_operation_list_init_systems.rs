@@ -11,6 +11,63 @@ use ::tilemap_shared::*;
 use std::mem::take;
 use std::collections::HashSet;
 
+/// Resolve NoiseByName variants in expression tree to actual Noise entities
+fn resolve_noise_names_in_expr(
+    expr: &mut crate::terrain_gen::terrgen_expression::Expr,
+    terr_gen_map: &TerrgenEntityMap,
+) {
+    use crate::terrain_gen::terrgen_expression::Expr;
+
+    match expr {
+        Expr::NoiseByName { name, sample_range, complement, seed_offset } => {
+            let name_clone = name.clone();
+            if let Ok(entity) = terr_gen_map.0.get_cloned(&name_clone) {
+                *expr = Expr::Noise {
+                    entity,
+                    sample_range: *sample_range,
+                    complement: *complement,
+                    seed_offset: *seed_offset,
+                };
+            } else {
+                warn!(target: "oplist_init", "Noise entity not found: {}", name_clone);
+            }
+        }
+        Expr::Add { left, right }
+        | Expr::Subtract { left, right }
+        | Expr::Multiply { left, right }
+        | Expr::Divide { left, right }
+        | Expr::MultiplyNormalized { left, right }
+        | Expr::MultiplyNormalizedAbs { left, right } => {
+            resolve_noise_names_in_expr(left, terr_gen_map);
+            resolve_noise_names_in_expr(right, terr_gen_map);
+        }
+        Expr::MultiplyOpo { value }
+        | Expr::Abs { value }
+        | Expr::Complement { value } => {
+            resolve_noise_names_in_expr(value, terr_gen_map);
+        }
+        Expr::Min { values }
+        | Expr::Max { values }
+        | Expr::Average { values }
+        | Expr::IndexMax { values }
+        | Expr::Linear { values } => {
+            for v in values {
+                resolve_noise_names_in_expr(v, terr_gen_map);
+            }
+        }
+        Expr::IndexNorm { value, multiplier } => {
+            resolve_noise_names_in_expr(value, terr_gen_map);
+            resolve_noise_names_in_expr(multiplier, terr_gen_map);
+        }
+        Expr::Clamp { value, min, max } => {
+            resolve_noise_names_in_expr(value, terr_gen_map);
+            resolve_noise_names_in_expr(min, terr_gen_map);
+            resolve_noise_names_in_expr(max, terr_gen_map);
+        }
+        _ => {}
+    }
+}
+
 #[allow(unused_parens)]
 pub fn init_oplists_from_assets(
     mut cmd: Commands, seris_handles: Res<OpListSerisHandles>,
@@ -36,7 +93,7 @@ pub fn init_oplists_from_assets(
     let mut oplist_multiple_dimension_refs = Vec::new();
     let mut tags_to_insert = Vec::new();
 
-    for handle in seris_handles.handles.iter() {//ESTE VA CON ITER
+    for handle in seris_handles.handles.iter() {
         let Some(seri) = assets.get_mut(handle) else {
             continue;
         };
@@ -47,175 +104,71 @@ pub fn init_oplists_from_assets(
                 continue;
             }
         };
-        if seri.is_root() && seri.operation_operands.is_empty() {
-            error!(target: "oplist_init", "root OpListSeri has no operations");
-            continue;
-        }
-        let size =
-        if let Some(size) = seri.size {
+        let size = if let Some(size) = seri.size {
             if let Ok(size) = OplistSize::new(size) {
                 size
             } else {
                 error!(target: "oplist_init", "Invalid oplist_size for {}, must be in [1,4] for each vec component", seri.id);
                 continue;
             }
-        } else{
+        } else {
             OplistSize::default()
         };
 
-
         let mut oplist = OperationList::default();
 
-        //define a mutable array of 16 f64s here
-
-        for (operation, str_operands, out) in seri.operation_operands.iter() {
-
-            if *out >= VariablesArray::SIZE {
-                error!(target: "oplist_init", "Output index {} out of bounds for OperationList", out);
-                continue;
-            }
-            let mut operands = Vec::new();
-            for operand in str_operands {
-                let operand = operand.trim();
-                if operand.is_empty() { continue; }
-
-                let (operand, complement) = if let Some(operand) = operand.strip_prefix("COMP") {
-                    (operand.trim(), true)
-                } else {
-                    (operand, false)
-                };
-
-                let element = if let Ok(value) = operand.parse::<f32>() {
-                    OperandElement::Value(value)
-                }
-                else if let Some(var_i) = operand.strip_prefix("$") {
-                    let Ok(var_i) = var_i.parse::<u8>() else {
-                        warn!(target: "oplist_init", "Failed to parse Stack array index from '{}'", operand);
-                        continue;
-                    };
-                    if var_i >= VariablesArray::SIZE {
-                        warn!(target: "oplist_init", "Stack array index ${} is greater or equal to {}, which is out of bounds", var_i, VariablesArray::SIZE);
-                    }
-                    OperandElement::StackArray(var_i)
-                } else if let Some(seed_str) = operand.strip_prefix("hp") {
-                    let seed = seed_str.parse::<u64>().unwrap_or(1000);
-                    OperandElement::HashPos(seed)
-                } else if let Some(pd_str) = operand.strip_prefix("pd") {
-                    // Parse PoissonDisk operand: "pd{min_dist}{seed}"
-                    // Example: "pd3123" -> min_dist = 3, seed = 123
-                    let (min_dist_str, seed_str) = pd_str.split_at(1);
-                    let (Ok(min_dist), Ok(seed)) = (min_dist_str.parse::<u8>(), seed_str.parse::<u64>()) else {
-                        warn!(target: "oplist_init", "Invalid PoissonDisk min_dist ('{}') or seed ('{}')", min_dist_str, seed_str);
-                        continue;
-                    };
-                    let Ok(op) = OperandElement::new_poisson_disk(min_dist, seed) else {
-                        warn!(target: "oplist_init", "Failed to create PoissonDisk operand with min_dist {} and seed {}", min_dist, seed);
-                        continue;
-                    };
-                    op
-                } else if let Some(ent_str) = operand.strip_prefix("fnl.") {
-                    // Handle entity operand, possibly with 'COMP' prefix for complement
-                    let (noise_sample_range, ent_str) = if let Some(stripped) = ent_str.strip_prefix("1-1.") {
-                        (fnl::NoiseSampleRange::NegOneToOne, stripped)
-                    } else {
-                        (fnl::NoiseSampleRange::ZeroToOne, ent_str)
-                    };
-
-                    // If the operand_str ends with ".s" followed by a number, use it as seed
-                    let (base_str, extra_seed) = if let Some(idx) = ent_str.rfind(".s") {
-                        let (base, seed_str) = ent_str.split_at(idx);
-                        let seed = seed_str[2..].parse::<i32>().unwrap_or(0);
-                        (base, seed)
-                    } else {
-                        (ent_str, 0)
-                    };
-                    let Ok(ent) = terr_gen_map.0.get_cloned(&base_str.to_string()) else {
-                        warn!(target: "oplist_init", "Entity not found in TerrgenEntityMap: {}", base_str);
-                        continue;
-                    };
-
-                    OperandElement::NoiseEntity(ent, noise_sample_range, complement, extra_seed)
-                } else {
-                    error!(target: "oplist_init", "Unknown operand: {}", operand);
-                    continue;
-                };
-
-                let operand = Operand { complement, element, };
-
-                operands.push(operand);
-            };
-
-            let operation = match operation.as_str().trim() {
-                "" => continue,
-                "+" => Operation::Add,
-                "-" => Operation::Subtract,
-                "*" => Operation::Multiply,
-                "/" => Operation::Divide,
-                "*opo" => Operation::MultiplyOpo,
-                "min" => Operation::Min,
-                "max" => Operation::Max,
-                "avg" => Operation::Average,
-                "abs" => Operation::Abs,
-                "*nm" => Operation::MultiplyNormalized,
-                "*nmabs" => Operation::MultiplyNormalizedAbs,
-                "idxmax" => Operation::i_Max,
-                "idxnorm" => Operation::i_Norm,
-                "lin" => Operation::Linear,
-                "clamp" => Operation::Clamp,
-                _ => {
-                    error!(target: "oplist_init", "Unknown operation: {}", operation);
-                    continue;
-                },
-            };
-
-            oplist.trunk.push((operation, operands, *out));
-        }
+        // Build bifurcations from seri
         oplist.bifurcations = Vec::with_capacity(seri.bifs.len());
-
         for (_oplist, tiles) in seri.bifs.iter() {
             let tiles = tiles
-            .iter().filter(|tile_str| !tile_str.is_empty())
-            .filter_map(|tile_str| {
-                if let Ok(sampler_ent) = samplers_map.0.get_cloned(tile_str) {
-                    Some(sampler_ent)
-                } else if let Ok(tile_ent) = tiles_map.0.get_cloned(tile_str) {
-                    Some(tile_ent)
-                } else {
-                    warn!(target: "oplist_init", "Tile {} not found in TilingEntityMap or TileWeightedSamplerEntityMap", tile_str);
-                    None
-                }
-            }).collect::<Vec<Entity>>();
+                .iter()
+                .filter(|tile_str| !tile_str.is_empty())
+                .filter_map(|tile_str| {
+                    if let Ok(sampler_ent) = samplers_map.0.get_cloned(tile_str) {
+                        Some(sampler_ent)
+                    } else if let Ok(tile_ent) = tiles_map.0.get_cloned(tile_str) {
+                        Some(tile_ent)
+                    } else {
+                        warn!(target: "oplist_init", "Tile {} not found in TilingEntityMap or TileWeightedSamplerEntityMap", tile_str);
+                        None
+                    }
+                })
+                .collect::<Vec<Entity>>();
 
             let bifurcation = Bifurcation { oplist: None, tiles };
             oplist.bifurcations.push(bifurcation);
         }
+
         if let Ok(ent) = oplist_map.0.get_cloned(&str_id) {
             error!(target: "oplist_init", "{} already in OperationListEntityMap : {}", str_id, ent);
             continue;
         }
         let spawned_oplist = cmd.spawn_empty().id();
-        oplist_comps.push((spawned_oplist, ( str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
+
+        let mut expr_tree = seri.expr_tree.clone();
+        for assignment in expr_tree.assignments.iter_mut() {
+            resolve_noise_names_in_expr(&mut assignment.expr, &terr_gen_map);
+        }
+        resolve_noise_names_in_expr(&mut expr_tree.output, &terr_gen_map);
+        oplist.expr_tree = expr_tree;
+
+        oplist_comps.push((spawned_oplist, (str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
         if seri.is_root() {
             let mut dim_refs = MultipleDimensionRefs::default();
             for dim_id in seri.root_in_dimensions.iter() {
                 if dim_id.trim().is_empty() { continue; }
-                let Ok(dim_entity) = dimension_map.0.get_cloned(&dim_id) else
-                {
+                let Ok(dim_entity) = dimension_map.0.get_cloned(&dim_id) else {
                     error!(target: "oplist_init", "Dimension '{}' not found in DimensionEntityMap for root oplist '{}'", dim_id, seri.id);
                     continue;
                 };
                 dim_refs.0.insert(dim_entity);
-
             }
             oplist_multiple_dimension_refs.push((spawned_oplist, dim_refs));
         }
 
-
         if let Some(tags) = &seri.tags {
             tags_to_insert.push((spawned_oplist, TagSet::new(tags)));
         }
-
-
     }
     cmd.try_insert_batch(oplist_comps);
     cmd.try_insert_batch(oplist_multiple_dimension_refs);
@@ -228,8 +181,8 @@ pub fn init_oplists_bifurcations(
     mut seris_handles: ResMut<OpListSerisHandles>,
     mut assets: ResMut<Assets<OpListSeri>>,
     oplist_map: Res<OperationListEntityMap>,
-    mut oplist_query: Query<(&mut OperationList, )>,
-    is_root: Query<(&MultipleDimensionStringRefs)>,
+    mut oplist_query: Query<&mut OperationList>,
+    is_root: Query<&MultipleDimensionRefs>,
 ) -> Result {
     for handle in take(&mut seris_handles.handles) {
         if let Some(seri) = assets.remove(&handle) {
@@ -241,7 +194,7 @@ pub fn init_oplists_bifurcations(
                 );
                 continue;
             };
-            let (mut oplist, ) = oplist_query.get_mut(oplist_ent)?;
+            let mut oplist = oplist_query.get_mut(oplist_ent)?;
 
             for (i, seri_bifurcation) in seri.bifs.iter().enumerate() {
                 let bifurcation_str = seri_bifurcation.0.trim();

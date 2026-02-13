@@ -4,7 +4,6 @@
 use bevy::{prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use common::{common_components::{HashId}, common_tag_components::HashedTagsVec, };
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components_samplers::EntityWeightedSampler;
 use crate::{chunking::chunking_components::*, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_operaton_list_components::*, terrgen_resources::*}, tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles} };
 use std::{collections::{HashMap, HashSet}, f32::consts::PI, mem::take};
 use ::tilemap_shared::*;
@@ -136,6 +135,14 @@ struct TerrGenTaskContext {
     dimension_hashes: HashMap<Entity, HashId>,
 }
 
+#[derive(Clone)]
+struct EvalFrame {
+    oplist: Entity,
+    gpos: GlobalTilePos,
+    oplist_size: OplistSize,
+    variables: HashMap<String, f32>,
+}
+
 fn build_terrgen_task_context(
     pending_ops: &[PendingOp],
     oplist_query: &Query<(&OperationList, &OplistSize, Option<&HashedTagsVec>), ()>,
@@ -250,7 +257,6 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
                     oplist: work.root_oplist,
                     dimension_ref: work.dim_ref,
                     gpos,
-                    variables: VariablesArray::default(),
                     filtered_op: Entity::PLACEHOLDER,
                 });
             }
@@ -260,15 +266,12 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
 }
 
 fn collect_noise_entities(oplist: &OperationList) -> Vec<Entity> {
-    let mut noise_entities = HashSet::new();
-    for (_, operands, _) in oplist.trunk.iter() {
-        for operand in operands.iter() {
-            if let OperandElement::NoiseEntity(ent, _, _, _) = &operand.element {
-                noise_entities.insert(*ent);
-            }
-        }
+    let mut out = Vec::new();
+    for assignment in oplist.expr_tree.assignments.iter() {
+        assignment.expr.collect_noise_entities(&mut out);
     }
-    noise_entities.into_iter().collect()
+    oplist.expr_tree.output.collect_noise_entities(&mut out);
+    out
 }
 
 fn process_pending_ops_batch(
@@ -276,25 +279,20 @@ fn process_pending_ops_batch(
     context: TerrGenTaskContext,
     gen_settings: GlobalGenSettings,
 ) -> TerrGenOpTaskResult {
+    use crate::terrain_gen::terrgen_expression::EvalContext;
     let mut result = TerrGenOpTaskResult::default();
     let mut pending_queue = pending_ops;
 
-    while let Some(mut ev) = pending_queue.pop() { unsafe {
-        let Some(oplist) = context.oplists.get(&ev.oplist) else {
+    while let Some(ev) = pending_queue.pop() { unsafe {
+        if !context.oplists.contains_key(&ev.oplist) {
             error!(target: "terrgen_systems", "Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
             continue;
-        };
+        }
         let Some(&my_oplist_size) = context.oplist_sizes.get(&ev.oplist) else {
             error!(target: "terrgen_systems", "OplistSize not found for oplist {:?}", ev.oplist);
             continue;
         };
 
-        let oplist_tags = context
-            .oplist_tags
-            .get(&ev.oplist)
-            .cloned()
-            .unwrap_or(None);
-        let child_oplist_sizes = context.child_oplist_sizes.get(&ev.oplist);
         let dimension_hash = context
             .dimension_hashes
             .get(&ev.dimension_ref.0)
@@ -306,133 +304,72 @@ fn process_pending_ops_batch(
             None
         };
 
-        let global_pos = ev.gpos;
-        let bifurcations_len = oplist.bifurcations.len();
         let has_filter = ev.filtered_op != Entity::PLACEHOLDER;
+        let mut frame_stack = vec![EvalFrame {
+            oplist: ev.oplist,
+            gpos: ev.gpos,
+            oplist_size: my_oplist_size,
+            variables: HashMap::new(),
+        }];
 
-        for (op_i, (operation, operands, stackarr_out_i)) in oplist.trunk.iter().enumerate() {
-            let mut operation_acc_val: f32 = 0.0;
-            let mut selected_operand_i = 0;
-            let operands_len = operands.len();
-            let mut missing_noise = false;
-
-            for (operand_i, operand) in operands.iter().enumerate() {
-                let mut curr_operand_val = match &operand.element {
-                    OperandElement::StackArray(i) => ev.variables[*i],
-                    OperandElement::Value(val) => *val,
-                    OperandElement::NoiseEntity(ent, sample_range, compl, operand_seed) => {
-                        let Some(noise) = context.noises.get(ent) else {
-                            error!(target: "terrgen_systems", "Noise entity {} not found", ent);
-                            missing_noise = true;
-                            break;
-                        };
-                        noise.sample(global_pos, dimension_hash, *sample_range, *compl, *operand_seed, &gen_settings)
-                    }
-                    OperandElement::HashPos(seed) => global_pos.normalized_hash_value(&gen_settings, dimension_hash, *seed) as f32,
-                    OperandElement::PoissonDisk(poisson_disk) => poisson_disk.sample(global_pos, &gen_settings, dimension_hash, true, my_oplist_size) as f32,
-                };
-                if operand.complement && !matches!(operand.element, OperandElement::NoiseEntity(_, _, _, _)) {
-                    curr_operand_val = 1.0 - curr_operand_val;
-                }
-                let is_last = operand_i + 1 == operands_len;
-                let prev_value = operation_acc_val;
-
-                match (operation, operand_i, is_last) {
-                    (Operation::Add, 1.., _) => operation_acc_val += curr_operand_val,
-                    (Operation::Subtract, 1.., _) => operation_acc_val -= curr_operand_val,
-                    (Operation::Multiply, 1.., _) => operation_acc_val *= curr_operand_val,
-                    (Operation::Divide, 1.., _) => if curr_operand_val != 0.0 { operation_acc_val /= curr_operand_val },
-                    (Operation::MultiplyOpo, 1.., _) => operation_acc_val *= 1.0 - curr_operand_val,
-                    (Operation::Min, 1.., _) => operation_acc_val = operation_acc_val.min(curr_operand_val),
-                    (Operation::Max, 1.., _) => operation_acc_val = operation_acc_val.max(curr_operand_val),
-                    (Operation::Average, _, false) => { operation_acc_val += curr_operand_val; }
-                    (Operation::Average, _, true) => { operation_acc_val += curr_operand_val; operation_acc_val /= operands.len() as f32; }
-                    (Operation::Linear, 0, _) => { operation_acc_val = curr_operand_val; trace!(target: "terrgen_systems", "conti: {}", curr_operand_val) }
-                    (Operation::Linear, 1, _) => { operation_acc_val *= curr_operand_val; trace!(target: "terrgen_systems", "beach: {}", curr_operand_val) }
-                    (Operation::Linear, 2, _) => { operation_acc_val += curr_operand_val; }
-                    (Operation::Linear, 3.., _) => { operation_acc_val *= curr_operand_val; trace!(target: "terrgen_systems", "res: {}", operation_acc_val); }
-                    (Operation::MultiplyNormalized, 1.., _) => operation_acc_val *= (curr_operand_val - 0.5) * 2.,
-                    (Operation::MultiplyNormalizedAbs, 1.., _) => operation_acc_val *= ((curr_operand_val - 0.5) * 2.).abs(),
-                    (Operation::Abs, _, _) => { operation_acc_val = operation_acc_val.abs(); }
-                    (Operation::i_Max, 0, _) => { operation_acc_val = curr_operand_val; }
-                    (Operation::i_Max, _, false) => { if curr_operand_val > operation_acc_val { operation_acc_val = curr_operand_val; selected_operand_i = operand_i; } }
-                    (Operation::i_Max, _, true) => { if curr_operand_val > operation_acc_val { selected_operand_i = operand_i; } operation_acc_val = selected_operand_i as f32; }
-                    (Operation::i_Norm, 0, false) => { operation_acc_val = curr_operand_val; }
-                    (Operation::i_Norm, 0, true) => { operation_acc_val = curr_operand_val * (bifurcations_len - 1) as f32; }
-                    (Operation::i_Norm, _, false) => { operation_acc_val *= curr_operand_val; }
-                    (Operation::i_Norm, 1.., true) => { operation_acc_val *= curr_operand_val * (bifurcations_len - 1) as f32; }
-                    (Operation::Clamp, 0, true) => {operation_acc_val = curr_operand_val.max(0.0).min(1.0);},
-                    (Operation::Clamp, 0, _) => {operation_acc_val = curr_operand_val;},
-                    (Operation::Clamp, 1, false) => {operation_acc_val = curr_operand_val.max(operation_acc_val);},
-                    (Operation::Clamp, 1, true) => {operation_acc_val = curr_operand_val.max(operation_acc_val).min(1.0);},
-                    (Operation::Clamp, 2.., _) => {operation_acc_val = curr_operand_val.min(operation_acc_val);},
-                    (_, 0, _) => { operation_acc_val = curr_operand_val; }
-
-
-                }
-
-                trace!(target: "terrgen_systems",
-                    "{} with operand {:?} at stack array index {}: prev_value: {}, curr_value: {}, {:?},",
-                    operation, operand, *stackarr_out_i, prev_value, operation_acc_val, global_pos,
-                );
-            }
-
-            if missing_noise {
+        while let Some(mut frame) = frame_stack.pop() {
+            let Some(oplist) = context.oplists.get(&frame.oplist) else { continue; };
+            if oplist.bifurcations.is_empty() {
                 continue;
             }
-
-            trace!(target: "terrgen_systems", "Operation result for stack array index {}: {}", *stackarr_out_i, operation_acc_val);
-            ev.variables[*stackarr_out_i] = operation_acc_val;
-
-            if has_filter {
-                if let Some(filter) = filter {
-                    let Some(oplist_tags) = oplist_tags.as_ref() else {
-                        continue;
-                    };
-                    let filter_tags = &filter.tags;
-                    let sampling_last_and_is_so = filter.op_i <= -1 && op_i == oplist.trunk.len() - 1;
-
-                    if oplist_tags.intersects(filter_tags) && (op_i == filter.op_i as usize || sampling_last_and_is_so) {
-                        if filter.min_val <= operation_acc_val && operation_acc_val <= filter.max_val {
-                            result.sampled_value_events.push(SuitablePosFound {
-                                op_filter_ent: ev.filtered_op,
-                                val: operation_acc_val,
-                                found_pos: ev.gpos,
-                            });
-                        }
-                        continue;
-                    }
-                } else {
-                    trace!(target: "terrgen_process", "Failed to get OpFilter of entity {:?}", ev.filtered_op);
-                    continue;
-                }
-            }
-        }
-
-        let destination_i = (ev.variables[0] as usize).min(bifurcations_len - 1).max(0);
-        trace!(target: "terrgen_systems", "Destination index for bifurcation: {}", destination_i);
-
-        let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
-
-        if let Some(child_oplist) = bifurcation.oplist {
-            if let Some(child_sizes) = child_oplist_sizes {
-                if let Some(&child_oplist_size) = child_sizes.get(&child_oplist) {
-                    spawn_bifurcation_oplists(&mut ev, my_oplist_size, &mut pending_queue, child_oplist, child_oplist_size);
-                } else {
-                    error!(target: "terrgen_systems", "OplistSize not found for child oplist {:?}", child_oplist);
-                }
-            } else {
-                error!(target: "terrgen_systems", "No child oplist sizes found for oplist {:?}", ev.oplist);
-            }
-        }
-
-        if !bifurcation.tiles.is_empty() && ev.filtered_op == Entity::PLACEHOLDER {
-            result.tile_requests.push(TerrGenTileRequest {
-                bif_tiles: bifurcation.tiles.clone(),
-                pending: ev.clone(),
-                oplist_size: my_oplist_size,
+            let eval_context = EvalContext {
+                global_pos: frame.gpos,
                 dimension_hash,
-            });
+                gen_settings: &gen_settings,
+                oplist_size: frame.oplist_size,
+                noises: &context.noises,
+                variables: &frame.variables,
+            };
+            let (output_value, computed_vars) = oplist.expr_tree.eval(&frame.variables, &eval_context);
+            frame.variables = computed_vars;
+
+            if has_filter
+                && let Some(filter) = filter
+                && let Some(Some(oplist_tags)) = context.oplist_tags.get(&frame.oplist)
+                && oplist_tags.intersects(&filter.tags)
+                && filter.op_i <= -1
+                && (filter.min_val..=filter.max_val).contains(&output_value)
+            {
+                result.sampled_value_events.push(SuitablePosFound {
+                    op_filter_ent: ev.filtered_op,
+                    val: output_value,
+                    found_pos: frame.gpos,
+                });
+            }
+
+            let destination_i = (output_value as usize).min(oplist.bifurcations.len() - 1);
+            let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
+
+            if !bifurcation.tiles.is_empty() && ev.filtered_op == Entity::PLACEHOLDER {
+                result.tile_requests.push(TerrGenTileRequest {
+                    bif_tiles: bifurcation.tiles.clone(),
+                    pending: PendingOp {
+                        oplist: frame.oplist,
+                        dimension_ref: ev.dimension_ref,
+                        gpos: frame.gpos,
+                        filtered_op: ev.filtered_op,
+                    },
+                    oplist_size: frame.oplist_size,
+                    dimension_hash,
+                });
+            }
+
+            if let Some(child_oplist) = bifurcation.oplist
+                && let Some(child_sizes) = context.child_oplist_sizes.get(&frame.oplist)
+                && let Some(&child_oplist_size) = child_sizes.get(&child_oplist)
+            {
+                spawn_bifurcation_frames(
+                    &mut frame_stack,
+                    &frame,
+                    child_oplist,
+                    child_oplist_size,
+                );
+            }
         }
     }}
 
@@ -440,25 +377,36 @@ fn process_pending_ops_batch(
 }
 
 
-fn spawn_bifurcation_oplists(
-    ev: &mut PendingOp, my_oplist_size: OplistSize,
-    new_pending_ops: &mut Vec<PendingOp>, child_oplist: Entity, child_oplist_size: OplistSize,
+fn spawn_bifurcation_frames(
+    frames: &mut Vec<EvalFrame>,
+    frame: &EvalFrame,
+    child_oplist: Entity,
+    child_oplist_size: OplistSize,
 ) {
-    if my_oplist_size <= child_oplist_size
+    if frame.oplist_size <= child_oplist_size
     {
-        if ev.gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO
+        if frame.gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO
         {
-            new_pending_ops.push(PendingOp{ oplist: child_oplist, ..(*ev).clone()  });
+            frames.push(EvalFrame {
+                oplist: child_oplist,
+                gpos: frame.gpos,
+                oplist_size: child_oplist_size,
+                variables: frame.variables.clone(),
+            });
         }
     }
     else{
-        let x_end = my_oplist_size.x() as i32 / child_oplist_size.x() as i32;
-        let y_end = my_oplist_size.y() as i32 / child_oplist_size.y() as i32;
+        let x_end = frame.oplist_size.x() as i32 / child_oplist_size.x() as i32;
+        let y_end = frame.oplist_size.y() as i32 / child_oplist_size.y() as i32;
         for x in 0..x_end {
             for y in 0..y_end {
-                let gpos = ev.gpos + GlobalTilePos::new(x, y);
-
-                new_pending_ops.push(PendingOp{ gpos, oplist: child_oplist, ..(*ev).clone()  });
+                let gpos = frame.gpos + GlobalTilePos::new(x, y);
+                frames.push(EvalFrame {
+                    oplist: child_oplist,
+                    gpos,
+                    oplist_size: child_oplist_size,
+                    variables: frame.variables.clone(),
+                });
             }
         }
     }
@@ -519,7 +467,6 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
                             dimension_ref,
                             gpos: calculate_pos(i_within_batch, explore_angle),
                             filtered_op,
-                            variables: VariablesArray::default(),
                         });
                     }
                     if curr_iteration_batch_i as u16 + 1 < max_batches {
@@ -557,7 +504,6 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
                         dimension_ref,
                         oplist: opfilter.start_oplist,
                         gpos: pos,
-                        variables: VariablesArray::default(),
                         filtered_op,
                     });
 

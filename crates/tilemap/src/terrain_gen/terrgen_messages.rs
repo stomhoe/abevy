@@ -5,10 +5,6 @@ use serde::Deserialize;
 use ::tilemap_shared::*;
 use std::hash::Hash;
 
-use crate::{terrain_gen::{terrgen_operaton_list_components::VariablesArray, }, };
-
-
-
 #[derive(Debug, Clone, Component, TypePath)]
 pub struct OpFilter{
     pub start_oplist: Entity,
@@ -92,5 +88,5 @@ pub struct SearchFailed (pub Entity);
 
 #[derive(Message, Debug, Clone)]
 pub struct PendingOp {pub oplist: Entity, pub dimension_ref: DimensionRef, pub gpos: GlobalTilePos,
-    pub variables: VariablesArray, pub filtered_op: Entity
+    pub filtered_op: Entity
 }

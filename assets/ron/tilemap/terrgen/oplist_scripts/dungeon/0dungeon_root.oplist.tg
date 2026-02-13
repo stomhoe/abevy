@@ -1,0 +1,18 @@
+id: dungeon_root
+roots: [dungeon]
+size: (1, 1)
+
+// Two different continentness variations
+let 1 = +(fnl.conti_nofract, 0.0)
+let 2 = +(fnl.conti_nofract.s2, 0.0)
+
+// Calculate differences between variants
+let 3 = -($1, $2)
+let 4 = -($2, $1)
+
+// Select strongest variant or default to black
+out = idxmax($3, $4, 0.3)
+
+bif a1 -> []
+bif b1 -> []
+bif "" -> [dublack]

@@ -3,15 +3,17 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking::chunking_components::TerrGenOpsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_operaton_list_components::*, terrgen_operation_list_init_systems::*, terrgen_resources::*, terrgen_systems::*},};
+use crate::{chunking::chunking_components::TerrGenOpsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_oplist_script::*, terrgen_operaton_list_components::*, terrgen_operation_list_init_systems::*, terrgen_resources::*, terrgen_systems::*},};
 
 pub mod terrgen_systems;
 mod terrgen_operation_list_init_systems;
 mod terrgen_noise_init_systems;
+mod terrgen_oplist_script;
 pub mod terrgen_components;
 pub mod terrgen_operaton_list_components;
 pub mod terrgen_resources;
 pub mod terrgen_messages;
+pub mod terrgen_expression;
 
 
 
@@ -22,9 +24,14 @@ common::define_entity_map_systems!(
     "operation_list",
     "",
     OperationList,
-    common::common_components::StrId,
-    OpListSeri, "ron/tilemap/terrgen/oplist", "oplist.ron"
+    common::common_components::StrId
 );
+
+// Manual resource for oplist script handles
+#[derive(Resource, Default)]
+pub struct OpListSerisHandles {
+    pub handles: Vec<Handle<OpListSeri>>,
+}
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TerrainGenSystems;
@@ -43,6 +50,7 @@ pub fn plugin(app: &mut App) {
             (
                 init_noises,
                 map_terrgen_id_to_entity,
+                load_tg_oplists,
                 init_oplists_from_assets,
                 map_operation_list_id_to_entity,
                 init_oplists_bifurcations,
@@ -55,6 +63,8 @@ pub fn plugin(app: &mut App) {
 
         .init_resource::<TerrGenLaunchQueue>()
         .init_resource::<TerrGenAsyncTasks>()
+        .init_resource::<OpListSerisHandles>()
+        .init_asset::<OpListSeri>()
 
         .add_plugins((
             plugin_terrgen,

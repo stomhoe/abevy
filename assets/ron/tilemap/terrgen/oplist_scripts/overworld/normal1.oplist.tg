@@ -1,0 +1,10 @@
+id: normal1
+size: (1, 1)
+
+let continentness = max(fnl.conti, fnl.penin)
+let continentness = *(continentness, normal_diff)
+
+out = idxmax(0.085, continentness)
+
+bif "" -> [blue]
+bif normal2 -> []

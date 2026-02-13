@@ -14,8 +14,8 @@
     sentient: Some(true),
     fallback_sprites_to_sample: ["mahubo0", "mahuhe0"],
     sets_of_choosable_sprites: Some([
-        ("Head", ["mahuhe0", "mahuhe1", "mahuhe2"]),
-        ("Body", ["mahubo0", "mahubo1", "mahubo2"]),
+        ("Head", ["mahuhe0", "", ""]),//mahuhe1, mahuhe2
+        ("Body", ["mahubo0", "", ""]),//mahubo1 mahubo2
     ]),
     body_tree: "human_body",
 

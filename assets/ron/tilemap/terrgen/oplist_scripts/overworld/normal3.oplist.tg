@@ -1,0 +1,15 @@
+id: normal3
+size: (1, 1)
+
+let lakeness = max(fnl.lakesmol, fnl.lakebig)
+let lakeness = *(lakeness, continentness, 0.5)
+let lakeness = *opo(lakeness, beachness)
+
+let riverness = idxmax(0.8, fnl.river.s7)
+let riverness = *(riverness, 1.0)
+
+out = idxmax(lakeness, riverness, continentness)
+
+bif "" -> [lake]
+bif "" -> [orange]
+bif normal4 -> [tempgrass]

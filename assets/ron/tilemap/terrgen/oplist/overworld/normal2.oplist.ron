@@ -2,22 +2,25 @@
     id: "normal2",
     operation_operands: [
         //WATER PROXIMITY
-        ("lin", ["$1", "-15.8", "5.54", ], 8),        
+        ("lin", ["$1", "-40.8", "4.54", ], 8),
 
         ("max", ["fnl.beachbig", "fnl.beachsmol",], 2),
-        ("avg", ["$2", "0.5", ], 2),
+        ("avg", ["$2", "0.3", ], 2),
+        //gravel is opposite of beachness
+        ("*opo", ["$2",], 3),
+
         ("*", ["$2", "$8", ], 2),
-        ("idxmax", ["0.4", "$2"], 0),
+        ("*", ["$3", "$8", ], 3),
+        ("idxmax", ["0.4", "$2", "$3"], 0),
 
     ],
-   
+
     bifs: [
         ("normal3", [""]),
         ("", ["sand"]),
-        ("", [""]),//TODO PONER GRAVEL DONDE
+        ("", ["gravel"]),//TODO PONER GRAVEL DONDE
     ],
     root_in_dimensions: [""],
     size: Some((1, 1)),
 
 )
-

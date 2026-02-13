@@ -74,7 +74,7 @@ macro_rules! define_entity_map_systems {
             pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
             impl [<$abbreviation StrIdRef>] {
                 pub fn asd<S: AsRef<str>>(id: S) -> Self {
-                    let str_id = StrId::trunc(id.as_ref());
+                    let str_id = common::common_components::StrId::trunc(id.as_ref());
                     Self(str_id)
                 }
 
@@ -249,7 +249,7 @@ macro_rules! define_entity_map_systems {
                 }
             )+
 
-            #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, )]
+            #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Copy, Clone)]
             #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform)]
             pub struct [<Egui $abbreviation sHolder>];
 
@@ -270,10 +270,10 @@ macro_rules! define_entity_map_systems {
             )]
             pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
 
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, Default,
+            #[derive(Component, std::fmt::Debug, Clone, Copy, PartialEq, Eq, Default,
                 //Reflect,
             )]
-            pub struct [<DoNotRetryConvert $abbreviation StrIdRef>](pub common::common_components::StrId);
+            pub struct [<DoNotRetryConvert $abbreviation StrIdRef>];
 
             #[derive(Component, std::fmt::Debug, Clone, Copy, Default)]
             pub struct [<DoNotRetryBuild $abbreviation Ref>];

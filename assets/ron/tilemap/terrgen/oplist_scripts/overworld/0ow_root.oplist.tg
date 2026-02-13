@@ -1,0 +1,18 @@
+id: ow_root
+roots: [ow]
+size: (1, 1)
+
+let normal_continentness = +(fnl.conti_nofract, 0.0)
+let elf_continentness = +(fnl.conti_nofract.s2, 0.0)
+let antarctica_continentness = +(fnl.conti_nofract.s3, -0.2)
+
+let normal_diff = -(normal_continentness, elf_continentness, antarctica_continentness)
+let elf_diff = -(elf_continentness, normal_continentness, antarctica_continentness)
+let antarctica_diff = -(antarctica_continentness, normal_continentness, elf_continentness)
+
+out = idxmax(normal_diff, elf_diff, antarctica_diff, 0.15)
+
+bif normal1 -> []
+bif elf1 -> []
+bif "" -> [snow]
+bif "" -> [ocean]

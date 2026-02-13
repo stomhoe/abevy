@@ -11,7 +11,7 @@ from PIL import (  # pyright: ignore[reportMissingImports]
     ImageFilter,
 )
 
-TILE_SIZE = 128
+TILE_SIZE = 61
 GRID_PROB = 0.7      # % of patches aligned to tile grid
 JITTER = 6           # pixel jitter when grid-aligned
 COVERAGE_BIAS = 0.6  # % of patches biased toward low-coverage tiles
@@ -95,14 +95,14 @@ def main():
     parser.add_argument("--tiles", type=int, default=2,
                         help="Number of tiles per axis (default: 8)")
 
-    parser.add_argument("--min-flips", type=int, default=20,
+    parser.add_argument("--min-flips", type=int, default=13,
                         help="Minimum number of patch operations")
     parser.add_argument("--max-flips", type=int, default=20,
                         help="Maximum number of patch operations")
 
-    parser.add_argument("--min-patch", type=int, default=30,
+    parser.add_argument("--min-patch", type=int, default=15,
                         help="Minimum patch size in pixels")
-    parser.add_argument("--max-patch", type=int, default=120,
+    parser.add_argument("--max-patch", type=int, default=40,
                         help="Maximum patch size in pixels")
 
     parser.add_argument("--feather", type=int, default=0,
