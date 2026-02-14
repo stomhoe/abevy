@@ -1,6 +1,7 @@
 
 use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
+use std::collections::HashMap;
 
 #[derive(Resource)]
 pub struct DubugWindowsVisibility{
@@ -63,4 +64,49 @@ pub struct DebugSelectedEntities {
     pub selected_exempted_entity: Option<Entity>,
     pub selected_sprite: Option<Entity>,
     pub selected_tilemap: Option<Entity>,
+}
+
+#[derive(Resource, Default)]
+pub struct DebugChunkingUiState {
+    pub follow_camera_chunk: bool,
+    pub open_tilemap_type: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoiseCombineOp {
+    Add,
+    Subtract,
+    Multiply,
+    Average,
+    Max,
+    Min,
+}
+
+#[derive(Resource, Debug)]
+pub struct DebugNoiseWorkshopState {
+    pub selected_noises: Vec<Entity>,
+    pub per_noise_subtract: HashMap<Entity, f32>,
+    pub original_noises: HashMap<Entity, tilemap::terrain_gen::terrgen_components::FnlNoiseComp>,
+    pub combine_op: NoiseCombineOp,
+    pub threshold_enabled: bool,
+    pub threshold: f32,
+    pub preview_size_px: f32,
+    pub preview_samples: usize,
+    pub preview_zoom: f32,
+}
+
+impl Default for DebugNoiseWorkshopState {
+    fn default() -> Self {
+        Self {
+            selected_noises: Vec::new(),
+            per_noise_subtract: HashMap::new(),
+            original_noises: HashMap::new(),
+            combine_op: NoiseCombineOp::Average,
+            threshold_enabled: false,
+            threshold: 0.5,
+            preview_size_px: 420.0,
+            preview_samples: 64,
+            preview_zoom: 1.0,
+        }
+    }
 }

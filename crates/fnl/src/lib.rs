@@ -277,6 +277,11 @@ impl FastNoiseLite {
         self.frequency = frequency.unwrap_or(Self::default().frequency);
     }
 
+    /// Gets frequency used for all noise types.
+    pub fn frequency(&self) -> f32 {
+        self.frequency
+    }
+
     /// Sets noise algorithm used for [`get_noise_2d`](Self::get_noise_2d)/[`get_noise_3d`](Self::get_noise_3d).
     ///
     /// If set to [`None`], it is reset to its default: [`NoiseType::OpenSimplex2`].

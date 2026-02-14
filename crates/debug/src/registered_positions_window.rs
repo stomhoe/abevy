@@ -24,6 +24,7 @@ pub fn registered_positions_window(
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.left() + 10.0;
     let default_y = screen_rect.top() + 650.0;
+    let mut open = window_visible.registered_positions;
 
     egui::Window::new("Registered Positions")
         .default_pos([default_x, default_y])
@@ -31,15 +32,9 @@ pub fn registered_positions_window(
         .movable(true)
         .default_width(600.0)
         .default_height(300.0)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Registered Positions");
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.registered_positions = false;
-                    }
-                });
-            });
+            ui.heading("Registered Positions");
             ui.separator();
 
             ui.horizontal(|ui| {
@@ -78,4 +73,5 @@ pub fn registered_positions_window(
                     }
                 });
         });
+    window_visible.registered_positions = open;
 }

@@ -32,6 +32,7 @@ pub fn portals_list_window(
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.right() - 400.0;
     let default_y = screen_rect.top() + 10.0;
+    let mut open = window_visible.portals_list;
 
     // Get camera position and dimension
     let camera_info = camera_query.iter().next();
@@ -110,15 +111,9 @@ pub fn portals_list_window(
         .resizable(true)
         .movable(true)
         .default_width(400.0)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading(format!("Portals: {}", portal_query.iter().count()));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.portals_list = false;
-                    }
-                });
-            });
+            ui.heading(format!("Portals: {}", portal_query.iter().count()));
             ui.separator();
 
             for dim_key in sorted_dims.iter() {
@@ -169,4 +164,5 @@ pub fn portals_list_window(
                 }
             }
         });
+    window_visible.portals_list = open;
 }

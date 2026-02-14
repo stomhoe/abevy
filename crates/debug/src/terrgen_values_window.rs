@@ -3,10 +3,11 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
 use common::common_components::StrId;
 use std::collections::{BTreeSet, HashMap};
-
-use crate::terrain_gen::terrgen_operaton_list_components::OperationList;
-use crate::terrain_gen::terrgen_resources::{TerrGenDebugGrid, TerrGenTileDebugInfo};
+use tilemap::terrain_gen::terrgen_operaton_list_components::OperationList;
+use tilemap::terrain_gen::terrgen_resources::{TerrGenDebugGrid, TerrGenTileDebugInfo};
 use ::tilemap_shared::*;
+
+use crate::debug_resources::DubugWindowsVisibility;
 
 fn pick_value(info: &TerrGenTileDebugInfo, metric: &str) -> Option<f32> {
     if metric == "out" {
@@ -22,13 +23,20 @@ fn div_floor_i32(v: i32, d: i32) -> i32 {
 
 pub fn terrgen_debug_window_system(
     mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
     mut debug_grid: ResMut<TerrGenDebugGrid>,
     camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     oplist_id_query: Query<&StrId, With<OperationList>>,
 ) {
+    if !window_visible.terrgen_values {
+        return;
+    }
     let Ok(ctx) = contexts.ctx_mut() else { return; };
-    egui::Window::new("Terrgen Tile Debug")
+
+    let mut open = window_visible.terrgen_values;
+    egui::Window::new("Terrain generation Debug")
         .default_size([1200.0, 760.0])
+        .open(&mut open)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut debug_grid.enabled, "Capture");
@@ -62,7 +70,7 @@ pub fn terrgen_debug_window_system(
                         if ui.selectable_label(debug_grid.oplist_filter.is_none(), "All oplists").clicked() {
                             debug_grid.oplist_filter = None;
                         }
-                        for id in all_oplists.iter() {
+                        for id in &all_oplists {
                             let selected = debug_grid.oplist_filter.as_deref() == Some(id.as_str());
                             if ui.selectable_label(selected, id).clicked() {
                                 debug_grid.oplist_filter = Some(id.clone());
@@ -74,7 +82,7 @@ pub fn terrgen_debug_window_system(
             let filter = debug_grid.oplist_filter.clone();
             let mut metrics = BTreeSet::new();
             metrics.insert("out".to_string());
-            for (key, info) in debug_grid.tiles.iter() {
+            for (key, info) in &debug_grid.tiles {
                 if let Some(dim) = camera_dim && key.dimension != dim {
                     continue;
                 }
@@ -107,7 +115,7 @@ pub fn terrgen_debug_window_system(
                     |ui| {
                         ui.label("Variables");
                         egui::ScrollArea::vertical().max_height(panel_h - 22.0).show(ui, |ui| {
-                            for metric in metrics.iter() {
+                            for metric in &metrics {
                                 let selected = metric == &debug_grid.selected_metric;
                                 if ui.selectable_label(selected, metric).clicked() {
                                     debug_grid.selected_metric = metric.clone();
@@ -141,7 +149,7 @@ pub fn terrgen_debug_window_system(
 
                         buckets.clear();
                         bucket_values.clear();
-                        for (key, info) in debug_grid.tiles.iter() {
+                        for (key, info) in &debug_grid.tiles {
                             if key.dimension != dim_ent {
                                 continue;
                             }
@@ -163,7 +171,7 @@ pub fn terrgen_debug_window_system(
                                 })
                                 .or_insert((v, 1));
                         }
-                        for (bucket, (sum, count)) in buckets.iter() {
+                        for (bucket, (sum, count)) in &buckets {
                             if *count > 0 {
                                 bucket_values.insert(*bucket, *sum / *count as f32);
                             }
@@ -246,4 +254,6 @@ pub fn terrgen_debug_window_system(
                 );
             });
         });
+
+    window_visible.terrgen_values = open;
 }

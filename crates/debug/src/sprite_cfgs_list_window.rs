@@ -23,6 +23,7 @@ pub fn sprites_list_window(
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.right() - 300.0;
     let default_y = screen_rect.bottom() - 400.0;
+    let mut open = window_visible.sprite_configs_list;
 
     let sprites: Vec<(Entity, Option<Name>)> = sprite_query
         .iter()
@@ -34,15 +35,9 @@ pub fn sprites_list_window(
         .resizable(true)
         .movable(true)
         .default_width(300.0)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading(format!("Sprite configs: {}", sprites.len()));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.sprite_configs_list = false;
-                    }
-                });
-            });
+            ui.heading(format!("Sprite configs: {}", sprites.len()));
             ui.separator();
 
             egui::ScrollArea::vertical()
@@ -62,4 +57,5 @@ pub fn sprites_list_window(
                     }
                 });
         });
+    window_visible.sprite_configs_list = open;
 }

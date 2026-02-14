@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::prelude::{TilePos, TileStorage};
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use std::collections::{BTreeMap, HashMap};
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
 
 use camera::camera_components::CameraTarget;
 use common::common_components::*;
@@ -38,13 +38,23 @@ fn get_color_for_str_id(str_id: &str) -> egui::Color32 {
     TILE_COLORS[hash % TILE_COLORS.len()]
 }
 
+fn short_tile_label(str_id: &str) -> String {
+    let mut chars = str_id.chars();
+    let Some(first) = chars.next() else {
+        return "..".to_string();
+    };
+    let last = str_id.chars().last().unwrap_or(first);
+    format!("{}{}", first, last)
+}
+
 #[allow(unused_parens)]
 fn render_tilemap_grid(
     ui: &mut egui::Ui,
     tile_storage: &TileStorage,
-    tile_query: &Query<(Entity, &EntityZeroRef), With<Tile>>,
+    tile_query: &Query<(Entity, &EntityZeroRef, Option<&InitialPos>), With<Tile>>,
     ezero_query: &Query<&TileStrId, With<EntityZero>>,
     selected_tile: &mut Option<Entity>,
+    camera_tile_pos: Option<GlobalTilePos>,
 ) -> Option<Entity> {
     let size = tile_storage.size;
 
@@ -54,51 +64,102 @@ fn render_tilemap_grid(
         return None;
     }
 
+    let cell_w = 22.0f32;
+    let cell_h = 18.0f32;
+    let grid_size = egui::vec2(size.x as f32 * cell_w, size.y as f32 * cell_h);
+    let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+
     let mut clicked_tile = None;
+    for y in (0..size.y).rev() {
+        for x in 0..size.x {
+            let row = (size.y - 1 - y) as f32;
+            let col = x as f32;
+            let cell_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + col * cell_w, rect.top() + row * cell_h),
+                egui::vec2(cell_w, cell_h),
+            );
+            let tile_pos = TilePos { x, y };
+            let id = ui.make_persistent_id(("tilemap_grid_cell", x, y));
+            let response = ui.interact(cell_rect, id, egui::Sense::click());
 
-    egui::Grid::new("tilemap_tiles_grid")
-        .spacing([2.0, 2.0])
-        .show(ui, |ui| {
-            for y in (0..size.y).rev() {
-                for x in 0..size.x {
-                    let tile_pos = TilePos { x, y };
-
-                    if let Some(tile_entity) = tile_storage.checked_get(&tile_pos) {
-                        // Try to get EntityZeroRef for this tile
-                        if let Ok((_, ezero_ref)) = tile_query.get(tile_entity) {
-                            // Query the EntityZero to get its StrId
-                            if let Ok(str_id) = ezero_query.get(ezero_ref.0) {
-                                let str_id_str = str_id.as_str();
-                                let label = format!("{}", str_id_str);
-                                let color = get_color_for_str_id(str_id_str);
-                                let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
-                                let response = ui.selectable_label(is_selected, egui::RichText::new(label).small().color(color));
-                                if response.clicked() {
-                                    clicked_tile = Some(tile_entity);
-                                }
-                            } else {
-                                let label = format!("Ez:{:?}", ezero_ref.0.index());
-                                let color = egui::Color32::GRAY;
-                                let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
-                                let response = ui.selectable_label(is_selected, egui::RichText::new(label).small().color(color));
-                                if response.clicked() {
-                                    clicked_tile = Some(tile_entity);
-                                }
-                            }
-                        } else {
-                            let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
-                            let response = ui.selectable_label(is_selected, egui::RichText::new(format!("Ent:{:?}", tile_entity.index())).small());
-                            if response.clicked() {
-                                clicked_tile = Some(tile_entity);
-                            }
-                        }
+            if let Some(tile_entity) = tile_storage.checked_get(&tile_pos) {
+                let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
+                let mut is_camera_tile = false;
+                if let Ok((_, ezero_ref, initial_pos)) = tile_query.get(tile_entity) {
+                    is_camera_tile = camera_tile_pos
+                        .zip(initial_pos.map(|p| p.0))
+                        .map_or(false, |(cam_pos, tile_pos)| cam_pos == tile_pos);
+                    if let Ok(str_id) = ezero_query.get(ezero_ref.0) {
+                        let str_id_str = str_id.as_str();
+                        let label = short_tile_label(str_id_str);
+                        let fill = get_color_for_str_id(str_id_str).gamma_multiply(0.25);
+                        painter.rect_filled(cell_rect, 0.0, fill);
+                        painter.text(
+                            cell_rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            label,
+                            egui::FontId::proportional(10.0),
+                            get_color_for_str_id(str_id_str),
+                        );
                     } else {
-                        ui.label(egui::RichText::new(".").small());
+                        painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(30, 30, 30));
+                        painter.text(
+                            cell_rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            "??",
+                            egui::FontId::proportional(10.0),
+                            egui::Color32::GRAY,
+                        );
                     }
+                } else {
+                    painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(28, 28, 28));
+                    painter.text(
+                        cell_rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        "..",
+                        egui::FontId::proportional(10.0),
+                        egui::Color32::LIGHT_GRAY,
+                    );
                 }
-                ui.end_row();
+
+                if is_camera_tile {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
+                        egui::StrokeKind::Outside,
+                    );
+                } else if is_selected {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(1.5, egui::Color32::WHITE),
+                        egui::StrokeKind::Outside,
+                    );
+                } else {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(0.5, egui::Color32::from_gray(50)),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+
+                if response.clicked() {
+                    clicked_tile = Some(tile_entity);
+                }
+            } else {
+                painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(16, 16, 16));
+                painter.rect_stroke(
+                    cell_rect,
+                    0.0,
+                    egui::Stroke::new(0.5, egui::Color32::from_gray(35)),
+                    egui::StrokeKind::Inside,
+                );
             }
-        });
+        }
+    }
 
     clicked_tile
 }
@@ -108,6 +169,7 @@ pub fn debug_chunking_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
+    mut chunking_ui: ResMut<DebugChunkingUiState>,
     mut chunk_settings: ResMut<AaChunkRangeSettings>,
     chunk_query: Query<(
         Entity,
@@ -125,7 +187,7 @@ pub fn debug_chunking_window(
     loaded_chunks: Res<LoadedChunks>,
     // Query for child entities to check their components
     tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
-    tile_query: Query<(Entity, &EntityZeroRef), With<Tile>>,
+    tile_query: Query<(Entity, &EntityZeroRef, Option<&InitialPos>), With<Tile>>,
     ezero_query: Query<&TileStrId, With<EntityZero>>,
     id_query: Query<&StrId>,
 ) {
@@ -140,14 +202,19 @@ pub fn debug_chunking_window(
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.left() + 10.0;
     let default_y = screen_rect.top() + 10.0;
+    let mut open = window_visible.chunks_list;
 
     // Get camera target dimension and position
-    let (camera_dim_ref, camera_chunk_pos) = camera_dimension.iter().next()
+    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos) = camera_dimension.iter().next()
         .map(|(dim_ref, transform)| {
             let chunk_pos = ChunkPos::from(transform.translation());
-            (Some(dim_ref), Some(chunk_pos))
+            let tile_pos = GlobalTilePos::from(transform.translation().xy());
+            (Some(dim_ref), Some(chunk_pos), Some(tile_pos))
         })
-        .unwrap_or((None, None));
+        .unwrap_or((None, None, None));
+    let camera_dim_name = camera_dim_ref.and_then(|camera_ref| {
+        id_query.get(camera_ref.0).ok().map(|s| s.as_str().to_string())
+    });
 
     // Group chunks by dimension and position
     let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Children>, Option<&TilesToSave>, bool, bool, Option<&ActivatingChunks>)>> =
@@ -164,6 +231,17 @@ pub fn debug_chunking_window(
             .entry(dim_name)
             .or_insert_with(HashMap::new)
             .insert(*chunk_pos, (entity, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks));
+    }
+
+    if chunking_ui.follow_camera_chunk {
+        if let (Some(dim_name), Some(cam_chunk)) = (camera_dim_name.as_ref(), camera_chunk_pos) {
+            if let Some(chunks_map) = chunks_by_dimension.get(dim_name) {
+                if let Some((entity, ..)) = chunks_map.get(&cam_chunk) {
+                    selected_entities.selected_chunks.clear();
+                    selected_entities.selected_chunks.insert(*entity);
+                }
+            }
+        }
     }
 
     // Sort dimensions with camera dimension first
@@ -184,16 +262,11 @@ pub fn debug_chunking_window(
         .resizable(true)
         .movable(true)
         .default_width(600.0)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading(format!("Chunks: {}", chunk_query.iter().count()));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.chunks_list = false;
-                    }
-                });
-            });
+            ui.heading(format!("Chunks: {}", chunk_query.iter().count()));
             ui.separator();
+            ui.checkbox(&mut chunking_ui.follow_camera_chunk, "Follow camera chunk");
 
             // Chunk Range Settings
             ui.heading("Range Settings");
@@ -289,12 +362,12 @@ pub fn debug_chunking_window(
 
             // Show details for selected chunks in stable order
             let mut selected_chunk_details: Vec<_> = chunks_by_dimension.iter()
-                .flat_map(|(_, map)| map.iter())
-                .filter(|(_, (entity, ..))| selected_entities.selected_chunks.contains(entity))
+                .flat_map(|(dim_key, map)| map.iter().map(move |(pos, data)| (dim_key, pos, data)))
+                .filter(|(_, _, (entity, ..))| selected_entities.selected_chunks.contains(entity))
                 .collect();
-            selected_chunk_details.sort_by_key(|(_, (entity, ..))| entity.index());
+            selected_chunk_details.sort_by_key(|(_, _, (entity, ..))| entity.index());
 
-            for (chunk_pos, (entity, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks)) in selected_chunk_details {
+            for (dim_key, chunk_pos, (entity, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks)) in selected_chunk_details {
                 egui::CollapsingHeader::new(format!("Details: {:?} ({:?})", chunk_pos, entity))
                     .default_open(true)
                     .show(ui, |ui| {
@@ -330,7 +403,7 @@ pub fn debug_chunking_window(
                                     // Check if child is a tilemap with TileStorage
                                     if let Ok((tmap_entity, tile_storage, ac_z, shader_ref)) = tile_storage_query.get(child_entity) {
 
-                                        // Build the label with AcZ and shader info
+                                        // Build display label with entity id for readability
                                         let mut label = format!("🗺️ Tilemap ({})", tmap_entity.index());
                                         if let Some(z) = ac_z {
                                             label.push_str(&format!(" [Z: {:.1}]", z.0));
@@ -341,7 +414,25 @@ pub fn debug_chunking_window(
                                             }
                                         }
 
-                                        ui.collapsing(label, |ui| {
+                                        // Stable type key across chunks: shader + z + tilemap size
+                                        let shader_key = shader_ref
+                                            .and_then(|s| id_query.get(s.0).ok().map(|id| id.as_str().to_string()))
+                                            .unwrap_or_else(|| "none".to_string());
+                                        let z_key = ac_z.map(|z| format!("{:.3}", z.0)).unwrap_or_else(|| "none".to_string());
+                                        let tilemap_type = format!(
+                                            "shader:{}|z:{}|size:{}x{}",
+                                            shader_key,
+                                            z_key,
+                                            tile_storage.size.x,
+                                            tile_storage.size.y
+                                        );
+                                        let collapsing = egui::CollapsingHeader::new(label)
+                                            .id_salt(format!("tilemap_type_{}", tilemap_type))
+                                            .default_open(
+                                                chunking_ui.open_tilemap_type.as_deref()
+                                                    == Some(tilemap_type.as_str()),
+                                            )
+                                            .show(ui, |ui| {
                                             ui.label(format!("Size: {}x{}", tile_storage.size.x, tile_storage.size.y));
 
                                             if ui.button("📋 View All Components").clicked() {
@@ -349,11 +440,27 @@ pub fn debug_chunking_window(
                                                 window_visible.tilemap_details = true;
                                             }
 
-                                            if let Some(clicked_tile) = render_tilemap_grid(ui, tile_storage, &tile_query, &ezero_query, &mut selected_entities.selected_tile) {
+                                            let camera_tile_pos_for_this_dim =
+                                                if camera_dim_name.as_deref() == Some(dim_key.as_str()) {
+                                                    camera_tile_pos
+                                                } else {
+                                                    None
+                                                };
+                                            if let Some(clicked_tile) = render_tilemap_grid(
+                                                ui,
+                                                tile_storage,
+                                                &tile_query,
+                                                &ezero_query,
+                                                &mut selected_entities.selected_tile,
+                                                camera_tile_pos_for_this_dim,
+                                            ) {
                                                 selected_entities.selected_tile = Some(clicked_tile);
                                                 window_visible.tile_details = true;  // Show tile details window when selected
                                             }
                                         });
+                                        if collapsing.fully_open() {
+                                            chunking_ui.open_tilemap_type = Some(tilemap_type);
+                                        }
                                     } else {
                                         // Display generic child info
                                         ui.label(format!("Child: {:?}", child_entity));
@@ -474,4 +581,5 @@ pub fn debug_chunking_window(
                 }
             });
         });
+    window_visible.chunks_list = open;
 }

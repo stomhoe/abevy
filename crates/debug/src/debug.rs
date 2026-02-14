@@ -4,7 +4,6 @@ use bevy_fps_counter::FpsCounterPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPrimaryContextPass;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
-use tilemap::terrain_gen::terrgen_systems::terrgen_debug_window_system;
 
 use crate::{
     being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
@@ -12,7 +11,8 @@ use crate::{
     debug_systems::*, debug_window_systems::*, exempted_entity_details_inspector::*,
     portals_details_inspector::*, portals_list_window::*, region_details_inspector::*,
     regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
-    sprite_cfgs_list_window::*, terrgen_editor_window::*, tile_details_inspector::*,
+    sprite_cfgs_list_window::*, terrgen_editor_window::*, terrgen_values_window::*,
+    tile_details_inspector::*,
     tilemap_details_inspector::*,
 };
 
@@ -66,6 +66,8 @@ pub fn plugin(app: &mut App) {
         )
         .init_resource::<DubugWindowsVisibility>()
         .init_resource::<DebugSelectedEntities>()
+        .init_resource::<DebugChunkingUiState>()
+        .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
         .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered);
 }

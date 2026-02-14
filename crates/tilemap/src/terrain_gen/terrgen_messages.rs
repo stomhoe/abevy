@@ -50,6 +50,7 @@ pub struct TerrainProbe {
     pub max_batches: u16,
     pub iterations_per_batch: u16,
     pub probe_pattern: ProbePattern,
+    pub max_emitted_results: u16,
 }
 impl TerrainProbe{
     pub fn standard_spiral_probe(dimension_ref: DimensionRef, operation_filter: Entity, search_start_pos: GlobalTilePos) -> TerrainProbe {
@@ -61,6 +62,7 @@ impl TerrainProbe{
             iterations_per_batch: 10000,
             probe_pattern: ProbePattern::new_spiral(search_start_pos),
             operation_filter,
+            max_emitted_results: 1,
         }
     }
 }
@@ -88,5 +90,4 @@ pub struct SearchFailed (pub Entity);
 
 #[derive(Message, Debug, Clone)]
 pub struct PendingOp {pub oplist: Entity, pub dimension_ref: DimensionRef, pub gpos: GlobalTilePos,
-    pub filtered_op: Entity
-}
+    pub filtered_op: Entity, pub max_emitted_results: u16}

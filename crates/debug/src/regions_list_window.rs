@@ -47,6 +47,7 @@ pub fn regions_list_window(
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.left() + 350.0;
     let default_y = screen_rect.top() + 10.0;
+    let mut open = window_visible.regions_list;
 
     // Group regions by dimension and position (keyed by StrId and Entity number)
     let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, Option<&PendingOfferTimeout>, Option<&DespawnTimer>, bool, bool, bool)>)> =
@@ -95,15 +96,9 @@ pub fn regions_list_window(
         .resizable(true)
         .movable(true)
         .default_width(700.0)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading(format!("Regions: {}", region_query.iter().count()));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.regions_list = false;
-                    }
-                });
-            });
+            ui.heading(format!("Regions: {}", region_query.iter().count()));
             ui.separator();
 
             for dim_key in sorted_dims.iter() {
@@ -253,4 +248,5 @@ pub fn regions_list_window(
                     });
             }
         });
+    window_visible.regions_list = open;
 }

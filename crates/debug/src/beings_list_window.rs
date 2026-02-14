@@ -29,6 +29,7 @@ pub fn beings_list_window(
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.right() - 350.0;
     let default_y = screen_rect.top() + 10.0;
+    let mut open = window_visible.beings_list;
 
     // Group beings by dimension
     let mut beings_by_dimension: BTreeMap<String, Vec<(Entity, Option<&Name>)>> = BTreeMap::new();
@@ -68,15 +69,9 @@ pub fn beings_list_window(
         .resizable(true)
         .movable(true)
         .default_width(350.0)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading(format!("Beings: {}", being_query.iter().count()));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.beings_list = false;
-                    }
-                });
-            });
+            ui.heading(format!("Beings: {}", being_query.iter().count()));
             ui.separator();
 
             for dim_key in sorted_dims.iter() {
@@ -107,4 +102,5 @@ pub fn beings_list_window(
                 }
             }
         });
+    window_visible.beings_list = open;
 }

@@ -47,20 +47,15 @@ pub fn states_window(
 
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.right() - 300.0; // 300 pixels from right edge
+    let mut open = window_visible.states;
 
     egui::Window::new("States Inspector")
         .default_pos([default_x, 10.0])
         .resizable(true)
         .movable(true)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Main States");
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.states = false;
-                    }
-                });
-            });
+            ui.heading("Main States");
             ui.separator();
 
             ui.label(format!("AppState: {:?}", app_state.get()));
@@ -86,6 +81,7 @@ pub fn states_window(
                 ui.label("SimulationState: Not active");
             }
         });
+    window_visible.states = open;
 }
 
 #[allow(unused_parens)]
@@ -104,20 +100,15 @@ pub fn main_menu_window(
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.right();
     let default_y = screen_rect.top();
+    let mut open = window_visible.main_menu;
 
     egui::Window::new("Debug Menu")
         .default_pos([default_x, default_y])
         .resizable(true)
         .movable(true)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Debug Windows");
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.main_menu = false;
-                    }
-                });
-            });
+            ui.heading("Debug Windows");
             ui.separator();
 
             if ui.button(egui::RichText::new("🔍 States Inspector (F12)").size(16.0)).clicked() {
@@ -163,6 +154,7 @@ pub fn main_menu_window(
             ui.separator();
             ui.label("F11: Toggle this menu");
         });
+    window_visible.main_menu = open;
 }
 
 #[allow(unused_parens)]
@@ -185,20 +177,15 @@ pub fn global_gen_settings_editor_window(
     let screen_rect = ctx.content_rect();
     let default_x = screen_rect.left() + 10.0;
     let default_y = screen_rect.top() + 10.0;
+    let mut open = window_visible.settings_editor;
 
     egui::Window::new("Global gen settings editor")
         .default_pos([default_x, default_y])
         .resizable(true)
         .movable(true)
+        .open(&mut open)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Global gen settings editor");
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        window_visible.settings_editor = false;
-                    }
-                });
-            });
+            ui.heading("Global gen settings editor");
 
             ui.separator();
 
@@ -217,4 +204,5 @@ pub fn global_gen_settings_editor_window(
                 ui.add(egui::Slider::new(&mut gen_settings.structure_build_timeout_secs, 0.1..=60.0));
             });
         });
+    window_visible.settings_editor = open;
 }

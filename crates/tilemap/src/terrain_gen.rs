@@ -14,6 +14,7 @@ pub mod terrgen_operaton_list_components;
 pub mod terrgen_resources;
 pub mod terrgen_messages;
 pub mod terrgen_expression;
+pub mod terrgen_search;
 
 
 

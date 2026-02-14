@@ -3859,6 +3859,7 @@ dependencies = [
  "bevy_replicon",
  "camera",
  "common",
+ "fnl",
  "game_common",
  "modifier",
  "rand 0.9.2",

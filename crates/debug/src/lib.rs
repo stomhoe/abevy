@@ -14,6 +14,7 @@ mod regions_list_window;
 mod beings_list_window;
 mod portals_list_window;
 mod terrgen_editor_window;
+mod terrgen_values_window;
 mod registered_positions_window;
 mod sprite_cfgs_list_window;
 mod sprite_cfgs_details_inspector;
