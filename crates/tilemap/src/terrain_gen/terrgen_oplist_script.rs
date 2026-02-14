@@ -139,9 +139,10 @@ pub fn parse_tg_script_to_expr_tree(
     let mut aliases: HashMap<String, String> = HashMap::new();
     aliases.insert("out".to_string(), "out".to_string());
 
+    let mut in_block = false;
     for (idx, raw_line) in source.lines().enumerate() {
         let line_no = idx + 1;
-        let stripped = strip_comments(raw_line);
+        let stripped = strip_comments(raw_line, &mut in_block);
         let line = stripped.trim().trim_end_matches(';').trim();
         if line.is_empty() {
             continue;
@@ -254,10 +255,15 @@ fn parse_expr_from_string(
     path: &Path,
     line_no: usize,
 ) -> Result<Expr, String> {
-    let expr = expr_str.trim().trim_end_matches(';').trim();
+    let expr = strip_enclosing_parentheses(expr_str.trim().trim_end_matches(';').trim());
 
     if let Some(arith_expr) = try_parse_inline_arithmetic(expr, aliases, path, line_no)? {
         return Ok(arith_expr);
+    }
+
+    if let Some(rest) = strip_comp_prefix(expr) {
+        let operand = parse_expr_from_string(rest, aliases, path, line_no)?;
+        return Ok(Expr::Complement { value: Box::new(operand) });
     }
 
     if !expr.contains('(') && !expr.contains(' ') {
@@ -300,6 +306,53 @@ fn parse_expr_from_string(
     build_expression_tree(operation, operands)
 }
 
+fn strip_enclosing_parentheses(mut expr: &str) -> &str {
+    loop {
+        let trimmed = expr.trim();
+        if trimmed.len() >= 2 && trimmed.starts_with('(') && trimmed.ends_with(')') {
+            let mut depth = 0i32;
+            let mut valid = true;
+            for (idx, ch) in trimmed.char_indices() {
+                match ch {
+                    '(' => depth += 1,
+                    ')' => {
+                        depth -= 1;
+                        if depth == 0 && idx != trimmed.len() - 1 {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if valid && depth == 0 {
+                expr = &trimmed[1..trimmed.len() - 1];
+                continue;
+            }
+        }
+        return trimmed;
+    }
+}
+
+fn strip_comp_prefix(expr: &str) -> Option<&str> {
+    let trimmed = expr.trim_start();
+    if let Some(rest) = trimmed.strip_prefix('!') {
+        return Some(rest.trim_start());
+    }
+
+    let upper = trimmed.to_ascii_uppercase();
+    for prefix in ["COMPL", "COMP"] {
+        if upper.starts_with(prefix) {
+            let rest = &trimmed[prefix.len()..];
+            let rest_trimmed = rest.trim_start();
+            if rest_trimmed.starts_with('(') || !rest_trimmed.is_empty() {
+                return Some(rest_trimmed);
+            }
+        }
+    }
+    None
+}
+
 fn normalize_operation(op: &str) -> Option<&'static str> {
     let op = op.trim().to_ascii_lowercase();
     match op.as_str() {
@@ -330,10 +383,8 @@ fn build_operand_expr(
 ) -> Result<Expr, String> {
     let operand = operand.trim();
 
-    let (complement, base) = if let Some(base) = operand.strip_prefix("COMP") {
-        (true, base.trim())
-    } else if let Some(base) = operand.strip_prefix('!') {
-        (true, base.trim())
+    let (complement, base) = if let Some(base) = strip_comp_prefix(operand) {
+        (true, base)
     } else {
         (false, operand)
     };
@@ -647,13 +698,22 @@ fn trim_token(token: &str) -> &str {
     }
 }
 
-fn strip_comments(line: &str) -> String {
+fn strip_comments(line: &str, in_block: &mut bool) -> String {
     let mut out = String::new();
     let mut quote: Option<char> = None;
     let chars: Vec<char> = line.chars().collect();
     let mut i = 0usize;
     while i < chars.len() {
         let c = chars[i];
+        if *in_block {
+            if c == '*' && i + 1 < chars.len() && chars[i + 1] == '/' {
+                *in_block = false;
+                i += 2;
+            } else {
+                i += 1;
+            }
+            continue;
+        }
         match c {
             '"' | '\'' => {
                 if let Some(q) = quote {
@@ -666,7 +726,19 @@ fn strip_comments(line: &str) -> String {
                 out.push(c);
                 i += 1;
             }
-            '/' if quote.is_none() && i + 1 < chars.len() && chars[i + 1] == '/' => break,
+            '/' if quote.is_none() && i + 1 < chars.len() => {
+                match chars[i + 1] {
+                    '/' => break,
+                    '*' => {
+                        *in_block = true;
+                        i += 2;
+                    }
+                    _ => {
+                        out.push(c);
+                        i += 1;
+                    }
+                }
+            }
             '#' if quote.is_none() => break,
             _ => {
                 out.push(c);

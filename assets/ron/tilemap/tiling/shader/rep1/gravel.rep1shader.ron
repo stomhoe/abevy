@@ -1,6 +1,6 @@
 (
     id: "gravel",
     img_path: "texture/world/terr/gravel.png",
-    scale: 14,
+    scale: 9,
     mask_color: (255., 0, 0, 255.),
 )

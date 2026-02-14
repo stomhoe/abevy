@@ -1,19 +1,16 @@
 id: normal2
 size: (1, 1)
-debug: [beach_avg_noise, branch_strength, shore_base, shore_signal, shore_proximity, water_proximity, beachness, gravelness, inlandness]
+debug: [beach_avg_noise, shore_proximity, beachness, gravelness, inlandness, continentness, normal_diff]
+let inlandness = continentness/(COMPL continent_threshold)
+
+let shore_proximity = COMPL inlandness
 
 let beach_avg_noise = avg(fnl.beachsmol, fnl.beachbig)
-let branch_strength = max(normal_diff, 0.05)
-let shore_base = *(1.0 - continentness, branch_strength, 1.8)
-let shore_signal = +(shore_base, *(beach_avg_noise, 0.4))
-let shore_proximity = clamp(shore_signal, 0.0, 1.0)
-let water_proximity = shore_proximity
 
-let beachness = *(beach_avg_noise, shore_proximity, 1.6)
-let gravelness = *(1.0 - beach_avg_noise, shore_proximity, 1.0)
-let inlandness = *(continentness, *opo(shore_proximity), 0.85)
+let beachness = *(beach_avg_noise, shore_proximity)
+let gravelness = *(1.0 - beach_avg_noise, shore_proximity)
 
-out = idxmax(inlandness, beachness, gravelness)
+out = idxmax(0.01, beachness, gravelness)
 
 bif normal3 -> []
 bif "" -> [sand]

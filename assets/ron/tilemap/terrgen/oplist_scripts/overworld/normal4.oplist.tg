@@ -2,7 +2,7 @@ id: normal4
 tags: [portal]
 size: (3, 3)
 
-let sandy_beach_farness = *(COMP gravelness, 1.1)
+let sandy_beach_farness = *(COMPL gravelness, 1.1)
 let shared_pd = pd299
 
 let tree_feature = idxmax(hp81, 0.05)

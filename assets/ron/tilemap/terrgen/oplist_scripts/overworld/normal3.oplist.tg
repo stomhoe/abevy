@@ -5,7 +5,7 @@ let lakeness = max(fnl.lakesmol, fnl.lakebig)
 let lakeness = *(lakeness, continentness, 0.5)
 let lakeness = *opo(lakeness, beachness)
 
-let inlandness = *opo(water_proximity)
+let inlandness = *opo(shore_proximity)
 let bank_farness = *opo(beachness)
 let river_noise = max(fnl.river, fnl.river.s7)
 let riverness = *(river_noise, inlandness, bank_farness, continentness, 0.6)

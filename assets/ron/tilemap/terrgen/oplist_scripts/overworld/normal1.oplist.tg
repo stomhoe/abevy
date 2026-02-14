@@ -1,10 +1,15 @@
 id: normal1
 size: (1, 1)
+debug: [normal_diff]
 
 let continentness = max(fnl.conti, fnl.penin)
 let continentness = *(continentness, normal_diff)
 
-out = idxmax(0.01, continentness)
+let continent_threshold = 0.47
+
+out = idxmax(continent_threshold, continentness)
+
+
 
 bif "" -> [blue]
 bif normal2 -> []
