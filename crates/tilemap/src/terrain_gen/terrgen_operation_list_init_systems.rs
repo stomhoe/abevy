@@ -22,8 +22,7 @@ fn resolve_noise_names_in_expr(
 
     match expr {
         Expr::NoiseByName { name, sample_range, complement, seed_offset } => {
-            let name_clone = name.clone();
-            if let Ok(entity) = terr_gen_map.0.get_cloned(&name_clone) {
+            if let Ok(entity) = terr_gen_map.0.get_cloned(*name) {
                 *expr = Expr::Noise {
                     entity,
                     sample_range: *sample_range,
@@ -31,7 +30,7 @@ fn resolve_noise_names_in_expr(
                     seed_offset: *seed_offset,
                 };
             } else {
-                error!(target: "oplist_init", "Noise entity not found while resolving TG expr: '{}'", name_clone);
+                error!(target: "oplist_init", "Noise entity not found while resolving TG expr hash: {:?}", name);
             }
         }
         Expr::Add { left, right }
@@ -153,7 +152,26 @@ pub fn init_oplists_from_assets(
         }
         resolve_noise_names_in_expr(&mut expr_tree.output, &terr_gen_map);
         oplist.expr_tree = expr_tree;
-        oplist.debug_vars = seri.debug_vars.clone();
+
+        let debug_vars = seri.debug_vars.iter().filter_map(|debug_var| {
+            match StrId::new_with_result(debug_var.clone(), 1) {
+                Ok(str_id) => Some(str_id),
+                Err(err) => {
+                    error!(
+                        target: "oplist_init",
+                        "Failed to create StrId for debug var '{}' in oplist {}: {:?}",
+                        debug_var,
+                        seri.id,
+                        err
+                    );
+                    None
+                }
+            }
+        }).collect::<Vec<_>>();
+        for debug_var in debug_vars {
+            let hid = common::common_components::HashId::from(debug_var.as_str());
+            let _ = oplist.hash_ids_mapped_to_strids.overwrite(hid, debug_var);
+        }
 
         oplist_comps.push((spawned_oplist, (str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
         if seri.is_root() {

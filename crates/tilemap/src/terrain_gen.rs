@@ -42,10 +42,9 @@ pub struct TerrainGenSystems;
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app
-        .add_systems(Update, (
-            (launch_terrain_gen_operations, (process_pending_ops_and_collect_tiles,)).in_set(TerrainGenSystems),
-            search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
-        ))
+        .add_systems(Update, launch_terrain_gen_operations.in_set(TerrainGenSystems))
+        .add_systems(Update, process_pending_ops_and_collect_tiles.in_set(TerrainGenSystems))
+        .add_systems(Update, search_suitable_positions.run_if(in_state(ClientState::Disconnected)))
 
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (

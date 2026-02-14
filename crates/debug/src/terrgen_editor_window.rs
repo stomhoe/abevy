@@ -124,7 +124,7 @@ fn format_expr_compact(expr: &Expr) -> String {
             if *complement { "!noise" } else { "noise" }.to_string()
         }
         Expr::NoiseByName { name, complement, .. } => {
-            if *complement { format!("!{}", name) } else { name.clone() }
+            if *complement { format!("!{}", name) } else { name.to_string() }
         }
         Expr::Variable { name } => format!("${}", name),
         Expr::Add { left, right } => {

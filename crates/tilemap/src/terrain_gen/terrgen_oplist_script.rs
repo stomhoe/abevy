@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use common::common_components::{HashId, StrId};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -220,7 +221,7 @@ pub fn parse_tg_script_to_expr_tree(
                 output_expr = Some(expr);
             } else {
                 assignments.push(Assignment {
-                    name: var_name.clone(),
+                    name: StrId::trunc(var_name.clone()),
                     expr,
                 });
                 aliases.insert(var_name.clone(), var_name);
@@ -399,7 +400,7 @@ fn build_operand_expr(
     }
 
     if let Some(name) = aliases.get(base) {
-        let expr = Expr::Variable { name: name.clone() };
+        let expr = Expr::Variable { name: StrId::trunc(name.clone()) };
         return Ok(if complement { Expr::Complement { value: Box::new(expr) } } else { expr });
     }
 
@@ -433,14 +434,14 @@ fn build_operand_expr(
         };
 
         return Ok(Expr::NoiseByName {
-            name: base_str.to_string(),
+            name: HashId::from(base_str),
             sample_range: noise_sample_range,
             complement,
             seed_offset: extra_seed,
         });
     }
 
-    let expr = Expr::Variable { name: base.to_string() };
+    let expr = Expr::Variable { name: StrId::trunc(base.to_string()) };
     Ok(if complement { Expr::Complement { value: Box::new(expr) } } else { expr })
 }
 

@@ -480,12 +480,7 @@ pub fn instantiate_portal(
     mut started_searches: Local<EntityHashMap<Entity>>,
     clone_spawn_param_set: CloneSpawnParamSet,
 ) {
-    let mut pending_by_filter: EntityHashMap<(Entity, GlobalTilePos, DimensionRef, EntityZeroRef)> = EntityHashMap::new();
     let mut pos_searches_msgs_to_write: Vec<TerrainProbe> = Vec::new();
-
-    for (ent, searching_for, &my_pos, &dim_ref, &ezero_ref) in pending_search.iter() {
-        pending_by_filter.insert(searching_for.filtered_op_ent, (ent, my_pos, dim_ref, ezero_ref));
-    }
 
     new_portals.iter().for_each(|(portal_ent, &global_pos, dim_ref, ezero_ref)| {
             info!(target: "portal_init", "Instantiating portal tile entity {:?} at position {:?} in dimension {:?}", portal_ent, global_pos, dim_ref);
@@ -569,8 +564,6 @@ pub fn instantiate_portal(
                 continue 'successful_searches;
             };
             (portal_ent, orig_pos, orig_dim_ref, orig_tile_ref)
-        } else if let Some(&(ent, my_pos, dim_ref, ezero_ref)) = pending_by_filter.get(&ss_filtered_op_ent) {
-            (ent, my_pos, dim_ref, ezero_ref)
         } else {
             continue 'successful_searches;
         };
@@ -608,20 +601,6 @@ pub fn instantiate_portal(
             cmd.entity(failed_search.0).try_despawn();
 
             continue;
-        }
-
-        if let Some(&(portal_ent, global_pos, dim_ref, tile_ref)) = pending_by_filter.get(&failed_search.0) {
-            let Ok((str_id, portal_template)) = ezero_query.get(tile_ref.0) else {
-                error!(target: "portal_init", "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which no longer exists or has no StrId.", failed_search.0, portal_ent, tile_ref.0);
-                continue;
-            };
-            let Some(portal_template) = portal_template else {
-                error!(target: "portal_init", "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", failed_search.0, portal_ent, tile_ref.0);
-                continue;
-            };
-            error!(target: "portal_init",
-                "Failed to find suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}", str_id, portal_ent, dim_ref.0, global_pos, portal_template.dest_dimension
-            );
         }
     }
     ew_pos_search.write_batch(pos_searches_msgs_to_write);

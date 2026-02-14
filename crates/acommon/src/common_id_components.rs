@@ -83,6 +83,16 @@ macro_rules! define_fixedstr_id {
                 Self(FixedStr::<$len>::default())
             }
         }
+        impl Ord for $ty {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                self.0.as_str().cmp(other.0.as_str())
+            }
+        }
+        impl PartialOrd for $ty {
+            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
+        }
     };
 }
 define_fixedstr_id!(StrId20B, 20);
@@ -184,6 +194,23 @@ impl<T: Clone> HashIdMap<T> {
     pub fn clear(&mut self) { self.0.clear(); }
     pub fn is_empty(&self) -> bool { self.0.is_empty() }
     pub fn len(&self) -> usize { self.0.len() }
+}
+impl<T> HashIdMap<T> {
+    pub fn contains_key<K: Into<HashId>>(&self, id: K) -> bool {
+        self.0.contains_key(&id.into())
+    }
+    pub fn get_opt<K: Into<HashId>>(&self, id: K) -> Option<&T> {
+        self.0.get(&id.into())
+    }
+    pub fn get_mut<K: Into<HashId>>(&mut self, id: K) -> Option<&mut T> {
+        self.0.get_mut(&id.into())
+    }
+    pub fn keys(&self) -> impl Iterator<Item = &HashId> {
+        self.0.keys()
+    }
+    pub fn values(&self) -> impl Iterator<Item = &T> {
+        self.0.values()
+    }
 }
 impl<T> Default for HashIdMap<T> {
     fn default() -> Self {

@@ -1,8 +1,8 @@
-use bevy::{prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use camera::camera_components::CameraTarget;
-use common::{common_components::{HashId, StrId}, common_tag_components::HashedTagsVec};
+use common::{common_components::{HashId, HashIdMap, StrId}, common_tag_components::HashedTagsVec};
 use debug_unwraps::DebugUnwrapExt;
-use std::{collections::{HashMap, HashSet}, mem::take};
+use std::{collections::HashSet, mem::take};
 
 use crate::{
     chunking::chunking_components::*,
@@ -211,15 +211,15 @@ pub fn process_pending_ops_and_collect_tiles(
 
 #[derive(Clone)]
 struct TerrGenTaskContext {
-    oplists: HashMap<Entity, OperationList>,
-    oplist_ids: HashMap<Entity, String>,
-    oplist_debug_vars: HashMap<Entity, Vec<String>>,
-    oplist_sizes: HashMap<Entity, OplistSize>,
-    oplist_tags: HashMap<Entity, Option<HashedTagsVec>>,
-    child_oplist_sizes: HashMap<Entity, HashMap<Entity, OplistSize>>,
-    noises: HashMap<Entity, FnlNoiseComp>,
-    filters: HashMap<Entity, OpFilter>,
-    dimension_hashes: HashMap<Entity, HashId>,
+    oplists: EntityHashMap<OperationList>,
+    oplist_ids: EntityHashMap<HashId>,
+    oplist_debug_var_ids: EntityHashMap<Vec<HashId>>,
+    oplist_sizes: EntityHashMap<OplistSize>,
+    oplist_tags: EntityHashMap<Option<HashedTagsVec>>,
+    child_oplist_sizes: EntityHashMap<EntityHashMap<OplistSize>>,
+    noises: EntityHashMap<FnlNoiseComp>,
+    filters: EntityHashMap<OpFilter>,
+    dimension_hashes: EntityHashMap<HashId>,
 }
 
 #[derive(Clone)]
@@ -227,7 +227,7 @@ struct EvalFrame {
     oplist: Entity,
     gpos: GlobalTilePos,
     oplist_size: OplistSize,
-    variables: HashMap<String, f32>,
+    variables: HashIdMap<f32>,
 }
 
 fn build_terrgen_task_context(
@@ -238,16 +238,16 @@ fn build_terrgen_task_context(
     dim_hash_query: &Query<&HashId, common::AnyDisabling>,
 ) -> TerrGenTaskContext {
     let pending_len = pending_ops.len();
-    let mut oplists: HashMap<Entity, OperationList> = HashMap::with_capacity(pending_len);
-    let mut oplist_ids: HashMap<Entity, String> = HashMap::with_capacity(pending_len);
-    let mut oplist_debug_vars: HashMap<Entity, Vec<String>> = HashMap::with_capacity(pending_len);
-    let mut oplist_sizes: HashMap<Entity, OplistSize> = HashMap::with_capacity(pending_len);
-    let mut oplist_tags: HashMap<Entity, Option<HashedTagsVec>> = HashMap::with_capacity(pending_len);
-    let mut child_oplist_sizes: HashMap<Entity, HashMap<Entity, OplistSize>> = HashMap::with_capacity(pending_len);
-    let mut noise_entities: HashSet<Entity> = HashSet::with_capacity(pending_len);
+    let mut oplists: EntityHashMap<OperationList> = EntityHashMap::with_capacity(pending_len);
+    let mut oplist_ids: EntityHashMap<HashId> = EntityHashMap::with_capacity(pending_len);
+    let mut oplist_debug_var_ids: EntityHashMap<Vec<HashId>> = EntityHashMap::with_capacity(pending_len);
+    let mut oplist_sizes: EntityHashMap<OplistSize> = EntityHashMap::with_capacity(pending_len);
+    let mut oplist_tags: EntityHashMap<Option<HashedTagsVec>> = EntityHashMap::with_capacity(pending_len);
+    let mut child_oplist_sizes: EntityHashMap<EntityHashMap<OplistSize>> = EntityHashMap::with_capacity(pending_len);
+    let mut noise_entities: EntityHashSet = EntityHashSet::with_capacity(pending_len);
 
     let mut to_visit: Vec<Entity> = pending_ops.iter().map(|ev| ev.oplist).collect();
-    let mut visited: HashSet<Entity> = HashSet::with_capacity(pending_len);
+    let mut visited: EntityHashSet = EntityHashSet::with_capacity(pending_len);
 
     while let Some(oplist_ent) = to_visit.pop() {
         if !visited.insert(oplist_ent) {
@@ -259,7 +259,7 @@ fn build_terrgen_task_context(
             continue;
         };
 
-        let mut child_sizes: HashMap<Entity, OplistSize> = HashMap::with_capacity(oplist.bifurcations.len());
+        let mut child_sizes: EntityHashMap<OplistSize> = EntityHashMap::with_capacity(oplist.bifurcations.len());
         for bifurcation in oplist.bifurcations.iter() {
             if let Some(child_oplist) = bifurcation.oplist {
                 let Ok((_, &child_size, _, _)) = oplist_query.get(child_oplist) else {
@@ -274,13 +274,20 @@ fn build_terrgen_task_context(
         noise_entities.extend(collect_noise_entities(oplist));
         child_oplist_sizes.insert(oplist_ent, child_sizes);
         oplists.insert(oplist_ent, oplist.clone());
-        oplist_ids.insert(oplist_ent, oplist_id.to_string());
-        oplist_debug_vars.insert(oplist_ent, oplist.debug_vars.clone());
+        oplist_ids.insert(oplist_ent, HashId::from(oplist_id.as_str()));
+        oplist_debug_var_ids.insert(
+            oplist_ent,
+            oplist
+                .hash_ids_mapped_to_strids
+                .keys()
+                .copied()
+                .collect::<Vec<_>>(),
+        );
         oplist_sizes.insert(oplist_ent, oplist_size);
         oplist_tags.insert(oplist_ent, oplist_tags_opt.cloned());
     }
 
-    let mut noises: HashMap<Entity, FnlNoiseComp> = HashMap::with_capacity(noise_entities.len());
+    let mut noises: EntityHashMap<FnlNoiseComp> = EntityHashMap::with_capacity(noise_entities.len());
     for ent in noise_entities {
         let Ok(noise) = fnl_noises.get(ent) else {
             error!(target: "terrgen_systems", "Noise entity {} not found", ent);
@@ -289,7 +296,7 @@ fn build_terrgen_task_context(
         noises.insert(ent, noise.clone());
     }
 
-    let mut filters: HashMap<Entity, OpFilter> = HashMap::with_capacity(pending_len);
+    let mut filters: EntityHashMap<OpFilter> = EntityHashMap::with_capacity(pending_len);
     for ev in pending_ops.iter() {
         if ev.filtered_op == Entity::PLACEHOLDER {
             continue;
@@ -301,7 +308,7 @@ fn build_terrgen_task_context(
         }
     }
 
-    let mut dimension_hashes: HashMap<Entity, HashId> = HashMap::with_capacity(pending_len / 2 + 1);
+    let mut dimension_hashes: EntityHashMap<HashId> = EntityHashMap::with_capacity(pending_len / 2 + 1);
     for ev in pending_ops.iter() {
         if !dimension_hashes.contains_key(&ev.dimension_ref.0) {
             let hash = dim_hash_query
@@ -315,7 +322,7 @@ fn build_terrgen_task_context(
     TerrGenTaskContext {
         oplists,
         oplist_ids,
-        oplist_debug_vars,
+        oplist_debug_var_ids,
         oplist_sizes,
         oplist_tags,
         child_oplist_sizes,
@@ -379,7 +386,7 @@ fn process_pending_ops_batch(
     use crate::terrain_gen::terrgen_expression::EvalContext;
     let mut result = TerrGenOpTaskResult::default();
     let mut pending_queue = pending_ops;
-    let mut emitted_per_filter: HashMap<Entity, u16> = HashMap::new();
+    let mut emitted_per_filter: EntityHashMap<u16> = EntityHashMap::new();
 
     while let Some(ev) = pending_queue.pop() { unsafe {
         if !context.oplists.contains_key(&ev.oplist) {
@@ -413,7 +420,7 @@ fn process_pending_ops_batch(
                 &compiled_root,
                 ev.gpos,
                 my_oplist_size,
-                &HashMap::new(),
+                &HashIdMap::new(),
                 &ev,
                 &context,
                 &gen_settings,
@@ -431,7 +438,7 @@ fn process_pending_ops_batch(
             oplist: ev.oplist,
             gpos: ev.gpos,
             oplist_size: my_oplist_size,
-            variables: HashMap::new(),
+            variables: HashIdMap::new(),
         }];
 
         while let Some(mut frame) = frame_stack.pop() {
@@ -450,15 +457,12 @@ fn process_pending_ops_batch(
             let (output_value, computed_vars) = oplist.expr_tree.eval(&frame.variables, &eval_context);
             frame.variables = computed_vars;
             if capture_debug {
-                let debug_vars = context
-                    .oplist_debug_vars
-                    .get(&frame.oplist)
-                    .cloned()
-                    .unwrap_or_default();
-                let mut debug_values = HashMap::with_capacity(debug_vars.len());
-                for var in debug_vars {
-                    if let Some(&value) = frame.variables.get(&var) {
-                        debug_values.insert(var, value);
+                let mut debug_values = HashIdMap::new();
+                if let Some(var_ids) = context.oplist_debug_var_ids.get(&frame.oplist) {
+                    for var_id in var_ids {
+                        if let Ok(value) = frame.variables.get(*var_id) {
+                            let _ = debug_values.overwrite(*var_id, *value);
+                        }
                     }
                 }
                 result.debug_samples.push(TerrGenDebugSample {
@@ -528,14 +532,14 @@ fn process_compiled_branch_node(
     node: &CompiledBranchNode,
     gpos: GlobalTilePos,
     oplist_size: OplistSize,
-    inherited_vars: &HashMap<String, f32>,
+    inherited_vars: &HashIdMap<f32>,
     source_ev: &PendingOp,
     context: &TerrGenTaskContext,
     gen_settings: &GlobalGenSettings,
     dimension_hash: HashId,
     filter: Option<&OpFilter>,
     has_filter: bool,
-    emitted_per_filter: &mut HashMap<Entity, u16>,
+    emitted_per_filter: &mut EntityHashMap<u16>,
     result: &mut TerrGenOpTaskResult,
     capture_debug: bool,
 ) {
@@ -555,15 +559,12 @@ fn process_compiled_branch_node(
     };
     let (output_value, computed_vars) = node.expr_tree.eval(inherited_vars, &eval_context);
     if capture_debug {
-        let debug_vars = context
-            .oplist_debug_vars
-            .get(&node.source_oplist)
-            .cloned()
-            .unwrap_or_default();
-        let mut debug_values = HashMap::with_capacity(debug_vars.len());
-        for var in debug_vars {
-            if let Some(&value) = computed_vars.get(&var) {
-                debug_values.insert(var, value);
+        let mut debug_values = HashIdMap::new();
+        if let Some(var_ids) = context.oplist_debug_var_ids.get(&node.source_oplist) {
+            for var_id in var_ids {
+                if let Ok(value) = computed_vars.get(*var_id) {
+                    let _ = debug_values.overwrite(*var_id, *value);
+                }
             }
         }
         result.debug_samples.push(TerrGenDebugSample {

@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 use tilemap_shared::{GlobalTilePos, OplistSize, GlobalGenSettings, HashablePosVec, PoissonDisk};
 use crate::terrain_gen::terrgen_components::FnlNoiseComp;
-use common::common_components::HashId;
+use common::common_components::{HashId, HashIdMap, StrId};
+use bevy::ecs::entity::{EntityHashMap, };
 
 /// Expression tree for terrain generation operations
 /// Replaces the slot-based system with a composable AST
@@ -24,7 +24,7 @@ pub enum Expr {
 
     /// Reference to a noise by name (resolved later to entity)
     NoiseByName {
-        name: String,
+        name: HashId,
         sample_range: fnl::NoiseSampleRange,
         complement: bool,
         seed_offset: i32,
@@ -40,7 +40,7 @@ pub enum Expr {
     },
 
     /// Variable reference (inherited from parent oplist or locally defined)
-    Variable { name: String },
+    Variable { name: StrId },
 
     /// Binary operations
     Add { left: Box<Expr>, right: Box<Expr> },
@@ -135,16 +135,18 @@ impl Expr {
             }
 
             Expr::Variable { name } => {
-                if let Some(v) = context.variables.get(name) {
+                let var_id = HashId::from(name.as_str());
+                if let Ok(v) = context.variables.get(var_id) {
                     *v
                 } else {
-                    static MISSING_VARS_WARNED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+                    static MISSING_VARS_WARNED: OnceLock<Mutex<HashSet<HashId>>> = OnceLock::new();
                     let warned = MISSING_VARS_WARNED.get_or_init(|| Mutex::new(HashSet::new()));
-                    if let Ok(mut set) = warned.lock() && set.insert(name.clone()) {
+                    if let Ok(mut set) = warned.lock() && set.insert(var_id) {
                         warn!(
                             target: "oplist_eval",
-                            "Missing variable '{}' during expr eval; defaulting to 0.0",
-                            name
+                            "Missing variable '{}' ({:?}) during expr eval; defaulting to 0.0",
+                            name,
+                            var_id
                         );
                     }
                     0.0
@@ -295,14 +297,14 @@ pub struct EvalContext<'a> {
     pub dimension_hash: HashId,
     pub gen_settings: &'a GlobalGenSettings,
     pub oplist_size: OplistSize,
-    pub noises: &'a HashMap<Entity, FnlNoiseComp>,
-    pub variables: &'a HashMap<String, f32>,
+    pub noises: &'a EntityHashMap<FnlNoiseComp>,
+    pub variables: &'a HashIdMap<f32>,
 }
 
 /// Variable assignment in an oplist
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Assignment {
-    pub name: String,
+    pub name: StrId,
     pub expr: Expr,
 }
 
@@ -318,7 +320,7 @@ pub struct ExprOpList {
 
 impl ExprOpList {
     /// Evaluate the oplist, returning the output value and computed variables
-    pub fn eval(&self, parent_vars: &HashMap<String, f32>, context: &EvalContext) -> (f32, HashMap<String, f32>) {
+    pub fn eval(&self, parent_vars: &HashIdMap<f32>, context: &EvalContext) -> (f32, HashIdMap<f32>) {
         let mut variables = parent_vars.clone();
 
         // Evaluate assignments in order
@@ -328,7 +330,7 @@ impl ExprOpList {
                 ..*context
             };
             let value = assignment.expr.eval(&local_context);
-            variables.insert(assignment.name.clone(), value);
+            let _ = variables.overwrite(HashId::from(assignment.name.as_str()), value);
         }
 
         // Evaluate output expression

@@ -1,6 +1,5 @@
-use bevy::{prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
-use bevy_replicon::prelude::*;
-use std::{collections::HashSet, f32::consts::PI};
+use bevy::{ecs::entity::EntityHashSet, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use std::f32::consts::PI;
 use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_messages::*, terrgen_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult}}};
 use ::tilemap_shared::*;
 
@@ -30,7 +29,7 @@ pub fn search_suitable_positions(
     studied_ops: Query<&OpFilter, ( )>,
     failed_search_oplist_filter_holder: Query<Entity, (With<FailedSearchOplistFilterHolder>)>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
-    mut found_suitable_positions: Local<HashSet<Entity>>,
+    mut found_suitable_positions: Local<EntityHashSet>,
     mut new_pending_ops: Local<Vec<PendingOp>>,
     mut new_pos_searches: Local<Vec<TerrainProbe>>,
     mut search_failed_evs: Local<Vec<SearchFailed>>,
@@ -82,7 +81,7 @@ pub fn search_suitable_positions(
         inputs.push(TerrGenSearchTaskInput { probe: pos_search, opfilter });
     }
 
-    let found = found_suitable_positions.drain().collect::<HashSet<_>>();
+    let found = found_suitable_positions.drain().collect::<EntityHashSet>();
     let task_pool = AsyncComputeTaskPool::get();
     terrgen_tasks.search_tasks.push(task_pool.spawn(async move {
         process_search_batch(inputs, found)
@@ -90,7 +89,7 @@ pub fn search_suitable_positions(
 }
 
 
-fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_positions: HashSet<Entity>) -> TerrGenSearchTaskResult {
+fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_filters: EntityHashSet) -> TerrGenSearchTaskResult {
     let pending_count = inputs.len();
     let mut new_pending_ops = Vec::with_capacity(pending_count);
     let mut new_pos_searches = Vec::with_capacity(pending_count);
@@ -99,7 +98,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, found_suitable_posi
     for input in inputs {
         let pos_search = input.probe;
 
-        if found_suitable_positions.contains(&pos_search.operation_filter) {
+        if successful_filters.contains(&pos_search.operation_filter) {
             info!(target: "pos_search","Found suitable position for {:?}", pos_search.operation_filter);
             continue;
         }

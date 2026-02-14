@@ -1,6 +1,6 @@
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task};
-use common::{common_components::{HashId}, };
+use common::common_components::{HashId, HashIdMap, StrId};
 
 use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}}, };
 
@@ -56,25 +56,25 @@ pub struct TerrGenDebugSample {
     pub dimension_ref: DimensionRef,
     pub gpos: GlobalTilePos,
     pub oplist: Entity,
-    pub oplist_id: String,
+    pub oplist_id: HashId,
     pub output: f32,
-    pub variables: HashMap<String, f32>,
+    pub variables: HashIdMap<f32>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TerrGenTileDebugInfo {
     pub oplist: Entity,
-    pub oplist_id: String,
+    pub oplist_id: HashId,
     pub output: f32,
-    pub variables: HashMap<String, f32>,
+    pub variables: HashIdMap<f32>,
 }
 impl Default for TerrGenTileDebugInfo {
     fn default() -> Self {
         Self {
             oplist: Entity::PLACEHOLDER,
-            oplist_id: String::new(),
+            oplist_id: HashId::default(),
             output: 0.0,
-            variables: HashMap::new(),
+            variables: HashIdMap::new(),
         }
     }
 }
@@ -89,8 +89,8 @@ pub struct TerrGenDebugTileKey {
 #[derive(Resource, Debug)]
 pub struct TerrGenDebugGrid {
     pub enabled: bool,
-    pub selected_metric: String,
-    pub oplist_filter: Option<String>,
+    pub selected_metric: HashId,
+    pub oplist_filter: Option<HashId>,
     pub max_entries: usize,
     pub bucket_size_tiles: i32,
     pub bucket_radius: i32,
@@ -102,7 +102,7 @@ impl Default for TerrGenDebugGrid {
     fn default() -> Self {
         Self {
             enabled: true,
-            selected_metric: "shore_proximity".to_string(),
+            selected_metric: HashId::from("shore_proximity"),
             oplist_filter: None,
             max_entries: 150_000,
             bucket_size_tiles: 10,

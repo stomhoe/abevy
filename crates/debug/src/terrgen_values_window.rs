@@ -1,19 +1,21 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
-use common::common_components::StrId;
-use std::collections::{BTreeSet, HashMap};
+use common::common_components::{HashId, StrId};
+use std::collections::{HashMap, HashSet};
 use tilemap::terrain_gen::terrgen_operaton_list_components::OperationList;
 use tilemap::terrain_gen::terrgen_resources::{TerrGenDebugGrid, TerrGenTileDebugInfo};
 use ::tilemap_shared::*;
 
 use crate::debug_resources::DubugWindowsVisibility;
 
-fn pick_value(info: &TerrGenTileDebugInfo, metric: &str) -> Option<f32> {
-    if metric == "out" {
+const OUT_METRIC: HashId = HashId::hash("out");
+
+fn pick_value(info: &TerrGenTileDebugInfo, metric: &HashId) -> Option<f32> {
+    if *metric == OUT_METRIC {
         Some(info.output)
     } else {
-        info.variables.get(metric).copied()
+        info.variables.get_opt(*metric).copied()
     }
 }
 
@@ -26,7 +28,7 @@ pub fn terrgen_debug_window_system(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut debug_grid: ResMut<TerrGenDebugGrid>,
     camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
-    oplist_id_query: Query<&StrId, With<OperationList>>,
+    oplist_id_query: Query<(Entity, &StrId, Option<&HashId>, &OperationList), With<OperationList>>,
 ) {
     if !window_visible.terrgen_values {
         return;
@@ -51,12 +53,12 @@ pub fn terrgen_debug_window_system(
             let camera_info = camera_query.iter().next();
             let camera_dim = camera_info.map(|(dim_ref, _)| dim_ref.0);
 
-            let mut all_oplists = Vec::<String>::new();
-            for id in oplist_id_query.iter() {
-                all_oplists.push(id.as_str().to_string());
+            let mut all_oplists = Vec::<(HashId, StrId)>::new();
+            for (_, id, hid, _) in oplist_id_query.iter() {
+                all_oplists.push((hid.copied().unwrap_or_else(|| HashId::from(id.as_str())), id.clone()));
             }
-            all_oplists.sort_unstable();
-            all_oplists.dedup();
+            all_oplists.sort_unstable_by(|a, b| a.1.cmp(&b.1));
+            all_oplists.dedup_by_key(|(hid, _)| *hid);
             const MAX_DROPDOWN_OPLISTS: usize = 512;
             if all_oplists.len() > MAX_DROPDOWN_OPLISTS {
                 all_oplists.truncate(MAX_DROPDOWN_OPLISTS);
@@ -65,23 +67,32 @@ pub fn terrgen_debug_window_system(
             ui.horizontal(|ui| {
                 ui.label("Filter");
                 egui::ComboBox::from_label("Oplist")
-                    .selected_text(debug_grid.oplist_filter.as_deref().unwrap_or("All oplists"))
+                    .selected_text(
+                        debug_grid
+                            .oplist_filter
+                            .as_ref()
+                            .map(|hid| {
+                                all_oplists.iter().find(|(id, _)| id == hid).map(|(_, sid)| sid.as_str().to_string())
+                                    .unwrap_or_else(|| format!("{hid}"))
+                            })
+                            .unwrap_or_else(|| "All oplists".to_string()),
+                    )
                     .show_ui(ui, |ui| {
                         if ui.selectable_label(debug_grid.oplist_filter.is_none(), "All oplists").clicked() {
                             debug_grid.oplist_filter = None;
                         }
-                        for id in &all_oplists {
-                            let selected = debug_grid.oplist_filter.as_deref() == Some(id.as_str());
-                            if ui.selectable_label(selected, id).clicked() {
-                                debug_grid.oplist_filter = Some(id.clone());
+                        for (id, sid) in &all_oplists {
+                            let selected = debug_grid.oplist_filter == Some(*id);
+                            if ui.selectable_label(selected, sid.as_str()).clicked() {
+                                debug_grid.oplist_filter = Some(*id);
                             }
                         }
                     });
             });
 
             let filter = debug_grid.oplist_filter.clone();
-            let mut metrics = BTreeSet::new();
-            metrics.insert("out".to_string());
+            let mut metrics = HashSet::new();
+            metrics.insert(OUT_METRIC);
             for (key, info) in &debug_grid.tiles {
                 if let Some(dim) = camera_dim && key.dimension != dim {
                     continue;
@@ -90,12 +101,13 @@ pub fn terrgen_debug_window_system(
                     continue;
                 }
                 for var in info.variables.keys() {
-                    metrics.insert(var.clone());
+                    metrics.insert(*var);
                 }
             }
-            let metrics = metrics.into_iter().collect::<Vec<_>>();
+            let mut metrics = metrics.into_iter().collect::<Vec<_>>();
+            metrics.sort_unstable_by_key(|m| m.as_u64());
             if !metrics.is_empty() && !metrics.iter().any(|m| m == &debug_grid.selected_metric) {
-                debug_grid.selected_metric = metrics[0].clone();
+                debug_grid.selected_metric = metrics[0];
             }
 
             let bucket_size = debug_grid.bucket_size_tiles.max(1);
@@ -117,8 +129,20 @@ pub fn terrgen_debug_window_system(
                         egui::ScrollArea::vertical().max_height(panel_h - 22.0).show(ui, |ui| {
                             for metric in &metrics {
                                 let selected = metric == &debug_grid.selected_metric;
-                                if ui.selectable_label(selected, metric).clicked() {
-                                    debug_grid.selected_metric = metric.clone();
+                                let metric_label = if *metric == OUT_METRIC {
+                                    "out".to_string()
+                                } else {
+                                    debug_grid.tiles.values()
+                                        .find_map(|info| {
+                                            let Ok((_, _, _, oplist)) = oplist_id_query.get(info.oplist) else {
+                                                return None;
+                                            };
+                                            oplist.hash_ids_mapped_to_strids.get_opt(*metric).map(|s| s.as_str().to_string())
+                                        })
+                                        .unwrap_or_else(|| format!("{metric}"))
+                                };
+                                if ui.selectable_label(selected, metric_label).clicked() {
+                                    debug_grid.selected_metric = *metric;
                                 }
                             }
                         });
@@ -131,7 +155,12 @@ pub fn terrgen_debug_window_system(
                     egui::vec2(ui.available_width(), panel_h),
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
-                        ui.label(format!("Selected: {}", debug_grid.selected_metric));
+                        let selected_label = if debug_grid.selected_metric == OUT_METRIC {
+                            "out".to_string()
+                        } else {
+                            format!("{}", debug_grid.selected_metric)
+                        };
+                        ui.label(format!("Selected: {}", selected_label));
 
                         let Some((dim_ref, transform)) = camera_info else {
                             ui.separator();

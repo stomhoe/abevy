@@ -20,7 +20,7 @@ pub struct OperationList {
     /// Expression tree representation (slot-free runtime system)
     pub expr_tree: crate::terrain_gen::terrgen_expression::ExprOpList,
     /// Variable names to keep in runtime debug capture for this oplist.
-    pub debug_vars: Vec<String>,
+    pub hash_ids_mapped_to_strids: HashIdMap<StrId>,
     pub bifurcations: Vec<Bifurcation>,
     /// Precompiled branch tree with child oplists inlined for fast recursive eval.
     #[serde(skip, default)]
@@ -34,7 +34,7 @@ impl Default for OperationList {
                 assignments: Vec::new(),
                 output: crate::terrain_gen::terrgen_expression::Expr::Literal(0.0),
             },
-            debug_vars: Vec::new(),
+            hash_ids_mapped_to_strids: HashIdMap::default(),
             bifurcations: Vec::new(),
             compiled_branch_ast: None,
         }
