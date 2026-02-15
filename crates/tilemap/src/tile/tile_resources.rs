@@ -1,8 +1,9 @@
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::f32, platform::collections::{HashMap, HashSet}, tasks::Task, };
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, math::f32, platform::collections::{HashMap, HashSet}, };
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use common::{common_components::{HashId, Tag}, };
+use common::{common_components::{Tag}, };
 use game_common::game_common_components::EntityZero;
 use serde::{Deserialize, Serialize};
 
@@ -18,17 +19,6 @@ common::define_entity_map_systems!(
 
 #[derive(Resource, Debug, Default)]
 pub struct TileEntsWithinTag (pub HashMap<Tag, EntityHashSet>);
-
-#[derive(Debug)]
-pub struct TileAdjRetexTaskResult {
-    pub tile_ent: Entity,
-    pub hid_to_use: Option<HashId>,
-}
-
-#[derive(Resource, Debug, Default)]
-pub struct TileAdjRetexAsyncTasks(pub Vec<Task<TileAdjRetexTaskResult>>);
-
-
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct TileImagePaths(
@@ -77,7 +67,7 @@ impl IntoIterator for TileImagePaths {
 pub struct AdjRetexConfigSeri (
     //(Vec(direction_str, tile_ezero_id)) -> animation ID or texture ID
     // higher in this, higher priority
-    pub Vec<(Vec<(String, String)>, String)>,
+    pub Vec<(Vec<(String, String)>, (String, Option<TileFlip>))>,
 );
 
 #[derive(Deserialize, Asset, TypePath, Default, )]

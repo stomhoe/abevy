@@ -8,7 +8,7 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 # UNUSED (cargo-machete): movement = { path = "../movement" }
 modifier = { path = "../modifier" }
-# UNUSED (cargo-machete): player = { path = "../player" }
+player = { path = "../player" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
 camera = { path = "../camera" }

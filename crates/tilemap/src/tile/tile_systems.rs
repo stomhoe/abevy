@@ -1,5 +1,5 @@
 use crate::{
-    tile::{tile_components::*, tile_messages::*, tile_resources::{TileAdjRetexAsyncTasks, TileAdjRetexTaskResult}},
+    tile::{tile_components::*, tile_messages::*},
 
     tilemap_resources::*,
 };
@@ -8,7 +8,6 @@ use avian2d::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy::tasks::{futures_lite::future, AsyncComputeTaskPool};
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, tiles::TileFlip};
 use bevy_replicon::prelude::*;
 use common::{AnyDisabling, common_components::HashId, common_tag_components::TagSet};
@@ -322,10 +321,9 @@ pub fn reckeck_adjacency_for(
 /// should implement something similar to Godot's autotiling system
 pub fn tile_adjacency_retexturing_system(
     mut reader: MessageReader<RecheckTileAdjacency>,
-    mut tile_query: Query<(&EntityZeroRef, &DimensionRef, &GlobalTilePos, Option<&mut sprite_animation_shared::AnimExtraState>, Option<&TilemapId>, Option<&mut TileTextureIndex>), ()>,
+    mut tile_query: Query<(&EntityZeroRef, &DimensionRef, &GlobalTilePos, Option<&mut sprite_animation_shared::AnimExtraState>, Option<(&mut TileTextureIndex, &mut TileFlip, &TilemapId)>, ), ()>,
     ezero_query: Query<(&HashId, Option<&AdjRetexConfig>), ()>,
     hash2tex_query: Query<(&HashIdToTexIndex), ()>,
-    mut retex_tasks: ResMut<TileAdjRetexAsyncTasks>,
     params: TileGatheringParamSet,
     mut adj_tiles_ezeros_hash_ids: Local<Vec<(DiagonalCardinalDirection, HashId)>>,
     mut north_adj_tiles_ezeros: Local<Vec<Entity>>,
@@ -338,34 +336,6 @@ pub fn tile_adjacency_retexturing_system(
     mut southwest_adj_tiles_ezeros: Local<Vec<Entity>>,
     mut unique_rechecks: Local<HashSet<(DimensionRef, GlobalTilePos)>>,
 ) {
-    retex_tasks.0.retain_mut(|task| {
-        let Some(result) = future::block_on(future::poll_once(task)) else {
-            return true;
-        };
-        let Some(hid_to_use) = result.hid_to_use else {
-            return false;
-        };
-        let Ok((ezero_ref, .., anim_state, tmap_id, tex_idx)) = tile_query.get_mut(result.tile_ent) else {
-            return false;
-        };
-        let Ok((&tile_hid, ..)) = ezero_query.get(ezero_ref.0) else {
-            return false;
-        };
-        if let (Some(mut tex_idx), Some(&tmap_ent)) = (tex_idx, tmap_id) {
-            let Ok(hash2tex) = hash2tex_query.get(tmap_ent.0) else {
-                return false;
-            };
-            if let Ok(new_tex_idx) = hash2tex.get(tile_hid, hid_to_use) {
-                *tex_idx = new_tex_idx;
-            }
-        } else if let Some(mut anim_state) = anim_state {
-            anim_state.0 = hid_to_use;
-        }
-        false
-    });
-
-    let task_pool = AsyncComputeTaskPool::get();
-
     unique_rechecks.clear();
     for msg in reader.read() {
         let key = (msg.dim, msg.gpos);
@@ -422,12 +392,28 @@ pub fn tile_adjacency_retexturing_system(
             process_adjacent_tiles(DiagonalCardinalDirection::SouthEast, &mut southeast_adj_tiles_ezeros);
             process_adjacent_tiles(DiagonalCardinalDirection::SouthWest, &mut southwest_adj_tiles_ezeros);
 
-            let adj_state = adj_tiles_ezeros_hash_ids.clone();
-            let adj_retex_config = adj_retex_config.clone();
-            retex_tasks.0.push(task_pool.spawn(async move {
-                let hid_to_use = adj_retex_config.get_tex_in_curr_adjacency_state(&adj_state);
-                TileAdjRetexTaskResult { tile_ent, hid_to_use }
-            }));
+            let Some((hid_to_use, new_flip)) = adj_retex_config.get_tex_in_curr_adjacency_state(&adj_tiles_ezeros_hash_ids) else {
+                continue;
+            };
+            let Ok((ezero_ref, .., anim_state, tmap_tile_data)) = tile_query.get_mut(tile_ent) else {
+                continue;
+            };
+            let Ok((&tile_hid, ..)) = ezero_query.get(ezero_ref.0) else {
+                continue;
+            };
+            if let Some((mut tex_idx, mut flip, tmap_ent)) = tmap_tile_data {
+                let Ok(hash2tex) = hash2tex_query.get(tmap_ent.0) else {
+                    continue;
+                };
+                if let Some(new_flip) = new_flip {
+                    *flip = new_flip;
+                }
+                if let Ok(new_tex_idx) = hash2tex.get(tile_hid, hid_to_use) {
+                    *tex_idx = new_tex_idx;
+                }
+            } else if let Some(mut anim_state) = anim_state {
+                anim_state.0 = hid_to_use;
+            }
         }
     }
 }

@@ -42,14 +42,14 @@ pub struct DebugValue{
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct AdjRetexConfig(
-    pub Vec<(Vec<(DiagonalCardinalDirection, HashId)>, HashId)>,
+    pub Vec<(Vec<(DiagonalCardinalDirection, HashId)>, (HashId, Option<TileFlip>))>,
 );
 
 
 impl AdjRetexConfig {
     pub fn new(seri: AdjRetexConfigSeri) -> Self {
-        let mut parsed_rules: Vec<(Vec<(DiagonalCardinalDirection, HashId)>, HashId)> = Vec::with_capacity(seri.0.len());
-        for (rule_i, (adj_state_seri, out_hash_seri)) in seri.0.into_iter().enumerate() {
+        let mut parsed_rules = Vec::with_capacity(seri.0.len());
+        for (rule_i, (adj_state_seri, (out_hash_seri, tile_flip))) in seri.0.into_iter().enumerate() {
             let mut parsed_adj_state: Vec<(DiagonalCardinalDirection, HashId)> = Vec::with_capacity(adj_state_seri.len());
             let mut invalid_rule = false;
             for (dir_seri, hash_seri) in adj_state_seri.into_iter() {
@@ -68,17 +68,17 @@ impl AdjRetexConfig {
             if invalid_rule {
                 continue;
             }
-            parsed_rules.push((parsed_adj_state, HashId::from(out_hash_seri)));
+            parsed_rules.push((parsed_adj_state, (HashId::from(out_hash_seri), tile_flip)));
         }
         Self(parsed_rules)
     }
 
     /// Uses first-match priority: rules are evaluated in order and the first rule whose requirements are all present wins.
-    pub fn get_tex_in_curr_adjacency_state(&self, tile_adjacency_state: &[(DiagonalCardinalDirection, HashId)]) -> Option<HashId> {
+    pub fn get_tex_in_curr_adjacency_state(&self, tile_adjacency_state: &[(DiagonalCardinalDirection, HashId)]) -> Option<(HashId, Option<TileFlip>)> {
         let state_set: HashSet<(DiagonalCardinalDirection, HashId)> = tile_adjacency_state.iter().copied().collect();
-        for (reqs, hash_id) in self.0.iter() {
+        for (reqs, (hash_id, flip)) in self.0.iter() {
             if reqs.iter().all(|req| state_set.contains(req)) {
-                return Some(*hash_id);
+                return Some((*hash_id, *flip));
             }
         }
         None
@@ -88,8 +88,7 @@ impl AdjRetexConfig {
 //TODO HACER Q LAS TILES CAMBIEN AUTOMATICAMENTE DE TINTE SEGUN VALOR DE NOISES RELEVANTES COMO HUMEDAD O LO Q SEA
 //SE PUEDE MODIFICAR EL SHADER PARA Q TOME OTRO VEC3 DE COLOR MÁS COMO PARÁMETRO Y SE LE MULTIPLIQUE AL PIXEL DE LA TEXTURA SAMPLEADO
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct SeekingPortalOtherEnd;
+
 
 #[derive(Component, Debug, Clone, )]
 pub struct PortalRecipe {

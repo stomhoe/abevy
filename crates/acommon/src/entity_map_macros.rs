@@ -403,16 +403,17 @@ macro_rules! define_entity_map_systems {
                     //.register_type::<[<$main_component EntityMap>]>()
                     .register_type::<[<$abbreviation Ref>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
-                         [<add_ $main_component:snake _ezeros_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1))),
-                         [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>],
+                         [<add_ $main_component:snake _ezeros_to_egui_holder>]
+                            .run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
+                            .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
+                         [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>]
+                            .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
                     ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])
                     .replicate::<$main_component>()
                     .replicate::<[<$abbreviation Ref>]>()
-                    .replicate_once::<[<Egui $abbreviation sHolder>]>()
-                    .replicate_once_filtered::<Transform, With<[<Egui $abbreviation sHolder>]>>()
+                    .replicate::<[<Egui $abbreviation sHolder>]>()
 
-                    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>()
                     .configure_loading_state(
                         bevy_asset_loader::prelude::LoadingStateConfig::new(common::common_states::AssetLoading::LoadingAssetsIntoHandles)
                             $(.load_collection::<[<$seri_type sHandles>]>() )*

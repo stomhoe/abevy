@@ -110,47 +110,39 @@ pub fn main_menu_window(
         .show(ctx, |ui| {
             ui.heading("Debug Windows");
             ui.separator();
-
             if ui.button(egui::RichText::new("🔍 States Inspector (F12)").size(16.0)).clicked() {
                 window_visible.states = !window_visible.states;
             }
-
             if ui.button(egui::RichText::new("▢▢  Chunking").size(16.0)).clicked() {
                 window_visible.chunks_list = !window_visible.chunks_list;
             }
-
             if ui.button(egui::RichText::new("⬜ Regions").size(16.0)).clicked() {
                 window_visible.regions_list = !window_visible.regions_list;
             }
-
             if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
                 window_visible.beings_list = !window_visible.beings_list;
             }
-
+            if ui.button(egui::RichText::new("🧑 Players list").size(16.0)).clicked() {
+                window_visible.players_list = !window_visible.players_list;
+            }
             if ui.button(egui::RichText::new("🌀 Portals").size(16.0)).clicked() {
                 window_visible.portals_list = !window_visible.portals_list;
             }
-
             if ui.button(egui::RichText::new("� Sprite Configs").size(16.0)).clicked() {
                 window_visible.sprite_configs_list = !window_visible.sprite_configs_list;
             }
-
-            if ui.button(egui::RichText::new("�🌍 Terrain generation editor").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("🌍 Terrain generation editor").size(16.0)).clicked() {
                 window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
-
-            if ui.button(egui::RichText::new("🧮 Terrain values grid").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("🧮 Terrain noise values map").size(16.0)).clicked() {
                 window_visible.terrgen_values = !window_visible.terrgen_values;
             }
-
             if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;
             }
-
             if ui.button(egui::RichText::new("📍 Registered Tile Positions").size(16.0)).clicked() {
                 window_visible.registered_positions = !window_visible.registered_positions;
             }
-
             ui.separator();
             ui.label("F11: Toggle this menu");
         });

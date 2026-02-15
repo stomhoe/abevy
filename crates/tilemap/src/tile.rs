@@ -78,7 +78,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<AdjRetexConfig>()
 
-    .replicate::<Tile>()
+    //.replicate::<Tile>()
     .replicate::<SpriteTile>()
     .replicate::<TileChildSprite>()
     .replicate::<TileImagePaths>()
@@ -90,7 +90,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<WalkSpeedMultIfOnTop>()
     .replicate::<GlobalTilePos>()
     .replicate::<PortalTo>()
-    .replicate::<SeekingPortalOtherEnd>()
+
 
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()
@@ -107,7 +107,6 @@ pub fn plugin(app: &mut App) {
     .add_message::<GlobalTilePosChanged>()
     .add_message::<RecheckTileAdjacency>()
     .add_message::<SafeDespawn>()
-    .init_resource::<TileAdjRetexAsyncTasks>()
 
 
 

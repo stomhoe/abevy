@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemParam, math::U16Vec2, platform::collections::HashSet, prelude::*, };
 use bevy_ecs_tilemap::prelude::{*, TilemapTexture::Vector};
 use bevy_replicon::prelude::{ClientState, Replicated};
-use common::{common_components::{HashId}, common_resources::ImageSizeMap, };
+use common::{TILEMAP_SYSTEM, common_components::HashId, common_resources::ImageSizeMap };
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
@@ -160,7 +160,7 @@ pub fn process_tiles_pre(
 
         let query_result = ezero_query.get(bundle.ezero_ref.0);
         if query_result.is_err() {
-            error!(target: "tilemap_systems", "Original tile entity {} is despawned", bundle.ezero_ref.0);
+            error!(target: TILEMAP_SYSTEM, "Original tile entity {} is despawned", bundle.ezero_ref.0);
             cmd.entity(tile_ent).try_despawn();
             params.collected_tiles.0.swap_remove(i);
             continue;
@@ -182,7 +182,7 @@ pub fn process_tiles_pre(
         ) {
             cmd.entity(tile_ent).try_despawn();
             params.collected_tiles.0.swap_remove(i);
-            info!(target: "tilemap_systems", "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
+            info!(target: TILEMAP_SYSTEM, "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
             continue;
         }
 
@@ -355,7 +355,7 @@ fn process_tile_into_corresponding_tilemap(
         Some(_) => img_size,
         None => {
             tile_visible.0 = false;
-            error!(target: "tilemap_systems", "Tile entity {:?} has no TileHashIdsHandles", tile_ent);
+            error!(target: TILEMAP_SYSTEM, "Tile entity {:?} has no TileHashIdsHandles", tile_ent);
             return;
         }
     };

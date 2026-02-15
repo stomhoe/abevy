@@ -102,7 +102,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<EntityWeightedSampler>()
     .replicate::<Persisted>()
     .replicate::<ScaleHpAndStrengthWithSize>()
-
+    .replicate::<ChildOf>()
 
     .replicate_once::<GlobalTransform>()
     .replicate_once::<Transform>()

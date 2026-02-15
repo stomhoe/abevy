@@ -16,9 +16,12 @@ pub struct SearchParams<'w, 's>
     ew_pos_search: MessageWriter<'w, TerrainProbe>,
     reader_search_successful: MessageReader<'w, 's, SuitablePosFound>,
     mreader_search_failed: MessageReader<'w, 's, SearchFailed>,
-    mass_collected: ResMut<'w, crate::tilemap_resources::MassCollectedTiles>,
-    register_pos: ResMut<'w, crate::tilemap_resources::ImportantRegisteredPositions>,
 }
+
+
+#[derive(Component, Debug, Default, Copy, Clone)]
+pub struct AwaitingStartSearch;
+
 
 #[allow(unused_parens)]
 //input: PosSearch messages. output: SearchFailed or SuitablePosFound(emitted in produce_tiles)
