@@ -28,7 +28,7 @@ impl FnlNoiseComp {
 }
 
 //             .replicate::<NoizRef>()
-#[derive(Component, )]
+#[derive(Component)]
 pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sync >);
 
 #[derive(Component, Debug, Default, Copy, Clone)]

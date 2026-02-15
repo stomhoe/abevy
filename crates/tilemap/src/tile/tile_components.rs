@@ -146,7 +146,7 @@ pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &GlobalGenSettings)
     (hasher.finish() as f64 / u64::MAX as f64).abs() as f32
 }
 
-#[derive(Component, Deserialize, Serialize, Default, Debug,)]
+#[derive(Component, Deserialize, Serialize, Default, Debug, Clone)]
 pub struct FlipHorizontallyBasedOnHash;
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Debug,)]
@@ -224,7 +224,7 @@ impl MinDistancesMap {
 pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BlocksProjectiles;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -237,6 +237,6 @@ pub struct DeleteOtherTiles {
 }
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(Replicated, AssetScoped, Prefix::trunc("EguiPortalsZeroHolder"), Transform, Visibility)]
 pub struct PortalsZeroEguiHolder;

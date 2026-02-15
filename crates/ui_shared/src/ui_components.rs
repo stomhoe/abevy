@@ -4,15 +4,15 @@ use bevy_ui_text_input::*;
 use crate::ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED};
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Clone)]
 #[require(ButtonBackgroundStyle)]//meter más subestilos en el futuro
 pub struct ButtonStyle {}
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 #[require(Node, CurrentText, BackgroundColor(BUTTON_BG_NORMAL), TextInputNode, TextInputPrompt, TextInputContents)]//Outline
 pub struct LineEdit;
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct CurrentText(pub String);
 
 impl CurrentText {
@@ -21,7 +21,7 @@ impl CurrentText {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct ButtonBackgroundStyle {
     normal: Color,
     hovered: Color,

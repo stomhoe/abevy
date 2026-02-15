@@ -3,10 +3,10 @@
 use common::{common_components::*, };
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone)]
 pub struct Mine;
 
-#[derive(Debug, Component, Default, Serialize, Deserialize)]
+#[derive(Debug, Component, Default, Serialize, Deserialize, Clone)]
 #[require(Replicated, Prefix::trunc("Player"), SparedFromHotReloading, )]
 pub struct Player;
 
@@ -19,6 +19,6 @@ pub struct TrustedForOtracosa;
 #[derive(Component, Debug, Default, Clone)]
 pub struct TrustedMovement;
 
-#[derive(Debug, Component, Default, Serialize, Deserialize)]
+#[derive(Debug, Component, Default, Serialize, Deserialize, Clone)]
 #[require(Player)]
 pub struct HostPlayer;

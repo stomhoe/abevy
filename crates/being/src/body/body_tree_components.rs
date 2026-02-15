@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct BodyTree;
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 #[relationship(relationship_target = Bodies)]
 pub struct BodyOf {
     #[relationship]
@@ -24,7 +24,7 @@ pub struct BodyOf {
     pub being: Entity,
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, Reflect, Clone)]
 #[relationship_target(relationship = BodyOf)]
 pub struct Bodies(Vec<Entity>);
 impl Bodies {

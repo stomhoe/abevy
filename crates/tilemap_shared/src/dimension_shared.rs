@@ -54,7 +54,7 @@ pub struct PrevDimensionRef(#[entities] pub Entity);
 #[relationship(relationship_target = RootInDimensions)]
 pub struct DimensionRootOplist(#[relationship]#[entities]pub Entity);
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = DimensionRootOplist)]
 pub struct RootInDimensions(EntityHashSet);
 impl RootInDimensions { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
@@ -74,7 +74,7 @@ impl MultipleDimensionStringRefs {
     }
 }
 
-#[derive(Component, Debug, Default, Serialize, Deserialize, MapEntities, )]
+#[derive(Component, Debug, Default, Serialize, Deserialize, MapEntities, Clone)]
 pub struct MultipleDimensionRefs(#[entities] pub EntityHashSet,);
 
 #[derive(Debug, Message)]

@@ -1,8 +1,8 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub enum MainMenuButton {QuickStart, Host, Join, Settings}
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct MainMenuIpLineEdit;

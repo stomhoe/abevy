@@ -12,7 +12,7 @@ pub use crate::entity_zero_components::*;
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, Reflect, Clone)]
 /// runs when simulation is running or not
 pub struct DespawnTimer(pub Timer);
 impl DespawnTimer {
@@ -21,7 +21,7 @@ impl DespawnTimer {
     }
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, Reflect, Clone)]
 /// runs only when simulation is running
 pub struct SimRunningDespawnTimer(pub Timer);
 impl SimRunningDespawnTimer {
@@ -34,7 +34,7 @@ impl SimRunningDespawnTimer {
 /// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state
 pub struct Persisted;
 
-#[derive(Component, Debug, MapEntities)]
+#[derive(Component, Debug, MapEntities, Clone)]
 pub struct SourceDest {
     #[entities] pub source: Entity, #[entities]pub destination: Entity,
 }
@@ -66,13 +66,13 @@ impl ArgsDict {
     }
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone)]
 pub struct Health(pub f32); //SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (GRUNTS IRRECLUTABLES PARA FARMEAR XP O LOOT)
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone)]
 pub struct PhysicallyImmune();
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone)]
 pub struct MagicallyInvulnerable();
 
 

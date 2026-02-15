@@ -13,7 +13,7 @@ pub struct FactionOwner { #[entities]pub player: Entity }
 #[derive(Component, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct FactionLeader { #[entities]pub being: Entity }
 
-#[derive(Component, Debug,)]
+#[derive(Component, Debug, Clone)]
 pub struct IsAffiliatedToMyFaction;
 
 #[derive(Component, Debug, Clone, Eq, PartialEq, Hash)]
@@ -26,7 +26,7 @@ pub struct BelongsToFaction(
     pub Entity,
 );
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = BelongsToFaction)]
 pub struct FactionThings(Vec<Entity>);
 impl FactionThings { pub fn entities(&self) -> &[Entity] { &self.0 } }
@@ -39,12 +39,12 @@ pub struct PlayerOfFaction {
 }
 impl PlayerOfFaction {pub fn new(faction: Entity) -> Self {PlayerOfFaction { faction }}}
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = PlayerOfFaction)]
 pub struct PlayerMembers(Vec<Entity>);
 impl PlayerMembers { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-#[derive(Component, Debug, PartialEq, Eq, Hash, )]
+#[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct InterFactionEvent(u32);
 impl InterFactionEvent {
     pub fn new(nid: u32) -> Self {
@@ -60,11 +60,11 @@ impl InterFactionEvent {
 //     pub inclination: Inclination,
 // }
 
-#[derive(Component, Debug, Default, )]
+#[derive(Component, Debug, Default, Clone)]
 pub struct Inclination(i32);
 
 //cada relationship es una entidad, se supone que es hacia una dirección porque uno puede ser defense ally del otro y el otro no (por ej mercenarios)
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 pub struct RelationShip{
     #[entities]
     pub source: Entity,
@@ -74,7 +74,7 @@ pub struct RelationShip{
 
 //adjuntaselo opcionalmente a NonNeutralState o a cualquier cosa
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 pub enum RelationShipStatus {
     Neutral,
     AtWar,
@@ -82,7 +82,7 @@ pub enum RelationShipStatus {
     Ally(Ally)
 }
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Clone)]
 pub enum Ally{
     #[default]
     Defense,

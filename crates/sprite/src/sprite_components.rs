@@ -11,11 +11,11 @@ use sprite_shared::sprite_scale_offset::Offset2D;
 use ::tilemap_shared::directions::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Default, Serialize, Deserialize)]
+#[derive(Component, Debug, Default, Serialize, Deserialize, Clone)]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpCfg"), )]
 pub struct SpriteConfig;
 
-#[derive(Component, Default, Deserialize, Serialize, Debug, MapEntities)]
+#[derive(Component, Default, Deserialize, Serialize, Debug, MapEntities, Clone)]
 pub struct MappedAnimations (
     #[entities]pub HashMap<AnimType, Entity>
 );
@@ -42,7 +42,7 @@ impl AnimType {
     }
 }
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct ExcludedFromBaseAnimPickingSystem;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]

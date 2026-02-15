@@ -104,7 +104,7 @@ pub struct TileSeri {
 
 }
 
-#[derive(Component, Deserialize, TypePath, Default)]
+#[derive(Component, Deserialize, TypePath, Default, Clone)]
 pub struct PortalSeri{
     pub dest_dimension: String,
     pub oe_tile: String,

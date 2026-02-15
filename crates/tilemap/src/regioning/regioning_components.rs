@@ -13,12 +13,12 @@ use serde::{Deserialize, Serialize};
 #[require(ClaimList, RegionPlannedTiles, Visibility, Transform, AssetScoped)]
 pub struct Region;
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = Chunk)]
 pub struct ChunksActiveInRegion(Vec<Entity>);
 impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 #[require(CountsOfSgcs, GridOfSgcs)]
 pub struct ClaimList {
     pub processed_up_to_i: usize,
@@ -46,7 +46,7 @@ impl Default for ClaimList {
     }
 }
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
 
 pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
@@ -57,7 +57,7 @@ pub struct PendingBuildOrder {
     pub timer: Timer,
 }
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct RegionPlannedTiles {
     tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, TilesFromBuilder>,
     // store pending build orders along with their timeout timer
@@ -158,7 +158,7 @@ pub struct AllTilesPrepared;
 #[derive(Component, Debug, Default, Copy, Clone)]
 pub struct BuildingStarted;
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 pub struct PendingOfferTimeout {
     pub timeout_timer: Timer,
 }

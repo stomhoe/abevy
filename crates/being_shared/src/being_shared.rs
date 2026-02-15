@@ -5,10 +5,10 @@ use common::common_components::{Prefix, StrId};
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
 
-#[derive(Component, Debug, Default, )]
+#[derive(Component, Debug, Default, Clone)]
 pub struct ControlledLocally;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct ControlledByClient;
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
@@ -16,13 +16,13 @@ pub struct ControlledByClient;
 #[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 pub struct IsHumanControlled(pub bool);
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = ControlledBy)]
 pub struct ControlledBeings(Vec<Entity>);
 impl ControlledBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 
 
-#[derive(Component, Debug, Deserialize, Serialize, MapEntities, )]
+#[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone)]
 #[relationship(relationship_target = ControlledBeings)]
 pub struct ControlledBy  {
     #[relationship] #[entities]
@@ -78,9 +78,9 @@ pub struct BeingInstTemplate{
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct Sentient;
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize,)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct WallPhaser;

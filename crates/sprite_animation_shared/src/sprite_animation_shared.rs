@@ -67,7 +67,7 @@ pub struct AnimationHandle(pub Handle<Animation>,);
 #[derive(Component, Debug, Clone, )]
 pub struct AnimationSheet(pub Spritesheet,);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("Animation"),   )]
 pub struct AcAnimation;
 
@@ -83,10 +83,10 @@ pub struct BeingChangedMoveState(pub Entity);
 
 // TODO: hacer shaders aplicables? (para meditacion por ej)
 // TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld. hacer un mapa color-algo
-#[derive(Component, Deserialize, Asset, TypePath, Default, )]
+#[derive(Component, Deserialize, Asset, TypePath, Default, Clone)]
 pub struct MultipleAnimationSeri (pub Vec<AnimationSeri>);
 
-#[derive(Component, Deserialize, Serialize, Asset, TypePath, Default, )]
+#[derive(Component, Deserialize, Serialize, Asset, TypePath, Default, Clone)]
 pub struct AnimationSeri {
     pub id: String,
     pub img_path: String,

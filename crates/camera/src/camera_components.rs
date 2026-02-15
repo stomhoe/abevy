@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 #[require(Transform)]
 /// timer gets reset when camera moves
 pub struct CameraTarget {

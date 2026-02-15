@@ -7,7 +7,7 @@ use ::tilemap_shared::*;
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 #[relationship(relationship_target = ChunksActiveInRegion)]
 pub struct Chunk {
     #[relationship]
@@ -24,7 +24,7 @@ pub struct SaveTile {
 
 */
 
-#[derive(Component, Debug, Default,)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct TilesToSave(pub EntityHashSet);
 impl TilesToSave { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 
@@ -37,7 +37,7 @@ pub struct ReadyForTerrgen;
 #[derive(Component, Debug, Default, Clone)]
 pub struct TerrGenDisabled;
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 pub struct ChunkDespawnTimer(pub Timer);
 
 impl ChunkDespawnTimer {
@@ -46,7 +46,7 @@ impl ChunkDespawnTimer {
     }
 }
 
-#[derive(Component, Debug, )]
+#[derive(Component, Debug, Clone)]
 pub struct ActivatingChunks {
     pub reactivation_timer: Timer,
     pub entities: Vec<Entity>,

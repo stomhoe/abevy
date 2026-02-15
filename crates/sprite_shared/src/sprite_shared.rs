@@ -8,10 +8,10 @@ use std::hash::Hash;
 
 #[allow(unused_imports)] use {bevy::prelude::*, };
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct MovementBased;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct GroundingBased;
 
 
@@ -21,7 +21,7 @@ pub struct GroundingBased;
 #[require(Prefix::trunc("Sprite"), )]
 pub struct BaseHolderRef {#[relationship]#[entities]pub base: Entity, }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, Reflect, Clone)]
 #[relationship_target(relationship = BaseHolderRef)]
 pub struct HeldSprites(Vec<Entity>);
 
@@ -106,5 +106,5 @@ impl Hash for AcZ {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct ExcludedFromNormalSizeModifier;

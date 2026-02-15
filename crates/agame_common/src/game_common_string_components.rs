@@ -17,14 +17,14 @@ pub struct GameCommonStringComponentsBundle {
 }
 
 #[allow(unused_parens, dead_code)]
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone)]
 pub struct Description(pub String);
 
-#[derive(Component, Debug, Default, )]
+#[derive(Component, Debug, Default, Clone)]
 pub struct Demonym(pub StrId);
 
-#[derive(Component, Debug, Default, )]
+#[derive(Component, Debug, Default, Clone)]
 pub struct SingularDenomination(pub StrId);
 
-#[derive(Component, Debug, Default, )]
+#[derive(Component, Debug, Default, Clone)]
 pub struct PluralDenomination(pub StrId);
