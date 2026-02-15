@@ -5,21 +5,21 @@ edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
-# UNUSED (cargo-machete): game_common = { path = "../agame_common" }
+#game_common = { path = "../agame_common" }
 multiplayer_shared = { path = "../multiplayer_shared" }
-# UNUSED (cargo-machete): tilemap = { path = "../tilemap" }
-# UNUSED (cargo-machete): sprite = { path = "../sprite" }
-# UNUSED (cargo-machete): dimension = { path = "../dimension" }
+#tilemap = { path = "../tilemap" }
+#sprite = { path = "../sprite" }
+#dimension = { path = "../dimension" }
 player = { path = "../player" }
-# UNUSED (cargo-machete): being_shared = { path = "../being_shared" }
+#being_shared = { path = "../being_shared" }
 
 
 bevy = { workspace = true }
 
-# UNUSED (cargo-machete): debug_unwraps = { workspace = true }
+#debug_unwraps = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_replicon_renet = { workspace = true }
-# UNUSED (cargo-machete): serde = { workspace = true }
+#serde = { workspace = true }
 bevy_asset_loader = { workspace = true }
-# UNUSED (cargo-machete): tracing = { workspace = true }
-# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+#tracing = { workspace = true }
+#tracing-subscriber = { workspace = true }

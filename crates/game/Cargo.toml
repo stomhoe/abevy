@@ -6,15 +6,15 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
-# UNUSED (cargo-machete): camera = { path = "../camera" }
-# UNUSED (cargo-machete): sprite_animation_shared = { path = "../sprite_animation_shared" }
-# UNUSED (cargo-machete): sprite = { path = "../sprite" }
-# UNUSED (cargo-machete): sprite_shared = { path = "../sprite_shared" }
-# UNUSED (cargo-machete): sprite_animation = { path = "../sprite_animation" }
+#camera = { path = "../camera" }
+#sprite_animation_shared = { path = "../sprite_animation_shared" }
+#sprite = { path = "../sprite" }
+#sprite_shared = { path = "../sprite_shared" }
+#sprite_animation = { path = "../sprite_animation" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 modifier = { path = "../modifier" }
-# UNUSED (cargo-machete): dimension = { path = "../dimension" }
+#dimension = { path = "../dimension" }
 faction = { path = "../faction" }
 player = { path = "../player" }
 being = { path = "../being" }
@@ -24,23 +24,23 @@ being_shared = { path = "../being_shared" }
 bevy = { workspace = true }
 
 serde = { workspace = true }
-# UNUSED (cargo-machete): strum = { workspace = true }
-# UNUSED (cargo-machete): strum_macros = { workspace = true }
-# UNUSED (cargo-machete): debug_unwraps = { workspace = true }
+#strum = { workspace = true }
+#strum_macros = { workspace = true }
+#debug_unwraps = { workspace = true }
 rand = { workspace = true }
-# UNUSED (cargo-machete): rand_distr = { workspace = true }
-# UNUSED (cargo-machete): rand_seeder = { workspace = true }
-# UNUSED (cargo-machete): rand_pcg = { workspace = true }
-# UNUSED (cargo-machete): bevy_ecs_tilemap = { workspace = true }
-# UNUSED (cargo-machete): bevy_simple_scroll_view = { workspace = true }
-# UNUSED (cargo-machete): bevy_ui_text_input = { workspace = true }
+#rand_distr = { workspace = true }
+#rand_seeder = { workspace = true }
+#rand_pcg = { workspace = true }
+#bevy_ecs_tilemap = { workspace = true }
+#bevy_simple_scroll_view = { workspace = true }
+#bevy_ui_text_input = { workspace = true }
 bevy_replicon = { workspace = true }
-# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
+#bevy_replicon_renet = { workspace = true }
 bevy_common_assets = { workspace = true }
-# UNUSED (cargo-machete): bevy-ui-gradients = { workspace = true }
+#bevy-ui-gradients = { workspace = true }
 bevy_asset_loader = { workspace = true }
-# UNUSED (cargo-machete): splines = { workspace = true }
-# UNUSED (cargo-machete): indexmap = { workspace = true }
-# UNUSED (cargo-machete): delegate = { workspace = true }
-# UNUSED (cargo-machete): tracing = { workspace = true }
-# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+#splines = { workspace = true }
+#indexmap = { workspace = true }
+#delegate = { workspace = true }
+#tracing = { workspace = true }
+#tracing-subscriber = { workspace = true }

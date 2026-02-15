@@ -6,26 +6,26 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
-# UNUSED (cargo-machete): modifier = { path = "../modifier" }
-# UNUSED (cargo-machete): tilemap = { path = "../tilemap" }
+#modifier = { path = "../modifier" }
+#tilemap = { path = "../tilemap" }
 player = { path = "../player" }
 
 
 bevy = { workspace = true }
 
 serde = { workspace = true }
-# UNUSED (cargo-machete): strum = { workspace = true }
-# UNUSED (cargo-machete): strum_macros = { workspace = true }
-# UNUSED (cargo-machete): bevy_simple_scroll_view = { workspace = true }
-# UNUSED (cargo-machete): bevy_ui_text_input = { workspace = true }
+#strum = { workspace = true }
+#strum_macros = { workspace = true }
+#bevy_simple_scroll_view = { workspace = true }
+#bevy_ui_text_input = { workspace = true }
 paste = { workspace = true }
 bevy_replicon = { workspace = true }
-# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
+#bevy_replicon_renet = { workspace = true }
 bevy_common_assets = { workspace = true }
-# UNUSED (cargo-machete): bevy-ui-gradients = { workspace = true }
+#bevy-ui-gradients = { workspace = true }
 bevy_asset_loader = { workspace = true }
-# UNUSED (cargo-machete): splines = { workspace = true }
-# UNUSED (cargo-machete): indexmap = { workspace = true }
-# UNUSED (cargo-machete): delegate = { workspace = true }
-# UNUSED (cargo-machete): tracing = { workspace = true }
-# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+#splines = { workspace = true }
+#indexmap = { workspace = true }
+#delegate = { workspace = true }
+#tracing = { workspace = true }
+#tracing-subscriber = { workspace = true }

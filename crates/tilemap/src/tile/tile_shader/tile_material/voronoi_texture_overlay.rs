@@ -1,15 +1,15 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::{render::render_resource::AsBindGroup, shader::ShaderRef};
 use bevy_ecs_tilemap::prelude::MaterialTilemap;
-use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use serde::ser::SerializeStruct;
+use serde::{Serialize, Deserialize, };
 use bevy_inspector_egui::prelude::*;
 
-#[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions)]
+#[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions, Deserialize, Serialize)]
 #[reflect(Default, InspectorOptions)]
 pub struct VoronoiTextureOverlayMat {
     #[texture(1)]
     #[sampler(2)]
+    #[serde(skip)]
     pub texture_overlay: Handle<Image>,
 
     #[uniform(3)]
@@ -27,40 +27,7 @@ pub struct VoronoiTextureOverlayMat {
     #[uniform(7)]#[inspector(min = 0.0, max = 6.28319)]
     pub voronoi_rotation: f32,
 }
-impl Serialize for VoronoiTextureOverlayMat {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
-        let mut state = serializer.serialize_struct("VoronoiTextureOverlayMat", 5)?;
-        state.serialize_field("mask_color", &self.mask_color)?;
-        state.serialize_field("scale", &self.scale)?;
-        state.serialize_field("voronoi_scale", &self.voronoi_scale)?;
-        state.serialize_field("voronoi_scale_random", &self.voronoi_scale_random)?;
-        state.serialize_field("voronoi_rotation", &self.voronoi_rotation)?;
-        state.end()
-    }
-}
-impl<'de> Deserialize<'de> for VoronoiTextureOverlayMat {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer<'de> {
-        #[derive(Deserialize)]
-        struct VoronoiTextureOverlayMatData {
-            mask_color: Vec4,
-            scale: f32,
-            voronoi_scale: f32,
-            voronoi_scale_random: f32,
-            voronoi_rotation: f32,
-        }
-        let data = VoronoiTextureOverlayMatData::deserialize(deserializer)?;
-        Ok(VoronoiTextureOverlayMat {
-            texture_overlay: Handle::default(),
-            mask_color: data.mask_color,
-            scale: data.scale,
-            voronoi_scale: data.voronoi_scale,
-            voronoi_scale_random: data.voronoi_scale_random,
-            voronoi_rotation: data.voronoi_rotation,
-        })
-    }
-}
+
 impl VoronoiTextureOverlayMat {
     pub fn new(texture_overlay: Handle<Image>, mask_color: Vec4, base_scale: f32, voronoi_scale: f32, voronoi_scale_random: f32, voronoi_rotation: f32) -> Self {
         Self { texture_overlay, mask_color: mask_color / 255.0, scale: base_scale, voronoi_scale, voronoi_scale_random, voronoi_rotation }

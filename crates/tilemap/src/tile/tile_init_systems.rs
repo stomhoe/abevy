@@ -16,7 +16,7 @@ use sprite::sprite_components::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
 
 use crate::{
-    terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, terrgen_search::AwaitingStartSearch},
+    terrain_gen::{terrgen_messages::*, terrgen_operaton_list_components::OperationList, terrgen_search::{AwaitingStartSearch, SearchParams}},
     tile::{
         tile_components::*,
         tile_resources::*,
@@ -451,76 +451,185 @@ pub fn validate_portal_recipes(
     }
 }
 
+macro_rules! run_suitable_pos_search_logic {
+    (
+        target: $target:expr,
+        searched_entity_label: $searched_entity_label:expr,
+        cmd: $cmd:ident,
+        searching_entities: $searching_entities:ident,
+        search_params: $search_params:ident,
+        make_search_request: $make_search_request:ident,
+        handle_success_event: $handle_success_event:ident,
+        handle_pending_failure: $handle_pending_failure:ident,
+    ) => {{
+        $search_params.pending_by_filter.clear();
+        for (ent, &dim_ref, &my_pos, &ezero_ref, _, searching_for) in $searching_entities.iter() {
+            if let Some(SearchingForSuitablePos { filtered_op_ent }) = searching_for {
+                $search_params.pending_by_filter.insert(*filtered_op_ent, (ent, my_pos, dim_ref, ezero_ref));
+            }
+        }
+
+        $searching_entities
+            .iter()
+            .for_each(|(search_ent, _dim_ref, &global_pos, ezero_ref, is_awaiting_start, ..)| {
+                if !is_awaiting_start {
+                    return;
+                }
+                $cmd.entity(search_ent).try_remove::<AwaitingStartSearch>();
+
+                let Some((op_filter_ent, probe)) =
+                    $make_search_request(&mut $cmd, search_ent, global_pos, *ezero_ref)
+                else {
+                    return;
+                };
+
+                info!(
+                    target: $target,
+                    "Starting suitable-pos search for {} entity {:?} at position {:?}",
+                    $searched_entity_label,
+                    search_ent,
+                    global_pos
+                );
+
+                $cmd.entity(search_ent)
+                    .try_insert(SearchingForSuitablePos { filtered_op_ent: op_filter_ent });
+                $search_params.pos_searches_msgs_to_write.push(probe);
+                $search_params.searches_started_this_call.insert(op_filter_ent, search_ent);
+            });
+
+        'successful_searches: for suitable_pos in $search_params.reader_search_successful.read() {
+            let ss_filtered_op_ent = suitable_pos.op_filter_ent;
+            if $search_params.successful_searches.contains(&ss_filtered_op_ent) {
+                trace!(
+                    target: $target,
+                    "Ignoring duplicate SuitablePosFound for studied_op_ent {:?}",
+                    ss_filtered_op_ent
+                );
+                continue 'successful_searches;
+            }
+            let (search_ent, my_pos, dim_ref, ezero_ref) =
+                if let Some(search_ent) = $search_params.searches_started_this_call.remove(&ss_filtered_op_ent) {
+                    let Ok((_, &orig_dim_ref, &orig_pos, &orig_tile_ref, ..)) =
+                        $searching_entities.get(search_ent)
+                    else {
+                        continue 'successful_searches;
+                    };
+                    (search_ent, orig_pos, orig_dim_ref, orig_tile_ref)
+                } else if let Some((search_ent, my_pos, dim_ref, ezero_ref)) =
+                    $search_params.pending_by_filter.remove(&ss_filtered_op_ent)
+                {
+                    (search_ent, my_pos, dim_ref, ezero_ref)
+                } else {
+                    continue 'successful_searches;
+                };
+
+            if $handle_success_event(
+                &mut $cmd,
+                search_ent,
+                my_pos,
+                dim_ref,
+                ezero_ref,
+                suitable_pos.found_pos,
+                ss_filtered_op_ent,
+            ) {
+                $search_params.successful_searches.insert(ss_filtered_op_ent);
+            }
+        }
+
+        for failed_search in $search_params.mreader_search_failed.read() {
+            if $search_params.successful_searches.contains(&failed_search.0) {
+                continue; //not actually a failed search!
+            }
+            if $search_params.searches_started_this_call.remove(&failed_search.0).is_some() {
+                error!(
+                    target: $target,
+                    "Failed to find suitable pos for a {} entity, {:?}",
+                    $searched_entity_label,
+                    failed_search.0
+                );
+                $cmd.entity(failed_search.0).try_despawn();
+                continue;
+            }
+            if let Some((search_ent, global_pos, dim_ref, ezero_ref)) =
+                $search_params.pending_by_filter.remove(&failed_search.0)
+            {
+                $handle_pending_failure(search_ent, global_pos, dim_ref, ezero_ref, failed_search.0);
+            }
+        }
+    }};
+}
+
 #[allow(unused_parens)]
-pub fn instantiate_portal(//todo instanciar via macro
+pub fn instantiate_portal(
     mut cmd: Commands,
     portals: Query<
-        (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Has<AwaitingStartSearch>, Option<&SearchingForSuitablePos>),
-        (Without<EntityZero>),
+        (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, Has<AwaitingStartSearch>, Option<&SearchingForSuitablePos>),(Without<EntityZero>),
     >,
     ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>,)>,
     dimension_query: Query<(&DimensionRootOplist), ()>,
-    mut ew_pos_search: MessageWriter<TerrainProbe>,
     mut mass_collected: ResMut<MassCollectedTiles>,
-    mut mreader_search_successful: MessageReader<SuitablePosFound>,
-    mut mreader_search_failed: MessageReader<SearchFailed>,
     mut register_pos: ResMut<ImportantRegisteredPositions>,
     clone_spawn_param_set: CloneSpawnParamSet,
-    mut successful_searches: Local<EntityHashSet>,
-    mut searches_started_this_call: Local<EntityHashMap<Entity>>,
-    mut pending_by_filter: Local<EntityHashMap<(Entity, GlobalTilePos, DimensionRef, EntityZeroRef)>>,
-    mut pos_searches_msgs_to_write: Local<Vec<TerrainProbe>>,
+    mut search_params: SearchParams,
 ) {
-    pending_by_filter.clear();
-    for (ent, &dim_ref, &my_pos, &ezero_ref, _, searching_for) in portals.iter() {
-        if let Some(SearchingForSuitablePos { filtered_op_ent }) = searching_for {
-            pending_by_filter.insert(*filtered_op_ent, (ent, my_pos, dim_ref, ezero_ref));
-        }
-    }
-    portals.iter().for_each(|(portal_ent, dim_ref, &global_pos, ezero_ref, is_awaiting_start, ..)| {
-        if ! is_awaiting_start {
-            return;
-        }
-
-        info!(target: PORTAL_INIT, "Instantiating portal tile entity {:?} at position {:?} in dimension {:?}", portal_ent, global_pos, dim_ref);
-            cmd.entity(portal_ent).try_remove::<AwaitingStartSearch>();
+    let make_search_request =
+        |cmd: &mut Commands,
+         portal_ent: Entity,
+         global_pos: GlobalTilePos,
+         ezero_ref: EntityZeroRef| -> Option<(Entity, TerrainProbe)> {
             let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
                 error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, ezero_ref.0);
-                return;
+                return None;
             };
             let Some(portal_recipe) = portal_recipe_opt else {
                 error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, ezero_ref.0);
-                return;
+                return None;
             };
             let Ok((&dimension_root_oplist)) = dimension_query.get(portal_recipe.dest_dimension) else {
                 error!(target: PORTAL_INIT,
-                "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}). Entity's own dimension: {:?}, pos: {:?}, ", str_id, portal_ent, portal_recipe.dest_dimension, dim_ref.0, global_pos,
+                "PortalRecipe {} (entity: {:?}) references a DestDimension that doesn't exist ({:?}).", str_id, portal_ent, portal_recipe.dest_dimension,
+                );
+                return None;
+            };
+
+            let op_filter_ent = cmd.spawn((portal_recipe.to_op_filter(global_pos, dimension_root_oplist.0))).id();
+            let probe = TerrainProbe::standard_spiral_probe(
+                DimensionRef(portal_recipe.dest_dimension),
+                op_filter_ent,
+                global_pos,
             );
-            return;
+            Some((op_filter_ent, probe))
         };
 
+    let mut handle_success_event = |cmd: &mut Commands,
+                                    portal_ent: Entity,
+                                    my_pos: GlobalTilePos,
+                                    dim_ref: DimensionRef,
+                                    ezero_ref: EntityZeroRef,
+                                    found_pos: GlobalTilePos,
+                                    filtered_op_ent: Entity| -> bool {
+        let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
+            error!(target: PORTAL_INIT, "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", filtered_op_ent, portal_ent, ezero_ref.0);
+            return false;
+        };
+        let Some(portal_recipe) = portal_recipe_opt else {
+            error!(target: PORTAL_INIT, "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", filtered_op_ent, portal_ent, ezero_ref.0);
+            return false;
+        };
+        let portal_recipe = portal_recipe.clone();
 
-        let op_filter_ent = cmd.spawn((portal_recipe.to_op_filter(global_pos, dimension_root_oplist.0))).id();
+        info!(target: PORTAL_INIT,
+            "Found suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}, found pos: {:?}", str_id, portal_ent, dim_ref.0, my_pos, portal_recipe.dest_dimension, found_pos
+        );
 
-        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos{ filtered_op_ent: op_filter_ent });
-
-        pos_searches_msgs_to_write.push(TerrainProbe::standard_spiral_probe(DimensionRef(portal_recipe.dest_dimension), op_filter_ent, global_pos));
-        searches_started_this_call.insert(op_filter_ent, portal_ent);
-    });
-
-    let mut handle_success = |our_end_portal: Entity,
-                              portal_template: &PortalRecipe,
-                              found_pos: GlobalTilePos,
-                              filtered_op_ent: Entity| {
-        let oe_dim_ref = DimensionRef(portal_template.dest_dimension);
+        let oe_dim_ref = DimensionRef(portal_recipe.dest_dimension);
         cmd.entity(filtered_op_ent).try_despawn();
 
-        let oe_portal_tileref = EntityZeroRef(portal_template.oe_portal_tile);
-
+        let oe_portal_tileref = EntityZeroRef(portal_recipe.oe_portal_tile);
         debug!(target: PORTAL_INIT, "OE Portal TileRef: {:?}", oe_portal_tileref);
 
         let oe_portal = mass_collected.clonespawn_and_push_tile(
-            &mut cmd,
+            cmd,
             oe_portal_tileref,
             found_pos,
             oe_dim_ref,
@@ -528,86 +637,57 @@ pub fn instantiate_portal(//todo instanciar via macro
         );
         register_pos.exempt_entity_from_mindist_checks(oe_portal);
 
-        cmd.entity(our_end_portal)
+        cmd.entity(portal_ent)
             .try_insert(PortalTo::new(oe_portal))
             .try_remove::<(SearchingForSuitablePos, AwaitingStartSearch)>();
 
-        cmd.entity(oe_portal).try_remove::<(AwaitingStartSearch)>()
-        .try_insert(DeleteOtherTiles {
-            spared_z: HashSet::from_iter(vec![AcZ::new(-900.0)]),
-            extra_radius: 2,
-            ..Default::default()
-        })
-        ;
+        cmd.entity(oe_portal)
+            .try_remove::<(AwaitingStartSearch)>()
+            .try_insert(DeleteOtherTiles {
+                spared_z: HashSet::from_iter(vec![AcZ::new(-900.0)]),
+                extra_radius: 2,
+                ..Default::default()
+            });
 
-        if portal_template.one_way == false {
-            cmd.entity(oe_portal).try_insert(PortalTo::new(our_end_portal));
+        if portal_recipe.one_way == false {
+            cmd.entity(oe_portal).try_insert(PortalTo::new(portal_ent));
         }
 
-        debug!(target: PORTAL_INIT, "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_template.dest_dimension);
-    }; //end handle_success closure
+        debug!(target: PORTAL_INIT, "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_recipe.dest_dimension);
+        true
+    };
 
-    'successful_searches: for suitable_pos in mreader_search_successful.read() {
-        let ss_filtered_op_ent = suitable_pos.op_filter_ent;
-        if successful_searches.contains(&ss_filtered_op_ent) {
-            trace!(target: PORTAL_INIT, "Ignoring duplicate SuitablePosFound for studied_op_ent {:?}", ss_filtered_op_ent);
-            continue 'successful_searches;
-        }
-        let (portal_ent, my_pos, dim_ref, ezero_ref) =
-            if let Some(portal_ent) = searches_started_this_call.remove(&ss_filtered_op_ent) {
-                let Ok((_, &orig_dim_ref, &orig_pos, &orig_tile_ref, ..)) = portals.get(portal_ent) else {
-                    continue 'successful_searches;
-                };
-                (portal_ent, orig_pos, orig_dim_ref, orig_tile_ref)
-            } else if let Some((portal_ent, my_pos, dim_ref, ezero_ref)) = pending_by_filter.remove(&ss_filtered_op_ent) {
-                (portal_ent, my_pos, dim_ref, ezero_ref)
-            } else {
-                continue 'successful_searches;
-            };
-        let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
-            error!(target: PORTAL_INIT, "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", ss_filtered_op_ent, portal_ent, ezero_ref.0);
-            continue 'successful_searches;
-        };
-        let Some(portal_recipe) = portal_recipe_opt else {
-            error!(target: PORTAL_INIT, "SuitablePosFound for studied_op_ent {:?} but portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", ss_filtered_op_ent, portal_ent, ezero_ref.0);
-            continue 'successful_searches;
-        };
-        let portal_recipe = portal_recipe.clone();
-
-        successful_searches.insert(ss_filtered_op_ent);
-        info!(target: PORTAL_INIT,
-            "Found suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}, found pos: {:?}", str_id, portal_ent, dim_ref.0, my_pos, portal_recipe.dest_dimension, suitable_pos.found_pos
-        );
-        handle_success(
-            portal_ent,
-            &portal_recipe,
-            suitable_pos.found_pos,
-            ss_filtered_op_ent,
-        );
-        continue 'successful_searches;
-    }
-    for failed_search in mreader_search_failed.read() {
-        if successful_searches.contains(&failed_search.0) {
-            continue; //not actually a failed search!
-        }
-        if searches_started_this_call.remove(&failed_search.0).is_some() {
-            error!(target: PORTAL_INIT, "Failed to find suitable pos for a portal tile, {:?}", failed_search.0);
-            cmd.entity(failed_search.0).try_despawn();
-            continue;
-        }
-        if let Some((portal_ent, global_pos, dim_ref, tile_ref)) = pending_by_filter.remove(&failed_search.0) {
+    let handle_pending_failure = |portal_ent: Entity,
+                                      global_pos: GlobalTilePos,
+                                      dim_ref: DimensionRef,
+                                      tile_ref: EntityZeroRef,
+                                      failed_filter_ent: Entity| {
             let Ok((str_id, portal_template)) = ezero_query.get(tile_ref.0) else {
-                error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which no longer exists or has no StrId.", failed_search.0, portal_ent, tile_ref.0);
-                continue;
+                error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which no longer exists or has no StrId.", failed_filter_ent, portal_ent, tile_ref.0);
+                return;
             };
             let Some(portal_template) = portal_template else {
-                error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", failed_search.0, portal_ent, tile_ref.0);
-                continue;
+                error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", failed_filter_ent, portal_ent, tile_ref.0);
+                return;
             };
+
             error!(target: PORTAL_INIT,
                 "Failed to find suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}", str_id, portal_ent, dim_ref.0, global_pos, portal_template.dest_dimension
             );
-        }
-    }
-    ew_pos_search.write_batch(pos_searches_msgs_to_write.drain(..));
+        };
+
+    run_suitable_pos_search_logic!(
+        target: PORTAL_INIT,
+        searched_entity_label: "portal tile",
+        cmd: cmd,
+        searching_entities: portals,
+        search_params: search_params,
+        make_search_request: make_search_request,
+        handle_success_event: handle_success_event,
+        handle_pending_failure: handle_pending_failure,
+    );
+
+    search_params
+        .ew_pos_search
+        .write_batch(search_params.pos_searches_msgs_to_write.drain(..));
 }

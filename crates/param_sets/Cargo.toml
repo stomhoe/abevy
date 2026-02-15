@@ -4,21 +4,21 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# UNUSED (cargo-machete): common = { path = "../acommon" }
+#common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 being_shared = { path = "../being_shared" }
-# UNUSED (cargo-machete): sprite = { path = "../sprite" }
-# UNUSED (cargo-machete): sprite_shared = { path = "../sprite_shared" }
+#sprite = { path = "../sprite" }
+#sprite_shared = { path = "../sprite_shared" }
 tilemap_shared = { path = "../tilemap_shared" }
 
 bevy = { workspace = true }
 
-# UNUSED (cargo-machete): serde = { workspace = true }
-# UNUSED (cargo-machete): strum = { workspace = true }
-# UNUSED (cargo-machete): strum_macros = { workspace = true }
-# UNUSED (cargo-machete): bevy_simple_scroll_view = { workspace = true }
-# UNUSED (cargo-machete): bevy_ui_text_input = { workspace = true }
-# UNUSED (cargo-machete): bevy_replicon = { workspace = true }
+#serde = { workspace = true }
+#strum = { workspace = true }
+#strum_macros = { workspace = true }
+#bevy_simple_scroll_view = { workspace = true }
+#bevy_ui_text_input = { workspace = true }
+#bevy_replicon = { workspace = true }
 
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }

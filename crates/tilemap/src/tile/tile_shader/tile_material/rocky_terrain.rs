@@ -1,12 +1,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::{render::render_resource::AsBindGroup, shader::ShaderRef};
 use bevy_ecs_tilemap::prelude::MaterialTilemap;
-use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use serde::ser::SerializeStruct;
+use serde::{Serialize, Deserialize, };
 use bevy_inspector_egui::prelude::*;
 
-#[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions)]
-#[reflect(Default, InspectorOptions)] 
+#[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions, Deserialize, Serialize)]
+#[reflect(Default, InspectorOptions)]
 pub struct RockyTerrainMat {
     #[uniform(1)]#[inspector(min = 0.0, max = 1.0)]
     pub roughness: f32,
@@ -36,40 +35,7 @@ impl RockyTerrainMat {
     }
 }
 
-impl Serialize for RockyTerrainMat {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
-        let mut state = serializer.serialize_struct("RockyTerrainMat", 5)?;
-        state.serialize_field("roughness", &self.roughness)?;
-        state.serialize_field("scale", &self.scale)?;
-        state.serialize_field("height_scale", &self.height_scale)?;
-        state.serialize_field("color_base", &self.color_base)?;
-        state.serialize_field("color_shadow", &self.color_shadow)?;
-        state.end()
-    }
-}
 
-impl<'de> Deserialize<'de> for RockyTerrainMat {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer<'de> {
-        #[derive(Deserialize)]
-        struct RockyTerrainMatData {
-            roughness: f32,
-            scale: f32,
-            height_scale: f32,
-            color_base: Vec4,
-            color_shadow: Vec4,
-        }
-        let data = RockyTerrainMatData::deserialize(deserializer)?;
-        Ok(RockyTerrainMat {
-            roughness: data.roughness,
-            scale: data.scale,
-            height_scale: data.height_scale,
-            color_base: data.color_base,
-            color_shadow: data.color_shadow,
-        })
-    }
-}
 
 impl Default for RockyTerrainMat {
     fn default() -> Self {

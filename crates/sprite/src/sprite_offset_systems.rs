@@ -90,6 +90,8 @@ pub fn apply_offsets(
         } else{
             total_offset += offset.cloned().unwrap_or_default();
         }
-        transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
+        if transform.translation.xy() != total_offset.0 {
+            transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
+        }
     }
 }

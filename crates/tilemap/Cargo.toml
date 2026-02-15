@@ -7,10 +7,10 @@ edition = "2024"
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 camera = { path = "../camera" }
-# UNUSED (cargo-machete): player = { path = "../player" }
+#player = { path = "../player" }
 fnl ={ path = "../fnl" }
 tilemap_shared ={ path = "../tilemap_shared" }
-# UNUSED (cargo-machete): being_shared = { path = "../being_shared" }
+#being_shared = { path = "../being_shared" }
 sprite_shared = { path = "../sprite_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 sprite = { path = "../sprite" }
@@ -18,20 +18,20 @@ color_sampler = { path = "../color_sampler" }
 
 bevy = { workspace = true }
 serde = { workspace = true }
-# UNUSED (cargo-machete): tracing = { workspace = true }
-# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+#tracing = { workspace = true }
+#tracing-subscriber = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
-# UNUSED (cargo-machete): strum = { workspace = true }
+#strum = { workspace = true }
 strum_macros = { workspace = true }
 debug_unwraps = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
-# UNUSED (cargo-machete): rand_seeder = { workspace = true }
+#rand_seeder = { workspace = true }
 rand_pcg = { workspace = true }
-# UNUSED (cargo-machete): indexmap = { workspace = true }
-# UNUSED (cargo-machete): delegate = { workspace = true }
+#indexmap = { workspace = true }
+#delegate = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }
 bevy-inspector-egui = { workspace = true }
 bit-vec = { workspace = true }
@@ -40,4 +40,4 @@ avian2d = { workspace = true }
 
 noiz = { workspace = true }
 
-# UNUSED (cargo-machete): smallvec = { workspace = true }
+#smallvec = { workspace = true }

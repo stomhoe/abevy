@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
-# UNUSED (cargo-machete): game_common = { path = "../agame_common" }
+#game_common = { path = "../agame_common" }
 
 bevy = { workspace = true }
 nano-id = { workspace = true }

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_ecs_tilemap::map::TilemapId;
 use bevy_replicon::prelude::*;
 use common::{AppRegisterAndReplicateExt, common_states::*};
 
@@ -38,11 +39,10 @@ pub fn plugin(app: &mut App) {
             (tick_time_based_multipliers).in_set(SimRunningSystems),
             clone_ezero_children_ents,
             set_entity_name,
-            tick_despawn_timers.in_set(HostSystems),
-            tick_sim_despawn_timers
-                .in_set(HostSystems)
-                .in_set(SimRunningSystems),
-            //disable_ezeros,
+            (
+                tick_sim_despawn_timers.in_set(SimRunningSystems),
+                tick_despawn_timers,
+            ).in_set(HostSystems),
             despawn_sprites_without_childof,
         ),
     )
@@ -102,7 +102,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<EntityWeightedSampler>()
     .replicate::<Persisted>()
     .replicate::<ScaleHpAndStrengthWithSize>()
-    .replicate::<ChildOf>()
+    .replicate_filtered::<ChildOf, Without<TilemapId>>()
 
     .replicate_once::<GlobalTransform>()
     .replicate_once::<Transform>()

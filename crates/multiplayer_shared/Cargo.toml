@@ -5,16 +5,16 @@ edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
-# UNUSED (cargo-machete): tilemap = { path = "../tilemap" }
+#tilemap = { path = "../tilemap" }
 
 bevy = { workspace = true }
 serde = { workspace = true }
 
-# UNUSED (cargo-machete): debug_unwraps = { workspace = true }
-# UNUSED (cargo-machete): bevy_simple_scroll_view = { workspace = true }
-# UNUSED (cargo-machete): bevy_ui_text_input = { workspace = true }
+#debug_unwraps = { workspace = true }
+#bevy_simple_scroll_view = { workspace = true }
+#bevy_ui_text_input = { workspace = true }
 bevy_replicon = { workspace = true }
-# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
-# UNUSED (cargo-machete): indexmap = { workspace = true }
-# UNUSED (cargo-machete): tracing = { workspace = true }
-# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+#bevy_replicon_renet = { workspace = true }
+#indexmap = { workspace = true }
+#tracing = { workspace = true }
+#tracing-subscriber = { workspace = true }

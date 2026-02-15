@@ -90,7 +90,7 @@ impl AdjRetexConfig {
 
 
 
-#[derive(Component, Debug, Clone, )]
+#[derive(Component, Debug, Clone, Deserialize, Serialize, MapEntities)]
 pub struct PortalRecipe {
     #[entities]
     pub dest_dimension: Entity,
@@ -128,9 +128,8 @@ impl Default for PortalRecipe {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, )]
+#[derive(Component, Debug, Clone, Reflect, )]
 pub struct PortalTo {
-
     pub dest_portal: Entity,
 }
 impl PortalTo {

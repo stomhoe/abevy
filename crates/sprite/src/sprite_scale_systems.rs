@@ -88,7 +88,7 @@ pub fn apply_scales(
         if total_scale_vec2.x == 0.0 || total_scale_vec2.y == 0.0 {
             warn!("total_scale is zero for sprite entity");
         }
-        if total_scale_vec2 != Vec2::ZERO && total_scale_vec2 != transform.scale.xy() {
+        if total_scale_vec2.x > 0.0 && total_scale_vec2.y > 0.0 && total_scale_vec2 != transform.scale.xy() {
             transform.scale.x = total_scale_vec2.x;
             transform.scale.y = total_scale_vec2.y;
         }

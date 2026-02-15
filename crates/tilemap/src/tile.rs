@@ -70,15 +70,11 @@ pub fn plugin(app: &mut App) {
         plugin_tile,
         plugin_tile_weighted_sampler,
     ))
-
-
-
     .replicate::<MinDistancesMap>()
     .replicate::<BlocksProjectiles>()
 
     .replicate::<AdjRetexConfig>()
 
-    //.replicate::<Tile>()
     .replicate::<SpriteTile>()
     .replicate::<TileChildSprite>()
     .replicate::<TileImagePaths>()
@@ -89,7 +85,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<BlocksProjectiles>()
     .replicate::<WalkSpeedMultIfOnTop>()
     .replicate::<GlobalTilePos>()
-    .replicate::<PortalTo>()
 
 
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
@@ -97,7 +92,7 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
 
 
-    .replicate_filtered::<ChildOf, Or<(With<Tile>, Without<TilemapId>, )>>()
+    .replicate_filtered::<ChildOf, (Without<TilemapId>)>()
 
 
     .replicate_filtered::<ChildOf, With<EntityWeightedSampler>>()

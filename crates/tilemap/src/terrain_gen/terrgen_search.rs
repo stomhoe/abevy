@@ -1,4 +1,5 @@
-use bevy::{ecs::entity::EntityHashSet, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy::{ecs::entity::{EntityHashSet, EntityHashMap}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use game_common::game_common_components::EntityZeroRef;
 use std::f32::consts::PI;
 use crate::{terrain_gen::{terrgen_components::FailedSearchOplistFilterHolder, terrgen_messages::*, terrgen_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult}}};
 use ::tilemap_shared::*;
@@ -13,13 +14,35 @@ struct TerrGenSearchTaskInput {
 #[allow(unused_parens, )]
 pub struct SearchParams<'w, 's>
 {
-    ew_pos_search: MessageWriter<'w, TerrainProbe>,
-    reader_search_successful: MessageReader<'w, 's, SuitablePosFound>,
-    mreader_search_failed: MessageReader<'w, 's, SearchFailed>,
+    pub(crate) ew_pos_search: MessageWriter<'w, TerrainProbe>,
+    pub(crate) reader_search_successful: MessageReader<'w, 's, SuitablePosFound>,
+    pub(crate) mreader_search_failed: MessageReader<'w, 's, SearchFailed>,
+    pub(crate) successful_searches: Local<'s, EntityHashSet>,
+    pub(crate) searches_started_this_call: Local<'s, EntityHashMap<Entity>>,
+    pub(crate) pending_by_filter: Local<'s, EntityHashMap<(Entity, GlobalTilePos, DimensionRef, EntityZeroRef)>>,
+    pub(crate) pos_searches_msgs_to_write: Local<'s, Vec<TerrainProbe>>,
 }
 
+impl<'w, 's> SearchParams<'w, 's> {
+    pub fn read_successful(&mut self) -> impl Iterator<Item = &SuitablePosFound> + '_ {
+        self.reader_search_successful.read()
+    }
 
-#[derive(Component, Debug, Default, Copy, Clone)]
+    pub fn read_failed(&mut self) -> impl Iterator<Item = &SearchFailed> + '_ {
+        self.mreader_search_failed.read()
+    }
+
+    pub fn write_probes<I>(&mut self, probes: I)
+    where
+        I: IntoIterator<Item = TerrainProbe>,
+    {
+        self.ew_pos_search.write_batch(probes);
+    }
+
+}
+
+use serde::{Deserialize, Serialize};
+#[derive(Component, Debug, Default, Copy, Clone, Deserialize, Serialize)]
 pub struct AwaitingStartSearch;
 
 

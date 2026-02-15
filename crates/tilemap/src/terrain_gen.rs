@@ -80,6 +80,7 @@ pub fn plugin(app: &mut App) {
 
 
         .replicate::<GlobalGenSettings>()
+        .replicate::<terrgen_search::AwaitingStartSearch>()
 
         .add_message::<PendingOp>()
         .add_message::<TerrainProbe>().add_message::<SuitablePosFound>().add_message::<SearchFailed>()

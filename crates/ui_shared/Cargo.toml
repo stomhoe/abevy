@@ -5,12 +5,12 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
-# UNUSED (cargo-machete): bevy_simple_scroll_view = { workspace = true }
+#bevy_simple_scroll_view = { workspace = true }
 bevy_ui_text_input = { workspace = true }
-# UNUSED (cargo-machete): bevy_replicon = { workspace = true }
-# UNUSED (cargo-machete): bevy_replicon_renet = { workspace = true }
+#bevy_replicon = { workspace = true }
+#bevy_replicon_renet = { workspace = true }
 serde = { workspace = true }
-# UNUSED (cargo-machete): bevy-ui-gradients = { workspace = true }
-# UNUSED (cargo-machete): delegate = { workspace = true }
-# UNUSED (cargo-machete): tracing = { workspace = true }
-# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+#bevy-ui-gradients = { workspace = true }
+#delegate = { workspace = true }
+#tracing = { workspace = true }
+#tracing-subscriber = { workspace = true }

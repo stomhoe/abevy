@@ -13,17 +13,17 @@ bevy_ecs_tilemap = { workspace = true }
 bevy_replicon = { workspace = true }
 
 serde = { workspace = true }
-# UNUSED (cargo-machete): strum = { workspace = true }
-# UNUSED (cargo-machete): strum_macros = { workspace = true }
+#strum = { workspace = true }
+#strum_macros = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
-# UNUSED (cargo-machete): indexmap = { workspace = true }
-# UNUSED (cargo-machete): delegate = { workspace = true }
-# UNUSED (cargo-machete): tracing = { workspace = true }
-# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+#indexmap = { workspace = true }
+#delegate = { workspace = true }
+#tracing = { workspace = true }
+#tracing-subscriber = { workspace = true }
 rand = { workspace = true }
-# UNUSED (cargo-machete): rand_distr = { workspace = true }
-# UNUSED (cargo-machete): rand_seeder = { workspace = true }
-# UNUSED (cargo-machete): bevy-inspector-egui = { workspace = true }
-# UNUSED (cargo-machete): rand_pcg = { workspace = true }
+#rand_distr = { workspace = true }
+#rand_seeder = { workspace = true }
+#bevy-inspector-egui = { workspace = true }
+#rand_pcg = { workspace = true }
 paste = { workspace = true }

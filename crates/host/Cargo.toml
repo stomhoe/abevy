@@ -6,23 +6,23 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
-# UNUSED (cargo-machete): game = { path = "../game" }
+#game = { path = "../game" }
 multiplayer_shared = { path = "../multiplayer_shared" }
-# UNUSED (cargo-machete): sprite_shared = { path = "../sprite_shared" }
-# UNUSED (cargo-machete): tilemap = { path = "../tilemap" }
+#sprite_shared = { path = "../sprite_shared" }
+#tilemap = { path = "../tilemap" }
 faction = { path = "../faction" }
 player = { path = "../player" }
-# UNUSED (cargo-machete): being = { path = "../being" }
+#being = { path = "../being" }
 
 bevy = { workspace = true }
 
-# UNUSED (cargo-machete): debug_unwraps = { workspace = true }
+#debug_unwraps = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy_replicon_renet = { workspace = true }
-# UNUSED (cargo-machete): serde = { workspace = true }
+#serde = { workspace = true }
 bevy_asset_loader = { workspace = true }
-# UNUSED (cargo-machete): indexmap = { workspace = true }
-# UNUSED (cargo-machete): delegate = { workspace = true }
-# UNUSED (cargo-machete): tracing = { workspace = true }
-# UNUSED (cargo-machete): tracing-subscriber = { workspace = true }
+#indexmap = { workspace = true }
+#delegate = { workspace = true }
+#tracing = { workspace = true }
+#tracing-subscriber = { workspace = true }
 #
