@@ -6,13 +6,12 @@ use bevy::prelude::*;
 use bevy::{
     platform::collections::HashSet,
 };
-use common::{PORTAL_INIT, common_components::StrId};
+use common::PORTAL_INIT;
 
 use crate::{
-    run_suitable_pos_search_logic, terrain_gen::{
-        opfilter::opfilter_resources::OpFilterEntityMap,
-        terrain_probe::{terrain_probe_components::TerrainProbeTemplate, terrain_probe_resources::TerrainProbeTemplateEntityMap},
-        terrain_probe::terrain_probe_messages::TerrainProbe,
+    run_suitable_pos_search_logic, terrain::{
+        terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_resources::TerrProbeTemplEntityMap},
+        terrprobe::terrprobe_messages::TerrProbeJob,
         terrgen_search::{AwaitingStartSearch, SearchParams, },
     }, tile::{tile_components::*, tile_resources::*}, tilemap_resources::MassCollectedTiles
 };
@@ -46,7 +45,7 @@ pub fn map_portal_tiles(
         cmd.entity(ent).insert(PortalRecipe {
             dest_dimension: Entity::PLACEHOLDER,
             oe_portal_tile: tile_ent,
-            opfilter_id: StrId::trunc(&portal_seri.oe_opfilter),
+            terrprobe_ent: Entity::PLACEHOLDER,
             one_way: portal_seri.one_way.unwrap_or(false),
         });
     });
@@ -55,11 +54,11 @@ pub fn map_portal_tiles(
 #[allow(unused_parens)]
 pub fn validate_portal_recipes(
     mut cmd: Commands,
-    portal_recipes: Query<(Entity, &PortalRecipe), (Changed<PortalRecipe>)>,
+    mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>)>,
     dimension_query: Query<Option<&DimensionRootOplist>>,
-    opfilter_entity_map: Res<OpFilterEntityMap>,
+    terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
 ) {
-    for (ezero_portal, recipe) in portal_recipes.iter() {
+    for (ezero_portal, mut recipe, portal_seri_opt) in portal_recipes.iter_mut() {
         if recipe.dest_dimension == Entity::PLACEHOLDER {
             continue;
         }
@@ -71,11 +70,19 @@ pub fn validate_portal_recipes(
             error!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} references a Dimension that has no DimensionRootOplist.", recipe.dest_dimension);
             continue;
         };
-        if opfilter_entity_map.0.get_cloned(&recipe.opfilter_id).is_ok() {
-            debug!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} is valid with root oplist {:?} and opfilter '{}'.", recipe.dest_dimension, root_oplist, recipe.opfilter_id);
+        if recipe.terrprobe_ent == Entity::PLACEHOLDER
+            && let Some(portal_seri) = portal_seri_opt
+            && let Ok(ent) = terrprobe_entity_map.0.get_cloned(&portal_seri.oe_terrprobe)
+        {
+            recipe.terrprobe_ent = ent;
+        }
+
+        if recipe.terrprobe_ent != Entity::PLACEHOLDER {
+            debug!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} is valid with root oplist {:?} and terrprobe {:?}.", recipe.dest_dimension, root_oplist, recipe.terrprobe_ent);
             cmd.entity(ezero_portal).try_insert(AwaitingStartSearch);
         } else {
-            error!(target: PORTAL_INIT, "PortalRecipe references missing opfilter '{}' for dest_dimension entity {:?}", recipe.opfilter_id, recipe.dest_dimension);
+            let terrprobe_id = portal_seri_opt.map(|p| p.oe_terrprobe.as_str()).unwrap_or("<missing PortalSeri>");
+            error!(target: PORTAL_INIT, "PortalRecipe references missing terrprobe '{}' for dest_dimension entity {:?}", terrprobe_id, recipe.dest_dimension);
             cmd.entity(ezero_portal).try_remove::<AwaitingStartSearch>();
         }
     }
@@ -98,16 +105,14 @@ pub fn instantiate_portal(
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut register_pos: ResMut<ImportantRegisteredPositions>,
     clone_spawn_param_set: CloneSpawnParamSet,
-    opfilter_entity_map: Res<OpFilterEntityMap>,
-    terrain_probe_entity_map: Res<TerrainProbeTemplateEntityMap>,
-    terrain_probe_query: Query<&TerrainProbeTemplate>,
+    terrprobe_query: Query<&TerrProbeTempl>,
     mut search_params: SearchParams,
 ) {
     let make_search_request = |_cmd: &mut Commands,
                                portal_ent: Entity,
                                global_pos: GlobalTilePos,
                                ezero_ref: EntityZeroRef|
-     -> Option<TerrainProbe> {
+     -> Option<TerrProbeJob> {
         let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
             error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, ezero_ref.0);
             return None;
@@ -116,31 +121,16 @@ pub fn instantiate_portal(
             error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, ezero_ref.0);
             return None;
         };
-        let op_filter_ent = match opfilter_entity_map.0.get_cloned(&portal_recipe.opfilter_id) {
-            Ok(ent) => ent,
-            Err(_) => {
-                error!(
-                    target: PORTAL_INIT,
-                    "Portal tile '{}' references missing opfilter '{}'",
-                    str_id,
-                    portal_recipe.opfilter_id
-                );
-                return None;
-            }
-        };
-        let Ok(probe_template_ent) = terrain_probe_entity_map.0.get_cloned("standard_spiral") else {
-            error!(target: PORTAL_INIT, "Missing TerrainProbe template 'standard_spiral'");
+        let probe_template_ent = portal_recipe.terrprobe_ent;
+        if probe_template_ent == Entity::PLACEHOLDER {
+            error!(target: PORTAL_INIT, "Portal tile '{}' has no terrprobe_ent resolved", str_id);
+            return None;
+        }
+        let Ok(probe_template) = terrprobe_query.get(probe_template_ent) else {
+            error!(target: PORTAL_INIT, "TerrainProbe template entity {:?} missing TerrProbeTempl", probe_template_ent);
             return None;
         };
-        let Ok(probe_template) = terrain_probe_query.get(probe_template_ent) else {
-            error!(target: PORTAL_INIT, "TerrainProbe template entity {:?} missing component", probe_template_ent);
-            return None;
-        };
-        let probe = probe_template.to_probe_with_filter(
-            DimensionRef(portal_recipe.dest_dimension),
-            global_pos,
-            op_filter_ent,
-        );
+        let probe = probe_template.to_probe(probe_template_ent, DimensionRef(portal_recipe.dest_dimension), global_pos);
         Some(probe)
     };
 

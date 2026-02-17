@@ -91,7 +91,7 @@ pub enum NoiseCombineOp {
 pub struct DebugNoiseWorkshopState {
     pub selected_noises: Vec<Entity>,
     pub per_noise_subtract: HashMap<Entity, f32>,
-    pub original_noises: HashMap<Entity, tilemap::terrain_gen::terrgen_components::FnlNoiseComp>,
+    pub original_noises: HashMap<Entity, tilemap::terrain::terrgen_components::FnlNoiseComp>,
     pub combine_op: NoiseCombineOp,
     pub threshold_enabled: bool,
     pub threshold: f32,

@@ -3,8 +3,8 @@ use ::game_common::{game_common_components::*, };
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
-use bevy::prelude::*;
 use bevy::{
+    prelude::*,
     ecs::entity::{EntityHashMap, EntityHashSet},
     platform::collections::HashSet,
 };

@@ -3,10 +3,10 @@
 
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
-use common::{common_components::{Prefix, StrId}, common_tag_components::TagSet};
+use common::{common_components::{ StrId}, common_tag_components::TagSet};
 
 use crate::{
-    terrain_gen::{
+    terrain::{
         operation_list::operation_list_components::{Bifurcation, CompiledBranch, CompiledBranchNode, OperationList},
         operation_list::operation_list_resources::{EguiOperationListsHolder, OpListSeri, OpListSerisHandles, OperationListEntityMap},
         terrgen_components::FailedSearchOplistFilterHolder,
@@ -254,7 +254,7 @@ pub fn init_oplists_bifurcations(
         }
     }
 
-    let mut snapshots: HashMap<Entity, (crate::terrain_gen::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)> =
+    let mut snapshots: HashMap<Entity, (crate::terrain::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)> =
         HashMap::new();
     for (ent, oplist, &size) in oplist_query.iter() {
         snapshots.insert(ent, (oplist.expr_tree.clone(), oplist.bifurcations.clone(), size));
@@ -274,7 +274,7 @@ pub fn init_oplists_bifurcations(
 
 fn compile_branch_node(
     ent: Entity,
-    snapshots: &HashMap<Entity, (crate::terrain_gen::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)>,
+    snapshots: &HashMap<Entity, (crate::terrain::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)>,
     cache: &mut HashMap<Entity, CompiledBranchNode>,
     stack: &mut HashSet<Entity>,
 ) -> Option<CompiledBranchNode> {

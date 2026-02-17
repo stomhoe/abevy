@@ -7,16 +7,16 @@ use modifier::{modifier_components::*, modifier_move_bundles::SpeedModifier,};
 use player::player_components::*;
 use tilemap::{
     chunking::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings},
-    terrain_gen::{
-        terrain_probe::{terrain_probe_components::TerrainProbeTemplate, terrain_probe_resources::TerrainProbeTemplateEntityMap},
+    terrain::{
+        terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_resources::TerrProbeTemplEntityMap},
     },
 };
 
 use bevy::prelude::*;
 use tilemap::{
     run_oneshot_suitable_pos_search_logic,
-    terrain_gen::{
-        terrain_probe::terrain_probe_messages::TerrainProbe,
+    terrain::{
+        terrprobe::terrprobe_messages::TerrProbeJob,
         terrgen_search::SearchParams,
     },
 };
@@ -98,31 +98,31 @@ pub fn host_on_player_added(mut cmd: Commands,
 pub fn find_common_player_spawn_origin(
     mut cmd: Commands,
     dimension_entity_map: Res<DimensionEntityMap>,
-    terrain_probe_entity_map: Res<TerrainProbeTemplateEntityMap>,
-    terrain_probe_query: Query<&TerrainProbeTemplate>,
+    terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
+    terrprobe_query: Query<&TerrProbeTempl>,
     mut search_params: SearchParams,
-    mut active_filter_ent: Local<Option<Entity>>,
+    mut active_probe_ent: Local<Option<Entity>>,
     mut search_finished: Local<bool>,
 ) {
-    let make_search_request = |_cmd: &mut Commands| -> Option<TerrainProbe> {
+    let make_search_request = |_cmd: &mut Commands| -> Option<TerrProbeJob> {
         let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
             warn!(target: GAME_INIT, "Overworld dimension '{}' not in DimensionEntityMap yet", Dimension::overworld());
             return None;
         };
 
-        let Ok(probe_template_ent) = terrain_probe_entity_map.0.get_cloned("standard_sun") else {
-            warn!(target: GAME_INIT, "TerrainProbe template 'standard_sun' not in TerrainProbeTemplateEntityMap yet");
+        let Ok(probe_template_ent) = terrprobe_entity_map.0.get_cloned("sun_land_search") else {
+            warn!(target: GAME_INIT, "TerrainProbe template 'sun_land_search' not in TerrainProbeTemplateEntityMap yet");
             return None;
         };
-        let Ok(probe_template) = terrain_probe_query.get(probe_template_ent) else {
-            warn!(target: GAME_INIT, "TerrainProbe template entity {:?} missing TerrainProbeTemplate", probe_template_ent);
+        let Ok(probe_template) = terrprobe_query.get(probe_template_ent) else {
+            warn!(target: GAME_INIT, "TerrainProbe template entity {:?} missing TerrProbeTempl", probe_template_ent);
             return None;
         };
-        Some(probe_template.to_probe(DimensionRef(ow_dimension), GlobalTilePos::default()))
+        Some(probe_template.to_probe(probe_template_ent, DimensionRef(ow_dimension), GlobalTilePos::default()))
     };
     let handle_success = |cmd: &mut Commands,
                               found_pos: GlobalTilePos,
-                              filtered_op_ent: Entity,
+                              requester: Entity,
                               _sampled_val: f32|
      -> bool {
         let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
@@ -145,7 +145,7 @@ pub fn find_common_player_spawn_origin(
         searched_label: "common character spawn origin",
         cmd: cmd,
         search_params: search_params,
-        active_filter_ent: active_filter_ent,
+        active_probe_ent: active_probe_ent,
         search_finished: search_finished,
         make_search_request: make_search_request,
         handle_success: handle_success,

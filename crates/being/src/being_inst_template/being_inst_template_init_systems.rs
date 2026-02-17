@@ -17,7 +17,6 @@ pub fn init_being_templates(
     mut cmd: Commands,
     mut seris_handles: ResMut<BitSerisHandles>,
     mut assets: ResMut<Assets<BitSeri>>,
-    sc_emap: Res<SpriteConfigEntityMap>,
     race_emap: Option<Res<RaceEntityMap>>,
     faction_emap: Option<Res<FactionEntityMap>>,
     bit_map: Res<BeingInstTemplateEntityMap>,

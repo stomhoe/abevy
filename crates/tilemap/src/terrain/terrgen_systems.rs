@@ -6,10 +6,10 @@ use std::{collections::HashSet, mem::take};
 
 use crate::{
     chunking::chunking_components::*,
-    terrain_gen::{
+    terrain::{
         opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
-        terrain_probe::terrain_probe_messages::SuitablePosFound,
+        terrprobe::terrprobe_messages::SuitablePosFound,
         terrgen_components::*,
         terrgen_messages::PendingOp,
         terrgen_resources::*,
@@ -18,10 +18,10 @@ use crate::{
 };
 use ::tilemap_shared::*;
 
-pub use crate::terrain_gen::terrgen_search::search_suitable_positions;
+pub use crate::terrain::terrgen_search::search_suitable_positions;
 
 #[allow(unused_parens)]
-pub fn launch_terrain_gen_operations(
+pub fn launch_terrain_operations(
     mut commands: Commands,
     chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<ReadyForTerrgen>)>,
     dimension_query: Query<(&DimensionRootOplist), ()>,
@@ -362,6 +362,7 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
                     dimension_ref: work.dim_ref,
                     gpos,
                     filtered_op: Entity::PLACEHOLDER,
+                    requester: Entity::PLACEHOLDER,
                     max_emitted_results: 0,
                 });
             }
@@ -385,10 +386,10 @@ fn process_pending_ops_batch(
     gen_settings: GlobalGenSettings,
     capture_debug: bool,
 ) -> TerrGenOpTaskResult {
-    use crate::terrain_gen::terrgen_expression::EvalContext;
+    use crate::terrain::terrgen_expression::EvalContext;
     let mut result = TerrGenOpTaskResult::default();
     let mut pending_queue = pending_ops;
-    let mut emitted_per_filter: EntityHashMap<u16> = EntityHashMap::new();
+    let mut emitted_per_probe: EntityHashMap<u16> = EntityHashMap::new();
 
     while let Some(ev) = pending_queue.pop() { unsafe {
         if !context.oplists.contains_key(&ev.oplist.0) {
@@ -429,7 +430,7 @@ fn process_pending_ops_batch(
                 dimension_hash,
                 filter,
                 has_filter,
-                &mut emitted_per_filter,
+                &mut emitted_per_probe,
                 &mut result,
                 capture_debug,
             );
@@ -485,10 +486,10 @@ fn process_pending_ops_batch(
                 && filter.op_i.map_or(true, |op_i| destination_i == op_i as usize)
                 && (filter.min_val..=filter.max_val).contains(&output_value)
             {
-                let emitted = emitted_per_filter.entry(ev.filtered_op).or_insert(0);
+                let emitted = emitted_per_probe.entry(ev.requester).or_insert(0);
                 if *emitted < ev.max_emitted_results {
                     result.sampled_value_events.push(SuitablePosFound {
-                        op_filter_ent: ev.filtered_op,
+                        requester: ev.requester,
                         val: output_value,
                         found_pos: frame.gpos,
                     });
@@ -506,6 +507,7 @@ fn process_pending_ops_batch(
                         dimension_ref: ev.dimension_ref,
                         gpos: frame.gpos,
                         filtered_op: ev.filtered_op,
+                        requester: ev.requester,
                         max_emitted_results: ev.max_emitted_results,
                     },
                     oplist_size: frame.oplist_size,
@@ -540,11 +542,11 @@ fn process_compiled_branch_node(
     dimension_hash: HashId,
     filter: Option<&OpFilter>,
     has_filter: bool,
-    emitted_per_filter: &mut EntityHashMap<u16>,
+    emitted_per_probe: &mut EntityHashMap<u16>,
     result: &mut TerrGenOpTaskResult,
     capture_debug: bool,
 ) {
-    use crate::terrain_gen::terrgen_expression::EvalContext;
+    use crate::terrain::terrgen_expression::EvalContext;
 
     if node.branches.is_empty() {
         return;
@@ -586,10 +588,10 @@ fn process_compiled_branch_node(
         && filter.op_i.map_or(true, |op_i| destination_i == op_i as usize)
         && (filter.min_val..=filter.max_val).contains(&output_value)
     {
-        let emitted = emitted_per_filter.entry(source_ev.filtered_op).or_insert(0);
+        let emitted = emitted_per_probe.entry(source_ev.requester).or_insert(0);
         if *emitted < source_ev.max_emitted_results {
             result.sampled_value_events.push(SuitablePosFound {
-                op_filter_ent: source_ev.filtered_op,
+                requester: source_ev.requester,
                 val: output_value,
                 found_pos: gpos,
             });
@@ -607,6 +609,7 @@ fn process_compiled_branch_node(
                 dimension_ref: source_ev.dimension_ref,
                 gpos,
                 filtered_op: source_ev.filtered_op,
+                requester: source_ev.requester,
                 max_emitted_results: source_ev.max_emitted_results,
             },
             oplist_size,
@@ -630,7 +633,7 @@ fn process_compiled_branch_node(
                     dimension_hash,
                     filter,
                     has_filter,
-                    emitted_per_filter,
+                    emitted_per_probe,
                     result,
                     capture_debug,
                 );
@@ -651,7 +654,7 @@ fn process_compiled_branch_node(
                         dimension_hash,
                         filter,
                         has_filter,
-                        emitted_per_filter,
+                        emitted_per_probe,
                         result,
                         capture_debug,
                     );

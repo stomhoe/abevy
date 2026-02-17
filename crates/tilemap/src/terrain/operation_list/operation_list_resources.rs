@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::terrain_gen::operation_list::operation_list_components::OperationList;
+use crate::terrain::operation_list::operation_list_components::OperationList;
 
 common::define_entity_map_systems!(
     OperationList,
@@ -29,7 +29,7 @@ pub struct OpListSeri {
     pub bifs: Vec<(String, Vec<String>)>,
     pub size: Option<[u32; 2]>,
     /// Expression tree representation (slot-free system)
-    pub expr_tree: crate::terrain_gen::terrgen_expression::ExprOpList,
+    pub expr_tree: crate::terrain::terrgen_expression::ExprOpList,
 }
 impl OpListSeri {
     pub fn is_root(&self) -> bool {

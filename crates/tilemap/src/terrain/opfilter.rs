@@ -4,7 +4,7 @@ pub mod opfilter_resources;
 
 use bevy::prelude::*;
 use common::common_states::AssetLoading;
-use crate::terrain_gen::{TerrainGenSystems, opfilter::{
+use crate::terrain::{TerrainGenSystems, opfilter::{
     opfilter_components::*, opfilter_init_systems::*, opfilter_resources::*
 }};
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -16,8 +16,8 @@ pub fn plugin(app: &mut App) {
         plugin_op_filter
     ))
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-        init_opfilters, map_op_filter_id_to_entity,
-    ).in_set(OpfilterSystems))
+        (init_opfilters, map_op_filter_id_to_entity,)
+    ).chain().in_set(OpfilterSystems))
 
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities),
         OpfilterSystems.before(TerrainGenSystems)

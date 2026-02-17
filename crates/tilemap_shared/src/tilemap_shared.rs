@@ -259,7 +259,7 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
 pub struct WalkSpeedMultIfOnTop(pub f32); //1.0 es velocidad normal
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct SearchingForSuitablePos { pub filtered_op_ent: Entity, }
+pub struct SearchingForSuitablePos { pub requester: Entity, }
 
 
 #[derive(Message, Debug, Clone, Copy, Hash, PartialEq, Eq)]

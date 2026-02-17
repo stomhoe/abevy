@@ -9,4 +9,4 @@ pub mod tilemap_resources;
 
 pub mod regioning;
 pub mod tile;
-pub mod terrain_gen;
+pub mod terrain;

@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use common::common_components::{HashId, StrId};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, };
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::terrain_gen::operation_list::operation_list_resources::{OpListSeri, OpListSerisHandles};
-use crate::terrain_gen::terrgen_expression::{Assignment, Expr, ExprOpList};
+use crate::terrain::operation_list::operation_list_resources::{OpListSeri, OpListSerisHandles};
+use crate::terrain::terrgen_expression::{Assignment, Expr, ExprOpList};
 
 #[allow(unused_parens)]
 pub fn load_tg_oplists(

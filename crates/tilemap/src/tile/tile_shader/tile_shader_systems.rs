@@ -14,7 +14,7 @@ pub fn add_image_handle_to_tile_shader(
             tile_shader.set_image_handle(image_handle);
         } else if let Some(multiple_img_path) = multiple_img_path {
             let paths = multiple_img_path.paths();
-            let handles: Vec<Handle<Image>> = paths.iter().map(|path| asset_server.load(path)).collect();
+            let _handles: Vec<Handle<Image>> = paths.iter().map(|path| asset_server.load(path)).collect();
             todo!("Implement multiple image handling");
             //tile_shader.set_multiple_image_handles(handles);
 

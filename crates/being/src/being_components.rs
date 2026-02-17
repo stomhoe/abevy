@@ -1,6 +1,6 @@
 use ::being_shared::*;
 use bevy::{ecs::entity::{EntityHashSet, MapEntities}, platform::collections::HashMap, prelude::*};
-use bevy_replicon::prelude::{ClientState, Replicated};
+use bevy_replicon::prelude::{ Replicated};
 
 use modifier::modifier_components::AppliedModifiers;
 use movement::movement_components::*;

@@ -18,7 +18,7 @@ pub struct Bifurcation{
 #[component(map_entities)]
 pub struct OperationList {
     /// Expression tree representation (slot-free runtime system)
-    pub expr_tree: crate::terrain_gen::terrgen_expression::ExprOpList,
+    pub expr_tree: crate::terrain::terrgen_expression::ExprOpList,
     /// Variable names to keep in runtime debug capture for this oplist.
     pub hash_ids_mapped_to_strids: HashIdMap<StrId>,
     pub bifurcations: Vec<Bifurcation>,
@@ -30,9 +30,9 @@ pub struct OperationList {
 impl Default for OperationList {
     fn default() -> Self {
         Self {
-            expr_tree: crate::terrain_gen::terrgen_expression::ExprOpList {
+            expr_tree: crate::terrain::terrgen_expression::ExprOpList {
                 assignments: Vec::new(),
-                output: crate::terrain_gen::terrgen_expression::Expr::Literal(0.0),
+                output: crate::terrain::terrgen_expression::Expr::Literal(0.0),
             },
             hash_ids_mapped_to_strids: HashIdMap::default(),
             bifurcations: Vec::new(),
@@ -60,7 +60,7 @@ impl MapEntities for OperationList {
 #[derive(Debug, Clone)]
 pub struct CompiledBranchNode {
     pub source_oplist: Entity,
-    pub expr_tree: crate::terrain_gen::terrgen_expression::ExprOpList,
+    pub expr_tree: crate::terrain::terrgen_expression::ExprOpList,
     pub branches: Vec<CompiledBranch>,
 }
 
@@ -72,10 +72,10 @@ pub struct CompiledBranch {
 }
 
 fn map_expr_entities<E: EntityMapper>(
-    expr: &mut crate::terrain_gen::terrgen_expression::Expr,
+    expr: &mut crate::terrain::terrgen_expression::Expr,
     entity_mapper: &mut E,
 ) {
-    use crate::terrain_gen::terrgen_expression::Expr;
+    use crate::terrain::terrgen_expression::Expr;
     match expr {
         Expr::Noise { entity, .. } => {
             *entity = entity_mapper.get_mapped(*entity);

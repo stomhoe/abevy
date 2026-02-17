@@ -4,7 +4,7 @@ use common::{common_components::*, common_tag_components::HashedTagsVec};
 
 use std::{f32::{INFINITY, NEG_INFINITY}, mem::take};
 
-use crate::terrain_gen::opfilter::{
+use crate::terrain::opfilter::{
     opfilter_components::OpFilter,
     opfilter_resources::{EguiOpFiltersHolder, OpFilterEntityMap, OpFilterSeri, OpFilterSerisHandles},
 };

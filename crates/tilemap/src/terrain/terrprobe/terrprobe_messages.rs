@@ -1,35 +1,30 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 use ::tilemap_shared::*;
 
 #[derive(Message, Debug, Clone)]
-pub struct TerrainProbe {
+pub struct TerrProbeJob {
+    pub requester: Entity,
     pub dimension_ref: DimensionRef,
     pub search_start_pos: GlobalTilePos,
-    pub opfilter_ent: Entity,
-    pub probe_pattern: ProbePattern,
-    pub step_size: u16,
+    pub templ_ent: Entity,
+    pub min_result_distance: u16,
     pub curr_iteration_batch_i: i16,
-    pub max_batches: u16,
-    pub iterations_per_batch: u16,
-    pub max_emitted_results: u16,
 }
-impl Default for TerrainProbe {
+impl Default for TerrProbeJob {
     fn default() -> Self {
-        TerrainProbe {
+        TerrProbeJob {
+            requester: Entity::PLACEHOLDER,
             dimension_ref: DimensionRef(Entity::PLACEHOLDER),
             search_start_pos: GlobalTilePos::default(),
-            probe_pattern: ProbePattern::spiral(GlobalTilePos::default()),
-            step_size: 1,
+            templ_ent: Entity::PLACEHOLDER,
+            min_result_distance: 0,
             curr_iteration_batch_i: 0,
-            max_batches: 1000,
-            iterations_per_batch: 10000,
-            opfilter_ent: Entity::PLACEHOLDER,
-            max_emitted_results: 1,
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ProbePattern {
     Radial(Option<f32>),
     /// curr_length_in_dir, steps_taken, dir_vec, pos, turn parity
@@ -44,7 +39,7 @@ impl ProbePattern {
 
 #[derive(Debug, Clone, Message)]
 pub struct SuitablePosFound {
-    pub op_filter_ent: Entity,
+    pub requester: Entity,
     pub val: f32,
     pub found_pos: GlobalTilePos,
 }

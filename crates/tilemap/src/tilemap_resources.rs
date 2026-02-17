@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::{tiles::*};
 use bevy_replicon::prelude::Replicated;
 use common::{common_components::HashId};
 
-use crate::{terrain_gen::terrgen_messages::PendingOp, tile::tile_bundles::* };
+use crate::{terrain::terrgen_messages::PendingOp, tile::tile_bundles::* };
 use crate::tile::{tile_components::*, };
 
 use ::tilemap_shared::*;

@@ -2,8 +2,8 @@
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task};
 use common::common_components::{HashId, HashIdMap};
 
-use crate::terrain_gen::{
-    terrain_probe::terrain_probe_messages::{SuitablePosFound, TerrainProbe},
+use crate::terrain::{
+    terrprobe::terrprobe_messages::{SuitablePosFound, TerrProbeJob},
     terrgen_components::Terrgen,
     terrgen_messages::PendingOp,
 };
@@ -44,7 +44,7 @@ pub struct TerrGenOpTaskResult {
 #[derive(Debug, Default)]
 pub struct TerrGenSearchTaskResult {
     pub new_pending_ops: Vec<PendingOp>,
-    pub new_pos_searches: Vec<TerrainProbe>,
+    pub new_pos_searches: Vec<TerrProbeJob>,
     pub search_failed: Vec<Entity>,
 }
 

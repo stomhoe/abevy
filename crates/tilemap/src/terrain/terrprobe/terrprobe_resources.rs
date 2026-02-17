@@ -1,18 +1,18 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::terrain_gen::terrain_probe::terrain_probe_components::ProbePatternSeri;
-use crate::terrain_gen::terrain_probe::terrain_probe_components::TerrainProbeTemplate;
+use crate::terrain::terrprobe::terrprobe_components::ProbePatternSeri;
+use crate::terrain::terrprobe::terrprobe_components::TerrProbeTempl;
 
 common::define_entity_map_systems!(
-    TerrainProbeTemplate,
+    TerrProbeTempl,
     (),
-    TerrainProbeTemplate,
-    "terrain_probe",
-    "terrain_probe",
-    TerrainProbeTemplate,
+    Tpt,
+    "terrprobe",
+    "terrprobe",
+    TerrProbeTempl,
     common::common_components::StrId,
-    TerrainProbeSeri, "ron/tilemap/terrgen/probe", "probe.ron",
+    TerrainProbeSeri, "ron/tilemap/terrgen/probe", "tpt.ron",
 );
 
 #[derive(Deserialize, Asset, TypePath)]
@@ -24,4 +24,5 @@ pub struct TerrainProbeSeri {
     pub max_batches: Option<u16>,
     pub iterations_per_batch: Option<u16>,
     pub max_emitted_results: Option<u16>,
+    pub min_result_distance: Option<u16>,
 }

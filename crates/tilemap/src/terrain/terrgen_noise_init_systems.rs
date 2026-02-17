@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use fnl::*;
 use common::common_components::{DisplayName, Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
-use crate::terrain_gen::{terrgen_components::*, terrgen_resources::*, TerrgenEntityMap};
+use crate::terrain::{terrgen_components::*, terrgen_resources::*, TerrgenEntityMap};
 use std::mem::take;
 
 #[allow(unused_parens)]

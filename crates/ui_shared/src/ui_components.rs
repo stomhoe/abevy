@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy_ui_text_input::*;
 
 use crate::ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED};
-use serde::{Deserialize, Serialize};
 
 #[derive(Component, Default, Clone)]
 #[require(ButtonBackgroundStyle)]//meter más subestilos en el futuro
@@ -33,11 +32,11 @@ impl ButtonBackgroundStyle {
         hovered: Option<Color>,
         pressed: Option<Color>,
     ) -> Self {
-        
+
         let hovered_color = hovered
         .or_else(|| normal.map(|c| c.mix(&Color::WHITE, 0.3)))
         .unwrap_or(BUTTON_BG_HOVERED);
-    
+
         let pressed_color = pressed
         .or_else(|| normal.map(|c| c.mix(&Color::BLACK, 0.3)))
         .unwrap_or(BUTTON_BG_PRESSED);
@@ -62,4 +61,3 @@ impl Default for ButtonBackgroundStyle {
         }
     }
 }
-

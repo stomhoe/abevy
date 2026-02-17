@@ -2,7 +2,7 @@
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use ::tilemap_shared::*;
-use crate::terrain_gen::{
+use crate::terrain::{
     operation_list::{
         operation_list_components::*,
         operation_list_init_systems::*,
@@ -25,7 +25,7 @@ pub mod terrgen_messages;
 pub mod terrgen_expression;
 pub mod terrgen_search;
 pub mod opfilter;
-pub mod terrain_probe;
+pub mod terrprobe;
 pub use operation_list::operation_list_components;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -34,7 +34,7 @@ pub struct TerrainGenSystems;
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app
-        .add_systems(Update, launch_terrain_gen_operations.in_set(TerrainGenSystems))
+        .add_systems(Update, launch_terrain_operations.in_set(TerrainGenSystems))
         .add_systems(Update, process_pending_ops_and_collect_tiles.in_set(TerrainGenSystems))
         .add_systems(Update, search_suitable_positions.run_if(in_state(ClientState::Disconnected)))
 
@@ -61,7 +61,7 @@ pub fn plugin(app: &mut App) {
             plugin_terrgen,
             operation_list::plugin,
             opfilter::plugin,
-            terrain_probe::plugin,
+            terrprobe::plugin,
         ))
         .replicate::<FnlNoiseComp>()
 

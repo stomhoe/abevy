@@ -94,18 +94,9 @@ pub struct PortalRecipe {
     pub dest_dimension: Entity,
     #[entities]
     pub oe_portal_tile: Entity,
-    pub opfilter_id: StrId,
+    #[entities]
+    pub terrprobe_ent: Entity,
     pub one_way: bool,
-}
-impl Default for PortalRecipe {
-    fn default() -> Self {
-        Self {
-            dest_dimension: Entity::PLACEHOLDER,
-            oe_portal_tile: Entity::PLACEHOLDER,
-            opfilter_id: StrId::default(),
-            one_way: false,
-        }
-    }
 }
 
 #[derive(Component, Debug, Clone, Reflect, )]

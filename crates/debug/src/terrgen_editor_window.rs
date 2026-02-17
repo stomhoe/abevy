@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use bevy::math::Vec3Swizzles;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 
-use tilemap::terrain_gen::terrgen_components::{FnlNoiseComp, Terrgen};
-use tilemap::terrain_gen::operation_list_components::OperationList;
-use tilemap::terrain_gen::terrgen_expression::Expr;
+use tilemap::terrain::terrgen_components::{FnlNoiseComp, Terrgen};
+use tilemap::terrain::operation_list_components::OperationList;
+use tilemap::terrain::terrgen_expression::Expr;
 use camera::camera_components::CameraTarget;
 use common::common_components::HashId;
 use tilemap_shared::{DimensionRef, GlobalGenSettings, GlobalTilePos};

@@ -1,9 +1,10 @@
 use bevy::{ecs::entity::{EntityHashSet, EntityHashMap}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use game_common::game_common_components::EntityZeroRef;
 use std::f32::consts::PI;
-use crate::terrain_gen::{
+use crate::terrain::{
     opfilter::opfilter_components::OpFilter,
-    terrain_probe::terrain_probe_messages::*,
+    terrprobe::terrprobe_components::TerrProbeTempl,
+    terrprobe::terrprobe_messages::*,
     terrgen_components::FailedSearchOplistFilterHolder,
     terrgen_messages::PendingOp,
     terrgen_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult},
@@ -12,7 +13,8 @@ use ::tilemap_shared::*;
 
 #[derive(Clone)]
 struct TerrGenSearchTaskInput {
-    probe: TerrainProbe,
+    probe: TerrProbeJob,
+    templ: Option<TerrProbeTempl>,
     opfilter: Option<OpFilter>,
     root_oplist: Option<DimensionRootOplist>,
 }
@@ -21,11 +23,12 @@ struct TerrGenSearchTaskInput {
 #[allow(unused_parens, )]
 pub struct SearchParams<'w, 's>
 {
-    pub ew_pos_search: MessageWriter<'w, TerrainProbe>,
+    pub ew_pos_search: MessageWriter<'w, TerrProbeJob>,
     pub reader_search_successful: MessageReader<'w, 's, SuitablePosFound>,
     pub mreader_search_failed: MessageReader<'w, 's, SearchFailed>,
-    pub pending_by_filter: Local<'s, EntityHashMap<Vec<(Entity, GlobalTilePos, DimensionRef, EntityZeroRef)>>>,
-    pub pos_searches_msgs_to_write: Local<'s, Vec<TerrainProbe>>,
+    pub pending_by_requester: Local<'s, EntityHashMap<Vec<(Entity, GlobalTilePos, DimensionRef, EntityZeroRef)>>>,
+    pub min_result_distance_by_requester: Local<'s, EntityHashMap<u64>>,
+    pub pos_searches_msgs_to_write: Local<'s, Vec<TerrProbeJob>>,
 }
 
 impl<'w, 's> SearchParams<'w, 's> {
@@ -39,7 +42,7 @@ impl<'w, 's> SearchParams<'w, 's> {
 
     pub fn write_probes<I>(&mut self, probes: I)
     where
-        I: IntoIterator<Item = TerrainProbe>,
+        I: IntoIterator<Item = TerrProbeJob>,
     {
         self.ew_pos_search.write_batch(probes);
     }
@@ -58,21 +61,22 @@ pub struct AwaitingStartSearch;
 //input: PosSearch messages. output: SearchFailed or SuitablePosFound(emitted in produce_tiles)
 pub fn search_suitable_positions(
     mut cmd: Commands,
-    mut terrain_probe: ResMut<Messages<TerrainProbe>>, mut mwriter_search_failed: MessageWriter<SearchFailed>,
+    mut terrain_probe: ResMut<Messages<TerrProbeJob>>, mut mwriter_search_failed: MessageWriter<SearchFailed>,
     mut mwriter_pending_ops: MessageWriter<PendingOp>, mut mreader_suitable_pos_found: MessageReader<SuitablePosFound>,
+    terrprobe_query: Query<&TerrProbeTempl>,
     studied_ops: Query<&OpFilter, ( )>,
     dimensions_query: Query<&DimensionRootOplist>,
     failed_search_oplist_filter_holder: Query<Entity, (With<FailedSearchOplistFilterHolder>)>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
     mut found_suitable_positions: Local<EntityHashSet>,
     mut new_pending_ops: Local<Vec<PendingOp>>,
-    mut new_pos_searches: Local<Vec<TerrainProbe>>,
+    mut new_pos_searches: Local<Vec<TerrProbeJob>>,
     mut search_failed_evs: Local<Vec<SearchFailed>>,
     mut failed_entities: Local<Vec<Entity>>,
 ) {
     found_suitable_positions.clear();
     for found_ev in mreader_suitable_pos_found.read() {
-        found_suitable_positions.insert(found_ev.op_filter_ent);
+        found_suitable_positions.insert(found_ev.requester);
     }
     new_pending_ops.clear();
     new_pos_searches.clear();
@@ -103,9 +107,12 @@ pub fn search_suitable_positions(
 
     let mut inputs = Vec::with_capacity(terrain_probe.len());
     for pos_search in terrain_probe.drain() {
-        let opfilter = studied_ops.get(pos_search.opfilter_ent).ok().cloned();
+        let templ = terrprobe_query.get(pos_search.templ_ent).ok().cloned();
+        let opfilter = templ
+            .as_ref()
+            .and_then(|t| studied_ops.get(t.opfilter_ent).ok().cloned());
         let root_oplist = dimensions_query.get(pos_search.dimension_ref.0).ok().copied();
-        inputs.push(TerrGenSearchTaskInput { probe: pos_search, opfilter, root_oplist });
+        inputs.push(TerrGenSearchTaskInput { probe: pos_search, templ, opfilter, root_oplist });
     }
     let found = found_suitable_positions.drain().collect::<EntityHashSet>();
     let task_pool = AsyncComputeTaskPool::get();
@@ -115,7 +122,7 @@ pub fn search_suitable_positions(
 }
 
 
-fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_filters: EntityHashSet) -> TerrGenSearchTaskResult {
+fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requesters: EntityHashSet) -> TerrGenSearchTaskResult {
     let pending_count = inputs.len();
     let mut new_pending_ops = Vec::with_capacity(pending_count);
     let mut new_pos_searches = Vec::with_capacity(pending_count);
@@ -124,15 +131,27 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_filters:
     for input in inputs {
         let pos_search = input.probe;
 
-        if successful_filters.contains(&pos_search.opfilter_ent) {
-            info!(target: "pos_search","Found suitable position for {:?}", pos_search.opfilter_ent);
+        if successful_requesters.contains(&pos_search.requester) {
+            info!(target: "pos_search","Found suitable position for {:?}", pos_search.requester);
             continue;
         }
-        let (filtered_op, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_ref) =
-            (pos_search.opfilter_ent, pos_search.step_size, pos_search.curr_iteration_batch_i, pos_search.iterations_per_batch, pos_search.max_batches, pos_search.dimension_ref);
+        let Some(templ) = input.templ else {
+            search_failed.push(pos_search.requester);
+            continue;
+        };
+        let (filtered_op, requester, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_ref) =
+            (
+                templ.opfilter_ent,
+                pos_search.requester,
+                templ.step_size,
+                pos_search.curr_iteration_batch_i,
+                templ.iterations_per_batch,
+                templ.max_batches,
+                pos_search.dimension_ref,
+            );
         let Some(root_oplist) = input.root_oplist else {
             error!(target: "pos_search", "No root oplist found for dimension {:?}", dimension_ref);
-            search_failed.push(filtered_op);
+            search_failed.push(requester);
             continue;
         };
 
@@ -143,59 +162,61 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_filters:
                 new_pos_searches.push(new_search);
             } else if curr_iteration_batch_i == -2 {
                 error!(target: "pos_search", "StudiedOp entity {:?} not found in search_suitable_position, giving up", filtered_op);
-                search_failed.push(filtered_op);
+                search_failed.push(requester);
             }
             continue;
         };
         let curr_iteration_batch_i = curr_iteration_batch_i.max(0);
 
-        match pos_search.probe_pattern {
-            ProbePattern::Radial(explore_angle) => {
+        match templ.probe_pattern.clone() {
+            ProbePattern::Radial(_) => {
                 let calculate_pos = |i_within_batch: u16, probe_direction: f32| -> GlobalTilePos {
                     let global_i = (curr_iteration_batch_i as u16 * iterations_per_batch as u16 + i_within_batch) as f32 * step_size as f32;
                     pos_search.search_start_pos + GlobalTilePos::from(IVec2::new(
                         (global_i * probe_direction.cos()) as i32, (global_i * probe_direction.sin()) as i32,
                     ))
                 };
-
-                if let Some(explore_angle) = explore_angle {
-                    let start_i_within_batch = (curr_iteration_batch_i == 0) as u16;
-
+                if curr_iteration_batch_i as u16 >= max_batches {
+                    error!(target: "pos_search", "No more batches to search for {:?}", pos_search);
+                    continue;
+                }
+                let divisions = 8;
+                let start_i_within_batch = (curr_iteration_batch_i == 0) as u16;
+                for i in 0..divisions {
+                    let angle = 2.0 * PI * (i as f32) / (divisions as f32);
                     for i_within_batch in start_i_within_batch..iterations_per_batch {
                         new_pending_ops.push(PendingOp {
                             oplist: root_oplist,
                             dimension_ref,
-                            gpos: calculate_pos(i_within_batch, explore_angle),
+                            gpos: calculate_pos(i_within_batch, angle),
                             filtered_op,
-                            max_emitted_results: pos_search.max_emitted_results,
-                        });
-                    }
-                    if curr_iteration_batch_i as u16 + 1 < max_batches {
-                        new_pos_searches.push(TerrainProbe {
-                            curr_iteration_batch_i: curr_iteration_batch_i + 1,
-                            probe_pattern: ProbePattern::Radial(Some(explore_angle)),
-                            ..pos_search
-                        });
-                    } else {
-                        error!(target: "pos_search", "No more batches to search for {:?}", opfilter);
-                        search_failed.push(filtered_op);
-                    }
-                } else {
-                    if curr_iteration_batch_i as u16 >= max_batches {
-                        error!(target: "pos_search", "curr No more batches to search for {:?}", pos_search);
-                        continue;
-                    }
-                    let divisions = 8;
-                    for i in 0..divisions {
-                        let angle = 2.0 * PI * (i as f32) / (divisions as f32);
-                        new_pos_searches.push(TerrainProbe{
-                            probe_pattern: ProbePattern::Radial(Some(angle)),
-                            ..pos_search
+                            requester,
+                            max_emitted_results: templ.max_emitted_results,
                         });
                     }
                 }
+                if curr_iteration_batch_i as u16 + 1 < max_batches {
+                    let mut next_search = pos_search.clone();
+                    next_search.curr_iteration_batch_i = curr_iteration_batch_i + 1;
+                    new_pos_searches.push(next_search);
+                } else {
+                    error!(target: "pos_search", "No more batches to search for {:?}", opfilter);
+                    search_failed.push(requester);
+                }
             }
-            ProbePattern::Spiral(mut curr_length_in_dir, mut steps_taken, mut dir_vec, mut pos, mut turn_parity) => {
+            ProbePattern::Spiral(_, _, _, _, _) => {
+                let (
+                    mut curr_length_in_dir,
+                    mut steps_taken,
+                    mut dir_vec,
+                    mut pos,
+                    mut turn_parity,
+                ) = spiral_state_at_batch_start(
+                    pos_search.search_start_pos,
+                    step_size,
+                    curr_iteration_batch_i as u16,
+                    iterations_per_batch,
+                );
                 trace!(target: "pos_search", "Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}",
                     pos, dir_vec, curr_length_in_dir, turn_parity);
 
@@ -206,7 +227,8 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_filters:
                         oplist: root_oplist,
                         gpos: pos,
                         filtered_op,
-                        max_emitted_results: pos_search.max_emitted_results,
+                        requester,
+                        max_emitted_results: templ.max_emitted_results,
                     });
 
                     steps_taken += 1;
@@ -219,14 +241,12 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_filters:
                     }
                 }
                 if curr_iteration_batch_i as u16 + 1 < max_batches {
-                    new_pos_searches.push(TerrainProbe{
-                        curr_iteration_batch_i: curr_iteration_batch_i + 1,
-                        probe_pattern: ProbePattern::Spiral(curr_length_in_dir, steps_taken, dir_vec, pos, turn_parity),
-                        ..pos_search
-                    });
+                    let mut next_search = pos_search.clone();
+                    next_search.curr_iteration_batch_i = curr_iteration_batch_i + 1;
+                    new_pos_searches.push(next_search);
                 } else {
                     error!(target: "pos_search", "No more batches to search for {:?}", opfilter);
-                    search_failed.push(filtered_op);
+                    search_failed.push(requester);
                 }
             },
         }
@@ -237,6 +257,31 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_filters:
         new_pos_searches,
         search_failed,
     }
+}
+
+fn spiral_state_at_batch_start(
+    start_pos: GlobalTilePos,
+    step_size: u16,
+    batch_i: u16,
+    iterations_per_batch: u16,
+) -> (u64, u64, IVec2, GlobalTilePos, bool) {
+    let mut curr_length_in_dir: u64 = 1;
+    let mut steps_taken: u64 = 0;
+    let mut dir_vec = IVec2::new(0, 1);
+    let mut pos = start_pos;
+    let mut turn_parity = false;
+    let steps_to_advance = batch_i as u64 * iterations_per_batch as u64;
+    for _ in 0..steps_to_advance {
+        pos = pos + GlobalTilePos(dir_vec.saturating_mul(IVec2::splat(step_size as i32)));
+        steps_taken += 1;
+        if steps_taken >= curr_length_in_dir {
+            steps_taken = 0;
+            dir_vec = dir_vec.perp();
+            curr_length_in_dir = curr_length_in_dir.saturating_add(turn_parity as u64);
+            turn_parity = !turn_parity;
+        }
+    }
+    (curr_length_in_dir, steps_taken, dir_vec, pos, turn_parity)
 }
 
 #[macro_export]
@@ -251,12 +296,12 @@ macro_rules! run_suitable_pos_search_logic {
         handle_success_event: $handle_success_event:ident,
         handle_pending_failure: $handle_pending_failure:ident,
     ) => {{
-        $search_params.pending_by_filter.clear();
+        $search_params.pending_by_requester.clear();
         for (ent, &dim_ref, &my_pos, &ezero_ref, _, searching_for) in $searching_entities.iter() {
-            if let Some(SearchingForSuitablePos { filtered_op_ent }) = searching_for {
+            if let Some(SearchingForSuitablePos { requester }) = searching_for {
                 $search_params
-                    .pending_by_filter
-                    .entry(*filtered_op_ent)
+                    .pending_by_requester
+                    .entry(*requester)
                     .or_default()
                     .push((ent, my_pos, dim_ref, ezero_ref));
             }
@@ -269,12 +314,15 @@ macro_rules! run_suitable_pos_search_logic {
                 }
                 $cmd.entity(search_ent).try_remove::<AwaitingStartSearch>();
 
-                let Some(probe) =
+                let Some(mut probe) =
                     $make_search_request(&mut $cmd, search_ent, global_pos, *ezero_ref)
                 else {
                     return;
                 };
-                let op_filter_ent = probe.opfilter_ent;
+                if probe.requester == Entity::PLACEHOLDER {
+                    probe.requester = search_ent;
+                }
+                let requester = probe.requester;
 
                 info!(
                     target: $target,
@@ -285,30 +333,48 @@ macro_rules! run_suitable_pos_search_logic {
                 );
 
                 $cmd.entity(search_ent)
-                    .try_insert(SearchingForSuitablePos { filtered_op_ent: op_filter_ent });
+                    .try_insert(SearchingForSuitablePos { requester });
+                $search_params
+                    .min_result_distance_by_requester
+                    .insert(requester, probe.min_result_distance as u64);
                 $search_params.pos_searches_msgs_to_write.push(probe);
                 $search_params
-                    .pending_by_filter
-                    .entry(op_filter_ent)
+                    .pending_by_requester
+                    .entry(requester)
                     .or_default()
                     .push((search_ent, global_pos, dim_ref, *ezero_ref));
             });
 
+        let mut accepted_results: Vec<(DimensionRef, GlobalTilePos)> = Vec::new();
         for suitable_pos in $search_params.reader_search_successful.read() {
-            let ss_filtered_op_ent = suitable_pos.op_filter_ent;
-            let (pending_owner, remove_entry) = {
-                let Some(owners) = $search_params.pending_by_filter.get_mut(&ss_filtered_op_ent) else {
-                    continue;
-                };
-                let owner = owners.pop();
-                (owner, owners.is_empty())
-            };
-            if remove_entry {
-                $search_params.pending_by_filter.remove(&ss_filtered_op_ent);
-            }
-            let Some((search_ent, my_pos, dim_ref, ezero_ref)) = pending_owner else {
+            let requester = suitable_pos.requester;
+            let Some(owners) = $search_params.pending_by_requester.get_mut(&requester) else {
                 continue;
             };
+            let Some(&(search_ent, my_pos, dim_ref, ezero_ref)) = owners.last() else {
+                continue;
+            };
+
+            let min_result_distance = $search_params
+                .min_result_distance_by_requester
+                .get(&requester)
+                .copied()
+                .unwrap_or(0);
+            let min_result_distance_sq = min_result_distance.saturating_mul(min_result_distance);
+            let too_close = min_result_distance_sq > 0 && accepted_results.iter().any(|(taken_dim_ref, taken_pos)| {
+                *taken_dim_ref == dim_ref
+                    && suitable_pos.found_pos.distance_squared(taken_pos) <= min_result_distance_sq
+            });
+            if too_close {
+                trace!(
+                    target: $target,
+                    "Skipping suitable-pos result for requester {:?} at {:?} due to min_result_distance {}",
+                    requester,
+                    suitable_pos.found_pos,
+                    min_result_distance
+                );
+                continue;
+            }
 
             if $handle_success_event(
                 &mut $cmd,
@@ -318,14 +384,21 @@ macro_rules! run_suitable_pos_search_logic {
                 ezero_ref,
                 suitable_pos.found_pos,
             ) {
+                owners.pop();
+                if owners.is_empty() {
+                    $search_params.pending_by_requester.remove(&requester);
+                    $search_params.min_result_distance_by_requester.remove(&requester);
+                }
+                accepted_results.push((dim_ref, suitable_pos.found_pos));
                 $cmd.entity(search_ent).try_remove::<SearchingForSuitablePos>();
             }
         }
 
         for failed_search in $search_params.mreader_search_failed.read() {
-            let Some(pending_searches) = $search_params.pending_by_filter.remove(&failed_search.0) else {
+            let Some(pending_searches) = $search_params.pending_by_requester.remove(&failed_search.0) else {
                 continue;
             };
+            $search_params.min_result_distance_by_requester.remove(&failed_search.0);
             for (search_ent, global_pos, dim_ref, ezero_ref) in pending_searches {
                 error!(
                     target: $target,
@@ -349,7 +422,7 @@ macro_rules! run_oneshot_suitable_pos_search_logic {
         searched_label: $searched_label:expr,
         cmd: $cmd:ident,
         search_params: $search_params:ident,
-        active_filter_ent: $active_filter_ent:ident,
+        active_probe_ent: $active_probe_ent:ident,
         search_finished: $search_finished:ident,
         make_search_request: $make_search_request:ident,
         handle_success: $handle_success:ident,
@@ -358,51 +431,54 @@ macro_rules! run_oneshot_suitable_pos_search_logic {
         if *$search_finished {
             $search_params.write_pos_searches();
         } else {
-            if $active_filter_ent.is_none() {
-                if let Some(probe) = $make_search_request(&mut $cmd) {
-                    let op_filter_ent = probe.opfilter_ent;
+            if $active_probe_ent.is_none() {
+                if let Some(mut probe) = $make_search_request(&mut $cmd) {
+                    if probe.requester == Entity::PLACEHOLDER {
+                        probe.requester = $cmd.spawn_empty().id();
+                    }
+                    let requester = probe.requester;
                     info!(
                         target: $target,
-                        "Starting one-shot suitable-pos search for {} with filter {:?}",
+                        "Starting one-shot suitable-pos search for {} with requester {:?}",
                         $searched_label,
-                        op_filter_ent
+                        requester
                     );
-                    *$active_filter_ent = Some(op_filter_ent);
+                    *$active_probe_ent = Some(requester);
                     $search_params.pos_searches_msgs_to_write.push(probe);
                 }
             }
 
-            if let Some(active_filter_ent) = *$active_filter_ent {
+            if let Some(active_probe_ent) = *$active_probe_ent {
                 for suitable_pos in $search_params.reader_search_successful.read() {
-                    if suitable_pos.op_filter_ent != active_filter_ent {
+                    if suitable_pos.requester != active_probe_ent {
                         continue;
                     }
                     if $handle_success(
                         &mut $cmd,
                         suitable_pos.found_pos,
-                        active_filter_ent,
+                        active_probe_ent,
                         suitable_pos.val,
                     ) {
                         *$search_finished = true;
-                        *$active_filter_ent = None;
+                        *$active_probe_ent = None;
                         break;
                     }
                 }
 
                 if !*$search_finished {
                     for failed_search in $search_params.mreader_search_failed.read() {
-                        if failed_search.0 != active_filter_ent {
+                        if failed_search.0 != active_probe_ent {
                             continue;
                         }
                         error!(
                             target: $target,
-                            "Failed to find suitable pos for one-shot {} search, filter {:?}",
+                            "Failed to find suitable pos for one-shot {} search, terrain probe {:?}",
                             $searched_label,
-                            active_filter_ent
+                            active_probe_ent
                         );
-                        $handle_failure(&mut $cmd, active_filter_ent);
+                        $handle_failure(&mut $cmd, active_probe_ent);
                         *$search_finished = true;
-                        *$active_filter_ent = None;
+                        *$active_probe_ent = None;
                         break;
                     }
                 }

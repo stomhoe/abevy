@@ -109,15 +109,15 @@ pub struct TileSeri {
 pub struct PortalSeri{
     pub dest_dimension: String,
     pub oe_tile: String,
-    #[serde(default = "default_portal_opfilter")]
-    pub oe_opfilter: String,
+    #[serde(default = "default_portal_terrprobe")]
+    pub oe_terrprobe: String,
     pub one_way: Option<bool>,
     /// NASE
     pub dungeon: String,
 }
 
-fn default_portal_opfilter() -> String {
-    "land".to_string()
+fn default_portal_terrprobe() -> String {
+    "portal_spiral".to_string()
 }
 
 #[derive(Deserialize, Asset, TypePath, )]

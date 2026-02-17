@@ -2,6 +2,16 @@ use being_shared::BeingInstTemplate;
 use bevy::{asset, platform::collections::{HashMap, HashSet}, prelude::*};
 use game_common::game_common_seris::NormalDistSeri;
 
+common::define_entity_map_systems!(
+    BeingInstTemplate,
+    (),
+    Bit,
+    "bit",
+    "BIT",
+    BeingInstTemplate,
+    common::common_components::StrId,
+    BitSeri, "ron/being/bit", "bit.ron",
+);
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BitSeri {
     pub id: String,
@@ -31,15 +41,3 @@ pub struct BitSeri {
     pub whitelisted_tiles_for_spawning: Option<HashSet<String>>,
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
 }
-
-
-common::define_entity_map_systems!(
-    BeingInstTemplate,
-    (),
-    Bit,
-    "bit",
-    "BIT",
-    BeingInstTemplate,
-    common::common_components::StrId,
-    BitSeri, "ron/being/bit", "bit.ron",
-);

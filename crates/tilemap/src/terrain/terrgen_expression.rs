@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 use tilemap_shared::{GlobalTilePos, OplistSize, GlobalGenSettings, HashablePosVec, PoissonDisk};
-use crate::terrain_gen::terrgen_components::FnlNoiseComp;
+use crate::terrain::terrgen_components::FnlNoiseComp;
 use common::common_components::{HashId, HashIdMap, StrId};
 use bevy::ecs::entity::{EntityHashMap, };
 
