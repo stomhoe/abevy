@@ -4,7 +4,7 @@ use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}
 use ::tilemap_shared::*;
 
 use crate::{chunking::chunking_components::Chunk, regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
-use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
+use bevy_inspector_egui::{egui, };
 
 use common::{common_components::*, };
 use serde::{Deserialize, Serialize};
@@ -228,17 +228,16 @@ pub struct GridOfSgcs(pub RegionGrid<Entity>);
 
 impl GridOfSgcs {
     pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) {
-        egui::Grid::new(ui.id().with("grid_of_sgcs"))
-        .spacing([0.0, 0.0])
-        .min_col_width(0.0)
-        .show(ui, |ui| {
-            let prev_item_spacing = ui.spacing_mut().item_spacing;
-            ui.spacing_mut().item_spacing.x = 0.0;
+        let base = ui.text_style_height(&egui::TextStyle::Monospace);
+        let cell_w = (base * 0.9).max(9.0);
+        let cell_h = (base * 0.9).max(9.0);
+        let width = REGION_SIZE_IN_CHUNKS.x() as usize;
+        let height = REGION_SIZE_IN_CHUNKS.y() as usize;
+        let grid_size = egui::vec2(width as f32 * cell_w, height as f32 * cell_h);
+        let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
+        let painter = ui.painter_at(rect);
 
-            let base = ui.text_style_height(&egui::TextStyle::Monospace);
-            let cell_size = egui::vec2(base * 1.25, base * 1.25);
-
-            const ARRAY_OF_LEGIBLE_CHARS: &[char] = &[
+        const ARRAY_OF_LEGIBLE_CHARS: &[char] = &[
             '0','1','2','3','4','5','6','7','8','9',
             'A','B','C','D','E','F','G','H','I','J','K','L','M',
             'N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
@@ -247,7 +246,7 @@ impl GridOfSgcs {
             '◆','◇','⬟','⬢','⬣',
             '■','□','▪','▫',
             '✦','✧','✪','✫','✬','✭','✮','✯',
-            '✖','✚','✛','✜','✢','✣','✤','✥',
+            '✖','✚','✛','✤','✥',
             '±','×','÷','≈','≠','≤','≥','∞','∑','∏','√','∆','∇','∫',
             '⬅','➡','⬆','⬇','↩','↪','⇐','⇒','⇑','⇓',
             'α','β','γ','δ','ε','ζ','η','θ','λ','μ','π','ω',
@@ -255,66 +254,85 @@ impl GridOfSgcs {
             '∂','∈','∉','∩','∪','∀','∃',
             '†','‡','°','‰','§','¶','¤','¬','¦',
             '·',
-            ];
-            let mut entity_to_char: EntityHashMap<char> = EntityHashMap::default();
-            let mut char_index = 0;
+        ];
+        let mut entity_to_char: EntityHashMap<char> = EntityHashMap::default();
+        let mut char_index = 0;
 
-            // Compute local position if we have both current position and region position
-            let local_pos = if let (Some(chunk_pos), Some(region_pos)) = (current_position, region_pos) {
-                let local_chunk_pos = chunk_pos - region_pos.to_chunkpos();
-                let is_in_bounds = local_chunk_pos.0.x >= 0 && local_chunk_pos.0.x < REGION_SIZE_IN_CHUNKS.x()
-                    && local_chunk_pos.0.y >= 0 && local_chunk_pos.0.y < REGION_SIZE_IN_CHUNKS.y();
-                if is_in_bounds {
-                    Some((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize))
-                } else {
-                    None
-                }
+        let local_pos = if let (Some(chunk_pos), Some(region_pos)) = (current_position, region_pos) {
+            let local_chunk_pos = chunk_pos - region_pos.to_chunkpos();
+            let is_in_bounds = local_chunk_pos.0.x >= 0
+                && local_chunk_pos.0.x < REGION_SIZE_IN_CHUNKS.x()
+                && local_chunk_pos.0.y >= 0
+                && local_chunk_pos.0.y < REGION_SIZE_IN_CHUNKS.y();
+            if is_in_bounds {
+                Some((local_chunk_pos.0.x as usize, local_chunk_pos.0.y as usize))
             } else {
                 None
-            };
-
-            for (display_y, row) in self.0.grid.iter().rev().enumerate() {
-                for (x, cell) in row.iter().enumerate() {
-                    let symbol = match cell {
-                        Some(entity) => {
-                            (*entity_to_char.entry(*entity).or_insert_with(|| {
-                                let ch = ARRAY_OF_LEGIBLE_CHARS[char_index % ARRAY_OF_LEGIBLE_CHARS.len()];
-                                char_index += 1;
-                                ch
-                            })).to_string()
-                        }
-                        None => "·".to_string(),
-                    };
-
-                    // Determine whether this cell should be highlighted
-                    let mut is_highlight = false;
-                    if let Some((local_x, local_y)) = local_pos {
-                        // Convert display_y (which counts from 0 at the top after reversal) to grid array index
-                        let grid_y = (REGION_SIZE_IN_CHUNKS.y() as usize - 1) - display_y;
-                        if local_x == x && local_y == grid_y {
-                            is_highlight = true;
-                        }
-                    }
-
-                    // Build text and button with visible styling when highlighted
-                    let mut text = egui::RichText::new(symbol).monospace();
-                    if is_highlight {
-                        text = text.color(egui::Color32::YELLOW).strong();
-                    }
-                    let mut button = egui::Button::new(text);
-                    if is_highlight {
-                        button = button.frame(true).fill(egui::Color32::from_rgb(60, 60, 60));
-                    } else {
-                        button = button.frame(false);
-                    }
-
-                    ui.add_sized(cell_size, button);
-                }
-                ui.end_row();
             }
+        } else {
+            None
+        };
 
-            ui.spacing_mut().item_spacing = prev_item_spacing;
-        });
+        for (display_y, row) in self.0.grid.iter().rev().enumerate() {
+            for (x, cell) in row.iter().enumerate() {
+                let cell_rect = egui::Rect::from_min_size(
+                    egui::pos2(rect.left() + x as f32 * cell_w, rect.top() + display_y as f32 * cell_h),
+                    egui::vec2(cell_w, cell_h),
+                );
+
+                let is_highlight = if let Some((local_x, local_y)) = local_pos {
+                    let grid_y = (REGION_SIZE_IN_CHUNKS.y() as usize - 1) - display_y;
+                    local_x == x && local_y == grid_y
+                } else {
+                    false
+                };
+
+                match cell {
+                    Some(entity) => {
+                        let symbol = *entity_to_char.entry(*entity).or_insert_with(|| {
+                            let ch = ARRAY_OF_LEGIBLE_CHARS[char_index % ARRAY_OF_LEGIBLE_CHARS.len()];
+                            char_index += 1;
+                            ch
+                        });
+
+                        let mut h: usize = entity.to_bits() as usize;
+                        h = h.wrapping_mul(2654435761usize);
+                        let r = 70 + (h & 0x3F) as u8;
+                        let g = 90 + ((h >> 6) & 0x5F) as u8;
+                        let b = 110 + ((h >> 12) & 0x6F) as u8;
+                        let mut fill = egui::Color32::from_rgb(r, g, b).gamma_multiply(0.35);
+                        if is_highlight {
+                            fill = fill.gamma_multiply(1.35);
+                        }
+                        painter.rect_filled(cell_rect, 0.0, fill);
+                        painter.text(
+                            cell_rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            symbol.to_string(),
+                            egui::FontId::proportional((base * 0.9).max(9.0)),
+                            egui::Color32::WHITE,
+                        );
+                    }
+                    None => {
+                        painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
+                        painter.text(
+                            cell_rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            "·",
+                            egui::FontId::proportional((base * 0.85).max(8.0)),
+                            egui::Color32::from_gray(90),
+                        );
+                    }
+                }
+
+                let stroke = if is_highlight {
+                    egui::Stroke::new(2.0, egui::Color32::YELLOW)
+                } else {
+                    egui::Stroke::new(0.5, egui::Color32::from_gray(45))
+                };
+                painter.rect_stroke(cell_rect, 0.0, stroke, egui::StrokeKind::Inside);
+            }
+        }
     }
 }
 

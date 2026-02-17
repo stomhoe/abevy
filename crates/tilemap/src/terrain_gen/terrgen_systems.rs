@@ -7,7 +7,12 @@ use std::{collections::HashSet, mem::take};
 use crate::{
     chunking::chunking_components::*,
     terrain_gen::{
-        opfilter::opfilter_components::OpFilter, terrgen_components::*, terrgen_messages::*, operation_list_components::*, terrgen_resources::*
+        opfilter::opfilter_components::OpFilter,
+        operation_list::operation_list_components::*,
+        terrain_probe::terrain_probe_messages::SuitablePosFound,
+        terrgen_components::*,
+        terrgen_messages::PendingOp,
+        terrgen_resources::*,
     },
     tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles},
 };

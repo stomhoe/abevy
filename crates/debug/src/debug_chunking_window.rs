@@ -326,7 +326,7 @@ pub fn debug_chunking_window(
                                                     })
                                                     .unwrap_or(false);
 
-                                                let label = format!("{},{} {}\n{} ch", x, y, entity.index(), children_count);
+                                                let label = format!("{},{}\n {} ch:{}", x, y, entity.index(), children_count);
 
                                                 let mut rich_text = egui::RichText::new(&label).small();
 

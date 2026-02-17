@@ -1,7 +1,13 @@
 use bevy::{ecs::entity::{EntityHashSet, EntityHashMap}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use game_common::game_common_components::EntityZeroRef;
 use std::f32::consts::PI;
-use crate::terrain_gen::{opfilter::opfilter_components::OpFilter, terrgen_components::FailedSearchOplistFilterHolder, terrgen_messages::*, terrgen_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult}};
+use crate::terrain_gen::{
+    opfilter::opfilter_components::OpFilter,
+    terrain_probe::terrain_probe_messages::*,
+    terrgen_components::FailedSearchOplistFilterHolder,
+    terrgen_messages::PendingOp,
+    terrgen_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult},
+};
 use ::tilemap_shared::*;
 
 #[derive(Clone)]

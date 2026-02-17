@@ -11,7 +11,8 @@ use common::{PORTAL_INIT, common_components::StrId};
 use crate::{
     run_suitable_pos_search_logic, terrain_gen::{
         opfilter::opfilter_resources::OpFilterEntityMap,
-        terrgen_messages::TerrainProbe,
+        terrain_probe::{terrain_probe_components::TerrainProbeTemplate, terrain_probe_resources::TerrainProbeTemplateEntityMap},
+        terrain_probe::terrain_probe_messages::TerrainProbe,
         terrgen_search::{AwaitingStartSearch, SearchParams, },
     }, tile::{tile_components::*, tile_resources::*}, tilemap_resources::MassCollectedTiles
 };
@@ -98,9 +99,11 @@ pub fn instantiate_portal(
     mut register_pos: ResMut<ImportantRegisteredPositions>,
     clone_spawn_param_set: CloneSpawnParamSet,
     opfilter_entity_map: Res<OpFilterEntityMap>,
+    terrain_probe_entity_map: Res<TerrainProbeTemplateEntityMap>,
+    terrain_probe_query: Query<&TerrainProbeTemplate>,
     mut search_params: SearchParams,
 ) {
-    let make_search_request = |cmd: &mut Commands,
+    let make_search_request = |_cmd: &mut Commands,
                                portal_ent: Entity,
                                global_pos: GlobalTilePos,
                                ezero_ref: EntityZeroRef|
@@ -125,10 +128,18 @@ pub fn instantiate_portal(
                 return None;
             }
         };
-        let probe = TerrainProbe::standard_spiral_probe(
+        let Ok(probe_template_ent) = terrain_probe_entity_map.0.get_cloned("standard_spiral") else {
+            error!(target: PORTAL_INIT, "Missing TerrainProbe template 'standard_spiral'");
+            return None;
+        };
+        let Ok(probe_template) = terrain_probe_query.get(probe_template_ent) else {
+            error!(target: PORTAL_INIT, "TerrainProbe template entity {:?} missing component", probe_template_ent);
+            return None;
+        };
+        let probe = probe_template.to_probe_with_filter(
             DimensionRef(portal_recipe.dest_dimension),
-            op_filter_ent,
             global_pos,
+            op_filter_ent,
         );
         Some(probe)
     };

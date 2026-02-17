@@ -1,8 +1,12 @@
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task};
-use common::common_components::{HashId, HashIdMap, StrId};
+use common::common_components::{HashId, HashIdMap};
 
-use crate::{terrain_gen::{terrgen_components::Terrgen, terrgen_messages::{PendingOp, SuitablePosFound, TerrainProbe}}, };
+use crate::terrain_gen::{
+    terrain_probe::terrain_probe_messages::{SuitablePosFound, TerrainProbe},
+    terrgen_components::Terrgen,
+    terrgen_messages::PendingOp,
+};
 
 use ::tilemap_shared::*;
 
@@ -152,32 +156,6 @@ pub struct DungeonSeri {
     pub name: String,
     pub description: String,
 }
-
-
-
-#[derive(serde::Deserialize, Asset, TypePath)]
-pub struct OpListSeri {
-    pub id: String,
-    pub tags: Option<Vec<String>>,
-    #[serde(default)]
-    pub debug_vars: Vec<String>,
-    pub root_in_dimensions: Vec<String>,
-    /// oplist id, produced tiles
-    pub bifs: Vec<(String, Vec<String>)>,
-    pub size: Option<[u32; 2]>,
-    /// Expression tree representation (slot-free system)
-    pub expr_tree: super::terrgen_expression::ExprOpList,
-}
-impl OpListSeri {
-    pub fn is_root(&self) -> bool {
-        self.root_in_dimensions.iter().any(|s| !s.is_empty())
-    }
-
-    pub fn is_expr_based(&self) -> bool {
-        true
-    }
-}
-
 
 common::define_entity_map_systems!(
     Terrgen,

@@ -180,7 +180,6 @@ impl From<Vec3> for ChunkPos {
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, )]
-/// IMPORTANTE: va asociado a cada tile instance, no a la tile original
 pub struct OplistSize(UVec2);
 impl OplistSize {
     pub fn new([x, y]: [u32; 2]) -> Result<Self, BevyError> {
@@ -227,7 +226,7 @@ impl std::cmp::Ord for OplistSize {
 
 impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 
-pub const REGION_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::new(32, 32);
+pub const REGION_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::new(128, 128);
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, )]
 pub struct RegionPos(pub IVec2);

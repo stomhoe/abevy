@@ -11,5 +11,5 @@ out = idxmax(continent_threshold, continentness)
 
 
 
-bif "" -> [blue]
+bif "" -> [ocean]
 bif normal2 -> []

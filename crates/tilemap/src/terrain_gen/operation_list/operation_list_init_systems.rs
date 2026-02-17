@@ -5,20 +5,27 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 
 use common::{common_components::{Prefix, StrId}, common_tag_components::TagSet};
 
-use crate::{terrain_gen::*, tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerEntityMap}};
-use ::tilemap_shared::*;
+use crate::{
+    terrain_gen::{
+        operation_list::operation_list_components::{Bifurcation, CompiledBranch, CompiledBranchNode, OperationList},
+        operation_list::operation_list_resources::{EguiOperationListsHolder, OpListSeri, OpListSerisHandles, OperationListEntityMap},
+        terrgen_components::FailedSearchOplistFilterHolder,
+        terrgen_expression,
+        terrgen_resources::TerrgenEntityMap,
+    },
+    tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerEntityMap},
+};
+use ::tilemap_shared::{MultipleDimensionRefs, *};
 
 use std::mem::take;
 use std::collections::{HashMap, HashSet};
 
-use crate::terrain_gen::operation_list_components::{CompiledBranch, CompiledBranchNode};
-
 /// Resolve NoiseByName variants in expression tree to actual Noise entities
 fn resolve_noise_names_in_expr(
-    expr: &mut crate::terrain_gen::terrgen_expression::Expr,
+    expr: &mut terrgen_expression::Expr,
     terr_gen_map: &TerrgenEntityMap,
 ) {
-    use crate::terrain_gen::terrgen_expression::Expr;
+    use terrgen_expression::Expr;
 
     match expr {
         Expr::NoiseByName { name, sample_range, complement, seed_offset } => {

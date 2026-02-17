@@ -1,0 +1,9 @@
+(
+    id: "standard_spiral",
+    opfilter_id: "land",
+    probe_pattern: Spiral,
+    step_size: Some(1),
+    max_batches: Some(1000),
+    iterations_per_batch: Some(10000),
+    max_emitted_results: Some(50),
+)

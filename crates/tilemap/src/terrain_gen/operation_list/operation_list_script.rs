@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::terrain_gen::{OpListSerisHandles, terrgen_resources::OpListSeri};
+use crate::terrain_gen::operation_list::operation_list_resources::{OpListSeri, OpListSerisHandles};
 use crate::terrain_gen::terrgen_expression::{Assignment, Expr, ExprOpList};
 
 #[allow(unused_parens)]

@@ -1,21 +1,26 @@
 use being::being_components::*;
 use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use ::being_shared::*;
-use common::{GAME_INIT, common_components::StrId, common_states::AppState, common_tag_components::HashedTagsVec};
+use common::{GAME_INIT, common_components::StrId, common_states::AppState};
 use faction::{faction_components::*, faction_resources::*};
 use modifier::{modifier_components::*, modifier_move_bundles::SpeedModifier,};
 use player::player_components::*;
-use tilemap::{chunking::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings}, terrain_gen::opfilter::opfilter_resources::OpFilterEntityMap};
+use tilemap::{
+    chunking::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings},
+    terrain_gen::{
+        terrain_probe::{terrain_probe_components::TerrainProbeTemplate, terrain_probe_resources::TerrainProbeTemplateEntityMap},
+    },
+};
 
 use bevy::prelude::*;
 use tilemap::{
     run_oneshot_suitable_pos_search_logic,
     terrain_gen::{
-        terrgen_messages::{TerrainProbe},
+        terrain_probe::terrain_probe_messages::TerrainProbe,
         terrgen_search::SearchParams,
     },
 };
-use tilemap_shared::{Dimension, DimensionEntityMap, DimensionRef, DimensionRootOplist, GlobalGenSettings, GlobalTilePos};
+use tilemap_shared::{Dimension, DimensionEntityMap, DimensionRef, GlobalGenSettings, GlobalTilePos};
 
 #[derive(Debug, Event, Copy, Clone)]
 pub struct CommonSpawnOriginFound {
@@ -93,8 +98,8 @@ pub fn host_on_player_added(mut cmd: Commands,
 pub fn find_common_player_spawn_origin(
     mut cmd: Commands,
     dimension_entity_map: Res<DimensionEntityMap>,
-    dimensions_query: Query<&DimensionRootOplist>,
-    opfilter_entity_map: Res<OpFilterEntityMap>,
+    terrain_probe_entity_map: Res<TerrainProbeTemplateEntityMap>,
+    terrain_probe_query: Query<&TerrainProbeTemplate>,
     mut search_params: SearchParams,
     mut active_filter_ent: Local<Option<Entity>>,
     mut search_finished: Local<bool>,
@@ -105,19 +110,15 @@ pub fn find_common_player_spawn_origin(
             return None;
         };
 
-        let Ok(&root_oplist) = dimensions_query.get(ow_dimension) else {
-            warn!(target: GAME_INIT, "Overworld dimension {:?} has no DimensionRootOplist yet", ow_dimension);
+        let Ok(probe_template_ent) = terrain_probe_entity_map.0.get_cloned("standard_sun") else {
+            warn!(target: GAME_INIT, "TerrainProbe template 'standard_sun' not in TerrainProbeTemplateEntityMap yet");
             return None;
         };
-        let Ok(op_filter_ent) = opfilter_entity_map.0.get_cloned("land") else {
-            warn!(target: GAME_INIT, "OpFilter 'land' not in OpFilterEntityMap yet");
+        let Ok(probe_template) = terrain_probe_query.get(probe_template_ent) else {
+            warn!(target: GAME_INIT, "TerrainProbe template entity {:?} missing TerrainProbeTemplate", probe_template_ent);
             return None;
         };
-        Some(TerrainProbe::standard_sun_probe(
-            DimensionRef(ow_dimension),
-            op_filter_ent,
-            GlobalTilePos::default(),
-        ))
+        Some(probe_template.to_probe(DimensionRef(ow_dimension), GlobalTilePos::default()))
     };
     let handle_success = |cmd: &mut Commands,
                               found_pos: GlobalTilePos,
