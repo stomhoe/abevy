@@ -7,10 +7,7 @@ use std::{collections::HashSet, mem::take};
 use crate::{
     chunking::chunking_components::*,
     terrain_gen::{
-        terrgen_components::*,
-        terrgen_messages::*,
-        terrgen_operaton_list_components::*,
-        terrgen_resources::*,
+        opfilter::opfilter_components::OpFilter, terrgen_components::*, terrgen_messages::*, operation_list_components::*, terrgen_resources::*
     },
     tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles},
 };
@@ -22,29 +19,29 @@ pub use crate::terrain_gen::terrgen_search::search_suitable_positions;
 pub fn launch_terrain_gen_operations(
     mut commands: Commands,
     chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<ReadyForTerrgen>)>,
-    dimension_query: Query<(&DimensionRootOplist,), ()>,
-    oplists: Query<(Entity, &OplistSize), (With<OperationList>,)>,
+    dimension_query: Query<(&DimensionRootOplist), ()>,
+    oplists: Query<(&OplistSize), (With<OperationList>,)>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
 ) {
     if chunks_query.is_empty() { return; }
 
     let chunk_count = chunks_query.iter().size_hint().0;
     let mut terr_gen_ops = Vec::with_capacity(chunk_count);
-    for (chunk_ent, chunk_pos, &dim_ref) in chunks_query.iter() {
-        let Ok((dim_root_op_list,)) = dimension_query.get(dim_ref.0) else {
+    for (chunk_ent, &chunk_pos, &dim_ref) in chunks_query.iter() {
+        let Ok(&dim_root_op_list) = dimension_query.get(dim_ref.0) else {
             error!(target: "terrgen_systems", "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
             continue;
         };
-        let Ok((oplist, oplist_size)) = oplists.get(dim_root_op_list.0) else {
+        let Ok(&oplist_size) = oplists.get(dim_root_op_list.0) else {
             error!(target: "terrgen_systems", "Dimension references non-existent root operation list {:?}", dim_root_op_list);
             continue;
         };
         launch_queue.0.push(TerrGenLaunchWork {
             chunk_ent,
-            chunk_pos: *chunk_pos,
+            chunk_pos: chunk_pos,
             dim_ref,
-            root_oplist: oplist,
-            oplist_size: *oplist_size,
+            root_oplist: dim_root_op_list,
+            oplist_size: oplist_size,
         });
         terr_gen_ops.push((chunk_ent, TerrGenOpsLaunched));
     }
@@ -246,7 +243,7 @@ fn build_terrgen_task_context(
     let mut child_oplist_sizes: EntityHashMap<EntityHashMap<OplistSize>> = EntityHashMap::with_capacity(pending_len);
     let mut noise_entities: EntityHashSet = EntityHashSet::with_capacity(pending_len);
 
-    let mut to_visit: Vec<Entity> = pending_ops.iter().map(|ev| ev.oplist).collect();
+    let mut to_visit: Vec<Entity> = pending_ops.iter().map(|ev| ev.oplist.0).collect();
     let mut visited: EntityHashSet = EntityHashSet::with_capacity(pending_len);
 
     while let Some(oplist_ent) = to_visit.pop() {
@@ -389,11 +386,11 @@ fn process_pending_ops_batch(
     let mut emitted_per_filter: EntityHashMap<u16> = EntityHashMap::new();
 
     while let Some(ev) = pending_queue.pop() { unsafe {
-        if !context.oplists.contains_key(&ev.oplist) {
+        if !context.oplists.contains_key(&ev.oplist.0) {
             error!(target: "terrgen_systems", "Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
             continue;
         }
-        let Some(&my_oplist_size) = context.oplist_sizes.get(&ev.oplist) else {
+        let Some(&my_oplist_size) = context.oplist_sizes.get(&ev.oplist.0) else {
             error!(target: "terrgen_systems", "OplistSize not found for oplist {:?}", ev.oplist);
             continue;
         };
@@ -412,7 +409,7 @@ fn process_pending_ops_batch(
         let has_filter = ev.filtered_op != Entity::PLACEHOLDER;
         if let Some(compiled_root) = context
             .oplists
-            .get(&ev.oplist)
+            .get(&ev.oplist.0)
             .and_then(|o| o.compiled_branch_ast.as_ref())
             .cloned()
         {
@@ -435,7 +432,7 @@ fn process_pending_ops_batch(
         }
 
         let mut frame_stack = vec![EvalFrame {
-            oplist: ev.oplist,
+            oplist: ev.oplist.0,
             gpos: ev.gpos,
             oplist_size: my_oplist_size,
             variables: HashIdMap::new(),
@@ -475,11 +472,12 @@ fn process_pending_ops_batch(
                 });
             }
 
+            let destination_i = (output_value as usize).min(oplist.bifurcations.len() - 1);
             if has_filter
                 && let Some(filter) = filter
                 && let Some(Some(oplist_tags)) = context.oplist_tags.get(&frame.oplist)
                 && oplist_tags.intersects(&filter.tags)
-                && filter.op_i <= -1
+                && filter.op_i.map_or(true, |op_i| destination_i == op_i as usize)
                 && (filter.min_val..=filter.max_val).contains(&output_value)
             {
                 let emitted = emitted_per_filter.entry(ev.filtered_op).or_insert(0);
@@ -493,14 +491,13 @@ fn process_pending_ops_batch(
                 }
             }
 
-            let destination_i = (output_value as usize).min(oplist.bifurcations.len() - 1);
             let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
 
             if !bifurcation.tiles.is_empty() && ev.filtered_op == Entity::PLACEHOLDER {
                 result.tile_requests.push(TerrGenTileRequest {
                     bif_tiles: bifurcation.tiles.clone(),
                     pending: PendingOp {
-                        oplist: frame.oplist,
+                        oplist: DimensionRootOplist(frame.oplist),
                         dimension_ref: ev.dimension_ref,
                         gpos: frame.gpos,
                         filtered_op: ev.filtered_op,
@@ -524,7 +521,6 @@ fn process_pending_ops_batch(
             }
         }
     }}
-
     result
 }
 
@@ -577,11 +573,12 @@ fn process_compiled_branch_node(
         });
     }
 
+    let destination_i = (output_value as usize).min(node.branches.len() - 1);
     if has_filter
         && let Some(filter) = filter
         && let Some(Some(oplist_tags)) = context.oplist_tags.get(&node.source_oplist)
         && oplist_tags.intersects(&filter.tags)
-        && filter.op_i <= -1
+        && filter.op_i.map_or(true, |op_i| destination_i == op_i as usize)
         && (filter.min_val..=filter.max_val).contains(&output_value)
     {
         let emitted = emitted_per_filter.entry(source_ev.filtered_op).or_insert(0);
@@ -595,14 +592,13 @@ fn process_compiled_branch_node(
         }
     }
 
-    let destination_i = (output_value as usize).min(node.branches.len() - 1);
     let branch = &node.branches[destination_i];
 
     if !branch.tiles.is_empty() && source_ev.filtered_op == Entity::PLACEHOLDER {
         result.tile_requests.push(TerrGenTileRequest {
             bif_tiles: branch.tiles.clone(),
             pending: PendingOp {
-                oplist: node.source_oplist,
+                oplist: DimensionRootOplist(node.source_oplist),
                 dimension_ref: source_ev.dimension_ref,
                 gpos,
                 filtered_op: source_ev.filtered_op,

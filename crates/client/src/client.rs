@@ -24,7 +24,7 @@ pub fn plugin(app: &mut App) {
     )
     //.add_systems(Update, add_mine_to_player)
 
-    .add_systems(OnEnter(ClientState::Connected), (client_on_connect_successful, ))
+    .add_systems(OnEnter(ClientState::Connected), (client_on_connect_successful, add_mine_to_player))
     .add_systems(OnEnter(ClientState::Disconnected), (client_on_disconnect.run_if(not(in_state(ServerState::Running)))))
 
 

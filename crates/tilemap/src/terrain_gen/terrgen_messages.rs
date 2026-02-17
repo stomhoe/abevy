@@ -1,67 +1,57 @@
-use bevy::{prelude::*};
+use bevy::{platform::collections::HashSet, prelude::*};
 use common::{common_components::HashId, common_tag_components::HashedTagsVec};
 
 use serde::Deserialize;
 use ::tilemap_shared::*;
-use std::hash::Hash;
+use std::{f32::{INFINITY, NEG_INFINITY}, hash::Hash};
 
-#[derive(Debug, Clone, Component, TypePath)]
-pub struct OpFilter{
-    pub start_oplist: Entity,
-    pub tags: HashedTagsVec,
-    pub op_i: i16,
-    pub min_val: f32,
-    pub max_val: f32,
-    pub search_start_pos: GlobalTilePos,
-}
-impl Hash for OpFilter {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.start_oplist.hash(state);
-        self.tags.hash(state);
-        self.op_i.hash(state);
-        self.min_val.to_bits().hash(state);
-        self.max_val.to_bits().hash(state);
-    }
-}
-impl PartialEq for OpFilter {
-    fn eq(&self, other: &Self) -> bool {
-        self.start_oplist == other.start_oplist &&
-        self.tags == other.tags &&
-        self.op_i == other.op_i &&
-        self.min_val.to_bits() == other.min_val.to_bits() &&
-        self.max_val.to_bits() == other.max_val.to_bits()
-    }
-}
-impl Eq for OpFilter {}
-#[derive(Deserialize, Asset, TypePath, )]
-pub struct OpFilterSeri {
-    pub tags: Vec<String>,
-    pub op_i: i16,
-    pub min_val: f32,
-    pub max_val: f32,
-}
+
+
 
 #[derive(Message, Debug, Clone)]
 pub struct TerrainProbe {
     pub dimension_ref: DimensionRef,
-    pub operation_filter: Entity,
+    pub search_start_pos: GlobalTilePos,
+    pub opfilter_ent: Entity,
+    pub probe_pattern: ProbePattern,
     pub step_size: u16,
     pub curr_iteration_batch_i: i16,//se puede cambiar a otra cosa para empezar alejado del centro
     pub max_batches: u16,
     pub iterations_per_batch: u16,
-    pub probe_pattern: ProbePattern,
     pub max_emitted_results: u16,
 }
 impl TerrainProbe{
     pub fn standard_spiral_probe(dimension_ref: DimensionRef, operation_filter: Entity, search_start_pos: GlobalTilePos) -> TerrainProbe {
         TerrainProbe {
             dimension_ref,
+            search_start_pos,
+            opfilter_ent: operation_filter,
+            probe_pattern: ProbePattern::spiral(search_start_pos),
+            max_batches: 1000,
+            ..Default::default()
+        }
+    }
+    pub fn standard_sun_probe(dimension_ref: DimensionRef, operation_filter: Entity, search_start_pos: GlobalTilePos) -> TerrainProbe {
+        TerrainProbe {
+            dimension_ref,
+            search_start_pos,
+            opfilter_ent: operation_filter,
+            probe_pattern: ProbePattern::sun(),
+            ..Default::default()
+        }
+    }
+}
+impl Default for TerrainProbe {
+    fn default() -> Self {
+        TerrainProbe {
+            dimension_ref: DimensionRef(Entity::PLACEHOLDER),
+            search_start_pos: GlobalTilePos::default(),
+            probe_pattern: ProbePattern::spiral(GlobalTilePos::default()),
             step_size: 1,
             curr_iteration_batch_i: 0,
-            max_batches: 100,
+            max_batches: 1000,
             iterations_per_batch: 10000,
-            probe_pattern: ProbePattern::new_spiral(search_start_pos),
-            operation_filter,
+            opfilter_ent: Entity::PLACEHOLDER,
             max_emitted_results: 1,
         }
     }
@@ -74,8 +64,8 @@ pub enum ProbePattern {
     Spiral(u64, u64, IVec2, GlobalTilePos, bool),
 }
 impl ProbePattern {
-    pub fn new_radial() -> Self { ProbePattern::Radial(None) }
-    pub fn new_spiral(start_pos: GlobalTilePos) -> Self {
+    pub fn sun() -> Self { ProbePattern::Radial(None) }
+    pub fn spiral(start_pos: GlobalTilePos) -> Self {
         ProbePattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
     }
 }
@@ -89,5 +79,5 @@ pub struct SuitablePosFound { pub op_filter_ent: Entity, pub val: f32, pub found
 pub struct SearchFailed (pub Entity);
 
 #[derive(Message, Debug, Clone)]
-pub struct PendingOp {pub oplist: Entity, pub dimension_ref: DimensionRef, pub gpos: GlobalTilePos,
+pub struct PendingOp {pub oplist: DimensionRootOplist, pub dimension_ref: DimensionRef, pub gpos: GlobalTilePos,
     pub filtered_op: Entity, pub max_emitted_results: u16}

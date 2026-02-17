@@ -1,0 +1,6 @@
+(
+    id: "portal_le_1",
+    tags: ["portal"],
+    min_val: Some(0.0),
+    max_val: Some(1.0),
+)

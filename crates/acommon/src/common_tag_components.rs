@@ -115,7 +115,7 @@ define_tag_hashset_and_impl_methods!(TagSet, Tag);
 #[require(HashedTagsVec)]
 pub struct AddSameHashedTags;
 
-#[derive(Component, Debug, Default, Clone, Reflect, Hash, PartialEq, Eq)]
+#[derive(Component, Debug, Default, Clone, Reflect, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub struct HashedTagsVec(pub Vec<HashId>);
 impl_tag_vec_methods!(HashedTagsVec, HashId);
 

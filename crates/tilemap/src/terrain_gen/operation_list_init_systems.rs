@@ -11,7 +11,7 @@ use ::tilemap_shared::*;
 use std::mem::take;
 use std::collections::{HashMap, HashSet};
 
-use crate::terrain_gen::terrgen_operaton_list_components::{CompiledBranch, CompiledBranchNode};
+use crate::terrain_gen::operation_list_components::{CompiledBranch, CompiledBranchNode};
 
 /// Resolve NoiseByName variants in expression tree to actual Noise entities
 fn resolve_noise_names_in_expr(

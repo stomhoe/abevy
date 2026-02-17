@@ -17,6 +17,11 @@ common::define_entity_map_systems!(
     Dimension,
     DimensionSeri, "ron/dimension", "dimension.ron"
 );
+impl Dimension{
+    pub fn overworld() -> StrId{
+        StrId::trunc("ow")
+    }
+}
 
 #[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct DimensionSeri {
@@ -34,7 +39,7 @@ impl DimensionStrIdRef {
 
     pub fn overworld_fallback() -> Self {
         warn!("Using overworld fallback for DimensionStrIdRef");
-        DimensionStrIdRef(common::common_components::StrId::trunc("ow"))
+        DimensionStrIdRef(Dimension::overworld())
     }
 }
 

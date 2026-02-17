@@ -10,6 +10,7 @@ use crate::{game_init_systems::*,};
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
+    .add_observer(put_player_beings_on_map)
 
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
@@ -21,18 +22,13 @@ pub fn plugin(app: &mut App) {
     )
     .add_systems(Update, (
         host_on_player_added.run_if(in_state(ClientState::Disconnected)),
+        find_common_player_spawn_origin
+            .run_if(in_state(ClientState::Disconnected))
+            .in_set(GameplaySystems),
     ))
-    .add_systems(
-        OnEnter(GamePhase::ActiveGame),
-        (put_player_beings_on_map,)
-        .run_if(in_state(ClientState::Disconnected))
-        .in_set(GameplaySystems)
-    )
     //.add_systems(Update, ())
 
- 
+
 
     ;
 }
-
-

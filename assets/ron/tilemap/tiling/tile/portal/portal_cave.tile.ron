@@ -16,8 +16,7 @@
     portal: Some((
         dest_dimension: "dungeon",
         oe_tile: "portal_cave",
-        oe_op_tags: ["portal"],
-        max: Some(1.0),
+        oe_opfilter: "portal_le_1",
         dungeon: "",
     )),
     offset: Some((0.0, 20.0)),

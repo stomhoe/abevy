@@ -38,18 +38,13 @@ pub fn client_on_connect_successful(
     mut app_state: ResMut<NextState<AppState>>,
     player_data: Res<PlayerData>,
     mut game_phase: ResMut<NextState<GamePhase>>,
-
-
 ) {
-
     app_state.set(AppState::StatefulGameSession);
     let name = player_data.username.clone();
     info!("connected as Client {name}");
     game_phase.set(GamePhase::Setup);
     cmd.client_trigger(SendUsername(name));
 }
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 
 #[allow(unused_parens)]
 /// provisorio
@@ -61,8 +56,8 @@ pub fn add_mine_to_player(mut cmd: Commands,
         return;
     }
 
-    for entity in query.iter() {
-        cmd.entity(entity).insert(Mine);
+    for player_ent in query.iter() {
+        cmd.entity(player_ent).insert(Mine);
     }
 }
 

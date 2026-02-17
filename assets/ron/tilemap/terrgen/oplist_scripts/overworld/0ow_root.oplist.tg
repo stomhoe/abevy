@@ -2,7 +2,6 @@ id: ow_root
 roots: [ow]
 size: (1, 1)
 
-
 let normal_continentness = +(fnl.conti_nofract, 0.0)
 let elf_continentness = +(fnl.conti_nofract.s2, 0.0)
 let antarctica_continentness = +(fnl.conti_nofract.s3, -0.2)

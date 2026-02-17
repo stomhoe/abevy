@@ -10,10 +10,11 @@ use sprite::AcSpriteSystems;
 use bevy::prelude::*;
 
 use crate::tile::{
-    tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
+    portal_init_systems::*, tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
 } ;
 pub mod tile_systems;
 pub mod tile_init_systems;
+pub mod portal_init_systems;
 pub mod tile_sampler_init_systems;
 pub mod tile_components;
 pub mod tile_resources;

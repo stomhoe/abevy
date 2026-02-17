@@ -7,6 +7,7 @@ use common::{common_components::{Tag}, };
 use game_common::game_common_components::EntityZero;
 use serde::{Deserialize, Serialize};
 
+pub use crate::tilemap_resources::{MassCollectedTiles, ImportantRegisteredPositions, CloneSpawnParamSet};
 use crate::tile::tile_components::Tile;
 
 common::define_entity_map_systems!(
@@ -108,13 +109,15 @@ pub struct TileSeri {
 pub struct PortalSeri{
     pub dest_dimension: String,
     pub oe_tile: String,
-    pub oe_op_tags: Vec<String>,
-    pub op_i: Option<i16>,
-    pub min: Option<f32>,
-    pub max: Option<f32>,
+    #[serde(default = "default_portal_opfilter")]
+    pub oe_opfilter: String,
     pub one_way: Option<bool>,
     /// NASE
     pub dungeon: String,
+}
+
+fn default_portal_opfilter() -> String {
+    "land".to_string()
 }
 
 #[derive(Deserialize, Asset, TypePath, )]

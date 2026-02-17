@@ -1,13 +1,12 @@
 use ::sprite_shared::*;
-use bevy::ecs::entity::EntityHashMap;
-use bevy::ecs::entity::MapEntities;
+use bevy::ecs::entity::{EntityHashMap, MapEntities};
 #[allow(unused_imports, )]
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 pub use bevy_ecs_tilemap::tiles::*;
 use bevy_replicon::prelude::*;
 use common::common_components::*;
-use common::common_tag_components::{HashedTagsVec, TagSet};
+use common::common_tag_components::TagSet;
 
 use game_common::game_common_components::*;
 
@@ -15,8 +14,7 @@ use ::tilemap_shared::*;
 use serde::{Deserialize, Serialize};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use crate::terrain_gen::{terrgen_messages::OpFilter};
-use crate::tile::tile_resources::{AdjRetexConfigSeri, PortalSeri, TileImagePaths};
+use crate::tile::tile_resources::*;
 
 
 
@@ -96,33 +94,15 @@ pub struct PortalRecipe {
     pub dest_dimension: Entity,
     #[entities]
     pub oe_portal_tile: Entity,
-    pub tags: TagSet,
-    pub op_i: i16,
-    pub min_val: f32,
-    pub max_val: f32,
+    pub opfilter_id: StrId,
     pub one_way: bool,
-}
-impl PortalRecipe {
-    pub fn to_op_filter(&self, start_pos: GlobalTilePos, oe_rootoplist: Entity) -> OpFilter {
-        OpFilter {
-            tags: HashedTagsVec::from(&self.tags),
-            start_oplist: oe_rootoplist,
-            op_i: self.op_i,
-            min_val: self.min_val,
-            max_val: self.max_val,
-            search_start_pos: start_pos,
-        }
-    }
 }
 impl Default for PortalRecipe {
     fn default() -> Self {
         Self {
             dest_dimension: Entity::PLACEHOLDER,
             oe_portal_tile: Entity::PLACEHOLDER,
-            tags: TagSet::default(),
-            op_i: -1,
-            min_val: 0.0,
-            max_val: 0.0,
+            opfilter_id: StrId::default(),
             one_way: false,
         }
     }

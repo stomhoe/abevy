@@ -4,7 +4,7 @@ use common::{common_components::*, common_tag_components::{HashedTagsVec, TagSet
 use game_common::{game_common_components::ArgsDict, game_common_components_samplers::EntityWeightedSampler};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{regioning_resources::*, regioning_sgc_components::*, StructuredGenConfigEntityMap}, terrain_gen::terrgen_messages::OpFilter};
+use crate::{regioning::{StructuredGenConfigEntityMap, regioning_resources::*, regioning_sgc_components::*}, terrain_gen::opfilter::{opfilter_components::OpFilter, opfilter_resources::OpFilterEntityMap}, };
 
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (
@@ -13,8 +13,8 @@ pub fn init_structured_gen_configs (
     mut seris_handles: ResMut<SgcSerisHandles>,
     mut assets: ResMut<Assets<SgcSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,
-    egui_holder_query: Query<Entity, With<EguiSgcsHolder>>
-
+    egui_holder_query: Query<Entity, With<EguiSgcsHolder>>,
+    opfilter_entity_map: Res<OpFilterEntityMap>,
 ) {
     if ! map.0.is_empty(){ return;}
 
@@ -22,7 +22,6 @@ pub fn init_structured_gen_configs (
 
     let mut sgcs_comps = Vec::new();
 
-    let mut opfilters_to_spawn = Vec::new();
     let mut exclusive_for_dims = Vec::new();
 
     let egui_ent = if let Ok(egui_ent) = egui_holder_query.single() {
@@ -63,25 +62,10 @@ pub fn init_structured_gen_configs (
 
 
         if let Some(whitelisted_filters) = structured_gen_seri.whitelisted_filters{
-            if ! whitelisted_filters.is_empty(){
+            let opfilter_ents: Vec<Entity> = Vec::with_capacity(whitelisted_filters.len());
+            for opfilter_id in whitelisted_filters {
 
-                for opfilter_seri in whitelisted_filters {
 
-                    let Ok(tags) = HashedTagsVec::new_error_if_set_empty(opfilter_seri.tags) else {
-                        error!(target: "sgc_init", "OpFilterSeri within {} has no tags.", structured_gen_seri.id);
-                        continue;
-                    };
-
-                    let opfilter = OpFilter {
-                        start_oplist: Entity::PLACEHOLDER,
-                        tags,
-                        op_i: opfilter_seri.op_i,
-                        min_val: opfilter_seri.min_val,
-                        max_val: opfilter_seri.max_val,
-                        search_start_pos: GlobalTilePos::default(),
-                    };
-                    opfilters_to_spawn.push((opfilter, WhitelistedFilterOf::new(main_ent), StrId::trunc(structured_gen_seri.id.clone())));
-                }
             }
         }
         if let Some(exclusive_for_dimensions) = structured_gen_seri.exclusive_for_dimensions{
@@ -117,7 +101,6 @@ pub fn init_structured_gen_configs (
 
         sgcs_comps.push((main_ent, (sgc_id, gen_cfg, )));
     }
-    cmd.spawn_batch(opfilters_to_spawn);
     cmd.insert_batch(exclusive_for_dims);
     cmd.insert_batch(sgcs_comps);
 

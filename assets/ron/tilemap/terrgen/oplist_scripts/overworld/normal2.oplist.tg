@@ -1,9 +1,10 @@
 id: normal2
 size: (1, 1)
 debug: [beach_avg_noise, shore_proximity, beachness, gravelness, inlandness, continentness, normal_diff]
+
 let inlandness = continentness/(COMPL continent_threshold)
 
-let shore_proximity = COMPL inlandness * 0.9    
+let shore_proximity = COMPL inlandness * 0.9
 
 let beach_avg_noise = avg(fnl.beachsmol, fnl.beachbig)
 

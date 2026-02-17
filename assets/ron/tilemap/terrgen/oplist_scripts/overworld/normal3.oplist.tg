@@ -8,7 +8,7 @@ let lakeness = *(lakeness, continentness, 0.5)
 let lakeness = *opo(lakeness, beachness)
 
 let river_noise = max(fnl.river, fnl.river.s7)
-let riverness = *(river_noise, inlandness, bank_farness, continentness, 0.6)
+let riverness = *(river_noise, inlandness, continentness, 0.6)
 let riverness = riverness * clamp(1.0 - continentness, 0.0, 1.0)
 let riverness = clamp(riverness, 0.0, 0.6)
 

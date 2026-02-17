@@ -14,7 +14,7 @@ pub struct TerrGenLaunchWork {
     pub chunk_ent: Entity,
     pub chunk_pos: ChunkPos,
     pub dim_ref: DimensionRef,
-    pub root_oplist: Entity,
+    pub root_oplist: DimensionRootOplist,
     pub oplist_size: OplistSize,
 }
 

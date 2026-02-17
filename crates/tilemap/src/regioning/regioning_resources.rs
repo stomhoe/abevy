@@ -1,8 +1,7 @@
-#[allow(unused_imports)] use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use bevy::{platform::collections::{HashSet, HashMap}, prelude::*};
 
 use ::tilemap_shared::*;
-use crate::{regioning::regioning_sgc_components::{StructuredGenConfig}, terrain_gen::terrgen_messages::OpFilterSeri};
+use crate::{regioning::regioning_sgc_components::{StructuredGenConfig}, };
 use serde::Deserialize;
 
 common::define_entity_map_systems!(
@@ -32,7 +31,7 @@ pub struct SgcSeri {
     pub weight: f32,
 
     //expected terr conditions for spawning
-    pub whitelisted_filters: Option<Vec<OpFilterSeri>>,
+    pub whitelisted_filters: Option<HashSet<String>>,
 
     pub pdisk_mindist_and_tag: Option<Vec<(Option<u8>, String)>>,
 

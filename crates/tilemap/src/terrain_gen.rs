@@ -3,18 +3,19 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use fnl::FastNoiseLite;
 use ::tilemap_shared::*;
-use crate::{chunking::chunking_components::TerrGenOpsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, terrgen_oplist_script::*, terrgen_operaton_list_components::*, terrgen_operation_list_init_systems::*, terrgen_resources::*, terrgen_systems::*},};
+use crate::{chunking::chunking_components::TerrGenOpsLaunched, terrain_gen::{terrgen_components::*, terrgen_messages::*, terrgen_noise_init_systems::*, operation_list_script::*, operation_list_components::*, operation_list_init_systems::*, terrgen_resources::*, terrgen_systems::*},};
 
 pub mod terrgen_systems;
-mod terrgen_operation_list_init_systems;
+mod operation_list_init_systems;
 mod terrgen_noise_init_systems;
-mod terrgen_oplist_script;
+mod operation_list_script;
+pub mod operation_list_components;
 pub mod terrgen_components;
-pub mod terrgen_operaton_list_components;
 pub mod terrgen_resources;
 pub mod terrgen_messages;
 pub mod terrgen_expression;
 pub mod terrgen_search;
+pub mod opfilter;
 
 
 
@@ -70,6 +71,7 @@ pub fn plugin(app: &mut App) {
         .add_plugins((
             plugin_terrgen,
             plugin_operation_list,
+            opfilter::plugin,
         ))
         .replicate::<FnlNoiseComp>()
 

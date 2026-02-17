@@ -1,14 +1,27 @@
 use being::being_components::*;
 use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use ::being_shared::*;
-use common::{common_components::StrId, common_states::AppState};
+use common::{GAME_INIT, common_components::StrId, common_states::AppState, common_tag_components::HashedTagsVec};
 use faction::{faction_components::*, faction_resources::*};
 use modifier::{modifier_components::*, modifier_move_bundles::SpeedModifier,};
 use player::player_components::*;
-use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings};
+use tilemap::{chunking::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings}, terrain_gen::opfilter::opfilter_resources::OpFilterEntityMap};
 
 use bevy::prelude::*;
-use tilemap_shared::GlobalGenSettings;
+use tilemap::{
+    run_oneshot_suitable_pos_search_logic,
+    terrain_gen::{
+        terrgen_messages::{TerrainProbe},
+        terrgen_search::SearchParams,
+    },
+};
+use tilemap_shared::{Dimension, DimensionEntityMap, DimensionRef, DimensionRootOplist, GlobalGenSettings, GlobalTilePos};
+
+#[derive(Debug, Event, Copy, Clone)]
+pub struct CommonSpawnOriginFound {
+    pub dim_ref: DimensionRef,
+    pub pos: GlobalTilePos,
+}
 
 
 #[allow(unused_parens, )]
@@ -77,23 +90,93 @@ pub fn host_on_player_added(mut cmd: Commands,
 }
 
 #[allow(unused_parens, )]
-pub fn put_player_beings_on_map(
+pub fn find_common_player_spawn_origin(
     mut cmd: Commands,
-    players: Query<(Entity, &CreatedCharacters, Has<Mine>), (With<Player>)>,
-    chunk_range: Res<AaChunkRangeSettings>,
+    dimension_entity_map: Res<DimensionEntityMap>,
+    dimensions_query: Query<&DimensionRootOplist>,
+    opfilter_entity_map: Res<OpFilterEntityMap>,
+    mut search_params: SearchParams,
+    mut active_filter_ent: Local<Option<Entity>>,
+    mut search_finished: Local<bool>,
 ) {
-    for (player_ent, created_characters, self_player) in players.iter() {
-        debug!(target: "game_init", "Spawning player being: {:?}", created_characters);
+    let make_search_request = |_cmd: &mut Commands| -> Option<TerrainProbe> {
+        let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
+            warn!(target: GAME_INIT, "Overworld dimension '{}' not in DimensionEntityMap yet", Dimension::overworld());
+            return None;
+        };
+
+        let Ok(&root_oplist) = dimensions_query.get(ow_dimension) else {
+            warn!(target: GAME_INIT, "Overworld dimension {:?} has no DimensionRootOplist yet", ow_dimension);
+            return None;
+        };
+        let Ok(op_filter_ent) = opfilter_entity_map.0.get_cloned("land") else {
+            warn!(target: GAME_INIT, "OpFilter 'land' not in OpFilterEntityMap yet");
+            return None;
+        };
+        Some(TerrainProbe::standard_sun_probe(
+            DimensionRef(ow_dimension),
+            op_filter_ent,
+            GlobalTilePos::default(),
+        ))
+    };
+    let handle_success = |cmd: &mut Commands,
+                              found_pos: GlobalTilePos,
+                              filtered_op_ent: Entity,
+                              _sampled_val: f32|
+     -> bool {
+        let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
+            return false;
+        };
+        info!(target: GAME_INIT, "Found shared spawn origin at {:?} in dimension {:?}", found_pos, ow_dimension);
+        cmd.trigger(CommonSpawnOriginFound {
+            dim_ref: DimensionRef(ow_dimension),
+            pos: found_pos,
+        });
+        true
+    };
+
+    let handle_failure = |_cmd: &mut Commands, failed_filter_ent: Entity| {
+        warn!(target: GAME_INIT, "Common spawn search failed for filter {:?}", failed_filter_ent);
+    };
+
+    run_oneshot_suitable_pos_search_logic!(
+        target: GAME_INIT,
+        searched_label: "common character spawn origin",
+        cmd: cmd,
+        search_params: search_params,
+        active_filter_ent: active_filter_ent,
+        search_finished: search_finished,
+        make_search_request: make_search_request,
+        handle_success: handle_success,
+        handle_failure: handle_failure,
+    );
+}
+
+#[allow(unused_parens, )]
+pub fn put_player_beings_on_map(
+    trigger: On<CommonSpawnOriginFound>,
+    mut cmd: Commands,
+    players: Query<(&CreatedCharacters, ), (With<Player>)>,
+    chunk_range: Res<AaChunkRangeSettings>,
+    mut next_spawn_offset_x: Local<i32>,
+) {
+    let found = trigger.event();
+    let spawn_dim = found.dim_ref;
+    let origin = found.pos;
+
+    for (created_characters, ) in players.iter() {
+        debug!(target: GAME_INIT, "Spawning player being: {:?}", created_characters);
 
         for &created_character in created_characters.entities() {
-            cmd.entity(created_character).try_insert_if_new((
+            let spawn_pos = origin + GlobalTilePos::new(*next_spawn_offset_x, 0);
+            *next_spawn_offset_x += 1;
+            let world_pos: Vec2 = spawn_pos.into();
+
+            cmd.entity(created_character).try_insert((
+                Transform::from_translation(world_pos.extend(0.0)),
+                DimensionRef(spawn_dim.0),
                 ActivatingChunks::new(&chunk_range),
             ));
-        }
-
-        if self_player {
-            debug!(target: "game_init", "Spawning self player being:");
-
         }
     }
 

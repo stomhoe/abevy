@@ -13,17 +13,10 @@ use serde::{Deserialize, Serialize};
 
 #[require(InputDirection, MoveVecMag, Replicated, MoveAnimActive,
 Grounding, Visibility, CardinalDirection, AppliedModifiers, Transform,
-Prefix::trunc("BEING"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading,
+Prefix::trunc("Being"), DimensionStrIdRef::overworld_fallback(), AssetScoped, SparedFromHotReloading,
 GridLockedMovement )]
 pub struct Being;
 impl Being {
-
-    // /// max Z (clothes included)
-    // pub const MAX_Z: MyZ = MyZ(1_000_000_000);
-
-    // /// lowest z allowed for either clothes or body sprites
-    // pub const MIN_Z: MyZ = MyZ(Self::MINZ_I32);
-
     pub const Z_LEVEL: f32 = 1_000.;
 }
 
@@ -35,11 +28,6 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 
 #[derive(Component, Debug, Default, Clone, Copy, Hash, PartialEq)]
 pub struct InfiniteMorale;
-
-// #[derive(Component, Clone)]
-// #[relationship_target(relationship = BodyPartOf)]
-// pub struct BodyParts(Vec<Entity>);
-// impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
 #[derive(Component, Default, Deserialize, Serialize, Clone)]
 pub struct PlayerDirectControllable;

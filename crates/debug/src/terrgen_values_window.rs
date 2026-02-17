@@ -3,7 +3,7 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
 use common::common_components::{HashId, StrId};
 use std::collections::{HashMap, HashSet};
-use tilemap::terrain_gen::terrgen_operaton_list_components::OperationList;
+use tilemap::terrain_gen::operation_list_components::OperationList;
 use tilemap::terrain_gen::terrgen_resources::{TerrGenDebugGrid, TerrGenTileDebugInfo};
 use ::tilemap_shared::*;
 
