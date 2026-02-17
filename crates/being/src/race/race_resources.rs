@@ -51,5 +51,5 @@ pub struct RaceSeri {
 
 common::define_entity_map_systems!(
     Race,
-    RaceSeri, "ron/being/race", "race.ron",
+    RaceSeri, "seri.being.race", "race.ron",
 );

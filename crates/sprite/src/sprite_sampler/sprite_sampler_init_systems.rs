@@ -10,7 +10,7 @@ use crate::{sprite_resources::*, sprite_sampler::{SpriteWeightedSamplerEntityMap
 
 #[allow(unused_parens)]
 pub fn init_sprite_weighted_samplers(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     seris_handles: ResMut<SpriteWeightedSamplerHandles>,
     assets: Res<Assets<SpriteWeightedSamplerSeri>>,
     map: Res<SpriteWeightedSamplerEntityMap>,
@@ -19,7 +19,7 @@ pub fn init_sprite_weighted_samplers(
     let holder = cmd.spawn((EguiSpriteSamplerHolder, )).id();
 
     let mut comps_to_insert = Vec::new();
-    
+
     for handle in seris_handles.handles.iter() {
         if let Some(seri) = assets.get(handle) {
             if let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) {
@@ -34,11 +34,11 @@ pub fn init_sprite_weighted_samplers(
         }
     }
     cmd.insert_batch(comps_to_insert);
-} 
+}
 
 #[allow(unused_parens)]
 pub fn init_sprite_weighted_samplers_refs(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     mut seris_handles: ResMut<SpriteWeightedSamplerHandles>,
     mut assets: ResMut<Assets<SpriteWeightedSamplerSeri>>,
     sprite_weighted_map: Res<SpriteWeightedSamplerEntityMap>,
@@ -62,7 +62,6 @@ pub fn init_sprite_weighted_samplers_refs(
                 continue;
             }
             if !sprite_id.ends_with("*") {
-                // Try to resolve as sprite config entity using StrId
                 if let Ok(sprite_str_id) = StrId::new_with_result(sprite_id.clone(), 3) {
                     if let Ok(ent) = sprite_ents_map.0.get_cloned(&sprite_str_id) {
                         if weights.iter().any(|(e, _)| *e == ent) {
@@ -105,5 +104,3 @@ pub fn init_sprite_weighted_samplers_refs(
         cmd.entity(wmap_ent).insert(EntityWeightedSampler::new(&weights));
     }
 }
-
-

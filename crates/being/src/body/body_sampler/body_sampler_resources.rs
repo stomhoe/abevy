@@ -13,7 +13,7 @@ pub struct BodyWeightedSamplerSeri {
 
 common::define_entity_map_systems!(
     BodyWeightedSampler,
-    BodyWeightedSamplerSeri, "ron/being/body/sampler", "sampler.ron",
+    BodyWeightedSamplerSeri, "seri.being.body.sampler", "bosampler.ron",
 );
 
 pub type BodyWeightedSamplerHandles = BodyWeightedSamplerSerisHandles;

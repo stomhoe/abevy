@@ -54,6 +54,6 @@ common::define_entity_map_systems!(
     SpriteConfig,
     common::common_components::StrId,
     SpriteConfigSeri,
-    "ron/sprite/config",
+    "seri.sprite.config",
     "sprite.ron",
 );

@@ -10,13 +10,9 @@ common::define_entity_map_systems!(
     "operation_list",
     "",
     OperationList,
-    common::common_components::StrId
+    common::common_components::StrId,
+    OpListSeri, "seri.tilemap.operation_list", "oplist.ron",
 );
-
-#[derive(Resource, Default)]
-pub struct OpListSerisHandles {
-    pub handles: Vec<Handle<OpListSeri>>,
-}
 
 #[derive(Deserialize, Asset, TypePath)]
 pub struct OpListSeri {

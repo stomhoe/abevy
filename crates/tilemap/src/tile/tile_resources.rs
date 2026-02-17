@@ -14,7 +14,7 @@ common::define_entity_map_systems!(
     Tile,
     (With<EntityZero>, common::AnyDisabling),
     (Tile, EntityZero),
-    TileSeri, "ron/tilemap/tiling/tile", "tile.ron",
+    TileSeri, "seri.tilemap.tile", "tile.ron",
 );
 
 

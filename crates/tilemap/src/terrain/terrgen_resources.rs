@@ -159,5 +159,5 @@ pub struct DungeonSeri {
 
 common::define_entity_map_systems!(
     Terrgen,
-    FnlSeri, "ron/tilemap/terrgen/noise", "fnl.ron",
+    FnlSeri, "seri.tilemap.terrgen.noise", "fnl.ron",
 );

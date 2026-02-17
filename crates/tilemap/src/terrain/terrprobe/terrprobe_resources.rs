@@ -12,7 +12,7 @@ common::define_entity_map_systems!(
     "terrprobe",
     TerrProbeTempl,
     common::common_components::StrId,
-    TerrainProbeSeri, "ron/tilemap/terrgen/probe", "tpt.ron",
+    TerrainProbeSeri, "seri.tilemap.terrprobe", "tpt.ron",
 );
 
 #[derive(Deserialize, Asset, TypePath)]

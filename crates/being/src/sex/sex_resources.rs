@@ -13,5 +13,5 @@ pub struct SexSeri {
 
 common::define_entity_map_systems!(
     Sex,
-    SexSeri, "ron/being/sex", "sex.ron",
+    SexSeri, "seri.being.sex", "sex.ron",
 );

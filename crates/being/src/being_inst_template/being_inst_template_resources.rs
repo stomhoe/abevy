@@ -10,7 +10,7 @@ common::define_entity_map_systems!(
     "BIT",
     BeingInstTemplate,
     common::common_components::StrId,
-    BitSeri, "ron/being/bit", "bit.ron",
+    BitSeri, "seri.being.bit", "bit.ron",
 );
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BitSeri {

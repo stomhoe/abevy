@@ -12,5 +12,5 @@ pub struct TileWeightedSamplerSeri {
 
 define_entity_map_systems!(
     TileWeightedSampler,
-    TileWeightedSamplerSeri, "ron/tilemap/tiling/weighted_sampler", "tsampler.ron",
+    TileWeightedSamplerSeri, "seri.tilemap.tile.weighted_sampler", "tsampler.ron",
 );

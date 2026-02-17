@@ -36,12 +36,14 @@ bevy_replicon_renet = "0.14"
 bevy_common_assets = { version = "0.15.0", features = ["ron"]}
 bevy-ui-gradients = "0.4.0"
 bevy_spritesheet_animation = "6.1.0"
-bevy_asset_loader = "0.25.0"
+bevy_asset_loader = { version = "0.25.0", features = ["standard_dynamic_assets"] }
 bevy-inspector-egui = "0.36.0"
 paste = "1.0"
 smallvec = "1.15.1"
 
 serde = { version = "1.0.228", features = ["derive"] }
+ron = "0.8.1"
+anyhow = "1.0.98"
 splines = { version = "5.0.0", features = ["serde"] }
 indexmap = "2.13.0"
 tracing = "0.1.44"

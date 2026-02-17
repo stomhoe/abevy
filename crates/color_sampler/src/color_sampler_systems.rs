@@ -38,7 +38,6 @@ pub fn init_color_samplers(
                     str_id, i, seri.weights[i].0, seri.weights[i].1
                 );
                 seri.weights.swap_remove(i);
-                // Do not increment i, as swap_remove puts a new element at i
             } else {
                 i += 1;
             }
@@ -48,7 +47,6 @@ pub fn init_color_samplers(
         let ent = cmd.spawn_empty().id();
 
         wmap_to_insert.push((ent, (str_id, wmap.clone())));
-
     }
     cmd.insert_batch(wmap_to_insert);
 }

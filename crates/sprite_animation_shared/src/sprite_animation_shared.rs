@@ -76,7 +76,7 @@ pub struct AcAnimation;
 common::define_entity_map_systems!(
     AcAnimation,
     //AnimationSeri, "ron/sprite/animation", "anim.ron",
-    MultipleAnimationSeri, "ron/sprite/animation", "anim.ron"
+    MultipleAnimationSeri, "seri.sprite.animation", "anim.ron"
 );
 #[derive(Message, Clone, PartialEq, Eq, Hash)]
 pub struct BeingChangedMoveState(pub Entity);

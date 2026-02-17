@@ -15,7 +15,7 @@ pub struct SpriteSamplerSystems;
 
 define_entity_map_systems!(
     SpriteWeightedSampler,
-    SpriteWeightedSamplerSeri, "ron/sprite/sampler", "sampler.ron",
+    SpriteWeightedSamplerSeri, "seri.sprite.weighted_sampler", "sampler.ron",
 );
 
 pub type SpriteWeightedSamplerHandles = SpriteWeightedSamplerSerisHandles;

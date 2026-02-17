@@ -20,5 +20,5 @@ pub struct BodyTreeSeri {
 
 common::define_entity_map_systems!(
     BodyTree,
-    BodyTreeSeri, "ron/being/body/tree", "bodytree.ron",
+    BodyTreeSeri, "seri.being.body.tree", "bodytree.ron",
 );

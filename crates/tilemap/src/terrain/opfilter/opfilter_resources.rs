@@ -12,7 +12,7 @@ common::define_entity_map_systems!(
     "opfilter",
     OpFilter,
     common::common_components::StrId,
-    OpFilterSeri, "ron/tilemap/terrgen/opfilter", "opfilter.ron",
+    OpFilterSeri, "seri.tilemap.opfilter", "opfilter.ron",
 );
 #[derive(Deserialize, Asset, TypePath, )]
 pub struct OpFilterSeri {

@@ -6,6 +6,8 @@ edition = "2024"
 [dependencies]
 bevy = { workspace = true }
 serde = { workspace = true }
+ron = { workspace = true }
+anyhow = { workspace = true }
 #tracing = { workspace = true }
 #tracing-subscriber = { workspace = true }
 bevy_replicon = { workspace = true }

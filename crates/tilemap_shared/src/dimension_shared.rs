@@ -15,7 +15,7 @@ pub struct Dimension;
 
 common::define_entity_map_systems!(
     Dimension,
-    DimensionSeri, "ron/dimension", "dimension.ron"
+    DimensionSeri, "seri.dimension", "dimension.ron"
 );
 impl Dimension{
     pub fn overworld() -> StrId{

@@ -48,5 +48,5 @@ pub struct BodyPartSeri {
 common::define_entity_map_systems!(
     BodyPart,
     With<EntityZero>,
-    BodyPartSeri, "ron/being/body/part", "bodypart.ron",
+    BodyPartSeri, "seri.being.body.part", "bodypart.ron",
 );

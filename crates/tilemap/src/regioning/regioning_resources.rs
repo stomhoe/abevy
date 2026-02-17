@@ -12,7 +12,7 @@ common::define_entity_map_systems!(
     "SGC",
     StructuredGenConfig,
     common::common_components::StrId,
-    SgcSeri, "ron/tilemap/region/structures", "sgc.ron",
+    SgcSeri, "seri.tilemap.region.sgc", "sgc.ron",
 );
 #[derive(Resource, Default)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);

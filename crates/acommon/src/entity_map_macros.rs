@@ -3,20 +3,20 @@ macro_rules! define_entity_map_systems {
     // Simplified version - most common case
     (
         $main_component:ident
-        $(, $seri_type:ty, $ron_dir:literal, $ron_suffix:literal )*
+        $(, $seri_type:ty, $dynamic_key:literal, $ron_suffix:literal )*
         $(,)?
     ) => {
-        $crate::define_entity_map_systems!($main_component, (), $main_component, stringify!($main_component:snake), "", $main_component, common::common_components::StrId $(, $seri_type, $ron_dir, $ron_suffix )*);
+        $crate::define_entity_map_systems!($main_component, (), $main_component, stringify!($main_component:snake), "", $main_component, common::common_components::StrId $(, $seri_type, $dynamic_key, $ron_suffix )*);
     };
 
     // With additional filters (using StrId by default)
     (
         $main_component:ident,
         $with_filters:ty
-        $(, $seri_type:ty, $ron_dir:literal, $ron_suffix:literal )*
+        $(, $seri_type:ty, $dynamic_key:literal, $ron_suffix:literal )*
         $(,)?
     ) => {
-        $crate::define_entity_map_systems!($main_component, $with_filters, $main_component, stringify!($main_component:snake), "", $main_component, common::common_components::StrId $(, $seri_type, $ron_dir, $ron_suffix )*);
+        $crate::define_entity_map_systems!($main_component, $with_filters, $main_component, stringify!($main_component:snake), "", $main_component, common::common_components::StrId $(, $seri_type, $dynamic_key, $ron_suffix )*);
     };
 
     // With additional filters and custom id type
@@ -24,7 +24,7 @@ macro_rules! define_entity_map_systems {
         $main_component:ident,
         $with_filters:ty,
         $despawn_trigger:ty
-        $(, $seri_type:ty, $ron_dir:literal, $ron_suffix:literal )*
+        $(, $seri_type:ty, $dynamic_key:literal, $ron_suffix:literal )*
         $(,)?
     ) => {
         $crate::define_entity_map_systems!(
@@ -35,7 +35,7 @@ macro_rules! define_entity_map_systems {
             "",
             $despawn_trigger,
             common::common_components::StrId
-            $(, $seri_type, $ron_dir, $ron_suffix )*
+            $(, $seri_type, $dynamic_key, $ron_suffix )*
         );
     };
 
@@ -233,7 +233,7 @@ macro_rules! define_entity_map_systems {
         $entity_prefix:expr,
         $despawn_trigger:ty,
         $id_type:ty,
-        $($seri_type:ty, $ron_dir:literal, $ron_suffix:literal ),+
+        $($seri_type:ty, $dynamic_key:literal, $ron_suffix:literal ),+
         $(,)?
     ) => {
         paste::paste! {
@@ -243,11 +243,24 @@ macro_rules! define_entity_map_systems {
             $(
                 #[derive(bevy_asset_loader::asset_collection::AssetCollection, Resource, Default, )]
                 pub struct [<$seri_type sHandles>] {
-                    #[asset(path = $ron_dir)]
+                    #[asset(key = $dynamic_key)]
                     #[asset(collection(typed))]
                     pub handles: Vec<Handle<$seri_type>>,
                 }
             )+
+
+            fn [<do_register_ $main_component:snake _dynamic_assets>](
+                dynamic_assets: &mut bevy_asset_loader::dynamic_asset::DynamicAssets,
+            ) {
+                $(
+                    common::common_resources::register_seri_dynamic_asset_key(dynamic_assets, $dynamic_key);
+                )*
+            }
+            pub fn [<register_ $main_component:snake _dynamic_assets>](
+                mut dynamic_assets: ResMut<bevy_asset_loader::dynamic_asset::DynamicAssets>,
+            ) {
+                [<do_register_ $main_component:snake _dynamic_assets>](&mut dynamic_assets);
+            }
 
             #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Copy, Clone)]
             #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform)]
@@ -397,8 +410,12 @@ macro_rules! define_entity_map_systems {
             pub fn [<plugin_ $main_component:snake>](app: &mut App) {
                 use bevy_replicon::prelude::AppRuleExt;
                 use bevy_asset_loader::prelude::*;
+                $(
+                    common::common_resources::register_seri_auto_routing_rule($dynamic_key, $ron_suffix);
+                )*
 
                 app
+                    .init_resource::<bevy_asset_loader::dynamic_asset::DynamicAssets>()
                     .init_resource::<[<$main_component EntityMap>]>()
                     //.register_type::<[<$main_component EntityMap>]>()
                     .register_type::<[<$abbreviation Ref>]>()
@@ -418,12 +435,16 @@ macro_rules! define_entity_map_systems {
                         bevy_asset_loader::prelude::LoadingStateConfig::new(common::common_states::AssetLoading::LoadingAssetsIntoHandles)
                             $(.load_collection::<[<$seri_type sHandles>]>() )*
                     )
+                    .add_systems(OnEnter(common::common_states::AssetLoading::LoadingAssetsIntoHandles), [<register_ $main_component:snake _dynamic_assets>])
                     .add_plugins((
                         $(
                             bevy_common_assets::ron::RonAssetPlugin::<$seri_type>::new(&[$ron_suffix]),
                         )*
                     ))
                     ;
+                [<do_register_ $main_component:snake _dynamic_assets>](
+                    &mut app.world_mut().resource_mut::<bevy_asset_loader::dynamic_asset::DynamicAssets>(),
+                );
             }
         }
     };

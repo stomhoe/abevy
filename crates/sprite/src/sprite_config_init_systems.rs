@@ -169,15 +169,6 @@ pub fn init_sprite_configs(
                 cmd.entity(spritecfg_ent).insert(ids);
             }
         }
-
-        /*
-        match seri.flip_horiz {
-        1 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Any); },
-        2 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Left); },
-        3 => { cmd.entity(spritecfg_ent).insert(FlipHorizIfDir::Right); },
-        _ => {},
-        };
-        */
     }
     cmd.try_insert_batch(comps_to_insert);
 }

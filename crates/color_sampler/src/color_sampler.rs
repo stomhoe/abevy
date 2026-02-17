@@ -5,7 +5,7 @@ use crate::{color_sampler_components::*, color_sampler_resources::*, color_sampl
 
 define_entity_map_systems!(
     ColorSampler,
-    WeightedColorsSeri, "ron/color_sampler", "wcolors.ron",
+    WeightedColorsSeri, "seri.color_sampler", "wcolors.ron",
 );
 
 pub type ColorWeightedSamplerHandles = WeightedColorsSerisHandles;
