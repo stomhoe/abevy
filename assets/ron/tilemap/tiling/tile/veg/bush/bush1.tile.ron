@@ -1,6 +1,7 @@
 (
     id: "temp_bush1",
     name: "Temperate bush 1",
+    tags: ["bush", "veg"],
     z: 1000,
     y_sort: Some(10),
     img_paths: [

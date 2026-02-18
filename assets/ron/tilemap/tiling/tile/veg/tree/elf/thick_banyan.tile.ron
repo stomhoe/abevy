@@ -1,6 +1,7 @@
 (
     id: "thick_banyan",
     name: "Thick banyan",
+    tags: ["tree", "veg"],
     z: 1000,
     y_sort: Some(0),
     img_paths: [

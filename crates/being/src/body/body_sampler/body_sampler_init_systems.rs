@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::StrId;
-use game_common::game_common_components_samplers::EntityWeightedSampler;
+use game_common::game_common_samplers::EntityWeightedSampler;
 
 use crate::body::{body_tree_resources::*, body_sampler::{body_sampler_components::*, body_sampler_resources::*}};
 

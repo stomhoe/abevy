@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use game_common::game_common_components::EntityZero;
-use game_common::game_common_components_samplers::*;
+use game_common::game_common_samplers::*;
 use game_common::game_common_string_components::*;
 use sprite_shared::SampleSpriteEnts;
 use sprite::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};

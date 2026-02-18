@@ -13,7 +13,6 @@ pub struct MapKey {
     dim_ref: DimensionRef,
     chunk_pos: ChunkPos,
     ac_z: AcZ,
-    size_in_tiles: SizeInTiles,
     tile_size: U16Vec2,
     shader_ref: Option<TileShaderRef>,
 }
@@ -22,11 +21,10 @@ impl MapKey {
         dim_ref: DimensionRef,
         chunk_pos: ChunkPos,
         ac_z: AcZ,
-        size_in_tiles: SizeInTiles,
         tile_size: U16Vec2,
         shader_ref: Option<TileShaderRef>,
     ) -> Self {
-        Self { dim_ref, chunk_pos, ac_z, size_in_tiles, tile_size, shader_ref }
+        Self { dim_ref, chunk_pos, ac_z, tile_size, shader_ref }
     }
     pub fn shader_ref(&self) -> Option<TileShaderRef> {self.shader_ref}
 }
@@ -83,10 +81,10 @@ pub struct TmapMap (
 
 #[allow(unused_parens)]
 pub fn on_tilemap_despawn(trig: On<Despawn, (TilemapTileSize, TileShaderRef)>,
-    query: Query<(&DimensionRef, &ChunkPos, &AcZ, &SizeInTiles, &TilemapTileSize, &TileShaderRef)>,
+    query: Query<(&DimensionRef, &ChunkPos, &AcZ, &TilemapTileSize, &TileShaderRef)>,
     mut tmap_map: ResMut<TmapMap>,
 ) {
-    let Ok((dimension_ref, chunk_pos, ac_z, size_in_tiles, tile_size, shader_ref)) = query.get(trig.entity)
+    let Ok((dimension_ref, chunk_pos, ac_z, tile_size, shader_ref)) = query.get(trig.entity)
     else {
         return;
     };
@@ -100,7 +98,6 @@ pub fn on_tilemap_despawn(trig: On<Despawn, (TilemapTileSize, TileShaderRef)>,
         *dimension_ref,
         *chunk_pos,
         *ac_z,
-        *size_in_tiles,
         tile_size_u16vec2,
         opt_shader,
     );
@@ -359,7 +356,7 @@ fn process_tile_into_corresponding_tilemap(
             return;
         }
     };
-    let map_key = MapKey::new(dim_ref, chunk_pos, tile_z_index, size_in_tiles, tile_size, shader_ref.copied());
+    let map_key = MapKey::new(dim_ref, chunk_pos, tile_z_index, tile_size, shader_ref.copied());
 
     if let Some(mapstruct) = tmap_map.get_mut(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;

@@ -1,7 +1,7 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use game_common::game_common_components::{EntityZeroRef, };
-use game_common::game_common_components_samplers::*;
+use game_common::game_common_samplers::*;
 use ::sprite_shared::{sprite_scale_offset::*, *};
 use ::tilemap_shared::directions::*;
 

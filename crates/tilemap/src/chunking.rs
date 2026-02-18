@@ -2,7 +2,6 @@ use std::time::Duration;
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
-use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
 #[allow(unused_imports)] use bevy_replicon::prelude::Replicated;
 
 pub mod chunking_components;

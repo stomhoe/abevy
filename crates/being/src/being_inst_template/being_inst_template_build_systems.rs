@@ -1,7 +1,7 @@
 use ::being_shared::*;
 use bevy::prelude::*;
 use faction::faction_components::BelongsToFaction;
-use game_common::game_common_components::{CappedNormalDist};
+use game_common::game_common_samplers::{CappedNormalDist};
 use sprite_shared::SampleSpriteEnts;
 
 use crate::{being_inst_template::{ being_inst_template_resources::*}, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};

@@ -1,6 +1,7 @@
 (
     id: "willow",
     name: "Willow",
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/willow.png")
     ],

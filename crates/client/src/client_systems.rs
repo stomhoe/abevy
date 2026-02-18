@@ -14,7 +14,7 @@ use crate::{client_functions::*, };
 
 
 pub fn attempt_join(
-    event: On<JoinServer>,
+    _event: On<JoinServer>,
     mut cmd: Commands,
     channels: Res<RepliconChannels>,
     target_join_server: Option<Res<TargetJoinServer>>,

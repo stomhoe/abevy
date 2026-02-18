@@ -4,7 +4,7 @@ use bevy_replicon::prelude::*;
 use common::{AppRegisterAndReplicateExt, common_states::*};
 
 use crate::{
-    game_common_components::*, game_common_components_samplers::*, game_common_states::*,
+    game_common_components::*, game_common_samplers::*, game_common_states::*,
     game_common_string_components::Description, game_common_systems::*,
 };
 

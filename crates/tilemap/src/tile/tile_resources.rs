@@ -6,9 +6,10 @@ use bevy_ecs_tilemap::tiles::TileFlip;
 use common::{common_components::{Tag}, };
 use game_common::game_common_components::EntityZero;
 use serde::{Deserialize, Serialize};
+use tilemap_shared::InteractionZoneSeri;
 
 pub use crate::tilemap_resources::{MassCollectedTiles, ImportantRegisteredPositions, CloneSpawnParamSet};
-use crate::tile::tile_components::Tile;
+use crate::tile::tile_components::{DeleteOtherTiles, DeleteOtherTilesSeri, Tile};
 
 common::define_entity_map_systems!(
     Tile,
@@ -107,8 +108,12 @@ pub struct TileSeri {
     pub interaction_zones: HashMap<String, InteractionZoneSeri>,
 
     #[serde(default)]
-    pub offsets_for_portal_arrivals:  Vec<(f32, (i8, i8))>,
+    pub offsets_for_portal_arrivals: Vec<(f32, (i8, i8))>,
 
+    #[serde(default)]
+    pub delete_other_tiles: DeleteOtherTilesSeri,
+    #[serde(default)]
+    pub offset_for_terrgen: (i8, i8),
 
     #[serde(default = "default_size_in_tiles")]
     pub size_in_tiles: (u32, u32),
@@ -131,13 +136,6 @@ fn default_walk_speed() -> f32 { 1. }
 fn default_size_in_tiles() -> (u32, u32) { (1, 1) }
 
 
-#[derive(Component, Deserialize, TypePath, Clone, Default)]
-pub struct InteractionZoneSeri{
-    #[serde(default)]
-    pub offset_positions: Vec<(i8, i8)>,
-    #[serde(default)]
-    pub radius_offset: Vec<(f32, f32)>,
-}
 
 #[derive(Component, Deserialize, TypePath, Clone, )]
 pub struct PortalSeri{

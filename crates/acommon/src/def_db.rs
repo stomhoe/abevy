@@ -84,6 +84,11 @@ fn validation_rules() -> &'static Mutex<Vec<DefRefRule>> {
     RULES.get_or_init(|| Mutex::new(Vec::new()))
 }
 
+fn assets_index_cache() -> &'static Mutex<Option<Vec<(DefSource, PathBuf)>>> {
+    static CACHE: OnceLock<Mutex<Option<Vec<(DefSource, PathBuf)>>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(None))
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum DefPatchOp {
@@ -844,9 +849,14 @@ pub fn discover_assets_files_by_suffixes(suffixes: &[&str]) -> Result<Vec<(DefSo
     if !assets_root.exists() {
         return Ok(Vec::new());
     }
-    discover_assets_files_matching(assets_root, |rel_string| {
-        suffixes.iter().any(|s| rel_string.ends_with(s))
-    })
+    let all_files = get_or_build_assets_index(assets_root)?;
+    let mut out = Vec::new();
+    for (source, abs_path) in all_files {
+        if suffixes.iter().any(|s| source.rel_path.ends_with(s)) {
+            out.push((source.clone(), abs_path.clone()));
+        }
+    }
+    Ok(out)
 }
 
 pub fn discover_assets_files_matching(
@@ -912,4 +922,17 @@ pub fn to_forward_slash_path(path: &Path) -> String {
         out.push_str(&part.as_os_str().to_string_lossy());
     }
     out
+}
+
+fn get_or_build_assets_index(assets_root: &Path) -> Result<Vec<(DefSource, PathBuf)>> {
+    if let Ok(cache) = assets_index_cache().lock()
+        && let Some(files) = &*cache
+    {
+        return Ok(files.clone());
+    }
+    let files = discover_assets_files_matching(assets_root, |_| true)?;
+    if let Ok(mut cache) = assets_index_cache().lock() {
+        *cache = Some(files.clone());
+    }
+    Ok(files)
 }

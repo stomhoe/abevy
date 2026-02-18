@@ -1,6 +1,7 @@
 (
     id: "maple",
     name: "Maple",
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/maple.png"),
     ],

@@ -3,13 +3,13 @@ use common::common_components::{StrId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Event, Clone, Copy, Default)]
-pub struct AttemptHostServer { pub port: Option<u16> } 
+pub struct AttemptHostServer { pub port: Option<u16> }
 
 #[derive(Event, )]
-pub struct StartServerFailed { pub reason: BevyError, } 
+pub struct StartServerFailed { pub reason: BevyError, }
 
 #[derive(Event, Clone, Copy, Default)]
-pub struct JoinServer { } 
+pub struct JoinServer{ }
 
 #[derive(Event, Deserialize, Serialize, Clone)]
 pub struct HostStartedGameplay;

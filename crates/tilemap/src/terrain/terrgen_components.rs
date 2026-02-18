@@ -6,7 +6,7 @@ use fnl::{FastNoiseLite, NoiseSampleRange};
 use noiz::DynamicConfigurableSampleable;
 
 use tilemap_shared::{GlobalGenSettings, GlobalTilePos};
-use std::hash::{Hasher, Hash};
+use std::hash::{Hash};
 
 use {common::common_components::*, };
 use serde::{Deserialize, Serialize};

@@ -27,7 +27,6 @@ pub struct TilemapConfig {
     sync: SyncToRenderWorld,
     anchor: TilemapAnchor,
     ac_z: AcZ,
-    size_in_tiles: SizeInTiles,
     /*
 */
 }
@@ -37,16 +36,15 @@ impl TilemapConfig {
         Self {
             entity_prefix: Prefix::trunc("Tilemap"),
             img_px_size: TilemapTileSize::from(img_px_size.as_vec2()),
-            grid_size: TilemapGridSize::from( size_in_tiles.to_pixel_size()),
+            grid_size: TilemapGridSize::from( GlobalTilePos::TILE_SIZE_PXS.as_vec2()),
             map_size: size_in_tiles.tilemap_size(),
             render_settings: TilemapRenderSettings {
-                render_chunk_size: size_in_tiles.render_chunk_size(),
+                render_chunk_size: SizeInTiles::default().render_chunk_size(),
                 y_sort,
             },
             transform: Transform::from_translation(chunk_pos.to_pixelpos().extend(0.0)),
             chunk_pos,
             ac_z,
-            size_in_tiles,
             ..Default::default()
         }
     }

@@ -1,6 +1,7 @@
 (
     id: "dogwood",
     name: "Dogwood",
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/elf/dogwood.png")
     ],

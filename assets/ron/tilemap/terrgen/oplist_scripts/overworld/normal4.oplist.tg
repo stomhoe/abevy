@@ -20,6 +20,6 @@ let bush_feature = +(bush_feature, -0.0)
 out = idxmax(0.5, tree_feature, cave_portal_feature, bush_feature)
 
 bif normal5 -> []
-bif "" -> [temptree_sampler]
-bif "" -> [portal_cave, cyan]
-bif "" -> [tempveg_sampler]
+bif "" -> [temptree_sampler, cyan]
+bif "" -> [portal_cave, ]
+bif "" -> [tempveg_sampler, ]

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use common::common_components::*;
 
 use ::sprite_shared::*;
-use game_common::game_common_components_samplers::*;
+use game_common::game_common_samplers::*;
 
 use crate::being_inst_template::{being_inst_template_resources::*,
 };

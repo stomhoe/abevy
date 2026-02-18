@@ -246,7 +246,7 @@ pub struct TileGatheringParamSet<'w, 's> {
     spritetiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
     loaded_chunks: Res<'w, LoadedChunks>,
     chunk_children: Query<'w, 's, &'static Tilemaps>,
-    pub tilemap_query: Query<'w, 's, (&'static SizeInTiles, &'static mut TileStorage, &'static HashIdToTexIndex),>,
+    pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static HashIdToTexIndex),>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
     pub fn gather_tiles_at(&self, vec_to_drain: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
@@ -257,10 +257,10 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
         };
         if let Ok(tilemaps) = self.chunk_children.get(chunk_ent){
             for &tmap_ent in tilemaps.entities() {
-                let Ok((&size_in_tiles, storage, ..)) = self.tilemap_query.get(tmap_ent) else {
+                let Ok((storage, ..)) = self.tilemap_query.get(tmap_ent) else {
                     continue;
                 };
-                let tpos = gpos.to_tilepos(size_in_tiles);
+                let tpos = gpos.to_tilepos();
 
                 if let Some(tile_ent) = storage.get(&tpos) {
                     vec_to_drain.extend(std::iter::once(tile_ent));
@@ -316,7 +316,9 @@ impl TileCollisionMask {
                 match c {
                     '0' => {}
                     '1' => {
-                        let bit_i = y * width + x;
+                        // RON rows are authored top-to-bottom; local mask space is bottom-to-top.
+                        let source_y = (height - 1) - y;
+                        let bit_i = source_y * width + x;
                         bits |= 1u64 << bit_i;
                     }
                     _ => {
@@ -425,3 +427,52 @@ impl RecheckTileAdjacency {
 #[derive(Message, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 /// Despawn with removal from SpriteTilesAtGpos (if spritetile) and tile adjacency recheck
 pub struct SafeDespawn(pub Entity);
+
+
+#[derive(Component, Clone, Deserialize, Serialize, Debug,)]
+pub struct InteractionZone{
+    offset_positions: Vec<GlobalTilePos>,
+    radius_paired_w_offsets: Vec<(f32, f32)>,
+}
+impl InteractionZone {
+    pub fn new(seri: InteractionZoneSeri) -> Self {
+        let offset_positions = seri
+            .offset_positions
+            .into_iter()
+            .map(GlobalTilePos::from)
+            .collect();
+
+        let radius_paired_w_offsets = seri.radius_offset;
+
+        Self {
+            offset_positions,
+            radius_paired_w_offsets,
+        }
+    }
+
+    pub fn is_inside_any(&self, anchor_transf: Vec2, client_transf: Vec2) -> bool {
+        for &offset_pos in &self.offset_positions {
+            let anchor_gpos: GlobalTilePos = anchor_transf.into();
+            let client_pos: GlobalTilePos = client_transf.into();
+            let checked_pos = anchor_gpos + offset_pos;
+            if checked_pos == client_pos {
+                return true;
+            }
+        }
+        for &(radius, offset) in &self.radius_paired_w_offsets {
+            let pos = anchor_transf + offset;
+            if pos.distance(client_transf) <= radius {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+#[derive(Component, Deserialize, TypePath, Clone, Default)]
+pub struct InteractionZoneSeri{
+    #[serde(default)]
+    pub offset_positions: Vec<(i8, i8)>,
+    #[serde(default)]
+    pub radius_offset: Vec<(f32, f32)>,
+}

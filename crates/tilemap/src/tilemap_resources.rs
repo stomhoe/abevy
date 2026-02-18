@@ -7,7 +7,7 @@ use crate::{terrain::terrgen_messages::PendingOp, tile::tile_bundles::* };
 use crate::tile::{tile_components::*, };
 
 use ::tilemap_shared::*;
-use game_common::{game_common_components::*, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::*, game_common_samplers::EntityWeightedSampler};
 
 
 
@@ -116,7 +116,7 @@ impl MassCollectedTiles {
         let mut spawned = Vec::with_capacity(ezeros_iter.size_hint().0);
         spawned.extend(ezeros_iter.map(|ezero| {
 
-            self.clonespawn_and_push_tile(cmd, ezero, global_pos, dim_ref, param_set)
+            self.clonespawn_and_push_tile(cmd, ezero, global_pos, dim_ref, )
         }));
         spawned
     }
@@ -126,16 +126,16 @@ impl MassCollectedTiles {
         ezero_ref: EntityZeroRef,
         gpos: GlobalTilePos,
         dim_ref: DimensionRef,
-        param_set: &CloneSpawnParamSet,
+        //param_set: &CloneSpawnParamSet,
     ) -> Entity {
         let tile_instance = cmd.entity(ezero_ref.0).clone_and_spawn_with_opt_out(|builder|{
             builder.deny::<ToDenyOnTileClone>();
             //builder.deny::<BundleToDenyOnReleaseBuild>();
         }).id();
-        let tile_size = param_set.size_in_tiles.get(ezero_ref.0).cloned().unwrap_or_default();
+        //let tile_size = param_set.size_in_tiles.get(ezero_ref.0).cloned().unwrap_or_default();
 
         let tile_bundle = TileBundle {
-            position: gpos.to_tilepos(tile_size), ..Default::default()
+            position: gpos.to_tilepos(), ..Default::default()
         };
         let helper = TileMassSpawnBundle {
             ezero_ref,
@@ -174,7 +174,7 @@ impl MassCollectedTiles {
                 self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_hash_id, dim_ref, param_set, depth + 1);
             }
         } else {
-            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, param_set, );
+            self.clonespawn_and_push_tile(cmd, EntityZeroRef(tiling_ent), global_pos, dim_ref, );
         }
     }
     pub fn collect_tiles(&mut self,

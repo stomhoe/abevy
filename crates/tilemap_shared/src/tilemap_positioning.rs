@@ -54,9 +54,9 @@ impl Default for PrevGlobalTilePos {
 impl GlobalTilePos {
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 32, y: 32 };
 
-    pub fn to_tilepos(&self, size_in_tiles: SizeInTiles) -> TilePos {
+    pub fn to_tilepos(&self, /*size_in_tiles: SizeInTiles*/) -> TilePos {
         let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
-        let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) / size_in_tiles.inner().as_ivec2();
+        let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) /*/ size_in_tiles.inner().as_ivec2()*/;
         TilePos::from(ivec2.as_uvec2())
     }
     pub fn to_chunkpos(&self) -> ChunkPos {
@@ -129,12 +129,17 @@ impl ChunkPos {
         (local_pos.0.y * REGION_SIZE_IN_CHUNKS.x() + local_pos.0.x) as usize
     }
 
-    pub fn get_tilepositions_within_chunk(&self, oplist_size: SizeInTiles) -> Vec<GlobalTilePos> {
-        let mut tiles = Vec::with_capacity((oplist_size.tiles_per_chunk().element_product()) as usize);
+    pub fn get_tilepositions_within_chunk(&self) -> Vec<GlobalTilePos> {
+        let width = Self::CHUNK_SIZE.x as usize;
+        let height = Self::CHUNK_SIZE.y as usize;
+        let mut tiles = Vec::with_capacity(width * height);
         let chunk_origin = self.to_tilepos();
-        for y in (0..Self::CHUNK_SIZE.y).step_by(oplist_size.y()) {
-            for x in (0..Self::CHUNK_SIZE.x).step_by(oplist_size.x()) {
-                let tile_pos = GlobalTilePos(IVec2::new(chunk_origin.0.x + x as i32, chunk_origin.0.y + y as i32));
+        for y in 0..Self::CHUNK_SIZE.y {
+            for x in 0..Self::CHUNK_SIZE.x {
+                let tile_pos = GlobalTilePos(IVec2::new(
+                    chunk_origin.0.x + x as i32,
+                    chunk_origin.0.y + y as i32,
+                ));
                 tiles.push(tile_pos);
             }
         }
@@ -294,14 +299,6 @@ impl SizeInTiles{
         if y == 0 {
             error!("{}: TileOccupancy height must be greater than 0", str_id);
             y = 1;
-        }
-        if x > 6 && !is_spritetile {
-            error!("{}: TileOccupancy width must be less than 7", str_id);
-            x = 6
-        }
-        if y > 6 && !is_spritetile {
-            error!("{}: TileOccupancy height must be less than 7", str_id);
-            y = 6;
         }
         Self(UVec2::new(x, y))
     }

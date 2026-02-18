@@ -9,16 +9,6 @@ use crate::terrain::{
         terrprobe_resources::{EguiTptsHolder, TerrProbeTemplEntityMap, load_terrain_probe_seri_defs},
     },
 };
-
-fn parse_probe_pattern(raw: &str) -> Option<ProbePatternSeri> {
-    let normalized = raw.trim().trim_end_matches("()").to_ascii_lowercase();
-    match normalized.as_str() {
-        "sun" => Some(ProbePatternSeri::Sun),
-        "spiral" => Some(ProbePatternSeri::Spiral),
-        _ => None,
-    }
-}
-
 #[allow(unused_parens)]
 pub fn init_terrain_probes(
     mut cmd: Commands,

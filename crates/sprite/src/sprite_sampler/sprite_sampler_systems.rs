@@ -3,7 +3,7 @@ use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{common_components::StrId, };
 
-use game_common::{game_common_components::EntityZero, game_common_components_samplers::EntityWeightedSampler};
+use game_common::{game_common_components::EntityZero, game_common_samplers::EntityWeightedSampler};
 use sprite_shared::{SampleSpriteEnts, SampleSpritesFromStrIds};
 
 use crate::{sprite_components::ScsToBuild, sprite_resources::*, sprite_sampler::SpriteWeightedSamplerEntityMap};

@@ -1,6 +1,7 @@
 (
     id: "elf_bush1",
     name: "Elven Bush 1",
+    tags: ["bush", "veg"],
     z: 1000,
     y_sort: Some(10),
     img_paths: [

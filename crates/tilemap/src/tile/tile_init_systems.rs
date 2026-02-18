@@ -1,6 +1,6 @@
 
 use ::game_common::{game_common_components::*, };
-use game_common::game_common_components_samplers::GlobalTilePosWeightedSampler;
+use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
@@ -114,6 +114,12 @@ pub fn init_tiles(
         }
         if seri.portal.no_field_is_empty() {
             cmd.entity(tile_enti).insert((std::mem::take(&mut seri.portal), ChildOf(egui_portal_holder)));
+        }
+
+        let delete_other_tiles_seri = std::mem::take(&mut seri.delete_other_tiles);
+        let delete_other_tiles = delete_other_tiles_seri.to_delete_other_tiles();
+        if !delete_other_tiles.is_empty() {
+            cmd.entity(tile_enti).insert(delete_other_tiles);
         }
 
         if !seri.offsets_for_portal_arrivals.is_empty() {

@@ -1,5 +1,5 @@
 use ::game_common::game_common_components::*;
-use game_common::game_common_components_samplers::GlobalTilePosWeightedSampler;
+use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
@@ -173,7 +173,6 @@ pub fn instantiate_portal(
             oe_portal_tileref,
             found_pos,
             oe_dim_ref,
-            &clone_spawn_param_set,
         );
         register_pos.exempt_entity_from_mindist_checks(oe_portal);
 

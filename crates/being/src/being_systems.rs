@@ -4,8 +4,8 @@ use bevy_replicon::prelude::*;
 use camera::camera_components::CameraTarget;
 use common::common_components::HashId;
 use faction::faction_components::*;
-use game_common::game_common_components::{DespawnTimer, EntityZeroRef};
-use game_common::game_common_components_samplers::GlobalTilePosWeightedSampler;
+use game_common::game_common_components::{EntityZeroRef};
+use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 use modifier::{modifier_components::*, modifier_move_bundles::TemporalSpeedModifier,};
 use movement::movement_messages::TransformFromServer;
 use player::player_components::*;
@@ -91,9 +91,8 @@ pub fn cross_portal(mut cmd: Commands,
 
             let is_interacting = if let Some(ezero_ref) = ezero_ref {
                 if let Ok(interaction_zones) = interaction_zones_query.get(ezero_ref.0) {
-                    const PORTAL_HASH: HashId = HashId::hash("portal");
                     interaction_zones.is_inside_interaction_zone(
-                        PORTAL_HASH,
+                        InteractionZones::ENTER,
                         gpos.to_pixelpos(),
                         being_globtransform.translation().xy(),
                     )

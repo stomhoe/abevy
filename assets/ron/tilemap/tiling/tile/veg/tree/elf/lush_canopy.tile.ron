@@ -1,6 +1,7 @@
 (
     id: "lush_canopy",
     name: "Lush canopy",
+    tags: ["tree", "veg"],
     z: 1000,
     y_sort: Some(0),
     img_paths: [

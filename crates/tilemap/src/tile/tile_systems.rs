@@ -14,6 +14,45 @@ use common::{AnyDisabling, common_components::HashId, common_tag_components::Tag
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
 
+fn should_delete_tile(
+    spec: &DeleteOtherTiles,
+    target_z: &AcZ,
+    target_tags: Option<&TagSet>,
+) -> bool {
+    if !spec.targeted_z.is_empty() {
+        if !spec.targeted_z.contains(target_z) {
+            return false;
+        }
+        if let Some(tags) = target_tags {
+            if spec.spared_tags.intersects(tags) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if !spec.targeted_tags.is_empty() {
+        let Some(tags) = target_tags else {
+            return false;
+        };
+        if !spec.targeted_tags.intersects(tags) {
+            return false;
+        }
+        if spec.spared_z.contains(target_z) {
+            return false;
+        }
+        return true;
+    }
+    if spec.spared_z.contains(target_z) {
+        return false;
+    }
+    if let Some(tags) = target_tags {
+        if spec.spared_tags.intersects(tags) {
+            return false;
+        }
+    }
+    true
+}
+
 #[allow(unused_parens)]
 pub fn flip_tile_horizontally_based_on_initial_pos_hash(
     settings: Query<&GlobalGenSettings>,
@@ -277,15 +316,7 @@ pub fn despawn_if_not_excepted(
             };
             let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
             if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
-                if newtile_delete_others_excp.spared_z.contains(otile_z) {
-                    return;
-                }
-                else if let Some(otile_tag_hashset) = otile_tag_hashset
-                && newtile_delete_others_excp.spared_tags.intersects(otile_tag_hashset)
-                {
-                    return;
-                }
-                else {
+                if should_delete_tile(newtile_delete_others_excp, otile_z, otile_tag_hashset) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
                     if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
                         msgs.push(SafeDespawn(otile_ent));
@@ -295,14 +326,7 @@ pub fn despawn_if_not_excepted(
             }
             let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp);
             if let Some(otile_delete_others_excp) = otile_delete_others_excp {
-                if otile_delete_others_excp.spared_z.contains(newtile_z) {
-                    return;
-                }
-                else if let Some(newtile_tag_hashset) = newtile_tag_hashset
-                && otile_delete_others_excp.spared_tags.intersects(newtile_tag_hashset) {
-                    return;
-                }
-                else {
+                if should_delete_tile(otile_delete_others_excp, newtile_z, newtile_tag_hashset) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
                     if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
                         msgs.push(SafeDespawn(newtile_ent));
@@ -441,7 +465,7 @@ pub fn safe_despawn_tile_at(
     mut recheck_writer: MessageWriter<RecheckTileAdjacency>,
     loaded_chunks: Res<LoadedChunks>,
     chunk_children: Query<&Tilemaps>,
-    mut tilemap_query: Query<(&SizeInTiles, &mut TileStorage, &HashIdToTexIndex)>,
+    mut tilemap_query: Query<(&mut TileStorage, &HashIdToTexIndex)>,
     tile_query: Query<(&DimensionRef, &GlobalTilePos), (With<Tile>, common::AnyDisabling)>,
     mut rechecks: Local<Vec<RecheckTileAdjacency>>,
 ) {
@@ -463,10 +487,10 @@ pub fn safe_despawn_tile_at(
             continue;
         };
         for &tmap_ent in tilemaps.entities() {
-            let Ok((&size_in_tiles, mut storage, ..)) = tilemap_query.get_mut(tmap_ent) else {
+            let Ok((mut storage, ..)) = tilemap_query.get_mut(tmap_ent) else {
                 continue;
             };
-            let tpos = gpos.to_tilepos(size_in_tiles);
+            let tpos = gpos.to_tilepos();
             let Some(found_tile_ent) = storage.get(&tpos) else {
                 continue;
             };

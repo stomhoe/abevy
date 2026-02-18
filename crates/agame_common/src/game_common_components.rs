@@ -5,7 +5,6 @@ use splines::{Interpolation, Key, Spline};
 use std::hash::Hash;
 use std::time::Duration;
 
-use crate::game_common_seris::NormalDistSeri;
 use serde::{Deserialize, Serialize};
 pub use crate::entity_zero_components::*;
 
@@ -187,72 +186,5 @@ impl TickMultFactor {
     }
     pub fn value(&self) -> f32 {
         self.0
-    }
-}
-
-#[derive(Component, Default, Debug, Clone, Deserialize, Serialize)]
-pub struct CappedNormalDist {
-    pub min: f32,
-    pub max: f32,
-    pub mean: f32,
-    pub std_dev: f32,
-}
-impl CappedNormalDist {
-    pub fn new(min: f32, max: f32, mean: f32, std_dev: f32) -> Self {
-        let mut min = min.max(0.01);
-        let mut max = max.max(0.01);
-        let mut mean = mean;
-        let std_dev = std_dev.max(0.01);
-        if min > max {
-            error!(
-                "CappedNormalDist: min ({}) is greater than max ({}). Swapping values.",
-                min, max
-            );
-            std::mem::swap(&mut min, &mut max);
-        }
-        if mean < min || mean > max {
-            error!(
-                "CappedNormalDist: mean ({}) is outside the range [{}, {}]. Clamping to range.",
-                mean, min, max
-            );
-            mean = mean.clamp(min, max);
-        }
-        let range = max - min;
-        if std_dev > range {
-            error!(
-                "CappedNormalDist: std_dev ({}) is larger than the range ({} - {} = {}). \
-                 Most samples will be clamped.",
-                std_dev, max, min, range
-            );
-        }
-        Self {min, max, mean, std_dev,}
-    }
-
-    pub fn sample(&self, rng: &mut impl rand::Rng) -> f32 {
-        use rand_distr::{Normal, Distribution};
-
-        let normal = match Normal::new(self.mean, self.std_dev) {
-            Ok(dist) => dist,
-            Err(e) => {
-                error!(
-                    "CappedNormalDist: Failed to create normal distribution with mean={}, std_dev={}: {}. \
-                     Using fallback distribution.",
-                    self.mean, self.std_dev, e
-                );
-                Normal::new(self.mean, 0.1)
-                    .unwrap_or_else(|_| {
-                        error!(
-                            "CappedNormalDist: Fallback distribution also failed. Returning mean value."
-                        );
-                        Normal::new(self.mean, 0.01)
-                            .expect("Final fallback should always work")
-                    })
-            }
-        };
-
-        normal.sample(rng).clamp(self.min, self.max)
-    }
-    pub fn from_seri(seri: NormalDistSeri) -> Self {
-        Self::new(seri.min, seri.max, seri.mean, seri.std_dev)
     }
 }

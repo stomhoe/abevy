@@ -1,7 +1,7 @@
 
 (
     id: "portal_cave",
-    tags: ["portal"],
+    tags: ["portal", ],
     name: "Cave portal",
     z: 1000,
     y_sort: Some(0),
@@ -22,21 +22,31 @@
             (1.0, (4, 2)),
         ],
     ),
-    offset: (110.0, 50.0),
-    size_in_tiles: (8, 3),
+    offset: (96.0, 50.0),
+    size_in_tiles: (7, 3),
     interaction_zones: {
-        "portal": (
+        "enter": (
             offset_positions: [
+                (2, 0),
+                (2, 1),
+                (3, 0),
                 (3, 1),
+                (4, 0),
                 (4, 1),
-                (3, 2),
-                (4, 2),
             ],
         ),
     },
     colmask: [
-        "00000000",
-        "11000011",
-        "11000011",
+        "0000000",
+        "1100011",
+        "1100011",
     ],
+    offsets_for_portal_arrivals: [
+        (1.0, (3, 0)),
+    ],
+    delete_other_tiles: DeleteOtherTilesSeri(
+        targeted_tags: [
+            "veg",
+        ],
+    ),
 )

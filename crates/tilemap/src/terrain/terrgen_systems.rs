@@ -300,7 +300,7 @@ fn build_terrgen_task_context(
 
     let mut filters: EntityHashMap<OpFilter> = EntityHashMap::with_capacity(pending_len);
     for ev in pending_ops.iter() {
-        if ev.filtered_op == Entity::PLACEHOLDER {
+        if ev.filtered_op_is_placeholder() {
             continue;
         }
         if let Ok(filter) = op_filters.get(ev.filtered_op) {

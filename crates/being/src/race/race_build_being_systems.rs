@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::common_id_components::HashId;
 use ::tilemap_shared::*;
-use game_common::game_common_components_samplers::{ScaleHpAndStrengthWithSize, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
+use game_common::game_common_samplers::{ScaleHpAndStrengthWithSize, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
 use crate::being_inst_template::being_inst_template_resources::BitRef;
 
 use crate::body::BodyTreeStrIdRef;

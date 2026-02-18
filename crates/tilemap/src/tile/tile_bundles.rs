@@ -7,7 +7,7 @@ use common::common_components::*;
 use common::common_tag_components::{HashedTagsVec, TagSet};
 
 use game_common::game_common_components::*;
-use game_common::game_common_components_samplers::GlobalTilePosWeightedSampler;
+use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 use game_common::game_common_string_components::*;
 
 use sprite_shared::{AcZ, YSortOrigin};

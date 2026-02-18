@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::game_common_components::CappedNormalDist;
+use crate::game_common_samplers::CappedNormalDist;
+
 
 #[derive(Asset, TypePath, Default, Debug, Clone, Deserialize, )]
 pub struct NormalDistSeri {

@@ -1,5 +1,5 @@
 use being_shared::BeingInstTemplate;
-use bevy::{asset, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use game_common::game_common_seris::NormalDistSeri;
 
 common::define_entity_map_systems!(

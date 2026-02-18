@@ -97,8 +97,8 @@ macro_rules! define_fixedstr_id {
 }
 define_fixedstr_id!(StrId20B, 20);
 define_fixedstr_id!(Tag, 32);
-define_fixedstr_id!(StrId, 32);
 
+define_fixedstr_id!(StrId, 32);
 define_fixedstr_id!(Prefix, 32);
 
 #[derive(Component, Debug, Default, Copy, Clone)]
