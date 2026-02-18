@@ -450,7 +450,7 @@ pub fn update_body_health_from_parts(
         body_regen_map.insert(*body, (regen_rate, total_max_hp));
     }
 
-    for (part_ent, mut damage) in damage_query.iter_mut() {
+    for (part_ent, damage) in damage_query.iter_mut() {
         let Some((regen_rate, total_max_hp)) = part_to_body
             .get(&part_ent)
             .and_then(|body| body_regen_map.get(body))

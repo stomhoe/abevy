@@ -12,6 +12,7 @@ being_shared = { path = "../being_shared" }
 tilemap_shared = { path = "../tilemap_shared" }
 
 bevy = { workspace = true }
+bevy_ecs_tilemap = { workspace = true }
 
 #serde = { workspace = true }
 #strum = { workspace = true }

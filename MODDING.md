@@ -1,13 +1,30 @@
-# Modding Guide (Manifest-Driven Dynamic Assets)
+# Modding Guide (Current Architecture)
 
-This project loads gameplay `*Seri` data through dynamic-asset manifests.
+This project is data-driven. Most content is loaded from `assets/**/*.ron` at startup, then turned into ECS entities/resources.
 
-## Quick Start
+There are **two modding layers**:
 
-1. Create a manifest file anywhere under `assets/` ending with `.seri_manifest.ron`.
-2. Add one or more dynamic keys, each mapped to an array of dynamic assets.
-3. Use `File(path: "...")` entries for `*Seri` files.
-4. Place your mod's actual `.ron` files under `assets/` at the paths referenced by the manifest.
+1. **Seri manifests + `*Seri` assets** (`*.seri_manifest.ron` + files like `*.tile.ron`, `*.race.ron`, `*.tpt.ron`, etc.)
+2. **Def DB patching** (`*.defpatch.ron`) for explicit patch operations on loaded defs
+
+## 1) Startup Flow (High Level)
+
+1. The game scans `assets/` for all `.seri_manifest.ron` files.
+2. It also auto-discovers files by registered suffix rules (from `define_entity_map_systems!`).
+3. Dynamic asset keys like `seri.tilemap.tile` are populated with `File(path: "...")` entries.
+4. Systems call generated loaders like `load_tile_seri_defs()`, `load_race_seri_defs()`, etc.
+5. Those `*Seri` structs are validated/transformed into runtime ECS components.
+
+Separately, systems using `DefDatabase<T>`:
+
+1. Scan matching suffixes under `assets/`.
+2. Merge base/mod defs by precedence.
+3. Apply all `*.defpatch.ron` operations.
+4. Optionally run cross-reference validation rules.
+
+## 2) Seri Manifest Modding
+
+Create a manifest anywhere under `assets/` ending with `.seri_manifest.ron`.
 
 Example:
 
@@ -22,17 +39,7 @@ Example:
 }
 ```
 
-### Automatic Discovery
-
-You do not need to list every file in a manifest.
-
-At load time, the game scans `assets/` and auto-routes matching `*.presuffix.ron` files to dynamic keys using the rules registered by `define_entity_map_systems!` (`ron_dir` + `ron_suffix`).
-
-If your file sits in the expected directory pattern and has the expected suffix, it is discovered automatically.
-
-### Optional `auto` Manifest
-
-You can still use `auto` (or `seri.auto`) and let the loader infer the target `seri.*` key from file suffix/path:
+You can also use `"auto"` / `"seri.auto"` and let the engine infer the key from suffix:
 
 ```ron
 {
@@ -43,15 +50,14 @@ You can still use `auto` (or `seri.auto`) and let the loader infer the target `s
 }
 ```
 
-Inference is not hardcoded in docs; it is derived from the rules registered by each `define_entity_map_systems!` declaration (`dynamic_key`, `ron_dir`, `ron_suffix`).  
-That means if you rename a suffix (for example `sampler.ron` -> `bosampler.ron`) in the macro call, auto inference follows automatically.
-
-Suggested layout:
+Recommended layout:
 
 - `assets/mods/<mod_name>/<mod_name>.seri_manifest.ron`
 - `assets/mods/<mod_name>/ron/...`
 
-## Available Dynamic Keys
+## 3) Dynamic Keys In Use
+
+Currently registered keys include:
 
 - `seri.dimension`
 - `seri.sprite.animation`
@@ -75,42 +81,30 @@ Suggested layout:
 - `seri.being.body.sampler`
 - `seri.being.body.part`
 
-## Merge and Append Behavior
+## 4) Override / Precedence Rules
 
-- The loader scans all `assets/**/*.seri_manifest.ron` files.
-- Auto-discovered and manifest-provided `File(path: \"...\")` entries are ordered deterministically.
-- Mod paths (`mods/...` or containing `/mods/`) are given higher priority and loaded first.
-- Entries are deduplicated by exact dynamic asset entry.
-- If two files define entities with the same in-game `id`, this ordering makes mod content win deterministically with current entity-map collision behavior.
+### For manifest + auto-discovered dynamic assets
 
-## Base Content
+- Assets are deduplicated by exact dynamic entry.
+- Paths under `mods/` (or containing `/mods/`) are ranked before non-mod paths in the dynamic list.
+- Final behavior on same in-game `id` depends on the consuming init system/map insertion semantics for that type.
 
-Core game content is declared in:
+### For `DefDatabase<T>`
 
-- `assets/ron/base.seri_manifest.ron`
+- Base files load first, mod files load after (`mods/...` wins on same `id`).
+- Then `.defpatch.ron` operations are applied.
+- Patch files are discovered globally under `assets/` and processed in deterministic path order.
 
-Mods should add separate manifest files instead of editing the base manifest.
+## 5) Def Patching (`*.defpatch.ron`)
 
-## Notes
+Patch files can live anywhere under `assets/` and support:
 
-- You can use any `StandardDynamicAsset` variant supported by `bevy_asset_loader`, but `File(path: "...")` is the intended one for `*Seri` data.
-- Keep paths relative to `assets/`.
-- Broken or invalid manifests are skipped with warnings at load time.
-
-## Explicit Def Patching
-
-You can now patch defs explicitly with `*.defpatch.ron` files anywhere under `assets/`.
-
-Patch files are loaded deterministically and applied after base+mod def merge.
-
-Supported operations:
-
-- `upsert`: create/replace whole def
-- `delete`: remove a def by id
-- `set_field`: set a nested field by path (dot + `[index]`)
-- `remove_field`: remove nested field/key by path
-- `merge`: recursive map merge, seq append
-- `copy`: clone one def id into another
+- `upsert`
+- `delete`
+- `set_field`
+- `remove_field`
+- `merge`
+- `copy`
 
 Example:
 
@@ -121,7 +115,7 @@ Example:
     type: "TileSeri",
     id: "ocean",
     path: "walk_speed",
-    value: Some(0.2),
+    value: 0.2,
   ),
   (
     op: "upsert",
@@ -138,31 +132,59 @@ Example:
 ]
 ```
 
-## Global Registry API
+Path syntax supports dot + index style, for example:
 
-Global registry/cross-ref helpers live in `common::def_db`:
+- `stats.hp`
+- `drops[0].id`
+
+`merge` behavior:
+
+- map + map: recursive merge
+- seq + seq: append
+- otherwise: replace target value
+
+## 6) Operation Lists: `.ron` and `.tg`
+
+Terrain operation lists can come from:
+
+- regular `*.oplist.ron` seri files
+- TG scripts under `assets/ron/tilemap/terrgen/oplist_scripts/**/*.oplist.tg`
+
+At init, both sources are loaded and combined.
+
+## 7) Validation / Introspection APIs
+
+Useful runtime APIs in `common::def_db`:
 
 - `global_registry_snapshot()`
 - `resolve_def_ref(type_name, id)`
 - `resolve_def_field(type_name, id, path)`
 - `DefDatabase::<T>::resolve_typed_ref(type_name, id)`
 
-## Startup Def Validation
+Cross-def validation rules can be registered with:
 
-Validation runs once during `AssetLoading::SpawnReplicatedEntities` (server/disconnected side), after all expected def types are loaded.
+- `register_ref_rule(DefRefRule { ... })`
 
-Register rules in code:
+Validation behavior is controlled by `DefValidationConfig { enabled, fail_fast }`.
 
-```rust
-common::def_db::register_ref_rule(common::def_db::DefRefRule {
-    from_type: "TileSeri".to_string(),
-    from_path: "shader".to_string(),
-    to_type: "ShaderRepeatTexSeri".to_string(),
-    allow_missing: false,
-});
-```
+## 8) Practical Mod Workflow
 
-Config resource:
+1. Add your mod files under `assets/mods/<mod_name>/...`.
+2. Add a `<mod_name>.seri_manifest.ron` (or rely on auto discovery if paths/suffixes already match).
+3. Keep unique `id`s unless intentionally overriding existing defs.
+4. Use `.defpatch.ron` when you want surgical edits instead of full file replacement.
+5. Start game, watch logs for parse/validation warnings.
 
-- `DefValidationConfig { enabled, fail_fast }`
-- default is `enabled = true`, `fail_fast = true` (panic on validation errors)
+## 9) Current Limitations / Notes
+
+- There is no dedicated dependency graph between mods yet; ordering is path-based and deterministic.
+- Some systems are strict and skip invalid entries rather than repairing them.
+- If two mods override the same `id`, final winner is determined by the loader/patch order for that pipeline.
+
+## 10) Base Content Reference
+
+Core shipped manifest is at:
+
+- `assets/ron/base.seri_manifest.ron`
+
+Prefer adding new manifests/files under `assets/mods/` instead of editing base files.

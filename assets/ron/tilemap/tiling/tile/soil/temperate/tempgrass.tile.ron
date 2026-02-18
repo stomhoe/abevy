@@ -5,6 +5,6 @@
     img_paths: [
         ("", "texture/world/white.png"),
     ],
-    shader: Some("grassrep1"),
+    shader: "grassrep1",
     color: Some((255, 0, 0, 255)),
 )

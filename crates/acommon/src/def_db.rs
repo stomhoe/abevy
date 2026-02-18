@@ -565,7 +565,7 @@ fn apply_patch_op(
             if patch_type != def_type {
                 return;
             }
-            let mut def_id = id.or_else(|| extract_id(&value));
+            let def_id = id.or_else(|| extract_id(&value));
             if let Some(ref id_str) = def_id {
                 ensure_id_field(&mut value, id_str);
             }

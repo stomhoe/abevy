@@ -41,6 +41,7 @@ pub fn plugin(app: &mut App) {
             (
                 init_noises,
                 map_terrgen_id_to_entity,
+                cache_tg_oplists,
                 init_oplists_from_assets,
                 map_operation_list_id_to_entity,
                 init_oplists_bifurcations,

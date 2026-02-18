@@ -6,9 +6,9 @@
     img_paths: [
         ("", "texture/world/veg/tree/elf/lush_canopy.png"),
     ],
-    sprite: Some(true), 
-    randflipx: Some(true), 
-    offset: Some((0.0, 90.0)),
+    is_spritetile: true,
+    randflipx: true,
+    offset: (0.0, 90.0),
 
 
 )

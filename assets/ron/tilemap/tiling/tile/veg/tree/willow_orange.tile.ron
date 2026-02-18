@@ -4,9 +4,9 @@
     img_paths: [
         ("", "texture/world/veg/tree/willow_orange.png")
     ],
-    sprite: Some(true), 
-    randflipx: Some(true), 
-    offset: Some((0.0, 150.0)),
+    is_spritetile: true,
+    randflipx: true,
+    offset: (0.0, 150.0),
     z: 1000,
     y_sort: Some(0),
 

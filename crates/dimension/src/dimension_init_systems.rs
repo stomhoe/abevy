@@ -49,15 +49,15 @@ pub fn init_dimensions(
         };
         let dim_ent = cmd.spawn_empty().id();
 
-        if let Some(tags) = seri.tags.clone() {
-            tagsets_to_insert.push((dim_ent, TagSet::new(tags)));
+        if !seri.tags.is_empty() {
+            tagsets_to_insert.push((dim_ent, TagSet::new(seri.tags.clone())));
         }
-        if let Some(whitelisted_structure_gen_tags) = seri.whitelisted_structure_gen_tags.clone() {
-            let tag_set = WhitelistedStructureGenTags(TagSet::new(whitelisted_structure_gen_tags));
+        if !seri.whitelisted_structure_gen_tags.is_empty() {
+            let tag_set = WhitelistedStructureGenTags(TagSet::new(seri.whitelisted_structure_gen_tags.clone()));
             whitelisted_structure_gen_tags_to_insert.push((dim_ent, tag_set));
         }
-        if let Some(blacklisted_structure_gen_tags) = seri.blacklisted_structure_gen_tags.clone() {
-            let tag_set = BlacklistedStructureGenTags(TagSet::new(blacklisted_structure_gen_tags));
+        if !seri.blacklisted_structure_gen_tags.is_empty() {
+            let tag_set = BlacklistedStructureGenTags(TagSet::new(seri.blacklisted_structure_gen_tags.clone()));
             blacklisted_structure_gen_tags_to_insert.push((dim_ent, tag_set));
         }
 

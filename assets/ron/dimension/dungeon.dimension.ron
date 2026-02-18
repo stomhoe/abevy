@@ -2,6 +2,6 @@
     id: "dungeon",
     name: "Dungeon dimension",
     description: "The dungeon dimension",
-    tags: Some([ "dungeon", ]),
-    whitelisted_structure_gen_tags: Some([ "dungeon", ]),
+    tags: [ "dungeon", ],
+    whitelisted_structure_gen_tags: [ "dungeon", ],
 )

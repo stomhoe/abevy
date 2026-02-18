@@ -6,7 +6,7 @@ use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
-use crate::{chunking::{chunking_resources::*}, tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_bundles::*, tilemap_resources::*};
+use crate::{chunking::chunking_resources::*, tile::{tile_bundles::TileBundleNoTileFlip, tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_bundles::*, tilemap_resources::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, )]
 pub struct MapKey {
@@ -115,7 +115,7 @@ pub fn process_tiles_pre(
     ezero_query: Query<(
         &TileStrId,
         &HashId,
-        Option<&SizeInTiles>,
+        &SizeInTiles,
         Option<&MinDistancesMap>,
         Option<&KeepDistanceFrom>,
         Has<Persisted>,
@@ -191,7 +191,7 @@ pub fn process_tiles_pre(
                 child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
                 to_insert_replicated.push((tile_ent, Replicated));
                 if is_spritetile{
-                    spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos);
+                    spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos, *size_in_tiles);
                     spritetiles_to_remove_bundle.push(tile_ent);
                     i += 1;
                     continue;
@@ -212,7 +212,7 @@ pub fn process_tiles_pre(
 
         if is_spritetile {
             spritetiles_to_remove_bundle.push(tile_ent);
-            spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos);
+            spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos, *size_in_tiles);
             child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
             i += 1;
             continue;
@@ -236,7 +236,7 @@ pub fn process_tiles_pre(
             &mut cmd,
             tile_ent,
             *hash_id,
-            size_in_tiles.cloned().unwrap_or_default(),
+            *size_in_tiles,
             &mut bundle.tile_bundle.visible,
             &mut bundle.tile_bundle.texture_index,
             &mut bundle.tile_bundle.tilemap_id,
@@ -262,7 +262,7 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch_if_new(take(&mut params.collected_tiles.0));
 
     for tile_ent in spritetiles_to_remove_bundle.drain(..) {
-        cmd.entity(tile_ent).try_remove::<TileBundle>();
+        cmd.entity(tile_ent).try_remove::<TileBundleNoTileFlip>();
     }
     cmd.try_insert_batch(child_ofs_to_insert);
 

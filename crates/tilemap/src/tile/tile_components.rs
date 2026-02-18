@@ -8,7 +8,7 @@ use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
 
-use game_common::game_common_components::*;
+use game_common::{game_common_components::*, game_common_components_samplers::GlobalTilePosWeightedSampler};
 
 use ::tilemap_shared::*;
 use serde::{Deserialize, Serialize};
@@ -97,15 +97,17 @@ pub struct PortalRecipe {
     #[entities]
     pub terrprobe_ent: Entity,
     pub one_way: bool,
+    pub sampler: GlobalTilePosWeightedSampler,
 }
 
-#[derive(Component, Debug, Clone, Reflect, )]
+#[derive(Component, Debug, Clone, )]
 pub struct PortalTo {
     pub dest_portal: Entity,
+    pub offset_pos_destinations: GlobalTilePosWeightedSampler
 }
 impl PortalTo {
-    pub fn new(dest_portal: Entity) -> Self {
-        Self { dest_portal }
+    pub fn new(dest_portal: Entity, offset_pos_destinations: GlobalTilePosWeightedSampler) -> Self {
+        Self { dest_portal, offset_pos_destinations }
     }
 }
 
@@ -121,6 +123,65 @@ pub struct FlipHorizontallyBasedOnHash;
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Debug,)]
 pub struct InitialPos(pub GlobalTilePos);
+
+#[derive(Component, Clone, Deserialize, Serialize, Debug,)]
+/// interaction positions (offsets relative to the tile's anchor GlobalTilePos)
+pub struct InteractionZones(
+    pub HashIdMap<InteractionZone>
+);
+impl InteractionZones {
+    pub fn new(map: HashMap<String, InteractionZoneSeri>) -> Self {
+        let mut zones = HashIdMap::with_capacity(map.len());
+        for (id, seri) in map {
+            zones.overwrite(HashId::from(id), InteractionZone::new(seri));
+        }
+        Self(zones)
+    }
+    pub fn is_inside_interaction_zone(&self, zone_id: HashId, anchor_transf: Vec2, client_transf: Vec2, ) -> bool {
+        let zone = self.0.get(zone_id).ok();
+        zone.is_some_and(|zone| zone.is_inside_any(anchor_transf, client_transf))
+    }
+}
+
+#[derive(Component, Clone, Deserialize, Serialize, Debug,)]
+pub struct InteractionZone{
+    offset_positions: Vec<GlobalTilePos>,
+    radius_paired_w_offsets: Vec<(f32, f32)>,
+}
+impl InteractionZone {
+    pub fn new(seri: InteractionZoneSeri) -> Self {
+        let offset_positions = seri
+            .offset_positions
+            .into_iter()
+            .map(GlobalTilePos::from)
+            .collect();
+
+        let radius_paired_w_offsets = seri.radius_offset;
+
+        Self {
+            offset_positions,
+            radius_paired_w_offsets,
+        }
+    }
+
+    pub fn is_inside_any(&self, anchor_transf: Vec2, client_transf: Vec2) -> bool {
+        for &offset_pos in &self.offset_positions {
+            let anchor_gpos: GlobalTilePos = anchor_transf.into();
+            let client_pos: GlobalTilePos = client_transf.into();
+            let checked_pos = anchor_gpos + offset_pos;
+            if checked_pos == client_pos {
+                return true;
+            }
+        }
+        for &(radius, offset) in &self.radius_paired_w_offsets {
+            let pos = anchor_transf + offset;
+            if pos.distance(client_transf) <= radius {
+                return true;
+            }
+        }
+        false
+    }
+}
 
 #[derive(Component, Debug, Clone, Default)]
 /// Holds the mapping between tile image HashIds and the image handles they are mapped to

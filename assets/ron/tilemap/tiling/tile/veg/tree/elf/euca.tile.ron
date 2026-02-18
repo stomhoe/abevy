@@ -6,9 +6,9 @@
     img_paths: [
         ("", "texture/world/veg/tree/elf/euca.png"),
     ],
-    sprite: Some(true), 
-    randflipx: Some(true), 
-    offset: Some((0.0, 140.0)),
+    is_spritetile: true,
+    randflipx: true,
+    offset: (0.0, 140.0),
 
 
 )

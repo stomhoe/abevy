@@ -19,11 +19,7 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
     settings: Query<&GlobalGenSettings>,
     dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut query: Query<
-        (
-            AnyOf<(&mut TileFlip, &mut Sprite, &HeldSprites, &Children)>,
-            &InitialPos,
-            Option<&DimensionRef>,
-        ),
+        (&mut TileFlip, &InitialPos, Option<&DimensionRef>),
         (
             Changed<InitialPos>,
             With<FlipHorizontallyBasedOnHash>,
@@ -31,7 +27,6 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
             Without<EntityZero>,
         ),
     >,
-    mut sprites_query: Query<(&mut Sprite), (common::AnyDisabling, Without<InitialPos>)>,
 ) {
     if query.is_empty() {
         return;
@@ -41,35 +36,48 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
         return;
     };
     query.iter_mut().for_each(
-        |((tile_flip, sprite, held_sprites, children), initial_pos, dimension_ref)| {
+        |(mut tile_flip, initial_pos, dimension_ref)| {
             let dimension_hash = dimension_ref
                 .and_then(|dim_ref| dim_hash_query.get(dim_ref.0).ok())
                 .cloned()
                 .unwrap_or_default();
 
             let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 0);
-            if let Some(mut flip) = tile_flip {
-                flip.x = should_flip;
-            }
-            if let Some(mut sprite) = sprite {
-                sprite.flip_x = should_flip;
-            }
-            if let Some(held_sprites) = held_sprites {
-                held_sprites.entities().iter().for_each(|&sprite_entity| {
-                    if let Ok(mut sprite) = sprites_query.get_mut(sprite_entity) {
-                        sprite.flip_x = should_flip;
-                    }
-                });
-            }
-            if let Some(children) = children {
-                children.iter().for_each(|child| {
-                    if let Ok(mut sprite) = sprites_query.get_mut(child) {
-                        sprite.flip_x = should_flip;
-                    }
-                });
-            }
+            tile_flip.x = should_flip;
         },
     );
+}
+
+#[allow(unused_parens)]
+pub fn sync_sprite_flips_with_tileflip(
+    tile_query: Query<
+        (Entity, &TileFlip, Option<&HeldSprites>, Option<&Children>),
+        (Changed<TileFlip>, With<Tile>, Without<EntityZero>, common::AnyDisabling),
+    >,
+    mut sprites_query: Query<&mut Sprite, (common::AnyDisabling, Without<InitialPos>)>,
+) {
+    for (tile_ent, tile_flip, held_sprites, children) in tile_query.iter() {
+        if let Ok(mut my_sprite) = sprites_query.get_mut(tile_ent) {
+            my_sprite.flip_x = tile_flip.x;
+            my_sprite.flip_y = tile_flip.y;
+        }
+        if let Some(held_sprites) = held_sprites {
+            held_sprites.entities().iter().for_each(|&sprite_entity| {
+                if let Ok(mut sprite) = sprites_query.get_mut(sprite_entity) {
+                    sprite.flip_x = tile_flip.x;
+                    sprite.flip_y = tile_flip.y;
+                }
+            });
+        }
+        if let Some(children) = children {
+            children.iter().for_each(|child| {
+                if let Ok(mut sprite) = sprites_query.get_mut(child) {
+                    sprite.flip_x = tile_flip.x;
+                    sprite.flip_y = tile_flip.y;
+                }
+            });
+        }
+    }
 }
 #[allow(unused_parens)]
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
@@ -155,19 +163,26 @@ pub fn add_spawned_tiles_to_gpos_map(
     mut map: ResMut<SpriteTilesAtGpos>,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
     query: Query<
-        (Entity, &DimensionRef, &GlobalTilePos),
+        (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef),
         (common::AnyDisabling, Without<EntityZero>, Without<TilemapId>),
     >,
+    ezero_size_query: Query<&SizeInTiles, (With<EntityZero>, common::AnyDisabling)>,
     mut entities: Local<Vec<Entity>>,
 ) {
     entities.reserve(changed_pos.len());
     for changed_pos in changed_pos.read() {
-        map.remove_tile(changed_pos.old_dim, changed_pos.old_gpos, changed_pos.entity);
+        let size = query
+            .get(changed_pos.entity)
+            .ok()
+            .and_then(|(_, _, _, ezero_ref)| ezero_size_query.get(ezero_ref.0).ok().copied())
+            .unwrap_or_default();
+        map.remove_tile(changed_pos.old_dim, changed_pos.old_gpos, changed_pos.entity, size);
         entities.push(changed_pos.entity);
     }
     query.iter_many(entities.drain(..)).for_each(
-        |(ent, &dimension_ref, &gpos, )| {
-            map.insert(ent, dimension_ref, gpos,);
+        |(ent, &dimension_ref, &gpos, ezero_ref)| {
+            let size = ezero_size_query.get(ezero_ref.0).copied().unwrap_or_default();
+            map.insert(ent, dimension_ref, gpos, size);
         },
     );
 }
@@ -175,13 +190,15 @@ pub fn add_spawned_tiles_to_gpos_map(
 #[allow(unused_parens)]
 pub fn on_spritetile_despawn(
     trig: On<Despawn, (Tile, Transform, SpriteTile)>,
-    query: Query<(&DimensionRef, &GlobalTilePos, ), (Without<TilemapId>, Without<TilePos>, Without<EntityZero>, AnyDisabling)>,
+    query: Query<(&DimensionRef, &GlobalTilePos, &EntityZeroRef), (Without<TilemapId>, Without<TilePos>, Without<EntityZero>, AnyDisabling)>,
+    ezero_size_query: Query<&SizeInTiles, (With<EntityZero>, common::AnyDisabling)>,
     mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
 ) {
-    let Ok((&dim_ref, &gpos)) = query.get(trig.entity) else {
+    let Ok((&dim_ref, &gpos, ezero_ref)) = query.get(trig.entity) else {
         return;
     };
-    spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity);
+    let size = ezero_size_query.get(ezero_ref.0).copied().unwrap_or_default();
+    spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, size);
 }
 
 #[allow(unused_parens)]

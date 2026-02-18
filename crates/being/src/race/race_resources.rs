@@ -19,11 +19,13 @@ pub struct RaceSeri {
     pub singular: Option<String>,
     pub plural: Option<String>,
     pub sexes: HashMap<String, (u32, Vec<String>)>,//id, (weight, spriteents_to_sampl (may be empty, in that case fallback is used)
-    pub sentient: Option<bool>,
+    #[serde(default)]
+    pub sentient: bool,
     pub fallback_sprites_to_sample: Vec<String>,
 
 
-    pub scale_hp_and_strength_with_size: Option<bool>,
+    #[serde(default = "default_true")]
+    pub scale_hp_and_strength_with_size: bool,
 
 
 
@@ -48,6 +50,8 @@ pub struct RaceSeri {
     pub whitelisted_tiles_for_spawning: Option<HashSet<String>>,
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
 }
+
+fn default_true() -> bool { true }
 
 common::define_entity_map_systems!(
     Race,

@@ -23,27 +23,33 @@ pub struct SgcSeri {
     /// village, cave, dungeon, fort, etc
     pub structure_id: String,
 
-    pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub tags: Vec<String>,
 
     /// extra arguments given to structure generation
-    pub args: Option<HashMap<String, Vec<String>>>,
+    #[serde(default)]
+    pub args: HashMap<String, Vec<String>>,
     /// weight in weighted map of structured gens for region. (more weight= likely for this structure to be generated first within the map of valid generations for that region)
     pub weight: f32,
 
     //expected terr conditions for spawning
-    pub whitelisted_filters: Option<HashSet<String>>,
+    #[serde(default)]
+    pub whitelisted_filters: HashSet<String>,
 
-    pub pdisk_mindist_and_tag: Option<Vec<(Option<u8>, String)>>,
+    #[serde(default)]
+    pub pdisk_mindist_and_tag: Vec<(Option<u8>, String)>,
 
     //para evitar adyacencia con chunk fronterizo de otra region, comparar hash del chunkpos con adyacentes y que se quede si es el más grande?
-    pub min_dists_from_other_structures: Option<HashMap<String, u8>>,//in chunks
+    #[serde(default)]
+    pub min_dists_from_other_structures: HashMap<String, u8>,//in chunks
 
     //if empty, active in all dimensions (but that dimension must have a matcfhing tag)
-    pub exclusive_for_dimensions: Option<Vec<String>>,//TODO user tags en vez de ids?
+    #[serde(default)]
+    pub exclusive_for_dimensions: Vec<String>,//TODO user tags en vez de ids?
 
-    pub min_used_chunks: Option<u8>,//structure's own minimum chunk usage takes priority over this one
-    pub max_used_chunks: Option<u16>,
 
-    pub max_per_region: Option<u32>,
+    #[serde(default = "default_max_per_region")]
+    pub max_per_region: u32,
 
 }
+fn default_max_per_region() -> u32 { 1024 }

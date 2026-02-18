@@ -3,8 +3,8 @@
     id: "example_all_dungeon_args",
     structure_id: "chamberscorridors",
     weight: 1.0,
-    tags: Some(["dungeon"]),
-    args: Some({
+    tags: ["dungeon"],
+    args: {
         // Tiles
         "floor_tile_id": ["dunewbie"],
         "wall_tile_id": ["gray"],
@@ -18,8 +18,8 @@
         "room_shape_weight_circle": ["0.7"],
         "room_shape_weight_triangle": ["0.4"],
         "room_same_shape_chance": ["0.25"],
-    }),
-    // pdisk_mindist_and_tag: Some([
+    },
+    // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),
-    // ]),
+    // ],
 )

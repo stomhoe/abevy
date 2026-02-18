@@ -3,8 +3,8 @@
     id: "cha_newbie",
     structure_id: "chamberscorridors",
     weight: 1.0,
-    tags: Some([ "dungeon", "" ]),
-    args: Some({
+    tags: [ "dungeon", "" ],
+    args: {
         "floor_tile_id": ["dunewbie"],
         "wall_tile_id": ["nw"],
         "lava_tile_id": ["lava"],
@@ -30,8 +30,8 @@
         "corridor_wiggle_step_max": ["1"],
         "corridor_detour_chance": ["0.0"],
         "corridor_detour_max_offset": ["0"],
-    }),
-    // pdisk_mindist_and_tag: Some([
+    },
+    // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),
-    // ]),
+    // ],
 )

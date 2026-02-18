@@ -2,6 +2,7 @@
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)]
 use bevy::platform::collections::{HashSet, HashMap};
 
@@ -15,8 +16,9 @@ use ::tilemap_shared::*;
 pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
     being_query: Query<'w, 's, (Has<WallPhaser>, )>,
-    tile_instance_query: Query<'w, 's, &'static EntityZeroRef, >,
-    blocking_tiles: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
+    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>), >,
+    walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
+    tile_collision_masks: Query<'w, 's, &'static TileCollisionMask, >,
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
@@ -35,14 +37,24 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
         let mut all_tiles_failed = true;
         for tile_entity in to_drain.drain(..) {
-            let Ok(ezero_ref) = self.tile_instance_query.get(tile_entity) else {
-                continue;
-            };
-            let Ok(walk_speed) = self.blocking_tiles.get(ezero_ref.0) else {
+            let Ok((ezero_ref, tile_origin, tile_flip)) = self.tile_instance_query.get(tile_entity) else {
                 continue;
             };
             all_tiles_failed = false;
-            if walk_speed.0 == 0.0 {
+            if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low(){
+                return true;
+            }
+
+            let blocks_here = if let Ok(mask) = self.tile_collision_masks.get(ezero_ref.0) {
+                mask.is_solid_at_world_pos_with_flip(
+                    *tile_origin,
+                    gpos,
+                    tile_flip.copied().unwrap_or_default(),
+                )
+            } else {
+                false
+            };
+            if blocks_here {
                 return true;
             }
         }

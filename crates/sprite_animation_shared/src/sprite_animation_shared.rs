@@ -93,7 +93,8 @@ pub struct AnimationSeri {
     //optional in case you want to reuse a predefined animation format
     pub anim_format_id: Option<String>,
     pub rows_cols: Option<(usize, usize)>, //rows, cols
-    pub save_animation_progress: Option<bool>, //Some(true): save progress, Some(false)/None: don't save
+    #[serde(default)]
+    pub save_animation_progress: bool,
     pub alternating_start_frames: Option<(usize, usize)>,
     //None: forward, Some(true): backward, Some(false): ping-pong
     pub dir: Option<bool>,
@@ -101,12 +102,15 @@ pub struct AnimationSeri {
     pub dur_frame: Option<u32>, //milliseconds
     pub dur_rep: Option<u32>, //milliseconds
     pub speed: Option<f32>,
-    pub offset: Option<[f32; 2]>,
-    pub scale: Option<[f32; 2]>,
+    #[serde(default)]
+    pub offset: [f32; 2],
+    #[serde(default = "default_scale_2d")]
+    pub scale: [f32; 2],
     pub y_sort: Option<f32>,
     pub z: f32,
     pub color: Option<[u8; 4]>,
-    pub paused: Option<bool>,
+    #[serde(default)]
+    pub paused: bool,
 }
 #[derive(Deserialize, Serialize, TypePath, Default, Clone)]
 /// Configuration for a sprite animation sequence.
@@ -129,3 +133,5 @@ pub struct ClipConfig {
     pub dur_frame: Option<u32>,
     pub dur_rep: Option<u32>,
 }
+
+fn default_scale_2d() -> [f32; 2] { [1.0, 1.0] }

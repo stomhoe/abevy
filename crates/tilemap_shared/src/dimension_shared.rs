@@ -29,10 +29,13 @@ pub struct DimensionSeri {
     pub name: String,
     pub description: String,
     /// this dimension's tags, used for whoever needs it
-    pub tags: Option<HashSet<String>>,
+    #[serde(default)]
+    pub tags: HashSet<String>,
 
-    pub whitelisted_structure_gen_tags: Option<Vec<String>>,
-    pub blacklisted_structure_gen_tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub whitelisted_structure_gen_tags: Vec<String>,
+    #[serde(default)]
+    pub blacklisted_structure_gen_tags: Vec<String>,
 }
 
 impl DimensionStrIdRef {

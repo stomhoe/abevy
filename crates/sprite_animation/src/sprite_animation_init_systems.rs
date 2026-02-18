@@ -101,10 +101,12 @@ pub fn init_animations(
         if let Some(y_sort) = y_sort {
             cmd.entity(ent).insert(YSortOrigin(y_sort));
         }
-        if let Some(offset) = seri.offset {
+        if seri.offset != [0.0, 0.0] {
+            let offset = seri.offset;
             cmd.entity(ent).insert(Offset2D::from(offset));
         }
-        if let Some(scale) = seri.scale {
+        if seri.scale != [1.0, 1.0] {
+            let scale = seri.scale;
             cmd.entity(ent).insert(Scale2D::from(scale));
         }
         if let Some(play_speed) = seri.speed {
@@ -114,7 +116,7 @@ pub fn init_animations(
             let (red, green, blue, alpha) = color.into();
             cmd.entity(ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
         }
-        if let Some(true) = seri.save_animation_progress {
+        if seri.save_animation_progress {
             cmd.entity(ent).insert(SaveAnimationProgress);
         }
         i += 1;

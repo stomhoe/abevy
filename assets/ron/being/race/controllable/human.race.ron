@@ -11,7 +11,7 @@
         "male": (1, []),
         "female": (1, []),
     },
-    sentient: Some(true),
+    sentient: true,
     fallback_sprites_to_sample: ["mahubo0", "mahuhe0"],
     sets_of_choosable_sprites: Some([
         ("Head", ["mahuhe0", "", ""]),//mahuhe1, mahuhe2

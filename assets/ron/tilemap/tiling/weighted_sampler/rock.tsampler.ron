@@ -1,9 +1,7 @@
 (
-    id: "tempveg_sampler",
+    id: "rock_sampler",
     weights: [
         ("temp_bush0", 10.0),
         ("temp_bush1", 10.0),
     ],
 )
-
-

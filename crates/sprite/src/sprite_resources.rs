@@ -9,39 +9,60 @@ pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,
     pub mapped_anims: HashMap<(String, String, String, String), String>,
-    pub parent_cat: Option<String>, //adds ChildOf referencing other brother entity sprite possessing this tag
-    pub tags: Option<HashSet<String>>,
-    pub shares_tag: Option<Vec<bool>>,//asignar un componente
-    pub children_sprites: Option<Vec<String>>,// these will get spawned as children of the entity that has this sprite data
-    pub directionable: Option<bool>,
-    pub movement_based: Option<bool>,
-    pub grounding_based: Option<bool>,
+    #[serde(default)]
+    pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this tag
+    #[serde(default)]
+    pub tags: HashSet<String>,
+    #[serde(default)]
+    pub shares_tag: Vec<bool>,//asignar un componente
+    #[serde(default)]
+    pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
+    #[serde(default)]
+    pub directionable: bool,
+    #[serde(default)]
+    pub movement_based: bool,
+    #[serde(default)]
+    pub grounding_based: bool,
 
     //use fly animation when standing still
     pub visibility: Option<u8>, //0: inherited, 1: visible, 2: invisible
-    pub offset4children: Option<HashMap<String, (f32, f32, String)>>,//k:tag, v:(offset, direction(s)) in which it is applied
-    pub exclude_from_sys: Option<bool>,
+    #[serde(default)]
+    pub offset4children: HashMap<String, (f32, f32, String)>,//k:tag, v:(offset, direction(s)) in which it is applied
+    #[serde(default)]
+    pub exclude_from_sys: bool,
 
     // Being's speed ratio over this is used as speedup multiplier for anim
-    pub base_movement_speed: Option<f32>,
+    #[serde(default = "default_base_movement_speed")]
+    pub base_movement_speed: f32,
 
-    pub exclude_from_normal_size_modifier: Option<bool>,
+    #[serde(default)]
+    pub exclude_from_normal_size_modifier: bool,
 
 
-    pub offset: Option<(f32, f32)>,
-    pub scale: Option<(f32, f32)>,
-    pub scale_up_down: Option<(f32, f32)>,
-    pub scale_sideways: Option<(f32, f32)>,
+    #[serde(default)]
+    pub offset: (f32, f32),
+    #[serde(default = "default_scale_2d")]
+    pub scale: (f32, f32),
+    #[serde(default = "default_scale_2d")]
+    pub scale_up_down: (f32, f32),
+    #[serde(default = "default_scale_2d")]
+    pub scale_sideways: (f32, f32),
     pub flip_horiz_if_dir: Option<u8>, //Left, Right, Any
-    pub offset_up_down: Option<(f32, f32)>,
-    pub offset_down: Option<(f32, f32)>,
-    pub offset_up: Option<(f32, f32)>,
-    pub offset_sideways: Option<(f32, f32)>,
+    #[serde(default)]
+    pub offset_up_down: (f32, f32),
+    #[serde(default)]
+    pub offset_down: (f32, f32),
+    #[serde(default)]
+    pub offset_up: (f32, f32),
+    #[serde(default)]
+    pub offset_sideways: (f32, f32),
 
     /// TODO
     pub extra_y_offset_per_scale_inc: Option<f32>,
 
 }
+fn default_base_movement_speed() -> f32 { 1.0 }
+fn default_scale_2d() -> (f32, f32) { (1.0, 1.0) }
 // PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)
 
 

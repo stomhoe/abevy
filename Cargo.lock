@@ -6197,6 +6197,7 @@ dependencies = [
  "bevy 0.18.0",
  "bevy_asset_loader",
  "bevy_common_assets",
+ "bevy_ecs_tilemap",
  "game_common",
  "paste",
  "tilemap_shared",

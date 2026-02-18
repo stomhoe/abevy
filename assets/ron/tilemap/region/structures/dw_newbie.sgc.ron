@@ -3,13 +3,13 @@
     id: "dw_newbie",
     structure_id: "drunkwalk",
     weight: 1.0,
-    tags: Some([ "dungeon", "" ]),
-    args: Some({
+    tags: [ "dungeon", "" ],
+    args: {
         "floor_tile_id": ["dunewbie"],
         "wall_tile_id": ["nw"],
         "lava_tile_id": ["lava"],
-    }),
-    // pdisk_mindist_and_tag: Some([
+    },
+    // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),
-    // ]),
+    // ],
 )

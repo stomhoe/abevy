@@ -2,7 +2,7 @@ use std::{hash::{DefaultHasher, Hash, Hasher}, i32};
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
-use common::common_components::HashId;
+use common::common_components::{HashId, StrId};
 use rand::{Rng, seq::SliceRandom};
 use serde::{Deserialize, Serialize};
 
@@ -64,8 +64,10 @@ impl GlobalTilePos {
     }
 
     pub fn to_translation(&self, prev_transform_z: f32) -> Vec3 {
-        let vec2: Vec2 = (*self).into();
-        vec2.extend(prev_transform_z)
+        self.to_pixelpos().extend(prev_transform_z)
+    }
+    pub fn to_pixelpos(&self) -> Vec2 {
+        self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2()
     }
     impl_adjacent_position_methods!();
 }
@@ -79,9 +81,14 @@ impl From<Vec2> for GlobalTilePos {
         GlobalTilePos(pixelpos.div_euclid(GlobalTilePos::TILE_SIZE_PXS.as_vec2()).as_ivec2())
     }
 }
+impl From<(i8, i8)> for GlobalTilePos {
+    fn from(gpos: (i8, i8)) -> Self {
+        GlobalTilePos(IVec2::new(gpos.0 as i32, gpos.1 as i32))
+    }
+}
 impl Into<Vec2> for GlobalTilePos {
     fn into(self) -> Vec2 {
-        self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2()
+        self.to_pixelpos()
     }
 }
 
@@ -278,22 +285,22 @@ pub mod prelude {
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, PartialEq, Eq, Hash)]
 pub struct SizeInTiles(pub UVec2);
 impl SizeInTiles{
-    pub fn new(size_in_tiles: Option<(u32, u32)>) -> Self {
+    pub fn new(str_id: &StrId, size_in_tiles: Option<(u32, u32)>, is_spritetile: bool) -> Self {
         let (mut x, mut y) = size_in_tiles.unwrap_or((1, 1));
         if x == 0 {
-            error!("TileOccupancy width must be greater than 0");
+            error!("{}: TileOccupancy width must be greater than 0", str_id);
             x = 1;
         }
         if y == 0 {
-            error!("TileOccupancy height must be greater than 0");
+            error!("{}: TileOccupancy height must be greater than 0", str_id);
             y = 1;
         }
-        if x > 6 {
-            error!("TileOccupancy width must be less than 7");
+        if x > 6 && !is_spritetile {
+            error!("{}: TileOccupancy width must be less than 7", str_id);
             x = 6
         }
-        if y > 6 {
-            error!("TileOccupancy height must be less than 7");
+        if y > 6 && !is_spritetile {
+            error!("{}: TileOccupancy height must be less than 7", str_id);
             y = 6;
         }
         Self(UVec2::new(x, y))

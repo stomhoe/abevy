@@ -14,7 +14,7 @@ common::define_entity_map_systems!(
     OpListSeri, "seri.tilemap.operation_list", "oplist.ron",
 );
 
-#[derive(Deserialize, Asset, TypePath)]
+#[derive(Deserialize, Asset, TypePath, Clone)]
 pub struct OpListSeri {
     pub id: String,
     pub tags: Option<Vec<String>>,
@@ -27,6 +27,9 @@ pub struct OpListSeri {
     /// Expression tree representation (slot-free system)
     pub expr_tree: crate::terrain::terrgen_expression::ExprOpList,
 }
+
+#[derive(Resource, Default, Clone)]
+pub struct TgCompiledOpLists(pub Vec<OpListSeri>);
 impl OpListSeri {
     pub fn is_root(&self) -> bool {
         self.root_in_dimensions.iter().any(|s| !s.is_empty())

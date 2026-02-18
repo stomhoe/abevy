@@ -5,7 +5,7 @@
     hp_capacity: Some(20.0),
     hp_regen_rate: Some(0.9),
     depth: Some("inside"),
-    vital: Some(false),
+    vital: false,
     pain_sensitivity: Some(1.0),
     bleed_rate: Some(0.7),
     blood_capacity: Some(12.0),

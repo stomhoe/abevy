@@ -3,8 +3,8 @@
     id: "archi_catas",
     structure_id: "archi",
     weight: 1.0,
-    tags: Some([ "dungeon", "" ]),
-    args: Some({
+    tags: [ "dungeon", "" ],
+    args: {
         "floor_tile_id": ["ducatas"],
         "wall_tile_id": ["nw"],
         "lava_tile_id": ["lava"],
@@ -13,8 +13,8 @@
         "claim_square_normal_mean": ["9.0"],
         "claim_square_normal_std_dev": ["3.0"],
 
-    }),
-    // pdisk_mindist_and_tag: Some([
+    },
+    // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),
-    // ]),
+    // ],
 )

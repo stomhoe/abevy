@@ -11,7 +11,7 @@
         "male": (1, []),
         "female": (1, []),
     },
-    sentient: Some(false),
+    sentient: false,
     fallback_sprites_to_sample: ["pig", ],
     sets_of_choosable_sprites: None,
     caloric_burn_rate_multiplier: None,

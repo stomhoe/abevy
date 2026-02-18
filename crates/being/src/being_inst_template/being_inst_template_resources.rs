@@ -15,13 +15,17 @@ common::define_entity_map_systems!(
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BitSeri {
     pub id: String,
-    pub fallback_faction: Option<String>,
+    #[serde(default)]
+    pub fallback_faction: String,
     pub points: u32,
 
-    pub consecutive_name_weighted_distributions: Option<Vec<Vec<(String, f32)>>>,//to be appended to each other.
+    #[serde(default)]
+    pub consecutive_name_weighted_distributions: Vec<Vec<(String, f32)>>,//to be appended to each other.
     pub race: String,
-    pub scs_samplers: Option<Vec<String>>, // sprite weighted sampler ids, or scs ids directly
-    pub sprites_scale_ranges: Option<HashMap<String, (f32, f32)>>,//additional
+    #[serde(default)]
+    pub scs_samplers: Vec<String>, // sprite weighted sampler ids, or scs ids directly
+    #[serde(default)]
+    pub sprites_scale_ranges: HashMap<String, (f32, f32)>,//additional
 
     ///multiplies both hp and sprite size (both vertically and horizontally, multiplies with the other sprite normalvariation multiplier, generated multipliers should be in the range of (0.8, 1.2))
     pub size_variation: Option<NormalDistSeri>,
@@ -31,13 +35,19 @@ pub struct BitSeri {
     // only affects sprite height (should generate multipliers close to 1 to avoid weird rsults (0.95, 1.05))
     pub vert_variation: Option<NormalDistSeri>,
 
-    pub health_multiplier: Option<f32>,
+    #[serde(default = "default_multiplier")]
+    pub health_multiplier: f32,
 
     /// overrides race's set of weighted body trees if present
-    pub body_tree: Option<String>,
+    #[serde(default)]
+    pub body_tree: String,
 
     pub recruitment_difficulty: Option<i32>,
 
-    pub whitelisted_tiles_for_spawning: Option<HashSet<String>>,
-    pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
+    #[serde(default)]
+    pub whitelisted_tiles_for_spawning: HashSet<String>,
+    #[serde(default)]
+    pub blacklisted_tiles_for_spawning: HashSet<String>,
 }
+
+fn default_multiplier() -> f32 { 1.0 }

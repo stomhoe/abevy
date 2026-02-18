@@ -11,6 +11,15 @@ pub enum ProbePatternSeri {
     #[serde(alias = "spiral")]
     Spiral,
 }
+impl ProbePatternSeri {
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "sun" => Some(Self::Sun),
+            "spiral" => Some(Self::Spiral),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Component, Deserialize, Serialize)]
 pub struct TerrProbeTempl {

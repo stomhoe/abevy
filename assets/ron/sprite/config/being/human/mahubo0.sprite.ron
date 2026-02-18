@@ -11,15 +11,15 @@ SpriteConfigSeri(
         ("east", "move", "g", "") : "mahubo0_east_move",
         ("north", "move", "g", "") : "mahubo0_north_move",
     },
-    parent_cat: None,
-    tags: Some(["body"]),
-    children_sprites: Some([]),
-    shares_tag: Some([]),
-    directionable: Some(true),
-    movement_based: Some(true),
-    grounding_based: Some(false),
-    offset: Some((0., 16.)),//ta bien
-    offset4children: Some({
+    parent_cat: "",
+    tags: ["body"],
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    offset: (0., 16.),//ta bien
+    offset4children: {
         "head": (0., 21., "")
-    }),
+    },
 )

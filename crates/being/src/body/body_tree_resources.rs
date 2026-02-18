@@ -6,7 +6,8 @@ use crate::body::body_tree_components::BodyTree;
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BodyNodeSeri {
     pub part_id: String,
-    pub label_override: Option<String>,
+    #[serde(default)]
+    pub label_override: String,
     pub children: Vec<BodyNodeSeri>,
 }
 
@@ -14,7 +15,8 @@ pub struct BodyNodeSeri {
 pub struct BodyTreeSeri {
     pub id: String,
     pub name: String,
-    pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub tags: Vec<String>,
     pub root: BodyNodeSeri,
 }
 

@@ -107,7 +107,7 @@ pub fn animate_sprite(
                 .or_else(|| anim_playing_speed.map(|speed| speed.0))
                 .unwrap_or_else(|| PlayingSpeed::default().0);
 
-            let playing = !matches!(anim_seri.and_then(|seri| seri.paused), Some(true));
+            let playing = !anim_seri.map(|seri| seri.paused).unwrap_or(false);
 
             let mut spritesheet_animation =
             SpritesheetAnimation{

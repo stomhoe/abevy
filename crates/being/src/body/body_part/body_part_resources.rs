@@ -16,7 +16,8 @@ pub struct BodyPartSeri {
     pub hp_capacity: Option<f32>,
     pub hp_regen_rate: Option<f32>, //default 1
     pub depth: Option<String>,
-    pub vital: Option<bool>,
+    #[serde(default)]
+    pub vital: bool,
     pub pain_sensitivity: Option<f32>,
     pub kind: Option<String>,
     pub bleed_rate: Option<f32>,

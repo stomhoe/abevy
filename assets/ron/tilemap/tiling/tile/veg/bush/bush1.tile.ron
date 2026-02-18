@@ -6,7 +6,7 @@
     img_paths: [
         ("", "texture/world/veg/bush/bush1.png"),
     ],
-    sprite: Some(true),
-    randflipx: Some(true),
-    color_map: Some("nase"),
+    is_spritetile: true,
+    randflipx: true,
+    color_map: "nase",
 )

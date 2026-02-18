@@ -1,4 +1,5 @@
 use ::game_common::game_common_components::*;
+use game_common::game_common_components_samplers::GlobalTilePosWeightedSampler;
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
@@ -25,7 +26,7 @@ pub fn map_portal_tiles(
     tiles_map: Res<TileEntityMap>,
 ) {
     info!("Mapping portal tiles");
-    portals_ezero_query.iter_mut().for_each(|(ent, str_id, mut portal_seri)| {
+    portals_ezero_query.iter_mut().for_each(|(ent, str_id, portal_seri)| {
         let Ok(tile_ent) = tiles_map.0.get_cloned(&portal_seri.oe_tile) else {
             error!(
                 target: PORTAL_INIT,
@@ -42,11 +43,20 @@ pub fn map_portal_tiles(
             str_id,
             portal_seri.dest_dimension
         );
+        let mut sampled_offsets = Vec::with_capacity(portal_seri.offset_pos_destinations.len().max(1));
+        for (weight, (x, y)) in &portal_seri.offset_pos_destinations {
+            sampled_offsets.push((GlobalTilePos::new(*x as i32, *y as i32), *weight));
+        }
+        if sampled_offsets.is_empty() {
+            sampled_offsets.push((GlobalTilePos::default(), 1.0));
+        }
+
         cmd.entity(ent).insert(PortalRecipe {
             dest_dimension: Entity::PLACEHOLDER,
             oe_portal_tile: tile_ent,
             terrprobe_ent: Entity::PLACEHOLDER,
-            one_way: portal_seri.one_way.unwrap_or(false),
+            one_way: portal_seri.one_way,
+            sampler: GlobalTilePosWeightedSampler::new(&sampled_offsets),
         });
     });
 }
@@ -168,7 +178,7 @@ pub fn instantiate_portal(
         register_pos.exempt_entity_from_mindist_checks(oe_portal);
 
         cmd.entity(portal_ent)
-            .try_insert(PortalTo::new(oe_portal))
+            .try_insert(PortalTo::new(oe_portal, portal_recipe.sampler.clone()))
             .try_remove::<(SearchingForSuitablePos, AwaitingStartSearch)>();
 
         cmd.entity(oe_portal)
@@ -180,7 +190,7 @@ pub fn instantiate_portal(
             });
 
         if !portal_recipe.one_way {
-            cmd.entity(oe_portal).try_insert(PortalTo::new(portal_ent));
+            cmd.entity(oe_portal).try_insert(PortalTo::new(portal_ent, portal_recipe.sampler.clone()));
         }
 
         debug!(target: PORTAL_INIT, "Instantiated oe-portal '{}' at position {:?} in dimension {:?}", oe_portal, found_pos, portal_recipe.dest_dimension);

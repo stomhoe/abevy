@@ -3,8 +3,8 @@
     id: "spiral_catas",
     structure_id: "spiral",
     weight: 1.0,
-    tags: Some([ "dungeon", "" ]),
-    args: Some({
+    tags: [ "dungeon", "" ],
+    args: {
         "floor_tile_id": ["ducatas"],
         "wall_tile_id": ["nw"],
         "lava_tile_id": ["lava"],
@@ -15,8 +15,8 @@
         "spiral_corridor_width_min": ["3"],
         "spiral_corridor_width_max": ["5"],
         "spiral_room_radius": ["6"],
-    }),
-    // pdisk_mindist_and_tag: Some([
+    },
+    // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),
-    // ]),
+    // ],
 )

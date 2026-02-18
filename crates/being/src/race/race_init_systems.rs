@@ -176,7 +176,7 @@ pub fn init_races(
                     cmd.entity(entity).insert(sex_sampler);
                 }
             }
-            if Some(false) != race_seri.scale_hp_and_strength_with_size {
+            if race_seri.scale_hp_and_strength_with_size {
                 cmd.entity(entity).insert(ScaleHpAndStrengthWithSize);
             }
 

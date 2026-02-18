@@ -5,7 +5,7 @@
     img_paths: [
         ("", "texture/world/white.png"),
     ],
-    sprite: Some(false),
-    randflipx: Some(false),
+    is_spritetile: false,
+    randflipx: false,
     color: Some((237, 201, 175, 255)),
 )

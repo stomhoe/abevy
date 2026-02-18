@@ -110,7 +110,6 @@ pub fn sample_sprite_variations(
         Option<&SpriteGlobalNormalDist>,
         Option<&SpriteHoriNormalDist>,
         Option<&SpriteVertNormalDist>,
-        Has<ScaleHpAndStrengthWithSize>,
     )>,
 ) {
     let mut rng = rand::rng();
@@ -124,7 +123,7 @@ pub fn sample_sprite_variations(
         let mut vert_dist: Option<&SpriteVertNormalDist> = None;
 
         if let Some(bit_ref) = bit_ref {
-            if let Ok((bit_global, bit_hori, bit_vert, scales)) = dists_query.get(bit_ref.0) {
+            if let Ok((bit_global, bit_hori, bit_vert, )) = dists_query.get(bit_ref.0) {
                 if bit_global.is_some() { global_dist = bit_global; }
                 if bit_hori.is_some() { hori_dist = bit_hori; }
                 if bit_vert.is_some() { vert_dist = bit_vert; }
@@ -132,7 +131,7 @@ pub fn sample_sprite_variations(
         }
 
         if let Some(race_ref) = race_ref {
-            if let Ok((race_global, race_hori, race_vert, scales)) = dists_query.get(race_ref.0) {
+            if let Ok((race_global, race_hori, race_vert, )) = dists_query.get(race_ref.0) {
                 if global_dist.is_none() { global_dist = race_global; }
                 if hori_dist.is_none() { hori_dist = race_hori; }
                 if vert_dist.is_none() { vert_dist = race_vert; }

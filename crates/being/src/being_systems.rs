@@ -2,8 +2,10 @@ use ::being_shared::*;
 use bevy::{prelude::*};
 use bevy_replicon::prelude::*;
 use camera::camera_components::CameraTarget;
+use common::common_components::HashId;
 use faction::faction_components::*;
-use game_common::game_common_components::DespawnTimer;
+use game_common::game_common_components::{DespawnTimer, EntityZeroRef};
+use game_common::game_common_components_samplers::GlobalTilePosWeightedSampler;
 use modifier::{modifier_components::*, modifier_move_bundles::TemporalSpeedModifier,};
 use movement::movement_messages::TransformFromServer;
 use player::player_components::*;
@@ -73,18 +75,36 @@ pub fn on_control_change(
 #[allow(unused_parens)]
 pub fn cross_portal(mut cmd: Commands,
     mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
-    portal_query: Query<(Entity, &DimensionRef, &PortalTo, &GlobalTransform), (Without<Being>)>,
+    portal_query: Query<(Entity, &DimensionRef, &PortalTo, &GlobalTilePos, Option<&EntityZeroRef>), (Without<Being>)>,
+    interaction_zones_query: Query<(&InteractionZones), ()>,
+    portal_arrival_sampler_query: Query<&GlobalTilePosWeightedSampler>,
     mut being_query: Query<(Entity, &mut DimensionRef, &mut Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
 ) {
+    let mut rng = rand::rng();
     let mut to_write = Vec::new();
     for (being_entity, mut being_dimension_ref, mut being_transform, being_globtransform, touching_portal)
     in being_query.iter_mut() {
-        portal_query.iter().for_each(|(portal_ent, &dimension_ref, portal_instance, portal_transform)| {
-            if being_dimension_ref.clone() != dimension_ref
+        let being_gpos = GlobalTilePos::from(being_globtransform.translation().xy());
+        portal_query.iter().for_each(|(portal_ent, &port_dim, port_to, gpos, ezero_ref)| {
+            if being_dimension_ref.clone() != port_dim
             { return; }
 
-            let distance = being_globtransform.translation().distance(portal_transform.translation());
-            match (touching_portal, distance < 50.0) {
+            let is_interacting = if let Some(ezero_ref) = ezero_ref {
+                if let Ok(interaction_zones) = interaction_zones_query.get(ezero_ref.0) {
+                    const PORTAL_HASH: HashId = HashId::hash("portal");
+                    interaction_zones.is_inside_interaction_zone(
+                        PORTAL_HASH,
+                        gpos.to_pixelpos(),
+                        being_globtransform.translation().xy(),
+                    )
+                } else {
+                    being_gpos == *gpos
+                }
+            } else {
+                being_gpos == *gpos
+            };
+
+            match (touching_portal, is_interacting) {
                 (None, false) => {},
                 (Some(&TouchingPortal(touching_portal)), false) => {
                     if portal_ent == touching_portal {
@@ -105,13 +125,19 @@ pub fn cross_portal(mut cmd: Commands,
 
                     cmd.entity(being_entity).try_insert((TouchingPortal(portal_ent), ));
 
-                    let Ok((_, &oe_dim_ref, _oe_portal_instance, oe_portal_transform)) = portal_query.get(portal_instance.dest_portal) else {
-                        error!("Portal entity {:?} not found in portal query", portal_instance.dest_portal);//TA DISABLED POR ALGUNA RAZÓN
+                    let Ok((_, &oe_dim, _, oe_portal_gpos, oe_ezero_ref)) = portal_query.get(port_to.dest_portal) else {
+                        error!("Portal entity {:?} not found in portal query", port_to.dest_portal);//TA DISABLED POR ALGUNA RAZÓN
                         return;
                     };
+                    let arrival_sampler = oe_ezero_ref
+                        .and_then(|ezero| portal_arrival_sampler_query.get(ezero.0).ok())
+                        .and_then(|arrivals| arrivals.sample_with_rng(&mut rng));
+                    let sampled_offset = arrival_sampler
+                        .or_else(|| port_to.offset_pos_destinations.sample_with_rng(&mut rng))
+                        .unwrap_or_default();
 
-                    being_dimension_ref.0 = oe_dim_ref.0;
-                    being_transform.translation = oe_portal_transform.translation().xy().extend(being_transform.translation.z);
+                    being_dimension_ref.0 = oe_dim.0;
+                    being_transform.translation = (*oe_portal_gpos + sampled_offset).to_translation(being_transform.translation.z);
 
                     let to_clients = ToClients {
                         mode: SendMode::Broadcast,

@@ -46,10 +46,8 @@ pub fn init_ezero_body_trees(
                 .insert(DisplayName::trunc(seri.name));
         }
 
-        if let Some(tags) = seri.tags.as_ref() {
-            if !tags.is_empty() {
-                cmd.entity(body_tree_ent).insert(TagSet::new(tags));
-            }
+        if !seri.tags.is_empty() {
+            cmd.entity(body_tree_ent).insert(TagSet::new(&seri.tags));
         }
 
         let root_node = std::mem::take(&mut seri.root);
@@ -92,12 +90,8 @@ fn walk_body_tree(
         EntityZeroRef(part_ent),
     ));
 
-    if let Some(label) = node
-        .label_override
-        .as_ref()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-    {
+    let label = node.label_override.trim();
+    if !label.is_empty() {
         cmd.entity(part_ent).insert(DisplayName::trunc(label));
     }
 

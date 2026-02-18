@@ -39,6 +39,7 @@ pub fn plugin(app: &mut App) {
 
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
         flip_tile_horizontally_based_on_initial_pos_hash,
+        sync_sprite_flips_with_tileflip,
         despawn_if_not_excepted.before(crate::chunking::despawn_chunks),//DON'T TOUCH
         (add_spawned_tiles_to_gpos_map, ),
         add_projectile_colliders_to_tiles,

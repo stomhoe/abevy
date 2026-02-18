@@ -1,5 +1,6 @@
 
 use ::game_common::{game_common_components::*, };
+use game_common::game_common_components_samplers::GlobalTilePosWeightedSampler;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
@@ -53,6 +54,7 @@ pub fn init_tiles(
             }
         };
         let my_z = AcZ(seri.z);
+        let size_in_tiles = SizeInTiles::new(&str_id, Some(seri.size_in_tiles), seri.is_spritetile);
         let tile_enti = cmd.spawn((
             Tile, Replicated, str_id.clone(), //PROBLEMA: EL DISABLED HACE Q EL DESPAWNONEXIT NO FUNCIONE
             Prefix::trunc("Tile"),
@@ -61,13 +63,13 @@ pub fn init_tiles(
             AddHashIdFromStrId,
             ChildOf(holder),
             AssetScoped,
-            SizeInTiles::new(seri.size_in_tiles),
+            size_in_tiles,
             //SparedFromHotReloading,
         )).id();
 
-        if let Some(tags) = &seri.tags {
+        if !seri.tags.is_empty() {
             let mut tag_set = TagSet::default();
-            for tag_string in tags {
+            for tag_string in &seri.tags {
                 let tag_str = tag_string.trim();
                 if tag_str.is_empty() { continue; }
                 let tag = Tag::trunc(tag_str);
@@ -83,7 +85,7 @@ pub fn init_tiles(
         if ! seri.name.is_empty() {
             cmd.entity(tile_enti).insert(DisplayName(seri.name.clone()));
         }
-        if seri.portal.is_some() {
+        if seri.persisted || seri.portal.no_field_is_empty() {
             cmd.entity(tile_enti).insert(Persisted);
         }
         if seri.img_paths.is_empty() {
@@ -93,54 +95,71 @@ pub fn init_tiles(
         if let Some(ref mut adj_retex_config) = seri.adj_retex {
             cmd.entity(tile_enti).insert(AdjRetexConfig::new(std::mem::take(adj_retex_config)));
         }
+        if !seri.interaction_zones.is_empty() {
+            cmd.entity(tile_enti).insert(InteractionZones::new(std::mem::take(&mut seri.interaction_zones)));
+        }
 
-        if let Some(ref color_map_str) = seri.color_map {
-            if !color_map_str.is_empty() {
-                match color_map.0.get_cloned(color_map_str) {
-                    Ok(color_sampler_ent) => {
-                        cmd.entity(tile_enti).insert(ColorSamplerRef(color_sampler_ent));
-                    }
-                    Err(_err) => {
-                        error!("Tile '{}': Weighted color sampler with id '{}' not found in ColorSamplerEntityMap", str_id, color_map_str);
-                    }
+        if !seri.color_map.is_empty() {
+            match color_map.0.get_cloned(&seri.color_map) {
+                Ok(color_sampler_ent) => {
+                    cmd.entity(tile_enti).insert(ColorSamplerRef(color_sampler_ent));
+                }
+                Err(_err) => {
+                    error!("Tile '{}': Weighted color sampler with id '{}' not found in ColorSamplerEntityMap", str_id, seri.color_map);
                 }
             }
         }
-        if seri.randflipx == Some(true) {
+        if seri.randflipx {
             cmd.entity(tile_enti).insert(FlipHorizontallyBasedOnHash);
         }
-        if let Some(portal) = &mut seri.portal {
-            cmd.entity(tile_enti).insert((std::mem::take(portal), ChildOf(egui_portal_holder)));
+        if seri.portal.no_field_is_empty() {
+            cmd.entity(tile_enti).insert((std::mem::take(&mut seri.portal), ChildOf(egui_portal_holder)));
         }
 
-        if let Some(ws) = seri.walk_speed {
-            cmd.entity(tile_enti).insert(WalkSpeedMultIfOnTop(ws));
-        } else{
-            cmd.entity(tile_enti).insert(WalkSpeedMultIfOnTop(1.0));
+        if !seri.offsets_for_portal_arrivals.is_empty() {
+            let mut sampled_offsets = Vec::with_capacity(seri.offsets_for_portal_arrivals.len());
+            for (weight, (x, y)) in &seri.offsets_for_portal_arrivals {
+                sampled_offsets.push((GlobalTilePos::new(*x as i32, *y as i32), *weight));
+            }
+            cmd.entity(tile_enti).insert(GlobalTilePosWeightedSampler::new(&sampled_offsets));
         }
 
-        if seri.blocks_projectiles == Some(true) {
+        cmd.entity(tile_enti).insert(WalkSpeedMultIfOnTop(seri.walk_speed));
+        if ! seri.colmask.is_empty() {
+            match TileCollisionMask::from_rows(&seri.colmask, size_in_tiles) {
+                Ok(mask) => {
+                    cmd.entity(tile_enti).insert(mask);
+                }
+                Err(err) => {
+                    error!(
+                        "Tile '{}' has invalid collision_mask: {}",
+                        str_id,
+                        err
+                    );
+                }
+            }
+        }
+
+        if seri.blocks_projectiles {
             cmd.entity(tile_enti).insert(BlocksProjectiles);
         }
 
 
 
-        if seri.sprite != Some(true) {
+        if !seri.is_spritetile {
             cmd.entity(tile_enti).insert(TileImagePaths(std::mem::take(&mut seri.img_paths)));
 
-            if let Some(shader_str) = &seri.shader {
-                if shader_str.len() > 2 {
-                    let Ok(shader_ent) = shader_map.0.get_cloned(shader_str) else {
-                        error!("Tile '{}' references shader {} not found in TileShaderEntityMap", str_id, shader_str);
-                        return;
-                    };
-                    cmd.entity(tile_enti).insert(TileShaderRef(shader_ent));
-                } else if shader_str.len() > 0 {
-                    warn!("Tile {} shader {} is too short for a shader", str_id, shader_str);
-                }
+            if seri.shader.len() > 2 {
+                let Ok(shader_ent) = shader_map.0.get_cloned(&seri.shader) else {
+                    error!("Tile '{}' references shader {} not found in TileShaderEntityMap", str_id, seri.shader);
+                    return;
+                };
+                cmd.entity(tile_enti).insert(TileShaderRef(shader_ent));
+            } else if !seri.shader.is_empty() {
+                warn!("Tile {} shader {} is too short for a shader", str_id, seri.shader);
             }
             if let Some(y_sort_origin) = seri.y_sort {
-                cmd.entity(tile_enti).insert(YSortOrigin(seri.offset.unwrap_or_default().1 + y_sort_origin - 10.0));
+                cmd.entity(tile_enti).insert(YSortOrigin(seri.offset.1 + y_sort_origin - 10.0));
             }
 
             cmd.entity(tile_enti).insert_if_new((TileColor::from(color), ));
@@ -177,11 +196,11 @@ pub fn init_tiles(
                         my_z.clone(),
                     )).id();
 
-                    if let Some(offset) = seri.offset {
-                        cmd.entity(child_sprite).insert(Offset2D::from(offset));
+                    if seri.offset != (0.0, 0.0) {
+                        cmd.entity(child_sprite).insert(Offset2D::from(seri.offset));
                     }
                     if let Some(y_sort_origin) = seri.y_sort {
-                        cmd.entity(child_sprite).insert(YSortOrigin(seri.offset.unwrap_or_default().1 + y_sort_origin - 10.0));
+                        cmd.entity(child_sprite).insert(YSortOrigin(seri.offset.1 + y_sort_origin - 10.0));
                     }
                     processing_as_sprite_cfgs = Some(false);
                 }
@@ -297,10 +316,7 @@ pub fn map_min_dist_tiles(
 
     for seri in all_seris {
 
-        let Some(min_distances) = seri.min_distances else {
-            continue;
-        };
-
+        let min_distances = seri.min_distances;
         if min_distances.is_empty() {
             continue;
         }

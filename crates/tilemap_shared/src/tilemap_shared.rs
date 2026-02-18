@@ -184,19 +184,34 @@ impl SpriteTilesAtGpos {
             .map(|matrix| matrix.get(local))
             .unwrap_or(&[])
     }
-    pub fn remove_tile(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, tile_ent: Entity) {
-        let (chunk, local) = Self::chunk_and_local(gpos);
-        if let Some(matrix) = self.map.get_mut(&(dim_ref, chunk)) {
-            matrix.swap_remove(local, tile_ent);
+    pub fn remove_tile(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, tile_ent: Entity, size: SizeInTiles) {
+        let size = size.inner();
+        for y in 0..size.y {
+            for x in 0..size.x {
+                let curr_gpos = GlobalTilePos(gpos.0 + IVec2::new(x as i32, y as i32));
+                let (chunk, local) = Self::chunk_and_local(curr_gpos);
+                if let Some(matrix) = self.map.get_mut(&(dim_ref, chunk)) {
+                    matrix.swap_remove(local, tile_ent);
+                }
+            }
         }
     }
     pub fn reserve_capacity(&mut self, additional: usize) {
         self.map.reserve(additional);
     }
-    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, ) {
-        let (chunk, local) = Self::chunk_and_local(gpos);
-        let matrix = self.map.entry((dimension_ref, chunk)).or_insert_with(ChunkEntityMatrix::new);
-        matrix.push(local, entity);
+    pub fn insert(&mut self, entity: Entity, dimension_ref: DimensionRef, gpos: GlobalTilePos, size: SizeInTiles) {
+        let size = size.inner();
+        for y in 0..size.y {
+            for x in 0..size.x {
+                let curr_gpos = GlobalTilePos(gpos.0 + IVec2::new(x as i32, y as i32));
+                let (chunk, local) = Self::chunk_and_local(curr_gpos);
+                let matrix = self
+                    .map
+                    .entry((dimension_ref, chunk))
+                    .or_insert_with(ChunkEntityMatrix::new);
+                matrix.push(local, entity);
+            }
+        }
     }
 }
 
@@ -255,8 +270,137 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct WalkSpeedMultIfOnTop(pub f32); //1.0 es velocidad normal
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct WalkSpeedMultIfOnTop(pub f32);
+impl WalkSpeedMultIfOnTop {
+    pub fn is_extremely_low(&self) -> bool {
+        self.0 <= 0.01
+    }
+}
+impl Default for WalkSpeedMultIfOnTop {
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct TileCollisionMask {
+    width: u8,
+    height: u8,
+    bits: u64,
+}
+impl TileCollisionMask {
+    pub fn from_rows(rows: &[String], size_in_tiles: SizeInTiles) -> Result<Self, BevyError> {
+        let width = size_in_tiles.inner().x as usize;
+        let height = size_in_tiles.inner().y as usize;
+        if rows.len() != height {
+            return Err(BevyError::from(format!(
+                "collision_mask row count ({}) does not match size_in_tiles.y ({})",
+                rows.len(),
+                height
+            )));
+        }
+
+        let mut bits = 0u64;
+        for (y, row) in rows.iter().enumerate() {
+            let row = row.trim();
+            if row.chars().count() != width {
+                return Err(BevyError::from(format!(
+                    "collision_mask row {} width ({}) does not match size_in_tiles.x ({})",
+                    y,
+                    row.chars().count(),
+                    width
+                )));
+            }
+            for (x, c) in row.chars().enumerate() {
+                match c {
+                    '0' => {}
+                    '1' => {
+                        let bit_i = y * width + x;
+                        bits |= 1u64 << bit_i;
+                    }
+                    _ => {
+                        return Err(BevyError::from(format!(
+                            "collision_mask row {} contains invalid char '{}'; only '0' and '1' are allowed",
+                            y, c
+                        )));
+                    }
+                }
+            }
+        }
+
+        Ok(Self {
+            width: width as u8,
+            height: height as u8,
+            bits,
+        })
+    }
+
+
+    pub fn is_solid_at_world_pos_with_flip(
+        &self,
+        tile_origin: GlobalTilePos,
+        target: GlobalTilePos,
+        flip: TileFlip,
+    ) -> bool {
+        let rel = target.0 - tile_origin.0;
+        if rel.x < 0 || rel.y < 0 {
+            return true;
+        }
+        let x = rel.x as u32;
+        let y = rel.y as u32;
+        self.is_solid_local_with_flip(x, y, flip)
+    }
+
+
+    pub fn is_solid_local_with_flip(&self, x: u32, y: u32, flip: TileFlip) -> bool {
+        let (sx, sy) = self.target_to_source_local(x, y, flip);
+        let Some((sx, sy)) = sx.zip(sy) else {
+            return true;
+        };
+        self.is_source_bit_set(sx, sy)
+    }
+
+    fn is_source_bit_set(&self, x: u32, y: u32) -> bool {
+        let width = self.width as u32;
+        let height = self.height as u32;
+        if x >= width || y >= height {
+            return true;
+        }
+        let bit_i = y * width + x;
+        (self.bits & (1u64 << bit_i)) != 0
+    }
+
+    fn target_to_source_local(&self, x: u32, y: u32, flip: TileFlip) -> (Option<u32>, Option<u32>) {
+        let width = self.width as u32;
+        let height = self.height as u32;
+        if x >= width || y >= height {
+            return (None, None);
+        }
+
+        // Inverse transform from target cell -> source cell to match tile rendering flips.
+        let mut sx = x;
+        let mut sy = y;
+        let mut w = width;
+        let mut h = height;
+
+        if flip.y {
+            sy = h - 1 - sy;
+        }
+        if flip.x {
+            sx = w - 1 - sx;
+        }
+        if flip.d {
+            std::mem::swap(&mut sx, &mut sy);
+            std::mem::swap(&mut w, &mut h);
+        }
+
+        if sx >= w || sy >= h {
+            return (None, None);
+        }
+        (Some(sx), Some(sy))
+    }
+}
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct SearchingForSuitablePos { pub requester: Entity, }

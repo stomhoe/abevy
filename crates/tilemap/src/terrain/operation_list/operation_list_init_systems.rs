@@ -8,7 +8,7 @@ use common::{common_components::{ StrId}, common_tag_components::TagSet};
 use crate::{
     terrain::{
         operation_list::operation_list_components::{Bifurcation, CompiledBranch, CompiledBranchNode, OperationList},
-        operation_list::operation_list_resources::{EguiOperationListsHolder, OperationListEntityMap, load_op_list_seri_defs},
+        operation_list::operation_list_resources::{EguiOperationListsHolder, OperationListEntityMap, TgCompiledOpLists, load_op_list_seri_defs},
         operation_list::operation_list_script::load_tg_oplists,
         terrgen_components::FailedSearchOplistFilterHolder,
         terrgen_expression,
@@ -19,6 +19,11 @@ use crate::{
 use ::tilemap_shared::{MultipleDimensionRefs, *};
 
 use std::collections::{HashMap, HashSet};
+
+#[allow(unused_parens)]
+pub fn cache_tg_oplists(mut cmd: Commands) {
+    cmd.insert_resource(TgCompiledOpLists(load_tg_oplists()));
+}
 
 /// Resolve NoiseByName variants in expression tree to actual Noise entities
 fn resolve_noise_names_in_expr(
@@ -84,6 +89,7 @@ pub fn init_oplists_from_assets(
     tiles_map: Res<TileEntityMap>,
     dimension_map: Res<DimensionEntityMap>,
     oplist_map: Res<OperationListEntityMap>,
+    tg_oplists: Res<TgCompiledOpLists>,
     egui_holder: Query<Entity, With<EguiOperationListsHolder>>,
 ) {
     if !oplist_map.0.is_empty() { return ; }
@@ -101,7 +107,7 @@ pub fn init_oplists_from_assets(
     let mut tags_to_insert = Vec::new();
 
     let mut seris = load_op_list_seri_defs();
-    seris.extend(load_tg_oplists());
+    seris.extend(tg_oplists.0.iter().cloned());
     for seri in seris.iter_mut() {
         let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
             Ok(str_id) => str_id,
@@ -205,11 +211,12 @@ pub fn init_oplists_from_assets(
 pub fn init_oplists_bifurcations(
     mut cmd: Commands,
     oplist_map: Res<OperationListEntityMap>,
+    tg_oplists: Res<TgCompiledOpLists>,
     mut oplist_query: Query<(Entity, &mut OperationList, &OplistSize)>,
     is_root: Query<&MultipleDimensionRefs>,
 ) -> Result {
     let mut seris = load_op_list_seri_defs();
-    seris.extend(load_tg_oplists());
+    seris.extend(tg_oplists.0.iter().cloned());
     for seri in seris {
             let Ok(oplist_ent) = oplist_map.0.get_cloned(&seri.id) else {
                 error!(

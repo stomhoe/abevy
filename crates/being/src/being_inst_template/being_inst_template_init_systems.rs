@@ -1,9 +1,7 @@
 use being_shared::{BeingInstTemplate, };
 use bevy::prelude::*;
 use common::common_components::*;
-use sprite::{
-    sprite_resources::SpriteConfigEntityMap,
-};
+
 use ::sprite_shared::*;
 use game_common::game_common_components_samplers::*;
 
@@ -45,22 +43,18 @@ pub fn init_being_templates(
 
             let being_inst_template = BeingInstTemplate {
                 points: template_seri.points,
-                extra_health_multiplier: template_seri.health_multiplier.unwrap_or(1.).max(0.01),
+                extra_health_multiplier: template_seri.health_multiplier.max(0.001),
             };
 
             main_comps.push((bit_entity, (being_inst_template, str_id.clone())));
 
-            if let Some(sprites_weight_maps) = template_seri.scs_samplers {
-                samples.push((bit_entity, SampleSpritesFromStrIds::new(sprites_weight_maps,)));
-
+            if !template_seri.scs_samplers.is_empty() {
+                samples.push((bit_entity, SampleSpritesFromStrIds::new(template_seri.scs_samplers,)));
             }
 
-            if let Some(faction_str_id) = template_seri.fallback_faction {
-                if ! faction_str_id.trim().is_empty(){
-                    let faction_str_id = StrId::trunc(&faction_str_id);
-
-                    faction_refs_to_insert.push((bit_entity, FactionStrIdRef(faction_str_id)));
-                }
+            if !template_seri.fallback_faction.trim().is_empty(){
+                let faction_str_id = StrId::trunc(&template_seri.fallback_faction);
+                faction_refs_to_insert.push((bit_entity, FactionStrIdRef(faction_str_id)));
             }
             if let Some(size_variation) = template_seri.size_variation {
                 cmd.entity(bit_entity).insert(SpriteGlobalNormalDist::new(size_variation));
@@ -83,10 +77,8 @@ pub fn init_being_templates(
                 }
             }
 
-            if let Some(health_multiplier) = template_seri.health_multiplier {
-                if health_multiplier < 0.0 {
-                    warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, setting to 0.0", str_id, health_multiplier);
-                }
+            if template_seri.health_multiplier < 0.0 {
+                warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, setting to 0.0", str_id, template_seri.health_multiplier);
             }
     }
     cmd.try_insert_batch(main_comps);

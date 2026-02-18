@@ -217,7 +217,7 @@ pub fn init_body_parts(
                 .insert(BodyPartKind(StrId::trunc(kind)));
         }
 
-        if part.vital == Some(true) {
+        if part.vital {
             cmd.entity(part_ent).insert(BodyPartVital);
         }
     }

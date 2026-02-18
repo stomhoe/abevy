@@ -77,43 +77,100 @@ pub struct TileSeri {
     pub name: String,
     pub z: f32,
     pub img_paths: Vec<(String, String)>,
-    pub tags: Option<HashSet<String>>,
+    #[serde(default)]
+    pub tags: HashSet<String>,
     pub y_sort: Option<f32>,
     /// persisted only when state gets altered from starting state
-    pub persisted: Option<bool>,
-    pub shader: Option<String>,
-    pub sprite: Option<bool>,
+    #[serde(default)]
+    pub persisted: bool,
+    #[serde(default)]
+    pub shader: String,
+    #[serde(default)]
+    pub is_spritetile: bool,
     pub color: Option<[u8; 4]>,
-    pub color_map: Option<String>,
-    pub spawns: Option<Vec<String>>,
-    pub spawns_children: Option<Vec<String>>,
-    pub randflipx: Option<bool>,
-    pub min_distances: Option<HashMap<String, u64>>,
-    pub portal: Option<PortalSeri>,
-    pub offset: Option<(f32, f32)>,
+    #[serde(default)]
+    pub color_map: String,
+    #[serde(default)]
+    pub spawns: Vec<String>,
+    #[serde(default)]
+    pub spawns_children: Vec<String>,
+    #[serde(default)]
+    pub randflipx: bool,
+    #[serde(default)]
+    pub min_distances: HashMap<String, u64>,
+    #[serde(default)]
+    pub portal: PortalSeri,
+    #[serde(default)]
+    pub offset: (f32, f32),
 
-    pub size_in_tiles: Option<(u32, u32)>,
+    #[serde(default)]
+    pub interaction_zones: HashMap<String, InteractionZoneSeri>,
+
+    #[serde(default)]
+    pub offsets_for_portal_arrivals:  Vec<(f32, (i8, i8))>,
+
+
+    #[serde(default = "default_size_in_tiles")]
+    pub size_in_tiles: (u32, u32),
+    /// Optional per-cell collision mask, row-major, '1' blocks movement, '0' is passable.
+    #[serde(default)]
+    pub colmask: Vec<String>,
 
     pub adj_retex: Option<AdjRetexConfigSeri>,
-    ///if Some, is a ground tile and f32 the is walk speed modifier. if None or Some(0.0) is impassable tile
-    pub walk_speed: Option<f32>,
+    #[serde(default = "default_walk_speed")]
+    pub walk_speed: f32,
     /// to be used by other systems to factor in their own walkspeed on top if a certain tag is present on this tile
-    pub walk_speed_tags: Option<HashSet<String>>,
+    #[serde(default)]
+    pub walk_speed_tags: HashSet<String>,
 
     /// When true, this tile spawns a projectile-stopping collider.
-    pub blocks_projectiles: Option<bool>,
+    #[serde(default)]
+    pub blocks_projectiles: bool,
+}
+fn default_walk_speed() -> f32 { 1. }
+fn default_size_in_tiles() -> (u32, u32) { (1, 1) }
 
+
+#[derive(Component, Deserialize, TypePath, Clone, Default)]
+pub struct InteractionZoneSeri{
+    #[serde(default)]
+    pub offset_positions: Vec<(i8, i8)>,
+    #[serde(default)]
+    pub radius_offset: Vec<(f32, f32)>,
 }
 
-#[derive(Component, Deserialize, TypePath, Default, Clone)]
+#[derive(Component, Deserialize, TypePath, Clone, )]
 pub struct PortalSeri{
     pub dest_dimension: String,
     pub oe_tile: String,
     #[serde(default = "default_portal_terrprobe")]
     pub oe_terrprobe: String,
-    pub one_way: Option<bool>,
-    /// NASE
+    #[serde(default)]
+    pub one_way: bool,
+    #[serde(default)]
     pub dungeon: String,
+    #[serde(default)]
+    //weight, position (to be converted into GlobalTilePOs)
+    pub offset_pos_destinations: Vec<(f32, (i8, i8))>,
+}
+impl PortalSeri {
+    pub fn no_field_is_empty(&self) -> bool {
+        !self.dest_dimension.is_empty() && !self.oe_terrprobe.is_empty()
+    }
+
+}
+
+impl Default for PortalSeri {
+    fn default() -> Self {
+        Self {
+            dest_dimension: "".to_string(),
+            oe_tile: "".to_string(),
+            oe_terrprobe: default_portal_terrprobe(),
+            one_way: false,
+            dungeon: "".to_string(),
+            offset_pos_destinations: Vec::new(),
+        }
+    }
 }
 
 fn default_portal_terrprobe() -> String {

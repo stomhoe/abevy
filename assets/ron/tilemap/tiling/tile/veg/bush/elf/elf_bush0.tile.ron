@@ -6,6 +6,6 @@
     img_paths: [
         ("", "texture/world/veg/bush/elf/elf_bush0.png"),
     ],
-    sprite: Some(true),
-    randflipx: Some(true),
+    is_spritetile: true,
+    randflipx: true,
 )

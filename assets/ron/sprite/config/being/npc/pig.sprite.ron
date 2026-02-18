@@ -11,13 +11,13 @@ SpriteConfigSeri(
         ("east", "move", "g", "") : "pig_east_move",
         ("north", "move", "g", "") : "pig_north_move",
     },
-    children_sprites: Some([]),
-    shares_tag: Some([]),
-    directionable: Some(true),
-    movement_based: Some(true),
-    grounding_based: Some(false),
-    offset: Some((0., 6.)),//ta bien
-    scale: Some((1.2, 1.2)),
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    offset: (0., 6.),//ta bien
+    scale: (1.2, 1.2),
 )
 
 // TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld

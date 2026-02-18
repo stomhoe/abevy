@@ -141,9 +141,8 @@ macro_rules! define_weightedsampler_impl {
 #[macro_export]
 macro_rules! define_weightedsampler {
     ($ty:ident, $inner:ty, $entityprefix:expr) => {
-        use common::common_components::{Prefix, AssetScoped};
-        #[derive(Debug, Clone, Component)]
-        #[require(Prefix::trunc($entityprefix), bevy_replicon::shared::replication::Replicated, AssetScoped, )]
+        #[derive(Debug, Clone, Component, Default, )]
+        #[require(common::common_components::Prefix::trunc($entityprefix), bevy_replicon::shared::replication::Replicated, common::common_components::AssetScoped, )]
         pub struct $ty {
             weights: Vec<($inner, f32)>,
             cumulative_weights: Vec<f32>,
@@ -168,6 +167,14 @@ impl MapEntities for EntityWeightedSampler {
     }
 }
 
+
+#[derive(Debug, Clone, Component, Default, Reflect)]
+pub struct GlobalTilePosWeightedSampler {
+    weights: Vec<(GlobalTilePos, f32)>,
+    cumulative_weights: Vec<f32>,
+    total_weight: f32,
+}
+define_weightedsampler_impl!(GlobalTilePosWeightedSampler, GlobalTilePos);
 
 
 define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");

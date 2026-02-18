@@ -46,7 +46,7 @@ pub fn init_terrain_probes(
             continue;
         };
 
-        let Some(parsed_probe_pattern) = parse_probe_pattern(&seri.probe_pattern) else {
+        let Some(parsed_probe_pattern) = ProbePatternSeri::parse(&seri.probe_pattern) else {
             error!(
                 target: "terrprobe_init",
                 "Invalid probe_pattern '{}' for terrain probe '{}'. Expected 'sun' or 'spiral'",
