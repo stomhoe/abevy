@@ -4,26 +4,18 @@ use std::collections::{BTreeMap, HashMap, };
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::terrain::operation_list::operation_list_resources::{OpListSeri, OpListSerisHandles};
+use crate::terrain::operation_list::operation_list_resources::OpListSeri;
 use crate::terrain::terrgen_expression::{Assignment, Expr, ExprOpList};
 
-#[allow(unused_parens)]
-pub fn load_tg_oplists(
-    mut seris_handles: Option<ResMut<OpListSerisHandles>>,
-    mut assets: Option<ResMut<Assets<OpListSeri>>>,
-) {
-    let (Some(mut seris_handles), Some(mut assets)) = (seris_handles.take(), assets.take()) else {
-        return;
-    };
-
+pub fn load_tg_oplists() -> Vec<OpListSeri> {
     let Some(root_dir) = resolve_oplist_root_dir() else {
-        return;
+        return Vec::new();
     };
 
     let mut files = Vec::new();
     collect_tg_files(&root_dir, &mut files);
     if files.is_empty() {
-        return;
+        return Vec::new();
     }
     files.sort();
 
@@ -63,22 +55,15 @@ pub fn load_tg_oplists(
     }
 
     if compiled_by_id.is_empty() {
-        return;
+        return Vec::new();
     }
 
-    // TG scripts are the canonical oplist source in the new system.
-    // Drop previously tracked handles (including legacy .ron variants)
-    // so duplicate ids cannot resolve to stale assets.
-    seris_handles.handles.clear();
-
-    let mut added = 0usize;
+    let mut out = Vec::with_capacity(compiled_by_id.len());
     for (_, seri) in compiled_by_id {
-        let handle = assets.add(seri);
-        seris_handles.handles.push(handle);
-        added += 1;
+        out.push(seri);
     }
-
-    info!(target: "oplist_tg", "Loaded {} TG oplist script(s)", added);
+    info!(target: "oplist_tg", "Compiled {} TG oplist script(s)", out.len());
+    out
 }
 
 fn resolve_oplist_root_dir() -> Option<PathBuf> {

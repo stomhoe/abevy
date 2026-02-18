@@ -7,12 +7,8 @@ use crate::sex::{SexEntityMap, sex_components::*, sex_resources::*};
 
 pub fn init_sexes(
     mut cmd: Commands,
-    mut seris_handles: ResMut<SexSerisHandles>,
-    mut assets: ResMut<Assets<SexSeri>>,
 ) {
-    use std::mem::take;
-    for handle in take(&mut seris_handles.handles) {
-        if let Some(sex_seri) = assets.remove(handle.id()) {
+    for sex_seri in load_sex_seri_defs() {
             let str_id = StrId::trunc(&sex_seri.id);
 
             let ingame_name = DisplayName(sex_seri.name.clone());
@@ -25,6 +21,5 @@ pub fn init_sexes(
             }
 
             trace!(target: "sex_init", "Initialized sex '{}' with entity {:?}", str_id, entity_cmds.id());
-        }
     }
 }

@@ -15,8 +15,6 @@ use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
 
 pub fn init_being_templates(
     mut cmd: Commands,
-    mut seris_handles: ResMut<BitSerisHandles>,
-    mut assets: ResMut<Assets<BitSeri>>,
     race_emap: Option<Res<RaceEntityMap>>,
     faction_emap: Option<Res<FactionEntityMap>>,
     bit_map: Res<BeingInstTemplateEntityMap>,
@@ -26,7 +24,6 @@ pub fn init_being_templates(
         return;
     }
 
-    use std::mem::take;
     let mut main_comps = Vec::new();
     let mut samples = Vec::new();
     let mut race_refs_to_insert = Vec::new();
@@ -41,8 +38,7 @@ pub fn init_being_templates(
         return;
     };
 
-    for handle in take(&mut seris_handles.handles) {
-        if let Some(template_seri) = assets.remove(handle.id()) {
+    for template_seri in load_bit_seri_defs() {
             let str_id = StrId::trunc(&template_seri.id);
 
             let bit_entity = cmd.spawn_empty().id();
@@ -92,7 +88,6 @@ pub fn init_being_templates(
                     warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, setting to 0.0", str_id, health_multiplier);
                 }
             }
-        }
     }
     cmd.try_insert_batch(main_comps);
     cmd.try_insert_batch(samples);

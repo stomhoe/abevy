@@ -247,6 +247,37 @@ macro_rules! define_entity_map_systems {
                     #[asset(collection(typed))]
                     pub handles: Vec<Handle<$seri_type>>,
                 }
+
+                pub fn [<load_ $seri_type:snake _defs>]() -> Vec<$seri_type> {
+                    let db = match common::def_db::DefDatabase::<$seri_type>::load_from_assets_dir_with_type(
+                        stringify!($seri_type),
+                        &[$ron_suffix],
+                        |seri| seri.id.as_str(),
+                    ) {
+                        Ok(db) => db,
+                        Err(err) => {
+                            error!(
+                                target: $target,
+                                "Failed loading {} defs: {err:#}",
+                                stringify!($seri_type)
+                            );
+                            return Vec::new();
+                        }
+                    };
+                    if !$target.is_empty() {
+                        for ov in db.overrides() {
+                            info!(
+                                target: $target,
+                                "{} def '{}' overridden: '{}' -> '{}'",
+                                stringify!($seri_type),
+                                ov.id,
+                                ov.previous_source.rel_path,
+                                ov.replacement_source.rel_path
+                            );
+                        }
+                    }
+                    db.into_records().into_iter().map(|r| r.value).collect()
+                }
             )+
 
             fn [<do_register_ $main_component:snake _dynamic_assets>](
@@ -412,6 +443,7 @@ macro_rules! define_entity_map_systems {
                 use bevy_asset_loader::prelude::*;
                 $(
                     common::common_resources::register_seri_auto_routing_rule($dynamic_key, $ron_suffix);
+                    common::def_db::register_expected_def_type(stringify!($seri_type));
                 )*
 
                 app

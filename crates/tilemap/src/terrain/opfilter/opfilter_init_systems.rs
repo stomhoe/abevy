@@ -2,19 +2,17 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::HashedTagsVec};
 
-use std::{f32::{INFINITY, NEG_INFINITY}, mem::take};
+use std::f32::{INFINITY, NEG_INFINITY};
 
 use crate::terrain::opfilter::{
     opfilter_components::OpFilter,
-    opfilter_resources::{EguiOpFiltersHolder, OpFilterEntityMap, OpFilterSeri, OpFilterSerisHandles},
+    opfilter_resources::{EguiOpFiltersHolder, OpFilterEntityMap, load_op_filter_seri_defs},
 };
 
 #[allow(unused_parens)]
 pub fn init_opfilters(
     mut cmd: Commands,
     map: Res<OpFilterEntityMap>,
-    mut seris_handles: ResMut<OpFilterSerisHandles>,
-    mut assets: ResMut<Assets<OpFilterSeri>>,
     egui_holder_query: Query<Entity, With<EguiOpFiltersHolder>>,
 ) {
     if !map.0.is_empty() { return; }
@@ -26,8 +24,7 @@ pub fn init_opfilters(
     };
 
     let mut comps = Vec::new();
-    for handle in take(&mut seris_handles.handles).into_iter() {
-        let Some(seri) = assets.remove(&handle) else { continue; };
+    for seri in load_op_filter_seri_defs() {
 
         let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 1) else {
             error!(target: "opfilter_init", "Failed to create StrId for opfilter id '{}'", seri.id);

@@ -14,15 +14,11 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 
 pub fn init_races(
     mut cmd: Commands,
-    mut seris_handles: ResMut<RaceSerisHandles>,
-    mut assets: ResMut<Assets<RaceSeri>>,
     sprite_map: Res<SpriteConfigEntityMap>,
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sexes_map: Res<SexEntityMap>,
 ) {
-    use std::mem::take;
-    for handle in take(&mut seris_handles.handles) {
-        if let Some(race_seri) = assets.remove(handle.id()) {
+    for race_seri in load_race_seri_defs() {
             let str_id = StrId::trunc(&race_seri.id);
 
             let ingame_name = DisplayName(race_seri.name.clone());
@@ -188,6 +184,5 @@ pub fn init_races(
                 .insert(MappedSpritesToSample(mapped_sprites_to_sample));
 
             trace!(target: "race_init", "Initialized race '{}' with entity {:?}", str_id, entity);
-        }
     }
 }

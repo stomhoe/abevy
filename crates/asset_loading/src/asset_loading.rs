@@ -23,6 +23,10 @@ pub fn plugin(app: &mut App) {
 
         .add_systems(Update, (
             reload_assets_while_ingame,
+            validate_defs_after_load.run_if(
+                in_state(AssetLoading::SpawnReplicatedEntities)
+                    .and(in_state(ClientState::Disconnected))
+            ),
         ))
         .add_systems(OnExit(AppState::StatefulGameSession),
             despawn_asset_scoped_entities

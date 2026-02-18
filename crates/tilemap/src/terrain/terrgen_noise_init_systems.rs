@@ -3,13 +3,10 @@ use fnl::*;
 use common::common_components::{DisplayName, Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
 use crate::terrain::{terrgen_components::*, terrgen_resources::*, TerrgenEntityMap};
-use std::mem::take;
 
 #[allow(unused_parens)]
 pub fn init_noises(
     mut cmd: Commands,
-    mut seris_handles: ResMut<FnlSerisHandles>,
-    mut assets: ResMut<Assets<FnlSeri>>,
     terrgen_map: Res<TerrgenEntityMap>,
     settings: Query<&GlobalGenSettings>,
     noise_holder: Query<Entity, With<EguiTerrgensHolder>>,
@@ -29,8 +26,7 @@ pub fn init_noises(
         noise_holder.single().unwrap()
     };
 
-    for handle in take(&mut seris_handles.handles) {
-        let Some(seri) = assets.remove(&handle) else { continue };
+    for seri in load_fnl_seri_defs() {
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 3) {
             Ok(id) => id,

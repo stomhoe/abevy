@@ -5,9 +5,10 @@ use crate::terrain::terrprobe::terrprobe_messages::{ProbePattern, TerrProbeJob};
 use ::tilemap_shared::*;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
 pub enum ProbePatternSeri {
+    #[serde(alias = "sun")]
     Sun,
+    #[serde(alias = "spiral")]
     Spiral,
 }
 

@@ -6,18 +6,38 @@ use ::tilemap_shared::*;
 #[allow(unused_parens)]
 pub fn init_dimensions(
     mut cmd: Commands, map: Res<DimensionEntityMap>,
-    mut seris_handles: ResMut<DimensionSerisHandles>,
-    mut assets: ResMut<Assets<DimensionSeri>>,
 ) {
     if !map.0.is_empty(){ return; }
+
+    let db = match common::def_db::DefDatabase::<DimensionSeri>::load_from_assets_dir(
+        &["dimension.ron"],
+        |d| d.id.as_str(),
+    ) {
+        Ok(db) => db,
+        Err(err) => {
+            error!(target: "dimension_loading", "{err:#}");
+            return;
+        }
+    };
+    if !db.overrides().is_empty() {
+        for ov in db.overrides() {
+            info!(
+                target: "dimension_loading",
+                "Dimension def '{}' overridden: '{}' -> '{}'",
+                ov.id,
+                ov.previous_source.rel_path,
+                ov.replacement_source.rel_path
+            );
+        }
+    }
 
     let mut common_components = Vec::new();
     let mut tagsets_to_insert = Vec::new();
     let mut whitelisted_structure_gen_tags_to_insert = Vec::new();
     let mut blacklisted_structure_gen_tags_to_insert = Vec::new();
 
-    for handle in std::mem::take(&mut seris_handles.handles) {
-        let Some(seri) = assets.remove(&handle) else { continue };
+    for record in db.iter() {
+        let seri = &record.value;
 
         let str_id = match StrId::new_with_result(seri.id.clone(), 2) {
             Ok(id) => id,
@@ -29,14 +49,14 @@ pub fn init_dimensions(
         };
         let dim_ent = cmd.spawn_empty().id();
 
-        if let Some(tags) = seri.tags {
+        if let Some(tags) = seri.tags.clone() {
             tagsets_to_insert.push((dim_ent, TagSet::new(tags)));
         }
-        if let Some(whitelisted_structure_gen_tags) = seri.whitelisted_structure_gen_tags {
+        if let Some(whitelisted_structure_gen_tags) = seri.whitelisted_structure_gen_tags.clone() {
             let tag_set = WhitelistedStructureGenTags(TagSet::new(whitelisted_structure_gen_tags));
             whitelisted_structure_gen_tags_to_insert.push((dim_ent, tag_set));
         }
-        if let Some(blacklisted_structure_gen_tags) = seri.blacklisted_structure_gen_tags {
+        if let Some(blacklisted_structure_gen_tags) = seri.blacklisted_structure_gen_tags.clone() {
             let tag_set = BlacklistedStructureGenTags(TagSet::new(blacklisted_structure_gen_tags));
             blacklisted_structure_gen_tags_to_insert.push((dim_ent, tag_set));
         }
@@ -45,7 +65,7 @@ pub fn init_dimensions(
             HashId::from(str_id.as_ref()),
             str_id,
             Transform::default(),
-            DisplayName::new(seri.name),
+            DisplayName::new(seri.name.clone()),
             Dimension,
             Visibility::Visible,
         )))

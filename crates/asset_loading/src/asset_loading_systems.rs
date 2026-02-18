@@ -40,6 +40,33 @@ pub fn on_assets_loaded(
     hot_loading.set(AssetHotReloadState::Stopped);
 }
 
+pub fn validate_defs_after_load(
+    mut runtime: ResMut<common::def_db::DefValidationRuntime>,
+    config: Res<common::def_db::DefValidationConfig>,
+) {
+    if !config.enabled || runtime.completed {
+        return;
+    }
+    if !common::def_db::expected_types_loaded() {
+        return;
+    }
+
+    runtime.attempted = true;
+    match common::def_db::validate_global_registry() {
+        Ok(_) => {
+            info!(target: "def_validation", "Def validation passed");
+            runtime.completed = true;
+        }
+        Err(err) => {
+            error!(target: "def_validation", "{err:#}");
+            if config.fail_fast {
+                panic!("Def validation failed, aborting startup");
+            }
+            runtime.completed = true;
+        }
+    }
+}
+
 
 pub fn despawn_asset_scoped_entities(
     mut commands: Commands,

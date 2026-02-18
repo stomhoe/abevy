@@ -16,8 +16,6 @@ use crate::body::{
 pub fn init_body_parts(
     mut cmd: Commands,
     part_map: Res<BodyPartEntityMap>,
-    seris_handles: Res<BodyPartSerisHandles>,
-    assets: Res<Assets<BodyPartSeri>>,
 ) {
     if !part_map.0.is_empty() {
         return;
@@ -25,14 +23,7 @@ pub fn init_body_parts(
 
     let mut spawned_ids: HashSet<StrId> = HashSet::default();
 
-    for handle in seris_handles.handles.iter() {
-        let Some(seri) = assets.get(handle) else {
-            continue;
-        };
-
-        debug!(target: "body_init", "Loading BodyPartSeri from handle: {:?}", handle);
-
-        let mut part = seri.clone();
+    for mut part in load_body_part_seri_defs() {
         let part_id = match StrId::new_with_result(&part.id, 3) {
             Ok(id) => id,
             Err(e) => {

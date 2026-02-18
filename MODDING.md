@@ -96,3 +96,73 @@ Mods should add separate manifest files instead of editing the base manifest.
 - You can use any `StandardDynamicAsset` variant supported by `bevy_asset_loader`, but `File(path: "...")` is the intended one for `*Seri` data.
 - Keep paths relative to `assets/`.
 - Broken or invalid manifests are skipped with warnings at load time.
+
+## Explicit Def Patching
+
+You can now patch defs explicitly with `*.defpatch.ron` files anywhere under `assets/`.
+
+Patch files are loaded deterministically and applied after base+mod def merge.
+
+Supported operations:
+
+- `upsert`: create/replace whole def
+- `delete`: remove a def by id
+- `set_field`: set a nested field by path (dot + `[index]`)
+- `remove_field`: remove nested field/key by path
+- `merge`: recursive map merge, seq append
+- `copy`: clone one def id into another
+
+Example:
+
+```ron
+[
+  (
+    op: "set_field",
+    type: "TileSeri",
+    id: "ocean",
+    path: "walk_speed",
+    value: Some(0.2),
+  ),
+  (
+    op: "upsert",
+    type: "RaceSeri",
+    id: "my_custom_race",
+    value: (
+      id: "my_custom_race",
+      name: "My Race",
+      body_tree: "human",
+      sexes: {"male": (100, [])},
+      fallback_sprites_to_sample: [],
+    ),
+  ),
+]
+```
+
+## Global Registry API
+
+Global registry/cross-ref helpers live in `common::def_db`:
+
+- `global_registry_snapshot()`
+- `resolve_def_ref(type_name, id)`
+- `resolve_def_field(type_name, id, path)`
+- `DefDatabase::<T>::resolve_typed_ref(type_name, id)`
+
+## Startup Def Validation
+
+Validation runs once during `AssetLoading::SpawnReplicatedEntities` (server/disconnected side), after all expected def types are loaded.
+
+Register rules in code:
+
+```rust
+common::def_db::register_ref_rule(common::def_db::DefRefRule {
+    from_type: "TileSeri".to_string(),
+    from_path: "shader".to_string(),
+    to_type: "ShaderRepeatTexSeri".to_string(),
+    allow_missing: false,
+});
+```
+
+Config resource:
+
+- `DefValidationConfig { enabled, fail_fast }`
+- default is `enabled = true`, `fail_fast = true` (panic on validation errors)

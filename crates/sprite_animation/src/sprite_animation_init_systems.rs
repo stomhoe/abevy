@@ -2,6 +2,7 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
+use common::def_db::discover_assets_files_by_suffixes;
 use common::common_components::*;
 use sprite::{sprite_components::*, sprite_resources::*, };
 use ::sprite_animation_shared::*;
@@ -9,15 +10,43 @@ use ::sprite_shared::*;
 use ::sprite_shared::sprite_scale_offset::*;
 
 use crate::{sprite_animation_components::*};
-use std::mem::take;
+
+fn load_animation_defs_from_filesystem() -> Vec<AnimationSeri> {
+    let mut out = Vec::new();
+    let Ok(files) = discover_assets_files_by_suffixes(&["anim.ron"]) else {
+        return out;
+    };
+    let mut failed = 0usize;
+    for (_source, path) in files {
+        let Ok(content) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        if let Ok(multi) = ron::from_str::<MultipleAnimationSeri>(&content) {
+            out.extend(multi.0);
+            continue;
+        }
+        if let Ok(one) = ron::from_str::<AnimationSeri>(&content) {
+            out.push(one);
+            continue;
+        }
+        if let Ok(many) = ron::from_str::<Vec<AnimationSeri>>(&content) {
+            out.extend(many);
+            continue;
+        }
+        failed += 1;
+        warn!(target: "sprite_animation_init", "Failed to parse animation defs in '{}'", path.to_string_lossy());
+    }
+    if out.is_empty() {
+        error!(target: "sprite_animation_init", "No animation defs loaded from filesystem ({} file parse failures)", failed);
+    } else if failed > 0 {
+        warn!(target: "sprite_animation_init", "Loaded {} animation defs with {} file parse failures", out.len(), failed);
+    }
+    out
+}
 
 #[allow(unused_parens)]
 pub fn init_animations(
     mut cmd: Commands,
-    //mut anim_handles: ResMut<AnimationSerisHandles>,
-    //mut seris_assets: ResMut<Assets<AnimationSeri>>,
-    mut mult_anim_handles: ResMut<MultipleAnimationSerisHandles>,
-    mut multiple_seris_assets: ResMut<Assets<MultipleAnimationSeri>>,
     library: Res<AcAnimationEntityMap>,
     sc_holder: Query<Entity, With<EguiScsHolder>>,
     anim_holder: Query<Entity, With<EguiAcAnimationsHolder>>,
@@ -45,18 +74,10 @@ pub fn init_animations(
     let mut main_comps = Vec::new();
 
     let mut merged_seris_vec: Vec<(Entity, AnimationSeri)> =
-        take(&mut mult_anim_handles.handles)
+        load_animation_defs_from_filesystem()
             .into_iter()
-            .filter_map(|handle| multiple_seris_assets.remove(&handle))
-            .flat_map(|seris| seris.0.into_iter().map(|seri| (Entity::PLACEHOLDER, seri)))
-            /*
-        .chain(
-            take(&mut anim_handles.handles)
-            .into_iter()
-            .filter_map(|handle| seris_assets.remove(&handle).map(|seri| (Entity::PLACEHOLDER, seri)))
-        )
-             */
-        .collect();
+            .map(|seri| (Entity::PLACEHOLDER, seri))
+            .collect();
 
     let mut i = 0;
     while i < merged_seris_vec.len() {
@@ -68,7 +89,7 @@ pub fn init_animations(
             merged_seris_vec.remove(i);
             continue;
         };
-        let str_id = StrId::trunc(take(&mut seri.id));
+        let str_id = StrId::trunc(std::mem::take(&mut seri.id));
 
         let y_sort = seri.y_sort.clone();
 

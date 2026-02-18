@@ -2,22 +2,27 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 
-use std::mem::take;
-
 use crate::terrain::{
     opfilter::opfilter_resources::OpFilterEntityMap,
     terrprobe::{
-        terrprobe_components::TerrProbeTempl,
-        terrprobe_resources::{EguiTptsHolder, TerrainProbeSeri, TerrainProbeSerisHandles, TerrProbeTemplEntityMap},
+        terrprobe_components::{ProbePatternSeri, TerrProbeTempl},
+        terrprobe_resources::{EguiTptsHolder, TerrProbeTemplEntityMap, load_terrain_probe_seri_defs},
     },
 };
+
+fn parse_probe_pattern(raw: &str) -> Option<ProbePatternSeri> {
+    let normalized = raw.trim().trim_end_matches("()").to_ascii_lowercase();
+    match normalized.as_str() {
+        "sun" => Some(ProbePatternSeri::Sun),
+        "spiral" => Some(ProbePatternSeri::Spiral),
+        _ => None,
+    }
+}
 
 #[allow(unused_parens)]
 pub fn init_terrain_probes(
     mut cmd: Commands,
     map: Res<TerrProbeTemplEntityMap>,
-    mut seris_handles: ResMut<TerrainProbeSerisHandles>,
-    mut assets: ResMut<Assets<TerrainProbeSeri>>,
     opfilter_entity_map: Res<OpFilterEntityMap>,
     egui_holder_query: Query<Entity, With<EguiTptsHolder>>,
 ) {
@@ -30,8 +35,7 @@ pub fn init_terrain_probes(
     };
 
     let mut comps = Vec::new();
-    for handle in take(&mut seris_handles.handles).into_iter() {
-        let Some(seri) = assets.remove(&handle) else { continue; };
+    for seri in load_terrain_probe_seri_defs() {
 
         let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 1) else {
             error!(target: "terrprobe_init", "Failed to create StrId for terrain probe id '{}'", seri.id);
@@ -42,13 +46,23 @@ pub fn init_terrain_probes(
             continue;
         };
 
+        let Some(parsed_probe_pattern) = parse_probe_pattern(&seri.probe_pattern) else {
+            error!(
+                target: "terrprobe_init",
+                "Invalid probe_pattern '{}' for terrain probe '{}'. Expected 'sun' or 'spiral'",
+                seri.probe_pattern,
+                seri.id
+            );
+            continue;
+        };
+
         let ent = cmd.spawn_empty().id();
         comps.push((ent, (
             str_id,
             Replicated,
             TerrProbeTempl::from_seri(
                 opfilter_ent,
-                seri.probe_pattern,
+                parsed_probe_pattern,
                 seri.step_size.unwrap_or(1),
                 seri.max_batches.unwrap_or(1000),
                 seri.iterations_per_batch.unwrap_or(10000),

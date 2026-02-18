@@ -9,17 +9,14 @@ use crate::tile::{TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
     mut cmd: Commands,
-    seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
-    assets: Res<Assets<TileWeightedSamplerSeri>>,
     map: Res<TileWeightedSamplerEntityMap>,
 ) {
     if ! map.0.is_empty() { return; }
 
     let mut comps_to_insert = Vec::new();
 
-    for handle in seris_handles.handles.iter() {
-        let Some(seri) = assets.get(handle) else { continue };
-        let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 4) else { continue };
+    for seri in load_tile_weighted_sampler_seri_defs() {
+        let Ok(str_id) = StrId::new_with_result(seri.id, 4) else { continue };
         let ent = cmd.spawn_empty().id();
         comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), TileWeightedSampler, )));
     }
@@ -29,13 +26,10 @@ pub fn init_tile_weighted_samplers(
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers_part_two(
     mut cmd: Commands,
-    mut seris_handles: ResMut<TileWeightedSamplerSerisHandles>,
-    mut assets: ResMut<Assets<TileWeightedSamplerSeri>>,
     hashpos_weighted_map: Res<TileWeightedSamplerEntityMap>,
     tile_ents_map: Res<TileEntityMap>,
 ) {
-    for handle in seris_handles.handles.drain(..) {
-        let Some(mut seri) = assets.remove(&handle) else { continue };
+    for mut seri in load_tile_weighted_sampler_seri_defs() {
         let Ok(wmap_ent) = hashpos_weighted_map.0.get_cloned(&seri.id) else {
             error!("TileWeightedSamplerSeri '{}' not found in TileWeightedSamplerEntityMap", seri.id);
             continue;

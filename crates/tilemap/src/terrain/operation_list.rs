@@ -15,7 +15,5 @@ pub fn plugin(app: &mut App) {
     app
         .add_plugins((
             plugin_operation_list,
-        ))
-        .init_resource::<OpListSerisHandles>()
-        .init_asset::<OpListSeri>();
+        ));
 }

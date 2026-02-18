@@ -7348,6 +7348,7 @@ dependencies = [
  "game_common",
  "paste",
  "player",
+ "ron 0.8.1",
  "serde",
  "sprite",
  "sprite_animation_shared",

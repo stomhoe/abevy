@@ -9,14 +9,6 @@ use crate::tile::tile_shader::{TileShaderEntityMap, tile_material::prelude::*, t
 #[allow(unused_parens)]
 pub fn init_shaders(
     mut cmd: Commands,
-    mut repeat_tex_handles: Option<ResMut<ShaderRepeatTexSerisHandles>>,
-    mut repeat_assets: Option<ResMut<Assets<ShaderRepeatTexSeri>>>,
-    //mut voronoi_tex_handles: Option<ResMut<PlaceholderSerisHandles>>,
-    //_voronoi_assets: Option<ResMut<Assets<PlaceholderSeri>>>,
-    mut wavy_handles: Option<ResMut<ShaderWavySerisHandles>>,
-    mut wavy_assets: Option<ResMut<Assets<ShaderWavySeri>>>,
-    mut rocky_handles: Option<ResMut<ShaderRockyTerrainSerisHandles>>,
-    mut rocky_assets: Option<ResMut<Assets<ShaderRockyTerrainSeri>>>,
     tileshader_map: Option<Res<TileShaderEntityMap>>,
 ) {
     if let Some(tileshader_map) = &tileshader_map
@@ -26,11 +18,7 @@ pub fn init_shaders(
     let mut shader_comps_to_insert = Vec::new();
     let mut path_holders_to_insert = Vec::new();
 
-    if let (Some(repeat_tex_handles), Some(repeat_assets)) = (&mut repeat_tex_handles, &mut repeat_assets) {
-        for handle in repeat_tex_handles.handles.drain(..) {
-            let Some(seri) = repeat_assets.remove(&handle) else {
-              continue;
-            };
+    for seri in load_shader_repeat_tex_seri_defs() {
             //trace!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
 
             let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
@@ -62,7 +50,6 @@ pub fn init_shaders(
                     error!(target: TILE_SHADER_INIT, "Failed to create ImagePathHolder for shader '{}': {}", str_id, err);
                 }
             }
-        }
     }
     /*
     if let (Some(voronoi_tex_handles), Some(voronoi_assets)) = (&mut voronoi_tex_handles, &mut voronoi_assets) {
@@ -99,9 +86,7 @@ pub fn init_shaders(
         }
     }}
 */
-    if let (Some(wavy_handles), Some(wavy_assets)) = (&mut wavy_handles, &mut wavy_assets) {
-        for handle in wavy_handles.handles.drain(..) {
-            let Some(seri) = wavy_assets.remove(&handle) else { continue; };
+    for seri in load_shader_wavy_seri_defs() {
             //trace!(target: TILE_SHADER_INIT, "Loading Wavy Shader from handle: {:?}", handle);
 
             let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
@@ -138,11 +123,8 @@ pub fn init_shaders(
                     continue;
                 }
             }
-        }
     }
-    if let (Some(rocky_handles), Some(rocky_assets)) = (&mut rocky_handles, &mut rocky_assets) {
-        for handle in rocky_handles.handles.drain(..) {
-            let Some(seri) = rocky_assets.remove(&handle) else { continue; };
+    for seri in load_shader_rocky_terrain_seri_defs() {
             //trace!(target: TILE_SHADER_INIT, "Loading Rocky Terrain Shader from handle: {:?}", handle);
 
             let str_id = match StrId::new_with_result(seri.id.clone(), 4) {
@@ -170,7 +152,6 @@ pub fn init_shaders(
                     seri.color_shadow.into(),
                 )),
             )));
-        }
     }
 
     cmd.insert_batch(path_holders_to_insert);

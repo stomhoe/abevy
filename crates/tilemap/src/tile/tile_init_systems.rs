@@ -22,13 +22,9 @@ use crate::{
         tile_shader::{tile_shader_components::*, tile_shader_resources::*},
     },
 };
-use std::mem::take;
-
 #[allow(unused_parens)]
 pub fn init_tiles(
     mut cmd: Commands,
-    seris_handles: Res<TileSerisHandles>,
-    mut assets: ResMut<Assets<TileSeri>>,
     shader_map: Res<TileShaderEntityMap>,
     tiling_map: Res<TileEntityMap>,
     color_map: Res<ColorSamplerEntityMap>,
@@ -47,8 +43,7 @@ pub fn init_tiles(
 
     let mut res_tile_cats = TileEntsWithinTag::default();
 
-    seris_handles.handles.iter().for_each(|handle| {
-        let Some(seri) = assets.get_mut(handle) else { return; };
+    for mut seri in load_tile_seri_defs() {
 
         let str_id = match TileStrId::new_with_result(seri.id.clone(), Tile::MIN_ID_LENGTH) {
             Ok(id) => id,
@@ -96,7 +91,7 @@ pub fn init_tiles(
         }
 
         if let Some(ref mut adj_retex_config) = seri.adj_retex {
-            cmd.entity(tile_enti).insert(AdjRetexConfig::new(take(adj_retex_config)));
+            cmd.entity(tile_enti).insert(AdjRetexConfig::new(std::mem::take(adj_retex_config)));
         }
 
         if let Some(ref color_map_str) = seri.color_map {
@@ -115,7 +110,7 @@ pub fn init_tiles(
             cmd.entity(tile_enti).insert(FlipHorizontallyBasedOnHash);
         }
         if let Some(portal) = &mut seri.portal {
-            cmd.entity(tile_enti).insert((take(portal), ChildOf(egui_portal_holder)));
+            cmd.entity(tile_enti).insert((std::mem::take(portal), ChildOf(egui_portal_holder)));
         }
 
         if let Some(ws) = seri.walk_speed {
@@ -131,7 +126,7 @@ pub fn init_tiles(
 
 
         if seri.sprite != Some(true) {
-            cmd.entity(tile_enti).insert(TileImagePaths(take(&mut seri.img_paths)));
+            cmd.entity(tile_enti).insert(TileImagePaths(std::mem::take(&mut seri.img_paths)));
 
             if let Some(shader_str) = &seri.shader {
                 if shader_str.len() > 2 {
@@ -163,10 +158,10 @@ pub fn init_tiles(
                 let path_holder = ImagePathHolder::new(path.clone());
                 let spritecfg_str_id_present = !key.trim().is_empty();
 
-                if path_holder.is_err() && spritecfg_str_id_present
+                    if path_holder.is_err() && spritecfg_str_id_present
                 && processing_as_sprite_cfgs != Some(false) {
                     sprite_cfgs.reserve(len);
-                    sprite_cfgs.push(take(key));
+                    sprite_cfgs.push(std::mem::take(key));
                     processing_as_sprite_cfgs = Some(true);
                 } else if processing_as_sprite_cfgs != Some(true) {
                     let path_holder = path_holder.unwrap();
@@ -196,7 +191,7 @@ pub fn init_tiles(
                 cmd.entity(tile_enti).insert(sprite_cfgs_str_ids);
             }
         }
-    });
+    }
     cmd.insert_resource(res_tile_cats);
 }
 
@@ -292,19 +287,15 @@ pub fn add_handles(
 #[allow(unused_parens)]
 pub fn map_min_dist_tiles(
     mut cmd: Commands,
-    mut seris_handles: ResMut<TileSerisHandles>,
-    mut assets: ResMut<Assets<TileSeri>>,
     tiles_map: Res<TileEntityMap>,
     tile_cats: Res<TileEntsWithinTag>,
 ) {
     let mut keep_away: EntityHashMap<HashSet<Entity>> = EntityHashMap::default();
-    let mut comps = Vec::with_capacity(seris_handles.handles.len() / 10);
-    let mut comps2 = Vec::with_capacity(seris_handles.handles.len() / 10);
+    let all_seris = load_tile_seri_defs();
+    let mut comps = Vec::with_capacity(all_seris.len() / 10);
+    let mut comps2 = Vec::with_capacity(all_seris.len() / 10);
 
-    for handle in seris_handles.handles.drain(..) {
-        let Some(seri) = assets.remove(&handle) else {
-            continue;
-        };
+    for seri in all_seris {
 
         let Some(min_distances) = seri.min_distances else {
             continue;

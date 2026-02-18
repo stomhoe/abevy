@@ -3,12 +3,11 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use ::tilemap_shared::*;
 use crate::terrain::{
-    operation_list::{
-        operation_list_components::*,
-        operation_list_init_systems::*,
-        operation_list_resources::*,
-        operation_list_script::*,
-    },
+        operation_list::{
+            operation_list_components::*,
+            operation_list_init_systems::*,
+            operation_list_resources::*,
+        },
     terrgen_components::*,
     terrgen_messages::PendingOp,
     terrgen_noise_init_systems::*,
@@ -42,7 +41,6 @@ pub fn plugin(app: &mut App) {
             (
                 init_noises,
                 map_terrgen_id_to_entity,
-                load_tg_oplists,
                 init_oplists_from_assets,
                 map_operation_list_id_to_entity,
                 init_oplists_bifurcations,

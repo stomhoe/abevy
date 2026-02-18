@@ -8,7 +8,8 @@ use common::{common_components::{ StrId}, common_tag_components::TagSet};
 use crate::{
     terrain::{
         operation_list::operation_list_components::{Bifurcation, CompiledBranch, CompiledBranchNode, OperationList},
-        operation_list::operation_list_resources::{EguiOperationListsHolder, OpListSeri, OpListSerisHandles, OperationListEntityMap},
+        operation_list::operation_list_resources::{EguiOperationListsHolder, OperationListEntityMap, load_op_list_seri_defs},
+        operation_list::operation_list_script::load_tg_oplists,
         terrgen_components::FailedSearchOplistFilterHolder,
         terrgen_expression,
         terrgen_resources::TerrgenEntityMap,
@@ -17,7 +18,6 @@ use crate::{
 };
 use ::tilemap_shared::{MultipleDimensionRefs, *};
 
-use std::mem::take;
 use std::collections::{HashMap, HashSet};
 
 /// Resolve NoiseByName variants in expression tree to actual Noise entities
@@ -78,8 +78,7 @@ fn resolve_noise_names_in_expr(
 
 #[allow(unused_parens)]
 pub fn init_oplists_from_assets(
-    mut cmd: Commands, seris_handles: Res<OpListSerisHandles>,
-    mut assets: ResMut<Assets<OpListSeri>>,
+    mut cmd: Commands,
     terr_gen_map: Res<TerrgenEntityMap>,
     samplers_map: Res<TileWeightedSamplerEntityMap>,
     tiles_map: Res<TileEntityMap>,
@@ -101,10 +100,9 @@ pub fn init_oplists_from_assets(
     let mut oplist_multiple_dimension_refs = Vec::new();
     let mut tags_to_insert = Vec::new();
 
-    for handle in seris_handles.handles.iter() {
-        let Some(seri) = assets.get_mut(handle) else {
-            continue;
-        };
+    let mut seris = load_op_list_seri_defs();
+    seris.extend(load_tg_oplists());
+    for seri in seris.iter_mut() {
         let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
             Ok(str_id) => str_id,
             Err(err) => {
@@ -206,14 +204,13 @@ pub fn init_oplists_from_assets(
 #[allow(unused_parens)]
 pub fn init_oplists_bifurcations(
     mut cmd: Commands,
-    mut seris_handles: ResMut<OpListSerisHandles>,
-    mut assets: ResMut<Assets<OpListSeri>>,
     oplist_map: Res<OperationListEntityMap>,
     mut oplist_query: Query<(Entity, &mut OperationList, &OplistSize)>,
     is_root: Query<&MultipleDimensionRefs>,
 ) -> Result {
-    for handle in take(&mut seris_handles.handles) {
-        if let Some(seri) = assets.remove(&handle) {
+    let mut seris = load_op_list_seri_defs();
+    seris.extend(load_tg_oplists());
+    for seri in seris {
             let Ok(oplist_ent) = oplist_map.0.get_cloned(&seri.id) else {
                 error!(
                     target: "oplist_init",
@@ -251,7 +248,6 @@ pub fn init_oplists_bifurcations(
                 cmd.entity(bifurcation_ent).insert(ChildOf(oplist_ent));
                 oplist.bifurcations[i].oplist = Some(bifurcation_ent);
             }
-        }
     }
 
     let mut snapshots: HashMap<Entity, (crate::terrain::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)> =

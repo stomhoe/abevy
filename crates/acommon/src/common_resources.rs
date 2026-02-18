@@ -123,33 +123,14 @@ fn auto_discover_assets_by_rules(
         return HashMap::default();
     }
     let mut merged: HashMap<String, Vec<StandardDynamicAsset>> = HashMap::default();
-    let mut stack = vec![assets_root.to_path_buf()];
     let mut discovered: Vec<(String, String)> = Vec::new();
-    while let Some(dir) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(dir) else {
+    let files = crate::def_db::discover_assets_files_matching(assets_root, |_| true)
+        .unwrap_or_default();
+    for (source, _) in files {
+        let Some(dynamic_key) = infer_dynamic_key_from_path(&source.rel_path, rules) else {
             continue;
         };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let Ok(meta) = entry.metadata() else {
-                continue;
-            };
-            if meta.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if !meta.is_file() {
-                continue;
-            }
-            let Some(rel_path) = path.strip_prefix(assets_root).ok() else {
-                continue;
-            };
-            let rel_string = to_forward_slash_path(rel_path);
-            let Some(dynamic_key) = infer_dynamic_key_from_path(&rel_string, rules) else {
-                continue;
-            };
-            discovered.push((dynamic_key.to_string(), rel_string));
-        }
+        discovered.push((dynamic_key.to_string(), source.rel_path));
     }
     discovered.sort_by(|(key_a, path_a), (key_b, path_b)| {
         if key_a != key_b {
@@ -243,48 +224,11 @@ fn find_seri_manifest_paths() -> Vec<String> {
     if !assets_root.exists() {
         return Vec::new();
     }
-
-    let mut stack = vec![assets_root.to_path_buf()];
-    let mut out: Vec<String> = Vec::new();
-
-    while let Some(dir) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let Ok(meta) = entry.metadata() else {
-                continue;
-            };
-            if meta.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if !meta.is_file() {
-                continue;
-            }
-            let Some(rel_path) = path.strip_prefix(assets_root).ok() else {
-                continue;
-            };
-            let rel_string = to_forward_slash_path(rel_path);
-            if !rel_string.ends_with(".seri_manifest.ron") {
-                continue;
-            }
-            out.push(rel_string);
-        }
-    }
-
+    let mut out: Vec<String> = crate::def_db::discover_assets_files_by_suffixes(&[".seri_manifest.ron"])
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(source, _)| source.rel_path)
+        .collect();
     out.sort();
-    out
-}
-
-fn to_forward_slash_path(path: &Path) -> String {
-    let mut out = String::new();
-    for (idx, part) in path.components().enumerate() {
-        if idx > 0 {
-            out.push('/');
-        }
-        out.push_str(&part.as_os_str().to_string_lossy());
-    }
     out
 }

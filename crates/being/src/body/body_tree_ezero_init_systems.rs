@@ -1,5 +1,3 @@
-use std::mem::take;
-
 #[allow(unused_imports)]
 use bevy::prelude::*;
 #[allow(unused_imports)]
@@ -17,17 +15,12 @@ pub fn init_ezero_body_trees(
     mut cmd: Commands,
     body_map: Res<BodyTreeEntityMap>,
     part_map: Res<BodyPartEntityMap>,
-    mut seris_handles: ResMut<BodyTreeSerisHandles>,
-    mut assets: ResMut<Assets<BodyTreeSeri>>,
 ) {
     if !body_map.0.is_empty() {
         return;
     }
 
-    for handle in take(&mut seris_handles.handles) {
-        let Some(mut seri) = assets.remove(&handle) else {
-            continue;
-        };
+    for mut seri in load_body_tree_seri_defs() {
 
         let body_id = match StrId::new_with_result(seri.id, 3) {
             Ok(id) => id,
@@ -59,7 +52,7 @@ pub fn init_ezero_body_trees(
             }
         }
 
-        let root_node = take(&mut seri.root);
+        let root_node = std::mem::take(&mut seri.root);
         let root_id = StrId::trunc(root_node.part_id.as_str());
 
         let root_ent = walk_body_tree(

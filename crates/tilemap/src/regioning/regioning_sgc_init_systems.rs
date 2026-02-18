@@ -10,8 +10,6 @@ use crate::{regioning::{StructuredGenConfigEntityMap, regioning_resources::*, re
 pub fn init_structured_gen_configs (
     mut cmd: Commands,
     map: Res<StructuredGenConfigEntityMap>,
-    mut seris_handles: ResMut<SgcSerisHandles>,
-    mut assets: ResMut<Assets<SgcSeri>>,
     dimension_entity_map: Res<DimensionEntityMap>,
     egui_holder_query: Query<Entity, With<EguiSgcsHolder>>,
     opfilter_entity_map: Res<OpFilterEntityMap>,
@@ -30,12 +28,7 @@ pub fn init_structured_gen_configs (
         cmd.spawn(EguiSgcsHolder).id()
     };
 
-    for handle in std::mem::take(&mut seris_handles.handles) {
-        let Some(structured_gen_seri) = assets.remove(&handle) else {
-            warn!(target: "sgc_init", "Failed to load StructureSeri from handle: {:?}", handle);
-            continue;
-        };
-        info!(target: "sgc_init", "Loading StructureSeri from handle: {:?}", handle);
+    for structured_gen_seri in load_sgc_seri_defs() {
 
         let main_ent = cmd.spawn_empty().id();
 

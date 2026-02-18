@@ -2,7 +2,7 @@
 use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 use bevy::prelude::*;
-use common::{AppRegisterAndReplicateExt, common_states::AssetLoading };
+use common::common_states::AssetLoading;
 use game_common::game_common::SimRunningSystems;
 use sprite::AcSpriteSystems;
 use ::sprite_animation_shared::*;

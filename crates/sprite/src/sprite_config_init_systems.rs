@@ -1,5 +1,3 @@
-use std::mem::take;
-
 use ::sprite_shared::{sprite_scale_offset::*, *};
 #[allow(unused_imports)]
 use bevy::prelude::*;
@@ -15,8 +13,6 @@ use crate::{sprite_components::*, sprite_resources::*};
 pub fn init_sprite_configs(
     mut cmd: Commands,
     scs_map: Res<SpriteConfigEntityMap>,
-    mut seris_handles: ResMut<SpriteConfigSerisHandles>,
-    mut assets: ResMut<Assets<SpriteConfigSeri>>,
     library: Res<AcAnimationEntityMap>,
     scs_holder: Query<Entity, With<EguiScsHolder>>,
 ) {
@@ -28,12 +24,7 @@ pub fn init_sprite_configs(
 
     let mut comps_to_insert = Vec::new();
 
-    for handle in take(&mut seris_handles.handles) {
-        let Some(mut seri) = assets.remove(&handle) else {
-            continue;
-        };
-
-        debug!(target: "sprite_init", "Loading SpriteDataSeri from handle: {:?}", handle);
+    for mut seri in load_sprite_config_seri_defs() {
 
         let str_id = match StrId::new_with_result(seri.id, 3) {
             Ok(id) => id,
@@ -60,7 +51,7 @@ pub fn init_sprite_configs(
 
         let mut offset4children_cats = OffsetForChildren::default();
         if let Some(offset4children) = seri.offset4children.as_mut() {
-            for (cat, (offset_x, offset_y, direction)) in take(offset4children) {
+            for (cat, (offset_x, offset_y, direction)) in std::mem::take(offset4children) {
                 offset4children_cats.0.insert(
                     Tag::trunc(cat),
                     (
