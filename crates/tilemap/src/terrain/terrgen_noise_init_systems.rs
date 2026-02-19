@@ -17,7 +17,7 @@ pub fn init_noises(
         .map(|seri| seri.to_global_gen_settings());
     if settings.is_empty() {
         let settings_to_spawn = settings_from_defs.clone().unwrap_or_default();
-        cmd.spawn((settings_to_spawn, ));
+        cmd.spawn((settings_to_spawn, Prefix::trunc("AA_GLOBAL_GEN_SETTINGS")));
     } else if let Some(settings_from_defs) = settings_from_defs {
         for mut existing_settings in &mut settings {
             *existing_settings = settings_from_defs.clone();

@@ -12,7 +12,7 @@ use ::tilemap_shared::directions::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone)]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SpCfg"), )]
+#[require(HotReload, AssetScoped, Replicated, Prefix::trunc("SpCfg"), )]
 pub struct SpriteConfig;
 
 #[derive(Component, Default, Deserialize, Serialize, Debug, MapEntities, Clone)]

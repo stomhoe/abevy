@@ -12,6 +12,9 @@ pub use crate::common_id_components::*;
 pub struct AssetScoped;
 
 #[derive(Component, Clone, Default)]
+pub struct HotReload;
+
+#[derive(Component, Clone, Default)]
 pub struct SparedFromHotReloading;
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]

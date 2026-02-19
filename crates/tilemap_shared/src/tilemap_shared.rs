@@ -18,7 +18,7 @@ use crate::{DiagonalCardinalDirection, DimensionRef, tilemap_positioning::*};
 pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, )]
-#[require(Replicated, Prefix::trunc("GlobalGenSettings"))]
+#[require(Replicated, Prefix::trunc("GlobalGenSettings"), AssetScoped, HotReload)]
 pub struct GlobalGenSettings {
 
     pub seed: i32,

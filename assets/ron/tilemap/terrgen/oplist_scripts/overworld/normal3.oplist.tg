@@ -4,7 +4,7 @@ debug: [continentness, normal_diff]
 
 
 let lakeness = max(fnl.lakesmol, fnl.lakebig)
-let lakeness = *(lakeness, continentness, 0.5)
+let lakeness = *(lakeness, continentness, 0.7)
 let lakeness = *opo(lakeness, beachness)
 
 let river_noise = max(fnl.river, fnl.river.s7)

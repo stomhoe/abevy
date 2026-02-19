@@ -1,6 +1,6 @@
 (
-    id: "anta",
-    tags: ["anta"],
+    id: "elf",
+    tags: ["elf"],
     min_val: 0.0,
     max_val: 1.0,
 )

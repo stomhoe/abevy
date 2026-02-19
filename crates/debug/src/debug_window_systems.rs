@@ -7,12 +7,12 @@ use tilemap_shared::GlobalGenSettings;
 use crate::debug_resources::DubugWindowsVisibility;
 
 #[allow(unused_parens)]
-pub fn debug_toggle_states_window(
+pub fn debug_toggle_hot_reload_window(
     keys: Res<ButtonInput<KeyCode>>,
     mut window_visible: ResMut<DubugWindowsVisibility>,
 ) {
-    if keys.just_pressed(KeyCode::F12) {
-        window_visible.states = !window_visible.states;
+    if keys.just_pressed(KeyCode::F12) && !keys.pressed(KeyCode::F11) {
+        window_visible.hot_reload_menu = !window_visible.hot_reload_menu;
     }
 }
 
@@ -23,6 +23,8 @@ pub fn debug_toggle_main_menu(
 ) {
     if keys.just_pressed(KeyCode::F11) {
         window_visible.main_menu = !window_visible.main_menu;
+        // Keep F11 scoped to main menu only.
+        window_visible.states = false;
     }
 }
 
@@ -143,10 +145,66 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("📍 Registered Tile Positions").size(16.0)).clicked() {
                 window_visible.registered_positions = !window_visible.registered_positions;
             }
+            if ui.button(egui::RichText::new("♻ Hot Reload").size(16.0)).clicked() {
+                window_visible.hot_reload_menu = !window_visible.hot_reload_menu;
+            }
             ui.separator();
             ui.label("F11: Toggle this menu");
         });
     window_visible.main_menu = open;
+}
+
+#[allow(unused_parens)]
+pub fn hot_reload_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selection: ResMut<HotReloadSelection>,
+    mut request: ResMut<HotReloadRequest>,
+) {
+    if !window_visible.hot_reload_menu {
+        return;
+    }
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+    let screen_rect = ctx.content_rect();
+    let mut open = window_visible.hot_reload_menu;
+    egui::Window::new("Hot Reload")
+        .default_pos([screen_rect.left() + 24.0, screen_rect.top() + 24.0])
+        .resizable(true)
+        .movable(true)
+        .open(&mut open)
+        .show(ctx, |ui| {
+            ui.heading("Hot Reload Sets");
+            ui.separator();
+            ui.checkbox(&mut selection.tiles, "Tiles");
+            ui.checkbox(&mut selection.sprite_configs, "Sprite configs");
+            ui.checkbox(&mut selection.animations, "Animations");
+            ui.checkbox(&mut selection.terrain_oplists_and_noises, "Terrain oplists and noises");
+            ui.checkbox(&mut selection.probes, "Probes");
+            ui.checkbox(&mut selection.filters, "Filters");
+            ui.checkbox(&mut selection.global_gen_settings, "Global gen settings");
+            ui.checkbox(&mut selection.beings_inst_templates, "Being templates");
+            ui.checkbox(&mut selection.races, "Races");
+            ui.checkbox(&mut selection.sexes, "Sexes");
+            if ui.button("Clear selections").clicked() {
+                selection.tiles = false;
+                selection.sprite_configs = false;
+                selection.animations = false;
+                selection.terrain_oplists_and_noises = false;
+                selection.probes = false;
+                selection.filters = false;
+                selection.global_gen_settings = false;
+                selection.beings_inst_templates = false;
+                selection.races = false;
+                selection.sexes = false;
+            }
+            ui.separator();
+            if ui.button("Hot reload").clicked() {
+                request.requested = true;
+            }
+        });
+    window_visible.hot_reload_menu = open;
 }
 
 #[allow(unused_parens)]

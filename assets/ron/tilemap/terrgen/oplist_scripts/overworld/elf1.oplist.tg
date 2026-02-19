@@ -3,8 +3,9 @@ size: (1, 1)
 
 let continentness = max(fnl.conti.s4, fnl.penin.s4)
 let continentness = *(continentness, elf_diff)
+let continent_threshold = 0.47
 
-out = idxmax(0.05, continentness)
+out = idxmax(continent_threshold, continentness)
 
 bif "" -> [pink]
 bif elf2 -> []

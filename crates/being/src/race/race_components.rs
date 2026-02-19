@@ -1,12 +1,12 @@
 use bevy::{ecs::entity::{EntityHashSet, MapEntities}, platform::collections::HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use common::common_components::{Prefix, StrId};
+use common::common_components::*;
 use game_common::game_common_samplers::EntityWeightedSampler;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Serialize, Deserialize, Clone)]
-#[require(Replicated, Prefix::trunc("Race"))]
+#[require(Replicated, Prefix::trunc("Race"), AssetScoped, HotReload)]
 pub struct Race;
 
 /// do not insert this into beings

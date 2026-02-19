@@ -1,6 +1,6 @@
 (
     id: "lakesmol",
-    frequency: 1.76,
+    frequency: 1.4,
     noise_type: 1,
     fractal_type: 1,
     octaves: 5,

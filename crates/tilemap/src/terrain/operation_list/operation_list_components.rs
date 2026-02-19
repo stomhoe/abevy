@@ -14,7 +14,7 @@ pub struct Bifurcation{
     #[entities]pub tiles: Vec<Entity>,
 }
 #[derive(Component, Debug, Clone, Serialize, Deserialize)]
-#[require(Prefix::trunc("OpList"), Replicated, AssetScoped, AddSameHashedTags)]
+#[require(Prefix::trunc("OpList"), Replicated, AssetScoped, HotReload, AddSameHashedTags)]
 #[component(map_entities)]
 pub struct OperationList {
     /// Expression tree representation (slot-free runtime system)

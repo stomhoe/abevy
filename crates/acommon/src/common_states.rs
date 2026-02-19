@@ -32,7 +32,7 @@ pub enum AssetLoading {
 
     /// Asset loading is triggered
     LoadingAssetsIntoHandles,
-    
+
 
     /// Init systems which spawn entities are executed
     SpawnReplicatedEntities,
@@ -47,3 +47,37 @@ pub enum AssetLoading {
 #[states(scoped_entities,)]
 pub enum AssetHotReloadState {#[default]Stopped, Ongoing,}
 
+#[derive(Resource, Debug, Clone)]
+pub struct HotReloadSelection {
+    pub tiles: bool,
+    pub sprite_configs: bool,
+    pub animations: bool,
+    pub terrain_oplists_and_noises: bool,
+    pub probes: bool,
+    pub filters: bool,
+    pub global_gen_settings: bool,
+    pub beings_inst_templates: bool,
+    pub races: bool,
+    pub sexes: bool,
+}
+impl Default for HotReloadSelection {
+    fn default() -> Self {
+        Self {
+            tiles: true,
+            sprite_configs: true,
+            animations: true,
+            terrain_oplists_and_noises: true,
+            probes: true,
+            filters: true,
+            global_gen_settings: true,
+            beings_inst_templates: true,
+            races: true,
+            sexes: true,
+        }
+    }
+}
+
+#[derive(Resource, Debug, Default, Clone)]
+pub struct HotReloadRequest {
+    pub requested: bool,
+}

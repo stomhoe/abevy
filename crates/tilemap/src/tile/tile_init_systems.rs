@@ -71,8 +71,11 @@ pub fn init_tiles(
             seri.terrgen_offset.1 as i32,
         )));
 
+        let mut tag_set = TagSet::default();
+        let self_tag = Tag::trunc(str_id.as_str());
+        tag_set.insert(self_tag.clone());
+        res_tile_tags.0.entry(self_tag).or_default().insert(tile_enti);
         if !seri.tags.is_empty() {
-            let mut tag_set = TagSet::default();
             for tag_string in &seri.tags {
                 let tag_str = tag_string.trim();
                 if tag_str.is_empty() { continue; }
@@ -80,8 +83,8 @@ pub fn init_tiles(
                 tag_set.insert(tag.clone());
                 res_tile_tags.0.entry(tag).or_default().insert(tile_enti);
             }
-            cmd.entity(tile_enti).insert(tag_set);
         }
+        cmd.entity(tile_enti).insert(tag_set);
 
         let [r, g, b, a] = seri.color.unwrap_or([255, 255, 255, 255]);
         let color = Color::srgba_u8(r, g, b, a);
@@ -344,30 +347,20 @@ pub fn map_min_dist_tiles(
         let mut min_dists = MinDistancesMap::default();
 
         for (tile_id, min_dist) in min_distances {
-            if let Some(tag) = tile_id.strip_prefix("t.")
-                && let Some(tag_entities) = tile_tags.0.get(&Tag::trunc(tag))
-            {
-                for tag_tile_ent in tag_entities {
-                    min_dists.0.insert(*tag_tile_ent, min_dist);
-                    if tag_tile_ent != &tile_ent {
-                        keep_away.entry(*tag_tile_ent).or_default().insert(tile_ent);
-                    }
-                }
-            } else if let Ok(other_tile_ent) = tiles_map.0.get_cloned(&tile_id) {
-                min_dists.0.insert(other_tile_ent, min_dist);
-                if other_tile_ent != tile_ent {
-                    keep_away
-                        .entry(other_tile_ent)
-                        .or_default()
-                        .insert(tile_ent);
-                }
-            } else {
+            let lookup_tag = Tag::trunc(tile_id.as_str());
+            let Some(tag_entities) = tile_tags.0.get(&lookup_tag) else {
                 warn!(
                     "Tile '{}' min_distances references unknown tile id '{}'",
                     seri.id, tile_id
                 );
                 continue;
             };
+            for tag_tile_ent in tag_entities {
+                min_dists.0.insert(*tag_tile_ent, min_dist);
+                if tag_tile_ent != &tile_ent {
+                    keep_away.entry(*tag_tile_ent).or_default().insert(tile_ent);
+                }
+            }
         }
 
         if min_dists.0.is_empty() {

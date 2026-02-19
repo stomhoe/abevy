@@ -11,7 +11,7 @@
     is_spritetile: true,
     randflipx: true,
     min_distances: {
-        "t.portal": 1000,
+        "portal": 1000,
     },
     portal: (
         dest_dimension: "dungeon",

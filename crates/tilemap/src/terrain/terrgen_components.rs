@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 pub struct Terrgen;
 
 #[derive(Component, Default, Serialize, Deserialize, PartialEq, Debug, Clone)]
-#[require(Terrgen, Prefix::trunc("Noise"), )]
+#[require(Terrgen, Prefix::trunc("Noise"), HotReload, )]
 pub struct FnlNoiseComp(pub FastNoiseLite);
 impl FnlNoiseComp {
     pub fn new(id: StrId) -> Self {

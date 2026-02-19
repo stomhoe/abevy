@@ -1,6 +1,6 @@
 (
     id: "lakebig",
-    frequency: 0.88,
+    frequency: 0.6,
     noise_type: 1,
     fractal_type: 1,
     octaves: 5,

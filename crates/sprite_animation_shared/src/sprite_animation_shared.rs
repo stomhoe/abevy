@@ -68,7 +68,7 @@ pub struct AnimationHandle(pub Handle<Animation>,);
 pub struct AnimationSheet(pub Spritesheet,);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("Animation"),   )]
+#[require(HotReload, AssetScoped, Replicated, Prefix::trunc("Animation"),   )]
 pub struct AcAnimation;
 
 

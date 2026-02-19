@@ -1,7 +1,6 @@
 (
     id: "land",
     tags: ["land"],
-    op_i: None,
-    min_val: Some(0.0),
-    max_val: Some(1.0),
+    min_val: 0.0,
+    max_val: 1.0,
 )

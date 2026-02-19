@@ -358,12 +358,16 @@ dependencies = [
 name = "asset_loading"
 version = "0.1.0"
 dependencies = [
+ "being",
+ "being_shared",
  "bevy 0.18.0",
  "bevy_asset_loader",
  "bevy_common_assets",
  "bevy_replicon",
  "common",
  "game_common",
+ "sprite",
+ "sprite_animation_shared",
  "tilemap",
  "tilemap_shared",
 ]

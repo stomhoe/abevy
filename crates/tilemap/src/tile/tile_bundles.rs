@@ -42,7 +42,7 @@ pub struct ToDenyOnTileClone(
     HashId,
     TileImagePaths,
     AssetScoped,
-    SparedFromHotReloading,
+    HotReload,
     GameCommonStringComponentsBundle,
     WalkSpeedMultIfOnTop,
     SizeInTiles,

@@ -2,8 +2,6 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::HashedTagsVec};
 
-use std::f32::{INFINITY, NEG_INFINITY};
-
 use crate::terrain::opfilter::{
     opfilter_components::OpFilter,
     opfilter_resources::{EguiOpFiltersHolder, OpFilterEntityMap, load_op_filter_seri_defs},
@@ -35,11 +33,13 @@ pub fn init_opfilters(
         comps.push((ent, (
             str_id,
             Replicated,
+            AssetScoped,
+            HotReload,
             OpFilter {
                 tags: HashedTagsVec::new(seri.tags.iter()),
-                op_i: seri.op_i,
-                min_val: seri.min_val.unwrap_or(NEG_INFINITY),
-                max_val: seri.max_val.unwrap_or(INFINITY),
+                op_i: if seri.op_i == u16::MAX { None } else { Some(seri.op_i) },
+                min_val: seri.min_val,
+                max_val: seri.max_val,
             },
             ChildOf(egui_ent),
         )));

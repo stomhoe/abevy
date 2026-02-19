@@ -50,6 +50,8 @@ pub fn init_terrain_probes(
         comps.push((ent, (
             str_id,
             Replicated,
+            AssetScoped,
+            HotReload,
             TerrProbeTempl::from_seri(
                 opfilter_ent,
                 parsed_probe_pattern,

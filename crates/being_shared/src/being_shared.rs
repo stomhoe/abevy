@@ -1,7 +1,7 @@
 
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use bevy_replicon::prelude::Replicated;
-use common::common_components::{Prefix, StrId};
+use common::common_components::*;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
 
@@ -66,7 +66,7 @@ impl From<&str> for Grounding {
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
-#[require(Replicated, Prefix::trunc("BeingInstTemplate"))]
+#[require(Replicated, Prefix::trunc("BeingInstTemplate"), AssetScoped, HotReload)]
 pub struct BeingInstTemplate{
     pub points: u32,
     pub extra_health_multiplier: f32,

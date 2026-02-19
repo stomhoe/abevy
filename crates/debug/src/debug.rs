@@ -23,7 +23,7 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 setup_debug_fonts,
-                debug_toggle_states_window,
+                debug_toggle_hot_reload_window,
                 debug_toggle_main_menu,
             ),
         )
@@ -47,6 +47,7 @@ pub fn plugin(app: &mut App) {
                 sprites_list_window,
                 terrgen_editor_window,
                 global_gen_settings_editor_window,
+                hot_reload_window,
                 registered_positions_window,
                 terrgen_debug_window_system
                     .run_if(|visible: Res<DubugWindowsVisibility>| visible.terrgen_values),
@@ -71,5 +72,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugChunkingUiState>()
         .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
+        .init_resource::<common::common_states::HotReloadSelection>()
+        .init_resource::<common::common_states::HotReloadRequest>()
         .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered);
 }
