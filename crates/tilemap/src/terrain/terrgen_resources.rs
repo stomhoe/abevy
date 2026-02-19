@@ -11,7 +11,7 @@ use crate::terrain::{
 use ::tilemap_shared::*;
 
 use serde::{Deserialize, };
-use std::collections::HashMap;
+use std::{collections::HashMap, fs, path::Path};
 
 #[derive(Debug, Clone)]
 pub struct TerrGenLaunchWork {
@@ -121,32 +121,37 @@ impl Default for TerrGenDebugGrid {
 #[derive(Deserialize, Asset, TypePath, )]
 pub struct FnlSeri {
     pub id: String,
-    /// Default is 0.01
-    pub frequency: Option<f32>,
+    #[serde(default = "default_frequency")]
+    pub frequency: f32,
     /// 0: OpenSimplex2, 1: OpenSimplex2S, 2: Cellular, 3: Perlin, 4: ValueCubic, 5: Value
-    pub noise_type: Option<u32>,
+    #[serde(default)]
+    pub noise_type: u32,
     /// 0: None, 1: FBm, 2: Ridged, 3: PingPong, 4: DomainWarpProgressive, 5: DomainWarpIndependent,
-    pub fractal_type: Option<u32>,
-    /// Default is 3
-    pub octaves: Option<u8>,
-    /// Default is 2.0
-    pub lacunarity: Option<f32>,
-    /// Default is 0.5
-    pub gain: Option<f32>,
-    /// Default is 0.0
-    pub weighted_strength: Option<f32>,
-    /// Default is 2.0
-    pub ping_pong_strength: Option<f32>,
+    #[serde(default)]
+    pub fractal_type: u32,
+    #[serde(default = "default_octaves")]
+    pub octaves: u8,
+    #[serde(default = "default_lacunarity")]
+    pub lacunarity: f32,
+    #[serde(default = "default_gain")]
+    pub gain: f32,
+    #[serde(default)]
+    pub weighted_strength: f32,
+    #[serde(default = "default_ping_pong_strength")]
+    pub ping_pong_strength: f32,
     /// 0: Euclidean, 1: EuclideanSq, 2: Manhattan, 3: Hybrid
-    pub cellular_distance_function: Option<u32>,
+    #[serde(default = "default_cellular_distance_function")]
+    pub cellular_distance_function: u32,
     /// 0: CellValue, 1: Distance, 2: Distance2, 3: Distance2Add, 4: Distance2Sub, 5: Distance2Mul, 6: Distance2Div
-    pub cellular_return_type: Option<u32>,
-    /// Default is 1.0
-    pub cellular_jitter: Option<f32>,
+    #[serde(default = "default_cellular_return_type")]
+    pub cellular_return_type: u32,
+    #[serde(default = "default_cellular_jitter")]
+    pub cellular_jitter: f32,
     /// 0: OpenSimplex2, 1: OpenSimplex2Reduced, 2: BasicGrid
-    pub domain_warp_type: Option<u32>,
-    /// Default is 1.0
-    pub domain_warp_amp: Option<f32>,
+    #[serde(default)]
+    pub domain_warp_type: u32,
+    #[serde(default = "default_domain_warp_amp")]
+    pub domain_warp_amp: f32,
 }
 
 
@@ -155,6 +160,91 @@ pub struct DungeonSeri {
     pub id: String,
     pub name: String,
     pub description: String,
+}
+
+#[derive(Deserialize, Asset, TypePath, Clone, Debug)]
+pub struct GlobalGenSettingsSeri {
+    #[serde(default)]
+    pub seed: i32,
+    #[serde(default = "default_global_world_freq")]
+    pub world_freq: f32,
+    #[serde(default = "default_global_structure_build_timeout_secs")]
+    pub structure_build_timeout_secs: f64,
+    #[serde(default = "default_global_spawn_tag")]
+    pub spawn_tag: String,
+}
+impl GlobalGenSettingsSeri {
+    pub fn to_global_gen_settings(&self) -> GlobalGenSettings {
+        GlobalGenSettings {
+            seed: self.seed,
+            world_freq: self.world_freq,
+            structure_build_timeout_secs: self.structure_build_timeout_secs,
+            spawn_tag: common::common_components::StrId::trunc(&self.spawn_tag),
+        }
+    }
+}
+
+fn default_global_world_freq() -> f32 { 0.02 }
+fn default_global_structure_build_timeout_secs() -> f64 { 4.0 }
+fn default_global_spawn_tag() -> String { "sun_land".to_string() }
+fn default_frequency() -> f32 { 0.01 }
+fn default_octaves() -> u8 { 3 }
+fn default_lacunarity() -> f32 { 2.0 }
+fn default_gain() -> f32 { 0.5 }
+fn default_ping_pong_strength() -> f32 { 2.0 }
+fn default_cellular_distance_function() -> u32 { 1 }
+fn default_cellular_return_type() -> u32 { 1 }
+fn default_cellular_jitter() -> f32 { 1.0 }
+fn default_domain_warp_amp() -> f32 { 1.0 }
+
+pub fn load_global_gen_settings_seri_defs() -> Vec<GlobalGenSettingsSeri> {
+    let db = match common::def_db::DefDatabase::<GlobalGenSettingsSeri>::load_from_assets_dir_with_type(
+        stringify!(GlobalGenSettingsSeri),
+        &["gensettings.ron"],
+        |_| "global_gen_settings",
+    ) {
+        Ok(db) => db,
+        Err(err) => {
+            error!(
+                target: "terrgen_init",
+                "Failed loading GlobalGenSettingsSeri defs: {err:#}"
+            );
+            return Vec::new();
+        }
+    };
+    for ov in db.overrides() {
+        info!(
+            target: "terrgen_init",
+            "GlobalGenSettingsSeri overridden: '{}' -> '{}'",
+            ov.previous_source.rel_path,
+            ov.replacement_source.rel_path
+        );
+    }
+    let defs: Vec<_> = db.into_records().into_iter().map(|r| r.value).collect();
+    if !defs.is_empty() {
+        return defs;
+    }
+    load_global_gen_settings_from_file()
+        .into_iter()
+        .collect()
+}
+
+fn load_global_gen_settings_from_file() -> Option<GlobalGenSettingsSeri> {
+    let path = Path::new("assets/ron/tilemap/gensettings.ron");
+    let Ok(contents) = fs::read_to_string(path) else {
+        return None;
+    };
+    match ron::from_str::<GlobalGenSettingsSeri>(&contents) {
+        Ok(def) => Some(def),
+        Err(err) => {
+            error!(
+                target: "terrgen_init",
+                "Failed parsing '{}': {err}",
+                path.display()
+            );
+            None
+        }
+    }
 }
 
 common::define_entity_map_systems!(

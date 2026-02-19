@@ -2,7 +2,8 @@
 
 use common::common_components::HashId;
 use game_common::game_common_components::EntityZeroRef;
-use rand::{Rng, SeedableRng};
+use game_common::game_common_samplers::EntityWeightedSampler;
+use rand::{Rng, SeedableRng, seq::SliceRandom};
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;
 
@@ -12,6 +13,9 @@ use crate::regioning::{
     regioning_sgc_components::StructuredGenConfig,
 };
 use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::*};
+use crate::tile::tile_sampler_components::TileWeightedSampler;
+use crate::tile::tile_sampler_resources::TileWeightedSamplerEntityMap;
+use crate::regioning::dungeoning_utils::resolve_sampled_tile_entity_from_sampler;
 use super::dungeoning_ids::DRUNKWALK;
 
 #[allow(unused_parens)]
@@ -20,6 +24,9 @@ pub fn drunkwalk_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
+    sampler_map: Res<TileWeightedSamplerEntityMap>,
+    sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
+    ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
     dimension_hash: Query<&HashId>,
     settings: Query<&GlobalGenSettings>,
 ) {
@@ -54,6 +61,19 @@ pub fn drunkwalk_dungeon_building_system(
             .get("lava_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()));
+        let boulder_sampler_id = structured_gen_cfg.args
+            .get("boulder_sampler_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("boulder_sampler"));
+        let boulder_frequency: f32 = structured_gen_cfg
+            .args
+            .parse_arg("boulder_frequency", 0.0_f32)
+            .clamp(0.0, 1.0);
+        let boulder_frequency_mult: f32 = structured_gen_cfg
+            .args
+            .parse_arg("boulder_frequency_mult", 0.1_f32)
+            .clamp(0.0, 1.0);
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
@@ -402,8 +422,108 @@ pub fn drunkwalk_dungeon_building_system(
                 }
             }
         }
+        let mut boulder_anchor_map: Vec<Option<EntityZeroRef>> = vec![None; tile_map_size];
+        if boulder_frequency > 0.0 {
+            let boulder_sampler: Option<&EntityWeightedSampler> = sampler_map
+                .0
+                .get_cloned(boulder_sampler_id)
+                .ok()
+                .and_then(|sampler_ent| sampler_query.get(sampler_ent).ok());
+            if let Some(boulder_sampler) = boulder_sampler {
+                let mut candidates = Vec::new();
+                for y in carve_margin..tile_height - carve_margin {
+                    let row_idx = y * tile_width;
+                    for x in carve_margin..tile_width - carve_margin {
+                        let idx = row_idx + x;
+                        if floor_map[idx] && !hazard_map[idx] && !wall_map[idx] {
+                            candidates.push((x, y));
+                        }
+                    }
+                }
+                candidates.shuffle(&mut rng);
+                let target_count = ((candidates.len() as f32) * boulder_frequency * boulder_frequency_mult).round() as usize;
+                let mut placed = 0usize;
+                let mut blocked_map = vec![false; tile_map_size];
+                let padding = 1usize;
 
-        let delete_template = DeleteOtherTiles::default();
+                for (x, y) in candidates {
+                    if placed >= target_count {
+                        break;
+                    }
+                    let anchor_gpos = GlobalTilePos::new(
+                        origin_tile.x() + x as i32,
+                        origin_tile.y() + y as i32,
+                    );
+                    let Some(sampled_boulder_ent) = resolve_sampled_tile_entity_from_sampler(
+                        boulder_sampler,
+                        &sampler_query,
+                        anchor_gpos,
+                        settings,
+                        dimension_hash,
+                    ) else {
+                        continue;
+                    };
+                    let size = ezero_size_query
+                        .get(sampled_boulder_ent)
+                        .copied()
+                        .unwrap_or_default()
+                        .inner();
+                    let size_x = size.x as usize;
+                    let size_y = size.y as usize;
+                    if x + size_x > tile_width || y + size_y > tile_height {
+                        continue;
+                    }
+
+                    let mut can_place = true;
+                    'footprint: for yy in y..y + size_y {
+                        let row_idx = yy * tile_width;
+                        for xx in x..x + size_x {
+                            let idx = row_idx + xx;
+                            if !floor_map[idx] || hazard_map[idx] || wall_map[idx] || blocked_map[idx] {
+                                can_place = false;
+                                break 'footprint;
+                            }
+                        }
+                    }
+                    if !can_place {
+                        continue;
+                    }
+                    boulder_anchor_map[y * tile_width + x] = Some(EntityZeroRef(sampled_boulder_ent));
+                    placed += 1;
+
+                    let start_x = x.saturating_sub(padding);
+                    let start_y = y.saturating_sub(padding);
+                    let end_x = (x + size_x + padding).min(tile_width);
+                    let end_y = (y + size_y + padding).min(tile_height);
+                    for yy in start_y..end_y {
+                        let row_idx = yy * tile_width;
+                        for xx in start_x..end_x {
+                            blocked_map[row_idx + xx] = true;
+                        }
+                    }
+                }
+            } else {
+                warn!(target: "dungeoning", "Boulder sampler '{:?}' missing/invalid for drunkwalk dungeon", boulder_sampler_id);
+            }
+        }
+
+        let mut delete_template = DeleteOtherTiles::default();
+        let spared_tags = structured_gen_cfg
+            .args
+            .get("delete_spared_tags")
+            .cloned()
+            .unwrap_or_else(|| vec![
+                "boulder".to_string(),
+                "dungeon_floor".to_string(),
+            ]);
+        for tag in spared_tags {
+            if tag.trim().is_empty() {
+                continue;
+            }
+            delete_template
+                .spared_tags
+                .insert(common::common_components::Tag::trunc(tag));
+        }
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
@@ -418,7 +538,12 @@ pub fn drunkwalk_dungeon_building_system(
                     continue;
                 }
                 let map_idx = idx_y * tile_width + idx_x;
-                if hazard_map[map_idx] {
+                if let Some(boulder_entity) = boulder_anchor_map[map_idx] {
+                    if floor_map[map_idx] {
+                        tiles4chunk.push((tile_pos, floor_entity, Some(delete_template.clone())));
+                    }
+                    tiles4chunk.push((tile_pos, boulder_entity, Some(delete_template.clone())));
+                } else if hazard_map[map_idx] {
                     let ezero_ref = if let Some(lava) = lava_entity { lava } else { wall_entity };
                     tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
                 } else if floor_map[map_idx] {

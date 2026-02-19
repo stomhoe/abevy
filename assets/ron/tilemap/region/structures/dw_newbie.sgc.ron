@@ -8,6 +8,9 @@
         "floor_tile_id": ["dunewbie"],
         "wall_tile_id": ["nw"],
         "lava_tile_id": ["lava"],
+        "boulder_sampler_id": ["boulder_sampler"],
+        "boulder_frequency": ["0.015"],
+        "delete_spared_tags": ["boulder", "dungeon_floor"],
     },
     // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),

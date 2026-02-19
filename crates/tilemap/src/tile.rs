@@ -36,7 +36,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
 
         instantiate_portal.run_if(in_state(ClientState::Disconnected)),
-        flip_tile_horizontally_based_on_initial_pos_hash,
+        flip_tile_based_on_initial_pos_hash,
         sync_sprite_flips_with_tileflip,
         despawn_if_not_excepted.before(crate::chunking::despawn_chunks),//DON'T TOUCH
         (add_spawned_tiles_to_gpos_map, ),
@@ -85,6 +85,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<BlocksProjectiles>()
     .replicate::<WalkSpeedMultIfOnTop>()
     .replicate::<GlobalTilePos>()
+    .replicate::<OffsetForTerrgenPlacement>()
 
 
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()

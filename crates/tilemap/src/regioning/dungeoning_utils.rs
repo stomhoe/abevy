@@ -1,5 +1,10 @@
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
+use bevy::prelude::*;
+use common::common_components::HashId;
+use game_common::game_common_samplers::EntityWeightedSampler;
+use ::tilemap_shared::{GlobalGenSettings, GlobalTilePos};
+use crate::tile::tile_sampler_components::TileWeightedSampler;
 
 pub fn carve_room_rectangle(
     floor_map: &mut [bool],
@@ -271,4 +276,25 @@ pub fn carve_corridor_vertical(
             }
         }
     }
+}
+
+pub fn resolve_sampled_tile_entity_from_sampler(
+    root_sampler: &EntityWeightedSampler,
+    sampler_query: &Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
+    anchor_gpos: GlobalTilePos,
+    settings: &GlobalGenSettings,
+    dimension_hash: HashId,
+) -> Option<Entity> {
+    let mut current_sampler = root_sampler;
+    let mut depth = 0u8;
+    while depth < 8 {
+        let sampled_ent = current_sampler.sample_with_pos(anchor_gpos, settings, dimension_hash)?;
+        if let Ok(next_sampler) = sampler_query.get(sampled_ent) {
+            current_sampler = next_sampler;
+            depth += 1;
+            continue;
+        }
+        return Some(sampled_ent);
+    }
+    None
 }

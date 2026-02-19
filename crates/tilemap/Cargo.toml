@@ -17,6 +17,7 @@ sprite = { path = "../sprite" }
 color_sampler = { path = "../color_sampler" }
 
 bevy = { workspace = true }
+ron = { workspace = true }
 serde = { workspace = true }
 #tracing = { workspace = true }
 #tracing-subscriber = { workspace = true }

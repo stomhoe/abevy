@@ -18,4 +18,4 @@ out = idxmax(0.5, normal_diff, elf_diff, antarctica_diff)
 bif "" -> [ocean]
 bif normal1 -> []
 bif elf1 -> []
-bif "" -> [snow]
+bif anta1 -> [snow]

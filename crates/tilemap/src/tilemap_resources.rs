@@ -110,7 +110,7 @@ impl MassCollectedTiles {
         ezeros: impl IntoIterator<Item = EntityZeroRef>,
         global_pos: GlobalTilePos,
         dim_ref: DimensionRef,
-        param_set: &CloneSpawnParamSet,
+        _param_set: &CloneSpawnParamSet,
     ) -> Vec<Entity> {
         let ezeros_iter = ezeros.into_iter();
         let mut spawned = Vec::with_capacity(ezeros_iter.size_hint().0);
@@ -184,8 +184,25 @@ impl MassCollectedTiles {
         param_set: &CloneSpawnParamSet,
         dim_hash_id: HashId,
     )  {
-        for tile_ent in ezero_refs {
-            self.collect_tiles_rec(cmd, tile_ent, ev.gpos, dim_hash_id, ev.dimension_ref, param_set, 0);
+        self.collect_tiles_at_positions(
+            cmd,
+            ezero_refs.into_iter().map(|tile_ent| (tile_ent, ev.gpos)),
+            ev.dimension_ref,
+            param_set,
+            dim_hash_id,
+        );
+    }
+
+    pub fn collect_tiles_at_positions(
+        &mut self,
+        cmd: &mut Commands,
+        ezero_refs: impl IntoIterator<Item = (Entity, GlobalTilePos)>,
+        dim_ref: DimensionRef,
+        param_set: &CloneSpawnParamSet,
+        dim_hash_id: HashId,
+    ) {
+        for (tile_ent, gpos) in ezero_refs {
+            self.collect_tiles_rec(cmd, tile_ent, gpos, dim_hash_id, dim_ref, param_set, 0);
         }
     }
 
@@ -196,4 +213,5 @@ pub struct CloneSpawnParamSet<'w, 's> {
     pub weight_maps: Query<'w, 's, &'static EntityWeightedSampler>,
     pub gen_settings: Query<'w, 's, &'static GlobalGenSettings>,
     pub size_in_tiles: Query<'w, 's, &'static SizeInTiles>,
+    pub terrgen_offsets: Query<'w, 's, &'static OffsetForTerrgenPlacement, common::AnyDisabling>,
 }

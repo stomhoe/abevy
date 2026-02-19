@@ -1,0 +1,7 @@
+(
+    id: "boulder_pink_sampler",
+    weights: [
+        ("boulder_pink_medium", 10.0),
+        ("boulder_pink_large", 10.0),
+    ],
+)

@@ -114,10 +114,14 @@ impl HashId {
         self.0 as i32
     }
     pub fn as_u64(self) -> u64 {
-        self.0
+        self.0 as u64
     }
     pub fn merge(&self, other: HashId) -> HashId {
-        HashId(self.0.wrapping_add(other.0))
+        const PRIME: u64 = 0x100000001b3;
+        let mut hash = self.0 ^ other.0;
+        hash = hash.wrapping_mul(PRIME);
+        hash ^= hash >> 32;
+        HashId(hash)
     }
     pub const fn hash(s: &str) -> Self {
         const OFFSET: u64 = 0xcbf29ce484222325;

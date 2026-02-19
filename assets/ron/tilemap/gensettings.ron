@@ -1,0 +1,6 @@
+(
+    seed: 3,
+    world_freq: 0.02,
+    structure_build_timeout_secs: 4.0,
+    spawn_tag: "sun_anta",
+)

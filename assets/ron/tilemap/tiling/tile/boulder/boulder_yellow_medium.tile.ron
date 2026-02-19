@@ -1,0 +1,17 @@
+(
+    id: "boulder_yellow_medium",
+    name: "Yellow medium boulder",
+    tags: ["boulder", "rock", "yellow"],
+    z: 1000,
+    y_sort: Some(10),
+    img_paths: [
+        ("", "texture/world/boulder/medyellow.png"),
+    ],
+    is_spritetile: true,
+    randflipx: true, randflipy: true, randflipd: true,
+    offset: (12.0, 0.0),
+    size_in_tiles: (2, 1),
+    colmask: [
+        "11",
+    ],
+)

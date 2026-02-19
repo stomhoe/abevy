@@ -1,0 +1,10 @@
+(
+    id: "boulder_sampler",
+    weights: [
+        ("boulder_gray_sampler*", 10.0),
+        ("boulder_green_sampler*", 10.0),
+        ("boulder_pink_sampler*", 10.0),
+        ("boulder_purple_sampler*", 10.0),
+        ("boulder_yellow_sampler*", 10.0),
+    ],
+)

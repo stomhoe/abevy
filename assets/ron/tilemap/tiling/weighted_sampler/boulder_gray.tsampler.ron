@@ -1,0 +1,6 @@
+(
+    id: "boulder_gray_sampler",
+    weights: [
+        ("boulder_gray_large", 10.0),
+    ],
+)

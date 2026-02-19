@@ -1,0 +1,19 @@
+(
+    id: "boulder_gray_large",
+    name: "Gray large boulder",
+    tags: ["boulder", "rock"],
+    z: 1000,
+    y_sort: Some(10),
+    img_paths: [
+        ("", "texture/world/boulder/big.png"),
+    ],
+    is_spritetile: true,
+    randflipx: true, randflipy: true, randflipd: true,
+    offset: (32.0, 32.0),
+    size_in_tiles: (3, 3),
+    colmask: [
+        "010",
+        "111",
+        "111",
+    ],
+)

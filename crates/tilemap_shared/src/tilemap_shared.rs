@@ -25,15 +25,17 @@ pub struct GlobalGenSettings {
     pub world_freq: f32,
     /// Timeout in seconds to wait for StructureBuildCompliance before giving up
     pub structure_build_timeout_secs: f64,
+    pub spawn_tag: StrId,
 }
 const DONT_TOUCH: f32 = 1000.;
 impl Default for GlobalGenSettings {
     fn default() -> Self {
         Self {
-            seed: 3,
+            seed: 0,
             world_freq: 20.
             /DONT_TOUCH,
             structure_build_timeout_secs: 4.0,
+            spawn_tag: StrId::trunc("sun_land"),
         }
     }
 }

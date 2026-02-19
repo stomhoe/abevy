@@ -1,0 +1,9 @@
+(
+    id: "sun_land",
+    opfilter_id: "land",
+    probe_pattern: "sun",
+    step_size: 4,
+    max_batches: 1000,
+    iterations_per_batch: 10000,
+    max_emitted_results: 1,
+)

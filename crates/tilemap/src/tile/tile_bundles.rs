@@ -52,6 +52,10 @@ pub struct ToDenyOnTileClone(
     InteractionZones,
     GlobalTilePosWeightedSampler,
     TileCollisionMask,
+    FlipDiagonallyBasedOnHash,
+    FlipVerticallyBasedOnHash,
+    FlipHorizontallyBasedOnHash,
+    OffsetForTerrgenPlacement,
 );
 
 #[derive(Bundle)] #[allow(unused, )]

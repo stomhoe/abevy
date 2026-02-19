@@ -97,6 +97,7 @@ bevy-inspector-egui = { workspace = true }
 tracing = { workspace = true }
 #tracing-subscriber = { workspace = true }
 avian2d = { workspace = true }
+ron.workspace = true
 
 #log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # Improve Runtime Performance (Optional)
 #bevy_northstar = "0.3.1"

@@ -1,6 +1,7 @@
 (
     id: "dublack",
     name: "Dungeon black terrain",
+    tags: ["dungeon_floor", "floor"],
     z: -1000,
     img_paths: [
         ("", "texture/world/white.png"),

@@ -53,11 +53,11 @@ pub fn init_terrain_probes(
             TerrProbeTempl::from_seri(
                 opfilter_ent,
                 parsed_probe_pattern,
-                seri.step_size.unwrap_or(1),
-                seri.max_batches.unwrap_or(1000),
-                seri.iterations_per_batch.unwrap_or(10000),
-                seri.max_emitted_results.unwrap_or(1),
-                seri.min_result_distance.unwrap_or(0),
+                seri.step_size,
+                seri.max_batches,
+                seri.iterations_per_batch,
+                seri.max_emitted_results,
+                seri.min_result_distance,
             ),
             ChildOf(egui_ent),
         )));

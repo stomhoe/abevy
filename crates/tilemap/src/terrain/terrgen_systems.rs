@@ -2,7 +2,7 @@ use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::{Asyn
 use camera::camera_components::CameraTarget;
 use common::{common_components::{HashId, HashIdMap, StrId}, common_tag_components::HashedTagsVec};
 use debug_unwraps::DebugUnwrapExt;
-use std::{collections::HashSet, mem::take};
+use std::mem::take;
 
 use crate::{
     chunking::chunking_components::*,
@@ -170,10 +170,20 @@ pub fn process_pending_ops_and_collect_tiles(
     });
 
     for request in tile_requests.drain(..) {
-        collected.collect_tiles(
+        let dim_ref = request.pending.dimension_ref;
+        let base_gpos = request.pending.gpos;
+        collected.collect_tiles_at_positions(
             &mut cmd,
-            request.bif_tiles,
-            &request.pending,
+            request.bif_tiles.into_iter().map(|tile_ent| {
+                let offset = param_set
+                    .terrgen_offsets
+                    .get(tile_ent)
+                    .copied()
+                    .unwrap_or_default()
+                    .0;
+                (tile_ent, base_gpos + offset)
+            }),
+            dim_ref,
             &param_set,
             request.dimension_hash,
         );

@@ -19,9 +19,20 @@ pub struct TerrainProbeSeri {
     pub id: String,
     pub opfilter_id: String,
     pub probe_pattern: String,
-    pub step_size: Option<u16>,
-    pub max_batches: Option<u16>,
-    pub iterations_per_batch: Option<u16>,
-    pub max_emitted_results: Option<u16>,
-    pub min_result_distance: Option<u16>,
+    #[serde(default = "default_step_size")]
+    pub step_size: u16,
+    #[serde(default = "default_max_batches")]
+    pub max_batches: u16,
+    #[serde(default = "default_iterations_per_batch")]
+    pub iterations_per_batch: u16,
+    #[serde(default = "default_max_emitted_results")]
+    pub max_emitted_results: u16,
+    #[serde(default = "default_min_result_distance")]
+    pub min_result_distance: u16,
 }
+
+fn default_step_size() -> u16 { 1 }
+fn default_max_batches() -> u16 { 1000 }
+fn default_iterations_per_batch() -> u16 { 10000 }
+fn default_max_emitted_results() -> u16 { 1 }
+fn default_min_result_distance() -> u16 { 0 }

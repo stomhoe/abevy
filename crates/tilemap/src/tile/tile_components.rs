@@ -121,6 +121,12 @@ pub fn tile_pos_hash_rand(initial_pos: InitialPos, settings: &GlobalGenSettings)
 #[derive(Component, Deserialize, Serialize, Default, Debug, Clone)]
 pub struct FlipHorizontallyBasedOnHash;
 
+#[derive(Component, Deserialize, Serialize, Default, Debug, Clone)]
+pub struct FlipVerticallyBasedOnHash;
+
+#[derive(Component, Deserialize, Serialize, Default, Debug, Clone)]
+pub struct FlipDiagonallyBasedOnHash;
+
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Debug,)]
 pub struct InitialPos(pub GlobalTilePos);
 
@@ -197,6 +203,10 @@ impl TileHashIdsHandles {
         self.ids.iter().cloned().zip(self.handles.iter())
     }
 }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+/// applied on tile's start gpos if placed via terrgen
+pub struct OffsetForTerrgenPlacement(pub GlobalTilePos);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Default)]
 pub struct MinDistancesMap(pub EntityHashMap<u64>);

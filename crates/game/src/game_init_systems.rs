@@ -103,15 +103,21 @@ pub fn find_common_player_spawn_origin(
     mut search_params: SearchParams,
     mut active_probe_ent: Local<Option<Entity>>,
     mut search_finished: Local<bool>,
+    mut settings: Query<&GlobalGenSettings>,
 ) {
+    let Ok(settings) = settings.single()
+    else {
+        error!(target: "game_init_systems", "Failed to get AaGlobalGenSettings");
+        return;
+    };
     let make_search_request = |_cmd: &mut Commands| -> Option<TerrProbeJob> {
         let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
             warn!(target: GAME_INIT, "Overworld dimension '{}' not in DimensionEntityMap yet", Dimension::overworld());
             return None;
         };
 
-        let Ok(probe_template_ent) = terrprobe_entity_map.0.get_cloned("sun_land_search") else {
-            warn!(target: GAME_INIT, "TerrainProbe template 'sun_land_search' not in TerrainProbeTemplateEntityMap yet");
+        let Ok(probe_template_ent) = terrprobe_entity_map.0.get_cloned(settings.spawn_tag.clone()) else {
+            warn!(target: GAME_INIT, "TerrainProbe template {} not in TerrainProbeTemplateEntityMap yet", settings.spawn_tag.clone());
             return None;
         };
         let Ok(probe_template) = terrprobe_query.get(probe_template_ent) else {

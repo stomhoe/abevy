@@ -1,0 +1,11 @@
+id: anta1
+size: (1, 1)
+debug: [boulder_feature]
+tags: ["anta"]
+
+let boulder_feature = idxmax(hp82, 0.05)
+let boulder_feature = pd32 * boulder_feature
+out = idxmax(0.9, boulder_feature)
+
+bif "" -> []
+bif "" -> [boulder_sampler, ]

@@ -1,0 +1,7 @@
+(
+    id: "boulder_green_sampler",
+    weights: [
+        ("boulder_green_medium", 10.0),
+        ("boulder_moss_medium", 10.0),
+    ],
+)

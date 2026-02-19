@@ -42,7 +42,7 @@ pub fn init_tiles(
 
     let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();
 
-    let mut res_tile_cats = TileEntsWithinTag::default();
+    let mut res_tile_tags = TileEntsWithinTag::default();
 
     for mut seri in load_tile_seri_defs() {
 
@@ -66,6 +66,10 @@ pub fn init_tiles(
             size_in_tiles,
             //SparedFromHotReloading,
         )).id();
+        cmd.entity(tile_enti).insert(OffsetForTerrgenPlacement(GlobalTilePos::new(
+            seri.terrgen_offset.0 as i32,
+            seri.terrgen_offset.1 as i32,
+        )));
 
         if !seri.tags.is_empty() {
             let mut tag_set = TagSet::default();
@@ -74,7 +78,7 @@ pub fn init_tiles(
                 if tag_str.is_empty() { continue; }
                 let tag = Tag::trunc(tag_str);
                 tag_set.insert(tag.clone());
-                res_tile_cats.0.entry(tag).or_default().insert(tile_enti);
+                res_tile_tags.0.entry(tag).or_default().insert(tile_enti);
             }
             cmd.entity(tile_enti).insert(tag_set);
         }
@@ -111,6 +115,12 @@ pub fn init_tiles(
         }
         if seri.randflipx {
             cmd.entity(tile_enti).insert(FlipHorizontallyBasedOnHash);
+        }
+        if seri.randflipy {
+            cmd.entity(tile_enti).insert(FlipVerticallyBasedOnHash);
+        }
+        if seri.randflipd {
+            cmd.entity(tile_enti).insert(FlipDiagonallyBasedOnHash);
         }
         if seri.portal.no_field_is_empty() {
             cmd.entity(tile_enti).insert((std::mem::take(&mut seri.portal), ChildOf(egui_portal_holder)));
@@ -217,7 +227,7 @@ pub fn init_tiles(
             }
         }
     }
-    cmd.insert_resource(res_tile_cats);
+    cmd.insert_resource(res_tile_tags);
 }
 
 #[allow(unused_parens)]
@@ -313,12 +323,12 @@ pub fn add_handles(
 pub fn map_min_dist_tiles(
     mut cmd: Commands,
     tiles_map: Res<TileEntityMap>,
-    tile_cats: Res<TileEntsWithinTag>,
+    tile_tags: Res<TileEntsWithinTag>,
 ) {
-    let mut keep_away: EntityHashMap<HashSet<Entity>> = EntityHashMap::default();
+    let mut keep_away: EntityHashMap<EntityHashSet> = EntityHashMap::default();
     let all_seris = load_tile_seri_defs();
-    let mut comps = Vec::with_capacity(all_seris.len() / 10);
-    let mut comps2 = Vec::with_capacity(all_seris.len() / 10);
+    let mut min_dist_comps = Vec::with_capacity(all_seris.len() / 10);
+    let mut keep_dist_comps = Vec::with_capacity(all_seris.len() / 10);
 
     for seri in all_seris {
 
@@ -334,13 +344,13 @@ pub fn map_min_dist_tiles(
         let mut min_dists = MinDistancesMap::default();
 
         for (tile_id, min_dist) in min_distances {
-            if let Some(cat) = tile_id.strip_prefix("c.")
-                && let Some(cat_entities) = tile_cats.0.get(&Tag::trunc(cat))
+            if let Some(tag) = tile_id.strip_prefix("t.")
+                && let Some(tag_entities) = tile_tags.0.get(&Tag::trunc(tag))
             {
-                for cat_tile_ent in cat_entities {
-                    min_dists.0.insert(*cat_tile_ent, min_dist);
-                    if cat_tile_ent != &tile_ent {
-                        keep_away.entry(*cat_tile_ent).or_default().insert(tile_ent);
+                for tag_tile_ent in tag_entities {
+                    min_dists.0.insert(*tag_tile_ent, min_dist);
+                    if tag_tile_ent != &tile_ent {
+                        keep_away.entry(*tag_tile_ent).or_default().insert(tile_ent);
                     }
                 }
             } else if let Ok(other_tile_ent) = tiles_map.0.get_cloned(&tile_id) {
@@ -364,12 +374,12 @@ pub fn map_min_dist_tiles(
             continue;
         }
 
-        comps.push((tile_ent, min_dists));
+        min_dist_comps.push((tile_ent, min_dists));
     }
 
     for (tile_ent, ents) in keep_away {
-        comps2.push((tile_ent, KeepDistanceFrom(ents.into_iter().collect())));
+        keep_dist_comps.push((tile_ent, KeepDistanceFrom(ents.into_iter().collect())));
     }
-    cmd.try_insert_batch(comps);
-    cmd.try_insert_batch(comps2);
+    cmd.try_insert_batch(min_dist_comps);
+    cmd.try_insert_batch(keep_dist_comps);
 }

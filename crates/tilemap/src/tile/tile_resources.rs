@@ -98,11 +98,16 @@ pub struct TileSeri {
     #[serde(default)]
     pub randflipx: bool,
     #[serde(default)]
+    pub randflipy: bool,
+    #[serde(default)]
+    pub randflipd: bool,
+    #[serde(default)]
     pub min_distances: HashMap<String, u64>,
     #[serde(default)]
     pub portal: PortalSeri,
     #[serde(default)]
     pub offset: (f32, f32),
+
 
     #[serde(default)]
     pub interaction_zones: HashMap<String, InteractionZoneSeri>,
@@ -113,7 +118,7 @@ pub struct TileSeri {
     #[serde(default)]
     pub delete_other_tiles: DeleteOtherTilesSeri,
     #[serde(default)]
-    pub offset_for_terrgen: (i8, i8),
+    pub terrgen_offset: (i8, i8),
 
     #[serde(default = "default_size_in_tiles")]
     pub size_in_tiles: (u32, u32),

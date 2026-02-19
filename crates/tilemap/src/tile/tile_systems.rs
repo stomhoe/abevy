@@ -54,17 +54,24 @@ fn should_delete_tile(
 }
 
 #[allow(unused_parens)]
-pub fn flip_tile_horizontally_based_on_initial_pos_hash(
+pub fn flip_tile_based_on_initial_pos_hash(
     settings: Query<&GlobalGenSettings>,
     dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut query: Query<
-        (&mut TileFlip, &InitialPos, Option<&DimensionRef>),
+        (&mut TileFlip, &InitialPos, &EntityZeroRef, Option<&DimensionRef>),
         (
             Changed<InitialPos>,
-            With<FlipHorizontallyBasedOnHash>,
             common::AnyDisabling,
             Without<EntityZero>,
         ),
+    >,
+    ezero_query: Query<
+        (
+            Has<FlipHorizontallyBasedOnHash>,
+            Has<FlipVerticallyBasedOnHash>,
+            Has<FlipDiagonallyBasedOnHash>,
+        ),
+        (),
     >,
 ) {
     if query.is_empty() {
@@ -74,15 +81,35 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
         error!("Failed to get global gen settings");
         return;
     };
+
     query.iter_mut().for_each(
-        |(mut tile_flip, initial_pos, dimension_ref)| {
+        |(mut tile_flip, initial_pos, ezero_ref, dimension_ref)| {
+
+            let Ok((do_flip_hori, do_flip_vert, do_flip_diag)) = ezero_query.get(ezero_ref.0) else {
+                return;
+            };
+
             let dimension_hash = dimension_ref
                 .and_then(|dim_ref| dim_hash_query.get(dim_ref.0).ok())
                 .cloned()
                 .unwrap_or_default();
 
-            let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 0);
-            tile_flip.x = should_flip;
+
+            if do_flip_hori {
+                let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 0);
+                tile_flip.x = should_flip;
+            }
+
+            if do_flip_vert {
+                let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 1);
+
+                tile_flip.y = should_flip;
+            }
+
+            if do_flip_diag {
+                let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 2);
+                tile_flip.d = should_flip;
+            }
         },
     );
 }
@@ -91,9 +118,14 @@ pub fn flip_tile_horizontally_based_on_initial_pos_hash(
 pub fn sync_sprite_flips_with_tileflip(
     tile_query: Query<
         (Entity, &TileFlip, Option<&HeldSprites>, Option<&Children>),
-        (Changed<TileFlip>, With<Tile>, Without<EntityZero>, common::AnyDisabling),
+        (
+            Or<(Changed<TileFlip>, Changed<HeldSprites>, Changed<Children>)>,
+            With<Tile>,
+            Without<EntityZero>,
+            common::AnyDisabling,
+        ),
     >,
-    mut sprites_query: Query<&mut Sprite, (common::AnyDisabling, Without<InitialPos>)>,
+    mut sprites_query: Query<&mut Sprite, (common::AnyDisabling, )>,
 ) {
     for (tile_ent, tile_flip, held_sprites, children) in tile_query.iter() {
         if let Ok(mut my_sprite) = sprites_query.get_mut(tile_ent) {
@@ -267,7 +299,7 @@ pub fn add_projectile_colliders_to_tiles(
 
 pub fn despawn_if_not_excepted(
     ezero_query: Query<
-        (Option<&AcZ>, Option<&DeleteOtherTiles>),
+        (Option<&AcZ>, Option<&DeleteOtherTiles>, Option<&TagSet>, Option<&SizeInTiles>),
         (With<EntityZero>, common::AnyDisabling),
     >,
     query: Query<
@@ -285,11 +317,12 @@ pub fn despawn_if_not_excepted(
     registered_positions: Res<ImportantRegisteredPositions>,
     params: TileGatheringParamSet,
     mut otile_ents: Local<Vec<Entity>>,
+    mut checked_ents: Local<HashSet<Entity>>,
     mut writer: MessageWriter<SafeDespawn>,
     mut msgs: Local<Vec<SafeDespawn>>,
 ) {
     query.iter_many(changed_pos.read().map(|msg| msg.entity)).for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
-        let Ok((newtile_z, ezero_newtile_delete_others_excp)) = ezero_query.get(ezero_ref.0) else {
+        let Ok((newtile_z, ezero_newtile_delete_others_excp, ezero_newtile_tagset, newtile_size)) = ezero_query.get(ezero_ref.0) else {
             warn!(target: common::DEBUG_TILE, "Failed to get EntityZero for tile entity {:?}, skipping despawn check", newtile_ent);
             return;
         };
@@ -297,8 +330,19 @@ pub fn despawn_if_not_excepted(
             warn!(target: "tilemap", "Tile entity {:?} has no AcZ, skipping despawn check", newtile_ent);
             return;
         };
-        params.gather_tiles_at(&mut *otile_ents, dim, gpos);
-        otile_ents.drain(..).for_each(|otile_ent| {
+        let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
+        let scan_radius = newtile_delete_others_excp.map(|s| s.extra_radius as i32).unwrap_or_default();
+        let newtile_size = newtile_size.copied().unwrap_or_default().inner().as_ivec2();
+        checked_ents.clear();
+        for y in (gpos.0.y - scan_radius)..=(gpos.0.y + newtile_size.y - 1 + scan_radius) {
+            for x in (gpos.0.x - scan_radius)..=(gpos.0.x + newtile_size.x - 1 + scan_radius) {
+                params.gather_tiles_at(&mut *otile_ents, dim, GlobalTilePos::new(x, y));
+                for ent in otile_ents.drain(..) {
+                    checked_ents.insert(ent);
+                }
+            }
+        }
+        checked_ents.drain().for_each(|otile_ent| {
             if otile_ent == newtile_ent {
                 return;
             }
@@ -306,7 +350,7 @@ pub fn despawn_if_not_excepted(
                 trace!(target: "tilemap", "Failed to get prev tile entity {:?}, skipping despawn check", otile_ent);
                 return;
             };
-            let Ok((otile_z, ezero_otile_delete_others_excp)) = ezero_query.get(otile_ezero_ref.0) else {
+            let Ok((otile_z, ezero_otile_delete_others_excp, ezero_otile_tagset, _)) = ezero_query.get(otile_ezero_ref.0) else {
                 trace!(target: "tilemap", "Failed to get EntityZero for tile entity {:?}, skipping despawn check", otile_ent);
                 return;
             };
@@ -314,9 +358,9 @@ pub fn despawn_if_not_excepted(
                 trace!(target: "tilemap", "Tile entity {:?} has no AcZ, skipping despawn check", otile_ent);
                 return;
             };
-            let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
             if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
-                if should_delete_tile(newtile_delete_others_excp, otile_z, otile_tag_hashset) {
+                let otile_tags = otile_tag_hashset.or(ezero_otile_tagset);
+                if should_delete_tile(newtile_delete_others_excp, otile_z, otile_tags) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
                     if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
                         msgs.push(SafeDespawn(otile_ent));
@@ -326,7 +370,8 @@ pub fn despawn_if_not_excepted(
             }
             let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp);
             if let Some(otile_delete_others_excp) = otile_delete_others_excp {
-                if should_delete_tile(otile_delete_others_excp, newtile_z, newtile_tag_hashset) {
+                let newtile_tags = newtile_tag_hashset.or(ezero_newtile_tagset);
+                if should_delete_tile(otile_delete_others_excp, newtile_z, newtile_tags) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
                     if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
                         msgs.push(SafeDespawn(newtile_ent));

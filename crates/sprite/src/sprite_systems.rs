@@ -9,6 +9,7 @@ use ::tilemap_shared::directions::*;
 
 use ::sprite_shared::{sprite_scale_offset::*, *};
 
+#[allow(unused_imports, )]
 use crate::sprite_components::*;
 
 

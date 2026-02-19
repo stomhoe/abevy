@@ -1,5 +1,6 @@
 (
     id: "dunewbie",
+    tags: ["dungeon_floor", "floor"],
     name: "Dungeon newbie terrain",
     z: -1000,
     img_paths: [
