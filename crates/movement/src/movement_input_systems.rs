@@ -13,7 +13,7 @@ use crate::{movement_components::*, movement_messages::SendMoveInput};
 pub fn update_human_move_input(
     keys: Res<ButtonInput<KeyCode>>,
     input_mappings: Res<KeyboardInputMappings>,
-    mut move_input: Query<(&mut InputDirection, &IsHumanControlled), With<ControlledLocally>>,
+    mut move_input: Query<(&mut InputDirection, &ControlledBy), With<ComputedLocally>>,
 ) {
     let mut input_dir = Vec2::ZERO;
     if keys.pressed(input_mappings.move_up) {
@@ -28,13 +28,11 @@ pub fn update_human_move_input(
     if keys.pressed(input_mappings.move_right) {
         input_dir.x += 1.0;
     }
-
     if input_dir != Vec2::ZERO {
         input_dir = input_dir.normalize();
     }
-
-    for (mut input_direction, human_controlled) in move_input.iter_mut() {
-        if human_controlled.0 && input_direction.0 != input_dir {
+    for (mut input_direction, computed_in) in move_input.iter_mut() {
+        if computed_in.human_input && input_direction.0 != input_dir {
             trace!(target: "movement", "Updating human move input");
             input_direction.0 = input_dir;
         }
@@ -43,7 +41,7 @@ pub fn update_human_move_input(
 
 pub fn send_move_input_to_server(
     mut event_writer: MessageWriter<SendMoveInput>,
-    move_input: Query<(Entity, &InputDirection), (Changed<InputDirection>, With<ControlledLocally>)>,
+    move_input: Query<(Entity, &InputDirection), (Changed<InputDirection>, With<ComputedLocally>)>,
 ) {
     let mut to_write = Vec::new();
     for (being_ent, input_dir) in move_input.iter() {
@@ -63,14 +61,14 @@ pub fn receive_move_input_from_client(
         if let Ok((mut input_dir, controlled_by)) = controlled_beings_query.get_mut(being_ent) {
             let Some(client_entity) = from_client.client_id.entity() else { continue; };
 
-            if controlled_by.client == client_entity {
+            if controlled_by.client_ent == client_entity {
                 if input_dir.0 != new_vec {
                     input_dir.0 = new_vec;
                 }
             } else {
                 warn!(
                     "Client tried to control a being not controlled by them: {} (controlled_by.client: {:?}, from_client.client_entity: {:?})",
-                    being_ent, controlled_by.client, client_entity
+                    being_ent, controlled_by.client_ent, client_entity
                 );
             }
         } else {
@@ -82,7 +80,7 @@ pub fn receive_move_input_from_client(
 pub fn process_input_direction_modifiers(
     state: Res<State<ClientState>>,
     mut being_query: Query<
-        (Entity, &AppliedModifiers, &InputDirection, &mut MoveVecMag, Has<ControlledLocally>),
+        (Entity, &AppliedModifiers, &InputDirection, &mut MoveVecMag, Has<ComputedLocally>),
     >,
     modifiers_query: Query<
         (Entity, &ModifierTarget, &CurrEffectiveValue, &ApplyMode, Has<InvertMovement>),

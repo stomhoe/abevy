@@ -4,18 +4,18 @@ size: (1, 1)
 
 let normal_continentness = +(fnl.conti_nofract, 0.0)
 let elf_continentness = +(fnl.conti_nofract.s2, 0.0)
-let antarctica_continentness = +(fnl.conti_nofract.s3, -0.2)
+let anta_continentness = +(fnl.conti_nofract.s3, -0.2)
 
 let islands_count = 3.
 let glob_norm = 0.6/islands_count
 
-let normal_diff = -(normal_continentness, elf_continentness, antarctica_continentness)/glob_norm
-let elf_diff = -(elf_continentness, normal_continentness, antarctica_continentness)/glob_norm
-let antarctica_diff = -(antarctica_continentness, normal_continentness, elf_continentness)/glob_norm
+let normal_diff = -(normal_continentness, elf_continentness, anta_continentness)/glob_norm
+let elf_diff = -(elf_continentness, normal_continentness, anta_continentness)/glob_norm
+let anta_diff = -(anta_continentness, normal_continentness, elf_continentness)/glob_norm
 
-out = idxmax(0.5, normal_diff, elf_diff, antarctica_diff)
+out = idxmax(0.5, normal_diff, elf_diff, anta_diff)
 
 bif "" -> [ocean]
 bif normal1 -> []
 bif elf1 -> []
-bif anta1 -> [snow]
+bif anta1 -> []

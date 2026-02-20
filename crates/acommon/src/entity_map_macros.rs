@@ -313,6 +313,11 @@ macro_rules! define_entity_map_systems {
                 //Reflect,
             )]
             pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
+            impl [<$abbreviation StrIdRef>] {
+                pub fn new<I: Into<common::common_components::StrId>>(id: I) -> Self {
+                    Self(id.into())
+                }
+            }
 
             #[derive(Component, std::fmt::Debug, Clone, Copy, PartialEq, Eq, Default,
                 //Reflect,

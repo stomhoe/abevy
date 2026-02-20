@@ -12,3 +12,11 @@ pub enum GameSetupScreen {#[default]GameSettings, CharacterCreation,}
 #[source(GamePhase = GamePhase::ActiveGame)]
 #[states(scoped_entities)]
 pub enum SimulationState {#[default]Running, Paused,}
+impl SimulationState {
+    pub fn is_running(&self) -> bool {
+        matches!(self, SimulationState::Running)
+    }
+    pub fn is_paused(&self) -> bool {
+        matches!(self, SimulationState::Paused)
+    }
+}

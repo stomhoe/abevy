@@ -3,7 +3,7 @@
     opfilter_id: "portal",
     probe_pattern: "spiral",
     step_size: 1,
-    max_batches: 1000,
+    max_batches: 10000,
     iterations_per_batch: 10000,
     max_emitted_results: 300,
     min_result_distance: 50,

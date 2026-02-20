@@ -127,28 +127,16 @@ pub struct FlipVerticallyBasedOnHash;
 #[derive(Component, Deserialize, Serialize, Default, Debug, Clone)]
 pub struct FlipDiagonallyBasedOnHash;
 
+#[derive(Component, Deserialize, Serialize, Default, Debug, Clone)]
+pub struct RotateCardinallyBasedOnHash;
+
+#[derive(Component, Deserialize, Serialize, Default, Debug, Clone)]
+pub struct TransformBasedCardRotation;
+
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Debug,)]
 pub struct InitialPos(pub GlobalTilePos);
 
-#[derive(Component, Clone, Deserialize, Serialize, Debug,)]
-/// interaction positions (offsets relative to the tile's anchor GlobalTilePos)
-pub struct InteractionZones(
-    pub HashIdMap<InteractionZone>
-);
-impl InteractionZones {
-    pub fn new(map: HashMap<String, InteractionZoneSeri>) -> Self {
-        let mut zones = HashIdMap::with_capacity(map.len());
-        for (id, seri) in map {
-            zones.overwrite(HashId::from(id), InteractionZone::new(seri));
-        }
-        Self(zones)
-    }
-    pub fn is_inside_interaction_zone(&self, zone_id: HashId, anchor_transf: Vec2, client_transf: Vec2, ) -> bool {
-        let zone = self.0.get(zone_id).ok();
-        zone.is_some_and(|zone| zone.is_inside_any(anchor_transf, client_transf))
-    }
-    pub const ENTER: HashId = HashId::hash("enter");
-}
+
 
 
 

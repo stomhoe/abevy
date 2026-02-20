@@ -112,7 +112,7 @@ pub fn main_menu_window(
         .show(ctx, |ui| {
             ui.heading("Debug Windows");
             ui.separator();
-            if ui.button(egui::RichText::new("🔍 States Inspector (F12)").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("🔍 States Inspector").size(16.0)).clicked() {
                 window_visible.states = !window_visible.states;
             }
             if ui.button(egui::RichText::new("▢▢  Chunking").size(16.0)).clicked() {
@@ -156,6 +156,7 @@ pub fn main_menu_window(
 
 #[allow(unused_parens)]
 pub fn hot_reload_window(
+    keys: Res<ButtonInput<KeyCode>>,
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selection: ResMut<HotReloadSelection>,
@@ -177,24 +178,22 @@ pub fn hot_reload_window(
         .show(ctx, |ui| {
             ui.heading("Hot Reload Sets");
             ui.separator();
+            ui.checkbox(&mut selection.global_gen_settings, "Global gen settings");
+            ui.checkbox(&mut selection.probes_and_filters, "Probes and filters");
+            ui.checkbox(&mut selection.terrain_oplists_and_noises, "Terrain oplists and noises");
             ui.checkbox(&mut selection.tiles, "Tiles");
             ui.checkbox(&mut selection.sprite_configs, "Sprite configs");
             ui.checkbox(&mut selection.animations, "Animations");
-            ui.checkbox(&mut selection.terrain_oplists_and_noises, "Terrain oplists and noises");
-            ui.checkbox(&mut selection.probes, "Probes");
-            ui.checkbox(&mut selection.filters, "Filters");
-            ui.checkbox(&mut selection.global_gen_settings, "Global gen settings");
             ui.checkbox(&mut selection.beings_inst_templates, "Being templates");
             ui.checkbox(&mut selection.races, "Races");
             ui.checkbox(&mut selection.sexes, "Sexes");
             if ui.button("Clear selections").clicked() {
+                selection.global_gen_settings = false;
+                selection.probes_and_filters = false;
+                selection.terrain_oplists_and_noises = false;
                 selection.tiles = false;
                 selection.sprite_configs = false;
                 selection.animations = false;
-                selection.terrain_oplists_and_noises = false;
-                selection.probes = false;
-                selection.filters = false;
-                selection.global_gen_settings = false;
                 selection.beings_inst_templates = false;
                 selection.races = false;
                 selection.sexes = false;
@@ -204,6 +203,11 @@ pub fn hot_reload_window(
                 request.requested = true;
             }
         });
+
+    if open && keys.just_pressed(KeyCode::KeyR) {
+        request.requested = true;
+    }
+
     window_visible.hot_reload_menu = open;
 }
 

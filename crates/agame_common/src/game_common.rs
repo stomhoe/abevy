@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::map::TilemapId;
 use bevy_replicon::prelude::*;
+#[allow(unused_imports, )]
 use common::{AppRegisterAndReplicateExt, common_states::*};
 
 use crate::{
     game_common_components::*, game_common_samplers::*, game_common_states::*,
-    game_common_string_components::Description, game_common_systems::*,
+    game_common_string_components::Description, game_common_systems::*, game_common_timers::{TimedOut, tick_timers},
 };
 
 
@@ -39,10 +40,7 @@ pub fn plugin(app: &mut App) {
             (tick_time_based_multipliers).in_set(SimRunningSystems),
             clone_ezero_children_ents,
             set_entity_name,
-            (
-                tick_sim_despawn_timers.in_set(SimRunningSystems),
-                tick_despawn_timers,
-            ).in_set(HostSystems),
+            tick_timers,
             despawn_sprites_without_childof,
         ),
     )
@@ -108,6 +106,7 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<Transform>()
     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EntityZero>,)>()
     .replicate_once_as::<Visibility, common::common_components::VisibilityGameState>()
+    .add_message::<TimedOut>()
 
     .add_plugins((
         plugin_sprite_vert_normal_dist,

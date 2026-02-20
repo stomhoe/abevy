@@ -16,14 +16,24 @@ use ::tilemap_shared::*;
 pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
     being_query: Query<'w, 's, (Has<WallPhaser>, )>,
-    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>), >,
+    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), >,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
     tile_collision_masks: Query<'w, 's, &'static TileCollisionMask, >,
+    beings_at_gpos: Res<'w, BeingsAtGpos>,
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
     pub fn is_blocked_at(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
+        if self
+            .beings_at_gpos
+            .beings_at_pos(dim_ref, gpos)
+            .iter()
+            .any(|&ent| ent != being)
+        {
+            return true;
+        }
+
         let can_phase = if let Ok((can_phase, ..)) = self.being_query.get(being) {
             can_phase
         } else {
@@ -37,7 +47,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
         let mut all_tiles_failed = true;
         for tile_entity in to_drain.drain(..) {
-            let Ok((ezero_ref, tile_origin, tile_flip)) = self.tile_instance_query.get(tile_entity) else {
+            let Ok((ezero_ref, tile_origin, tile_flip, direction)) = self.tile_instance_query.get(tile_entity) else {
                 continue;
             };
             all_tiles_failed = false;
@@ -50,6 +60,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                     *tile_origin,
                     gpos,
                     tile_flip.copied().unwrap_or_default(),
+                    direction.copied().unwrap_or_default(),
                 )
             } else {
                 false

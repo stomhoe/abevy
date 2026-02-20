@@ -4,9 +4,10 @@ use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
+use sprite_shared::SampleSpriteEnts;
 
 #[derive(Component, Debug, Default, Clone)]
-pub struct ControlledLocally;
+pub struct ComputedLocally;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct ControlledByClient;
@@ -26,7 +27,8 @@ impl ControlledBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 #[relationship(relationship_target = ControlledBeings)]
 pub struct ControlledBy  {
     #[relationship] #[entities]
-    pub client: Entity
+    pub client_ent: Entity,
+    pub human_input: bool,
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Eq, Clone, Copy, Hash, PartialEq)]
@@ -64,7 +66,6 @@ impl From<&str> for Grounding {
     }
 }
 
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 #[require(Replicated, Prefix::trunc("BeingInstTemplate"), AssetScoped, HotReload)]
 pub struct BeingInstTemplate{
@@ -72,15 +73,102 @@ pub struct BeingInstTemplate{
     pub extra_health_multiplier: f32,
 }
 
-
-
-
-
-
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct Sentient;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct WallPhaser;
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyCollisionRadius(pub u32);
+
+#[derive(Component, Debug, Clone, Copy, Hash, PartialEq)]
+pub struct MainCharacter{#[entities] created_by: Entity}
+
+#[derive(Component, Debug, Default, Clone, Copy, Hash, PartialEq)]
+pub struct InfiniteMorale;
+
+#[derive(Component, Default, Deserialize, Serialize, Clone)]
+pub struct PlayerDirectControllable;
+
+#[derive(Component, MapEntities, Clone)]
+//no insertar este component si no se quiere restringir quien puede tomar control
+/// entities: whitelisted players
+pub struct ControlTakeoverWhitelist(#[entities] pub Vec<Entity>);//chequear si es de la misma facción antes de intentar tomar control
+
+#[derive(Component, Debug, Copy, Clone, MapEntities)]
+pub struct TouchingPortal(#[entities] pub Entity);
+
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, )]
+#[relationship(relationship_target = Followers)]
+pub struct FollowerOf {#[relationship] #[entities] pub master: Entity,}
+
+#[derive(Component, Debug, Reflect, Clone)]
+#[relationship_target(relationship = FollowerOf)]
+pub struct Followers(Vec<Entity>);
+impl Followers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
+
+#[derive(Component, Debug, Clone)]
+pub struct LearningMultiplier(pub EntityHashMap<f32>);
+
+#[derive(Component, Debug, Default, Clone)]
+pub struct TargetSpawnPos(pub Vec2);//NO SÉ SI PONERLE UN FIELD Q SEA LA DIMENSIÓN
+impl TargetSpawnPos {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self(Vec2::new(x, y))
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, )]
+#[relationship(relationship_target = CreatedCharacters)]
+#[require(PlayerDirectControllable, )]
+pub struct CharacterCreatedBy {
+    #[relationship] #[entities] pub player: Entity,
+}
+
+#[derive(Component, Debug, Clone)]
+#[relationship_target(relationship = CharacterCreatedBy)]
+pub struct CreatedCharacters(Vec<Entity>);
+impl CreatedCharacters { pub fn entities(&self) -> &[Entity] { &self.0 } }
+
+
+#[derive(Component, Debug, Clone, )]
+pub struct MappedSpritesToSample(
+    /// sexent - samplespriteents
+    pub EntityHashMap<SampleSpriteEnts>,
+);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct Predator;
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+pub struct Hunger {
+    pub curr: f32,
+    pub max: f32,
+    pub increase_per_sec: f32,
+}
+impl Default for Hunger {
+    fn default() -> Self {
+        Self {
+            curr: 0.0,
+            max: 100.0,
+            increase_per_sec: 2.0,
+        }
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+pub struct PredatorHuntThreshold(pub f32);
+impl Default for PredatorHuntThreshold {
+    fn default() -> Self {
+        Self(40.0)
+    }
+}
+impl PredatorHuntThreshold {
+    pub const SERI_SENTINEL: f32 = -1.0;
+    pub fn is_configured_in_seri(value: f32) -> bool {
+        value > Self::SERI_SENTINEL
+    }
+}

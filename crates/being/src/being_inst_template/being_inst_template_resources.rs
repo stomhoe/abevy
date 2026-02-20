@@ -10,15 +10,15 @@ common::define_entity_map_systems!(
     "BIT",
     BeingInstTemplate,
     common::common_components::StrId,
-    BitSeri, "seri.being.bit", "bit.ron",
+    BitSeri, "seri.being.inst_templ", "bit.ron",
 );
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BitSeri {
     pub id: String,
-    #[serde(default)]
-    pub fallback_faction: String,
     pub points: u32,
 
+    #[serde(default)]//for wild animals, leave empty
+    pub fallback_faction: String,
     #[serde(default)]
     pub consecutive_name_weighted_distributions: Vec<Vec<(String, f32)>>,//to be appended to each other.
     pub race: String,
@@ -48,6 +48,9 @@ pub struct BitSeri {
     pub whitelisted_tiles_for_spawning: HashSet<String>,
     #[serde(default)]
     pub blacklisted_tiles_for_spawning: HashSet<String>,
+    #[serde(default = "default_predator_hunt_threshold")]
+    pub predator_hunt_threshold: f32,
 }
 
 fn default_multiplier() -> f32 { 1.0 }
+fn default_predator_hunt_threshold() -> f32 { ::being_shared::PredatorHuntThreshold::SERI_SENTINEL }

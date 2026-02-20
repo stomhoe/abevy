@@ -1,6 +1,6 @@
 use core::f32;
 
-use being_shared::ControlledLocally;
+use being_shared::ComputedLocally;
 use bevy::ecs::entity::EntityHashSet;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
@@ -14,7 +14,7 @@ use ::tilemap_shared::*;
 
 use crate::{
     movement_components::*,
-    movement_messages::TransformFromServer,
+    movement_messages::*,
 };
 
 
@@ -53,13 +53,13 @@ pub fn do_free_movement(
     writer.write_batch(move_anim_msgs);
 }
 
-pub fn sync_movement_to_server(
+pub fn send_transforms_to_clients(
     query: Query<
         (Entity, &Transform, &MoveVecMag),
         (Without<GridLockedMovement>, Changed<Transform>),
     >,
     server_state: Res<State<ServerState>>,
-    mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
+    mut ewriter: MessageWriter<ToClients<UnreliableTransform>>,
 ) {
     if server_state.get() != &ServerState::Running {
         return;
@@ -68,17 +68,17 @@ pub fn sync_movement_to_server(
     for (being_ent, transform, _) in query.iter() {
         let to_clients = ToClients {
             mode: SendMode::BroadcastExcept(ClientId::Server),
-            message: TransformFromServer::new(being_ent, transform.clone(), false),
+            message: UnreliableTransform::new(being_ent, transform.clone(), ),
         };
         ewriter.write(to_clients);
     }
 }
 
 pub fn prepare_grid_locked_movement(
-    param_set: BlockingTileParamSet,
+    blocking_tiles: BlockingTileParamSet,
     time: Res<Time>,
     client_state: Res<State<ClientState>>,
-    mut tsf_from_server_writer: MessageWriter<ToClients<TransformFromServer>>,
+    mut tsf_from_server_writer: MessageWriter<ToClients<UnreliableTransform>>,
     mut beings_changed_anim_move_state_writer: MessageWriter<BeingChangedMoveState>,
     mut being_changed_state_set: Local<HashSet<BeingChangedMoveState>>,
 
@@ -90,10 +90,11 @@ pub fn prepare_grid_locked_movement(
             &MoveVecMag,
             &DimensionRef,
             &mut GridLockedMovement,
-            Has<ControlledLocally>,
+            Has<ComputedLocally>,
         ),
     >,
     mut to_drain: Local<Vec<Entity>>,
+    mut transforms_to_send: Local<Vec<ToClients<UnreliableTransform>>>,
 ) {
     being_changed_state_set.reserve(query.iter().size_hint().0);
 
@@ -217,7 +218,7 @@ pub fn prepare_grid_locked_movement(
             };
 
             let next_target = current_snapped.xy() + (current_dir * step_distance);
-            if param_set.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(next_target), being_ent) {
+            if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(next_target), being_ent) {
                 glm.queued_move_dir = Vec2::ZERO;
                 glm.active_move_dir = Vec2::ZERO;
                 if !moved {
@@ -244,7 +245,7 @@ pub fn prepare_grid_locked_movement(
             if remaining_to_boundary <= 0.0001 {
                 current_translation = current_snapped;
                 let target = current_snapped.xy() + (current_dir * step_distance);
-                if param_set.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
+                if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
                     glm.queued_move_dir = Vec2::ZERO;
                     glm.active_move_dir = Vec2::ZERO;
                     if !moved {
@@ -261,7 +262,7 @@ pub fn prepare_grid_locked_movement(
 
             if will_reach_boundary {
                 let target = current_snapped.xy() + (current_dir * step_distance);
-                if param_set.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
+                if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
                     glm.queued_move_dir = Vec2::ZERO;
                     glm.active_move_dir = Vec2::ZERO;
                     if !moved {
@@ -302,16 +303,30 @@ pub fn prepare_grid_locked_movement(
             if !is_client {
                 let to_clients = ToClients {
                     mode: SendMode::BroadcastExcept(ClientId::Server),
-                    message: TransformFromServer::new(being_ent, transform.clone(), false),
+                    message: UnreliableTransform::new(being_ent, transform.clone(), ),
                 };
-                tsf_from_server_writer.write(to_clients);
+                transforms_to_send.push(to_clients);
             }
         } else {
             move_anim.set(false, being_ent, &mut being_changed_state_set);
         }
     }
     beings_changed_anim_move_state_writer.write_batch(being_changed_state_set.drain());
+    tsf_from_server_writer.write_batch(transforms_to_send.drain(..));
 }
+
+#[allow(unused_parens)]
+pub fn set_transforms_to_received(
+    mut reader: MessageReader<UnreliableTransform>,
+    mut query: Query<(&mut Transform), ()>
+) {
+    for msg in reader.read() {
+        let Ok(mut transf) = query.get_mut(msg.being_ent)
+        else {continue;};
+        *transf = msg.trans;
+    }
+}
+
 
 pub fn process_speed_modifiers(
     state: Res<State<ClientState>>,
@@ -319,7 +334,7 @@ pub fn process_speed_modifiers(
         Entity,
         &AppliedModifiers,
         &mut MoveVecMag,
-        Has<ControlledLocally>,
+        Has<ComputedLocally>,
     )>,
     modifiers_query: Query<
         (

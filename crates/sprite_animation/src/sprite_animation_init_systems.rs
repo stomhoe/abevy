@@ -109,8 +109,9 @@ pub fn init_animations(
             let scale = seri.scale;
             cmd.entity(ent).insert(Scale2D::from(scale));
         }
-        if let Some(play_speed) = seri.speed {
-            cmd.entity(ent).insert(PlayingSpeed(play_speed));
+        let default_speed = PlayingSpeed::default().0;
+        if (seri.speed - default_speed).abs() > f32::EPSILON {
+            cmd.entity(ent).insert(PlayingSpeed(seri.speed));
         }
         if let Some(color) = seri.color {
             let (red, green, blue, alpha) = color.into();
@@ -139,7 +140,7 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
         );
         let image_handle = asset_server.load(&seri.img_path);
 
-        let (rows, cols) = seri.rows_cols.unwrap_or((1, 1));
+        let (rows, cols) = seri.rows_cols;
         if rows < 1 || cols < 1 {
             if rows < 1 && cols < 1 {
                 error!(

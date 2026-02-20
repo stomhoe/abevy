@@ -14,6 +14,7 @@ game_common = { path = "../agame_common" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 modifier = { path = "../modifier" }
+movement = { path = "../movement" }
 #dimension = { path = "../dimension" }
 faction = { path = "../faction" }
 player = { path = "../player" }

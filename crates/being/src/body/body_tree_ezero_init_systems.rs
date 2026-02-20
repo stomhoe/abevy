@@ -35,6 +35,21 @@ pub fn init_ezero_body_trees(
         cmd.entity(body_tree_ent).insert((
             body_id.clone(),
             BodyTree,
+            BodyTreeMassKg(seri.mass_kg.max(0.0)),
+            BodyTreeDistributedTotals {
+                hp_capacity: seri.hp_capacity.max(0.0),
+                hp_regen_rate: seri.hp_regen_rate.max(0.0),
+                blood_capacity: seri.blood_capacity.max(0.0),
+                blood_pumping: seri.blood_pumping.max(0.0),
+                walk_speed: seri.walk_speed.max(0.0),
+                swim_speed: seri.swim_speed.max(0.0),
+                fly_speed: seri.fly_speed.max(0.0),
+                manipulation: seri.manipulation.max(0.0),
+                vision: seri.vision.max(0.0),
+                pain_sensitivity: seri.pain_sensitivity.max(0.0),
+                caloric_burn_rate: seri.caloric_burn_rate.max(0.0),
+                caloric_capacity: seri.caloric_capacity.max(0.0),
+            },
             EntityZero,
         ));
 

@@ -149,11 +149,11 @@ pub fn sync_hot_reload_markers(
         else { commands.entity(entity).remove::<HotReload>(); }
     }
     for entity in &probes {
-        if selection.probes { commands.entity(entity).try_insert(HotReload); }
+        if selection.probes_and_filters { commands.entity(entity).try_insert(HotReload); }
         else { commands.entity(entity).remove::<HotReload>(); }
     }
     for entity in &filters {
-        if selection.filters { commands.entity(entity).try_insert(HotReload); }
+        if selection.probes_and_filters { commands.entity(entity).try_insert(HotReload); }
         else { commands.entity(entity).remove::<HotReload>(); }
     }
     for entity in &global_gen_settings {

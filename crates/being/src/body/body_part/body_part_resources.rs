@@ -12,22 +12,51 @@ pub struct BodyPartSeri {
     pub parent: Option<String>,
     pub slots: Option<Vec<String>>,
     pub tags: Option<Vec<String>>,
-    pub coverage_weight: Option<u16>,
-    pub hp_capacity: Option<f32>,
-    pub hp_regen_rate: Option<f32>, //default 1
+    #[serde(default)]
+    pub coverage_weight: u16,
+    #[serde(default)]
+    pub hp_capacity: f32,
+    #[serde(default)]
+    pub hp_capacity_weight: f32,
+    #[serde(default)]
+    pub hp_regen_rate: f32, //default 0 -> unset
+    #[serde(default)]
+    pub hp_regen_rate_weight: f32,
     pub depth: Option<String>,
     #[serde(default)]
     pub vital: bool,
-    pub pain_sensitivity: Option<f32>,
+    #[serde(default)]
+    pub pain_sensitivity: f32,
+    #[serde(default)]
+    pub pain_sensitivity_weight: f32,
     pub kind: Option<String>,
-    pub bleed_rate: Option<f32>,
-    pub blood_capacity: Option<f32>,
+    #[serde(default)]
+    pub bleed_rate: f32,
+    #[serde(default)]
+    pub blood_capacity: f32,
+    #[serde(default)]
+    pub blood_capacity_weight: f32,
 
-    pub blood_pumping: Option<f32>,
-    pub manipulation: Option<f32>,
-    pub walk_speed: Option<f32>,
-    pub swim_speed: Option<f32>,
-    pub fly_speed: Option<f32>,
+    #[serde(default)]
+    pub blood_pumping: f32,
+    #[serde(default)]
+    pub blood_pumping_weight: f32,
+    #[serde(default)]
+    pub manipulation: f32,
+    #[serde(default)]
+    pub manipulation_weight: f32,
+    #[serde(default)]
+    pub walk_speed: f32,
+    #[serde(default)]
+    pub walk_speed_weight: f32,
+    #[serde(default)]
+    pub swim_speed: f32,
+    #[serde(default)]
+    pub swim_speed_weight: f32,
+    #[serde(default)]
+    pub fly_speed: f32,
+    #[serde(default)]
+    pub fly_speed_weight: f32,
 
     /// Tag used to enable synergistic modifiers across multiple matching parts.
     pub synergy_tag: Option<String>,
@@ -38,12 +67,24 @@ pub struct BodyPartSeri {
 
     pub extra_modifiers_on_body_holder: Option<HashMap<String, (String, String)>>,
 
-    pub vision: Option<f32>,
+    #[serde(default)]
+    pub vision: f32,
+    #[serde(default)]
+    pub vision_weight: f32,
 
-    pub caloric_burn_rate: Option<f32>, //calories burned per second when this body part is active
-    pub caloric_capacity: Option<f32>,  // calories that can be stored in this body part, if any
+    #[serde(default)]
+    pub caloric_burn_rate: f32, //calories burned per second when this body part is active
+    #[serde(default)]
+    pub caloric_burn_rate_weight: f32,
+    #[serde(default)]
+    pub caloric_capacity: f32,  // calories that can be stored in this body part, if any
+    #[serde(default)]
+    pub caloric_capacity_weight: f32,
 
-    pub mass: Option<f32>,
+    #[serde(default)]
+    pub mass_kg: f32,
+    #[serde(default)]
+    pub mass_weight: f32,
 }
 
 common::define_entity_map_systems!(

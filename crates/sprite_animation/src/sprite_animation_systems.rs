@@ -27,8 +27,16 @@ pub fn animate_sprite(
 
     base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, &Grounding, ), ()>,
 
-    mut sprites_query: Query<(Entity, Option<&mut SpritesheetAnimation>, &EntityZeroRef,
-        Option<&AnimExtraState>, Option<&PlayingSpeed>, Option<&mut AcAnimationProgresses>, Has<SpriteConfigNotFound>), ()>,
+    mut sprites_query: Query<(
+        Entity,
+        Option<&mut SpritesheetAnimation>,
+        &EntityZeroRef,
+        Option<&AnimExtraState>,
+        Option<&PlayingSpeed>,
+        Option<&mut AcAnimationProgresses>,
+        Option<&mut Transform>,
+        Has<SpriteConfigNotFound>,
+    ), ()>,
 
     spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), ()>,
 
@@ -44,7 +52,7 @@ pub fn animate_sprite(
 
     for (held_sprites, direction, moving, grounding) in base.iter_many(entis_to_iter) {
         for held_sprite in held_sprites.entities() {
-            let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses, has_sprite_config_not_found)) = sprites_query.get_mut(*held_sprite)
+            let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses, mut transform, has_sprite_config_not_found)) = sprites_query.get_mut(*held_sprite)
             else { error!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get sprite entity {:?}", held_sprite); continue };
 
             if has_sprite_config_not_found {
@@ -76,7 +84,11 @@ pub fn animate_sprite(
                 error!(target: SPRITE_ANIMATION_SYSTEM, "Failed to create sprite for animation entity {:?} because image is not loaded yet.", anim_ent);
                 continue;
             };
-            let sprite = sprite.sprite(&mut atlas_layouts);
+            let mut sprite = sprite.sprite(&mut atlas_layouts);
+            if let Some(anim_seri) = anim_seri {
+                sprite.flip_x = anim_seri.flip_x;
+                sprite.flip_y = anim_seri.flip_y;
+            }
 
             let (start_frame, should_update_alternating_state) = {
                 let base_frame = clip_start_frames
@@ -102,10 +114,11 @@ pub fn animate_sprite(
                 }
             };
 
+            let base_anim_speed = anim_seri.map(|seri| seri.speed).unwrap_or(PlayingSpeed::default().0);
             let speed_factor = playing_speed
                 .map(|speed| speed.0)
                 .or_else(|| anim_playing_speed.map(|speed| speed.0))
-                .unwrap_or_else(|| PlayingSpeed::default().0);
+                .unwrap_or(base_anim_speed);
 
             let playing = !anim_seri.map(|seri| seri.paused).unwrap_or(false);
 
@@ -147,6 +160,24 @@ pub fn animate_sprite(
                 insert_needed = true;
             }
 
+            let target_direction = anim_seri
+                .map(|seri| seri.cardinal_rotation)
+                .unwrap_or(CardinalDirection::South);
+
+            if let Some(mut transform) = transform {
+                if target_direction != CardinalDirection::South {
+                    transform.rotation = Quat::from_rotation_z(cardinal_rotation_angle(target_direction));
+                } else {
+                    transform.rotation = Quat::IDENTITY;
+                }
+            }
+
+            if target_direction != CardinalDirection::South {
+                cmd.entity(ent).insert(target_direction);
+            } else {
+                cmd.entity(ent).remove::<CardinalDirection>();
+            }
+
             if insert_needed {
                 cmd.entity(ent).try_insert((sprite, spritesheet_animation, z.clone(), y_sort.cloned().unwrap_or_default()));
 
@@ -160,6 +191,15 @@ pub fn animate_sprite(
                 }
             }
         }
+    }
+}
+
+fn cardinal_rotation_angle(direction: CardinalDirection) -> f32 {
+    match direction {
+        CardinalDirection::South => 0.0,
+        CardinalDirection::West => std::f32::consts::FRAC_PI_2,
+        CardinalDirection::North => std::f32::consts::PI,
+        CardinalDirection::East => -std::f32::consts::FRAC_PI_2,
     }
 }
 #[allow(unused_parens)]
@@ -184,10 +224,10 @@ pub fn update_animstate_for_clients(
         let event_data = SyncMoveState {being_ent, moving, grounding: grounding.cloned(), direction: direction.cloned()};
         if let Ok(controller) = controller.get(being_ent) {
             messages_to_send.push(ToClients {
-                mode: SendMode::BroadcastExcept(ClientId::Client(controller.client)),
+                mode: SendMode::BroadcastExcept(ClientId::Client(controller.client_ent)),
                 message: event_data,
             });
-            trace!(target: SPRITE_ANIMATION_SYSTEM, "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client);
+            trace!(target: SPRITE_ANIMATION_SYSTEM, "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client_ent);
         }
         else {
             messages_to_send.push(ToClients { mode: SendMode::Broadcast, message: event_data, });

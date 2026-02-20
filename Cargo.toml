@@ -57,8 +57,8 @@ avian2d = "0.5.0"
 #bevy_save = "1.0.0"
 #bevy_rand = "0.11.1"
 #bevy_enhanced_input = "0.15.2"
-#bevy_northstar = "0.3.1"
-#big_brain = "0.22.0"
+bevy_northstar = "0.6.1"
+big-brain = "0.22.0"
 
 #cargo upgrade --incompatible
 

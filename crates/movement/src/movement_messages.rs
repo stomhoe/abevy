@@ -7,15 +7,15 @@ pub struct SendMoveInput {
     pub vec: Vec2,
 }
 
-#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
-pub struct TransformFromServer {
+
+#[derive(Message, Deserialize,Serialize, Clone, MapEntities)]
+pub struct UnreliableTransform {
     #[entities]
-    pub being: Entity,
+    pub being_ent: Entity,
     pub trans: Transform,
-    pub interpolate: bool,
 }
-impl TransformFromServer {
-    pub fn new(being: Entity, trans: Transform, interpolate: bool) -> Self {
-        TransformFromServer { being, trans, interpolate }
+impl UnreliableTransform {
+    pub fn new(being: Entity, trans: Transform, ) -> Self {
+        Self { being_ent: being, trans, }
     }
 }

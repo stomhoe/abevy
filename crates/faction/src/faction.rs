@@ -1,7 +1,7 @@
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::{AppRuleExt};
-use game_common::game_common::{GameplaySystems, StatefulSessionSystems};
+use game_common::game_common::StatefulSessionSystems;
 use std::time::Duration;
 
 use crate::{faction_resources::*, faction_systems::*, faction_components::*};
@@ -19,9 +19,12 @@ pub fn plugin(app: &mut App) {
 
     .add_plugins((
         plugin_faction,
+        crate::culture::plugin,
+        crate::faction_inst_templ::plugin,
     ))
 
     .replicate::<Faction>()
+    .replicate::<FactionInstTempl>()
     .replicate::<BelongsToFaction>()
 
     .register_type::<BelongsToFaction>()

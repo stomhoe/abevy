@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use bevy::transform::components::GlobalTransform;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
+use game_common::game_common_timers::{DespawnOnTimeout, MessageOnTimeout};
 use std::collections::{BTreeMap, HashMap};
 
 use camera::camera_components::CameraTarget;
 use common::common_components::*;
-use game_common::game_common_components::DespawnTimer;
 use tilemap::regioning::regioning_components::*;
 use ::tilemap_shared::*;
 
@@ -27,8 +27,8 @@ pub fn regions_list_window(
         Option<&RegionPlannedTiles>,
         Option<&ChunksActiveInRegion>,
         Option<&CountsOfSgcs>,
-        Option<&PendingOfferTimeout>,
-        Option<&DespawnTimer>,
+        Has<MessageOnTimeout>,
+        Has<DespawnOnTimeout>,
         Has<AllTilesPrepared>,
         Has<BuildingStarted>,
         Has<AllClaimsProcessed>,
@@ -50,10 +50,10 @@ pub fn regions_list_window(
     let mut open = window_visible.regions_list;
 
     // Group regions by dimension and position (keyed by StrId and Entity number)
-    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, Option<&PendingOfferTimeout>, Option<&DespawnTimer>, bool, bool, bool)>)> =
+    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, bool, bool, bool, bool, bool)>)> =
         BTreeMap::new();
 
-    for (entity, _region, dim_ref, region_pos, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims) in region_query.iter() {
+    for (entity, _region, dim_ref, region_pos, name, grid, claim_list, planned_tiles, chunks_active, counts, timeout_timer, empty_timer, has_all_tiles, has_building_started, has_all_claims) in region_query.iter() {
         let dim_key = if let Ok(str_id) = id_query.get(dim_ref.0) {
             format!("{} ({})", str_id.as_str(), dim_ref.0.index())
         } else {
@@ -64,7 +64,7 @@ pub fn regions_list_window(
             .entry(dim_key.clone())
             .or_insert_with(|| (dim_ref.0, HashMap::new()))
             .1
-            .insert(*region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims));
+            .insert(*region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, timeout_timer, empty_timer, has_all_tiles, has_building_started, has_all_claims));
     }
 
     // Get camera target dimension and position
@@ -171,7 +171,7 @@ pub fn regions_list_window(
                 .collect();
             selected_region_details.sort_by_key(|(_, (entity, ..))| entity.index());
 
-            for (region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, pending_timeout, empty_timer, has_all_tiles, has_building_started, has_all_claims)) in selected_region_details {
+            for (region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, timeout, despawn, has_all_tiles, building_started, has_all_claims)) in selected_region_details {
                 let name_str = name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
                     egui::CollapsingHeader::new(format!("Details: {} (Entity: {:?})", name_str, entity))
                         .default_open(true)
@@ -224,19 +224,19 @@ pub fn regions_list_window(
                                     ui.label(format!("CountSgcs: {}", count_sgcs.0.len()));
                                 }
 
-                                if pending_timeout.is_some() {
+                                if *timeout {
                                     ui.label("⏱ PendingOfferTimeout");
                                 }
 
-                                if empty_timer.is_some() {
-                                    ui.label("🗑 EmptyRegionDespawnTimer");
+                                if *despawn {
+                                    ui.label("🗑 DespawnOnTimeout");
                                 }
 
                                 if *has_all_tiles {
                                     ui.label("✓ AllTilesPrepared");
                                 }
 
-                                if *has_building_started {
+                                if *building_started {
                                     ui.label("▶ BuildingStarted");
                                 }
 

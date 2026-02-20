@@ -9,8 +9,12 @@ let bush_feature = idxmax(hp82, 0.07)
 let bush_feature = *(bush_feature, pd12)
 let bush_feature = +(bush_feature, -0.0)
 
-out = idxmax(0.5, tree_feature, bush_feature)
+let cave_portal_feature = idxmax(hp82, 0.005)
+let cave_portal_feature = *(inlandness, cave_portal_feature)
+
+out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature)
 
 bif "" -> []
-bif "" -> [elftree_sampler]
 bif "" -> [elfveg_sampler]
+bif "" -> [elftree_sampler]
+bif "" -> [portal_cave, ]

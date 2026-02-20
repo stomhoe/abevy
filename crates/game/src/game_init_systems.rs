@@ -38,7 +38,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 {
     let Ok(mut settings) = settings.single_mut()
     else {
-        error!(target: "game_init_systems", "Failed to get AaGlobalGenSettings");
+        error!(target: GAME_INIT, "Failed to get AaGlobalGenSettings");
         return;
     };
 
@@ -70,7 +70,7 @@ pub fn host_on_player_added(mut cmd: Commands,
     }
 
     let Ok(host_faction) = host_faction.single() else {
-        error!("Failed to get host faction");
+        error!(target: GAME_INIT, "Failed to get host faction");
         return;
     };
     for (player_ent, username) in query.iter() {
@@ -80,11 +80,11 @@ pub fn host_on_player_added(mut cmd: Commands,
             //USAR EL DEFAULT ASE Q SE DESPAWNEE
 
             let created_character = cmd.spawn((Being::default(), username.clone(),
-                ControlledBy { client: player_ent },
+                ControlledBy { client_ent: player_ent, human_input: true },
                 CharacterCreatedBy { player: player_ent },
-                Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
                 BitStrIdRef(StrId::trunc("pig")),
                 BelongsToFaction(host_faction),
+                Transform::default(),
             )).id();
             cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));
 
@@ -103,11 +103,11 @@ pub fn find_common_player_spawn_origin(
     mut search_params: SearchParams,
     mut active_probe_ent: Local<Option<Entity>>,
     mut search_finished: Local<bool>,
-    mut settings: Query<&GlobalGenSettings>,
+    settings: Query<&GlobalGenSettings>,
 ) {
     let Ok(settings) = settings.single()
     else {
-        error!(target: "game_init_systems", "Failed to get AaGlobalGenSettings");
+        error!(target: GAME_INIT, "Failed to get AaGlobalGenSettings");
         return;
     };
     let make_search_request = |_cmd: &mut Commands| -> Option<TerrProbeJob> {
@@ -128,7 +128,7 @@ pub fn find_common_player_spawn_origin(
     };
     let handle_success = |cmd: &mut Commands,
                               found_pos: GlobalTilePos,
-                              requester: Entity,
+                              _requester: Entity,
                               _sampled_val: f32|
      -> bool {
         let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
@@ -142,8 +142,8 @@ pub fn find_common_player_spawn_origin(
         true
     };
 
-    let handle_failure = |_cmd: &mut Commands, failed_filter_ent: Entity| {
-        warn!(target: GAME_INIT, "Common spawn search failed for filter {:?}", failed_filter_ent);
+    let handle_failure = |_cmd: &mut Commands, failed_probe_ent: Entity| {
+        warn!(target: GAME_INIT, "Common spawn search failed for probe {:?}", failed_probe_ent);
     };
 
     run_oneshot_suitable_pos_search_logic!(
@@ -171,20 +171,33 @@ pub fn put_player_beings_on_map(
     let spawn_dim = found.dim_ref;
     let origin = found.pos;
 
+    let compute_transform = |origin: GlobalTilePos, next_x: &mut i32| -> Transform {
+        let spawn_pos = origin + GlobalTilePos::new(*next_x, 0);
+        *next_x += 1;
+        let world_pos: Vec2 = spawn_pos.into();
+        Transform::from_translation(world_pos.extend(0.0))
+    };
+
     for (created_characters, ) in players.iter() {
         debug!(target: GAME_INIT, "Spawning player being: {:?}", created_characters);
 
-        for &created_character in created_characters.entities() {
-            let spawn_pos = origin + GlobalTilePos::new(*next_spawn_offset_x, 0);
-            *next_spawn_offset_x += 1;
-            let world_pos: Vec2 = spawn_pos.into();
+        for &being_ent in created_characters.entities() {
+            let transform = compute_transform(origin, &mut *next_spawn_offset_x);
 
-            cmd.entity(created_character).try_insert((
-                Transform::from_translation(world_pos.extend(0.0)),
+            cmd.entity(being_ent)
+                .try_remove::<Transform>()
+                .try_insert((
+                transform,
                 DimensionRef(spawn_dim.0),
                 ActivatingChunks::new(&chunk_range),
             ));
         }
     }
-
+    let transform = compute_transform(origin, &mut *next_spawn_offset_x);
+    let bear_ent = cmd.spawn((
+        BitStrIdRef::new("bear"),
+        DimensionRef(spawn_dim.0),
+        transform,
+        Predator,
+    )).id();
 }

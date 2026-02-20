@@ -11,7 +11,7 @@ use bevy::platform::collections::{HashSet, HashMap};
 use smallvec::SmallVec;
 
 
-use crate::{DiagonalCardinalDirection, DimensionRef, tilemap_positioning::*};
+use crate::{CardinalDirection, DiagonalCardinalDirection, DimensionRef, tilemap_positioning::*};
 
 
 #[derive(Resource, Default)]
@@ -217,6 +217,41 @@ impl SpriteTilesAtGpos {
     }
 }
 
+#[derive(Resource, Debug, Default)]
+pub struct BeingsAtGpos {
+    pub map: bevy::platform::collections::HashMap<(DimensionRef, ChunkPos), ChunkEntityMatrix>,
+}
+impl BeingsAtGpos {
+    fn chunk_and_local(gpos: GlobalTilePos) -> (ChunkPos, UVec2) {
+        let chunk = gpos.to_chunkpos();
+        let chunk_origin = chunk.to_tilepos();
+        let local = (gpos.0 - chunk_origin.0).as_uvec2();
+        (chunk, local)
+    }
+    pub fn beings_at_pos(&self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
+        let (chunk, local) = Self::chunk_and_local(gpos);
+        self.map
+            .get(&(dim_ref, chunk))
+            .map(|matrix| matrix.get(local))
+            .unwrap_or(&[])
+    }
+    pub fn remove_being(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being_ent: Entity) {
+        let (chunk, local) = Self::chunk_and_local(gpos);
+        let Some(matrix) = self.map.get_mut(&(dim_ref, chunk)) else {
+            return;
+        };
+        matrix.swap_remove(local, being_ent);
+    }
+    pub fn insert_being(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being_ent: Entity) {
+        let (chunk, local) = Self::chunk_and_local(gpos);
+        let matrix = self
+            .map
+            .entry((dim_ref, chunk))
+            .or_insert_with(ChunkEntityMatrix::new);
+        matrix.push(local, being_ent);
+    }
+}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct SpriteTile;
 
@@ -346,6 +381,7 @@ impl TileCollisionMask {
         tile_origin: GlobalTilePos,
         target: GlobalTilePos,
         flip: TileFlip,
+        direction: CardinalDirection,
     ) -> bool {
         let rel = target.0 - tile_origin.0;
         if rel.x < 0 || rel.y < 0 {
@@ -353,12 +389,18 @@ impl TileCollisionMask {
         }
         let x = rel.x as u32;
         let y = rel.y as u32;
-        self.is_solid_local_with_flip(x, y, flip)
+        self.is_solid_local_with_flip(x, y, flip, direction)
     }
 
 
-    pub fn is_solid_local_with_flip(&self, x: u32, y: u32, flip: TileFlip) -> bool {
-        let (sx, sy) = self.target_to_source_local(x, y, flip);
+    pub fn is_solid_local_with_flip(
+        &self,
+        x: u32,
+        y: u32,
+        flip: TileFlip,
+        direction: CardinalDirection,
+    ) -> bool {
+        let (sx, sy) = self.target_to_source_local(x, y, flip, direction);
         let Some((sx, sy)) = sx.zip(sy) else {
             return true;
         };
@@ -375,18 +417,27 @@ impl TileCollisionMask {
         (self.bits & (1u64 << bit_i)) != 0
     }
 
-    fn target_to_source_local(&self, x: u32, y: u32, flip: TileFlip) -> (Option<u32>, Option<u32>) {
+    fn target_to_source_local(
+        &self,
+        x: u32,
+        y: u32,
+        flip: TileFlip,
+        direction: CardinalDirection,
+    ) -> (Option<u32>, Option<u32>) {
         let width = self.width as u32;
         let height = self.height as u32;
-        if x >= width || y >= height {
+
+        let (mut w, mut h) = match direction {
+            CardinalDirection::South | CardinalDirection::North => (width, height),
+            CardinalDirection::West | CardinalDirection::East => (height, width),
+        };
+        if x >= w || y >= h {
             return (None, None);
         }
 
         // Inverse transform from target cell -> source cell to match tile rendering flips.
         let mut sx = x;
         let mut sy = y;
-        let mut w = width;
-        let mut h = height;
 
         if flip.y {
             sy = h - 1 - sy;
@@ -402,7 +453,33 @@ impl TileCollisionMask {
         if sx >= w || sy >= h {
             return (None, None);
         }
-        (Some(sx), Some(sy))
+
+        let (src_x, src_y) = match direction {
+            CardinalDirection::South => (sx, sy),
+            CardinalDirection::West => {
+                if w != height || h != width {
+                    return (None, None);
+                }
+                (sy, height - 1 - sx)
+            }
+            CardinalDirection::North => {
+                if w != width || h != height {
+                    return (None, None);
+                }
+                (width - 1 - sx, height - 1 - sy)
+            }
+            CardinalDirection::East => {
+                if w != height || h != width {
+                    return (None, None);
+                }
+                (width - 1 - sy, sx)
+            }
+        };
+
+        if src_x >= width || src_y >= height {
+            return (None, None);
+        }
+        (Some(src_x), Some(src_y))
     }
 }
 
@@ -432,9 +509,35 @@ pub struct SafeDespawn(pub Entity);
 
 
 #[derive(Component, Clone, Deserialize, Serialize, Debug,)]
+/// interaction positions (offsets relative to the tile's anchor GlobalTilePos)
+pub struct InteractionZones(
+    pub HashIdMap<InteractionZone>
+);
+impl InteractionZones {
+    pub fn new(map: HashMap<String, InteractionZoneSeri>) -> Self {
+        let mut zones = HashIdMap::with_capacity(map.len());
+        for (id, seri) in map {
+            zones.overwrite(HashId::from(id), InteractionZone::new(seri));
+        }
+        Self(zones)
+    }
+    pub fn is_inside_interaction_zone(
+        &self,
+        zone_id: HashId,
+        anchor_transf: Vec2,
+        client_transf: Vec2,
+        direction: CardinalDirection,
+    ) -> bool {
+        let zone = self.0.get(zone_id).ok();
+        zone.is_some_and(|zone| zone.is_inside_any(direction, anchor_transf, client_transf))
+    }
+    pub const ENTER: HashId = HashId::hash("enter");
+}
+
+#[derive(Component, Clone, Deserialize, Serialize, Debug,)]
 pub struct InteractionZone{
     offset_positions: Vec<GlobalTilePos>,
-    radius_paired_w_offsets: Vec<(f32, f32)>,
+    radius_paired_w_offsets: Vec<(f32, Vec2)>,
 }
 impl InteractionZone {
     pub fn new(seri: InteractionZoneSeri) -> Self {
@@ -444,7 +547,11 @@ impl InteractionZone {
             .map(GlobalTilePos::from)
             .collect();
 
-        let radius_paired_w_offsets = seri.radius_offset;
+        let radius_paired_w_offsets = seri
+            .radius_offset
+            .into_iter()
+            .map(|(radius, (x, y))| (radius, Vec2::new(x, y)))
+            .collect();
 
         Self {
             offset_positions,
@@ -452,17 +559,22 @@ impl InteractionZone {
         }
     }
 
-    pub fn is_inside_any(&self, anchor_transf: Vec2, client_transf: Vec2) -> bool {
+    pub fn is_inside_any(
+        &self,
+        direction: CardinalDirection,
+        anchor_transf: Vec2,
+        client_transf: Vec2,
+    ) -> bool {
         for &offset_pos in &self.offset_positions {
             let anchor_gpos: GlobalTilePos = anchor_transf.into();
             let client_pos: GlobalTilePos = client_transf.into();
-            let checked_pos = anchor_gpos + offset_pos;
+            let checked_pos = anchor_gpos + rotate_gpos_offset(offset_pos, direction);
             if checked_pos == client_pos {
                 return true;
             }
         }
         for &(radius, offset) in &self.radius_paired_w_offsets {
-            let pos = anchor_transf + offset;
+            let pos = anchor_transf + rotate_vec2_offset(offset, direction);
             if pos.distance(client_transf) <= radius {
                 return true;
             }
@@ -476,5 +588,27 @@ pub struct InteractionZoneSeri{
     #[serde(default)]
     pub offset_positions: Vec<(i8, i8)>,
     #[serde(default)]
-    pub radius_offset: Vec<(f32, f32)>,
+    pub radius_offset: Vec<(f32, (f32, f32))>,
+}
+
+fn rotate_gpos_offset(offset: GlobalTilePos, direction: CardinalDirection) -> GlobalTilePos {
+    let x = offset.0.x;
+    let y = offset.0.y;
+    match direction {
+        CardinalDirection::South => offset,
+        CardinalDirection::West => GlobalTilePos::new(-y, x),
+        CardinalDirection::North => GlobalTilePos::new(-x, -y),
+        CardinalDirection::East => GlobalTilePos::new(y, -x),
+    }
+}
+
+fn rotate_vec2_offset(offset: Vec2, direction: CardinalDirection) -> Vec2 {
+    let x = offset.x;
+    let y = offset.y;
+    match direction {
+        CardinalDirection::South => offset,
+        CardinalDirection::West => Vec2::new(-y, x),
+        CardinalDirection::North => Vec2::new(-x, -y),
+        CardinalDirection::East => Vec2::new(y, -x),
+    }
 }

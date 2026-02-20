@@ -19,7 +19,7 @@
     walk_speeds_on_tiles: None,
     whitelisted_tiles_for_spawning: None,
     blacklisted_tiles_for_spawning: None,
-    body_tree: "bear_body",
+    body_tree: "bear",
     size_variation: Some((min: 0.6, max: 3., mean: 1.1, std_dev: 0.2)),
     hori_variation: Some((min: 0.95, max: 1.05, mean: 1.0, std_dev: 0.05)),
     vert_variation: Some((min: 0.95, max: 1.05, mean: 1.0, std_dev: 0.05)),

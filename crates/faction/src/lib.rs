@@ -6,3 +6,4 @@ pub mod faction_resources;
 mod faction_systems;
 
 pub mod culture;
+pub mod faction_inst_templ;

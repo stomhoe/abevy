@@ -49,9 +49,12 @@ pub struct RaceSeri {
 
     pub whitelisted_tiles_for_spawning: Option<HashSet<String>>,
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
+    #[serde(default = "default_predator_hunt_threshold")]
+    pub predator_hunt_threshold: f32,
 }
 
 fn default_true() -> bool { true }
+fn default_predator_hunt_threshold() -> f32 { ::being_shared::PredatorHuntThreshold::SERI_SENTINEL }
 
 common::define_entity_map_systems!(
     Race,

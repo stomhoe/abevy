@@ -1,0 +1,21 @@
+id: anta3
+tags: [portal, land, anta]
+size: (3, 3)
+debug: [cave_portal_feature]
+
+let shared_pd = pd299
+//todo poner noises para las rocas
+
+let boulder_feature = idxmax(hp82, 1.2)
+let boulder_feature = *(boulder_feature, pd32)
+let boulder_feature = *(boulder_feature, shared_pd, )
+let boulder_feature = +(boulder_feature, -0.0)
+
+let cave_portal_feature = idxmax(hp82, 0.007)
+let cave_portal_feature = *(inlandness, cave_portal_feature)
+
+out = idxmax(0.5, boulder_feature, cave_portal_feature)
+
+bif "" -> []
+bif "" -> [boulder_sampler, ]
+bif "" -> [portal_cave, ]

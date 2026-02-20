@@ -41,6 +41,46 @@ impl BodyPartSlots {
 #[derive(Component, Debug, Default, Copy, Clone, )]
 pub struct BodyPartCoverageWeight(pub u16);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyPartMassWeight(pub f32);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyPartMassKg(pub f32);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyPartForcedDistribution {
+    pub mass_kg: f32,
+    pub hp_capacity: f32,
+    pub hp_regen_rate: f32,
+    pub blood_capacity: f32,
+    pub blood_pumping: f32,
+    pub walk_speed: f32,
+    pub swim_speed: f32,
+    pub fly_speed: f32,
+    pub manipulation: f32,
+    pub vision: f32,
+    pub pain_sensitivity: f32,
+    pub caloric_burn_rate: f32,
+    pub caloric_capacity: f32,
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyPartWeightedDistribution {
+    pub mass_kg: f32,
+    pub hp_capacity: f32,
+    pub hp_regen_rate: f32,
+    pub blood_capacity: f32,
+    pub blood_pumping: f32,
+    pub walk_speed: f32,
+    pub swim_speed: f32,
+    pub fly_speed: f32,
+    pub manipulation: f32,
+    pub vision: f32,
+    pub pain_sensitivity: f32,
+    pub caloric_burn_rate: f32,
+    pub caloric_capacity: f32,
+}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct BodyPartVital;
 

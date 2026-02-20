@@ -1,3 +1,4 @@
+use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::common_id_components::HashId;
 use ::tilemap_shared::*;
@@ -7,7 +8,7 @@ use crate::being_inst_template::being_inst_template_resources::BitRef;
 use crate::body::BodyTreeStrIdRef;
 use sprite_shared::SampleSpriteEnts;
 
-use crate::being_components::{Being, MappedSpritesToSample};
+use crate::being_components::{Being, };
 use crate::body::body_sampler::body_sampler_components::{SampleBodyFromStrId, SampleTreeEnt};
 use crate::race::race_components::{Race, SexesSampler};
 use crate::race::race_resources::RaceRef;

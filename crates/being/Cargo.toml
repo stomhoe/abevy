@@ -17,10 +17,13 @@ modifier = { path = "../modifier" }
 sprite = { path = "../sprite" }
 sprite_shared = { path = "../sprite_shared" }
 tilemap_shared = { path = "../tilemap_shared" }
+param_sets = { path = "../param_sets" }
 
 bevy = { workspace = true }
+big-brain = { workspace = true }
 
 serde = { workspace = true }
+bevy_northstar = { workspace = true }
 #strum = { workspace = true }
 #strum_macros = { workspace = true }
 #bevy_simple_scroll_view = { workspace = true }

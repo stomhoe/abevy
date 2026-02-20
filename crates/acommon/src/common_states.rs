@@ -53,8 +53,7 @@ pub struct HotReloadSelection {
     pub sprite_configs: bool,
     pub animations: bool,
     pub terrain_oplists_and_noises: bool,
-    pub probes: bool,
-    pub filters: bool,
+    pub probes_and_filters: bool,
     pub global_gen_settings: bool,
     pub beings_inst_templates: bool,
     pub races: bool,
@@ -63,16 +62,15 @@ pub struct HotReloadSelection {
 impl Default for HotReloadSelection {
     fn default() -> Self {
         Self {
-            tiles: true,
-            sprite_configs: true,
-            animations: true,
+            tiles: false,
+            sprite_configs: false,
+            animations: false,
             terrain_oplists_and_noises: true,
-            probes: true,
-            filters: true,
+            probes_and_filters: true,
             global_gen_settings: true,
-            beings_inst_templates: true,
-            races: true,
-            sexes: true,
+            beings_inst_templates: false,
+            races: false,
+            sexes: false,
         }
     }
 }

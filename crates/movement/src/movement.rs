@@ -30,14 +30,15 @@ pub fn plugin(app: &mut App) {
                     do_free_movement,
                 ),
                 update_facing_dir,
-                sync_movement_to_server.run_if(in_state(ServerState::Running)),
+                send_transforms_to_clients.run_if(in_state(ServerState::Running)),
+                set_transforms_to_received,
             )
             .in_set(MovementSystems),
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendMoveInput>(Channel::Unreliable)
-        .add_mapped_server_message::<TransformFromServer>(Channel::Unreliable)
+        .add_mapped_server_message::<UnreliableTransform>(Channel::Unreliable)
         .replicate::<WallPhaser>()
         .replicate::<LandWalker>()
         .replicate::<Swimmer>()

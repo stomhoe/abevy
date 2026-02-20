@@ -1,7 +1,7 @@
 ([(
     id: "spider_south_idle",
-    rows_cols: Some((4, 4)),
-    speed: Some(0.),
+    rows_cols: (4, 4),
+    speed: 0.,
     img_path: "texture/being/npc/spider.png",
     clips: [
         (
@@ -14,7 +14,7 @@
     y_sort: Some(0),
 ),(
     id: "spider_south_move",
-    rows_cols: Some((4, 4)),
+    rows_cols: (4, 4),
     img_path: "texture/being/npc/spider.png",
     clips: [
         (
@@ -27,8 +27,8 @@
     y_sort: Some(0),
 ),(
     id: "spider_north_idle",
-    rows_cols: Some((4, 4)),
-    speed: Some(0.),
+    rows_cols: (4, 4),
+    speed: 0.,
     img_path: "texture/being/npc/spider.png",
     clips: [
         (
@@ -41,7 +41,7 @@
 
 ),(
     id: "spider_north_move",
-    rows_cols: Some((4, 4)),
+    rows_cols: (4, 4),
     img_path: "texture/being/npc/spider.png",
     //alternating_start_frames: Some((2, 4)),
     clips: [
@@ -55,8 +55,8 @@
     y_sort: Some(0),
 ),(
     id: "spider_west_idle",
-    rows_cols: Some((4, 4)),
-    speed: Some(0.),
+    rows_cols: (4, 4),
+    speed: 0.,
     img_path: "texture/being/npc/spider.png",
     clips: [
         (
@@ -69,7 +69,7 @@
     y_sort: Some(0),
 ),(
     id: "spider_west_move",
-    rows_cols: Some((4, 4)),
+    rows_cols: (4, 4),
     img_path: "texture/being/npc/spider.png",
     clips: [
         (
@@ -82,8 +82,8 @@
     y_sort: Some(0),
 ),(
     id: "spider_east_idle",
-    rows_cols: Some((4, 4)),
-    speed: Some(0.),
+    rows_cols: (4, 4),
+    speed: 0.,
     img_path: "texture/being/npc/spider.png",
     clips: [
         (
@@ -96,7 +96,7 @@
     y_sort: Some(0),
 ),(
     id: "spider_east_move",
-    rows_cols: Some((4, 4)),
+    rows_cols: (4, 4),
     img_path: "texture/being/npc/spider.png",
     clips: [
         (

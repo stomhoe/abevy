@@ -1,5 +1,6 @@
 use crate::game_common_components::*;
 use crate::game_common_states::*;
+use crate::game_common_timers::*;
 use ::sprite_shared::sprite_scale_offset::AllScalesAndOffsets;
 use ::sprite_shared::*;
 use bevy::ecs::entity_disabling::Disabled;
@@ -194,33 +195,5 @@ pub fn set_entity_name(
         }
 
         name.set(new_name);
-    }
-}
-
-#[allow(unused_parens)]
-pub fn tick_despawn_timers(
-    mut cmd: Commands,
-    mut query: Query<(Entity, &mut DespawnTimer), ()>,
-    time: Res<Time>,
-) {
-    for (entity, mut timer) in query.iter_mut() {
-        timer.0.tick(time.delta());
-        if timer.0.is_finished() {
-            cmd.entity(entity).try_despawn();
-        }
-    }
-}
-
-#[allow(unused_parens)]
-pub fn tick_sim_despawn_timers(
-    mut cmd: Commands,
-    mut query: Query<(Entity, &mut SimRunningDespawnTimer), ()>,
-    time: Res<Time>,
-) {
-    for (entity, mut timer) in query.iter_mut() {
-        timer.0.tick(time.delta());
-        if timer.0.is_finished() {
-            cmd.entity(entity).try_despawn();
-        }
     }
 }

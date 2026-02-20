@@ -17,6 +17,32 @@ pub struct BodyTreeSeri {
     pub name: String,
     #[serde(default)]
     pub tags: Vec<String>,
+    #[serde(default)]
+    pub mass_kg: f32,
+    #[serde(default)]
+    pub hp_capacity: f32,
+    #[serde(default)]
+    pub hp_regen_rate: f32,
+    #[serde(default)]
+    pub blood_capacity: f32,
+    #[serde(default)]
+    pub blood_pumping: f32,
+    #[serde(default)]
+    pub walk_speed: f32,
+    #[serde(default)]
+    pub swim_speed: f32,
+    #[serde(default)]
+    pub fly_speed: f32,
+    #[serde(default)]
+    pub manipulation: f32,
+    #[serde(default)]
+    pub vision: f32,
+    #[serde(default)]
+    pub pain_sensitivity: f32,
+    #[serde(default)]
+    pub caloric_burn_rate: f32,
+    #[serde(default)]
+    pub caloric_capacity: f32,
     pub root: BodyNodeSeri,
 }
 

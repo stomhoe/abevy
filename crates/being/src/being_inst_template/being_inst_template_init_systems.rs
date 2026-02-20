@@ -1,4 +1,4 @@
-use being_shared::{BeingInstTemplate, };
+use being_shared::{BeingInstTemplate, Predator, PredatorHuntThreshold};
 use bevy::prelude::*;
 use common::common_components::*;
 
@@ -64,6 +64,12 @@ pub fn init_being_templates(
             }
             if let Some(vert_variation) = template_seri.vert_variation {
                 cmd.entity(bit_entity).insert(SpriteVertNormalDist::new(vert_variation));
+            }
+            if PredatorHuntThreshold::is_configured_in_seri(template_seri.predator_hunt_threshold) {
+                cmd.entity(bit_entity).insert((
+                    Predator,
+                    PredatorHuntThreshold(template_seri.predator_hunt_threshold),
+                ));
             }
 
             // Resolve race entity from race string

@@ -1,7 +1,9 @@
 (
-    id: "bear_body",
+    id: "bear",
     name: "Bear Body",
     tags: ["ursine"],
+    mass_kg: 220.0,
+    walk_speed: 4.8,
     root: (
         part_id: "body",
         label_override: "Body",

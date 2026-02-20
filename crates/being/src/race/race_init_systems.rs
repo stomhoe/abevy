@@ -1,3 +1,4 @@
+use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
@@ -9,8 +10,9 @@ use sprite::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeig
 
 use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeStrIdRef;
-use crate::{being_components::MappedSpritesToSample, race::{race_components::*, race_resources::*}, sex };
+use crate::{race::{race_components::*, race_resources::*}, sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
+use ::being_shared::{Predator, PredatorHuntThreshold};
 
 pub fn init_races(
     mut cmd: Commands,
@@ -137,6 +139,12 @@ pub fn init_races(
             }
 
             let entity = entity_cmds.id();
+            if PredatorHuntThreshold::is_configured_in_seri(race_seri.predator_hunt_threshold) {
+                cmd.entity(entity).insert((
+                    Predator,
+                    PredatorHuntThreshold(race_seri.predator_hunt_threshold),
+                ));
+            }
 
             if !race_seri.sexes.is_empty() {
                 let mut sex_entities_weights: Vec<(Entity, f32)> = Vec::new();

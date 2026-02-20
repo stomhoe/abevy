@@ -68,11 +68,48 @@ pub fn init_body_parts(
             }
         }
 
-        if let Some(weight) = part.coverage_weight {
+        if part.coverage_weight > 0 {
+            let weight = part.coverage_weight;
             cmd.entity(part_ent).insert(BodyPartCoverageWeight(weight));
         }
+        cmd.entity(part_ent).insert((
+            BodyPartForcedDistribution {
+                mass_kg: part.mass_kg.max(0.0),
+                hp_capacity: part.hp_capacity.max(0.0),
+                hp_regen_rate: part.hp_regen_rate.max(0.0),
+                blood_capacity: part.blood_capacity.max(0.0),
+                blood_pumping: part.blood_pumping.max(0.0),
+                walk_speed: part.walk_speed.max(0.0),
+                swim_speed: part.swim_speed.max(0.0),
+                fly_speed: part.fly_speed.max(0.0),
+                manipulation: part.manipulation.max(0.0),
+                vision: part.vision.max(0.0),
+                pain_sensitivity: part.pain_sensitivity.max(0.0),
+                caloric_burn_rate: part.caloric_burn_rate.max(0.0),
+                caloric_capacity: part.caloric_capacity.max(0.0),
+            },
+            BodyPartWeightedDistribution {
+                mass_kg: part.mass_weight.max(0.0),
+                hp_capacity: part.hp_capacity_weight.max(0.0),
+                hp_regen_rate: part.hp_regen_rate_weight.max(0.0),
+                blood_capacity: part.blood_capacity_weight.max(0.0),
+                blood_pumping: part.blood_pumping_weight.max(0.0),
+                walk_speed: part.walk_speed_weight.max(0.0),
+                swim_speed: part.swim_speed_weight.max(0.0),
+                fly_speed: part.fly_speed_weight.max(0.0),
+                manipulation: part.manipulation_weight.max(0.0),
+                vision: part.vision_weight.max(0.0),
+                pain_sensitivity: part.pain_sensitivity_weight.max(0.0),
+                caloric_burn_rate: part.caloric_burn_rate_weight.max(0.0),
+                caloric_capacity: part.caloric_capacity_weight.max(0.0),
+            },
+        ));
+        if part.mass_weight > 0.0 {
+            cmd.entity(part_ent).insert(BodyPartMassWeight(part.mass_weight.max(0.0)));
+        }
 
-        if let Some(max_hp) = part.hp_capacity {
+        if part.hp_capacity > 0.0 {
+            let max_hp = part.hp_capacity;
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(max_hp),
@@ -85,7 +122,8 @@ pub fn init_body_parts(
             cmd.entity(part_ent).try_insert(BodyPartDamage(0.0));
         }
 
-        if let Some(hp_regen_rate) = part.hp_regen_rate {
+        if part.hp_regen_rate > 0.0 {
+            let hp_regen_rate = part.hp_regen_rate;
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(hp_regen_rate),
@@ -97,7 +135,8 @@ pub fn init_body_parts(
             ));
         }
 
-        if let Some(bleed_rate) = part.bleed_rate {
+        if part.bleed_rate > 0.0 {
+            let bleed_rate = part.bleed_rate;
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(bleed_rate),
@@ -109,7 +148,8 @@ pub fn init_body_parts(
             ));
         }
 
-        if let Some(blood_capacity) = part.blood_capacity {
+        if part.blood_capacity > 0.0 {
+            let blood_capacity = part.blood_capacity;
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(blood_capacity),
@@ -121,7 +161,8 @@ pub fn init_body_parts(
             ));
         }
 
-        if let Some(pain_sensitivity) = part.pain_sensitivity {
+        if part.pain_sensitivity > 0.0 {
+            let pain_sensitivity = part.pain_sensitivity;
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(pain_sensitivity),
@@ -133,7 +174,8 @@ pub fn init_body_parts(
             ));
         }
 
-        if let Some(manipulation) = part.manipulation {
+        if part.manipulation > 0.0 {
+            let manipulation = part.manipulation;
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -148,7 +190,8 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if let Some(walk_speed) = part.walk_speed {
+        if part.walk_speed > 0.0 {
+            let walk_speed = part.walk_speed;
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -163,7 +206,8 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if let Some(swim_speed) = part.swim_speed {
+        if part.swim_speed > 0.0 {
+            let swim_speed = part.swim_speed;
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -178,7 +222,8 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if let Some(fly_speed) = part.fly_speed {
+        if part.fly_speed > 0.0 {
+            let fly_speed = part.fly_speed;
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -193,7 +238,8 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if let Some(vision) = part.vision {
+        if part.vision > 0.0 {
+            let vision = part.vision;
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),

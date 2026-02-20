@@ -8,7 +8,7 @@
         ("", "texture/world/boulder/medpurple.png"),
     ],
     is_spritetile: true,
-    randflipx: true, randflipy: true, randflipd: true,
+    randflipx: true, randflipy: true, randflipd: true, randrot: true, transform_based_card_rotation: true,
     offset: (12.0, 0.0),
     size_in_tiles: (2, 1),
     colmask: [

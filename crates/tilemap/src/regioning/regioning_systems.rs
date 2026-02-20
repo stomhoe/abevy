@@ -3,7 +3,7 @@ use std::{mem::take};
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{common_components::{HashId}, common_tag_components::TagSet};
 use debug_unwraps::DebugUnwrapExt;
-use game_common::{game_common_components::DespawnTimer, game_common_samplers::EntityWeightedSampler};
+use game_common::{game_common_timers::*, game_common_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
@@ -132,7 +132,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
             warn!(target: "sgc_chunk_offer", "No structures could be offered for region at {}, marking as BuildingStarted immediately", region_pos);
             cmd.entity(region_ent).try_insert((BuildingStarted, AllClaimsProcessed));
         } else {
-            cmd.entity(region_ent).try_insert(PendingOfferTimeout { timeout_timer: Timer::from_seconds(0.2, TimerMode::Once) });
+            cmd.entity(region_ent).try_insert(TimeoutTimer::secs(0.2));
             writer.write_batch(take(&mut offers));
         }
 
@@ -196,7 +196,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             error!(target: "sgc_chunk_claim", "Received claim with index {} >= MAX_CLAIMS {}, skipping", claim.i, MAX_CLAIMS);
             continue;
         }
-        cmd.entity(claim.region_ent).try_remove::<PendingOfferTimeout>();
+        cmd.entity(claim.region_ent).try_remove::<(MessageOnTimeout, TimerComp)>();
 
         let i = claim.i as usize;
         unsafe{
@@ -407,23 +407,20 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 #[allow(unused_parens, )]
 pub fn despawn_empty_regions(mut cmd: Commands,
     to_add_despawn_timer_query: Query<(Entity, ),
-    (With<Region>, Without<ChunksActiveInRegion>, Without<DespawnTimer>)>,
-    regions_which_regained_chunks_query: Query<(Entity, &DimensionRef, &RegionPos, &ChunksActiveInRegion), (Added<ChunksActiveInRegion>, With<DespawnTimer>)>,
+    (With<Region>, Without<ChunksActiveInRegion>, Without<DespawnOnTimeout>)>,
+    regions_which_regained_chunks_query: Query<(Entity, &DimensionRef, &RegionPos, &ChunksActiveInRegion), (Added<ChunksActiveInRegion>, With<DespawnOnTimeout>)>,
 ){
-    // First pass: mark newly empty regions for despawn
-    to_add_despawn_timer_query.iter().for_each(|(region_ent, )| {
-        // Check if already marked, if not mark it
-
-        cmd.entity(region_ent).try_insert_if_new(DespawnTimer::new(40.0));
-    });
-    regions_which_regained_chunks_query.iter().for_each(|(region_ent, &dimension_ref, &region_pos, chunks_active_in_region, )| {
+    for (region_ent, ) in to_add_despawn_timer_query.iter() {
+        cmd.entity(region_ent).try_insert_if_new(DespawnTimer::secs(40.0));
+    }
+    for (region_ent, &dimension_ref, &region_pos, chunks_active_in_region, ) in regions_which_regained_chunks_query.iter() {
         if chunks_active_in_region.entities().is_empty() {
-            return;
+            continue;
         }
         debug!(target: "region", "Region entity {:?} at position {:?} in dimension {:?} regained active chunks, cancelling despawn",
             region_ent, region_pos, dimension_ref);
-        cmd.entity(region_ent).try_remove::<DespawnTimer>();
-    });
+        cmd.entity(region_ent).try_remove::<DespawnOnTimeout>();
+    }
 }
 #[allow(unused_parens, )]
 pub fn on_region_despawn_remove_from_loaded_regions(
@@ -479,15 +476,13 @@ pub fn failsafe_timeout_pending_chunks(
 #[allow(unused_parens)]
 pub fn timeout_pending_offers(
     mut cmd: Commands,
-    time: Res<Time>,
-    mut query: Query<(Entity, &RegionPos, &mut PendingOfferTimeout), (Without<BuildingStarted>,)>,
+    query: Query<&RegionPos, (With<Region>, With<MessageOnTimeout>, Without<BuildingStarted>)>,
+    mut reader: MessageReader<TimedOut>,
 ) {
-    query.iter_mut().for_each(|(region_ent, region_pos, mut pending_timeout)| {
-        pending_timeout.timeout_timer.tick(time.delta());
-        if pending_timeout.timeout_timer.is_finished() {
-            warn!(target: "sgc_chunk_offer", "Offers for region at {} timed out after 0.2s with no claims, marking as BuildingStarted", region_pos);
-            cmd.entity(region_ent).try_insert(BuildingStarted);
-            cmd.entity(region_ent).remove::<PendingOfferTimeout>();
-        }
-    });
+    for TimedOut(region_ent) in reader.read() {
+        let Ok(region_pos) = query.get(*region_ent) else { continue; };
+        warn!(target: "sgc_chunk_offer", "Offers for region at {} timed out after 0.2s with no claims, marking as BuildingStarted", region_pos);
+        cmd.entity(*region_ent).try_insert(BuildingStarted);
+        cmd.entity(*region_ent).try_remove::<(MessageOnTimeout, TimerComp)>();
+    }
 }

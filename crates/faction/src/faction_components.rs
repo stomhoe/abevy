@@ -7,6 +7,14 @@ use serde::{Deserialize, Serialize};
 #[require(Replicated, Prefix::trunc("Faction"), AssetScoped, SparedFromHotReloading,)]
 pub struct Faction;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
+#[require(Replicated, Prefix::trunc("FactionInstTemplate"), AssetScoped, SparedFromHotReloading,)]
+pub struct FactionInstTempl;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
+#[require(Replicated, Prefix::trunc("Culture"), AssetScoped, SparedFromHotReloading,)]
+pub struct Culture;
+
 #[derive(Component, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct FactionOwner { #[entities]pub player: Entity }
 

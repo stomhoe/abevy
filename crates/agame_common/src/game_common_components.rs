@@ -11,23 +11,7 @@ pub use crate::entity_zero_components::*;
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
 
-#[derive(Component, Debug, Reflect, Clone)]
-/// runs when simulation is running or not
-pub struct DespawnTimer(pub Timer);
-impl DespawnTimer {
-    pub fn new(seconds: f32) -> Self {
-        Self(Timer::from_seconds(seconds, TimerMode::Once))
-    }
-}
 
-#[derive(Component, Debug, Reflect, Clone)]
-/// runs only when simulation is running
-pub struct SimRunningDespawnTimer(pub Timer);
-impl SimRunningDespawnTimer {
-    pub fn new(seconds: f32) -> Self {
-        Self(Timer::from_seconds(seconds, TimerMode::Once))
-    }
-}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 /// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state

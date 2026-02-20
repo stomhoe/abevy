@@ -4,7 +4,7 @@ use faction::faction_components::BelongsToFaction;
 use game_common::game_common_samplers::{CappedNormalDist};
 use sprite_shared::SampleSpriteEnts;
 
-use crate::{being_inst_template::{ being_inst_template_resources::*}, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};
+use crate::{being_components::Being, being_inst_template::being_inst_template_resources::*, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};
 
 #[allow(unused_parens, )]
 pub fn build_being_from_being_inst_template_ref(mut cmd: Commands,
@@ -21,6 +21,7 @@ pub fn build_being_from_being_inst_template_ref(mut cmd: Commands,
             warn!(target: "bit_build", "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
             continue;
         };
+        cmd.entity(being_ent).try_insert_if_new((Being));
 
         if let Some(sample_sprites) = sample_sprites {
             sample_sprites_to_ins.push((being_ent, sample_sprites.clone()));

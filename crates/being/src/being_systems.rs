@@ -1,13 +1,11 @@
 use ::being_shared::*;
-use bevy::{prelude::*};
-use bevy_replicon::prelude::*;
+use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use camera::camera_components::CameraTarget;
-use common::common_components::HashId;
 use faction::faction_components::*;
 use game_common::game_common_components::{EntityZeroRef};
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
-use modifier::{modifier_components::*, modifier_move_bundles::TemporalSpeedModifier,};
-use movement::movement_messages::TransformFromServer;
+use modifier::{modifier_components::*, modifier_move_bundles::TempSpeedModifier,};
+use movement::movement_messages::*;
 use player::player_components::*;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings, tile::tile_components::*};
 use ::tilemap_shared::*;
@@ -32,33 +30,33 @@ pub fn on_control_change(
     mut commands: Commands,
     self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<Mine>)>,
 
-    query: Query<(Entity, &ControlledBy, &IsHumanControlled, Has<CameraTarget>),(Or<(Changed<ControlledBy>, Changed<IsHumanControlled>)>)>,
+    query: Query<(Entity, &ControlledBy, Has<CameraTarget>),(Or<(Changed<ControlledBy>, )>)>,
     mut removed_controlled_by: RemovedComponents<ControlledBy>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
     for being_ent in removed_controlled_by.read() {
-        commands.entity(being_ent).try_remove::<ControlledLocally>();
+        commands.entity(being_ent).try_remove::<ComputedLocally>();
     }
     let Ok((self_entity, is_host)) = self_player.single() else {
         error!("No self player found when trying to update control changes");
         return;
     };
-    query.iter().for_each(|(being_ent, controlled_by, human_controlled, is_camera_target)| {
-        if controlled_by.client == self_entity {
+    query.iter().for_each(|(being_ent, controlled_by, is_camera_target)| {
+        if controlled_by.client_ent == self_entity {
             info!(target: "being_control", "debug {:?} is now controlled locally by self", being_ent);
-            commands.entity(being_ent).try_insert_if_new((ControlledLocally::default(), ActivatingChunks::new(&chunk_range)));
-            if human_controlled.0 {//PROVISORIO
+            commands.entity(being_ent).try_insert_if_new((ComputedLocally, ActivatingChunks::new(&chunk_range)));
+            if controlled_by.human_input {//PROVISORIO
                 debug!(target: "being_control", "Entity {:?} is now a CameraTarget", being_ent);
-                commands.entity(being_ent).try_insert(CameraTarget::default());
+                commands.entity(being_ent).try_insert((CameraTarget::default()));
             } else {
                 debug!(target: "being_control", "Entity {:?} is no longer a CameraTarget", being_ent);
                 commands.entity(being_ent).try_remove::<CameraTarget>();
-            }//PROVISORIO
+            }//ENDOF PROVISORIO
             if is_host {
                 commands.entity(being_ent).try_remove::<ControlledByClient>();
             }
         } else {
-            commands.entity(being_ent).try_remove::<ControlledLocally>();
+            commands.entity(being_ent).try_remove::<ComputedLocally>();
             if !is_host{
                 if !is_camera_target{
                     commands.entity(being_ent).try_remove::<ActivatingChunks>();
@@ -74,18 +72,16 @@ pub fn on_control_change(
 
 #[allow(unused_parens)]
 pub fn cross_portal(mut cmd: Commands,
-    mut ewriter: MessageWriter<ToClients<TransformFromServer>>,
-    portal_query: Query<(Entity, &DimensionRef, &PortalTo, &GlobalTilePos, Option<&EntityZeroRef>), (Without<Being>)>,
+    portal_query: Query<(Entity, &DimensionRef, &PortalTo, &GlobalTilePos, Option<&EntityZeroRef>, Option<&CardinalDirection>), (Without<Being>)>,
     interaction_zones_query: Query<(&InteractionZones), ()>,
     portal_arrival_sampler_query: Query<&GlobalTilePosWeightedSampler>,
-    mut being_query: Query<(Entity, &mut DimensionRef, &mut Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
+    mut being_query: Query<(Entity, &mut DimensionRef, &Transform, &GlobalTransform, Option<&TouchingPortal>), (With<Being>, )>,
 ) {
     let mut rng = rand::rng();
-    let mut to_write = Vec::new();
-    for (being_entity, mut being_dimension_ref, mut being_transform, being_globtransform, touching_portal)
+    for (being_entity, mut being_dimension_ref, being_transform, being_globtransform, touching_portal)
     in being_query.iter_mut() {
         let being_gpos = GlobalTilePos::from(being_globtransform.translation().xy());
-        portal_query.iter().for_each(|(portal_ent, &port_dim, port_to, gpos, ezero_ref)| {
+        portal_query.iter().for_each(|(portal_ent, &port_dim, port_to, gpos, ezero_ref, direction)| {
             if being_dimension_ref.clone() != port_dim
             { return; }
 
@@ -95,6 +91,7 @@ pub fn cross_portal(mut cmd: Commands,
                         InteractionZones::ENTER,
                         gpos.to_pixelpos(),
                         being_globtransform.translation().xy(),
+                        direction.copied().unwrap_or_default(),
                     )
                 } else {
                     being_gpos == *gpos
@@ -117,14 +114,13 @@ pub fn cross_portal(mut cmd: Commands,
 
                 },
                 (None, true) => {
-
                     cmd.spawn((
-                        TemporalSpeedModifier::new(being_entity, being_entity, 0.0, ApplyMode::Max, 1.0),
+                        TempSpeedModifier::new(being_entity, being_entity, 0.0, ApplyMode::Max, 1.0),
                     ));
 
                     cmd.entity(being_entity).try_insert((TouchingPortal(portal_ent), ));
 
-                    let Ok((_, &oe_dim, _, oe_portal_gpos, oe_ezero_ref)) = portal_query.get(port_to.dest_portal) else {
+                    let Ok((_, &oe_dim, _, oe_portal_gpos, oe_ezero_ref, _)) = portal_query.get(port_to.dest_portal) else {
                         error!("Portal entity {:?} not found in portal query", port_to.dest_portal);//TA DISABLED POR ALGUNA RAZÓN
                         return;
                     };
@@ -136,17 +132,49 @@ pub fn cross_portal(mut cmd: Commands,
                         .unwrap_or_default();
 
                     being_dimension_ref.0 = oe_dim.0;
-                    being_transform.translation = (*oe_portal_gpos + sampled_offset).to_translation(being_transform.translation.z);
+                    let transf = (*oe_portal_gpos + sampled_offset).to_translation(being_transform.translation.z);
 
-                    let to_clients = ToClients {
-                        mode: SendMode::Broadcast,
-                        message: TransformFromServer::new(being_entity, being_transform.clone(), false),
-                    };
-                    to_write.push(to_clients);
+                    cmd.entity(being_entity)//for replicate_once propagation
+                        .try_remove::<Transform>()
+                        .try_insert(Transform::from_translation(transf));
                 },
             }
-
         });
     }
-    ewriter.write_batch(to_write);
+}
+
+#[allow(unused_parens)]
+pub fn sync_beings_at_gpos(
+    mut beings_at_gpos: ResMut<BeingsAtGpos>,
+    mut removed_beings: RemovedComponents<Being>,
+    mut tracked_pos: Local<EntityHashMap<(DimensionRef, GlobalTilePos)>>,
+    query: Query<
+        (Entity, &DimensionRef, &Transform),
+        (With<Being>, Or<(Added<Being>, Changed<Transform>, Changed<DimensionRef>)>),
+    >,
+) {
+    for ent in removed_beings.read() {
+        let Some((old_dim, old_gpos)) = tracked_pos.remove(&ent) else {
+            continue;
+        };
+        beings_at_gpos.remove_being(old_dim, old_gpos, ent);
+    }
+
+    for (being_ent, &dim_ref, transform) in query.iter() {
+        let gpos = GlobalTilePos::from(transform.translation.xy());
+        let prev = tracked_pos.get(&being_ent).copied();
+
+        let Some((old_dim, old_gpos)) = prev else {
+            tracked_pos.insert(being_ent, (dim_ref, gpos));
+            beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
+            continue;
+        };
+
+        if old_dim == dim_ref && old_gpos == gpos {
+            continue;
+        }
+        beings_at_gpos.remove_being(old_dim, old_gpos, being_ent);
+        beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
+        tracked_pos.insert(being_ent, (dim_ref, gpos));
+    }
 }

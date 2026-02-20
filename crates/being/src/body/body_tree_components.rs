@@ -36,6 +36,28 @@ impl Bodies {
 #[derive(Component, Debug, Clone, MapEntities)]
 pub struct BodyTreeToBuild(#[entities] pub Entity);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyTreeMassKg(pub f32);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BeingMassKg(pub f32);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyTreeDistributedTotals {
+    pub hp_capacity: f32,
+    pub hp_regen_rate: f32,
+    pub blood_capacity: f32,
+    pub blood_pumping: f32,
+    pub walk_speed: f32,
+    pub swim_speed: f32,
+    pub fly_speed: f32,
+    pub manipulation: f32,
+    pub vision: f32,
+    pub pain_sensitivity: f32,
+    pub caloric_burn_rate: f32,
+    pub caloric_capacity: f32,
+}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BodyHealth {
     pub total_hp: f32,

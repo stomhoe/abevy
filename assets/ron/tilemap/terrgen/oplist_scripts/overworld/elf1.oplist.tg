@@ -1,7 +1,7 @@
 id: elf1
 size: (1, 1)
 
-let continentness = max(fnl.conti.s4, fnl.penin.s4)
+let continentness = max(fnl.conti, fnl.penin)
 let continentness = *(continentness, elf_diff)
 let continent_threshold = 0.47
 

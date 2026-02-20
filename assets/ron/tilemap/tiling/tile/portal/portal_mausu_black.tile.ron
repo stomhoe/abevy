@@ -11,6 +11,6 @@
     z: 1000,
     y_sort: Some(0),
     min_distances: {
-        "c.portal": 300,
+        "portal": 300,
     },
 )

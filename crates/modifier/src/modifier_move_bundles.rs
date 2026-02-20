@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use game_common::game_common_components::SimRunningDespawnTimer;
+use game_common::game_common_timers::SimDespawnTimer;
 
 use crate::{modifier_components::*, modifier_move_components::*, modifier_types::WalkSpeed};
 
@@ -27,15 +27,15 @@ impl SpeedModifier {
 }
 
 #[derive(Bundle, Debug, )]
-pub struct TemporalSpeedModifier(
+pub struct TempSpeedModifier(
     pub SpeedModifier,
-    pub SimRunningDespawnTimer,
+    pub SimDespawnTimer,
 );
-impl TemporalSpeedModifier {
+impl TempSpeedModifier {
     pub fn new(target: Entity, parent: Entity, value: f32, apply_mode: ApplyMode, duration: f32) -> Self {
-        TemporalSpeedModifier(
+        TempSpeedModifier(
             SpeedModifier::new(target, parent, value, apply_mode),
-            SimRunningDespawnTimer::new(duration),
+            SimDespawnTimer::new(duration),
         )
     }
 }

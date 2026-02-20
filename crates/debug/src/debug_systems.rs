@@ -9,7 +9,7 @@ use crate::debug_messages::UpdateBeingSpeed;
 #[allow(unused_parens)]
 pub fn debug_increase_speed(
     keys: Res<ButtonInput<KeyCode>>,
-    my_being_query: Query<(&Being), (With<ControlledLocally>)>,
+    my_being_query: Query<(&Being), (With<ComputedLocally>)>,
     mut query: Query<(&ModifierTarget, &mut BaseValue),(With<WalkSpeed>, )>,
     client_state: Res<State<ClientState>>,
     mut writer: MessageWriter<UpdateBeingSpeed>,
@@ -64,7 +64,7 @@ pub fn receive_increase_speed_from_client(
 
             let Some(client_entity) = from_client.client_id.entity() else { continue; };
 
-            if controlled_by.client == client_entity {
+            if controlled_by.client_ent == client_entity {
                 for modifier_ent in applied_modifiers.entities() {
                     if let Ok(mut effective_value) = modifiers_query.get_mut(*modifier_ent) {
                         effective_value.0 = new_value.0;
@@ -74,7 +74,7 @@ pub fn receive_increase_speed_from_client(
 
                 warn!(
                     "Client tried to control a being not controlled by them: {} (controlled_by.client: {:?}, from_client.client_entity: {:?})",
-                    being_ent, controlled_by.client, client_entity
+                    being_ent, controlled_by.client_ent, client_entity
                 );
             }
         } else {

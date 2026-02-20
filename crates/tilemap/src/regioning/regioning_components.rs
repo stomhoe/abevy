@@ -158,10 +158,6 @@ pub struct AllTilesPrepared;
 #[derive(Component, Debug, Default, Copy, Clone)]
 pub struct BuildingStarted;
 
-#[derive(Component, Debug, Clone)]
-pub struct PendingOfferTimeout {
-    pub timeout_timer: Timer,
-}
 
 #[derive(Debug, )]
 pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u64, }
