@@ -17,6 +17,7 @@ pub fn build_body_tree(
     part_mass_weight_query: Query<&BodyPartMassWeight>,
     forced_query: Query<&BodyPartForcedDistribution>,
     weighted_query: Query<&BodyPartWeightedDistribution>,
+    root_parts_query: Query<(Entity, &BodyPartOf), (With<BodyRootPart>, With<EntityZero>)>,
     toclone_query: Query<(&EntityZeroRef, &BodyPartOf, Option<&BodyPartChildren>)>,
     children_query: Query<&Children>,
     modifier_target_query: Query<&ModifierTarget>,
@@ -32,9 +33,23 @@ pub fn build_body_tree(
 
         let mut cloned_parts = Vec::new();
 
+        let mut root_template_ent = None;
+        for (part_ent, body_of) in root_parts_query.iter() {
+            if body_of.body == tree_to_build.0 {
+                root_template_ent = Some(part_ent);
+                break;
+            }
+        }
+        let Some(root_template_ent) = root_template_ent else {
+            warn!(target: "body_build", "BodyTree {:?} has no BodyRootPart; skipping clone for being {:?}", tree_to_build.0, being_ent);
+            cmd.entity(being_ent).try_insert(BeingMassKg(total_mass));
+            cmd.entity(being_ent).remove::<BodyTreeToBuild>();
+            continue;
+        };
+
         if let Some(new_root_ent) = walk_and_clone_tree(
             &mut cmd,
-            tree_to_build.0,
+            root_template_ent,
             &toclone_query,
             &children_query,
             None,

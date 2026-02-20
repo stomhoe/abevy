@@ -1,7 +1,7 @@
 (
     id: "bear",
     name: "Bear Body",
-    tags: ["ursine"],
+    tags: ["quadruped", "furry"],
     mass_kg: 220.0,
     walk_speed: 4.8,
     root: (

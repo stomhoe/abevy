@@ -49,7 +49,7 @@ pub fn plugin(app: &mut App) {
         validate_portal_recipes,
         safe_despawn_tile_at,
         reckeck_adjacency_for,
-        tile_adjacency_retexturing_system,
+        tile_adjacency_retexturing_system.before(crate::chunking::despawn_chunks),
 
     ))
     .add_observer(on_spritetile_despawn)

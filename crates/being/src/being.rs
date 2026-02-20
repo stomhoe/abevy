@@ -41,7 +41,7 @@ pub fn plugin(app: &mut App) {
                 sync_predator_config_from_sources,
                 add_predator_behavior_components,
                 tick_hunger,
-                sync_ai_nav_grids,
+                sync_ai_nav_grids.before(tilemap::chunking::despawn_chunks),
                 predator_hunt_behavior,
             ).chain(),
         ).in_set(GameplaySystems),

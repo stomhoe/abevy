@@ -10,7 +10,7 @@ use crate::{body::{body_tree_components::*, body_tree_resources::*, body_sampler
 #[allow(unused_parens)]
 pub fn replace_body_sampler_string_id_by_entity(
     mut cmd: Commands,
-    query: Query<(Entity, &SampleBodyFromStrId), (With<SampleBodyFromStrId>, Without<SampleTreeEnt>)>,
+    query: Query<(Entity, &SampleBodyFromStrId), (Changed<SampleBodyFromStrId>,)>,
     sampler_map: Option<Res<BodyWeightedSamplerEntityMap>>,
     body_map: Option<Res<BodyTreeEntityMap>>,
 ) {

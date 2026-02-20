@@ -419,7 +419,7 @@ pub fn despawn_empty_regions(mut cmd: Commands,
         }
         debug!(target: "region", "Region entity {:?} at position {:?} in dimension {:?} regained active chunks, cancelling despawn",
             region_ent, region_pos, dimension_ref);
-        cmd.entity(region_ent).try_remove::<DespawnOnTimeout>();
+        cmd.entity(region_ent).try_remove::<TimeoutTimer>();
     }
 }
 #[allow(unused_parens, )]
@@ -483,6 +483,6 @@ pub fn timeout_pending_offers(
         let Ok(region_pos) = query.get(*region_ent) else { continue; };
         warn!(target: "sgc_chunk_offer", "Offers for region at {} timed out after 0.2s with no claims, marking as BuildingStarted", region_pos);
         cmd.entity(*region_ent).try_insert(BuildingStarted);
-        cmd.entity(*region_ent).try_remove::<(MessageOnTimeout, TimerComp)>();
+        cmd.entity(*region_ent).try_remove::<TimeoutTimer>();
     }
 }

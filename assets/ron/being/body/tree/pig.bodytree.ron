@@ -1,12 +1,12 @@
 (
-    id: "human",
-    name: "Human Body",
-    tags: ["humanoid"],
-    mass_kg: 70.0,
-    walk_speed: 3.2,
+    id: "pig",
+    name: "Pig Body",
+    tags: ["quadruped"],
+    mass_kg: 140.0,
+    walk_speed: 3.6,
     root: (
-        part_id: "torso",
-        label_override: "Torso",
+        part_id: "body",
+        label_override: "Body",
         children: [
             (
                 part_id: "neck",
@@ -21,7 +21,7 @@
                             (part_id: "eye", label_override: "Right Eye", children: []),
                             (part_id: "ear", label_override: "Left Ear", children: []),
                             (part_id: "ear", label_override: "Right Ear", children: []),
-                            (part_id: "nose", label_override: "Nose", children: []),
+                            (part_id: "nose", label_override: "Snout", children: []),
                             (part_id: "mouth", label_override: "Mouth", children: []),
                         ],
                     ),
@@ -32,7 +32,8 @@
                 label_override: "Chest",
                 children: [
                     (part_id: "heart", label_override: "Heart", children: []),
-                    (part_id: "lung", label_override: "Lung", children: []),
+                    (part_id: "lung", label_override: "Left Lung", children: []),
+                    (part_id: "lung", label_override: "Right Lung", children: []),
                 ],
             ),
             (
@@ -41,32 +42,47 @@
                 children: [
                     (part_id: "stomach", label_override: "Stomach", children: []),
                     (part_id: "liver", label_override: "Liver", children: []),
-                    (part_id: "kidney", label_override: "Kidney", children: []),
+                    (part_id: "kidney", label_override: "Left Kidney", children: []),
+                    (part_id: "kidney", label_override: "Right Kidney", children: []),
                 ],
+            ),
+            (
+                part_id: "leg",
+                label_override: "Front Left Leg",
+                children: [
+                    (part_id: "foot", label_override: "Front Left Foot", children: []),
+                ],
+            ),
+            (
+                part_id: "leg",
+                label_override: "Front Right Leg",
+                children: [
+                    (part_id: "foot", label_override: "Front Right Foot", children: []),
+                ],
+            ),
+            (
+                part_id: "leg",
+                label_override: "Hind Left Leg",
+                children: [
+                    (part_id: "foot", label_override: "Hind Left Foot", children: []),
+                ],
+            ),
+            (
+                part_id: "leg",
+                label_override: "Hind Right Leg",
+                children: [
+                    (part_id: "foot", label_override: "Hind Right Foot", children: []),
+                ],
+            ),
+            (
+                part_id: "tail",
+                label_override: "Tail",
+                children: [],
             ),
             (
                 part_id: "spine",
                 label_override: "Spine",
                 children: [],
-            ),
-            (
-                part_id: "pelvis",
-                label_override: "Pelvis",
-                children: [],
-            ),
-            (
-                part_id: "arm",
-                label_override: "Arm",
-                children: [
-                    (part_id: "hand", label_override: "Hand", children: []),
-                ],
-            ),
-            (
-                part_id: "leg",
-                label_override: "Leg",
-                children: [
-                    (part_id: "foot", label_override: "Foot", children: []),
-                ],
             ),
         ],
     ),

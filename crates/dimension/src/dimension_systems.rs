@@ -3,6 +3,7 @@ use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use tilemap::tile::{tile_components::{PortalRecipe, TileStrId}, tile_resources::PortalSeri};
+use tilemap::terrain::terrprobe::terrprobe_resources::TerrProbeTemplEntityMap;
 use ::tilemap_shared::*;
 
 
@@ -37,6 +38,7 @@ pub fn replace_dim_string_ref_by_entity_ref(
 pub fn replace_portal_tile_string_ref_by_entity_ref(
     mut cmd: Commands,
     dimension_entity_map: Res<DimensionEntityMap>,
+    terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
     mut portal_tile_query: Query<(Entity, &TileStrId, &PortalSeri, &mut PortalRecipe),(common::AnyDisabling)>,
 ) {
     for (ent, ent_str_id, portal_seri, mut portal_template) in portal_tile_query.iter_mut() {
@@ -47,7 +49,19 @@ pub fn replace_portal_tile_string_ref_by_entity_ref(
         };
         portal_template.dest_dimension = dimension_entity;
 
-        cmd.entity(ent).remove::<PortalSeri>();
+        let Ok(terrprobe_ent) = terrprobe_entity_map.0.get_cloned(&portal_seri.oe_terrprobe)
+        else {
+            error!(
+                target: "dimension_loading",
+                "Portal tile '{}' references unknown terrprobe '{}'.",
+                ent_str_id,
+                portal_seri.oe_terrprobe
+            );
+            continue;
+        };
+        portal_template.terrprobe_ent = terrprobe_ent;
+
+        cmd.entity(ent).try_remove::<PortalSeri>();
     }
 }
 

@@ -80,7 +80,7 @@ pub struct TmapMap (
 );
 
 #[allow(unused_parens)]
-pub fn on_tilemap_despawn(trig: On<Despawn, (TilemapTileSize, TileShaderRef)>,
+pub fn on_tilemap_despawn(trig: On<Despawn, (TilemapTileSize, )>,
     query: Query<(&DimensionRef, &ChunkPos, &AcZ, &TilemapTileSize, &TileShaderRef)>,
     mut tmap_map: ResMut<TmapMap>,
 ) {
