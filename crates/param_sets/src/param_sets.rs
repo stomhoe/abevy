@@ -13,6 +13,7 @@ use ::tilemap_shared::*;
 
 #[allow(unused_parens, )]
 #[derive(SystemParam)]
+/// system which uses this must be put .in_set(PreChunkDespawnReaders)
 pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
     being_query: Query<'w, 's, (Has<WallPhaser>, )>,

@@ -23,7 +23,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         (
             process_tiles_pre
-            .before(despawn_chunks)//if this is removed everything breaks
+            .in_set(PreChunkDespawnReaders)//if this is removed everything breaks
             .before(despawn_if_not_excepted),//if this is removed you can get a glimpse of the tilemap which was there before removal
         ).in_set(ChunkSystems)
     ))

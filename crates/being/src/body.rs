@@ -58,7 +58,7 @@ pub fn plugin(app: &mut App) {
     )
 
 
-
+    .register_type::<BodyParts>()
 
     .replicate::<BodyTree>()
     .replicate::<BodyHealth>()

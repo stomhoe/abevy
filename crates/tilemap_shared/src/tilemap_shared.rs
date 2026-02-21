@@ -13,6 +13,9 @@ use smallvec::SmallVec;
 
 use crate::{CardinalDirection, DiagonalCardinalDirection, DimensionRef, tilemap_positioning::*};
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct PreChunkDespawnReaders;
+
 
 #[derive(Resource, Default)]
 pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
@@ -279,6 +282,7 @@ impl HashIdToTexIndex {
 
 #[derive(SystemParam)]
 #[allow(unused_parens, )]
+/// system which uses this must be put .in_set(PreChunkDespawnReaders)
 pub struct TileGatheringParamSet<'w, 's> {
     spritetiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
     loaded_chunks: Res<'w, LoadedChunks>,

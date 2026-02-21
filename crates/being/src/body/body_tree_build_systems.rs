@@ -1,16 +1,19 @@
+use being_shared::BeingInstTemplate;
 use bevy::prelude::*;
 use game_common::game_common_samplers::SpriteGlobalNormalDistResult;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use modifier::modifier_components::{ModifierTarget, BaseValue, CurrEffectiveValue, ApplyMode};
 use modifier::modifier_types::*;
 use crate::being_components::*;
+use crate::body::BodyTreeRef;
 use crate::body::{body_tree_components::*, body_part::body_part_components::*};
+use crate::race::race_components::Race;
 
 pub fn build_body_tree(
     mut cmd: Commands,
     query: Query<
-        (Entity, &BodyTreeToBuild, Option<&SpriteGlobalNormalDistResult>),
-        (With<Being>, Added<BodyTreeToBuild>, Without<EntityZero>),
+        (Entity, &BodyTreeRef, Option<&SpriteGlobalNormalDistResult>),
+        (With<Being>, Added<BodyTreeRef>, Without<EntityZero>, Without<Race>, Without<BeingInstTemplate>),
     >,
     tree_mass_query: Query<&BodyTreeMassKg>,
     tree_totals_query: Query<&BodyTreeDistributedTotals>,
@@ -43,7 +46,6 @@ pub fn build_body_tree(
         let Some(root_template_ent) = root_template_ent else {
             warn!(target: "body_build", "BodyTree {:?} has no BodyRootPart; skipping clone for being {:?}", tree_to_build.0, being_ent);
             cmd.entity(being_ent).try_insert(BeingMassKg(total_mass));
-            cmd.entity(being_ent).remove::<BodyTreeToBuild>();
             continue;
         };
 
@@ -71,8 +73,6 @@ pub fn build_body_tree(
             &weighted_query,
         );
         cmd.entity(being_ent).try_insert(BeingMassKg(total_mass));
-
-        cmd.entity(being_ent).remove::<BodyTreeToBuild>();
     }
 }
 

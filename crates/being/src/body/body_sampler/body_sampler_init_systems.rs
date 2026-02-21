@@ -13,26 +13,26 @@ pub fn init_body_weighted_samplers(
     map: Res<BodyWeightedSamplerEntityMap>,
 ) {
     if ! map.0.is_empty() { return; }
-    let holder = cmd.spawn((EguiBodySamplerHolder, )).id();
+    let holder = cmd.spawn((EguiBodyWeightedSamplersHolder, )).id();
 
     let mut comps_to_insert = Vec::new();
 
     for seri in load_body_weighted_sampler_seri_defs() {
-            if let Ok(str_id) = StrId::new_with_result(seri.id, 4) {
+        if let Ok(str_id) = StrId::new_with_result(seri.id, 4) {
 
-                if let Ok(ent) = map.0.get_cloned(&str_id) {
-                    error!("BodyWeightedSampler '{}' already in BodyWeightedSamplerEntityMap : {:?}", str_id, ent);
-                    continue;
-                }
-                let ent = cmd.spawn_empty().id();
-                comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), BodyWeightedSampler, )));
+            if let Ok(ent) = map.0.get_cloned(&str_id) {
+                error!("BodyWeightedSampler '{}' already in BodyWeightedSamplerEntityMap : {:?}", str_id, ent);
+                continue;
             }
+            let ent = cmd.spawn_empty().id();
+            comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), ChildOf(holder), BodyWeightedSampler, )));
+        }
     }
     cmd.insert_batch(comps_to_insert);
 }
 
 #[allow(unused_parens)]
-pub fn init_body_weighted_samplers_refs(
+pub fn init_body_weighted_samplers_strid_refs(
     mut cmd: Commands,
     body_weighted_map: Res<BodyWeightedSamplerEntityMap>,
     body_map: Res<BodyTreeEntityMap>,

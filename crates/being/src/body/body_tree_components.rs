@@ -33,9 +33,6 @@ impl Bodies {
     }
 }
 
-#[derive(Component, Debug, Clone, MapEntities)]
-pub struct BodyTreeToBuild(#[entities] pub Entity);
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct BodyTreeMassKg(pub f32);
 

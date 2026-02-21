@@ -1,143 +1,40 @@
 use being_shared::BeingInstTemplate;
+use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::common_id_components::HashId;
 use game_common::game_common_samplers::EntityWeightedSampler;
-use ::tilemap_shared::*;
 
-use crate::{body::{body_tree_components::*, body_tree_resources::*, body_sampler::{BodyWeightedSamplerEntityMap, body_sampler_components::*}, }, race::race_components::Race};
+use crate::{
+    body::{
+        body_sampler::{body_sampler_components::BodyWeightedSampler, body_sampler_resources::BodyWeightedSamplerRef},
+        body_tree_components::*,
+        body_tree_resources::*,
+    }, race::race_components::Race
+};
 
-/// Resolves SampleBodiesFromStrIds into SampleBodies by converting string IDs to entities
 #[allow(unused_parens)]
-pub fn replace_body_sampler_string_id_by_entity(
+/// recursively samples samplers until some entity which is not sampler is found, then that is inserted into the being as a bodytreerref
+pub fn sample_nested_body_samplers_until_body_tree_is_found(
     mut cmd: Commands,
-    query: Query<(Entity, &SampleBodyFromStrId), (Changed<SampleBodyFromStrId>,)>,
-    sampler_map: Option<Res<BodyWeightedSamplerEntityMap>>,
-    body_map: Option<Res<BodyTreeEntityMap>>,
+    being_query: Query<(Entity, &BodyWeightedSamplerRef), (Changed<BodyWeightedSamplerRef>, Without<BeingInstTemplate>, Without<Race>)>,
+    body_samplers_query: Query<(&EntityWeightedSampler), (With<BodyWeightedSampler>,)>,
+    bodies_query: Query<(), (With<BodyTree>, )>,
 ) {
-    let Some(sampler_map) = sampler_map else {
-        if !query.is_empty() {
-            error!(target: "body_sampler_systems", "BodyWeightedSamplerEntityMap not found, cannot replace sampler string ids");
-        }
-        return;
-    };
+    let mut body_tree_refs_to_insert: Vec<(Entity, BodyTreeRef)> = Vec::new();
+    let mut rng = rand::rng();
 
-    let Some(body_map) = body_map else {
-        if !query.is_empty() {
-            error!(target: "body_sampler_systems", "BodyTreeEntityMap not found, cannot replace sampler string ids");
-        }
-        return;
-    };
-
-    let mut sample_bodies_to_insert = Vec::new();
-
-    for (ent, sampler_strid) in query.iter() {
-        debug!(target: "body_sampler_systems", "Resolving sampler string ids for entity {:?}", ent);
-
-        if let Some(resolved_ent) = resolve_sampler_id_no_sample(
-            &sampler_strid.id(),
-            &sampler_map,
-            &body_map,
-        ) {
-            sample_bodies_to_insert.push((ent, SampleTreeEnt::new(resolved_ent)));
+    for (being_ent, sampler_ref) in being_query {
+        let mut curr_ent = sampler_ref.0;
+        let mut visited: EntityHashSet = EntityHashSet::default();
+        while visited.insert(curr_ent) {
+            if bodies_query.get(curr_ent).is_ok() {
+                body_tree_refs_to_insert.push((being_ent, BodyTreeRef(curr_ent)));
+                break;
+            }
+            let Ok(body_sampler) = body_samplers_query.get(curr_ent) else { break; };
+            let Some(next_ent) = body_sampler.sample_with_rng(&mut rng) else { break; };
+            curr_ent = next_ent;
         }
     }
 
-    cmd.try_insert_batch(sample_bodies_to_insert);
-}
-
-fn resolve_sampler_id_no_sample(
-    id: &common::common_components::StrId,
-    sampler_map: &BodyWeightedSamplerEntityMap,
-    body_map: &BodyTreeEntityMap,
-) -> Option<Entity>{
-    if let Ok(body_ent) = body_map.0.get_cloned(id) {
-        debug!(target: "body_sampler_systems", "Resolved sampler string id '{}' to body config entity {:?}", id, body_ent);
-        return Some(body_ent);
-    }
-
-    if let Ok(sampler_ent) = sampler_map.0.get_cloned(id) {
-        debug!(target: "body_sampler_systems", "Resolved sampler string id '{}' to sampler entity {:?}", id, sampler_ent);
-        return Some(sampler_ent);
-    } else {
-        error!(target: "body_sampler_systems", "Sampler string id '{}' not found in either body or sampler maps", id);
-        return None;
-    }
-}
-
-/// Samples from SampleBodies entities and creates BodyCfgsToBuild
-#[allow(unused_parens)]
-pub fn sample_from_body_entities(
-    mut cmd: Commands,
-    global_gen_settings: Query<&GlobalGenSettings>,
-    query: Query<(Entity, &SampleTreeEnt, AnyOf<(&GlobalTilePos, &Transform)>, &DimensionRef), (Changed<SampleTreeEnt>,
-        Without<BeingInstTemplate>, Without<Race>
-    )>,
-    sampler_query: Query<&EntityWeightedSampler>,
-    dimension_hash_query: Query<&HashId, common::AnyDisabling>,
-) {
-    if query.is_empty() {
-        return;
-    }
-    let Ok(global_gen_settings) = global_gen_settings.single() else {
-        error!("Failed to get global gen settings");
-        return;
-    };
-    let mut configs_to_build = Vec::new();
-
-    for (ent, sample_body, (gpos, transform), dimension_ref) in query.iter() {
-        debug!(target: "body_sampler_systems", "Sampling from body entity for entity {:?}", ent);
-
-        let pos = if let Some(gpos) = gpos {
-            *gpos
-        } else if let Some(transform) = transform {
-            GlobalTilePos::from(transform.translation.xy())
-        } else {
-            continue;
-        };
-
-        let Ok(dim_hash) = dimension_hash_query.get(dimension_ref.0).copied() else {
-            continue;
-        };
-
-        if let Some(resolved_config) = sample_from_entity_recursive(
-            *sample_body.entity(),
-            &sampler_query,
-            pos,
-            global_gen_settings,
-            dim_hash,
-        ) {
-            configs_to_build.push((ent, BodyTreeToBuild(resolved_config)));
-        }
-    }
-
-    cmd.try_insert_batch(configs_to_build);
-}
-
-
-
-fn sample_from_entity_recursive(
-    ent: Entity,
-    sampler_query: &Query<&EntityWeightedSampler>,
-    pos: GlobalTilePos,
-    gen_settings: &GlobalGenSettings,
-    dim_hash: HashId,
-) -> Option<Entity> {
-    if let Ok(weighted_sampler) = sampler_query.get(ent) {
-        if let Some(sampled_ent) = weighted_sampler.sample_with_pos(pos, gen_settings, dim_hash) {
-            debug!(target: "body_sampler_systems", "Sampled entity {:?} from sampler {:?}", sampled_ent, ent);
-            return sample_from_entity_recursive(
-                sampled_ent,
-                sampler_query,
-                pos,
-                gen_settings,
-                dim_hash,
-            );
-        } else {
-            error!(target: "body_sampler_systems", "Failed to sample from sampler {:?}, sampler has no valid entries", ent);
-            return None;
-        }
-    } else {
-        debug!(target: "body_sampler_systems", "Resolved entity {:?} to body config", ent);
-        return Some(ent);
-    }
+    cmd.try_insert_batch(body_tree_refs_to_insert);
 }

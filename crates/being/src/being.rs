@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use ::being_shared::*;
 use movement::MovementSystems;
-use tilemap_shared::BeingsAtGpos;
+use tilemap_shared::{BeingsAtGpos, PreChunkDespawnReaders};
 
 use common::{AppRegisterAndReplicateExt, common_states::AssetLoading};
 use game_common::{
@@ -41,7 +41,7 @@ pub fn plugin(app: &mut App) {
                 sync_predator_config_from_sources,
                 add_predator_behavior_components,
                 tick_hunger,
-                sync_ai_nav_grids.before(tilemap::chunking::despawn_chunks),
+                sync_ai_nav_grids.in_set(PreChunkDespawnReaders),
                 predator_hunt_behavior,
             ).chain(),
         ).in_set(GameplaySystems),

@@ -4,12 +4,12 @@ use faction::faction_components::BelongsToFaction;
 use game_common::game_common_samplers::{CappedNormalDist};
 use sprite_shared::SampleSpriteEnts;
 
-use crate::{being_components::Being, being_inst_template::being_inst_template_resources::*, body::body_sampler::body_sampler_components::SampleTreeEnt, race::race_resources::RaceRef};
+use crate::{being_components::Being, being_inst_template::being_inst_template_resources::*, body::{BodyTreeRef, body_sampler::body_sampler_resources::BodyWeightedSamplerRef}, race::race_resources::RaceRef};
 
 #[allow(unused_parens, )]
 pub fn build_being_from_being_inst_template_ref(mut cmd: Commands,
     beings_to_instantiate: Query<(Entity, &BitRef), (Changed<BitRef>)>,
-    bit_query: Query<(&BeingInstTemplate, Option<&SampleSpriteEnts>, Option<&RaceRef>, Option<&SampleTreeEnt>, Option<&BelongsToFaction>, Option<&CappedNormalDist>), ()>,
+    bit_query: Query<(&BeingInstTemplate, Option<&SampleSpriteEnts>, Option<&RaceRef>, Option<&BodyWeightedSamplerRef>, Option<&BelongsToFaction>, Option<&CappedNormalDist>), ()>,
 ) {
     let mut sample_sprites_to_ins = Vec::new();
     let mut race_refs_to_ins = Vec::new();

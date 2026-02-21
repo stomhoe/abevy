@@ -20,13 +20,11 @@ pub fn plugin(app: &mut App) {
             plugin_body_weighted_sampler,
         ))
         .add_systems(Update, (
-            (replace_body_sampler_string_id_by_entity, sample_from_body_entities).in_set(HostSystems),
+            (sample_nested_body_samplers_until_body_tree_is_found, ).chain().in_set(HostSystems),
         ))
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            (init_body_weighted_samplers, map_body_weighted_sampler_id_to_entity, init_body_weighted_samplers_refs,)
+            (init_body_weighted_samplers, map_body_weighted_sampler_id_to_entity, init_body_weighted_samplers_strid_refs,)
         ).chain().in_set(BodySamplerSystems))
-        .replicate::<EguiBodySamplerHolder>()
-        .replicate::<BodyWeightedSampler>()
         ;
 
 }

@@ -2,14 +2,16 @@ use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::common_id_components::HashId;
 use ::tilemap_shared::*;
-use game_common::game_common_samplers::{ScaleHpAndStrengthWithSize, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
+use game_common::game_common_samplers::{EntityWeightedSampler, ScaleHpAndStrengthWithSize, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
 use crate::being_inst_template::being_inst_template_resources::BitRef;
 
-use crate::body::BodyTreeStrIdRef;
+use crate::body::body_sampler::body_sampler_components::BodyWeightedSampler;
+use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
+use crate::body::{BodyTreeRef, BodyTreeStrIdRef};
+use crate::sex::sex_resources::SexRef;
 use sprite_shared::SampleSpriteEnts;
 
 use crate::being_components::{Being, };
-use crate::body::body_sampler::body_sampler_components::{SampleBodyFromStrId, SampleTreeEnt};
 use crate::race::race_components::{Race, SexesSampler};
 use crate::race::race_resources::RaceRef;
 
@@ -17,21 +19,18 @@ use crate::race::race_resources::RaceRef;
 #[allow(unused_parens)]
 pub fn build_beings_from_race_ref(
     mut cmd: Commands,
-    global_gen_settings: Query<&GlobalGenSettings>,
-    dimension_hash_query: Query<&HashId, common::AnyDisabling>,
     beings_query: Query<(
         Entity,
         &RaceRef,
-        AnyOf<(&GlobalTilePos, &Transform)>,
-        &DimensionRef,
-        Option<&SampleSpriteEnts>,
-        Option<&SampleTreeEnt>,
-        Option<&SampleBodyFromStrId>,
+        Has<SampleSpriteEnts>,
+        Has<BodyTreeRef>,
+        Has<SexRef>
     ), (Changed<RaceRef>, With<Being>)>,
-    race_query: Query<(
+
+    race_query: Query<(// use thread rng to sample these
         Option<&SexesSampler>,
         Option<&MappedSpritesToSample>,
-        Option<&BodyTreeStrIdRef>,
+        Option<&BodyWeightedSamplerRef>,
     ), With<Race>>,
 ) {
     if beings_query.is_empty() {
@@ -101,7 +100,7 @@ pub fn build_beings_from_race_ref(
 }
 
 #[allow(unused_parens)]
-pub fn sample_sprite_variations(
+pub fn sample_sprite_normal_variations(
     mut cmd: Commands,
     beings_to_sample: Query<
         (Entity, Option<&BitRef>, Option<&RaceRef>),

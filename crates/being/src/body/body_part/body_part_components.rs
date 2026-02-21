@@ -12,11 +12,11 @@ pub struct BodyPart;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct BodyRootPart;
 
-#[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone, )]
 #[relationship(relationship_target = BodyParts)]
 pub struct BodyPartOf {#[relationship] #[entities] pub body: Entity,}
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, Reflect)]
 #[relationship_target(relationship = BodyPartOf)]
 pub struct BodyParts(Vec<Entity>);
 impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }

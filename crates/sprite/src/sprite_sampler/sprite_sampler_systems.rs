@@ -12,7 +12,7 @@ use crate::{sprite_components::ScsToBuild, sprite_resources::*, sprite_sampler::
 #[allow(unused_parens)]
 pub fn replace_sampler_string_ids_by_entities(
     mut cmd: Commands,
-    query: Query<(Entity, &SampleSpritesFromStrIds, Option<&StrId>), (Added<SampleSpritesFromStrIds>,)>,
+    query: Query<(Entity, &SampleSpritesFromStrIds, Option<&StrId>), (Changed<SampleSpritesFromStrIds>,)>,
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sprite_map: Option<Res<SpriteConfigEntityMap>>,
 ) {
