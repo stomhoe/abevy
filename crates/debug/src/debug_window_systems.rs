@@ -182,8 +182,7 @@ pub fn hot_reload_window(
             ui.checkbox(&mut selection.probes_and_filters, "Probes and filters");
             ui.checkbox(&mut selection.terrain_oplists_and_noises, "Terrain oplists and noises");
             ui.checkbox(&mut selection.tiles, "Tiles");
-            ui.checkbox(&mut selection.sprite_configs, "Sprite configs");
-            ui.checkbox(&mut selection.animations, "Animations");
+            ui.checkbox(&mut selection.sprite_configs_and_animations, "Sprite configs + animations");
             ui.checkbox(&mut selection.beings_inst_templates, "Being templates");
             ui.checkbox(&mut selection.races, "Races");
             ui.checkbox(&mut selection.sexes, "Sexes");
@@ -192,8 +191,7 @@ pub fn hot_reload_window(
                 selection.probes_and_filters = false;
                 selection.terrain_oplists_and_noises = false;
                 selection.tiles = false;
-                selection.sprite_configs = false;
-                selection.animations = false;
+                selection.sprite_configs_and_animations = false;
                 selection.beings_inst_templates = false;
                 selection.races = false;
                 selection.sexes = false;

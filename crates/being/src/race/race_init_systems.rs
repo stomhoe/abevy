@@ -156,6 +156,18 @@ pub fn init_races(
                     PredatorHuntThreshold(race_seri.predator_hunt_threshold),
                 ));
             }
+            if let Some(wander_cfg) = race_seri.predator_wander {
+                cmd.entity(entity).insert(PredatorWanderConfig {
+                    dir_secs_min: wander_cfg.dir_secs_min.max(0.01),
+                    dir_secs_max: wander_cfg.dir_secs_max.max(wander_cfg.dir_secs_min.max(0.01)),
+                    move_secs_min: wander_cfg.move_secs_min.max(0.01),
+                    move_secs_max: wander_cfg.move_secs_max.max(wander_cfg.move_secs_min.max(0.01)),
+                    halt_secs_min: wander_cfg.halt_secs_min.max(0.01),
+                    halt_secs_max: wander_cfg.halt_secs_max.max(wander_cfg.halt_secs_min.max(0.01)),
+                    speed_min: wander_cfg.speed_min.max(0.0),
+                    speed_max: wander_cfg.speed_max.max(wander_cfg.speed_min.max(0.0)),
+                });
+            }
 
             if !race_seri.sexes.is_empty() {
                 let mut sex_entities_weights: Vec<(Entity, f32)> = Vec::new();

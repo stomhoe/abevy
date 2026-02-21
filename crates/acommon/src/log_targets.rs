@@ -95,6 +95,7 @@ pub const ENTITY_ZERO_SYSTEM: &str = "entity_zero_system";
 pub const Z_LEVEL_SYSTEM: &str = "z_level_system";
 pub const Z_SORT_SYSTEM: &str = "z_sort_system";
 pub const BEING_CONTROL: &str = "being_control";
+pub const ENTITY_MAP_SYSTEM: &str = "entity_map_system";
 
 
 // ============================================================================

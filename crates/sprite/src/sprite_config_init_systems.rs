@@ -133,6 +133,7 @@ pub fn init_sprite_configs(
         if seri.grounding_based {
             cmd.entity(spritecfg_ent).insert(GroundingBased);
         }
+        cmd.entity(spritecfg_ent).insert(BaseMovementSpeed(seri.base_movement_speed));
         if !seri.parent_cat.trim().is_empty() {
             let to_become_child = BecomeChildOfSpriteWithTag(Tag::trunc(seri.parent_cat.trim()));
             cmd.entity(spritecfg_ent).insert(to_become_child);

@@ -51,6 +51,19 @@ pub struct RaceSeri {
     pub blacklisted_tiles_for_spawning: Option<HashSet<String>>,
     #[serde(default = "default_predator_hunt_threshold")]
     pub predator_hunt_threshold: f32,
+    pub predator_wander: Option<PredatorWanderSeri>,
+}
+
+#[derive(serde::Deserialize, Asset, TypePath, Debug, Copy, Clone)]
+pub struct PredatorWanderSeri {
+    pub dir_secs_min: f32,
+    pub dir_secs_max: f32,
+    pub move_secs_min: f32,
+    pub move_secs_max: f32,
+    pub halt_secs_min: f32,
+    pub halt_secs_max: f32,
+    pub speed_min: f32,
+    pub speed_max: f32,
 }
 
 fn default_true() -> bool { true }

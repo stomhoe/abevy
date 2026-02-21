@@ -12,6 +12,7 @@ game_common = { path = "../agame_common" }
 being_shared = { path = "../being_shared" }
 player = { path = "../player" }
 tilemap_shared = { path = "../tilemap_shared" }
+movement = { path = "../movement" }
 
 bevy = { workspace = true }
 #debug_unwraps = { workspace = true }

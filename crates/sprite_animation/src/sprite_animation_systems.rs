@@ -7,6 +7,7 @@ use being_shared::{Grounding, ControlledBy};
 use bevy_spritesheet_animation::{prelude::*, };
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
 use game_common::game_common_components::{Directionable, EntityZeroRef, };
+use movement::movement_components::MoveVecMag;
 use player::player_components::*;
 use sprite::sprite_components::*;
 use ::sprite_animation_shared::*;
@@ -24,21 +25,23 @@ pub fn animate_sprite(
 
     mut move_anims_changed: MessageReader<BeingChangedMoveState>,
     changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
+    changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<EntityZeroRef>, Without<SpriteConfig>)>,
 
     base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, &Grounding, ), ()>,
 
     mut sprites_query: Query<(
         Entity,
         Option<&mut SpritesheetAnimation>,
+        &BaseHolderRef,
         &EntityZeroRef,
         Option<&AnimExtraState>,
         Option<&PlayingSpeed>,
         Option<&mut AcAnimationProgresses>,
         Option<&mut Transform>,
-        Has<SpriteConfigNotFound>,
     ), ()>,
 
-    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, ), ()>,
+    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, Option<&BaseMovementSpeed>, ), ()>,
+    base_movevec_query: Query<&MoveVecMag>,
 
     mut animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>, Option<&ClipStartFrames>, Has<SaveAnimationProgress>, Option<&AlternatingStartFramesConfig>, Option<&mut AlternatingStartFramesState>, Option<&PlayingSpeed>, Option<&AnimationSeri>),()>,
 
@@ -46,21 +49,21 @@ pub fn animate_sprite(
     images: Res<Assets<Image>>,
 ) {
 
-    let mut entis_to_iter = EntityHashSet::with_capacity(changers.iter().size_hint().0 + move_anims_changed.len());
+    let mut entis_to_iter = EntityHashSet::with_capacity(
+        changers.iter().size_hint().0 + move_anims_changed.len() + changed_sprite_cfg_refs.iter().size_hint().0
+    );
     entis_to_iter.extend(changers.iter());
     entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
+    entis_to_iter.extend(changed_sprite_cfg_refs.iter().map(|base_holder| base_holder.base));
 
     for (held_sprites, direction, moving, grounding) in base.iter_many(entis_to_iter) {
         for held_sprite in held_sprites.entities() {
-            let Ok((ent, prev_animation, sprite_cfg_ref, state_id, playing_speed, animation_progresses, mut transform, has_sprite_config_not_found)) = sprites_query.get_mut(*held_sprite)
-            else { error!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get sprite entity {:?}", held_sprite); continue };
+            let Ok((ent, prev_anim, base_holder, sprite_cfg_ref, state_id, playing_speed, animation_progresses, transform, )) = sprites_query.get_mut(*held_sprite)
+            else { error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get sprite entity {:?}", held_sprite); continue };
 
-            if has_sprite_config_not_found {
-                continue;
-            }
 
-            let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, )) = spriteconfig.get(sprite_cfg_ref.0)
-            else { error!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0); continue };
+            let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, base_movement_speed, )) = spriteconfig.get(sprite_cfg_ref.0)
+            else { error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0); continue };
 
             let anim_type = AnimType {
                 direction: if directionable { direction.copied().unwrap_or_default() } else { CardinalDirection::default() },
@@ -68,20 +71,20 @@ pub fn animate_sprite(
                 grounding: if grounding_based { *grounding } else { Grounding::default() },
                 state_id: state_id.cloned(),
             };
-            debug!(target: SPRITE_ANIMATION_SYSTEM, "Determined AnimType {:?} for sprite entity {:?}", anim_type, ent);
+            trace!(target: SPRITE_ANIMATION_SYSTEM, "Determined AnimType {:?} for sprite entity {:?}", anim_type, ent);
 
             let Some(anim_ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
-                warn!(target: SPRITE_ANIMATION_SYSTEM, "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?}", anim_type, ent);
+                warn_once!(target: SPRITE_ANIMATION_SYSTEM, "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?}", anim_type, ent);
                 continue;
             };
 
             let Ok((_, anim_handle, anim_sheet, z, y_sort, clip_start_frames, should_save_anim_progress, alternating_config, mut alternating_state, anim_playing_speed, anim_seri )) = animation_query.get_mut(*anim_ent) else {
-                error!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?}", anim_ent);
+                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?}", anim_ent);
                 continue;
             };
 
             let Some(sprite) = anim_sheet.0.with_loaded_image(&images) else {
-                error!(target: SPRITE_ANIMATION_SYSTEM, "Failed to create sprite for animation entity {:?} because image is not loaded yet.", anim_ent);
+                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to create sprite for animation entity {:?} because image is not loaded yet.", anim_ent);
                 continue;
             };
             let mut sprite = sprite.sprite(&mut atlas_layouts);
@@ -119,6 +122,22 @@ pub fn animate_sprite(
                 .map(|speed| speed.0)
                 .or_else(|| anim_playing_speed.map(|speed| speed.0))
                 .unwrap_or(base_anim_speed);
+            let speed_factor = if movement_based && anim_type.moving.get() {
+                if let Some(base_speed) = base_movement_speed {
+                    if base_speed.0 <= 0.01 {
+                        speed_factor
+                    } else {
+                        let current_speed = base_movevec_query
+                            .get(base_holder.base)
+                            .map_or(0.0, |m| m.speed_magnitude.max(0.0));
+                        speed_factor * (current_speed / base_speed.0)
+                    }
+                } else {
+                    speed_factor
+                }
+            } else {
+                speed_factor
+            };
 
             let playing = !anim_seri.map(|seri| seri.paused).unwrap_or(false);
 
@@ -136,7 +155,7 @@ pub fn animate_sprite(
             let mut insert_needed = false;
 
 
-            if let Some(prev_animation) = prev_animation {
+            if let Some(mut prev_animation) = prev_anim {
                 if prev_animation.animation != anim_handle.0 {
                     if let Some(mut anim_progresses) = animation_progresses {
                         if should_save_anim_progress {
@@ -148,6 +167,13 @@ pub fn animate_sprite(
                         }
                     }
                     insert_needed = true;
+                } else {
+                    if (prev_animation.speed_factor - speed_factor).abs() > f32::EPSILON {
+                        prev_animation.speed_factor = speed_factor;
+                    }
+                    if prev_animation.playing != playing {
+                        prev_animation.playing = playing;
+                    }
                 }
             } else {
                 if should_save_anim_progress {
@@ -159,7 +185,6 @@ pub fn animate_sprite(
                 }
                 insert_needed = true;
             }
-
             let target_direction = anim_seri
                 .map(|seri| seri.cardinal_rotation)
                 .unwrap_or(CardinalDirection::South);

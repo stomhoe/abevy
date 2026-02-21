@@ -18,6 +18,7 @@ SpriteConfigSeri(
     directionable: true,
     movement_based: true,
     grounding_based: false,
+    base_movement_speed: 250.0,
     offset: (0., 16.),//ta bien
     offset4children: {
         "head": (0., 21., "")

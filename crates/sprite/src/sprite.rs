@@ -40,6 +40,7 @@ pub fn plugin(app: &mut App) {
             (
                 become_child_of_sprite_with_tag,
                 add_spritechildren_and_comps,
+                remap_broken_sprite_config_refs_after_hotreload,
             )
             .run_if(
                 in_state(ClientState::Disconnected)
@@ -68,7 +69,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<AcZ>()
     .replicate::<MappedAnimations>()
     .replicate::<OffsetForChildren>()
-    .replicate::<SpriteConfigNotFound>()
+
     .replicate::<YSortOrigin>()
     .replicate::<BaseHolderRef>()
     .replicate::<MovementBased>()

@@ -4,7 +4,7 @@
     tags: ["quadruped", "furry"],
     mass_kg: 220.0,
     distributed_totals: {
-        "walk_speed": 500,
+        "walk_speed": 400,
     },
     root: (
         part_id: "body",

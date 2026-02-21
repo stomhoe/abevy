@@ -7763,6 +7763,7 @@ dependencies = [
  "bevy_spritesheet_animation",
  "common",
  "game_common",
+ "movement",
  "paste",
  "player",
  "ron 0.8.1",

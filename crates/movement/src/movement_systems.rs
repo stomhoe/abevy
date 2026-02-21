@@ -1,7 +1,7 @@
 use core::f32;
 
 use being_shared::ComputedLocally;
-use bevy::ecs::entity::EntityHashSet;
+use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
@@ -357,7 +357,7 @@ pub fn process_speed_modifiers(
         let mut speed_max: f32 = f32::INFINITY;
         let mut speed_min: f32 = 0.0;
         let mut speed_scale: f32 = 1.0;
-        let mut speed_neg_sum: f32 = 0.0;
+        let mut speed_substractors_sum: f32 = 0.0;
         let mut slowdown_mitigators_sum: f32 = 0.0;
         let mut speed_sum: f32 = 0.0;
 
@@ -385,7 +385,7 @@ pub fn process_speed_modifiers(
                                 speed_sum += val;
                             }
                         } else {
-                            speed_neg_sum += val;
+                            speed_substractors_sum += val;
                         }
                     }
                     ApplyMode::Mul => {
@@ -398,14 +398,41 @@ pub fn process_speed_modifiers(
                 }
             }
         }
-        speed_sum += (speed_neg_sum + slowdown_mitigators_sum);
+        speed_sum += speed_substractors_sum + slowdown_mitigators_sum;
 
         let final_speed = (speed_sum * speed_scale)
             .max(speed_min)
             .min(speed_max)
             .max(0.0);
-        move_state.speed_magnitude = final_speed;
+        if (move_state.speed_magnitude - final_speed).abs() > f32::EPSILON {
+            move_state.speed_magnitude = final_speed;
+        }
     }
+}
+
+pub fn emit_move_state_on_movevecmag_value_change(
+    query: Query<(Entity, &MoveVecMag)>,
+    mut writer: MessageWriter<BeingChangedMoveState>,
+    mut prev_by_ent: Local<EntityHashMap<(Vec2, f32)>>,
+    mut messages: Local<Vec<BeingChangedMoveState>>,
+) {
+    let mut current_ents = EntityHashSet::with_capacity(query.iter().size_hint().0);
+
+    for (ent, move_vec_mag) in query.iter() {
+        current_ents.insert(ent);
+        let curr = (move_vec_mag.norm_move_dir, move_vec_mag.speed_magnitude);
+        let Some(prev) = prev_by_ent.get(&ent) else {
+            prev_by_ent.insert(ent, curr);
+            continue;
+        };
+        if prev.0 != curr.0 || (prev.1 - curr.1).abs() > f32::EPSILON {
+            messages.push(BeingChangedMoveState(ent));
+            prev_by_ent.insert(ent, curr);
+        }
+    }
+
+    prev_by_ent.retain(|ent, _| current_ents.contains(ent));
+    writer.write_batch(messages.drain(..));
 }
 
 pub fn update_facing_dir(

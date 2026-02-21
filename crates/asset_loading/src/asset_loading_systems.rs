@@ -133,11 +133,11 @@ pub fn sync_hot_reload_markers(
         else { commands.entity(entity).remove::<HotReload>(); }
     }
     for entity in &sprite_configs {
-        if selection.sprite_configs { commands.entity(entity).try_insert(HotReload); }
+        if selection.sprite_configs_and_animations { commands.entity(entity).try_insert(HotReload); }
         else { commands.entity(entity).remove::<HotReload>(); }
     }
     for entity in &animations {
-        if selection.animations { commands.entity(entity).try_insert(HotReload); }
+        if selection.sprite_configs_and_animations { commands.entity(entity).try_insert(HotReload); }
         else { commands.entity(entity).remove::<HotReload>(); }
     }
     for entity in &operation_lists {

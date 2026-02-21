@@ -15,6 +15,14 @@ use serde::{Deserialize, Serialize};
 #[require(HotReload, AssetScoped, Replicated, Prefix::trunc("SpCfg"), )]
 pub struct SpriteConfig;
 
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
+pub struct BaseMovementSpeed(pub f32);
+// impl Default for BaseMovementSpeed {
+//     fn default() -> Self {
+//         Self(200.0)
+//     }
+// }
+
 #[derive(Component, Default, Deserialize, Serialize, Debug, MapEntities, Clone)]
 pub struct MappedAnimations (
     #[entities]pub HashMap<AnimType, Entity>
@@ -108,6 +116,3 @@ impl AppliesOnSpriteDirection {
         }
     }
 }
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct SpriteConfigNotFound;

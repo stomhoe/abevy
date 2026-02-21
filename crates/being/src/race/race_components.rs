@@ -33,3 +33,15 @@ impl SexesSampler {
         Self(EntityWeightedSampler::new(&weights))
     }
 }
+
+#[derive(Component, Debug, Copy, Clone)]
+pub struct PredatorWanderConfig {
+    pub dir_secs_min: f32,
+    pub dir_secs_max: f32,
+    pub move_secs_min: f32,
+    pub move_secs_max: f32,
+    pub halt_secs_min: f32,
+    pub halt_secs_max: f32,
+    pub speed_min: f32,
+    pub speed_max: f32,
+}

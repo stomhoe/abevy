@@ -14,6 +14,7 @@ SpriteConfigSeri(
     directionable: true,
     movement_based: false,
     grounding_based: false,
+    base_movement_speed: 250.0,
 )
 
 // TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld

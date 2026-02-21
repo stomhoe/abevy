@@ -78,6 +78,28 @@ pub fn add_spritechildren_and_comps(
 }
 
 #[allow(unused_parens)]
+pub fn remap_broken_sprite_config_refs_after_hotreload(
+    mut sprites_query: Query<
+        (&StrId, &mut EntityZeroRef),
+        (Without<SpriteConfig>, With<BaseHolderRef>),
+    >,
+    sprite_cfg_query: Query<(), With<SpriteConfig>>,
+    sprite_map: Res<SpriteConfigEntityMap>,
+) {
+    for (sprite_id, mut ezero_ref) in sprites_query.iter_mut() {
+        if sprite_cfg_query.get(ezero_ref.0).is_ok() {
+            continue;
+        }
+        let Ok(new_cfg_ent) = sprite_map.0.get_cloned(sprite_id) else {
+            continue;
+        };
+        if new_cfg_ent != ezero_ref.0 {
+            ezero_ref.0 = new_cfg_ent;
+        }
+    }
+}
+
+#[allow(unused_parens)]
 pub fn become_child_of_sprite_with_tag(
     mut cmd: Commands,
     new_sprites: Query<

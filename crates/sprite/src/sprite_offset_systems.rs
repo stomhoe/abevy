@@ -16,7 +16,6 @@ pub fn apply_offsets(
         &ChildOf,
         Option<&EntityZeroRef>,
         Option<&Offset2D>,
-        Has<SpriteConfigNotFound>,
     ), (Without<EntityZero>, )>,
     sprite_config_query: Query<(
         Option<&TagSet>,
@@ -31,8 +30,7 @@ pub fn apply_offsets(
     for (msg, _) in reader.par_read() {
         let sprite_ent = msg.0;
         let Ok((
-            mut transform, baseholder, child_of, sprite_config_ref,
-            offset, has_sprite_config_not_found
+            mut transform, baseholder, child_of, sprite_config_ref, offset,
         )) = sprite_query.get_mut(sprite_ent) else {
             continue;
         };
@@ -41,16 +39,11 @@ pub fn apply_offsets(
         if let Some(EntityZeroRef(sprite_config)) = sprite_config_ref.cloned() {
             let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _)) = sprite_config_query.get(sprite_config)
             else {
-                if !has_sprite_config_not_found {
-                    error!("Failed to get sprite config for entity {:?}", sprite_config);
-                    cmd.entity(sprite_ent).try_insert(SpriteConfigNotFound);
-                }
+                error_once!("Failed to get sprite config entity {:?}", sprite_config);
                 transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
                 continue;
             };
-            if has_sprite_config_not_found {
-                cmd.entity(sprite_ent).try_remove::<SpriteConfigNotFound>();
-            }
+
             total_offset += offset.cloned().unwrap_or_default();
 
             if let Ok(direction) = base_query.get(baseholder.base) {

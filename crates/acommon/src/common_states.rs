@@ -50,8 +50,7 @@ pub enum AssetHotReloadState {#[default]Stopped, Ongoing,}
 #[derive(Resource, Debug, Clone)]
 pub struct HotReloadSelection {
     pub tiles: bool,
-    pub sprite_configs: bool,
-    pub animations: bool,
+    pub sprite_configs_and_animations: bool,
     pub terrain_oplists_and_noises: bool,
     pub probes_and_filters: bool,
     pub global_gen_settings: bool,
@@ -63,8 +62,7 @@ impl Default for HotReloadSelection {
     fn default() -> Self {
         Self {
             tiles: false,
-            sprite_configs: false,
-            animations: false,
+            sprite_configs_and_animations: false,
             terrain_oplists_and_noises: true,
             probes_and_filters: true,
             global_gen_settings: true,

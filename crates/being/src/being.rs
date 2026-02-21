@@ -42,7 +42,9 @@ pub fn plugin(app: &mut App) {
                 add_predator_behavior_components,
                 tick_hunger,
                 sync_ai_nav_grids,//.in_set(PreChunkDespawnReaders),
-                predator_hunt_behavior,
+                update_predator_chase_targets,
+                chase_behavior,
+                predator_wander_behavior,
             ).chain(),
         ).in_set(GameplaySystems),
     ))
@@ -64,6 +66,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<CharacterCreatedBy>()
     .replicate::<PlayerDirectControllable>()
     .replicate::<BodyCollisionRadius>()
+    .replicate::<ToChase>()
 
 
     .replicate::<Sentient>()

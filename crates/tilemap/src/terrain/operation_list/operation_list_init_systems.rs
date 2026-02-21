@@ -380,7 +380,7 @@ pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
 
             match (assignments.get(&dim_ent), root_op_list) {
                 (Some(&other_ent), _) => {
-                    if other_ent.0 == oplist_ent { warn!(target: "oplist_init", "self is already dimoplist"); continue; }
+                    if other_ent.0 == oplist_ent { trace!(target: "oplist_init", "self is already dimoplist"); continue; }
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent.0) else {
                         continue;
                     };
@@ -388,7 +388,7 @@ pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
                     continue;
                 },
                 (_, Some(&DimensionRootOplist(other_ent))) => {
-                    if other_ent == oplist_ent { warn!(target: "oplist_init", "self is already dimoplist"); continue; }
+                    if other_ent == oplist_ent { trace!(target: "oplist_init", "self is already dimoplist"); continue; }
 
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
                         continue;

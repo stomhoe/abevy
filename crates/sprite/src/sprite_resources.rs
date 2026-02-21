@@ -31,7 +31,8 @@ pub struct SpriteConfigSeri {
     #[serde(default)]
     pub exclude_from_sys: bool,
 
-    // Being's speed ratio over this is used as speedup multiplier for anim
+    // Being's speed ratio over this is used as speedup multiplier for anim.
+    // Sentinel: <= 0.01 means disabled.
     #[serde(default = "default_base_movement_speed")]
     pub base_movement_speed: f32,
 
@@ -61,8 +62,8 @@ pub struct SpriteConfigSeri {
     pub extra_y_offset_per_scale_inc: Option<f32>,
 
 }
-fn default_base_movement_speed() -> f32 { 1.0 }
 fn default_scale_2d() -> (f32, f32) { (1.0, 1.0) }
+fn default_base_movement_speed() -> f32 { 0.0 }
 // PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)
 
 

@@ -6,7 +6,7 @@ macro_rules! define_entity_map_systems {
         $(, $seri_type:ty, $dynamic_key:literal, $ron_suffix:literal )*
         $(,)?
     ) => {
-        $crate::define_entity_map_systems!($main_component, (), $main_component, stringify!($main_component:snake), "", $main_component, common::common_components::StrId $(, $seri_type, $dynamic_key, $ron_suffix )*);
+        $crate::define_entity_map_systems!($main_component, (), $main_component, $crate::log_targets::ENTITY_MAP_SYSTEM, "", $main_component, common::common_components::StrId $(, $seri_type, $dynamic_key, $ron_suffix )*);
     };
 
     // With additional filters (using StrId by default)
@@ -16,7 +16,7 @@ macro_rules! define_entity_map_systems {
         $(, $seri_type:ty, $dynamic_key:literal, $ron_suffix:literal )*
         $(,)?
     ) => {
-        $crate::define_entity_map_systems!($main_component, $with_filters, $main_component, stringify!($main_component:snake), "", $main_component, common::common_components::StrId $(, $seri_type, $dynamic_key, $ron_suffix )*);
+        $crate::define_entity_map_systems!($main_component, $with_filters, $main_component, $crate::log_targets::ENTITY_MAP_SYSTEM, "", $main_component, common::common_components::StrId $(, $seri_type, $dynamic_key, $ron_suffix )*);
     };
 
     // With additional filters and custom id type
@@ -31,7 +31,7 @@ macro_rules! define_entity_map_systems {
             $main_component,
             $with_filters,
             $main_component,
-            stringify!($main_component:snake),
+            $crate::log_targets::ENTITY_MAP_SYSTEM,
             "",
             $despawn_trigger,
             common::common_components::StrId

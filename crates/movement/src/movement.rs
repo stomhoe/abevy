@@ -25,6 +25,7 @@ pub fn plugin(app: &mut App) {
                 receive_move_input_from_client.run_if(in_state(ServerState::Running)),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
+                emit_move_state_on_movevecmag_value_change,
                 (
                     prepare_grid_locked_movement,
                     do_free_movement,

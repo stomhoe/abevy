@@ -20,3 +20,17 @@ pub struct Being;
 impl Being {
     pub const Z_LEVEL: f32 = 1_000.;
 }
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+pub struct ToChase {
+    pub target: Entity,
+    pub stop_distance: f32,
+}
+impl ToChase {
+    pub fn new(target: Entity, stop_distance: f32) -> Self {
+        Self {
+            target,
+            stop_distance: stop_distance.max(0.0),
+        }
+    }
+}
