@@ -1,15 +1,19 @@
 (
     id: "ear",
-    name: Some("Ear"),
+    name: "Ear",
     coverage_weight: 3,
-    hp_capacity: 6.0,
-    hp_regen_rate: 0.7,
-    depth: Some("surface"),
+    forced_stats: {
+        "hp_capacity": 6.0,
+        "hp_regen_rate": 0.7,
+        "pain_sensitivity": 1.2,
+        "blood_capacity": 3.0,
+        "manipulation": 0.0,
+        "caloric_burn_rate": 0.3,
+    },
+    weighted_stats: {
+        "mass_kg": 1.0,
+    },
+    depth: "surface",
     vital: false,
-    pain_sensitivity: 1.2,
     bleed_rate: 0.6,
-    blood_capacity: 3.0,
-    manipulation: 0.0,
-    mass_weight: 1.0,
-    caloric_burn_rate: 0.3,
 )

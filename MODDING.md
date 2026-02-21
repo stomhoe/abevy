@@ -124,7 +124,7 @@ Example:
     value: (
       id: "my_custom_race",
       name: "My Race",
-      body_tree: "human",
+      body_tree_or_sampler: "human",
       sexes: {"male": (100, [])},
       fallback_sprites_to_sample: [],
     ),

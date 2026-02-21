@@ -1,15 +1,19 @@
 (
     id: "heart",
-    name: Some("Heart"),
+    name: "Heart",
     coverage_weight: 15,
-    hp_capacity: 20.0,
-    hp_regen_rate: 0.6,
-    depth: Some("core"),
+    forced_stats: {
+        "hp_capacity": 20.0,
+        "hp_regen_rate": 0.6,
+        "pain_sensitivity": 0.0,
+        "blood_capacity": 12.0,
+        "manipulation": 0.0,
+        "caloric_burn_rate": 4.0,
+    },
+    weighted_stats: {
+        "mass_kg": 1.0,
+    },
+    depth: "core",
     vital: true,
-    pain_sensitivity: 0.0,
     bleed_rate: 2.5,
-    blood_capacity: 12.0,
-    manipulation: 0.0,
-    mass_weight: 1.0,
-    caloric_burn_rate: 4.0,
 )

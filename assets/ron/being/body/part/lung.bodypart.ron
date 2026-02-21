@@ -1,15 +1,19 @@
 (
     id: "lung",
-    name: Some("Lung"),
+    name: "Lung",
     coverage_weight: 20,
-    hp_capacity: 22.0,
-    hp_regen_rate: 0.7,
-    depth: Some("core"),
+    forced_stats: {
+        "hp_capacity": 22.0,
+        "hp_regen_rate": 0.7,
+        "pain_sensitivity": 0.0,
+        "blood_capacity": 14.0,
+        "manipulation": 0.0,
+        "caloric_burn_rate": 3.5,
+    },
+    weighted_stats: {
+        "mass_kg": 1.2,
+    },
+    depth: "core",
     vital: true,
-    pain_sensitivity: 0.0,
     bleed_rate: 1.8,
-    blood_capacity: 14.0,
-    manipulation: 0.0,
-    mass_weight: 1.2,
-    caloric_burn_rate: 3.5,
 )

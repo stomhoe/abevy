@@ -8,7 +8,7 @@ use game_common::game_common_samplers::*;
 use crate::being_inst_template::{being_inst_template_resources::*,
 };
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
-use crate::body::body_tree_resources::BodyTreeEntityMap;
+use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
 
 pub fn init_being_templates(
@@ -16,10 +16,18 @@ pub fn init_being_templates(
     race_emap: Option<Res<RaceEntityMap>>,
     faction_emap: Option<Res<FactionEntityMap>>,
     bit_map: Res<BeingInstTemplateEntityMap>,
+    body_tree_map: Res<BodyTreeEntityMap>,
+    body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
 
 ) {
     if !bit_map.0.is_empty(){
         return;
+    }
+    if body_tree_map.0.is_empty() {
+        error!(target: "being_template_init", "BodyTreeEntityMap is empty");
+    }
+    if body_sampler_map.0.is_empty() {
+        warn!(target: "being_template_init", "BodyWeightedSamplerEntityMap is empty (may be ok if none are used)");
     }
 
     let mut main_comps = Vec::new();
@@ -55,6 +63,16 @@ pub fn init_being_templates(
         if !template_seri.fallback_faction.trim().is_empty(){
             let faction_str_id = StrId::trunc(&template_seri.fallback_faction);
             faction_refs_to_insert.push((bit_entity, FactionStrIdRef(faction_str_id)));
+        }
+        if !template_seri.body_tree.trim().is_empty() {
+            let body_tree_str_id = StrId::trunc(&template_seri.body_tree);
+            if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_tree_str_id) {
+                cmd.entity(bit_entity).insert(BodyWeightedSamplerRef(body_sampler_ent));
+            } else if let Ok(body_tree_ent) = body_tree_map.0.get_cloned(&body_tree_str_id) {
+                cmd.entity(bit_entity).insert(BodyTreeRef(body_tree_ent));
+            } else{
+                error!(target: "being_template_init", "Body tree/sampler '{}' not found for BeingInstTemplate '{}'", body_tree_str_id, str_id);
+            }
         }
         if let Some(size_variation) = template_seri.size_variation {
             cmd.entity(bit_entity).insert(SpriteGlobalNormalDist::new(size_variation));

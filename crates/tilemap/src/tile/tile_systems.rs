@@ -142,7 +142,7 @@ pub fn rotate_tile_based_on_initial_pos_hash(
         return;
     }
     let Ok(settings) = settings.single() else {
-        error!("Failed to get global gen settings");
+        error_once!("Failed to get global gen settings");
         return;
     };
 
@@ -224,7 +224,8 @@ pub fn sync_sprite_flips_with_tileflip(
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn spritetile_snap_transform_to_global_pos(
     mut cmd: Commands,
-    mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>), (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, common::AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, With<Tile>)>,
+    mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>),
+        (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, common::AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, With<Tile>)>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
     parent_query: Query<&GlobalTransform, common::AnyDisabling>,
     state: Res<State<ClientState>>,
@@ -267,16 +268,13 @@ pub fn spritetile_snap_transform_to_global_pos(
 pub fn emit_global_tile_pos_change(
     mut query: Query<
         (
-            Entity,
-            &mut PrevGlobalTilePos,
+            Entity, &mut PrevGlobalTilePos,
             &mut PrevDimensionRef,
-            &GlobalTilePos,
-            &DimensionRef,
+            &GlobalTilePos, &DimensionRef,
         ),
         (
             Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>,
-            Without<EntityZero>,
-            With<Tile>,
+            Without<EntityZero>, With<Tile>,
         ),
     >,
     mut mwriter: MessageWriter<GlobalTilePosChanged>,

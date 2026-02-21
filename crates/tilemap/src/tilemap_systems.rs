@@ -86,6 +86,7 @@ pub fn on_tilemap_despawn(trig: On<Despawn, (TilemapTileSize, )>,
 ) {
     let Ok((dimension_ref, chunk_pos, ac_z, tile_size, shader_ref)) = query.get(trig.entity)
     else {
+        error_once!("Failed to get tilemap despawn query for entity {:?}", trig.entity);
         return;
     };
     let opt_shader = if shader_ref.is_placeholder() {
@@ -157,7 +158,7 @@ pub fn process_tiles_pre(
 
         let query_result = ezero_query.get(bundle.ezero_ref.0);
         if query_result.is_err() {
-            error!(target: TILEMAP_SYSTEM, "Original tile entity {} is despawned", bundle.ezero_ref.0);
+            error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} is despawned", bundle.ezero_ref.0);
             cmd.entity(tile_ent).try_despawn();
             params.collected_tiles.0.swap_remove(i);
             continue;
@@ -316,10 +317,10 @@ pub fn process_tiles_pre(
             default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
         }
     }
+    cmd.try_insert_batch(insert2tmaps);
     cmd.try_insert_batch(default_mats);
     cmd.try_insert_batch(texture_overlay_mats);
     cmd.try_insert_batch(wavy_mats);
-    cmd.try_insert_batch(insert2tmaps);
     cmd.try_insert_batch(rocky_mats);
 }
 #[allow(clippy::too_many_arguments)]

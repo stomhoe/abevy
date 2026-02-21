@@ -11,7 +11,7 @@ pub struct RaceSeri {
     pub name: String,
 
     ///can be a body sampler
-    pub body_tree: String,
+    pub body_tree_or_sampler: String,
     pub name_generator: Option<String>,
     pub icon_path: Option<String>,
     pub description: Option<String>,

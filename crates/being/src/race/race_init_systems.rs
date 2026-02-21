@@ -9,7 +9,11 @@ use sprite_shared::SampleSpriteEnts;
 use sprite::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
 
 use sex::sex_resources::SexEntityMap;
+use crate::body::BodyTreeEntityMap;
+use crate::body::BodyTreeRef;
 use crate::body::BodyTreeStrIdRef;
+use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntityMap;
+use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
 use crate::{race::{race_components::*, race_resources::*}, sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::{Predator, PredatorHuntThreshold};
@@ -19,6 +23,8 @@ pub fn init_races(
     sprite_map: Res<SpriteConfigEntityMap>,
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sexes_map: Res<SexEntityMap>,
+    body_tree_map: Res<BodyTreeEntityMap>,
+    body_sampler_map:Res<BodyWeightedSamplerEntityMap>,
 ) {
     for race_seri in load_race_seri_defs() {
             let str_id = StrId::trunc(&race_seri.id);
@@ -114,8 +120,13 @@ pub fn init_races(
 
             let mut entity_cmds = cmd.spawn((Race, EntityZero, str_id.clone(), ingame_name, singular, plural));
 
-            let body_tree_str_id = StrId::trunc(&race_seri.body_tree);
-            entity_cmds.insert(BodyTreeStrIdRef(body_tree_str_id));
+            let body_tree_str_id = StrId::trunc(&race_seri.body_tree_or_sampler);
+
+            if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_tree_str_id) {
+                entity_cmds.insert(BodyWeightedSamplerRef(body_sampler_ent));
+            } else if let Ok(body_tree_ent) = body_tree_map.0.get_cloned(&body_tree_str_id) {
+                entity_cmds.insert(BodyTreeRef(body_tree_ent));
+            }
 
             if let Some(desc) = description {
                 entity_cmds.insert(desc);

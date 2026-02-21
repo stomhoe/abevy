@@ -63,8 +63,14 @@ pub fn init_sprite_weighted_samplers_refs(
                             continue;
                         }
                         weights.push((ent.clone(), weight));
+                    } else if let Ok(ent) = sprite_weighted_map.0.get_cloned(&sprite_str_id) {
+                        if weights.iter().any(|(e, _)| *e == ent) {
+                            error!("SpriteWeightedSampler {:?} already contains sampler entity {:?} for id {:?}, skipping duplicate", str_id, ent, sprite_id);
+                            continue;
+                        }
+                        weights.push((ent.clone(), weight));
                     } else {
-                        error!("SpriteWeightedSampler {:?} references non-existent sprite id {:?}, skipping this weighted entry", str_id, sprite_id);
+                        error!("SpriteWeightedSampler {:?} references non-existent sprite/sampler id {:?}, skipping this weighted entry", str_id, sprite_id);
                         continue;
                     }
                 } else {

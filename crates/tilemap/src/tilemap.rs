@@ -23,7 +23,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         (
             process_tiles_pre
-            .in_set(PreChunkDespawnReaders)//if this is removed everything breaks
+            .in_set(PreChunkDespawnSystems)//if this is removed everything breaks
             .before(despawn_if_not_excepted),//if this is removed you can get a glimpse of the tilemap which was there before removal
         ).in_set(ChunkSystems)
     ))
@@ -47,8 +47,6 @@ pub fn plugin(app: &mut App) {
 
     .replicate_once::<CardinalDirection>()
     .replicate_once::<DiagonalCardinalDirection>()
-    //.register_type::<TilesAtGpos>().register_type_data::<TilesAtGpos, InspectorEguiImpl>()
-
     .init_resource::<SpriteTilesAtGpos>()
     .replicate::<PoissonDisk>()
 

@@ -2,7 +2,7 @@
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use ::tilemap_shared::*;
-use crate::terrain::{
+use crate::{terrain::{
         operation_list::{
             operation_list_components::*,
             operation_list_init_systems::*,
@@ -13,7 +13,7 @@ use crate::terrain::{
     terrgen_noise_init_systems::*,
     terrgen_resources::*,
     terrgen_systems::*,
-};
+}, tilemap_systems::process_tiles_pre};
 
 pub mod terrgen_systems;
 mod terrgen_noise_init_systems;
@@ -33,9 +33,12 @@ pub struct TerrainGenSystems;
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app
-        .add_systems(Update, launch_terrain_operations.in_set(TerrainGenSystems))
-        .add_systems(Update, process_pending_ops_and_collect_tiles.in_set(TerrainGenSystems))
-        .add_systems(Update, search_suitable_positions.run_if(in_state(ClientState::Disconnected)))
+        .add_systems(Update, ((
+            launch_terrain_operations,
+            process_pending_ops_and_collect_tiles.before(process_tiles_pre),//DON'T TOUCH THIS LINE
+            ).in_set(TerrainGenSystems),
+        search_suitable_positions.run_if(in_state(ClientState::Disconnected))
+        ))
 
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (

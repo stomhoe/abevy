@@ -128,6 +128,7 @@ pub fn set_entity_name(
             AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &EntityZeroRef)>,
         ),
         (
+            Without<ExcludedFromAutoRenamer>,
             Or<(
                 Changed<Prefix>,
                 Changed<StrId>,

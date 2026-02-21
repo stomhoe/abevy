@@ -4,6 +4,7 @@ use game_common::game_common_components::TimeBasedMultiplier;
 use common::common_components::Tag;
 
 use crate::modifier_components::*;
+use crate::modifier_types::*;
 
 #[derive(Default)]
 struct TargetAggregates {
@@ -107,3 +108,107 @@ pub fn update_modifier_effective_values(
     cmd.try_insert_batch(new_eff_values);
 }
 
+pub fn sync_modifier_name_to_effects(
+    mut modifiers_query: Query<
+        (
+            Entity,
+            &mut Name,
+            Option<&CurrEffectiveValue>,
+            Has<WalkSpeed>,
+            Has<FlySpeed>,
+            Has<SwimSpeed>,
+            Has<BleedRate>,
+            Has<InvertMovement>,
+            Has<PainSlowdown>,
+            Has<HitpointsCapacity>,
+            Has<HitpointRegenRate>,
+        ),
+        (
+            With<ModifierTarget>,
+            Or<(
+                Or<(
+                    Added<WalkSpeed>,
+                    Added<FlySpeed>,
+                    Added<SwimSpeed>,
+                    Added<BleedRate>,
+                    Added<InvertMovement>,
+                    Added<PainSlowdown>,
+                    Added<HitpointsCapacity>,
+                    Added<HitpointRegenRate>,
+                    Added<BloodCapacity>,
+                )>,
+                Or<(
+                    Added<Consciousness>,
+                    Added<PainSensitivity>,
+                    Added<PainInfliction>,
+                    Added<Manipulation>,
+                    Added<Vision>,
+                    Added<MinForDamage>,
+                    Added<CurrEffectiveValue>,
+                    Changed<CurrEffectiveValue>,
+                )>,
+            )>,
+        ),
+    >,
+    effects_query: Query<
+        (
+            Has<BloodCapacity>,
+            Has<Consciousness>,
+            Has<PainSensitivity>,
+            Has<PainInfliction>,
+            Has<Manipulation>,
+            Has<Vision>,
+            Has<MinForDamage>,
+        ),
+        With<ModifierTarget>,
+    >,
+) {
+    for (
+        entity,
+        mut name,
+        curr_value,
+        has_walk_speed,
+        has_fly_speed,
+        has_swim_speed,
+        has_bleed_rate,
+        has_invert_movement,
+        has_pain_slowdown,
+        has_hitpoints_capacity,
+        has_hitpoint_regen_rate,
+    ) in modifiers_query.iter_mut() {
+        let Ok((
+            has_blood_capacity,
+            has_consciousness,
+            has_pain_sensitivity,
+            has_pain_infliction,
+            has_manipulation,
+            has_vision,
+            has_min_for_damage,
+        )) = effects_query.get(entity) else { continue; };
+
+        let mut effects = Vec::with_capacity(17);
+        if has_walk_speed { effects.push("Walk"); }
+        if has_fly_speed { effects.push("Fly"); }
+        if has_swim_speed { effects.push("Swim"); }
+        if has_bleed_rate { effects.push("Bleed"); }
+        if has_invert_movement { effects.push("InvMove"); }
+        if has_pain_slowdown { effects.push("PainSlow"); }
+        if has_hitpoints_capacity { effects.push("HpCap"); }
+        if has_hitpoint_regen_rate { effects.push("HpRegen"); }
+        if has_blood_capacity { effects.push("BloodCap"); }
+        if has_consciousness { effects.push("Consc"); }
+        if has_pain_sensitivity { effects.push("PainSens"); }
+        if has_pain_infliction { effects.push("PainInfli"); }
+        if has_manipulation { effects.push("Manip"); }
+        if has_vision { effects.push("Vis"); }
+        if has_min_for_damage { effects.push("MinForDamage"); }
+
+        let effects_label = if effects.is_empty() {
+            "Modifier".to_string()
+        } else {
+            effects.join("|")
+        };
+        let curr_label = curr_value.map(|v| format!("{:.2}", v.0)).unwrap_or_else(|| "n/a".to_string());
+        *name = Name::new(format!("{} [{}]", effects_label, curr_label));
+    }
+}

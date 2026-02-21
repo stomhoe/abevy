@@ -17,6 +17,6 @@
         ("Head", ["mahuhe0", "", ""]),//mahuhe1, mahuhe2
         ("Body", ["mahubo0", "", ""]),//mahubo1 mahubo2
     ]),
-    body_tree: "human_body",
+    body_tree_or_sampler: "human_body",
 
 )

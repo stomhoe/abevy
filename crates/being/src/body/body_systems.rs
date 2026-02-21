@@ -485,28 +485,33 @@ pub fn update_body_health_from_parts(
 /// Slowdown multiplier is 1.0 - pain, so pain = 0 means no slowdown, pain = 1.0 means full stop.
 pub fn apply_pain_slowdown(
     mut cmd: Commands,
-    mut body_health_query: Query<(Entity, &BodyHealth), Changed<BodyHealth>>,
+    mut body_health_query: Query<(&BodyOf, &BodyHealth), Changed<BodyHealth>>,
     mut slowdown_mod_query: Query<(&ModifierTarget, &mut BaseValue), With<PainSlowdown>>,
 ) {
     let mut common_to_insert = Vec::new();
-    // First pass: update existing pain slowdown modifiers
+
+    // First pass: update existing pain slowdown modifiers (targeting the being, not the body).
     for (target, mut base_value) in slowdown_mod_query.iter_mut() {
-        if let Ok((_body_ent, body_health)) = body_health_query.get(target.0) {
-            let pain_multiplier = (1.0 - body_health.pain).max(0.0);
-            base_value.0 = pain_multiplier;
+        for (body_of, body_health) in body_health_query.iter_mut() {
+            if body_of.being != target.0 {
+                continue;
+            }
+            base_value.0 = (1.0 - body_health.pain).max(0.0);
+            break;
         }
     }
 
-    // Second pass: spawn new modifiers for bodies that don't have them yet
+    // Second pass: spawn new modifiers for beings that don't have them yet
     let mut has_slowdown: EntityHashSet = EntityHashSet::default();
     for (target, _) in slowdown_mod_query.iter() {
         has_slowdown.insert(target.0);
     }
 
-    for (body_ent, body_health) in body_health_query.iter_mut() {
-        if has_slowdown.contains(&body_ent) {
-            continue; // Already has slowdown modifiers
+    for (body_of, body_health) in body_health_query.iter_mut() {
+        if has_slowdown.contains(&body_of.being) {
+            continue;
         }
+        has_slowdown.insert(body_of.being);
 
         let pain_multiplier = (1.0 - body_health.pain).max(0.0);
 
@@ -517,7 +522,7 @@ pub fn apply_pain_slowdown(
 
         // Common bundle to insert
         let bundle = (
-            ModifierTarget(body_ent),
+            ModifierTarget(body_of.being),
             BaseValue(pain_multiplier),
             ApplyMode::Mul,
             PainSlowdown,

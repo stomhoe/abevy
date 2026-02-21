@@ -12,6 +12,23 @@ use crate::body::{
     body_part::body_part_components::*, body_part::body_part_resources::*, body_tree_resources::*,
 };
 
+fn stat_from_map(map: &bevy::platform::collections::HashMap<String, f32>, key: HashId) -> f32 {
+    for (k, &v) in map {
+        if HashId::from(k) == key {
+            return v.max(0.0);
+        }
+    }
+    0.0
+}
+
+fn stats_to_hashid_map(map: &bevy::platform::collections::HashMap<String, f32>) -> HashIdMap<f32> {
+    let mut out = HashIdMap::default();
+    for (k, &v) in map {
+        out.overwrite(HashId::from(k), v.max(0.0));
+    }
+    out
+}
+
 #[allow(unused_parens)]
 pub fn init_body_parts(
     mut cmd: Commands,
@@ -23,7 +40,7 @@ pub fn init_body_parts(
 
     let mut spawned_ids: HashSet<StrId> = HashSet::default();
 
-    for mut part in load_body_part_seri_defs() {
+    for part in load_body_part_seri_defs() {
         let part_id = match StrId::new_with_result(&part.id, 3) {
             Ok(id) => id,
             Err(e) => {
@@ -47,69 +64,38 @@ pub fn init_body_parts(
         cmd.entity(part_ent)
             .insert((part_id.clone(), BodyPart, EntityZero));
 
-        if let Some(name) = part.name.take() {
-            if !name.trim().is_empty() {
-                cmd.entity(part_ent).insert(DisplayName::trunc(name));
-            }
+        if !part.name.trim().is_empty() {
+            cmd.entity(part_ent).insert(DisplayName::trunc(part.name.clone()));
         } else {
             cmd.entity(part_ent)
                 .insert(DisplayName::trunc(part_id.as_str()));
         }
 
-        if let Some(slots) = part.slots.take() {
-            if !slots.is_empty() {
-                cmd.entity(part_ent).insert(BodyPartSlots::new(slots));
-            }
+        if !part.slots.is_empty() {
+            cmd.entity(part_ent)
+                .insert(BodyPartSlots::new(part.slots.clone()));
         }
 
-        if let Some(tags) = part.tags.take() {
-            if !tags.is_empty() {
-                cmd.entity(part_ent).insert(TagSet::new(tags));
-            }
+        if !part.tags.is_empty() {
+            cmd.entity(part_ent).insert(TagSet::new(&part.tags));
         }
 
         if part.coverage_weight > 0 {
             let weight = part.coverage_weight;
             cmd.entity(part_ent).insert(BodyPartCoverageWeight(weight));
         }
-        cmd.entity(part_ent).insert((
-            BodyPartForcedDistribution {
-                mass_kg: part.mass_kg.max(0.0),
-                hp_capacity: part.hp_capacity.max(0.0),
-                hp_regen_rate: part.hp_regen_rate.max(0.0),
-                blood_capacity: part.blood_capacity.max(0.0),
-                blood_pumping: part.blood_pumping.max(0.0),
-                walk_speed: part.walk_speed.max(0.0),
-                swim_speed: part.swim_speed.max(0.0),
-                fly_speed: part.fly_speed.max(0.0),
-                manipulation: part.manipulation.max(0.0),
-                vision: part.vision.max(0.0),
-                pain_sensitivity: part.pain_sensitivity.max(0.0),
-                caloric_burn_rate: part.caloric_burn_rate.max(0.0),
-                caloric_capacity: part.caloric_capacity.max(0.0),
-            },
-            BodyPartWeightedDistribution {
-                mass_kg: part.mass_weight.max(0.0),
-                hp_capacity: part.hp_capacity_weight.max(0.0),
-                hp_regen_rate: part.hp_regen_rate_weight.max(0.0),
-                blood_capacity: part.blood_capacity_weight.max(0.0),
-                blood_pumping: part.blood_pumping_weight.max(0.0),
-                walk_speed: part.walk_speed_weight.max(0.0),
-                swim_speed: part.swim_speed_weight.max(0.0),
-                fly_speed: part.fly_speed_weight.max(0.0),
-                manipulation: part.manipulation_weight.max(0.0),
-                vision: part.vision_weight.max(0.0),
-                pain_sensitivity: part.pain_sensitivity_weight.max(0.0),
-                caloric_burn_rate: part.caloric_burn_rate_weight.max(0.0),
-                caloric_capacity: part.caloric_capacity_weight.max(0.0),
-            },
-        ));
-        if part.mass_weight > 0.0 {
-            cmd.entity(part_ent).insert(BodyPartMassWeight(part.mass_weight.max(0.0)));
+        let mut forced_stats = stats_to_hashid_map(&part.forced_stats);
+        if !forced_stats.contains_key(STAT_PAIN_SENSITIVITY) {
+            forced_stats.overwrite(STAT_PAIN_SENSITIVITY, 1.0);
         }
-
-        if part.hp_capacity > 0.0 {
-            let max_hp = part.hp_capacity;
+        let weighted_stats = stats_to_hashid_map(&part.weighted_stats);
+        cmd.entity(part_ent).insert((
+            BodyPartForcedDistribution(forced_stats),
+            BodyPartWeightedDistribution(weighted_stats),
+        ));
+        let hp_capacity = stat_from_map(&part.forced_stats, STAT_HP_CAPACITY);
+        if hp_capacity > 0.0 {
+            let max_hp = hp_capacity;
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(max_hp),
@@ -122,8 +108,8 @@ pub fn init_body_parts(
             cmd.entity(part_ent).try_insert(BodyPartDamage(0.0));
         }
 
-        if part.hp_regen_rate > 0.0 {
-            let hp_regen_rate = part.hp_regen_rate;
+        let hp_regen_rate = stat_from_map(&part.forced_stats, STAT_HP_REGEN_RATE);
+        if hp_regen_rate > 0.0 {
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(hp_regen_rate),
@@ -148,8 +134,8 @@ pub fn init_body_parts(
             ));
         }
 
-        if part.blood_capacity > 0.0 {
-            let blood_capacity = part.blood_capacity;
+        let blood_capacity = stat_from_map(&part.forced_stats, STAT_BLOOD_CAPACITY);
+        if blood_capacity > 0.0 {
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(blood_capacity),
@@ -161,8 +147,8 @@ pub fn init_body_parts(
             ));
         }
 
-        if part.pain_sensitivity > 0.0 {
-            let pain_sensitivity = part.pain_sensitivity;
+        let pain_sensitivity = stat_from_map(&part.forced_stats, STAT_PAIN_SENSITIVITY);
+        if pain_sensitivity > 0.0 {
             cmd.spawn((
                 ModifierTarget(part_ent),
                 BaseValue(pain_sensitivity),
@@ -174,8 +160,8 @@ pub fn init_body_parts(
             ));
         }
 
-        if part.manipulation > 0.0 {
-            let manipulation = part.manipulation;
+        let manipulation = stat_from_map(&part.forced_stats, STAT_MANIPULATION);
+        if manipulation > 0.0 {
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -190,8 +176,8 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if part.walk_speed > 0.0 {
-            let walk_speed = part.walk_speed;
+        let walk_speed = stat_from_map(&part.forced_stats, STAT_WALK_SPEED);
+        if walk_speed > 0.0 {
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -206,8 +192,8 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if part.swim_speed > 0.0 {
-            let swim_speed = part.swim_speed;
+        let swim_speed = stat_from_map(&part.forced_stats, STAT_SWIM_SPEED);
+        if swim_speed > 0.0 {
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -222,8 +208,8 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if part.fly_speed > 0.0 {
-            let fly_speed = part.fly_speed;
+        let fly_speed = stat_from_map(&part.forced_stats, STAT_FLY_SPEED);
+        if fly_speed > 0.0 {
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -238,8 +224,8 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if part.vision > 0.0 {
-            let vision = part.vision;
+        let vision = stat_from_map(&part.forced_stats, STAT_VISION);
+        if vision > 0.0 {
             let modifier_ent = cmd
                 .spawn((
                     ModifierTarget(part_ent),
@@ -254,13 +240,9 @@ pub fn init_body_parts(
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        if let Some(depth) = part.depth.take() {
-            cmd.entity(part_ent).insert(BodyPartDepth::from(depth));
-        }
-
-        if let Some(kind) = part.kind.take().filter(|k| !k.trim().is_empty()) {
+        if !part.depth.trim().is_empty() {
             cmd.entity(part_ent)
-                .insert(BodyPartKind(StrId::trunc(kind)));
+                .insert(BodyPartDepth::from(part.depth.clone()));
         }
 
         if part.vital {
@@ -270,33 +252,47 @@ pub fn init_body_parts(
 }
 
 fn apply_synergy_to_modifier(cmd: &mut Commands, modifier_ent: Entity, part: &BodyPartSeri) {
-    let Some(tag_str) = part
-        .synergy_tag
-        .as_ref()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-    else {
+    if part.synergy_tags.is_empty() {
         return;
-    };
-
-    let tag = Tag::from(tag_str);
+    }
 
     let mut tags = ModifierTags::default();
-    tags.insert(tag.clone());
+    for tag_str in &part.synergy_tags {
+        let tag_str = tag_str.trim();
+        if tag_str.is_empty() {
+            continue;
+        }
+        tags.insert(Tag::from(tag_str));
+    }
+    if tags.is_empty() {
+        return;
+    }
     cmd.entity(modifier_ent).insert(tags);
 
-    if let Some(offset) = part.synergy_offset {
-        if offset != 0.0 {
-            let mut offsets = HashMap::default();
-            offsets.insert(tag.clone(), offset);
+    if part.synergy_offset != 0.0 {
+        let mut offsets = HashMap::default();
+        for tag_str in &part.synergy_tags {
+            let tag_str = tag_str.trim();
+            if tag_str.is_empty() {
+                continue;
+            }
+            offsets.insert(Tag::from(tag_str), part.synergy_offset);
+        }
+        if !offsets.is_empty() {
             cmd.entity(modifier_ent).insert(OffsetValForSelf(offsets));
         }
     }
 
-    if let Some(copy_mult) = part.synergy_copy_mult {
-        if copy_mult != 0.0 {
-            let mut mults = HashMap::default();
-            mults.insert(tag, copy_mult);
+    if part.synergy_copy_mult != 0.0 {
+        let mut mults = HashMap::default();
+        for tag_str in &part.synergy_tags {
+            let tag_str = tag_str.trim();
+            if tag_str.is_empty() {
+                continue;
+            }
+            mults.insert(Tag::from(tag_str), part.synergy_copy_mult);
+        }
+        if !mults.is_empty() {
             cmd.entity(modifier_ent)
                 .insert(CopyMultOfOthersIntoSelf(mults));
         }

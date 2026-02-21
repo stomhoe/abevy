@@ -3,7 +3,9 @@
     name: "Pig Body",
     tags: ["quadruped"],
     mass_kg: 140.0,
-    walk_speed: 3.6,
+    distributed_totals: {
+        "walk_speed": 300,
+    },
     root: (
         part_id: "body",
         label_override: "Body",

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use game_common::{game_common::SimRunningSystems, };
-use tilemap_shared::CardinalDirection;
+use tilemap_shared::{CardinalDirection, PreChunkDespawnSystems};
 
 use crate::{
     movement_components::*, movement_input_systems::*, movement_messages::*, movement_systems::*,

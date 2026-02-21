@@ -30,26 +30,34 @@ pub fn init_ezero_body_trees(
                 continue;
             }
         };
-
         let body_tree_ent = cmd.spawn_empty().id();
+        let mut totals = HashIdMap::default();
+        for (key, val) in &seri.distributed_totals {
+            totals.overwrite(HashId::from(key), val.max(0.0));
+        }
+        if !totals.contains_key(STAT_HP_CAPACITY) {
+            totals.overwrite(STAT_HP_CAPACITY, 1.0);
+        }
+        if !totals.contains_key(STAT_HP_REGEN_RATE) {
+            totals.overwrite(STAT_HP_REGEN_RATE, 1.0);
+        }
+        if !totals.contains_key(STAT_BLOOD_CAPACITY) {
+            totals.overwrite(STAT_BLOOD_CAPACITY, 1.0);
+        }
+        if !totals.contains_key(STAT_VISION) {
+            totals.overwrite(STAT_VISION, 1.0);
+        }
+        if !totals.contains_key(STAT_CALORIC_BURN_RATE) {
+            totals.overwrite(STAT_CALORIC_BURN_RATE, 1.0);
+        }
+        if !totals.contains_key(STAT_WALK_SPEED) {
+            totals.overwrite(STAT_WALK_SPEED, 300.);
+        }
         cmd.entity(body_tree_ent).insert((
             body_id.clone(),
             BodyTree,
             BodyTreeMassKg(seri.mass_kg.max(0.0)),
-            BodyTreeDistributedTotals {
-                hp_capacity: seri.hp_capacity.max(0.0),
-                hp_regen_rate: seri.hp_regen_rate.max(0.0),
-                blood_capacity: seri.blood_capacity.max(0.0),
-                blood_pumping: seri.blood_pumping.max(0.0),
-                walk_speed: seri.walk_speed.max(0.0),
-                swim_speed: seri.swim_speed.max(0.0),
-                fly_speed: seri.fly_speed.max(0.0),
-                manipulation: seri.manipulation.max(0.0),
-                vision: seri.vision.max(0.0),
-                pain_sensitivity: seri.pain_sensitivity.max(0.0),
-                caloric_burn_rate: seri.caloric_burn_rate.max(0.0),
-                caloric_capacity: seri.caloric_capacity.max(0.0),
-            },
+            BodyTreeDistributedTotals(totals),
             EntityZero,
         ));
 
@@ -94,30 +102,32 @@ fn walk_body_tree(
     parent_ent: Option<Entity>,
 ) -> Option<Entity> {
     let part_id = StrId::trunc(node.part_id.as_str());
-    let Ok(part_ent) = part_map.0.get_cloned(&part_id) else {
+    let Ok(source_part_ent) = part_map.0.get_cloned(&part_id) else {
         warn!(target: "body_init", "BodyPart '{}' not found in BodyPartCfgEntityMap for body '{}', skipping", part_id, body_id);
         return None;
     };
 
-    cmd.entity(part_ent).insert((
+    let tree_node_ent = cmd.spawn_empty().id();
+    cmd.entity(tree_node_ent).insert((
         BodyPartOf { body: body_ent },
         ChildOf(body_ent),
-        EntityZeroRef(part_ent),
+        EntityZeroRef(source_part_ent),
+        EntityZero,
     ));
 
     let label = node.label_override.trim();
     if !label.is_empty() {
-        cmd.entity(part_ent).insert(DisplayName::trunc(label));
+        cmd.entity(tree_node_ent).insert(DisplayName::trunc(label));
     }
 
     if let Some(parent_ent) = parent_ent {
-        cmd.entity(part_ent)
+        cmd.entity(tree_node_ent)
             .insert(BodyPartParent { parent: parent_ent });
     }
 
     for child in node.children {
-        walk_body_tree(cmd, part_map, body_ent, body_id, child, Some(part_ent));
+        walk_body_tree(cmd, part_map, body_ent, body_id, child, Some(tree_node_ent));
     }
 
-    Some(part_ent)
+    Some(tree_node_ent)
 }

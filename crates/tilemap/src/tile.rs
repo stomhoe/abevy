@@ -39,7 +39,7 @@ pub fn plugin(app: &mut App) {
         flip_tile_based_on_initial_pos_hash,
         rotate_tile_based_on_initial_pos_hash,
         sync_sprite_flips_with_tileflip,
-        despawn_if_not_excepted.in_set(PreChunkDespawnReaders),//DON'T TOUCH
+        despawn_if_not_excepted.in_set(PreChunkDespawnSystems),//DON'T TOUCH
         (add_spawned_tiles_to_gpos_map, ),
         add_projectile_colliders_to_tiles,
         (spritetile_snap_transform_to_global_pos).chain(),
@@ -49,7 +49,7 @@ pub fn plugin(app: &mut App) {
         validate_portal_recipes,
         safe_despawn_tile_at,
         reckeck_adjacency_for,
-        tile_adjacency_retexturing_system.in_set(PreChunkDespawnReaders),
+        tile_adjacency_retexturing_system,//.in_set(PreChunkDespawnSystems),
 
     ))
     .add_observer(on_spritetile_despawn)

@@ -1,15 +1,19 @@
 (
     id: "mouth",
-    name: Some("Mouth"),
+    name: "Mouth",
     coverage_weight: 3,
-    hp_capacity: 7.0,
-    hp_regen_rate: 0.8,
-    depth: Some("surface"),
+    forced_stats: {
+        "hp_capacity": 7.0,
+        "hp_regen_rate": 0.8,
+        "pain_sensitivity": 1.4,
+        "blood_capacity": 3.5,
+        "manipulation": 0.1,
+        "caloric_burn_rate": 0.4,
+    },
+    weighted_stats: {
+        "mass_kg": 0.1,
+    },
+    depth: "surface",
     vital: false,
-    pain_sensitivity: 1.4,
     bleed_rate: 0.9,
-    blood_capacity: 3.5,
-    manipulation: 0.1,
-    mass_weight: 0.1,
-    caloric_burn_rate: 0.4,
 )

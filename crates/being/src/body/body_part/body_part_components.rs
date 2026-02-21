@@ -42,44 +42,27 @@ impl BodyPartSlots {
 pub struct BodyPartCoverageWeight(pub u16);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BodyPartMassWeight(pub f32);
+pub struct BodyPartMassResolvedKgs(pub f32);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BodyPartMassKg(pub f32);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct BodyPartForcedDistribution(pub HashIdMap<f32>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BodyPartForcedDistribution {
-    pub mass_kg: f32,
-    pub hp_capacity: f32,
-    pub hp_regen_rate: f32,
-    pub blood_capacity: f32,
-    pub blood_pumping: f32,
-    pub walk_speed: f32,
-    pub swim_speed: f32,
-    pub fly_speed: f32,
-    pub manipulation: f32,
-    pub vision: f32,
-    pub pain_sensitivity: f32,
-    pub caloric_burn_rate: f32,
-    pub caloric_capacity: f32,
-}
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+pub struct BodyPartWeightedDistribution(pub HashIdMap<f32>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BodyPartWeightedDistribution {
-    pub mass_kg: f32,
-    pub hp_capacity: f32,
-    pub hp_regen_rate: f32,
-    pub blood_capacity: f32,
-    pub blood_pumping: f32,
-    pub walk_speed: f32,
-    pub swim_speed: f32,
-    pub fly_speed: f32,
-    pub manipulation: f32,
-    pub vision: f32,
-    pub pain_sensitivity: f32,
-    pub caloric_burn_rate: f32,
-    pub caloric_capacity: f32,
-}
+pub const STAT_MASS_KG: HashId = HashId::hash("mass_kg");
+pub const STAT_HP_CAPACITY: HashId = HashId::hash("hp_capacity");
+pub const STAT_HP_REGEN_RATE: HashId = HashId::hash("hp_regen_rate");
+pub const STAT_BLOOD_CAPACITY: HashId = HashId::hash("blood_capacity");
+pub const STAT_BLOOD_PUMPING: HashId = HashId::hash("blood_pumping");
+pub const STAT_WALK_SPEED: HashId = HashId::hash("walk_speed");
+pub const STAT_SWIM_SPEED: HashId = HashId::hash("swim_speed");
+pub const STAT_FLY_SPEED: HashId = HashId::hash("fly_speed");
+pub const STAT_MANIPULATION: HashId = HashId::hash("manipulation");
+pub const STAT_VISION: HashId = HashId::hash("vision");
+pub const STAT_PAIN_SENSITIVITY: HashId = HashId::hash("pain_sensitivity");
+pub const STAT_CALORIC_BURN_RATE: HashId = HashId::hash("caloric_burn_rate");
+pub const STAT_CALORIC_CAPACITY: HashId = HashId::hash("caloric_capacity");
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct BodyPartVital;
@@ -114,7 +97,5 @@ impl From<String> for BodyPartDepth {
     }
 }
 
-#[derive(Component, Debug, Default, Clone, )]
-pub struct BodyPartKind(pub StrId);
 
 pub type BodyPartTags = TagSet;

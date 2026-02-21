@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 use crate::{CardinalDirection, DiagonalCardinalDirection, DimensionRef, tilemap_positioning::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct PreChunkDespawnReaders;
+pub struct PreChunkDespawnSystems;
 
 
 #[derive(Resource, Default)]

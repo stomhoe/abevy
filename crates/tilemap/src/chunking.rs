@@ -39,7 +39,7 @@ pub fn plugin(app: &mut App) {
         periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
 
     ).in_set(ChunkSystems),
-        despawn_chunks.after(PreChunkDespawnReaders),
+        despawn_chunks.after(PreChunkDespawnSystems),
         rem_outofrange_chunks_from_activators,
 
     ))

@@ -30,12 +30,6 @@ pub struct InvertMovement;
 /// Slowdown multiplier applied to movement speeds based on pain. Value is 1.0 - pain.
 pub struct PainSlowdown;
 
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-#[require(ModifierTags, )]
-pub struct HandlingCapability;
-
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(ModifierTags, )]
 pub struct HitpointsCapacity;

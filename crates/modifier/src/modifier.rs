@@ -12,10 +12,15 @@ use {
 pub fn plugin(app: &mut App) {
     app.add_systems(
         FixedUpdate,
-        (update_modifier_effective_values.run_if(on_timer(Duration::from_millis(200))),)
+        (
+            update_modifier_effective_values.run_if(on_timer(Duration::from_millis(200))),
+            sync_modifier_name_to_effects,
+        )
+            .chain()
             .in_set(ModifierSystems),
     )
     .register_type::<AppliedModifiers>()
+    .register_type::<ModifierTarget>()
 
     .replicate::<ModifierTarget>()
     .replicate::<BaseValue>()
@@ -33,7 +38,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<PainSensitivity>()
     .replicate::<PainInfliction>()
     .replicate::<PainSlowdown>()
-    .replicate::<HandlingCapability>()
     .replicate::<Manipulation>()
     .replicate::<Vision>()
     .replicate::<Antidote>()

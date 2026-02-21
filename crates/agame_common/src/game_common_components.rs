@@ -12,6 +12,8 @@ pub use crate::entity_zero_components::*;
 pub struct Directionable;
 
 
+#[derive(Component, Debug, Default, Copy, Clone)]
+pub struct ExcludedFromAutoRenamer;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
 /// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state

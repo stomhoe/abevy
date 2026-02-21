@@ -26,11 +26,20 @@ pub struct BlockingTileParamSet<'w, 's> {
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
     pub fn is_blocked_at(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
-        if self
-            .beings_at_gpos
-            .beings_at_pos(dim_ref, gpos)
-            .iter()
-            .any(|&ent| ent != being)
+        self.is_blocked_at_impl(to_drain, dim_ref, gpos, being, true)
+    }
+
+    pub fn is_blocked_at_terrain_only(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
+        self.is_blocked_at_impl(to_drain, dim_ref, gpos, being, false)
+    }
+
+    fn is_blocked_at_impl(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, include_beings: bool) -> bool {
+        if include_beings
+            && self
+                .beings_at_gpos
+                .beings_at_pos(dim_ref, gpos)
+                .iter()
+                .any(|&ent| ent != being)
         {
             return true;
         }

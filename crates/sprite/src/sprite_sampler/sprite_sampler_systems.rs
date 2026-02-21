@@ -20,17 +20,16 @@ pub fn replace_sampler_string_ids_by_entities(
         return;
     }
     let Some(sprite_map) = sprite_map else {
-        if !query.is_empty() {
-            error!(target: "sprite_sampler_systems", "SpriteConfigEntityMap not found, cannot replace sampler string ids");
-        }
+        error!(target: "sprite_sampler_systems", "SpriteConfigEntityMap not found, cannot replace sampler string ids");
         return;
     };
     let Some(sampler_map) = sampler_map else {
-        if !query.is_empty() {
-            error!(target: "sprite_sampler_systems", "SpriteWeightedSamplerEntityMap not found, cannot replace sampler string ids");
-        }
+        error!(target: "sprite_sampler_systems", "SpriteWeightedSamplerEntityMap not found, cannot replace sampler string ids");
         return;
     };
+    if sprite_map.0.is_empty(){
+        error!(target: "sprite_sampler_systems", "SpriteConfigEntityMap has no entries, cannot replace sampler string ids");
+    }
 
     let mut sample_sprites_to_insert = Vec::new();
 
@@ -71,12 +70,14 @@ pub fn sample_from_sprite_entities(
     for (ent, sample_sprites, ) in being_query.iter() {
         debug!(target: "sprite_sampler_systems", "Sampling from sprite entities for entity {:?}", ent);
         let mut sampled_configs = EntityHashSet::new();
+        let mut visited = EntityHashSet::new();
 
         for entity in sample_sprites.entities().iter() {
             sample_from_entity_recursive(
                 *entity,
                 &samplers_query,
                 &mut sampled_configs,
+                &mut visited,
             );
         }
 
@@ -112,8 +113,13 @@ fn sample_from_entity_recursive(
     ent: Entity,
     sampler_query: &Query<&EntityWeightedSampler>,
     sampled_configs: &mut EntityHashSet,
+    visited: &mut EntityHashSet,
 ) {
     if let Ok(weighted_sampler) = sampler_query.get(ent) {
+        if !visited.insert(ent) {
+            warn!(target: "sprite_sampler_systems", "Detected cycle while sampling sprite sampler graph at entity {:?}", ent);
+            return;
+        }
         let mut rng = rand::rng();
         if let Some(sampled_ent) = weighted_sampler.sample_with_rng(&mut rng) {
             debug!(target: "sprite_sampler_systems", "Sampled entity {:?} from sampler {:?}", sampled_ent, ent);
@@ -121,10 +127,12 @@ fn sample_from_entity_recursive(
                 sampled_ent,
                 sampler_query,
                 sampled_configs,
+                visited,
             );
         } else {
             error!(target: "sprite_sampler_systems", "Failed to sample from sampler {:?}, sampler has no valid entries", ent);
         }
+        visited.remove(&ent);
     } else {
         debug!(target: "sprite_sampler_systems", "Resolved entity {:?} to sprite config", ent);
         sampled_configs.insert(ent);

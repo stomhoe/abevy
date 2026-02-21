@@ -1,13 +1,11 @@
 use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::common_id_components::HashId;
-use ::tilemap_shared::*;
-use game_common::game_common_samplers::{EntityWeightedSampler, ScaleHpAndStrengthWithSize, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
+use game_common::game_common_samplers::{EntityWeightedSampler, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
 use crate::being_inst_template::being_inst_template_resources::BitRef;
 
 use crate::body::body_sampler::body_sampler_components::BodyWeightedSampler;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
-use crate::body::{BodyTreeRef, BodyTreeStrIdRef};
+use crate::body::BodyTreeRef;
 use crate::sex::sex_resources::SexRef;
 use sprite_shared::SampleSpriteEnts;
 
@@ -24,66 +22,58 @@ pub fn build_beings_from_race_ref(
         &RaceRef,
         Has<SampleSpriteEnts>,
         Has<BodyTreeRef>,
-        Has<SexRef>
+        Has<SexRef>,
     ), (Changed<RaceRef>, With<Being>)>,
 
     race_query: Query<(// use thread rng to sample these
         Option<&SexesSampler>,
         Option<&MappedSpritesToSample>,
         Option<&BodyWeightedSamplerRef>,
+        Option<&BodyTreeRef>,
     ), With<Race>>,
 ) {
     if beings_query.is_empty() {
         return;
     }
-    let Ok(global_gen_settings) = global_gen_settings.single() else {
-        error!("Failed to get global gen settings");
-        return;
-    };
+    let mut rng = rand::rng();
     let mut sample_sprites_to_ins: Vec<(Entity, SampleSpriteEnts)> = Vec::new();
-    let mut sample_bodies_to_ins: Vec<(Entity, SampleBodyFromStrId)> = Vec::new();
+    let mut sex_refs_to_ins: Vec<(Entity, SexRef)> = Vec::new();
 
-    for (ent, race_ref, (gpos, transform), dimension_ref, sample_sprites, sample_tree, sample_body_strid) in beings_query.iter() {
-        let Ok((sexes_sampler, mapped_sprites, body_tree_str_id_ref)) = race_query.get(race_ref.0) else {
+    for (being_ent, race_ref, has_sample_sprites, has_body_tree_ref, has_sex_ref, ) in beings_query.iter() {
+        let Ok((sexes_sampler, mapped_sprites, body_weighted_sampler_ref, body_tree_ref)) = race_query.get(race_ref.0) else {
             warn!(target: "race_build", "RaceRef entity {:?} could not be resolved to a Race entity", race_ref.0);
             continue;
         };
 
-        if sample_tree.is_none() && sample_body_strid.is_none() {
-            if let Some(body_tree_str_id_ref) = body_tree_str_id_ref {
-                sample_bodies_to_ins.push((
-                    ent,
-                    SampleBodyFromStrId::new(body_tree_str_id_ref.0.as_ref()),
-                ));
+        // Template/body-tree data has priority. If a body is already fixed, don't set sampler ref.
+        if !has_body_tree_ref {
+            if let Some(&body_tree_ref) = body_tree_ref {
+                cmd.entity(being_ent).try_insert_if_new(body_tree_ref);
+            }
+            else if let Some(&body_sampler_ref) = body_weighted_sampler_ref {
+                cmd.entity(being_ent).try_insert(body_sampler_ref);
             }
         }
 
-        if sample_sprites.is_none() {
+        let mut selected_sex_ent = None;
+        if !has_sex_ref {
+            if let Some(sexes_sampler) = sexes_sampler {
+                selected_sex_ent = sexes_sampler.0.sample_with_rng(&mut rng);
+                if let Some(sex_ent) = selected_sex_ent {
+                    sex_refs_to_ins.push((being_ent, SexRef(sex_ent)));
+                }
+            }
+        }
+
+        if !has_sample_sprites {
             if let Some(mapped_sprites) = mapped_sprites {
                 if !mapped_sprites.0.is_empty() {
-                    let pos = if let Some(gpos) = gpos {
-                        Some(*gpos)
-                    } else if let Some(transform) = transform {
-                        Some(GlobalTilePos::from(transform.translation.xy()))
-                    } else {
-                        None
-                    };
-
-                    let dim_hash = dimension_hash_query.get(dimension_ref.0).copied().ok();
-
-                    let sampled_sex_ent = match (sexes_sampler, pos, dim_hash) {
-                        (Some(sexes_sampler), Some(pos), Some(dim_hash)) => {
-                            sexes_sampler.0.sample_with_pos(pos, &global_gen_settings, dim_hash)
-                        }
-                        _ => None,
-                    };
-
-                    let selected_sex_ent = sampled_sex_ent
+                    let selected_sex_ent = selected_sex_ent
                         .or_else(|| mapped_sprites.0.keys().next().copied());
 
                     if let Some(sex_ent) = selected_sex_ent {
                         if let Some(sample) = mapped_sprites.0.get(&sex_ent) {
-                            sample_sprites_to_ins.push((ent, sample.clone()));
+                            sample_sprites_to_ins.push((being_ent, sample.clone()));
                         } else {
                             warn!(target: "race_build", "Race entity {:?} has no sprite mapping for sex entity {:?}", race_ref.0, sex_ent);
                         }
@@ -96,7 +86,7 @@ pub fn build_beings_from_race_ref(
     }
 
     cmd.try_insert_batch_if_new(sample_sprites_to_ins);
-    cmd.try_insert_batch_if_new(sample_bodies_to_ins);
+    cmd.try_insert_batch_if_new(sex_refs_to_ins);
 }
 
 #[allow(unused_parens)]

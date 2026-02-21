@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use bevy::prelude::*;
+use bevy::platform::collections::HashMap;
 
 use crate::body::body_tree_components::BodyTree;
 
@@ -20,29 +21,7 @@ pub struct BodyTreeSeri {
     #[serde(default)]
     pub mass_kg: f32,
     #[serde(default)]
-    pub hp_capacity: f32,
-    #[serde(default)]
-    pub hp_regen_rate: f32,
-    #[serde(default)]
-    pub blood_capacity: f32,
-    #[serde(default)]
-    pub blood_pumping: f32,
-    #[serde(default)]
-    pub walk_speed: f32,
-    #[serde(default)]
-    pub swim_speed: f32,
-    #[serde(default)]
-    pub fly_speed: f32,
-    #[serde(default)]
-    pub manipulation: f32,
-    #[serde(default)]
-    pub vision: f32,
-    #[serde(default)]
-    pub pain_sensitivity: f32,
-    #[serde(default)]
-    pub caloric_burn_rate: f32,
-    #[serde(default)]
-    pub caloric_capacity: f32,
+    pub distributed_totals: HashMap<String, f32>,
     pub root: BodyNodeSeri,
 }
 

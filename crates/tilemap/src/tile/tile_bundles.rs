@@ -56,6 +56,8 @@ pub struct ToDenyOnTileClone(
     FlipVerticallyBasedOnHash,
     FlipHorizontallyBasedOnHash,
     OffsetForTerrgenPlacement,
+    RotateCardinallyBasedOnHash,
+    TransformBasedCardRotation,
 );
 
 #[derive(Bundle)] #[allow(unused, )]

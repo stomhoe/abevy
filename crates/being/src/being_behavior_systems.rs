@@ -1,6 +1,7 @@
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_northstar::prelude::*;
+use common::log_targets;
 use param_sets::BlockingTileParamSet;
 use rand::Rng;
 use std::time::Duration;
@@ -9,7 +10,7 @@ use ::tilemap_shared::{GlobalTilePos, ChunkPos, LoadedChunks};
 use movement::movement_components::InputDirection;
 use crate::being_components::Being;
 use crate::being_inst_template::being_inst_template_resources::BitRef;
-use crate::body::{BodyHealth, BodyOf};
+use crate::body::{BodyHealth, Bodies};
 use crate::race::race_resources::RaceRef;
 use ::being_shared::{Predator, ControlledBy, Hunger, PredatorHuntThreshold};
 
@@ -253,7 +254,7 @@ pub fn sync_ai_nav_grids(
             for y in 0..height {
                 for x in 0..width {
                     let world = GlobalTilePos(min_tile + IVec2::new(x as i32, y as i32));
-                    if param_set.is_blocked_at(&mut to_drain, ::tilemap_shared::DimensionRef(dim), world, Entity::PLACEHOLDER) {
+                    if param_set.is_blocked_at_terrain_only(&mut to_drain, ::tilemap_shared::DimensionRef(dim), world, Entity::PLACEHOLDER) {
                         grid.set_nav(UVec3::new(x, y, 0), Nav::Impassable);
                     }
                 }
@@ -288,31 +289,22 @@ pub fn sync_ai_nav_grids(
 
 fn health_ratio(
     being: Entity,
-    own_health: &Query<&BodyHealth, With<Being>>,
-    bodies_health: &Query<(&BodyOf, &BodyHealth)>,
+    bodies_query: &Query<&Bodies, With<Being>>,
+    body_health_query: &Query<&BodyHealth>,
 ) -> f32 {
-    if let Ok(health) = own_health.get(being) {
-        if health.total_hp > 0.0 {
-            return (health.current_hp / health.total_hp).clamp(0.0, 1.0);
-        }
+    let Ok(bodies) = bodies_query.get(being) else { return 0.0; };
+    let Some(body_ent) = bodies.entities().first() else { return 0.0; };
+    let Ok(health) = body_health_query.get(*body_ent) else { return 0.0; };
+    if health.total_hp <= 0.0 {
+        return 0.0;
     }
-    let mut best = 0.0;
-    for (body_of, health) in bodies_health.iter() {
-        if body_of.being != being || health.total_hp <= 0.0 {
-            continue;
-        }
-        let ratio = (health.current_hp / health.total_hp).clamp(0.0, 1.0);
-        if ratio > best {
-            best = ratio;
-        }
-    }
-    best
+    (health.current_hp / health.total_hp).clamp(0.0, 1.0)
 }
 
 pub fn predator_hunt_behavior(
     time: Res<Time>,
-    own_health: Query<&BodyHealth, With<Being>>,
-    bodies_health: Query<(&BodyOf, &BodyHealth)>,
+    bodies_query: Query<&Bodies, With<Being>>,
+    body_health_query: Query<&BodyHealth>,
     mut predators: Query<(
         Entity,
         &Transform,
@@ -338,8 +330,15 @@ pub fn predator_hunt_behavior(
             }
         }
 
-        let hp = health_ratio(pred_ent, &own_health, &bodies_health);
+        let hp = health_ratio(pred_ent, &bodies_query, &body_health_query);
         if hunger.curr < hunt_threshold.0 || hp <= 0.9 {
+            if hp <= 0.9 {
+                error_once!(
+                    target: log_targets::BEING_SYSTEM,
+                    "Predator {:?} wandering: hp gate failed (hp_ratio={:.3}, hunger={:.3}, threshold={:.3})",
+                    pred_ent, hp, hunger.curr, hunt_threshold.0
+                );
+            }
             let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng));
             apply_wander_input(state, &mut input_dir, dt, &mut rng);
             continue;
@@ -370,29 +369,53 @@ pub fn predator_hunt_behavior(
         }
 
         let Some((prey_ent_target, prey_pos, _)) = closest else {
+            error!(
+                target: log_targets::BEING_SYSTEM,
+                "Predator {:?} wandering: no eligible prey found in dimension {:?}",
+                pred_ent, pred_dim.0
+            );
             let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng));
             apply_wander_input(state, &mut input_dir, dt, &mut rng);
             continue;
         };
 
+        let desired_to_prey = (prey_pos.0 - pred_pos.0).as_vec2();
+        if desired_to_prey == Vec2::ZERO {
+            input_dir.0 = Vec2::ZERO;
+            continue;
+        }
+        let direct_chase_dir = desired_to_prey.normalize();
+
         let Some(cache) = grids.by_dim.get(&pred_dim.0) else {
-            let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng));
-            apply_wander_input(state, &mut input_dir, dt, &mut rng);
+            error!(
+                target: log_targets::BEING_SYSTEM,
+                "Predator {:?} chasing without nav grid in dimension {:?}",
+                pred_ent, pred_dim.0
+            );
+            input_dir.0 = direct_chase_dir;
             continue;
         };
 
         let start_i = pred_pos.0 - cache.min;
         let goal_i = prey_pos.0 - cache.min;
         if start_i.x < 0 || start_i.y < 0 || goal_i.x < 0 || goal_i.y < 0 {
-            let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng));
-            apply_wander_input(state, &mut input_dir, dt, &mut rng);
+            error!(
+                target: log_targets::BEING_SYSTEM,
+                "Predator {:?} chasing outside nav grid bounds (start_i={:?}, goal_i={:?})",
+                pred_ent, start_i, goal_i
+            );
+            input_dir.0 = direct_chase_dir;
             continue;
         }
         let start = UVec3::new(start_i.x as u32, start_i.y as u32, 0);
         let goal = UVec3::new(goal_i.x as u32, goal_i.y as u32, 0);
         if start.x >= cache.grid.width() || start.y >= cache.grid.height() || goal.x >= cache.grid.width() || goal.y >= cache.grid.height() {
-            let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng));
-            apply_wander_input(state, &mut input_dir, dt, &mut rng);
+            error!(
+                target: log_targets::BEING_SYSTEM,
+                "Predator {:?} chasing with start/goal out of nav grid bounds (start={:?}, goal={:?}, grid=({}, {}))",
+                pred_ent, start, goal, cache.grid.width(), cache.grid.height()
+            );
+            input_dir.0 = direct_chase_dir;
             continue;
         }
 
@@ -409,19 +432,27 @@ pub fn predator_hunt_behavior(
 
         let mut req = PathfindArgs::new(start, goal).blocking(&dynamic_blocking);
         let Some(path) = cache.grid.pathfind(&mut req) else {
-            let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng));
-            apply_wander_input(state, &mut input_dir, dt, &mut rng);
+            error!(
+                target: log_targets::BEING_SYSTEM,
+                "Predator {:?} chasing with direct fallback: pathfind failed (start={:?}, goal={:?}, blocked={})",
+                pred_ent, start, goal, dynamic_blocking.len()
+            );
+            input_dir.0 = direct_chase_dir;
             continue;
         };
 
         let steps = path.path();
         let Some(next) = steps.first() else {
-            let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng));
-            apply_wander_input(state, &mut input_dir, dt, &mut rng);
+            error!(
+                target: log_targets::BEING_SYSTEM,
+                "Predator {:?} chasing with direct fallback: path contained no steps (start={:?}, goal={:?})",
+                pred_ent, start, goal
+            );
+            input_dir.0 = direct_chase_dir;
             continue;
         };
         let next = next.xy().as_ivec2() + cache.min;
         let desired = (next - pred_pos.0).as_vec2();
-        input_dir.0 = if desired == Vec2::ZERO { Vec2::ZERO } else { desired.normalize() };
+        input_dir.0 = if desired == Vec2::ZERO { direct_chase_dir } else { desired.normalize() };
     }
 }

@@ -1,4 +1,6 @@
-use cargo check for checking errors. when everything's ok (no errors) and you finished, do a cargo build -r and disable warnings. if you only changed non .rs files, don't do cargo build nor check. 
+use cargo run -r for checking errors. if you only changed non .rs files, don't do cargo check. cargo build -r -p argentum_coop --bin argentum_coop when no errors left
 never create .md files unless instructed. avoid creating code with redundancies, avoid defining an excessive amount of new components or resources. if you do so, put them into their respective _components or _resources files. follow preexistent code and query style, avoid definying queries which conflict with each other. 
-if a queried component has no fields use Has<ComponentName> instead of Option<&ComponentName>, the former returns a bool directly. Try to make code compacted. Prefer let Ok/Some(...) else {continue;} over if let Ok/Some(...){}. use
+if a queried component has no fields, to use present use Has<ComponentName> instead of Option<&ComponentName>, the former returns a bool directly. Try to make code compacted. Prefer let Ok/Some(...) else {continue;} over if let Ok/Some(...){}. use
 EntityHashmap/set over Hashmap/set<Entity>. use .read() to read MessageReader's received messages, not .iter(). to write messages with a MessageWriter, define a mut messages: Local<Vec<MessageType>> in the system params, then use writer.write_batch(messages.drain(..)); at the end of the system. don't forget to add imports. if you use something from a crate, add it. if you alter a *Seri, fix affected .ron files
+
+for target: in error!, info!, etc. put the corresponding constant from log_targets.rs. if constant is missing, add it in there and then into main.rs's
