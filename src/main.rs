@@ -1,5 +1,6 @@
 use bevy::{input::common_conditions::input_toggle_active, log::LogPlugin, prelude::*,};
 use avian2d::prelude::PhysicsPlugins;
+use bevy_kira_audio::AudioPlugin;
 use bevy_inspector_egui::{
     bevy_egui::EguiPlugin,
     quick::WorldInspectorPlugin,
@@ -162,6 +163,7 @@ fn main() {
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::Escape)),
             PhysicsPlugins::default().with_length_unit(GlobalTilePos::TILE_SIZE_PXS.x as f32),
+            AudioPlugin,
         ))
         .add_plugins((
             multiplayer_shared::plugin, //VA ARRIBA

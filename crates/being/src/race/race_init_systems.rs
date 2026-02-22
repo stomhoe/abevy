@@ -2,6 +2,7 @@ use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
+use common::common_id_components::{HashId, HashIdMap};
 use game_common::game_common_components::EntityZero;
 use game_common::game_common_samplers::*;
 use game_common::game_common_string_components::*;
@@ -11,6 +12,8 @@ use sprite::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeig
 use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeEntityMap;
 use crate::body::BodyTreeRef;
+use crate::body::body_part::body_part_components::*;
+use crate::body::body_tree_components::{BodyTreeDistributedTotals, BodyTreeMassKg};
 use crate::body::BodyTreeStrIdRef;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntityMap;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
@@ -30,12 +33,19 @@ pub fn init_races(
             let str_id = StrId::trunc(&race_seri.id);
 
             let ingame_name = DisplayName(race_seri.name.clone());
-            let description = race_seri.description.as_ref().map(|d| Description(d.clone()));
-            let demonym = race_seri.demonym.as_ref().map(|d| Demonym(d.clone().into()));
+            let description = race_seri.description.trim();
+            let demonym = race_seri.demonym.trim();
 
-            let singular_str = race_seri.singular.unwrap_or_else(|| race_seri.name.clone());
-            let plural_str = race_seri.plural
-                .unwrap_or_else(|| format!("{}s", singular_str));
+            let singular_str = if race_seri.singular.trim().is_empty() {
+                race_seri.name.clone()
+            } else {
+                race_seri.singular.clone()
+            };
+            let plural_str = if race_seri.plural.trim().is_empty() {
+                format!("{}s", singular_str)
+            } else {
+                race_seri.plural.clone()
+            };
             let singular = SingularDenomination(singular_str.into());
             let plural = PluralDenomination(plural_str.into());
 
@@ -81,44 +91,66 @@ pub fn init_races(
             let mut mapped_sprites_to_sample: EntityHashMap<SampleSpriteEnts> = EntityHashMap::default();
 
             let sets_of_monochoosable_sprites = {
-                if let Some(sets) = &race_seri.sets_of_choosable_sprites {
-                    let mut labeled_monochoosable_sets = Vec::new();
-                    for (group_label, sprite_ids) in sets {
-                        let mut sprite_set = EntityHashSet::new();
-                        for sprite_id in sprite_ids {
-                            let trimmed = sprite_id.trim();
-                            if !trimmed.is_empty() {
-                                if trimmed == "none"{
-                                    sprite_set.insert(Entity::PLACEHOLDER);
-                                }
-                                else{
-                                    match sprite_map.0.get_cloned(trimmed) {
-                                        Ok(entity) => {
-                                            sprite_set.insert(entity);
-                                        }
-                                        Err(_) => {
-                                            error!(target: "race_init", "Race '{}' selectable sprite '{}' not found in SpriteConfigEntityMap", str_id, trimmed);
-                                        }
+                let mut labeled_monochoosable_sets = Vec::new();
+                for (group_label, sprite_ids) in &race_seri.sets_of_choosable_sprites {
+                    let mut sprite_set = EntityHashSet::new();
+                    for sprite_id in sprite_ids {
+                        let trimmed = sprite_id.trim();
+                        if !trimmed.is_empty() {
+                            if trimmed == "none"{
+                                sprite_set.insert(Entity::PLACEHOLDER);
+                            }
+                            else{
+                                match sprite_map.0.get_cloned(trimmed) {
+                                    Ok(entity) => {
+                                        sprite_set.insert(entity);
+                                    }
+                                    Err(_) => {
+                                        error!(target: "race_init", "Race '{}' selectable sprite '{}' not found in SpriteConfigEntityMap", str_id, trimmed);
                                     }
                                 }
                             }
                         }
-                        if !sprite_set.is_empty() {
-                            labeled_monochoosable_sets.push((StrId::trunc(group_label), sprite_set));
-                        }
                     }
+                    if !sprite_set.is_empty() {
+                        labeled_monochoosable_sets.push((StrId::trunc(group_label), sprite_set));
+                    }
+                }
 
-                    if !labeled_monochoosable_sets.is_empty() {
-                        Some(SetsOfPlayerMonoChoosableSprites(labeled_monochoosable_sets))
-                    } else {
-                        None
-                    }
+                if !labeled_monochoosable_sets.is_empty() {
+                    Some(SetsOfPlayerMonoChoosableSprites(labeled_monochoosable_sets))
                 } else {
                     None
                 }
             };
 
             let mut entity_cmds = cmd.spawn((Race, EntityZero, str_id.clone(), ingame_name, singular, plural));
+            let mut totals = HashIdMap::default();
+            for (key, val) in &race_seri.distributed_totals {
+                totals.overwrite(HashId::from(key), val.max(0.0));
+            }
+            if !totals.contains_key(STAT_HP_CAPACITY) {
+                totals.overwrite(STAT_HP_CAPACITY, 1.0);
+            }
+            if !totals.contains_key(STAT_HP_REGEN_RATE) {
+                totals.overwrite(STAT_HP_REGEN_RATE, 1.0);
+            }
+            if !totals.contains_key(STAT_BLOOD_CAPACITY) {
+                totals.overwrite(STAT_BLOOD_CAPACITY, 1.0);
+            }
+            if !totals.contains_key(STAT_VISION) {
+                totals.overwrite(STAT_VISION, 1.0);
+            }
+            if !totals.contains_key(STAT_CALORIC_BURN_RATE) {
+                totals.overwrite(STAT_CALORIC_BURN_RATE, 1.0);
+            }
+            if !totals.contains_key(STAT_WALK_SPEED) {
+                totals.overwrite(STAT_WALK_SPEED, 300.);
+            }
+            entity_cmds.insert((
+                BodyTreeMassKg(race_seri.mass_kg.max(0.0)),
+                BodyTreeDistributedTotals(totals),
+            ));
 
             let body_tree_str_id = StrId::trunc(&race_seri.body_tree_or_sampler);
 
@@ -128,36 +160,58 @@ pub fn init_races(
                 entity_cmds.insert(BodyTreeRef(body_tree_ent));
             }
 
-            if let Some(desc) = description {
-                entity_cmds.insert(desc);
+            if !description.is_empty() {
+                entity_cmds.insert(Description(description.to_string()));
             }
-            if let Some(dem) = demonym {
-                entity_cmds.insert(dem);
+            if !demonym.is_empty() {
+                entity_cmds.insert(Demonym(demonym.to_string().into()));
             }
-
             if let Some(selectable) = sets_of_monochoosable_sprites {
                 entity_cmds.insert(selectable);
             }
-
-            if let Some(size_variation) = race_seri.size_variation {
-                entity_cmds.insert(SpriteGlobalNormalDist::new(size_variation));
+            if !normal_dist_is_disabled(&race_seri.size_variation) {
+                entity_cmds.insert(SpriteGlobalNormalDist::new(race_seri.size_variation.clone()));
             }
-            if let Some(hori_variation) = race_seri.hori_variation {
-                entity_cmds.insert(SpriteHoriNormalDist::new(hori_variation));
+            if !normal_dist_is_disabled(&race_seri.hori_variation) {
+                entity_cmds.insert(SpriteHoriNormalDist::new(race_seri.hori_variation.clone()));
             }
-            if let Some(vert_variation) = race_seri.vert_variation {
-                entity_cmds.insert(SpriteVertNormalDist::new(vert_variation));
+            if !normal_dist_is_disabled(&race_seri.vert_variation) {
+                entity_cmds.insert(SpriteVertNormalDist::new(race_seri.vert_variation.clone()));
             }
 
             let entity = entity_cmds.id();
             if PredatorHuntThreshold::is_configured_in_seri(race_seri.predator_hunt_threshold) {
+                let mut own_races = bevy::platform::collections::HashSet::default();
+                for race_id in &race_seri.friend_races {
+                    let trimmed = race_id.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    own_races.insert(StrId::trunc(trimmed));
+                }
+                own_races.insert(str_id.clone());
+                let (mut pack_min, mut pack_max) = race_seri.predator_pack_size_range;
+                if pack_min == 0 {
+                    pack_min = 1;
+                }
+                if pack_max < pack_min {
+                    pack_max = pack_min;
+                }
                 cmd.entity(entity).insert((
-                    Predator,
+                    Predator {
+                        own_races,
+                        territorialism: race_seri.predator_territorialism.max(0.0),
+                        pack_size_min: pack_min,
+                        pack_size_max: pack_max,
+                        do_not_hunt_tags: common::common_tag_components::TagSet::new(&race_seri.predator_dont_hunt),
+                        prey_body_size_ratio_tolerance: race_seri.predator_prey_body_size_ratio_tolerance,
+                    },
                     PredatorHuntThreshold(race_seri.predator_hunt_threshold),
                 ));
             }
-            if let Some(wander_cfg) = race_seri.predator_wander {
-                cmd.entity(entity).insert(PredatorWanderConfig {
+            if !race_seri.wander.is_disabled() {
+                let wander_cfg = &race_seri.wander;
+                cmd.entity(entity).insert(WanderConfig {
                     dir_secs_min: wander_cfg.dir_secs_min.max(0.01),
                     dir_secs_max: wander_cfg.dir_secs_max.max(wander_cfg.dir_secs_min.max(0.01)),
                     move_secs_min: wander_cfg.move_secs_min.max(0.01),
@@ -166,20 +220,25 @@ pub fn init_races(
                     halt_secs_max: wander_cfg.halt_secs_max.max(wander_cfg.halt_secs_min.max(0.01)),
                     speed_min: wander_cfg.speed_min.max(0.0),
                     speed_max: wander_cfg.speed_max.max(wander_cfg.speed_min.max(0.0)),
+                    avoid_tile_tags: common::common_tag_components::TagSet::new(&wander_cfg.avoid),
                 });
             }
 
             if !race_seri.sexes.is_empty() {
                 let mut sex_entities_weights: Vec<(Entity, f32)> = Vec::new();
-                for (sex_id, (weight, sprite_ids)) in &race_seri.sexes {
+                let mut sex_size_variations = bevy::ecs::entity::EntityHashMap::default();
+                for (sex_id, sex_cfg) in &race_seri.sexes {
                     match sexes_map.0.get_cloned(sex_id) {
                         Ok(sex_entity) => {
-                            sex_entities_weights.push((sex_entity, *weight as f32));
+                            sex_entities_weights.push((sex_entity, sex_cfg.weight() as f32));
+                            if let Some(size_var) = sex_cfg.size_variation() {
+                                sex_size_variations.insert(sex_entity, SpriteGlobalNormalDist::new(size_var));
+                            }
 
-                            let mut resolved_entities = if sprite_ids.is_empty() {
+                            let mut resolved_entities = if sex_cfg.sprites().is_empty() {
                                 fallback_sprite_entities.clone()
                             } else {
-                                resolve_sprite_entities(sprite_ids)
+                                resolve_sprite_entities(sex_cfg.sprites())
                             };
 
                             if resolved_entities.is_empty() && !fallback_sprite_entities.is_empty() {
@@ -205,6 +264,9 @@ pub fn init_races(
                 if !sex_entities_weights.is_empty() {
                     let sex_sampler = SexesSampler::new(&sex_entities_weights);
                     cmd.entity(entity).insert(sex_sampler);
+                }
+                if !sex_size_variations.is_empty() {
+                    cmd.entity(entity).insert(SexSizeVariationsBySex(sex_size_variations));
                 }
             }
             if race_seri.scale_hp_and_strength_with_size {

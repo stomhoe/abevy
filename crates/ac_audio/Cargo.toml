@@ -1,0 +1,10 @@
+[package]
+name = "ac_audio"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+serde = { workspace = true }
+ron = { workspace = true }
+common = { path = "../acommon" }

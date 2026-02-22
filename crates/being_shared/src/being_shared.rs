@@ -1,7 +1,9 @@
 
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
+use bevy::platform::collections::HashSet;
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
+use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
 use sprite_shared::SampleSpriteEnts;
@@ -140,8 +142,27 @@ pub struct MappedSpritesToSample(
     pub EntityHashMap<SampleSpriteEnts>,
 );
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct Predator;
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+pub struct Predator {
+    pub own_races: HashSet<StrId>,
+    pub territorialism: f32,
+    pub pack_size_min: u32,
+    pub pack_size_max: u32,
+    pub do_not_hunt_tags: TagSet,
+    pub prey_body_size_ratio_tolerance: f32,
+}
+impl Default for Predator {
+    fn default() -> Self {
+        Self {
+            own_races: HashSet::default(),
+            territorialism: 0.0,
+            pack_size_min: 1,
+            pack_size_max: 1,
+            do_not_hunt_tags: TagSet::default(),
+            prey_body_size_ratio_tolerance: -1.0,
+        }
+    }
+}
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
 pub struct Hunger {

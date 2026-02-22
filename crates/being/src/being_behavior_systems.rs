@@ -10,9 +10,13 @@ use movement::movement_components::InputDirection;
 use crate::being_components::{Being, ToChase};
 use crate::being_inst_template::being_inst_template_resources::BitRef;
 use crate::body::{BodyHealth, Bodies};
-use crate::race::race_components::PredatorWanderConfig;
+use crate::race::race_components::WanderConfig;
 use crate::race::race_resources::RaceRef;
 use ::being_shared::{Predator, ControlledBy, Hunger, PredatorHuntThreshold};
+use common::common_components::StrId;
+use common::common_tag_components::TagSet;
+use crate::body::body_tree_components::BeingMassKg;
+use crate::race::race_components::Race;
 
 #[derive(Resource)]
 pub struct AiNavGrids {
@@ -46,7 +50,7 @@ pub(crate) struct WanderState {
 }
 
 impl WanderState {
-    fn new(rng: &mut impl Rng, cfg: &PredatorWanderConfig) -> Self {
+    fn new(rng: &mut impl Rng, cfg: &WanderConfig) -> Self {
         Self {
             dir: pick_wander_dir(rng),
             dir_timer: Timer::from_seconds(rng.random_range(cfg.dir_secs_min..cfg.dir_secs_max), TimerMode::Once),
@@ -72,7 +76,7 @@ fn apply_wander_input(
     input_dir: &mut Mut<InputDirection>,
     dt: f32,
     rng: &mut impl Rng,
-    cfg: &PredatorWanderConfig,
+    cfg: &WanderConfig,
 ) {
     state.dir_timer.tick(Duration::from_secs_f32(dt));
     if state.dir_timer.just_finished() {
@@ -109,10 +113,18 @@ pub fn add_predator_behavior_components(
 pub fn sync_predator_config_from_sources(
     mut commands: Commands,
     beings: Query<(Entity, Option<&BitRef>, Option<&RaceRef>), (With<Being>, Or<(Changed<BitRef>, Changed<RaceRef>)>)>,
+    bit_pred_cfg: Query<&Predator>,
+    race_pred_cfg: Query<&Predator>,
     bit_cfg: Query<&PredatorHuntThreshold>,
     race_cfg: Query<&PredatorHuntThreshold>,
 ) {
     for (being_ent, bit_ref, race_ref) in beings.iter() {
+        let bit_predator = bit_ref
+            .and_then(|r| bit_pred_cfg.get(r.0).ok())
+            .cloned();
+        let race_predator = race_ref
+            .and_then(|r| race_pred_cfg.get(r.0).ok())
+            .cloned();
         let bit_threshold = bit_ref
             .and_then(|r| bit_cfg.get(r.0).ok())
             .copied();
@@ -123,7 +135,8 @@ pub fn sync_predator_config_from_sources(
         let Some(chosen) = bit_threshold.or(race_threshold) else {
             continue;
         };
-        commands.entity(being_ent).try_insert((Predator, chosen));
+        let predator = bit_predator.or(race_predator).unwrap_or_default();
+        commands.entity(being_ent).try_insert((predator, chosen));
     }
 }
 
@@ -291,15 +304,18 @@ pub fn update_predator_chase_targets(
         Entity,
         &Transform,
         &::tilemap_shared::DimensionRef,
+        &Predator,
         Option<&RaceRef>,
+        Option<&BeingMassKg>,
         Option<&ControlledBy>,
         &Hunger,
         &PredatorHuntThreshold,
     ), With<Predator>>,
-    prey_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef, Option<&RaceRef>), With<Being>>,
+    prey_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef, Option<&RaceRef>, Option<&BeingMassKg>, Option<&TagSet>), With<Being>>,
+    race_str_id_query: Query<&StrId, With<Race>>,
     mut cmd: Commands,
 ) {
-    for (pred_ent, pred_transf, &pred_dim, pred_race, controlled_by, hunger, hunt_threshold) in predators.iter() {
+    for (pred_ent, pred_transf, &pred_dim, predator_cfg, pred_race, pred_mass, controlled_by, hunger, hunt_threshold) in predators.iter() {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_input {
                 cmd.entity(pred_ent).try_remove::<ToChase>();
@@ -315,9 +331,29 @@ pub fn update_predator_chase_targets(
 
         let pred_pos = GlobalTilePos::from(pred_transf.translation.xy());
         let mut closest: Option<(Entity, i32)> = None;
-        for (prey_ent, prey_transf, &prey_dim, prey_race) in prey_query.iter() {
+        for (prey_ent, prey_transf, &prey_dim, prey_race, prey_mass, prey_tags) in prey_query.iter() {
             if prey_ent == pred_ent || prey_dim != pred_dim {
                 continue;
+            }
+            if let Some(prey_tags) = prey_tags {
+                if predator_cfg.do_not_hunt_tags.intersects(prey_tags) {
+                    continue;
+                }
+            }
+            if let (Some(pred_mass), Some(prey_mass)) = (pred_mass, prey_mass) {
+                if predator_cfg.prey_body_size_ratio_tolerance > 0.0
+                    && pred_mass.0 > 0.0
+                    && prey_mass.0 > pred_mass.0 * predator_cfg.prey_body_size_ratio_tolerance
+                {
+                    continue;
+                }
+            }
+            if let Some(prey_race) = prey_race {
+                if let Ok(prey_race_id) = race_str_id_query.get(prey_race.0) {
+                    if predator_cfg.own_races.contains(prey_race_id) {
+                        continue;
+                    }
+                }
             }
             if let (Some(pred_race), Some(prey_race)) = (pred_race, prey_race) {
                 if pred_race.0 == prey_race.0 {
@@ -435,18 +471,20 @@ pub fn chase_behavior(
     }
 }
 
-pub fn predator_wander_behavior(
+pub fn wander_behavior(
     time: Res<Time>,
-    mut predators: Query<
-        (Entity, &mut InputDirection, Option<&ControlledBy>, Option<&RaceRef>),
-        (With<Predator>, Without<ToChase>),
+    blocking_tiles: BlockingTileParamSet,
+    mut beings: Query<
+        (Entity, &Transform, &::tilemap_shared::DimensionRef, &mut InputDirection, Option<&ControlledBy>, Option<&RaceRef>),
+        (With<Being>, Without<ToChase>),
     >,
-    race_wander_cfg_query: Query<&PredatorWanderConfig>,
+    race_wander_cfg_query: Query<&WanderConfig>,
     mut wander_states: Local<HashMap<Entity, WanderState>>,
+    mut to_drain: Local<Vec<Entity>>,
 ) {
     let mut rng = rand::rng();
     let dt = time.delta_secs();
-    let default_cfg = PredatorWanderConfig {
+    let default_cfg = WanderConfig {
         dir_secs_min: 0.8,
         dir_secs_max: 2.4,
         move_secs_min: 0.9,
@@ -455,8 +493,9 @@ pub fn predator_wander_behavior(
         halt_secs_max: 1.4,
         speed_min: 0.2,
         speed_max: 0.6,
+        avoid_tile_tags: TagSet::default(),
     };
-    for (pred_ent, mut input_dir, controlled_by, race_ref) in predators.iter_mut() {
+    for (pred_ent, transform, &dim_ref, mut input_dir, controlled_by, race_ref) in beings.iter_mut() {
         let cfg = race_ref
             .and_then(|r| race_wander_cfg_query.get(r.0).ok())
             .unwrap_or(&default_cfg);
@@ -470,5 +509,18 @@ pub fn predator_wander_behavior(
         }
         let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng, cfg));
         apply_wander_input(state, &mut input_dir, dt, &mut rng, cfg);
+
+        if !cfg.avoid_tile_tags.is_empty() && input_dir.0 != Vec2::ZERO {
+            let curr = GlobalTilePos::from(transform.translation.xy());
+            let step = if input_dir.0.x.abs() >= input_dir.0.y.abs() {
+                IVec2::new(input_dir.0.x.signum() as i32, 0)
+            } else {
+                IVec2::new(0, input_dir.0.y.signum() as i32)
+            };
+            let next = GlobalTilePos(curr.0 + step);
+            if blocking_tiles.has_tagset_at(&mut to_drain, dim_ref, next, &cfg.avoid_tile_tags) {
+                input_dir.0 = Vec2::ZERO;
+            }
+        }
     }
 }

@@ -17,6 +17,20 @@ pub struct SpriteConfig;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct BaseMovementSpeed(pub f32);
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+pub struct SpriteAnimationSfx {
+    pub sound_paths: Vec<String>,
+    pub every_n_frame_changes: u16,
+}
+impl Default for SpriteAnimationSfx {
+    fn default() -> Self {
+        Self {
+            sound_paths: Vec::new(),
+            every_n_frame_changes: 1,
+        }
+    }
+}
 // impl Default for BaseMovementSpeed {
 //     fn default() -> Self {
 //         Self(200.0)

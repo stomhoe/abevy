@@ -1,6 +1,7 @@
 (
     id: "lava",
     name: "Lava",
+    tags: ["liquid", "hot"],
     z: -1000,
     img_paths: [
         ("", "texture/world/white.png"),

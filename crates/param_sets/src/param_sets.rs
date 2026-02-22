@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)]
 use bevy::platform::collections::{HashSet, HashMap};
+use common::common_tag_components::TagSet;
 
 use ::being_shared::*;
 use game_common::game_common_components::*;
@@ -19,11 +20,31 @@ pub struct BlockingTileParamSet<'w, 's> {
     being_query: Query<'w, 's, (Has<WallPhaser>, )>,
     tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), >,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
+    tile_tags: Query<'w, 's, &'static TagSet, >,
     tile_collision_masks: Query<'w, 's, &'static TileCollisionMask, >,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
+    pub fn has_tagset_at(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, target_tags: &TagSet) -> bool {
+        if target_tags.is_empty() {
+            return false;
+        }
+        to_drain.clear();
+        self.tile_gathering_params.gather_tiles_at(to_drain, dim_ref, gpos);
+        for tile_entity in to_drain.drain(..) {
+            let Ok((ezero_ref, ..)) = self.tile_instance_query.get(tile_entity) else {
+                continue;
+            };
+            let Ok(tile_tags) = self.tile_tags.get(ezero_ref.0) else {
+                continue;
+            };
+            if tile_tags.intersects(target_tags) {
+                return true;
+            }
+        }
+        false
+    }
 
     pub fn is_blocked_at(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
         self.is_blocked_at_impl(to_drain, dim_ref, gpos, being, true)

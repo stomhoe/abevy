@@ -13,6 +13,8 @@ SpriteConfigSeri(
     },
     children_sprites: [],
     shares_tag: [],
+    animation_sfx: ["sound/step.wav"],
+    animation_sfx_every_n_frame_changes: 2.5,
     directionable: true,
     movement_based: true,
     grounding_based: false,

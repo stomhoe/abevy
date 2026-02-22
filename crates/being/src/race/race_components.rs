@@ -1,8 +1,10 @@
-use bevy::{ecs::entity::{EntityHashSet, MapEntities}, platform::collections::HashSet};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet, MapEntities}, platform::collections::HashSet};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
+use common::common_tag_components::TagSet;
 use game_common::game_common_samplers::EntityWeightedSampler;
+use game_common::game_common_samplers::SpriteGlobalNormalDist;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Serialize, Deserialize, Clone)]
@@ -34,8 +36,11 @@ impl SexesSampler {
     }
 }
 
-#[derive(Component, Debug, Copy, Clone)]
-pub struct PredatorWanderConfig {
+#[derive(Component, Debug, Default, Clone)]
+pub struct SexSizeVariationsBySex(pub EntityHashMap<SpriteGlobalNormalDist>);
+
+#[derive(Component, Debug, Clone)]
+pub struct WanderConfig {
     pub dir_secs_min: f32,
     pub dir_secs_max: f32,
     pub move_secs_min: f32,
@@ -44,4 +49,5 @@ pub struct PredatorWanderConfig {
     pub halt_secs_max: f32,
     pub speed_min: f32,
     pub speed_max: f32,
+    pub avoid_tile_tags: TagSet,
 }

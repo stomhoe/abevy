@@ -163,6 +163,12 @@ pub fn init_sprite_configs(
             let ids = SampleSpritesFromStrIds::new(seri.children_sprites.clone());
             cmd.entity(spritecfg_ent).insert(ids);
         }
+        if !seri.animation_sfx.is_empty() {
+            cmd.entity(spritecfg_ent).insert(SpriteAnimationSfx {
+                sound_paths: seri.animation_sfx.clone(),
+                every_n_frame_changes: seri.animation_sfx_every_n_frame_changes.max(1),
+            });
+        }
     }
     cmd.try_insert_batch(comps_to_insert);
 }

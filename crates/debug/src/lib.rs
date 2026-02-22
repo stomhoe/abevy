@@ -24,3 +24,4 @@ mod debug_resources;
 mod debug_systems;
 mod debug_fonts;
 mod debug_messages;
+mod gpos_maps_window;

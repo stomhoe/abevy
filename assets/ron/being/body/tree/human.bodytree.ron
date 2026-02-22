@@ -2,10 +2,6 @@
     id: "human",
     name: "Human Body",
     tags: ["humanoid"],
-    mass_kg: 70.0,
-    distributed_totals: {
-        "walk_speed": 300,
-    },
     root: (
         part_id: "torso",
         label_override: "Torso",

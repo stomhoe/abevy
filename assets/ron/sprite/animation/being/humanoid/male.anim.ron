@@ -1,5 +1,6 @@
 ([(
     id: "mahubo0_east_idle", img_path: "texture/being/body/human/male.png",
+    paused: true,
     rows_cols: (4, 6), speed: 0., clips: [
         (
             target: 3,
@@ -9,6 +10,7 @@
     ], z: 1000, y_sort: Some(0),
 ),(
     id: "mahubo0_north_idle", img_path: "texture/being/body/human/male.png",
+    paused: true,
     rows_cols: (4, 6), speed: 0., clips: [
         (
             target: 1,
@@ -18,6 +20,7 @@
     ], z: 1000, y_sort: Some(0),
 ),(
     id: "mahubo0_south_idle", img_path: "texture/being/body/human/male.png",
+    paused: true,
     rows_cols: (4, 6), speed: 0., clips: [
         (
             target: 0,
@@ -27,6 +30,7 @@
     ], z: 1000, y_sort: Some(0),
 ),(
     id: "mahubo0_west_idle", img_path: "texture/being/body/human/male.png",
+    paused: true,
     rows_cols: (4, 6), speed: 0., clips: [
         (
             target: 2,
@@ -74,6 +78,7 @@
     ], z: 1000, y_sort: Some(0),
 ),(
     id: "mahuhe0_east_idle", img_path: "texture/being/head/human/0.png",
+    paused: true,
     rows_cols: (1, 4), speed: 0., clips: [
         (
             target: 1,
@@ -82,6 +87,7 @@
     ], z: 0,
 ),(
     id: "mahuhe0_north_idle", img_path: "texture/being/head/human/0.png",
+    paused: true,
     rows_cols: (1, 4), speed: 0., clips: [
         (
             target: 3,
@@ -90,6 +96,7 @@
     ], z: 0,
 ),(
     id: "mahuhe0_south_idle", img_path: "texture/being/head/human/0.png",
+    paused: true,
     rows_cols: (1, 4), speed: 0., clips: [
         (
             target: 0,
@@ -98,6 +105,7 @@
     ], z: 0,
 ),(
     id: "mahuhe0_west_idle", img_path: "texture/being/head/human/0.png",
+    paused: true,
     rows_cols: (1, 4), speed: 0., clips: [
         (
             target: 2,

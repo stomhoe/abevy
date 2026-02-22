@@ -32,7 +32,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                sample_sprite_normal_variations
+                sample_sprite_normal_variations.after(build_beings_from_race_ref)
             ).in_set(HostSystems)
         )
 

@@ -1,5 +1,6 @@
 ([(
     id: "spider_south_idle",
+    paused: true,
     rows_cols: (4, 4),
     speed: 0.,
     img_path: "texture/being/npc/spider.png",
@@ -27,6 +28,7 @@
     y_sort: Some(0),
 ),(
     id: "spider_north_idle",
+    paused: true,
     rows_cols: (4, 4),
     speed: 0.,
     img_path: "texture/being/npc/spider.png",
@@ -55,6 +57,7 @@
     y_sort: Some(0),
 ),(
     id: "spider_west_idle",
+    paused: true,
     rows_cols: (4, 4),
     speed: 0.,
     img_path: "texture/being/npc/spider.png",
@@ -82,6 +85,7 @@
     y_sort: Some(0),
 ),(
     id: "spider_east_idle",
+    paused: true,
     rows_cols: (4, 4),
     speed: 0.,
     img_path: "texture/being/npc/spider.png",

@@ -121,6 +121,9 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("⬜ Regions").size(16.0)).clicked() {
                 window_visible.regions_list = !window_visible.regions_list;
             }
+            if ui.button(egui::RichText::new("GPos Maps").size(16.0)).clicked() {
+                window_visible.gpos_maps = !window_visible.gpos_maps;
+            }
             if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
                 window_visible.beings_list = !window_visible.beings_list;
             }

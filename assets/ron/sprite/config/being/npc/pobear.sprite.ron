@@ -1,0 +1,26 @@
+SpriteConfigSeri(
+    id: "pobear",
+    name: "Polar bear",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "pobear_south_idle",
+        ("west", "idle", "g", "") : "pobear_west_idle",
+        ("east", "idle", "g", "") : "pobear_east_idle",
+        ("north", "idle", "g", "") : "pobear_north_idle",
+        ("south", "move", "g", "") : "pobear_south_move",
+        ("west", "move", "g", "") : "pobear_west_move",
+        ("east", "move", "g", "") : "pobear_east_move",
+        ("north", "move", "g", "") : "pobear_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    animation_sfx: ["sound/step.wav"],
+    animation_sfx_every_n_frame_changes: 2.5,
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+)
+
+// TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld

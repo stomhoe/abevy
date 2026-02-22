@@ -18,6 +18,10 @@ pub struct SpriteConfigSeri {
     #[serde(default)]
     pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
     #[serde(default)]
+    pub animation_sfx: Vec<String>,
+    #[serde(default = "default_animation_sfx_every_n_frame_changes")]
+    pub animation_sfx_every_n_frame_changes: u16,
+    #[serde(default)]
     pub directionable: bool,
     #[serde(default)]
     pub movement_based: bool,
@@ -64,6 +68,7 @@ pub struct SpriteConfigSeri {
 }
 fn default_scale_2d() -> (f32, f32) { (1.0, 1.0) }
 fn default_base_movement_speed() -> f32 { 0.0 }
+fn default_animation_sfx_every_n_frame_changes() -> u16 { 1 }
 // PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)
 
 

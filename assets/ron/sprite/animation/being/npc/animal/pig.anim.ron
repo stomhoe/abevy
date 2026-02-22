@@ -1,5 +1,6 @@
 ([(
     id: "pig_south_idle",
+    paused: true,
     rows_cols: (4, 8),
     speed: 0.,
     img_path: "texture/being/npc/pig.png",
@@ -28,6 +29,7 @@
     y_sort: Some(0),
 ),(
     id: "pig_north_idle",
+    paused: true,
     rows_cols: (4, 8),
     speed: 0.,
     img_path: "texture/being/npc/pig.png",
@@ -56,6 +58,7 @@
     y_sort: Some(0),
 ),(
     id: "pig_west_idle",
+    paused: true,
     rows_cols: (4, 8),
     speed: 0.,
     img_path: "texture/being/npc/pig.png",
@@ -84,6 +87,7 @@
     y_sort: Some(0),
 ),(
     id: "pig_east_idle",
+    paused: true,
     rows_cols: (4, 8),
     speed: 0.,
     img_path: "texture/being/npc/pig.png",

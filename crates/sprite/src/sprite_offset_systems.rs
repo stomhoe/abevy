@@ -8,7 +8,6 @@ use ::tilemap_shared::directions::*;
 
 #[allow(unused_parens, )]
 pub fn apply_offsets(
-    mut cmd: Commands,
     mut reader: MessageReader<SpriteChanged>,
     mut sprite_query: Query<(
         &mut Transform,

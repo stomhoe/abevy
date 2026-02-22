@@ -13,6 +13,7 @@ being_shared = { path = "../being_shared" }
 player = { path = "../player" }
 tilemap_shared = { path = "../tilemap_shared" }
 movement = { path = "../movement" }
+ac_audio = { path = "../ac_audio" }
 
 bevy = { workspace = true }
 #debug_unwraps = { workspace = true }
@@ -23,3 +24,4 @@ bevy_replicon = { workspace = true }
 bevy_asset_loader = { workspace = true }
 paste = { workspace = true }
 ron = { workspace = true }
+bevy_kira_audio = { workspace = true }

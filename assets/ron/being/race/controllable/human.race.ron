@@ -2,21 +2,25 @@
     id: "human",
     name: "Human",
     name_generator: None,
-    icon_path: None,
-    description: Some("Humans are known for their versatility, adaptability, and resilience, thriving in diverse environments and excelling in a wide range of skills."),
-    demonym: Some("human"),
-    singular: Some("human"),
-    plural: Some("humans"),
+    icon_path: "",
+    description: "Humans are known for their versatility, adaptability, and resilience, thriving in diverse environments and excelling in a wide range of skills.",
+    demonym: "human",
+    singular: "human",
+    plural: "humans",
     sexes: {
         "male": (1, []),
         "female": (1, []),
     },
     sentient: true,
     fallback_sprites_to_sample: ["mahubo0", "mahuhe0"],
-    sets_of_choosable_sprites: Some([
+    sets_of_choosable_sprites: [
         ("Head", ["mahuhe0", "", ""]),//mahuhe1, mahuhe2
         ("Body", ["mahubo0", "", ""]),//mahubo1 mahubo2
-    ]),
+    ],
+    mass_kg: 70.0,
+    distributed_totals: {
+        "walk_speed": 300,
+    },
     body_tree_or_sampler: "human_body",
 
 )

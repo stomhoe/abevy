@@ -9,15 +9,18 @@ use crate::being_components::*;
 use crate::body::BodyTreeRef;
 use crate::body::{body_tree_components::*, body_part::body_part_components::*};
 use crate::race::race_components::Race;
+use crate::race::race_resources::RaceRef;
 
 pub fn build_body_tree(
     mut cmd: Commands,
     query: Query<
-        (Entity, &BodyTreeRef, Option<&SpriteGlobalNormalDistResult>),
+        (Entity, &BodyTreeRef, Option<&RaceRef>, Option<&SpriteGlobalNormalDistResult>),
         (With<Being>, Added<BodyTreeRef>, Without<EntityZero>, Without<Race>, Without<BeingInstTemplate>),
     >,
-    tree_mass_query: Query<&BodyTreeMassKg>,
-    tree_totals_query: Query<&BodyTreeDistributedTotals>,
+    tree_mass_query: Query<&BodyTreeMassKg, With<BodyTree>>,
+    tree_totals_query: Query<&BodyTreeDistributedTotals, With<BodyTree>>,
+    race_mass_query: Query<&BodyTreeMassKg, With<Race>>,
+    race_totals_query: Query<&BodyTreeDistributedTotals, With<Race>>,
     forced_query: Query<&BodyPartForcedDistribution>,
     weighted_query: Query<&BodyPartWeightedDistribution>,
     root_parts_query: Query<(Entity, &BodyPartOf), (With<BodyRootPart>, With<EntityZero>)>,
@@ -25,21 +28,21 @@ pub fn build_body_tree(
     children_query: Query<&Children>,
     modifier_target_query: Query<&ModifierTarget>,
 ) {
-    for (being_ent, tree_to_build, global_size) in query.iter() {
+    for (being_ent, tree_to_build, race_ref, global_size) in query.iter() {
         let body_ent = cmd.spawn((
             BodyOf { being: being_ent },
             ChildOf(being_ent),
         )).id();
 
-        let tree_mass = tree_mass_query
-            .get(tree_to_build.0)
-            .map(|m| m.0)
+        let tree_mass = race_ref
+            .and_then(|r| race_mass_query.get(r.0).ok().map(|m| m.0))
+            .or_else(|| tree_mass_query.get(tree_to_build.0).ok().map(|m| m.0))
             .unwrap_or(0.0);
         let size_mult = global_size.map(|s| s.0).unwrap_or(1.0).max(0.01);
         let total_mass = tree_mass * size_mult;
-        let totals = tree_totals_query
-            .get(tree_to_build.0)
-            .cloned()
+        let totals = race_ref
+            .and_then(|r| race_totals_query.get(r.0).ok().cloned())
+            .or_else(|| tree_totals_query.get(tree_to_build.0).ok().cloned())
             .unwrap_or_default();
 
         let mut cloned_parts = Vec::new();

@@ -2,10 +2,6 @@
     id: "bear",
     name: "Bear Body",
     tags: ["quadruped", "furry"],
-    mass_kg: 220.0,
-    distributed_totals: {
-        "walk_speed": 400,
-    },
     root: (
         part_id: "body",
         label_override: "Body",

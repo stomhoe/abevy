@@ -10,7 +10,7 @@ use crate::sex::sex_resources::SexRef;
 use sprite_shared::SampleSpriteEnts;
 
 use crate::being_components::{Being, };
-use crate::race::race_components::{Race, SexesSampler};
+use crate::race::race_components::{Race, SexSizeVariationsBySex, SexesSampler};
 use crate::race::race_resources::RaceRef;
 
 
@@ -93,9 +93,10 @@ pub fn build_beings_from_race_ref(
 pub fn sample_sprite_normal_variations(
     mut cmd: Commands,
     beings_to_sample: Query<
-        (Entity, Option<&BitRef>, Option<&RaceRef>),
+        (Entity, Option<&BitRef>, Option<&RaceRef>, Option<&SexRef>),
         (Or<(Changed<BitRef>, Changed<RaceRef>)>, With<Being>),
     >,
+    race_sex_size_dists: Query<&SexSizeVariationsBySex, With<Race>>,
     dists_query: Query<(
         Option<&SpriteGlobalNormalDist>,
         Option<&SpriteHoriNormalDist>,
@@ -107,7 +108,7 @@ pub fn sample_sprite_normal_variations(
     let mut hori_dist_results = Vec::new();
     let mut vert_dist_results = Vec::new();
 
-    for (being_ent, bit_ref, race_ref, ) in beings_to_sample.iter() {
+    for (being_ent, bit_ref, race_ref, sex_ref, ) in beings_to_sample.iter() {
         let mut global_dist: Option<&SpriteGlobalNormalDist> = None;
         let mut hori_dist: Option<&SpriteHoriNormalDist> = None;
         let mut vert_dist: Option<&SpriteVertNormalDist> = None;
@@ -121,6 +122,13 @@ pub fn sample_sprite_normal_variations(
         }
 
         if let Some(race_ref) = race_ref {
+            if let Some(sex_ref) = sex_ref {
+                if let Ok(sex_dists) = race_sex_size_dists.get(race_ref.0) {
+                    if let Some(dist) = sex_dists.0.get(&sex_ref.0) {
+                        global_dist = Some(dist);
+                    }
+                }
+            }
             if let Ok((race_global, race_hori, race_vert, )) = dists_query.get(race_ref.0) {
                 if global_dist.is_none() { global_dist = race_global; }
                 if hori_dist.is_none() { hori_dist = race_hori; }

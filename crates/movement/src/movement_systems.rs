@@ -223,8 +223,8 @@ pub fn prepare_grid_locked_movement(
                 glm.active_move_dir = Vec2::ZERO;
                 if !moved {
                     current_translation = current_snapped;
+                    trace!("blockedbreak");
                 }
-                trace!("blockedbreak");
                 break;
             }
 
@@ -243,14 +243,10 @@ pub fn prepare_grid_locked_movement(
             };
 
             if remaining_to_boundary <= 0.0001 {
-                current_translation = current_snapped;
                 let target = current_snapped.xy() + (current_dir * step_distance);
                 if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
                     glm.queued_move_dir = Vec2::ZERO;
                     glm.active_move_dir = Vec2::ZERO;
-                    if !moved {
-                        current_translation = current_snapped;
-                    }
                     trace!("rmeboundarybreak");
                     break;
                 }

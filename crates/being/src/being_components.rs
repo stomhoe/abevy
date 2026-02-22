@@ -12,7 +12,8 @@ use serde::{Deserialize, Serialize};
 use ::tilemap_shared::*;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Default)]
-#[require(InputDirection, MoveVecMag, Replicated, MoveAnimActive,
+#[require(InputDirection, MoveVecMag,
+Replicated, MoveAnimActive,
 Grounding, Visibility, CardinalDirection, AppliedModifiers,
 Prefix::trunc("Being"), DimensionStrIdRef::overworld_fallback(), AssetScoped,
 GridLockedMovement )]//don't add Transform so I can tell if it's missing instead of the being going to 0,0

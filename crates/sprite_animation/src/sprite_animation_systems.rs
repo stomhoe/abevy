@@ -2,6 +2,8 @@
 
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet};
 use bevy_replicon::prelude::*;
+use bevy_kira_audio::prelude::*;
+use ac_audio::SpatialAudioSettings;
 use being_shared::{Grounding, ControlledBy};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
@@ -40,7 +42,7 @@ pub fn animate_sprite(
         Option<&mut Transform>,
     ), ()>,
 
-    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, Option<&BaseMovementSpeed>, ), ()>,
+    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, Option<&BaseMovementSpeed>, Option<&SpriteAnimationSfx>), ()>,
     base_movevec_query: Query<&MoveVecMag>,
 
     mut animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>, Option<&ClipStartFrames>, Has<SaveAnimationProgress>, Option<&AlternatingStartFramesConfig>, Option<&mut AlternatingStartFramesState>, Option<&PlayingSpeed>, Option<&AnimationSeri>),()>,
@@ -62,7 +64,7 @@ pub fn animate_sprite(
             else { error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get sprite entity {:?}", held_sprite); continue };
 
 
-            let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, base_movement_speed, )) = spriteconfig.get(sprite_cfg_ref.0)
+            let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, base_movement_speed, sprite_cfg_sfx)) = spriteconfig.get(sprite_cfg_ref.0)
             else { error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0); continue };
 
             let anim_type = AnimType {
@@ -204,7 +206,29 @@ pub fn animate_sprite(
             }
 
             if insert_needed {
+                let initial_frame = spritesheet_animation.progress.frame;
                 cmd.entity(ent).try_insert((sprite, spritesheet_animation, z.clone(), y_sort.cloned().unwrap_or_default()));
+                if sprite_cfg_sfx.is_some() {
+                    cmd.entity(ent).insert(AnimationFrameSfxState {
+                        last_frame: initial_frame,
+                        frame_changes: 0,
+                    });
+                }
+                if let Some(anim_seri) = anim_seri {
+                    if anim_seri.sound_effects.is_empty() {
+                        cmd.entity(ent).remove::<AnimationSeriSfxConfig>();
+                        cmd.entity(ent).remove::<AnimationSeriSfxState>();
+                    } else {
+                        cmd.entity(ent).insert(AnimationSeriSfxConfig {
+                            sound_paths: anim_seri.sound_effects.clone(),
+                            every_n_frame_changes: anim_seri.sound_effects_every_n_frames.max(0.001),
+                        });
+                        cmd.entity(ent).insert(AnimationSeriSfxState {
+                            last_frame: initial_frame,
+                            frame_changes_acc: 0.0,
+                        });
+                    }
+                }
 
                 // Update alternating state after using it
                 if should_update_alternating_state {
@@ -217,6 +241,106 @@ pub fn animate_sprite(
             }
         }
     }
+}
+
+pub fn play_sprite_animation_sfx_on_frame_change(
+    mut cmd: Commands,
+    mut sprites: Query<(Entity, &SpritesheetAnimation, &EntityZeroRef, &GlobalTransform, Option<&mut AnimationFrameSfxState>), Changed<SpritesheetAnimation>>,
+    sprite_configs: Query<&SpriteAnimationSfx>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
+    cameras: Query<&GlobalTransform, With<Camera>>,
+    audio_settings: Res<SpatialAudioSettings>,
+) {
+    let listener_pos = cameras.iter().next().map(|t| t.translation().truncate());
+    for (ent, anim, sprite_cfg_ref, sprite_global_tsf, state) in &mut sprites {
+        let Ok(cfg_sfx) = sprite_configs.get(sprite_cfg_ref.0) else { continue };
+        if cfg_sfx.sound_paths.is_empty() {
+            continue;
+        }
+        let interval = u32::from(cfg_sfx.every_n_frame_changes.max(1));
+        let Some(mut state) = state else {
+            cmd.entity(ent).insert(AnimationFrameSfxState {
+                last_frame: anim.progress.frame,
+                frame_changes: 0,
+            });
+            continue;
+        };
+        if anim.progress.frame == state.last_frame {
+            continue;
+        }
+        state.last_frame = anim.progress.frame;
+        state.frame_changes = state.frame_changes.saturating_add(1);
+        if state.frame_changes % interval != 0 {
+            continue;
+        }
+        for sfx in cfg_sfx.sound_paths.iter() {
+            let path = sfx.trim();
+            if path.is_empty() {
+                continue;
+            }
+            let emitter_pos = sprite_global_tsf.translation().truncate();
+            let volume_db = distance_attenuation_db(listener_pos, Some(emitter_pos), &audio_settings);
+            audio.play(asset_server.load(path.to_string())).with_volume(volume_db);
+        }
+    }
+}
+
+pub fn play_animation_seri_sfx_on_frame_change(
+    mut cmd: Commands,
+    mut sprites: Query<(
+        Entity,
+        &SpritesheetAnimation,
+        &GlobalTransform,
+        Option<&AnimationSeriSfxConfig>,
+        Option<&mut AnimationSeriSfxState>
+    ), Changed<SpritesheetAnimation>>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
+    cameras: Query<&GlobalTransform, With<Camera>>,
+    audio_settings: Res<SpatialAudioSettings>,
+) {
+    let listener_pos = cameras.iter().next().map(|t| t.translation().truncate());
+    for (ent, anim, sprite_global_tsf, cfg, state) in &mut sprites {
+        let Some(cfg) = cfg else { continue };
+        let Some(mut state) = state else {
+            cmd.entity(ent).insert(AnimationSeriSfxState {
+                last_frame: anim.progress.frame,
+                frame_changes_acc: 0.0,
+            });
+            continue;
+        };
+        if anim.progress.frame == state.last_frame {
+            continue;
+        }
+        state.last_frame = anim.progress.frame;
+        state.frame_changes_acc += 1.0;
+        let interval = cfg.every_n_frame_changes.max(0.001);
+        if state.frame_changes_acc + f32::EPSILON < interval {
+            continue;
+        }
+        state.frame_changes_acc %= interval;
+        let emitter_pos = sprite_global_tsf.translation().truncate();
+        let volume_db = distance_attenuation_db(listener_pos, Some(emitter_pos), &audio_settings);
+        for sfx in cfg.sound_paths.iter() {
+            let path = sfx.trim();
+            if path.is_empty() {
+                continue;
+            }
+            audio.play(asset_server.load(path.to_string())).with_volume(volume_db);
+        }
+    }
+}
+
+fn distance_attenuation_db(listener_pos: Option<Vec2>, emitter_pos: Option<Vec2>, settings: &SpatialAudioSettings) -> f32 {
+    let Some(listener_pos) = listener_pos else { return 0.0 };
+    let Some(emitter_pos) = emitter_pos else { return 0.0 };
+    let distance_px = listener_pos.distance(emitter_pos);
+    let gain = settings.gain_for_distance_px(distance_px);
+    if gain <= 0.001 {
+        return -60.0;
+    }
+    (20.0 * gain.log10()).clamp(-60.0, 0.0)
 }
 
 fn cardinal_rotation_angle(direction: CardinalDirection) -> f32 {

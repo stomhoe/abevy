@@ -85,7 +85,7 @@ pub fn init_being_templates(
         }
         if PredatorHuntThreshold::is_configured_in_seri(template_seri.predator_hunt_threshold) {
             cmd.entity(bit_entity).insert((
-                Predator,
+                Predator::default(),
                 PredatorHuntThreshold(template_seri.predator_hunt_threshold),
             ));
         }
@@ -97,12 +97,12 @@ pub fn init_being_templates(
                 race_refs_to_insert.push((bit_entity, RaceRef(race_entity)));
             }
             Err(_) => {
-                warn!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
+                error!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
             }
         }
 
         if template_seri.health_multiplier < 0.0 {
-            warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, setting to 0.0", str_id, template_seri.health_multiplier);
+            warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, not applying", str_id, template_seri.health_multiplier);
         }
     }
     cmd.try_insert_batch(main_comps);

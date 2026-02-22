@@ -1,6 +1,5 @@
 #[allow(unused_imports)]
 use bevy::prelude::*;
-use bevy::platform::collections::HashMap;
 
 use crate::body::body_tree_components::BodyTree;
 
@@ -18,10 +17,6 @@ pub struct BodyTreeSeri {
     pub name: String,
     #[serde(default)]
     pub tags: Vec<String>,
-    #[serde(default)]
-    pub mass_kg: f32,
-    #[serde(default)]
-    pub distributed_totals: HashMap<String, f32>,
     pub root: BodyNodeSeri,
 }
 

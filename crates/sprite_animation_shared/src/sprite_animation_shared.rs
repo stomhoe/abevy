@@ -120,6 +120,10 @@ pub struct AnimationSeri {
     pub cardinal_rotation: CardinalDirection,
     #[serde(default = "default_animation_speed")]
     pub speed: f32,
+    #[serde(default)]
+    pub sound_effects: Vec<String>,
+    #[serde(default = "default_sound_effects_every_n_frames")]
+    pub sound_effects_every_n_frames: f32,
 }
 #[derive(Deserialize, Serialize, TypePath, Default, Clone)]
 /// Configuration for a sprite animation sequence.
@@ -147,3 +151,4 @@ fn default_scale_2d() -> [f32; 2] { [1.0, 1.0] }
 fn default_rows_cols() -> (usize, usize) { (1, 1) }
 fn default_cardinal_direction() -> CardinalDirection { CardinalDirection::South }
 fn default_animation_speed() -> f32 { 1.0 }
+fn default_sound_effects_every_n_frames() -> f32 { 1.0 }

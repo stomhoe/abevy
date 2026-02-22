@@ -26,6 +26,7 @@ pub struct DubugWindowsVisibility{
     pub exempted_entity_details: bool,
     pub sprite_configs_list: bool,
     pub sprite_details: bool,
+    pub gpos_maps: bool,
     pub hot_reload_menu: bool,
 }
 
@@ -53,6 +54,7 @@ impl Default for DubugWindowsVisibility {
             exempted_entity_details: false,
             sprite_configs_list: false,
             sprite_details: false,
+            gpos_maps: false,
             hot_reload_menu: false,
         }
     }

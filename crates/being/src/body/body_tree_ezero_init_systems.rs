@@ -31,33 +31,9 @@ pub fn init_ezero_body_trees(
             }
         };
         let body_tree_ent = cmd.spawn_empty().id();
-        let mut totals = HashIdMap::default();
-        for (key, val) in &seri.distributed_totals {
-            totals.overwrite(HashId::from(key), val.max(0.0));
-        }
-        if !totals.contains_key(STAT_HP_CAPACITY) {
-            totals.overwrite(STAT_HP_CAPACITY, 1.0);
-        }
-        if !totals.contains_key(STAT_HP_REGEN_RATE) {
-            totals.overwrite(STAT_HP_REGEN_RATE, 1.0);
-        }
-        if !totals.contains_key(STAT_BLOOD_CAPACITY) {
-            totals.overwrite(STAT_BLOOD_CAPACITY, 1.0);
-        }
-        if !totals.contains_key(STAT_VISION) {
-            totals.overwrite(STAT_VISION, 1.0);
-        }
-        if !totals.contains_key(STAT_CALORIC_BURN_RATE) {
-            totals.overwrite(STAT_CALORIC_BURN_RATE, 1.0);
-        }
-        if !totals.contains_key(STAT_WALK_SPEED) {
-            totals.overwrite(STAT_WALK_SPEED, 300.);
-        }
         cmd.entity(body_tree_ent).insert((
             body_id.clone(),
             BodyTree,
-            BodyTreeMassKg(seri.mass_kg.max(0.0)),
-            BodyTreeDistributedTotals(totals),
             EntityZero,
         ));
 

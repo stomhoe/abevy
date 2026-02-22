@@ -1,5 +1,6 @@
 ([(
     id: "wolf_south_idle",
+    paused: true,
     rows_cols: (4, 4),
     speed: 0.,
     img_path: "texture/being/npc/wolf.png",
@@ -27,6 +28,7 @@
     y_sort: Some(0),
 ),(
     id: "wolf_north_idle",
+    paused: true,
     rows_cols: (4, 4),
     speed: 0.,
     img_path: "texture/being/npc/wolf.png",
@@ -55,6 +57,7 @@
     y_sort: Some(0),
 ),(
     id: "wolf_west_idle",
+    paused: true,
     rows_cols: (4, 4),
     speed: 0.,
     img_path: "texture/being/npc/wolf.png",
@@ -82,6 +85,7 @@
     y_sort: Some(0),
 ),(
     id: "wolf_east_idle",
+    paused: true,
     rows_cols: (4, 4),
     speed: 0.,
     img_path: "texture/being/npc/wolf.png",

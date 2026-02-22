@@ -195,9 +195,9 @@ pub fn put_player_beings_on_map(
     }
     let transform = compute_transform(origin, &mut *next_spawn_offset_x);
     let bear_ent = cmd.spawn((
-        BitStrIdRef::new("bear"),
+        BitStrIdRef::new("pobear"),
         DimensionRef(spawn_dim.0),
         transform,
-        Predator,
+        Predator::default(),
     )).id();
 }

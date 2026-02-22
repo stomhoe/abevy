@@ -44,7 +44,7 @@ pub fn plugin(app: &mut App) {
                 sync_ai_nav_grids,//.in_set(PreChunkDespawnReaders),
                 update_predator_chase_targets,
                 chase_behavior,
-                predator_wander_behavior,
+                wander_behavior,
             ).chain(),
         ).in_set(GameplaySystems),
     ))
