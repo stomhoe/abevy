@@ -24,4 +24,3 @@ bevy_replicon = { workspace = true }
 bevy_asset_loader = { workspace = true }
 paste = { workspace = true }
 ron = { workspace = true }
-bevy_kira_audio = { workspace = true }

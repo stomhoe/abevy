@@ -4,6 +4,34 @@ use bevy::platform::collections::{HashMap, HashSet};
 
 use crate::sprite_components::SpriteConfig;
 
+#[derive(serde::Deserialize, Default)]
+pub struct SfxEveryNframesSeri {
+    #[serde(default)]
+    pub paths: Vec<String>,
+    #[serde(default = "default_animation_sfx_every_n_frame_changes")]
+    pub n: f32,
+}
+
+#[derive(serde::Deserialize, Default)]
+pub struct SfxTimeIntervalSeri {
+    #[serde(default)]
+    pub paths: Vec<String>,
+    #[serde(default)]
+    pub condition: String,
+    #[serde(default = "default_sfx_interval_secs")]
+    pub secs: f32,
+    #[serde(default)]
+    pub shorten_with_anim_playing_speed: bool,
+}
+
+#[derive(serde::Deserialize, Default)]
+pub struct SfxLoopSeri {
+    #[serde(default)]
+    pub paths: Vec<String>,
+    #[serde(default)]
+    pub condition: String,
+}
+
 #[derive(serde::Deserialize, Asset, TypePath, Default)]
 pub struct SpriteConfigSeri {
     pub id: String,
@@ -18,9 +46,11 @@ pub struct SpriteConfigSeri {
     #[serde(default)]
     pub children_sprites: Vec<String>,// these will get spawned as children of the entity that has this sprite data
     #[serde(default)]
-    pub animation_sfx: Vec<String>,
-    #[serde(default = "default_animation_sfx_every_n_frame_changes")]
-    pub animation_sfx_every_n_frame_changes: u16,
+    pub sfx_every_n_frames: SfxEveryNframesSeri,
+    #[serde(default)]
+    pub loop_sfx: SfxLoopSeri,
+    #[serde(default)]
+    pub interval_sfx: SfxTimeIntervalSeri,
     #[serde(default)]
     pub directionable: bool,
     #[serde(default)]
@@ -68,7 +98,8 @@ pub struct SpriteConfigSeri {
 }
 fn default_scale_2d() -> (f32, f32) { (1.0, 1.0) }
 fn default_base_movement_speed() -> f32 { 0.0 }
-fn default_animation_sfx_every_n_frame_changes() -> u16 { 1 }
+fn default_animation_sfx_every_n_frame_changes() -> f32 { 1.0 }
+fn default_sfx_interval_secs() -> f32 { 0.35 }
 // PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)
 
 

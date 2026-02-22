@@ -163,10 +163,24 @@ pub fn init_sprite_configs(
             let ids = SampleSpritesFromStrIds::new(seri.children_sprites.clone());
             cmd.entity(spritecfg_ent).insert(ids);
         }
-        if !seri.animation_sfx.is_empty() {
+        if !seri.sfx_every_n_frames.paths.is_empty() {
             cmd.entity(spritecfg_ent).insert(SpriteAnimationSfx {
-                sound_paths: seri.animation_sfx.clone(),
-                every_n_frame_changes: seri.animation_sfx_every_n_frame_changes.max(1),
+                sound_paths: seri.sfx_every_n_frames.paths.clone(),
+                every_n_frame_changes: seri.sfx_every_n_frames.n.max(0.001),
+            });
+        }
+        if !seri.loop_sfx.paths.is_empty() {
+            cmd.entity(spritecfg_ent).insert(SpriteLoopSfx {
+                sound_paths: seri.loop_sfx.paths.clone(),
+                condition: SfxPlayCondition::from(seri.loop_sfx.condition.as_str()),
+            });
+        }
+        if !seri.interval_sfx.paths.is_empty() {
+            cmd.entity(spritecfg_ent).insert(SpriteTimedSfx {
+                sound_paths: seri.interval_sfx.paths.clone(),
+                condition: SfxPlayCondition::from(seri.interval_sfx.condition.as_str()),
+                time_interval_secs: seri.interval_sfx.secs.max(0.001),
+                scale_interval_with_animation_speed: seri.interval_sfx.shorten_with_anim_playing_speed,
             });
         }
     }

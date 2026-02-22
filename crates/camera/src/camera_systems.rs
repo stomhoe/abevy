@@ -1,10 +1,11 @@
 
 use bevy::{input::mouse::MouseWheel, prelude::*};
+use bevy_kira_audio::SpatialAudioReceiver;
 
 use crate::camera_components::*;
 
 pub fn spawn_camera(mut commands: Commands, ) {
-    commands.spawn(Camera2d::default());
+    commands.spawn((Camera2d::default(), SpatialAudioReceiver));
 }
 
 pub fn delete_prev_camera_target(

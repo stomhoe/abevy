@@ -60,6 +60,10 @@ pub struct RaceSeri {
     pub caloric_burn_rate_multiplier: f32,
     #[serde(default)]
     pub can_walk_on: HashSet<String>,
+    #[serde(default = "default_true")]
+    pub produces_step_sfx: bool,
+    #[serde(default)]
+    pub footstep_sfx: RaceFootstepSfxSeri,
     #[serde(default)]
     pub walk_speeds_on_tiles: HashMap<String, f32>,
 
@@ -82,6 +86,14 @@ pub struct RaceSeri {
     pub predator_hunt_threshold: f32,
     #[serde(default)]
     pub wander: WanderSeri,
+}
+
+#[derive(serde::Deserialize, Debug, Clone, Default)]
+pub struct RaceFootstepSfxSeri {
+    #[serde(default)]
+    pub paths: Vec<String>,
+    #[serde(default)]
+    pub disable_tile_step_sfx: bool,
 }
 
 #[derive(serde::Deserialize, Debug, Clone)]

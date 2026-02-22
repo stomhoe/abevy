@@ -132,13 +132,39 @@ pub struct TileSeri {
     /// to be used by other systems to factor in their own walkspeed on top if a certain tag is present on this tile
     #[serde(default)]
     pub walk_speed_tags: HashSet<String>,
+    #[serde(default)]
+    pub step_sfx: TileStepSfxSeri,
 
     /// When true, this tile spawns a projectile-stopping collider.
     #[serde(default)]
     pub blocks_projectiles: bool,
 }
+
+#[derive(Deserialize, Asset, TypePath, Debug, Clone)]
+pub struct TileStepSfxSeri {
+    #[serde(default)]
+    pub groups: Vec<(f32, Vec<String>)>,
+    #[serde(default)]
+    pub directory: String,
+    #[serde(default = "default_weight")]
+    pub directory_weight: f32,
+    #[serde(default = "default_true")]
+    pub prevent_repeat: bool,
+}
+impl Default for TileStepSfxSeri {
+    fn default() -> Self {
+        Self {
+            groups: Vec::new(),
+            directory: String::new(),
+            directory_weight: default_weight(),
+            prevent_repeat: default_true(),
+        }
+    }
+}
 fn default_walk_speed() -> f32 { 1. }
 fn default_size_in_tiles() -> (u32, u32) { (1, 1) }
+fn default_weight() -> f32 { 1.0 }
+fn default_true() -> bool { true }
 
 
 

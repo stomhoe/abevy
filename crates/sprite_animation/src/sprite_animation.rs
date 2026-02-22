@@ -2,7 +2,7 @@
 use bevy_replicon::prelude::*;
 use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 use bevy::prelude::*;
-use ac_audio::{SpatialAudioSettings, load_spatial_audio_settings};
+use ac_audio::AcAudioSystems;
 use common::common_states::AssetLoading;
 use game_common::game_common::SimRunningSystems;
 use sprite::AcSpriteSystems;
@@ -21,8 +21,6 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(Update, ((
            animate_sprite,
-           play_sprite_animation_sfx_on_frame_change,
-           play_animation_seri_sfx_on_frame_change,
            update_animstate_for_clients.run_if(in_state(ServerState::Running)),
            client_receive_moving_anim.run_if(in_state(ClientState::Connected)),
         ).in_set(SpriteAnimationSystems),
@@ -31,16 +29,15 @@ pub fn plugin(app: &mut App) {
             init_animation_sheet_and_handle,
         ).in_set(SpriteAnimationSystems),
     ))
-    .configure_sets(Update, ( SpriteAnimationSystems.in_set(SimRunningSystems),))
+    .configure_sets(Update, (SpriteAnimationSystems.in_set(SimRunningSystems).after(AcAudioSystems),))
 
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         SpriteAnimationSystems.before(AcSpriteSystems)
     ))
 
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-        (load_spatial_audio_settings, init_animations, map_ac_animation_id_to_entity).chain()
+        (init_animations, map_ac_animation_id_to_entity).chain()
     ).in_set(SpriteAnimationSystems))
-    .init_resource::<SpatialAudioSettings>()
 
     .add_mapped_server_message::<SyncMoveState>(Channel::Unordered)
 

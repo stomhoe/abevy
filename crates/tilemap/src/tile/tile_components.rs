@@ -8,10 +8,10 @@ use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
 
-use game_common::{game_common_components::*, game_common_samplers::GlobalTilePosWeightedSampler};
+use game_common::{define_weightedsampler, game_common_components::*, game_common_samplers::GlobalTilePosWeightedSampler};
 
 use ::tilemap_shared::*;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::tile::tile_resources::*;
@@ -31,6 +31,20 @@ pub type TileStrId = StrId;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct TileChildSprite;
+
+define_weightedsampler!(TileStepSfx, Vec<String>, "TileStepSfx");
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
+pub struct TileStepSfxConfig {
+    pub prevent_repeat: bool,
+}
+impl Default for TileStepSfxConfig {
+    fn default() -> Self {
+        Self {
+            prevent_repeat: true,
+        }
+    }
+}
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct DebugValue{

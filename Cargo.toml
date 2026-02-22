@@ -86,6 +86,7 @@ sprite_animation = { path = "crates/sprite_animation" }
 sprite = { path = "crates/sprite" }
 faction = { path = "crates/faction" }
 player = { path = "crates/player" }
+ac_audio = { path = "crates/ac_audio" }
 color_sampler = { path = "crates/color_sampler" }
 shader = { path = "crates/shader" }
 ui_shared = { path = "crates/ui_shared" }

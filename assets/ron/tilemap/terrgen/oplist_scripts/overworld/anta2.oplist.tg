@@ -11,5 +11,5 @@ let gravelness = *(COMPL beach_avg_noise, shore_proximity)
 
 out = idxmax(0.03, gravelness)
 
-bif anta3 -> [snow]
+bif anta3 -> []
 bif "" -> [gravel]

@@ -1,0 +1,14 @@
+SpatialAudioSettings(
+    // 32 px ~= 1 meter
+    pixels_per_meter: 32.0,
+    // Full volume up to this distance (in meters)
+    reference_distance_m: 4.0,
+    // Silent at and beyond this distance (in meters)
+    max_distance_m: 96.0,
+    // 2.0 ~= inverse-square attenuation
+    rolloff_exponent: 0.7,
+    // Horizontal meters offset needed to reach full L/R pan
+    pan_distance_m: 8.0,
+    // Distance traveled before a movement step sound is triggered
+    footstep_distance_m: 5.5,
+)

@@ -5,6 +5,7 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use game_common::game_common_components::EntityZeroRef;
 
 use modifier::modifier_types::WalkSpeed;
 use modifier::{modifier_components::*, modifier_move_components::*};
@@ -328,6 +329,8 @@ pub fn process_speed_modifiers(
     state: Res<State<ClientState>>,
     mut being_query: Query<(
         Entity,
+        &Transform,
+        &DimensionRef,
         &AppliedModifiers,
         &mut MoveVecMag,
         Has<ComputedLocally>,
@@ -342,9 +345,13 @@ pub fn process_speed_modifiers(
         ),
         (With<WalkSpeed>,),
     >,
+    tile_entity_zero_refs: Query<&EntityZeroRef>,
+    tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
+    tile_gathering: TileGatheringParamSet,
+    mut tiles_scratch: Local<Vec<Entity>>,
 ) {
 
-    for (being_ent, applied, mut move_state, controlled_locally) in being_query.iter_mut() {
+    for (being_ent, transform, &dim_ref, applied, mut move_state, controlled_locally) in being_query.iter_mut() {
         let is_client = state.get() == &ClientState::Connected;
         if is_client && !controlled_locally {
             continue;
@@ -400,6 +407,16 @@ pub fn process_speed_modifiers(
             .max(speed_min)
             .min(speed_max)
             .max(0.0);
+
+        let mut tile_walk_mult: f32 = 1.0;
+        tiles_scratch.clear();
+        tile_gathering.gather_tiles_at(&mut *tiles_scratch, dim_ref, GlobalTilePos::from(transform.translation.truncate()));
+        for tile_ent in tiles_scratch.iter() {
+            let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(*tile_ent) else { continue };
+            let Ok(tile_walk_mult_cfg) = tile_walk_speed_mults.get(tile_cfg_ref.0) else { continue };
+            tile_walk_mult = tile_walk_mult.min(tile_walk_mult_cfg.0);
+        }
+        let final_speed = final_speed * tile_walk_mult.max(0.0);
         if (move_state.speed_magnitude - final_speed).abs() > f32::EPSILON {
             move_state.speed_magnitude = final_speed;
         }

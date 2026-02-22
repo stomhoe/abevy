@@ -78,6 +78,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<SpriteTile>()
     .replicate::<TileChildSprite>()
+    .replicate::<TileStepSfx>()
     .replicate::<TileImagePaths>()
     .replicate::<TileColor>()
     .replicate::<InitialPos>()

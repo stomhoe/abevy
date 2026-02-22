@@ -19,21 +19,3 @@ pub struct AlternatingStartFramesState(pub Vec<usize>);
 /// Some(false) or None: don't save animation progress.
 #[derive(Component, Default, Clone, Copy, Debug)]
 pub struct SaveAnimationProgress;
-
-#[derive(Component, Default, Clone, Copy, Debug)]
-pub struct AnimationFrameSfxState {
-    pub last_frame: usize,
-    pub frame_changes: u32,
-}
-
-#[derive(Component, Clone, Debug, Default)]
-pub struct AnimationSeriSfxConfig {
-    pub sound_paths: Vec<String>,
-    pub every_n_frame_changes: f32,
-}
-
-#[derive(Component, Clone, Copy, Debug, Default)]
-pub struct AnimationSeriSfxState {
-    pub last_frame: usize,
-    pub frame_changes_acc: f32,
-}

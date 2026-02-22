@@ -68,6 +68,8 @@ pub fn plugin(app: &mut App) {
     )
     .replicate::<AcZ>()
     .replicate::<MappedAnimations>()
+    .replicate::<SpriteLoopSfx>()
+    .replicate::<SpriteTimedSfx>()
     .replicate::<OffsetForChildren>()
 
     .replicate::<YSortOrigin>()

@@ -12,7 +12,7 @@ use ::tilemap_shared::directions::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone)]
-#[require(HotReload, AssetScoped, Replicated, Prefix::trunc("SpCfg"), )]
+#[require(HotReload, AssetScoped, Replicated, Prefix::trunc("SpriteCfg"), )]
 pub struct SpriteConfig;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
@@ -21,21 +21,46 @@ pub struct BaseMovementSpeed(pub f32);
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct SpriteAnimationSfx {
     pub sound_paths: Vec<String>,
-    pub every_n_frame_changes: u16,
+    pub every_n_frame_changes: f32,
 }
 impl Default for SpriteAnimationSfx {
     fn default() -> Self {
         Self {
             sound_paths: Vec::new(),
-            every_n_frame_changes: 1,
+            every_n_frame_changes: 1.0,
         }
     }
 }
-// impl Default for BaseMovementSpeed {
-//     fn default() -> Self {
-//         Self(200.0)
-//     }
-// }
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+pub struct SpriteLoopSfx {
+    pub sound_paths: Vec<String>,
+    pub condition: SfxPlayCondition,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+pub enum SfxPlayCondition {
+    #[default]
+    WhileAnimationPlaying,
+    WhileMoveActive,
+}
+impl From<&str> for SfxPlayCondition {
+    fn from(value: &str) -> Self {
+        match value.trim() {
+            "WhileMoveActive" | "while_move_active" | "move_active" => Self::WhileMoveActive,
+            _ => Self::WhileAnimationPlaying,
+        }
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+pub struct SpriteTimedSfx {
+    pub sound_paths: Vec<String>,
+    pub condition: SfxPlayCondition,
+    pub time_interval_secs: f32,
+    pub scale_interval_with_animation_speed: bool,
+}
+
 
 #[derive(Component, Default, Deserialize, Serialize, Debug, MapEntities, Clone)]
 pub struct MappedAnimations (

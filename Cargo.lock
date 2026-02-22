@@ -22,10 +22,21 @@ checksum = "366ffbaa4442f4684d91e2cd7c5ea7c4ed8add41959a31447066e279e432b618"
 name = "ac_audio"
 version = "0.1.0"
 dependencies = [
+ "being",
+ "being_shared",
  "bevy 0.18.0",
+ "bevy_kira_audio",
+ "bevy_spritesheet_animation",
  "common",
+ "game_common",
+ "rand 0.9.2",
  "ron 0.8.1",
  "serde",
+ "sprite",
+ "sprite_animation_shared",
+ "sprite_shared",
+ "tilemap",
+ "tilemap_shared",
 ]
 
 [[package]]
@@ -296,6 +307,7 @@ dependencies = [
 name = "argentum_coop"
 version = "0.1.0"
 dependencies = [
+ "ac_audio",
  "asset_loading",
  "avian2d",
  "being",
@@ -3701,6 +3713,7 @@ name = "camera"
 version = "0.1.0"
 dependencies = [
  "bevy 0.18.0",
+ "bevy_kira_audio",
  "game_common",
  "tilemap_shared",
 ]
@@ -7840,7 +7853,6 @@ dependencies = [
  "bevy 0.18.0",
  "bevy_asset_loader",
  "bevy_common_assets",
- "bevy_kira_audio",
  "bevy_replicon",
  "bevy_spritesheet_animation",
  "common",

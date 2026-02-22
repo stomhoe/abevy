@@ -36,5 +36,5 @@
         avoid: ["liquid", ""],
     ),
     body_tree_or_sampler: "bear",
-    size_variation: (min: 0.6, max: 3., mean: 1.1, std_dev: 0.2),
+    size_variation: (min: 0.6, max: 3., mean: 1.1, std_dev: 0.18),
 )

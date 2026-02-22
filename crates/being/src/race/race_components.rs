@@ -51,3 +51,12 @@ pub struct WanderConfig {
     pub speed_max: f32,
     pub avoid_tile_tags: TagSet,
 }
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct ProducesStepSfx;
+
+#[derive(Component, Debug, Default, Clone)]
+pub struct RaceFootstepSfxConfig {
+    pub paths: Vec<String>,
+    pub disable_tile_step_sfx: bool,
+}

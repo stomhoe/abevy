@@ -15,6 +15,7 @@ use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
 use common::{TILE_INIT, common_components::*, common_tag_components::TagSet};
 use sprite::sprite_components::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
+use std::{fs, path::PathBuf};
 
 use crate::{
     tile::{
@@ -144,6 +145,38 @@ pub fn init_tiles(
         }
 
         cmd.entity(tile_enti).insert(WalkSpeedMultIfOnTop(seri.walk_speed));
+        let mut weighted_paths = Vec::with_capacity(seri.step_sfx.groups.len() + 1);
+        for (weight, paths) in &seri.step_sfx.groups {
+            let paths = paths
+                .iter()
+                .filter_map(|path| {
+                    let trimmed = path.trim();
+                    if trimmed.is_empty() {
+                        None
+                    } else {
+                        Some(trimmed.to_string())
+                    }
+                })
+                .collect::<Vec<_>>();
+            if paths.is_empty() || *weight <= 0.0 {
+                continue;
+            }
+            weighted_paths.push((paths, *weight));
+        }
+        if !seri.step_sfx.directory.trim().is_empty() && seri.step_sfx.directory_weight > 0.0 {
+            let dir_paths = gather_step_sfx_paths_from_dir(&seri.step_sfx.directory);
+            if !dir_paths.is_empty() {
+                weighted_paths.push((dir_paths, seri.step_sfx.directory_weight));
+            }
+        }
+        if !weighted_paths.is_empty() {
+            cmd.entity(tile_enti).insert((
+                TileStepSfx::new(&weighted_paths),
+                TileStepSfxConfig {
+                    prevent_repeat: seri.step_sfx.prevent_repeat,
+                },
+            ));
+        }
         if ! seri.colmask.is_empty() {
             match TileCollisionMask::from_rows(&seri.colmask, size_in_tiles) {
                 Ok(mask) => {
@@ -231,6 +264,39 @@ pub fn init_tiles(
         }
     }
     cmd.insert_resource(res_tile_tags);
+}
+
+fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
+    let directory = directory.trim().trim_matches('/');
+    if directory.is_empty() {
+        return Vec::new();
+    }
+
+    let mut paths = Vec::new();
+    let mut stack = vec![PathBuf::from("assets").join(directory)];
+    while let Some(curr) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&curr) else { continue };
+        for entry in entries.flatten() {
+            let Ok(file_type) = entry.file_type() else { continue };
+            let path = entry.path();
+            if file_type.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if !file_type.is_file() {
+                continue;
+            }
+            let Some(ext) = path.extension().and_then(|ext| ext.to_str()) else { continue };
+            if !matches!(ext.to_ascii_lowercase().as_str(), "wav" | "ogg" | "mp3" | "flac") {
+                continue;
+            }
+            let Ok(asset_rel) = path.strip_prefix("assets") else { continue };
+            let Some(asset_rel) = asset_rel.to_str() else { continue };
+            paths.push(asset_rel.replace('\\', "/"));
+        }
+    }
+    paths.sort();
+    paths
 }
 
 #[allow(unused_parens)]

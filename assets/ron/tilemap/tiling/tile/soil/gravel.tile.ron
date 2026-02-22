@@ -5,6 +5,7 @@
     img_paths: [
         ("", "texture/world/white.png"),
     ],
+    walk_speed: 0.7,
     shader: "gravel",
     color: Some((255, 0, 0, 255)),
 )

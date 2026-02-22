@@ -178,6 +178,15 @@ pub fn init_races(
             if !normal_dist_is_disabled(&race_seri.vert_variation) {
                 entity_cmds.insert(SpriteVertNormalDist::new(race_seri.vert_variation.clone()));
             }
+            if race_seri.produces_step_sfx {
+                entity_cmds.insert(ProducesStepSfx);
+            }
+            if !race_seri.footstep_sfx.paths.is_empty() || race_seri.footstep_sfx.disable_tile_step_sfx {
+                entity_cmds.insert(RaceFootstepSfxConfig {
+                    paths: race_seri.footstep_sfx.paths.clone(),
+                    disable_tile_step_sfx: race_seri.footstep_sfx.disable_tile_step_sfx,
+                });
+            }
 
             let entity = entity_cmds.id();
             if PredatorHuntThreshold::is_configured_in_seri(race_seri.predator_hunt_threshold) {

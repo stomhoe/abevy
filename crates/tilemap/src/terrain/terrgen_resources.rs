@@ -200,7 +200,7 @@ fn default_domain_warp_amp() -> f32 { 1.0 }
 pub fn load_global_gen_settings_seri_defs() -> Vec<GlobalGenSettingsSeri> {
     let db = match common::def_db::DefDatabase::<GlobalGenSettingsSeri>::load_from_assets_dir_with_type(
         stringify!(GlobalGenSettingsSeri),
-        &["gensettings.ron"],
+        &["world_gen.settings.ron"],
         |_| "global_gen_settings",
     ) {
         Ok(db) => db,
@@ -230,7 +230,7 @@ pub fn load_global_gen_settings_seri_defs() -> Vec<GlobalGenSettingsSeri> {
 }
 
 fn load_global_gen_settings_from_file() -> Option<GlobalGenSettingsSeri> {
-    let path = Path::new("assets/ron/tilemap/gensettings.ron");
+    let path = Path::new("assets/ron/tilemap/world_gen.settings.ron");
     let Ok(contents) = fs::read_to_string(path) else {
         return None;
     };
