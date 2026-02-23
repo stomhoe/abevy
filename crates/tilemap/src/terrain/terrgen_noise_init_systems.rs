@@ -59,6 +59,7 @@ pub fn init_noises(
             "ValueCubic" => NoiseType::ValueCubic,
             "Value" => NoiseType::Value,
             "ValueLan" | "ValueLanczos" => NoiseType::ValueLanczos,
+            "River" | "RiverFlow" => NoiseType::River,
             other => {
                 error!(target: "terrgen_init", "Unknown noise_type '{other}' for noise {}", seri.id);
                 continue;

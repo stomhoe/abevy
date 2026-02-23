@@ -123,6 +123,8 @@ pub enum NoiseType {
     Value,
     #[serde(alias = "ValueLan")]
     ValueLanczos,
+    #[serde(alias = "RiverFlow")]
+    River,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, )]
@@ -846,6 +848,7 @@ impl FastNoiseLite {
             NoiseType::ValueCubic => self.single_value_cubic_2d(seed, x, y),
             NoiseType::Value => self.single_value_2d(seed, x, y),
             NoiseType::ValueLanczos => self.single_value_lanczos_2d(seed, x, y),
+            NoiseType::River => self.single_river_2d(seed, x, y),
         }
     }
 
@@ -858,6 +861,7 @@ impl FastNoiseLite {
             NoiseType::ValueCubic => self.single_value_cubic_3d(seed, x, y, z),
             NoiseType::Value => self.single_value_3d(seed, x, y, z),
             NoiseType::ValueLanczos => self.single_value_lanczos_3d(seed, x, y, z),
+            NoiseType::River => self.single_river_3d(seed, x, y, z),
         }
     }
 
@@ -874,6 +878,7 @@ impl FastNoiseLite {
                 NoiseType::ValueCubic => 2.6,
                 NoiseType::Value => 2.7,
                 NoiseType::ValueLanczos => 2.7,
+                NoiseType::River => 1.6,
                 _ => 1.,
             }
             * self.frequency
@@ -2555,6 +2560,31 @@ impl FastNoiseLite {
         let n0 = self.single_value_lanczos_2d(seed0, x, y);
         let n1 = self.single_value_lanczos_2d(seed1, x, y);
         Self::lerp(n0, n1, zs)
+    }
+
+    fn single_river_2d(&self, seed: i32, x: Float, y: Float) -> f32 {
+        let warp_a = self.single_open_simplex_2s_2d(seed.wrapping_add(1931), x * 0.72, y * 0.72);
+        let warp_b = self.single_perlin_2d(seed.wrapping_sub(811), x * 1.06, y * 1.06);
+
+        let flow_x = x + warp_a * 1.35 + warp_b * 0.65;
+        let flow_y = y + warp_b * 1.35 - warp_a * 0.65;
+
+        let n0 = self.single_open_simplex_2s_2d(seed.wrapping_add(31), flow_x, flow_y);
+        let n1 = self.single_open_simplex_2s_2d(seed.wrapping_add(117), -flow_y * 0.96, flow_x * 1.04);
+        let centerline = (n0 - n1).abs().min(2.0) * 0.5;
+
+        let ridge = 1.0 - centerline;
+        let thin_rivers = ridge * ridge;
+
+        let banks = self.single_open_simplex_2s_2d(seed.wrapping_add(271), flow_x * 0.42, flow_y * 0.42) * 0.5 + 0.5;
+        let river_01 = (thin_rivers * (0.35 + banks * 0.65)).clamp(0.0, 1.0);
+
+        river_01 * 2.0 - 1.0
+    }
+
+    fn single_river_3d(&self, seed: i32, x: Float, y: Float, z: Float) -> f32 {
+        let z_warp = self.single_open_simplex_2s_3d(seed.wrapping_add(149), x * 0.35, y * 0.35, z * 0.55);
+        self.single_river_2d(seed.wrapping_add(z_warp.to_bits() as i32), x + z * 0.1, y - z * 0.1)
     }
 
     // Domain Warp

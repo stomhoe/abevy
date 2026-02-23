@@ -427,6 +427,7 @@ pub fn terrgen_editor_window(
                                         ("ValueCubic", NoiseType::ValueCubic),
                                         ("Value", NoiseType::Value),
                                         ("ValueLanczos", NoiseType::ValueLanczos),
+                                        ("River", NoiseType::River),
                                     ] {
                                         if ui.selectable_label(noise_comp.0.noise_type == ty, label).clicked() {
                                             noise_comp.0.set_noise_type(Some(ty));
