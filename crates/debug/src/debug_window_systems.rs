@@ -2,9 +2,9 @@ use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use bevy::prelude::*;
 use common::common_states::*;
 use game_common::game_common_states::*;
-use tilemap_shared::GlobalGenSettings;
+use tilemap_shared::{ForceAllChunksDespawn, GlobalGenSettings};
 
-use crate::debug_resources::DubugWindowsVisibility;
+use crate::debug_resources::{DebugUiConfig, DubugWindowsVisibility, load_debug_ui_config_seri_defs};
 
 #[allow(unused_parens)]
 pub fn debug_toggle_hot_reload_window(
@@ -14,6 +14,44 @@ pub fn debug_toggle_hot_reload_window(
     if keys.just_pressed(KeyCode::F12) && !keys.pressed(KeyCode::F11) {
         window_visible.hot_reload_menu = !window_visible.hot_reload_menu;
     }
+}
+
+pub fn apply_initial_hot_reload_visibility_from_world_settings(
+    mut initialized: Local<bool>,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    gen_settings: Query<&GlobalGenSettings>,
+) {
+    if *initialized {
+        return;
+    }
+    let Ok(gen_settings) = gen_settings.single() else {
+        return;
+    };
+    window_visible.hot_reload_menu = gen_settings.hot_reload_window_open_on_start;
+    *initialized = true;
+}
+
+pub fn apply_debug_ui_config_once(
+    mut initialized: Local<bool>,
+    mut cfg: ResMut<DebugUiConfig>,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selection: ResMut<HotReloadSelection>,
+) {
+    if *initialized {
+        return;
+    }
+
+    let defs = load_debug_ui_config_seri_defs();
+    let Some(def) = defs.first() else {
+        *initialized = true;
+        return;
+    };
+
+    *cfg = def.to_config();
+    *selection = cfg.hot_reload_defaults.clone();
+    *window_visible = cfg.windows_open_on_start.clone();
+
+    *initialized = true;
 }
 
 #[allow(unused_parens)]
@@ -164,6 +202,7 @@ pub fn hot_reload_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selection: ResMut<HotReloadSelection>,
     mut request: ResMut<HotReloadRequest>,
+    mut force_all_chunks_despawn_writer: MessageWriter<ForceAllChunksDespawn>,
 ) {
     if !window_visible.hot_reload_menu {
         return;
@@ -202,11 +241,13 @@ pub fn hot_reload_window(
             ui.separator();
             if ui.button("Hot reload").clicked() {
                 request.requested = true;
+                force_all_chunks_despawn_writer.write(ForceAllChunksDespawn);
             }
         });
 
     if open && keys.just_pressed(KeyCode::KeyR) {
         request.requested = true;
+        force_all_chunks_despawn_writer.write(ForceAllChunksDespawn);
     }
 
     window_visible.hot_reload_menu = open;

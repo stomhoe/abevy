@@ -1,8 +1,8 @@
 (
     id: "beachsmol",
     frequency: 0.44,
-    noise_type: 1,
-    fractal_type: 1,
+    noise_type: "OpenSimplex2S",
+    fractal_type: "FBm",
     octaves: 5,
     lacunarity: 2.0,
     gain: 0.5,

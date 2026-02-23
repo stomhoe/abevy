@@ -7,6 +7,7 @@ use tilemap::terrain::operation_list_components::OperationList;
 use tilemap::terrain::terrgen_expression::Expr;
 use camera::camera_components::CameraTarget;
 use common::common_components::HashId;
+use fnl::NoiseType;
 use tilemap_shared::{DimensionRef, GlobalGenSettings, GlobalTilePos};
 use crate::debug_resources::{
     DebugNoiseWorkshopState, DebugSelectedEntities, DubugWindowsVisibility, NoiseCombineOp,
@@ -413,7 +414,26 @@ pub fn terrgen_editor_window(
                             }
                         });
                         columns[1].separator();
-                        columns[1].label(format!("Noise Type: {:?}", noise_comp.0.noise_type));
+                        columns[1].horizontal(|ui| {
+                            ui.label("Noise Type:");
+                            egui::ComboBox::from_id_salt("terrgen_noise_type")
+                                .selected_text(format!("{:?}", noise_comp.0.noise_type))
+                                .show_ui(ui, |ui| {
+                                    for (label, ty) in [
+                                        ("OpenSimplex2", NoiseType::OpenSimplex2),
+                                        ("OpenSimplex2S", NoiseType::OpenSimplex2S),
+                                        ("Cellular", NoiseType::Cellular),
+                                        ("Perlin", NoiseType::Perlin),
+                                        ("ValueCubic", NoiseType::ValueCubic),
+                                        ("Value", NoiseType::Value),
+                                        ("ValueLanczos", NoiseType::ValueLanczos),
+                                    ] {
+                                        if ui.selectable_label(noise_comp.0.noise_type == ty, label).clicked() {
+                                            noise_comp.0.set_noise_type(Some(ty));
+                                        }
+                                    }
+                                });
+                        });
                         columns[1].separator();
                         columns[1].label(format!("Fractal Type: {:?}", noise_comp.0.fractal_type));
                         columns[1].horizontal(|ui| {

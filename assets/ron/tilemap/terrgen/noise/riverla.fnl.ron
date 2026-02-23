@@ -1,7 +1,7 @@
 (
-    id: "river",
-    frequency: 0.03,
-    noise_type: "OpenSimplex2",
+    id: "riverla",
+    frequency: .08,
+    noise_type: "ValueLanczos",
     fractal_type: "Ridged",
     octaves: 5,
     lacunarity: 0.0,

@@ -326,15 +326,8 @@ fn strip_comp_prefix(expr: &str) -> Option<&str> {
         return Some(rest.trim_start());
     }
 
-    let upper = trimmed.to_ascii_uppercase();
-    for prefix in ["COMPL", "COMP"] {
-        if upper.starts_with(prefix) {
-            let rest = &trimmed[prefix.len()..];
-            let rest_trimmed = rest.trim_start();
-            if rest_trimmed.starts_with('(') || !rest_trimmed.is_empty() {
-                return Some(rest_trimmed);
-            }
-        }
+    if let Some(rest) = trimmed.strip_prefix("COMPL ") {
+        return Some(rest.trim_start());
     }
     None
 }

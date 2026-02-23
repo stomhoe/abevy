@@ -12,7 +12,7 @@ let riverness = *(river_noise, inlandness, continentness, 0.6)
 let riverness = riverness * clamp(1.0 - continentness, 0.0, 1.0)
 let riverness = clamp(riverness, 0.0, 0.6)
 
-out = idxmax(continentness, lakeness, )
+out = idxmax(continent_threshold, lakeness, )
 
 bif anta4 -> [snow]
 bif "" -> [ice]

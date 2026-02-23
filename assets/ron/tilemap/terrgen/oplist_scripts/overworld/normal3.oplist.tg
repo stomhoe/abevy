@@ -1,19 +1,17 @@
 id: normal3
 size: (1, 1)
-debug: [continentness, normal_diff]
+debug: [continentness, riverness]
+
 
 
 let lakeness = max(fnl.lakesmol, fnl.lakebig)
-let lakeness = *(lakeness, continentness, 0.7)
-let lakeness = *opo(lakeness, beachness)
+let lakeness = *(lakeness, inlandness, 0.3)
+let lakeness = -(lakeness, beachness)
+let lakeness = -(lakeness, riverness)
 
-let river_noise = max(fnl.river, fnl.river.s7)
-let riverness = *(river_noise, inlandness, continentness, 0.6)
-let riverness = riverness * clamp(1.0 - continentness, 0.0, 1.0)
-let riverness = clamp(riverness, 0.0, 0.6)
 
-out = idxmax(lakeness, riverness, continentness)
+out = idxmax(continent_threshold, lakeness, )
 
+bif normal4 -> [tempgrass]
 bif "" -> [lake]
 bif "" -> [orange]
-bif normal4 -> [tempgrass]

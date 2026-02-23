@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fnl::*;
+use ::fnl::*;
 use common::common_components::{Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
 use crate::terrain::{terrgen_components::*, terrgen_resources::*, TerrgenEntityMap};
@@ -51,71 +51,73 @@ pub fn init_noises(
         }
         noise.set_frequency(Some(seri.frequency));
 
-        let noise_type = match seri.noise_type {
-            0 => NoiseType::OpenSimplex2,
-            1 => NoiseType::OpenSimplex2S,
-            2 => NoiseType::Cellular,
-            3 => NoiseType::Perlin,
-            4 => NoiseType::ValueCubic,
-            5 => NoiseType::Value,
-            _ => {
-                error!(target: "terrgen_init", "Unknown noise type: {} for noise {}", seri.noise_type, seri.id);
+        let noise_type = match seri.noise_type.trim() {
+            "OpenSimplex2" => NoiseType::OpenSimplex2,
+            "OpenSimplex2S" => NoiseType::OpenSimplex2S,
+            "Cellular" => NoiseType::Cellular,
+            "Perlin" => NoiseType::Perlin,
+            "ValueCubic" => NoiseType::ValueCubic,
+            "Value" => NoiseType::Value,
+            "ValueLan" | "ValueLanczos" => NoiseType::ValueLanczos,
+            other => {
+                error!(target: "terrgen_init", "Unknown noise_type '{other}' for noise {}", seri.id);
                 continue;
             }
         };
+        let fractal_type = match seri.fractal_type.trim() {
+            "None" => FractalType::None,
+            "FBm" => FractalType::FBm,
+            "Ridged" => FractalType::Ridged,
+            "PingPong" => FractalType::PingPong,
+            "DomainWarpProgressive" => FractalType::DomainWarpProgressive,
+            "DomainWarpIndependent" => FractalType::DomainWarpIndependent,
+            other => {
+                error!(target: "terrgen_init", "Unknown fractal_type '{other}' for noise {}", seri.id);
+                continue;
+            }
+        };
+        let cellular_distance_function = match seri.cellular_distance_function.trim() {
+            "Euclidean" => CellularDistanceFunction::Euclidean,
+            "EuclideanSq" => CellularDistanceFunction::EuclideanSq,
+            "Manhattan" => CellularDistanceFunction::Manhattan,
+            "Hybrid" => CellularDistanceFunction::Hybrid,
+            other => {
+                error!(target: "terrgen_init", "Unknown cellular_distance_function '{other}' for noise {}", seri.id);
+                continue;
+            }
+        };
+        let cellular_return_type = match seri.cellular_return_type.trim() {
+            "CellValue" => CellularReturnType::CellValue,
+            "Distance" => CellularReturnType::Distance,
+            "Distance2" => CellularReturnType::Distance2,
+            "Distance2Add" => CellularReturnType::Distance2Add,
+            "Distance2Sub" => CellularReturnType::Distance2Sub,
+            "Distance2Mul" => CellularReturnType::Distance2Mul,
+            "Distance2Div" => CellularReturnType::Distance2Div,
+            other => {
+                error!(target: "terrgen_init", "Unknown cellular_return_type '{other}' for noise {}", seri.id);
+                continue;
+            }
+        };
+        let domain_warp_type = match seri.domain_warp_type.trim() {
+            "OpenSimplex2" => DomainWarpType::OpenSimplex2,
+            "OpenSimplex2Reduced" => DomainWarpType::OpenSimplex2Reduced,
+            "BasicGrid" => DomainWarpType::BasicGrid,
+            other => {
+                error!(target: "terrgen_init", "Unknown domain_warp_type '{other}' for noise {}", seri.id);
+                continue;
+            }
+        };
+
         noise.set_noise_type(Some(noise_type));
-        let fractal_type = match seri.fractal_type {
-            0 => FractalType::None,
-            1 => FractalType::FBm,
-            2 => FractalType::Ridged,
-            3 => FractalType::PingPong,
-            4 => FractalType::DomainWarpProgressive,
-            5 => FractalType::DomainWarpIndependent,
-            _ => {
-                error!(target: "terrgen_init", "Unknown fractal type: {} for noise {}", seri.fractal_type, seri.id);
-                continue;
-            }
-        };
         noise.set_fractal_type(Some(fractal_type));
         noise.set_fractal_octaves(Some(seri.octaves as i32));
         noise.set_fractal_lacunarity(Some(seri.lacunarity));
         noise.set_fractal_gain(Some(seri.gain));
         noise.set_fractal_weighted_strength(Some(seri.weighted_strength));
         noise.set_fractal_ping_pong_strength(Some(seri.ping_pong_strength));
-        let cellular_distance_function = match seri.cellular_distance_function {
-            0 => CellularDistanceFunction::Euclidean,
-            1 => CellularDistanceFunction::EuclideanSq,
-            2 => CellularDistanceFunction::Manhattan,
-            3 => CellularDistanceFunction::Hybrid,
-            _ => {
-                error!(target: "terrgen_init", "Unknown cellular distance function: {} for noise {}", seri.cellular_distance_function, seri.id);
-                continue;
-            }
-        };
         noise.set_cellular_distance_function(Some(cellular_distance_function));
-        let cellular_return_type = match seri.cellular_return_type {
-            0 => CellularReturnType::CellValue,
-            1 => CellularReturnType::Distance,
-            2 => CellularReturnType::Distance2,
-            3 => CellularReturnType::Distance2Add,
-            4 => CellularReturnType::Distance2Sub,
-            5 => CellularReturnType::Distance2Mul,
-            6 => CellularReturnType::Distance2Div,
-            _ => {
-                error!(target: "terrgen_init", "Unknown cellular return type: {} for noise {}", seri.cellular_return_type, seri.id);
-                continue;
-            }
-        };
         noise.set_cellular_return_type(Some(cellular_return_type));
-        let domain_warp_type = match seri.domain_warp_type {
-            0 => DomainWarpType::OpenSimplex2,
-            1 => DomainWarpType::OpenSimplex2Reduced,
-            2 => DomainWarpType::BasicGrid,
-            _ => {
-                error!(target: "terrgen_init", "Unknown domain warp type: {} for noise {}", seri.domain_warp_type, seri.id);
-                continue;
-            }
-        };
         noise.set_domain_warp_type(Some(domain_warp_type));
         noise.set_cellular_jitter(Some(seri.cellular_jitter));
         noise.set_domain_warp_amp(Some(seri.domain_warp_amp));

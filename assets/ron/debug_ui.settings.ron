@@ -1,0 +1,27 @@
+(
+    id: "debug_ui",
+
+    // If false, all debug menu toggles and windows are disabled.
+    enable_debug_menus: true,
+
+    // Defaults for the Hot Reload window checkboxes.
+    hot_reload_defaults: (
+        tiles: false,
+        sprite_configs_and_animations: true,
+        terrain_oplists_and_noises: true,
+        probes_and_filters: true,
+        global_gen_settings: true,
+        beings_inst_templates: false,
+        races: false,
+        sexes: false,
+    ),
+
+    // Which windows start opened on boot.
+    windows_open_on_start: (
+        main_menu: true,
+        hot_reload_menu: false,
+        terrgen_editor: false,
+        terrgen_values: false,
+        settings_editor: false,
+    ),
+)

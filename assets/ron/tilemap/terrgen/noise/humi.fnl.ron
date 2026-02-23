@@ -1,8 +1,8 @@
 (
     id: "humi",
     frequency: 0.001,
-    noise_type: 4,
-    fractal_type: 1,
+    noise_type: "ValueCubic",
+    fractal_type: "FBm",
     octaves: 2,
     lacunarity: 2.0,
     gain: 0.5,

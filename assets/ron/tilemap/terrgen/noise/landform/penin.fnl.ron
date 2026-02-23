@@ -1,8 +1,8 @@
 (
     id: "penin",
     frequency: .22,
-    noise_type: 0,
-    fractal_type: 1,
+    noise_type: "OpenSimplex2",
+    fractal_type: "FBm",
     octaves: 5,
     lacunarity: 2.0,
     gain: 0.56,

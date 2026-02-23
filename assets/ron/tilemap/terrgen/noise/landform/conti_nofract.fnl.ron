@@ -1,8 +1,8 @@
 (
     id: "conti_nofract",
     frequency: 0.01,
-    noise_type: 0,
-    fractal_type: 0,
+    noise_type: "OpenSimplex2",
+    fractal_type: "None",
     octaves: 5,
     lacunarity: 2.8,
     gain: 0.5,

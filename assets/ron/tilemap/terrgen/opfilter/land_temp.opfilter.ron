@@ -1,0 +1,6 @@
+(
+    id: "land_temp",
+    tags: ["land_temp"],
+    min_val: 0.0,
+    max_val: 1.0,
+)

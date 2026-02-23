@@ -1,9 +1,11 @@
 id: normal1
 size: (1, 1)
-debug: [normal_diff]
+debug: [normal_diff, antiriver, riverness]
+
+
 
 let continentness = max(fnl.conti, fnl.penin)
-let continentness = *(continentness, normal_diff)
+let continentness = *(continentness, normal_diff) - riverness
 
 let continent_threshold = 0.47
 

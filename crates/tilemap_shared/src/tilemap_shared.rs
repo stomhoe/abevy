@@ -26,6 +26,7 @@ pub struct GlobalGenSettings {
 
     pub seed: i32,
     pub world_freq: f32,
+    pub hot_reload_window_open_on_start: bool,
     /// Timeout in seconds to wait for StructureBuildCompliance before giving up
     pub structure_build_timeout_secs: f64,
     pub spawn_tag: StrId,
@@ -37,6 +38,7 @@ impl Default for GlobalGenSettings {
             seed: 0,
             world_freq: 20.
             /DONT_TOUCH,
+            hot_reload_window_open_on_start: false,
             structure_build_timeout_secs: 4.0,
             spawn_tag: StrId::trunc("sun_land"),
         }

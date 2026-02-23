@@ -123,12 +123,10 @@ pub struct FnlSeri {
     pub id: String,
     #[serde(default = "default_frequency")]
     pub frequency: f32,
-    /// 0: OpenSimplex2, 1: OpenSimplex2S, 2: Cellular, 3: Perlin, 4: ValueCubic, 5: Value
-    #[serde(default)]
-    pub noise_type: u32,
-    /// 0: None, 1: FBm, 2: Ridged, 3: PingPong, 4: DomainWarpProgressive, 5: DomainWarpIndependent,
-    #[serde(default)]
-    pub fractal_type: u32,
+    #[serde(default = "default_noise_type")]
+    pub noise_type: String,
+    #[serde(default = "default_fractal_type")]
+    pub fractal_type: String,
     #[serde(default = "default_octaves")]
     pub octaves: u8,
     #[serde(default = "default_lacunarity")]
@@ -139,17 +137,14 @@ pub struct FnlSeri {
     pub weighted_strength: f32,
     #[serde(default = "default_ping_pong_strength")]
     pub ping_pong_strength: f32,
-    /// 0: Euclidean, 1: EuclideanSq, 2: Manhattan, 3: Hybrid
     #[serde(default = "default_cellular_distance_function")]
-    pub cellular_distance_function: u32,
-    /// 0: CellValue, 1: Distance, 2: Distance2, 3: Distance2Add, 4: Distance2Sub, 5: Distance2Mul, 6: Distance2Div
+    pub cellular_distance_function: String,
     #[serde(default = "default_cellular_return_type")]
-    pub cellular_return_type: u32,
+    pub cellular_return_type: String,
     #[serde(default = "default_cellular_jitter")]
     pub cellular_jitter: f32,
-    /// 0: OpenSimplex2, 1: OpenSimplex2Reduced, 2: BasicGrid
-    #[serde(default)]
-    pub domain_warp_type: u32,
+    #[serde(default = "default_domain_warp_type")]
+    pub domain_warp_type: String,
     #[serde(default = "default_domain_warp_amp")]
     pub domain_warp_amp: f32,
 }
@@ -168,6 +163,8 @@ pub struct GlobalGenSettingsSeri {
     pub seed: i32,
     #[serde(default = "default_global_world_freq")]
     pub world_freq: f32,
+    #[serde(default)]
+    pub hot_reload_window_open_on_start: bool,
     #[serde(default = "default_global_structure_build_timeout_secs")]
     pub structure_build_timeout_secs: f64,
     #[serde(default = "default_global_spawn_tag")]
@@ -178,6 +175,7 @@ impl GlobalGenSettingsSeri {
         GlobalGenSettings {
             seed: self.seed,
             world_freq: self.world_freq,
+            hot_reload_window_open_on_start: self.hot_reload_window_open_on_start,
             structure_build_timeout_secs: self.structure_build_timeout_secs,
             spawn_tag: common::common_components::StrId::trunc(&self.spawn_tag),
         }
@@ -188,13 +186,16 @@ fn default_global_world_freq() -> f32 { 0.02 }
 fn default_global_structure_build_timeout_secs() -> f64 { 4.0 }
 fn default_global_spawn_tag() -> String { "sun_land".to_string() }
 fn default_frequency() -> f32 { 0.01 }
+fn default_noise_type() -> String { "OpenSimplex2".to_string() }
+fn default_fractal_type() -> String { "None".to_string() }
 fn default_octaves() -> u8 { 3 }
 fn default_lacunarity() -> f32 { 2.0 }
 fn default_gain() -> f32 { 0.5 }
 fn default_ping_pong_strength() -> f32 { 2.0 }
-fn default_cellular_distance_function() -> u32 { 1 }
-fn default_cellular_return_type() -> u32 { 1 }
+fn default_cellular_distance_function() -> String { "EuclideanSq".to_string() }
+fn default_cellular_return_type() -> String { "Distance".to_string() }
 fn default_cellular_jitter() -> f32 { 1.0 }
+fn default_domain_warp_type() -> String { "OpenSimplex2".to_string() }
 fn default_domain_warp_amp() -> f32 { 1.0 }
 
 pub fn load_global_gen_settings_seri_defs() -> Vec<GlobalGenSettingsSeri> {

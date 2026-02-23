@@ -2,7 +2,7 @@ id: normal2
 size: (1, 1)
 debug: [beach_avg_noise, shore_proximity, beachness, gravelness, inlandness, continentness, normal_diff]
 
-let inlandness = continentness/(COMPL continent_threshold)
+let inlandness = (continentness/(COMPL continent_threshold) - 1.)*0.33
 
 let shore_proximity = COMPL inlandness * 0.9
 
@@ -11,7 +11,7 @@ let beach_avg_noise = avg(fnl.beachsmol, fnl.beachbig)
 let beachness = *(beach_avg_noise, shore_proximity)
 let gravelness = *(COMPL beach_avg_noise, shore_proximity)
 
-out = idxmax(0.01, beachness, gravelness)
+out = idxmax(0.4, beachness, gravelness)
 
 bif normal3 -> []
 bif "" -> [sand]

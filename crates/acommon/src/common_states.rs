@@ -62,7 +62,7 @@ impl Default for HotReloadSelection {
     fn default() -> Self {
         Self {
             tiles: false,
-            sprite_configs_and_animations: false,
+            sprite_configs_and_animations: true,
             terrain_oplists_and_noises: true,
             probes_and_filters: true,
             global_gen_settings: true,

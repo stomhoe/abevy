@@ -19,14 +19,19 @@ use crate::{
 
 #[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
+    let debug_enabled = |cfg: Res<DebugUiConfig>| cfg.enable_debug_menus;
+
     app.add_plugins((FpsCounterPlugin))
+        .add_systems(Update, (apply_debug_ui_config_once,))
         .add_systems(
             Update,
             (
                 setup_debug_fonts,
+                apply_initial_hot_reload_visibility_from_world_settings,
                 debug_toggle_hot_reload_window,
                 debug_toggle_main_menu,
-            ),
+            )
+                .run_if(debug_enabled),
         )
         .add_systems(
             FixedUpdate,
@@ -53,7 +58,8 @@ pub fn plugin(app: &mut App) {
                 gpos_maps_window_system,
                 terrgen_debug_window_system
                     .run_if(|visible: Res<DubugWindowsVisibility>| visible.terrgen_values),
-            ),
+            )
+                .run_if(debug_enabled),
         )
         .add_systems(
             EguiPrimaryContextPass,
@@ -67,13 +73,15 @@ pub fn plugin(app: &mut App) {
                 player_details_inspector,
                 exempted_entity_details_inspector,
                 sprite_details_inspector,
-            ),
+            )
+                .run_if(debug_enabled),
         )
         .init_resource::<DubugWindowsVisibility>()
         .init_resource::<DebugSelectedEntities>()
         .init_resource::<DebugChunkingUiState>()
         .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
+        .init_resource::<DebugUiConfig>()
         .init_resource::<common::common_states::HotReloadSelection>()
         .init_resource::<common::common_states::HotReloadRequest>()
         .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered);

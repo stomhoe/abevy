@@ -2,6 +2,7 @@
     id: "global_gen_settings",
     seed: 3,
     world_freq: 0.02,
+    hot_reload_window_open_on_start: true,
     structure_build_timeout_secs: 4.0,
-    spawn_tag: "sun_anta",
+    spawn_tag: "sun_land_temp",
 )
