@@ -62,48 +62,57 @@ macro_rules! run_suitable_pos_search_logic {
         let mut accepted_results: Vec<(DimensionRef, GlobalTilePos)> = Vec::new();
         for suitable_pos in $search_params.reader_search_successful.read() {
             let requester = suitable_pos.requester;
-            let Some(owners) = $search_params.pending_by_requester.get_mut(&requester) else {
-                continue;
-            };
-            let Some(&(search_ent, my_pos, dim_ref, ezero_ref)) = owners.last() else {
-                continue;
-            };
-
             let min_result_distance = $search_params
                 .min_result_distance_by_requester
                 .get(&requester)
                 .copied()
                 .unwrap_or(0);
             let min_result_distance_sq = min_result_distance.saturating_mul(min_result_distance);
-            let too_close = min_result_distance_sq > 0 && accepted_results.iter().any(|(taken_dim_ref, taken_pos)| {
-                *taken_dim_ref == dim_ref
-                    && suitable_pos.found_pos.distance_squared(taken_pos) <= min_result_distance_sq
-            });
-            if too_close {
-                trace!(
-                    target: $target,
-                    "Skipping suitable-pos result for requester {:?} at {:?} due to min_result_distance {}",
-                    requester,
-                    suitable_pos.found_pos,
-                    min_result_distance
-                );
-                continue;
-            }
 
-            if $handle_success_event(
-                &mut $cmd,
-                search_ent,
-                my_pos,
-                dim_ref,
-                ezero_ref,
-                suitable_pos.found_pos,
-            ) {
-                owners.pop();
-                if owners.is_empty() {
-                    $search_params.pending_by_requester.remove(&requester);
-                    $search_params.min_result_distance_by_requester.remove(&requester);
+            let mut completed_search_ent: Option<Entity> = None;
+            let mut remove_requester = false;
+            {
+                let Some(owners) = $search_params.pending_by_requester.get_mut(&requester) else {
+                    continue;
+                };
+                let Some((search_ent, my_pos, dim_ref, ezero_ref)) = owners.last().copied() else {
+                    continue;
+                };
+
+                let too_close = min_result_distance_sq > 0 && accepted_results.iter().any(|(taken_dim_ref, taken_pos)| {
+                    *taken_dim_ref == dim_ref
+                        && suitable_pos.found_pos.distance_squared(taken_pos) <= min_result_distance_sq
+                });
+                if too_close {
+                    trace!(
+                        target: $target,
+                        "Skipping suitable-pos result for requester {:?} at {:?} due to min_result_distance {}",
+                        requester,
+                        suitable_pos.found_pos,
+                        min_result_distance
+                    );
+                    continue;
                 }
-                accepted_results.push((dim_ref, suitable_pos.found_pos));
+
+                if $handle_success_event(
+                    &mut $cmd,
+                    search_ent,
+                    my_pos,
+                    dim_ref,
+                    ezero_ref,
+                    suitable_pos.found_pos,
+                ) {
+                    owners.pop();
+                    remove_requester = owners.is_empty();
+                    accepted_results.push((dim_ref, suitable_pos.found_pos));
+                    completed_search_ent = Some(search_ent);
+                }
+            }
+            if remove_requester {
+                $search_params.pending_by_requester.remove(&requester);
+                $search_params.min_result_distance_by_requester.remove(&requester);
+            }
+            if let Some(search_ent) = completed_search_ent {
                 $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos>();
             }
         }

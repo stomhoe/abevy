@@ -12,8 +12,7 @@ use common::PORTAL_INIT;
 use crate::{
     run_suitable_pos_search_logic, terrain::{
         terrprobe::{terrprobe_components::*, terrprobe_resources::*},
-        terrprobe::terrprobe_messages::TerrProbeJob,
-        terrgen_search::{SearchParams, },
+        terrprobe::{terrprobe_messages::TerrProbeJob, terrprobe_systems::SearchParams},
     }, tile::{tile_components::*, tile_resources::*}, tilemap_resources::MassCollectedTiles
 };
 

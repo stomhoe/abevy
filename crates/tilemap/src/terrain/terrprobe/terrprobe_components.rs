@@ -26,8 +26,7 @@ impl ProbePatternSeri {
 
 #[derive(Debug, Clone, Component, Deserialize, Serialize)]
 pub struct TerrProbeTempl {
-    pub opfilter_ent: Option<Entity>,
-    pub opfilter_override: Option<OpFilter>,
+    pub opfilter: OpFilter,
     pub sgc_admitted_tiles_as_found_pos: Vec<EntityZeroRef>,
     pub sgc_whitelist: Vec<Entity>,
     pub sgc_blacklist: Vec<Entity>,
@@ -43,8 +42,12 @@ pub struct TerrProbeTempl {
 impl Default for TerrProbeTempl {
     fn default() -> Self {
         Self {
-            opfilter_ent: None,
-            opfilter_override: None,
+            opfilter: OpFilter {
+                tags: Default::default(),
+                op_i: None,
+                min_val: f32::NEG_INFINITY,
+                max_val: f32::INFINITY,
+            },
             sgc_admitted_tiles_as_found_pos: Vec::new(),
             sgc_whitelist: Vec::new(),
             sgc_blacklist: Vec::new(),
@@ -61,8 +64,7 @@ impl Default for TerrProbeTempl {
 
 impl TerrProbeTempl {
     pub fn from_seri(
-        opfilter_ent: Option<Entity>,
-        opfilter_override: Option<OpFilter>,
+        opfilter: OpFilter,
         structuregen_whitelist: Vec<Entity>,
         structuregen_blacklist: Vec<Entity>,
         sgc_required_tile_tags: HashSet<String>,
@@ -75,8 +77,7 @@ impl TerrProbeTempl {
         min_result_distance: u16,
     ) -> Self {
         Self {
-            opfilter_ent,
-            opfilter_override,
+            opfilter,
             sgc_admitted_tiles_as_found_pos,
             sgc_whitelist: structuregen_whitelist,
             sgc_blacklist: structuregen_blacklist,

@@ -19,6 +19,7 @@ pub fn init_terrain_probes(
     map: Res<TerrProbeTemplEntityMap>,
     sgc_entity_map: Res<StructuredGenConfigEntityMap>,
     opfilter_entity_map: Res<OpFilterEntityMap>,
+    opfilter_query: Query<&OpFilter>,
     tile_ents_with_tag: Res<EzeroTileEntsWithinTag>,
     entity_zeroes: Query<&EntityZero>,
     egui_holder_query: Query<Entity, With<EguiTptsHolder>>,
@@ -48,19 +49,41 @@ pub fn init_terrain_probes(
             None
         };
 
-        let opfilter_override = (!seri.opfilter_tags.is_empty()
+        let has_inline_overrides = !seri.opfilter_tags.is_empty()
             || seri.opfilter_op_i != u16::MAX
             || seri.opfilter_min_val != f32::NEG_INFINITY
-            || seri.opfilter_max_val != f32::INFINITY)
-            .then(|| OpFilter {
+            || seri.opfilter_max_val != f32::INFINITY;
+        if opfilter_ent.is_none() && !has_inline_overrides {
+            error!(target: "terrprobe_init", "Terrain probe '{}' requires either opfilter_id or inline opfilter_* fields", seri.id);
+            continue;
+        }
+        let mut opfilter = if let Some(opfilter_ent) = opfilter_ent {
+            let Ok(opfilter) = opfilter_query.get(opfilter_ent) else {
+                error!(target: "terrprobe_init", "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
+                continue;
+            };
+            opfilter.clone()
+        } else {
+            OpFilter {
                 tags: HashedTagsVec::new(seri.opfilter_tags.iter()),
                 op_i: (seri.opfilter_op_i != u16::MAX).then_some(seri.opfilter_op_i),
                 min_val: seri.opfilter_min_val,
                 max_val: seri.opfilter_max_val,
-            });
-        if opfilter_ent.is_none() && opfilter_override.is_none() {
-            error!(target: "terrprobe_init", "Terrain probe '{}' requires either opfilter_id or inline opfilter_* fields", seri.id);
-            continue;
+            }
+        };
+        if has_inline_overrides {
+            if !seri.opfilter_tags.is_empty() {
+                opfilter.tags = HashedTagsVec::new(seri.opfilter_tags.iter());
+            }
+            if seri.opfilter_op_i != u16::MAX {
+                opfilter.op_i = Some(seri.opfilter_op_i);
+            }
+            if seri.opfilter_min_val != f32::NEG_INFINITY {
+                opfilter.min_val = seri.opfilter_min_val;
+            }
+            if seri.opfilter_max_val != f32::INFINITY {
+                opfilter.max_val = seri.opfilter_max_val;
+            }
         }
 
         let mut structuregen_whitelist = Vec::with_capacity(seri.structuregen_whitelist.len());
@@ -107,25 +130,26 @@ pub fn init_terrain_probes(
         };
 
         let ent = cmd.spawn_empty().id();
+        let templ = TerrProbeTempl::from_seri(
+            opfilter.clone(),
+            structuregen_whitelist,
+            structuregen_blacklist,
+            seri.required_tile_tags.clone(),
+            sgc_admitted_tiles_as_found_pos,
+            parsed_probe_pattern,
+            seri.step_size,
+            seri.max_batches,
+            seri.iterations_per_batch,
+            seri.max_emitted_results,
+            seri.min_result_distance,
+        );
         comps.push((ent, (
             str_id,
             Replicated,
             AssetScoped,
             HotReload,
-            TerrProbeTempl::from_seri(
-                opfilter_ent,
-                opfilter_override,
-                structuregen_whitelist,
-                structuregen_blacklist,
-                seri.required_tile_tags.clone(),
-                sgc_admitted_tiles_as_found_pos,
-                parsed_probe_pattern,
-                seri.step_size,
-                seri.max_batches,
-                seri.iterations_per_batch,
-                seri.max_emitted_results,
-                seri.min_result_distance,
-            ),
+            templ,
+            opfilter,
             ChildOf(egui_ent),
         )));
     }

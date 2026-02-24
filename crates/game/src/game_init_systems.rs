@@ -17,7 +17,7 @@ use tilemap::{
     run_oneshot_suitable_pos_search_logic,
     terrain::{
         terrprobe::terrprobe_messages::TerrProbeJob,
-        terrgen_search::SearchParams,
+        terrprobe::terrprobe_systems::SearchParams,
     },
 };
 use tilemap_shared::{Dimension, DimensionEntityMap, DimensionRef, GlobalGenSettings, GlobalTilePos};

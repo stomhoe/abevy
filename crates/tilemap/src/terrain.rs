@@ -22,7 +22,6 @@ pub mod terrgen_components;
 pub mod terrgen_resources;
 pub mod terrgen_messages;
 pub mod terrgen_expression;
-pub mod terrgen_search;
 pub mod terrprobe;
 pub use operation_list::operation_list_components;
 
