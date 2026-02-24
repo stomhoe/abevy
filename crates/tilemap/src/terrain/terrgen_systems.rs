@@ -7,7 +7,7 @@ use std::mem::take;
 use crate::{
     chunking::chunking_components::*,
     terrain::{
-        opfilter::opfilter_components::OpFilter,
+        terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
         terrprobe::terrprobe_messages::SuitablePosFound,
         terrgen_components::*,
@@ -17,8 +17,6 @@ use crate::{
     tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles},
 };
 use ::tilemap_shared::*;
-
-pub use crate::terrain::terrgen_search::search_suitable_positions;
 
 #[allow(unused_parens)]
 pub fn launch_terrain_operations(
@@ -310,7 +308,7 @@ fn build_terrgen_task_context(
 
     let mut filters: EntityHashMap<OpFilter> = EntityHashMap::with_capacity(pending_len);
     for ev in pending_ops.iter() {
-        if ev.filtered_op_is_placeholder() {
+        if ev.opfilter_override.is_some() || ev.filtered_op_is_placeholder() {
             continue;
         }
         if let Ok(filter) = op_filters.get(ev.filtered_op) {
@@ -372,6 +370,7 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
                     dimension_ref: work.dim_ref,
                     gpos,
                     filtered_op: Entity::PLACEHOLDER,
+                    opfilter_override: None,
                     requester: Entity::PLACEHOLDER,
                     max_emitted_results: 0,
                 });
@@ -416,13 +415,15 @@ fn process_pending_ops_batch(
             .get(&ev.dimension_ref.0)
             .cloned()
             .unwrap_or_default();
-        let filter = if ev.filtered_op != Entity::PLACEHOLDER {
-            context.filters.get(&ev.filtered_op)
-        } else {
-            None
-        };
+        let filter = ev.opfilter_override.as_ref().or_else(|| {
+            if ev.filtered_op != Entity::PLACEHOLDER {
+                context.filters.get(&ev.filtered_op)
+            } else {
+                None
+            }
+        });
 
-        let has_filter = ev.filtered_op != Entity::PLACEHOLDER;
+        let has_filter = filter.is_some();
         if let Some(compiled_root) = context
             .oplists
             .get(&ev.oplist.0)
@@ -517,6 +518,7 @@ fn process_pending_ops_batch(
                         dimension_ref: ev.dimension_ref,
                         gpos: frame.gpos,
                         filtered_op: ev.filtered_op,
+                        opfilter_override: ev.opfilter_override.clone(),
                         requester: ev.requester,
                         max_emitted_results: ev.max_emitted_results,
                     },
@@ -619,6 +621,7 @@ fn process_compiled_branch_node(
                 dimension_ref: source_ev.dimension_ref,
                 gpos,
                 filtered_op: source_ev.filtered_op,
+                opfilter_override: source_ev.opfilter_override.clone(),
                 requester: source_ev.requester,
                 max_emitted_results: source_ev.max_emitted_results,
             },

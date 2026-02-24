@@ -1,5 +1,6 @@
 
 use std::{mem::take};
+use bevy::ecs::message;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{common_components::{HashId}, common_tag_components::TagSet};
 use debug_unwraps::DebugUnwrapExt;
@@ -33,18 +34,28 @@ fn passes_dimension_tag_filters(
     }
     true
 }
+#[derive(Message, Debug, Clone, )]
+pub struct ActivateRegion {
+    pub dimension_ref: DimensionRef,
+    pub region_pos: RegionPos,
+}
+
+
 
 #[allow(unused_parens)]
 pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     mut cmd: Commands,
     settings: Query<&GlobalGenSettings>,
     weight_map: Query<&EntityWeightedSampler, With<SgcsWeightedSampler>>,
-    mut region_query: Query<(Entity, &RegionPos, &DimensionRef, &mut ClaimList),(Added<ChunksActiveInRegion>, )>,
+    mut region_query: Query<(Entity, &mut ClaimList, &DimensionRef, &RegionPos, ),(Added<RegionPos>)>,
 
     structured_gens: Query<(Option<&TagSet>, Option<&PoissonDisk>, Option<&MultipleDimensionRefs>),()>,
     dimension_query: Query<(&HashId, Option<&WhitelistedStructureGenTags>, Option<&BlacklistedStructureGenTags>),()>,
     mut writer: MessageWriter<OfferChunk>,
+    mut reader: MessageReader<ActivateRegion>,
+    mut loaded_regions: ResMut<LoadedRegions>,
 ) {
+
     let Ok(settings) = settings.single() else {
         error!("Failed to get global gen settings");
         return;
@@ -55,8 +66,11 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     };
     let mut offers = Vec::new();
 
-    for (region_ent, &region_pos, &dim_ref, mut claimlist) in region_query.iter_mut() {
+    for (region_ent, mut claimlist, &dim_ref, &region_pos) in region_query.iter_mut() {
         trace!(target: "sgc_chunk_offer", "Offering chunks for new region at {:?}", region_pos);
+        let region_key = (dim_ref, region_pos);
+        loaded_regions.0.insert(region_key, region_ent);
+
 
         let Ok((&dim_hash, dim_wlist_tags, dim_blist_tags)) = dimension_query.get(dim_ref.0)
         else {
@@ -130,7 +144,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
 
         if offers.is_empty() {
             warn!(target: "sgc_chunk_offer", "No structures could be offered for region at {}, marking as BuildingStarted immediately", region_pos);
-            cmd.entity(region_ent).try_insert((BuildingStarted, AllClaimsProcessed));
+            cmd.entity(region_ent).try_insert(RegionState::BuildingStarted);
         } else {
             cmd.entity(region_ent).try_insert(TimeoutTimer::secs(0.2));
             writer.write_batch(take(&mut offers));
@@ -143,17 +157,20 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
 #[allow(unused_parens)]
 pub fn advance_i_on_claimlist_timeout(
     mut cmd: Commands,
-    mut query: Query<(Entity, &mut ClaimList),(Without<AllClaimsProcessed>)>,
+    mut query: Query<(Entity, &mut ClaimList, &RegionState), ()>,
     time: Res<Time>,
     mut recheck_writer: MessageWriter<RecheckRegion>,
 ) {
     let mut recheck = Vec::new();
 
-    query.iter_mut().for_each(|(region_ent, mut claimlist)| {
+    query.iter_mut().for_each(|(region_ent, mut claimlist, state)| {
+        if *state != RegionState::OfferingChunks {
+            return;
+        }
         claimlist.advance_timer.tick(time.delta());
         if claimlist.advance_timer.is_finished() {
             if claimlist.reached_end(){
-                cmd.entity(region_ent).try_insert(AllClaimsProcessed);
+                cmd.entity(region_ent).try_insert(RegionState::ClaimsProcessed);
                 return;
             }
             claimlist.advance_processed_upto_i();
@@ -226,7 +243,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             }//no tocar
 
             if grid_of_sgc.0.occupied_count() >= max_used_chunks_per_region {
-                cmd.entity(region_ent).try_insert(AllClaimsProcessed);
+                cmd.entity(region_ent).try_insert(RegionState::ClaimsProcessed);
                 trace!(target: "sgc_chunk_claim", "Region at {:?} has reached max used chunks per region ({}), stopping further claim processing",
                 region_pos, max_used_chunks_per_region);
                 break 'nextregion;
@@ -306,7 +323,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                         }
                     }
                     planned.add_build_order_pending(claim.i, &claim.chunks_gpos, settings.structure_build_timeout_secs as f32);
-                    regions_which_started_building.push((region_ent, BuildingStarted));
+                    regions_which_started_building.push((region_ent, RegionState::BuildingStarted));
                     debug!(target: "sgc_chunk_claim", "Region at {:?} emitting {} build orders for structure '{}'",
                         region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id());
 
@@ -331,7 +348,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
 pub fn add_planned_tiles_to_region(mut cmd: Commands,
     mut reader: MessageMutator<StructureBuildCompliance>,
     loaded_regions: Res<LoadedRegions>,
-    mut region_query: Query<(&mut RegionPlannedTiles, Has<AllTilesPrepared>),()>,
+    mut region_query: Query<(&mut RegionPlannedTiles, &RegionState), ()>,
 ) {
     for build in reader.read() {
         let order_i = build.i;
@@ -348,11 +365,11 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
             continue;
         };
 
-        let Ok((mut planned_tiles, region_planning_already_done)) = region_query.get_mut(region_ent)
+        let Ok((mut planned_tiles, state)) = region_query.get_mut(region_ent)
         else {
             continue;
         };
-        if region_planning_already_done {
+        if *state == RegionState::AllTilesPrepared {
             error!(target: "structure_spawn", "Region entity {:?} at position {:?} in dimension {:?} already marked as RegionPlanningFinished when processing structure build compliance, skipping",
             region_ent, region_pos, build.dimension_ref);
             continue;
@@ -366,13 +383,13 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
 
         if finished {
             debug!(target: "structure_spawn", "Region entity {:?} has finished planning all structure tiles, marking as RegionPlanningFinished", region_ent);
-            cmd.entity(region_ent).try_insert(AllTilesPrepared);
+            cmd.entity(region_ent).try_insert(RegionState::AllTilesPrepared);
         }
     }
 }
 #[allow(unused_parens, )]
 pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
-    region_query: Query<(&ChunksActiveInRegion, &RegionPlannedTiles),(Or<(Changed<ChunksActiveInRegion>, Changed<RegionPlannedTiles>, )>, With<BuildingStarted>)>,
+    region_query: Query<(&ChunksActiveInRegion, &RegionPlannedTiles, &RegionState),(Or<(Changed<ChunksActiveInRegion>, Changed<RegionPlannedTiles>, Changed<RegionState>)>, )>,
     chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<ReadyForTerrgen>)>,
     mut collected: ResMut<MassCollectedTiles>,
     clone_spawn_param_set: crate::tilemap_resources::CloneSpawnParamSet,
@@ -380,7 +397,10 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 ) {
     let mut ready = Vec::new();
     let mut to_insert_delete_others = Vec::new();
-    region_query.iter().for_each(|(chunks_active_in_region, reg_planned)| {
+    region_query.iter().for_each(|(chunks_active_in_region, reg_planned, state)| {
+        if *state != RegionState::BuildingStarted && *state != RegionState::AllTilesPrepared {
+            return;
+        }
         chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref)| {
             if reg_planned.is_chunk_pending_build(chunk_pos) {
                 return;
@@ -445,9 +465,12 @@ pub fn on_region_despawn_remove_from_loaded_regions(
 pub fn failsafe_timeout_pending_chunks(
     mut cmd: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &RegionPos, &mut RegionPlannedTiles), Without<AllTilesPrepared>>,
+    mut query: Query<(Entity, &RegionPos, &mut RegionPlannedTiles, &RegionState), ()>,
 ) {
-    query.iter_mut().for_each(|(region_ent, region_pos, mut planned)| {
+    query.iter_mut().for_each(|(region_ent, region_pos, mut planned, state)| {
+        if *state == RegionState::AllTilesPrepared {
+            return;
+        }
         let mut timed_out_orders: Vec<u64> = Vec::new();
         for (&order_i, order) in planned.pending_build_orders_iter_mut() {
             order.timer.tick(time.delta());
@@ -468,7 +491,7 @@ pub fn failsafe_timeout_pending_chunks(
 
         if planned.pending_build_orders_iter().next().is_none() {
             error!(target: "structure_spawn", "Region entity {:?} at {} has timed out remaining pending build orders, marking as RegionPlanningFinished", region_ent, region_pos);
-            cmd.entity(region_ent).try_insert(AllTilesPrepared);
+            cmd.entity(region_ent).try_insert(RegionState::AllTilesPrepared);
         }
     });
 }
@@ -476,13 +499,16 @@ pub fn failsafe_timeout_pending_chunks(
 #[allow(unused_parens)]
 pub fn timeout_pending_offers(
     mut cmd: Commands,
-    query: Query<&RegionPos, (With<Region>, With<MessageOnTimeout>, Without<BuildingStarted>)>,
+    query: Query<(&RegionPos, &RegionState), (With<Region>, With<MessageOnTimeout>)>,
     mut reader: MessageReader<TimedOut>,
 ) {
     for TimedOut(region_ent) in reader.read() {
-        let Ok(region_pos) = query.get(*region_ent) else { continue; };
+        let Ok((region_pos, state)) = query.get(*region_ent) else { continue; };
+        if *state != RegionState::OfferingChunks {
+            continue;
+        }
         warn!(target: "sgc_chunk_offer", "Offers for region at {} timed out after 0.2s with no claims, marking as BuildingStarted", region_pos);
-        cmd.entity(*region_ent).try_insert(BuildingStarted);
+        cmd.entity(*region_ent).try_insert(RegionState::BuildingStarted);
         cmd.entity(*region_ent).try_remove::<TimeoutTimer>();
     }
 }

@@ -59,6 +59,7 @@ pub fn plugin(app: &mut App) {
     .add_message::<SgcPrepareTilesOrder>()
     .add_message::<StructureBuildCompliance>()
     .add_message::<RecheckRegion>()
+    .add_message::<ActivateRegion>()
 
 
 ;
@@ -73,3 +74,5 @@ mod dungeoning_utils;
 mod regioning_systems;
 mod regioning_sgc_init_systems;
 mod dungeoning_systems;
+
+pub use regioning_systems::ActivateRegion;

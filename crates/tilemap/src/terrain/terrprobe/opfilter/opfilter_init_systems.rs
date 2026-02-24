@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::HashedTagsVec};
 
-use crate::terrain::opfilter::{
+use crate::terrain::terrprobe::opfilter::{
     opfilter_components::OpFilter,
     opfilter_resources::{EguiOpFiltersHolder, OpFilterEntityMap, load_op_filter_seri_defs},
 };

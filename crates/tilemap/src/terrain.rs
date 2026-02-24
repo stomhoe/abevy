@@ -12,7 +12,7 @@ use crate::{terrain::{
     terrgen_messages::PendingOp,
     terrgen_noise_init_systems::*,
     terrgen_resources::*,
-    terrgen_systems::*,
+    terrgen_systems::*, terrprobe::TerrainProbeSystems,
 }, tilemap_systems::process_tiles_pre};
 
 pub mod terrgen_systems;
@@ -23,12 +23,14 @@ pub mod terrgen_resources;
 pub mod terrgen_messages;
 pub mod terrgen_expression;
 pub mod terrgen_search;
-pub mod opfilter;
 pub mod terrprobe;
 pub use operation_list::operation_list_components;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TerrainGenSystems;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct TerrainSystems;
 
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
@@ -37,7 +39,6 @@ pub fn plugin(app: &mut App) {
             launch_terrain_operations,
             process_pending_ops_and_collect_tiles.before(process_tiles_pre),//DON'T TOUCH THIS LINE
             ).in_set(TerrainGenSystems),
-        search_suitable_positions.run_if(in_state(ClientState::Disconnected))
         ))
 
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
@@ -54,7 +55,9 @@ pub fn plugin(app: &mut App) {
             ).chain(),
             ).in_set(TerrainGenSystems)
         )
-
+        .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities),
+            (TerrainGenSystems, TerrainProbeSystems).in_set(TerrainSystems)
+        )
         .init_resource::<TerrGenLaunchQueue>()
         .init_resource::<TerrGenAsyncTasks>()
         .init_resource::<TerrGenDebugGrid>()
@@ -62,7 +65,7 @@ pub fn plugin(app: &mut App) {
         .add_plugins((
             plugin_terrgen,
             operation_list::plugin,
-            opfilter::plugin,
+            terrprobe::opfilter::plugin,
             terrprobe::plugin,
         ))
         .replicate::<FnlNoiseComp>()
@@ -74,7 +77,6 @@ pub fn plugin(app: &mut App) {
 
 
         .replicate::<GlobalGenSettings>()
-        .replicate::<terrgen_search::AwaitingStartSearch>()
 
         .add_message::<PendingOp>()
 

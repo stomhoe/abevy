@@ -10,8 +10,17 @@ use common::{common_components::*, };
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-#[require(ClaimList, RegionPlannedTiles, Visibility, Transform, AssetScoped)]
+#[require(ClaimList, RegionPlannedTiles, RegionState, Visibility, Transform, AssetScoped)]
 pub struct Region;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, PartialEq, Eq)]
+pub enum RegionState {
+    #[default]
+    OfferingChunks,
+    ClaimsProcessed,
+    BuildingStarted,
+    AllTilesPrepared,
+}
 
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = Chunk)]
@@ -147,19 +156,16 @@ impl RegionPlannedTiles {
         self.pending_chunks.remove(&chunk_pos);
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
     }
+    pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)]> {
+        let chunk_pos = gpos.to_chunkpos();
+        self.tiles_to_spawn_on_chunk_load_map.get(&chunk_pos).map(Vec::as_slice)
+    }
 
 }
 
 pub const MAX_CLAIMS: usize = REGION_SIZE_IN_CHUNKS.area_usize();
 
-#[derive(Component, Debug, Default, Copy, Clone)]
-pub struct AllTilesPrepared;
-
-#[derive(Component, Debug, Default, Copy, Clone)]
-pub struct BuildingStarted;
-
-
-#[derive(Debug, )]
+#[derive(Debug, Clone)]
 pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u64, }
 impl<T: Copy> Default for RegionGrid<T> {
     fn default() -> Self {
@@ -213,16 +219,24 @@ impl<T: Copy> RegionGrid<T> {
     pub fn occupied_count(&self) -> u64 {
         self.count
     }
+    pub fn get_value(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<T> {
+        self.get_local_pos(global_chunk_pos, region_pos)
+            .ok()
+            .and_then(|(x, y)| self.grid[y][x])
+    }
 }
 pub enum ChunkOccupyError<T> {
     AlreadyOccupied(T),
     OutOfRegionBounds(CardinalDirection),
 }
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct GridOfSgcs(pub RegionGrid<Entity>);
 
 impl GridOfSgcs {
+    pub fn sampled_structure_at_gpos(&self, gpos: GlobalTilePos, region_pos: RegionPos) -> Option<Entity> {
+        self.0.get_value(gpos.to_chunkpos(), region_pos)
+    }
     pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) {
         let base = ui.text_style_height(&egui::TextStyle::Monospace);
         let cell_w = (base * 0.9).max(9.0);
@@ -331,6 +345,3 @@ impl GridOfSgcs {
         }
     }
 }
-
-#[derive(Component, Debug, Default, Copy, Clone)]
-pub struct AllClaimsProcessed;

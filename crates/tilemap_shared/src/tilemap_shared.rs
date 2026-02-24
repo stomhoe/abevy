@@ -489,8 +489,7 @@ impl TileCollisionMask {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct SearchingForSuitablePos { pub requester: Entity, }
+
 
 
 #[derive(Message, Debug, Clone, Copy, Hash, PartialEq, Eq)]

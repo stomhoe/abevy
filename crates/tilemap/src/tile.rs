@@ -23,12 +23,8 @@ pub mod tile_bundles;
 pub mod tile_shader;
 use ::tilemap_shared::*;
 
-
-
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TilingSystems;
-
 
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
@@ -53,6 +49,7 @@ pub fn plugin(app: &mut App) {
 
     ))
     .add_observer(on_spritetile_despawn)
+    .add_observer(on_ezero_tile_despawn)
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
@@ -71,7 +68,7 @@ pub fn plugin(app: &mut App) {
         plugin_tile,
         plugin_tile_weighted_sampler,
     ))
-    .replicate::<MinDistancesMap>()
+    //.replicate::<MinDistancesMap>()
     .replicate::<BlocksProjectiles>()
 
     .replicate::<AdjRetexConfig>()

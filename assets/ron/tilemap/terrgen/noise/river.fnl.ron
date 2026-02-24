@@ -1,10 +1,12 @@
 (
     id: "river",
-    frequency: 0.03,
-    noise_type: "River",
+    frequency: 0.026,
+    noise_type: "ValueLanczos",
     fractal_type: "Ridged",
-    octaves: 5,
-    lacunarity: 0.0,
-    gain: 0.5,
-    weighted_strength: 0.0,
+    octaves: 4,
+    lacunarity: 2.0,
+    gain: 0.58,
+    weighted_strength: 0.12,
+    domain_warp_type: "OpenSimplex2",
+    domain_warp_amp: 1.9,
 )

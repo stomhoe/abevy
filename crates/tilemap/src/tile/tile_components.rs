@@ -210,7 +210,7 @@ impl TileHashIdsHandles {
 /// applied on tile's start gpos if placed via terrgen
 pub struct OffsetForTerrgenPlacement(pub GlobalTilePos);
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Default)]
+#[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
 pub struct MinDistancesMap(pub EntityHashMap<u64>);
 
 impl MinDistancesMap {
@@ -226,14 +226,14 @@ impl MinDistancesMap {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Clone, )]
 pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BlocksProjectiles;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Asset, TypePath)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct DeleteOtherTiles {
     pub spared_z: HashSet<AcZ>,
     pub targeted_z: HashSet<AcZ>,
@@ -253,7 +253,7 @@ impl DeleteOtherTiles {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct DeleteOtherTilesSeri {
     #[serde(default)]
     pub spared_z: Vec<f32>,

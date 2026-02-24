@@ -8,6 +8,8 @@ pub struct TerrProbeJob {
     pub dimension_ref: DimensionRef,
     pub search_start_pos: GlobalTilePos,
     pub templ_ent: Entity,
+    pub structuregen_whitelist: Vec<Entity>,
+    pub structuregen_blacklist: Vec<Entity>,
     pub min_result_distance: u16,
     pub curr_iteration_batch_i: i16,
 }
@@ -18,6 +20,8 @@ impl Default for TerrProbeJob {
             dimension_ref: DimensionRef(Entity::PLACEHOLDER),
             search_start_pos: GlobalTilePos::default(),
             templ_ent: Entity::PLACEHOLDER,
+            structuregen_whitelist: Vec::new(),
+            structuregen_blacklist: Vec::new(),
             min_result_distance: 0,
             curr_iteration_batch_i: 0,
         }

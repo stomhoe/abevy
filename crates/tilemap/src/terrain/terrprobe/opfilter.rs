@@ -4,11 +4,13 @@ pub mod opfilter_resources;
 
 use bevy::prelude::*;
 use common::common_states::AssetLoading;
-use crate::terrain::{TerrainGenSystems, opfilter::{
+use crate::terrain::{TerrainGenSystems, terrprobe::opfilter::{
     opfilter_components::*, opfilter_init_systems::*, opfilter_resources::*
 }};
+
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct OpfilterSystems;
+
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app

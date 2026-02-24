@@ -27,11 +27,9 @@ pub fn regions_list_window(
         Option<&RegionPlannedTiles>,
         Option<&ChunksActiveInRegion>,
         Option<&CountsOfSgcs>,
+        &RegionState,
         Has<MessageOnTimeout>,
         Has<DespawnOnTimeout>,
-        Has<AllTilesPrepared>,
-        Has<BuildingStarted>,
-        Has<AllClaimsProcessed>,
     ), With<Region>>,
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     id_query: Query<&StrId>,
@@ -50,10 +48,10 @@ pub fn regions_list_window(
     let mut open = window_visible.regions_list;
 
     // Group regions by dimension and position (keyed by StrId and Entity number)
-    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, bool, bool, bool, bool, bool)>)> =
+    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, RegionState, bool, bool)>)> =
         BTreeMap::new();
 
-    for (entity, _region, dim_ref, region_pos, name, grid, claim_list, planned_tiles, chunks_active, counts, timeout_timer, empty_timer, has_all_tiles, has_building_started, has_all_claims) in region_query.iter() {
+    for (entity, _region, dim_ref, region_pos, name, grid, claim_list, planned_tiles, chunks_active, counts, &region_state, timeout_timer, empty_timer) in region_query.iter() {
         let dim_key = if let Ok(str_id) = id_query.get(dim_ref.0) {
             format!("{} ({})", str_id.as_str(), dim_ref.0.index())
         } else {
@@ -64,7 +62,7 @@ pub fn regions_list_window(
             .entry(dim_key.clone())
             .or_insert_with(|| (dim_ref.0, HashMap::new()))
             .1
-            .insert(*region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, timeout_timer, empty_timer, has_all_tiles, has_building_started, has_all_claims));
+            .insert(*region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, region_state, timeout_timer, empty_timer));
     }
 
     // Get camera target dimension and position
@@ -171,7 +169,7 @@ pub fn regions_list_window(
                 .collect();
             selected_region_details.sort_by_key(|(_, (entity, ..))| entity.index());
 
-            for (region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, timeout, despawn, has_all_tiles, building_started, has_all_claims)) in selected_region_details {
+            for (region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, region_state, timeout, despawn)) in selected_region_details {
                 let name_str = name.map(|n| format!("{}", n)).unwrap_or_else(|| "unnamed".to_string());
                     egui::CollapsingHeader::new(format!("Details: {} (Entity: {:?})", name_str, entity))
                         .default_open(true)
@@ -232,17 +230,7 @@ pub fn regions_list_window(
                                     ui.label("🗑 DespawnOnTimeout");
                                 }
 
-                                if *has_all_tiles {
-                                    ui.label("✓ AllTilesPrepared");
-                                }
-
-                                if *building_started {
-                                    ui.label("▶ BuildingStarted");
-                                }
-
-                                if *has_all_claims {
-                                    ui.label("✓ AllClaimsProcessed");
-                                }
+                                ui.label(format!("State: {:?}", region_state));
                             });
                         });
                     });

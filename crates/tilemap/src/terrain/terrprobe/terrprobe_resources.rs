@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use serde::Deserialize;
+use std::collections::HashSet;
 
 use crate::terrain::terrprobe::terrprobe_components::TerrProbeTempl;
 
@@ -17,7 +18,22 @@ common::define_entity_map_systems!(
 #[derive(Deserialize, Asset, TypePath)]
 pub struct TerrainProbeSeri {
     pub id: String,
+    #[serde(default)]
     pub opfilter_id: String,
+    #[serde(default)]
+    pub opfilter_tags: HashSet<String>,
+    #[serde(default = "default_op_i")]
+    pub opfilter_op_i: u16,
+    #[serde(default = "default_min_val")]
+    pub opfilter_min_val: f32,
+    #[serde(default = "default_max_val")]
+    pub opfilter_max_val: f32,
+    #[serde(default)]
+    pub structuregen_whitelist: HashSet<String>,
+    #[serde(default)]
+    pub structuregen_blacklist: HashSet<String>,
+    #[serde(default)]
+    pub required_tile_tags: HashSet<String>,
     pub probe_pattern: String,
     #[serde(default = "default_step_size")]
     pub step_size: u16,
@@ -32,6 +48,9 @@ pub struct TerrainProbeSeri {
 }
 
 fn default_step_size() -> u16 { 1 }
+fn default_op_i() -> u16 { u16::MAX }
+fn default_min_val() -> f32 { f32::NEG_INFINITY }
+fn default_max_val() -> f32 { f32::INFINITY }
 fn default_max_batches() -> u16 { 1000 }
 fn default_iterations_per_batch() -> u16 { 10000 }
 fn default_max_emitted_results() -> u16 { 1 }

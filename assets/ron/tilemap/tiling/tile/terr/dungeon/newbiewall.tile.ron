@@ -1,6 +1,7 @@
 (
     id: "nw",
     name: "Dungeon newbie wall",
+    tags: ["wall"],
     z: -700,
     img_paths: [
         ("", "texture/world/terr/dungeon/newbie_wall.png"),

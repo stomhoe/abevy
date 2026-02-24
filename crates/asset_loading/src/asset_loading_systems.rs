@@ -12,7 +12,7 @@ use tilemap_shared::ForceAllChunksDespawn;
 use tilemap::{
     tile::tile_components::Tile,
     terrain::{
-        opfilter::opfilter_components::OpFilter,
+        terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::OperationList,
         terrgen_components::FnlNoiseComp,
         terrprobe::terrprobe_components::TerrProbeTempl,

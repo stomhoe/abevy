@@ -20,7 +20,7 @@ common::define_entity_map_systems!(
 
 
 #[derive(Resource, Debug, Default)]
-pub struct TileEntsWithinTag (pub HashMap<Tag, EntityHashSet>);
+pub struct EzeroTileEntsWithinTag (pub HashMap<Tag, EntityHashSet>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct TileImagePaths(

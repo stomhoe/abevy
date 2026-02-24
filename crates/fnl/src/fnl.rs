@@ -2563,28 +2563,30 @@ impl FastNoiseLite {
     }
 
     fn single_river_2d(&self, seed: i32, x: Float, y: Float) -> f32 {
-        let warp_a = self.single_open_simplex_2s_2d(seed.wrapping_add(1931), x * 0.72, y * 0.72);
-        let warp_b = self.single_perlin_2d(seed.wrapping_sub(811), x * 1.06, y * 1.06);
+        let warp_x = self.single_open_simplex_2s_2d(seed.wrapping_add(701), x * 0.34, y * 0.34);
+        let warp_y = self.single_open_simplex_2s_2d(seed.wrapping_sub(487), x * 0.34, y * 0.34);
+        let wx = x + warp_x * 1.25;
+        let wy = y + warp_y * 1.25;
 
-        let flow_x = x + warp_a * 1.35 + warp_b * 0.65;
-        let flow_y = y + warp_b * 1.35 - warp_a * 0.65;
+        let base = self.single_open_simplex_2s_2d(seed.wrapping_add(31), wx, wy);
+        let detail = self.single_open_simplex_2s_2d(seed.wrapping_add(179), wx * 2.1, wy * 2.1) * 0.22;
+        let ridged = (1.0 - (base + detail).abs()).clamp(0.0, 1.0);
 
-        let n0 = self.single_open_simplex_2s_2d(seed.wrapping_add(31), flow_x, flow_y);
-        let n1 = self.single_open_simplex_2s_2d(seed.wrapping_add(117), -flow_y * 0.96, flow_x * 1.04);
-        let centerline = (n0 - n1).abs().min(2.0) * 0.5;
-
-        let ridge = 1.0 - centerline;
-        let thin_rivers = ridge * ridge;
-
-        let banks = self.single_open_simplex_2s_2d(seed.wrapping_add(271), flow_x * 0.42, flow_y * 0.42) * 0.5 + 0.5;
-        let river_01 = (thin_rivers * (0.35 + banks * 0.65)).clamp(0.0, 1.0);
-
-        river_01 * 2.0 - 1.0
+        ridged * 2.0 - 1.0
     }
 
     fn single_river_3d(&self, seed: i32, x: Float, y: Float, z: Float) -> f32 {
-        let z_warp = self.single_open_simplex_2s_3d(seed.wrapping_add(149), x * 0.35, y * 0.35, z * 0.55);
-        self.single_river_2d(seed.wrapping_add(z_warp.to_bits() as i32), x + z * 0.1, y - z * 0.1)
+        let warp_x = self.single_open_simplex_2s_3d(seed.wrapping_add(701), x * 0.30, y * 0.30, z * 0.30);
+        let warp_y = self.single_open_simplex_2s_3d(seed.wrapping_sub(487), x * 0.30, y * 0.30, z * 0.30);
+        let wx = x + warp_x * 1.05;
+        let wy = y + warp_y * 1.05;
+        let wz = z + (warp_x - warp_y) * 0.55;
+
+        let base = self.single_open_simplex_2s_3d(seed.wrapping_add(31), wx, wy, wz);
+        let detail = self.single_open_simplex_2s_3d(seed.wrapping_add(179), wx * 1.9, wy * 1.9, wz * 1.9) * 0.20;
+        let ridged = (1.0 - (base + detail).abs()).clamp(0.0, 1.0);
+
+        ridged * 2.0 - 1.0
     }
 
     // Domain Warp

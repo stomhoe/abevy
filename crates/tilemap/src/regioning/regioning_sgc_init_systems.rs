@@ -4,7 +4,7 @@ use common::{common_components::*, common_tag_components::{HashedTagsVec, TagSet
 use game_common::{game_common_components::ArgsDict, game_common_samplers::EntityWeightedSampler};
 use ::tilemap_shared::*;
 
-use crate::{regioning::{StructuredGenConfigEntityMap, regioning_resources::*, regioning_sgc_components::*}, terrain::opfilter::{opfilter_components::OpFilter, opfilter_resources::OpFilterEntityMap}, };
+use crate::{regioning::{StructuredGenConfigEntityMap, regioning_resources::*, regioning_sgc_components::*}, terrain::terrprobe::opfilter::{opfilter_components::OpFilter, opfilter_resources::OpFilterEntityMap}, };
 
 #[allow(unused_parens)]
 pub fn init_structured_gen_configs (

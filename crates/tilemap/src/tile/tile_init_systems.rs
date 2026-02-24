@@ -1,4 +1,5 @@
 
+use bevy::ecs::query;
 use ::game_common::{game_common_components::*, };
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
@@ -12,7 +13,7 @@ use bevy::{
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
-use common::{TILE_INIT, common_components::*, common_tag_components::TagSet};
+use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet};
 use sprite::sprite_components::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
 use std::{fs, path::PathBuf};
@@ -43,7 +44,7 @@ pub fn init_tiles(
 
     let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();
 
-    let mut res_tile_tags = TileEntsWithinTag::default();
+    let mut res_tile_tags = EzeroTileEntsWithinTag::default();
 
     for mut seri in load_tile_seri_defs() {
 
@@ -392,7 +393,7 @@ pub fn add_handles(
 pub fn map_min_dist_tiles(
     mut cmd: Commands,
     tiles_map: Res<TileEntityMap>,
-    tile_tags: Res<TileEntsWithinTag>,
+    tile_tags: Res<EzeroTileEntsWithinTag>,
 ) {
     let mut keep_away: EntityHashMap<EntityHashSet> = EntityHashMap::default();
     let all_seris = load_tile_seri_defs();
@@ -428,11 +429,9 @@ pub fn map_min_dist_tiles(
                 }
             }
         }
-
         if min_dists.0.is_empty() {
             continue;
         }
-
         min_dist_comps.push((tile_ent, min_dists));
     }
 
@@ -441,4 +440,18 @@ pub fn map_min_dist_tiles(
     }
     cmd.try_insert_batch(min_dist_comps);
     cmd.try_insert_batch(keep_dist_comps);
+}
+#[allow(unused_parens)]
+pub fn on_ezero_tile_despawn(
+    on_despawn: On<Despawn, (Tile, EntityZero, TagSet)>,
+    query: Query<(&TagSet), (AnyDisabling)>,
+    mut tile_ents_within_tag: ResMut<EzeroTileEntsWithinTag>
+) {
+    if let Ok(tag_set) = query.get(on_despawn.entity) {
+        tag_set.iter().for_each(|tag| {
+            if let Some(ents) = tile_ents_within_tag.0.get_mut(tag) {
+                ents.remove(&on_despawn.entity);
+            }
+        });
+    }
 }

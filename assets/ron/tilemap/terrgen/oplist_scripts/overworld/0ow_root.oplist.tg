@@ -4,7 +4,7 @@ size: (1, 1)
 debug: [riverness]
 
 let beach_avg_noise = avg(fnl.beachsmol, fnl.beachbig)
-let riverness = idxmax(0.8, fnl.river) * 3
+let riverness = idxmax(0.9i, fnl.river) * 3
 
 let normal_continentness = +(fnl.conti_nofract, 0.0)
 let elf_continentness = +(fnl.conti_nofract.s2, 0.0)

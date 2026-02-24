@@ -2,7 +2,7 @@ use bevy::{platform::collections::HashSet, prelude::*};
 
 use serde::Deserialize;
 
-use crate::terrain::opfilter::opfilter_components::OpFilter;
+use crate::terrain::terrprobe::opfilter::opfilter_components::OpFilter;
 
 common::define_entity_map_systems!(
     OpFilter,
