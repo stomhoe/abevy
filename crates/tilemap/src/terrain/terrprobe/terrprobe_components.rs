@@ -13,12 +13,18 @@ pub enum ProbePatternSeri {
     Sun,
     #[serde(alias = "spiral")]
     Spiral,
+    #[serde(alias = "chunk")]
+    Chunk,
+    #[serde(alias = "region")]
+    Region,
 }
 impl ProbePatternSeri {
     pub fn parse(s: &str) -> Option<Self> {
         match s.trim().to_ascii_lowercase().as_str() {
             "sun" => Some(Self::Sun),
             "spiral" => Some(Self::Spiral),
+            "chunk" => Some(Self::Chunk),
+            "region" => Some(Self::Region),
             _ => None,
         }
     }
@@ -85,6 +91,8 @@ impl TerrProbeTempl {
             probe_pattern: match probe_pattern {
                 ProbePatternSeri::Sun => ProbePattern::sun(),
                 ProbePatternSeri::Spiral => ProbePattern::spiral(GlobalTilePos::default()),
+                ProbePatternSeri::Chunk => ProbePattern::chunk(ChunkPos::default()),
+                ProbePatternSeri::Region => ProbePattern::region(step_size),
             },
             step_size,
             max_batches,

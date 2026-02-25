@@ -1,9 +1,12 @@
 use bevy::{ecs::entity::{EntityHashSet, EntityHashMap}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use game_common::game_common_components::EntityZeroRef;
-use std::f32::consts::PI;
 use crate::terrain::{
     terrprobe::terrprobe_components::TerrProbeTempl,
+    terrprobe::terrprobe_pattern_chunk::process_chunk_pattern,
     terrprobe::terrprobe_messages::*,
+    terrprobe::terrprobe_pattern_radial::process_radial_pattern,
+    terrprobe::terrprobe_pattern_region::process_region_pattern,
+    terrprobe::terrprobe_pattern_spiral::process_spiral_pattern,
     terrgen_components::FailedSearchOplistFilterHolder,
     terrgen_messages::PendingOp,
     terrgen_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult},
@@ -72,14 +75,13 @@ pub fn search_suitable_positions(
     mut failed_entities: Local<Vec<Entity>>,
 ) {
     found_suitable_positions.clear();
-    for found_ev in mreader_suitable_pos_found.read() {
-        found_suitable_positions.insert(found_ev.requester);
-    }
     new_pending_ops.clear();
     new_pos_searches.clear();
     search_failed_evs.clear();
     failed_entities.clear();
-
+    for found_ev in mreader_suitable_pos_found.read() {
+        found_suitable_positions.insert(found_ev.requester);
+    }
     terrgen_tasks.search_tasks.retain_mut(|task| {
         if let Some(result) = future::block_on(future::poll_once(task)) {
             new_pending_ops.extend(result.new_pending_ops);
@@ -125,9 +127,9 @@ pub fn search_suitable_positions(
 
 fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requesters: EntityHashSet) -> TerrGenSearchTaskResult {
     let pending_count = inputs.len();
-    let mut new_pending_ops = Vec::with_capacity(pending_count);
-    let mut new_pos_searches = Vec::with_capacity(pending_count);
-    let mut search_failed = Vec::with_capacity(pending_count);
+    let mut new_pending_ops: Vec<PendingOp> = Vec::with_capacity(pending_count);
+    let mut new_pos_searches: Vec<TerrProbeJob> = Vec::with_capacity(pending_count);
+    let mut search_failed: Vec<Entity> = Vec::with_capacity(pending_count);
 
     for input in inputs {
         let pos_search = input.probe;
@@ -137,99 +139,55 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
             continue;
         }
         let templ = input.templ;
-        let (requester, step_size, curr_iteration_batch_i, iterations_per_batch, max_batches, dimension_ref) =
-            (
-                pos_search.requester,
-                templ.step_size,
-                pos_search.curr_iteration_batch_i,
-                templ.iterations_per_batch,
-                templ.max_batches,
-                pos_search.dimension_ref,
-            );
+        let curr_iteration_batch_i = pos_search.curr_iteration_batch_i;
         let root_oplist = input.root_oplist;
         let curr_iteration_batch_i = curr_iteration_batch_i.max(0);
 
         match templ.probe_pattern.clone() {
             ProbePattern::Radial(_) => {
-                let calculate_pos = |i_within_batch: u16, probe_direction: f32| -> GlobalTilePos {
-                    let global_i = (curr_iteration_batch_i as u16 * iterations_per_batch as u16 + i_within_batch) as f32 * step_size as f32;
-                    pos_search.search_start_pos + GlobalTilePos::from(IVec2::new(
-                        (global_i * probe_direction.cos()) as i32, (global_i * probe_direction.sin()) as i32,
-                    ))
-                };
-                if curr_iteration_batch_i as u16 >= max_batches {
-                    error!(target: "pos_search", "No more batches to search for {:?}", pos_search);
-                    continue;
-                }
-                let divisions = 8;
-                let start_i_within_batch = (curr_iteration_batch_i == 0) as u16;
-                for i in 0..divisions {
-                    let angle = 2.0 * PI * (i as f32) / (divisions as f32);
-                    for i_within_batch in start_i_within_batch..iterations_per_batch {
-                        new_pending_ops.push(PendingOp {
-                            oplist: root_oplist,
-                            dimension_ref,
-                            gpos: calculate_pos(i_within_batch, angle),
-                            filtered_op: pos_search.templ_ent,
-                            requester,
-                            max_emitted_results: templ.max_emitted_results,
-                        });
-                    }
-                }
-                if curr_iteration_batch_i as u16 + 1 < max_batches {
-                    let mut next_search = pos_search.clone();
-                    next_search.curr_iteration_batch_i = curr_iteration_batch_i + 1;
-                    new_pos_searches.push(next_search);
-                } else {
-                    error!(target: "pos_search", "No more batches to search for {:?}", templ.opfilter);
-                    search_failed.push(requester);
-                }
+                process_radial_pattern(
+                    pos_search,
+                    &templ,
+                    root_oplist,
+                    curr_iteration_batch_i,
+                    &mut new_pending_ops,
+                    &mut new_pos_searches,
+                    &mut search_failed,
+                );
             }
             ProbePattern::Spiral(_, _, _, _, _) => {
-                let (
-                    mut curr_length_in_dir,
-                    mut steps_taken,
-                    mut dir_vec,
-                    mut pos,
-                    mut turn_parity,
-                ) = spiral_state_at_batch_start(
-                    pos_search.search_start_pos,
-                    step_size,
-                    curr_iteration_batch_i as u16,
-                    iterations_per_batch,
+                process_spiral_pattern(
+                    pos_search,
+                    &templ,
+                    root_oplist,
+                    curr_iteration_batch_i,
+                    &mut new_pending_ops,
+                    &mut new_pos_searches,
+                    &mut search_failed,
                 );
-                trace!(target: "pos_search", "Spiral search started at pos {:?}, dir_vec {:?}, curr_length_in_dir {}, turns {}",
-                    pos, dir_vec, curr_length_in_dir, turn_parity);
-
-                for _ in 0..iterations_per_batch {
-                    pos = pos + GlobalTilePos(dir_vec.saturating_mul(IVec2::splat(step_size as i32)));
-                    new_pending_ops.push(PendingOp {
-                        dimension_ref,
-                        oplist: root_oplist,
-                        gpos: pos,
-                        filtered_op: pos_search.templ_ent,
-                        requester,
-                        max_emitted_results: templ.max_emitted_results,
-                    });
-
-                    steps_taken += 1;
-                    if steps_taken >= curr_length_in_dir {
-                        steps_taken = 0;
-
-                        dir_vec = dir_vec.perp();
-                        curr_length_in_dir = curr_length_in_dir.saturating_add(turn_parity as u64);
-                        turn_parity = !turn_parity;
-                    }
-                }
-                if curr_iteration_batch_i as u16 + 1 < max_batches {
-                    let mut next_search = pos_search.clone();
-                    next_search.curr_iteration_batch_i = curr_iteration_batch_i + 1;
-                    new_pos_searches.push(next_search);
-                } else {
-                    error!(target: "pos_search", "No more batches to search for {:?}", templ.opfilter);
-                    search_failed.push(requester);
-                }
-            },
+            }
+            ProbePattern::Chunk(chunk_pos) => {
+                process_chunk_pattern(
+                    pos_search,
+                    &templ,
+                    root_oplist,
+                    chunk_pos,
+                    curr_iteration_batch_i,
+                    &mut new_pending_ops,
+                    &mut search_failed,
+                );
+            }
+            ProbePattern::Region(spacing) => {
+                process_region_pattern(
+                    pos_search,
+                    &templ,
+                    root_oplist,
+                    spacing,
+                    curr_iteration_batch_i,
+                    &mut new_pending_ops,
+                    &mut search_failed,
+                );
+            }
         }
     }
 
@@ -238,29 +196,4 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
         new_pos_searches,
         search_failed,
     }
-}
-
-fn spiral_state_at_batch_start(
-    start_pos: GlobalTilePos,
-    step_size: u16,
-    batch_i: u16,
-    iterations_per_batch: u16,
-) -> (u64, u64, IVec2, GlobalTilePos, bool) {
-    let mut curr_length_in_dir: u64 = 1;
-    let mut steps_taken: u64 = 0;
-    let mut dir_vec = IVec2::new(0, 1);
-    let mut pos = start_pos;
-    let mut turn_parity = false;
-    let steps_to_advance = batch_i as u64 * iterations_per_batch as u64;
-    for _ in 0..steps_to_advance {
-        pos = pos + GlobalTilePos(dir_vec.saturating_mul(IVec2::splat(step_size as i32)));
-        steps_taken += 1;
-        if steps_taken >= curr_length_in_dir {
-            steps_taken = 0;
-            dir_vec = dir_vec.perp();
-            curr_length_in_dir = curr_length_in_dir.saturating_add(turn_parity as u64);
-            turn_parity = !turn_parity;
-        }
-    }
-    (curr_length_in_dir, steps_taken, dir_vec, pos, turn_parity)
 }

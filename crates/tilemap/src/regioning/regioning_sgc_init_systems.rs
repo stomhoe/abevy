@@ -151,6 +151,8 @@ pub fn init_structured_gen_configs(
         let sgc_id = StrId::trunc(seri_id.clone());
 
         gen_cfg.max_per_region = structured_gen_seri.max_per_region;
+        gen_cfg.whitelisted_tags = TagSet::new(structured_gen_seri.whitelisted_tags.iter().map(String::as_str));
+        gen_cfg.blacklisted_tags = TagSet::new(structured_gen_seri.blacklisted_tags.iter().map(String::as_str));
         if !structured_gen_seri.args.is_empty() {
             gen_cfg.args = ArgsDict::with_capacity(structured_gen_seri.args.len());
             for (key, val_vec) in structured_gen_seri.args.clone() {
@@ -165,9 +167,6 @@ pub fn init_structured_gen_configs(
         let tags_set = HashSet::from_iter(tags_vec.iter().cloned());
         cmd.entity(main_ent).try_insert(TagSet::new(tags_vec));
 
-        if !structured_gen_seri.whitelisted_filters.is_empty() {
-            for _opfilter_id in structured_gen_seri.whitelisted_filters {}
-        }
         if !structured_gen_seri.exclusive_for_dimensions.is_empty() {
             let mut dim_refs = MultipleDimensionRefs::default();
             for dim_strid in &structured_gen_seri.exclusive_for_dimensions {
@@ -203,7 +202,9 @@ pub fn init_structured_gen_configs(
             });
         }
 
-        ent_w_sampler.insert(main_ent, structured_gen_seri.weight);
+        if structured_gen_seri.weight != f32::NEG_INFINITY {
+            ent_w_sampler.insert(main_ent, structured_gen_seri.weight);
+        }
         sgcs_comps.push((main_ent, (sgc_id, gen_cfg)));
     }
 

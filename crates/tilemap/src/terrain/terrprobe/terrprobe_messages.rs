@@ -33,11 +33,19 @@ pub enum ProbePattern {
     Radial(Option<f32>),
     /// curr_length_in_dir, steps_taken, dir_vec, pos, turn parity
     Spiral(u64, u64, IVec2, GlobalTilePos, bool),
+    Chunk(ChunkPos),
+    Region(u16),
 }
 impl ProbePattern {
     pub fn sun() -> Self { ProbePattern::Radial(None) }
     pub fn spiral(start_pos: GlobalTilePos) -> Self {
         ProbePattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
+    }
+    pub fn chunk(chunk_pos: ChunkPos) -> Self {
+        ProbePattern::Chunk(chunk_pos)
+    }
+    pub fn region(spacing: u16) -> Self {
+        ProbePattern::Region(spacing.max(1))
     }
 }
 

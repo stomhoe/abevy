@@ -191,7 +191,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
     mut cmd: Commands,
     mut claims: MessageMutator<ChunksClaim>,
     mut region_query: Query<(&RegionPos, &DimensionRef, &mut ClaimList, &mut CountsOfSgcs, &mut GridOfSgcs, &mut RegionPlannedTiles),()>,
-    structured_gens: Query<(&StructuredGenConfig,),()>,
+    structured_gens: Query<(&StructuredGenConfig, Option<&TagSet>),()>,
     settings: Query<&GlobalGenSettings>,
     mut recheck_reader: MessageReader<RecheckRegion>,
     mut writer: MessageWriter<SgcPrepareTilesOrder>,
@@ -264,7 +264,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
 
                 *claimlist.claims.get_mut(i).debug_unwrap_unchecked() = None;
 
-                let Ok((structured_gen_cfg,)) = structured_gens.get(claim.sgc_ent)
+                let Ok((structured_gen_cfg, claim_sgc_tags_opt)) = structured_gens.get(claim.sgc_ent)
                 else {
                     claimlist.advance_processed_upto_i();
                     error!(target: "sgc_chunk_claim", "StructuredGenConfig entity {:?} not found when processing claims for region at {:?}, skipping claim",
@@ -283,6 +283,42 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                 let mut failed_claims_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area_usize(), false);
 
                 'nextpos: for (claim_i, &chunk_pos) in claim.chunks_gpos.iter().enumerate(){
+                    let Some(occupiers) = grid_of_sgc.0.get_values(chunk_pos, region_pos) else {
+                        undo_claims = true;
+                        error!(target: "sgc_chunk_claim", "Chunk at {:?} is outside region bounds, undoing all claims for this structure", chunk_pos);
+                        break 'nextpos;
+                    };
+                    if !occupiers.is_empty() {
+                        if claim_i == 0 {
+                            undo_claims = true;
+                            trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied at initial position, undoing all claims for this structure", chunk_pos, region_pos);
+                            break 'nextpos;
+                        }
+                        let claim_sgc_tags = claim_sgc_tags_opt.cloned().unwrap_or_default();
+                        let mut is_mutually_tolerated = true;
+                        for &occupier_ent in occupiers {
+                            let Ok((occupier_cfg, occupier_tags_opt)) = structured_gens.get(occupier_ent) else {
+                                is_mutually_tolerated = false;
+                                break;
+                            };
+                            let occupier_tags = occupier_tags_opt.cloned().unwrap_or_default();
+                            if !occupier_cfg.tolerates_tags(&claim_sgc_tags)
+                                || !structured_gen_cfg.tolerates_tags(&occupier_tags)
+                            {
+                                is_mutually_tolerated = false;
+                                break;
+                            }
+                        }
+                        if !is_mutually_tolerated {
+                            if claim.partition_tolerant {
+                                failed_claims_bitmask.set(claim_i, true);
+                                continue 'nextpos;
+                            }
+                            undo_claims = true;
+                            trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} is not mutually tolerated, undoing all claims for this structure", chunk_pos, region_pos);
+                            break 'nextpos;
+                        }
+                    }
                     match (grid_of_sgc.0.occupy(
                         chunk_pos,
                         region_pos,
@@ -298,13 +334,13 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                             chunk_pos);
                             break 'nextpos;
                         }
-                        (Err(ChunkOccupyError::AlreadyOccupied(_)), true) => {
+                        (Err(ChunkOccupyError::AlreadyOccupied), true) => {
                             trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied, but claim is partition tolerant, continuing",
                             chunk_pos, region_pos);
                             failed_claims_bitmask.set(claim_i, true);//OK
                             continue 'nextpos;
                         }
-                        (Err(ChunkOccupyError::AlreadyOccupied(_)), false) => {
+                        (Err(ChunkOccupyError::AlreadyOccupied), false) => {
                             undo_claims = true;
                             trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied, undoing all claims for this structure",
                             chunk_pos, region_pos);
@@ -315,7 +351,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                 if undo_claims {
                     for i in 0..claimed_up_to {
                         let chunk_pos = claim.chunks_gpos[i as usize];
-                        grid_of_sgc.0.free(chunk_pos, region_pos);
+                        grid_of_sgc.0.free(chunk_pos, region_pos, claim.sgc_ent);
                     }
                 } else {
                     counts_of_sgcs.0.entry(claim.sgc_ent)

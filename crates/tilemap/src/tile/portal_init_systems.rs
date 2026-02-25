@@ -113,7 +113,6 @@ pub fn instantiate_portal(
     ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>,)>,
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut register_pos: ResMut<ImportantRegisteredPositions>,
-    clone_spawn_param_set: CloneSpawnParamSet,
     terrprobe_query: Query<&TerrProbeTempl>,
     mut search_params: SearchParams,
 ) {

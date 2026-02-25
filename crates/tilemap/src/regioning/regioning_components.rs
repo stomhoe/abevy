@@ -166,19 +166,22 @@ impl RegionPlannedTiles {
 pub const MAX_CLAIMS: usize = REGION_SIZE_IN_CHUNKS.area_usize();
 
 #[derive(Debug, Clone)]
-pub struct RegionGrid<T: Copy> { grid: [[Option<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize], count: u64, }
-impl<T: Copy> Default for RegionGrid<T> {
+pub struct RegionGrid<T: Copy + Eq> {
+    grid: [[Vec<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize],
+    count: u64,
+}
+impl<T: Copy + Eq> Default for RegionGrid<T> {
     fn default() -> Self {
         Self {
-            grid: [[const { None }; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize],
+            grid: std::array::from_fn(|_| std::array::from_fn(|_| Vec::new())),
             count: 0,
         }
     }
 }
 
-impl<T: Copy> RegionGrid<T> {
+impl<T: Copy + Eq> RegionGrid<T> {
     #[inline]
-    fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError<T>> {
+    fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError> {
         let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
         match (local_chunk_pos.0.x < 0, local_chunk_pos.0.x >= REGION_SIZE_IN_CHUNKS.x(), local_chunk_pos.0.y < 0, local_chunk_pos.0.y >= REGION_SIZE_IN_CHUNKS.y()) {
             (true, _, _, _) => Err(ChunkOccupyError::OutOfRegionBounds(CardinalDirection::West)),
@@ -190,28 +193,31 @@ impl<T: Copy> RegionGrid<T> {
     }
     pub fn is_occupied(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
         self.get_local_pos(global_chunk_pos, region_pos)
-        .map(|(x, y)| self.grid[y][x].is_some())
+        .map(|(x, y)| !self.grid[y][x].is_empty())
         .unwrap_or(false)
     }
     pub fn is_available(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
         !self.is_occupied(global_chunk_pos, region_pos)
     }
-    pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) -> Result<(), ChunkOccupyError<T>> {
+    pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) -> Result<(), ChunkOccupyError> {
         let (x, y) = self.get_local_pos(global_chunk_pos, region_pos)?;
-
-        match self.grid[y][x] {
-            None => {
-                self.grid[y][x] = Some(value);
-                self.count += 1;
-                Ok(())
-            }
-            Some(existing) => Err(ChunkOccupyError::AlreadyOccupied(existing)),
+        let cell = &mut self.grid[y][x];
+        if cell.iter().any(|&existing| existing == value) {
+            return Err(ChunkOccupyError::AlreadyOccupied);
         }
+        if cell.is_empty() {
+            self.count += 1;
+        }
+        cell.push(value);
+        Ok(())
     }
-    pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos) {
+    pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) {
         if let Ok((x, y)) = self.get_local_pos(global_chunk_pos, region_pos) {
-            if self.grid[y][x].is_some() {
-                self.grid[y][x] = None;
+            let cell = &mut self.grid[y][x];
+            if let Some(i) = cell.iter().position(|&existing| existing == value) {
+                cell.swap_remove(i);
+            }
+            if cell.is_empty() {
                 self.count -= 1;
             }
         }
@@ -222,11 +228,16 @@ impl<T: Copy> RegionGrid<T> {
     pub fn get_value(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<T> {
         self.get_local_pos(global_chunk_pos, region_pos)
             .ok()
-            .and_then(|(x, y)| self.grid[y][x])
+            .and_then(|(x, y)| self.grid[y][x].first().copied())
+    }
+    pub fn get_values(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<&[T]> {
+        self.get_local_pos(global_chunk_pos, region_pos)
+            .ok()
+            .map(|(x, y)| self.grid[y][x].as_slice())
     }
 }
-pub enum ChunkOccupyError<T> {
-    AlreadyOccupied(T),
+pub enum ChunkOccupyError {
+    AlreadyOccupied,
     OutOfRegionBounds(CardinalDirection),
 }
 
@@ -297,9 +308,9 @@ impl GridOfSgcs {
                     false
                 };
 
-                match cell {
-                    Some(entity) => {
-                        let symbol = *entity_to_char.entry(*entity).or_insert_with(|| {
+                if !cell.is_empty() {
+                        let entity = cell[0];
+                        let symbol = *entity_to_char.entry(entity).or_insert_with(|| {
                             let ch = ARRAY_OF_LEGIBLE_CHARS[char_index % ARRAY_OF_LEGIBLE_CHARS.len()];
                             char_index += 1;
                             ch
@@ -322,8 +333,7 @@ impl GridOfSgcs {
                             egui::FontId::proportional((base * 0.9).max(9.0)),
                             egui::Color32::WHITE,
                         );
-                    }
-                    None => {
+                } else {
                         painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
                         painter.text(
                             cell_rect.center(),
@@ -332,7 +342,6 @@ impl GridOfSgcs {
                             egui::FontId::proportional((base * 0.85).max(8.0)),
                             egui::Color32::from_gray(90),
                         );
-                    }
                 }
 
                 let stroke = if is_highlight {
