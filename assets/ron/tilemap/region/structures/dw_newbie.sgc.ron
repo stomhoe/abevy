@@ -4,6 +4,7 @@
     structure_id: "drunkwalk",
     weight: 1.0,
     tags: [ "dungeon", "" ],
+    whitelisted_tags: [ "dungeon", "river" ],
     args: {
         "floor_tile_id": ["dunewbie"],
         "wall_tile_id": ["nw"],

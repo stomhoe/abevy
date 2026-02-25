@@ -32,7 +32,7 @@ pub fn claim_chunks_for_various_dungeon_types(
     mut claimlists: Query<&mut ClaimList>,
 ) {
     let Ok(settings) = settings.single() else {
-        error!("Failed to get global gen settings");
+        error_once!("Failed to get global gen settings");
         return;
     };
     let mut claims_to_emit = Vec::new();
@@ -53,7 +53,6 @@ pub fn claim_chunks_for_various_dungeon_types(
 
         if !ADMITTED_STRUCTURE_IDS_FOR_CLAIMING.contains(&structured_gen_cfg.structure_hash_id()) {
             trace!(target: "dungeoning", "StructuredGenConfig entity {:?} is not in admitted structures, skipping", offer.structured_gen_cfg_ent);
-            mark_skipped(offer.region_ent, offer.i);
             continue;
         }
         let center_chunk = offer.start_pos;

@@ -147,7 +147,9 @@ pub fn instantiate_portal(
                                     my_pos: GlobalTilePos,
                                     dim_ref: DimensionRef,
                                     ezero_ref: EntityZeroRef,
-                                    found_pos: GlobalTilePos|
+                                    found_pos: GlobalTilePos,
+                                    _sampled_val: f32,
+                                    _is_last: bool|
      -> bool {
         let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
             error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, ezero_ref.0);

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use crate::{ regioning::{dungeoning_systems::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*, regioning_sgc_components::StructuredGenConfig}, };
+use crate::{ regioning::{dungeoning_systems::*, natural::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*, regioning_sgc_components::StructuredGenConfig}, };
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -24,16 +24,19 @@ pub fn plugin(app: &mut App) {
                 spiral_dungeon_building_system,
                 archimedes_spiral_building_system,
                 maze_dungeon_building_system,
+                river_structure_building_system,
             )
             .in_set(StructureBuildingSystems),
             offer_chunks_of_new_regions_to_dungeoning_systems,
-            claim_chunks_for_various_dungeon_types,
+            (
+                claim_chunks_for_various_dungeon_types,
+                claim_chunks_for_river_structures,
+            ),
             read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems,
             failsafe_timeout_pending_chunks,
             add_planned_tiles_to_region,
             timeout_pending_offers,
             advance_i_on_claimlist_timeout,
-
             clonespawn_tiles_on_chunk_spawn
             .before(crate::tilemap_systems::process_tiles_pre)//removing this breaks it
             ,
@@ -50,6 +53,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadedRegions>()
     .init_resource::<Prioritized>()
     .init_resource::<PrioritizedPerRegion>()
+    .init_resource::<RiverPlans>()
 
     .replicate::<WhitelistedFilterOf>()
     .replicate::<StructuredGenConfig>()
@@ -72,6 +76,7 @@ pub mod regioning_resources;
 pub mod regioning_messages;
 pub mod regioning_sgc_components;
 pub mod dungeoning;
+pub mod natural;
 mod dungeoning_utils;
 mod regioning_systems;
 mod regioning_sgc_init_systems;

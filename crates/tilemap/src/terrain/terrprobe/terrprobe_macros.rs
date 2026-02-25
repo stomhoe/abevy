@@ -116,6 +116,8 @@ macro_rules! run_suitable_pos_search_logic {
                     dim_ref,
                     ezero_ref,
                     suitable_pos.found_pos,
+                    suitable_pos.val,
+                    suitable_pos.is_last,
                 ) {
                     let collect_all_successes = $search_params
                         .requester_collect_all

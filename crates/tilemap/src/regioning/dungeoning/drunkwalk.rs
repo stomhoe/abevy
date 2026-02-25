@@ -31,14 +31,13 @@ pub fn drunkwalk_dungeon_building_system(
     settings: Query<&GlobalGenSettings>,
 ) {
     let Ok(settings) = settings.single() else {
-        error!("Failed to get global gen settings");
         return;
     };
     let mut compliances_to_emit = Vec::new();
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent)
         else {
-            error!(target: "dungeoning", "StructuredGenConfig entity {:?} not found when making DrunkwalkDungeon, skipping structure spawn", build_order.structured_gen_cfg_ent);
+            error_once!(target: "dungeoning", "StructuredGenConfig entity {:?} not found when making DrunkwalkDungeon, skipping structure spawn", build_order.structured_gen_cfg_ent);
             continue; };
 
         if structured_gen_cfg.structure_hash_id() != DRUNKWALK {

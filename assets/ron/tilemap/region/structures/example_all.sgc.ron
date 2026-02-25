@@ -4,6 +4,7 @@
     structure_id: "chamberscorridors",
     weight: 1.0,
     tags: ["dungeon"],
+    whitelisted_tags: ["dungeon", "river"],
     args: {
         // Tiles
         "floor_tile_id": ["dunewbie"],

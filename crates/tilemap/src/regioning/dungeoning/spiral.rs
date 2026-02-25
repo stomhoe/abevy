@@ -27,7 +27,7 @@ pub fn spiral_dungeon_building_system(
     let mut compliances_to_emit = Vec::new();
 
     let Ok(settings) = settings.single() else {
-        error!("Failed to get global gen settings");
+        error_once!("Failed to get global gen settings");
         return;
     };
 

@@ -28,7 +28,7 @@ pub fn corridor_dungeon_building_system(
     dimension_hash: Query<&HashId>,
 ) {
     let Ok(settings) = settings.single() else {
-        error!("Failed to get global gen settings");
+        error_once!("Failed to get global gen settings");
         return;
     };
     let mut compliances_to_emit = Vec::new();
