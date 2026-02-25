@@ -17,6 +17,8 @@ common::define_entity_map_systems!(
 #[derive(Resource, Default)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 
+
+
 #[derive(Deserialize, Asset, TypePath, )]
 pub struct SgcSeri {
     pub id: String,

@@ -8,7 +8,7 @@ use game_common::{game_common_timers::*, game_common_samplers::EntityWeightedSam
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
-use crate::{chunking::chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::LoadedRegions, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking::chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
 
 use bit_vec::BitVec;
 
@@ -34,13 +34,6 @@ fn passes_dimension_tag_filters(
     }
     true
 }
-#[derive(Message, Debug, Clone, )]
-pub struct ActivateRegion {
-    pub dimension_ref: DimensionRef,
-    pub region_pos: RegionPos,
-}
-
-
 
 #[allow(unused_parens)]
 pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
@@ -52,8 +45,9 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     structured_gens: Query<(Option<&TagSet>, Option<&PoissonDisk>, Option<&MultipleDimensionRefs>),()>,
     dimension_query: Query<(&HashId, Option<&WhitelistedStructureGenTags>, Option<&BlacklistedStructureGenTags>),()>,
     mut writer: MessageWriter<OfferChunk>,
-    mut reader: MessageReader<ActivateRegion>,
     mut loaded_regions: ResMut<LoadedRegions>,
+    prioritized: Res<Prioritized>,
+    mut prioritized_per_region: ResMut<PrioritizedPerRegion>,
 ) {
 
     let Ok(settings) = settings.single() else {
@@ -70,6 +64,10 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         trace!(target: "sgc_chunk_offer", "Offering chunks for new region at {:?}", region_pos);
         let region_key = (dim_ref, region_pos);
         loaded_regions.0.insert(region_key, region_ent);
+        let prioritized_queue = prioritized_per_region
+            .0
+            .entry(region_key)
+            .or_insert_with(|| prioritized.0.clone());
 
 
         let Ok((&dim_hash, dim_wlist_tags, dim_blist_tags)) = dimension_query.get(dim_ref.0)
@@ -100,11 +98,18 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
                     continue 'next_i;
                 }
 
-                let Some(structured_gen_cfg_ent) = weight_map.sample_with_rng_and_remove(&mut rng)
-                else { //ta bien
-                    trace!(target: "sgc_chunk_offer", "No StructuredGenConfig left available to spawn structure in region at {}", region_pos);
-                    claimlist.skipped_is.insert(i);
-                    continue 'next_i;
+                let structured_gen_cfg_ent = if let Some(&ent) = prioritized_queue.first() {
+                    prioritized_queue.remove(0);
+                    weight_map.remove(&ent);
+                    ent
+                } else {
+                    let Some(sampled_ent) = weight_map.sample_with_rng_and_remove(&mut rng)
+                    else {
+                        trace!(target: "sgc_chunk_offer", "No StructuredGenConfig left available to spawn structure in region at {}", region_pos);
+                        claimlist.skipped_is.insert(i);
+                        continue 'next_i;
+                    };
+                    sampled_ent
                 };
                 let Ok((strgen_tags, poisson_disk, exclusive_for_dimensions)) = structured_gens.get(structured_gen_cfg_ent)
                 else {
@@ -447,6 +452,7 @@ pub fn on_region_despawn_remove_from_loaded_regions(
     trig: On<Despawn, Region>,
     region_query: Query<(&DimensionRef, &RegionPos),(common::AnyDisabling)>,
     mut loaded_regions: ResMut<LoadedRegions>,
+    mut prioritized_per_region: ResMut<PrioritizedPerRegion>,
 )
 {
     let Ok((&dimension_ref, &region_pos)) = region_query.get(trig.entity) else {
@@ -458,6 +464,7 @@ pub fn on_region_despawn_remove_from_loaded_regions(
     };
     if *region_ent == trig.entity {
         loaded_regions.0.remove(&(dimension_ref, region_pos));
+        prioritized_per_region.0.remove(&(dimension_ref, region_pos));
     }
 }
 
