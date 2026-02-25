@@ -5,7 +5,6 @@ use crate::terrain::{
     terrprobe::terrprobe_pattern_chunk::process_chunk_pattern,
     terrprobe::terrprobe_pattern_concentric::process_concentric_pattern,
     terrprobe::terrprobe_messages::*,
-    terrprobe::terrprobe_pattern_radial::process_radial_pattern,
     terrprobe::terrprobe_pattern_region::process_region_pattern,
     terrprobe::terrprobe_pattern_spiral::process_spiral_pattern,
     terrgen_components::FailedSearchOplistFilterHolder,
@@ -145,17 +144,6 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
         let curr_iteration_batch_i = curr_iteration_batch_i.max(0);
 
         match templ.probe_pattern.clone() {
-            ProbePattern::Radial(_) => {
-                process_radial_pattern(
-                    pos_search,
-                    &templ,
-                    root_oplist,
-                    curr_iteration_batch_i,
-                    &mut new_pending_ops,
-                    &mut new_pos_searches,
-                    &mut search_failed,
-                );
-            }
             ProbePattern::Spiral(_, _, _, _, _) => {
                 process_spiral_pattern(
                     pos_search,

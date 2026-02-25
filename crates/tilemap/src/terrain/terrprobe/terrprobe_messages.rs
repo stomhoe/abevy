@@ -30,7 +30,6 @@ impl Default for TerrProbeJob {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ProbePattern {
-    Radial(Option<f32>),
     Concentric {
         radius_step: f32,
         sample_spacing: f32,
@@ -41,9 +40,6 @@ pub enum ProbePattern {
     Region(u16),
 }
 impl ProbePattern {
-    pub fn sun(ray_curve_per_distance: f32) -> Self {
-        ProbePattern::Radial((ray_curve_per_distance >= 0.0).then_some(ray_curve_per_distance))
-    }
     pub fn spiral(start_pos: GlobalTilePos) -> Self {
         ProbePattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
     }

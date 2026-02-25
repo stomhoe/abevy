@@ -122,7 +122,7 @@ pub fn init_terrain_probes(
         let Some(parsed_probe_pattern) = ProbePatternSeri::parse(&seri.probe_pattern) else {
             error!(
                 target: "terrprobe_init",
-                "Invalid probe_pattern '{}' for terrain probe '{}'. Expected 'sun', 'swirl' (alias: 'curved_sun'), 'spiral', 'concentric', 'chunk' or 'region'",
+                "Invalid probe_pattern '{}' for terrain probe '{}'. Expected 'spiral', 'concentric' (alias: 'conc'), 'chunk' or 'region'",
                 seri.probe_pattern,
                 seri.id
             );
@@ -137,8 +137,6 @@ pub fn init_terrain_probes(
             seri.required_tile_tags.clone(),
             sgc_admitted_tiles_as_found_pos,
             parsed_probe_pattern,
-            seri.ray_curve_per_distance,
-            seri.concentric_radius_step,
             seri.concentric_sample_spacing,
             seri.step_size,
             seri.max_batches,

@@ -9,13 +9,10 @@ use ::tilemap_shared::*;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum ProbePatternSeri {
-    #[serde(alias = "sun")]
-    Sun,
-    #[serde(alias = "curved_sun")]
-    Swirl,
     #[serde(alias = "spiral")]
     Spiral,
     #[serde(alias = "conc")]
+    #[serde(alias = "co")]
     #[serde(alias = "concentric")]
     Concentric,
     #[serde(alias = "chunk")]
@@ -26,10 +23,8 @@ pub enum ProbePatternSeri {
 impl ProbePatternSeri {
     pub fn parse(s: &str) -> Option<Self> {
         match s.trim().to_ascii_lowercase().as_str() {
-            "sun" => Some(Self::Sun),
-            "curved_sun" | "swirl" => Some(Self::Swirl),
             "spiral" => Some(Self::Spiral),
-            "concentric" | "conc" => Some(Self::Concentric),
+            "concentric" | "conc" | "co" => Some(Self::Concentric),
             "chunk" => Some(Self::Chunk),
             "region" => Some(Self::Region),
             _ => None,
@@ -83,8 +78,6 @@ impl TerrProbeTempl {
         sgc_required_tile_tags: HashSet<String>,
         sgc_admitted_tiles_as_found_pos: Vec<EntityZeroRef>,
         probe_pattern: ProbePatternSeri,
-        ray_curve_per_distance: f32,
-        concentric_radius_step: f32,
         concentric_sample_spacing: f32,
         step_size: u16,
         max_batches: u16,
@@ -99,14 +92,8 @@ impl TerrProbeTempl {
             sgc_blacklist: structuregen_blacklist,
             sgc_required_tile_tags,
             probe_pattern: match probe_pattern {
-                ProbePatternSeri::Sun => ProbePattern::sun(ray_curve_per_distance),
-                ProbePatternSeri::Swirl => ProbePattern::sun(if ray_curve_per_distance < 0.0 {
-                    0.015
-                } else {
-                    ray_curve_per_distance
-                }),
                 ProbePatternSeri::Spiral => ProbePattern::spiral(GlobalTilePos::default()),
-                ProbePatternSeri::Concentric => ProbePattern::concentric(concentric_radius_step, concentric_sample_spacing),
+                ProbePatternSeri::Concentric => ProbePattern::concentric(step_size.max(1) as f32, concentric_sample_spacing),
                 ProbePatternSeri::Chunk => ProbePattern::chunk(ChunkPos::default()),
                 ProbePatternSeri::Region => ProbePattern::region(step_size),
             },

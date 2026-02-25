@@ -35,11 +35,6 @@ pub struct TerrainProbeSeri {
     #[serde(default)]
     pub required_tile_tags: HashSet<String>,
     pub probe_pattern: String,
-    #[serde(default = "default_ray_curve_per_distance")]
-    pub ray_curve_per_distance: f32,
-    #[serde(default = "default_concentric_radius_step")]
-    #[serde(alias = "conc_radius_step")]
-    pub concentric_radius_step: f32,
     #[serde(default = "default_concentric_sample_spacing")]
     #[serde(alias = "conc_sample_spacing")]
     pub concentric_sample_spacing: f32,
@@ -56,8 +51,6 @@ pub struct TerrainProbeSeri {
 }
 
 fn default_step_size() -> u16 { 1 }
-fn default_ray_curve_per_distance() -> f32 { -1.0 }
-fn default_concentric_radius_step() -> f32 { 30.0 }
 fn default_concentric_sample_spacing() -> f32 { 30.0 }
 fn default_min_val() -> f32 { f32::NEG_INFINITY }
 fn default_max_val() -> f32 { f32::INFINITY }
