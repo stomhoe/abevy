@@ -1,9 +1,8 @@
 (
-    id: "reland",
+    id: "chlands",
     opfilter_id: "land",
-    probe_pattern: "region",
-    //spacing between sample points
-    step_size: 16,
+    probe_pattern: "chunk",
+    step_size: 1,
     max_batches: 1,
     iterations_per_batch: 1,
     max_emitted_results: 1,

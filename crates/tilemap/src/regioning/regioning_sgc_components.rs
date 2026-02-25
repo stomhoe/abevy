@@ -43,7 +43,7 @@ impl StructuredGenConfig {
         if !self.blacklisted_tags.is_empty() {
             return !self.blacklisted_tags.intersects(other_tags);
         }
-        false
+        true
     }
 }
 

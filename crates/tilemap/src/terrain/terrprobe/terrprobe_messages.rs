@@ -10,6 +10,7 @@ pub struct TerrProbeJob {
     pub templ_ent: Entity,
     pub structuregen_whitelist: Vec<Entity>,
     pub structuregen_blacklist: Vec<Entity>,
+    pub collect_all_successes: bool,
     pub min_result_distance: u16,
     pub curr_iteration_batch_i: i16,
 }
@@ -22,6 +23,7 @@ impl Default for TerrProbeJob {
             templ_ent: Entity::PLACEHOLDER,
             structuregen_whitelist: Vec::new(),
             structuregen_blacklist: Vec::new(),
+            collect_all_successes: false,
             min_result_distance: 0,
             curr_iteration_batch_i: 0,
         }
@@ -62,6 +64,7 @@ pub struct SuitablePosFound {
     pub requester: Entity,
     pub val: f32,
     pub found_pos: GlobalTilePos,
+    pub is_last: bool,
 }
 
 #[derive(Debug, Clone, Message)]

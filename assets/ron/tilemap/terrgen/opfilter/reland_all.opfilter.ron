@@ -1,0 +1,7 @@
+(
+    id: "reland_all",
+    tags: ["inlandness"],
+    var_name: "inlandness",
+    min_val: -inf,
+    max_val: inf,
+)

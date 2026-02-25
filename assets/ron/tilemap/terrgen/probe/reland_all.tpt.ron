@@ -1,0 +1,11 @@
+(
+    id: "reland_all",
+    opfilter_id: "reland_all",
+    probe_pattern: "region",
+    //spacing between sample points
+    step_size: 16,
+    max_batches: 1,
+    iterations_per_batch: 1,
+    max_emitted_results: 1,
+    collect_all: true,
+)

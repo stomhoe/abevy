@@ -28,6 +28,8 @@ pub struct SearchParams<'w, 's>
     pub reader_search_successful: MessageReader<'w, 's, SuitablePosFound>,
     pub mreader_search_failed: MessageReader<'w, 's, SearchFailed>,
     pub pending_by_requester: Local<'s, EntityHashMap<Vec<(Entity, GlobalTilePos, DimensionRef, EntityZeroRef)>>>,
+    pub requester_collect_all: Local<'s, EntityHashMap<bool>>,
+    pub requester_had_success: Local<'s, EntityHashMap<bool>>,
     pub min_result_distance_by_requester: Local<'s, EntityHashMap<u64>>,
     pub pos_searches_msgs_to_write: Local<'s, Vec<TerrProbeJob>>,
 }

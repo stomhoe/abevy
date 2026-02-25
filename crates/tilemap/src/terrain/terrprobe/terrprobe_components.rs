@@ -40,6 +40,7 @@ pub struct TerrProbeTempl {
     pub sgc_blacklist: Vec<Entity>,
     pub sgc_required_tile_tags: HashSet<String>,
     pub probe_pattern: ProbePattern,
+    pub collect_all: bool,
     pub step_size: u16,
     pub max_batches: u16,
     pub iterations_per_batch: u16,
@@ -61,6 +62,7 @@ impl Default for TerrProbeTempl {
             sgc_blacklist: Vec::new(),
             sgc_required_tile_tags: HashSet::default(),
             probe_pattern: ProbePattern::spiral(GlobalTilePos::default()),
+            collect_all: false,
             step_size: 1,
             max_batches: 1000,
             iterations_per_batch: 10000,
@@ -78,6 +80,7 @@ impl TerrProbeTempl {
         sgc_required_tile_tags: HashSet<String>,
         sgc_admitted_tiles_as_found_pos: Vec<EntityZeroRef>,
         probe_pattern: ProbePatternSeri,
+        collect_all: bool,
         concentric_sample_spacing: f32,
         step_size: u16,
         max_batches: u16,
@@ -97,6 +100,7 @@ impl TerrProbeTempl {
                 ProbePatternSeri::Chunk => ProbePattern::chunk(ChunkPos::default()),
                 ProbePatternSeri::Region => ProbePattern::region(step_size),
             },
+            collect_all,
             step_size,
             max_batches,
             iterations_per_batch,
@@ -113,6 +117,8 @@ impl TerrProbeTempl {
             min_result_distance: self.min_result_distance,
             structuregen_whitelist: self.sgc_whitelist.clone(),
             structuregen_blacklist: self.sgc_blacklist.clone(),
+            collect_all_successes: self.collect_all
+                && matches!(self.probe_pattern, ProbePattern::Chunk(_) | ProbePattern::Region(_)),
             ..Default::default()
         }
     }
@@ -123,4 +129,7 @@ impl TerrProbeTempl {
 pub struct AwaitingStartSearch;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct SearchingForSuitablePos { pub requester: Entity, }
+pub struct SearchingForSuitablePos {
+    pub requester: Entity,
+    pub collect_all_successes: bool,
+}

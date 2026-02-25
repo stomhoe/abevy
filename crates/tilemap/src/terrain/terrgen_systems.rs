@@ -374,6 +374,7 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
                     filtered_op: Entity::PLACEHOLDER,
                     requester: Entity::PLACEHOLDER,
                     max_emitted_results: 0,
+                    mark_last_success_in_batch: false,
                 });
             }
         }
@@ -400,6 +401,7 @@ fn process_pending_ops_batch(
     let mut result = TerrGenOpTaskResult::default();
     let mut pending_queue = pending_ops;
     let mut emitted_per_probe: EntityHashMap<u16> = EntityHashMap::new();
+    let mut last_success_idx_for_requester: EntityHashMap<usize> = EntityHashMap::new();
 
     while let Some(ev) = pending_queue.pop() { unsafe {
         if !context.oplists.contains_key(&ev.oplist.0) {
@@ -441,6 +443,7 @@ fn process_pending_ops_batch(
                 filter,
                 has_filter,
                 &mut emitted_per_probe,
+                &mut last_success_idx_for_requester,
                 &mut result,
                 capture_debug,
             );
@@ -514,7 +517,11 @@ fn process_pending_ops_batch(
                         requester: ev.requester,
                         val: output_value,
                         found_pos: frame.gpos,
+                        is_last: false,
                     });
+                    if ev.mark_last_success_in_batch {
+                        last_success_idx_for_requester.insert(ev.requester, result.sampled_value_events.len() - 1);
+                    }
                     *emitted = emitted.saturating_add(1);
                 }
             }
@@ -531,6 +538,7 @@ fn process_pending_ops_batch(
                         filtered_op: ev.filtered_op,
                         requester: ev.requester,
                         max_emitted_results: ev.max_emitted_results,
+                        mark_last_success_in_batch: ev.mark_last_success_in_batch,
                     },
                     oplist_size: frame.oplist_size,
                     dimension_hash,
@@ -550,6 +558,11 @@ fn process_pending_ops_batch(
             }
         }
     }}
+    for (_, sample_idx) in last_success_idx_for_requester.drain() {
+        if let Some(sample) = result.sampled_value_events.get_mut(sample_idx) {
+            sample.is_last = true;
+        }
+    }
     result
 }
 
@@ -565,6 +578,7 @@ fn process_compiled_branch_node(
     filter: Option<&OpFilter>,
     has_filter: bool,
     emitted_per_probe: &mut EntityHashMap<u16>,
+    last_success_idx_for_requester: &mut EntityHashMap<usize>,
     result: &mut TerrGenOpTaskResult,
     capture_debug: bool,
 ) {
@@ -627,7 +641,11 @@ fn process_compiled_branch_node(
                 requester: source_ev.requester,
                 val: output_value,
                 found_pos: gpos,
+                is_last: false,
             });
+            if source_ev.mark_last_success_in_batch {
+                last_success_idx_for_requester.insert(source_ev.requester, result.sampled_value_events.len() - 1);
+            }
             *emitted = emitted.saturating_add(1);
         }
     }
@@ -644,6 +662,7 @@ fn process_compiled_branch_node(
                 filtered_op: source_ev.filtered_op,
                 requester: source_ev.requester,
                 max_emitted_results: source_ev.max_emitted_results,
+                mark_last_success_in_batch: source_ev.mark_last_success_in_batch,
             },
             oplist_size,
             dimension_hash,
@@ -667,6 +686,7 @@ fn process_compiled_branch_node(
                     filter,
                     has_filter,
                     emitted_per_probe,
+                    last_success_idx_for_requester,
                     result,
                     capture_debug,
                 );
@@ -688,6 +708,7 @@ fn process_compiled_branch_node(
                         filter,
                         has_filter,
                         emitted_per_probe,
+                        last_success_idx_for_requester,
                         result,
                         capture_debug,
                     );

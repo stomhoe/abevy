@@ -1,6 +1,6 @@
 (
-    id: "suland_temp",
-    opfilter_id: "land_temp",
+    id: "coanta",
+    opfilter_id: "anta",
     probe_pattern: "conc",
     concentric_sample_spacing: 6.0,
     step_size: 6,

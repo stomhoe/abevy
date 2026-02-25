@@ -35,13 +35,11 @@ pub struct SgcSeri {
     /// extra arguments given to structure generation
     #[serde(default)]
     pub args: HashMap<String, Vec<String>>,
-    /// weight in weighted map of structured gens for region. (more weight= likely for this structure to be generated first within the map of valid generations for that region)
+    /// weight in weighted map of structured gens for region. (higher weight= mor likely for this sgc to be generated first within the map of valid generations for that region)
     #[serde(default = "default_weight")]
     pub weight: f32,
     #[serde(default)]
     pub priority: f32,
-
-
 
     #[serde(default)]
     pub pdisk_mindist_and_tag: Vec<(Option<u8>, String)>,

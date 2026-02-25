@@ -37,6 +37,7 @@ pub fn process_concentric_pattern(
                 filtered_op: pos_search.templ_ent,
                 requester: pos_search.requester,
                 max_emitted_results: templ.max_emitted_results,
+                mark_last_success_in_batch: false,
             });
             continue;
         }
@@ -56,6 +57,7 @@ pub fn process_concentric_pattern(
                 filtered_op: pos_search.templ_ent,
                 requester: pos_search.requester,
                 max_emitted_results: templ.max_emitted_results,
+                mark_last_success_in_batch: false,
             });
         }
     }

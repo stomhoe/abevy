@@ -1,6 +1,7 @@
 id: normal2
 size: (1, 1)
 debug: [beach_avg_noise, shore_proximity, beachness, gravelness, inlandness, continentness, normal_diff]
+tags: ["inlandness"]
 
 let inlandness = (continentness/(COMPL continent_threshold) - 1.)*0.33
 

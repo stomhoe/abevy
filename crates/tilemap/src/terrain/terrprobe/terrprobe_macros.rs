@@ -11,13 +11,19 @@ macro_rules! run_suitable_pos_search_logic {
         handle_pending_failure: $handle_pending_failure:ident,
     ) => {{
         $search_params.pending_by_requester.clear();
+        $search_params.requester_collect_all.clear();
         for (ent, &dim_ref, &my_pos, &ezero_ref, _, searching_for) in $searching_entities.iter() {
-            if let Some($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos { requester }) = searching_for {
+            if let Some($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos {
+                requester,
+                collect_all_successes,
+            }) = searching_for {
                 $search_params
                     .pending_by_requester
                     .entry(*requester)
                     .or_default()
                     .push((ent, my_pos, dim_ref, ezero_ref));
+                $search_params.requester_collect_all.insert(*requester, *collect_all_successes);
+                $search_params.requester_had_success.entry(*requester).or_insert(false);
             }
         }
 
@@ -47,7 +53,16 @@ macro_rules! run_suitable_pos_search_logic {
                 );
 
                 $cmd.entity(search_ent)
-                    .try_insert($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos { requester });
+                    .try_insert($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos {
+                        requester,
+                        collect_all_successes: probe.collect_all_successes,
+                    });
+                $search_params
+                    .requester_collect_all
+                    .insert(requester, probe.collect_all_successes);
+                $search_params
+                    .requester_had_success
+                    .insert(requester, false);
                 $search_params
                     .min_result_distance_by_requester
                     .insert(requester, probe.min_result_distance as u64);
@@ -102,15 +117,28 @@ macro_rules! run_suitable_pos_search_logic {
                     ezero_ref,
                     suitable_pos.found_pos,
                 ) {
-                    owners.pop();
-                    remove_requester = owners.is_empty();
+                    let collect_all_successes = $search_params
+                        .requester_collect_all
+                        .get(&requester)
+                        .copied()
+                        .unwrap_or(false);
+                    if collect_all_successes {
+                        if let Some(had_success) = $search_params.requester_had_success.get_mut(&requester) {
+                            *had_success = true;
+                        }
+                    } else {
+                        owners.pop();
+                        remove_requester = owners.is_empty();
+                        completed_search_ent = Some(search_ent);
+                    }
                     accepted_results.push((dim_ref, suitable_pos.found_pos));
-                    completed_search_ent = Some(search_ent);
                 }
             }
             if remove_requester {
                 $search_params.pending_by_requester.remove(&requester);
                 $search_params.min_result_distance_by_requester.remove(&requester);
+                $search_params.requester_collect_all.remove(&requester);
+                $search_params.requester_had_success.remove(&requester);
             }
             if let Some(search_ent) = completed_search_ent {
                 $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos>();
@@ -121,16 +149,26 @@ macro_rules! run_suitable_pos_search_logic {
             let Some(pending_searches) = $search_params.pending_by_requester.remove(&failed_search.0) else {
                 continue;
             };
+            let collect_all_successes = $search_params
+                .requester_collect_all
+                .remove(&failed_search.0)
+                .unwrap_or(false);
+            let had_success = $search_params
+                .requester_had_success
+                .remove(&failed_search.0)
+                .unwrap_or(false);
             $search_params.min_result_distance_by_requester.remove(&failed_search.0);
             for (search_ent, global_pos, dim_ref, ezero_ref) in pending_searches {
-                error!(
-                    target: $target,
-                    "Failed to find suitable pos for a {} entity, {:?}",
-                    $searched_entity_label,
-                    failed_search.0
-                );
                 $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos>();
-                $handle_pending_failure(search_ent, global_pos, dim_ref, ezero_ref, failed_search.0);
+                if !(collect_all_successes && had_success) {
+                    error!(
+                        target: $target,
+                        "Failed to find suitable pos for a {} entity, {:?}",
+                        $searched_entity_label,
+                        failed_search.0
+                    );
+                    $handle_pending_failure(search_ent, global_pos, dim_ref, ezero_ref, failed_search.0);
+                }
             }
         }
 
