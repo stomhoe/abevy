@@ -179,6 +179,11 @@ pub fn claim_chunks_for_river_structures(
     claim_state.claims_to_emit.clear();
     claim_state.skips_to_mark.clear();
     claim_state.failed_probe_ents.clear();
+    let mut regions_with_active_probe = EntityHashSet::default();
+    for req in probe_requests.iter() {
+        regions_with_active_probe.insert(req.region_ent);
+    }
+    let mut regions_with_new_probe = EntityHashSet::default();
 
     for offer in offered_chunks.read() {
         let Ok(cfg) = structured_gens.get(offer.structured_gen_cfg_ent) else {
@@ -186,6 +191,12 @@ pub fn claim_chunks_for_river_structures(
             continue;
         };
         if cfg.structure_hash_id() != RIVER {
+            continue;
+        }
+        if regions_with_active_probe.contains(&offer.region_ent)
+            || regions_with_new_probe.contains(&offer.region_ent)
+        {
+            claim_state.skips_to_mark.push((offer.region_ent, offer.i));
             continue;
         }
 
@@ -241,6 +252,7 @@ pub fn claim_chunks_for_river_structures(
             EntityZeroRef(Entity::PLACEHOLDER),
             AwaitingStartSearch,
         ));
+        regions_with_new_probe.insert(offer.region_ent);
     }
 
     for (_, req, is_awaiting_start, is_searching) in probe_states.iter() {

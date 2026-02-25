@@ -34,7 +34,7 @@ pub fn process_concentric_pattern(
                 oplist: root_oplist,
                 dimension_ref: pos_search.dimension_ref,
                 gpos: pos_search.search_start_pos,
-                filtered_op: pos_search.templ_ent,
+                filtered_op: templ.opfilter_ref.0,
                 requester: pos_search.requester,
                 max_emitted_results: templ.max_emitted_results,
                 mark_last_success_in_batch: false,
@@ -54,7 +54,7 @@ pub fn process_concentric_pattern(
                         (radius * angle.cos()) as i32,
                         (radius * angle.sin()) as i32,
                     )),
-                filtered_op: pos_search.templ_ent,
+                filtered_op: templ.opfilter_ref.0,
                 requester: pos_search.requester,
                 max_emitted_results: templ.max_emitted_results,
                 mark_last_success_in_batch: false,
@@ -67,7 +67,7 @@ pub fn process_concentric_pattern(
         next_search.curr_iteration_batch_i = curr_iteration_batch_i + 1;
         new_pos_searches.push(next_search);
     } else {
-        error!(target: "pos_search", "No more batches to search for {:?}", templ.opfilter);
+        error!(target: "pos_search", "No more batches to search for {:?}", templ.opfilter_ref);
         search_failed.push(pos_search.requester);
     }
 }

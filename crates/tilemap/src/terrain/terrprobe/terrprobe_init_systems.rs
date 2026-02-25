@@ -5,7 +5,7 @@ use common::common_tag_components::HashedTagsVec;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 
 use crate::terrain::{
-    terrprobe::opfilter::opfilter_resources::OpFilterEntityMap,
+    terrprobe::opfilter::opfilter_resources::{OpFilterEntityMap, OpFilterRef},
     terrprobe::opfilter::opfilter_components::OpFilter,
     terrprobe::{
         terrprobe_components::{ProbePatternSeri, TerrProbeTempl},
@@ -85,6 +85,17 @@ pub fn init_terrain_probes(
                 opfilter.max_val = seri.opfilter_max_val;
             }
         }
+        let opfilter_ref = if has_inline_overrides || opfilter_ent.is_none() {
+            let opfilter_ent = cmd.spawn((
+                Replicated,
+                AssetScoped,
+                HotReload,
+                opfilter.clone(),
+            )).id();
+            OpFilterRef(opfilter_ent)
+        } else {
+            OpFilterRef(opfilter_ent.unwrap_or(Entity::PLACEHOLDER))
+        };
 
         let mut structuregen_whitelist = Vec::with_capacity(seri.structuregen_whitelist.len());
         for sgc_id in &seri.structuregen_whitelist {
@@ -131,7 +142,7 @@ pub fn init_terrain_probes(
 
         let ent = cmd.spawn_empty().id();
         let templ = TerrProbeTempl::from_seri(
-            opfilter.clone(),
+            opfilter_ref,
             structuregen_whitelist,
             structuregen_blacklist,
             seri.required_tile_tags.clone(),
@@ -151,7 +162,6 @@ pub fn init_terrain_probes(
             AssetScoped,
             HotReload,
             templ,
-            opfilter,
             ChildOf(egui_ent),
         )));
     }

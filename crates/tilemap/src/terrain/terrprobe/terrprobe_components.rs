@@ -3,7 +3,7 @@ use game_common::game_common_components::EntityZeroRef;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-use crate::terrain::terrprobe::opfilter::opfilter_components::OpFilter;
+use crate::terrain::terrprobe::opfilter::opfilter_resources::OpFilterRef;
 use crate::terrain::terrprobe::terrprobe_messages::{ProbePattern, TerrProbeJob};
 use ::tilemap_shared::*;
 
@@ -34,7 +34,7 @@ impl ProbePatternSeri {
 
 #[derive(Debug, Clone, Component, Deserialize, Serialize)]
 pub struct TerrProbeTempl {
-    pub opfilter: OpFilter,
+    pub opfilter_ref: OpFilterRef,
     pub sgc_admitted_tiles_as_found_pos: Vec<EntityZeroRef>,
     pub sgc_whitelist: Vec<Entity>,
     pub sgc_blacklist: Vec<Entity>,
@@ -51,12 +51,7 @@ pub struct TerrProbeTempl {
 impl Default for TerrProbeTempl {
     fn default() -> Self {
         Self {
-            opfilter: OpFilter {
-                tags: Default::default(),
-                var_name_hash: None,
-                min_val: f32::NEG_INFINITY,
-                max_val: f32::INFINITY,
-            },
+            opfilter_ref: OpFilterRef(Entity::PLACEHOLDER),
             sgc_admitted_tiles_as_found_pos: Vec::new(),
             sgc_whitelist: Vec::new(),
             sgc_blacklist: Vec::new(),
@@ -74,7 +69,7 @@ impl Default for TerrProbeTempl {
 
 impl TerrProbeTempl {
     pub fn from_seri(
-        opfilter: OpFilter,
+        opfilter_ref: OpFilterRef,
         structuregen_whitelist: Vec<Entity>,
         structuregen_blacklist: Vec<Entity>,
         sgc_required_tile_tags: HashSet<String>,
@@ -89,7 +84,7 @@ impl TerrProbeTempl {
         min_result_distance: u16,
     ) -> Self {
         Self {
-            opfilter,
+            opfilter_ref,
             sgc_admitted_tiles_as_found_pos,
             sgc_whitelist: structuregen_whitelist,
             sgc_blacklist: structuregen_blacklist,

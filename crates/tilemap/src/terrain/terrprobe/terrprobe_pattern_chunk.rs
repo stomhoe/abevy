@@ -15,7 +15,7 @@ pub fn process_chunk_pattern(
     search_failed: &mut Vec<Entity>,
 ) {
     if curr_iteration_batch_i > 0 {
-        error!(target: "pos_search", "No more batches to search for {:?}", templ.opfilter);
+        error!(target: "pos_search", "No more batches to search for {:?}", templ.opfilter_ref);
         search_failed.push(pos_search.requester);
         return;
     }
@@ -25,7 +25,7 @@ pub fn process_chunk_pattern(
             dimension_ref: pos_search.dimension_ref,
             oplist: root_oplist,
             gpos,
-            filtered_op: pos_search.templ_ent,
+            filtered_op: templ.opfilter_ref.0,
             requester: pos_search.requester,
             max_emitted_results: templ.max_emitted_results,
             mark_last_success_in_batch: pos_search.collect_all_successes,
