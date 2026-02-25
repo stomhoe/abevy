@@ -6,6 +6,7 @@ pub mod terrprobe_macros;
 pub mod terrprobe_systems;
 pub mod terrprobe_pattern_radial;
 pub mod terrprobe_pattern_sun;
+pub mod terrprobe_pattern_concentric;
 pub mod terrprobe_pattern_spiral;
 pub mod terrprobe_pattern_chunk;
 pub mod terrprobe_pattern_region;

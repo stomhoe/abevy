@@ -107,21 +107,21 @@ pub fn find_common_player_spawn_origin(
 ) {
     let Ok(settings) = settings.single()
     else {
-        error!(target: GAME_INIT, "Failed to get AaGlobalGenSettings");
+        error_once!(target: GAME_INIT, "Failed to get AaGlobalGenSettings");
         return;
     };
     let make_search_request = |_cmd: &mut Commands| -> Option<TerrProbeJob> {
         let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
-            warn!(target: GAME_INIT, "Overworld dimension '{}' not in DimensionEntityMap yet", Dimension::overworld());
+            error_once!(target: GAME_INIT, "Overworld dimension '{}' not in DimensionEntityMap", Dimension::overworld());
             return None;
         };
 
-        let Ok(probe_template_ent) = terrprobe_entity_map.0.get_cloned(settings.spawn_tag.clone()) else {
-            warn!(target: GAME_INIT, "TerrainProbe template {} not in TerrainProbeTemplateEntityMap yet", settings.spawn_tag.clone());
+        let Ok(probe_template_ent) = terrprobe_entity_map.0.get_cloned(settings.players_spawn_probe_id.clone()) else {
+            error_once!(target: GAME_INIT, "TerrainProbe template {} not in TerrainProbeTemplateEntityMap", settings.players_spawn_probe_id.clone());
             return None;
         };
         let Ok(probe_template) = terrprobe_query.get(probe_template_ent) else {
-            warn!(target: GAME_INIT, "TerrainProbe template entity {:?} missing TerrProbeTempl", probe_template_ent);
+            error_once!(target: GAME_INIT, "TerrainProbe template entity {:?} missing TerrProbeTempl", probe_template_ent);
             return None;
         };
         Some(probe_template.to_probe(probe_template_ent, DimensionRef(ow_dimension), GlobalTilePos::default()))
@@ -143,7 +143,7 @@ pub fn find_common_player_spawn_origin(
     };
 
     let handle_failure = |_cmd: &mut Commands, failed_probe_ent: Entity| {
-        warn!(target: GAME_INIT, "Common spawn search failed for probe {:?}", failed_probe_ent);
+        error_once!(target: GAME_INIT, "Common spawn search failed for probe {:?}", failed_probe_ent);
     };
 
     run_oneshot_suitable_pos_search_logic!(

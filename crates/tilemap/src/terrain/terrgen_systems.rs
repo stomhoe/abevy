@@ -489,12 +489,24 @@ fn process_pending_ops_batch(
             }
 
             let destination_i = (output_value as usize).min(oplist.bifurcations.len() - 1);
+            let passes_value_filter = if let Some(filter) = filter {
+                if let Some(var_name_hash) = filter.var_name_hash {
+                    frame
+                        .variables
+                        .get(var_name_hash)
+                        .map(|val| (filter.min_val..=filter.max_val).contains(val))
+                        .unwrap_or(false)
+                } else {
+                    (filter.min_val..=filter.max_val).contains(&output_value)
+                }
+            } else {
+                false
+            };
             if has_filter
                 && let Some(filter) = filter
                 && let Some(Some(oplist_tags)) = context.oplist_tags.get(&frame.oplist)
                 && oplist_tags.intersects(&filter.tags)
-                && filter.op_i.map_or(true, |op_i| destination_i == op_i as usize)
-                && (filter.min_val..=filter.max_val).contains(&output_value)
+                && passes_value_filter
             {
                 let emitted = emitted_per_probe.entry(ev.requester).or_insert(0);
                 if *emitted < ev.max_emitted_results {
@@ -591,12 +603,23 @@ fn process_compiled_branch_node(
     }
 
     let destination_i = (output_value as usize).min(node.branches.len() - 1);
+    let passes_value_filter = if let Some(filter) = filter {
+        if let Some(var_name_hash) = filter.var_name_hash {
+            computed_vars
+                .get(var_name_hash)
+                .map(|val| (filter.min_val..=filter.max_val).contains(val))
+                .unwrap_or(false)
+        } else {
+            (filter.min_val..=filter.max_val).contains(&output_value)
+        }
+    } else {
+        false
+    };
     if has_filter
         && let Some(filter) = filter
         && let Some(Some(oplist_tags)) = context.oplist_tags.get(&node.source_oplist)
         && oplist_tags.intersects(&filter.tags)
-        && filter.op_i.map_or(true, |op_i| destination_i == op_i as usize)
-        && (filter.min_val..=filter.max_val).contains(&output_value)
+        && passes_value_filter
     {
         let emitted = emitted_per_probe.entry(source_ev.requester).or_insert(0);
         if *emitted < source_ev.max_emitted_results {

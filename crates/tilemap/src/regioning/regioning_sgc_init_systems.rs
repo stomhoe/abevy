@@ -17,7 +17,7 @@ use crate::{
 struct PrioritySgcDef {
     ent: Entity,
     priority: f32,
-    tags: HashSet<String>,
+    tags: TagSet,
     run_before_tags: HashSet<String>,
     run_after_tags: HashSet<String>,
 }
@@ -35,7 +35,7 @@ fn build_prioritized_entities(defs: &[PrioritySgcDef]) -> Vec<Entity> {
         for tag in &defs[i].run_before_tags {
             let mut found = false;
             for j in 0..defs.len() {
-                if i == j || !defs[j].tags.contains(tag) {
+                if i == j || !defs[j].tags.contains(tag.as_str()) {
                     continue;
                 }
                 found = true;
@@ -56,7 +56,7 @@ fn build_prioritized_entities(defs: &[PrioritySgcDef]) -> Vec<Entity> {
         for tag in &defs[i].run_after_tags {
             let mut found = false;
             for j in 0..defs.len() {
-                if i == j || !defs[j].tags.contains(tag) {
+                if i == j || !defs[j].tags.contains(tag.as_str()) {
                     continue;
                 }
                 found = true;
@@ -164,7 +164,7 @@ pub fn init_structured_gen_configs(
         if tags_vec.iter().all(|tag| tag != &seri_id) {
             tags_vec.push(seri_id.clone());
         }
-        let tags_set = HashSet::from_iter(tags_vec.iter().cloned());
+        let tags_set = TagSet::new(tags_vec.iter());
         cmd.entity(main_ent).try_insert(TagSet::new(tags_vec));
 
         if !structured_gen_seri.exclusive_for_dimensions.is_empty() {

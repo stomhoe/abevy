@@ -29,7 +29,7 @@ pub struct GlobalGenSettings {
     pub hot_reload_window_open_on_start: bool,
     /// Timeout in seconds to wait for StructureBuildCompliance before giving up
     pub structure_build_timeout_secs: f64,
-    pub spawn_tag: StrId,
+    pub players_spawn_probe_id: StrId,
 }
 const DONT_TOUCH: f32 = 1000.;
 impl Default for GlobalGenSettings {
@@ -40,7 +40,7 @@ impl Default for GlobalGenSettings {
             /DONT_TOUCH,
             hot_reload_window_open_on_start: false,
             structure_build_timeout_secs: 4.0,
-            spawn_tag: StrId::trunc("sun_land"),
+            players_spawn_probe_id: StrId::trunc("suland"),
         }
     }
 }

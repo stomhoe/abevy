@@ -10,7 +10,7 @@
         "lava_tile_id": ["lava"],
         "boulder_sampler_id": ["boulder_sampler"],
         "boulder_frequency": ["0.025"],
-        "delete_spared_tags": ["boulder", "dungeon_floor"],
+        "delete_spared_tags": ["boulder", "ducatas"],
         "claim_square_min_side_length": ["8"],
         "claim_square_max_side_length": ["10"],
         "claim_square_normal_mean": ["9.0"],

@@ -50,7 +50,7 @@ pub fn init_terrain_probes(
         };
 
         let has_inline_overrides = !seri.opfilter_tags.is_empty()
-            || seri.opfilter_op_i != u16::MAX
+            || !seri.opfilter_var_name.trim().is_empty()
             || seri.opfilter_min_val != f32::NEG_INFINITY
             || seri.opfilter_max_val != f32::INFINITY;
         if opfilter_ent.is_none() && !has_inline_overrides {
@@ -66,7 +66,7 @@ pub fn init_terrain_probes(
         } else {
             OpFilter {
                 tags: HashedTagsVec::new(seri.opfilter_tags.iter()),
-                op_i: (seri.opfilter_op_i != u16::MAX).then_some(seri.opfilter_op_i),
+                var_name_hash: (!seri.opfilter_var_name.trim().is_empty()).then_some(HashId::hash(seri.opfilter_var_name.trim())),
                 min_val: seri.opfilter_min_val,
                 max_val: seri.opfilter_max_val,
             }
@@ -75,8 +75,8 @@ pub fn init_terrain_probes(
             if !seri.opfilter_tags.is_empty() {
                 opfilter.tags = HashedTagsVec::new(seri.opfilter_tags.iter());
             }
-            if seri.opfilter_op_i != u16::MAX {
-                opfilter.op_i = Some(seri.opfilter_op_i);
+            if !seri.opfilter_var_name.trim().is_empty() {
+                opfilter.var_name_hash = Some(HashId::hash(seri.opfilter_var_name.trim()));
             }
             if seri.opfilter_min_val != f32::NEG_INFINITY {
                 opfilter.min_val = seri.opfilter_min_val;
@@ -122,7 +122,7 @@ pub fn init_terrain_probes(
         let Some(parsed_probe_pattern) = ProbePatternSeri::parse(&seri.probe_pattern) else {
             error!(
                 target: "terrprobe_init",
-                "Invalid probe_pattern '{}' for terrain probe '{}'. Expected 'sun', 'spiral', 'chunk' or 'region'",
+                "Invalid probe_pattern '{}' for terrain probe '{}'. Expected 'sun', 'swirl' (alias: 'curved_sun'), 'spiral', 'concentric', 'chunk' or 'region'",
                 seri.probe_pattern,
                 seri.id
             );
@@ -137,6 +137,9 @@ pub fn init_terrain_probes(
             seri.required_tile_tags.clone(),
             sgc_admitted_tiles_as_found_pos,
             parsed_probe_pattern,
+            seri.ray_curve_per_distance,
+            seri.concentric_radius_step,
+            seri.concentric_sample_spacing,
             seri.step_size,
             seri.max_batches,
             seri.iterations_per_batch,

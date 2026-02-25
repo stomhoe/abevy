@@ -1,0 +1,13 @@
+(
+    id: "coland",
+    opfilter_id: "land",
+    probe_pattern: "concentric",
+    // Radius increase per ring.
+    concentric_radius_step: 30.0,
+    // Target spacing between neighboring sample points on each ring.
+    concentric_sample_spacing: 30.0,
+    step_size: 1,
+    max_batches: 300,
+    iterations_per_batch: 4,
+    max_emitted_results: 1,
+)

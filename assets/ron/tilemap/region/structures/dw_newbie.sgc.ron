@@ -10,7 +10,7 @@
         "lava_tile_id": ["lava"],
         "boulder_sampler_id": ["boulder_sampler"],
         "boulder_frequency": ["0.015"],
-        "delete_spared_tags": ["boulder", "dungeon_floor"],
+        "delete_spared_tags": ["boulder", "dunewbie"],
     },
     // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),

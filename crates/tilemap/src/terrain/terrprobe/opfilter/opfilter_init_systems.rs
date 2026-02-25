@@ -37,7 +37,11 @@ pub fn init_opfilters(
             HotReload,
             OpFilter {
                 tags: HashedTagsVec::new(seri.tags.iter()),
-                op_i: if seri.op_i == u16::MAX { None } else { Some(seri.op_i) },
+                var_name_hash: if seri.var_name.trim().is_empty() {
+                    None
+                } else {
+                    Some(HashId::hash(seri.var_name.trim()))
+                },
                 min_val: seri.min_val,
                 max_val: seri.max_val,
             },

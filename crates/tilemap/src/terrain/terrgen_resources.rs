@@ -167,8 +167,8 @@ pub struct GlobalGenSettingsSeri {
     pub hot_reload_window_open_on_start: bool,
     #[serde(default = "default_global_structure_build_timeout_secs")]
     pub structure_build_timeout_secs: f64,
-    #[serde(default = "default_global_spawn_tag")]
-    pub spawn_tag: String,
+    #[serde(default = "default_players_spawn_probe_id")]
+    pub players_spawn_probe_id: String,
 }
 impl GlobalGenSettingsSeri {
     pub fn to_global_gen_settings(&self) -> GlobalGenSettings {
@@ -177,14 +177,14 @@ impl GlobalGenSettingsSeri {
             world_freq: self.world_freq,
             hot_reload_window_open_on_start: self.hot_reload_window_open_on_start,
             structure_build_timeout_secs: self.structure_build_timeout_secs,
-            spawn_tag: common::common_components::StrId::trunc(&self.spawn_tag),
+            players_spawn_probe_id: common::common_components::StrId::trunc(&self.players_spawn_probe_id),
         }
     }
 }
 
 fn default_global_world_freq() -> f32 { 0.02 }
 fn default_global_structure_build_timeout_secs() -> f64 { 4.0 }
-fn default_global_spawn_tag() -> String { "sun_land".to_string() }
+fn default_players_spawn_probe_id() -> String { "suland".to_string() }
 fn default_frequency() -> f32 { 0.01 }
 fn default_noise_type() -> String { "OpenSimplex2".to_string() }
 fn default_fractal_type() -> String { "None".to_string() }

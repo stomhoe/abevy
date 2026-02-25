@@ -3,6 +3,7 @@ use game_common::game_common_components::EntityZeroRef;
 use crate::terrain::{
     terrprobe::terrprobe_components::TerrProbeTempl,
     terrprobe::terrprobe_pattern_chunk::process_chunk_pattern,
+    terrprobe::terrprobe_pattern_concentric::process_concentric_pattern,
     terrprobe::terrprobe_messages::*,
     terrprobe::terrprobe_pattern_radial::process_radial_pattern,
     terrprobe::terrprobe_pattern_region::process_region_pattern,
@@ -160,6 +161,22 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                     pos_search,
                     &templ,
                     root_oplist,
+                    curr_iteration_batch_i,
+                    &mut new_pending_ops,
+                    &mut new_pos_searches,
+                    &mut search_failed,
+                );
+            }
+            ProbePattern::Concentric {
+                radius_step,
+                sample_spacing,
+            } => {
+                process_concentric_pattern(
+                    pos_search,
+                    &templ,
+                    root_oplist,
+                    radius_step,
+                    sample_spacing,
                     curr_iteration_batch_i,
                     &mut new_pending_ops,
                     &mut new_pos_searches,
