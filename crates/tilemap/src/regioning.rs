@@ -40,7 +40,6 @@ pub fn plugin(app: &mut App) {
             clonespawn_tiles_on_chunk_spawn
             .before(crate::tilemap_systems::process_tiles_pre)//removing this breaks it
             ,
-
         ).in_set(RegioningSystems),
         despawn_empty_regions,
     ))
@@ -54,6 +53,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<Prioritized>()
     .init_resource::<PrioritizedPerRegion>()
     .init_resource::<RiverPlans>()
+    .init_resource::<RiverDebugData>()
 
     .replicate::<WhitelistedFilterOf>()
     .replicate::<StructuredGenConfig>()

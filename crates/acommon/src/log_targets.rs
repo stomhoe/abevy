@@ -83,6 +83,7 @@ pub const GPOS_MAP: &str = "gpos_map";
 pub const SGC_CHUNK_OFFER: &str = "sgc_chunk_offer";
 pub const SGC_CHUNK_CLAIM: &str = "sgc_chunk_claim";
 pub const REGION_SYSTEM: &str = "region_system";
+pub const RIVER_SYSTEM: &str = "river_system";
 
 // ============================================================================
 // RUNTIME SYSTEMS - GAMEPLAY (format: <name>_system)

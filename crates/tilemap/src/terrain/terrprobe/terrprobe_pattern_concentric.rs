@@ -38,6 +38,7 @@ pub fn process_concentric_pattern(
                 requester: pos_search.requester,
                 max_emitted_results: templ.max_emitted_results,
                 mark_last_success_in_batch: false,
+                matrix_spec: None,
             });
             continue;
         }
@@ -58,6 +59,7 @@ pub fn process_concentric_pattern(
                 requester: pos_search.requester,
                 max_emitted_results: templ.max_emitted_results,
                 mark_last_success_in_batch: false,
+                matrix_spec: None,
             });
         }
     }

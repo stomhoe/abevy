@@ -1,7 +1,7 @@
 id: anta2
 size: (1, 1)
 debug: [beach_avg_noise, shore_proximity, gravelness, inlandness, continentness]
-tags: ["anta"]
+tags: ["anta", "river_candidate"]
 
 
 let inlandness = continentness/(COMPL continent_threshold)

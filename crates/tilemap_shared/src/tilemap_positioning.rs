@@ -238,7 +238,7 @@ impl std::cmp::Ord for OplistSize {
 
 impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 
-pub const REGION_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::new(128, 128);
+pub const REGION_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::new(256, 256);
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, )]
 pub struct RegionPos(pub IVec2);

@@ -34,6 +34,7 @@ pub fn process_spiral_pattern(
             requester: pos_search.requester,
             max_emitted_results: templ.max_emitted_results,
             mark_last_success_in_batch: false,
+            matrix_spec: None,
         });
 
         steps_taken += 1;

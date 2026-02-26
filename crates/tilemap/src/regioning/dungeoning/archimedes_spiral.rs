@@ -6,7 +6,7 @@ use rand::{Rng, SeedableRng, seq::SliceRandom};
 use game_common::game_common_samplers::EntityWeightedSampler;
 use ::tilemap_shared::*;
 
-use crate::regioning::{regioning_components::*, regioning_messages::{SgcPrepareTilesOrder, StructureBuildCompliance}, regioning_sgc_components::StructuredGenConfig
+use crate::regioning::{regioning_components::*, regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_sgc_components::StructuredGenConfig
 };
 use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::*};
 use crate::tile::tile_sampler_components::TileWeightedSampler;

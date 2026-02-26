@@ -26,6 +26,7 @@ pub struct SearchParams<'w, 's>
 {
     pub ew_pos_search: MessageWriter<'w, TerrProbeJob>,
     pub reader_search_successful: MessageReader<'w, 's, SuitablePosFound>,
+    pub reader_sampled_value_matrix: MessageReader<'w, 's, SampledValueMatrixFound>,
     pub mreader_search_failed: MessageReader<'w, 's, SearchFailed>,
     pub pending_by_requester: Local<'s, EntityHashMap<Vec<(Entity, GlobalTilePos, DimensionRef, EntityZeroRef)>>>,
     pub requester_collect_all: Local<'s, EntityHashMap<bool>>,
@@ -41,6 +42,10 @@ impl<'w, 's> SearchParams<'w, 's> {
 
     pub fn read_failed(&mut self) -> impl Iterator<Item = &SearchFailed> + '_ {
         self.mreader_search_failed.read()
+    }
+
+    pub fn read_sampled_matrices(&mut self) -> impl Iterator<Item = &SampledValueMatrixFound> + '_ {
+        self.reader_sampled_value_matrix.read()
     }
 
     pub fn write_probes<I>(&mut self, probes: I)
@@ -66,6 +71,7 @@ pub fn search_suitable_positions(
     mut cmd: Commands,
     mut terrain_probe: ResMut<Messages<TerrProbeJob>>, mut mwriter_search_failed: MessageWriter<SearchFailed>,
     mut mwriter_pending_ops: MessageWriter<PendingOp>, mut mreader_suitable_pos_found: MessageReader<SuitablePosFound>,
+    mut mreader_sampled_value_matrix_found: MessageReader<SampledValueMatrixFound>,
     terrprobe_query: Query<&TerrProbeTempl>,
     dimensions_query: Query<&DimensionRootOplist>,
     failed_search_oplist_filter_holder: Query<Entity, (With<FailedSearchOplistFilterHolder>)>,
@@ -83,6 +89,9 @@ pub fn search_suitable_positions(
     failed_entities.clear();
     for found_ev in mreader_suitable_pos_found.read() {
         found_suitable_positions.insert(found_ev.requester);
+    }
+    for sampled_matrix_ev in mreader_sampled_value_matrix_found.read() {
+        found_suitable_positions.insert(sampled_matrix_ev.requester);
     }
     terrgen_tasks.search_tasks.retain_mut(|task| {
         if let Some(result) = future::block_on(future::poll_once(task)) {
@@ -181,6 +190,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                     chunk_pos,
                     curr_iteration_batch_i,
                     &mut new_pending_ops,
+                    &mut new_pos_searches,
                     &mut search_failed,
                 );
             }
@@ -192,6 +202,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                     spacing,
                     curr_iteration_batch_i,
                     &mut new_pending_ops,
+                    &mut new_pos_searches,
                     &mut search_failed,
                 );
             }

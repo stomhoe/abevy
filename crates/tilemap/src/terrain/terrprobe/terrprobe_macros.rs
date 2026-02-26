@@ -251,3 +251,139 @@ macro_rules! run_oneshot_suitable_pos_search_logic {
         }
     }};
 }
+
+#[macro_export]
+macro_rules! run_sampled_value_matrix_search_logic {
+    (
+        target: $target:expr,
+        searched_entity_label: $searched_entity_label:expr,
+        cmd: $cmd:ident,
+        searching_entities: $searching_entities:ident,
+        search_params: $search_params:ident,
+        make_search_request: $make_search_request:ident,
+        handle_sampled_values_event: $handle_sampled_values_event:ident,
+        handle_pending_failure: $handle_pending_failure:ident,
+    ) => {{
+        $search_params.pending_by_requester.clear();
+        $search_params.requester_collect_all.clear();
+        for (ent, &dim_ref, &my_pos, &ezero_ref, _, searching_for) in $searching_entities.iter() {
+            if let Some($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos {
+                requester,
+                collect_all_successes,
+            }) = searching_for {
+                $search_params
+                    .pending_by_requester
+                    .entry(*requester)
+                    .or_default()
+                    .push((ent, my_pos, dim_ref, ezero_ref));
+                $search_params.requester_collect_all.insert(*requester, *collect_all_successes);
+                $search_params.requester_had_success.entry(*requester).or_insert(false);
+            }
+        }
+
+        $searching_entities
+            .iter().for_each(|(search_ent, &dim_ref, &global_pos, ezero_ref, is_awaiting_start, ..)| {
+                if !is_awaiting_start {
+                    return;
+                }
+                $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::AwaitingStartSearch>();
+
+                let Some(mut probe) =
+                    $make_search_request(&mut $cmd, search_ent, global_pos, *ezero_ref)
+                else {
+                    return;
+                };
+                if probe.requester == Entity::PLACEHOLDER {
+                    probe.requester = search_ent;
+                }
+                let requester = probe.requester;
+
+                info!(
+                    target: $target,
+                    "Starting sampled-value probe search for {} entity {:?} at position {:?}",
+                    $searched_entity_label,
+                    search_ent,
+                    global_pos
+                );
+
+                $cmd.entity(search_ent)
+                    .try_insert($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos {
+                        requester,
+                        collect_all_successes: probe.collect_all_successes,
+                    });
+                $search_params
+                    .requester_collect_all
+                    .insert(requester, probe.collect_all_successes);
+                $search_params
+                    .requester_had_success
+                    .insert(requester, false);
+                $search_params
+                    .min_result_distance_by_requester
+                    .insert(requester, probe.min_result_distance as u64);
+                $search_params.pos_searches_msgs_to_write.push(probe);
+                $search_params
+                    .pending_by_requester
+                    .entry(requester)
+                    .or_default()
+                    .push((search_ent, global_pos, dim_ref, *ezero_ref));
+            });
+
+        for sampled_values in $search_params.reader_sampled_value_matrix.read() {
+            let requester = sampled_values.requester;
+            let mut completed_search_ent: Option<Entity> = None;
+            let mut remove_requester = false;
+
+            {
+                let Some(owners) = $search_params.pending_by_requester.get_mut(&requester) else {
+                    continue;
+                };
+                let Some((search_ent, my_pos, dim_ref, ezero_ref)) = owners.last().copied() else {
+                    continue;
+                };
+                if $handle_sampled_values_event(
+                    &mut $cmd,
+                    search_ent,
+                    my_pos,
+                    dim_ref,
+                    ezero_ref,
+                    &sampled_values.matrix.values,
+                ) {
+                    owners.pop();
+                    remove_requester = owners.is_empty();
+                    completed_search_ent = Some(search_ent);
+                }
+            }
+
+            if remove_requester {
+                $search_params.pending_by_requester.remove(&requester);
+                $search_params.min_result_distance_by_requester.remove(&requester);
+                $search_params.requester_collect_all.remove(&requester);
+                $search_params.requester_had_success.remove(&requester);
+            }
+            if let Some(search_ent) = completed_search_ent {
+                $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos>();
+            }
+        }
+
+        for failed_search in $search_params.mreader_search_failed.read() {
+            let Some(pending_searches) = $search_params.pending_by_requester.remove(&failed_search.0) else {
+                continue;
+            };
+            $search_params.requester_collect_all.remove(&failed_search.0);
+            $search_params.requester_had_success.remove(&failed_search.0);
+            $search_params.min_result_distance_by_requester.remove(&failed_search.0);
+            for (search_ent, global_pos, dim_ref, ezero_ref) in pending_searches {
+                $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos>();
+                error!(
+                    target: $target,
+                    "Failed sampled-value probe search for {} entity, {:?}",
+                    $searched_entity_label,
+                    failed_search.0
+                );
+                $handle_pending_failure(search_ent, global_pos, dim_ref, ezero_ref, failed_search.0);
+            }
+        }
+
+        $search_params.write_pos_searches();
+    }};
+}

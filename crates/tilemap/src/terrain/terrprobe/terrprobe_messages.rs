@@ -67,5 +67,48 @@ pub struct SuitablePosFound {
     pub is_last: bool,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SampledValues {
+    pub values: Vec<(GlobalTilePos, Option<f32>)>,
+}
+impl SampledValues {
+    pub fn new(min: GlobalTilePos, matrix_size: UVec2, spacing: u16) -> Self {
+        let spacing = spacing.max(1) as i32;
+        let mut values = Vec::with_capacity((matrix_size.x * matrix_size.y) as usize);
+        for row in 0..matrix_size.y {
+            for col in 0..matrix_size.x {
+                let gpos = GlobalTilePos(min.0 + IVec2::new(col as i32 * spacing, row as i32 * spacing));
+                values.push((gpos, None));
+            }
+        }
+        Self { values }
+    }
+
+    pub fn flat_index(&self, gpos: GlobalTilePos) -> Option<usize> {
+        self.values
+            .iter()
+            .position(|(sample_pos, _)| *sample_pos == gpos)
+    }
+
+    pub fn get(&self, gpos: GlobalTilePos) -> Option<Option<f32>> {
+        self.flat_index(gpos)
+            .and_then(|i| self.values.get(i).map(|(_, val)| *val))
+    }
+
+    pub fn set(&mut self, gpos: GlobalTilePos, value: Option<f32>) -> bool {
+        let Some(i) = self.flat_index(gpos) else {
+            return false;
+        };
+        self.values[i].1 = value;
+        true
+    }
+}
+
+#[derive(Debug, Clone, Message)]
+pub struct SampledValueMatrixFound {
+    pub requester: Entity,
+    pub matrix: SampledValues,
+}
+
 #[derive(Debug, Clone, Message)]
 pub struct SearchFailed(pub Entity);

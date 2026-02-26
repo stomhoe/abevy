@@ -6,8 +6,7 @@ use rand::{Rng, SeedableRng};
 use rand_distr::num_traits::Float;
 use ::tilemap_shared::*;
 
-use crate::regioning::{
-    dungeoning_utils::{
+use crate::regioning::{    dungeoning_utils::{
         carve_corridor_horizontal, carve_corridor_vertical, carve_room_circle, carve_room_rectangle,
         carve_room_regular_polygon, carve_room_triangle_vertices,
     },

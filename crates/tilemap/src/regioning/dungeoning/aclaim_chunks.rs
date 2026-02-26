@@ -6,8 +6,7 @@ use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;
 
-use crate::regioning::{
-    dungeoning::dungeoning_ids::{ARCHI, CHAMBERS_CORRIDORS, DRUNKWALK, MAZE, SPIRAL},
+use crate::regioning::{    dungeoning::dungeoning_ids::{ARCHI, CHAMBERS_CORRIDORS, DRUNKWALK, MAZE, SPIRAL},
     regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk}, regioning_sgc_components::StructuredGenConfig
 };
 

@@ -41,6 +41,7 @@ pub fn plugin(app: &mut App) {
         )
         .add_message::<TerrProbeJob>()
         .add_message::<SuitablePosFound>()
+        .add_message::<SampledValueMatrixFound>()
         .add_message::<SearchFailed>()
 
     ;

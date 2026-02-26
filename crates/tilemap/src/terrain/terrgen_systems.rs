@@ -9,7 +9,7 @@ use crate::{
     terrain::{
         terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
-        terrprobe::terrprobe_messages::SuitablePosFound,
+        terrprobe::terrprobe_messages::{SampledValueMatrix, SampledValueMatrixFound, SuitablePosFound},
         terrgen_components::*,
         terrgen_messages::PendingOp,
         terrgen_resources::*,
@@ -68,17 +68,18 @@ pub fn process_pending_ops_and_collect_tiles(
     mut debug_grid: ResMut<TerrGenDebugGrid>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
     mut pending_ops_batch: Local<Vec<PendingOp>>,
-    mut sampled_value_events: Local<Vec<SuitablePosFound>>,
     mut tile_requests: Local<Vec<TerrGenTileRequest>>,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
+    mut ewriter_sampled_value_matrix: MessageWriter<SampledValueMatrixFound>,
 ) {
     let Ok(gen_settings) = param_set.gen_settings.single() else {
         error!("Failed to get gen settings");
         return;
     };
     pending_ops_batch.clear();
-    sampled_value_events.clear();
     tile_requests.clear();
+    let mut sampled_value_events: Vec<SuitablePosFound> = Vec::new();
+    let mut sampled_value_matrix_events: Vec<SampledValueMatrixFound> = Vec::new();
 
     let bucket_size = debug_grid.bucket_size_tiles.max(1);
     let capture_margin = (debug_grid.bucket_radius + debug_grid.capture_margin_buckets).max(4);
@@ -115,6 +116,7 @@ pub fn process_pending_ops_and_collect_tiles(
     terrgen_tasks.op_tasks.retain_mut(|task| {
         if let Some(result) = future::block_on(future::poll_once(task)) {
             sampled_value_events.extend(result.sampled_value_events);
+            sampled_value_matrix_events.extend(result.sampled_value_matrix_events);
             tile_requests.extend(result.tile_requests);
             if debug_grid.enabled {
                 let Some((cam_dim, cam_bucket)) = camera_info else { return false; };
@@ -190,7 +192,10 @@ pub fn process_pending_ops_and_collect_tiles(
     }
 
     if !sampled_value_events.is_empty() {
-        ewriter_sampled_value.write_batch(sampled_value_events.drain(..));
+        ewriter_sampled_value.write_batch(sampled_value_events);
+    }
+    if !sampled_value_matrix_events.is_empty() {
+        ewriter_sampled_value_matrix.write_batch(sampled_value_matrix_events);
     }
 
     if !launch_queue.0.is_empty() {
@@ -375,6 +380,7 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
                     requester: Entity::PLACEHOLDER,
                     max_emitted_results: 0,
                     mark_last_success_in_batch: false,
+                    matrix_spec: None,
                 });
             }
         }
@@ -400,10 +406,12 @@ fn process_pending_ops_batch(
     use crate::terrain::terrgen_expression::EvalContext;
     let mut result = TerrGenOpTaskResult::default();
     let mut pending_queue = pending_ops;
-    let mut emitted_per_probe: EntityHashMap<u16> = EntityHashMap::new();
+    let mut emitted_per_probe: EntityHashMap<u32> = EntityHashMap::new();
     let mut last_success_idx_for_requester: EntityHashMap<usize> = EntityHashMap::new();
+    let mut sampled_matrices_by_requester: EntityHashMap<SampledValueMatrix> = EntityHashMap::new();
 
     while let Some(ev) = pending_queue.pop() { unsafe {
+        upsert_sample_matrix_for_pending(&ev, &mut sampled_matrices_by_requester);
         if !context.oplists.contains_key(&ev.oplist.0) {
             error!(target: "terrgen_systems", "Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
             continue;
@@ -444,6 +452,7 @@ fn process_pending_ops_batch(
                 has_filter,
                 &mut emitted_per_probe,
                 &mut last_success_idx_for_requester,
+                &mut sampled_matrices_by_requester,
                 &mut result,
                 capture_debug,
             );
@@ -492,37 +501,29 @@ fn process_pending_ops_batch(
             }
 
             let destination_i = (output_value as usize).min(oplist.bifurcations.len() - 1);
-            let passes_value_filter = if let Some(filter) = filter {
-                if let Some(var_name_hash) = filter.var_name_hash {
-                    frame
-                        .variables
-                        .get(var_name_hash)
-                        .map(|val| (filter.min_val..=filter.max_val).contains(val))
-                        .unwrap_or(false)
-                } else {
-                    (filter.min_val..=filter.max_val).contains(&output_value)
-                }
-            } else {
-                false
-            };
+            let passes_value_filter = passes_filter_value(filter, &frame.variables, output_value);
             if has_filter
                 && let Some(filter) = filter
                 && let Some(Some(oplist_tags)) = context.oplist_tags.get(&frame.oplist)
                 && oplist_tags.intersects(&filter.tags)
                 && passes_value_filter
             {
-                let emitted = emitted_per_probe.entry(ev.requester).or_insert(0);
-                if *emitted < ev.max_emitted_results {
-                    result.sampled_value_events.push(SuitablePosFound {
-                        requester: ev.requester,
-                        val: output_value,
-                        found_pos: frame.gpos,
-                        is_last: false,
-                    });
-                    if ev.mark_last_success_in_batch {
-                        last_success_idx_for_requester.insert(ev.requester, result.sampled_value_events.len() - 1);
+                if ev.matrix_spec.is_some() {
+                    set_sample_matrix_value_for_pending(&ev, Some(output_value), &mut sampled_matrices_by_requester);
+                } else {
+                    let emitted = emitted_per_probe.entry(ev.requester).or_insert(0);
+                    if *emitted < ev.max_emitted_results {
+                        result.sampled_value_events.push(SuitablePosFound {
+                            requester: ev.requester,
+                            val: output_value,
+                            found_pos: frame.gpos,
+                            is_last: false,
+                        });
+                        if ev.mark_last_success_in_batch {
+                            last_success_idx_for_requester.insert(ev.requester, result.sampled_value_events.len() - 1);
+                        }
+                        *emitted = emitted.saturating_add(1);
                     }
-                    *emitted = emitted.saturating_add(1);
                 }
             }
 
@@ -539,6 +540,7 @@ fn process_pending_ops_batch(
                         requester: ev.requester,
                         max_emitted_results: ev.max_emitted_results,
                         mark_last_success_in_batch: ev.mark_last_success_in_batch,
+                        matrix_spec: ev.matrix_spec,
                     },
                     oplist_size: frame.oplist_size,
                     dimension_hash,
@@ -563,6 +565,12 @@ fn process_pending_ops_batch(
             sample.is_last = true;
         }
     }
+    for (requester, matrix) in sampled_matrices_by_requester.drain() {
+        result.sampled_value_matrix_events.push(SampledValueMatrixFound {
+            requester,
+            matrix,
+        });
+    }
     result
 }
 
@@ -577,8 +585,9 @@ fn process_compiled_branch_node(
     dimension_hash: HashId,
     filter: Option<&OpFilter>,
     has_filter: bool,
-    emitted_per_probe: &mut EntityHashMap<u16>,
+    emitted_per_probe: &mut EntityHashMap<u32>,
     last_success_idx_for_requester: &mut EntityHashMap<usize>,
+    sampled_matrices_by_requester: &mut EntityHashMap<SampledValueMatrix>,
     result: &mut TerrGenOpTaskResult,
     capture_debug: bool,
 ) {
@@ -617,36 +626,29 @@ fn process_compiled_branch_node(
     }
 
     let destination_i = (output_value as usize).min(node.branches.len() - 1);
-    let passes_value_filter = if let Some(filter) = filter {
-        if let Some(var_name_hash) = filter.var_name_hash {
-            computed_vars
-                .get(var_name_hash)
-                .map(|val| (filter.min_val..=filter.max_val).contains(val))
-                .unwrap_or(false)
-        } else {
-            (filter.min_val..=filter.max_val).contains(&output_value)
-        }
-    } else {
-        false
-    };
+    let passes_value_filter = passes_filter_value(filter, &computed_vars, output_value);
     if has_filter
         && let Some(filter) = filter
         && let Some(Some(oplist_tags)) = context.oplist_tags.get(&node.source_oplist)
         && oplist_tags.intersects(&filter.tags)
         && passes_value_filter
     {
-        let emitted = emitted_per_probe.entry(source_ev.requester).or_insert(0);
-        if *emitted < source_ev.max_emitted_results {
-            result.sampled_value_events.push(SuitablePosFound {
-                requester: source_ev.requester,
-                val: output_value,
-                found_pos: gpos,
-                is_last: false,
-            });
-            if source_ev.mark_last_success_in_batch {
-                last_success_idx_for_requester.insert(source_ev.requester, result.sampled_value_events.len() - 1);
+        if source_ev.matrix_spec.is_some() {
+            set_sample_matrix_value_for_pending(source_ev, Some(output_value), sampled_matrices_by_requester);
+        } else {
+            let emitted = emitted_per_probe.entry(source_ev.requester).or_insert(0);
+            if *emitted < source_ev.max_emitted_results {
+                result.sampled_value_events.push(SuitablePosFound {
+                    requester: source_ev.requester,
+                    val: output_value,
+                    found_pos: gpos,
+                    is_last: false,
+                });
+                if source_ev.mark_last_success_in_batch {
+                    last_success_idx_for_requester.insert(source_ev.requester, result.sampled_value_events.len() - 1);
+                }
+                *emitted = emitted.saturating_add(1);
             }
-            *emitted = emitted.saturating_add(1);
         }
     }
 
@@ -663,6 +665,7 @@ fn process_compiled_branch_node(
                 requester: source_ev.requester,
                 max_emitted_results: source_ev.max_emitted_results,
                 mark_last_success_in_batch: source_ev.mark_last_success_in_batch,
+                matrix_spec: source_ev.matrix_spec,
             },
             oplist_size,
             dimension_hash,
@@ -687,6 +690,7 @@ fn process_compiled_branch_node(
                     has_filter,
                     emitted_per_probe,
                     last_success_idx_for_requester,
+                    sampled_matrices_by_requester,
                     result,
                     capture_debug,
                 );
@@ -709,12 +713,79 @@ fn process_compiled_branch_node(
                         has_filter,
                         emitted_per_probe,
                         last_success_idx_for_requester,
+                        sampled_matrices_by_requester,
                         result,
                         capture_debug,
                     );
                 }
             }
         }
+    }
+}
+
+#[inline]
+fn passes_filter_value(
+    filter: Option<&OpFilter>,
+    computed_vars: &HashIdMap<f32>,
+    output_value: f32,
+) -> bool {
+    let Some(filter) = filter else {
+        return false;
+    };
+
+    if let Some(var_name_hash) = filter.var_name_hash {
+        if let Ok(val) = computed_vars.get(var_name_hash) {
+            return (filter.min_val..=filter.max_val).contains(val);
+        }
+
+        // Be tolerant when the requested variable is missing:
+        // - for unbounded filters, let tag matching decide.
+        // - otherwise, fallback to output_value range.
+        if filter.min_val.is_infinite()
+            && filter.min_val.is_sign_negative()
+            && filter.max_val.is_infinite()
+            && filter.max_val.is_sign_positive()
+        {
+            return true;
+        }
+        return (filter.min_val..=filter.max_val).contains(&output_value);
+    }
+
+    (filter.min_val..=filter.max_val).contains(&output_value)
+}
+
+fn upsert_sample_matrix_for_pending(
+    source_ev: &PendingOp,
+    sampled_matrices_by_requester: &mut EntityHashMap<SampledValueMatrix>,
+) {
+    let Some(spec) = source_ev.matrix_spec else {
+        return;
+    };
+    sampled_matrices_by_requester
+        .entry(source_ev.requester)
+        .or_insert_with(|| SampledValueMatrix::new(spec.min, spec.matrix_size, spec.spacing));
+}
+
+fn set_sample_matrix_value_for_pending(
+    source_ev: &PendingOp,
+    value: Option<f32>,
+    sampled_matrices_by_requester: &mut EntityHashMap<SampledValueMatrix>,
+) {
+    let Some(_) = source_ev.matrix_spec else {
+        return;
+    };
+    let Some(matrix) = sampled_matrices_by_requester.get_mut(&source_ev.requester) else {
+        return;
+    };
+    if value.is_none() {
+        let _ = matrix.set(source_ev.gpos, None);
+        return;
+    }
+    let Some(current) = matrix.get(source_ev.gpos) else {
+        return;
+    };
+    if current.is_none() {
+        let _ = matrix.set(source_ev.gpos, value);
     }
 }
 

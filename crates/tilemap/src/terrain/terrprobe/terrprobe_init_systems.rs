@@ -148,13 +148,13 @@ pub fn init_terrain_probes(
             seri.required_tile_tags.clone(),
             sgc_admitted_tiles_as_found_pos,
             parsed_probe_pattern,
-            seri.collect_all,
             seri.concentric_sample_spacing,
             seri.step_size,
             seri.max_batches,
             seri.iterations_per_batch,
             seri.max_emitted_results,
             seri.min_result_distance,
+            seri.collect,
         );
         comps.push((ent, (
             str_id,

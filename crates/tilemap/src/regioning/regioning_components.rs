@@ -248,36 +248,31 @@ impl GridOfSgcs {
     pub fn sampled_structure_at_gpos(&self, gpos: GlobalTilePos, region_pos: RegionPos) -> Option<Entity> {
         self.0.get_value(gpos.to_chunkpos(), region_pos)
     }
-    pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) {
+    pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) -> Option<Entity> {
         let base = ui.text_style_height(&egui::TextStyle::Monospace);
-        let cell_w = (base * 0.9).max(9.0);
-        let cell_h = (base * 0.9).max(9.0);
+        let cell_w = (base * 0.21).clamp(1.5, 3.0);
+        let cell_h = (base * 0.21).clamp(1.5, 3.0);
         let width = REGION_SIZE_IN_CHUNKS.x() as usize;
         let height = REGION_SIZE_IN_CHUNKS.y() as usize;
         let grid_size = egui::vec2(width as f32 * cell_w, height as f32 * cell_h);
-        let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
+        let (rect, response) = ui.allocate_exact_size(grid_size, egui::Sense::click());
         let painter = ui.painter_at(rect);
-
-        const ARRAY_OF_LEGIBLE_CHARS: &[char] = &[
-            '0','1','2','3','4','5','6','7','8','9',
-            'A','B','C','D','E','F','G','H','I','J','K','L','M',
-            'N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
-            '!','@','#','$','%','^','&','*','(',')','-','+','=','/','|','~','<','>','?',':',';',
-            '░','█','▲','△','▶','▷','▼','▽','◀','◁','◢','◣','◤','◥',
-            '◆','◇','⬟','⬢','⬣',
-            '■','□','▪','▫',
-            '✦','✧','✪','✫','✬','✭','✮','✯',
-            '✖','✚','✛','✤','✥',
-            '±','×','÷','≈','≠','≤','≥','∞','∑','∏','√','∆','∇','∫',
-            '⬅','➡','⬆','⬇','↩','↪','⇐','⇒','⇑','⇓',
-            'α','β','γ','δ','ε','ζ','η','θ','λ','μ','π','ω',
-            'Φ','Ψ','Ω','Σ','Π',
-            '∂','∈','∉','∩','∪','∀','∃',
-            '†','‡','°','‰','§','¶','¤','¬','¦',
-            '·',
-        ];
-        let mut entity_to_char: EntityHashMap<char> = EntityHashMap::default();
-        let mut char_index = 0;
+        let mut clicked_entity: Option<Entity> = None;
+        if response.clicked()
+            && let Some(pointer_pos) = response.interact_pointer_pos()
+            && rect.contains(pointer_pos)
+        {
+            let cell_x = ((pointer_pos.x - rect.left()) / cell_w).floor() as usize;
+            let display_y = ((pointer_pos.y - rect.top()) / cell_h).floor() as usize;
+            if cell_x < width && display_y < height {
+                let grid_y = (height - 1) - display_y;
+                if let Some(cell) = self.0.grid.get(grid_y).and_then(|row| row.get(cell_x))
+                    && !cell.is_empty()
+                {
+                    clicked_entity = Some(cell[0]);
+                }
+            }
+        }
 
         let local_pos = if let (Some(chunk_pos), Some(region_pos)) = (current_position, region_pos) {
             let local_chunk_pos = chunk_pos - region_pos.to_chunkpos();
@@ -294,8 +289,17 @@ impl GridOfSgcs {
             None
         };
 
-        for (display_y, row) in self.0.grid.iter().rev().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
+        painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
+        let clip = ui.clip_rect().intersect(rect);
+        if clip.is_positive() {
+            let x_start = (((clip.left() - rect.left()) / cell_w).floor() as i32).max(0) as usize;
+            let x_end = (((clip.right() - rect.left()) / cell_w).ceil() as i32).min(width as i32) as usize;
+            let y_start = (((clip.top() - rect.top()) / cell_h).floor() as i32).max(0) as usize;
+            let y_end = (((clip.bottom() - rect.top()) / cell_h).ceil() as i32).min(height as i32) as usize;
+            for display_y in y_start..y_end {
+                let row = &self.0.grid[height - 1 - display_y];
+                for x in x_start..x_end {
+                    let cell = &row[x];
                 let cell_rect = egui::Rect::from_min_size(
                     egui::pos2(rect.left() + x as f32 * cell_w, rect.top() + display_y as f32 * cell_h),
                     egui::vec2(cell_w, cell_h),
@@ -308,49 +312,30 @@ impl GridOfSgcs {
                     false
                 };
 
-                if !cell.is_empty() {
-                        let entity = cell[0];
-                        let symbol = *entity_to_char.entry(entity).or_insert_with(|| {
-                            let ch = ARRAY_OF_LEGIBLE_CHARS[char_index % ARRAY_OF_LEGIBLE_CHARS.len()];
-                            char_index += 1;
-                            ch
-                        });
+                    if !cell.is_empty() {
+                            let entity = cell[0];
+                            let hashed = entity
+                                .to_bits()
+                                .wrapping_mul(0x9E37_79B9_7F4A_7C15);
+                            let hue = ((hashed & 0xFFFF) as f32) / 65535.0;
+                            let mut fill: egui::Color32 = egui::ecolor::Hsva::new(hue, 0.72, 0.88, 1.0).into();
+                            if is_highlight {
+                                fill = fill.gamma_multiply(1.18);
+                            }
+                            painter.rect_filled(cell_rect, 0.0, fill);
+                    }
 
-                        let mut h: usize = entity.to_bits() as usize;
-                        h = h.wrapping_mul(2654435761usize);
-                        let r = 70 + (h & 0x3F) as u8;
-                        let g = 90 + ((h >> 6) & 0x5F) as u8;
-                        let b = 110 + ((h >> 12) & 0x6F) as u8;
-                        let mut fill = egui::Color32::from_rgb(r, g, b).gamma_multiply(0.35);
-                        if is_highlight {
-                            fill = fill.gamma_multiply(1.35);
-                        }
-                        painter.rect_filled(cell_rect, 0.0, fill);
-                        painter.text(
-                            cell_rect.center(),
-                            egui::Align2::CENTER_CENTER,
-                            symbol.to_string(),
-                            egui::FontId::proportional((base * 0.9).max(9.0)),
-                            egui::Color32::WHITE,
+                    if is_highlight {
+                        painter.rect_stroke(
+                            cell_rect,
+                            0.0,
+                            egui::Stroke::new(2.0, egui::Color32::YELLOW),
+                            egui::StrokeKind::Inside,
                         );
-                } else {
-                        painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
-                        painter.text(
-                            cell_rect.center(),
-                            egui::Align2::CENTER_CENTER,
-                            "·",
-                            egui::FontId::proportional((base * 0.85).max(8.0)),
-                            egui::Color32::from_gray(90),
-                        );
+                    }
                 }
-
-                let stroke = if is_highlight {
-                    egui::Stroke::new(2.0, egui::Color32::YELLOW)
-                } else {
-                    egui::Stroke::new(0.5, egui::Color32::from_gray(45))
-                };
-                painter.rect_stroke(cell_rect, 0.0, stroke, egui::StrokeKind::Inside);
             }
         }
+        clicked_entity
     }
 }

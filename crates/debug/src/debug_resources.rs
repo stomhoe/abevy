@@ -29,6 +29,8 @@ pub struct DubugWindowsVisibility{
     pub sprite_details: bool,
     pub gpos_maps: bool,
     pub hot_reload_menu: bool,
+    pub river_debug: bool,
+    pub river_sample_values: bool,
 }
 
 impl Default for DubugWindowsVisibility {
@@ -57,6 +59,8 @@ impl Default for DubugWindowsVisibility {
             sprite_details: false,
             gpos_maps: false,
             hot_reload_menu: false,
+            river_debug: false,
+            river_sample_values: false,
         }
     }
 }
@@ -74,6 +78,7 @@ pub struct DebugSelectedEntities {
     pub selected_exempted_entity: Option<Entity>,
     pub selected_sprite: Option<Entity>,
     pub selected_tilemap: Option<Entity>,
+    pub selected_river_debug_region: Option<Entity>,
 }
 
 #[derive(Resource, Default)]

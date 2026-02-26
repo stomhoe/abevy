@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use camera::camera_components::CameraTarget;
 use common::common_components::*;
+use tilemap::regioning::natural::river::{RiverDebugData, RiverRegionDebugInfo};
 use tilemap::regioning::regioning_components::*;
 use ::tilemap_shared::*;
 
@@ -33,6 +34,7 @@ pub fn regions_list_window(
     ), With<Region>>,
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     id_query: Query<&StrId>,
+    river_debug: Option<Res<RiverDebugData>>,
 ) {
     if !window_visible.regions_list {
         return;
@@ -180,6 +182,14 @@ pub fn regions_list_window(
                                 selected_entities.selected_regions.insert(*entity);
                                 window_visible.region_details = true;
                             }
+                            if ui.button("River Debug").clicked() {
+                                selected_entities.selected_river_debug_region = Some(*entity);
+                                window_visible.river_debug = true;
+                            }
+                            if ui.button("River Samples").clicked() {
+                                selected_entities.selected_river_debug_region = Some(*entity);
+                                window_visible.river_sample_values = true;
+                            }
                         });
                         ui.separator();
                         ui.horizontal(|ui| {
@@ -200,7 +210,10 @@ pub fn regions_list_window(
                                         } else {
                                             None
                                         };
-                                        grid_sgcs.render_grid(ui, highlight_pos, Some(*region_pos));
+                                        if let Some(clicked_sgc_ent) = grid_sgcs.render_grid(ui, highlight_pos, Some(*region_pos)) {
+                                            selected_entities.selected_exempted_entity = Some(clicked_sgc_ent);
+                                            window_visible.exempted_entity_details = true;
+                                        }
                                     });
                                 }
                             });
@@ -233,8 +246,270 @@ pub fn regions_list_window(
                                 ui.label(format!("State: {:?}", region_state));
                             });
                         });
+
                     });
             }
         });
     window_visible.regions_list = open;
+
+    let mut open_sample_values_from_river = false;
+    if window_visible.river_debug {
+        let mut river_open = window_visible.river_debug;
+        egui::Window::new("River Debug")
+            .default_pos([screen_rect.left() + 24.0, screen_rect.top() + 120.0])
+            .resizable(true)
+            .movable(true)
+            .open(&mut river_open)
+            .show(ctx, |ui| {
+                let Some(region_ent) = selected_entities.selected_river_debug_region else {
+                    ui.colored_label(egui::Color32::RED, "No region selected. Use the River Debug button in Regions Grid.");
+                    return;
+                };
+                let Ok((_, _, dim_ref, region_pos, name, _, _, _, _, _, _, _, _)) = region_query.get(region_ent) else {
+                    ui.colored_label(egui::Color32::RED, "Selected region no longer exists.");
+                    return;
+                };
+                let title_name = name.map(|n| n.to_string()).unwrap_or_else(|| "unnamed".to_string());
+                ui.label(format!("Region: {} ({:?})", title_name, region_pos));
+                ui.label(format!("Entity: {:?}", region_ent));
+                ui.label(format!("Dimension: {:?}", dim_ref));
+                ui.separator();
+
+                let Some(river_debug) = river_debug.as_ref() else {
+                    ui.colored_label(egui::Color32::RED, "River debug resource unavailable.");
+                    return;
+                };
+                let Some(river_info) = river_debug.0.get(&(*dim_ref, *region_pos)) else {
+                    ui.colored_label(egui::Color32::RED, "No river debug data for this region yet.");
+                    return;
+                };
+
+                ui.horizontal(|ui| {
+                    ui.label(format!("successes: {}", river_info.success_count));
+                    ui.label(egui::RichText::new(format!("failures: {}", river_info.failure_count)).color(egui::Color32::RED));
+                    ui.label(format!("active probes: {}", river_info.active_probe_chunks.len()));
+                    ui.label(format!("river tiles: {}", river_info.river_tiles.len()));
+                    ui.label(format!("sampled points: {}", river_info.sampled_points.len()));
+                });
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("River Chunk Map").strong());
+                    if ui.button("Sample Values Map").clicked() {
+                        open_sample_values_from_river = true;
+                    }
+                });
+                render_river_chunk_debug_map(ui, *region_pos, camera_chunk_pos, river_info);
+                ui.separator();
+                ui.label(egui::RichText::new("River Tile Preview").strong());
+                render_river_tile_preview_map(ui, *region_pos, river_info);
+                ui.separator();
+                ui.label(egui::RichText::new("Recent Events").strong());
+                for event in river_info.recent_events.iter().rev().take(24) {
+                    let color = if event.is_failure {
+                        egui::Color32::RED
+                    } else {
+                        egui::Color32::LIGHT_BLUE
+                    };
+                    ui.label(egui::RichText::new(format!(
+                        "offer {} @ {:?}: {}",
+                        event.offer_i, event.start_chunk, event.reason
+                    )).color(color));
+                }
+            });
+        window_visible.river_debug = river_open;
+    }
+    if open_sample_values_from_river {
+        window_visible.river_sample_values = true;
+    }
+
+    if window_visible.river_sample_values {
+        let mut samples_open = window_visible.river_sample_values;
+        egui::Window::new("River Sample Values")
+            .default_pos([screen_rect.left() + 430.0, screen_rect.top() + 120.0])
+            .resizable(true)
+            .movable(true)
+            .open(&mut samples_open)
+            .show(ctx, |ui| {
+                let Some(region_ent) = selected_entities.selected_river_debug_region else {
+                    ui.colored_label(egui::Color32::RED, "No region selected. Use River Samples button in Regions Grid.");
+                    return;
+                };
+                let Ok((_, _, dim_ref, region_pos, name, _, _, _, _, _, _, _, _)) = region_query.get(region_ent) else {
+                    ui.colored_label(egui::Color32::RED, "Selected region no longer exists.");
+                    return;
+                };
+                let title_name = name.map(|n| n.to_string()).unwrap_or_else(|| "unnamed".to_string());
+                ui.label(format!("Region: {} ({:?})", title_name, region_pos));
+                ui.label(format!("Entity: {:?}", region_ent));
+                ui.label(format!("Dimension: {:?}", dim_ref));
+                ui.separator();
+
+                let Some(river_debug) = river_debug.as_ref() else {
+                    ui.colored_label(egui::Color32::RED, "River debug resource unavailable.");
+                    return;
+                };
+                let Some(river_info) = river_debug.0.get(&(*dim_ref, *region_pos)) else {
+                    ui.colored_label(egui::Color32::RED, "No river debug data for this region yet.");
+                    return;
+                };
+                render_river_sample_values_map(ui, *region_pos, river_info);
+            });
+        window_visible.river_sample_values = samples_open;
+    }
+}
+
+fn render_river_chunk_debug_map(
+    ui: &mut egui::Ui,
+    region_pos: RegionPos,
+    camera_chunk_pos: Option<ChunkPos>,
+    river_info: &RiverRegionDebugInfo,
+) {
+    let cell = 10.0;
+    let width = REGION_SIZE_IN_CHUNKS.x() as usize;
+    let height = REGION_SIZE_IN_CHUNKS.y() as usize;
+    let size = egui::vec2(width as f32 * cell, height as f32 * cell);
+    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+
+    for y in 0..height {
+        for x in 0..width {
+            let chunk = region_pos.to_chunkpos() + IVec2::new(x as i32, y as i32);
+            let mut fill = egui::Color32::from_rgb(26, 26, 26);
+            if river_info.claimed_chunks.contains(&chunk) {
+                fill = egui::Color32::from_rgb(30, 120, 220);
+            }
+            if river_info.active_probe_chunks.contains(&chunk) {
+                fill = egui::Color32::from_rgb(220, 140, 30);
+            }
+            if river_info.failed_chunks.contains(&chunk) {
+                fill = egui::Color32::from_rgb(210, 30, 30);
+            }
+
+            let draw_y = height - 1 - y;
+            let r = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + x as f32 * cell, rect.top() + draw_y as f32 * cell),
+                egui::vec2(cell - 1.0, cell - 1.0),
+            );
+            painter.rect_filled(r, 0.0, fill);
+        }
+    }
+
+    if let Some(camera_chunk_pos) = camera_chunk_pos {
+        let local = camera_chunk_pos - region_pos.to_chunkpos();
+        if local.0.x >= 0
+            && local.0.x < REGION_SIZE_IN_CHUNKS.x()
+            && local.0.y >= 0
+            && local.0.y < REGION_SIZE_IN_CHUNKS.y()
+        {
+            let x = local.0.x as usize;
+            let y = local.0.y as usize;
+            let draw_y = height - 1 - y;
+            let r = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + x as f32 * cell, rect.top() + draw_y as f32 * cell),
+                egui::vec2(cell - 1.0, cell - 1.0),
+            );
+            painter.rect_stroke(
+                r,
+                0.0,
+                egui::Stroke::new(1.5, egui::Color32::YELLOW),
+                egui::StrokeKind::Outside,
+            );
+        }
+    }
+
+    ui.label("Legend: blue=river chunks, orange=active probe, red=failed attempts");
+}
+
+fn render_river_tile_preview_map(
+    ui: &mut egui::Ui,
+    region_pos: RegionPos,
+    river_info: &RiverRegionDebugInfo,
+) {
+    let size = egui::vec2(360.0, 360.0);
+    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
+
+    let (min_chunk, max_chunk_excl) = region_pos.chunk_bounds();
+    let min_tile = min_chunk.to_tilepos();
+    let max_tile_excl = max_chunk_excl.to_tilepos();
+    let span_x = (max_tile_excl.0.x - min_tile.0.x).max(1) as f32;
+    let span_y = (max_tile_excl.0.y - min_tile.0.y).max(1) as f32;
+
+    for tile in &river_info.river_tiles {
+        let nx = ((tile.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+        let ny = ((tile.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+        let px = rect.left() + nx * rect.width();
+        let py = rect.bottom() - ny * rect.height();
+        let dot = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(2.0, 2.0));
+        painter.rect_filled(dot, 0.0, egui::Color32::from_rgb(45, 160, 255));
+    }
+
+    for chunk in &river_info.failed_chunks {
+        let center = chunk.to_tilepos() + IVec2::new((ChunkPos::CHUNK_SIZE.x / 2) as i32, (ChunkPos::CHUNK_SIZE.y / 2) as i32);
+        let nx = ((center.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+        let ny = ((center.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+        let px = rect.left() + nx * rect.width();
+        let py = rect.bottom() - ny * rect.height();
+        let mark = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(5.0, 5.0));
+        painter.rect_filled(mark, 0.0, egui::Color32::RED);
+    }
+
+    ui.label("Legend: blue=river tiles preview, red=failed attempt chunk centers");
+}
+
+fn render_river_sample_values_map(
+    ui: &mut egui::Ui,
+    region_pos: RegionPos,
+    river_info: &RiverRegionDebugInfo,
+) {
+    let size = egui::vec2(420.0, 420.0);
+    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
+
+    if river_info.sampled_points.is_empty() {
+        ui.colored_label(egui::Color32::RED, "No sampled points captured for this region yet.");
+        return;
+    }
+
+    let (min_chunk, max_chunk_excl) = region_pos.chunk_bounds();
+    let min_tile = min_chunk.to_tilepos();
+    let max_tile_excl = max_chunk_excl.to_tilepos();
+    let span_x = (max_tile_excl.0.x - min_tile.0.x).max(1) as f32;
+    let span_y = (max_tile_excl.0.y - min_tile.0.y).max(1) as f32;
+
+    for (tile, sampled_val) in &river_info.sampled_points {
+        let nx = ((tile.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+        let ny = ((tile.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+        let px = rect.left() + nx * rect.width();
+        let py = rect.bottom() - ny * rect.height();
+        let dot = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(2.0, 2.0));
+        painter.rect_filled(dot, 0.0, sample_value_color(*sampled_val));
+    }
+
+    for chunk in &river_info.failed_chunks {
+        let center = chunk.to_tilepos() + IVec2::new((ChunkPos::CHUNK_SIZE.x / 2) as i32, (ChunkPos::CHUNK_SIZE.y / 2) as i32);
+        let nx = ((center.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+        let ny = ((center.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+        let px = rect.left() + nx * rect.width();
+        let py = rect.bottom() - ny * rect.height();
+        let mark = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(5.0, 5.0));
+        painter.rect_filled(mark, 0.0, egui::Color32::RED);
+    }
+
+    ui.label("Legend: color=sampled value (fixed range -1.0..2.0), red=failed chunk centers");
+}
+
+fn sample_value_color(value: f32) -> egui::Color32 {
+    let t = ((value + 1.0) / 3.0).clamp(0.0, 1.0);
+    let r = lerp_u8(220, 45, t);
+    let g = lerp_u8(40, 220, t);
+    let b = lerp_u8(40, 200, t);
+    egui::Color32::from_rgb(r, g, b)
+}
+
+fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
+    let af = a as f32;
+    let bf = b as f32;
+    (af + (bf - af) * t).round().clamp(0.0, 255.0) as u8
 }

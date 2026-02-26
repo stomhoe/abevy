@@ -35,8 +35,6 @@ pub struct TerrainProbeSeri {
     #[serde(default)]
     pub required_tile_tags: HashSet<String>,
     pub probe_pattern: String,
-    #[serde(default = "default_collect_all")]
-    pub collect_all: bool,
     #[serde(default = "default_concentric_sample_spacing")]
     #[serde(alias = "conc_sample_spacing")]
     pub concentric_sample_spacing: f32,
@@ -47,17 +45,19 @@ pub struct TerrainProbeSeri {
     #[serde(default = "default_iterations_per_batch")]
     pub iterations_per_batch: u16,
     #[serde(default = "default_max_emitted_results")]
-    pub max_emitted_results: u16,
+    pub max_emitted_results: u32,
     #[serde(default = "default_min_result_distance")]
     pub min_result_distance: u16,
+    #[serde(default = "default_collect")]
+    pub collect: bool,
 }
 
 fn default_step_size() -> u16 { 1 }
-fn default_collect_all() -> bool { false }
 fn default_concentric_sample_spacing() -> f32 { 30.0 }
 fn default_min_val() -> f32 { f32::NEG_INFINITY }
 fn default_max_val() -> f32 { f32::INFINITY }
 fn default_max_batches() -> u16 { 1000 }
 fn default_iterations_per_batch() -> u16 { 10000 }
-fn default_max_emitted_results() -> u16 { 1 }
+fn default_max_emitted_results() -> u32 { 1 }
 fn default_min_result_distance() -> u16 { 0 }
+fn default_collect() -> bool { false }

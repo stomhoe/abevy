@@ -7,8 +7,7 @@ use rand::{Rng, SeedableRng, seq::SliceRandom};
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;
 
-use crate::regioning::{
-    regioning_components::*,
+use crate::regioning::{    regioning_components::*,
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };

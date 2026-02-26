@@ -75,6 +75,7 @@ fn build_filter() -> String {
         {}={},\
         {}={},\
         {}={},\
+        {}={},\
         {}={},",
         log_targets::NAGA, ERROR,
         log_targets::WGPU_HAL, ERROR,
@@ -136,6 +137,7 @@ fn build_filter() -> String {
         log_targets::Z_SORT_SYSTEM, WARN,
         log_targets::ENTITY_MAP_SYSTEM, WARN,
         log_targets::INSPECTOR, WARN,
+        log_targets::RIVER_SYSTEM, DEBUG,
     )
 }
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force

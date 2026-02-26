@@ -9,6 +9,7 @@ use rand::SeedableRng;
 use ::tilemap_shared::*;
 
 use crate::{chunking::chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::regioning::natural::RiverDebugData;
 
 use bit_vec::BitVec;
 
@@ -154,10 +155,8 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
             cmd.entity(region_ent).try_insert(TimeoutTimer::secs(0.2));
             writer.write_batch(take(&mut offers));
         }
-
     }
 }
-
 
 #[allow(unused_parens)]
 pub fn advance_i_on_claimlist_timeout(
@@ -439,7 +438,10 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
     let mut ready = Vec::new();
     let mut to_insert_delete_others = Vec::new();
     region_query.iter().for_each(|(chunks_active_in_region, reg_planned, state)| {
-        if *state != RegionState::BuildingStarted && *state != RegionState::AllTilesPrepared {
+        if *state != RegionState::BuildingStarted
+            && *state != RegionState::ClaimsProcessed
+            && *state != RegionState::AllTilesPrepared
+        {
             return;
         }
         chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref)| {
@@ -489,11 +491,13 @@ pub fn on_region_despawn_remove_from_loaded_regions(
     region_query: Query<(&DimensionRef, &RegionPos),(common::AnyDisabling)>,
     mut loaded_regions: ResMut<LoadedRegions>,
     mut prioritized_per_region: ResMut<PrioritizedPerRegion>,
+    mut river_debug: ResMut<RiverDebugData>,
 )
 {
     let Ok((&dimension_ref, &region_pos)) = region_query.get(trig.entity) else {
         return;
     };
+    river_debug.remove_region(dimension_ref, region_pos);
     let Some(region_ent) = loaded_regions.0.get(&(dimension_ref, region_pos))
     else {
         return;

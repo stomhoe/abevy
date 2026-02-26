@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::terrain::{
     terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_messages::TerrProbeJob},
-    terrgen_messages::PendingOp,
+    terrgen_messages::{PendingOp, PendingOpMatrixSpec},
 };
 use ::tilemap_shared::*;
 
@@ -10,16 +10,16 @@ pub fn process_chunk_pattern(
     templ: &TerrProbeTempl,
     root_oplist: DimensionRootOplist,
     chunk_pos: ChunkPos,
-    curr_iteration_batch_i: i16,
+    _curr_iteration_batch_i: i16,
     new_pending_ops: &mut Vec<PendingOp>,
-    search_failed: &mut Vec<Entity>,
+    _new_pos_searches: &mut Vec<TerrProbeJob>,
+    _search_failed: &mut Vec<Entity>,
 ) {
-    if curr_iteration_batch_i > 0 {
-        error!(target: "pos_search", "No more batches to search for {:?}", templ.opfilter_ref);
-        search_failed.push(pos_search.requester);
-        return;
-    }
-
+    let matrix_spec = templ.collect.then(|| PendingOpMatrixSpec {
+        min: chunk_pos.to_tilepos(),
+        matrix_size: ChunkPos::CHUNK_SIZE,
+        spacing: 1,
+    });
     for gpos in chunk_pos.get_tilepositions_within_chunk() {
         new_pending_ops.push(PendingOp {
             dimension_ref: pos_search.dimension_ref,
@@ -27,10 +27,9 @@ pub fn process_chunk_pattern(
             gpos,
             filtered_op: templ.opfilter_ref.0,
             requester: pos_search.requester,
-            max_emitted_results: templ.max_emitted_results,
+            max_emitted_results: u32::MAX,
             mark_last_success_in_batch: pos_search.collect_all_successes,
+            matrix_spec,
         });
     }
-
-    search_failed.push(pos_search.requester);
 }

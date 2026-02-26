@@ -1,5 +1,6 @@
 id: elf2
 size: (1, 1)
+tags: ["river_candidate"]
 
 let inlandness = continentness/(COMPL continent_threshold)
 let shore_proximity = COMPL inlandness * 0.9

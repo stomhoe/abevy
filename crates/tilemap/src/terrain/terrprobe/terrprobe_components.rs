@@ -40,12 +40,12 @@ pub struct TerrProbeTempl {
     pub sgc_blacklist: Vec<Entity>,
     pub sgc_required_tile_tags: HashSet<String>,
     pub probe_pattern: ProbePattern,
-    pub collect_all: bool,
     pub step_size: u16,
     pub max_batches: u16,
     pub iterations_per_batch: u16,
-    pub max_emitted_results: u16,
+    pub max_emitted_results: u32,
     pub min_result_distance: u16,
+    pub collect: bool,
 }
 
 impl Default for TerrProbeTempl {
@@ -57,12 +57,12 @@ impl Default for TerrProbeTempl {
             sgc_blacklist: Vec::new(),
             sgc_required_tile_tags: HashSet::default(),
             probe_pattern: ProbePattern::spiral(GlobalTilePos::default()),
-            collect_all: false,
             step_size: 1,
             max_batches: 1000,
             iterations_per_batch: 10000,
             max_emitted_results: 1,
             min_result_distance: 0,
+            collect: false,
         }
     }
 }
@@ -75,13 +75,13 @@ impl TerrProbeTempl {
         sgc_required_tile_tags: HashSet<String>,
         sgc_admitted_tiles_as_found_pos: Vec<EntityZeroRef>,
         probe_pattern: ProbePatternSeri,
-        collect_all: bool,
         concentric_sample_spacing: f32,
         step_size: u16,
         max_batches: u16,
         iterations_per_batch: u16,
-        max_emitted_results: u16,
+        max_emitted_results: u32,
         min_result_distance: u16,
+        collect: bool,
     ) -> Self {
         Self {
             opfilter_ref,
@@ -95,12 +95,12 @@ impl TerrProbeTempl {
                 ProbePatternSeri::Chunk => ProbePattern::chunk(ChunkPos::default()),
                 ProbePatternSeri::Region => ProbePattern::region(step_size),
             },
-            collect_all,
             step_size,
             max_batches,
             iterations_per_batch,
             max_emitted_results,
             min_result_distance,
+            collect,
         }
     }
 
@@ -112,7 +112,7 @@ impl TerrProbeTempl {
             min_result_distance: self.min_result_distance,
             structuregen_whitelist: self.sgc_whitelist.clone(),
             structuregen_blacklist: self.sgc_blacklist.clone(),
-            collect_all_successes: self.collect_all
+            collect_all_successes: self.collect
                 && matches!(self.probe_pattern, ProbePattern::Chunk(_) | ProbePattern::Region(_)),
             ..Default::default()
         }

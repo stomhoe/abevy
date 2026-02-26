@@ -5,8 +5,7 @@ use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::regioning::{
-    regioning_components::*,
+use crate::regioning::{    regioning_components::*,
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
