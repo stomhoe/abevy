@@ -105,7 +105,7 @@ impl SampledValues {
 }
 
 #[derive(Debug, Clone, Message)]
-pub struct SampledValueMatrixFound {
+pub struct SampledValuesCollected {
     pub requester: Entity,
     pub matrix: SampledValues,
 }

@@ -294,6 +294,10 @@ pub fn global_gen_settings_editor_window(
                 ui.label("World Frequency:");
                 ui.add(egui::Slider::new(&mut gen_settings.world_freq, 0.01..=0.20));
             });
+            ui.horizontal(|ui| {
+                ui.label("Tectonic Frequency:");
+                ui.add(egui::Slider::new(&mut gen_settings.tectonic_frequency, 0.01..=0.20));
+            });
 
             ui.horizontal(|ui| {
                 ui.label("Structure Build Timeout (s):");

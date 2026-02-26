@@ -68,13 +68,14 @@ pub fn regions_list_window(
     }
 
     // Get camera target dimension and position
-    let (camera_dim_ref, camera_chunk_pos, camera_region_pos) = camera_dimension.iter().next()
+    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos, camera_region_pos) = camera_dimension.iter().next()
         .map(|(dim_ref, transform)| {
             let chunk_pos = ChunkPos::from(transform.translation());
+            let tile_pos = GlobalTilePos::from(transform.translation().xy());
             let region_pos = chunk_pos.to_region_pos();
-            (Some(dim_ref), Some(chunk_pos), Some(region_pos))
+            (Some(dim_ref), Some(chunk_pos), Some(tile_pos), Some(region_pos))
         })
-        .unwrap_or((None, None, None));
+        .unwrap_or((None, None, None, None));
 
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = regions_by_dimension.keys().cloned().collect();
@@ -351,7 +352,12 @@ pub fn regions_list_window(
                     ui.colored_label(egui::Color32::RED, "No river debug data for this region yet.");
                     return;
                 };
-                render_river_sample_values_map(ui, *region_pos, river_info);
+                let camera_tile_in_region = if camera_dim_ref == Some(dim_ref) {
+                    camera_tile_pos
+                } else {
+                    None
+                };
+                render_river_sample_values_map(ui, *region_pos, camera_tile_in_region, river_info);
             });
         window_visible.river_sample_values = samples_open;
     }
@@ -460,6 +466,7 @@ fn render_river_tile_preview_map(
 fn render_river_sample_values_map(
     ui: &mut egui::Ui,
     region_pos: RegionPos,
+    camera_tile_pos: Option<GlobalTilePos>,
     river_info: &RiverRegionDebugInfo,
 ) {
     let size = egui::vec2(420.0, 420.0);
@@ -497,7 +504,26 @@ fn render_river_sample_values_map(
         painter.rect_filled(mark, 0.0, egui::Color32::RED);
     }
 
-    ui.label("Legend: color=sampled value (fixed range -1.0..2.0), red=failed chunk centers");
+    if let Some(camera_tile_pos) = camera_tile_pos
+        && camera_tile_pos.0.x >= min_tile.0.x
+        && camera_tile_pos.0.x < max_tile_excl.0.x
+        && camera_tile_pos.0.y >= min_tile.0.y
+        && camera_tile_pos.0.y < max_tile_excl.0.y
+    {
+        let nx = ((camera_tile_pos.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+        let ny = ((camera_tile_pos.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+        let px = rect.left() + nx * rect.width();
+        let py = rect.bottom() - ny * rect.height();
+        let marker = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(6.0, 6.0));
+        painter.rect_stroke(
+            marker,
+            0.0,
+            egui::Stroke::new(1.5, egui::Color32::YELLOW),
+            egui::StrokeKind::Outside,
+        );
+    }
+
+    ui.label("Legend: color=sampled value (fixed range -1.0..2.0), red=failed chunk centers, yellow=current camera tile");
 }
 
 fn sample_value_color(value: f32) -> egui::Color32 {

@@ -3,7 +3,7 @@ use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::Task}
 use common::common_components::{HashId, HashIdMap};
 
 use crate::terrain::{
-    terrprobe::terrprobe_messages::{SampledValueMatrixFound, SuitablePosFound, TerrProbeJob},
+    terrprobe::terrprobe_messages::{SampledValuesCollected, SuitablePosFound, TerrProbeJob},
     terrgen_components::Terrgen,
     terrgen_messages::PendingOp,
 };
@@ -37,7 +37,7 @@ pub struct TerrGenTileRequest {
 pub struct TerrGenOpTaskResult {
     pub new_pending_ops: Vec<PendingOp>,
     pub sampled_value_events: Vec<SuitablePosFound>,
-    pub sampled_value_matrix_events: Vec<SampledValueMatrixFound>,
+    pub sampled_value_matrix_events: Vec<SampledValuesCollected>,
     pub tile_requests: Vec<TerrGenTileRequest>,
     pub debug_samples: Vec<TerrGenDebugSample>,
 }
@@ -124,6 +124,8 @@ pub struct FnlSeri {
     pub id: String,
     #[serde(default = "default_frequency")]
     pub frequency: f32,
+    #[serde(default)]
+    pub tect: bool,
     #[serde(default = "default_noise_type")]
     pub noise_type: String,
     #[serde(default = "default_fractal_type")]
@@ -164,6 +166,8 @@ pub struct GlobalGenSettingsSeri {
     pub seed: i32,
     #[serde(default = "default_global_world_freq")]
     pub world_freq: f32,
+    #[serde(default = "default_global_tectonic_frequency")]
+    pub tectonic_frequency: f32,
     #[serde(default)]
     pub hot_reload_window_open_on_start: bool,
     #[serde(default = "default_global_structure_build_timeout_secs")]
@@ -176,6 +180,7 @@ impl GlobalGenSettingsSeri {
         GlobalGenSettings {
             seed: self.seed,
             world_freq: self.world_freq,
+            tectonic_frequency: self.tectonic_frequency,
             hot_reload_window_open_on_start: self.hot_reload_window_open_on_start,
             structure_build_timeout_secs: self.structure_build_timeout_secs,
             players_spawn_probe_id: common::common_components::StrId::trunc(&self.players_spawn_probe_id),
@@ -184,6 +189,7 @@ impl GlobalGenSettingsSeri {
 }
 
 fn default_global_world_freq() -> f32 { 0.02 }
+fn default_global_tectonic_frequency() -> f32 { 0.02 }
 fn default_global_structure_build_timeout_secs() -> f64 { 4.0 }
 fn default_players_spawn_probe_id() -> String { "suland".to_string() }
 fn default_frequency() -> f32 { 0.01 }

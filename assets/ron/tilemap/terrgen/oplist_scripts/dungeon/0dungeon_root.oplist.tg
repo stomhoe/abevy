@@ -3,8 +3,8 @@ roots: [dungeon]
 size: (1, 1)
 
 // Two different continentness variations
-let variant_a = +(fnl.conti_nofract, 0.0)
-let variant_b = +(fnl.conti_nofract.s2, 0.0)
+let variant_a = +(fnl.tect, 0.0)
+let variant_b = +(fnl.tect.s2, 0.0)
 
 // Calculate differences between variants
 let a_diff = -(variant_a, variant_b)

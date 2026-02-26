@@ -17,13 +17,18 @@ pub struct Terrgen;
 
 #[derive(Component, Default, Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[require(Terrgen, Prefix::trunc("Noise"), HotReload, )]
-pub struct FnlNoiseComp(pub FastNoiseLite);
+pub struct FnlNoiseComp(pub FastNoiseLite, pub bool);
 impl FnlNoiseComp {
     pub fn new(id: StrId) -> Self {
-        Self(FastNoiseLite::new(id))
+        Self(FastNoiseLite::new(id), false)
     }
     pub fn sample(&self, pos: GlobalTilePos, dim_hash_id: HashId, range: NoiseSampleRange, complementary: bool, extra_seed: i32, settings: &GlobalGenSettings) -> f32 {
-        self.0.sample(pos.into(), range, complementary, extra_seed.wrapping_add(settings.seed).wrapping_add(dim_hash_id.as_i32()), settings.world_freq)
+        let world_frequency = if self.1 {
+            settings.world_freq * settings.tectonic_frequency
+        } else {
+            settings.world_freq
+        };
+        self.0.sample(pos.into(), range, complementary, extra_seed.wrapping_add(settings.seed).wrapping_add(dim_hash_id.as_i32()), world_frequency)
     }
 }
 

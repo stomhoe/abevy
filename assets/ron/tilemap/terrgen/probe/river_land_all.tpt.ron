@@ -1,5 +1,5 @@
 (
-    id: "river_land_all_probe",
+    id: "river_region_probe",
     opfilter_id: "river_candidate",
     probe_pattern: "region",
     step_size: 64,

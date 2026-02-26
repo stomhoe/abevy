@@ -1,5 +1,6 @@
 (
-    id: "conti_nofract2",
+    id: "tect2",
+    tect: true,
     frequency: 0.01,
     noise_type: "OpenSimplex2",
     fractal_type: "None",

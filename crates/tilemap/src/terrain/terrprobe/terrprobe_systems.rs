@@ -26,7 +26,7 @@ pub struct SearchParams<'w, 's>
 {
     pub ew_pos_search: MessageWriter<'w, TerrProbeJob>,
     pub reader_search_successful: MessageReader<'w, 's, SuitablePosFound>,
-    pub reader_sampled_value_matrix: MessageReader<'w, 's, SampledValueMatrixFound>,
+    pub reader_sampled_value_matrix: MessageReader<'w, 's, SampledValuesCollected>,
     pub mreader_search_failed: MessageReader<'w, 's, SearchFailed>,
     pub pending_by_requester: Local<'s, EntityHashMap<Vec<(Entity, GlobalTilePos, DimensionRef, EntityZeroRef)>>>,
     pub requester_collect_all: Local<'s, EntityHashMap<bool>>,
@@ -44,7 +44,7 @@ impl<'w, 's> SearchParams<'w, 's> {
         self.mreader_search_failed.read()
     }
 
-    pub fn read_sampled_matrices(&mut self) -> impl Iterator<Item = &SampledValueMatrixFound> + '_ {
+    pub fn read_sampled_matrices(&mut self) -> impl Iterator<Item = &SampledValuesCollected> + '_ {
         self.reader_sampled_value_matrix.read()
     }
 
@@ -71,7 +71,7 @@ pub fn search_suitable_positions(
     mut cmd: Commands,
     mut terrain_probe: ResMut<Messages<TerrProbeJob>>, mut mwriter_search_failed: MessageWriter<SearchFailed>,
     mut mwriter_pending_ops: MessageWriter<PendingOp>, mut mreader_suitable_pos_found: MessageReader<SuitablePosFound>,
-    mut mreader_sampled_value_matrix_found: MessageReader<SampledValueMatrixFound>,
+    mut mreader_sampled_value_matrix_found: MessageReader<SampledValuesCollected>,
     terrprobe_query: Query<&TerrProbeTempl>,
     dimensions_query: Query<&DimensionRootOplist>,
     failed_search_oplist_filter_holder: Query<Entity, (With<FailedSearchOplistFilterHolder>)>,

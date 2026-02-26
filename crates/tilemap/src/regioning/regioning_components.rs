@@ -250,8 +250,8 @@ impl GridOfSgcs {
     }
     pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) -> Option<Entity> {
         let base = ui.text_style_height(&egui::TextStyle::Monospace);
-        let cell_w = (base * 0.21).clamp(1.5, 3.0);
-        let cell_h = (base * 0.21).clamp(1.5, 3.0);
+        let cell_w = (base * 0.105).clamp(0.75, 1.5);
+        let cell_h = (base * 0.105).clamp(0.75, 1.5);
         let width = REGION_SIZE_IN_CHUNKS.x() as usize;
         let height = REGION_SIZE_IN_CHUNKS.y() as usize;
         let grid_size = egui::vec2(width as f32 * cell_w, height as f32 * cell_h);

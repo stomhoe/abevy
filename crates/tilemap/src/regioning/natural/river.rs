@@ -14,13 +14,13 @@ use crate::{
     },
     terrain::terrprobe::{
         terrprobe_components::TerrProbeTempl,
-        terrprobe_messages::{SampledValueMatrixFound, TerrProbeJob},
+        terrprobe_messages::{SampledValuesCollected, TerrProbeJob},
         terrprobe_resources::TerrProbeTemplEntityMap,
     },
 };
 
 const RIVER: HashId = HashId::hash("river");
-const RELAND_ALL_PROBE_ID: &str = "river_land_all_probe";
+const RELAND_ALL_PROBE_ID: &str = "river_region_probe";
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct RiverProbeRequest {
@@ -98,7 +98,7 @@ pub fn claim_chunks_for_river_structures(
     terrprobe_query: Query<&TerrProbeTempl>,
     probe_requests: Query<(Entity, &RiverProbeRequest)>,
     mut terrprobe_writer: MessageWriter<TerrProbeJob>,
-    mut sampled_values_reader: MessageReader<SampledValueMatrixFound>,
+    mut sampled_values_reader: MessageReader<SampledValuesCollected>,
     mut claimlists: Query<&mut ClaimList>,
     mut river_debug: ResMut<RiverDebugData>,
     mut claim_state: RiverClaimState,

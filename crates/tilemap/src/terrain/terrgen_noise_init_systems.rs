@@ -132,7 +132,7 @@ pub fn init_noises(
             noise_ent,
             (
                 str_id.clone(),
-                FnlNoiseComp(noise),
+                FnlNoiseComp(noise, seri.tect),
                 ChildOf(holder),
             ),
         ));

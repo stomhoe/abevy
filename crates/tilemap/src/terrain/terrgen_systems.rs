@@ -9,7 +9,7 @@ use crate::{
     terrain::{
         terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
-        terrprobe::terrprobe_messages::{SampledValueMatrix, SampledValueMatrixFound, SuitablePosFound},
+        terrprobe::terrprobe_messages::{SampledValues, SampledValuesCollected, SuitablePosFound},
         terrgen_components::*,
         terrgen_messages::PendingOp,
         terrgen_resources::*,
@@ -70,7 +70,7 @@ pub fn process_pending_ops_and_collect_tiles(
     mut pending_ops_batch: Local<Vec<PendingOp>>,
     mut tile_requests: Local<Vec<TerrGenTileRequest>>,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
-    mut ewriter_sampled_value_matrix: MessageWriter<SampledValueMatrixFound>,
+    mut ewriter_sampled_value_matrix: MessageWriter<SampledValuesCollected>,
 ) {
     let Ok(gen_settings) = param_set.gen_settings.single() else {
         error!("Failed to get gen settings");
@@ -79,7 +79,7 @@ pub fn process_pending_ops_and_collect_tiles(
     pending_ops_batch.clear();
     tile_requests.clear();
     let mut sampled_value_events: Vec<SuitablePosFound> = Vec::new();
-    let mut sampled_value_matrix_events: Vec<SampledValueMatrixFound> = Vec::new();
+    let mut sampled_value_matrix_events: Vec<SampledValuesCollected> = Vec::new();
 
     let bucket_size = debug_grid.bucket_size_tiles.max(1);
     let capture_margin = (debug_grid.bucket_radius + debug_grid.capture_margin_buckets).max(4);
@@ -408,7 +408,7 @@ fn process_pending_ops_batch(
     let mut pending_queue = pending_ops;
     let mut emitted_per_probe: EntityHashMap<u32> = EntityHashMap::new();
     let mut last_success_idx_for_requester: EntityHashMap<usize> = EntityHashMap::new();
-    let mut sampled_matrices_by_requester: EntityHashMap<SampledValueMatrix> = EntityHashMap::new();
+    let mut sampled_matrices_by_requester: EntityHashMap<SampledValues> = EntityHashMap::new();
 
     while let Some(ev) = pending_queue.pop() { unsafe {
         upsert_sample_matrix_for_pending(&ev, &mut sampled_matrices_by_requester);
@@ -566,7 +566,7 @@ fn process_pending_ops_batch(
         }
     }
     for (requester, matrix) in sampled_matrices_by_requester.drain() {
-        result.sampled_value_matrix_events.push(SampledValueMatrixFound {
+        result.sampled_value_matrix_events.push(SampledValuesCollected {
             requester,
             matrix,
         });
@@ -587,7 +587,7 @@ fn process_compiled_branch_node(
     has_filter: bool,
     emitted_per_probe: &mut EntityHashMap<u32>,
     last_success_idx_for_requester: &mut EntityHashMap<usize>,
-    sampled_matrices_by_requester: &mut EntityHashMap<SampledValueMatrix>,
+    sampled_matrices_by_requester: &mut EntityHashMap<SampledValues>,
     result: &mut TerrGenOpTaskResult,
     capture_debug: bool,
 ) {
@@ -756,20 +756,20 @@ fn passes_filter_value(
 
 fn upsert_sample_matrix_for_pending(
     source_ev: &PendingOp,
-    sampled_matrices_by_requester: &mut EntityHashMap<SampledValueMatrix>,
+    sampled_matrices_by_requester: &mut EntityHashMap<SampledValues>,
 ) {
     let Some(spec) = source_ev.matrix_spec else {
         return;
     };
     sampled_matrices_by_requester
         .entry(source_ev.requester)
-        .or_insert_with(|| SampledValueMatrix::new(spec.min, spec.matrix_size, spec.spacing));
+        .or_insert_with(|| SampledValues::new(spec.min, spec.matrix_size, spec.spacing));
 }
 
 fn set_sample_matrix_value_for_pending(
     source_ev: &PendingOp,
     value: Option<f32>,
-    sampled_matrices_by_requester: &mut EntityHashMap<SampledValueMatrix>,
+    sampled_matrices_by_requester: &mut EntityHashMap<SampledValues>,
 ) {
     let Some(_) = source_ev.matrix_spec else {
         return;

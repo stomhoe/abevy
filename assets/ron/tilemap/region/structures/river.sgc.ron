@@ -8,7 +8,7 @@
     whitelisted_tags: ["river", "dungeon"],
     max_per_region: 1,
     args: {
-        "probe_template_id": ["river_land_all_probe"],
+        "probe_template_id": ["river_region_probe"],
         "river_tile_id": ["blue"],
         "river_land_threshold": ["-0.05"],
         "river_fallback_on_probe_failure": ["false"],
