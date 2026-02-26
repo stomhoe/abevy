@@ -40,6 +40,8 @@ pub struct TerrainProbeSeri {
     pub concentric_sample_spacing: f32,
     #[serde(default = "default_step_size")]
     pub step_size: u16,
+    #[serde(default = "default_region_multiplier")]
+    pub region_multiplier: f32,
     #[serde(default = "default_max_batches")]
     pub max_batches: u16,
     #[serde(default = "default_iterations_per_batch")]
@@ -53,6 +55,7 @@ pub struct TerrainProbeSeri {
 }
 
 fn default_step_size() -> u16 { 1 }
+fn default_region_multiplier() -> f32 { 1.0 }
 fn default_concentric_sample_spacing() -> f32 { 30.0 }
 fn default_min_val() -> f32 { f32::NEG_INFINITY }
 fn default_max_val() -> f32 { f32::INFINITY }

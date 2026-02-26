@@ -3,5 +3,6 @@
     opfilter_id: "river_candidate",
     probe_pattern: "region",
     step_size: 64,
+    region_multiplier: 2.0,
     collect: true,
 )

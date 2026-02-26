@@ -77,6 +77,7 @@ impl TerrProbeTempl {
         probe_pattern: ProbePatternSeri,
         concentric_sample_spacing: f32,
         step_size: u16,
+        region_multiplier: f32,
         max_batches: u16,
         iterations_per_batch: u16,
         max_emitted_results: u32,
@@ -93,7 +94,7 @@ impl TerrProbeTempl {
                 ProbePatternSeri::Spiral => ProbePattern::spiral(GlobalTilePos::default()),
                 ProbePatternSeri::Concentric => ProbePattern::concentric(step_size.max(1) as f32, concentric_sample_spacing),
                 ProbePatternSeri::Chunk => ProbePattern::chunk(ChunkPos::default()),
-                ProbePatternSeri::Region => ProbePattern::region(step_size),
+                ProbePatternSeri::Region => ProbePattern::region(step_size, region_multiplier),
             },
             step_size,
             max_batches,
@@ -113,7 +114,7 @@ impl TerrProbeTempl {
             structuregen_whitelist: self.sgc_whitelist.clone(),
             structuregen_blacklist: self.sgc_blacklist.clone(),
             collect_all_successes: self.collect
-                && matches!(self.probe_pattern, ProbePattern::Chunk(_) | ProbePattern::Region(_)),
+                && matches!(self.probe_pattern, ProbePattern::Chunk(_) | ProbePattern::Region { .. }),
             ..Default::default()
         }
     }

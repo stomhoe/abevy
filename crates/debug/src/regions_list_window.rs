@@ -479,9 +479,27 @@ fn render_river_sample_values_map(
         return;
     }
 
-    let (min_chunk, max_chunk_excl) = region_pos.chunk_bounds();
-    let min_tile = min_chunk.to_tilepos();
-    let max_tile_excl = max_chunk_excl.to_tilepos();
+    let (base_min_chunk, base_max_chunk_excl) = region_pos.chunk_bounds();
+    let base_min_tile = base_min_chunk.to_tilepos();
+    let base_max_tile_excl = base_max_chunk_excl.to_tilepos();
+
+    let mut min_tile = base_min_tile;
+    let mut max_tile_excl = base_max_tile_excl;
+    let mut min_sample_val = f32::INFINITY;
+    let mut max_sample_val = f32::NEG_INFINITY;
+    for (tile, sampled_val) in &river_info.sampled_points {
+        min_tile.0.x = min_tile.0.x.min(tile.0.x);
+        min_tile.0.y = min_tile.0.y.min(tile.0.y);
+        max_tile_excl.0.x = max_tile_excl.0.x.max(tile.0.x + 1);
+        max_tile_excl.0.y = max_tile_excl.0.y.max(tile.0.y + 1);
+        min_sample_val = min_sample_val.min(*sampled_val);
+        max_sample_val = max_sample_val.max(*sampled_val);
+    }
+    if !min_sample_val.is_finite() || !max_sample_val.is_finite() {
+        min_sample_val = 0.0;
+        max_sample_val = 0.0;
+    }
+
     let span_x = (max_tile_excl.0.x - min_tile.0.x).max(1) as f32;
     let span_y = (max_tile_excl.0.y - min_tile.0.y).max(1) as f32;
 
@@ -491,7 +509,7 @@ fn render_river_sample_values_map(
         let px = rect.left() + nx * rect.width();
         let py = rect.bottom() - ny * rect.height();
         let dot = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(2.0, 2.0));
-        painter.rect_filled(dot, 0.0, sample_value_color(*sampled_val));
+        painter.rect_filled(dot, 0.0, sample_value_color(*sampled_val, min_sample_val, max_sample_val));
     }
 
     for chunk in &river_info.failed_chunks {
@@ -523,15 +541,54 @@ fn render_river_sample_values_map(
         );
     }
 
-    ui.label("Legend: color=sampled value (fixed range -1.0..2.0), red=failed chunk centers, yellow=current camera tile");
+    let region_nx_min = ((base_min_tile.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 1.0);
+    let region_ny_min = ((base_min_tile.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 1.0);
+    let region_nx_max = ((base_max_tile_excl.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 1.0);
+    let region_ny_max = ((base_max_tile_excl.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 1.0);
+    let region_rect = egui::Rect::from_min_max(
+        egui::pos2(
+            rect.left() + region_nx_min * rect.width(),
+            rect.bottom() - region_ny_max * rect.height(),
+        ),
+        egui::pos2(
+            rect.left() + region_nx_max * rect.width(),
+            rect.bottom() - region_ny_min * rect.height(),
+        ),
+    );
+    painter.rect_stroke(
+        region_rect,
+        0.0,
+        egui::Stroke::new(1.0, egui::Color32::from_gray(180)),
+        egui::StrokeKind::Inside,
+    );
+
+    ui.label(format!(
+        "Legend: altitude color=inlandness [{:.3}..{:.3}], red=failed chunk centers, yellow=current camera tile, gray=selected region bounds",
+        min_sample_val,
+        max_sample_val
+    ));
 }
 
-fn sample_value_color(value: f32) -> egui::Color32 {
-    let t = ((value + 1.0) / 3.0).clamp(0.0, 1.0);
-    let r = lerp_u8(220, 45, t);
-    let g = lerp_u8(40, 220, t);
-    let b = lerp_u8(40, 200, t);
-    egui::Color32::from_rgb(r, g, b)
+fn sample_value_color(value: f32, min_val: f32, max_val: f32) -> egui::Color32 {
+    let t = if (max_val - min_val).abs() < f32::EPSILON {
+        0.5
+    } else {
+        ((value - min_val) / (max_val - min_val)).clamp(0.0, 1.0)
+    };
+    let (a, b, local_t) = if t < 0.25 {
+        ((10, 38, 112), (40, 140, 210), t / 0.25)
+    } else if t < 0.5 {
+        ((40, 140, 210), (52, 176, 90), (t - 0.25) / 0.25)
+    } else if t < 0.75 {
+        ((52, 176, 90), (194, 172, 76), (t - 0.5) / 0.25)
+    } else {
+        ((194, 172, 76), (240, 240, 240), (t - 0.75) / 0.25)
+    };
+    egui::Color32::from_rgb(
+        lerp_u8(a.0, b.0, local_t),
+        lerp_u8(a.1, b.1, local_t),
+        lerp_u8(a.2, b.2, local_t),
+    )
 }
 
 fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {

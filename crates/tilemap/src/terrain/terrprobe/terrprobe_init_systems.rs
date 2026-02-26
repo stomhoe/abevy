@@ -150,6 +150,7 @@ pub fn init_terrain_probes(
             parsed_probe_pattern,
             seri.concentric_sample_spacing,
             seri.step_size,
+            seri.region_multiplier,
             seri.max_batches,
             seri.iterations_per_batch,
             seri.max_emitted_results,
