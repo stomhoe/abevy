@@ -26,8 +26,8 @@ pub fn build_beings_from_refs(
             Has<BodyTreeRef>,
             Has<SexRef>,
             Option<&mut TagSet>,
-        ),
-        Or<(With<Being>, Changed<BitRef>, Changed<RaceRef>, Without<EntityZero>)>,
+        ),(With<Being>, Without<EntityZero>, Without<BeingInstTemplate>,
+            Or<(Changed<BitRef>, Changed<RaceRef>, )>,)
     >,
     bit_query: Query<(
         &BeingInstTemplate,
