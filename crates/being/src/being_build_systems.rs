@@ -2,7 +2,7 @@ use ::being_shared::{BeingInstTemplate, MappedSpritesToSample};
 use bevy::prelude::*;
 use common::{common_components::StrId, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_components::BelongsToFaction;
-use game_common::game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
+use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist}, game_common_timers::EntityZero};
 use sprite_shared::SampleSpriteEnts;
 
 use crate::{
@@ -27,7 +27,7 @@ pub fn build_beings_from_refs(
             Has<SexRef>,
             Option<&mut TagSet>,
         ),
-        Or<(Added<Being>, Changed<BitRef>, Changed<RaceRef>)>,
+        Or<(With<Being>, Changed<BitRef>, Changed<RaceRef>, Without<EntityZero>)>,
     >,
     bit_query: Query<(
         &BeingInstTemplate,

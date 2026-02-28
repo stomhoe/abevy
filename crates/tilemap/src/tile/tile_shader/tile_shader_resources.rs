@@ -45,28 +45,10 @@ pub struct ShaderWavySeri {
     pub debug_mode: f32,
 }
 
-#[derive(Deserialize, Asset, TypePath, Default)]
-pub struct ShaderTerrainBlendingSeri {
-    pub id: String,
-    pub img_path_a: String,
-    pub img_path_b: String,
-    pub mask_color: [f32; 4],
-    pub scale_a: f32,
-    pub scale_b: f32,
-    #[serde(default)]
-    pub blend_sharpness: f32,
-    #[serde(default = "default_noise_strength")]
-    pub noise_strength: f32,
-    #[serde(default = "default_jitter_strength")]
-    pub jitter_strength: f32,
-}
-fn default_noise_strength() -> f32 { 0.28 }
-fn default_jitter_strength() -> f32 { 0.015 }
 
 common::define_entity_map_systems!(
     TileShader,
-    ShaderRepeatTexSeri, "seri.tilemap.tile_shader.repeat_tex", "rep1shader.ron",
+    ShaderRepeatTexSeri, "seri.tilemap.tile_shader.repeat_tex", "monorepeat.ron",
     //PlaceholderSeri, "ron/tilemap/tiling/shader/voroshu", "voroshu.ron",
     ShaderWavySeri, "seri.tilemap.tile_shader.wavy", "wavy.ron",
-    ShaderTerrainBlendingSeri, "seri.tilemap.tile_shader.terrain_blending", "terrain_blending.ron",
 );
