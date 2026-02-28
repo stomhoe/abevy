@@ -1,3 +1,4 @@
+use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
@@ -13,6 +14,10 @@ pub struct ShaderRepeatTexSeri {
     pub scale: f32,
     pub mask_color: [f32; 4],
     pub tint_color: Option<[f32; 4]>,
+    #[serde(default)]
+    pub blend_blacklist: HashSet<String>,
+    #[serde(default)]
+    pub blend_whitelist: HashSet<String>,
 }
 
 #[derive(Deserialize, Asset, TypePath, Default)]
@@ -41,19 +46,27 @@ pub struct ShaderWavySeri {
 }
 
 #[derive(Deserialize, Asset, TypePath, Default)]
-pub struct ShaderRockyTerrainSeri {
+pub struct ShaderTerrainBlendingSeri {
     pub id: String,
-    pub roughness: f32,
-    pub scale: f32,
-    pub height_scale: f32,
-    pub color_base: [f32; 4],
-    pub color_shadow: [f32; 4],
+    pub img_path_a: String,
+    pub img_path_b: String,
+    pub mask_color: [f32; 4],
+    pub scale_a: f32,
+    pub scale_b: f32,
+    #[serde(default)]
+    pub blend_sharpness: f32,
+    #[serde(default = "default_noise_strength")]
+    pub noise_strength: f32,
+    #[serde(default = "default_jitter_strength")]
+    pub jitter_strength: f32,
 }
+fn default_noise_strength() -> f32 { 0.28 }
+fn default_jitter_strength() -> f32 { 0.015 }
 
 common::define_entity_map_systems!(
     TileShader,
     ShaderRepeatTexSeri, "seri.tilemap.tile_shader.repeat_tex", "rep1shader.ron",
     //PlaceholderSeri, "ron/tilemap/tiling/shader/voroshu", "voroshu.ron",
     ShaderWavySeri, "seri.tilemap.tile_shader.wavy", "wavy.ron",
-    ShaderRockyTerrainSeri, "seri.tilemap.tile_shader.rocky", "rocky.ron",
+    ShaderTerrainBlendingSeri, "seri.tilemap.tile_shader.terrain_blending", "terrain_blending.ron",
 );

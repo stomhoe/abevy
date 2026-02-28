@@ -60,10 +60,9 @@ pub struct ProcessTilesPreParams<'w, 's> {
     ), ()>,
     pub image_size_map: Res<'w, ImageSizeMap>,
 
-    pub texture_overlay_mat: ResMut<'w, Assets<MonoRepeatTextureOverlayMat>>,
-    pub voronoi_mat: ResMut<'w, Assets<VoronoiTextureOverlayMat>>,
+    pub texture_overlay_mat: ResMut<'w, Assets<RepeatTexMat>>,
     pub wavy_mat: ResMut<'w, Assets<WavyMat>>,
-    pub rocky_mat: ResMut<'w, Assets<RockyTerrainMat>>,
+    pub terrain_blending_mat: ResMut<'w, Assets<TerrainBlendingMat>>,
     pub chunkrange: Res<'w, AaChunkRangeSettings>,
 
     pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
@@ -272,7 +271,7 @@ pub fn process_tiles_pre(
     let mut default_mats = Vec::with_capacity(changed_structs.len());
     let mut wavy_mats = Vec::with_capacity(changed_structs.len());
     let mut texture_overlay_mats = Vec::with_capacity(changed_structs.len());
-    let mut rocky_mats = Vec::with_capacity(changed_structs.len());
+    let mut terrain_blending_mats = Vec::with_capacity(changed_structs.len());
 
     for mapkey in changed_structs.drain() {
         let Some(mapstruct) = tmap_map.0.get_mut(&mapkey) else {
@@ -298,18 +297,13 @@ pub fn process_tiles_pre(
                     let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(handle));
                     texture_overlay_mats.push((tmap_ent, material));
                 }
-                TileShader::Voronoi(handle) => {
-                    let material = MaterialTilemapHandle::from(params.voronoi_mat.add(handle));
-                    cmd.entity(tmap_ent).try_insert(material);
-                }
                 TileShader::Wavy(handle) => {
                     let material = MaterialTilemapHandle::from(params.wavy_mat.add(handle));
                     wavy_mats.push((tmap_ent, material.clone()));
                 }
-                TileShader::TwoTexRepeat(_handle) => todo!(),
-                TileShader::RockyTerrain(rocky_terrain_mat) => {
-                    let material = MaterialTilemapHandle::from(params.rocky_mat.add(rocky_terrain_mat));
-                    rocky_mats.push((tmap_ent, material.clone()));
+                TileShader::TerrainBlending(terrain_blending_mat) => {
+                    let material = MaterialTilemapHandle::from(params.terrain_blending_mat.add(terrain_blending_mat));
+                    terrain_blending_mats.push((tmap_ent, material.clone()));
                 }
             };
 
@@ -321,7 +315,7 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch(default_mats);
     cmd.try_insert_batch(texture_overlay_mats);
     cmd.try_insert_batch(wavy_mats);
-    cmd.try_insert_batch(rocky_mats);
+    cmd.try_insert_batch(terrain_blending_mats);
 }
 #[allow(clippy::too_many_arguments)]
 fn process_tile_into_corresponding_tilemap(

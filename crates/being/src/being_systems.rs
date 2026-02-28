@@ -1,6 +1,7 @@
 use ::being_shared::*;
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use camera::camera_components::CameraTarget;
+use common::log_targets::{BEING_CONTROL, BEING_SYSTEM};
 use faction::faction_components::*;
 use game_common::game_common_components::{EntityZeroRef};
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
@@ -10,7 +11,7 @@ use player::player_components::*;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings, tile::tile_components::*};
 use ::tilemap_shared::*;
 
-use crate::{being_components::*,};
+use crate::{being_components::*};
 
 #[allow(unused_parens)]
 // A L CENTRO DE LA BASE VA A HABER Q PONERLE UNO DE ALGUNA FORMA
@@ -36,38 +37,57 @@ pub fn on_control_change(
 ) {
     for being_ent in removed_controlled_by.read() {
         commands.entity(being_ent).try_remove::<ComputedLocally>();
+        commands.entity(being_ent).try_remove::<PlayerControlled>();
+        commands.entity(being_ent).try_remove::<CameraTarget>();
     }
     let Ok((self_entity, is_host)) = self_player.single() else {
-        error!("No self player found when trying to update control changes");
+        error!(target: BEING_SYSTEM, "No self player found when trying to update control changes");
         return;
     };
     query.iter().for_each(|(being_ent, controlled_by, is_camera_target)| {
         if controlled_by.client_ent == self_entity {
-            info!(target: "being_control", "debug {:?} is now controlled locally by self", being_ent);
+            info!(target: BEING_CONTROL, "debug {:?} is now controlled locally by self", being_ent);
             commands.entity(being_ent).try_insert_if_new((ComputedLocally, ActivatingChunks::new(&chunk_range)));
             if controlled_by.human_input {//PROVISORIO
-                debug!(target: "being_control", "Entity {:?} is now a CameraTarget", being_ent);
-                commands.entity(being_ent).try_insert((CameraTarget::default()));
+                debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget", being_ent);
+                commands.entity(being_ent).try_insert((PlayerControlled, CameraTarget::default()));
             } else {
-                debug!(target: "being_control", "Entity {:?} is no longer a CameraTarget", being_ent);
+                debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
                 commands.entity(being_ent).try_remove::<CameraTarget>();
+                commands.entity(being_ent).try_remove::<PlayerControlled>();
             }//ENDOF PROVISORIO
-            if is_host {
-                commands.entity(being_ent).try_remove::<ControlledByClient>();
-            }
+
         } else {
             commands.entity(being_ent).try_remove::<ComputedLocally>();
+            commands.entity(being_ent).try_remove::<CameraTarget>();
             if !is_host{
+                commands.entity(being_ent).try_remove::<PlayerControlled>();
                 if !is_camera_target{
                     commands.entity(being_ent).try_remove::<ActivatingChunks>();
                 }
             }
             else{
-                commands.entity(being_ent).try_insert(ControlledByClient);
+                commands.entity(being_ent).try_insert(PlayerControlled);
             }
         }
     });
 
+}
+
+pub fn assign_uncontrolled_beings_to_host(
+    mut commands: Commands,
+    self_player: Query<Entity, (With<Mine>, With<Player>, With<HostPlayer>)>,
+    beings: Query<Entity, (With<Being>, Without<ControlledBy>)>,
+) {
+    let Ok(self_entity) = self_player.single() else {
+        return;
+    };
+    for being_ent in beings.iter() {
+        commands.entity(being_ent).try_insert(ControlledBy {
+            client_ent: self_entity,
+            human_input: false,
+        });
+    }
 }
 
 #[allow(unused_parens)]

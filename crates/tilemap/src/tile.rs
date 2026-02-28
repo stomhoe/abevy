@@ -8,9 +8,12 @@ use sprite::AcSpriteSystems;
 use bevy::prelude::*;
 
 use crate::tile::{
-    portal_init_systems::*, tile_components::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
+    portal_init_systems::*, tile_adj_retex_systems::*, tile_components::*, tile_despawn_systems::*, tile_flip_rotate_systems::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
 } ;
 pub mod tile_systems;
+pub mod tile_adj_retex_systems;
+pub mod tile_despawn_systems;
+pub mod tile_flip_rotate_systems;
 pub mod tile_init_systems;
 pub mod portal_init_systems;
 pub mod tile_sampler_init_systems;
@@ -45,7 +48,7 @@ pub fn plugin(app: &mut App) {
         validate_portal_recipes,
         safe_despawn_tile_at,
         reckeck_adjacency_for,
-        tile_adjacency_retexturing_system,//.in_set(PreChunkDespawnSystems),
+        tile_adjacency_dependent_retexturing_system,//.in_set(PreChunkDespawnSystems),
 
     ))
     .add_observer(on_spritetile_despawn)

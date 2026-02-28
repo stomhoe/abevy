@@ -509,7 +509,8 @@ fn process_pending_ops_batch(
                 && passes_value_filter
             {
                 if ev.matrix_spec.is_some() {
-                    set_sample_matrix_value_for_pending(&ev, Some(output_value), &mut sampled_matrices_by_requester);
+                    let sampled_value = sampled_value_from_filter(Some(filter), &frame.variables, output_value);
+                    set_sample_matrix_value_for_pending(&ev, Some(sampled_value), &mut sampled_matrices_by_requester);
                 } else {
                     let emitted = emitted_per_probe.entry(ev.requester).or_insert(0);
                     if *emitted < ev.max_emitted_results {
@@ -634,7 +635,8 @@ fn process_compiled_branch_node(
         && passes_value_filter
     {
         if source_ev.matrix_spec.is_some() {
-            set_sample_matrix_value_for_pending(source_ev, Some(output_value), sampled_matrices_by_requester);
+            let sampled_value = sampled_value_from_filter(Some(filter), &computed_vars, output_value);
+            set_sample_matrix_value_for_pending(source_ev, Some(sampled_value), sampled_matrices_by_requester);
         } else {
             let emitted = emitted_per_probe.entry(source_ev.requester).or_insert(0);
             if *emitted < source_ev.max_emitted_results {
@@ -737,21 +739,25 @@ fn passes_filter_value(
         if let Ok(val) = computed_vars.get(var_name_hash) {
             return (filter.min_val..=filter.max_val).contains(val);
         }
-
-        // Be tolerant when the requested variable is missing:
-        // - for unbounded filters, let tag matching decide.
-        // - otherwise, fallback to output_value range.
-        if filter.min_val.is_infinite()
-            && filter.min_val.is_sign_negative()
-            && filter.max_val.is_infinite()
-            && filter.max_val.is_sign_positive()
-        {
-            return true;
-        }
-        return (filter.min_val..=filter.max_val).contains(&output_value);
+        return false;
     }
 
     (filter.min_val..=filter.max_val).contains(&output_value)
+}
+
+#[inline]
+fn sampled_value_from_filter(
+    filter: Option<&OpFilter>,
+    computed_vars: &HashIdMap<f32>,
+    output_value: f32,
+) -> f32 {
+    if let Some(filter) = filter
+        && let Some(var_name_hash) = filter.var_name_hash
+        && let Ok(val) = computed_vars.get(var_name_hash)
+    {
+        return *val;
+    }
+    output_value
 }
 
 fn upsert_sample_matrix_for_pending(

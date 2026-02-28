@@ -1,0 +1,237 @@
+use ::being_shared::{BeingInstTemplate, MappedSpritesToSample};
+use bevy::prelude::*;
+use common::{common_components::StrId, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
+use faction::faction_components::BelongsToFaction;
+use game_common::game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
+use sprite_shared::SampleSpriteEnts;
+
+use crate::{
+    being_components::Being,
+    being_inst_template::being_inst_template_resources::{BitRef},
+    body::{BodyTreeRef, body_sampler::body_sampler_resources::BodyWeightedSamplerRef},
+    race::race_components::{Race, SexesSampler, SexSizeVariationsBySex},
+    race::race_resources::RaceRef,
+    sex::sex_resources::SexRef,
+};
+
+pub fn build_beings_from_refs(
+    mut cmd: Commands,
+    mut beings_query: Query<
+        (
+            Entity,
+            Option<&BitRef>,
+            Option<&RaceRef>,
+            Has<Being>,
+            Has<SampleSpriteEnts>,
+            Has<BodyTreeRef>,
+            Has<SexRef>,
+            Option<&mut TagSet>,
+        ),
+        Or<(Added<Being>, Changed<BitRef>, Changed<RaceRef>)>,
+    >,
+    bit_query: Query<(
+        &BeingInstTemplate,
+        Option<&SampleSpriteEnts>,
+        Option<&RaceRef>,
+        Option<&BodyWeightedSamplerRef>,
+        Option<&BelongsToFaction>,
+        Option<&CappedNormalDist>,
+    )>,
+    race_query: Query<(
+        Option<&SexesSampler>,
+        Option<&MappedSpritesToSample>,
+        Option<&BodyWeightedSamplerRef>,
+        Option<&BodyTreeRef>,
+    ), With<Race>>,
+    str_ids: Query<&StrId>,
+) {
+    if beings_query.is_empty() {
+        return;
+    }
+
+    let mut rng = rand::rng();
+    let mut sample_sprites_to_ins: Vec<(Entity, SampleSpriteEnts)> = Vec::new();
+    let mut race_refs_to_ins: Vec<(Entity, RaceRef)> = Vec::new();
+    let mut body_sampler_to_ins: Vec<(Entity, BodyWeightedSamplerRef)> = Vec::new();
+    let mut belongs_to_fac_refs_to_ins: Vec<(Entity, BelongsToFaction)> = Vec::new();
+    let mut sex_refs_to_ins: Vec<(Entity, SexRef)> = Vec::new();
+
+    for (being_ent, bit_ref, race_ref, has_being, has_sample_sprites, has_body_tree_ref, has_sex_ref, tags) in beings_query.iter_mut() {
+        if !has_being {
+            cmd.entity(being_ent).try_insert(Being);
+        }
+
+        let mut effective_race_ref = race_ref.copied();
+        let mut has_sample_sprites_now = has_sample_sprites;
+        let mut has_body_tree_ref_now = has_body_tree_ref;
+
+        if let Some(bit_ref) = bit_ref {
+            let Ok((template, sample_sprites, bit_race_ref, sample_body_body_tree, belongs_to_fac, _norm_dist)) = bit_query.get(bit_ref.0) else {
+                warn!(target: BEING_TEMPLATE_BUILD, "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
+                continue;
+            };
+            if !has_sample_sprites_now && let Some(sample_sprites) = sample_sprites {
+                let sample_sprites = sample_sprites.clone();
+                sample_sprites_to_ins.push((being_ent, sample_sprites));
+                has_sample_sprites_now = true;
+            }
+            if let Some(sample_body_body_tree) = sample_body_body_tree {
+                body_sampler_to_ins.push((being_ent, *sample_body_body_tree));
+                has_body_tree_ref_now = true;
+            }
+            if let Some(belongs_to_fac) = belongs_to_fac {
+                let belongs_to_fac = belongs_to_fac.clone();
+                belongs_to_fac_refs_to_ins.push((being_ent, belongs_to_fac));
+            }
+            if let Some(bit_race_ref) = bit_race_ref {
+                if race_ref.map(|r| r.0) != Some(bit_race_ref.0) {
+                    race_refs_to_ins.push((being_ent, *bit_race_ref));
+                }
+                effective_race_ref = Some(*bit_race_ref);
+            }
+            if template.extra_health_multiplier != 1.0 {
+                // add in a modifier
+            }
+        }
+
+        let mut selected_sex_ent = None;
+        if let Some(race_ref) = effective_race_ref {
+            let Ok((sexes_sampler, mapped_sprites, body_weighted_sampler_ref, body_tree_ref)) = race_query.get(race_ref.0) else {
+                warn!(target: BEING_SYSTEM, "RaceRef entity {:?} could not be resolved to a Race entity", race_ref.0);
+                continue;
+            };
+
+            if !has_body_tree_ref_now {
+                if let Some(&body_tree_ref) = body_tree_ref {
+                    cmd.entity(being_ent).try_insert_if_new(body_tree_ref);
+                } else if let Some(&body_sampler_ref) = body_weighted_sampler_ref {
+                    cmd.entity(being_ent).try_insert(body_sampler_ref);
+                }
+            }
+
+            if !has_sex_ref {
+                if let Some(sexes_sampler) = sexes_sampler {
+                    selected_sex_ent = sexes_sampler.0.sample_with_rng(&mut rng);
+                    if let Some(sex_ent) = selected_sex_ent {
+                        sex_refs_to_ins.push((being_ent, SexRef(sex_ent)));
+                    }
+                }
+            }
+
+            if !has_sample_sprites_now {
+                if let Some(mapped_sprites) = mapped_sprites {
+                    if !mapped_sprites.0.is_empty() {
+                        let selected_sex_ent = selected_sex_ent.or_else(|| mapped_sprites.0.keys().next().copied());
+                        let Some(sex_ent) = selected_sex_ent else {
+                            warn!(target: BEING_SYSTEM, "Race entity {:?} has no selectable sex for sprite sampling", race_ref.0);
+                            continue;
+                        };
+                        let Some(sample) = mapped_sprites.0.get(&sex_ent) else {
+                            warn!(target: BEING_SYSTEM, "Race entity {:?} has no sprite mapping for sex entity {:?}", race_ref.0, sex_ent);
+                            continue;
+                        };
+                        sample_sprites_to_ins.push((being_ent, sample.clone()));
+                    }
+                }
+            }
+        }
+
+        let race_tag = effective_race_ref.and_then(|race_ref| str_ids.get(race_ref.0).ok());
+        let bit_tag = bit_ref.and_then(|bit_ref| str_ids.get(bit_ref.0).ok());
+        let Some(tag) = race_tag.or(bit_tag) else {
+            continue;
+        };
+        let Some(mut tags) = tags else {
+            let mut new_tags = TagSet::default();
+            new_tags.insert(tag.as_str());
+            if let Some(bit_tag) = bit_tag {
+                new_tags.insert(bit_tag.as_str());
+            }
+            if let Some(race_tag) = race_tag {
+                new_tags.insert(race_tag.as_str());
+            }
+            cmd.entity(being_ent).try_insert(new_tags);
+            continue;
+        };
+        tags.insert(tag.as_str());
+        if let Some(bit_tag) = bit_tag {
+            tags.insert(bit_tag.as_str());
+        }
+        if let Some(race_tag) = race_tag {
+            tags.insert(race_tag.as_str());
+        }
+    }
+
+    cmd.try_insert_batch(sample_sprites_to_ins);
+    cmd.try_insert_batch(race_refs_to_ins);
+    cmd.try_insert_batch(body_sampler_to_ins);
+    cmd.try_insert_batch_if_new(belongs_to_fac_refs_to_ins);
+    cmd.try_insert_batch_if_new(sex_refs_to_ins);
+}
+
+#[allow(unused_parens)]
+pub fn sample_sprite_normal_variations(
+    mut cmd: Commands,
+    beings_to_sample: Query<
+        (Entity, Option<&BitRef>, Option<&RaceRef>, Option<&SexRef>),
+        (Or<(Changed<BitRef>, Changed<RaceRef>)>, With<Being>),
+    >,
+    race_sex_size_dists: Query<&SexSizeVariationsBySex, With<Race>>,
+    dists_query: Query<(
+        Option<&SpriteGlobalNormalDist>,
+        Option<&SpriteHoriNormalDist>,
+        Option<&SpriteVertNormalDist>,
+    )>,
+) {
+    let mut rng = rand::rng();
+    let mut global_dist_results = Vec::new();
+    let mut hori_dist_results = Vec::new();
+    let mut vert_dist_results = Vec::new();
+
+    for (being_ent, bit_ref, race_ref, sex_ref, ) in beings_to_sample.iter() {
+        let mut global_dist: Option<&SpriteGlobalNormalDist> = None;
+        let mut hori_dist: Option<&SpriteHoriNormalDist> = None;
+        let mut vert_dist: Option<&SpriteVertNormalDist> = None;
+
+        if let Some(bit_ref) = bit_ref {
+            if let Ok((bit_global, bit_hori, bit_vert, )) = dists_query.get(bit_ref.0) {
+                if bit_global.is_some() { global_dist = bit_global; }
+                if bit_hori.is_some() { hori_dist = bit_hori; }
+                if bit_vert.is_some() { vert_dist = bit_vert; }
+            }
+        }
+
+        if let Some(race_ref) = race_ref {
+            if let Some(sex_ref) = sex_ref {
+                if let Ok(sex_dists) = race_sex_size_dists.get(race_ref.0) {
+                    if let Some(dist) = sex_dists.0.get(&sex_ref.0) {
+                        global_dist = Some(dist);
+                    }
+                }
+            }
+            if let Ok((race_global, race_hori, race_vert, )) = dists_query.get(race_ref.0) {
+                if global_dist.is_none() { global_dist = race_global; }
+                if hori_dist.is_none() { hori_dist = race_hori; }
+                if vert_dist.is_none() { vert_dist = race_vert; }
+            }
+        }
+
+        if let Some(global_dist) = global_dist {
+            let result = global_dist.sample(&mut rng);
+            global_dist_results.push((being_ent, result));
+        }
+
+        if let Some(hori_dist) = hori_dist {
+            let result = hori_dist.sample(&mut rng);
+            hori_dist_results.push((being_ent, result));
+        }
+
+        if let Some(vert_dist) = vert_dist {
+            let result = vert_dist.sample(&mut rng);
+            vert_dist_results.push((being_ent, result));
+        }
+    }
+    cmd.try_insert_batch(global_dist_results);
+    cmd.try_insert_batch(hori_dist_results);
+    cmd.try_insert_batch(vert_dist_results);
+}

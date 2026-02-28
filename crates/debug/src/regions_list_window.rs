@@ -17,6 +17,7 @@ pub fn regions_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
+    mut regions_list_was_open: Local<bool>,
     region_query: Query<(
         Entity,
         &Region,
@@ -76,6 +77,17 @@ pub fn regions_list_window(
             (Some(dim_ref), Some(chunk_pos), Some(tile_pos), Some(region_pos))
         })
         .unwrap_or((None, None, None, None));
+
+    let opening_now = window_visible.regions_list && !*regions_list_was_open;
+    if opening_now
+        && let (Some(cam_dim_ref), Some(cam_region_pos)) = (camera_dim_ref, camera_region_pos)
+        && let Some((entity, ..)) = region_query.iter().find(|(_, _, dim_ref, region_pos, ..)| {
+            *dim_ref == cam_dim_ref && **region_pos == cam_region_pos
+        })
+    {
+        selected_entities.selected_regions.clear();
+        selected_entities.selected_regions.insert(entity);
+    }
 
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = regions_by_dimension.keys().cloned().collect();
@@ -187,10 +199,6 @@ pub fn regions_list_window(
                                 selected_entities.selected_river_debug_region = Some(*entity);
                                 window_visible.river_debug = true;
                             }
-                            if ui.button("River Samples").clicked() {
-                                selected_entities.selected_river_debug_region = Some(*entity);
-                                window_visible.river_sample_values = true;
-                            }
                         });
                         ui.separator();
                         ui.horizontal(|ui| {
@@ -252,14 +260,15 @@ pub fn regions_list_window(
             }
         });
     window_visible.regions_list = open;
+    *regions_list_was_open = window_visible.regions_list;
 
-    let mut open_sample_values_from_river = false;
     if window_visible.river_debug {
         let mut river_open = window_visible.river_debug;
         egui::Window::new("River Debug")
             .default_pos([screen_rect.left() + 24.0, screen_rect.top() + 120.0])
             .resizable(true)
             .movable(true)
+            .vscroll(true)
             .open(&mut river_open)
             .show(ctx, |ui| {
                 let Some(region_ent) = selected_entities.selected_river_debug_region else {
@@ -292,137 +301,85 @@ pub fn regions_list_window(
                     ui.label(format!("river tiles: {}", river_info.river_tiles.len()));
                     ui.label(format!("sampled points: {}", river_info.sampled_points.len()));
                 });
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("River Chunk Map").strong());
-                    if ui.button("Sample Values Map").clicked() {
-                        open_sample_values_from_river = true;
-                    }
-                });
-                render_river_chunk_debug_map(ui, *region_pos, camera_chunk_pos, river_info);
+                egui::CollapsingHeader::new("River Tile Preview")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        render_river_tile_preview_map(ui, *region_pos, river_info);
+                    });
                 ui.separator();
-                ui.label(egui::RichText::new("River Tile Preview").strong());
-                render_river_tile_preview_map(ui, *region_pos, river_info);
+
+                egui::CollapsingHeader::new("River Sample Values")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.checkbox(
+                                &mut selected_entities.river_samples_show_river_overlay,
+                                "Overlay river tiles (blue)",
+                            );
+                            ui.checkbox(
+                                &mut selected_entities.river_samples_show_none_points,
+                                "Show None points (pink)",
+                            );
+                            ui.checkbox(
+                                &mut selected_entities.river_samples_show_sources,
+                                "Show sources",
+                            );
+                            ui.checkbox(
+                                &mut selected_entities.river_samples_show_mouths,
+                                "Show mouths",
+                            );
+                            ui.checkbox(
+                                &mut selected_entities.river_samples_show_camera_tile,
+                                "Show camera tile",
+                            );
+                            ui.checkbox(
+                                &mut selected_entities.river_samples_show_region_bounds,
+                                "Show region bounds",
+                            );
+                            ui.checkbox(
+                                &mut selected_entities.river_samples_show_failed_centers,
+                                "Show failed centers",
+                            );
+                        });
+                        let camera_tile_in_region = if camera_dim_ref == Some(dim_ref) {
+                            camera_tile_pos
+                        } else {
+                            None
+                        };
+                        render_river_sample_values_map(
+                            ui,
+                            *region_pos,
+                            camera_tile_in_region,
+                            river_info,
+                            selected_entities.river_samples_show_river_overlay,
+                            selected_entities.river_samples_show_sources,
+                            selected_entities.river_samples_show_mouths,
+                            selected_entities.river_samples_show_camera_tile,
+                            selected_entities.river_samples_show_region_bounds,
+                            selected_entities.river_samples_show_failed_centers,
+                            selected_entities.river_samples_show_none_points,
+                        );
+                    });
                 ui.separator();
-                ui.label(egui::RichText::new("Recent Events").strong());
-                for event in river_info.recent_events.iter().rev().take(24) {
-                    let color = if event.is_failure {
-                        egui::Color32::RED
-                    } else {
-                        egui::Color32::LIGHT_BLUE
-                    };
-                    ui.label(egui::RichText::new(format!(
-                        "offer {} @ {:?}: {}",
-                        event.offer_i, event.start_chunk, event.reason
-                    )).color(color));
-                }
+
+                egui::CollapsingHeader::new("Recent Events")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        for event in river_info.recent_events.iter().rev().take(24) {
+                            let color = if event.is_failure {
+                                egui::Color32::RED
+                            } else {
+                                egui::Color32::LIGHT_BLUE
+                            };
+                            ui.label(egui::RichText::new(format!(
+                                "offer {} @ {:?}: {}",
+                                event.offer_i, event.start_chunk, event.reason
+                            )).color(color));
+                        }
+                    });
             });
         window_visible.river_debug = river_open;
     }
-    if open_sample_values_from_river {
-        window_visible.river_sample_values = true;
-    }
-
-    if window_visible.river_sample_values {
-        let mut samples_open = window_visible.river_sample_values;
-        egui::Window::new("River Sample Values")
-            .default_pos([screen_rect.left() + 430.0, screen_rect.top() + 120.0])
-            .resizable(true)
-            .movable(true)
-            .open(&mut samples_open)
-            .show(ctx, |ui| {
-                let Some(region_ent) = selected_entities.selected_river_debug_region else {
-                    ui.colored_label(egui::Color32::RED, "No region selected. Use River Samples button in Regions Grid.");
-                    return;
-                };
-                let Ok((_, _, dim_ref, region_pos, name, _, _, _, _, _, _, _, _)) = region_query.get(region_ent) else {
-                    ui.colored_label(egui::Color32::RED, "Selected region no longer exists.");
-                    return;
-                };
-                let title_name = name.map(|n| n.to_string()).unwrap_or_else(|| "unnamed".to_string());
-                ui.label(format!("Region: {} ({:?})", title_name, region_pos));
-                ui.label(format!("Entity: {:?}", region_ent));
-                ui.label(format!("Dimension: {:?}", dim_ref));
-                ui.separator();
-
-                let Some(river_debug) = river_debug.as_ref() else {
-                    ui.colored_label(egui::Color32::RED, "River debug resource unavailable.");
-                    return;
-                };
-                let Some(river_info) = river_debug.0.get(&(*dim_ref, *region_pos)) else {
-                    ui.colored_label(egui::Color32::RED, "No river debug data for this region yet.");
-                    return;
-                };
-                let camera_tile_in_region = if camera_dim_ref == Some(dim_ref) {
-                    camera_tile_pos
-                } else {
-                    None
-                };
-                render_river_sample_values_map(ui, *region_pos, camera_tile_in_region, river_info);
-            });
-        window_visible.river_sample_values = samples_open;
-    }
-}
-
-fn render_river_chunk_debug_map(
-    ui: &mut egui::Ui,
-    region_pos: RegionPos,
-    camera_chunk_pos: Option<ChunkPos>,
-    river_info: &RiverRegionDebugInfo,
-) {
-    let cell = 10.0;
-    let width = REGION_SIZE_IN_CHUNKS.x() as usize;
-    let height = REGION_SIZE_IN_CHUNKS.y() as usize;
-    let size = egui::vec2(width as f32 * cell, height as f32 * cell);
-    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
-    let painter = ui.painter_at(rect);
-
-    for y in 0..height {
-        for x in 0..width {
-            let chunk = region_pos.to_chunkpos() + IVec2::new(x as i32, y as i32);
-            let mut fill = egui::Color32::from_rgb(26, 26, 26);
-            if river_info.claimed_chunks.contains(&chunk) {
-                fill = egui::Color32::from_rgb(30, 120, 220);
-            }
-            if river_info.active_probe_chunks.contains(&chunk) {
-                fill = egui::Color32::from_rgb(220, 140, 30);
-            }
-            if river_info.failed_chunks.contains(&chunk) {
-                fill = egui::Color32::from_rgb(210, 30, 30);
-            }
-
-            let draw_y = height - 1 - y;
-            let r = egui::Rect::from_min_size(
-                egui::pos2(rect.left() + x as f32 * cell, rect.top() + draw_y as f32 * cell),
-                egui::vec2(cell - 1.0, cell - 1.0),
-            );
-            painter.rect_filled(r, 0.0, fill);
-        }
-    }
-
-    if let Some(camera_chunk_pos) = camera_chunk_pos {
-        let local = camera_chunk_pos - region_pos.to_chunkpos();
-        if local.0.x >= 0
-            && local.0.x < REGION_SIZE_IN_CHUNKS.x()
-            && local.0.y >= 0
-            && local.0.y < REGION_SIZE_IN_CHUNKS.y()
-        {
-            let x = local.0.x as usize;
-            let y = local.0.y as usize;
-            let draw_y = height - 1 - y;
-            let r = egui::Rect::from_min_size(
-                egui::pos2(rect.left() + x as f32 * cell, rect.top() + draw_y as f32 * cell),
-                egui::vec2(cell - 1.0, cell - 1.0),
-            );
-            painter.rect_stroke(
-                r,
-                0.0,
-                egui::Stroke::new(1.5, egui::Color32::YELLOW),
-                egui::StrokeKind::Outside,
-            );
-        }
-    }
-
-    ui.label("Legend: blue=river chunks, orange=active probe, red=failed attempts");
 }
 
 fn render_river_tile_preview_map(
@@ -460,7 +417,35 @@ fn render_river_tile_preview_map(
         painter.rect_filled(mark, 0.0, egui::Color32::RED);
     }
 
-    ui.label("Legend: blue=river tiles preview, red=failed attempt chunk centers");
+    for src in &river_info.river_source_points {
+        let nx = ((src.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+        let ny = ((src.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+        let px = rect.left() + nx * rect.width();
+        let py = rect.bottom() - ny * rect.height();
+        let mark = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(6.0, 6.0));
+        painter.rect_stroke(
+            mark,
+            0.0,
+            egui::Stroke::new(1.5, egui::Color32::from_rgb(64, 255, 96)),
+            egui::StrokeKind::Outside,
+        );
+    }
+
+    for mouth in &river_info.river_mouth_points {
+        let nx = ((mouth.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+        let ny = ((mouth.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+        let px = rect.left() + nx * rect.width();
+        let py = rect.bottom() - ny * rect.height();
+        let mark = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(6.0, 6.0));
+        painter.rect_stroke(
+            mark,
+            0.0,
+            egui::Stroke::new(1.5, egui::Color32::from_rgb(255, 230, 64)),
+            egui::StrokeKind::Outside,
+        );
+    }
+
+    ui.label("Legend: blue=river tiles preview, red=failed chunk centers, green=sources, yellow=mouth/deposit");
 }
 
 fn render_river_sample_values_map(
@@ -468,12 +453,14 @@ fn render_river_sample_values_map(
     region_pos: RegionPos,
     camera_tile_pos: Option<GlobalTilePos>,
     river_info: &RiverRegionDebugInfo,
+    show_river_overlay: bool,
+    show_sources: bool,
+    show_mouths: bool,
+    show_camera_tile: bool,
+    show_region_bounds: bool,
+    show_failed_centers: bool,
+    show_none_points: bool,
 ) {
-    let size = egui::vec2(420.0, 420.0);
-    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
-    let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
-
     if river_info.sampled_points.is_empty() {
         ui.colored_label(egui::Color32::RED, "No sampled points captured for this region yet.");
         return;
@@ -487,6 +474,7 @@ fn render_river_sample_values_map(
     let mut max_tile_excl = base_max_tile_excl;
     let mut min_sample_val = f32::INFINITY;
     let mut max_sample_val = f32::NEG_INFINITY;
+    let mut sample_values: Vec<f32> = Vec::with_capacity(river_info.sampled_points.len());
     for (tile, sampled_val) in &river_info.sampled_points {
         min_tile.0.x = min_tile.0.x.min(tile.0.x);
         min_tile.0.y = min_tile.0.y.min(tile.0.y);
@@ -494,35 +482,83 @@ fn render_river_sample_values_map(
         max_tile_excl.0.y = max_tile_excl.0.y.max(tile.0.y + 1);
         min_sample_val = min_sample_val.min(*sampled_val);
         max_sample_val = max_sample_val.max(*sampled_val);
+        sample_values.push(*sampled_val);
+    }
+    for tile in &river_info.sampled_none_points {
+        min_tile.0.x = min_tile.0.x.min(tile.0.x);
+        min_tile.0.y = min_tile.0.y.min(tile.0.y);
+        max_tile_excl.0.x = max_tile_excl.0.x.max(tile.0.x + 1);
+        max_tile_excl.0.y = max_tile_excl.0.y.max(tile.0.y + 1);
     }
     if !min_sample_val.is_finite() || !max_sample_val.is_finite() {
         min_sample_val = 0.0;
         max_sample_val = 0.0;
     }
+    let (display_min_val, display_max_val) = robust_display_range(&mut sample_values, min_sample_val, max_sample_val);
 
     let span_x = (max_tile_excl.0.x - min_tile.0.x).max(1) as f32;
     let span_y = (max_tile_excl.0.y - min_tile.0.y).max(1) as f32;
+    let aspect = (span_x / span_y).max(0.01);
+    let mut map_w = ui.available_width().clamp(240.0, 900.0);
+    let mut map_h = (map_w / aspect).clamp(200.0, 700.0);
+    if map_w / aspect > map_h {
+        map_w = map_h * aspect;
+    } else {
+        map_h = map_w / aspect;
+    }
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(map_w.max(120.0), map_h.max(120.0)), egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
+
+    let (sample_step_x, sample_step_y) = estimate_sample_step_tiles(&river_info.sampled_points);
+    let cell_w = (((sample_step_x as f32) / span_x) * rect.width()).max(1.0);
+    let cell_h = (((sample_step_y as f32) / span_y) * rect.height()).max(1.0);
+    let cell_size = egui::vec2((cell_w * 0.97).max(1.0), (cell_h * 0.97).max(1.0));
 
     for (tile, sampled_val) in &river_info.sampled_points {
         let nx = ((tile.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
         let ny = ((tile.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
         let px = rect.left() + nx * rect.width();
         let py = rect.bottom() - ny * rect.height();
-        let dot = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(2.0, 2.0));
+        let dot = egui::Rect::from_center_size(egui::pos2(px, py), cell_size);
         painter.rect_filled(dot, 0.0, sample_value_color(*sampled_val, min_sample_val, max_sample_val));
     }
-
-    for chunk in &river_info.failed_chunks {
-        let center = chunk.to_tilepos() + IVec2::new((ChunkPos::CHUNK_SIZE.x / 2) as i32, (ChunkPos::CHUNK_SIZE.y / 2) as i32);
-        let nx = ((center.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
-        let ny = ((center.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
-        let px = rect.left() + nx * rect.width();
-        let py = rect.bottom() - ny * rect.height();
-        let mark = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(5.0, 5.0));
-        painter.rect_filled(mark, 0.0, egui::Color32::RED);
+    if show_none_points {
+        for tile in &river_info.sampled_none_points {
+            let nx = ((tile.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+            let ny = ((tile.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+            let px = rect.left() + nx * rect.width();
+            let py = rect.bottom() - ny * rect.height();
+            let dot = egui::Rect::from_center_size(egui::pos2(px, py), cell_size);
+            painter.rect_filled(dot, 0.0, egui::Color32::from_rgb(255, 105, 180));
+        }
+    }
+    if show_river_overlay {
+        let overlay_cell = egui::vec2((cell_size.x * 0.92).max(1.0), (cell_size.y * 0.92).max(1.0));
+        for tile in &river_info.river_tiles {
+            let nx = ((tile.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+            let ny = ((tile.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+            let px = rect.left() + nx * rect.width();
+            let py = rect.bottom() - ny * rect.height();
+            let dot = egui::Rect::from_center_size(egui::pos2(px, py), overlay_cell);
+            painter.rect_filled(dot, 0.0, egui::Color32::from_rgba_unmultiplied(30, 120, 255, 220));
+        }
     }
 
-    if let Some(camera_tile_pos) = camera_tile_pos
+    if show_failed_centers {
+        for chunk in &river_info.failed_chunks {
+            let center = chunk.to_tilepos() + IVec2::new((ChunkPos::CHUNK_SIZE.x / 2) as i32, (ChunkPos::CHUNK_SIZE.y / 2) as i32);
+            let nx = ((center.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+            let ny = ((center.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+            let px = rect.left() + nx * rect.width();
+            let py = rect.bottom() - ny * rect.height();
+            let mark = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(5.0, 5.0));
+            painter.rect_filled(mark, 0.0, egui::Color32::RED);
+        }
+    }
+
+    if show_camera_tile
+        && let Some(camera_tile_pos) = camera_tile_pos
         && camera_tile_pos.0.x >= min_tile.0.x
         && camera_tile_pos.0.x < max_tile_excl.0.x
         && camera_tile_pos.0.y >= min_tile.0.y
@@ -541,6 +577,38 @@ fn render_river_sample_values_map(
         );
     }
 
+    if show_sources {
+        for src in &river_info.river_source_points {
+            let nx = ((src.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+            let ny = ((src.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+            let px = rect.left() + nx * rect.width();
+            let py = rect.bottom() - ny * rect.height();
+            let marker = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(5.0, 5.0));
+            painter.rect_stroke(
+                marker,
+                0.0,
+                egui::Stroke::new(1.3, egui::Color32::from_rgb(64, 255, 96)),
+                egui::StrokeKind::Outside,
+            );
+        }
+    }
+
+    if show_mouths {
+        for mouth in &river_info.river_mouth_points {
+            let nx = ((mouth.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 0.9999);
+            let ny = ((mouth.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 0.9999);
+            let px = rect.left() + nx * rect.width();
+            let py = rect.bottom() - ny * rect.height();
+            let marker = egui::Rect::from_center_size(egui::pos2(px, py), egui::vec2(5.0, 5.0));
+            painter.rect_stroke(
+                marker,
+                0.0,
+                egui::Stroke::new(1.3, egui::Color32::from_rgb(255, 230, 64)),
+                egui::StrokeKind::Outside,
+            );
+        }
+    }
+
     let region_nx_min = ((base_min_tile.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 1.0);
     let region_ny_min = ((base_min_tile.0.y - min_tile.0.y) as f32 / span_y).clamp(0.0, 1.0);
     let region_nx_max = ((base_max_tile_excl.0.x - min_tile.0.x) as f32 / span_x).clamp(0.0, 1.0);
@@ -555,44 +623,74 @@ fn render_river_sample_values_map(
             rect.bottom() - region_ny_min * rect.height(),
         ),
     );
-    painter.rect_stroke(
-        region_rect,
-        0.0,
-        egui::Stroke::new(1.0, egui::Color32::from_gray(180)),
-        egui::StrokeKind::Inside,
-    );
+    if show_region_bounds {
+        painter.rect_stroke(
+            region_rect,
+            0.0,
+            egui::Stroke::new(1.0, egui::Color32::from_gray(180)),
+            egui::StrokeKind::Inside,
+        );
+    }
 
     ui.label(format!(
-        "Legend: altitude color=inlandness [{:.3}..{:.3}], red=failed chunk centers, yellow=current camera tile, gray=selected region bounds",
+        "Legend: altitude color=inlandness (black=lowest, white=highest), robust range [{:.3}..{:.3}], pink=None samples, blue=river overlay, red=failed chunk centers, yellow=current camera tile/mouth, green=source, gray=selected region bounds",
+        display_min_val,
+        display_max_val
+    ));
+    ui.label(format!(
+        "Raw inlandness range: [{:.3}..{:.3}]",
         min_sample_val,
         max_sample_val
     ));
 }
 
-fn sample_value_color(value: f32, min_val: f32, max_val: f32) -> egui::Color32 {
-    let t = if (max_val - min_val).abs() < f32::EPSILON {
-        0.5
+fn sample_value_color(rank: f32, min_val: f32, max_val: f32) -> egui::Color32 {
+    let t = if (max_val - min_val).abs() <= f32::EPSILON {
+        1.0
     } else {
-        ((value - min_val) / (max_val - min_val)).clamp(0.0, 1.0)
+        ((rank - min_val) / (max_val - min_val)).clamp(0.0, 1.0)
     };
-    let (a, b, local_t) = if t < 0.25 {
-        ((10, 38, 112), (40, 140, 210), t / 0.25)
-    } else if t < 0.5 {
-        ((40, 140, 210), (52, 176, 90), (t - 0.25) / 0.25)
-    } else if t < 0.75 {
-        ((52, 176, 90), (194, 172, 76), (t - 0.5) / 0.25)
-    } else {
-        ((194, 172, 76), (240, 240, 240), (t - 0.75) / 0.25)
-    };
-    egui::Color32::from_rgb(
-        lerp_u8(a.0, b.0, local_t),
-        lerp_u8(a.1, b.1, local_t),
-        lerp_u8(a.2, b.2, local_t),
-    )
+    let g = (t * 255.0) as u8;
+    egui::Color32::from_rgb(g, g, g)
 }
 
-fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
-    let af = a as f32;
-    let bf = b as f32;
-    (af + (bf - af) * t).round().clamp(0.0, 255.0) as u8
+fn robust_display_range(values: &mut [f32], fallback_min: f32, fallback_max: f32) -> (f32, f32) {
+    if values.is_empty() {
+        return (fallback_min, fallback_max);
+    }
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let last = values.len().saturating_sub(1);
+    let lo_i = ((last as f32) * 0.02).round() as usize;
+    let hi_i = ((last as f32) * 0.98).round() as usize;
+    let lo = values[lo_i.min(last)];
+    let hi = values[hi_i.min(last)];
+    if (hi - lo).abs() < f32::EPSILON {
+        (fallback_min, fallback_max)
+    } else {
+        (lo, hi)
+    }
+}
+
+fn estimate_sample_step_tiles(sampled_points: &bevy::platform::collections::HashMap<GlobalTilePos, f32>) -> (i32, i32) {
+    let mut xs: Vec<i32> = sampled_points.keys().map(|p| p.0.x).collect();
+    let mut ys: Vec<i32> = sampled_points.keys().map(|p| p.0.y).collect();
+    xs.sort_unstable();
+    ys.sort_unstable();
+    xs.dedup();
+    ys.dedup();
+    let step_x = xs
+        .windows(2)
+        .map(|w| w[1] - w[0])
+        .filter(|d| *d > 0)
+        .min()
+        .unwrap_or(1)
+        .max(1);
+    let step_y = ys
+        .windows(2)
+        .map(|w| w[1] - w[0])
+        .filter(|d| *d > 0)
+        .min()
+        .unwrap_or(1)
+        .max(1);
+    (step_x, step_y)
 }

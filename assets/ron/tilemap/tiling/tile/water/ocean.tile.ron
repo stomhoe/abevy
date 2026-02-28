@@ -6,7 +6,7 @@
     img_paths: [
         ("", "texture/world/white.png"),
     ],
-    walk_speed: 0.1,
+    walk_speed: 0.99,
     //liquid: true,
 
     shader: "ocean_waves",

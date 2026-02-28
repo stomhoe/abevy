@@ -4,7 +4,7 @@ pub use body_tree_resources::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use game_common::game_common::ModifierSystems;
+use game_common::{HostSystems, game_common::ModifierSystems};
 use crate::body::{
     body_systems::*,
     body_tree_build_systems::*,
@@ -40,7 +40,8 @@ pub fn plugin(app: &mut App) {
             apply_pain_slowdown,
             build_body_tree,
         )
-        .in_set(ModifierSystems),
+        .in_set(ModifierSystems)
+        .in_set(HostSystems),
     )
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),

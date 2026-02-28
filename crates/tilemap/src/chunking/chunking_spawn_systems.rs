@@ -1,6 +1,7 @@
 
 use bevy::prelude::*;
 use common::common_components::{StrId20B};
+use common::log_targets::CHUNK_ACTIVATION;
 use tilemap_shared::{DimensionRef, LoadedChunks};
 use tilemap_shared::{ChunkPos, HashablePosVec};
 
@@ -12,12 +13,12 @@ use crate::regioning::{regioning_components::Region, regioning_resources::Loaded
 
 #[allow(unused_parens, )]
 pub fn spawn_chunks_around_activators(
+    mut reader: MessageReader<ReactivateChunksFor>,
     mut cmd: Commands,
     mut query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), ()>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     tilemap_settings: Res<AaChunkRangeSettings>,
     mut loaded_regions: ResMut<LoadedRegions>,
-    mut reader: MessageReader<ReactivateChunksFor>,
 ) {
     let cnt = tilemap_settings.discovery_range as i32;
     let range_len = (2 * cnt - 1).max(0) as usize;
@@ -27,7 +28,7 @@ pub fn spawn_chunks_around_activators(
 
     for msg in reader.read() {
         let Ok((transform, mut activates_chunks, &dimension_ref)) = query.get_mut(msg.0) else {
-            error!(target: "chunk_activation", "Activator entity {:?} not found when reactivating chunks", msg.0);
+            debug!(target: CHUNK_ACTIVATION, "Skipping stale chunk reactivation request for missing activator {:?}", msg.0);
             continue;
         };
         comps_for_chunk_ents.reserve(approx_chunks);
@@ -77,7 +78,6 @@ pub fn spawn_chunks_around_activators(
                         chunk_pos,
                         ChildOf(region_ent),
                         dimension_ref,
-                        ChunkDespawnTimer::new(),
                     )));
                     chunk_ent
                 });
@@ -100,7 +100,7 @@ pub struct ReactivateChunksFor(pub Entity);
 
 #[allow(unused_parens)]
 pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 segundo despues del ultimo movimiento
-    mut query: Query<(Entity, &mut ActivatingChunks),()>,
+    mut query: Query<(Entity, &mut ActivatingChunks),(With<DimensionRef>, With<GlobalTransform>)>,
     time: Res<Time>,
     mut writer: MessageWriter<ReactivateChunksFor>,
     mut to_reactivate: Local<Vec<ReactivateChunksFor>>,
@@ -116,7 +116,7 @@ pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 se
 #[allow(unused_parens, )]
 pub fn detect_activators_with_pos_changes(
     query: Query<(Entity),
-    (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>,)>, With <ActivatingChunks>)>,
+    (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>,)>, With<ActivatingChunks>, With<DimensionRef>, With<GlobalTransform>)>,
     mut writer: MessageWriter<ReactivateChunksFor>,
     mut msgs: Local<Vec<ReactivateChunksFor>>,
 ) {

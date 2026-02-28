@@ -2,7 +2,7 @@
 use std::{mem::take};
 use bevy::ecs::message;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::{common_components::{HashId}, common_tag_components::TagSet};
+use common::{common_components::{HashId}, common_tag_components::TagSet, log_targets::SGC_CHUNK_CLAIM};
 use debug_unwraps::DebugUnwrapExt;
 use game_common::{game_common_timers::*, game_common_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
@@ -202,8 +202,14 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
     let mut regions_with_new_claims: Vec<Entity> = recheck_reader.read().map(|ent| ent.0).collect();
     let mut regions_which_started_building = Vec::new();
     let mut build_orders = Vec::new();
+    let mut claims_received = 0_u32;
+    let mut claims_stored = 0_u32;
+    let mut claims_placeholder = 0_u32;
+    let mut claims_invalid_index = 0_u32;
     for claim in claims.read() {
+        claims_received = claims_received.saturating_add(1);
         if claim.region_ent == Entity::PLACEHOLDER {
+            claims_placeholder = claims_placeholder.saturating_add(1);
             continue;
         }
 
@@ -215,6 +221,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
 
         if claim.i >= MAX_CLAIMS as u64 {
             error!(target: "sgc_chunk_claim", "Received claim with index {} >= MAX_CLAIMS {}, skipping", claim.i, MAX_CLAIMS);
+            claims_invalid_index = claims_invalid_index.saturating_add(1);
             continue;
         }
         cmd.entity(claim.region_ent).try_remove::<(MessageOnTimeout, TimerComp)>();
@@ -223,6 +230,16 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
         unsafe{
             *claimlist.claims.get_unchecked_mut(i) = Some(take(claim));
             let claim = claimlist.claims.get_unchecked(i).as_ref().unwrap_unchecked();
+            claims_stored = claims_stored.saturating_add(1);
+            trace!(
+                target: SGC_CHUNK_CLAIM,
+                "Stored claim i={} region={:?} sgc={:?} chunk_count={} partition_tolerant={}",
+                claim.i,
+                claim.region_ent,
+                claim.sgc_ent,
+                claim.chunks_gpos.len(),
+                claim.partition_tolerant
+            );
 
             if regions_with_new_claims.iter().all(|&e| e != claim.region_ent) {
                 regions_with_new_claims.push(claim.region_ent);
@@ -380,7 +397,19 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             }
         }
     }
+    let build_orders_count = build_orders.len();
     writer.write_batch(build_orders);
+    if claims_received > 0 || build_orders_count > 0 {
+        info!(
+            target: SGC_CHUNK_CLAIM,
+            "claims->orders summary: claims_received={}, claims_stored={}, claims_placeholder={}, claims_invalid_index={}, build_orders_emitted={}",
+            claims_received,
+            claims_stored,
+            claims_placeholder,
+            claims_invalid_index,
+            build_orders_count
+        );
+    }
     cmd.try_insert_batch(regions_which_started_building);
 }
 

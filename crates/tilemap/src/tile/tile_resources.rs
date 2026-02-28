@@ -67,10 +67,39 @@ impl IntoIterator for TileImagePaths {
 #[derive(Deserialize, Asset, TypePath, Default, )]
 /// something similar to godot's autotiling
 pub struct AdjRetexConfigSeri (
-    //(Vec(direction_str, tile_ezero_id)) -> animation ID or texture ID
-    // higher in this, higher priority
-    pub Vec<(Vec<(String, String)>, (String, Option<TileFlip>))>,
+    pub Vec<AdjRetexRuleSeri>,
 );
+
+type NeighborTileEzeroStrId = String;
+type NeighborAdjacencyDirection = String;
+
+#[derive(Deserialize, Clone, )]
+pub struct AdjRetexRuleSeri {
+    pub adj_state: Vec<(NeighborTileEzeroStrId, NeighborAdjacencyDirection)>,
+
+    #[serde(default = "inf_u32_default")]
+    pub modulo_i: u32,
+    #[serde(default = "inf_u32_default")]
+    pub modulo_j: u32,
+    //last: modulo result i and j (to have varying coastline tiles)
+    pub out_id: String,
+    #[serde(default)]
+    pub tile_flip: Option<TileFlip>,
+    #[serde(default)]
+    pub match_mode: AdjRetexRuleMatchMode,
+}
+
+fn inf_u32_default() -> u32 {
+    u32::MAX
+}
+
+#[derive(Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, )]
+#[serde(rename_all = "snake_case")]
+pub enum AdjRetexRuleMatchMode {
+    #[default]
+    BestMatching,
+    ExactState,
+}
 
 #[derive(Deserialize, Asset, TypePath, Default, )]
 pub struct TileSeri {

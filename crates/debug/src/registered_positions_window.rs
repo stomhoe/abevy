@@ -39,8 +39,8 @@ pub fn registered_positions_window(
 
             ui.horizontal(|ui| {
                 ui.label("RegisteredPositions:");
-                ui.label(format!("Exempted entities: {}", registered_positions.get_exempted_entities().len()));
-                ui.label(format!("Registered entries: {}", registered_positions.get_registered_entries().len()));
+                ui.label(format!("Exempted entities: {}", registered_positions.get_exempted_tile_ents().len()));
+                ui.label(format!("Registered ezero entries: {}", registered_positions.get_registered_ezeros().len()));
             });
             ui.separator();
 
@@ -48,9 +48,9 @@ pub fn registered_positions_window(
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     // Show exempted entities
-                    if !registered_positions.get_exempted_entities().is_empty() {
+                    if !registered_positions.get_exempted_tile_ents().is_empty() {
                         ui.label("Exempted Entities:");
-                        for entity in registered_positions.get_exempted_entities().iter() {
+                        for entity in registered_positions.get_exempted_tile_ents().iter() {
                             let is_selected = selected_entities.selected_exempted_entity == Some(*entity);
                             let label = format!("  {:?}", entity);
                             if ui.selectable_label(is_selected, label).clicked() {
@@ -62,9 +62,9 @@ pub fn registered_positions_window(
                     }
 
                     // Show registered entries
-                    if !registered_positions.get_registered_entries().is_empty() {
+                    if !registered_positions.get_registered_ezeros().is_empty() {
                         ui.label("Registered Positions:");
-                        for (entity, positions) in registered_positions.get_registered_entries().iter() {
+                        for (entity, positions) in registered_positions.get_registered_ezeros().iter() {
                             ui.label(format!("Entity {:?}: {} positions", entity, positions.len()));
                             for (dim_ref, pos) in positions {
                                 ui.label(format!("  Dim: {:?}, Pos: {:?}", dim_ref, pos));

@@ -14,13 +14,14 @@ fn almost_equal(a: vec4<f32>, b: vec4<f32>, epsilon: f32) -> bool {
 
 @fragment
 fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
-    let color = process_fragment(in);
+    let base = process_fragment(in);
     var tex_color = textureSample(overlay_texture, overlay_sampler, fract(in.world_position.xy * scale / 10000.0));
     if tint_color.a > 0.0 {
         tex_color = vec4<f32>(tex_color.rgb * tint_color.rgb, tex_color.a);
     }
-    if almost_equal(color, mask_color, 0.00001) {
-        return tex_color;
+    if almost_equal(base, mask_color, 0.00001) {
+        // Preserve the base tile alpha so mask tiles can fade edges smoothly.
+        return vec4<f32>(tex_color.rgb, tex_color.a * base.a);
     }
-    return color;
+    return base;
 }

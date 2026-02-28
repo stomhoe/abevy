@@ -32,11 +32,11 @@ impl ImportantRegisteredPositions {
         })
     }
 
-    pub fn get_exempted_entities(&self) -> &EntityHashSet {
+    pub fn get_exempted_tile_ents(&self) -> &EntityHashSet {
         &self.exempted
     }
 
-    pub fn get_registered_entries(&self) -> &EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>> {
+    pub fn get_registered_ezeros(&self) -> &EntityHashMap<Vec<(DimensionRef, GlobalTilePos)>> {
         &self.registered
     }
 

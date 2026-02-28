@@ -1,8 +1,0 @@
-(
-    id: "rocky_default",
-    roughness: 0.6,
-    scale: 0.5,
-    height_scale: 1.2,
-    color_base: (150., 150., 150., 255.),
-    color_shadow: (80., 80., 80., 255.),
-)

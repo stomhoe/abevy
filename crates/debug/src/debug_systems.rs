@@ -9,14 +9,13 @@ use crate::debug_messages::UpdateBeingSpeed;
 #[allow(unused_parens)]
 pub fn debug_increase_speed(
     keys: Res<ButtonInput<KeyCode>>,
-    my_being_query: Query<(&Being), (With<ComputedLocally>)>,
+    my_being_query: Query<(&Being), (LocalPlayerControlled)>,
     mut query: Query<(&ModifierTarget, &mut BaseValue),(With<WalkSpeed>, )>,
     client_state: Res<State<ClientState>>,
     mut writer: MessageWriter<UpdateBeingSpeed>,
+    mut msgs: Local<Vec<UpdateBeingSpeed>>,
 ) {
-
     let is_client = *client_state.get() == ClientState::Connected;
-    let mut msgs = Vec::new();
 
     if keys.pressed(KeyCode::NumpadAdd) {
         query.iter_mut().for_each(|(target, mut val)| {
@@ -44,10 +43,7 @@ pub fn debug_increase_speed(
             }
         });
     }
-
-    if is_client {
-        writer.write_batch(msgs);
-    }
+    writer.write_batch(msgs.drain(..));
 }
 
 #[allow(unused_parens, )]

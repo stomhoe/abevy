@@ -12,7 +12,10 @@ use sprite_shared::SampleSpriteEnts;
 pub struct ComputedLocally;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct ControlledByClient;
+pub struct PlayerControlled;
+
+pub type LocalAiControlled = (With<ComputedLocally>, Without<PlayerControlled>);
+pub type LocalPlayerControlled = (With<ComputedLocally>, With<PlayerControlled>);
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 

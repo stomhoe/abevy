@@ -31,17 +31,12 @@ pub fn plugin(app: &mut App) {
     ).in_set(TileShaderSystems))
     .add_plugins((
         plugin_tile_shader,
-        MaterialTilemapPlugin::<MonoRepeatTextureOverlayMat>::default(),
-        MaterialTilemapPlugin::<VoronoiTextureOverlayMat>::default(),
+        MaterialTilemapPlugin::<RepeatTexMat>::default(),
         MaterialTilemapPlugin::<WavyMat>::default(),
-        MaterialTilemapPlugin::<RockyTerrainMat>::default(),
+        MaterialTilemapPlugin::<TerrainBlendingMat>::default(),
     ))
 
-    .register_type::<MonoRepeatTextureOverlayMat>()
-    .register_type::<VoronoiTextureOverlayMat>()
-    .register_type::<TwoOverlaysExample>()
-    .register_type::<WavyMat>()
-    .register_type::<RockyTerrainMat>()
+    .register_type::<RepeatTexMat>()
 
     ;
 }

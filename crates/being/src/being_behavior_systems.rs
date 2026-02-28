@@ -1,7 +1,9 @@
+use ::being_shared::*;
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_northstar::prelude::*;
 use param_sets::BlockingTileParamSet;
+use player::player_components::{Mine, Player};
 use rand::Rng;
 use std::time::Duration;
 use tilemap::{chunking::chunking_resources::AaChunkRangeSettings};
@@ -387,18 +389,13 @@ pub fn chase_behavior(
         &::tilemap_shared::DimensionRef,
         &mut InputDirection,
         &ToChase,
-        Option<&ControlledBy>,
-    ), With<Being>>,
-    beings_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef), With<Being>>,
+    ), (With<Being>, LocalAiControlled)>,
+    beings_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef), With<Being>, >,
     grids: Res<AiNavGrids>,
     mut dynamic_blocking: Local<HashMap<UVec3, Entity>>,
 ) {
-    for (chaser_ent, chaser_transf, &chaser_dim, mut input_dir, to_chase, controlled_by) in chasers.iter_mut() {
-        if let Some(controlled_by) = controlled_by {
-            if controlled_by.human_input {
-                continue;
-            }
-        }
+    for (chaser_ent, chaser_transf, &chaser_dim, mut input_dir, to_chase, ) in chasers.iter_mut() {
+
         if to_chase.target == chaser_ent {
             continue;
         }
@@ -475,8 +472,8 @@ pub fn wander_behavior(
     time: Res<Time>,
     blocking_tiles: BlockingTileParamSet,
     mut beings: Query<
-        (Entity, &Transform, &::tilemap_shared::DimensionRef, &mut InputDirection, Option<&ControlledBy>, Option<&RaceRef>),
-        (With<Being>, Without<ToChase>),
+        (Entity, &Transform, &::tilemap_shared::DimensionRef, &mut InputDirection, Option<&RaceRef>),
+        (With<Being>, Without<ToChase>, LocalAiControlled),
     >,
     race_wander_cfg_query: Query<&WanderConfig>,
     mut wander_states: Local<HashMap<Entity, WanderState>>,
@@ -495,18 +492,10 @@ pub fn wander_behavior(
         speed_max: 0.6,
         avoid_tile_tags: TagSet::default(),
     };
-    for (pred_ent, transform, &dim_ref, mut input_dir, controlled_by, race_ref) in beings.iter_mut() {
+    for (pred_ent, transform, &dim_ref, mut input_dir, race_ref) in beings.iter_mut() {
         let cfg = race_ref
             .and_then(|r| race_wander_cfg_query.get(r.0).ok())
             .unwrap_or(&default_cfg);
-        let Some(controlled_by) = controlled_by else {
-            let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng, cfg));
-            apply_wander_input(state, &mut input_dir, dt, &mut rng, cfg);
-            continue;
-        };
-        if controlled_by.human_input {
-            continue;
-        }
         let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng, cfg));
         apply_wander_input(state, &mut input_dir, dt, &mut rng, cfg);
 

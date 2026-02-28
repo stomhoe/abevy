@@ -30,7 +30,6 @@ pub struct DubugWindowsVisibility{
     pub gpos_maps: bool,
     pub hot_reload_menu: bool,
     pub river_debug: bool,
-    pub river_sample_values: bool,
 }
 
 impl Default for DubugWindowsVisibility {
@@ -60,12 +59,11 @@ impl Default for DubugWindowsVisibility {
             gpos_maps: false,
             hot_reload_menu: false,
             river_debug: false,
-            river_sample_values: false,
         }
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct DebugSelectedEntities {
     pub selected_regions: EntityHashSet,
     pub selected_chunks: EntityHashSet,
@@ -79,6 +77,38 @@ pub struct DebugSelectedEntities {
     pub selected_sprite: Option<Entity>,
     pub selected_tilemap: Option<Entity>,
     pub selected_river_debug_region: Option<Entity>,
+    pub river_samples_show_river_overlay: bool,
+    pub river_samples_show_sources: bool,
+    pub river_samples_show_mouths: bool,
+    pub river_samples_show_camera_tile: bool,
+    pub river_samples_show_region_bounds: bool,
+    pub river_samples_show_failed_centers: bool,
+    pub river_samples_show_none_points: bool,
+}
+impl Default for DebugSelectedEntities {
+    fn default() -> Self {
+        Self {
+            selected_regions: EntityHashSet::default(),
+            selected_chunks: EntityHashSet::default(),
+            selected_portals: EntityHashSet::default(),
+            selected_operationlist: None,
+            selected_noise: None,
+            selected_tile: None,
+            selected_being: None,
+            selected_player: None,
+            selected_exempted_entity: None,
+            selected_sprite: None,
+            selected_tilemap: None,
+            selected_river_debug_region: None,
+            river_samples_show_river_overlay: true,
+            river_samples_show_sources: true,
+            river_samples_show_mouths: true,
+            river_samples_show_camera_tile: true,
+            river_samples_show_region_bounds: true,
+            river_samples_show_failed_centers: true,
+            river_samples_show_none_points: true,
+        }
+    }
 }
 
 #[derive(Resource, Default)]

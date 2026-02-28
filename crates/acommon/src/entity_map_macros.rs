@@ -1,4 +1,42 @@
 #[macro_export]
+macro_rules! __entity_map_define_ref_struct {
+    ($abbreviation:ident $(,)?) => {
+        paste::paste! {
+            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
+            pub struct [<$abbreviation Ref>](#[entities] pub Entity);
+            impl [<$abbreviation Ref>] {
+                pub fn is_placeholder(&self) -> bool {
+                    self.0 == Entity::PLACEHOLDER
+                }
+            }
+        }
+    };
+    ($abbreviation:ident, no_reflect) => {
+        $crate::__entity_map_define_ref_struct!($abbreviation);
+    };
+    ($abbreviation:ident, reflect_ref) => {
+        paste::paste! {
+            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, bevy::ecs::entity::MapEntities, )]
+            pub struct [<$abbreviation Ref>](#[entities] pub Entity);
+            impl [<$abbreviation Ref>] {
+                pub fn is_placeholder(&self) -> bool {
+                    self.0 == Entity::PLACEHOLDER
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! __entity_map_register_reflect_type {
+    ($app:ident, $ty:ty) => {};
+    ($app:ident, no_reflect, $ty:ty) => {};
+    ($app:ident, reflect_ref, $ty:ty) => {
+        $app.register_type::<$ty>();
+    };
+}
+
+#[macro_export]
 macro_rules! define_entity_map_systems {
     // Simplified version - most common case
     (
@@ -39,7 +77,7 @@ macro_rules! define_entity_map_systems {
         );
     };
 
-    // Full version with all parameters (with asset variadics)
+    // Positional compatibility wrapper -> named parameters (no asset variadics)
     (
         $main_component:ident,
         $with_filters:ty,
@@ -48,11 +86,36 @@ macro_rules! define_entity_map_systems {
         $entity_prefix:expr,
         $despawn_trigger:ty,
         $id_type:ty
+        $(, $ref_reflect:ident)?
+        $(,)?
+    ) => {
+        $crate::define_entity_map_systems!(
+            main_component: $main_component,
+            with_filters: $with_filters,
+            abbreviation: $abbreviation,
+            target: $target,
+            entity_prefix: $entity_prefix,
+            despawn_trigger: $despawn_trigger,
+            id_type: $id_type
+            $(, ref_reflect: $ref_reflect)?
+        );
+    };
+
+    // Full version with named parameters (no asset variadics)
+    (
+        main_component: $main_component:ident,
+        with_filters: $with_filters:ty,
+        abbreviation: $abbreviation: ident,
+        target: $target:expr,
+        entity_prefix: $entity_prefix:expr,
+        despawn_trigger: $despawn_trigger:ty,
+        id_type: $id_type:ty
+        $(, ref_reflect: $ref_reflect:ident)?
         $(,)?
     ) => {
         paste::paste! {
             #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone, Reflect)]
-            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform)]
+            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility::Hidden, Transform)]
             pub struct [<Egui $abbreviation sHolder>];
 
             #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone, Reflect)]
@@ -61,13 +124,7 @@ macro_rules! define_entity_map_systems {
 
             impl Default for [<$main_component EntityMap>] { fn default() -> Self { Self(Default::default()) } }
 
-            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, bevy::ecs::entity::MapEntities, )]
-            pub struct [<$abbreviation Ref>](#[entities] pub Entity);
-            impl [<$abbreviation Ref>] {
-                pub fn is_placeholder(&self) -> bool {
-                    self.0 == Entity::PLACEHOLDER
-                }
-            }
+            $crate::__entity_map_define_ref_struct!($abbreviation $(, $ref_reflect)?);
             #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq,
                 //Reflect
             )]
@@ -79,12 +136,6 @@ macro_rules! define_entity_map_systems {
                 }
 
             }
-
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
-            pub struct [<DoNotRetryConvert $abbreviation StrIdRef>](pub common::common_components::StrId);
-
-            #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
-            pub struct [<DoNotRetryBuild $abbreviation Ref>];
 
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
@@ -168,18 +219,9 @@ macro_rules! define_entity_map_systems {
                 }
                 cmd.try_insert_batch(child_ofs);
             }
-            pub fn [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>](
-                mut cmd: Commands,
-                query: Query<(Entity), (Changed<[<$abbreviation StrIdRef>]>)>,
-            ) {
-                for (customer_ent) in query.iter() {
-                    cmd.entity(customer_ent).try_remove::<[<DoNotRetryConvert $abbreviation StrIdRef>]>();
-                }
-            }
-
             pub fn [<convert_ $abbreviation:snake _strid_ref_to_ent_ref>](
                 mut cmd: Commands,
-                query: Query<(Entity, &[<$abbreviation StrIdRef>]), (Without<[<DoNotRetryConvert $abbreviation StrIdRef>]>)>,
+                query: Query<(Entity, &[<$abbreviation StrIdRef>]), (Changed<[<$abbreviation StrIdRef>]>)>,
                 emap: Option<Res<[<$main_component EntityMap>]>>,
             ) {
                 if query.is_empty() {
@@ -192,8 +234,7 @@ macro_rules! define_entity_map_systems {
                 let mut refs = Vec::with_capacity(query.iter().size_hint().0);
                 for (customer_ent, str_id_ref) in query.iter() {
                     let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
-                        error!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
-                        cmd.entity(customer_ent).try_insert(([<DoNotRetryConvert $abbreviation StrIdRef>]::default()));
+                        error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;
                     };
                     refs.push((customer_ent, [<$abbreviation Ref>](bit_entity)));
@@ -204,27 +245,25 @@ macro_rules! define_entity_map_systems {
 
             pub fn [<plugin_ $main_component:snake>](app: &mut App) {
                 use bevy_replicon::prelude::AppRuleExt;
+                $crate::__entity_map_register_reflect_type!(app, $($ref_reflect,)? [<$abbreviation Ref>]);
                 app
                     .init_resource::<[<$main_component EntityMap>]>()
                     .register_type::<[<$main_component EntityMap>]>()
-                    .register_type::<[<$abbreviation Ref>]>()
                     //.register_type::<[<Egui $abbreviation sHolder>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
                          [<add_ $main_component:snake _ezeros_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1))),
-                         [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>],
                     ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])
                     .replicate::<$main_component>()
                     .replicate::<[<$abbreviation Ref>]>()
                     .replicate::<[<Egui $abbreviation sHolder>]>()
-                    .replicate::<[<DoNotRetryBuild $abbreviation Ref>]>()
                     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>()
                     ;
             }
         }
     };
 
-    // Full version with all parameters (with asset variadics)
+    // Positional compatibility wrapper -> named parameters (with asset variadics)
     (
         $main_component:ident,
         $with_filters:ty,
@@ -234,6 +273,33 @@ macro_rules! define_entity_map_systems {
         $despawn_trigger:ty,
         $id_type:ty,
         $($seri_type:ty, $dynamic_key:literal, $ron_suffix:literal ),+
+        $(, $ref_reflect:ident)?
+        $(,)?
+    ) => {
+        $crate::define_entity_map_systems!(
+            main_component: $main_component,
+            with_filters: $with_filters,
+            abbreviation: $abbreviation,
+            target: $target,
+            entity_prefix: $entity_prefix,
+            despawn_trigger: $despawn_trigger,
+            id_type: $id_type,
+            assets: [$(($seri_type, $dynamic_key, $ron_suffix)),+]
+            $(, ref_reflect: $ref_reflect)?
+        );
+    };
+
+    // Full version with named parameters (with asset variadics)
+    (
+        main_component: $main_component:ident,
+        with_filters: $with_filters:ty,
+        abbreviation: $abbreviation: ident,
+        target: $target:expr,
+        entity_prefix: $entity_prefix:expr,
+        despawn_trigger: $despawn_trigger:ty,
+        id_type: $id_type:ty,
+        assets: [$(($seri_type:ty, $dynamic_key:literal, $ron_suffix:literal)),+]
+        $(, ref_reflect: $ref_reflect:ident)?
         $(,)?
     ) => {
         paste::paste! {
@@ -302,13 +368,7 @@ macro_rules! define_entity_map_systems {
 
             impl Default for [<$main_component EntityMap>] { fn default() -> Self { Self(Default::default()) } }
 
-            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, bevy::ecs::entity::MapEntities, )]
-            pub struct [<$abbreviation Ref>](#[entities] pub Entity);
-            impl [<$abbreviation Ref>] {
-                pub fn is_placeholder(&self) -> bool {
-                    self.0 == Entity::PLACEHOLDER
-                }
-            }
+            $crate::__entity_map_define_ref_struct!($abbreviation $(, $ref_reflect)?);
             #[derive(Component, std::fmt::Debug, Clone,
                 //Reflect,
             )]
@@ -318,14 +378,6 @@ macro_rules! define_entity_map_systems {
                     Self(id.into())
                 }
             }
-
-            #[derive(Component, std::fmt::Debug, Clone, Copy, PartialEq, Eq, Default,
-                //Reflect,
-            )]
-            pub struct [<DoNotRetryConvert $abbreviation StrIdRef>];
-
-            #[derive(Component, std::fmt::Debug, Clone, Copy, Default)]
-            pub struct [<DoNotRetryBuild $abbreviation Ref>];
 
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
@@ -409,18 +461,9 @@ macro_rules! define_entity_map_systems {
                 }
                 cmd.try_insert_batch(child_ofs);
             }
-            pub fn [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>](
-                mut cmd: Commands,
-                query: Query<(Entity), (Added<[<$abbreviation StrIdRef>]>, With<[<DoNotRetryConvert $abbreviation StrIdRef>]>)>,
-            ) {
-                for (customer_ent) in query.iter() {
-                    cmd.entity(customer_ent).try_remove::<[<DoNotRetryConvert $abbreviation StrIdRef>]>();
-                }
-            }
-
             pub fn [<convert_ $abbreviation:snake _strid_ref_to_ent_ref>](
                 mut cmd: Commands,
-                query: Query<(Entity, &[<$abbreviation StrIdRef>]), (Without<[<DoNotRetryConvert $abbreviation StrIdRef>]>, )>,
+                query: Query<(Entity, &[<$abbreviation StrIdRef>]), (Changed<[<$abbreviation StrIdRef>]>, )>,
                 emap: Option<Res<[<$main_component EntityMap>]>>,
             ) {
                 if query.is_empty() {
@@ -433,8 +476,7 @@ macro_rules! define_entity_map_systems {
                 let mut refs = Vec::with_capacity(query.iter().size_hint().0);
                 for (customer_ent, str_id_ref) in query.iter() {
                     let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
-                        error!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
-                        cmd.entity(customer_ent).try_insert(([<DoNotRetryConvert $abbreviation StrIdRef>]::default()));
+                        error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;
                     };
                     refs.push((customer_ent, [<$abbreviation Ref>](bit_entity)));
@@ -446,6 +488,7 @@ macro_rules! define_entity_map_systems {
             pub fn [<plugin_ $main_component:snake>](app: &mut App) {
                 use bevy_replicon::prelude::AppRuleExt;
                 use bevy_asset_loader::prelude::*;
+                $crate::__entity_map_register_reflect_type!(app, $($ref_reflect,)? [<$abbreviation Ref>]);
                 $(
                     common::common_resources::register_seri_auto_routing_rule($dynamic_key, $ron_suffix);
                     common::def_db::register_expected_def_type(stringify!($seri_type));
@@ -455,12 +498,9 @@ macro_rules! define_entity_map_systems {
                     .init_resource::<bevy_asset_loader::dynamic_asset::DynamicAssets>()
                     .init_resource::<[<$main_component EntityMap>]>()
                     //.register_type::<[<$main_component EntityMap>]>()
-                    .register_type::<[<$abbreviation Ref>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
                          [<add_ $main_component:snake _ezeros_to_egui_holder>]
                             .run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
-                            .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
-                         [<permit_ $abbreviation:snake _strid_ref_to_ent_ref_retries>]
                             .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
                     ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])

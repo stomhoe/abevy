@@ -13,6 +13,7 @@ use sprite::AcSpriteSystems;
 
 
 use crate::{
+    being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations},
     being_components::*,
     being_inst_template::BeingInstTemplateSystems,
     being_behavior_systems::*,
@@ -35,7 +36,14 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         (
-            (add_activates_chunks, cross_portal).in_set(HostSystems),
+            build_beings_from_refs, sample_sprite_normal_variations,
+        ).chain().in_set(HostSystems),
+        (
+            (
+                add_activates_chunks,
+                assign_uncontrolled_beings_to_host,
+                cross_portal,
+            ).in_set(HostSystems),
             on_control_change,
             (
                 sync_predator_config_from_sources,
@@ -45,7 +53,7 @@ pub fn plugin(app: &mut App) {
                 update_predator_chase_targets,
                 chase_behavior,
                 wander_behavior,
-            ).chain(),
+            ),
         ).in_set(GameplaySystems),
     ))
     .add_systems(
@@ -70,7 +78,7 @@ pub fn plugin(app: &mut App) {
 
 
     .replicate::<Sentient>()
-    .replicate::<ControlledByClient>()
+    .replicate::<PlayerControlled>()
 
     .replicate_filtered::<ChildOf, With<Being>>()
 

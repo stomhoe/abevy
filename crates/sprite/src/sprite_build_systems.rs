@@ -19,7 +19,6 @@ pub fn add_spritechildren_and_comps(
             Without<SpriteConfig>,
             Without<BeingInstTemplate>,
             Changed<ScsToBuild>,
-            Without<DoNotRetryBuildScRef>,
         ),
     >,
     spritecfgs_query: Query<

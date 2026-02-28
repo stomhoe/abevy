@@ -7,6 +7,7 @@ pub use bevy_ecs_tilemap::tiles::*;
 use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
+use common::log_targets::TILE_INIT;
 
 use game_common::{define_weightedsampler, game_common_components::*, game_common_samplers::GlobalTilePosWeightedSampler};
 
@@ -52,22 +53,107 @@ pub struct DebugValue{
     pub value: f32,
 }
 
+pub type VisibleResult = (HashId, Option<TileFlip>);
+pub type ModuloResult = Option<u32>;
+
+/// Bit positions for 8-direction adjacency masks.
+/// These are used by adjacency-based retexturing (autotiling).
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AdjMask(pub u16);
+impl AdjMask {
+    pub const fn empty() -> Self {
+        Self(0)
+    }
+    pub fn insert(&mut self, bit: AdjMask) {
+        self.0 |= bit.0;
+    }
+    pub fn contains_all(&self, other: AdjMask) -> bool {
+        (self.0 & other.0) == other.0
+    }
+    pub fn count_bits(&self) -> usize {
+        self.0.count_ones() as usize
+    }
+}
+
+pub trait DiagonalCardinalDirectionAdjMaskExt {
+    fn adj_mask_bit(self) -> AdjMask;
+}
+impl DiagonalCardinalDirectionAdjMaskExt for DiagonalCardinalDirection {
+    #[inline]
+    fn adj_mask_bit(self) -> AdjMask {
+        AdjMask(match self {
+            DiagonalCardinalDirection::North => 1 << 0,
+            DiagonalCardinalDirection::East => 1 << 1,
+            DiagonalCardinalDirection::South => 1 << 2,
+            DiagonalCardinalDirection::West => 1 << 3,
+            DiagonalCardinalDirection::NorthEast => 1 << 4,
+            DiagonalCardinalDirection::SouthEast => 1 << 5,
+            DiagonalCardinalDirection::SouthWest => 1 << 6,
+            DiagonalCardinalDirection::NorthWest => 1 << 7,
+        })
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct AdjRetexRule {
+    /// HashId of the neighbor tile type this rule is matching against.
+    pub connect_to: HashId,
+    /// Required adjacency mask (8-direction bitmask).
+    pub required_mask: AdjMask,
+    pub out: VisibleResult,
+    pub match_mode: AdjRetexRuleMatchMode,
+    pub mod_res_i: ModuloResult,
+    pub mod_res_j: ModuloResult,
+}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct AdjRetexConfig(
-    pub Vec<(Vec<(DiagonalCardinalDirection, HashId)>, (HashId, Option<TileFlip>))>,
+    pub Vec<AdjRetexRule>,
 );
-
 
 impl AdjRetexConfig {
     pub fn new(seri: AdjRetexConfigSeri) -> Self {
         let mut parsed_rules = Vec::with_capacity(seri.0.len());
-        for (rule_i, (adj_state_seri, (out_hash_seri, tile_flip))) in seri.0.into_iter().enumerate() {
-            let mut parsed_adj_state: Vec<(DiagonalCardinalDirection, HashId)> = Vec::with_capacity(adj_state_seri.len());
+        for (rule_i, rule_seri) in seri.0.into_iter().enumerate() {
+            let adj_state_seri = rule_seri.adj_state;
+            let mod_res_i = (rule_seri.modulo_i != u32::MAX).then_some(rule_seri.modulo_i);
+            let mod_res_j = (rule_seri.modulo_j != u32::MAX).then_some(rule_seri.modulo_j);
+            let out_hash_seri = rule_seri.out_id;
+            let tile_flip = rule_seri.tile_flip;
+            let match_mode = rule_seri.match_mode;
+            let mut required_mask = AdjMask::empty();
+            let mut connect_to_str: Option<String> = None;
             let mut invalid_rule = false;
-            for (dir_seri, hash_seri) in adj_state_seri.into_iter() {
+            for (id_seri, dir_seri, ) in adj_state_seri.into_iter() {
+                let id_trim = id_seri.trim();
+                if id_trim.is_empty() {
+                    warn!(
+                        target: TILE_INIT,
+                        "Invalid adj-retex neighbor id '{}' in rule {}, skipping full rule",
+                        id_seri,
+                        rule_i
+                    );
+                    invalid_rule = true;
+                    break;
+                }
+                if let Some(existing) = &connect_to_str {
+                    if existing != id_trim {
+                        warn!(
+                            target: TILE_INIT,
+                            "Adj-retex rule {} mixes multiple neighbor ids ('{}', '{}'), skipping full rule",
+                            rule_i,
+                            existing,
+                            id_trim
+                        );
+                        invalid_rule = true;
+                        break;
+                    }
+                } else {
+                    connect_to_str = Some(id_trim.to_string());
+                }
                 let Some(dir) = DiagonalCardinalDirection::parse(&dir_seri) else {
                     warn!(
-                        target: "tilemap",
+                        target: TILE_INIT,
                         "Invalid adj-retex direction '{}' in rule {}, skipping full rule",
                         dir_seri,
                         rule_i
@@ -75,25 +161,54 @@ impl AdjRetexConfig {
                     invalid_rule = true;
                     break;
                 };
-                parsed_adj_state.push((dir, HashId::from(hash_seri)));
+                required_mask.insert(dir.adj_mask_bit());
             }
             if invalid_rule {
                 continue;
             }
-            parsed_rules.push((parsed_adj_state, (HashId::from(out_hash_seri), tile_flip)));
+            let Some(connect_to_str) = connect_to_str else {
+                continue;
+            };
+            parsed_rules.push(AdjRetexRule {
+                connect_to: HashId::from(connect_to_str),
+                required_mask,
+                out: (HashId::from(out_hash_seri), tile_flip),
+                match_mode,
+                mod_res_i,
+                mod_res_j,
+            });
         }
         Self(parsed_rules)
     }
 
-    /// Uses first-match priority: rules are evaluated in order and the first rule whose requirements are all present wins.
-    pub fn get_tex_in_curr_adjacency_state(&self, tile_adjacency_state: &[(DiagonalCardinalDirection, HashId)]) -> Option<(HashId, Option<TileFlip>)> {
-        let state_set: HashSet<(DiagonalCardinalDirection, HashId)> = tile_adjacency_state.iter().copied().collect();
-        for (reqs, (hash_id, flip)) in self.0.iter() {
-            if reqs.iter().all(|req| state_set.contains(req)) {
-                return Some((*hash_id, *flip));
+    /// Mixed-mode rules:
+    /// - `ExactState`: requires exact equality between current adjacency set and rule requirements.
+    /// - `BestMatching`: among matching subset-rules, picks the one with highest requirement count.
+    pub fn get_tex_in_curr_adjacency_state(&self, adj_masks_by_hid: &HashMap<HashId, AdjMask>) -> Option<VisibleResult> {
+        let mut best_match: Option<(usize, VisibleResult)> = None;
+        for rule in self.0.iter() {
+            let current_mask = adj_masks_by_hid.get(&rule.connect_to).copied().unwrap_or_default();
+            match rule.match_mode {
+                AdjRetexRuleMatchMode::ExactState => {
+                    if current_mask == rule.required_mask {
+                        return Some(rule.out);
+                    }
+                }
+                AdjRetexRuleMatchMode::BestMatching => {
+                    if current_mask.contains_all(rule.required_mask) {
+                        let reqs_len = rule.required_mask.count_bits();
+                        let should_replace = match best_match {
+                            Some((best_len, ..)) => reqs_len > best_len,
+                            None => true,
+                        };
+                        if should_replace {
+                            best_match = Some((reqs_len, rule.out));
+                        }
+                    }
+                }
             }
         }
-        None
+        best_match.map(|(_, visible_result)| visible_result)
     }
 }
 

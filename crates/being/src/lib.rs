@@ -4,6 +4,7 @@ pub use being::*;
 pub mod being_components;
 mod being_systems;
 mod being_behavior_systems;
+mod being_build_systems;
 pub mod being_bundles;
 
 pub mod being_inst_template;

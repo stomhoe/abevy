@@ -37,14 +37,7 @@ pub struct ReadyForTerrgen;
 #[derive(Component, Debug, Default, Clone)]
 pub struct TerrGenDisabled;
 
-#[derive(Component, Debug, Clone)]
-pub struct ChunkDespawnTimer(pub Timer);
 
-impl ChunkDespawnTimer {
-    pub fn new() -> Self {
-        Self(Timer::from_seconds(20.0, TimerMode::Once))
-    }
-}
 
 #[derive(Component, Debug, Clone)]
 pub struct ActivatingChunks {

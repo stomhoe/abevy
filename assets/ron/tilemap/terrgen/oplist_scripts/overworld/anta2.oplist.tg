@@ -4,12 +4,13 @@ debug: [beach_avg_noise, shore_proximity, gravelness, inlandness, continentness]
 tags: ["anta", "river_candidate"]
 
 
-let inlandness = continentness/(COMPL continent_threshold)
+let inlandness = (continentness/(COMPL continent_threshold) - 1.)*0.19
+
 let shore_proximity = COMPL inlandness * 0.9
 let beach_avg_noise = avg(fnl.beachsmol, fnl.beachbig)
 let gravelness = *(COMPL beach_avg_noise, shore_proximity)
 
-out = idxmax(0.03, gravelness)
+out = idxmax(0.4, gravelness)
 
 bif anta3 -> []
 bif "" -> [gravel]

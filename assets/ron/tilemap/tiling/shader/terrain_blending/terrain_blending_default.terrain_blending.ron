@@ -1,0 +1,11 @@
+(
+    id: "terrain_blending_default",
+    img_path_a: "texture/world/terr/gravel.png",
+    img_path_b: "texture/world/terr/grass.png",
+    mask_color: (255., 0., 0., 255.),
+    scale_a: 8.0,
+    scale_b: 10.0,
+    blend_sharpness: 0.3,
+    noise_strength: 0.28,
+    jitter_strength: 0.015,
+)

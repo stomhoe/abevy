@@ -1,5 +1,4 @@
 
-use bevy::ecs::query;
 use ::game_common::{game_common_components::*, };
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 use ::sprite_shared::{sprite_scale_offset::Offset2D, *};
@@ -445,11 +444,11 @@ pub fn map_min_dist_tiles(
 pub fn on_ezero_tile_despawn(
     on_despawn: On<Despawn, (Tile, EntityZero, TagSet)>,
     query: Query<(&TagSet), (AnyDisabling)>,
-    mut tile_ents_within_tag: ResMut<EzeroTileEntsWithinTag>
+    mut tile_ents_within_tag: If<ResMut<EzeroTileEntsWithinTag>>
 ) {
     if let Ok(tag_set) = query.get(on_despawn.entity) {
         tag_set.iter().for_each(|tag| {
-            if let Some(ents) = tile_ents_within_tag.0.get_mut(tag) {
+            if let Some(ents) = tile_ents_within_tag.0.0.get_mut(tag) {
                 ents.remove(&on_despawn.entity);
             }
         });

@@ -11,22 +11,32 @@ impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 #[require(AssetScoped, Prefix::trunc("TileShader"), Replicated)]
 pub enum TileShader{
-    TexRepeat(MonoRepeatTextureOverlayMat),
-    TwoTexRepeat(TwoOverlaysExample),
-    Voronoi(VoronoiTextureOverlayMat),
+    TexRepeat(RepeatTexMat),
     Wavy(WavyMat),
-    RockyTerrain(RockyTerrainMat),
+    TerrainBlending(TerrainBlendingMat),
     //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
 }
 impl TileShader {
     pub fn set_image_handle(&mut self, handle: Handle<Image>) {
         match self {
             TileShader::TexRepeat(mat) => { mat.texture_overlay = handle; }
-            TileShader::TwoTexRepeat(mat) => { mat.texture_overlay = handle.clone(); mat.texture_overlay_2 = handle; }
-            TileShader::Voronoi(mat) => { mat.texture_overlay = handle; }
             TileShader::Wavy(mat) => { mat.texture_overlay = handle; }
-            TileShader::RockyTerrain(_) => { } // Procedural shader, no image needed
+            TileShader::TerrainBlending(mat) => { mat.texture_a = handle.clone(); mat.texture_b = handle; }
 
+        }
+    }
+    pub fn set_multiple_image_handles(&mut self, handles: Vec<Handle<Image>>) {
+        let Some(first) = handles.first().cloned() else {
+            return;
+        };
+        match self {
+            TileShader::TerrainBlending(mat) => {
+                mat.texture_a = first.clone();
+                mat.texture_b = handles.get(1).cloned().unwrap_or(first);
+            }
+            _ => {
+                self.set_image_handle(first);
+            }
         }
     }
 }
