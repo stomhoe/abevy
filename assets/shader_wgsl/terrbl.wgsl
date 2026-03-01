@@ -13,14 +13,14 @@ const SOUTH_EAST = CENTER + vec2<f32>(DIAGONAL_DISTANCE, DIAGONAL_DISTANCE);
 const SOUTH_WEST = CENTER + vec2<f32>(-DIAGONAL_DISTANCE, DIAGONAL_DISTANCE);
 const NORTH_EAST = CENTER + vec2<f32>(DIAGONAL_DISTANCE, -DIAGONAL_DISTANCE);
 const NORTH_WEST = CENTER + vec2<f32>(-DIAGONAL_DISTANCE, -DIAGONAL_DISTANCE);
-const EPS = 0.00001;
 
 @group(3) @binding(1) var tile_indices_map: texture_2d<f32>;
 @group(3) @binding(2) var tile_flags_map: texture_2d<f32>;
 @group(3) @binding(3) var tile_params_map: texture_2d<f32>;
-@group(3) @binding(4) var tile_mask_map: texture_2d<f32>;
-@group(3) @binding(5) var<uniform> map_size_tiles: vec2<f32>;
-@group(3) @binding(6) var<uniform> time: f32;
+@group(3) @binding(4) var<uniform> map_size_tiles: vec2<f32>;
+@group(3) @binding(5) var<uniform> time: f32;
+
+const MASK_COLOR_U8 = vec4<u32>(255u, 0u, 0u, 255u);
 
 struct TileData {
     base_tex_index: u32,
@@ -32,7 +32,6 @@ struct TileData {
     speed: f32,
     wavy_strength: f32,
     time_offset: f32,
-    mask_color: vec4<f32>,
 };
 
 fn decode_u16(low: f32, high: f32) -> u32 {
@@ -45,8 +44,8 @@ fn decode_flags(v: f32) -> u32 {
     return u32(round(v * 255.0));
 }
 
-fn almost_equal(a: vec4<f32>, b: vec4<f32>, epsilon: f32) -> bool {
-    return all(abs(a - b) < vec4<f32>(epsilon));
+fn color_to_u8(c: vec4<f32>) -> vec4<u32> {
+    return vec4<u32>(round(clamp(c, vec4<f32>(0.0), vec4<f32>(1.0)) * 255.0));
 }
 
 fn in_bounds(tile: vec2<i32>) -> bool {
@@ -58,13 +57,12 @@ fn in_bounds(tile: vec2<i32>) -> bool {
 
 fn read_tile_data(tile: vec2<i32>) -> TileData {
     if !in_bounds(tile) {
-        return TileData(0u, 0u, false, false, false, 0.0, 0.0, 0.0, 0.0, vec4<f32>(0.0));
+        return TileData(0u, 0u, false, false, false, 0.0, 0.0, 0.0, 0.0);
     }
 
     let tex = textureLoad(tile_indices_map, tile, 0);
     let flags_raw = decode_flags(textureLoad(tile_flags_map, tile, 0).r);
     let params = textureLoad(tile_params_map, tile, 0);
-    let mask = textureLoad(tile_mask_map, tile, 0);
     return TileData(
         decode_u16(tex.r, tex.g),
         decode_u16(tex.b, tex.a),
@@ -75,7 +73,6 @@ fn read_tile_data(tile: vec2<i32>) -> TileData {
         params.g,
         params.b,
         params.a,
-        mask,
     );
 }
 
@@ -123,16 +120,14 @@ fn compute_water_offset(uv_world: vec2<f32>, t: f32, strength: f32) -> vec2<f32>
     return wave1 + wave2 + vec2<f32>(n + n2, n - n2);
 }
 
-fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>) -> vec4<f32> {
+fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, tint: vec4<f32>) -> vec4<f32> {
     let data = read_tile_data(tile);
-    let base = textureSample(sprite_texture, sprite_sampler, uv, i32(data.base_tex_index));
-    if !(data.has_params && data.has_overlay) {
+    let base = textureSample(sprite_texture, sprite_sampler, uv, i32(data.base_tex_index)) * tint;
+    // debug check: validate strict mask-color hit independent of encoded flags.
+    let base_u8 = color_to_u8(base);
+    if any(base_u8.rgb != MASK_COLOR_U8.rgb) {
         return base;
     }
-    if !almost_equal(base, data.mask_color, EPS) {
-        return base;
-    }
-
     let repeat_scale = max(data.scale, 1e-5);
     let uv_world = (vec2<f32>(f32(tile.x), f32(tile.y)) + uv) * repeat_scale / 10000.0;
     let t = (time + data.time_offset) * max(data.speed, 0.0);
@@ -160,7 +155,7 @@ fn sample_neighbor_or_self(tile: vec2<i32>, uv: vec2<f32>, self_color: vec4<f32>
     if !data.blend_enabled {
         return self_color;
     }
-    return sample_tile_color(tile, uv);
+    return sample_tile_color(tile, uv, vec4<f32>(1.0));
 }
 
 @fragment
@@ -170,7 +165,7 @@ fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
         i32(in.storage_position.y) + i32(tilemap_data.chunk_pos.y),
     );
     let uv = in.uv.xy;
-    var out = sample_tile_color(tile_pos, uv) * in.color;
+    var out = sample_tile_color(tile_pos, uv, in.color);
     if out.a < 0.001 {
         discard;
     }

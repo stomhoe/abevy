@@ -16,12 +16,9 @@ pub struct TerrBlendMat {
     #[texture(3)]
     #[serde(skip)]
     pub tile_params_map: Handle<Image>,
-    #[texture(4)]
-    #[serde(skip)]
-    pub tile_mask_map: Handle<Image>,
-    #[uniform(5)]
+    #[uniform(4)]
     pub map_size_tiles: Vec2,
-    #[uniform(6)]
+    #[uniform(5)]
     pub time: f32,
 }
 
@@ -31,7 +28,6 @@ impl TerrBlendMat {
             tile_indices_map: Handle::default(),
             tile_flags_map: Handle::default(),
             tile_params_map: Handle::default(),
-            tile_mask_map: Handle::default(),
             map_size_tiles: Vec2::ONE,
             time: 0.0,
         }
@@ -44,7 +40,6 @@ impl PartialEq for TerrBlendMat {
         self.tile_indices_map == other.tile_indices_map
             && self.tile_flags_map == other.tile_flags_map
             && self.tile_params_map == other.tile_params_map
-            && self.tile_mask_map == other.tile_mask_map
             && self.map_size_tiles == other.map_size_tiles
             && self.time.to_bits() == other.time.to_bits()
     }
@@ -57,7 +52,6 @@ impl Default for TerrBlendMat {
             tile_indices_map: Handle::default(),
             tile_flags_map: Handle::default(),
             tile_params_map: Handle::default(),
-            tile_mask_map: Handle::default(),
             map_size_tiles: Vec2::ONE,
             time: 0.0,
         }

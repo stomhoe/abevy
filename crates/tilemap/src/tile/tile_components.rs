@@ -363,8 +363,6 @@ pub struct TerrBlendParams {
 pub struct TerrblParamsSeri {
     #[serde(default)]
     pub texture_path: String,
-    #[serde(default = "default_terrbl_mask_color")]
-    pub mask_color: [f32; 4],
     #[serde(default = "default_terrbl_scale")]
     pub scale: f32,
     #[serde(default)]
@@ -380,7 +378,6 @@ impl Default for TerrblParamsSeri {
     fn default() -> Self {
         Self {
             texture_path: String::new(),
-            mask_color: default_terrbl_mask_color(),
             scale: default_terrbl_scale(),
             speed: 0.0,
             wavy_strength: 0.0,
@@ -393,7 +390,7 @@ impl TerrblParamsSeri {
     pub fn to_terrbl_params(&self) -> TerrBlendParams {
         TerrBlendParams {
             texture_path: self.texture_path.clone(),
-            mask_color: self.mask_color.into(),
+            mask_color: Vec4::new(255.0, 0.0, 0.0, 255.0),
             scale: self.scale,
             speed: self.speed,
             wavy_strength: self.wavy_strength,
@@ -401,9 +398,6 @@ impl TerrblParamsSeri {
             blend_enabled: self.blend_enabled,
         }
     }
-}
-fn default_terrbl_mask_color() -> [f32; 4] {
-    [255.0, 0.0, 0.0, 255.0]
 }
 fn default_terrbl_scale() -> f32 {
     1e-5

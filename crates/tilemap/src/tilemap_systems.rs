@@ -309,6 +309,7 @@ pub fn process_tiles_pre(
                         let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(material));
                         terrbl_mats.push((tmap_ent, material));
                     } else {
+                        error!(target: TILEMAP_SYSTEM, "Failed to build terrbl material for map");
                         default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
                     }
                 }
@@ -468,7 +469,6 @@ fn build_terrbl_material_for_map(
     let mut tile_indices_data = vec![0_u8; px_count * 4];
     let mut tile_flags_data = vec![0_u8; px_count * 4];
     let mut tile_params_data = vec![0_u8; px_count * 16];
-    let mut tile_mask_data = vec![0_u8; px_count * 4];
 
     for y in 0..height {
         for x in 0..width {
@@ -513,24 +513,17 @@ fn build_terrbl_material_for_map(
                 px_i * 4,
                 [params.scale, params.speed, params.wavy_strength, params.time_offset],
             );
-
-            tile_mask_data[px_i] = params.mask_color.x.clamp(0.0, 255.0) as u8;
-            tile_mask_data[px_i + 1] = params.mask_color.y.clamp(0.0, 255.0) as u8;
-            tile_mask_data[px_i + 2] = params.mask_color.z.clamp(0.0, 255.0) as u8;
-            tile_mask_data[px_i + 3] = params.mask_color.w.clamp(0.0, 255.0) as u8;
         }
     }
 
     let tile_indices_map = images.add(create_image_u8(width, height, tile_indices_data));
     let tile_flags_map = images.add(create_image_u8(width, height, tile_flags_data));
     let tile_params_map = images.add(create_image_f32(width, height, tile_params_data));
-    let tile_mask_map = images.add(create_image_u8(width, height, tile_mask_data));
 
     Some(TerrBlendMat {
         tile_indices_map,
         tile_flags_map,
         tile_params_map,
-        tile_mask_map,
         map_size_tiles: Vec2::new(width as f32, height as f32),
         time: 0.0,
     })
