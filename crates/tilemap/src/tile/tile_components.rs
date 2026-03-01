@@ -349,7 +349,7 @@ pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 pub struct BlocksProjectiles;
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct TerrblParams {
+pub struct TerrBlendParams {
     pub texture_path: String,
     pub mask_color: Vec4,
     pub scale: f32,
@@ -386,8 +386,8 @@ impl Default for TerrblParamsSeri {
     }
 }
 impl TerrblParamsSeri {
-    pub fn to_terrbl_params(&self) -> TerrblParams {
-        TerrblParams {
+    pub fn to_terrbl_params(&self) -> TerrBlendParams {
+        TerrBlendParams {
             texture_path: self.texture_path.clone(),
             mask_color: self.mask_color.into(),
             scale: self.scale,

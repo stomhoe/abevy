@@ -58,6 +58,7 @@ pub struct ToDenyOnTileClone(
     OffsetForTerrgenPlacement,
     RotateCardinallyBasedOnHash,
     TransformBasedCardRotation,
+    TerrBlendParams
 );
 
 #[derive(Bundle)] #[allow(unused, )]
