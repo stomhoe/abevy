@@ -327,7 +327,6 @@ pub fn process_tiles_pre(
                         &tile_runtime_info,
                         &params.ezero_terrbl_query,
                         &storage,
-                        &mut texture_vec,
                         mapkey.tile_size,
                         mapkey.terrbl_img_size,
                         &mut terrbl_debug_budget,
@@ -483,15 +482,11 @@ fn build_terrbl_material_for_map(
     tile_runtime_info: &EntityHashMap<(EntityZeroRef, TileTextureIndex)>,
     ezero_terrbl_query: &Query<Option<&TerrBlendParams>, With<EntityZero>>,
     storage: &TileStorage,
-    texture_vec: &mut TilemapTexture,
     tile_size_px: U16Vec2,
     terrbl_img_size: U16Vec2,
     terrbl_debug_budget: &mut u32,
 ) -> Option<TerrBlendMat> {
     const MAX_TERRBL_OVERLAYS: usize = 8;
-    let Vector(_tmap_textures) = texture_vec else {
-        return None;
-    };
     let width = storage.size.x;
     let height = storage.size.y;
     if width == 0 || height == 0 {
