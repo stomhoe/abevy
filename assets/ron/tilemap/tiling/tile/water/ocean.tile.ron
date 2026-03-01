@@ -9,6 +9,14 @@
     walk_speed: 0.99,
     //liquid: true,
 
-    shader: "ocean_waves",
+    shader: "terrbl",
+    terrbl_params: (
+        texture_path: "texture/world/terr/water/19.png",
+        scale: 0.003,
+        speed: 0.5,
+        wavy_strength: 1.0,
+        mask_color: (255., 0., 0., 255.),
+        time_offset: 0.0,
+    ),
     color: Some((255, 0, 0, 255)),
 )

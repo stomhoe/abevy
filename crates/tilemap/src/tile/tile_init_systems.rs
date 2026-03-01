@@ -200,15 +200,14 @@ pub fn init_tiles(
 
         if !seri.is_spritetile {
             cmd.entity(tile_enti).insert(TileImagePaths(std::mem::take(&mut seri.img_paths)));
+            cmd.entity(tile_enti).insert(seri.terrbl_params.to_terrbl_params());
 
-            if seri.shader.len() > 2 {
-                let Ok(shader_ent) = shader_map.0.get_cloned(&seri.shader) else {
-                    error!("Tile '{}' references shader {} not found in TileShaderEntityMap", str_id, seri.shader);
+            if !seri.terrbl_params.texture_path.trim().is_empty() {
+                let Ok(shader_ent) = shader_map.0.get_cloned("terrbl") else {
+                    error!("Tile '{}' could not resolve single terrbl shader entity", str_id);
                     return;
                 };
                 cmd.entity(tile_enti).insert(TileShaderRef(shader_ent));
-            } else if !seri.shader.is_empty() {
-                warn!("Tile {} shader {} is too short for a shader", str_id, seri.shader);
             }
             if let Some(y_sort_origin) = seri.y_sort {
                 cmd.entity(tile_enti).insert(YSortOrigin(seri.offset.1 + y_sort_origin - 10.0));

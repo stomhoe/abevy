@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use common::common_components::{ImagePathHolder, MultipleImagePathHolder, };
 
-use crate::tile::tile_shader::{tile_material::wavy::WavyMat, tile_shader_components::*, };
+use crate::tile::tile_shader::{tile_material::terrbl::TerrBlendMat, tile_shader_components::*, };
 
 #[allow(unused_parens)]
 pub fn add_image_handle_to_tile_shader(
@@ -21,9 +21,11 @@ pub fn add_image_handle_to_tile_shader(
     });
 }
 
-pub fn update_wavy_time(time: Res<Time>, mut mats: ResMut<Assets<WavyMat>>) {
+pub fn update_wavy_time(time: Res<Time>, mut mats: ResMut<Assets<TerrBlendMat>>) {
     let t = time.elapsed_secs();
     for (_h, mat) in mats.iter_mut() {
-        mat.time = t as f32;
+        if mat.speed > 0.0 || mat.wavy_strength > 0.0 {
+            mat.time = t;
+        }
     }
 }

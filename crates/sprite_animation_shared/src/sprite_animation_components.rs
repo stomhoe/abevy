@@ -69,6 +69,18 @@ pub struct AnimationHandle(pub Handle<Animation>,);
 pub struct AnimationSheet(pub Spritesheet,);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct ClipStartFrames(pub Vec<usize>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct AlternatingStartFramesConfig(pub Vec<Option<(usize, usize)>>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct AlternatingStartFramesState(pub Vec<usize>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct SaveAnimationProgress;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(HotReload, AssetScoped, Replicated, Prefix::trunc("Animation"),   )]
 pub struct AcAnimation;
 
@@ -77,15 +89,3 @@ pub struct AcAnimation;
 common::define_entity_map_systems!(
     AcAnimation
 );
-
-#[derive(Component, Default, Clone, Debug, Deserialize, Serialize)]
-pub struct ClipStartFrames(pub Vec<usize>);
-
-#[derive(Component, Default, Clone, Debug, Deserialize, Serialize)]
-pub struct AlternatingStartFramesConfig(pub Vec<Option<(usize, usize)>>);
-
-#[derive(Component, Default, Clone, Debug, Deserialize, Serialize)]
-pub struct AlternatingStartFramesState(pub Vec<usize>);
-
-#[derive(Component, Default, Clone, Copy, Debug)]
-pub struct SaveAnimationProgress;

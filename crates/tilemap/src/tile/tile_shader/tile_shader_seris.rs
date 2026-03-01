@@ -4,36 +4,27 @@ use bevy::prelude::*;
 use serde::Deserialize;
 
 #[derive(Deserialize, Asset, TypePath, Default)]
-pub struct ShaderRepeatTexSeri {
+pub struct ShaderTerrblSeri {
     pub id: String,
     pub img_path: String,
+    #[serde(default = "default_scale")]
     pub scale: f32,
+    #[serde(default = "default_mask_color")]
     pub mask_color: [f32; 4],
-    pub tint_color: Option<[f32; 4]>,
+    #[serde(default)]
+    pub speed: f32,
+    #[serde(default)]
+    pub wavy_strength: f32,
     #[serde(default)]
     pub blend_blacklist: HashSet<String>,
     #[serde(default)]
     pub blend_whitelist: HashSet<String>,
 }
 
-#[derive(Deserialize, Asset, TypePath, Default)]
-pub struct PlaceholderSeri {
-    pub id: String,
-    pub img_path: String,
-    pub scale: f32,
-    pub voronoi_scale: f32,
-    pub voronoi_scale_random: f32,
-    pub voronoi_rotation: f32,
-    pub mask_color: [f32; 4],
+fn default_scale() -> f32 {
+    1e-5
 }
 
-#[derive(Deserialize, Asset, TypePath, Default)]
-pub struct ShaderWavySeri {
-    pub id: String,
-    pub img_path: String,
-    pub mask_color: [f32; 4],
-    pub scale: f32,
-    pub time: f32,
-    pub speed: f32,
-    pub debug_mode: f32,
+fn default_mask_color() -> [f32; 4] {
+    [255.0, 0.0, 0.0, 255.0]
 }

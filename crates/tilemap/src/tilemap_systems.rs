@@ -60,9 +60,7 @@ pub struct ProcessTilesPreParams<'w, 's> {
     ), ()>,
     pub image_size_map: Res<'w, ImageSizeMap>,
 
-    pub texture_overlay_mat: ResMut<'w, Assets<RepeatTexMat>>,
-    pub wavy_mat: ResMut<'w, Assets<WavyMat>>,
-    pub terrain_blending_mat: ResMut<'w, Assets<TerrainBlendingMat>>,
+    pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
     pub chunkrange: Res<'w, AaChunkRangeSettings>,
 
     pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
@@ -269,9 +267,7 @@ pub fn process_tiles_pre(
 
     let mut insert2tmaps = Vec::with_capacity(changed_structs.len());
     let mut default_mats = Vec::with_capacity(changed_structs.len());
-    let mut wavy_mats = Vec::with_capacity(changed_structs.len());
     let mut texture_overlay_mats = Vec::with_capacity(changed_structs.len());
-    let mut terrain_blending_mats = Vec::with_capacity(changed_structs.len());
 
     for mapkey in changed_structs.drain() {
         let Some(mapstruct) = tmap_map.0.get_mut(&mapkey) else {
@@ -293,17 +289,9 @@ pub fn process_tiles_pre(
         };
         if let Some(shader) = shader {
             match shader {
-                TileShader::TexRepeat(handle) => {
+                TileShader::TerrBlend(handle) => {
                     let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(handle));
                     texture_overlay_mats.push((tmap_ent, material));
-                }
-                TileShader::Wavy(handle) => {
-                    let material = MaterialTilemapHandle::from(params.wavy_mat.add(handle));
-                    wavy_mats.push((tmap_ent, material.clone()));
-                }
-                TileShader::TerrainBlending(terrain_blending_mat) => {
-                    let material = MaterialTilemapHandle::from(params.terrain_blending_mat.add(terrain_blending_mat));
-                    terrain_blending_mats.push((tmap_ent, material.clone()));
                 }
             };
 
@@ -314,8 +302,6 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch(insert2tmaps);
     cmd.try_insert_batch(default_mats);
     cmd.try_insert_batch(texture_overlay_mats);
-    cmd.try_insert_batch(wavy_mats);
-    cmd.try_insert_batch(terrain_blending_mats);
 }
 #[allow(clippy::too_many_arguments)]
 fn process_tile_into_corresponding_tilemap(

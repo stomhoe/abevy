@@ -5,7 +5,15 @@
     img_paths: [
         ("", "texture/world/white.png"),
     ],
-    shader: "ice",
+    shader: "terrbl",
+    terrbl_params: (
+        texture_path: "texture/world/terr/ice.jpg",
+        scale: 8,
+        speed: 0.0,
+        wavy_strength: 0.0,
+        mask_color: (255., 0., 0., 255.),
+        time_offset: 0.0,
+    ),
     walk_speed: 0.4,
     color: Some((255, 0, 0, 255)),
     step_sfx: (

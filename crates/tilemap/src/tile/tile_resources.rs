@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tilemap_shared::InteractionZoneSeri;
 
 pub use crate::tilemap_resources::{MassCollectedTiles, ImportantRegisteredPositions, CloneSpawnParamSet};
-use crate::tile::tile_components::{DeleteOtherTiles, DeleteOtherTilesSeri, Tile};
+use crate::tile::tile_components::{DeleteOtherTiles, DeleteOtherTilesSeri, TerrblParamsSeri, Tile};
 
 common::define_entity_map_systems!(
     Tile,
@@ -115,6 +115,8 @@ pub struct TileSeri {
     pub persisted: bool,
     #[serde(default)]
     pub shader: String,
+    #[serde(default)]
+    pub terrbl_params: TerrblParamsSeri,
     #[serde(default)]
     pub is_spritetile: bool,
     pub color: Option<[u8; 4]>,

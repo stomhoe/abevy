@@ -1,6 +1,0 @@
-(
-    id: "lake",
-    img_path: "texture/world/terr/water/lake.png",
-    scale: 25,
-    mask_color: (255., 0, 0, 255.),
-)

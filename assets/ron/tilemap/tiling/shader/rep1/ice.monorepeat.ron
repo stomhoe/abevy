@@ -1,6 +1,0 @@
-(
-    id: "ice",
-    img_path: "texture/world/terr/ice.jpg",
-    scale: 8,
-    mask_color: (255., 0, 0, 255.),
-)

@@ -348,6 +348,62 @@ pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BlocksProjectiles;
 
+#[derive(Component, Debug, Clone, Default)]
+pub struct TerrblParams {
+    pub texture_path: String,
+    pub mask_color: Vec4,
+    pub scale: f32,
+    pub speed: f32,
+    pub wavy_strength: f32,
+    pub time_offset: f32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct TerrblParamsSeri {
+    #[serde(default)]
+    pub texture_path: String,
+    #[serde(default = "default_terrbl_mask_color")]
+    pub mask_color: [f32; 4],
+    #[serde(default = "default_terrbl_scale")]
+    pub scale: f32,
+    #[serde(default)]
+    pub speed: f32,
+    #[serde(default)]
+    pub wavy_strength: f32,
+    #[serde(default)]
+    pub time_offset: f32,
+}
+impl Default for TerrblParamsSeri {
+    fn default() -> Self {
+        Self {
+            texture_path: String::new(),
+            mask_color: default_terrbl_mask_color(),
+            scale: default_terrbl_scale(),
+            speed: 0.0,
+            wavy_strength: 0.0,
+            time_offset: 0.0,
+        }
+    }
+}
+impl TerrblParamsSeri {
+    pub fn to_terrbl_params(&self) -> TerrblParams {
+        TerrblParams {
+            texture_path: self.texture_path.clone(),
+            mask_color: self.mask_color.into(),
+            scale: self.scale,
+            speed: self.speed,
+            wavy_strength: self.wavy_strength,
+            time_offset: self.time_offset,
+        }
+    }
+}
+fn default_terrbl_mask_color() -> [f32; 4] {
+    [255.0, 0.0, 0.0, 255.0]
+}
+fn default_terrbl_scale() -> f32 {
+    1e-5
+}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct DeleteOtherTiles {
     pub spared_z: HashSet<AcZ>,

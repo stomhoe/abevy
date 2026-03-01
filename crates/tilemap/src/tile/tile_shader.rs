@@ -32,12 +32,10 @@ pub fn plugin(app: &mut App) {
     ).in_set(TileShaderSystems))
     .add_plugins((
         plugin_tile_shader,
-        MaterialTilemapPlugin::<RepeatTexMat>::default(),
-        MaterialTilemapPlugin::<WavyMat>::default(),
-        MaterialTilemapPlugin::<TerrainBlendingMat>::default(),
+        MaterialTilemapPlugin::<TerrBlendMat>::default(),
     ))
 
-    .register_type::<RepeatTexMat>()
+    .register_type::<TerrBlendMat>()
 
     ;
 }

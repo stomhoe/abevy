@@ -6,6 +6,14 @@
         ("", "texture/world/white.png"),
     ],
     walk_speed: 0.7,
-    shader: "gravel",
+    shader: "terrbl",
+    terrbl_params: (
+        texture_path: "texture/world/terr/gravel.png",
+        scale: 8,
+        speed: 0.0,
+        wavy_strength: 0.0,
+        mask_color: (255., 0., 0., 255.),
+        time_offset: 0.0,
+    ),
     color: Some((255, 0, 0, 255)),
 )

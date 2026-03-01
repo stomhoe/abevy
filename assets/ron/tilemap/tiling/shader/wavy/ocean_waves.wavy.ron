@@ -1,9 +1,0 @@
-(
-    id: "ocean_waves",
-    img_path: "texture/world/terr/water/19.png",
-    mask_color: (255., 0., 0., 255.),
-    scale: 0.003,
-    time: 0.0,
-    speed: 0.5,
-    debug_mode: 0.0,
-)
