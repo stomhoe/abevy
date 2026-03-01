@@ -106,7 +106,7 @@ impl ChunkPos {
         let local_y = rng.random_range(0..REGION_SIZE_IN_CHUNKS.y());
         Self(region_pos.0 * REGION_SIZE_IN_CHUNKS.0 + IVec2::new(local_x, local_y))
     }
-    pub const CHUNK_SIZE: UVec2 = UVec2::splat(10);//may change later. fed
+    pub const CHUNK_SIZE: UVec2 = UVec2::splat(30);//may change later. fed
     pub const CHUNK_AREA: usize = (Self::CHUNK_SIZE.x * Self::CHUNK_SIZE.y) as usize;
 
     pub fn to_pixelpos(&self) -> Vec2 {
@@ -308,14 +308,18 @@ impl SizeInTiles{
     pub fn to_pixel_size(&self) -> Vec2 {
        (self.0 * GlobalTilePos::TILE_SIZE_PXS).as_vec2()
     }
-    pub fn tiles_per_chunk(&self) -> UVec2 {
-        ChunkPos::CHUNK_SIZE / self.0
+    pub fn tiles_per_chunk(&self) -> Result<UVec2, ()> {
+        let raw = ChunkPos::CHUNK_SIZE / self.0;
+        if raw.x == 0 || raw.y == 0 {
+            return Err(());
+        }
+        Ok(raw)
     }
     pub fn tilemap_size(&self) -> bevy_ecs_tilemap::map::TilemapSize {
-        bevy_ecs_tilemap::map::TilemapSize::from(self.tiles_per_chunk())
+        bevy_ecs_tilemap::map::TilemapSize::from(self.tiles_per_chunk().unwrap_or(UVec2::ONE))
     }
     pub fn render_chunk_size(&self) -> UVec2 {
-        self.tiles_per_chunk() * 2
+        self.tiles_per_chunk().unwrap_or(UVec2::ONE) * 2
     }
     pub fn x(&self) -> usize {
         self.0.x as usize

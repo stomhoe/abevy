@@ -327,6 +327,7 @@ pub fn process_tiles_pre(
                         &tile_runtime_info,
                         &params.ezero_terrbl_query,
                         &storage,
+                        tmap_ent,
                         mapkey.tile_size,
                         mapkey.terrbl_img_size,
                         &mut terrbl_debug_budget,
@@ -334,7 +335,18 @@ pub fn process_tiles_pre(
                         let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(material));
                         terrbl_mats.push((tmap_ent, material));
                     } else {
-                        error!(target: TILEMAP_SYSTEM, "Failed to build terrbl material for map");
+                        error!(
+                            target: TILEMAP_SYSTEM,
+                            "Failed to build terrbl material for map: tmap {:?}, dim {:?}, chunk {:?}, z {:?}, tile_size {:?}, terrbl_img_size {:?}, storage {}x{}",
+                            tmap_ent,
+                            mapkey.dim_ref,
+                            mapkey.chunk_pos,
+                            mapkey.ac_z,
+                            mapkey.tile_size,
+                            mapkey.terrbl_img_size,
+                            storage.size.x,
+                            storage.size.y
+                        );
                         default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
                     }
                 }
@@ -376,6 +388,16 @@ fn process_tile_into_corresponding_tilemap(
     to_persist: bool,
 
 ) {
+    if let Err(()) = size_in_tiles.tiles_per_chunk() {
+        error!(
+            target: TILEMAP_SYSTEM,
+            "Tile {:?} has invalid size_in_tiles {:?} for chunk {:?}; tiles_per_chunk returned error",
+            tile_ent,
+            size_in_tiles.inner(),
+            ChunkPos::CHUNK_SIZE,
+        );
+    }
+
     let tile_size = match tile_handles {
         Some(_) => img_size,
         None => {
@@ -482,6 +504,7 @@ fn build_terrbl_material_for_map(
     tile_runtime_info: &EntityHashMap<(EntityZeroRef, TileTextureIndex)>,
     ezero_terrbl_query: &Query<Option<&TerrBlendParams>, With<EntityZero>>,
     storage: &TileStorage,
+    tmap_ent: Entity,
     tile_size_px: U16Vec2,
     terrbl_img_size: U16Vec2,
     terrbl_debug_budget: &mut u32,
@@ -490,6 +513,15 @@ fn build_terrbl_material_for_map(
     let width = storage.size.x;
     let height = storage.size.y;
     if width == 0 || height == 0 {
+        error!(
+            target: TILEMAP_SYSTEM,
+            "terrbl debug: build skipped due to zero storage size for tmap {:?} (storage: {}x{}, tile_size: {:?}, terrbl_img_size: {:?})",
+            tmap_ent,
+            width,
+            height,
+            tile_size_px,
+            terrbl_img_size
+        );
         return None;
     }
     let px_count = (width as usize) * (height as usize);
@@ -615,7 +647,7 @@ fn build_terrbl_material_for_map(
             tile_flags_data[px_i + 3] = 255;
             if *terrbl_debug_budget > 0 {
                 *terrbl_debug_budget -= 1;
-                info!(
+                trace!(
                     target: TILEMAP_SYSTEM,
                     "terrbl debug: tile {:?} base_idx {} overlay_idx {} flags {:08b} has_params {} blend_enabled {} tex '{}'",
                     tile_pos,

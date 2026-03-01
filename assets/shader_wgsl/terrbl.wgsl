@@ -3,7 +3,7 @@
 
 const SQUARE_DISTANCE = 0.9;
 const DIAGONAL_DISTANCE = 0.88;
-const STRENGTH = vec2<f32>(0.0, 0.93);
+const STRENGTH = vec2<f32>(0.0, 0.75);
 const CENTER = vec2<f32>(0.5, 0.5);
 const EAST = CENTER + vec2<f32>(SQUARE_DISTANCE, 0.0);
 const WEST = CENTER + vec2<f32>(-SQUARE_DISTANCE, 0.0);
@@ -179,7 +179,8 @@ fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, world_uv: vec2<f32>, tint: 
         let shimmer = 0.03 * strength * fbm(uv_world * 1.8 + t * 0.6);
         overlay = vec4<f32>(overlay.rgb + vec3<f32>(shimmer), overlay.a);
     }
-    return vec4<f32>(overlay.rgb, overlay.a * base.a);
+    // Keep the original tile alpha to avoid weak/semi-transparent overlays.
+    return vec4<f32>(overlay.rgb, base.a);
 }
 
 fn sample_neighbor_or_self(
