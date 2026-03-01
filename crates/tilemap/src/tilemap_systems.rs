@@ -1,5 +1,6 @@
 use bevy::{
     asset::RenderAssetUsages,
+    ecs::entity::EntityHashMap,
     ecs::system::SystemParam,
     math::U16Vec2,
     platform::collections::HashSet,
@@ -21,6 +22,7 @@ pub struct MapKey {
     chunk_pos: ChunkPos,
     ac_z: AcZ,
     tile_size: U16Vec2,
+    terrbl_img_size: U16Vec2,
     shader_ref: Option<TileShaderRef>,
 }
 impl MapKey {
@@ -29,9 +31,10 @@ impl MapKey {
         chunk_pos: ChunkPos,
         ac_z: AcZ,
         tile_size: U16Vec2,
+        terrbl_img_size: U16Vec2,
         shader_ref: Option<TileShaderRef>,
     ) -> Self {
-        Self { dim_ref, chunk_pos, ac_z, tile_size, shader_ref }
+        Self { dim_ref, chunk_pos, ac_z, tile_size, terrbl_img_size, shader_ref }
     }
     pub fn shader_ref(&self) -> Option<TileShaderRef> {self.shader_ref}
 }
@@ -69,7 +72,6 @@ pub struct ProcessTilesPreParams<'w, 's> {
 
     pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
     pub images: ResMut<'w, Assets<Image>>,
-    pub asset_server: Res<'w, AssetServer>,
     pub chunkrange: Res<'w, AaChunkRangeSettings>,
 
     pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
@@ -108,6 +110,7 @@ pub fn on_tilemap_despawn(trig: On<Despawn, (TilemapTileSize, )>,
         *chunk_pos,
         *ac_z,
         tile_size_u16vec2,
+        U16Vec2::ZERO,
         opt_shader,
     );
     tmap_map.0.remove(&map_key);
@@ -128,6 +131,7 @@ pub fn process_tiles_pre(
         Option<&AcZ>,
         Option<&TileHashIdsHandles>,
         Option<&TileShaderRef>,
+        Option<&TerrBlendParams>,
         Has<SpriteTile>,
         Option<&TileColor>,
         Has<YSortOrigin>,
@@ -135,7 +139,13 @@ pub fn process_tiles_pre(
     mut spritetiles_map: ResMut<SpriteTilesAtGpos>,
     mut tmap_map: ResMut<TmapMap>,
     mut changed_structs: Local<HashSet<MapKey>>,
+    mut tile_runtime_info: Local<EntityHashMap<(EntityZeroRef, TileTextureIndex)>>,
+    mut terrbl_debug_budget: Local<u32>,
 ) {
+    if *terrbl_debug_budget == 0 {
+        *terrbl_debug_budget = 40;
+    }
+    tile_runtime_info.clear();
     let is_host = *params.state.get() == ClientState::Disconnected;
 
     if params.collected_tiles.0.is_empty() { return; }
@@ -171,7 +181,7 @@ pub fn process_tiles_pre(
             params.collected_tiles.0.swap_remove(i);
             continue;
         }
-        let (_tile_strid, hash_id, size_in_tiles, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, is_spritetile, color, y_sort) = query_result.unwrap();
+        let (_tile_strid, hash_id, size_in_tiles, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, terrbl_params, is_spritetile, color, y_sort) = query_result.unwrap();
 
         if !params.regpos_map.check_min_distances(
             &mut cmd,
@@ -229,13 +239,23 @@ pub fn process_tiles_pre(
         let chunk_pos = ChunkPos::from(bundle.gpos);
 
         let tile_img_size = if let Some(ref handles) = tile_handles {
-            params.image_size_map
-                .0
-                .get(&handles.first_handle().id())
-                .copied()
-                .unwrap_or(U16Vec2::ONE)
+            params.image_size_map.0.get(&handles.first_handle().id()).copied().unwrap_or(U16Vec2::ONE)
         } else {
             U16Vec2::ONE
+        };
+        let terrbl_img_size = if let Some(terrbl_params) = terrbl_params {
+            if terrbl_params.texture_handle != Handle::default() {
+                params
+                    .image_size_map
+                    .0
+                    .get(&terrbl_params.texture_handle.id())
+                    .copied()
+                    .unwrap_or(U16Vec2::ZERO)
+            } else {
+                U16Vec2::ZERO
+            }
+        } else {
+            U16Vec2::ZERO
         };
 
         process_tile_into_corresponding_tilemap(
@@ -251,6 +271,7 @@ pub fn process_tiles_pre(
             tile_handles,
             shader_ref,
             tile_img_size,
+            terrbl_img_size,
             &mut tmap_map.0,
             chunk_ent,
             chunk_pos,
@@ -262,6 +283,7 @@ pub fn process_tiles_pre(
             &mut child_ofs_to_insert,
             to_persist,
         );
+        tile_runtime_info.insert(tile_ent, (bundle.ezero_ref, bundle.tile_bundle.texture_index));
         i += 1;
     }
     //DEJAR CON IF NEW ASÍ TILES DE TILEMAP PUEDEN SER REPLICADAS
@@ -299,12 +321,16 @@ pub fn process_tiles_pre(
             match shader {
                 TileShader::TerrBlend(_) => {
                     if let Some(material) = build_terrbl_material_for_map(
-                        &params.asset_server,
+                        &params.image_size_map,
                         &mut params.images,
                         &params.tile_query,
+                        &tile_runtime_info,
                         &params.ezero_terrbl_query,
                         &storage,
                         &mut texture_vec,
+                        mapkey.tile_size,
+                        mapkey.terrbl_img_size,
+                        &mut terrbl_debug_budget,
                     ) {
                         let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(material));
                         terrbl_mats.push((tmap_ent, material));
@@ -338,6 +364,7 @@ fn process_tile_into_corresponding_tilemap(
     tile_handles: Option<&TileHashIdsHandles>,
     shader_ref: Option<&TileShaderRef>,
     img_size: U16Vec2,
+    terrbl_img_size: U16Vec2,
     tmap_map: &mut HashMap<MapKey, MapStruct>,
     chunk: Entity,
     chunk_pos: ChunkPos,
@@ -358,7 +385,7 @@ fn process_tile_into_corresponding_tilemap(
             return;
         }
     };
-    let map_key = MapKey::new(dim_ref, chunk_pos, tile_z_index, tile_size, shader_ref.copied());
+    let map_key = MapKey::new(dim_ref, chunk_pos, tile_z_index, tile_size, terrbl_img_size, shader_ref.copied());
 
     if let Some(mapstruct) = tmap_map.get_mut(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;
@@ -450,14 +477,19 @@ fn process_tile_into_corresponding_tilemap(
 }
 
 fn build_terrbl_material_for_map(
-    asset_server: &AssetServer,
+    image_size_map: &ImageSizeMap,
     images: &mut Assets<Image>,
     tile_query: &Query<(&EntityZeroRef, &TileTextureIndex), (With<Tile>, Without<EntityZero>)>,
+    tile_runtime_info: &EntityHashMap<(EntityZeroRef, TileTextureIndex)>,
     ezero_terrbl_query: &Query<Option<&TerrBlendParams>, With<EntityZero>>,
     storage: &TileStorage,
     texture_vec: &mut TilemapTexture,
+    tile_size_px: U16Vec2,
+    terrbl_img_size: U16Vec2,
+    terrbl_debug_budget: &mut u32,
 ) -> Option<TerrBlendMat> {
-    let Vector(tmap_textures) = texture_vec else {
+    const MAX_TERRBL_OVERLAYS: usize = 8;
+    let Vector(_tmap_textures) = texture_vec else {
         return None;
     };
     let width = storage.size.x;
@@ -469,6 +501,7 @@ fn build_terrbl_material_for_map(
     let mut tile_indices_data = vec![0_u8; px_count * 4];
     let mut tile_flags_data = vec![0_u8; px_count * 4];
     let mut tile_params_data = vec![0_u8; px_count * 16];
+    let mut overlay_textures: Vec<Handle<Image>> = Vec::new();
 
     for y in 0..height {
         for x in 0..width {
@@ -476,12 +509,36 @@ fn build_terrbl_material_for_map(
             let Some(tile_ent) = storage.get(&tile_pos) else {
                 continue;
             };
-            let Ok((ezero_ref, base_texture_index)) = tile_query.get(tile_ent) else {
+            let (ezero_ref, base_texture_index) = if let Some((ezero_ref, base_texture_index)) =
+                tile_runtime_info.get(&tile_ent)
+            {
+                (*ezero_ref, *base_texture_index)
+            } else if let Ok((ezero_ref, base_texture_index)) = tile_query.get(tile_ent) {
+                (*ezero_ref, *base_texture_index)
+            } else {
+                if *terrbl_debug_budget > 0 {
+                    *terrbl_debug_budget -= 1;
+                    error!(
+                        target: TILEMAP_SYSTEM,
+                        "terrbl debug: missing tile runtime/query data at tile {:?} ent {:?}",
+                        tile_pos,
+                        tile_ent
+                    );
+                }
                 continue;
             };
             let px_i = ((y as usize) * (width as usize) + (x as usize)) * 4;
             encode_u16(&mut tile_indices_data, px_i, base_texture_index.0 as u16);
             let Some(params) = ezero_terrbl_query.get(ezero_ref.0).ok().flatten() else {
+                if *terrbl_debug_budget > 0 {
+                    *terrbl_debug_budget -= 1;
+                    error!(
+                        target: TILEMAP_SYSTEM,
+                        "terrbl debug: no TerrBlendParams on ezero {:?} tile {:?}",
+                        ezero_ref.0,
+                        tile_pos
+                    );
+                }
                 continue;
             };
 
@@ -492,14 +549,68 @@ fn build_terrbl_material_for_map(
             }
 
             let mut overlay_idx = 0_u16;
-            if !params.texture_path.trim().is_empty() {
+            if let Some(path_holder) = params.texture_path.as_ref() {
+                let overlay_handle = params.texture_handle.clone();
+                if overlay_handle == Handle::default() {
+                    if *terrbl_debug_budget > 0 {
+                        *terrbl_debug_budget -= 1;
+                        error!(
+                            target: TILEMAP_SYSTEM,
+                            "terrbl debug: missing texture handle for '{}' at tile {:?}",
+                            path_holder.path(),
+                            tile_pos
+                        );
+                    }
+                    continue;
+                }
+                let Some(curr_overlay_size) = image_size_map.0.get(&overlay_handle.id()).copied() else {
+                    if *terrbl_debug_budget > 0 {
+                        *terrbl_debug_budget -= 1;
+                        error!(
+                            target: TILEMAP_SYSTEM,
+                            "terrbl debug: missing image size for '{}' at tile {:?}",
+                            path_holder.path(),
+                            tile_pos
+                        );
+                    }
+                    continue;
+                };
+                if curr_overlay_size != terrbl_img_size {
+                    if *terrbl_debug_budget > 0 {
+                        *terrbl_debug_budget -= 1;
+                        error!(
+                            target: TILEMAP_SYSTEM,
+                            "terrbl debug: size mismatch tile {:?} overlay '{}' size {:?} map terrbl {:?} tile_size {:?}",
+                            tile_pos,
+                            path_holder.path(),
+                            curr_overlay_size,
+                            terrbl_img_size,
+                            tile_size_px
+                        );
+                    }
+                    continue;
+                }
                 flags |= 1 << 2;
-                let overlay_handle: Handle<Image> = asset_server.load(params.texture_path.clone());
-                overlay_idx = match tmap_textures.iter().position(|h| *h == overlay_handle) {
+                overlay_idx = match overlay_textures.iter().position(|h| *h == overlay_handle) {
                     Some(i) => i as u16,
                     None => {
-                        tmap_textures.push(overlay_handle);
-                        (tmap_textures.len() - 1) as u16
+                        if overlay_textures.len() >= MAX_TERRBL_OVERLAYS {
+                            if *terrbl_debug_budget > 0 {
+                                *terrbl_debug_budget -= 1;
+                                error!(
+                                    target: TILEMAP_SYSTEM,
+                                    "terrbl debug: too many overlay textures in one terrbl map (max {}), skipping '{}' at tile {:?}",
+                                    MAX_TERRBL_OVERLAYS,
+                                    path_holder.path(),
+                                    tile_pos
+                                );
+                            }
+                            flags &= !(1 << 2);
+                            0
+                        } else {
+                            overlay_textures.push(overlay_handle);
+                            (overlay_textures.len() - 1) as u16
+                        }
                     }
                 };
             }
@@ -507,6 +618,20 @@ fn build_terrbl_material_for_map(
             encode_u16(&mut tile_indices_data, px_i + 2, overlay_idx);
             tile_flags_data[px_i] = flags;
             tile_flags_data[px_i + 3] = 255;
+            if *terrbl_debug_budget > 0 {
+                *terrbl_debug_budget -= 1;
+                info!(
+                    target: TILEMAP_SYSTEM,
+                    "terrbl debug: tile {:?} base_idx {} overlay_idx {} flags {:08b} has_params {} blend_enabled {} tex '{}'",
+                    tile_pos,
+                    base_texture_index.0,
+                    overlay_idx,
+                    flags,
+                    true,
+                    params.blend_enabled,
+                    params.texture_path.as_ref().map(ToString::to_string).unwrap_or_default()
+                );
+            }
 
             encode_f32x4(
                 &mut tile_params_data,
@@ -520,13 +645,39 @@ fn build_terrbl_material_for_map(
     let tile_flags_map = images.add(create_image_u8(width, height, tile_flags_data));
     let tile_params_map = images.add(create_image_f32(width, height, tile_params_data));
 
-    Some(TerrBlendMat {
+    let mut mat = TerrBlendMat {
         tile_indices_map,
         tile_flags_map,
         tile_params_map,
         map_size_tiles: Vec2::new(width as f32, height as f32),
         time: 0.0,
-    })
+        ..Default::default()
+    };
+    if let Some(h) = overlay_textures.first() {
+        mat.overlay_tex_0 = h.clone();
+    }
+    if let Some(h) = overlay_textures.get(1) {
+        mat.overlay_tex_1 = h.clone();
+    }
+    if let Some(h) = overlay_textures.get(2) {
+        mat.overlay_tex_2 = h.clone();
+    }
+    if let Some(h) = overlay_textures.get(3) {
+        mat.overlay_tex_3 = h.clone();
+    }
+    if let Some(h) = overlay_textures.get(4) {
+        mat.overlay_tex_4 = h.clone();
+    }
+    if let Some(h) = overlay_textures.get(5) {
+        mat.overlay_tex_5 = h.clone();
+    }
+    if let Some(h) = overlay_textures.get(6) {
+        mat.overlay_tex_6 = h.clone();
+    }
+    if let Some(h) = overlay_textures.get(7) {
+        mat.overlay_tex_7 = h.clone();
+    }
+    Some(mat)
 }
 
 fn encode_u16(out: &mut [u8], index: usize, value: u16) {

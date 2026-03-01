@@ -348,9 +348,11 @@ pub struct KeepDistanceFrom(#[entities] pub Vec<Entity>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BlocksProjectiles;
 
-#[derive(Component, Debug, Clone, Default)]
+#[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
 pub struct TerrBlendParams {
-    pub texture_path: String,
+    pub texture_path: Option<ImagePathHolder>,
+    #[serde(skip, default)]
+    pub texture_handle: Handle<Image>,
     pub mask_color: Vec4,
     pub scale: f32,
     pub speed: f32,
@@ -388,8 +390,31 @@ impl Default for TerrblParamsSeri {
 }
 impl TerrblParamsSeri {
     pub fn to_terrbl_params(&self) -> TerrBlendParams {
+        let texture_path = if self.texture_path.trim().is_empty() {
+            None
+        } else {
+            let Ok(path_holder) = ImagePathHolder::new(self.texture_path.clone()) else {
+                error!(
+                    target: TILE_INIT,
+                    "Invalid terrbl texture path '{}', falling back to no overlay",
+                    self.texture_path
+                );
+                return TerrBlendParams {
+                    texture_path: None,
+                    texture_handle: Handle::default(),
+                    mask_color: Vec4::new(255.0, 0.0, 0.0, 255.0),
+                    scale: self.scale,
+                    speed: self.speed,
+                    wavy_strength: self.wavy_strength,
+                    time_offset: self.time_offset,
+                    blend_enabled: self.blend_enabled,
+                };
+            };
+            Some(path_holder)
+        };
         TerrBlendParams {
-            texture_path: self.texture_path.clone(),
+            texture_path,
+            texture_handle: Handle::default(),
             mask_color: Vec4::new(255.0, 0.0, 0.0, 255.0),
             scale: self.scale,
             speed: self.speed,

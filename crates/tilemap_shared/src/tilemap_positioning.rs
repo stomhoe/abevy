@@ -106,7 +106,7 @@ impl ChunkPos {
         let local_y = rng.random_range(0..REGION_SIZE_IN_CHUNKS.y());
         Self(region_pos.0 * REGION_SIZE_IN_CHUNKS.0 + IVec2::new(local_x, local_y))
     }
-    pub const CHUNK_SIZE: UVec2 = UVec2::splat(30);//may change later. fed
+    pub const CHUNK_SIZE: UVec2 = UVec2::splat(3);//may change later. fed
     pub const CHUNK_AREA: usize = (Self::CHUNK_SIZE.x * Self::CHUNK_SIZE.y) as usize;
 
     pub fn to_pixelpos(&self) -> Vec2 {

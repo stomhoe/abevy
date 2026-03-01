@@ -19,6 +19,14 @@ const NORTH_WEST = CENTER + vec2<f32>(-DIAGONAL_DISTANCE, -DIAGONAL_DISTANCE);
 @group(3) @binding(3) var tile_params_map: texture_2d<f32>;
 @group(3) @binding(4) var<uniform> map_size_tiles: vec2<f32>;
 @group(3) @binding(5) var<uniform> time: f32;
+@group(3) @binding(6) var overlay_tex_0: texture_2d<f32>;
+@group(3) @binding(7) var overlay_tex_1: texture_2d<f32>;
+@group(3) @binding(8) var overlay_tex_2: texture_2d<f32>;
+@group(3) @binding(9) var overlay_tex_3: texture_2d<f32>;
+@group(3) @binding(10) var overlay_tex_4: texture_2d<f32>;
+@group(3) @binding(11) var overlay_tex_5: texture_2d<f32>;
+@group(3) @binding(12) var overlay_tex_6: texture_2d<f32>;
+@group(3) @binding(13) var overlay_tex_7: texture_2d<f32>;
 
 const MASK_COLOR_U8 = vec4<u32>(255u, 0u, 0u, 255u);
 
@@ -53,6 +61,13 @@ fn in_bounds(tile: vec2<i32>) -> bool {
         && tile.y >= 0
         && tile.x < i32(map_size_tiles.x)
         && tile.y < i32(map_size_tiles.y);
+}
+
+fn resolve_storage_tile_pos(raw_tile: vec2<i32>) -> vec2<i32> {
+    if in_bounds(raw_tile) {
+        return raw_tile;
+    }
+    return raw_tile - vec2<i32>(i32(tilemap_data.chunk_pos.x), i32(tilemap_data.chunk_pos.y));
 }
 
 fn read_tile_data(tile: vec2<i32>) -> TileData {
@@ -120,12 +135,29 @@ fn compute_water_offset(uv_world: vec2<f32>, t: f32, strength: f32) -> vec2<f32>
     return wave1 + wave2 + vec2<f32>(n + n2, n - n2);
 }
 
+fn sample_overlay_texture(index: u32, uv: vec2<f32>) -> vec4<f32> {
+    switch index {
+        case 0u: { return textureSample(overlay_tex_0, sprite_sampler, uv); }
+        case 1u: { return textureSample(overlay_tex_1, sprite_sampler, uv); }
+        case 2u: { return textureSample(overlay_tex_2, sprite_sampler, uv); }
+        case 3u: { return textureSample(overlay_tex_3, sprite_sampler, uv); }
+        case 4u: { return textureSample(overlay_tex_4, sprite_sampler, uv); }
+        case 5u: { return textureSample(overlay_tex_5, sprite_sampler, uv); }
+        case 6u: { return textureSample(overlay_tex_6, sprite_sampler, uv); }
+        case 7u: { return textureSample(overlay_tex_7, sprite_sampler, uv); }
+        default: { return vec4<f32>(1.0, 0.0, 1.0, 1.0); }
+    }
+}
+
 fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, tint: vec4<f32>) -> vec4<f32> {
     let data = read_tile_data(tile);
     let base = textureSample(sprite_texture, sprite_sampler, uv, i32(data.base_tex_index)) * tint;
     // debug check: validate strict mask-color hit independent of encoded flags.
     let base_u8 = color_to_u8(base);
     if any(base_u8.rgb != MASK_COLOR_U8.rgb) {
+        return base;
+    }
+    if !data.has_overlay {
         return base;
     }
     let repeat_scale = max(data.scale, 1e-5);
@@ -142,7 +174,7 @@ fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, tint: vec4<f32>) -> vec4<f3
         );
     }
 
-    var overlay = textureSample(sprite_texture, sprite_sampler, sample_uv, i32(data.overlay_tex_index));
+    var overlay = sample_overlay_texture(data.overlay_tex_index, sample_uv);
     if strength > 0.0 {
         let shimmer = 0.03 * strength * fbm(uv_world * 1.8 + t * 0.6);
         overlay = vec4<f32>(overlay.rgb + vec3<f32>(shimmer), overlay.a);
@@ -158,19 +190,45 @@ fn sample_neighbor_or_self(tile: vec2<i32>, uv: vec2<f32>, self_color: vec4<f32>
     return sample_tile_color(tile, uv, vec4<f32>(1.0));
 }
 
+fn sample_base_color(tile: vec2<i32>, uv: vec2<f32>, tint: vec4<f32>) -> vec4<f32> {
+    let data = read_tile_data(tile);
+    return textureSample(sprite_texture, sprite_sampler, uv, i32(data.base_tex_index)) * tint;
+}
+const DEBUG_MODE: u32 = 4u;
+
 @fragment
 fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
-    let tile_pos = vec2<i32>(
-        i32(in.storage_position.x) + i32(tilemap_data.chunk_pos.x),
-        i32(in.storage_position.y) + i32(tilemap_data.chunk_pos.y),
+    let raw_tile_pos = vec2<i32>(
+        i32(in.storage_position.x),
+        i32(in.storage_position.y),
     );
+    let tile_pos = resolve_storage_tile_pos(raw_tile_pos);
     let uv = in.uv.xy;
+    let tile_data = read_tile_data(tile_pos);
+
+    if DEBUG_MODE == 1u {
+        return sample_base_color(tile_pos, uv, in.color);
+    }
+    if DEBUG_MODE == 2u {
+        return vec4<f32>(
+            select(0.0, 1.0, tile_data.has_params),
+            select(0.0, 1.0, tile_data.has_overlay),
+            select(0.0, 1.0, tile_data.blend_enabled),
+            1.0,
+        );
+    }
+    if DEBUG_MODE == 3u {
+        return vec4<f32>(f32(tile_data.overlay_tex_index % 256u) / 255.0, 0.0, 0.0, 1.0);
+    }
+    if DEBUG_MODE == 4u {
+        return sample_overlay_texture(tile_data.overlay_tex_index, uv);
+    }
+
     var out = sample_tile_color(tile_pos, uv, in.color);
     if out.a < 0.001 {
         discard;
     }
 
-    let tile_data = read_tile_data(tile_pos);
     if !tile_data.blend_enabled {
         return out;
     }

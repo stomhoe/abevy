@@ -12,7 +12,7 @@ pub struct AaChunkRangeSettings {
 }
 impl Default for AaChunkRangeSettings {
     fn default() -> Self {
-        NORMAL_CHUNK_RANGE_SETTINGS
+        ONE_CHUNK_RANGE_SETTINGS
     }
 }
 

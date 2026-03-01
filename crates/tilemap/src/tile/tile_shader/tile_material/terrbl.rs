@@ -20,6 +20,30 @@ pub struct TerrBlendMat {
     pub map_size_tiles: Vec2,
     #[uniform(5)]
     pub time: f32,
+    #[texture(6)]
+    #[serde(skip)]
+    pub overlay_tex_0: Handle<Image>,
+    #[texture(7)]
+    #[serde(skip)]
+    pub overlay_tex_1: Handle<Image>,
+    #[texture(8)]
+    #[serde(skip)]
+    pub overlay_tex_2: Handle<Image>,
+    #[texture(9)]
+    #[serde(skip)]
+    pub overlay_tex_3: Handle<Image>,
+    #[texture(10)]
+    #[serde(skip)]
+    pub overlay_tex_4: Handle<Image>,
+    #[texture(11)]
+    #[serde(skip)]
+    pub overlay_tex_5: Handle<Image>,
+    #[texture(12)]
+    #[serde(skip)]
+    pub overlay_tex_6: Handle<Image>,
+    #[texture(13)]
+    #[serde(skip)]
+    pub overlay_tex_7: Handle<Image>,
 }
 
 impl TerrBlendMat {
@@ -30,6 +54,14 @@ impl TerrBlendMat {
             tile_params_map: Handle::default(),
             map_size_tiles: Vec2::ONE,
             time: 0.0,
+            overlay_tex_0: Handle::default(),
+            overlay_tex_1: Handle::default(),
+            overlay_tex_2: Handle::default(),
+            overlay_tex_3: Handle::default(),
+            overlay_tex_4: Handle::default(),
+            overlay_tex_5: Handle::default(),
+            overlay_tex_6: Handle::default(),
+            overlay_tex_7: Handle::default(),
         }
     }
 }
@@ -42,6 +74,14 @@ impl PartialEq for TerrBlendMat {
             && self.tile_params_map == other.tile_params_map
             && self.map_size_tiles == other.map_size_tiles
             && self.time.to_bits() == other.time.to_bits()
+            && self.overlay_tex_0 == other.overlay_tex_0
+            && self.overlay_tex_1 == other.overlay_tex_1
+            && self.overlay_tex_2 == other.overlay_tex_2
+            && self.overlay_tex_3 == other.overlay_tex_3
+            && self.overlay_tex_4 == other.overlay_tex_4
+            && self.overlay_tex_5 == other.overlay_tex_5
+            && self.overlay_tex_6 == other.overlay_tex_6
+            && self.overlay_tex_7 == other.overlay_tex_7
     }
 }
 impl Eq for TerrBlendMat {}
@@ -54,6 +94,14 @@ impl Default for TerrBlendMat {
             tile_params_map: Handle::default(),
             map_size_tiles: Vec2::ONE,
             time: 0.0,
+            overlay_tex_0: Handle::default(),
+            overlay_tex_1: Handle::default(),
+            overlay_tex_2: Handle::default(),
+            overlay_tex_3: Handle::default(),
+            overlay_tex_4: Handle::default(),
+            overlay_tex_5: Handle::default(),
+            overlay_tex_6: Handle::default(),
+            overlay_tex_7: Handle::default(),
         }
     }
 }

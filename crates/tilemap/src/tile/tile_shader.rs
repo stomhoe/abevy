@@ -26,6 +26,7 @@ pub fn plugin(app: &mut App) {
         (init_shaders, map_tile_shader_id_to_entity).chain()
     ).in_set(TileShaderSystems))
     .add_systems(Update, (
+        resolve_terrbl_texture_handles,
         update_wavy_time,
 
     ).in_set(TileShaderSystems))
