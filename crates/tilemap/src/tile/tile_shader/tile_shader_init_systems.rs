@@ -16,7 +16,6 @@ pub fn init_shaders(
         return;
     }
     let mut shader_comps_to_insert = Vec::new();
-    let mut path_holders_to_insert = Vec::new();
 
     for seri in load_shader_terrbl_seri_defs() {
             //trace!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
@@ -29,29 +28,11 @@ pub fn init_shaders(
                 }
             };
 
-            match ImagePathHolder::new(seri.img_path) {
-                Ok(path_holder) => {
-
-                    let ent = cmd.spawn_empty().id();
-
-                    shader_comps_to_insert.push((ent, (
-                        str_id.clone(),
-                        TileShader::TerrBlend(TerrBlendMat::new(
-                            Handle::default(),
-                            seri.mask_color.into(),
-                            seri.scale,
-                            seri.speed,
-                            seri.wavy_strength,
-                        )),
-                    )));
-                    path_holders_to_insert.push((ent, path_holder));
-
-                },
-                Err(err) => {
-                    error!(target: TILE_SHADER_INIT, "Failed to create ImagePathHolder for shader '{}': {}", str_id, err);
-                }
-            }
+            let ent = cmd.spawn_empty().id();
+            shader_comps_to_insert.push((ent, (
+                str_id.clone(),
+                TileShader::TerrBlend(TerrBlendMat::new()),
+            )));
     }
-    cmd.insert_batch(path_holders_to_insert);
     cmd.insert_batch(shader_comps_to_insert);
 }

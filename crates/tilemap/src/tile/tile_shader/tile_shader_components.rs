@@ -14,16 +14,3 @@ pub enum TileShader{
     TerrBlend(TerrBlendMat),
     //se pueden poner nuevos shaders con otros parámetros (por ej para configurar luminosidad o nose)
 }
-impl TileShader {
-    pub fn set_image_handle(&mut self, handle: Handle<Image>) {
-        match self {
-            TileShader::TerrBlend(mat) => { mat.texture_overlay = handle; }
-        }
-    }
-    pub fn set_multiple_image_handles(&mut self, handles: Vec<Handle<Image>>) {
-        let Some(first) = handles.first().cloned() else {
-            return;
-        };
-        self.set_image_handle(first);
-    }
-}

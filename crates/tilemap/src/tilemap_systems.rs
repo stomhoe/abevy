@@ -1,9 +1,16 @@
-use bevy::{ecs::system::SystemParam, math::U16Vec2, platform::collections::HashSet, prelude::*, };
+use bevy::{
+    asset::RenderAssetUsages,
+    ecs::system::SystemParam,
+    math::U16Vec2,
+    platform::collections::HashSet,
+    prelude::*,
+    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
+};
 use bevy_ecs_tilemap::prelude::{*, TilemapTexture::Vector};
 use bevy_replicon::prelude::{ClientState, Replicated};
 use common::{TILEMAP_SYSTEM, common_components::HashId, common_resources::ImageSizeMap };
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{Persisted, };
+use game_common::game_common_components::{EntityZero, EntityZeroRef, Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
 use crate::{chunking::chunking_resources::*, tile::{tile_bundles::TileBundleNoTileFlip, tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_bundles::*, tilemap_resources::*};
@@ -61,11 +68,15 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub image_size_map: Res<'w, ImageSizeMap>,
 
     pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
+    pub images: ResMut<'w, Assets<Image>>,
+    pub asset_server: Res<'w, AssetServer>,
     pub chunkrange: Res<'w, AaChunkRangeSettings>,
 
     pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
     pub regpos_map: ResMut<'w, ImportantRegisteredPositions>,
     pub shader_query: Query<'w, 's, &'static TileShader, ()>,
+    pub tile_query: Query<'w, 's, (&'static EntityZeroRef, &'static TileTextureIndex), (With<Tile>, Without<EntityZero>)>,
+    pub ezero_terrbl_query: Query<'w, 's, Option<&'static TerrBlendParams>, With<EntityZero>>,
 
     pub loaded_chunks: Res<'w, LoadedChunks>,
     pub state: Res<'w, State<ClientState>>,
@@ -267,7 +278,7 @@ pub fn process_tiles_pre(
 
     let mut insert2tmaps = Vec::with_capacity(changed_structs.len());
     let mut default_mats = Vec::with_capacity(changed_structs.len());
-    let mut texture_overlay_mats = Vec::with_capacity(changed_structs.len());
+    let mut terrbl_mats = Vec::with_capacity(changed_structs.len());
 
     for mapkey in changed_structs.drain() {
         let Some(mapstruct) = tmap_map.0.get_mut(&mapkey) else {
@@ -275,33 +286,42 @@ pub fn process_tiles_pre(
         };
         let tmap_ent = mapstruct.tmap_ent;
 
-        let (texture_vec, storage, tmap_hash_id_map) = (
-            mapstruct.take_texture(),
-            mapstruct.take_storage(),
-            mapstruct.take_hash_id_map(),
-        );
-        insert2tmaps.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
-
         let shader = if let Some(shader_ref) = mapkey.shader_ref() {
             params.shader_query.get(shader_ref.0).ok().map(|(shader)| shader.clone())
         } else {
             None
         };
+        let mut texture_vec = mapstruct.take_texture();
+        let storage = mapstruct.take_storage();
+        let tmap_hash_id_map = mapstruct.take_hash_id_map();
+
         if let Some(shader) = shader {
             match shader {
-                TileShader::TerrBlend(handle) => {
-                    let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(handle));
-                    texture_overlay_mats.push((tmap_ent, material));
+                TileShader::TerrBlend(_) => {
+                    if let Some(material) = build_terrbl_material_for_map(
+                        &params.asset_server,
+                        &mut params.images,
+                        &params.tile_query,
+                        &params.ezero_terrbl_query,
+                        &storage,
+                        &mut texture_vec,
+                    ) {
+                        let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(material));
+                        terrbl_mats.push((tmap_ent, material));
+                    } else {
+                        default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
+                    }
                 }
             };
 
         } else {
             default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
         }
+        insert2tmaps.push((tmap_ent, (tmap_hash_id_map, storage, texture_vec, )));
     }
     cmd.try_insert_batch(insert2tmaps);
     cmd.try_insert_batch(default_mats);
-    cmd.try_insert_batch(texture_overlay_mats);
+    cmd.try_insert_batch(terrbl_mats);
 }
 #[allow(clippy::too_many_arguments)]
 fn process_tile_into_corresponding_tilemap(
@@ -426,4 +446,137 @@ fn process_tile_into_corresponding_tilemap(
             childofs.push((tile_ent, ChildOf(tmap_ent)));
         }
     }
+}
+
+fn build_terrbl_material_for_map(
+    asset_server: &AssetServer,
+    images: &mut Assets<Image>,
+    tile_query: &Query<(&EntityZeroRef, &TileTextureIndex), (With<Tile>, Without<EntityZero>)>,
+    ezero_terrbl_query: &Query<Option<&TerrBlendParams>, With<EntityZero>>,
+    storage: &TileStorage,
+    texture_vec: &mut TilemapTexture,
+) -> Option<TerrBlendMat> {
+    let Vector(tmap_textures) = texture_vec else {
+        return None;
+    };
+    let width = storage.size.x;
+    let height = storage.size.y;
+    if width == 0 || height == 0 {
+        return None;
+    }
+    let px_count = (width as usize) * (height as usize);
+    let mut tile_indices_data = vec![0_u8; px_count * 4];
+    let mut tile_flags_data = vec![0_u8; px_count * 4];
+    let mut tile_params_data = vec![0_u8; px_count * 16];
+    let mut tile_mask_data = vec![0_u8; px_count * 4];
+
+    for y in 0..height {
+        for x in 0..width {
+            let tile_pos = TilePos { x, y };
+            let Some(tile_ent) = storage.get(&tile_pos) else {
+                continue;
+            };
+            let Ok((ezero_ref, base_texture_index)) = tile_query.get(tile_ent) else {
+                continue;
+            };
+            let px_i = ((y as usize) * (width as usize) + (x as usize)) * 4;
+            encode_u16(&mut tile_indices_data, px_i, base_texture_index.0 as u16);
+            let Some(params) = ezero_terrbl_query.get(ezero_ref.0).ok().flatten() else {
+                continue;
+            };
+
+            let mut flags = 0_u8;
+            flags |= 1 << 0; // has params
+            if params.blend_enabled {
+                flags |= 1 << 1;
+            }
+
+            let mut overlay_idx = 0_u16;
+            if !params.texture_path.trim().is_empty() {
+                flags |= 1 << 2;
+                let overlay_handle: Handle<Image> = asset_server.load(params.texture_path.clone());
+                overlay_idx = match tmap_textures.iter().position(|h| *h == overlay_handle) {
+                    Some(i) => i as u16,
+                    None => {
+                        tmap_textures.push(overlay_handle);
+                        (tmap_textures.len() - 1) as u16
+                    }
+                };
+            }
+
+            encode_u16(&mut tile_indices_data, px_i + 2, overlay_idx);
+            tile_flags_data[px_i] = flags;
+            tile_flags_data[px_i + 3] = 255;
+
+            encode_f32x4(
+                &mut tile_params_data,
+                px_i * 4,
+                [params.scale, params.speed, params.wavy_strength, params.time_offset],
+            );
+
+            tile_mask_data[px_i] = params.mask_color.x.clamp(0.0, 255.0) as u8;
+            tile_mask_data[px_i + 1] = params.mask_color.y.clamp(0.0, 255.0) as u8;
+            tile_mask_data[px_i + 2] = params.mask_color.z.clamp(0.0, 255.0) as u8;
+            tile_mask_data[px_i + 3] = params.mask_color.w.clamp(0.0, 255.0) as u8;
+        }
+    }
+
+    let tile_indices_map = images.add(create_image_u8(width, height, tile_indices_data));
+    let tile_flags_map = images.add(create_image_u8(width, height, tile_flags_data));
+    let tile_params_map = images.add(create_image_f32(width, height, tile_params_data));
+    let tile_mask_map = images.add(create_image_u8(width, height, tile_mask_data));
+
+    Some(TerrBlendMat {
+        tile_indices_map,
+        tile_flags_map,
+        tile_params_map,
+        tile_mask_map,
+        map_size_tiles: Vec2::new(width as f32, height as f32),
+        time: 0.0,
+    })
+}
+
+fn encode_u16(out: &mut [u8], index: usize, value: u16) {
+    out[index] = (value & 0x00FF) as u8;
+    out[index + 1] = ((value >> 8) & 0x00FF) as u8;
+}
+
+fn encode_f32x4(out: &mut [u8], index: usize, values: [f32; 4]) {
+    let mut byte_i = index;
+    for value in values {
+        let bytes = value.to_ne_bytes();
+        out[byte_i] = bytes[0];
+        out[byte_i + 1] = bytes[1];
+        out[byte_i + 2] = bytes[2];
+        out[byte_i + 3] = bytes[3];
+        byte_i += 4;
+    }
+}
+
+fn create_image_u8(width: u32, height: u32, data: Vec<u8>) -> Image {
+    Image::new(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        data,
+        TextureFormat::Rgba8Unorm,
+        RenderAssetUsages::default(),
+    )
+}
+
+fn create_image_f32(width: u32, height: u32, data: Vec<u8>) -> Image {
+    Image::new(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        data,
+        TextureFormat::Rgba32Float,
+        RenderAssetUsages::default(),
+    )
 }

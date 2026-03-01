@@ -2,7 +2,7 @@
     id: "ocean",
     name: "Ocean",
     tags: ["water", "liquid", "deep"],
-    z: -950,
+    z: -1000,
     img_paths: [
         ("", "texture/world/white.png"),
     ],

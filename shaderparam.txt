@@ -1,0 +1,145 @@
+Here is the code from the bevy side:
+
+```rust
+
+/// Ref image holder
+#[derive(Resource)]
+pub struct RefImageResource(pub DynamicImage);
+
+/// Create the ref image
+
+pub fn get_ref_texture_pixel(position: &Vec2, map: &Map) -> Rgba<u8> {
+  let tile = map.get_tile(position);
+
+  let texture_index = find_ground_texture_index(map, tile);
+  let tx = texture_index.0 % 8; // 8 because my tilesheet is 8 columns wide
+  let ty = (texture_index.0 as f32 / 8.) as u8;
+
+  debug_assert!((texture_index.0 as f32 / 8.) <= 255.);
+  debug_assert!(tx <= 255);
+  debug_assert_eq!((ty as u32 * 8) + tx, texture_index.0);
+
+  Rgba::from([tx as u8, ty, 0, 255])
+}
+
+pub fn create_ref_texture(map: &Map) -> DynamicImage {
+  let mut rgb_image = RgbaImage::new(map.map_width, map.map_height);
+  for y in 0..map.map_height {
+    for x in 0..map.map_width {
+      let rgb = get_ref_texture_pixel(&Vec2::new(x as f32, y as f32), map);
+      rgb_image.put_pixel(x, y, rgb);
+    }
+  }
+  DynamicImage::from(rgb_image)
+}
+
+fn create_timemap() {
+/// Call the create ref image
+let dyn_ref_texture = create_ref_texture(map);
+commands.insert_resource(RefImageResource(dyn_ref_texture.clone()));
+let ref_texture = Image::from_dynamic(dyn_ref_texture, false, RenderAssetUsages::default());
+let image_handle = images.add(ref_texture);
+
+let my_material_handle = materials.add(TileMapBlendMaterial {
+texture: image_handle,
+map_size: Vec2::new((map.map_width - 1) as f32, (map.map_height - 1) as f32),
+});
+
+...
+
+commands.entity(tilemap_entity).insert((
+    MaterialTilemapBundle {
+    grid_size,
+    map_type,
+    size: map_size,
+    storage: tile_storage,
+    texture: TilemapTexture::Single(ground_textures.texture.clone()),
+    tile_size,
+    anchor: TilemapAnchor::Center,
+    transform: Transform::from_xyz(0.0, 0.0, 0.0),
+    material: MaterialTilemapHandle::from(my_material_handle),
+    ..Default::default()
+    },
+    FirstTileMapLayer,
+));
+}
+```
+
+The shader
+```wgsl
+#import bevy_pbr::{mesh_view_bindings::view, forward_io::VertexOutput, utils::coords_to_viewport_uv}
+#import bevy_ecs_tilemap::vertex_output::MeshVertexOutput
+#import bevy_ecs_tilemap::common::{process_fragment, sprite_texture, sprite_sampler, tilemap_data}
+#import bevy_sprite::mesh2d_view_bindings::globals
+
+const SQUARE_DISTANCE = 0.9;
+const DIAGONAL_DISTANCE = 0.88;
+const STRENGTH = vec2<f32>(0, 0.93);
+const CENTER = vec2<f32>(0.5, 0.5);
+const EAST = CENTER + vec2<f32>(SQUARE_DISTANCE,0.);
+const WEST = CENTER + vec2<f32>(-SQUARE_DISTANCE, 0.);
+const NORTH = CENTER + vec2<f32>(0.,-SQUARE_DISTANCE);
+const SOUTH = CENTER + vec2<f32>(0.,SQUARE_DISTANCE);
+const SOUTH_EAST = CENTER + vec2<f32>(DIAGONAL_DISTANCE, DIAGONAL_DISTANCE);
+const SOUTH_WEST = CENTER + vec2<f32>(-DIAGONAL_DISTANCE, DIAGONAL_DISTANCE);
+const NORTH_EAST = CENTER + vec2<f32>(DIAGONAL_DISTANCE,-DIAGONAL_DISTANCE);
+const NORTH_WEST = CENTER + vec2<f32>(-DIAGONAL_DISTANCE,-DIAGONAL_DISTANCE);
+
+struct MyMaterial {
+    map_size: vec2<f32>
+};
+
+@group(3) @binding(0)
+var<uniform> material: MyMaterial;
+
+@group(3) @binding(1)
+var map_texture: texture_2d<f32>;
+@group(3) @binding(2)
+var map_sampler: sampler;
+
+fn get_tile_color(tile: vec2<i32>) -> vec4<f32> {
+    return textureSample(map_texture, map_sampler, vec2<f32>(f32(tile.x) / material.map_size.x, f32(tile.y) / material.map_size.y));
+}
+
+fn get_tile_id(tile: vec2<i32>) -> u32 {
+    let tile_color = get_tile_color(tile);
+    return u32(((tile_color.g * 255) * 8) + (tile_color.r * 255));
+}
+
+fn greyscale(color: vec4<f32>) -> vec4<f32> {
+  let rgb = (color.r + color.g + color.b) / 3.0;
+  return vec4<f32>(rgb, rgb, rgb, color.a);
+}
+
+@fragment
+fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
+    let tile_position = in.storage_position;
+    var out = process_fragment(in);
+    let tile_pos_i = vec2<i32>(i32(tile_position.x) + i32(tilemap_data.chunk_pos.x), i32(tile_position.y) + i32(tilemap_data.chunk_pos.y));
+    let uv = in.uv.xy;
+
+    let y_uv = vec2(uv.x, 1 - uv.y);
+    let xy_uv = vec2(1 - uv.x, 1 - uv.y);
+    let x_uv = vec2(1 - uv.x, uv.y);
+
+    let north = textureSample(sprite_texture, sprite_sampler, y_uv, get_tile_id(tile_pos_i + vec2<i32>(0, 1)));
+    let north_east = textureSample(sprite_texture, sprite_sampler, xy_uv, get_tile_id(tile_pos_i + vec2<i32>(1, 1)));
+    let east = textureSample(sprite_texture, sprite_sampler, x_uv, get_tile_id(tile_pos_i + vec2<i32>(1, 0)));
+    let south_east = textureSample(sprite_texture, sprite_sampler, xy_uv, get_tile_id(tile_pos_i + vec2<i32>(1, -1)));
+    let south = textureSample(sprite_texture, sprite_sampler, y_uv, get_tile_id(tile_pos_i + vec2<i32>(0, -1)));
+    let south_west = textureSample(sprite_texture, sprite_sampler, xy_uv, get_tile_id(tile_pos_i + vec2<i32>(-1, -1)));
+    let west = textureSample(sprite_texture, sprite_sampler, x_uv, get_tile_id(tile_pos_i + vec2<i32>(-1, 0)));
+    let north_west = textureSample(sprite_texture, sprite_sampler, xy_uv, get_tile_id(tile_pos_i + vec2<i32>(-1, 1)));
+
+    out = mix(out, north, smoothstep(STRENGTH.y, STRENGTH.x, distance(y_uv, SOUTH)));
+    out = mix(out, north_east, smoothstep(STRENGTH.y, STRENGTH.x, distance(xy_uv, SOUTH_WEST)));
+    out = mix(out, east, smoothstep(STRENGTH.y, STRENGTH.x, distance(x_uv, WEST)));
+    out = mix(out, south_east, smoothstep(STRENGTH.y, STRENGTH.x, distance(xy_uv, NORTH_WEST)));
+    out = mix(out, south, smoothstep(STRENGTH.y, STRENGTH.x, distance(y_uv, NORTH)));
+    out = mix(out, south_west, smoothstep(STRENGTH.y, STRENGTH.x, distance(xy_uv, NORTH_EAST)));
+    out = mix(out, west, smoothstep(STRENGTH.y, STRENGTH.x, distance(x_uv, EAST)));
+    out = mix(out, north_west, smoothstep(STRENGTH.y, STRENGTH.x, distance(xy_uv, SOUTH_EAST)));
+
+    return out;
+}
+```

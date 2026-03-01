@@ -356,6 +356,7 @@ pub struct TerrBlendParams {
     pub speed: f32,
     pub wavy_strength: f32,
     pub time_offset: f32,
+    pub blend_enabled: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -372,6 +373,8 @@ pub struct TerrblParamsSeri {
     pub wavy_strength: f32,
     #[serde(default)]
     pub time_offset: f32,
+    #[serde(default = "default_true")]
+    pub blend_enabled: bool,
 }
 impl Default for TerrblParamsSeri {
     fn default() -> Self {
@@ -382,6 +385,7 @@ impl Default for TerrblParamsSeri {
             speed: 0.0,
             wavy_strength: 0.0,
             time_offset: 0.0,
+            blend_enabled: default_true(),
         }
     }
 }
@@ -394,6 +398,7 @@ impl TerrblParamsSeri {
             speed: self.speed,
             wavy_strength: self.wavy_strength,
             time_offset: self.time_offset,
+            blend_enabled: self.blend_enabled,
         }
     }
 }
@@ -402,6 +407,9 @@ fn default_terrbl_mask_color() -> [f32; 4] {
 }
 fn default_terrbl_scale() -> f32 {
     1e-5
+}
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]

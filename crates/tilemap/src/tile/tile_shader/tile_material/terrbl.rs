@@ -8,36 +8,32 @@ use bevy_inspector_egui::prelude::*;
 #[reflect(Default, InspectorOptions)]
 pub struct TerrBlendMat {
     #[texture(1)]
-    #[sampler(2)]
     #[serde(skip)]
-    pub texture_overlay: Handle<Image>,
-    #[uniform(3)]
-    pub mask_color: Vec4,
-    #[uniform(4)]#[inspector(min = 1e-5, max = 1e-3)]
-    pub scale: f32,
+    pub tile_indices_map: Handle<Image>,
+    #[texture(2)]
+    #[serde(skip)]
+    pub tile_flags_map: Handle<Image>,
+    #[texture(3)]
+    #[serde(skip)]
+    pub tile_params_map: Handle<Image>,
+    #[texture(4)]
+    #[serde(skip)]
+    pub tile_mask_map: Handle<Image>,
     #[uniform(5)]
-    pub time: f32,
+    pub map_size_tiles: Vec2,
     #[uniform(6)]
-    pub speed: f32,
-    #[uniform(7)]
-    pub wavy_strength: f32,
+    pub time: f32,
 }
 
 impl TerrBlendMat {
-    pub fn new(
-        texture_overlay: Handle<Image>,
-        mask_color: Vec4,
-        scale: f32,
-        speed: f32,
-        wavy_strength: f32,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            texture_overlay,
-            mask_color: mask_color / 255.0,
-            scale,
+            tile_indices_map: Handle::default(),
+            tile_flags_map: Handle::default(),
+            tile_params_map: Handle::default(),
+            tile_mask_map: Handle::default(),
+            map_size_tiles: Vec2::ONE,
             time: 0.0,
-            speed,
-            wavy_strength,
         }
     }
 }
@@ -45,12 +41,12 @@ impl TerrBlendMat {
 //https://docs.rs/bevy-inspector-egui/latest/bevy_inspector_egui/struct.InspectorOptions.html
 impl PartialEq for TerrBlendMat {
     fn eq(&self, other: &Self) -> bool {
-        self.texture_overlay == other.texture_overlay
-            && self.mask_color == other.mask_color
-            && self.scale.to_bits() == other.scale.to_bits()
+        self.tile_indices_map == other.tile_indices_map
+            && self.tile_flags_map == other.tile_flags_map
+            && self.tile_params_map == other.tile_params_map
+            && self.tile_mask_map == other.tile_mask_map
+            && self.map_size_tiles == other.map_size_tiles
             && self.time.to_bits() == other.time.to_bits()
-            && self.speed.to_bits() == other.speed.to_bits()
-            && self.wavy_strength.to_bits() == other.wavy_strength.to_bits()
     }
 }
 impl Eq for TerrBlendMat {}
@@ -58,12 +54,12 @@ impl Eq for TerrBlendMat {}
 impl Default for TerrBlendMat {
     fn default() -> Self {
         Self {
-            texture_overlay: Handle::default(),
-            mask_color: Vec4::new(1.0, 0.0, 0.0, 1.0),
-            scale: 1e-5,
+            tile_indices_map: Handle::default(),
+            tile_flags_map: Handle::default(),
+            tile_params_map: Handle::default(),
+            tile_mask_map: Handle::default(),
+            map_size_tiles: Vec2::ONE,
             time: 0.0,
-            speed: 0.0,
-            wavy_strength: 0.0,
         }
     }
 }

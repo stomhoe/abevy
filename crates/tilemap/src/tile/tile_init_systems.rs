@@ -200,9 +200,8 @@ pub fn init_tiles(
 
         if !seri.is_spritetile {
             cmd.entity(tile_enti).insert(TileImagePaths(std::mem::take(&mut seri.img_paths)));
-            cmd.entity(tile_enti).insert(seri.terrbl_params.to_terrbl_params());
-
-            if !seri.terrbl_params.texture_path.trim().is_empty() {
+            if seri.shader.trim() == "terrbl" {
+                cmd.entity(tile_enti).insert(seri.terrbl_params.to_terrbl_params());
                 let Ok(shader_ent) = shader_map.0.get_cloned("terrbl") else {
                     error!("Tile '{}' could not resolve single terrbl shader entity", str_id);
                     return;
