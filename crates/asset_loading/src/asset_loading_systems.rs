@@ -5,7 +5,7 @@ use being::race::race_components::Race;
 use being::sex::sex_components::Sex;
 use being_shared::BeingInstTemplate;
 use sprite::sprite_components::SpriteConfig;
-use sprite_animation_shared::sprite_animation_shared::AcAnimation;
+use sprite_animation_shared::sprite_animation_components::AcAnimation;
 use tilemap_shared::GlobalGenSettings;
 
 use tilemap_shared::ForceAllChunksDespawn;

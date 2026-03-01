@@ -16,7 +16,6 @@ use crate::race::race_resources::RaceRef;
 use ::being_shared::{Predator, ControlledBy, Hunger, PredatorHuntThreshold};
 use common::common_components::StrId;
 use common::common_tag_components::TagSet;
-use crate::body::body_tree_components::BeingMassKg;
 use crate::race::race_components::Race;
 
 #[derive(Resource)]
@@ -307,16 +306,16 @@ pub fn update_predator_chase_targets(
         &::tilemap_shared::DimensionRef,
         &Predator,
         Option<&RaceRef>,
-        Option<&BeingMassKg>,
+        Option<&BodyTreeWeightSum>,
         Option<&ControlledBy>,
         &Hunger,
         &PredatorHuntThreshold,
     ), With<Predator>>,
-    prey_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef, Option<&RaceRef>, Option<&BeingMassKg>, Option<&TagSet>), With<Being>>,
+    prey_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef, Option<&RaceRef>, Option<&BodyTreeWeightSum>, Option<&TagSet>), With<Being>>,
     race_str_id_query: Query<&StrId, With<Race>>,
     mut cmd: Commands,
 ) {
-    for (pred_ent, pred_transf, &pred_dim, predator_cfg, pred_race, pred_mass, controlled_by, hunger, hunt_threshold) in predators.iter() {
+    for (pred_ent, pred_transf, &pred_dim, predator_cfg, pred_race, pred_weight_sum, controlled_by, hunger, hunt_threshold) in predators.iter() {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_input {
                 cmd.entity(pred_ent).try_remove::<ToChase>();
@@ -331,8 +330,9 @@ pub fn update_predator_chase_targets(
         }
 
         let pred_pos = GlobalTilePos::from(pred_transf.translation.xy());
+        let pred_weight_newtons = pred_weight_sum.map(|sum| sum.0).unwrap_or_default();
         let mut closest: Option<(Entity, i32)> = None;
-        for (prey_ent, prey_transf, &prey_dim, prey_race, prey_mass, prey_tags) in prey_query.iter() {
+        for (prey_ent, prey_transf, &prey_dim, prey_race, prey_weight_sum, prey_tags) in prey_query.iter() {
             if prey_ent == pred_ent || prey_dim != pred_dim {
                 continue;
             }
@@ -341,13 +341,12 @@ pub fn update_predator_chase_targets(
                     continue;
                 }
             }
-            if let (Some(pred_mass), Some(prey_mass)) = (pred_mass, prey_mass) {
-                if predator_cfg.prey_body_size_ratio_tolerance > 0.0
-                    && pred_mass.0 > 0.0
-                    && prey_mass.0 > pred_mass.0 * predator_cfg.prey_body_size_ratio_tolerance
-                {
-                    continue;
-                }
+            let prey_weight_newtons = prey_weight_sum.map(|sum| sum.0).unwrap_or_default();
+            if predator_cfg.prey_body_size_ratio_tolerance > 0.0
+                && pred_weight_newtons > 0.0
+                && prey_weight_newtons > pred_weight_newtons * predator_cfg.prey_body_size_ratio_tolerance
+            {
+                continue;
             }
             if let Some(prey_race) = prey_race {
                 if let Ok(prey_race_id) = race_str_id_query.get(prey_race.0) {

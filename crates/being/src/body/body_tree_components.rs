@@ -6,6 +6,7 @@ use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
+pub use being_shared::BodyTreeWeightSum;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(
@@ -16,8 +17,9 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct BodyTree;
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, Serialize, Deserialize)]
 #[relationship(relationship_target = Bodies)]
+#[require(Replicated)]
 pub struct BodyOf {
     #[relationship]
     #[entities]
@@ -32,12 +34,6 @@ impl Bodies {
         &self.0
     }
 }
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BodyTreeMassKg(pub f32);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BeingMassKg(pub f32);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct BodyTreeDistributedTotals(pub HashIdMap<f32>);

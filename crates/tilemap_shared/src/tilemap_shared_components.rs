@@ -1,0 +1,421 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
+use bevy::prelude::*;
+use bevy::platform::collections::HashMap;
+use bevy_ecs_tilemap::prelude::*;
+use bevy_replicon::prelude::*;
+use common::common_components::*;
+use serde::{Deserialize, Serialize};
+
+use crate::{CardinalDirection, GlobalTilePos, HashablePosVec, OplistSize, SizeInTiles, tilemap_shared_seris::InteractionZoneSeri};
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct PreChunkDespawnSystems;
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
+#[require(Replicated, Prefix::trunc("GlobalGenSettings"), AssetScoped, HotReload)]
+pub struct GlobalGenSettings {
+
+    pub seed: i32,
+    pub world_freq: f32,
+    pub tectonic_frequency: f32,
+    pub hot_reload_window_open_on_start: bool,
+    /// Timeout in seconds to wait for StructureBuildCompliance before giving up
+    pub structure_build_timeout_secs: f64,
+    pub players_spawn_probe_id: StrId,
+}
+const DONT_TOUCH: f32 = 1000.;
+impl Default for GlobalGenSettings {
+    fn default() -> Self {
+        Self {
+            seed: 0,
+            world_freq: 20.
+            /DONT_TOUCH,
+            tectonic_frequency: 20.
+            /DONT_TOUCH,
+            hot_reload_window_open_on_start: false,
+            structure_build_timeout_secs: 4.0,
+            players_spawn_probe_id: StrId::trunc("suland"),
+        }
+    }
+}
+
+type PDiskDistType = i64;
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Component, )]
+pub struct PoissonDisk { pub mindists_seeds: Vec<(PDiskDistType, u64)>, }
+impl PoissonDisk {
+    pub fn new(min_distance: u8, seed: u64) -> Result<Self, BevyError> {
+
+        let max = 5;
+
+        if min_distance > max {
+            return Err(BevyError::from(format!("min_distance must be <= {}", max)));
+        } else if min_distance == 0 {
+            return Err(BevyError::from("min_distance must be > 0"));
+        }
+        Ok(Self { mindists_seeds: vec![(min_distance as PDiskDistType, seed)] })
+    }
+    pub fn multiple_tagged(mindists_tag: Vec<(Option<u8>, String)>, fallback_mindist: u8, max: u8) -> Result<Self, BevyError> {
+        let mut mindists_seeds: Vec<(PDiskDistType, u64)> = Vec::with_capacity(mindists_tag.len());
+        for (min_distance, tag) in mindists_tag.iter() {
+            let min_distance = min_distance.unwrap_or(fallback_mindist);
+
+            if min_distance > max {
+                return Err(BevyError::from(format!("min_distance must be <= {}", max)));
+            } else if min_distance == 0 {
+                return Err(BevyError::from("min_distance must be > 0"));
+            }
+            let mut hasher = DefaultHasher::new();
+            tag.hash(&mut hasher);
+            let seed = hasher.finish();
+            mindists_seeds.push((min_distance as PDiskDistType, seed));
+        }
+        Ok(Self { mindists_seeds })
+    }
+    pub fn is_allowed_position<T: HashablePosVec>(&self, pos: T, settings: &GlobalGenSettings, dim_hash: HashId, check_within_radius: bool, size_in_tiles: OplistSize) -> bool {
+        self.sample(pos, settings, dim_hash, check_within_radius, size_in_tiles) > 0.0
+    }
+
+    pub fn sample<T: HashablePosVec>(&self, pos: T, settings: &GlobalGenSettings, dim_hash: HashId, check_within_radius: bool, size_in_tiles: OplistSize) -> f64 {
+
+        let mut sum = 0.0;
+        for &(min_distance, seed) in self.mindists_seeds.iter() {
+            let val = pos.normalized_hash_value(settings, dim_hash, seed);
+            sum += val;
+            let added_sample_distance_x = size_in_tiles.x() as i32 - 1;
+            let added_sample_distance_y = size_in_tiles.y() as i32 - 1;
+
+            for dy in -(min_distance as i32)..=(min_distance as i32) {
+                for dx in -(min_distance as i32)..=(min_distance as i32) {
+                    if dx == 0 && dy == 0 {
+                        continue;
+                    }
+                    if check_within_radius && dx * dx + dy * dy > (min_distance as i32).pow(2) {
+                        continue;
+                    }
+                    let neighbor_x = pos.x() + dx + added_sample_distance_x;
+                    let neighbor_y = pos.y() + dy + added_sample_distance_y;
+                    let neighbor_pos = GlobalTilePos(IVec2::new(neighbor_x, neighbor_y));
+                    let neighbor_val = neighbor_pos.normalized_hash_value(settings, dim_hash, seed);
+                    if neighbor_val > val {
+                        return 0.0;
+                    }
+                }
+            }
+
+        }
+        sum / (self.mindists_seeds.len() as f64)
+        }
+}
+impl Default for PoissonDisk { fn default() -> Self { Self { mindists_seeds: vec![(1, 0)] } } }
+
+
+#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, )]
+#[relationship(relationship_target = Tilemaps)]
+pub struct TilemapOf {
+    #[relationship]
+    pub chunk: Entity,
+}
+impl TilemapOf {
+    pub fn new(chunk: Entity) -> Self {
+        Self { chunk }
+    }
+}
+
+#[derive(Component, Debug, Clone)]
+#[relationship_target(relationship = TilemapOf)]
+pub struct Tilemaps(Vec<Entity>);
+impl Tilemaps { pub fn entities(&self) -> &[Entity] { &self.0 } }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct SpriteTile;
+
+#[derive(Component, Debug, Clone, Default, )]
+/// maps handle's ids to texture index to use within tilemap as a tile belonging to it
+pub struct HashIdToTexIndex(HashIdMap<TileTextureIndex>);
+impl HashIdToTexIndex {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashIdMap::with_capacity(capacity))
+    }
+    pub fn reserve(&mut self, additional: usize) {
+        self.0.reserve(additional);
+    }
+    pub fn insert(&mut self, tile_hid: HashId, handle_hid: HashId, tex_index: TileTextureIndex) {
+        let _ = self.0.insert(tile_hid.merge(handle_hid), tex_index);
+    }
+    pub fn get(&self, tile_hid: HashId, handle_hid: HashId) -> Result<TileTextureIndex, ()> {
+        let merged = tile_hid.merge(handle_hid);
+        self.0.get(merged).cloned()
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct WalkSpeedMultIfOnTop(pub f32);
+impl WalkSpeedMultIfOnTop {
+    pub fn is_extremely_low(&self) -> bool {
+        self.0 <= 0.01
+    }
+}
+impl Default for WalkSpeedMultIfOnTop {
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct TileCollisionMask {
+    width: u8,
+    height: u8,
+    bits: u64,
+}
+impl TileCollisionMask {
+    pub fn from_rows(rows: &[String], size_in_tiles: SizeInTiles) -> Result<Self, BevyError> {
+        let width = size_in_tiles.inner().x as usize;
+        let height = size_in_tiles.inner().y as usize;
+        if rows.len() != height {
+            return Err(BevyError::from(format!(
+                "collision_mask row count ({}) does not match size_in_tiles.y ({})",
+                rows.len(),
+                height
+            )));
+        }
+
+        let mut bits = 0u64;
+        for (y, row) in rows.iter().enumerate() {
+            let row = row.trim();
+            if row.chars().count() != width {
+                return Err(BevyError::from(format!(
+                    "collision_mask row {} width ({}) does not match size_in_tiles.x ({})",
+                    y,
+                    row.chars().count(),
+                    width
+                )));
+            }
+            for (x, c) in row.chars().enumerate() {
+                match c {
+                    '0' => {}
+                    '1' => {
+                        let source_y = (height - 1) - y;
+                        let bit_i = source_y * width + x;
+                        bits |= 1u64 << bit_i;
+                    }
+                    _ => {
+                        return Err(BevyError::from(format!(
+                            "collision_mask row {} contains invalid char '{}'; only '0' and '1' are allowed",
+                            y, c
+                        )));
+                    }
+                }
+            }
+        }
+
+        Ok(Self {
+            width: width as u8,
+            height: height as u8,
+            bits,
+        })
+    }
+
+
+    pub fn is_solid_at_world_pos_with_flip(
+        &self,
+        tile_origin: GlobalTilePos,
+        target: GlobalTilePos,
+        flip: TileFlip,
+        direction: CardinalDirection,
+    ) -> bool {
+        let rel = target.0 - tile_origin.0;
+        if rel.x < 0 || rel.y < 0 {
+            return true;
+        }
+        let x = rel.x as u32;
+        let y = rel.y as u32;
+        self.is_solid_local_with_flip(x, y, flip, direction)
+    }
+
+
+    pub fn is_solid_local_with_flip(
+        &self,
+        x: u32,
+        y: u32,
+        flip: TileFlip,
+        direction: CardinalDirection,
+    ) -> bool {
+        let (sx, sy) = self.target_to_source_local(x, y, flip, direction);
+        let Some((sx, sy)) = sx.zip(sy) else {
+            return true;
+        };
+        self.is_source_bit_set(sx, sy)
+    }
+
+    fn is_source_bit_set(&self, x: u32, y: u32) -> bool {
+        let width = self.width as u32;
+        let height = self.height as u32;
+        if x >= width || y >= height {
+            return true;
+        }
+        let bit_i = y * width + x;
+        (self.bits & (1u64 << bit_i)) != 0
+    }
+
+    fn target_to_source_local(
+        &self,
+        x: u32,
+        y: u32,
+        flip: TileFlip,
+        direction: CardinalDirection,
+    ) -> (Option<u32>, Option<u32>) {
+        let width = self.width as u32;
+        let height = self.height as u32;
+
+        let (mut w, mut h) = match direction {
+            CardinalDirection::South | CardinalDirection::North => (width, height),
+            CardinalDirection::West | CardinalDirection::East => (height, width),
+        };
+        if x >= w || y >= h {
+            return (None, None);
+        }
+
+        let mut sx = x;
+        let mut sy = y;
+
+        if flip.y {
+            sy = h - 1 - sy;
+        }
+        if flip.x {
+            sx = w - 1 - sx;
+        }
+        if flip.d {
+            std::mem::swap(&mut sx, &mut sy);
+            std::mem::swap(&mut w, &mut h);
+        }
+
+        if sx >= w || sy >= h {
+            return (None, None);
+        }
+
+        let (src_x, src_y) = match direction {
+            CardinalDirection::South => (sx, sy),
+            CardinalDirection::West => {
+                if w != height || h != width {
+                    return (None, None);
+                }
+                (sy, height - 1 - sx)
+            }
+            CardinalDirection::North => {
+                if w != width || h != height {
+                    return (None, None);
+                }
+                (width - 1 - sx, height - 1 - sy)
+            }
+            CardinalDirection::East => {
+                if w != height || h != width {
+                    return (None, None);
+                }
+                (width - 1 - sy, sx)
+            }
+        };
+
+        if src_x >= width || src_y >= height {
+            return (None, None);
+        }
+        (Some(src_x), Some(src_y))
+    }
+}
+
+#[derive(Component, Clone, Deserialize, Serialize, Debug,)]
+/// interaction positions (offsets relative to the tile's anchor GlobalTilePos)
+pub struct InteractionZones(
+    pub HashIdMap<InteractionZone>
+);
+impl InteractionZones {
+    pub fn new(map: HashMap<String, InteractionZoneSeri>) -> Self {
+        let mut zones = HashIdMap::with_capacity(map.len());
+        for (id, seri) in map {
+            zones.overwrite(HashId::from(id), InteractionZone::new(seri));
+        }
+        Self(zones)
+    }
+    pub fn is_inside_interaction_zone(
+        &self,
+        zone_id: HashId,
+        anchor_transf: Vec2,
+        client_transf: Vec2,
+        direction: CardinalDirection,
+    ) -> bool {
+        let zone = self.0.get(zone_id).ok();
+        zone.is_some_and(|zone| zone.is_inside_any(direction, anchor_transf, client_transf))
+    }
+    pub const ENTER: HashId = HashId::hash("enter");
+}
+
+#[derive(Component, Clone, Deserialize, Serialize, Debug,)]
+pub struct InteractionZone{
+    offset_positions: Vec<GlobalTilePos>,
+    radius_paired_w_offsets: Vec<(f32, Vec2)>,
+}
+impl InteractionZone {
+    pub fn new(seri: InteractionZoneSeri) -> Self {
+        let offset_positions = seri
+            .offset_positions
+            .into_iter()
+            .map(GlobalTilePos::from)
+            .collect();
+
+        let radius_paired_w_offsets = seri
+            .radius_offset
+            .into_iter()
+            .map(|(radius, (x, y))| (radius, Vec2::new(x, y)))
+            .collect();
+
+        Self {
+            offset_positions,
+            radius_paired_w_offsets,
+        }
+    }
+
+    pub fn is_inside_any(
+        &self,
+        direction: CardinalDirection,
+        anchor_transf: Vec2,
+        client_transf: Vec2,
+    ) -> bool {
+        for &offset_pos in &self.offset_positions {
+            let anchor_gpos: GlobalTilePos = anchor_transf.into();
+            let client_pos: GlobalTilePos = client_transf.into();
+            let checked_pos = anchor_gpos + rotate_gpos_offset(offset_pos, direction);
+            if checked_pos == client_pos {
+                return true;
+            }
+        }
+        for &(radius, offset) in &self.radius_paired_w_offsets {
+            let pos = anchor_transf + rotate_vec2_offset(offset, direction);
+            if pos.distance(client_transf) <= radius {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+fn rotate_gpos_offset(offset: GlobalTilePos, direction: CardinalDirection) -> GlobalTilePos {
+    let x = offset.0.x;
+    let y = offset.0.y;
+    match direction {
+        CardinalDirection::South => offset,
+        CardinalDirection::West => GlobalTilePos::new(-y, x),
+        CardinalDirection::North => GlobalTilePos::new(-x, -y),
+        CardinalDirection::East => GlobalTilePos::new(y, -x),
+    }
+}
+
+fn rotate_vec2_offset(offset: Vec2, direction: CardinalDirection) -> Vec2 {
+    let x = offset.x;
+    let y = offset.y;
+    match direction {
+        CardinalDirection::South => offset,
+        CardinalDirection::West => Vec2::new(-y, x),
+        CardinalDirection::North => Vec2::new(-x, -y),
+        CardinalDirection::East => Vec2::new(y, -x),
+    }
+}

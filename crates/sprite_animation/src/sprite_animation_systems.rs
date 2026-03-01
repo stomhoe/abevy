@@ -15,9 +15,6 @@ use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
 use ::tilemap_shared::directions::*;
 
-#[allow(unused_imports, )]
-use crate::{sprite_animation_components::*, sprite_animation_messages::*, };
-
 //TODO hacer animation speed para walking proporcional a la velocidad real del being
 
 #[allow(unused_parens, )]

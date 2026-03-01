@@ -7902,6 +7902,7 @@ dependencies = [
 name = "sprite_animation_shared"
 version = "0.1.0"
 dependencies = [
+ "being_shared",
  "bevy 0.18.0",
  "bevy_asset_loader",
  "bevy_common_assets",

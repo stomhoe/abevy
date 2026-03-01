@@ -1,13 +1,12 @@
 use core::f32;
 
-use being_shared::ComputedLocally;
+use being_shared::{BodyTreeWeightSum, ComputedLocally};
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use game_common::game_common_components::EntityZeroRef;
 
-use modifier::modifier_item_types::MassKg;
 use modifier::modifier_types::WalkSpeed;
 use modifier::{modifier_components::*, modifier_move_components::*};
 use param_sets::BlockingTileParamSet;
@@ -199,7 +198,7 @@ pub fn prepare_grid_locked_movement(
         }
 
         let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-        let distance = move_state.speed_magnitude * delta * 5000.;
+        let distance = move_state.speed_magnitude * delta;
         let mut remaining_distance = distance;
 
         let mut current_translation = transform.translation;
@@ -334,6 +333,7 @@ pub fn process_speed_modifiers(
         &DimensionRef,
         &AppliedModifiers,
         &mut MoveVecMag,
+        Option<&BodyTreeWeightSum>,
         Has<ComputedLocally>,
     )>,
     modifiers_query: Query<
@@ -346,17 +346,13 @@ pub fn process_speed_modifiers(
         ),
         (With<WalkSpeed>,),
     >,
-    mass_modifiers_query: Query<&CurrEffectiveValue, With<MassKg>>,
-    children_query: Query<&Children>,
-    gravity_query: Query<&Gravity, With<Dimension>>,
     tile_entity_zero_refs: Query<&EntityZeroRef>,
     tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
     tile_gathering: TileGatheringParamSet,
-    mut tiles_scratch: Local<Vec<Entity>>,
-    mut child_stack: Local<Vec<Entity>>,
+    mut entity_vec: Local<Vec<Entity>>,
 ) {
 
-    for (being_ent, transform, &dim_ref, applied, mut move_state, controlled_locally) in being_query.iter_mut() {
+    for (being_ent, transform, &dim_ref, applied, mut move_state, body_weight_sum, controlled_locally) in being_query.iter_mut() {
         let is_client = state.get() == &ClientState::Connected;
         if is_client && !controlled_locally {
             continue;
@@ -408,45 +404,27 @@ pub fn process_speed_modifiers(
         }
         speed_sum += speed_substractors_sum + slowdown_mitigators_sum;
 
-        child_stack.clear();
-        let mut total_mass_kg = 0.0;
-        if let Ok(root_children) = children_query.get(being_ent) {
-            for child in root_children.iter() {
-                child_stack.push(child);
-            }
-        }
-        while let Some(curr_ent) = child_stack.pop() {
-            if let Ok(&CurrEffectiveValue(mass)) = mass_modifiers_query.get(curr_ent) {
-                total_mass_kg += mass.max(0.0);
-            }
-            let Ok(children) = children_query.get(curr_ent) else {
-                continue;
-            };
-            for child in children.iter() {
-                child_stack.push(child);
-            }
-        }
-
-        let gravity = gravity_query.get(dim_ref.0).copied().unwrap_or_default();
-        let total_weight_newtons = gravity.mass_to_newtons(total_mass_kg).max(1.0);
-        speed_sum /= total_weight_newtons;
-
-        let final_speed = (speed_sum * speed_scale)
+        let total_weight_newtons = body_weight_sum
+            .map(|sum| sum.0)
+            .unwrap_or_default()
+            .max(1.0);
+        let mut final_speed = (speed_sum * speed_scale)
             .max(speed_min)
             .min(speed_max)
             .max(0.0);
+        final_speed /= total_weight_newtons;
 
         let mut tile_walk_mult: f32 = 1.0;
-        tiles_scratch.clear();
-        tile_gathering.gather_tiles_at(&mut *tiles_scratch, dim_ref, GlobalTilePos::from(transform.translation.truncate()));
-        for tile_ent in tiles_scratch.iter() {
+        entity_vec.clear();
+        tile_gathering.gather_tiles_at(&mut *entity_vec, dim_ref, GlobalTilePos::from(transform.translation.truncate()));
+        for tile_ent in entity_vec.iter() {
             let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(*tile_ent) else { continue };
             let Ok(tile_walk_mult_cfg) = tile_walk_speed_mults.get(tile_cfg_ref.0) else { continue };
             tile_walk_mult = tile_walk_mult.min(tile_walk_mult_cfg.0);
         }
         let final_speed = final_speed * tile_walk_mult.max(0.0);
         if (move_state.speed_magnitude - final_speed).abs() > f32::EPSILON {
-            move_state.speed_magnitude = final_speed;
+            move_state.speed_magnitude = final_speed * 5000.;
         }
     }
 }

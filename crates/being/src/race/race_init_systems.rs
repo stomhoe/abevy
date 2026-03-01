@@ -13,7 +13,7 @@ use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeEntityMap;
 use crate::body::BodyTreeRef;
 use crate::body::body_part::body_part_components::*;
-use crate::body::body_tree_components::{BodyTreeDistributedTotals, BodyTreeMassKg};
+use crate::body::body_tree_components::BodyTreeDistributedTotals;
 use crate::body::BodyTreeStrIdRef;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntityMap;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
@@ -147,8 +147,10 @@ pub fn init_races(
             if !totals.contains_key(STAT_WALK_SPEED) {
                 totals.overwrite(STAT_WALK_SPEED, 300.);
             }
+            if !totals.contains_key(STAT_MASS_KG) {
+                totals.overwrite(STAT_MASS_KG, race_seri.mass_kg.max(0.0));
+            }
             entity_cmds.insert((
-                BodyTreeMassKg(race_seri.mass_kg.max(0.0)),
                 BodyTreeDistributedTotals(totals),
             ));
 

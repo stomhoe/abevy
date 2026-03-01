@@ -14,3 +14,4 @@ paste = { workspace = true }
 bevy_asset_loader = { workspace = true }
 bevy_common_assets = { workspace = true }
 tilemap_shared = { path = "../tilemap_shared" }
+being_shared = { path = "../being_shared" }

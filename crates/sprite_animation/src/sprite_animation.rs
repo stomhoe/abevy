@@ -7,7 +7,7 @@ use common::common_states::AssetLoading;
 use game_common::game_common::SimRunningSystems;
 use sprite::AcSpriteSystems;
 use ::sprite_animation_shared::*;
-use crate::{sprite_animation_components::*, sprite_animation_messages::*, sprite_animation_init_systems::*, sprite_animation_systems::*};
+use crate::{sprite_animation_init_systems::*, sprite_animation_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct SpriteAnimationSystems;
@@ -49,6 +49,8 @@ pub fn plugin(app: &mut App) {
     .replicate::<AnimationSeri>()
     .replicate::<ClipStartFrames>()
     .replicate::<AlternatingStartFramesConfig>()
+    .replicate_once::<PlayingSpeed>()
+
 
     //.replicate::<AlternatingStartFramesState>()
     ;

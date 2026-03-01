@@ -89,6 +89,9 @@ pub struct WallPhaser;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct BodyCollisionRadius(pub u32);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct BodyTreeWeightSum(pub f32);
+
 #[derive(Component, Debug, Clone, Copy, Hash, PartialEq)]
 pub struct MainCharacter{#[entities] created_by: Entity}
 

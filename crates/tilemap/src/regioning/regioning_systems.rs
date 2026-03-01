@@ -215,7 +215,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
 
         let Ok((_, _, mut claimlist, ..)) = region_query.get_mut(claim.region_ent)
         else {
-            error!(target: "sgc_chunk_claim", "Region entity {:?} not found when receiving ClaimedChunks, skipping claim", claim.region_ent);
+            trace!(target: "sgc_chunk_claim", "Region entity {:?} is despawned when receiving ClaimedChunks, skipping claim", claim.region_ent);
             continue;
         };
 

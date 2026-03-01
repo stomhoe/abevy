@@ -18,9 +18,7 @@ pub fn build_body_tree(
         (Entity, &BodyTreeRef, Option<&RaceRef>, Option<&SpriteGlobalNormalDistResult>),
         (With<Being>, Added<BodyTreeRef>, Without<EntityZero>, Without<Race>, Without<BeingInstTemplate>),
     >,
-    tree_mass_query: Query<&BodyTreeMassKg, With<BodyTree>>,
     tree_totals_query: Query<&BodyTreeDistributedTotals, With<BodyTree>>,
-    race_mass_query: Query<&BodyTreeMassKg, With<Race>>,
     race_totals_query: Query<&BodyTreeDistributedTotals, With<Race>>,
     forced_query: Query<&BodyPartForcedDistribution>,
     weighted_query: Query<&BodyPartWeightedDistribution>,
@@ -35,16 +33,12 @@ pub fn build_body_tree(
             ChildOf(being_ent),
         )).id();
 
-        let tree_mass = race_ref
-            .and_then(|r| race_mass_query.get(r.0).ok().map(|m| m.0))
-            .or_else(|| tree_mass_query.get(tree_to_build.0).ok().map(|m| m.0))
-            .unwrap_or(0.0);
-        let size_mult = global_size.map(|s| s.0).unwrap_or(1.0).max(0.01);
-        let total_mass = tree_mass * size_mult;
         let totals = race_ref
             .and_then(|r| race_totals_query.get(r.0).ok().cloned())
             .or_else(|| tree_totals_query.get(tree_to_build.0).ok().cloned())
             .unwrap_or_default();
+        let size_mult = global_size.map(|s| s.0).unwrap_or(1.0).max(0.01);
+        let total_mass = stat_from_hashid_map(&totals.0, STAT_MASS_KG) * size_mult;
 
         let mut cloned_parts = Vec::new();
 
@@ -57,7 +51,6 @@ pub fn build_body_tree(
         }
         let Some(root_template_ent) = root_template_ent else {
             warn!(target: "body_build", "BodyTree {:?} has no BodyRootPart; skipping clone for being {:?}", tree_to_build.0, being_ent);
-            cmd.entity(being_ent).try_insert(BeingMassKg(total_mass));
             continue;
         };
 
@@ -85,7 +78,6 @@ pub fn build_body_tree(
             &forced_query,
             &weighted_query,
         );
-        cmd.entity(being_ent).try_insert(BeingMassKg(total_mass));
     }
 }
 

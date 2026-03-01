@@ -9,8 +9,6 @@ use ::sprite_animation_shared::*;
 use ::sprite_shared::*;
 use ::sprite_shared::sprite_scale_offset::*;
 
-use crate::{sprite_animation_components::*};
-
 fn load_animation_defs_from_filesystem() -> Vec<AnimationSeri> {
     let mut out = Vec::new();
     let Ok(files) = discover_assets_files_by_suffixes(&["anim.ron"]) else {

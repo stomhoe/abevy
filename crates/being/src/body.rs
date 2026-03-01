@@ -35,14 +35,17 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         Update,
         (
-            apply_body_damage,
-            sync_body_part_missing,
-            update_body_health_from_parts,
-            apply_pain_slowdown,
-            build_body_tree,
-        )
-        .in_set(ModifierSystems)
-        .in_set(HostSystems),
+            (update_body_tree_weight_sum).in_set(ModifierSystems),
+            (
+                apply_body_damage,
+                sync_body_part_missing,
+                update_body_health_from_parts,
+                apply_pain_slowdown,
+                build_body_tree,
+            )
+            .in_set(HostSystems)
+            .in_set(ModifierSystems),
+        ),
     )
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
@@ -58,10 +61,13 @@ pub fn plugin(app: &mut App) {
         ),
     )
 
+    //.replicate::<BodyTreeWeightSum>()
 
     .register_type::<BodyParts>()
 
     .replicate::<BodyTree>()
+    .replicate::<BodyOf>()
+    .replicate_filtered::<ChildOf, With<BodyOf>>()
     .replicate::<BodyHealth>()
     .replicate::<BodyDead>()
     .add_message::<BodyDamage>();
