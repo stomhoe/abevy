@@ -15,6 +15,7 @@ pub mod def_db;
 mod common_systems;
 mod common_tag_systems;
 pub mod entity_map_macros;
+pub mod marker_macros;
 pub mod qol;
 pub use qol::*;
 

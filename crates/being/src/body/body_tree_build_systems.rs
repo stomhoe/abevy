@@ -4,6 +4,7 @@ use game_common::game_common_samplers::SpriteGlobalNormalDistResult;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use common::common_components::{HashId, HashIdMap};
 use modifier::modifier_components::{AppliedModifiers, ApplyMode, BaseValue, CurrEffectiveValue, ModifierTarget};
+use modifier::modifier_item_types::MassKg;
 use modifier::modifier_types::*;
 use crate::being_components::*;
 use crate::body::BodyTreeRef;
@@ -263,7 +264,16 @@ fn apply_distributions(
             free_mass,
             sum_w_mass,
         );
-        cmd.entity(part).try_insert(BodyPartMassResolvedKgs(mass_kg));
+        if mass_kg > 0.0 {
+            cmd.spawn((
+                ModifierTarget(part),
+                BaseValue(mass_kg),
+                CurrEffectiveValue(mass_kg),
+                ApplyMode::Add,
+                MassKg,
+                ChildOf(part),
+            ));
+        }
 
         let forced_hp_capacity = stat_from_hashid_map(&forced, STAT_HP_CAPACITY);
         let hp = weighted_or_forced(forced_hp_capacity, stat_from_hashid_map(&weights, STAT_HP_CAPACITY), free_hp, sum_w_hp);

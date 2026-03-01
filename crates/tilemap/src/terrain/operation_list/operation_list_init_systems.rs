@@ -131,8 +131,9 @@ pub fn init_oplists_from_assets(
 
         // Build bifurcations from seri
         oplist.bifurcations = Vec::with_capacity(seri.bifs.len());
-        for (_oplist, tiles) in seri.bifs.iter() {
-            let tiles = tiles
+        for bif_seri in seri.bifs.iter() {
+            let tiles = bif_seri
+                .tiles
                 .iter()
                 .filter(|tile_str| !tile_str.is_empty())
                 .filter_map(|tile_str| {
@@ -147,7 +148,17 @@ pub fn init_oplists_from_assets(
                 })
                 .collect::<Vec<Entity>>();
 
-            let bifurcation = Bifurcation { oplist: None, tiles };
+            let biome_tags = bif_seri
+                .biome_tags
+                .iter()
+                .filter_map(|bt| {
+                    if bt.tag.trim().is_empty() || !bt.weight.is_finite() || bt.weight <= 0.0 {
+                        return None;
+                    }
+                    Some((common::common_components::HashId::from(bt.tag.trim()), bt.weight))
+                })
+                .collect();
+            let bifurcation = Bifurcation { oplist: None, tiles, biome_tags };
             oplist.bifurcations.push(bifurcation);
         }
 
@@ -232,7 +243,7 @@ pub fn init_oplists_bifurcations(
             };
 
             for (i, seri_bifurcation) in seri.bifs.iter().enumerate() {
-                let bifurcation_str = seri_bifurcation.0.trim();
+                let bifurcation_str = seri_bifurcation.oplist.trim();
                 if bifurcation_str.is_empty() { continue; }
 
                 let Ok(bifurcation_ent) = oplist_map.0.get_cloned(&bifurcation_str.to_string()) else {
@@ -304,6 +315,7 @@ fn compile_branch_node(
         };
         branches.push(CompiledBranch {
             tiles: bif.tiles.clone(),
+            biome_tags: bif.biome_tags.clone(),
             child_size,
             child,
         });

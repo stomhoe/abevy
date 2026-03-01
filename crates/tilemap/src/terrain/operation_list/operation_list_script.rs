@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, HashMap, };
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::terrain::operation_list::operation_list_resources::OpListSeri;
+use crate::terrain::operation_list::operation_list_resources::{OpListBifBiomeTagSeri, OpListBifSeri, OpListSeri};
 use crate::terrain::terrgen_expression::{Assignment, Expr, ExprOpList};
 
 pub fn load_tg_oplists() -> Vec<OpListSeri> {
@@ -112,13 +112,13 @@ fn collect_tg_files(dir: &Path, out: &mut Vec<PathBuf>) {
 pub fn parse_tg_script_to_expr_tree(
     source: &str,
     path: &Path,
-) -> Result<(String, Vec<String>, Option<Vec<String>>, Vec<String>, Option<[u32; 2]>, Vec<(String, Vec<String>)>, ExprOpList), String> {
+) -> Result<(String, Vec<String>, Option<Vec<String>>, Vec<String>, Option<[u32; 2]>, Vec<OpListBifSeri>, ExprOpList), String> {
     let mut id: Option<String> = None;
     let mut tags: Option<Vec<String>> = None;
     let mut debug_vars: Vec<String> = Vec::new();
     let mut roots: Option<Vec<String>> = None;
     let mut size: Option<[u32; 2]> = None;
-    let mut bifs: Vec<(String, Vec<String>)> = Vec::new();
+    let mut bifs: Vec<OpListBifSeri> = Vec::new();
     let mut assignments: Vec<Assignment> = Vec::new();
     let mut output_expr: Option<Expr> = None;
 
@@ -180,8 +180,12 @@ pub fn parse_tg_script_to_expr_tree(
                 format!("{}:{} invalid bif syntax, expected 'bif <oplist> -> [tiles]'", path.display(), line_no)
             })?;
             let branch = trim_token(branch_raw.trim()).to_string();
-            let tiles = parse_string_list(tiles_raw.trim());
-            bifs.push((branch, tiles));
+            let (tiles, biome_tags) = parse_bif_tail(tiles_raw.trim(), path, line_no)?;
+            bifs.push(OpListBifSeri {
+                oplist: branch,
+                tiles,
+                biome_tags,
+            });
             continue;
         }
 
@@ -627,6 +631,128 @@ fn parse_string_list(input: &str) -> Vec<String> {
         out.push(trim_token(trimmed).to_string());
     }
     out
+}
+
+fn parse_bif_tail(
+    input: &str,
+    path: &Path,
+    line_no: usize,
+) -> Result<(Vec<String>, Vec<OpListBifBiomeTagSeri>), String> {
+    let (tiles_raw, trailing) = split_leading_collection(input)
+        .ok_or_else(|| format!("{}:{} bif must contain tile list in []", path.display(), line_no))?;
+    let tiles = parse_string_list(tiles_raw);
+
+    let trailing = trailing.trim();
+    if trailing.is_empty() {
+        return Ok((tiles, Vec::new()));
+    }
+
+    let trimmed = trailing.trim_start();
+    let rest = if let Some(rest) = trimmed.strip_prefix("biome_tags") {
+        rest.trim_start()
+    } else if let Some(rest) = trimmed.strip_prefix("biomes") {
+        rest.trim_start()
+    } else if let Some(rest) = trimmed.strip_prefix("biome") {
+        rest.trim_start()
+    } else {
+        return Err(format!(
+            "{}:{} unrecognized bif suffix '{}'; expected biome_tags/biomes/biome",
+            path.display(),
+            line_no,
+            trailing
+        ));
+    };
+    let rest = rest.strip_prefix(':').unwrap_or(rest).trim_start();
+    let (biomes_raw, leftover) = split_leading_collection(rest)
+        .ok_or_else(|| format!("{}:{} biome tags must be in []", path.display(), line_no))?;
+    if !leftover.trim().is_empty() {
+        return Err(format!("{}:{} unexpected text after biome tags '{}'", path.display(), line_no, leftover.trim()));
+    }
+    let biome_tags = parse_weighted_biome_tags(biomes_raw, path, line_no)?;
+    Ok((tiles, biome_tags))
+}
+
+fn split_leading_collection(input: &str) -> Option<(&str, &str)> {
+    let raw = input.trim_start();
+    if !(raw.starts_with('[') || raw.starts_with('(')) {
+        return None;
+    }
+    let mut depth = 0i32;
+    let mut quote: Option<char> = None;
+    for (idx, ch) in raw.char_indices() {
+        match ch {
+            '"' | '\'' => {
+                if let Some(q) = quote {
+                    if q == ch {
+                        quote = None;
+                    }
+                } else {
+                    quote = Some(ch);
+                }
+            }
+            '[' | '(' if quote.is_none() => depth += 1,
+            ']' | ')' if quote.is_none() => {
+                depth -= 1;
+                if depth == 0 {
+                    let end = idx + ch.len_utf8();
+                    return Some((&raw[..end], &raw[end..]));
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn parse_weighted_biome_tags(
+    input: &str,
+    path: &Path,
+    line_no: usize,
+) -> Result<Vec<OpListBifBiomeTagSeri>, String> {
+    let mut out = Vec::new();
+    for token in split_csv_like(input.trim_matches(|c| c == '[' || c == ']' || c == '(' || c == ')')) {
+        let token = token.trim();
+        if token.is_empty() {
+            continue;
+        }
+        let (tag_raw, weight_raw_opt) = if let Some((left, right)) = token.split_once('=') {
+            (left, Some(right))
+        } else if let Some((left, right)) = token.split_once(':') {
+            (left, Some(right))
+        } else {
+            (token, None)
+        };
+        let tag = trim_token(tag_raw).trim();
+        if tag.is_empty() {
+            return Err(format!("{}:{} biome tag cannot be empty", path.display(), line_no));
+        }
+        let weight = if let Some(weight_raw) = weight_raw_opt {
+            let parsed = weight_raw.trim().parse::<f32>().map_err(|_| {
+                format!(
+                    "{}:{} invalid biome tag weight '{}'",
+                    path.display(),
+                    line_no,
+                    weight_raw.trim()
+                )
+            })?;
+            if !parsed.is_finite() || parsed <= 0.0 {
+                return Err(format!(
+                    "{}:{} biome tag weight must be > 0 (got {})",
+                    path.display(),
+                    line_no,
+                    parsed
+                ));
+            }
+            parsed
+        } else {
+            1.0
+        };
+        out.push(OpListBifBiomeTagSeri {
+            tag: tag.to_string(),
+            weight,
+        });
+    }
+    Ok(out)
 }
 
 fn split_csv_like(input: &str) -> Vec<String> {

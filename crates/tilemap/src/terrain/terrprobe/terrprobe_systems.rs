@@ -7,9 +7,9 @@ use crate::terrain::{
     terrprobe::terrprobe_messages::*,
     terrprobe::terrprobe_pattern_region::process_region_pattern,
     terrprobe::terrprobe_pattern_spiral::process_spiral_pattern,
+    terrgen_async_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult},
     terrgen_components::FailedSearchOplistFilterHolder,
     terrgen_messages::PendingOp,
-    terrgen_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult},
 };
 use ::tilemap_shared::*;
 
@@ -182,12 +182,11 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                     &mut search_failed,
                 );
             }
-            ProbePattern::Chunk(chunk_pos) => {
+            ProbePattern::Chunk(_) => {
                 process_chunk_pattern(
                     pos_search,
                     &templ,
                     root_oplist,
-                    chunk_pos,
                     curr_iteration_batch_i,
                     &mut new_pending_ops,
                     &mut new_pos_searches,

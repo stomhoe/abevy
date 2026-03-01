@@ -2,6 +2,8 @@ pub use modifier::*;
 
 pub mod modifier;
 pub mod modifier_components;
+pub mod modifier_item_types;
+pub mod modifier_tool_types;
 pub mod modifier_types;
 pub mod modifier_move_components;
 pub mod modifier_move_bundles;

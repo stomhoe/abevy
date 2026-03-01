@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use game_common::game_common_components::EntityZeroRef;
 
+use modifier::modifier_item_types::MassKg;
 use modifier::modifier_types::WalkSpeed;
 use modifier::{modifier_components::*, modifier_move_components::*};
 use param_sets::BlockingTileParamSet;
@@ -198,7 +199,7 @@ pub fn prepare_grid_locked_movement(
         }
 
         let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-        let distance = move_state.speed_magnitude * delta;
+        let distance = move_state.speed_magnitude * delta * 5000.;
         let mut remaining_distance = distance;
 
         let mut current_translation = transform.translation;
@@ -345,10 +346,14 @@ pub fn process_speed_modifiers(
         ),
         (With<WalkSpeed>,),
     >,
+    mass_modifiers_query: Query<&CurrEffectiveValue, With<MassKg>>,
+    children_query: Query<&Children>,
+    gravity_query: Query<&Gravity, With<Dimension>>,
     tile_entity_zero_refs: Query<&EntityZeroRef>,
     tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
     tile_gathering: TileGatheringParamSet,
     mut tiles_scratch: Local<Vec<Entity>>,
+    mut child_stack: Local<Vec<Entity>>,
 ) {
 
     for (being_ent, transform, &dim_ref, applied, mut move_state, controlled_locally) in being_query.iter_mut() {
@@ -402,6 +407,29 @@ pub fn process_speed_modifiers(
             }
         }
         speed_sum += speed_substractors_sum + slowdown_mitigators_sum;
+
+        child_stack.clear();
+        let mut total_mass_kg = 0.0;
+        if let Ok(root_children) = children_query.get(being_ent) {
+            for child in root_children.iter() {
+                child_stack.push(child);
+            }
+        }
+        while let Some(curr_ent) = child_stack.pop() {
+            if let Ok(&CurrEffectiveValue(mass)) = mass_modifiers_query.get(curr_ent) {
+                total_mass_kg += mass.max(0.0);
+            }
+            let Ok(children) = children_query.get(curr_ent) else {
+                continue;
+            };
+            for child in children.iter() {
+                child_stack.push(child);
+            }
+        }
+
+        let gravity = gravity_query.get(dim_ref.0).copied().unwrap_or_default();
+        let total_weight_newtons = gravity.mass_to_newtons(total_mass_kg).max(1.0);
+        speed_sum /= total_weight_newtons;
 
         let final_speed = (speed_sum * speed_scale)
             .max(speed_min)

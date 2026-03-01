@@ -9,6 +9,7 @@ use crate::{terrain::{
             operation_list_resources::*,
         },
     terrgen_components::*,
+    terrgen_async_resources::*,
     terrgen_messages::PendingOp,
     terrgen_noise_init_systems::*,
     terrgen_resources::*,
@@ -19,6 +20,7 @@ pub mod terrgen_systems;
 mod terrgen_noise_init_systems;
 pub mod operation_list;
 pub mod terrgen_components;
+pub mod terrgen_async_resources;
 pub mod terrgen_resources;
 pub mod terrgen_messages;
 pub mod terrgen_expression;
@@ -60,6 +62,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<TerrGenLaunchQueue>()
         .init_resource::<TerrGenAsyncTasks>()
         .init_resource::<TerrGenDebugGrid>()
+        .init_resource::<ChunkBiomeTagDistributionMap>()
 
         .add_plugins((
             plugin_terrgen,

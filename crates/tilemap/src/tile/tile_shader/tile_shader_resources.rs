@@ -50,5 +50,5 @@ common::define_entity_map_systems!(
     TileShader,
     ShaderRepeatTexSeri, "seri.tilemap.tile_shader.repeat_tex", "monorepeat.ron",
     //PlaceholderSeri, "ron/tilemap/tiling/shader/voroshu", "voroshu.ron",
-    ShaderWavySeri, "seri.tilemap.tile_shader.wavy", "wavy.ron",
+    ShaderWavySeri, "seri.tilemap.tile_shader.wavy", "wavy.ron"
 );

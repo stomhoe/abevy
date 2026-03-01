@@ -12,6 +12,19 @@ use common::common_tag_components::TagSet;
 #[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
 pub struct Dimension;
 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+pub struct Gravity(pub f32);
+impl Default for Gravity {
+    fn default() -> Self {
+        Self(9.81)
+    }
+}
+impl Gravity {
+    pub fn mass_to_newtons(&self, mass_kg: f32) -> f32 {
+        mass_kg.max(0.0) * self.0.max(0.0)
+    }
+}
+
 
 common::define_entity_map_systems!(
     Dimension,
@@ -28,6 +41,8 @@ pub struct DimensionSeri {
     pub id: String,
     pub name: String,
     pub description: String,
+    #[serde(default = "default_dimension_gravity")]
+    pub gravity: f32,
     /// this dimension's tags, used for whoever needs it
     #[serde(default)]
     pub tags: HashSet<String>,
@@ -37,6 +52,7 @@ pub struct DimensionSeri {
     #[serde(default)]
     pub blacklisted_structure_gen_tags: Vec<String>,
 }
+fn default_dimension_gravity() -> f32 { 9.81 }
 
 impl DimensionStrIdRef {
 

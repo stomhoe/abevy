@@ -3,7 +3,6 @@ use ::being_shared::*;
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_northstar::prelude::*;
 use param_sets::BlockingTileParamSet;
-use player::player_components::{Mine, Player};
 use rand::Rng;
 use std::time::Duration;
 use tilemap::{chunking::chunking_resources::AaChunkRangeSettings};

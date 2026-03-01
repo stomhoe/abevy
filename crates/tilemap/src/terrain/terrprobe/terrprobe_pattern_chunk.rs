@@ -9,12 +9,12 @@ pub fn process_chunk_pattern(
     pos_search: TerrProbeJob,
     templ: &TerrProbeTempl,
     root_oplist: DimensionRootOplist,
-    chunk_pos: ChunkPos,
     _curr_iteration_batch_i: i16,
     new_pending_ops: &mut Vec<PendingOp>,
     _new_pos_searches: &mut Vec<TerrProbeJob>,
     _search_failed: &mut Vec<Entity>,
 ) {
+    let chunk_pos = pos_search.search_start_pos.to_chunkpos();
     let matrix_spec = templ.collect.then(|| PendingOpMatrixSpec {
         min: chunk_pos.to_tilepos(),
         matrix_size: ChunkPos::CHUNK_SIZE,

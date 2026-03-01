@@ -324,6 +324,8 @@ dependencies = [
  "game",
  "game_common",
  "host",
+ "item",
+ "item_shared",
  "modifier",
  "movement",
  "multiplayer_shared",
@@ -338,6 +340,7 @@ dependencies = [
  "tilemap_shared",
  "tracing",
  "ui_shared",
+ "wildlife",
 ]
 
 [[package]]
@@ -5544,6 +5547,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "item"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.18.0",
+ "bevy_replicon",
+ "common",
+ "game_common",
+ "item_shared",
+ "modifier",
+ "serde",
+]
+
+[[package]]
+name = "item_shared"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.18.0",
+ "bevy_asset_loader",
+ "bevy_common_assets",
+ "bevy_replicon",
+ "common",
+ "game_common",
+ "paste",
+ "serde",
+]
+
+[[package]]
 name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9153,6 +9183,13 @@ checksum = "0ce5da8ecb62bcd8ec8b7ea19f69a51275e91299be594ea5cc6ef7819e16cd03"
 dependencies = [
  "bytemuck",
  "safe_arch",
+]
+
+[[package]]
+name = "wildlife"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.18.0",
 ]
 
 [[package]]

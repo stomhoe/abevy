@@ -9,8 +9,7 @@ use ::tilemap_shared::*;
 #[allow(unused_parens)]
 pub fn flip_tile_based_on_initial_pos_hash(
     settings: Query<&GlobalGenSettings>,
-    dim_hash_query: Query<&HashId, common::AnyDisabling>,
-    mut query: Query<
+    mut tile_query: Query<
         (&mut TileFlip, &InitialPos, &EntityZeroRef, Option<&DimensionRef>),
         (
             Changed<InitialPos>,
@@ -18,6 +17,7 @@ pub fn flip_tile_based_on_initial_pos_hash(
             Without<EntityZero>,
         ),
     >,
+    dim_hash_query: Query<&HashId, common::AnyDisabling>,
     ezero_query: Query<
         (
             Has<FlipHorizontallyBasedOnHash>,
@@ -27,11 +27,14 @@ pub fn flip_tile_based_on_initial_pos_hash(
         (),
     >,
 ) {
+    if tile_query.is_empty() {
+        return;
+    }
     let Ok(settings) = settings.single() else {
         error_once!("Failed to get global gen settings");
         return;
     };
-    query.iter_mut().for_each(
+    tile_query.iter_mut().for_each(
         |(mut tile_flip, initial_pos, ezero_ref, dimension_ref)| {
 
             let Ok((do_flip_hori, do_flip_vert, do_flip_diag)) = ezero_query.get(ezero_ref.0) else {
@@ -68,7 +71,7 @@ pub fn rotate_tile_based_on_initial_pos_hash(
     mut cmd: Commands,
     settings: Query<&GlobalGenSettings>,
     dim_hash_query: Query<&HashId, common::AnyDisabling>,
-    mut query: Query<
+    mut tile_query: Query<
         (
             Entity,
             Option<&mut CardinalDirection>,
@@ -87,12 +90,15 @@ pub fn rotate_tile_based_on_initial_pos_hash(
         (),
     >,
 ) {
+    if tile_query.is_empty() {
+        return;
+    }
     let Ok(settings) = settings.single() else {
         error_once!("Failed to get global gen settings");
         return;
     };
     for (ent, direction, maybe_transform, initial_pos, ezero_ref, dimension_ref) in
-        query.iter_mut()
+        tile_query.iter_mut()
     {
         let Ok((do_rotate, do_transform_rotate)) = ezero_query.get(ezero_ref.0) else {
             continue;

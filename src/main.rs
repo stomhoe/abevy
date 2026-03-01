@@ -190,11 +190,13 @@ fn main() {
             movement::plugin,
             sprite::plugin,
             modifier::plugin,
+            item::plugin,
             tilemap::plugin,
             setup_screen::plugin,
             pregame_screen::plugin,
             color_sampler::plugin,
         ))
+        .add_plugins((wildlife::plugin,))
         .run()
 
     ;

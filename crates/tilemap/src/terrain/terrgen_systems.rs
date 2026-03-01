@@ -10,6 +10,7 @@ use crate::{
         terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
         terrprobe::terrprobe_messages::{SampledValues, SampledValuesCollected, SuitablePosFound},
+        terrgen_async_resources::*,
         terrgen_components::*,
         terrgen_messages::PendingOp,
         terrgen_resources::*,
@@ -19,6 +20,14 @@ use crate::{
 use ::tilemap_shared::*;
 
 pub use crate::terrain::terrprobe::terrprobe_systems::search_suitable_positions;
+
+#[derive(bevy::ecs::system::SystemParam)]
+pub struct TerrgenCollectBuffers<'w, 's> {
+    pub chunk_biome_tag_dist: ResMut<'w, ChunkBiomeTagDistributionMap>,
+    pub pending_ops_batch: Local<'s, Vec<PendingOp>>,
+    pub tile_requests: Local<'s, Vec<TerrGenTileRequest>>,
+    pub biome_tag_samples: Local<'s, Vec<TerrGenBiomeTagSample>>,
+}
 
 #[allow(unused_parens)]
 pub fn launch_terrain_operations(
@@ -67,8 +76,7 @@ pub fn process_pending_ops_and_collect_tiles(
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
     mut debug_grid: ResMut<TerrGenDebugGrid>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
-    mut pending_ops_batch: Local<Vec<PendingOp>>,
-    mut tile_requests: Local<Vec<TerrGenTileRequest>>,
+    mut buffers: TerrgenCollectBuffers,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
     mut ewriter_sampled_value_matrix: MessageWriter<SampledValuesCollected>,
 ) {
@@ -76,8 +84,9 @@ pub fn process_pending_ops_and_collect_tiles(
         error!("Failed to get gen settings");
         return;
     };
-    pending_ops_batch.clear();
-    tile_requests.clear();
+    buffers.pending_ops_batch.clear();
+    buffers.tile_requests.clear();
+    buffers.biome_tag_samples.clear();
     let mut sampled_value_events: Vec<SuitablePosFound> = Vec::new();
     let mut sampled_value_matrix_events: Vec<SampledValuesCollected> = Vec::new();
 
@@ -106,7 +115,7 @@ pub fn process_pending_ops_and_collect_tiles(
 
     terrgen_tasks.launch_tasks.retain_mut(|task| {
         if let Some(batch) = future::block_on(future::poll_once(task)) {
-            pending_ops_batch.extend(batch);
+            buffers.pending_ops_batch.extend(batch);
             false
         } else {
             true
@@ -117,7 +126,8 @@ pub fn process_pending_ops_and_collect_tiles(
         if let Some(result) = future::block_on(future::poll_once(task)) {
             sampled_value_events.extend(result.sampled_value_events);
             sampled_value_matrix_events.extend(result.sampled_value_matrix_events);
-            tile_requests.extend(result.tile_requests);
+            buffers.tile_requests.extend(result.tile_requests);
+            buffers.biome_tag_samples.extend(result.biome_tag_samples);
             if debug_grid.enabled {
                 let Some((cam_dim, cam_bucket)) = camera_info else { return false; };
                 let mut samples = result.debug_samples;
@@ -171,7 +181,7 @@ pub fn process_pending_ops_and_collect_tiles(
         }
     });
 
-    for request in tile_requests.drain(..) {
+    for request in buffers.tile_requests.drain(..) {
         let dim_ref = request.pending.dimension_ref;
         let base_gpos = request.pending.gpos;
         collected.collect_tiles_at_positions(
@@ -191,6 +201,14 @@ pub fn process_pending_ops_and_collect_tiles(
         );
     }
 
+    for sample in buffers.biome_tag_samples.drain(..) {
+        buffers.chunk_biome_tag_dist.add_tag_weights(
+            sample.dimension_ref,
+            sample.chunk_pos,
+            sample.biome_tags.into_iter(),
+        );
+    }
+
     if !sampled_value_events.is_empty() {
         ewriter_sampled_value.write_batch(sampled_value_events);
     }
@@ -207,18 +225,18 @@ pub fn process_pending_ops_and_collect_tiles(
     }
 
     let gen_settings = gen_settings.clone();
-    pending_ops_batch.extend(pending_ops_events.drain());
-    if pending_ops_batch.is_empty() { return; }
+    buffers.pending_ops_batch.extend(pending_ops_events.drain());
+    if buffers.pending_ops_batch.is_empty() { return; }
 
     let task_context = build_terrgen_task_context(
-        &pending_ops_batch,
+        &buffers.pending_ops_batch,
         &oplist_query,
         &fnl_noises,
         &op_filters,
         &dim_hash_query,
     );
 
-    let pending_ops_batch = take(&mut *pending_ops_batch);
+    let pending_ops_batch = take(&mut *buffers.pending_ops_batch);
     let capture_debug = debug_grid.enabled;
     let task_pool = AsyncComputeTaskPool::get();
     terrgen_tasks.op_tasks.push(task_pool.spawn(async move {
@@ -529,6 +547,13 @@ fn process_pending_ops_batch(
             }
 
             let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
+            if !bifurcation.biome_tags.is_empty() && ev.filtered_op == Entity::PLACEHOLDER {
+                result.biome_tag_samples.push(TerrGenBiomeTagSample {
+                    dimension_ref: ev.dimension_ref,
+                    chunk_pos: frame.gpos.to_chunkpos(),
+                    biome_tags: bifurcation.biome_tags.clone(),
+                });
+            }
 
             if !bifurcation.tiles.is_empty() && ev.filtered_op == Entity::PLACEHOLDER {
                 result.tile_requests.push(TerrGenTileRequest {
@@ -655,6 +680,13 @@ fn process_compiled_branch_node(
     }
 
     let branch = &node.branches[destination_i];
+    if !branch.biome_tags.is_empty() && source_ev.filtered_op == Entity::PLACEHOLDER {
+        result.biome_tag_samples.push(TerrGenBiomeTagSample {
+            dimension_ref: source_ev.dimension_ref,
+            chunk_pos: gpos.to_chunkpos(),
+            biome_tags: branch.biome_tags.clone(),
+        });
+    }
 
     if !branch.tiles.is_empty() && source_ev.filtered_op == Entity::PLACEHOLDER {
         result.tile_requests.push(TerrGenTileRequest {

@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 pub struct Bifurcation{
     #[entities] pub oplist: Option<Entity>,
     #[entities]pub tiles: Vec<Entity>,
+    pub biome_tags: Vec<(HashId, f32)>,
 }
 #[derive(Component, Debug, Clone, Serialize, Deserialize)]
 #[require(Prefix::trunc("OpList"), Replicated, AssetScoped, HotReload, AddSameHashedTags)]
@@ -67,6 +68,7 @@ pub struct CompiledBranchNode {
 #[derive(Debug, Clone)]
 pub struct CompiledBranch {
     pub tiles: Vec<Entity>,
+    pub biome_tags: Vec<(HashId, f32)>,
     pub child_size: Option<tilemap_shared::OplistSize>,
     pub child: Option<Box<CompiledBranchNode>>,
 }

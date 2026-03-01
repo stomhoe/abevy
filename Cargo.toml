@@ -76,6 +76,7 @@ tilemap = { path = "crates/tilemap" }
 tilemap_shared = { path = "crates/tilemap_shared" }
 modifier = { path = "crates/modifier" }
 game = { path = "crates/game" }
+wildlife = { path = "crates/wildlife" }
 movement = { path = "crates/movement" }
 being = { path = "crates/being" }
 camera = { path = "crates/camera" }
@@ -92,6 +93,8 @@ shader = { path = "crates/shader" }
 ui_shared = { path = "crates/ui_shared" }
 pregame_screen = { path = "crates/pregame_screen" }
 setup_screen = { path = "crates/setup_screen" }
+item = { path = "crates/item" }
+item_shared = { path = "crates/item_shared" }
 #param_sets = { path = "crates/param_sets" }
 
 bevy = { workspace = true }

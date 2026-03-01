@@ -41,9 +41,6 @@ impl BodyPartSlots {
 #[derive(Component, Debug, Default, Copy, Clone, )]
 pub struct BodyPartCoverageWeight(pub u16);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BodyPartMassResolvedKgs(pub f32);
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct BodyPartForcedDistribution(pub HashIdMap<f32>);
 

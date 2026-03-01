@@ -67,6 +67,7 @@ pub fn init_dimensions(
             Transform::default(),
             DisplayName::new(seri.name.clone()),
             Dimension,
+            Gravity(seri.gravity.max(0.0)),
             Visibility::Visible,
         )))
     }

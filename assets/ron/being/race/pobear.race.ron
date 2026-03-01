@@ -19,7 +19,7 @@
     walk_speeds_on_tiles: {},
     whitelisted_tiles_for_spawning: [],
     blacklisted_tiles_for_spawning: [],
-    mass_kg: 220.0,
+    mass_kg: 500.0,
     distributed_totals: {
         "walk_speed": 400,
     },
