@@ -3,9 +3,11 @@
 
 pub use body_part_components::*;
 pub use body_part_resources::*;
+pub use body_part_seris::*;
 
 pub mod body_part_components;
 pub mod body_part_resources;
+pub mod body_part_seris;
 mod body_part_init_systems;
 
 pub use body_part_init_systems::*;

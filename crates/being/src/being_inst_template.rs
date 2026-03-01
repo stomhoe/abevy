@@ -33,3 +33,4 @@ pub fn plugin(app: &mut App) {
 
 mod being_inst_template_init_systems;
 pub mod being_inst_template_resources;
+pub mod being_inst_template_seris;

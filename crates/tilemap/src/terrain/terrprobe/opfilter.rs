@@ -1,6 +1,7 @@
 pub mod opfilter_components;
 pub mod opfilter_init_systems;
 pub mod opfilter_resources;
+pub mod opfilter_seris;
 
 use bevy::prelude::*;
 use common::common_states::AssetLoading;

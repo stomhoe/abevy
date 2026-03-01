@@ -30,3 +30,4 @@ pub fn plugin(app: &mut App) {
 mod sex_init_systems;
 pub mod sex_components;
 pub mod sex_resources;
+pub mod sex_seris;

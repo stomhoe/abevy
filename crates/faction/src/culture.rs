@@ -32,3 +32,4 @@ pub fn plugin(app: &mut App) {
 
 mod culture_init_systems;
 pub mod culture_resources;
+pub mod culture_seris;

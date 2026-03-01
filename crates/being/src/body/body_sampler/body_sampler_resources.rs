@@ -2,14 +2,7 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use crate::body::body_sampler::body_sampler_components::BodyWeightedSampler;
-
-
-#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
-pub struct BodyWeightedSamplerSeri {
-    pub id: String,
-    pub weights: Vec<(String, f32)>,
-    pub extra: Option<HashMap<String, String>>,
-}
+pub use crate::body::body_sampler::body_sampler_seris::*;
 
 common::define_entity_map_systems!(
     BodyWeightedSampler,

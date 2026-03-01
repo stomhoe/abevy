@@ -1,6 +1,7 @@
 pub mod operation_list_components;
 pub mod operation_list_init_systems;
 pub mod operation_list_resources;
+pub mod operation_list_seris;
 pub mod operation_list_script;
 
 use bevy::prelude::*;

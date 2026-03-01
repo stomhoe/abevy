@@ -36,3 +36,4 @@ pub fn plugin(app: &mut App) {
 mod faction_inst_templ_build_systems;
 mod faction_inst_templ_init_systems;
 pub mod faction_inst_templ_resources;
+pub mod faction_inst_templ_seris;

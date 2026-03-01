@@ -73,6 +73,7 @@ pub fn plugin(app: &mut App) {
 
 pub mod regioning_components;
 pub mod regioning_resources;
+pub mod regioning_seris;
 pub mod regioning_messages;
 pub mod regioning_sgc_components;
 pub mod dungeoning;

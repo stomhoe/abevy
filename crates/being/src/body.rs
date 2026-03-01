@@ -15,6 +15,7 @@ use body_sampler::BodySamplerSystems;
 pub mod body_tree_components;
 pub mod body_part;
 pub mod body_tree_resources;
+pub mod body_tree_seris;
 pub mod body_sampler;
 mod body_systems;
 mod body_tree_build_systems;

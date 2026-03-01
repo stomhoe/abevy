@@ -21,6 +21,7 @@ mod registered_positions_window;
 mod sprite_cfgs_list_window;
 mod sprite_cfgs_details_inspector;
 mod debug_resources;
+mod debug_seris;
 mod debug_systems;
 mod debug_fonts;
 mod debug_messages;

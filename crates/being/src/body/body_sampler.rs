@@ -31,5 +31,6 @@ pub fn plugin(app: &mut App) {
 
 pub mod body_sampler_components;
 pub mod body_sampler_resources;
+pub mod body_sampler_seris;
 mod body_sampler_init_systems;
 pub mod body_sampler_systems;

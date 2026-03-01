@@ -28,3 +28,4 @@ pub fn plugin(app: &mut App) {
 mod race_init_systems;
 pub mod race_components;
 pub mod race_resources;
+pub mod race_seris;

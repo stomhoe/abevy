@@ -39,5 +39,6 @@ pub fn plugin(app: &mut App) {
 
 pub mod sprite_sampler_components;
 pub mod sprite_sampler_resources;
+pub mod sprite_sampler_seris;
 mod sprite_sampler_init_systems;
 pub mod sprite_sampler_systems;

@@ -1,14 +1,7 @@
 use bevy::prelude::*;
 
 use crate::sex::sex_components::Sex;
-
-#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
-pub struct SexSeri {
-    pub id: String,
-    pub name: String,
-    pub description: Option<String>,
-}
-
+pub use crate::sex::sex_seris::*;
 
 
 common::define_entity_map_systems!(

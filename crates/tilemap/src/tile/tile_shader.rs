@@ -14,6 +14,7 @@ mod tile_shader_init_systems;
 mod tile_shader_systems;
 pub mod tile_shader_components;
 pub mod tile_shader_resources;
+pub mod tile_shader_seris;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TileShaderSystems;
