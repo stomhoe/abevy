@@ -3,7 +3,7 @@
 
 const SQUARE_DISTANCE = 0.9;
 const DIAGONAL_DISTANCE = 0.88;
-const STRENGTH = vec2<f32>(0.0, 0.75);
+const STRENGTH = vec2<f32>(0.0, 1.0);
 const CENTER = vec2<f32>(0.5, 0.5);
 const EAST = CENTER + vec2<f32>(SQUARE_DISTANCE, 0.0);
 const WEST = CENTER + vec2<f32>(-SQUARE_DISTANCE, 0.0);
