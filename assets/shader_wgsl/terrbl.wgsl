@@ -3,7 +3,7 @@
 
 const SQUARE_DISTANCE = 0.9;
 const DIAGONAL_DISTANCE = 0.88;
-const STRENGTH = vec2<f32>(0.0, 1.0);
+const STRENGTH = vec2<f32>(0.0, 0.8);
 const CENTER = vec2<f32>(0.5, 0.5);
 const EAST = CENTER + vec2<f32>(SQUARE_DISTANCE, 0.0);
 const WEST = CENTER + vec2<f32>(-SQUARE_DISTANCE, 0.0);
@@ -28,7 +28,8 @@ const NORTH_WEST = CENTER + vec2<f32>(-DIAGONAL_DISTANCE, -DIAGONAL_DISTANCE);
 @group(3) @binding(12) var overlay_tex_6: texture_2d<f32>;
 @group(3) @binding(13) var overlay_tex_7: texture_2d<f32>;
 
-const MASK_COLOR_U8 = vec4<u32>(255u, 0u, 0u, 255u);
+const MASK_COLOR = vec3<f32>(1.0, 0.0, 0.0);
+const MASK_TOLERANCE = 0.12;
 
 struct TileData {
     base_tex_index: u32,
@@ -50,10 +51,6 @@ fn decode_u16(low: f32, high: f32) -> u32 {
 
 fn decode_flags(v: f32) -> u32 {
     return u32(round(v * 255.0));
-}
-
-fn color_to_u8(c: vec4<f32>) -> vec4<u32> {
-    return vec4<u32>(round(clamp(c, vec4<f32>(0.0), vec4<f32>(1.0)) * 255.0));
 }
 
 fn in_bounds(tile: vec2<i32>) -> bool {
@@ -149,16 +146,9 @@ fn sample_overlay_texture(index: u32, uv: vec2<f32>) -> vec4<f32> {
     }
 }
 
-fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, world_uv: vec2<f32>, tint: vec4<f32>) -> vec4<f32> {
-    let data = read_tile_data(tile);
-    let base = textureSample(sprite_texture, sprite_sampler, uv, i32(data.base_tex_index)) * tint;
-    // debug check: validate strict mask-color hit independent of encoded flags.
-    let base_u8 = color_to_u8(base);
-    if any(base_u8.rgb != MASK_COLOR_U8.rgb) {
-        return base;
-    }
+fn sample_overlay_only(data: TileData, world_uv: vec2<f32>) -> vec4<f32> {
     if !data.has_overlay {
-        return base;
+        return vec4<f32>(0.0, 0.0, 0.0, 0.0);
     }
     let repeat_scale = max(data.scale, 1e-5);
     let uv_world = world_uv * repeat_scale / 10000.0;
@@ -179,8 +169,23 @@ fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, world_uv: vec2<f32>, tint: 
         let shimmer = 0.03 * strength * fbm(uv_world * 1.8 + t * 0.6);
         overlay = vec4<f32>(overlay.rgb + vec3<f32>(shimmer), overlay.a);
     }
-    // Keep the original tile alpha to avoid weak/semi-transparent overlays.
-    return vec4<f32>(overlay.rgb, base.a);
+    return overlay;
+}
+
+fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, world_uv: vec2<f32>, tint: vec4<f32>) -> vec4<f32> {
+    let data = read_tile_data(tile);
+    let base = textureSample(sprite_texture, sprite_sampler, uv, i32(data.base_tex_index)) * tint;
+    // Allow a small tolerance to survive filtering at tile borders.
+    let is_mask = distance(base.rgb, MASK_COLOR) <= MASK_TOLERANCE;
+    if !is_mask {
+        return base;
+    }
+    if !data.has_overlay {
+        return base;
+    }
+    let overlay = sample_overlay_only(data, world_uv);
+    let composed_rgb = mix(base.rgb, overlay.rgb, clamp(overlay.a, 0.0, 1.0));
+    return vec4<f32>(composed_rgb, base.a);
 }
 
 fn sample_neighbor_or_self(
@@ -201,7 +206,9 @@ fn sample_neighbor_or_self(
     if neighbor_data.overlay_tex_index == self_data.overlay_tex_index {
         return self_color;
     }
-    return sample_tile_color(tile, uv, world_uv, vec4<f32>(1.0));
+    let neighbor_overlay = sample_overlay_only(neighbor_data, world_uv);
+    let neighbor_rgb = mix(self_color.rgb, neighbor_overlay.rgb, clamp(neighbor_overlay.a, 0.0, 1.0));
+    return vec4<f32>(neighbor_rgb, self_color.a);
 }
 
 fn sample_base_color(tile: vec2<i32>, uv: vec2<f32>, tint: vec4<f32>) -> vec4<f32> {
@@ -217,9 +224,16 @@ fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
         i32(in.storage_position.y),
     );
     let tile_pos = resolve_storage_tile_pos(raw_tile_pos);
+    let tile_pos_i = raw_tile_pos + vec2<i32>(
+        i32(tilemap_data.chunk_pos.x),
+        i32(tilemap_data.chunk_pos.y),
+    );
     let uv = in.uv.xy;
     let world_uv = in.world_position.xy;
-    let tile_data = read_tile_data(tile_pos);
+    let tile_data = read_tile_data(tile_pos_i);
+    let y_uv = vec2<f32>(uv.x, 1.0 - uv.y);
+    let xy_uv = vec2<f32>(1.0 - uv.x, 1.0 - uv.y);
+    let x_uv = vec2<f32>(1.0 - uv.x, uv.y);
 
     if DEBUG_MODE == 1u {
         return sample_base_color(tile_pos, uv, in.color);
@@ -238,8 +252,56 @@ fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
     if DEBUG_MODE == 4u {
         return sample_overlay_texture(tile_data.overlay_tex_index, uv);
     }
+    if DEBUG_MODE == 5u {
+        return sample_overlay_texture(0u, uv);
+    }
+    if DEBUG_MODE == 6u {
+        return sample_overlay_texture(1u, uv);
+    }
+    if DEBUG_MODE == 7u {
+        return vec4<f32>(fract(world_uv / 10000.0), 0.0, 1.0);
+    }
+    if DEBUG_MODE == 8u {
+        let north_data = read_tile_data(tile_pos_i + vec2<i32>(0, 1));
+        let east_data = read_tile_data(tile_pos_i + vec2<i32>(1, 0));
+        let south_data = read_tile_data(tile_pos_i + vec2<i32>(0, -1));
+        let west_data = read_tile_data(tile_pos_i + vec2<i32>(-1, 0));
+        return vec4<f32>(
+            f32(north_data.overlay_tex_index % 256u) / 255.0,
+            f32(east_data.overlay_tex_index % 256u) / 255.0,
+            f32(south_data.overlay_tex_index % 256u) / 255.0,
+            1.0,
+        );
+    }
+    if DEBUG_MODE == 9u {
+        let north_data = read_tile_data(tile_pos_i + vec2<i32>(0, 1));
+        let east_data = read_tile_data(tile_pos_i + vec2<i32>(1, 0));
+        let south_data = read_tile_data(tile_pos_i + vec2<i32>(0, -1));
+        let west_data = read_tile_data(tile_pos_i + vec2<i32>(-1, 0));
+        return vec4<f32>(
+            select(0.0, 1.0, north_data.has_overlay),
+            select(0.0, 1.0, east_data.has_overlay),
+            select(0.0, 1.0, south_data.has_overlay),
+            1.0,
+        );
+    }
+    if DEBUG_MODE == 10u {
+        let north = sample_tile_color(
+            tile_pos_i + vec2<i32>(0, 1),
+            y_uv,
+            world_uv + vec2<f32>(0.0, 1.0) * tilemap_data.grid_size,
+            vec4<f32>(1.0),
+        );
+        let east = sample_tile_color(
+            tile_pos_i + vec2<i32>(1, 0),
+            x_uv,
+            world_uv + vec2<f32>(1.0, 0.0) * tilemap_data.grid_size,
+            vec4<f32>(1.0),
+        );
+        return vec4<f32>(north.r, east.g, 0.0, 1.0);
+    }
 
-    var out = sample_tile_color(tile_pos, uv, world_uv, in.color);
+    var out = sample_tile_color(tile_pos_i, uv, world_uv, in.color);
     if out.a < 0.001 {
         discard;
     }
@@ -248,18 +310,16 @@ fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
         return out;
     }
 
-    let y_uv = vec2<f32>(uv.x, 1.0 - uv.y);
-    let xy_uv = vec2<f32>(1.0 - uv.x, 1.0 - uv.y);
-    let x_uv = vec2<f32>(1.0 - uv.x, uv.y);
 
-    let north = sample_neighbor_or_self(tile_pos + vec2<i32>(0, 1), y_uv, world_uv, tile_data, out);
-    let north_east = sample_neighbor_or_self(tile_pos + vec2<i32>(1, 1), xy_uv, world_uv, tile_data, out);
-    let east = sample_neighbor_or_self(tile_pos + vec2<i32>(1, 0), x_uv, world_uv, tile_data, out);
-    let south_east = sample_neighbor_or_self(tile_pos + vec2<i32>(1, -1), xy_uv, world_uv, tile_data, out);
-    let south = sample_neighbor_or_self(tile_pos + vec2<i32>(0, -1), y_uv, world_uv, tile_data, out);
-    let south_west = sample_neighbor_or_self(tile_pos + vec2<i32>(-1, -1), xy_uv, world_uv, tile_data, out);
-    let west = sample_neighbor_or_self(tile_pos + vec2<i32>(-1, 0), x_uv, world_uv, tile_data, out);
-    let north_west = sample_neighbor_or_self(tile_pos + vec2<i32>(-1, 1), xy_uv, world_uv, tile_data, out);
+    let grid = tilemap_data.grid_size;
+    let north = sample_neighbor_or_self(tile_pos_i + vec2<i32>(0, 1), y_uv, world_uv + vec2<f32>(0.0, 1.0) * grid, tile_data, out);
+    let north_east = sample_neighbor_or_self(tile_pos_i + vec2<i32>(1, 1), xy_uv, world_uv + vec2<f32>(1.0, 1.0) * grid, tile_data, out);
+    let east = sample_neighbor_or_self(tile_pos_i + vec2<i32>(1, 0), x_uv, world_uv + vec2<f32>(1.0, 0.0) * grid, tile_data, out);
+    let south_east = sample_neighbor_or_self(tile_pos_i + vec2<i32>(1, -1), xy_uv, world_uv + vec2<f32>(1.0, -1.0) * grid, tile_data, out);
+    let south = sample_neighbor_or_self(tile_pos_i + vec2<i32>(0, -1), y_uv, world_uv + vec2<f32>(0.0, -1.0) * grid, tile_data, out);
+    let south_west = sample_neighbor_or_self(tile_pos_i + vec2<i32>(-1, -1), xy_uv, world_uv + vec2<f32>(-1.0, -1.0) * grid, tile_data, out);
+    let west = sample_neighbor_or_self(tile_pos_i + vec2<i32>(-1, 0), x_uv, world_uv + vec2<f32>(-1.0, 0.0) * grid, tile_data, out);
+    let north_west = sample_neighbor_or_self(tile_pos_i + vec2<i32>(-1, 1), xy_uv, world_uv + vec2<f32>(-1.0, 1.0) * grid, tile_data, out);
 
     out = mix(out, north, smoothstep(STRENGTH.y, STRENGTH.x, distance(y_uv, SOUTH)));
     out = mix(out, north_east, smoothstep(STRENGTH.y, STRENGTH.x, distance(xy_uv, SOUTH_WEST)));
