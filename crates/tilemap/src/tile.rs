@@ -46,9 +46,16 @@ pub fn plugin(app: &mut App) {
         init_childrensprite,
         emit_global_tile_pos_change,
         validate_portal_recipes,
-        safe_despawn_tile_at,
-        reckeck_adjacency_for,
-        tile_adjacency_dependent_retexturing_system,//.in_set(PreChunkDespawnSystems),
+        safe_despawn_tile_at
+            .after(emit_global_tile_pos_change)
+            .run_if(on_message::<GlobalTilePosChanged>),
+        reckeck_adjacency_for
+            .after(emit_global_tile_pos_change)
+            .run_if(on_message::<GlobalTilePosChanged>),
+        tile_adjacency_dependent_retexturing_system
+            .after(reckeck_adjacency_for)
+            .after(safe_despawn_tile_at)
+            .run_if(on_message::<RecheckTileAdjacency>),//.in_set(PreChunkDespawnSystems),
 
     ))
     .add_observer(on_spritetile_despawn)

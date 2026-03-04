@@ -20,9 +20,15 @@ pub fn plugin(app: &mut App) {
         plugin_ac_animation,
     ))
     .add_systems(Update, ((
-           animate_sprite,
-           update_animstate_for_clients.run_if(in_state(ServerState::Running)),
-           client_receive_moving_anim.run_if(in_state(ClientState::Connected)),
+           animate_sprite.run_if(on_message::<BeingChangedMoveState>),
+           update_animstate_for_clients
+               .run_if(in_state(ServerState::Running))
+               .run_if(on_message::<BeingChangedMoveState>)
+               .after(animate_sprite),
+           client_receive_moving_anim
+               .run_if(in_state(ClientState::Connected))
+               .run_if(on_message::<SyncMoveState>)
+               .after(update_animstate_for_clients),
         ).in_set(SpriteAnimationSystems),
     ))
     .add_systems(FixedUpdate, ((//está en fixed update para q no le afecte lo de SimRunningSystems del SpriteAnimationSystems

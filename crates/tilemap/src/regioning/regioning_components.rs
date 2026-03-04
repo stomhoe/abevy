@@ -31,7 +31,7 @@ impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 #[require(CountsOfSgcs, GridOfSgcs)]
 pub struct ClaimList {
     pub processed_up_to_i: usize,
-    pub claims: [Option<ChunksClaim>; MAX_CLAIMS],
+    pub claims: Vec<Option<ChunksClaim>>,
     pub skipped_is: HashSet<usize>,
     pub advance_timer: Timer,
 }
@@ -46,8 +46,10 @@ impl ClaimList {
 }
 impl Default for ClaimList {
     fn default() -> Self {
+        let mut claims = Vec::with_capacity(MAX_CLAIMS);
+        claims.resize(MAX_CLAIMS, None);
         Self {
-            claims: [(); MAX_CLAIMS].map(|_| None),
+            claims,
             processed_up_to_i: 0,
             skipped_is: HashSet::new(),
             advance_timer: Timer::from_seconds(0.02, TimerMode::Once),
@@ -167,19 +169,42 @@ pub const MAX_CLAIMS: usize = REGION_SIZE_IN_CHUNKS.area_usize();
 
 #[derive(Debug, Clone)]
 pub struct RegionGrid<T: Copy + Eq> {
-    grid: [[Vec<T>; REGION_SIZE_IN_CHUNKS.0.x as usize]; REGION_SIZE_IN_CHUNKS.0.y as usize],
+    grid: Vec<Vec<T>>,
     count: u64,
 }
 impl<T: Copy + Eq> Default for RegionGrid<T> {
     fn default() -> Self {
+        let total_cells = REGION_SIZE_IN_CHUNKS.area_usize();
+        let mut grid = Vec::with_capacity(total_cells);
+        grid.resize_with(total_cells, Vec::new);
         Self {
-            grid: std::array::from_fn(|_| std::array::from_fn(|_| Vec::new())),
+            grid,
             count: 0,
         }
     }
 }
 
 impl<T: Copy + Eq> RegionGrid<T> {
+    #[inline]
+    const fn width() -> usize {
+        REGION_SIZE_IN_CHUNKS.0.x as usize
+    }
+    #[inline]
+    fn flat_index(x: usize, y: usize) -> usize {
+        y * Self::width() + x
+    }
+    #[inline]
+    fn cell(&self, x: usize, y: usize) -> &Vec<T> {
+        &self.grid[Self::flat_index(x, y)]
+    }
+    #[inline]
+    fn cell_mut(&mut self, x: usize, y: usize) -> &mut Vec<T> {
+        &mut self.grid[Self::flat_index(x, y)]
+    }
+    #[inline]
+    fn cell_opt(&self, x: usize, y: usize) -> Option<&Vec<T>> {
+        self.grid.get(Self::flat_index(x, y))
+    }
     #[inline]
     fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError> {
         let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
@@ -193,7 +218,7 @@ impl<T: Copy + Eq> RegionGrid<T> {
     }
     pub fn is_occupied(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
         self.get_local_pos(global_chunk_pos, region_pos)
-        .map(|(x, y)| !self.grid[y][x].is_empty())
+        .map(|(x, y)| !self.cell(x, y).is_empty())
         .unwrap_or(false)
     }
     pub fn is_available(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> bool {
@@ -201,19 +226,23 @@ impl<T: Copy + Eq> RegionGrid<T> {
     }
     pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) -> Result<(), ChunkOccupyError> {
         let (x, y) = self.get_local_pos(global_chunk_pos, region_pos)?;
-        let cell = &mut self.grid[y][x];
-        if cell.iter().any(|&existing| existing == value) {
-            return Err(ChunkOccupyError::AlreadyOccupied);
-        }
-        if cell.is_empty() {
+        let was_empty = {
+            let cell = self.cell_mut(x, y);
+            if cell.iter().any(|&existing| existing == value) {
+                return Err(ChunkOccupyError::AlreadyOccupied);
+            }
+            let was_empty = cell.is_empty();
+            cell.push(value);
+            was_empty
+        };
+        if was_empty {
             self.count += 1;
         }
-        cell.push(value);
         Ok(())
     }
     pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) {
         if let Ok((x, y)) = self.get_local_pos(global_chunk_pos, region_pos) {
-            let cell = &mut self.grid[y][x];
+            let cell = self.cell_mut(x, y);
             if let Some(i) = cell.iter().position(|&existing| existing == value) {
                 cell.swap_remove(i);
             }
@@ -228,12 +257,12 @@ impl<T: Copy + Eq> RegionGrid<T> {
     pub fn get_value(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<T> {
         self.get_local_pos(global_chunk_pos, region_pos)
             .ok()
-            .and_then(|(x, y)| self.grid[y][x].first().copied())
+            .and_then(|(x, y)| self.cell(x, y).first().copied())
     }
     pub fn get_values(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<&[T]> {
         self.get_local_pos(global_chunk_pos, region_pos)
             .ok()
-            .map(|(x, y)| self.grid[y][x].as_slice())
+            .map(|(x, y)| self.cell(x, y).as_slice())
     }
 }
 pub enum ChunkOccupyError {
@@ -266,7 +295,7 @@ impl GridOfSgcs {
             let display_y = ((pointer_pos.y - rect.top()) / cell_h).floor() as usize;
             if cell_x < width && display_y < height {
                 let grid_y = (height - 1) - display_y;
-                if let Some(cell) = self.0.grid.get(grid_y).and_then(|row| row.get(cell_x))
+                if let Some(cell) = self.0.cell_opt(cell_x, grid_y)
                     && !cell.is_empty()
                 {
                     clicked_entity = Some(cell[0]);
@@ -297,9 +326,9 @@ impl GridOfSgcs {
             let y_start = (((clip.top() - rect.top()) / cell_h).floor() as i32).max(0) as usize;
             let y_end = (((clip.bottom() - rect.top()) / cell_h).ceil() as i32).min(height as i32) as usize;
             for display_y in y_start..y_end {
-                let row = &self.0.grid[height - 1 - display_y];
+                let grid_y = height - 1 - display_y;
                 for x in x_start..x_end {
-                    let cell = &row[x];
+                    let cell = self.0.cell(x, grid_y);
                 let cell_rect = egui::Rect::from_min_size(
                     egui::pos2(rect.left() + x as f32 * cell_w, rect.top() + display_y as f32 * cell_h),
                     egui::vec2(cell_w, cell_h),

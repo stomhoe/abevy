@@ -35,7 +35,14 @@ pub fn plugin(app: &mut App) {
         (
             sprite_change_detection,
             disable_children_sprites_of_disabled,
-            (apply_offsets, apply_scales),
+            (
+                apply_offsets
+                    .after(sprite_change_detection)
+                    .run_if(on_message::<SpriteChanged>),
+                apply_scales
+                    .after(sprite_change_detection)
+                    .run_if(on_message::<SpriteChanged>),
+            ),
             z_sort_system,
             (
                 become_child_of_sprite_with_tag,

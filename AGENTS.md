@@ -1,4 +1,4 @@
-do cargo check, not build.
+do cargo check, not build. but dont compile if you only changed non-.rs files
 never create .md files unless instructed. avoid creating code with redundancies, avoid defining an excessive amount of new components or resources. if you do so, put them into their respective _components or _resources files. follow preexistent code and query style, avoid definying queries which conflict with each other. 
 if a queried component has no fields, to use present use Has<ComponentName> instead of Option<&ComponentName>, the former returns a bool directly. Try to make code compacted. Prefer let Ok/Some(...) else {continue;} over if let Ok/Some(...){}. use
 EntityHashmap/set over Hashmap/set<Entity>. use .read() to read MessageReader's received messages, not .iter(). to write messages with a MessageWriter, define a mut messages: Local<Vec<MessageType>> in the system params, then use writer.write_batch(messages.drain(..)); at the end of the system. don't forget to add imports. if you use something from a crate, add it. if you alter a *Seri, fix affected .ron files

@@ -25,16 +25,22 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
     (
         //spawn systems
-        spawn_chunks_around_activators.after(despawn_chunks),//DON'T TOUCH
+        spawn_chunks_around_activators
+            .after(despawn_chunks)
+            .run_if(on_message::<ReactivateChunksFor>),//DON'T TOUCH
         activate_chunks_every_second,
-        on_message_signal_despawn_all_chunks,
+        on_message_signal_despawn_all_chunks
+            .run_if(on_message::<ForceAllChunksDespawn>),
 
         //despawn systems
         periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_secs(2))),
         detect_activators_with_pos_changes,
 
         //visibility systems
-        update_chunk_visib,
+        update_chunk_visib
+            .after(detect_camera_change_pos_visib)
+            .after(periodically_recheck_chunk_visibility)
+            .run_if(on_message::<RecheckChunksVisibility>),
         detect_camera_change_pos_visib,
         periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
 

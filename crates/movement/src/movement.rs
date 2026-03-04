@@ -22,7 +22,9 @@ pub fn plugin(app: &mut App) {
             MOVEMENT_SCHEDULE,
             (
                 send_move_input_to_server.run_if(in_state(ClientState::Connected)),
-                receive_move_input_from_client.run_if(in_state(ServerState::Running)),
+                receive_move_input_from_client
+                    .run_if(in_state(ServerState::Running))
+                    .run_if(on_message::<FromClient<SendMoveInput>>),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
                 emit_move_state_on_movevecmag_value_change,
@@ -32,7 +34,9 @@ pub fn plugin(app: &mut App) {
                 ),
                 update_facing_dir,
                 send_transforms_to_clients.run_if(in_state(ServerState::Running)),
-                set_transforms_to_received,
+                set_transforms_to_received
+                    .after(send_transforms_to_clients)
+                    .run_if(on_message::<UnreliableTransform>),
             )
             .in_set(MovementSystems),
         )
