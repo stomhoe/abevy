@@ -20,10 +20,9 @@ pub fn plugin(app: &mut App) {
         plugin_ac_animation,
     ))
     .add_systems(Update, ((
-           animate_sprite.run_if(on_message::<BeingChangedMoveState>),
+           animate_sprite,
            update_animstate_for_clients
                .run_if(in_state(ServerState::Running))
-               .run_if(on_message::<BeingChangedMoveState>)
                .after(animate_sprite),
            client_receive_moving_anim
                .run_if(in_state(ClientState::Connected))

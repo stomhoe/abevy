@@ -2,6 +2,7 @@
 use bevy::prelude::*;
 use bevy_fps_counter::FpsCounterPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPrimaryContextPass;
+use bevy::ecs::schedule::common_conditions::on_message;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 
@@ -37,7 +38,10 @@ pub fn plugin(app: &mut App) {
             FixedUpdate,
             (
                 debug_increase_speed,
-                receive_increase_speed_from_client.run_if(in_state(ServerState::Running)),
+                receive_increase_speed_from_client
+                    .after(debug_increase_speed)
+                    .run_if(in_state(ServerState::Running))
+                    .run_if(on_message::<FromClient<UpdateBeingSpeed>>),
             ),
         )
         .add_systems(

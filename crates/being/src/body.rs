@@ -2,6 +2,7 @@ pub use body_tree_components::*;
 pub use body_part::body_part_components::*;
 pub use body_tree_resources::*;
 use bevy::prelude::*;
+use bevy::ecs::schedule::common_conditions::on_message;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::{HostSystems, game_common::ModifierSystems};
@@ -37,7 +38,7 @@ pub fn plugin(app: &mut App) {
         (
             (update_body_tree_weight_sum).in_set(ModifierSystems),
             (
-                apply_body_damage,
+                apply_body_damage.run_if(on_message::<BodyDamage>),
                 sync_body_part_missing,
                 update_body_health_from_parts,
                 apply_pain_slowdown,

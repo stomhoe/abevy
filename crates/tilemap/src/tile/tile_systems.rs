@@ -5,6 +5,7 @@ use crate::{
 };
 use ::sprite_shared::*;
 use avian2d::prelude::*;
+use bevy::ecs::entity::EntityHashSet;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
@@ -76,13 +77,13 @@ pub fn emit_global_tile_pos_change(
     for (entity, mut prev_tile_pos, mut prev_dim_ref, global_tile_pos, &dimension_ref) in
         query.iter_mut()
     {
-        if global_tile_pos != &prev_tile_pos.0 || dimension_ref.0 != prev_dim_ref.0 {
+        if prev_tile_pos.0 != Some(*global_tile_pos) || dimension_ref.0 != prev_dim_ref.0 {
             changed.push(GlobalTilePosChanged {
                 entity,
                 old_gpos: prev_tile_pos.0,
                 old_dim: DimensionRef(prev_dim_ref.0),
             });
-            prev_tile_pos.0 = *global_tile_pos;
+            prev_tile_pos.0 = Some(*global_tile_pos);
             prev_dim_ref.0 = dimension_ref.0;
         }
     }
@@ -97,25 +98,28 @@ pub fn add_spawned_tiles_to_gpos_map(
         (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef),
         (common::AnyDisabling, Without<EntityZero>, Without<TilemapId>),
     >,
-    ezero_size_query: Query<&SizeInTiles, (With<EntityZero>, common::AnyDisabling)>,
-    mut entities: Local<Vec<Entity>>,
+    ezero_size_query: Query<&SizeInTiles, (common::AnyDisabling)>,
+    mut entities: Local<EntityHashSet>,
 ) {
     entities.reserve(changed_pos.len());
     for changed_pos in changed_pos.read() {
+        let Some(old_gpos) = changed_pos.old_gpos else {
+            entities.insert(changed_pos.entity);
+            continue;
+        };
         let size = query
             .get(changed_pos.entity)
             .ok()
             .and_then(|(_, _, _, ezero_ref)| ezero_size_query.get(ezero_ref.0).ok().copied())
             .unwrap_or_default();
-        map.remove_tile(changed_pos.old_dim, changed_pos.old_gpos, changed_pos.entity, size);
-        entities.push(changed_pos.entity);
+        map.remove_tile(changed_pos.old_dim, old_gpos, changed_pos.entity, size);
+        entities.insert(changed_pos.entity);
     }
-    query.iter_many(entities.drain(..)).for_each(
-        |(ent, &dimension_ref, &gpos, ezero_ref)| {
-            let size = ezero_size_query.get(ezero_ref.0).copied().unwrap_or_default();
-            map.insert(ent, dimension_ref, gpos, size);
-        },
-    );
+    for ent in entities.drain() {
+        let Ok((ent, &dimension_ref, &gpos, ezero_ref)) = query.get(ent) else { continue };
+        let size = ezero_size_query.get(ezero_ref.0).copied().unwrap_or_default();
+        map.insert(ent, dimension_ref, gpos, size);
+    }
 }
 
 #[allow(unused_parens)]

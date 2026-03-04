@@ -17,8 +17,8 @@ pub fn reckeck_adjacency_for(
     mut msgs: Local<Vec<RecheckTileAdjacency>>,
 ) {
     for read in reader.read() {
-        if read.old_gpos != PrevGlobalTilePos::PLACEHOLDER_I32_MAX.0 {
-            RecheckTileAdjacency::append_all_adjacent_pos(&mut msgs, read.old_dim, read.old_gpos, );
+        if let Some(old_gpos) = read.old_gpos {
+            RecheckTileAdjacency::append_all_adjacent_pos(&mut msgs, read.old_dim, old_gpos, );
         }
         if let Ok((&new_dim, &new_gpos)) = tiles_query.get(read.entity) {
             msgs.push(RecheckTileAdjacency {

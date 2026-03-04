@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use game_common::game_common_timers::TimedOut;
-use crate::{ regioning::{dungeoning_systems::*, natural::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::*, regioning_sgc_init_systems::*, regioning_systems::*, regioning_sgc_components::StructuredGenConfig}, };
+use crate::{ regioning::{dungeoning_systems::*, natural::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::{StructuredGenConfig, *}, regioning_sgc_init_systems::*, regioning_systems::*}, terrain::terrprobe::terrprobe_messages::*, };
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -47,7 +47,7 @@ pub fn plugin(app: &mut App) {
                     .run_if(on_message::<OfferChunk>),
                 claim_chunks_for_river_structures
                     .after(offer_chunks_of_new_regions_to_dungeoning_systems)
-                    .run_if(on_message::<OfferChunk>),
+                    .run_if(on_message::<OfferChunk>.or(on_message::<SampledValuesCollected>)),
             ),
             read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems
                 .after(claim_chunks_for_various_dungeon_types)

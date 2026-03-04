@@ -39,7 +39,9 @@ pub fn plugin(app: &mut App) {
         rotate_tile_based_on_initial_pos_hash,
         sync_sprite_flips_with_tileflip,
         despawn_if_not_excepted.in_set(PreChunkDespawnSystems),//DON'T TOUCH
-        (add_spawned_tiles_to_gpos_map, ),
+        add_spawned_tiles_to_gpos_map
+            .after(emit_global_tile_pos_change)
+            .run_if(on_message::<GlobalTilePosChanged>),
         add_projectile_colliders_to_tiles,
         (spritetile_snap_transform_to_global_pos).chain(),
         add_handles,

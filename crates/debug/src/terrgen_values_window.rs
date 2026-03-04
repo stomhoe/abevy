@@ -66,7 +66,8 @@ pub fn terrgen_debug_window_system(
 
             ui.horizontal(|ui| {
                 ui.label("Filter");
-                egui::ComboBox::from_label("Oplist")
+                egui::ComboBox::from_id_salt("terrgen_values_oplist_filter")
+                    .width(180.0)
                     .selected_text(
                         debug_grid
                             .oplist_filter
@@ -126,7 +127,10 @@ pub fn terrgen_debug_window_system(
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
                         ui.label("Variables");
-                        egui::ScrollArea::vertical().max_height(panel_h - 22.0).show(ui, |ui| {
+                        egui::ScrollArea::vertical()
+                            .id_salt("terrgen_values_metrics_scroll")
+                            .max_height(panel_h - 22.0)
+                            .show(ui, |ui| {
                             for metric in &metrics {
                                 let selected = metric == &debug_grid.selected_metric;
                                 let metric_label = if *metric == OUT_METRIC {
@@ -141,7 +145,11 @@ pub fn terrgen_debug_window_system(
                                         })
                                         .unwrap_or_else(|| format!("{metric}"))
                                 };
-                                if ui.selectable_label(selected, metric_label).clicked() {
+                                let mut clicked = false;
+                                ui.push_id(metric.as_u64(), |ui| {
+                                    clicked = ui.selectable_label(selected, metric_label).clicked();
+                                });
+                                if clicked {
                                     debug_grid.selected_metric = *metric;
                                 }
                             }
@@ -216,7 +224,10 @@ pub fn terrgen_debug_window_system(
                             bucket_values.len(),
                         ));
 
-                        egui::ScrollArea::both().auto_shrink([false, false]).show(ui, |ui| {
+                        egui::ScrollArea::both()
+                            .id_salt("terrgen_values_bucket_grid_scroll")
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
                             let cell_w = 30.0f32;
                             let cell_h = 22.0f32;
                             let cols = bucket_radius * 2 + 1;

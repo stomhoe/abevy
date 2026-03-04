@@ -168,7 +168,16 @@ impl SpriteTilesAtGpos {
         let size = size.inner();
         for y in 0..size.y {
             for x in 0..size.x {
-                let curr_gpos = GlobalTilePos(gpos.0 + IVec2::new(x as i32, y as i32));
+                let x = i64::from(gpos.0.x) + i64::from(x);
+                let y = i64::from(gpos.0.y) + i64::from(y);
+                if x < i64::from(i32::MIN)
+                    || x > i64::from(i32::MAX)
+                    || y < i64::from(i32::MIN)
+                    || y > i64::from(i32::MAX)
+                {
+                    continue;
+                }
+                let curr_gpos = GlobalTilePos(IVec2::new(x as i32, y as i32));
                 let (chunk, local) = Self::chunk_and_local(curr_gpos);
                 if let Some(matrix) = self.map.get_mut(&(dim_ref, chunk)) {
                     matrix.swap_remove(local, tile_ent);
@@ -183,7 +192,16 @@ impl SpriteTilesAtGpos {
         let size = size.inner();
         for y in 0..size.y {
             for x in 0..size.x {
-                let curr_gpos = GlobalTilePos(gpos.0 + IVec2::new(x as i32, y as i32));
+                let x = i64::from(gpos.0.x) + i64::from(x);
+                let y = i64::from(gpos.0.y) + i64::from(y);
+                if x < i64::from(i32::MIN)
+                    || x > i64::from(i32::MAX)
+                    || y < i64::from(i32::MIN)
+                    || y > i64::from(i32::MAX)
+                {
+                    continue;
+                }
+                let curr_gpos = GlobalTilePos(IVec2::new(x as i32, y as i32));
                 let (chunk, local) = Self::chunk_and_local(curr_gpos);
                 let matrix = self
                     .map

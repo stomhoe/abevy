@@ -1,4 +1,4 @@
-use std::{hash::{DefaultHasher, Hash, Hasher}, i32};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
@@ -38,17 +38,8 @@ impl_position_conversions!(GlobalTilePos);
 impl_position_ops!(GlobalTilePos);
 impl_display_debug!(GlobalTilePos, "Global pos","Gpos");
 
-#[derive(Component, Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Copy, Reflect, Debug)]
-pub struct PrevGlobalTilePos(pub GlobalTilePos);
-impl PrevGlobalTilePos {
-    pub const PLACEHOLDER_I32_MAX: PrevGlobalTilePos = PrevGlobalTilePos(GlobalTilePos::new(i32::MAX, i32::MAX));
-}
-
-impl Default for PrevGlobalTilePos {
-    fn default() -> Self {
-        Self::PLACEHOLDER_I32_MAX
-    }
-}
+#[derive(Component, Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Copy, Reflect, Debug, Default)]
+pub struct PrevGlobalTilePos(pub Option<GlobalTilePos>);
 
 
 impl GlobalTilePos {

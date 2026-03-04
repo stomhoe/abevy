@@ -148,7 +148,39 @@ pub fn main_menu_window(
         .movable(true)
         .open(&mut open)
         .show(ctx, |ui| {
-            ui.heading("Debug Windows");
+            let close_all = egui::Button::new(
+                egui::RichText::new("⛔ Close All Windows")
+                    .size(16.0)
+                    .color(egui::Color32::WHITE)
+                    .strong(),
+            )
+            .fill(egui::Color32::from_rgb(150, 28, 28))
+            .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(230, 110, 110)));
+            if ui.add_sized([ui.available_width(), 28.0], close_all).clicked() {
+                window_visible.states = false;
+                window_visible.chunks_list = false;
+                window_visible.regions_list = false;
+                window_visible.beings_list = false;
+                window_visible.players_list = false;
+                window_visible.portals_list = false;
+                window_visible.portal_details = false;
+                window_visible.terrgen_editor = false;
+                window_visible.terrgen_values = false;
+                window_visible.settings_editor = false;
+                window_visible.tile_details = false;
+                window_visible.chunk_details = false;
+                window_visible.region_details = false;
+                window_visible.tilemap_details = false;
+                window_visible.being_details = false;
+                window_visible.player_details = false;
+                window_visible.registered_positions = false;
+                window_visible.exempted_entity_details = false;
+                window_visible.sprite_configs_list = false;
+                window_visible.sprite_details = false;
+                window_visible.gpos_maps = false;
+                window_visible.hot_reload_menu = false;
+                window_visible.river_debug = false;
+            }
             ui.separator();
             if ui.button(egui::RichText::new("🔍 States Inspector").size(16.0)).clicked() {
                 window_visible.states = !window_visible.states;
@@ -183,7 +215,7 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;
             }
-            if ui.button(egui::RichText::new("📍 Registered Tile Positions").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("📍 Important Tile Positions").size(16.0)).clicked() {
                 window_visible.registered_positions = !window_visible.registered_positions;
             }
             if ui.button(egui::RichText::new("♻ Hot Reload").size(16.0)).clicked() {

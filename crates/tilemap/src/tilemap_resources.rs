@@ -143,7 +143,7 @@ impl MassCollectedTiles {
             dim_ref,
             tile_bundle,
             initial_pos: InitialPos(gpos),
-            prev_gpos: PrevGlobalTilePos::default(),
+            prev_gpos: PrevGlobalTilePos(Some(gpos)),
             prev_dim_ref: PrevDimensionRef(dim_ref.0),
         };
         self.0.push((tile_instance, helper));
