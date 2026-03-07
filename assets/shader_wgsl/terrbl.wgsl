@@ -69,14 +69,6 @@ fn in_bounds(tile: vec2<i32>) -> bool {
         && tile.y < i32(map_size_tiles.y);
 }
 
-// Convert storage/chunk-local tile position to map-space when needed.
-fn resolve_storage_tile_pos(raw_tile: vec2<i32>) -> vec2<i32> {
-    if in_bounds(raw_tile) {
-        return raw_tile;
-    }
-    return raw_tile - vec2<i32>(i32(tilemap_data.chunk_pos.x), i32(tilemap_data.chunk_pos.y));
-}
-
 // Read and decode all per-tile data from packed metadata textures.
 fn read_tile_data(tile: vec2<i32>) -> TileData {
     if !in_bounds(tile) {
@@ -97,11 +89,6 @@ fn read_tile_data(tile: vec2<i32>) -> TileData {
         params.b,
         params.a,
     );
-}
-
-// Helper to compare whether two tiles share the same overlay type.
-fn has_same_overlay(a: TileData, b: TileData) -> bool {
-    return a.has_overlay && b.has_overlay && a.overlay_tex_index == b.overlay_tex_index;
 }
 
 // Procedural water animation offset for overlay UVs.
@@ -220,8 +207,6 @@ fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
         i32(in.storage_position.x),
         i32(in.storage_position.y),
     );
-    // Tile coordinate resolved against chunk position when needed.
-    let tile_pos = resolve_storage_tile_pos(raw_tile_pos);
     // Absolute tile coordinate in map-space.
     let tile_pos_i = raw_tile_pos + vec2<i32>(
         i32(tilemap_data.chunk_pos.x),
@@ -236,12 +221,10 @@ fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
 
     // Start from this tile's own composed color.
     var out = sample_tile_color(tile_pos_i, uv, world_uv, in.color);
-    // Early alpha discard for fully transparent output fragments.
     if out.a < 0.001 {
         discard;
     }
 
-    // Per-tile switch to disable all border blending.
     if !tile_data.blend_enabled {
         return out;
     }
@@ -257,366 +240,22 @@ fn fragment(in: MeshVertexOutput) -> @location(0) vec4<f32> {
     var west = sample_neighbor_contribution(tile_pos_i + vec2<i32>(-1, 0), world_uv, tile_data, out);
     var north_west = sample_neighbor_contribution(tile_pos_i + vec2<i32>(-1, 1), world_uv, tile_data, out);
 
-    // Tile metadata for each neighbor, used by support and corner rules.
-    let north_data = read_tile_data(tile_pos_i + vec2<i32>(0, 1));
-    let east_data = read_tile_data(tile_pos_i + vec2<i32>(1, 0));
-    let south_data = read_tile_data(tile_pos_i + vec2<i32>(0, -1));
-    let west_data = read_tile_data(tile_pos_i + vec2<i32>(-1, 0));
-    let north_east_data = read_tile_data(tile_pos_i + vec2<i32>(1, 1));
-    let south_east_data = read_tile_data(tile_pos_i + vec2<i32>(1, -1));
-    let south_west_data = read_tile_data(tile_pos_i + vec2<i32>(-1, -1));
-    let north_west_data = read_tile_data(tile_pos_i + vec2<i32>(-1, 1));
-
     let border_width = 0.24;
-    // Edge proximity masks in local tile UV space.
-    // Higher value means "closer to that edge".
+    // Directional masks in tile UV space (higher near each side).
     let n_axis = smoothstep(1.0 - border_width, 1.0, 1.0 - uv.y);
     let s_axis = smoothstep(1.0 - border_width, 1.0, uv.y);
     let e_axis = smoothstep(1.0 - border_width, 1.0, uv.x);
     let w_axis = smoothstep(1.0 - border_width, 1.0, 1.0 - uv.x);
 
-    // Support booleans describing whether diagonal tiles are backed by same-type cardinals.
-    let ne_support_n = has_same_overlay(north_data, north_east_data);
-    let ne_support_e = has_same_overlay(east_data, north_east_data);
-    let se_support_s = has_same_overlay(south_data, south_east_data);
-    let se_support_e = has_same_overlay(east_data, south_east_data);
-    let sw_support_s = has_same_overlay(south_data, south_west_data);
-    let sw_support_w = has_same_overlay(west_data, south_west_data);
-    let nw_support_n = has_same_overlay(north_data, north_west_data);
-    let nw_support_w = has_same_overlay(west_data, north_west_data);
-
-    // Dominant-side exception: allow outward projection only when the diagonal submissive
-    // is backed by matching cardinals on both connecting sides.
-    let ne_supported_submissive_cluster = tile_data.has_overlay
-        && north_east_data.has_overlay
-        && tile_data.overlay_tex_index < north_east_data.overlay_tex_index
-        && ne_support_n
-        && ne_support_e;
-    let se_supported_submissive_cluster = tile_data.has_overlay
-        && south_east_data.has_overlay
-        && tile_data.overlay_tex_index < south_east_data.overlay_tex_index
-        && se_support_s
-        && se_support_e;
-    let sw_supported_submissive_cluster = tile_data.has_overlay
-        && south_west_data.has_overlay
-        && tile_data.overlay_tex_index < south_west_data.overlay_tex_index
-        && sw_support_s
-        && sw_support_w;
-    let nw_supported_submissive_cluster = tile_data.has_overlay
-        && north_west_data.has_overlay
-        && tile_data.overlay_tex_index < north_west_data.overlay_tex_index
-        && nw_support_n
-        && nw_support_w;
-
-    // Optional dominant-side outward projection (anti-checkerboard behavior in supported cases).
-    if ne_supported_submissive_cluster {
-        let ne_overlay = sample_overlay_only(north_east_data, world_uv);
-        let ne_alpha = clamp(ne_overlay.a, 0.0, 1.0);
-        // Apply NE diagonal outward projection only if sampled overlay is visible.
-        if ne_alpha > 0.0 {
-            north_east = vec4<f32>(mix(out.rgb, ne_overlay.rgb, ne_alpha), 1.0);
-        }
-
-        let n_overlay = sample_overlay_only(north_data, world_uv);
-        let n_alpha = clamp(n_overlay.a, 0.0, 1.0);
-        // Apply north-side support projection for NE only when both alpha and support are present.
-        if n_alpha > 0.0 && ne_support_n {
-            north = vec4<f32>(mix(out.rgb, n_overlay.rgb, n_alpha), e_axis);
-        }
-
-        let e_overlay = sample_overlay_only(east_data, world_uv);
-        let e_alpha = clamp(e_overlay.a, 0.0, 1.0);
-        // Apply east-side support projection for NE only when both alpha and support are present.
-        if e_alpha > 0.0 && ne_support_e {
-            east = vec4<f32>(mix(out.rgb, e_overlay.rgb, e_alpha), n_axis);
-        }
-    }
-    // Same outward-projection logic for the SE supported cluster case.
-    if se_supported_submissive_cluster {
-        let se_overlay = sample_overlay_only(south_east_data, world_uv);
-        let se_alpha = clamp(se_overlay.a, 0.0, 1.0);
-        // Apply SE diagonal outward projection only if sampled overlay is visible.
-        if se_alpha > 0.0 {
-            south_east = vec4<f32>(mix(out.rgb, se_overlay.rgb, se_alpha), 1.0);
-        }
-
-        let s_overlay = sample_overlay_only(south_data, world_uv);
-        let s_alpha = clamp(s_overlay.a, 0.0, 1.0);
-        // Apply south-side support projection for SE only when both alpha and support are present.
-        if s_alpha > 0.0 && se_support_s {
-            south = vec4<f32>(mix(out.rgb, s_overlay.rgb, s_alpha), e_axis);
-        }
-
-        let e_overlay = sample_overlay_only(east_data, world_uv);
-        let e_alpha = clamp(e_overlay.a, 0.0, 1.0);
-        // Apply east-side support projection for SE only when both alpha and support are present.
-        if e_alpha > 0.0 && se_support_e {
-            east = vec4<f32>(mix(out.rgb, e_overlay.rgb, e_alpha), s_axis);
-        }
-    }
-    // Same outward-projection logic for the SW supported cluster case.
-    if sw_supported_submissive_cluster {
-        let sw_overlay = sample_overlay_only(south_west_data, world_uv);
-        let sw_alpha = clamp(sw_overlay.a, 0.0, 1.0);
-        // Apply SW diagonal outward projection only if sampled overlay is visible.
-        if sw_alpha > 0.0 {
-            south_west = vec4<f32>(mix(out.rgb, sw_overlay.rgb, sw_alpha), 1.0);
-        }
-
-        let s_overlay = sample_overlay_only(south_data, world_uv);
-        let s_alpha = clamp(s_overlay.a, 0.0, 1.0);
-        // Apply south-side support projection for SW only when both alpha and support are present.
-        if s_alpha > 0.0 && sw_support_s {
-            south = vec4<f32>(mix(out.rgb, s_overlay.rgb, s_alpha), w_axis);
-        }
-
-        let w_overlay = sample_overlay_only(west_data, world_uv);
-        let w_alpha = clamp(w_overlay.a, 0.0, 1.0);
-        // Apply west-side support projection for SW only when both alpha and support are present.
-        if w_alpha > 0.0 && sw_support_w {
-            west = vec4<f32>(mix(out.rgb, w_overlay.rgb, w_alpha), s_axis);
-        }
-    }
-    // Same outward-projection logic for the NW supported cluster case.
-    if nw_supported_submissive_cluster {
-        let nw_overlay = sample_overlay_only(north_west_data, world_uv);
-        let nw_alpha = clamp(nw_overlay.a, 0.0, 1.0);
-        // Apply NW diagonal outward projection only if sampled overlay is visible.
-        if nw_alpha > 0.0 {
-            north_west = vec4<f32>(mix(out.rgb, nw_overlay.rgb, nw_alpha), 1.0);
-        }
-
-        let n_overlay = sample_overlay_only(north_data, world_uv);
-        let n_alpha = clamp(n_overlay.a, 0.0, 1.0);
-        // Apply north-side support projection for NW only when both alpha and support are present.
-        if n_alpha > 0.0 && nw_support_n {
-            north = vec4<f32>(mix(out.rgb, n_overlay.rgb, n_alpha), w_axis);
-        }
-
-        let w_overlay = sample_overlay_only(west_data, world_uv);
-        let w_alpha = clamp(w_overlay.a, 0.0, 1.0);
-        // Apply west-side support projection for NW only when both alpha and support are present.
-        if w_alpha > 0.0 && nw_support_w {
-            west = vec4<f32>(mix(out.rgb, w_overlay.rgb, w_alpha), n_axis);
-        }
-    }
-
-    // Extra push radius used when a diagonal is isolated (lone corner case).
-    let lone_corner_width = 0.42;
-
-    // Lone-corner flags: diagonal contributor exists but is unsupported by both connecting cardinals.
-    let ne_lone = north_east.a > 0.0
-        && !has_same_overlay(north_data, north_east_data)
-        && !has_same_overlay(east_data, north_east_data);
-    let se_lone = south_east.a > 0.0
-        && !has_same_overlay(south_data, south_east_data)
-        && !has_same_overlay(east_data, south_east_data);
-    let sw_lone = south_west.a > 0.0
-        && !has_same_overlay(south_data, south_west_data)
-        && !has_same_overlay(west_data, south_west_data);
-    let nw_lone = north_west.a > 0.0
-        && !has_same_overlay(north_data, north_west_data)
-        && !has_same_overlay(west_data, north_west_data);
-
-    // Base directional blend weights before corner-specific modulation.
-    var w_n = n_axis;
-    var w_ne = min(n_axis, e_axis);
-    var w_e = e_axis;
-    var w_se = min(s_axis, e_axis);
-    var w_s = s_axis;
-    var w_sw = min(s_axis, w_axis);
-    var w_w = w_axis;
-    var w_nw = min(n_axis, w_axis);
-
-    // Number of same-type supports around each corner (two cardinals + one diagonal).
-    let ne_self_support =
-        select(0.0, 1.0, has_same_overlay(tile_data, north_data))
-        + select(0.0, 1.0, has_same_overlay(tile_data, east_data))
-        + select(0.0, 1.0, has_same_overlay(tile_data, north_east_data));
-    let se_self_support =
-        select(0.0, 1.0, has_same_overlay(tile_data, south_data))
-        + select(0.0, 1.0, has_same_overlay(tile_data, east_data))
-        + select(0.0, 1.0, has_same_overlay(tile_data, south_east_data));
-    let sw_self_support =
-        select(0.0, 1.0, has_same_overlay(tile_data, south_data))
-        + select(0.0, 1.0, has_same_overlay(tile_data, west_data))
-        + select(0.0, 1.0, has_same_overlay(tile_data, south_west_data));
-    let nw_self_support =
-        select(0.0, 1.0, has_same_overlay(tile_data, north_data))
-        + select(0.0, 1.0, has_same_overlay(tile_data, west_data))
-        + select(0.0, 1.0, has_same_overlay(tile_data, north_west_data));
-
-    // Inward-strength factors per corner, derived from support count.
-    var ne_inward = 1.0;
-    // 2+ same-overlay supports around corner: disable inward push there.
-    if ne_self_support >= 2.0 {
-        ne_inward = 0.0;
-    // 1 support: keep a reduced inward push.
-    } else if ne_self_support >= 1.0 {
-        ne_inward = 0.35;
-    }
-    var se_inward = 1.0;
-    // 2+ same-overlay supports around corner: disable inward push there.
-    if se_self_support >= 2.0 {
-        se_inward = 0.0;
-    // 1 support: keep a reduced inward push.
-    } else if se_self_support >= 1.0 {
-        se_inward = 0.35;
-    }
-    var sw_inward = 1.0;
-    // 2+ same-overlay supports around corner: disable inward push there.
-    if sw_self_support >= 2.0 {
-        sw_inward = 0.0;
-    // 1 support: keep a reduced inward push.
-    } else if sw_self_support >= 1.0 {
-        sw_inward = 0.35;
-    }
-    var nw_inward = 1.0;
-    // 2+ same-overlay supports around corner: disable inward push there.
-    if nw_self_support >= 2.0 {
-        nw_inward = 0.0;
-    // 1 support: keep a reduced inward push.
-    } else if nw_self_support >= 1.0 {
-        nw_inward = 0.35;
-    }
-
-    // Pair-lock for "two adjacent same-type tiles" case:
-    // if exactly one bridging cardinal matches and diagonal is different, do not push inward.
-    let ne_pair_lock = north_east.a > 0.0
-        && (has_same_overlay(tile_data, north_data) != has_same_overlay(tile_data, east_data))
-        && !has_same_overlay(tile_data, north_east_data);
-    let se_pair_lock = south_east.a > 0.0
-        && (has_same_overlay(tile_data, south_data) != has_same_overlay(tile_data, east_data))
-        && !has_same_overlay(tile_data, south_east_data);
-    let sw_pair_lock = south_west.a > 0.0
-        && (has_same_overlay(tile_data, south_data) != has_same_overlay(tile_data, west_data))
-        && !has_same_overlay(tile_data, south_west_data);
-    let nw_pair_lock = north_west.a > 0.0
-        && (has_same_overlay(tile_data, north_data) != has_same_overlay(tile_data, west_data))
-        && !has_same_overlay(tile_data, north_west_data);
-
-    // Pair-lock active: force NE inward factor to zero.
-    if ne_pair_lock {
-        ne_inward = 0.0;
-    }
-    // Pair-lock active: force SE inward factor to zero.
-    if se_pair_lock {
-        se_inward = 0.0;
-    }
-    // Pair-lock active: force SW inward factor to zero.
-    if sw_pair_lock {
-        sw_inward = 0.0;
-    }
-    // Pair-lock active: force NW inward factor to zero.
-    if nw_pair_lock {
-        nw_inward = 0.0;
-    }
-
-    // Apply inward suppression/proportion to corner and adjacent cardinal weights.
-    // NE corner weight scales directly by NE inward factor.
-    w_ne = w_ne * ne_inward;
-    // North weight is attenuated near east side by NE inward factor.
-    w_n = w_n * mix(1.0, ne_inward, e_axis);
-    // East weight is attenuated near north side by NE inward factor.
-    w_e = w_e * mix(1.0, ne_inward, n_axis);
-
-    // SE corner weight scales directly by SE inward factor.
-    w_se = w_se * se_inward;
-    // South weight is attenuated near east side by SE inward factor.
-    w_s = w_s * mix(1.0, se_inward, e_axis);
-    // East weight is attenuated near south side by SE inward factor.
-    w_e = w_e * mix(1.0, se_inward, s_axis);
-
-    // SW corner weight scales directly by SW inward factor.
-    w_sw = w_sw * sw_inward;
-    // South weight is attenuated near west side by SW inward factor.
-    w_s = w_s * mix(1.0, sw_inward, w_axis);
-    // West weight is attenuated near south side by SW inward factor.
-    w_w = w_w * mix(1.0, sw_inward, s_axis);
-
-    // NW corner weight scales directly by NW inward factor.
-    w_nw = w_nw * nw_inward;
-    // North weight is attenuated near west side by NW inward factor.
-    w_n = w_n * mix(1.0, nw_inward, w_axis);
-    // West weight is attenuated near north side by NW inward factor.
-    w_w = w_w * mix(1.0, nw_inward, n_axis);
-
-    // Lone corners get additional inward pull near that corner.
-    if ne_lone {
-        // NE-only inward boost based on proximity to the NE corner.
-        let ne_push = min(
-            smoothstep(1.0 - lone_corner_width, 1.0, 1.0 - uv.y),
-            smoothstep(1.0 - lone_corner_width, 1.0, uv.x),
-        );
-        // Keep whichever is stronger: existing weight or lone-corner boost.
-        w_ne = max(w_ne, ne_push);
-    }
-    if se_lone {
-        // SE-only inward boost based on proximity to the SE corner.
-        let se_push = min(
-            smoothstep(1.0 - lone_corner_width, 1.0, uv.y),
-            smoothstep(1.0 - lone_corner_width, 1.0, uv.x),
-        );
-        // Keep whichever is stronger: existing weight or lone-corner boost.
-        w_se = max(w_se, se_push);
-    }
-    if sw_lone {
-        // SW-only inward boost based on proximity to the SW corner.
-        let sw_push = min(
-            smoothstep(1.0 - lone_corner_width, 1.0, uv.y),
-            smoothstep(1.0 - lone_corner_width, 1.0, 1.0 - uv.x),
-        );
-        // Keep whichever is stronger: existing weight or lone-corner boost.
-        w_sw = max(w_sw, sw_push);
-    }
-    if nw_lone {
-        // NW-only inward boost based on proximity to the NW corner.
-        let nw_push = min(
-            smoothstep(1.0 - lone_corner_width, 1.0, 1.0 - uv.y),
-            smoothstep(1.0 - lone_corner_width, 1.0, 1.0 - uv.x),
-        );
-        // Keep whichever is stronger: existing weight or lone-corner boost.
-        w_nw = max(w_nw, nw_push);
-    }
-
-    // Backed submissive tiles should not be pushed inward by diagonal dominant at that corner.
-    let ne_backed_self = north_east.a > 0.0
-        && has_same_overlay(tile_data, north_data)
-        && has_same_overlay(tile_data, east_data)
-        && north_east_data.has_overlay
-        && tile_data.overlay_tex_index > north_east_data.overlay_tex_index;
-    let se_backed_self = south_east.a > 0.0
-        && has_same_overlay(tile_data, south_data)
-        && has_same_overlay(tile_data, east_data)
-        && south_east_data.has_overlay
-        && tile_data.overlay_tex_index > south_east_data.overlay_tex_index;
-    let sw_backed_self = south_west.a > 0.0
-        && has_same_overlay(tile_data, south_data)
-        && has_same_overlay(tile_data, west_data)
-        && south_west_data.has_overlay
-        && tile_data.overlay_tex_index > south_west_data.overlay_tex_index;
-    let nw_backed_self = north_west.a > 0.0
-        && has_same_overlay(tile_data, north_data)
-        && has_same_overlay(tile_data, west_data)
-        && north_west_data.has_overlay
-        && tile_data.overlay_tex_index > north_west_data.overlay_tex_index;
-
-    // If this corner is backed by same-type neighbors, disable NE inward diagonal weight.
-    if ne_backed_self {
-        w_ne = 0.0;
-    }
-    // If this corner is backed by same-type neighbors, disable SE inward diagonal weight.
-    if se_backed_self {
-        w_se = 0.0;
-    }
-    // If this corner is backed by same-type neighbors, disable SW inward diagonal weight.
-    if sw_backed_self {
-        w_sw = 0.0;
-    }
-    // If this corner is backed by same-type neighbors, disable NW inward diagonal weight.
-    if nw_backed_self {
-        w_nw = 0.0;
-    }
+    // Compact directional weights: cardinals on edges, diagonals in corners.
+    let w_n = n_axis;
+    let w_ne = min(n_axis, e_axis) * uv.x;
+    let w_e = e_axis;
+    let w_se = min(s_axis, e_axis);
+    let w_s = s_axis;
+    let w_sw = min(s_axis, w_axis);
+    let w_w = w_axis;
+    let w_nw = min(n_axis, w_axis) * (1.0 - uv.x);
 
     // Final weighted accumulation state.
     var accum_rgb = vec3<f32>(0.0);

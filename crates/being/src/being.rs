@@ -18,7 +18,7 @@ use crate::{
     being_inst_template::BeingInstTemplateSystems,
     being_behavior_systems::*,
     being_systems::*,
-    body::{self, BodySystems},
+    body::{self, prelude::*, BodySystems},
     race::RaceSystems,
 };
 

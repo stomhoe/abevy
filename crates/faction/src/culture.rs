@@ -33,3 +33,12 @@ pub fn plugin(app: &mut App) {
 mod culture_init_systems;
 pub mod culture_resources;
 pub mod culture_seris;
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        culture_init_systems::*,
+        culture_resources::*,
+        culture_seris::*,
+    };
+}

@@ -18,3 +18,14 @@ pub fn plugin(app: &mut App) {
             plugin_operation_list,
         ));
 }
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        operation_list_components::*,
+        operation_list_init_systems::*,
+        operation_list_resources::*,
+        operation_list_seris::*,
+        operation_list_script::*,
+    };
+}

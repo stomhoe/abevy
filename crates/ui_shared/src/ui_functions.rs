@@ -1,6 +1,6 @@
 use bevy::{prelude::*};
 
-use crate::{ui_components::ButtonBackgroundStyle};
+use crate::prelude::*;
 
 //TODO LA FUENTE
 pub fn text_button<T: Into<String>>(base: impl Bundle, text: T, other_children: impl Bundle, style: Option<ButtonBackgroundStyle>,) -> impl Bundle

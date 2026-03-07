@@ -10,16 +10,11 @@ use ::tilemap_shared::*;
 pub fn flip_tile_based_on_initial_pos_hash(
     settings: Query<&GlobalGenSettings>,
     mut tile_query: Query<
-        (&mut TileFlip, &InitialPos, &EntityZeroRef, Option<&DimensionRef>),
-        (
-            Changed<InitialPos>,
-            common::AnyDisabling,
-            Without<EntityZero>,
-        ),
+        (&mut TileFlip, &InitialPos, &EntityZeroRef),
+        (Changed<InitialPos>, Without<EntityZero>, common::AnyDisabling,),
     >,
     dim_hash_query: Query<&HashId, common::AnyDisabling>,
-    ezero_query: Query<
-        (
+    ezero_query: Query<(
             Has<FlipHorizontallyBasedOnHash>,
             Has<FlipVerticallyBasedOnHash>,
             Has<FlipDiagonallyBasedOnHash>,
@@ -35,32 +30,25 @@ pub fn flip_tile_based_on_initial_pos_hash(
         return;
     };
     tile_query.iter_mut().for_each(
-        |(mut tile_flip, initial_pos, ezero_ref, dimension_ref)| {
+        |(mut tile_flip, initial_pos, ezero_ref)| {
 
             let Ok((do_flip_hori, do_flip_vert, do_flip_diag)) = ezero_query.get(ezero_ref.0) else {
                 return;
             };
 
-            let dimension_hash = dimension_ref
-                .and_then(|dim_ref| dim_hash_query.get(dim_ref.0).ok())
-                .cloned()
-                .unwrap_or_default();
-
+            let dimension_hash = dim_hash_query
+                .get(initial_pos.dim.0)
+                .ok()
+                .cloned().unwrap_or_default();
 
             if do_flip_hori {
-                let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 0);
-                tile_flip.x = should_flip;
+                tile_flip.x = initial_pos.pos.hash_true_false(settings, dimension_hash, 0);
             }
-
             if do_flip_vert {
-                let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 1);
-
-                tile_flip.y = should_flip;
+                tile_flip.y = initial_pos.pos.hash_true_false(settings, dimension_hash, 1);
             }
-
             if do_flip_diag {
-                let should_flip = initial_pos.0.hash_true_false(settings, dimension_hash, 2);
-                tile_flip.d = should_flip;
+                tile_flip.d = initial_pos.pos.hash_true_false(settings, dimension_hash, 2);
             }
         },
     );
@@ -78,7 +66,6 @@ pub fn rotate_tile_based_on_initial_pos_hash(
             Option<&mut Transform>,
             &InitialPos,
             &EntityZeroRef,
-            Option<&DimensionRef>,
         ),
         (
             Changed<InitialPos>,
@@ -97,7 +84,7 @@ pub fn rotate_tile_based_on_initial_pos_hash(
         error_once!("Failed to get global gen settings");
         return;
     };
-    for (ent, direction, maybe_transform, initial_pos, ezero_ref, dimension_ref) in
+    for (ent, direction, maybe_transform, initial_pos, ezero_ref) in
         tile_query.iter_mut()
     {
         let Ok((do_rotate, do_transform_rotate)) = ezero_query.get(ezero_ref.0) else {
@@ -106,12 +93,13 @@ pub fn rotate_tile_based_on_initial_pos_hash(
         if !do_rotate {
             continue;
         }
-        let dimension_hash = dimension_ref
-            .and_then(|dim_ref| dim_hash_query.get(dim_ref.0).ok())
+        let dimension_hash = dim_hash_query
+            .get(initial_pos.dim.0)
+            .ok()
             .cloned()
             .unwrap_or_default();
 
-        let hash_u8 = (initial_pos.0.hash_value(settings, dimension_hash, 3) % 4) as u8;
+        let hash_u8 = (initial_pos.pos.hash_value(settings, dimension_hash, 3) % 4) as u8;
         let new_direction = CardinalDirection::from(hash_u8);
 
         if let Some(mut direction) = direction {

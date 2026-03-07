@@ -73,3 +73,14 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyDead>()
     .add_message::<BodyDamage>();
 }
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        body_tree_components::*,
+        body_part::*,
+        body_tree_resources::*,
+        body_tree_seris::*,
+        body_sampler::*,
+    };
+}

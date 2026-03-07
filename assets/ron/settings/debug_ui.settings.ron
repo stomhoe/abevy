@@ -10,7 +10,7 @@
         sprite_configs_and_animations: true,
         terrain_oplists_and_noises: true,
         probes_and_filters: true,
-        global_gen_settings: true,
+        terrgen_settings: true,
         beings_inst_templates: false,
         races: false,
         sexes: false,

@@ -47,3 +47,21 @@ pub fn plugin(app: &mut App) {
 
     ;
 }
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        terrprobe_components::*,
+        terrprobe_init_systems::*,
+        terrprobe_resources::*,
+        terrprobe_seris::*,
+        terrprobe_messages::*,
+        terrprobe_macros::*,
+        terrprobe_systems::*,
+        terrprobe_pattern_concentric::*,
+        terrprobe_pattern_spiral::*,
+        terrprobe_pattern_chunk::*,
+        terrprobe_pattern_region::*,
+        opfilter::*,
+    };
+}

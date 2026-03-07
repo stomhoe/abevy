@@ -13,6 +13,7 @@ use tilemap::{
 };
 
 use bevy::prelude::*;
+use serde::Deserialize;
 use tilemap::{
     run_oneshot_suitable_pos_search_logic,
     terrain::{
@@ -26,6 +27,49 @@ use tilemap_shared::{Dimension, DimensionEntityMap, DimensionRef, GlobalGenSetti
 pub struct CommonSpawnOriginFound {
     pub dim_ref: DimensionRef,
     pub pos: GlobalTilePos,
+}
+
+#[derive(Resource, Clone, Debug)]
+pub struct GameInitSettings {
+    pub players_spawn_probe_id: StrId,
+}
+impl Default for GameInitSettings {
+    fn default() -> Self {
+        Self { players_spawn_probe_id: StrId::trunc("coland") }
+    }
+}
+
+#[derive(Deserialize, Asset, TypePath, Clone, Debug)]
+pub struct GameInitSettingsSeri {
+    pub id: String,
+    #[serde(default = "default_players_spawn_probe_id")]
+    pub players_spawn_probe_id: String,
+}
+impl GameInitSettingsSeri {
+    pub fn to_settings(&self) -> GameInitSettings {
+        GameInitSettings {
+            players_spawn_probe_id: StrId::trunc(self.players_spawn_probe_id.trim()),
+        }
+    }
+}
+fn default_players_spawn_probe_id() -> String { "coland".to_string() }
+
+pub fn load_game_init_settings(mut settings: ResMut<GameInitSettings>) {
+    let db = match common::def_db::DefDatabase::<GameInitSettingsSeri>::load_from_assets_dir_with_type(
+        stringify!(GameInitSettingsSeri),
+        &["game_init.settings.ron"],
+        |_| "game_init_settings",
+    ) {
+        Ok(db) => db,
+        Err(err) => {
+            error!(target: GAME_INIT, "Failed loading GameInitSettingsSeri defs: {err:#}");
+            return;
+        }
+    };
+    let Some(first) = db.into_records().into_iter().next() else {
+        return;
+    };
+    *settings = first.value.to_settings();
 }
 
 
@@ -103,13 +147,8 @@ pub fn find_common_player_spawn_origin(
     mut search_params: SearchParams,
     mut active_probe_ent: Local<Option<Entity>>,
     mut search_finished: Local<bool>,
-    settings: Query<&GlobalGenSettings>,
+    settings: Res<GameInitSettings>,
 ) {
-    let Ok(settings) = settings.single()
-    else {
-        error_once!(target: GAME_INIT, "Failed to get AaGlobalGenSettings");
-        return;
-    };
     let make_search_request = |_cmd: &mut Commands| -> Option<TerrProbeJob> {
         let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
             error_once!(target: GAME_INIT, "Overworld dimension '{}' not in DimensionEntityMap", Dimension::overworld());

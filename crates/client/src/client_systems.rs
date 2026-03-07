@@ -9,7 +9,7 @@ use player::{player_components::*, player_resources::PlayerData};
 
 // Import CameraTarget if it exists in your project, adjust the path as necessary
 
-use crate::{client_functions::*, };
+use crate::prelude::*;
 
 
 

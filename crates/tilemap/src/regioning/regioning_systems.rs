@@ -461,8 +461,6 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
     region_query: Query<(&ChunksActiveInRegion, &RegionPlannedTiles, &RegionState),(Or<(Changed<ChunksActiveInRegion>, Changed<RegionPlannedTiles>, Changed<RegionState>)>, )>,
     chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<ReadyForTerrgen>)>,
     mut collected: ResMut<MassCollectedTiles>,
-    clone_spawn_param_set: crate::tilemap_resources::CloneSpawnParamSet,
-
 ) {
     let mut ready = Vec::new();
     let mut to_insert_delete_others = Vec::new();
@@ -503,7 +501,7 @@ pub fn despawn_empty_regions(mut cmd: Commands,
     regions_which_regained_chunks_query: Query<(Entity, &DimensionRef, &RegionPos, &ChunksActiveInRegion), (Added<ChunksActiveInRegion>, With<DespawnOnTimeout>)>,
 ){
     for (region_ent, ) in to_add_despawn_timer_query.iter() {
-        cmd.entity(region_ent).try_insert_if_new(DespawnTimer::secs(40.0));
+        cmd.entity(region_ent).try_insert_if_new(DespawnTimer::secs(0.5));
     }
     for (region_ent, &dimension_ref, &region_pos, chunks_active_in_region, ) in regions_which_regained_chunks_query.iter() {
         if chunks_active_in_region.entities().is_empty() {
@@ -573,7 +571,7 @@ pub fn failsafe_timeout_pending_chunks(
 }
 
 #[allow(unused_parens)]
-pub fn timeout_pending_offers(
+pub fn mark_as_building_started_timed_out(
     mut cmd: Commands,
     query: Query<(&RegionPos, &RegionState), (With<Region>, With<MessageOnTimeout>)>,
     mut reader: MessageReader<TimedOut>,

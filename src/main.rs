@@ -132,7 +132,7 @@ fn build_filter() -> String {
         log_targets::CONTROL, WARN,
         log_targets::BEING_SYSTEM, WARN,
         log_targets::FACTION_SYSTEM, WARN,
-        log_targets::Z_SORT_SYSTEM, WARN,
+        log_targets::Z_SORT_SYSTEM, INFO,
         log_targets::ENTITY_MAP_SYSTEM, WARN,
         log_targets::INSPECTOR, WARN,
         log_targets::RIVER_SYSTEM, WARN,

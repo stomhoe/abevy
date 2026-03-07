@@ -14,7 +14,7 @@ use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{EntityZero, EntityZeroRef, Persisted, };
 use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
-use crate::{chunking::chunking_resources::*, tile::{tile_bundles::TileBundleNoTileFlip, tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_bundles::*, tilemap_resources::*};
+use crate::{chunking::chunking_resources::*, tile::{tile_bundles::*, tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_bundles::*, tilemap_resources::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, )]
 pub struct MapKey {
@@ -268,7 +268,6 @@ pub fn process_tiles_pre(
             tile_handles,
             shader_ref,
             tile_img_size,
-            terrbl_img_size,
             &mut tmap_map.0,
             chunk_ent,
             chunk_pos,
@@ -369,7 +368,6 @@ fn process_tile_into_corresponding_tilemap(
     tile_handles: Option<&TileHashIdsHandles>,
     shader_ref: Option<&TileShaderRef>,
     img_size: U16Vec2,
-    terrbl_img_size: U16Vec2,
     tmap_map: &mut HashMap<MapKey, MapStruct>,
     chunk: Entity,
     chunk_pos: ChunkPos,

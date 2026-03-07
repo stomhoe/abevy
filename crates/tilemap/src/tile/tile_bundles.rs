@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::render::sync_world::SyncToRenderWorld;
 use bevy_ecs_tilemap::map::TilemapId;
 pub use bevy_ecs_tilemap::tiles::*;
 use bevy_replicon::prelude::*;
@@ -64,13 +63,14 @@ pub struct ToDenyOnTileClone(
 #[derive(Bundle)] #[allow(unused, )]
 struct ToDenyOnReleaseBuild(Name);
 
-use serde::{Deserialize, Serialize};
-#[derive(Bundle, Default, Clone, Copy, Debug, Reflect, Serialize, Deserialize)]
-pub struct TileBundleNoTileFlip {
-    pub position: TilePos,
-    pub texture_index: TileTextureIndex,
-    pub tilemap_id: TilemapId,
-    pub visible: TileVisible,
-    pub color: TileColor,
-    pub old_position: TilePosOld,
+#[derive(Bundle, Debug, Clone)]
+pub struct TileMassSpawnBundle {
+    pub ezero_ref: EntityZeroRef,
+    pub gpos: GlobalTilePos,
+    pub dim_ref: DimensionRef,
+    pub tile_bundle: bevy_ecs_tilemap::prelude::TileBundle,
+    pub initial_pos: InitialPos,
 }
+
+#[derive(Bundle, Clone, Copy, Debug, )]
+pub struct TileBundleNoTileFlip(pub TilePos, pub TileTextureIndex, pub TilemapId, pub TileVisible, pub TileColor, pub TilePosOld);

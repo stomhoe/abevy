@@ -329,7 +329,7 @@ pub fn terrgen_editor_window(
                             .show(ui, |ui| {
                                 ui.vertical(|ui| {
                                     // Display assignments
-                                    for (i, assignment) in expr_tree.assignments.iter().enumerate() {
+                                    for (assignment) in expr_tree.assignments.iter() {
                                         let expr_str = format_expr_compact(&assignment.expr);
                                         ui.horizontal(|ui| {
                                             ui.label(format!("${}", assignment.name));

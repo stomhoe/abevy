@@ -123,7 +123,7 @@ pub fn sync_hot_reload_markers(
     noises: Query<Entity, (With<AssetScoped>, With<FnlNoiseComp>, common::AnyDisabling)>,
     probes: Query<Entity, (With<AssetScoped>, With<TerrProbeTempl>, common::AnyDisabling)>,
     filters: Query<Entity, (With<AssetScoped>, With<OpFilter>, common::AnyDisabling)>,
-    global_gen_settings: Query<Entity, (With<AssetScoped>, With<GlobalGenSettings>, common::AnyDisabling)>,
+    terrgen_settings: Query<Entity, (With<AssetScoped>, With<GlobalGenSettings>, common::AnyDisabling)>,
     beings_inst_templates: Query<Entity, (With<AssetScoped>, With<BeingInstTemplate>, common::AnyDisabling)>,
     races: Query<Entity, (With<AssetScoped>, With<Race>, common::AnyDisabling)>,
     sexes: Query<Entity, (With<AssetScoped>, With<Sex>, common::AnyDisabling)>,
@@ -156,8 +156,8 @@ pub fn sync_hot_reload_markers(
         if selection.probes_and_filters { commands.entity(entity).try_insert(HotReload); }
         else { commands.entity(entity).remove::<HotReload>(); }
     }
-    for entity in &global_gen_settings {
-        if selection.global_gen_settings { commands.entity(entity).try_insert(HotReload); }
+    for entity in &terrgen_settings {
+        if selection.terrgen_settings { commands.entity(entity).try_insert(HotReload); }
         else { commands.entity(entity).remove::<HotReload>(); }
     }
     for entity in &beings_inst_templates {

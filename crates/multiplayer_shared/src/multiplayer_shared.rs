@@ -3,7 +3,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::{prelude::*, shared::RepliconSharedPlugin};
 use common::{common_components::*, common_states::*};
-use crate::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, multiplayer_shared_systems::*};
+use crate::prelude::*;
 
 
 pub const PROTOCOL_ID: u64 = 7;

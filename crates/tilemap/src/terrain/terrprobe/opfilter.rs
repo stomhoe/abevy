@@ -28,3 +28,13 @@ pub fn plugin(app: &mut App) {
     )
     ;
 }
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        opfilter_components::*,
+        opfilter_init_systems::*,
+        opfilter_resources::*,
+        opfilter_seris::*,
+    };
+}

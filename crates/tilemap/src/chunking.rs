@@ -62,3 +62,14 @@ pub fn plugin(app: &mut App) {
 
     ;
 }
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        chunking_components::*,
+        chunking_resources::*,
+        chunking_spawn_systems::*,
+        chunking_visibility_systems::*,
+        chunking_despawn_systems::*,
+    };
+}

@@ -42,3 +42,14 @@ pub mod sprite_sampler_resources;
 pub mod sprite_sampler_seris;
 mod sprite_sampler_init_systems;
 pub mod sprite_sampler_systems;
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        sprite_sampler_components::*,
+        sprite_sampler_init_systems::*,
+        sprite_sampler_resources::*,
+        sprite_sampler_seris::*,
+        sprite_sampler_systems::*,
+    };
+}

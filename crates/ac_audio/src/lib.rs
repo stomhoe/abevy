@@ -97,7 +97,7 @@ pub fn plugin(app: &mut App) {
 }
 
 pub fn load_spatial_audio_settings(mut settings: ResMut<SpatialAudioSettings>) {
-    let path = Path::new("assets/ron/audio/audio.settings.ron");
+    let path = Path::new("assets/ron/settings/audio.settings.ron");
     let Ok(contents) = fs::read_to_string(path) else {
         return;
     };
@@ -106,4 +106,14 @@ pub fn load_spatial_audio_settings(mut settings: ResMut<SpatialAudioSettings>) {
         return;
     };
     *settings = loaded;
+}
+
+
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use crate::{
+        ac_audio_components::*,
+        ac_audio_systems::*,
+    };
 }

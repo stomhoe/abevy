@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use ::fnl::*;
 use common::common_components::{Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
-use crate::terrain::{terrgen_components::*, terrgen_resources::*, TerrgenEntityMap};
+use crate::terrain::{prelude::TerrgenEntityMap, terrgen_components::*, terrgen_resources::*};
 
 #[allow(unused_parens)]
 pub fn init_noises(
@@ -11,10 +11,10 @@ pub fn init_noises(
     mut settings: Query<&mut GlobalGenSettings>,
     noise_holder: Query<Entity, With<EguiTerrgensHolder>>,
 ) {
-    let settings_from_defs = load_global_gen_settings_seri_defs()
+    let settings_from_defs = load_terrgen_settings_seri_defs()
         .into_iter()
         .next()
-        .map(|seri| seri.to_global_gen_settings());
+        .map(|seri| seri.to_terrgen_settings());
     if settings.is_empty() {
         let settings_to_spawn = settings_from_defs.clone().unwrap_or_default();
         cmd.spawn((settings_to_spawn, Prefix::trunc("AA_GLOBAL_GEN_SETTINGS")));

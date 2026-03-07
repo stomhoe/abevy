@@ -13,8 +13,7 @@ pub struct SavedTileHadChunkDespawn (pub Entity);
 #[derive(Debug, Message)]
 pub struct GlobalTilePosChanged {
     pub entity: Entity,
-    pub old_gpos: Option<GlobalTilePos>,
-    pub old_dim: DimensionRef,
+    pub old: Option<PrevPos>,
 }
 
 

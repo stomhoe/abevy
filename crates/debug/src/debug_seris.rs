@@ -23,7 +23,7 @@ pub struct DebugHotReloadDefaultsSeri {
     #[serde(default)]
     pub probes_and_filters: bool,
     #[serde(default)]
-    pub global_gen_settings: bool,
+    pub terrgen_settings: bool,
     #[serde(default)]
     pub beings_inst_templates: bool,
     #[serde(default)]

@@ -82,7 +82,7 @@ impl SampleSpriteEnts {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]
 pub struct YSortOrigin(pub f32);//TAL VEZ ES BUENA IDEA PONERLE ESTO OBLIGATORIAMENTE A TODOS LOS SPRITES, ASÍ TODOS AUMENTAN O DISMINUYEN CONJUNTAMENTE DE Z
 impl YSortOrigin {
-    pub const Y_SORT_DIV: f32 = 1e-7;//-7
+    pub const Y_SORT_DIV: f32 = 1e-6;//-7
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]

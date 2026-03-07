@@ -56,7 +56,7 @@ pub fn plugin(app: &mut App) {
                 portals_list_window,
                 sprites_list_window,
                 terrgen_editor_window,
-                global_gen_settings_editor_window,
+                terrgen_settings_editor_window,
                 hot_reload_window,
                 registered_positions_window,
                 gpos_maps_window_system,

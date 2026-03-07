@@ -59,10 +59,10 @@ pub fn spritetile_snap_transform_to_global_pos(
 }
 #[allow(unused_parens)]
 pub fn emit_global_tile_pos_change(
+    mut cmd: Commands,
     mut query: Query<
         (
-            Entity, &mut PrevGlobalTilePos,
-            &mut PrevDimensionRef,
+            Entity, Option<&mut PrevPos>,
             &GlobalTilePos, &DimensionRef,
         ),
         (
@@ -74,17 +74,24 @@ pub fn emit_global_tile_pos_change(
     mut changed: Local<Vec<GlobalTilePosChanged>>,
 ) {
     changed.reserve(query.iter().size_hint().0);
-    for (entity, mut prev_tile_pos, mut prev_dim_ref, global_tile_pos, &dimension_ref) in
+    for (entity, prev_tile_pos, global_tile_pos, &dimension_ref) in
         query.iter_mut()
     {
-        if prev_tile_pos.0 != Some(*global_tile_pos) || dimension_ref.0 != prev_dim_ref.0 {
+        let old = prev_tile_pos.as_deref().map(|prev| (prev.dim, prev.gpos));
+        if old != Some((dimension_ref, *global_tile_pos)) {
             changed.push(GlobalTilePosChanged {
                 entity,
-                old_gpos: prev_tile_pos.0,
-                old_dim: DimensionRef(prev_dim_ref.0),
+                old: old.map(|(dim, gpos)| PrevPos { gpos, dim }),
             });
-            prev_tile_pos.0 = Some(*global_tile_pos);
-            prev_dim_ref.0 = dimension_ref.0;
+            if let Some(mut prev_tile_pos) = prev_tile_pos {
+                prev_tile_pos.gpos = *global_tile_pos;
+                prev_tile_pos.dim = dimension_ref;
+            } else {
+                cmd.entity(entity).try_insert(PrevPos {
+                    gpos: *global_tile_pos,
+                    dim: dimension_ref,
+                });
+            }
         }
     }
     mwriter.write_batch(changed.drain(..));
@@ -103,7 +110,7 @@ pub fn add_spawned_tiles_to_gpos_map(
 ) {
     entities.reserve(changed_pos.len());
     for changed_pos in changed_pos.read() {
-        let Some(old_gpos) = changed_pos.old_gpos else {
+        let Some(old) = changed_pos.old else {
             entities.insert(changed_pos.entity);
             continue;
         };
@@ -112,7 +119,7 @@ pub fn add_spawned_tiles_to_gpos_map(
             .ok()
             .and_then(|(_, _, _, ezero_ref)| ezero_size_query.get(ezero_ref.0).ok().copied())
             .unwrap_or_default();
-        map.remove_tile(changed_pos.old_dim, old_gpos, changed_pos.entity, size);
+        map.remove_tile(old.dim, old.gpos, changed_pos.entity, size);
         entities.insert(changed_pos.entity);
     }
     for ent in entities.drain() {

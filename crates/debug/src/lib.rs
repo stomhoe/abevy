@@ -26,3 +26,37 @@ mod debug_systems;
 mod debug_fonts;
 mod debug_messages;
 mod gpos_maps_window;
+
+
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use crate::{
+        debug::*,
+        debug_window_systems::*,
+        debug_chunking_window::*,
+        tile_details_inspector::*,
+        chunk_details_inspector::*,
+        region_details_inspector::*,
+        portals_details_inspector::*,
+        tilemap_details_inspector::*,
+        being_details_inspector::*,
+        player_details_inspector::*,
+        exempted_entity_details_inspector::*,
+        regions_list_window::*,
+        beings_list_window::*,
+        players_list_window::*,
+        portals_list_window::*,
+        terrgen_editor_window::*,
+        terrgen_values_window::*,
+        registered_positions_window::*,
+        sprite_cfgs_list_window::*,
+        sprite_cfgs_details_inspector::*,
+        debug_resources::*,
+        debug_seris::*,
+        debug_systems::*,
+        debug_fonts::*,
+        debug_messages::*,
+        gpos_maps_window::*,
+    };
+}

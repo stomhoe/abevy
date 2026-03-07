@@ -1,10 +1,13 @@
 use std::collections::HashSet;
 
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy::ecs::entity::EntityHashSet;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
+use common::{log_targets::Z_SORT_SYSTEM, prelude::StrId};
 use game_common::game_common_components::{EntityZero, EntityZeroRef, };
+use tilemap_shared::GlobalTilePos;
 use ::tilemap_shared::directions::*;
 
 use ::sprite_shared::{sprite_scale_offset::*, *};
@@ -64,47 +67,74 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
 
 #[allow(unused_parens, )]
 pub fn z_sort_system(
-
-    mut query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>,
-        AnyOf<(&AcZ, &EntityZeroRef)>, Has<TilemapAnchor>, &ChildOf, ),
+    changed_query: Query<Entity,
         (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>,)>,
         Or<(With<Sprite>, With<TilemapAnchor>, )>)>,
+    mut process_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>,
+        Option<&AcZ>, Option<&EntityZeroRef>, Has<TilemapAnchor>, &ChildOf, ),>,
 
-    parent_sprite_query: Query<&Sprite, (common::AnyDisabling,)>,
+    parent_sprite_query: Query<Has<Sprite>, (common::AnyDisabling,)>,
 
     ezero_query: Query<(&AcZ, Option<&YSortOrigin>), ()>,
 
+    strid_query: Query<&StrId, ()>,
+    gpos_query: Query<&GlobalTilePos, ()>,
+
     mut mw_draw_tmap: MessageWriter<DrawTilemap>,
-
+    mut draw_tmaps: Local<Vec<DrawTilemap>>,
+    mut ents_to_process: Local<EntityHashSet>,
 ) {//TODO MEJORAR
-    let mut to_draw = Vec::new();
-
-    for (ent, mut transform, global_transform, ysort_origin, (maybe_z_index, ezero_ref), is_tilemap, child_of) in query.iter_mut() {
-
-        let (maybe_z_index, maybe_ysort_origin) = if let Some(ezero_ref) = ezero_ref
-            && let Ok((ezero_z_index, ezero_ysort_origin)) = ezero_query.get(ezero_ref.0)
-        {
-            (Some(ezero_z_index.clone()), ezero_ysort_origin.cloned())
-        } else if let Some(z_index) = maybe_z_index.cloned() {
-            (Some(z_index), ysort_origin.cloned())
-        } else {
-            (None, None)
+    draw_tmaps.clear();
+    ents_to_process.clear();
+    for ent in changed_query.iter() {
+        ents_to_process.insert(ent);
+    }
+    let mut iter = process_query.iter_many_mut(ents_to_process.iter().copied());
+    while let Some((ent, mut transform, global_transform, ysort_origin, maybe_z_index, ezero_ref, is_tilemap, child_of)) = iter.fetch_next() {
+        let Ok(has_parent_sprite) = parent_sprite_query.get(child_of.parent()) else {
+            continue;
         };
 
-        let y_pos = global_transform.translation().y - maybe_ysort_origin.unwrap_or_default().0;
+        let (base_z, maybe_ysort_origin) = if let Some(ezero_ref) = ezero_ref
+            && let Ok((ezero_z_index, ezero_ysort_origin)) = ezero_query.get(ezero_ref.0)
+        {
+            (ezero_z_index.used_float(), ezero_ysort_origin.copied().or(ysort_origin.copied()))
+        } else {
+            (maybe_z_index.cloned().unwrap_or_default().used_float(), ysort_origin.copied())
+        };
 
-        let use_y_sort = (maybe_ysort_origin.is_some() && parent_sprite_query.get(child_of.0).is_err()) as i32 as f32;
+        let y = global_transform.translation().y;
+        let origin_y = maybe_ysort_origin.unwrap_or_default().0;
+        if !base_z.is_finite() || !y.is_finite() || !origin_y.is_finite() {
+            continue;
+        }
 
-        let target_z = maybe_z_index.unwrap_or_default().used_float() - use_y_sort * y_pos * YSortOrigin::Y_SORT_DIV;
+        let y_pos = y - origin_y;
+        let use_y_sort = (maybe_ysort_origin.is_some() && !has_parent_sprite) as i32 as f32;
+        let sigmoid = 1.0f32 / (1.0f32 + 2.0f32.powf(-0.0001 * y_pos));
+        let signed_sigmoid = (0.5 - sigmoid) * 2.0;
+        let target_z = base_z + use_y_sort * signed_sigmoid * (AcZ::Z_MULTIPLIER * 0.49);
+        if !target_z.is_finite() {
+            continue;
+        }
 
-        if (transform.translation.z - target_z).abs() > f32::EPSILON {//NO TOCAR
-            transform.translation.z = target_z;
-            trace!(target: "zlevel", "Set entity {:?} to z {}", ent, target_z);
-            if is_tilemap {
-                to_draw.push(DrawTilemap(ent));
-            }
+        let strid = strid_query.get(ent).ok()
+            .or_else(|| ezero_ref.and_then(|r| strid_query.get(r.0).ok()))
+            .map(|s| s.as_str()).unwrap_or("");
+        let gpos = gpos_query.get(ent).ok()
+            .or_else(|| ezero_ref.and_then(|r| gpos_query.get(r.0).ok()))
+            .map(|p| format!("{:?}", p))
+            .unwrap_or_else(|| "-".to_string());
+        if (transform.translation.z - target_z).abs() <= f32::EPSILON {//NO TOCAR
+            info_once!(target: Z_SORT_SYSTEM, "unchanged z due to proximity: ent:{:?} strid:{} gpos:{} y_pos:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} target_z:{:.8}", ent, strid, gpos, y_pos, base_z, sigmoid, signed_sigmoid, target_z);
+            continue;
+        }
+        transform.translation.z = target_z;
+        info!(target: Z_SORT_SYSTEM, "Set ent:{:?} {} gpos:{} y_pos:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} to z {:.8}", ent, strid, gpos, y_pos, base_z, sigmoid, signed_sigmoid, target_z);
+        if is_tilemap {
+            draw_tmaps.push(DrawTilemap(ent));
         }
     }
 
-    mw_draw_tmap.write_batch(to_draw);
+    mw_draw_tmap.write_batch(draw_tmaps.drain(..));
 }

@@ -9,7 +9,6 @@ use crate::{
     game_common_string_components::Description, game_common_systems::*, game_common_timers::{TimedOut, tick_timers},
 };
 
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct StatefulSessionSystems;
 

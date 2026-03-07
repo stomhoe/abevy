@@ -1,5 +1,5 @@
 use bevy::{color::palettes::css::{GREY}, input_focus::InputFocus, prelude::*};
-use crate::{ui_components::ButtonBackgroundStyle, ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED}};
+use crate::prelude::*;
 
 pub fn update_line_edits_text(
     input_focus: Res<InputFocus>,

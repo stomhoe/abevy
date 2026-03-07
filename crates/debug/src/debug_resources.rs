@@ -183,7 +183,7 @@ impl DebugUiConfigSeri {
                 sprite_configs_and_animations: self.hot_reload_defaults.sprite_configs_and_animations,
                 terrain_oplists_and_noises: self.hot_reload_defaults.terrain_oplists_and_noises,
                 probes_and_filters: self.hot_reload_defaults.probes_and_filters,
-                global_gen_settings: self.hot_reload_defaults.global_gen_settings,
+                terrgen_settings: self.hot_reload_defaults.terrgen_settings,
                 beings_inst_templates: self.hot_reload_defaults.beings_inst_templates,
                 races: self.hot_reload_defaults.races,
                 sexes: self.hot_reload_defaults.sexes,

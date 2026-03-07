@@ -262,8 +262,13 @@ pub struct RotateCardinallyBasedOnHash;
 #[derive(Component, Deserialize, Serialize, Default, Debug, Clone)]
 pub struct TransformBasedCardRotation;
 
-#[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, Debug,)]
-pub struct InitialPos(pub GlobalTilePos);
+#[derive(Component, Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Copy, Debug)]
+pub struct InitialPos { pub pos: GlobalTilePos, pub dim: DimensionRef }
+impl Default for InitialPos {
+    fn default() -> Self {
+        Self { pos: GlobalTilePos::default(), dim: DimensionRef(Entity::PLACEHOLDER) }
+    }
+}
 
 
 

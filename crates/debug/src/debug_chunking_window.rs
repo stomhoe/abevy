@@ -88,7 +88,7 @@ fn render_tilemap_grid(
                 let mut is_camera_tile = false;
                 if let Ok((_, ezero_ref, initial_pos)) = tile_query.get(tile_entity) {
                     is_camera_tile = camera_tile_pos
-                        .zip(initial_pos.map(|p| p.0))
+                        .zip(initial_pos.map(|p| p.pos))
                         .map_or(false, |(cam_pos, tile_pos)| cam_pos == tile_pos);
                     if let Ok(str_id) = ezero_query.get(ezero_ref.0) {
                         let str_id_str = str_id.as_str();
@@ -165,6 +165,140 @@ fn render_tilemap_grid(
 }
 
 #[allow(unused_parens)]
+fn render_spritetiles_grid(
+    ui: &mut egui::Ui,
+    chunk_pos: ChunkPos,
+    child_entities: &[Entity],
+    tile_storage_query: &Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
+    spritetile_gpos_query: &Query<(Entity, &GlobalTilePos, Option<&EntityZeroRef>, Option<&StrId>)>,
+    id_query: &Query<&StrId>,
+    selected_sprite: &mut Option<Entity>,
+    camera_tile_pos: Option<GlobalTilePos>,
+) -> Option<Entity> {
+    let size = ChunkPos::CHUNK_SIZE;
+    let chunk_origin = chunk_pos.to_tilepos();
+    let mut by_local_pos: HashMap<(u32, u32), Vec<(Entity, String)>> = HashMap::new();
+
+    for &child_entity in child_entities {
+        if tile_storage_query.get(child_entity).is_ok() {
+            continue;
+        }
+        let Ok((ent, gpos, ezero_ref, maybe_str_id)) = spritetile_gpos_query.get(child_entity) else {
+            continue;
+        };
+        if ChunkPos::from(*gpos) != chunk_pos {
+            continue;
+        }
+        let local = gpos.0 - chunk_origin.0;
+        if local.x < 0 || local.y < 0 || local.x >= size.x as i32 || local.y >= size.y as i32 {
+            continue;
+        }
+        let display_str = if let Some(str_id) = maybe_str_id {
+            str_id.as_str().to_string()
+        } else if let Some(ezero_ref) = ezero_ref
+            && let Ok(str_id) = id_query.get(ezero_ref.0)
+        {
+            str_id.as_str().to_string()
+        } else {
+            format!("{}", ent.index())
+        };
+        by_local_pos
+            .entry((local.x as u32, local.y as u32))
+            .or_default()
+            .push((ent, display_str));
+    }
+
+    let cell_w = 22.0f32;
+    let cell_h = 18.0f32;
+    let grid_size = egui::vec2(size.x as f32 * cell_w, size.y as f32 * cell_h);
+    let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+
+    let mut clicked_spritetile = None;
+    let camera_local = camera_tile_pos.map(|cam_pos| cam_pos.0 - chunk_origin.0);
+    for y in (0..size.y).rev() {
+        for x in 0..size.x {
+            let row = (size.y - 1 - y) as f32;
+            let col = x as f32;
+            let cell_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + col * cell_w, rect.top() + row * cell_h),
+                egui::vec2(cell_w, cell_h),
+            );
+            let id = ui.make_persistent_id(("spritetiles_grid_cell", chunk_pos.0.x, chunk_pos.0.y, x, y));
+            let response = ui.interact(cell_rect, id, egui::Sense::click());
+            let is_camera_tile = camera_local.map_or(false, |local| local.x == x as i32 && local.y == y as i32);
+
+            if let Some(sprite_stack) = by_local_pos.get(&(x, y)) {
+                let (sprite_entity, sprite_id) = &sprite_stack[0];
+                let is_selected = selected_sprite.map_or(false, |s| s == *sprite_entity);
+
+                let label = short_tile_label(sprite_id);
+                let fill = get_color_for_str_id(sprite_id).gamma_multiply(0.25);
+                painter.rect_filled(cell_rect, 0.0, fill);
+                painter.text(
+                    cell_rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    label,
+                    egui::FontId::proportional(10.0),
+                    get_color_for_str_id(sprite_id),
+                );
+                if sprite_stack.len() > 1 {
+                    painter.rect_stroke(
+                        cell_rect.shrink(1.0),
+                        0.0,
+                        egui::Stroke::new(1.0, egui::Color32::LIGHT_BLUE),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+                if is_camera_tile {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
+                        egui::StrokeKind::Outside,
+                    );
+                } else if is_selected {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(1.5, egui::Color32::WHITE),
+                        egui::StrokeKind::Outside,
+                    );
+                } else {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(0.5, egui::Color32::from_gray(50)),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+                if response.clicked() {
+                    clicked_spritetile = Some(*sprite_entity);
+                }
+            } else {
+                painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(16, 16, 16));
+                painter.rect_stroke(
+                    cell_rect,
+                    0.0,
+                    egui::Stroke::new(0.5, egui::Color32::from_gray(35)),
+                    egui::StrokeKind::Inside,
+                );
+                if is_camera_tile {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
+                        egui::StrokeKind::Outside,
+                    );
+                }
+            }
+        }
+    }
+
+    clicked_spritetile
+}
+
+#[allow(unused_parens)]
 pub fn debug_chunking_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
@@ -188,6 +322,7 @@ pub fn debug_chunking_window(
     // Query for child entities to check their components
     tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
     tile_query: Query<(Entity, &EntityZeroRef, Option<&InitialPos>), With<Tile>>,
+    spritetile_gpos_query: Query<(Entity, &GlobalTilePos, Option<&EntityZeroRef>, Option<&StrId>)>,
     ezero_query: Query<&TileStrId, With<EntityZero>>,
     id_query: Query<&StrId>,
 ) {
@@ -467,6 +602,30 @@ pub fn debug_chunking_window(
                                     }
                                 }
                             });
+
+                            egui::CollapsingHeader::new("SpriteTilesMap")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    let camera_tile_pos_for_this_dim =
+                                        if camera_dim_name.as_deref() == Some(dim_key.as_str()) {
+                                            camera_tile_pos
+                                        } else {
+                                            None
+                                        };
+                                    if let Some(clicked_spritetile) = render_spritetiles_grid(
+                                        ui,
+                                        *chunk_pos,
+                                        children_ref.as_ref(),
+                                        &tile_storage_query,
+                                        &spritetile_gpos_query,
+                                        &id_query,
+                                        &mut selected_entities.selected_sprite,
+                                        camera_tile_pos_for_this_dim,
+                                    ) {
+                                        selected_entities.selected_sprite = Some(clicked_spritetile);
+                                        window_visible.sprite_details = true;
+                                    }
+                                });
                         } else {
                             ui.label("No children");
                         }

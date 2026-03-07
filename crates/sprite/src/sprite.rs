@@ -26,7 +26,7 @@ pub struct AcSpriteSystems;
 #[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
     app.add_plugins((
-        sprite_sampler::plugin,
+        crate::sprite_sampler::plugin,
         plugin_sprite_config,
         sprite_scale_offset::plugin,
     ))

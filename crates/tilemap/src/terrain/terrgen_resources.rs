@@ -1,6 +1,7 @@
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
 use common::common_components::{HashId, HashIdMap};
+use common::log_targets::TERRGEN_INIT;
 
 use crate::terrain::{
     terrgen_components::Terrgen,
@@ -9,7 +10,7 @@ use crate::terrain::{
 use ::tilemap_shared::*;
 
 use serde::{Deserialize, };
-use std::{collections::HashMap, fs, path::Path};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct TerrGenDebugSample {
@@ -116,29 +117,24 @@ pub struct DungeonSeri {
 }
 
 #[derive(Deserialize, Asset, TypePath, Clone, Debug)]
-pub struct GlobalGenSettingsSeri {
+pub struct TerrgenSettingsSeri {
     #[serde(default)]
     pub seed: i32,
     #[serde(default = "default_global_world_freq")]
     pub world_freq: f32,
     #[serde(default = "default_global_tectonic_frequency")]
     pub tectonic_frequency: f32,
-    #[serde(default)]
-    pub hot_reload_window_open_on_start: bool,
     #[serde(default = "default_global_structure_build_timeout_secs")]
     pub structure_build_timeout_secs: f64,
-    #[serde(default = "default_players_spawn_probe_id")]
-    pub players_spawn_probe_id: String,
 }
-impl GlobalGenSettingsSeri {
-    pub fn to_global_gen_settings(&self) -> GlobalGenSettings {
+impl TerrgenSettingsSeri {
+    pub fn to_terrgen_settings(&self) -> GlobalGenSettings {
         GlobalGenSettings {
             seed: self.seed,
             world_freq: self.world_freq,
             tectonic_frequency: self.tectonic_frequency,
-            hot_reload_window_open_on_start: self.hot_reload_window_open_on_start,
             structure_build_timeout_secs: self.structure_build_timeout_secs,
-            players_spawn_probe_id: common::common_components::StrId::trunc(&self.players_spawn_probe_id),
+            ..Default::default()
         }
     }
 }
@@ -146,7 +142,6 @@ impl GlobalGenSettingsSeri {
 fn default_global_world_freq() -> f32 { 0.02 }
 fn default_global_tectonic_frequency() -> f32 { 0.02 }
 fn default_global_structure_build_timeout_secs() -> f64 { 4.0 }
-fn default_players_spawn_probe_id() -> String { "suland".to_string() }
 fn default_frequency() -> f32 { 0.01 }
 fn default_noise_type() -> String { "OpenSimplex2".to_string() }
 fn default_fractal_type() -> String { "None".to_string() }
@@ -160,54 +155,22 @@ fn default_cellular_jitter() -> f32 { 1.0 }
 fn default_domain_warp_type() -> String { "OpenSimplex2".to_string() }
 fn default_domain_warp_amp() -> f32 { 1.0 }
 
-pub fn load_global_gen_settings_seri_defs() -> Vec<GlobalGenSettingsSeri> {
-    let db = match common::def_db::DefDatabase::<GlobalGenSettingsSeri>::load_from_assets_dir_with_type(
-        stringify!(GlobalGenSettingsSeri),
-        &["world_gen.settings.ron"],
-        |_| "global_gen_settings",
+pub fn load_terrgen_settings_seri_defs() -> Vec<TerrgenSettingsSeri> {
+    let db = match common::def_db::DefDatabase::<TerrgenSettingsSeri>::load_from_assets_dir_with_type(
+        stringify!(TerrgenSettingsSeri),
+        &["terrgen.settings.ron"],
+        |_| "terrgen_settings",
     ) {
         Ok(db) => db,
         Err(err) => {
             error!(
-                target: "terrgen_init",
-                "Failed loading GlobalGenSettingsSeri defs: {err:#}"
+                target: TERRGEN_INIT,
+                "Failed loading TerrgenSettingsSeri defs: {err:#}"
             );
             return Vec::new();
         }
     };
-    for ov in db.overrides() {
-        info!(
-            target: "terrgen_init",
-            "GlobalGenSettingsSeri overridden: '{}' -> '{}'",
-            ov.previous_source.rel_path,
-            ov.replacement_source.rel_path
-        );
-    }
-    let defs: Vec<_> = db.into_records().into_iter().map(|r| r.value).collect();
-    if !defs.is_empty() {
-        return defs;
-    }
-    load_global_gen_settings_from_file()
-        .into_iter()
-        .collect()
-}
-
-fn load_global_gen_settings_from_file() -> Option<GlobalGenSettingsSeri> {
-    let path = Path::new("assets/ron/tilemap/world_gen.settings.ron");
-    let Ok(contents) = fs::read_to_string(path) else {
-        return None;
-    };
-    match ron::from_str::<GlobalGenSettingsSeri>(&contents) {
-        Ok(def) => Some(def),
-        Err(err) => {
-            error!(
-                target: "terrgen_init",
-                "Failed parsing '{}': {err}",
-                path.display()
-            );
-            None
-        }
-    }
+    db.into_records().into_iter().map(|r| r.value).collect()
 }
 
 common::define_entity_map_systems!(

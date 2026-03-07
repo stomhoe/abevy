@@ -38,7 +38,7 @@ pub fn plugin(app: &mut App) {
         flip_tile_based_on_initial_pos_hash,
         rotate_tile_based_on_initial_pos_hash,
         sync_sprite_flips_with_tileflip,
-        despawn_if_not_excepted.in_set(PreChunkDespawnSystems),//DON'T TOUCH
+        despawn_other_tiles_in_same_pos_if_not_excepted.in_set(PreChunkDespawnSystems),//DON'T TOUCH
         add_spawned_tiles_to_gpos_map
             .after(emit_global_tile_pos_change)
             .run_if(on_message::<GlobalTilePosChanged>),
@@ -91,7 +91,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<TileImagePaths>()
     .replicate::<TileColor>()
     .replicate::<InitialPos>()
-    .replicate::<PrevGlobalTilePos>()
+    .replicate::<PrevPos>()
     .replicate::<PortalsZeroEguiHolder>()
     .replicate::<BlocksProjectiles>()
     .replicate::<WalkSpeedMultIfOnTop>()
@@ -126,4 +126,24 @@ pub fn plugin(app: &mut App) {
 
 
     ;
+}
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        tile_systems::*,
+        tile_adj_retex_systems::*,
+        tile_despawn_systems::*,
+        tile_flip_rotate_systems::*,
+        tile_init_systems::*,
+        portal_init_systems::*,
+        tile_sampler_init_systems::*,
+        tile_components::*,
+        tile_resources::*,
+        tile_sampler_resources::*,
+        tile_sampler_components::*,
+        tile_messages::*,
+        tile_bundles::*,
+        tile_shader::*,
+    };
 }

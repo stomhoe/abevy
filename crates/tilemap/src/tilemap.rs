@@ -4,7 +4,14 @@ use common::{AppRegisterAndReplicateExt, common_states::*};
 
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
-use crate::{chunking::{self, chunking_despawn_systems::despawn_chunks}, regioning::{self, RegioningSystems}, terrain::{self,  *}, tile::{self, TilingSystems, tile_despawn_systems::despawn_if_not_excepted}, tilemap_resources::*, tilemap_systems::*};
+use crate::{
+    chunking,
+    regioning,
+    terrain,
+    tile,
+    prelude::*,
+};
+use crate::tile::prelude::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -24,7 +31,7 @@ pub fn plugin(app: &mut App) {
         (
             process_tiles_pre
             .in_set(PreChunkDespawnSystems)//if this is removed everything breaks
-            .before(despawn_if_not_excepted),//if this is removed you can get a glimpse of the tilemap which was there before removal
+            .before(despawn_other_tiles_in_same_pos_if_not_excepted),//if this is removed you can get a glimpse of the tilemap which was there before removal
         ).in_set(ChunkSystems)
     ))
     .add_observer(on_tilemap_despawn)

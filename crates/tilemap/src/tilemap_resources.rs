@@ -5,6 +5,7 @@ use common::{common_components::HashId};
 
 use crate::{terrain::terrgen_messages::PendingOp, tile::tile_bundles::* };
 use crate::tile::{tile_components::*, };
+use crate::tile::{tile_components::*, };
 
 use ::tilemap_shared::*;
 use game_common::{game_common_components::*, game_common_samplers::EntityWeightedSampler};
@@ -88,17 +89,6 @@ impl ImportantRegisteredPositions {
     }
 }
 
-#[derive(Bundle, Debug, Clone, )]
-pub struct TileMassSpawnBundle{
-    pub ezero_ref: EntityZeroRef,
-    pub gpos: GlobalTilePos,
-    pub dim_ref: DimensionRef,
-    pub tile_bundle: bevy_ecs_tilemap::prelude::TileBundle,
-    pub initial_pos: InitialPos,
-    pub prev_gpos: PrevGlobalTilePos,
-    pub prev_dim_ref: PrevDimensionRef,
-}
-
 #[derive(Debug, Clone, Resource, Default, )]
 pub struct MassCollectedTiles  (pub Vec<(Entity, TileMassSpawnBundle)>);
 impl MassCollectedTiles {
@@ -142,9 +132,7 @@ impl MassCollectedTiles {
             gpos,
             dim_ref,
             tile_bundle,
-            initial_pos: InitialPos(gpos),
-            prev_gpos: PrevGlobalTilePos(Some(gpos)),
-            prev_dim_ref: PrevDimensionRef(dim_ref.0),
+            initial_pos: InitialPos { pos: gpos, dim: dim_ref },
         };
         self.0.push((tile_instance, helper));
         tile_instance

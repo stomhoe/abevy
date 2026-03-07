@@ -1,6 +1,6 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
-use crate::{common_tag_components::*,};
+use crate::prelude::*;
 
 
 #[allow(unused_parens)]

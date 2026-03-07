@@ -35,3 +35,12 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyPartDamage>()
     ;
 }
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        body_part_components::*,
+        body_part_resources::*,
+        body_part_seris::*,
+    };
+}

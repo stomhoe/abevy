@@ -8,3 +8,16 @@ pub mod ui_styles;
 pub mod ui_functions;
 
 
+
+
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use crate::{
+        ui_shared::*,
+        ui_components::*,
+        ui_systems::*,
+        ui_styles::*,
+        ui_functions::*,
+    };
+}

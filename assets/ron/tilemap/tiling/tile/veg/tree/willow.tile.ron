@@ -10,6 +10,8 @@
     offset: (0.0, 120.0),
     z: 1000,
     y_sort: Some(0),
-
+    colmask: [
+        "1",
+    ],
 
 )

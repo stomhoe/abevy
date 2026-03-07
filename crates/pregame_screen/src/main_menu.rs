@@ -3,7 +3,7 @@ use bevy::ecs::schedule::common_conditions::on_message;
 use common::common_states::*;
 use bevy_ui_text_input::SubmitText;
 
-use crate::{main_menu_layout::*, main_menu_systems::*};
+use crate::prelude::*;
 
 pub fn plugin(app: &mut App) {
     app

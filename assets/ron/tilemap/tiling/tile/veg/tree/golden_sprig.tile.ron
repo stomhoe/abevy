@@ -10,6 +10,8 @@
     is_spritetile: true,
     randflipx: true,
     offset: (0.0, 148.0),
-
+    colmask: [
+        "1",
+    ],
 
 )

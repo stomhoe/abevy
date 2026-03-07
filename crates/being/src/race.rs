@@ -29,3 +29,12 @@ mod race_init_systems;
 pub mod race_components;
 pub mod race_resources;
 pub mod race_seris;
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        race_components::*,
+        race_resources::*,
+        race_seris::*,
+    };
+}

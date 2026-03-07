@@ -10,44 +10,7 @@ use common::{AnyDisabling, common_tag_components::TagSet};
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
 
-fn should_delete_tile(
-    spec: &DeleteOtherTiles,
-    target_z: &AcZ,
-    target_tags: Option<&TagSet>,
-) -> bool {
-    if !spec.targeted_z.is_empty() {
-        if !spec.targeted_z.contains(target_z) {
-            return false;
-        }
-        if let Some(tags) = target_tags {
-            if spec.spared_tags.intersects(tags) {
-                return false;
-            }
-        }
-        return true;
-    }
-    if !spec.targeted_tags.is_empty() {
-        let Some(tags) = target_tags else {
-            return false;
-        };
-        if !spec.targeted_tags.intersects(tags) {
-            return false;
-        }
-        if spec.spared_z.contains(target_z) {
-            return false;
-        }
-        return true;
-    }
-    if spec.spared_z.contains(target_z) {
-        return false;
-    }
-    if let Some(tags) = target_tags {
-        if spec.spared_tags.intersects(tags) {
-            return false;
-        }
-    }
-    true
-}
+
 
 #[allow(unused_parens)]
 pub fn on_spritetile_despawn(
@@ -63,7 +26,7 @@ pub fn on_spritetile_despawn(
     spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, size);
 }
 
-pub fn despawn_if_not_excepted(
+pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
     ezero_query: Query<
         (Option<&AcZ>, Option<&DeleteOtherTiles>, Option<&TagSet>, Option<&SizeInTiles>),
         (With<EntityZero>, common::AnyDisabling),
@@ -126,7 +89,7 @@ pub fn despawn_if_not_excepted(
             };
             if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
                 let otile_tags = otile_tag_hashset.or(ezero_otile_tagset);
-                if should_delete_tile(newtile_delete_others_excp, otile_z, otile_tags) {
+                if should_delete_tile_based_on_tag_sets(newtile_delete_others_excp, otile_z, otile_tags) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
                     if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
                         msgs.push(SafeDespawn(otile_ent));
@@ -137,7 +100,7 @@ pub fn despawn_if_not_excepted(
             let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp);
             if let Some(otile_delete_others_excp) = otile_delete_others_excp {
                 let newtile_tags = newtile_tag_hashset.or(ezero_newtile_tagset);
-                if should_delete_tile(otile_delete_others_excp, newtile_z, newtile_tags) {
+                if should_delete_tile_based_on_tag_sets(otile_delete_others_excp, newtile_z, newtile_tags) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
                     if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
                         msgs.push(SafeDespawn(newtile_ent));
@@ -147,6 +110,44 @@ pub fn despawn_if_not_excepted(
         });
     });
     writer.write_batch(msgs.drain(..));
+}
+fn should_delete_tile_based_on_tag_sets(
+    spec: &DeleteOtherTiles,
+    target_z: &AcZ,
+    target_tags: Option<&TagSet>,
+) -> bool {
+    if !spec.targeted_z.is_empty() {
+        if !spec.targeted_z.contains(target_z) {
+            return false;
+        }
+        if let Some(tags) = target_tags {
+            if spec.spared_tags.intersects(tags) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if !spec.targeted_tags.is_empty() {
+        let Some(tags) = target_tags else {
+            return false;
+        };
+        if !spec.targeted_tags.intersects(tags) {
+            return false;
+        }
+        if spec.spared_z.contains(target_z) {
+            return false;
+        }
+        return true;
+    }
+    if spec.spared_z.contains(target_z) {
+        return false;
+    }
+    if let Some(tags) = target_tags {
+        if spec.spared_tags.intersects(tags) {
+            return false;
+        }
+    }
+    true
 }
 
 pub fn safe_despawn_tile_at(

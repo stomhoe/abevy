@@ -252,7 +252,7 @@ pub fn hot_reload_window(
         .show(ctx, |ui| {
             ui.heading("Hot Reload Sets");
             ui.separator();
-            ui.checkbox(&mut selection.global_gen_settings, "Global gen settings");
+            ui.checkbox(&mut selection.terrgen_settings, "Terrgen settings");
             ui.checkbox(&mut selection.probes_and_filters, "Probes and filters");
             ui.checkbox(&mut selection.terrain_oplists_and_noises, "Terrain oplists and noises");
             ui.checkbox(&mut selection.tiles, "Tiles");
@@ -261,7 +261,7 @@ pub fn hot_reload_window(
             ui.checkbox(&mut selection.races, "Races");
             ui.checkbox(&mut selection.sexes, "Sexes");
             if ui.button("Clear selections").clicked() {
-                selection.global_gen_settings = false;
+                selection.terrgen_settings = false;
                 selection.probes_and_filters = false;
                 selection.terrain_oplists_and_noises = false;
                 selection.tiles = false;
@@ -286,7 +286,7 @@ pub fn hot_reload_window(
 }
 
 #[allow(unused_parens)]
-pub fn global_gen_settings_editor_window(
+pub fn terrgen_settings_editor_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut gen_settings: Query<&mut GlobalGenSettings>,
@@ -307,13 +307,13 @@ pub fn global_gen_settings_editor_window(
     let default_y = screen_rect.top() + 10.0;
     let mut open = window_visible.settings_editor;
 
-    egui::Window::new("Global gen settings editor")
+    egui::Window::new("Terrgen settings editor")
         .default_pos([default_x, default_y])
         .resizable(true)
         .movable(true)
         .open(&mut open)
         .show(ctx, |ui| {
-            ui.heading("Global gen settings editor");
+            ui.heading("Terrgen settings editor");
 
             ui.separator();
 

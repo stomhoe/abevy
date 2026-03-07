@@ -12,3 +12,16 @@ pub use cha::corridor_dungeon_building_system;
 pub use spiral::spiral_dungeon_building_system;
 pub use archimedes_spiral::archimedes_spiral_building_system;
 pub use maze::maze_dungeon_building_system;
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        dungeoning_ids::*,
+        aclaim_chunks::*,
+        drunkwalk::*,
+        cha::*,
+        spiral::*,
+        archimedes_spiral::*,
+        maze::*,
+    };
+}

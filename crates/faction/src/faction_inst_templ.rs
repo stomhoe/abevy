@@ -37,3 +37,13 @@ mod faction_inst_templ_build_systems;
 mod faction_inst_templ_init_systems;
 pub mod faction_inst_templ_resources;
 pub mod faction_inst_templ_seris;
+
+#[allow(unused_imports, ambiguous_glob_reexports)]
+pub mod prelude {
+    pub use super::{
+        faction_inst_templ_build_systems::*,
+        faction_inst_templ_init_systems::*,
+        faction_inst_templ_resources::*,
+        faction_inst_templ_seris::*,
+    };
+}

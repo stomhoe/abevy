@@ -38,8 +38,11 @@ impl_position_conversions!(GlobalTilePos);
 impl_position_ops!(GlobalTilePos);
 impl_display_debug!(GlobalTilePos, "Global pos","Gpos");
 
-#[derive(Component, Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Copy, Reflect, Debug, Default)]
-pub struct PrevGlobalTilePos(pub Option<GlobalTilePos>);
+#[derive(Component, Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Copy, Debug)]
+pub struct PrevPos {
+    pub dim: DimensionRef,
+    pub gpos: GlobalTilePos,
+}
 
 
 impl GlobalTilePos {
@@ -272,7 +275,7 @@ impl RegionPos {
 
 pub mod prelude {
     pub use super::{
-        ChunkPos, GlobalTilePos, HashablePosVec, OplistSize, PrevGlobalTilePos, RegionPos,
+        ChunkPos, GlobalTilePos, HashablePosVec, OplistSize, PrevPos, RegionPos,
         REGION_SIZE_IN_CHUNKS,
     };
 }
