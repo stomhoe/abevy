@@ -110,8 +110,9 @@ pub fn z_sort_system(
         }
 
         let y_pos = y - origin_y;
+        let y_pos_tiles = y_pos / GlobalTilePos::TILE_SIZE_PXS.y as f32;
         let use_y_sort = (maybe_ysort_origin.is_some() && !has_parent_sprite) as i32 as f32;
-        let sigmoid = 1.0f32 / (1.0f32 + 2.0f32.powf(-0.0001 * y_pos));
+        let sigmoid = 1.0f32 / (1.0f32 + 2.0f32.powf(-0.01 * y_pos_tiles));
         let signed_sigmoid = (0.5 - sigmoid) * 2.0;
         let target_z = base_z + use_y_sort * signed_sigmoid * (AcZ::Z_MULTIPLIER * 0.49);
         if !target_z.is_finite() {
@@ -125,12 +126,12 @@ pub fn z_sort_system(
             .or_else(|| ezero_ref.and_then(|r| gpos_query.get(r.0).ok()))
             .map(|p| format!("{:?}", p))
             .unwrap_or_else(|| "-".to_string());
-        if (transform.translation.z - target_z).abs() <= f32::EPSILON {//NO TOCAR
-            info_once!(target: Z_SORT_SYSTEM, "unchanged z due to proximity: ent:{:?} strid:{} gpos:{} y_pos:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} target_z:{:.8}", ent, strid, gpos, y_pos, base_z, sigmoid, signed_sigmoid, target_z);
+        if (transform.translation.z - target_z).abs() <= 1e-9 {//NO TOCAR
+            info_once!(target: Z_SORT_SYSTEM, "unchanged z due to proximity: ent:{:?} strid:{} gpos:{} y_pos:{:.4} y_pos_tiles:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} target_z:{:.8}", ent, strid, gpos, y_pos, y_pos_tiles, base_z, sigmoid, signed_sigmoid, target_z);
             continue;
         }
         transform.translation.z = target_z;
-        info!(target: Z_SORT_SYSTEM, "Set ent:{:?} {} gpos:{} y_pos:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} to z {:.8}", ent, strid, gpos, y_pos, base_z, sigmoid, signed_sigmoid, target_z);
+        info!(target: Z_SORT_SYSTEM, "Set ent:{:?} {} gpos:{} y_pos:{:.4} y_pos_tiles:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} to z {:.8}", ent, strid, gpos, y_pos, y_pos_tiles, base_z, sigmoid, signed_sigmoid, target_z);
         if is_tilemap {
             draw_tmaps.push(DrawTilemap(ent));
         }
