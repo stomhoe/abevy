@@ -1,5 +1,9 @@
 use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::*;
+use ac_input::ac_input_actions::{
+    DebugToggleHotReloadWindowAction, DebugToggleMainMenuAction, HotReloadAction,
+};
 use common::common_states::*;
 use game_common::game_common_states::*;
 use tilemap_shared::{ForceAllChunksDespawn, GlobalGenSettings};
@@ -8,10 +12,11 @@ use crate::debug_resources::{DebugUiConfig, DubugWindowsVisibility, load_debug_u
 
 #[allow(unused_parens)]
 pub fn debug_toggle_hot_reload_window(
-    keys: Res<ButtonInput<KeyCode>>,
+    hot_reload_toggle_events: Single<&ActionEvents, With<Action<DebugToggleHotReloadWindowAction>>>,
+    main_menu_toggle: Single<&Action<DebugToggleMainMenuAction>>,
     mut window_visible: ResMut<DubugWindowsVisibility>,
 ) {
-    if keys.just_pressed(KeyCode::F12) && !keys.pressed(KeyCode::F11) {
+    if hot_reload_toggle_events.contains(ActionEvents::START) && !***main_menu_toggle {
         window_visible.hot_reload_menu = !window_visible.hot_reload_menu;
     }
 }
@@ -56,10 +61,10 @@ pub fn apply_debug_ui_config_once(
 
 #[allow(unused_parens)]
 pub fn debug_toggle_main_menu(
-    keys: Res<ButtonInput<KeyCode>>,
+    main_menu_toggle_events: Single<&ActionEvents, With<Action<DebugToggleMainMenuAction>>>,
     mut window_visible: ResMut<DubugWindowsVisibility>,
 ) {
-    if keys.just_pressed(KeyCode::F11) {
+    if main_menu_toggle_events.contains(ActionEvents::START) {
         window_visible.main_menu = !window_visible.main_menu;
         // Keep F11 scoped to main menu only.
         window_visible.states = false;
@@ -229,7 +234,7 @@ pub fn main_menu_window(
 
 #[allow(unused_parens)]
 pub fn hot_reload_window(
-    keys: Res<ButtonInput<KeyCode>>,
+    hot_reload_action_events: Single<&ActionEvents, With<Action<HotReloadAction>>>,
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selection: ResMut<HotReloadSelection>,
@@ -277,7 +282,7 @@ pub fn hot_reload_window(
             }
         });
 
-    if open && keys.just_pressed(KeyCode::KeyR) {
+    if open && hot_reload_action_events.contains(ActionEvents::START) {
         request.requested = true;
         force_all_chunks_despawn_writer.write(ForceAllChunksDespawn);
     }

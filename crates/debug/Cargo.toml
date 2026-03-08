@@ -6,9 +6,10 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
-#movement = { path = "../movement" }
-modifier = { path = "../modifier" }
+movement = { path = "../movement" }
+modifier_shared = { path = "../modifier_shared" }
 player = { path = "../player" }
+ac_input = { path = "../ac_input" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
 camera = { path = "../camera" }
@@ -19,6 +20,7 @@ sprite = { path = "../sprite" }
 fnl = { path = "../fnl" }
 
 bevy = { workspace = true }
+bevy_enhanced_input = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
 #bevy_replicon_renet = { workspace = true }

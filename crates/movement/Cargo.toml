@@ -7,14 +7,15 @@ edition = "2024"
 #common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 being_shared = { path = "../being_shared" }
-player = { path = "../player" }
-modifier = { path = "../modifier" }
+ac_input = { path = "../ac_input" }
+modifier_shared = { path = "../modifier_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 #tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 param_sets = { path = "../param_sets" }
 
 bevy = { workspace = true }
+bevy_enhanced_input = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
 

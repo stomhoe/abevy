@@ -3,7 +3,7 @@ use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use ::being_shared::*;
 use common::{GAME_INIT, common_components::StrId, common_states::AppState};
 use faction::{faction_components::*, faction_resources::*};
-use modifier::{modifier_components::*, modifier_move_bundles::SpeedModifier,};
+use modifier_shared::{modifier_components::*, modifier_move_bundles::SpeedModifier,};
 use player::player_components::*;
 use tilemap::{
     chunking::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings},

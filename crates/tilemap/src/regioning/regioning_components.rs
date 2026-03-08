@@ -60,7 +60,7 @@ impl Default for ClaimList {
 #[derive(Component, Debug, Default, Clone)]
 pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
 
-pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
+pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTilesInSamePos>)>;
 
 #[derive(Debug, Clone)]
 pub struct PendingBuildOrder {
@@ -158,7 +158,7 @@ impl RegionPlannedTiles {
         self.pending_chunks.remove(&chunk_pos);
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
     }
-    pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)]> {
+    pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTilesInSamePos>)]> {
         let chunk_pos = gpos.to_chunkpos();
         self.tiles_to_spawn_on_chunk_load_map.get(&chunk_pos).map(Vec::as_slice)
     }

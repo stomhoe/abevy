@@ -10,6 +10,7 @@ use crate::being_inst_template::{being_inst_template_resources::*,
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
+use tilemap_shared::InteractionZones;
 
 pub fn init_being_templates(
     mut cmd: Commands,
@@ -89,6 +90,9 @@ pub fn init_being_templates(
                 PredatorHuntThreshold(template_seri.predator_hunt_threshold),
             ));
         }
+        let mut interaction_zones = bevy::platform::collections::HashMap::with_capacity(1);
+        interaction_zones.insert("melee".to_string(), template_seri.melee_interaction_zone.clone());
+        cmd.entity(bit_entity).insert(InteractionZones::new(interaction_zones));
 
         // Resolve race entity from race string
         let race_str_id = StrId::trunc(&template_seri.race);

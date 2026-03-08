@@ -16,7 +16,7 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(
             Update,
-            update_human_move_input,
+            add_being_input_context,
         )
         .add_systems(
             MOVEMENT_SCHEDULE,
@@ -25,6 +25,7 @@ pub fn plugin(app: &mut App) {
                 receive_move_input_from_client
                     .run_if(in_state(ServerState::Running))
                     .run_if(on_message::<FromClient<SendMoveInput>>),
+                apply_remote_move_input_actions.run_if(in_state(ServerState::Running)),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
                 emit_move_state_on_movevecmag_value_change,
@@ -44,12 +45,8 @@ pub fn plugin(app: &mut App) {
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendMoveInput>(Channel::Unreliable)
         .add_mapped_server_message::<UnreliableTransform>(Channel::Unreliable)
-        .replicate::<WallPhaser>()
-        .replicate::<LandWalker>()
-        .replicate::<Swimmer>()
-        .replicate::<Flier>()
         .replicate_once::<GridLockedMovement>()
-        .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>, Without<InputDirection>)>()
+        .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>,)>()
 
     ;
 }

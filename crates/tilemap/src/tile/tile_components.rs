@@ -437,7 +437,7 @@ fn default_true() -> bool {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct DeleteOtherTiles {
+pub struct DeleteOtherTilesInSamePos {
     pub spared_z: HashSet<AcZ>,
     pub targeted_z: HashSet<AcZ>,
     pub spared_tags: TagSet,
@@ -447,7 +447,7 @@ pub struct DeleteOtherTiles {
     pub priority: f32,
 }
 
-impl DeleteOtherTiles {
+impl DeleteOtherTilesInSamePos {
     pub fn is_empty(&self) -> bool {
         self.spared_z.is_empty()
         && self.targeted_z.is_empty()
@@ -472,7 +472,7 @@ pub struct DeleteOtherTilesSeri {
     pub priority: f32,
 }
 impl DeleteOtherTilesSeri {
-    pub fn to_delete_other_tiles(&self) -> DeleteOtherTiles {
+    pub fn to_delete_other_tiles(&self) -> DeleteOtherTilesInSamePos {
         let mut spared_z = HashSet::default();
         for &z in &self.spared_z {
             spared_z.insert(AcZ::new(z));
@@ -489,7 +489,7 @@ impl DeleteOtherTilesSeri {
         for tag in &self.targeted_tags {
             targeted_tags.insert(Tag::trunc(tag));
         }
-        DeleteOtherTiles {
+        DeleteOtherTilesInSamePos {
             spared_z,
             targeted_z,
             spared_tags,

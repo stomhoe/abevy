@@ -15,6 +15,7 @@ common::define_marker_components!(
     Consciousness,
     PainSensitivity,
     PainInfliction,
-    Manipulation,
+    ManipulationDexterity,
+    ManipulationStrength,
     Vision,
 );

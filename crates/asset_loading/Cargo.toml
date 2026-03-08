@@ -11,6 +11,7 @@ sprite_animation_shared = { path = "../sprite_animation_shared" }
 sprite = { path = "../sprite" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
+ac_input = { path = "../ac_input" }
 #dimension = { path = "../dimension" }
 #being = { path = "../being" }
 #color_sampler = { path = "../color_sampler" }
@@ -18,6 +19,7 @@ tilemap_shared = { path = "../tilemap_shared" }
 
 
 bevy = { workspace = true }
+bevy_enhanced_input = { workspace = true }
 #serde = { workspace = true }
 #tracing = { workspace = true }
 #tracing-subscriber = { workspace = true }

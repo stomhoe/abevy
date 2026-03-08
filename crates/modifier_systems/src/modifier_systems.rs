@@ -3,8 +3,52 @@ use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap};
 use game_common::game_common_components::TimeBasedMultiplier;
 use common::common_components::Tag;
 
-use crate::modifier_components::*;
-use crate::modifier_types::*;
+use modifier_shared::modifier_components::*;
+use modifier_shared::modifier_types::*;
+
+pub fn materialize_modifier_synergies(
+    mut cmd: Commands,
+    query: Query<
+        (
+            Entity,
+            &ModifierSynergies,
+            Option<&ModifierTags>,
+            Option<&OffsetValForSelf>,
+            Option<&CopyFracOfOthersIntoSelf>,
+        ),
+        Changed<ModifierSynergies>,
+    >,
+) {
+    for (entity, synergies, existing_tags, existing_offsets, existing_mults) in query.iter() {
+        let mut tags = existing_tags.cloned().unwrap_or_default();
+        let mut offsets = existing_offsets.cloned().unwrap_or_default();
+        let mut mults = existing_mults.cloned().unwrap_or_default();
+
+        for (tag, synergy) in &synergies.0 {
+            tags.insert(tag.clone());
+            match synergy {
+                ModifierSynergy::Offset(value) => {
+                    if *value != 0.0 {
+                        offsets.0.insert(tag.clone(), *value);
+                    }
+                }
+                ModifierSynergy::CopyFrac(value) => {
+                    if *value != 0.0 {
+                        mults.0.insert(tag.clone(), *value);
+                    }
+                }
+            }
+        }
+
+        cmd.entity(entity).insert(tags);
+        if !offsets.0.is_empty() {
+            cmd.entity(entity).insert(offsets);
+        }
+        if !mults.0.is_empty() {
+            cmd.entity(entity).insert(mults);
+        }
+    }
+}
 
 #[derive(Default)]
 struct TargetAggregates {
@@ -30,7 +74,7 @@ pub fn update_modifier_effective_values(
         Option<&TimeBasedMultiplier>,
         Option<&ModifierTags>,
         Option<&OffsetValForSelf>,
-        Option<&CopyMultOfOthersIntoSelf>,
+        Option<&CopyFracOfOthersIntoSelf>,
         Option<&Antidote>,
     )>,
     mut effective_query: Query<&mut CurrEffectiveValue>,
@@ -38,7 +82,7 @@ pub fn update_modifier_effective_values(
     let mut target_aggs: EntityHashMap<TargetAggregates> = EntityHashMap::new();
     let mut new_eff_values = Vec::new();
 
-    for (_entity, target, base_value, time_multiplier, tags, _offsets, _copy_mults, antidote) in modifiers_query.iter() {
+    for (_entity, target, base_value, time_multiplier, tags, _offsets, _copy_fracs, antidote) in modifiers_query.iter() {
         let Some(raw_value) = compute_raw_value(base_value, None, time_multiplier) else { continue; };
         let tags = tags.cloned().unwrap_or_default();
 
@@ -56,7 +100,7 @@ pub fn update_modifier_effective_values(
 
     let mut computed_values: EntityHashMap<f32> = EntityHashMap::new();
 
-    for (modi_entity, target, base_value, time_multiplier, tags, offsets, copy_mults, _antidote) in modifiers_query.iter() {
+    for (modi_entity, target, base_value, time_multiplier, tags, offsets, copy_fracs, _antidote) in modifiers_query.iter() {
         let Some(target_agg) = target_aggs.get(&target.0) else { continue; };
         let Some(raw_value) = compute_raw_value(base_value, None, time_multiplier) else { continue; };
         let tags = tags.cloned().unwrap_or_default();
@@ -77,8 +121,8 @@ pub fn update_modifier_effective_values(
             }
         }
 
-        if let Some(copy_mults) = copy_mults {
-            for (tag, mult) in copy_mults.0.iter() {
+        if let Some(copy_fracs) = copy_fracs {
+            for (tag, mult) in copy_fracs.0.iter() {
                 let Some(sum) = target_agg.tag_value_sum.get(tag) else { continue; };
                 let mut copy_value = *sum;
                 if tags.contains(tag.clone()) {
@@ -141,7 +185,8 @@ pub fn sync_modifier_name_to_effects(
                     Added<Consciousness>,
                     Added<PainSensitivity>,
                     Added<PainInfliction>,
-                    Added<Manipulation>,
+                    Added<ManipulationDexterity>,
+                    Added<ManipulationStrength>,
                     Added<Vision>,
                     Added<MinForDamage>,
                     Added<CurrEffectiveValue>,
@@ -156,7 +201,8 @@ pub fn sync_modifier_name_to_effects(
             Has<Consciousness>,
             Has<PainSensitivity>,
             Has<PainInfliction>,
-            Has<Manipulation>,
+            Has<ManipulationDexterity>,
+            Has<ManipulationStrength>,
             Has<Vision>,
             Has<MinForDamage>,
         ),
@@ -182,6 +228,7 @@ pub fn sync_modifier_name_to_effects(
             has_pain_sensitivity,
             has_pain_infliction,
             has_manipulation,
+            has_manipulation_strength,
             has_vision,
             has_min_for_damage,
         )) = effects_query.get(entity) else { continue; };
@@ -199,7 +246,8 @@ pub fn sync_modifier_name_to_effects(
         if has_consciousness { effects.push("Consc"); }
         if has_pain_sensitivity { effects.push("PainSens"); }
         if has_pain_infliction { effects.push("PainInfli"); }
-        if has_manipulation { effects.push("Manip"); }
+        if has_manipulation { effects.push("ManipDex"); }
+        if has_manipulation_strength { effects.push("ManipStr"); }
         if has_vision { effects.push("Vis"); }
         if has_min_for_damage { effects.push("MinForDamage"); }
 

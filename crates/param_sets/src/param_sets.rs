@@ -21,7 +21,7 @@ pub struct BlockingTileParamSet<'w, 's> {
     tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), >,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
     tile_tags: Query<'w, 's, &'static TagSet, >,
-    tile_collision_masks: Query<'w, 's, &'static TileCollisionMask, >,
+    tile_collision_masks: Query<'w, 's, &'static TiledCollisionMask, >,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
 }
 #[allow(unused_parens, )]

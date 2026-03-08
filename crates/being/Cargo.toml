@@ -11,15 +11,17 @@ faction = { path = "../faction" }
 tilemap = { path = "../tilemap" }
 camera = { path = "../camera" }
 movement = { path = "../movement" }
+ac_input = { path = "../ac_input" }
 being_shared = { path = "../being_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
-modifier = { path = "../modifier" }
+modifier_shared = { path = "../modifier_shared" }
 sprite = { path = "../sprite" }
 sprite_shared = { path = "../sprite_shared" }
 tilemap_shared = { path = "../tilemap_shared" }
 param_sets = { path = "../param_sets" }
 
 bevy = { workspace = true }
+bevy_enhanced_input = { workspace = true }
 big-brain = { workspace = true }
 
 serde = { workspace = true }

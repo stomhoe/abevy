@@ -1,5 +1,6 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use game_common::game_common_seris::NormalDistSeri;
+use tilemap_shared::tilemap_seris::InteractionZoneSeri;
 
 use crate::race::race_resources::RaceSexSeri;
 
@@ -65,6 +66,8 @@ pub struct RaceSeri {
     pub predator_hunt_threshold: f32,
     #[serde(default)]
     pub wander: WanderSeri,
+    #[serde(default = "default_melee_interaction_zone")]
+    pub melee_interaction_zone: InteractionZoneSeri,
 }
 
 #[derive(serde::Deserialize, Debug, Clone, Default)]
@@ -112,6 +115,12 @@ impl WanderSeri {
 }
 
 fn default_true() -> bool { true }
+fn default_melee_interaction_zone() -> InteractionZoneSeri {
+    InteractionZoneSeri {
+        offset_positions: vec![(0, 1)],
+        radius_offset: Vec::new(),
+    }
+}
 fn default_predator_hunt_threshold() -> f32 { ::being_shared::PredatorHuntThreshold::SERI_SENTINEL }
 fn default_pack_size_range() -> (u32, u32) { (1, 1) }
 fn default_prey_body_size_ratio_tolerance() -> f32 { -1.0 }

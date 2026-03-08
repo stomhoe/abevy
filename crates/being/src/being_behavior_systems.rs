@@ -1,16 +1,18 @@
 use ::being_shared::*;
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy_enhanced_input::prelude::*;
+use bevy_enhanced_input::action::mock::MockEntityCommandsExt;
 use bevy_northstar::prelude::*;
 use param_sets::BlockingTileParamSet;
 use rand::Rng;
 use std::time::Duration;
 use tilemap::{chunking::chunking_resources::AaChunkRangeSettings};
 use ::tilemap_shared::{GlobalTilePos, ChunkPos, LoadedChunks};
-use movement::movement_components::InputDirection;
+use ac_input::ac_input_actions::{BeingInputContext, BeingMoveAction};
 use crate::being_components::{Being, ToChase};
 use crate::being_inst_template::being_inst_template_resources::BitRef;
-use crate::body::{BodyHealth, Bodies};
+use crate::body::{BodySums, Bodies};
 use crate::race::race_components::WanderConfig;
 use crate::race::race_resources::RaceRef;
 use ::being_shared::{Predator, ControlledBy, Hunger, PredatorHuntThreshold};
@@ -73,11 +75,10 @@ fn pick_wander_dir(rng: &mut impl Rng) -> Vec2 {
 
 fn apply_wander_input(
     state: &mut WanderState,
-    input_dir: &mut Mut<InputDirection>,
     dt: f32,
     rng: &mut impl Rng,
     cfg: &WanderConfig,
-) {
+) -> Vec2 {
     state.dir_timer.tick(Duration::from_secs_f32(dt));
     if state.dir_timer.just_finished() {
         state.dir = pick_wander_dir(rng);
@@ -95,7 +96,18 @@ fn apply_wander_input(
         }
     }
 
-    input_dir.0 = if state.halting { Vec2::ZERO } else { state.dir * state.move_speed };
+    if state.halting { Vec2::ZERO } else { state.dir * state.move_speed }
+}
+
+fn set_ai_movement_action(commands: &mut Commands, being_ent: Entity, input: Vec2) {
+    let state = if input == Vec2::ZERO {
+        TriggerState::None
+    } else {
+        TriggerState::Fired
+    };
+    commands
+        .entity(being_ent)
+        .try_mock::<BeingInputContext, BeingMoveAction>(state, input, MockSpan::once());
 }
 
 pub fn add_predator_behavior_components(
@@ -286,7 +298,7 @@ pub fn sync_ai_nav_grids(
 fn health_ratio(
     being: Entity,
     bodies_query: &Query<&Bodies, With<Being>>,
-    body_health_query: &Query<&BodyHealth>,
+    body_health_query: &Query<&BodySums>,
 ) -> f32 {
     let Ok(bodies) = bodies_query.get(being) else { return 0.0; };
     let Some(body_ent) = bodies.entities().first() else { return 0.0; };
@@ -299,7 +311,7 @@ fn health_ratio(
 
 pub fn update_predator_chase_targets(
     bodies_query: Query<&Bodies, With<Being>>,
-    body_health_query: Query<&BodyHealth>,
+    body_health_query: Query<&BodySums>,
     predators: Query<(
         Entity,
         &Transform,
@@ -381,26 +393,29 @@ pub fn update_predator_chase_targets(
 }
 
 pub fn chase_behavior(
+    mut commands: Commands,
     mut chasers: Query<(
         Entity,
         &Transform,
         &::tilemap_shared::DimensionRef,
-        &mut InputDirection,
         &ToChase,
     ), (With<Being>, LocalAiControlled)>,
     beings_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef), With<Being>, >,
     grids: Res<AiNavGrids>,
     mut dynamic_blocking: Local<HashMap<UVec3, Entity>>,
 ) {
-    for (chaser_ent, chaser_transf, &chaser_dim, mut input_dir, to_chase, ) in chasers.iter_mut() {
+    for (chaser_ent, chaser_transf, &chaser_dim, to_chase, ) in chasers.iter_mut() {
 
         if to_chase.target == chaser_ent {
+            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
             continue;
         }
         let Ok((_target_ent, target_transf, &target_dim)) = beings_query.get(to_chase.target) else {
+            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
             continue;
         };
         if target_dim != chaser_dim {
+            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
             continue;
         }
 
@@ -409,32 +424,32 @@ pub fn chase_behavior(
 
         let stop_threshold = to_chase.stop_distance.max(0.0);
         if chaser_transf.translation.xy().distance(target_transf.translation.xy()) <= stop_threshold {
-            input_dir.0 = Vec2::ZERO;
+            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
             continue;
         }
 
         let desired_to_prey = (target_pos.0 - chaser_pos.0).as_vec2();
         if desired_to_prey == Vec2::ZERO {
-            input_dir.0 = Vec2::ZERO;
+            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
             continue;
         }
         let direct_chase_dir = desired_to_prey.normalize();
 
         let Some(cache) = grids.by_dim.get(&chaser_dim.0) else {
-            input_dir.0 = direct_chase_dir;
+            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
             continue;
         };
 
         let start_i = chaser_pos.0 - cache.min;
         let goal_i = target_pos.0 - cache.min;
         if start_i.x < 0 || start_i.y < 0 || goal_i.x < 0 || goal_i.y < 0 {
-            input_dir.0 = direct_chase_dir;
+            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
             continue;
         }
         let start = UVec3::new(start_i.x as u32, start_i.y as u32, 0);
         let goal = UVec3::new(goal_i.x as u32, goal_i.y as u32, 0);
         if start.x >= cache.grid.width() || start.y >= cache.grid.height() || goal.x >= cache.grid.width() || goal.y >= cache.grid.height() {
-            input_dir.0 = direct_chase_dir;
+            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
             continue;
         }
 
@@ -451,18 +466,19 @@ pub fn chase_behavior(
 
         let mut req = PathfindArgs::new(start, goal).blocking(&dynamic_blocking);
         let Some(path) = cache.grid.pathfind(&mut req) else {
-            input_dir.0 = direct_chase_dir;
+            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
             continue;
         };
 
         let steps = path.path();
         let Some(next) = steps.first() else {
-            input_dir.0 = direct_chase_dir;
+            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
             continue;
         };
         let next = next.xy().as_ivec2() + cache.min;
         let desired = (next - chaser_pos.0).as_vec2();
-        input_dir.0 = if desired == Vec2::ZERO { direct_chase_dir } else { desired.normalize() };
+        let move_input = if desired == Vec2::ZERO { direct_chase_dir } else { desired.normalize() };
+        set_ai_movement_action(&mut commands, chaser_ent, move_input);
     }
 }
 
@@ -470,12 +486,13 @@ pub fn wander_behavior(
     time: Res<Time>,
     blocking_tiles: BlockingTileParamSet,
     mut beings: Query<
-        (Entity, &Transform, &::tilemap_shared::DimensionRef, &mut InputDirection, Option<&RaceRef>),
+        (Entity, &Transform, &::tilemap_shared::DimensionRef, Option<&RaceRef>),
         (With<Being>, Without<ToChase>, LocalAiControlled),
     >,
     race_wander_cfg_query: Query<&WanderConfig>,
     mut wander_states: Local<HashMap<Entity, WanderState>>,
     mut to_drain: Local<Vec<Entity>>,
+    mut commands: Commands,
 ) {
     let mut rng = rand::rng();
     let dt = time.delta_secs();
@@ -490,24 +507,25 @@ pub fn wander_behavior(
         speed_max: 0.6,
         avoid_tile_tags: TagSet::default(),
     };
-    for (pred_ent, transform, &dim_ref, mut input_dir, race_ref) in beings.iter_mut() {
+    for (pred_ent, transform, &dim_ref, race_ref) in beings.iter_mut() {
         let cfg = race_ref
             .and_then(|r| race_wander_cfg_query.get(r.0).ok())
             .unwrap_or(&default_cfg);
         let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng, cfg));
-        apply_wander_input(state, &mut input_dir, dt, &mut rng, cfg);
+        let mut input_dir = apply_wander_input(state, dt, &mut rng, cfg);
 
-        if !cfg.avoid_tile_tags.is_empty() && input_dir.0 != Vec2::ZERO {
+        if !cfg.avoid_tile_tags.is_empty() && input_dir != Vec2::ZERO {
             let curr = GlobalTilePos::from(transform.translation.xy());
-            let step = if input_dir.0.x.abs() >= input_dir.0.y.abs() {
-                IVec2::new(input_dir.0.x.signum() as i32, 0)
+            let step = if input_dir.x.abs() >= input_dir.y.abs() {
+                IVec2::new(input_dir.x.signum() as i32, 0)
             } else {
-                IVec2::new(0, input_dir.0.y.signum() as i32)
+                IVec2::new(0, input_dir.y.signum() as i32)
             };
             let next = GlobalTilePos(curr.0 + step);
             if blocking_tiles.has_tagset_at(&mut to_drain, dim_ref, next, &cfg.avoid_tile_tags) {
-                input_dir.0 = Vec2::ZERO;
+                input_dir = Vec2::ZERO;
             }
         }
+        set_ai_movement_action(&mut commands, pred_ent, input_dir);
     }
 }

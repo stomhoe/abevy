@@ -1,0 +1,11 @@
+(
+    id: "lumber",
+    name: "Lumber",
+    description: "A sturdy piece of processed wood.",
+    tags: ["wood", "material"],
+    mass: 2.5,
+    bulk: 1.0,
+    stack_limit: 100,
+    market_value: 3.0,
+    icon_img_path: "texture/item/lumber.png",
+)

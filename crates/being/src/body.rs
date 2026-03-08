@@ -7,6 +7,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::{HostSystems, game_common::ModifierSystems};
 use crate::body::{
+    body_hp_systems::*,
     body_systems::*,
     body_tree_build_systems::*,
     body_tree_ezero_init_systems::*,
@@ -19,6 +20,7 @@ pub mod body_tree_resources;
 pub mod body_tree_seris;
 pub mod body_sampler;
 mod body_systems;
+mod body_hp_systems;
 mod body_tree_build_systems;
 mod body_tree_ezero_init_systems;
 
@@ -69,8 +71,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyTree>()
     .replicate::<BodyOf>()
     .replicate_filtered::<ChildOf, With<BodyOf>>()
-    .replicate::<BodyHealth>()
-    .replicate::<BodyDead>()
+    .replicate::<BodySums>()
     .add_message::<BodyDamage>();
 }
 

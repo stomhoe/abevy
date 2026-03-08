@@ -7,7 +7,7 @@ use bevy_replicon::prelude::*;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{CardinalDirection, GlobalTilePos, HashablePosVec, OplistSize, SizeInTiles, tilemap_shared_seris::InteractionZoneSeri};
+use crate::{tilemap_seris::InteractionZoneSeri, CardinalDirection, GlobalTilePos, HashablePosVec, OplistSize, SizeInTiles};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct PreChunkDespawnSystems;
@@ -161,12 +161,12 @@ impl Default for WalkSpeedMultIfOnTop {
 }
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct TileCollisionMask {
+pub struct TiledCollisionMask {
     width: u8,
     height: u8,
     bits: u64,
 }
-impl TileCollisionMask {
+impl TiledCollisionMask {
     pub fn from_rows(rows: &[String], size_in_tiles: SizeInTiles) -> Result<Self, BevyError> {
         let width = size_in_tiles.inner().x as usize;
         let height = size_in_tiles.inner().y as usize;
@@ -345,6 +345,7 @@ impl InteractionZones {
         zone.is_some_and(|zone| zone.is_inside_any(direction, anchor_transf, client_transf))
     }
     pub const ENTER: HashId = HashId::hash("enter");
+    pub const MELEE: HashId = HashId::hash("melee");
 }
 
 #[derive(Component, Clone, Deserialize, Serialize, Debug,)]
@@ -393,6 +394,34 @@ impl InteractionZone {
             }
         }
         false
+    }
+
+    pub fn gather_candidate_tiles_at(
+        &self,
+        direction: CardinalDirection,
+        anchor_transf: Vec2,
+        out: &mut Vec<GlobalTilePos>,
+    ) {
+        let anchor_gpos: GlobalTilePos = anchor_transf.into();
+
+        for &offset_pos in &self.offset_positions {
+            out.push(anchor_gpos + rotate_gpos_offset(offset_pos, direction));
+        }
+
+        for &(radius, offset) in &self.radius_paired_w_offsets {
+            let center = anchor_transf + rotate_vec2_offset(offset, direction);
+            let center_gpos = GlobalTilePos::from(center);
+            let tile_size = GlobalTilePos::TILE_SIZE_PXS.x.max(1) as f32;
+            let radius_in_tiles = (radius / tile_size).ceil().max(0.0) as i32;
+            for dy in -radius_in_tiles..=radius_in_tiles {
+                for dx in -radius_in_tiles..=radius_in_tiles {
+                    let gpos = center_gpos + GlobalTilePos::new(dx, dy);
+                    if center.distance(gpos.to_pixelpos()) <= radius {
+                        out.push(gpos);
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -3,6 +3,7 @@ use std::time::Duration;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 #[allow(unused_imports)] use bevy_replicon::prelude::Replicated;
+use common::common_states::AssetLoading;
 
 pub mod chunking_components;
 pub mod chunking_resources;
@@ -51,6 +52,7 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<LoadedChunks>()
+    .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), load_chunking_settings)
 
     .add_observer(on_chunk_despawn)
 

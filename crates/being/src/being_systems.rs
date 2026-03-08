@@ -1,15 +1,16 @@
 use ::being_shared::*;
-use bevy::{ecs::entity::EntityHashMap, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
+use bevy_enhanced_input::prelude::*;
 use camera::camera_components::CameraTarget;
 use common::log_targets::{BEING_CONTROL, BEING_SYSTEM};
 use faction::faction_components::*;
-use game_common::game_common_components::{EntityZeroRef};
+use game_common::game_common_components::{EntityZeroRef, HealthDamage};
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
-use modifier::{modifier_components::*, modifier_move_bundles::TempSpeedModifier,};
-use movement::movement_messages::*;
+use modifier_shared::{modifier_components::*, modifier_move_bundles::TempSpeedModifier,};
 use player::player_components::*;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings, tile::tile_components::*};
 use ::tilemap_shared::*;
+use ac_input::ac_input_actions::BeingMeleeAttackAction;
 
 use crate::{being_components::*};
 
@@ -197,4 +198,74 @@ pub fn sync_beings_at_gpos(
         beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
         tracked_pos.insert(being_ent, (dim_ref, gpos));
     }
+}
+
+pub fn apply_melee_attack(
+    melee: On<Start<BeingMeleeAttackAction>>,
+    beings: Query<(
+        &DimensionRef,
+        &GlobalTransform,
+        &CardinalDirection,
+        Option<&InteractionZones>,
+    ), With<Being>>,
+    beings_at_gpos: Res<BeingsAtGpos>,
+    tile_gathering: TileGatheringParamSet,
+    mut health_damage_writer: MessageWriter<HealthDamage>,
+    mut tiles_to_drain: Local<Vec<Entity>>,
+    mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
+    mut health_damage_messages: Local<Vec<HealthDamage>>,
+) {
+    const MELEE_DAMAGE: f32 = 10.0;
+
+    let Ok((&attacker_dim, attacker_transform, &attacker_direction, interaction_zones)) = beings.get(melee.context) else {
+        return;
+    };
+    let Some(interaction_zones) = interaction_zones else {
+        return;
+    };
+    let Ok(melee_zone) = interaction_zones.0.get(InteractionZones::MELEE) else {
+        return;
+    };
+
+    let attacker_pos = attacker_transform.translation().xy();
+    let mut hit_entities = EntityHashSet::default();
+
+    for (&(dim_ref, target_pos), target_entities) in beings_at_gpos.0.iter() {
+        if dim_ref != attacker_dim {
+            continue;
+        }
+        if !melee_zone.is_inside_any(attacker_direction, attacker_pos, target_pos.to_pixelpos()) {
+            continue;
+        }
+        for &target_entity in target_entities.iter() {
+            if target_entity == melee.context || !hit_entities.insert(target_entity) {
+                continue;
+            }
+            health_damage_messages.push(HealthDamage {
+                entity: target_entity,
+                amount: MELEE_DAMAGE,
+            });
+        }
+    }
+
+    candidate_tile_gposes.clear();
+    melee_zone.gather_candidate_tiles_at(attacker_direction, attacker_pos, &mut candidate_tile_gposes);
+    for &candidate_gpos in candidate_tile_gposes.iter() {
+        if !melee_zone.is_inside_any(attacker_direction, attacker_pos, candidate_gpos.to_pixelpos()) {
+            continue;
+        }
+        tiles_to_drain.clear();
+        tile_gathering.gather_tiles_at(&mut *tiles_to_drain, attacker_dim, candidate_gpos);
+        for &target_entity in tiles_to_drain.iter() {
+            if !hit_entities.insert(target_entity) {
+                continue;
+            }
+            health_damage_messages.push(HealthDamage {
+                entity: target_entity,
+                amount: MELEE_DAMAGE,
+            });
+        }
+    }
+
+    health_damage_writer.write_batch(health_damage_messages.drain(..));
 }

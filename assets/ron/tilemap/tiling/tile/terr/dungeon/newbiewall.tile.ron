@@ -10,6 +10,7 @@
     color: Some((255, 255, 255, 255)),
     y_sort: Some(0),
     blocks_projectiles: true,
+    hp: 100.0,
     colmask: [
         "1",
     ],

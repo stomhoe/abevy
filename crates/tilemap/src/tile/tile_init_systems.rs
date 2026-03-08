@@ -13,6 +13,8 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
 use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet};
+use game_common::game_common_components::{DespawnOnDeath, Health};
+use item_shared::{ItemEntityMap, ItemsDroppedOnDeath};
 use sprite::sprite_components::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
 use std::{fs, path::PathBuf};
@@ -30,6 +32,7 @@ pub fn init_tiles(
     shader_map: Res<TileShaderEntityMap>,
     tiling_map: Res<TileEntityMap>,
     color_map: Res<ColorSamplerEntityMap>,
+    item_map: Option<Res<ItemEntityMap>>,
     egui_tiles_holder_query: Query<Entity, With<EguiTilesHolder>>,
 ) {
     if !tiling_map.0.0.is_empty() {
@@ -45,7 +48,17 @@ pub fn init_tiles(
 
     let mut res_tile_tags = EzeroTileEntsWithinTag::default();
 
-    for mut seri in load_tile_seri_defs() {
+    let mut tile_seris = load_tile_seri_defs();
+    let mut dropped_on_death_seris = std::collections::HashMap::new();
+    for seri in &tile_seris {
+        let seri_id = seri.items_dropped_on_death.id.trim();
+        if seri_id.is_empty() {
+            continue;
+        }
+        dropped_on_death_seris.insert(seri_id.to_string(), seri.items_dropped_on_death.clone());
+    }
+
+    for mut seri in tile_seris.drain(..) {
 
         let str_id = match TileStrId::new_with_result(seri.id.clone(), Tile::MIN_ID_LENGTH) {
             Ok(id) => id,
@@ -178,7 +191,7 @@ pub fn init_tiles(
             ));
         }
         if ! seri.colmask.is_empty() {
-            match TileCollisionMask::from_rows(&seri.colmask, size_in_tiles) {
+            match TiledCollisionMask::from_rows(&seri.colmask, size_in_tiles) {
                 Ok(mask) => {
                     cmd.entity(tile_enti).insert(mask);
                 }
@@ -194,6 +207,20 @@ pub fn init_tiles(
 
         if seri.blocks_projectiles {
             cmd.entity(tile_enti).insert(BlocksProjectiles);
+        }
+        if seri.hp > 0.0 {
+            cmd.entity(tile_enti).insert((Health(seri.hp), DespawnOnDeath));
+        }
+        if !seri.items_dropped_on_death.is_sentinel() {
+            if let Some(item_map) = item_map.as_ref() {
+                cmd.entity(tile_enti).insert(ItemsDroppedOnDeath::from_droppedondeath_seri(
+                    &seri.items_dropped_on_death,
+                    item_map,
+                    &dropped_on_death_seris,
+                ));
+            } else {
+                warn!(target: TILE_INIT, "Tile '{}' has items_dropped_on_death configured but ItemEntityMap is unavailable", str_id);
+            }
         }
 
 

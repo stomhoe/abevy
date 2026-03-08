@@ -47,19 +47,23 @@ pub struct BodyPartForcedDistribution(pub HashIdMap<f32>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
 pub struct BodyPartWeightedDistribution(pub HashIdMap<f32>);
 
-pub const STAT_MASS_KG: HashId = HashId::hash("mass_kg");
-pub const STAT_HP_CAPACITY: HashId = HashId::hash("hp_capacity");
-pub const STAT_HP_REGEN_RATE: HashId = HashId::hash("hp_regen_rate");
-pub const STAT_BLOOD_CAPACITY: HashId = HashId::hash("blood_capacity");
-pub const STAT_BLOOD_PUMPING: HashId = HashId::hash("blood_pumping");
-pub const STAT_WALK_SPEED: HashId = HashId::hash("walk_speed");
-pub const STAT_SWIM_SPEED: HashId = HashId::hash("swim_speed");
-pub const STAT_FLY_SPEED: HashId = HashId::hash("fly_speed");
-pub const STAT_MANIPULATION: HashId = HashId::hash("manipulation");
-pub const STAT_VISION: HashId = HashId::hash("vision");
-pub const STAT_PAIN_SENSITIVITY: HashId = HashId::hash("pain_sensitivity");
-pub const STAT_CALORIC_BURN_RATE: HashId = HashId::hash("caloric_burn_rate");
-pub const STAT_CALORIC_CAPACITY: HashId = HashId::hash("caloric_capacity");
+pub struct BodyPartStat;
+impl BodyPartStat {
+    pub const STAT_MASS_KG: HashId = HashId::hash("mass_kg");
+    pub const STAT_HP_CAPACITY: HashId = HashId::hash("hp_capacity");
+    pub const STAT_HP_REGEN_RATE: HashId = HashId::hash("hp_regen_rate");
+    pub const STAT_BLOOD_CAPACITY: HashId = HashId::hash("blood_capacity");
+    pub const STAT_BLOOD_PUMPING: HashId = HashId::hash("blood_pumping");
+    pub const STAT_WALK_SPEED: HashId = HashId::hash("walk_speed");
+    pub const STAT_SWIM_SPEED: HashId = HashId::hash("swim_speed");
+    pub const STAT_FLY_SPEED: HashId = HashId::hash("fly_speed");
+    pub const STAT_MANIPULATION_DEXTERITY: HashId = HashId::hash("manip_dex");
+    pub const STAT_MANIPULATION_STRENGTH: HashId = HashId::hash("manip_str");
+    pub const STAT_VISION: HashId = HashId::hash("vision");
+    pub const STAT_PAIN_SENSITIVITY: HashId = HashId::hash("pain_sensitivity");
+    pub const STAT_CALORIC_BURN_RATE: HashId = HashId::hash("caloric_burn_rate");
+    pub const STAT_CALORIC_CAPACITY: HashId = HashId::hash("caloric_capacity");
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct BodyPartVital;

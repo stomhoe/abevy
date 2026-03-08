@@ -2,7 +2,6 @@
 use bevy::prelude::*;
 #[allow(unused_imports)]
 use bevy::ecs::entity::MapEntities;
-
 use ::tilemap_shared::*;
 
 

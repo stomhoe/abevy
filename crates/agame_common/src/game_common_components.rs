@@ -51,8 +51,20 @@ impl ArgsDict {
     }
 }
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
 pub struct Health(pub f32); //SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (GRUNTS IRRECLUTABLES PARA FARMEAR XP O LOOT)
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct Dead;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct DespawnOnDeath;
+
+#[derive(Debug, Deserialize, Serialize, Copy, Clone, Message)]
+pub struct HealthDamage {
+    pub entity: Entity,
+    pub amount: f32,
+}
 
 #[derive(Component, Debug, Clone)]
 pub struct PhysicallyImmune();
@@ -149,7 +161,6 @@ impl TimeBasedMultiplier {
         }
     }
 }
-
 #[derive(Component, Debug, Default, Clone, PartialEq)]
 pub struct TickMultFactors(pub Vec<TickMultFactor>);
 

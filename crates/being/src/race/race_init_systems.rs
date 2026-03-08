@@ -20,6 +20,7 @@ use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
 use crate::{race::{race_components::*, race_resources::*}, sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::{Predator, PredatorHuntThreshold};
+use tilemap_shared::InteractionZones;
 
 pub fn init_races(
     mut cmd: Commands,
@@ -125,30 +126,33 @@ pub fn init_races(
             };
 
             let mut entity_cmds = cmd.spawn((Race, EntityZero, str_id.clone(), ingame_name, singular, plural));
+            let mut interaction_zones = bevy::platform::collections::HashMap::with_capacity(1);
+            interaction_zones.insert("melee".to_string(), race_seri.melee_interaction_zone.clone());
+            entity_cmds.insert(InteractionZones::new(interaction_zones));
             let mut totals = HashIdMap::default();
             for (key, val) in &race_seri.distributed_totals {
                 totals.overwrite(HashId::from(key), val.max(0.0));
             }
-            if !totals.contains_key(STAT_HP_CAPACITY) {
-                totals.overwrite(STAT_HP_CAPACITY, 1.0);
+            if !totals.contains_key(BodyPartStat::STAT_HP_CAPACITY) {
+                totals.overwrite(BodyPartStat::STAT_HP_CAPACITY, 1.0);
             }
-            if !totals.contains_key(STAT_HP_REGEN_RATE) {
-                totals.overwrite(STAT_HP_REGEN_RATE, 1.0);
+            if !totals.contains_key(BodyPartStat::STAT_HP_REGEN_RATE) {
+                totals.overwrite(BodyPartStat::STAT_HP_REGEN_RATE, 1.0);
             }
-            if !totals.contains_key(STAT_BLOOD_CAPACITY) {
-                totals.overwrite(STAT_BLOOD_CAPACITY, 1.0);
+            if !totals.contains_key(BodyPartStat::STAT_BLOOD_CAPACITY) {
+                totals.overwrite(BodyPartStat::STAT_BLOOD_CAPACITY, 1.0);
             }
-            if !totals.contains_key(STAT_VISION) {
-                totals.overwrite(STAT_VISION, 1.0);
+            if !totals.contains_key(BodyPartStat::STAT_VISION) {
+                totals.overwrite(BodyPartStat::STAT_VISION, 1.0);
             }
-            if !totals.contains_key(STAT_CALORIC_BURN_RATE) {
-                totals.overwrite(STAT_CALORIC_BURN_RATE, 1.0);
+            if !totals.contains_key(BodyPartStat::STAT_CALORIC_BURN_RATE) {
+                totals.overwrite(BodyPartStat::STAT_CALORIC_BURN_RATE, 1.0);
             }
-            if !totals.contains_key(STAT_WALK_SPEED) {
-                totals.overwrite(STAT_WALK_SPEED, 300.);
+            if !totals.contains_key(BodyPartStat::STAT_WALK_SPEED) {
+                totals.overwrite(BodyPartStat::STAT_WALK_SPEED, 300.);
             }
-            if !totals.contains_key(STAT_MASS_KG) {
-                totals.overwrite(STAT_MASS_KG, race_seri.mass_kg.max(0.0));
+            if !totals.contains_key(BodyPartStat::STAT_MASS_KG) {
+                totals.overwrite(BodyPartStat::STAT_MASS_KG, race_seri.mass_kg.max(0.0));
             }
             entity_cmds.insert((
                 BodyTreeDistributedTotals(totals),

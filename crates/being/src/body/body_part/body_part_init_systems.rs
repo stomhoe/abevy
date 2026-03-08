@@ -6,10 +6,11 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::EntityZero;
-use modifier::{modifier_components::*, modifier_types::*};
+use modifier_shared::{modifier_components::*, modifier_types::*};
+use modifier_shared::modifier_seris::ModifierSynergySeri;
 
 use crate::body::{
-    body_part::body_part_components::*, body_part::body_part_resources::*, body_tree_resources::*,
+    body_part::body_part_components::*, body_part::body_part_resources::*,
 };
 
 fn stat_from_map(map: &bevy::platform::collections::HashMap<String, f32>, key: HashId) -> f32 {
@@ -85,15 +86,15 @@ pub fn init_body_parts(
             cmd.entity(part_ent).insert(BodyPartCoverageWeight(weight));
         }
         let mut forced_stats = stats_to_hashid_map(&part.forced_stats);
-        if !forced_stats.contains_key(STAT_PAIN_SENSITIVITY) {
-            forced_stats.overwrite(STAT_PAIN_SENSITIVITY, 1.0);
+        if !forced_stats.contains_key(BodyPartStat::STAT_PAIN_SENSITIVITY) {
+            forced_stats.overwrite(BodyPartStat::STAT_PAIN_SENSITIVITY, 1.0);
         }
         let weighted_stats = stats_to_hashid_map(&part.weighted_stats);
         cmd.entity(part_ent).insert((
             BodyPartForcedDistribution(forced_stats),
             BodyPartWeightedDistribution(weighted_stats),
         ));
-        let hp_capacity = stat_from_map(&part.forced_stats, STAT_HP_CAPACITY);
+        let hp_capacity = stat_from_map(&part.forced_stats, BodyPartStat::STAT_HP_CAPACITY);
         if hp_capacity > 0.0 {
             let max_hp = hp_capacity;
             cmd.spawn((
@@ -108,137 +109,61 @@ pub fn init_body_parts(
             cmd.entity(part_ent).try_insert(BodyPartDamage(0.0));
         }
 
-        let hp_regen_rate = stat_from_map(&part.forced_stats, STAT_HP_REGEN_RATE);
-        if hp_regen_rate > 0.0 {
-            cmd.spawn((
-                ModifierTarget(part_ent),
-                BaseValue(hp_regen_rate),
-                CurrEffectiveValue(hp_regen_rate),
-                ApplyMode::Add,
-                HitpointRegenRate,
-                ChildOf(part_ent),
-                EntityZero,
-            ));
+        let hp_regen_rate = stat_from_map(&part.forced_stats, BodyPartStat::STAT_HP_REGEN_RATE);
+        macro_rules! spawn_bodypart_modifier {
+            ($value:expr, $component:expr) => {{
+                let value = $value;
+                if value > 0.0 {
+                    Some(
+                        cmd.spawn((
+                            ModifierTarget(part_ent),
+                            BaseValue(value),
+                            CurrEffectiveValue(value),
+                            ApplyMode::Add,
+                            $component,
+                            ChildOf(part_ent),
+                            EntityZero,
+                        ))
+                        .id(),
+                    )
+                } else {
+                    None
+                }
+            }};
         }
+        let _ = spawn_bodypart_modifier!(hp_regen_rate, HitpointRegenRate);
 
         if part.bleed_rate > 0.0 {
             let bleed_rate = part.bleed_rate;
-            cmd.spawn((
-                ModifierTarget(part_ent),
-                BaseValue(bleed_rate),
-                CurrEffectiveValue(bleed_rate),
-                ApplyMode::Add,
-                BleedRate,
-                ChildOf(part_ent),
-                EntityZero,
-            ));
+            let _ = spawn_bodypart_modifier!(bleed_rate, BleedRate);
         }
 
-        let blood_capacity = stat_from_map(&part.forced_stats, STAT_BLOOD_CAPACITY);
-        if blood_capacity > 0.0 {
-            cmd.spawn((
-                ModifierTarget(part_ent),
-                BaseValue(blood_capacity),
-                CurrEffectiveValue(blood_capacity),
-                ApplyMode::Add,
-                BloodCapacity,
-                ChildOf(part_ent),
-                EntityZero,
-            ));
-        }
+        let blood_capacity = stat_from_map(&part.forced_stats, BodyPartStat::STAT_BLOOD_CAPACITY);
+        let _ = spawn_bodypart_modifier!(blood_capacity, BloodCapacity);
 
-        let pain_sensitivity = stat_from_map(&part.forced_stats, STAT_PAIN_SENSITIVITY);
-        if pain_sensitivity > 0.0 {
-            cmd.spawn((
-                ModifierTarget(part_ent),
-                BaseValue(pain_sensitivity),
-                CurrEffectiveValue(pain_sensitivity),
-                ApplyMode::Add,
-                PainSensitivity,
-                ChildOf(part_ent),
-                EntityZero,
-            ));
-        }
+        let pain_sensitivity = stat_from_map(&part.forced_stats, BodyPartStat::STAT_PAIN_SENSITIVITY);
+        let _ = spawn_bodypart_modifier!(pain_sensitivity, PainSensitivity);
 
-        let manipulation = stat_from_map(&part.forced_stats, STAT_MANIPULATION);
-        if manipulation > 0.0 {
-            let modifier_ent = cmd
-                .spawn((
-                    ModifierTarget(part_ent),
-                    BaseValue(manipulation),
-                    CurrEffectiveValue(manipulation),
-                    ApplyMode::Add,
-                    Manipulation,
-                    ChildOf(part_ent),
-                    EntityZero,
-                ))
-                .id();
+        let manipulation = stat_from_map(&part.forced_stats, BodyPartStat::STAT_MANIPULATION_DEXTERITY);
+        if let Some(modifier_ent) = spawn_bodypart_modifier!(manipulation, ManipulationDexterity) {
+            apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
+        }
+        let manip_str = stat_from_map(&part.forced_stats, BodyPartStat::STAT_MANIPULATION_STRENGTH);
+        if let Some(modifier_ent) = spawn_bodypart_modifier!(manip_str, ManipulationStrength) {
             apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
         }
 
-        let walk_speed = stat_from_map(&part.forced_stats, STAT_WALK_SPEED);
-        if walk_speed > 0.0 {
-            let modifier_ent = cmd
-                .spawn((
-                    ModifierTarget(part_ent),
-                    BaseValue(walk_speed),
-                    CurrEffectiveValue(walk_speed),
-                    ApplyMode::Add,
-                    WalkSpeed,
-                    ChildOf(part_ent),
-                    EntityZero,
-                ))
-                .id();
-            apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
-        }
+        let walk_speed = stat_from_map(&part.forced_stats, BodyPartStat::STAT_WALK_SPEED);
+        let _ = spawn_bodypart_modifier!(walk_speed, WalkSpeed);
 
-        let swim_speed = stat_from_map(&part.forced_stats, STAT_SWIM_SPEED);
-        if swim_speed > 0.0 {
-            let modifier_ent = cmd
-                .spawn((
-                    ModifierTarget(part_ent),
-                    BaseValue(swim_speed),
-                    CurrEffectiveValue(swim_speed),
-                    ApplyMode::Add,
-                    SwimSpeed,
-                    ChildOf(part_ent),
-                    EntityZero,
-                ))
-                .id();
-            apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
-        }
+        let swim_speed = stat_from_map(&part.forced_stats, BodyPartStat::STAT_SWIM_SPEED);
+        let _ = spawn_bodypart_modifier!(swim_speed, SwimSpeed);
 
-        let fly_speed = stat_from_map(&part.forced_stats, STAT_FLY_SPEED);
-        if fly_speed > 0.0 {
-            let modifier_ent = cmd
-                .spawn((
-                    ModifierTarget(part_ent),
-                    BaseValue(fly_speed),
-                    CurrEffectiveValue(fly_speed),
-                    ApplyMode::Add,
-                    FlySpeed,
-                    ChildOf(part_ent),
-                    EntityZero,
-                ))
-                .id();
-            apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
-        }
+        let fly_speed = stat_from_map(&part.forced_stats, BodyPartStat::STAT_FLY_SPEED);
+        let _ = spawn_bodypart_modifier!(fly_speed, FlySpeed);
 
-        let vision = stat_from_map(&part.forced_stats, STAT_VISION);
-        if vision > 0.0 {
-            let modifier_ent = cmd
-                .spawn((
-                    ModifierTarget(part_ent),
-                    BaseValue(vision),
-                    CurrEffectiveValue(vision),
-                    ApplyMode::Add,
-                    Vision,
-                    ChildOf(part_ent),
-                    EntityZero,
-                ))
-                .id();
-            apply_synergy_to_modifier(&mut cmd, modifier_ent, &part);
-        }
+        let vision = stat_from_map(&part.forced_stats, BodyPartStat::STAT_VISION);
+        let _ = spawn_bodypart_modifier!(vision, Vision);
 
         if !part.depth.trim().is_empty() {
             cmd.entity(part_ent)
@@ -252,49 +177,42 @@ pub fn init_body_parts(
 }
 
 fn apply_synergy_to_modifier(cmd: &mut Commands, modifier_ent: Entity, part: &BodyPartSeri) {
-    if part.synergy_tags.is_empty() {
+    if part.synergies.is_empty() {
         return;
     }
 
     let mut tags = ModifierTags::default();
-    for tag_str in &part.synergy_tags {
+    let mut offsets = HashMap::default();
+    let mut mults = HashMap::default();
+    for (tag_str, synergy) in &part.synergies {
         let tag_str = tag_str.trim();
         if tag_str.is_empty() {
             continue;
         }
-        tags.insert(Tag::from(tag_str));
+        let tag = Tag::from(tag_str);
+        tags.insert(tag.clone());
+        match synergy {
+            ModifierSynergySeri::Offset(value) => {
+                if *value != 0.0 {
+                    offsets.insert(tag, *value);
+                }
+            }
+            ModifierSynergySeri::CopyFrac(value) => {
+                if *value != 0.0 {
+                    mults.insert(tag, *value);
+                }
+            }
+        }
     }
     if tags.is_empty() {
         return;
     }
     cmd.entity(modifier_ent).insert(tags);
-
-    if part.synergy_offset != 0.0 {
-        let mut offsets = HashMap::default();
-        for tag_str in &part.synergy_tags {
-            let tag_str = tag_str.trim();
-            if tag_str.is_empty() {
-                continue;
-            }
-            offsets.insert(Tag::from(tag_str), part.synergy_offset);
-        }
-        if !offsets.is_empty() {
-            cmd.entity(modifier_ent).insert(OffsetValForSelf(offsets));
-        }
+    if !offsets.is_empty() {
+        cmd.entity(modifier_ent).insert(OffsetValForSelf(offsets));
     }
-
-    if part.synergy_copy_mult != 0.0 {
-        let mut mults = HashMap::default();
-        for tag_str in &part.synergy_tags {
-            let tag_str = tag_str.trim();
-            if tag_str.is_empty() {
-                continue;
-            }
-            mults.insert(Tag::from(tag_str), part.synergy_copy_mult);
-        }
-        if !mults.is_empty() {
-            cmd.entity(modifier_ent)
-                .insert(CopyMultOfOthersIntoSelf(mults));
-        }
+    if !mults.is_empty() {
+        cmd.entity(modifier_ent)
+            .insert(CopyFracOfOthersIntoSelf(mults));
     }
 }

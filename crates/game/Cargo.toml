@@ -13,7 +13,7 @@ game_common = { path = "../agame_common" }
 #sprite_animation = { path = "../sprite_animation" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
-modifier = { path = "../modifier" }
+modifier_shared = { path = "../modifier_shared" }
 movement = { path = "../movement" }
 #dimension = { path = "../dimension" }
 faction = { path = "../faction" }

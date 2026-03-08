@@ -1,5 +1,5 @@
 [package]
-name = "item"
+name = "item_systems"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,4 +10,5 @@ serde = { workspace = true }
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 item_shared = { path = "../item_shared" }
-modifier = { path = "../modifier" }
+modifier_shared = { path = "../modifier_shared" }
+sprite = { path = "../sprite" }

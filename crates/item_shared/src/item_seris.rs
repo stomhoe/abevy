@@ -1,4 +1,4 @@
-use bevy::platform::collections::HashSet;
+use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use serde::Deserialize;
 
@@ -44,3 +44,28 @@ pub struct ItemSeri {
 }
 
 fn default_stack_limit() -> u16 { 1 }
+
+#[derive(Deserialize, Asset, TypePath, Default, Debug, Clone)]
+pub struct ItemsDroppedOnDeathSeri {
+    pub id: String,
+    /// Weighted drop entries where each entry is an item-id -> count map
+    #[serde(default)]
+    pub weights: Vec<(HashMap<String, u32>, f32)>,
+    /// Weighted references to other ItemsDroppedOnDeathSeri ids.
+    #[serde(default)]
+    pub refs: Vec<(String, f32)>,
+
+    #[serde(default = "default_drop_count_multiplier")]
+    pub drop_count_multiplier: f32,
+}
+
+fn default_drop_count_multiplier() -> f32 { 1.0 }
+
+impl ItemsDroppedOnDeathSeri {
+    pub fn is_sentinel(&self) -> bool {
+        self.id.trim().is_empty()
+            && self.weights.is_empty()
+            && self.refs.is_empty()
+            && self.drop_count_multiplier == default_drop_count_multiplier()
+    }
+}

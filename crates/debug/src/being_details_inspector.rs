@@ -1,68 +1,357 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
+use being::body::{Bodies, BodyPartDamage, BodyParts, BodySums};
+use common::common_components::DisplayName;
+use movement::movement_components::{GridLockedMovement, MoveVecMag, RemoteMoveInput};
+use modifier_shared::modifier_components::{BaseValue, CurrEffectiveValue, ModifierTarget};
+use modifier_shared::modifier_types::{
+    BleedRate, BloodCapacity, HitpointRegenRate, HitpointsCapacity, ManipulationDexterity,
+    ManipulationStrength, PainSensitivity, Vision,
+    WalkSpeed,
+};
+use modifier_shared::modifier_components::ApplyMode;
+use tilemap_shared::CardinalDirection;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
+fn part_label(entity: Entity, display_name: Option<&DisplayName>) -> String {
+    if let Some(display_name) = display_name {
+        if !display_name.0.is_empty() {
+            return format!("{} ({:?})", display_name.0, entity);
+        }
+    }
+    format!("{:?}", entity)
+}
+
 #[allow(unused_parens)]
 pub fn being_details_inspector(world: &mut World) {
-    let selected_being_entity = if let Some(selected_entities) = world.get_resource::<DebugSelectedEntities>() {
-        selected_entities.selected_being
-    } else {
-        None
-    };
-
-    if selected_being_entity.is_none() {
+    let Some(window_visible) = world.get_resource::<DubugWindowsVisibility>() else {
         return;
-    }
-
-    let selected_being_entity = selected_being_entity.unwrap();
-    let window_visible = world.resource::<DubugWindowsVisibility>();
-
+    };
     if !window_visible.being_details {
         return;
     }
+    let _ = window_visible;
 
-    let _ = window_visible;  // Release the resource borrow
+    let Some(selected_entities) = world.get_resource::<DebugSelectedEntities>() else {
+        return;
+    };
+    let Some(selected_being_entity) = selected_entities.selected_being else {
+        return;
+    };
+    let mut selected_part = selected_entities.selected_being_bodypart;
+    let mut show_full_components = selected_entities.show_full_being_components;
+    let _ = selected_entities;
 
-    let mut egui_context_query = world
-        .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();
-
+    let mut egui_context_query = world.query_filtered::<
+        &bevy_inspector_egui::bevy_egui::EguiContext,
+        With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>,
+    >();
     let Some(egui_context) = egui_context_query.iter(world).next() else {
         return;
     };
-
     let mut egui_context = egui_context.clone();
     let screen_rect = egui_context.get_mut().content_rect();
 
-    let world_ptr = world as *mut World;
+    let mut body_query = world.query::<&Bodies>();
+    let mut body_sums_query = world.query::<&BodySums>();
+    let mut body_name_query = world.query::<Option<&DisplayName>>();
+    let mut body_parts_query = world.query::<&BodyParts>();
+    let mut body_part_name_query = world.query::<Option<&DisplayName>>();
+    let mut body_part_damage_query = world.query::<Option<&BodyPartDamage>>();
+    let mut move_vec_query = world.query::<&MoveVecMag>();
+    let mut grid_move_query = world.query::<Option<&GridLockedMovement>>();
+    let mut remote_move_query = world.query::<Option<&RemoteMoveInput>>();
+    let mut facing_query = world.query::<Option<&CardinalDirection>>();
+    let mut modifiers_query = world.query::<(
+        &ModifierTarget,
+        Option<&BaseValue>,
+        Option<&CurrEffectiveValue>,
+        Has<HitpointsCapacity>,
+        Has<HitpointRegenRate>,
+        Has<BloodCapacity>,
+        Has<BleedRate>,
+        Has<PainSensitivity>,
+        Has<Vision>,
+        Has<ManipulationDexterity>,
+        Has<ManipulationStrength>,
+    )>();
+    let mut walk_modifiers_query = world.query_filtered::<
+        (
+            &ModifierTarget,
+            Option<&CurrEffectiveValue>,
+            &ApplyMode,
+            Has<modifier_shared::modifier_components::MitigatingOnly>,
+        ),
+        With<WalkSpeed>,
+    >();
+
+    let mut body_infos = Vec::new();
+    let mut part_infos: Vec<(Entity, String)> = Vec::new();
+    let Ok(bodies) = body_query.get(world, selected_being_entity) else {
+        return;
+    };
+    for &body_entity in bodies.entities() {
+        let label = part_label(
+            body_entity,
+            body_name_query.get(world, body_entity).ok().flatten(),
+        );
+        if let Ok(sums) = body_sums_query.get(world, body_entity) {
+            body_infos.push((body_entity, label, sums.clone()));
+        }
+        let Ok(parts) = body_parts_query.get(world, body_entity) else {
+            continue;
+        };
+        for &part_entity in parts.entities() {
+            part_infos.push((
+                part_entity,
+                part_label(
+                    part_entity,
+                    body_part_name_query.get(world, part_entity).ok().flatten(),
+                ),
+            ));
+        }
+    }
+    if selected_part.is_none() {
+        selected_part = part_infos.first().map(|(entity, _)| *entity);
+    } else if !part_infos.iter().any(|(entity, _)| Some(*entity) == selected_part) {
+        selected_part = part_infos.first().map(|(entity, _)| *entity);
+    }
+
+    let mut clear_selection = false;
     let mut is_open = true;
+    let world_ptr = world as *mut World;
 
     egui::Window::new("Selected Being Details")
-        .default_width(600.0)
-        .default_height(500.0)
-        .default_pos([screen_rect.right() - 620.0, screen_rect.top() + 10.0])
+        .default_width(700.0)
+        .default_height(560.0)
+        .default_pos([screen_rect.right() - 720.0, screen_rect.top() + 10.0])
         .open(&mut is_open)
         .vscroll(true)
         .show(egui_context.get_mut(), |ui| {
             ui.heading(format!("Being Entity: {:?}", selected_being_entity));
+            ui.horizontal(|ui| {
+                if ui.button("Show Full Components").clicked() {
+                    show_full_components = !show_full_components;
+                }
+                if ui.button("Clear Selection").clicked() {
+                    clear_selection = true;
+                }
+            });
             ui.separator();
 
-            ui.label("All Components on this Being:");
-            ui.separator();
-
-            // Use unsafe to access world for full component inspection with values
-            unsafe {
-                bevy_inspector::ui_for_entity(&mut *world_ptr, selected_being_entity, ui);
+            if show_full_components {
+                ui.label("All Components on this Being:");
+                ui.separator();
+                unsafe {
+                    bevy_inspector::ui_for_entity(&mut *world_ptr, selected_being_entity, ui);
+                }
+                return;
             }
 
+            ui.heading("Body Sums");
+            for (body_entity, body_label, sums) in &body_infos {
+                ui.collapsing(format!("{} [{:?}]", body_label, body_entity), |ui| {
+                    ui.label(format!("HP: {:.2}/{:.2}", sums.current_hp, sums.total_hp));
+                    ui.label(format!("Blood: {:.2}/{:.2}", sums.blood, sums.blood_capacity));
+                    ui.label(format!("Bleed rate: {:.2}", sums.bleed_rate));
+                    ui.label(format!("Consciousness: {:.2}", sums.consciousness));
+                    ui.label(format!("Pain: {:.2}", sums.pain));
+                    ui.label(format!("Vision: {:.2}", sums.vision));
+                    ui.label(format!("Manip dex: {:.2}", sums.manipulation_dexterity));
+                    ui.label(format!("Manip str: {:.2}", sums.manip_str));
+                });
+            }
             ui.separator();
-            if ui.button("Clear Selection").clicked() {
-                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
-                    selected_entities.selected_being = None;
+
+            ui.heading("Movement");
+            if let Ok(move_vec) = move_vec_query.get(world, selected_being_entity) {
+                ui.label(format!(
+                    "MoveVecMag.norm_move_dir: [{:.2}, {:.2}]",
+                    move_vec.norm_move_dir.x, move_vec.norm_move_dir.y
+                ));
+                ui.label(format!(
+                    "MoveVecMag.speed_magnitude: {:.2}",
+                    move_vec.speed_magnitude
+                ));
+            } else {
+                ui.label("MoveVecMag: missing");
+            }
+            if let Ok(grid_move) = grid_move_query.get(world, selected_being_entity) {
+                if let Some(grid_move) = grid_move {
+                    ui.label(format!(
+                        "GridLocked.active: [{:.2}, {:.2}]",
+                        grid_move.active_move_dir.x, grid_move.active_move_dir.y
+                    ));
+                    ui.label(format!(
+                        "GridLocked.queued: [{:.2}, {:.2}]",
+                        grid_move.queued_move_dir.x, grid_move.queued_move_dir.y
+                    ));
+                } else {
+                    ui.label("GridLockedMovement: missing");
                 }
             }
+            if let Ok(remote_move) = remote_move_query.get(world, selected_being_entity) {
+                if let Some(remote_move) = remote_move {
+                    ui.label(format!(
+                        "RemoteMoveInput: [{:.2}, {:.2}]",
+                        remote_move.0.x, remote_move.0.y
+                    ));
+                }
+            }
+            if let Ok(facing) = facing_query.get(world, selected_being_entity) {
+                if let Some(facing) = facing {
+                    ui.label(format!("Facing: {:?}", facing));
+                }
+            }
+            let mut walk_add: f32 = 0.0;
+            let mut walk_mul: f32 = 1.0;
+            let mut walk_min: f32 = 0.0;
+            let mut walk_max: f32 = f32::INFINITY;
+            let mut walk_count = 0usize;
+            for (target, value, op, _mitigating_only) in walk_modifiers_query.iter(world) {
+                if target.0 != selected_being_entity {
+                    continue;
+                }
+                walk_count += 1;
+                let value = value.map_or(0.0, |value| value.0);
+                match op {
+                    ApplyMode::Add => walk_add += value,
+                    ApplyMode::Mul => walk_mul *= value.max(0.0),
+                    ApplyMode::Min => walk_min = walk_min.max(value),
+                    ApplyMode::Max => walk_max = walk_max.min(value).max(0.0),
+                }
+            }
+            ui.label(format!("WalkSpeed modifiers: {}", walk_count));
+            ui.label(format!(
+                "WalkSpeed combine: add={:.3}, mul={:.3}, min={:.3}, max={:.3}",
+                walk_add, walk_mul, walk_min, walk_max
+            ));
+            ui.separator();
+            ui.heading("Body Part Stats");
+
+            if part_infos.is_empty() {
+                ui.label("No body parts found.");
+                return;
+            }
+
+            egui::ComboBox::from_label("Body part")
+                .selected_text(
+                    part_infos
+                        .iter()
+                        .find(|(entity, _)| Some(*entity) == selected_part)
+                        .map_or_else(|| "None".to_string(), |(_, label)| label.clone()),
+                )
+                .show_ui(ui, |ui| {
+                    for (part_entity, label) in &part_infos {
+                        ui.selectable_value(&mut selected_part, Some(*part_entity), label);
+                    }
+                });
+
+            let Some(selected_part_entity) = selected_part else {
+                return;
+            };
+            let part_damage = body_part_damage_query
+                .get(world, selected_part_entity)
+                .ok()
+                .flatten()
+                .map_or(0.0, |damage| damage.0);
+            ui.label(format!("Part damage: {:.2}", part_damage));
+            ui.separator();
+
+            let mut hp_capacity = (0.0, 0.0);
+            let mut hp_regen = (0.0, 0.0);
+            let mut blood_capacity = (0.0, 0.0);
+            let mut bleed_rate = (0.0, 0.0);
+            let mut pain_sensitivity = (0.0, 0.0);
+            let mut vision = (0.0, 0.0);
+            let mut manip_dex = (0.0, 0.0);
+            let mut manip_str = (0.0, 0.0);
+
+            for (
+                target,
+                base,
+                effective,
+                has_hp_capacity,
+                has_hp_regen,
+                has_blood_capacity,
+                has_bleed_rate,
+                has_pain_sensitivity,
+                has_vision,
+                has_manip_dex,
+                has_manip_str,
+            ) in modifiers_query.iter(world)
+            {
+                if target.0 != selected_part_entity {
+                    continue;
+                }
+                let base = base.map_or(0.0, |value| value.0);
+                let effective = effective.map_or(base, |value| value.0);
+
+                if has_hp_capacity {
+                    hp_capacity.0 += base;
+                    hp_capacity.1 += effective;
+                }
+                if has_hp_regen {
+                    hp_regen.0 += base;
+                    hp_regen.1 += effective;
+                }
+                if has_blood_capacity {
+                    blood_capacity.0 += base;
+                    blood_capacity.1 += effective;
+                }
+                if has_bleed_rate {
+                    bleed_rate.0 += base;
+                    bleed_rate.1 += effective;
+                }
+                if has_pain_sensitivity {
+                    pain_sensitivity.0 += base;
+                    pain_sensitivity.1 += effective;
+                }
+                if has_vision {
+                    vision.0 += base;
+                    vision.1 += effective;
+                }
+                if has_manip_dex {
+                    manip_dex.0 += base;
+                    manip_dex.1 += effective;
+                }
+                if has_manip_str {
+                    manip_str.0 += base;
+                    manip_str.1 += effective;
+                }
+            }
+
+            for (label, (base, effective)) in [
+                ("hp_capacity", hp_capacity),
+                ("hp_regen_rate", hp_regen),
+                ("blood_capacity", blood_capacity),
+                ("bleed_rate", bleed_rate),
+                ("pain_sensitivity", pain_sensitivity),
+                ("vision", vision),
+                ("manip_dex", manip_dex),
+                ("manip_str", manip_str),
+            ] {
+                ui.label(format!(
+                    "{}: {:.2} (synergy {:+.2})",
+                    label,
+                    effective,
+                    effective - base
+                ));
+            }
         });
+
+    if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+        if clear_selection {
+            selected_entities.selected_being = None;
+            selected_entities.selected_being_bodypart = None;
+            selected_entities.show_full_being_components = false;
+        } else {
+            selected_entities.selected_being_bodypart = selected_part;
+            selected_entities.show_full_being_components = show_full_components;
+        }
+    }
 
     if !is_open {
         if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {

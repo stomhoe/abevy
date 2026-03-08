@@ -34,9 +34,6 @@ pub fn plugin(app: &mut App) {
         plugin_tile_shader,
         MaterialTilemapPlugin::<TerrBlendMat>::default(),
     ))
-
-    .register_type::<TerrBlendMat>()
-
     ;
 }
 

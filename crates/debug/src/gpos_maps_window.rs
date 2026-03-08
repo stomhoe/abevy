@@ -4,7 +4,7 @@ use camera::camera_components::CameraTarget;
 use bevy_ecs_tilemap::tiles::TileFlip;
 use game_common::game_common_components::EntityZeroRef;
 use std::collections::HashSet;
-use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, SpriteTilesAtGpos, TileCollisionMask, TileGatheringParamSet, WalkSpeedMultIfOnTop};
+use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, SpriteTilesAtGpos, TiledCollisionMask, TileGatheringParamSet, WalkSpeedMultIfOnTop};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -86,7 +86,7 @@ pub fn gpos_maps_window_system(
     tile_gathering: TileGatheringParamSet,
     tile_instance_query: Query<(&EntityZeroRef, &GlobalTilePos, Option<&TileFlip>, Option<&CardinalDirection>)>,
     walk_speed: Query<&WalkSpeedMultIfOnTop>,
-    tile_collision_masks: Query<&TileCollisionMask>,
+    tile_collision_masks: Query<&TiledCollisionMask>,
     camera_target_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     being_dim_pos: Query<(&DimensionRef, &Transform)>,
     mut tile_scratch: Local<Vec<Entity>>,

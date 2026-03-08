@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
     SparedFromHotReloading,
     Replicated,
     ApplyMode::Add,
-    Prefix::trunc("Modi"),
+    Prefix::trunc("Modif"),
     ExcludedFromAutoRenamer,
 )]
 pub struct ModifierTarget(
@@ -45,7 +45,7 @@ pub struct BaseValue(pub f32); //negate for opposite effect or mitigation
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 #[require(ApplyMode::Add)]
-/// final value after all antidote and OffsetValForSelf and CopyMultOfOthersIntoSelf processing
+/// final value after all antidote and OffsetValForSelf and CopyFracOfOthersIntoSelf processing
 pub struct CurrEffectiveValue(pub f32);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -58,8 +58,18 @@ pub struct OffsetValForSelf(pub HashMap<Tag, f32>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 /// copy a portion of value from another modifier into self if present on same target
-pub struct CopyMultOfOthersIntoSelf(pub HashMap<Tag, f32>);
+pub struct CopyFracOfOthersIntoSelf(pub HashMap<Tag, f32>);
 ///f32 entre 0 y 1, se multiplica con el valor presente en la cat y lo devuelto se le suma a la efective potency nuestra
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
+pub enum ModifierSynergy {
+    Offset(f32),
+    CopyFrac(f32),
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct ModifierSynergies(pub HashMap<Tag, ModifierSynergy>);
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq)]
 pub struct MinForDamage;
 

@@ -1,5 +1,6 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use game_common::game_common_seris::NormalDistSeri;
+use tilemap_shared::tilemap_seris::InteractionZoneSeri;
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BitSeri {
@@ -28,7 +29,15 @@ pub struct BitSeri {
     pub blacklisted_tiles_for_spawning: HashSet<String>,
     #[serde(default = "default_predator_hunt_threshold")]
     pub predator_hunt_threshold: f32,
+    #[serde(default = "default_melee_interaction_zone")]
+    pub melee_interaction_zone: InteractionZoneSeri,
 }
 
 fn default_multiplier() -> f32 { 1.0 }
 fn default_predator_hunt_threshold() -> f32 { ::being_shared::PredatorHuntThreshold::SERI_SENTINEL }
+fn default_melee_interaction_zone() -> InteractionZoneSeri {
+    InteractionZoneSeri {
+        offset_positions: vec![(0, 1)],
+        radius_offset: Vec::new(),
+    }
+}

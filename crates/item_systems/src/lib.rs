@@ -1,8 +1,6 @@
 pub use item::*;
 
 pub mod item;
-pub mod item_components;
-pub mod item_bundles;
 mod item_init_systems;
 
 
@@ -11,8 +9,6 @@ mod item_init_systems;
 pub mod prelude {
     pub use crate::{
         item::*,
-        item_components::*,
-        item_bundles::*,
         item_init_systems::*,
     };
 }

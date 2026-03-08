@@ -97,7 +97,11 @@ pub fn plugin(app: &mut App) {
     .replicate::<CappedNormalDist>()
     .replicate::<Directionable>()
     .replicate::<EntityWeightedSampler>()
+    .replicate::<EntityCountMapWeightedSampler>()
     .replicate::<Persisted>()
+    .replicate::<Health>()
+    .replicate::<Dead>()
+    .replicate::<DespawnOnDeath>()
     .replicate::<ScaleHpAndStrengthWithSize>()
     .replicate_filtered::<ChildOf, Without<TilemapId>>()
 
@@ -106,6 +110,7 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EntityZero>,)>()
     .replicate_once_as::<Visibility, common::common_components::VisibilityGameState>()
     .add_message::<TimedOut>()
+    .add_message::<HealthDamage>()
 
     .add_plugins((
         plugin_sprite_vert_normal_dist,

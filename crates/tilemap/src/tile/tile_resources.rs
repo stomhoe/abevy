@@ -5,11 +5,12 @@ use bevy_ecs_tilemap::tiles::TileFlip;
 
 use common::{common_components::{Tag}, };
 use game_common::game_common_components::EntityZero;
+use item_shared::ItemsDroppedOnDeathSeri;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::InteractionZoneSeri;
 
-pub use crate::tilemap_resources::{MassCollectedTiles, ImportantRegisteredPositions, CloneSpawnParamSet};
-use crate::tile::tile_components::{DeleteOtherTiles, DeleteOtherTilesSeri, TerrblParamsSeri, Tile};
+pub use crate::tilemap_resources::*;
+use crate::tile::tile_components::*;
 
 common::define_entity_map_systems!(
     Tile,
@@ -169,6 +170,11 @@ pub struct TileSeri {
     /// When true, this tile spawns a projectile-stopping collider.
     #[serde(default)]
     pub blocks_projectiles: bool,
+
+    #[serde(default)]
+    pub items_dropped_on_death: ItemsDroppedOnDeathSeri,
+    #[serde(default)]
+    pub hp: f32,
 }
 
 #[derive(Deserialize, Asset, TypePath, Debug, Clone)]

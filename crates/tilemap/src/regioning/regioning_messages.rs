@@ -43,7 +43,7 @@ pub struct SgcPrepareTilesOrder {
 }
 
 
-pub type StructureTilesForChunk = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTiles>)>;
+pub type StructureTilesForChunk = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTilesInSamePos>)>;
 
 #[derive(Message, Debug, )]
 pub struct StructureBuildCompliance {

@@ -39,7 +39,7 @@ impl Bodies {
 pub struct BodyTreeDistributedTotals(pub HashIdMap<f32>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct BodyHealth {
+pub struct BodySums {
     pub total_hp: f32,
     pub current_hp: f32,
     pub blood: f32,
@@ -48,10 +48,9 @@ pub struct BodyHealth {
     pub consciousness: f32,
     pub pain: f32,
     pub vision: f32,
+    pub manipulation_dexterity: f32,
+    pub manip_str: f32,
 }
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct BodyDead;
 
 #[derive(Debug, Deserialize, Serialize, Copy, Clone, Message)]
 pub struct BodyDamage {

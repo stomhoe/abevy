@@ -7,7 +7,7 @@
         "hp_regen_rate": 0.9,
         "pain_sensitivity": 1.2,
         "blood_capacity": 16.0,
-        "manipulation": 0.2,
+        "manip_dex": 0.2,
         "walk_speed": 0.0,
         "caloric_burn_rate": 1.8,
     },

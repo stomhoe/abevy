@@ -1,7 +1,7 @@
 
 use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
-use common::{AppRegisterAndReplicateExt, common_states::AssetLoading };
+use common::{common_states::AssetLoading };
 use bevy_ecs_tilemap::prelude::*;
 use game_common::{game_common_samplers::EntityWeightedSampler};
 use sprite::AcSpriteSystems;
@@ -50,7 +50,7 @@ pub fn plugin(app: &mut App) {
         validate_portal_recipes,
         safe_despawn_tile_at
             .after(emit_global_tile_pos_change)
-            .run_if(on_message::<GlobalTilePosChanged>),
+            .run_if(on_message::<SafeDespawn>),
         reckeck_adjacency_for
             .after(emit_global_tile_pos_change)
             .run_if(on_message::<GlobalTilePosChanged>),

@@ -9,7 +9,7 @@ use crate::regioning::{    regioning_components::*,
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
-use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::*};
+use crate::tile::{tile_components::DeleteOtherTilesInSamePos, tile_resources::*};
 use super::dungeoning_ids::MAZE;
 
 #[allow(unused_parens, )]
@@ -532,7 +532,7 @@ pub fn maze_dungeon_building_system(
             }
         }
 
-        let delete_template = DeleteOtherTiles::default();
+        let delete_template = DeleteOtherTilesInSamePos::default();
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();

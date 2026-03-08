@@ -1,6 +1,7 @@
-
-use bevy::{input::mouse::MouseWheel, prelude::*};
+use bevy::prelude::*;
+use bevy_enhanced_input::prelude::*;
 use bevy_kira_audio::SpatialAudioReceiver;
+use ac_input::ac_input_actions::CameraZoomAction;
 
 use crate::camera_components::*;
 
@@ -41,15 +42,12 @@ pub fn camera_follow_target(
 }
 
 pub fn camera_zoom_system(
-    mut mouse_wheel_events: MessageReader<MouseWheel>,
+    zoom: Single<&Action<CameraZoomAction>>,
     mut camera_query: Query<&mut Transform, With<Camera>>,
 ) {
     let zoom_speed = 0.1; let min_zoom = 0.0001; let max_zoom = 100.0;
 
-    let mut zoom_delta = 0.0;
-    for event in mouse_wheel_events.read() {
-        zoom_delta += event.y;
-    }
+    let zoom_delta = ***zoom;
 
     if zoom_delta.abs() > f32::EPSILON {
         for mut transform in camera_query.iter_mut() {

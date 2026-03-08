@@ -1,5 +1,5 @@
 use bevy::ecs::{entity::{Entity, MapEntities}, message::Message};
-use modifier::modifier_components::BaseValue;
+use modifier_shared::modifier_components::BaseValue;
 
 use serde::{Deserialize, Serialize};
 

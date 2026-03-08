@@ -83,7 +83,7 @@ pub fn z_sort_system(
     mut mw_draw_tmap: MessageWriter<DrawTilemap>,
     mut draw_tmaps: Local<Vec<DrawTilemap>>,
     mut ents_to_process: Local<EntityHashSet>,
-) {//TODO MEJORAR
+) {
     draw_tmaps.clear();
     ents_to_process.clear();
     for ent in changed_query.iter() {
@@ -127,11 +127,11 @@ pub fn z_sort_system(
             .map(|p| format!("{:?}", p))
             .unwrap_or_else(|| "-".to_string());
         if (transform.translation.z - target_z).abs() <= 1e-9 {//NO TOCAR
-            info_once!(target: Z_SORT_SYSTEM, "unchanged z due to proximity: ent:{:?} strid:{} gpos:{} y_pos:{:.4} y_pos_tiles:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} target_z:{:.8}", ent, strid, gpos, y_pos, y_pos_tiles, base_z, sigmoid, signed_sigmoid, target_z);
+            trace_once!(target: Z_SORT_SYSTEM, "unchanged z due to proximity: ent:{:?} strid:{} gpos:{} y_pos:{:.4} y_pos_tiles:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} target_z:{:.8}", ent, strid, gpos, y_pos, y_pos_tiles, base_z, sigmoid, signed_sigmoid, target_z);
             continue;
         }
         transform.translation.z = target_z;
-        info!(target: Z_SORT_SYSTEM, "Set ent:{:?} {} gpos:{} y_pos:{:.4} y_pos_tiles:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} to z {:.8}", ent, strid, gpos, y_pos, y_pos_tiles, base_z, sigmoid, signed_sigmoid, target_z);
+        trace!(target: Z_SORT_SYSTEM, "Set ent:{:?} {} gpos:{} y_pos:{:.4} y_pos_tiles:{:.4} base_z:{:.8} sigmoid:{:.8} signed:{:.8} to z {:.8}", ent, strid, gpos, y_pos, y_pos_tiles, base_z, sigmoid, signed_sigmoid, target_z);
         if is_tilemap {
             draw_tmaps.push(DrawTilemap(ent));
         }

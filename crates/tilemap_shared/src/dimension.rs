@@ -67,7 +67,7 @@ impl DimensionStrIdRef {
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct DimensionSystems;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect, MapEntities)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, MapEntities)]
 #[relationship(relationship_target = RootInDimensions)]
 pub struct DimensionRootOplist(#[relationship]#[entities]pub Entity);
 

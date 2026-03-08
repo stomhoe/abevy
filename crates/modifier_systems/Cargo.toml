@@ -1,11 +1,15 @@
 [package]
-name = "modifier"
+name = "modifier_systems"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
+being = { path = "../being" }
+modifier_shared = { path = "../modifier_shared" }
+tilemap = { path = "../tilemap" }
+tilemap_shared = { path = "../tilemap_shared" }
 
 bevy = { workspace = true }
 serde = { workspace = true }

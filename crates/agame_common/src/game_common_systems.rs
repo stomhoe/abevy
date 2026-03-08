@@ -1,30 +1,31 @@
 use crate::game_common_components::*;
+use crate::game_common_bundles::DenyForEntityZeroClonedChild;
 use crate::game_common_states::*;
 use crate::game_common_timers::*;
-use ::sprite_shared::sprite_scale_offset::AllScalesAndOffsets;
+use common::prelude::*;
 use ::sprite_shared::*;
-use bevy::ecs::entity_disabling::Disabled;
-use bevy::input::ButtonInput;
 use bevy::prelude::*;
-use bevy_replicon::prelude::ClientState;
-use bevy_replicon::prelude::Replicated;
-use common::common_components::*;
+use bevy_enhanced_input::prelude::*;
+use bevy_replicon::prelude::*;
+use ac_input::ac_input_actions::ToggleSimulationAction;
 
 pub fn toggle_simulation(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
+    toggle_events: Single<&ActionEvents, With<Action<ToggleSimulationAction>>>,
     current_state: Res<State<SimulationState>>,
     mut next_state: ResMut<NextState<SimulationState>>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        match current_state.get() {
-            SimulationState::Paused => {
-                info!("Switching to Running state");
-                next_state.set(SimulationState::Running)
-            }
-            SimulationState::Running => {
-                info!("Switching to Paused state");
-                next_state.set(SimulationState::Paused)
-            }
+    if !toggle_events.contains(ActionEvents::START) {
+        return;
+    }
+
+    match current_state.get() {
+        SimulationState::Paused => {
+            info!("Switching to Running state");
+            next_state.set(SimulationState::Running)
+        }
+        SimulationState::Running => {
+            info!("Switching to Paused state");
+            next_state.set(SimulationState::Paused)
         }
     }
 }
@@ -44,19 +45,6 @@ pub fn tick_time_based_multipliers(
         multiplier.timer.tick(time.delta().mul_f32(factor));
     }
 }
-
-#[derive(Bundle)]
-struct DenyForClonedEntityZeroChildren(
-    EntityZero,
-    BaseHolderRef,
-    Disabled,
-    ImagePathHolder,
-    AcZ,
-    YSortOrigin,
-    AllScalesAndOffsets,
-    StrId,
-);
-
 #[allow(unused_parens)]
 pub fn clone_ezero_children_ents(
     mut cmd: Commands,
@@ -84,7 +72,7 @@ pub fn clone_ezero_children_ents(
 
         ezero_children.iter().for_each(|child_to_clone| {
             let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
-                move |builder|{ builder.deny::<DenyForClonedEntityZeroChildren>();
+                move |builder|{ builder.deny::<DenyForEntityZeroClonedChild>();
                     if ! is_replicated{
                         builder.deny::<Replicated>();
                     }

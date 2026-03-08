@@ -9,6 +9,8 @@ serde = { workspace = true }
 bevy_replicon = { workspace = true }
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
+sprite_shared = { path = "../sprite_shared" }
+sprite = { path = "../sprite" }
 paste = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }

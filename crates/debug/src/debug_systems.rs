@@ -1,6 +1,8 @@
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::{ClientState, FromClient};
-use modifier::{modifier_components::*, modifier_types::WalkSpeed, };
+use modifier_shared::{modifier_components::*, modifier_types::WalkSpeed, };
+use ac_input::ac_input_actions::{DebugDecreaseSpeedAction, DebugIncreaseSpeedAction};
 use ::being::being_components::*;
 use ::being_shared::*;
 
@@ -8,7 +10,8 @@ use crate::debug_messages::UpdateBeingSpeed;
 
 #[allow(unused_parens)]
 pub fn debug_increase_speed(
-    keys: Res<ButtonInput<KeyCode>>,
+    speed_up: Single<&Action<DebugIncreaseSpeedAction>>,
+    speed_down: Single<&Action<DebugDecreaseSpeedAction>>,
     my_being_query: Query<(&Being), (LocalPlayerControlled)>,
     mut query: Query<(&ModifierTarget, &mut BaseValue),(With<WalkSpeed>, )>,
     client_state: Res<State<ClientState>>,
@@ -17,7 +20,7 @@ pub fn debug_increase_speed(
 ) {
     let is_client = *client_state.get() == ClientState::Connected;
 
-    if keys.pressed(KeyCode::NumpadAdd) {
+    if ***speed_up {
         query.iter_mut().for_each(|(target, mut val)| {
             if my_being_query.get(target.0).is_ok() {
                 let mut new_val = val.clone();
@@ -29,7 +32,7 @@ pub fn debug_increase_speed(
                 }
             }
         });
-    } else if keys.pressed(KeyCode::NumpadSubtract) {
+    } else if ***speed_down {
         query.iter_mut().for_each(|(target, mut val)| {
             if my_being_query.get(target.0).is_ok() {
                 let mut new_val = val.clone();

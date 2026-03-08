@@ -1,5 +1,7 @@
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::{ServerState};
+use ac_input::ac_input_actions::AssetReloadAction;
 use common::{common_components::{AssetScoped, HotReload}, common_states::*};
 use being::race::race_components::Race;
 use being::sex::sex_components::Sex;
@@ -22,17 +24,19 @@ use tilemap::{
 
 #[allow(unused_parens, )]
 pub fn reload_assets_while_ingame(
-    keys: Res<ButtonInput<KeyCode>>,
+    asset_reload: Single<&Action<AssetReloadAction>>,
     mut hot_reload_request: ResMut<HotReloadRequest>,
     client_state: Res<State<ServerState>>,
 ) {
-    if keys.pressed(KeyCode::F6) {
-        if *client_state.get() != ServerState::Running {
-            warn!(target: "asset_loading", "You cannot hot-reload assets as a client.");
-            return;
-        }
-        hot_reload_request.requested = true;
+    if !***asset_reload {
+        return;
     }
+
+    if *client_state.get() != ServerState::Running {
+        warn!(target: "asset_loading", "You cannot hot-reload assets as a client.");
+        return;
+    }
+    hot_reload_request.requested = true;
 }
 
 #[allow(clippy::too_many_arguments)]

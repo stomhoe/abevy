@@ -161,14 +161,13 @@ pub fn process_tiles_pre(
 
     let mut i = 0;
     while i < params.collected_tiles.0.len() {
-        // To avoid borrow checker issues, destructure the entry first, then operate on it
+        // To avoid borrow checker issues
         let (tile_ent, bundle_ptr) = {
             unsafe{
                 let (tile_ent, bundle) = &mut params.collected_tiles.0.get_mut(i).debug_unwrap_unchecked();
                 (*tile_ent, bundle as *mut TileMassSpawnBundle)
             }
         };
-        // SAFETY: We only have one mutable reference to this bundle at a time
         let bundle = unsafe { &mut *bundle_ptr };
 
         let query_result = ezero_query.get(bundle.ezero_ref.0);
@@ -198,7 +197,6 @@ pub fn process_tiles_pre(
             info!(target: TILEMAP_SYSTEM, "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
             continue;
         }
-
         if to_persist {
             if is_host {
                 child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
@@ -239,20 +237,6 @@ pub fn process_tiles_pre(
             params.image_size_map.0.get(&handles.first_handle().id()).copied().unwrap_or(U16Vec2::ONE)
         } else {
             U16Vec2::ONE
-        };
-        let terrbl_img_size = if let Some(terrbl_params) = terrbl_params {
-            if terrbl_params.texture_handle != Handle::default() {
-                params
-                    .image_size_map
-                    .0
-                    .get(&terrbl_params.texture_handle.id())
-                    .copied()
-                    .unwrap_or(U16Vec2::ZERO)
-            } else {
-                U16Vec2::ZERO
-            }
-        } else {
-            U16Vec2::ZERO
         };
 
         process_tile_into_corresponding_tilemap(
@@ -344,7 +328,6 @@ pub fn process_tiles_pre(
                     }
                 }
             };
-
         } else {
             default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
         }
@@ -389,7 +372,6 @@ fn process_tile_into_corresponding_tilemap(
             ChunkPos::CHUNK_SIZE,
         );
     }
-
     let tile_size = match tile_handles {
         Some(_) => img_size,
         None => {
@@ -488,7 +470,6 @@ fn process_tile_into_corresponding_tilemap(
         }
     }
 }
-
 fn build_terrbl_material_for_map(
     images: &mut Assets<Image>,
     tile_query: &Query<(&EntityZeroRef, &TileTextureIndex), (With<Tile>, Without<EntityZero>)>,
@@ -557,7 +538,6 @@ fn build_terrbl_material_for_map(
                 }
                 continue;
             };
-
             let mut flags = 0_u8;
             flags |= 1 << 0; // has params
             if params.blend_enabled {
@@ -579,7 +559,6 @@ fn build_terrbl_material_for_map(
                     }
                     continue;
                 }
-
                 flags |= 1 << 2;
                 overlay_idx = match overlay_textures.iter().position(|h| *h == overlay_handle) {
                     Some(i) => i as u16,
@@ -604,7 +583,6 @@ fn build_terrbl_material_for_map(
                     }
                 };
             }
-
             encode_u16(&mut tile_indices_data, px_i + 2, overlay_idx);
             tile_flags_data[px_i] = flags;
             tile_flags_data[px_i + 3] = 255;
@@ -622,7 +600,6 @@ fn build_terrbl_material_for_map(
                     params.texture_path.as_ref().map(ToString::to_string).unwrap_or_default()
                 );
             }
-
             encode_f32x4(
                 &mut tile_params_data,
                 px_i * 4,
@@ -630,7 +607,6 @@ fn build_terrbl_material_for_map(
             );
         }
     }
-
     let tile_indices_map = images.add(create_image_u8(width, height, tile_indices_data));
     let tile_flags_map = images.add(create_image_u8(width, height, tile_flags_data));
     let tile_params_map = images.add(create_image_f32(width, height, tile_params_data));

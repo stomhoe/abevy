@@ -1,0 +1,26 @@
+(
+    id: "finger",
+    name: "Finger",
+    coverage_weight: 4,
+    forced_stats: {
+        "hp_capacity": 6.0,
+        "hp_regen_rate": 0.6,
+        "pain_sensitivity": 1.6,
+        "blood_capacity": 3.0,
+        "manip_dex": 0.9,
+        "manip_str": 0.2,
+        "walk_speed": 0.0,
+        "swim_speed": 0.0,
+        "caloric_burn_rate": 0.2,
+    },
+    weighted_stats: {
+        "walk_speed": 0.0,
+        "mass_kg": 0.1,
+    },
+    synergies: {
+        "manip_dex_finger": CopyFrac(0.15),
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.7,
+)

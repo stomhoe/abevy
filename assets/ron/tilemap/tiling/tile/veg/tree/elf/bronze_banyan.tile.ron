@@ -14,4 +14,12 @@
         "1",
     ],
 
+    items_dropped_on_death: (
+        id: "tree_lumber_drop",
+        weights: [
+            ({"lumber": 1}, 1.0),
+        ],
+    ),
+    hp: 100.0,
+
 )

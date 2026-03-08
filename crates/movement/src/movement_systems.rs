@@ -7,8 +7,8 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use game_common::game_common_components::EntityZeroRef;
 
-use modifier::modifier_types::WalkSpeed;
-use modifier::{modifier_components::*, modifier_move_components::*};
+use modifier_shared::modifier_types::WalkSpeed;
+use modifier_shared::{modifier_components::*, modifier_move_components::*};
 use param_sets::BlockingTileParamSet;
 use sprite_animation_shared::{MoveAnimActive, BeingChangedMoveState};
 use ::tilemap_shared::*;
@@ -338,11 +338,8 @@ pub fn process_speed_modifiers(
     )>,
     modifiers_query: Query<
         (
-            Entity,
-            &ModifierTarget,
-            &CurrEffectiveValue,
-            &ApplyMode,
-            Has<MitigatingOnly>,
+            Entity, &ModifierTarget, &CurrEffectiveValue,
+            &ApplyMode, Has<MitigatingOnly>,
         ),
         (With<WalkSpeed>,),
     >,
@@ -457,7 +454,6 @@ pub fn emit_move_state_on_movevecmag_value_change(
 pub fn update_facing_dir(
     mut query: Query<(
         Entity,
-        &InputDirection,
         &MoveVecMag,
         Option<&GridLockedMovement>,
         &mut CardinalDirection,
@@ -466,7 +462,7 @@ pub fn update_facing_dir(
     mut being_changed_state_set: Local<HashSet<BeingChangedMoveState>>,
 ) {
     being_changed_state_set.reserve(query.iter().size_hint().0);
-    for (being_ent, input_dir, move_state, glm, mut facing_dir) in query.iter_mut() {
+    for (being_ent, move_state, glm, mut facing_dir) in query.iter_mut() {
         let move_vec = move_state.norm_move_dir * move_state.speed_magnitude;
         let dir_vec = if let Some(glm) = glm {
             if glm.active_move_dir != Vec2::ZERO {
@@ -474,12 +470,12 @@ pub fn update_facing_dir(
             } else if move_vec != Vec2::ZERO {
                 move_vec
             } else {
-                input_dir.0
+                Vec2::ZERO
             }
         } else if move_vec != Vec2::ZERO {
             move_vec
         } else {
-            input_dir.0
+            Vec2::ZERO
         };
 
         if dir_vec == Vec2::ZERO {

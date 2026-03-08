@@ -1,24 +1,7 @@
-use bevy::platform::collections::HashSet;
-#[allow(unused_imports)]
-use bevy::prelude::*;
-#[allow(unused_imports)]
-use bevy_replicon::prelude::*;
-use common::common_components::*;
-use common::common_tag_components::TagSet;
-use serde::{Deserialize, Serialize};
+#[allow(unused_imports)] use bevy::prelude::*;
 pub use crate::item_seris::*;
+pub use crate::item_components::*;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-#[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading)]
-pub struct Item {
-    pub equip_sprite_cfg_ids: Vec<StrId>,
-    pub dropped_sprite_cfg_id: StrId,
-    pub icon_sprite_cfg_id: StrId,
-    pub icon_img_path: String,
-}
-impl Item {
-    pub const MIN_ID_LENGTH: u8 = 2;
-}
 
 common::define_entity_map_systems!(
     Item,
@@ -28,6 +11,3 @@ common::define_entity_map_systems!(
     "seri.item",
     "item.ron",
 );
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct ItemTags(pub TagSet);

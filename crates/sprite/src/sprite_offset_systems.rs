@@ -21,8 +21,8 @@ pub fn apply_offsets(
         Option<&Offset2D>,
         Option<&OffsetSideways>,
         Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>,
-        Option<&OffsetForChildren>,
     ),()>,
+    offset_for_children_query: Query<&OffsetForChildren>,
     parent_sprite_query: Query<&EntityZeroRef>,
     base_query: Query<&CardinalDirection>,
 ) {
@@ -36,7 +36,7 @@ pub fn apply_offsets(
         let mut total_offset = Offset2D::default();
 
         if let Some(EntityZeroRef(sprite_config)) = sprite_config_ref.cloned() {
-            let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down, _)) = sprite_config_query.get(sprite_config)
+            let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down)) = sprite_config_query.get(sprite_config)
             else {
                 error_once!("Failed to get sprite config entity {:?}", sprite_config);
                 transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
@@ -66,10 +66,7 @@ pub fn apply_offsets(
                     let Ok(&EntityZeroRef(ezero_ent)) = parent_sprite_query.get(child_of.parent()) else {
                         continue;
                     };
-                    let Ok((.., offset_for_children)) = sprite_config_query.get(ezero_ent) else {
-                        continue;
-                    };
-                    let Some(offset_for_children) = offset_for_children else {
+                    let Ok(offset_for_children) = offset_for_children_query.get(ezero_ent) else {
                         continue;
                     };
                     for (offset_cat, &(offset, _dir)) in offset_for_children.0.iter() {

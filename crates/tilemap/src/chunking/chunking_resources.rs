@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
+use common::log_targets::TILEMAP_LOAD;
+use serde::Deserialize;
 use ::tilemap_shared::*;
 
 #[derive(Resource, )]
@@ -67,3 +69,45 @@ pub const EXTRA_RANGE_SETTINGS: AaChunkRangeSettings = AaChunkRangeSettings {
     chunk_active_max_dist: 14000.0,
     discovery_range: 4,
 };
+
+#[derive(Deserialize, Asset, TypePath, Clone, Debug)]
+pub struct ChunkingSettingsSeri {
+    pub id: String,
+    #[serde(default = "default_chunk_visib_max_dist")]
+    pub chunk_visib_max_dist: f32,
+    #[serde(default = "default_chunk_active_max_dist")]
+    pub chunk_active_max_dist: f32,
+    #[serde(default = "default_discovery_range")]
+    pub discovery_range: u8,
+}
+impl ChunkingSettingsSeri {
+    pub fn to_settings(&self) -> AaChunkRangeSettings {
+        AaChunkRangeSettings {
+            chunk_visib_max_dist: self.chunk_visib_max_dist,
+            chunk_active_max_dist: self.chunk_active_max_dist,
+            discovery_range: self.discovery_range.max(1),
+        }
+    }
+}
+
+fn default_chunk_visib_max_dist() -> f32 { ONE_CHUNK_RANGE_SETTINGS.chunk_visib_max_dist }
+fn default_chunk_active_max_dist() -> f32 { ONE_CHUNK_RANGE_SETTINGS.chunk_active_max_dist }
+fn default_discovery_range() -> u8 { ONE_CHUNK_RANGE_SETTINGS.discovery_range }
+
+pub fn load_chunking_settings(mut settings: ResMut<AaChunkRangeSettings>) {
+    let db = match common::def_db::DefDatabase::<ChunkingSettingsSeri>::load_from_assets_dir_with_type(
+        stringify!(ChunkingSettingsSeri),
+        &["chunking.settings.ron"],
+        |_| "chunking_settings",
+    ) {
+        Ok(db) => db,
+        Err(err) => {
+            error!(target: TILEMAP_LOAD, "Failed loading ChunkingSettingsSeri defs: {err:#}");
+            return;
+        }
+    };
+    let Some(first) = db.into_records().into_iter().next() else {
+        return;
+    };
+    *settings = first.value.to_settings();
+}

@@ -7,7 +7,8 @@
         "hp_regen_rate": 0.8,
         "pain_sensitivity": 1.3,
         "blood_capacity": 7.0,
-        "manipulation": 1.5,
+        "manip_dex": 1.5,
+        "manip_str": 0.8,
         "walk_speed": 0.0,
         "swim_speed": 0.2,
         "caloric_burn_rate": 0.8,
@@ -15,6 +16,10 @@
     weighted_stats: {
         "walk_speed": 0.0,
         "mass_kg": 0.4,
+    },
+    synergies: {
+        "manip_strength_limb": CopyFrac(0.2),
+        "manip_dex_finger": CopyFrac(0.1),
     },
     depth: "surface",
     vital: false,

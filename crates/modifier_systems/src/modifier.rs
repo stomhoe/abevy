@@ -1,12 +1,18 @@
 use bevy::prelude::*;
 use game_common::game_common::ModifierSystems;
+use game_common::game_common_components::HealthDamage;
 use {
-    crate::{
-        modifier_components::*, modifier_item_types::*, modifier_move_components::*, modifier_systems::*,
-        modifier_tool_types::*, modifier_types::*,
-    },
+    crate::modifier_hp_systems::*,
+    crate::modifier_manip_systems::*,
+    crate::modifier_systems::*,
     bevy::time::common_conditions::on_timer,
     bevy_replicon::prelude::*,
+    modifier_shared::{
+        modifier_components::*,
+        modifier_item_types::*,
+        modifier_tool_types::*,
+        modifier_types::*,
+    },
     std::time::Duration,
 };
 
@@ -14,10 +20,21 @@ pub fn plugin(app: &mut App) {
     app.add_systems(
         FixedUpdate,
         (
+            materialize_modifier_synergies,
             update_modifier_effective_values.run_if(on_timer(Duration::from_millis(200))),
             sync_modifier_name_to_effects,
         )
             .chain()
+            .in_set(ModifierSystems),
+    )
+    .add_systems(
+        Update,
+        (
+            apply_health_damage.run_if(on_message::<HealthDamage>),
+            update_body_manipulation_totals,
+            mark_dead_by_health.after(apply_health_damage),
+            despawn_entities_on_death.after(mark_dead_by_health),
+        )
             .in_set(ModifierSystems),
     )
     .register_type::<AppliedModifiers>()
@@ -39,11 +56,13 @@ pub fn plugin(app: &mut App) {
     .replicate::<PainSensitivity>()
     .replicate::<PainInfliction>()
     .replicate::<PainSlowdown>()
-    .replicate::<Manipulation>()
+    .replicate::<ManipulationDexterity>()
+    .replicate::<ManipulationStrength>()
     .replicate::<Vision>()
     .replicate::<Antidote>()
+    .replicate::<ModifierSynergies>()
     .replicate::<OffsetValForSelf>()
-    .replicate::<CopyMultOfOthersIntoSelf>()
+    .replicate::<CopyFracOfOthersIntoSelf>()
     .replicate::<MinForDamage>()
     .replicate::<ConvertsDamageOnNonPenetration>()
     .replicate::<BleedRate>()

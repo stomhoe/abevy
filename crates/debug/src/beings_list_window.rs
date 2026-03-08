@@ -95,6 +95,8 @@ pub fn beings_list_window(
                         let is_selected = selected_entities.selected_being == Some(*entity);
                         if ui.selectable_label(is_selected, label).clicked() {
                             selected_entities.selected_being = Some(*entity);
+                            selected_entities.selected_being_bodypart = None;
+                            selected_entities.show_full_being_components = false;
                             window_visible.being_details = true;
                         }
                     }

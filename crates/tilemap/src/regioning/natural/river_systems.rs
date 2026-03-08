@@ -572,7 +572,7 @@ pub fn river_structure_building_system(
         generated_tiles_total = generated_tiles_total.saturating_add(generated_count);
 
         let claimed_chunks: HashSet<ChunkPos> = order.chunks_gpos.iter().copied().collect();
-        let mut tiles_by_chunk: HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<crate::tile::tile_components::DeleteOtherTiles>)>> =
+        let mut tiles_by_chunk: HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<crate::tile::tile_components::DeleteOtherTilesInSamePos>)>> =
             HashMap::default();
         for gpos in generated_tiles.iter().copied() {
             let chunk_pos = gpos.to_chunkpos();

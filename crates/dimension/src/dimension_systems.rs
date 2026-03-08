@@ -44,14 +44,14 @@ pub fn replace_portal_tile_string_ref_by_entity_ref(
     for (ent, ent_str_id, portal_seri, mut portal_template) in portal_tile_query.iter_mut() {
         let Ok(dimension_entity) = dimension_entity_map.0.get_cloned(&portal_seri.dest_dimension)
         else {
-            error!(target: "dimension_loading", "Portal tile '{}' does not have a corresponding Dimension entity in the map.", ent_str_id);
+            error_once!(target: "dimension_loading", "Portal tile '{}' does not have a corresponding Dimension entity in the map.", ent_str_id);
             continue;
         };
         portal_template.dest_dimension = dimension_entity;
 
         let Ok(terrprobe_ent) = terrprobe_entity_map.0.get_cloned(&portal_seri.oe_terrprobe)
         else {
-            error!(
+            error_once!(
                 target: "dimension_loading",
                 "Portal tile '{}' references unknown terrprobe '{}'.",
                 ent_str_id,

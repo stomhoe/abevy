@@ -91,7 +91,7 @@ pub fn validate_portal_recipes(
             cmd.entity(ezero_portal).try_insert(AwaitingStartSearch);
         } else {
             let terrprobe_id = portal_seri_opt.map(|p| p.oe_terrprobe.as_str()).unwrap_or("<missing PortalSeri>");
-            error!(target: PORTAL_INIT, "PortalRecipe references missing terrprobe '{}' for dest_dimension entity {:?}", terrprobe_id, recipe.dest_dimension);
+            error_once!(target: PORTAL_INIT, "PortalRecipe references missing terrprobe '{}' for dest_dimension entity {:?}", terrprobe_id, recipe.dest_dimension);
             cmd.entity(ezero_portal).try_remove::<AwaitingStartSearch>();
         }
     }
@@ -182,7 +182,7 @@ pub fn instantiate_portal(
 
         cmd.entity(oe_portal)
             .try_remove::<(AwaitingStartSearch)>()
-            .try_insert(DeleteOtherTiles {
+            .try_insert(DeleteOtherTilesInSamePos {
                 spared_z: HashSet::from_iter(vec![AcZ::new(-900.0)]),
                 extra_radius: 2,
                 ..Default::default()

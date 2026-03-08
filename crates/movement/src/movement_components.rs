@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// Raw input movement vector - updated by keyboard/AI and synced to server
-#[derive(Component, Debug, Default, Clone, )]
-pub struct InputDirection(pub Vec2);
+/// Last movement intent received from a remote client.
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct RemoteMoveInput(pub Vec2);
 
 /// Processed movement state - direction after modifiers and calculated speed
 #[derive(Component, Debug, Default, Clone, )]
@@ -20,23 +20,3 @@ pub struct GridLockedMovement{
 
 //PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
 //UTIL PARA RAZAS DE IGUANAS O ARAÑAS
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct WallPhaser;
-
-//borrar estos
-#[derive(Component, Debug, Default, Copy, Clone)]
-pub struct InnateMovementCapability;//NO SACARSELO SOLO PORQ ESTÉ ULTRAHERIDO
-
-// NO SON EXLUSIVOS ASÍ Q NO ES SUPERSTATE
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-#[require(InnateMovementCapability)]
-pub struct LandWalker;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-#[require(InnateMovementCapability)]
-pub struct Swimmer;
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-#[require(InnateMovementCapability)]
-pub struct Flier;

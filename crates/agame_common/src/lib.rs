@@ -11,6 +11,7 @@ pub mod game_common_seris;
 pub mod game_common_string_components;
 pub mod game_common_samplers;
 pub mod game_common_resources;
+pub mod game_common_bundles;
 mod game_common_systems;
 
 
@@ -27,6 +28,7 @@ pub mod prelude {
         game_common_string_components::*,
         game_common_samplers::*,
         game_common_resources::*,
+        game_common_bundles::*,
         game_common_systems::*,
     };
 }

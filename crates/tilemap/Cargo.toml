@@ -15,6 +15,7 @@ sprite_shared = { path = "../sprite_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 sprite = { path = "../sprite" }
 color_sampler = { path = "../color_sampler" }
+item_shared = { path = "../item_shared" }
 
 bevy = { workspace = true }
 ron = { workspace = true }

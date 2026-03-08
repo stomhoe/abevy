@@ -3,7 +3,7 @@ use bevy::{ecs::entity::{EntityHashSet, MapEntities}, platform::collections::Has
 use bevy_replicon::prelude::{ Replicated};
 use ::being_shared::*;
 
-use modifier::modifier_components::AppliedModifiers;
+use modifier_shared::modifier_components::AppliedModifiers;
 use movement::movement_components::*;
 
 use common::common_components::*;
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use ::tilemap_shared::*;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Default)]
-#[require(InputDirection, MoveVecMag,
+#[require(MoveVecMag,
 Replicated, MoveAnimActive,
 Grounding, Visibility, CardinalDirection, AppliedModifiers,
 Prefix::trunc("Being"), DimensionStrIdRef::overworld_fallback(), AssetScoped,

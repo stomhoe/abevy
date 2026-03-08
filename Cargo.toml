@@ -38,11 +38,13 @@ bevy-ui-gradients = "0.4.0"
 bevy_spritesheet_animation = "6.1.0"
 bevy_asset_loader = { version = "0.25.0", features = ["standard_dynamic_assets"] }
 bevy-inspector-egui = "0.36.0"
+bevy_enhanced_input = "0.24"
 paste = "1.0"
 smallvec = "1.15.1"
 
 serde = { version = "1.0.228", features = ["derive"] }
-ron = "0.8.1"
+serde_json = "1.0.145"
+ron = "0.12.0"
 anyhow = "1.0.98"
 splines = { version = "5.0.0", features = ["serde"] }
 indexmap = "2.13.0"
@@ -57,7 +59,6 @@ noiz = "0.4.0"
 avian2d = "0.5.0"
 #bevy_save = "1.0.0"
 #bevy_rand = "0.11.1"
-#bevy_enhanced_input = "0.15.2"
 bevy_northstar = "0.6.1"
 big-brain = "0.22.0"
 
@@ -74,7 +75,8 @@ host = { path = "crates/host" }
 client = { path = "crates/client" }
 tilemap = { path = "crates/tilemap" }
 tilemap_shared = { path = "crates/tilemap_shared" }
-modifier = { path = "crates/modifier" }
+modifier_shared = { path = "crates/modifier_shared" }
+modifier_systems = { path = "crates/modifier_systems" }
 game = { path = "crates/game" }
 wildlife = { path = "crates/wildlife" }
 movement = { path = "crates/movement" }
@@ -87,17 +89,19 @@ sprite_animation = { path = "crates/sprite_animation" }
 sprite = { path = "crates/sprite" }
 faction = { path = "crates/faction" }
 player = { path = "crates/player" }
+ac_input = { path = "crates/ac_input" }
 ac_audio = { path = "crates/ac_audio" }
 color_sampler = { path = "crates/color_sampler" }
 shader = { path = "crates/shader" }
 ui_shared = { path = "crates/ui_shared" }
 pregame_screen = { path = "crates/pregame_screen" }
 setup_screen = { path = "crates/setup_screen" }
-item = { path = "crates/item" }
+item_systems = { path = "crates/item_systems" }
 item_shared = { path = "crates/item_shared" }
 #param_sets = { path = "crates/param_sets" }
 
 bevy = { workspace = true }
+bevy_enhanced_input = { workspace = true }
 bevy-inspector-egui = { workspace = true }
 tracing = { workspace = true }
 #tracing-subscriber = { workspace = true }
@@ -116,7 +120,6 @@ strip = "debuginfo"
 
 [profile.release]
 opt-level = 3
-panic = 'abort'
 debug = 0
 strip = "debuginfo"
 

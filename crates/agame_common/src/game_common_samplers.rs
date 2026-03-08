@@ -1,5 +1,5 @@
 
-use bevy::{ecs::entity::MapEntities, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use::tilemap_shared::*;
 use crate::game_common_seris::NormalDistSeri;
@@ -162,6 +162,27 @@ impl MapEntities for EntityWeightedSampler {
     fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
         for (ent, _) in &mut self.weights {
             *ent = entity_mapper.get_mapped(*ent);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Component, Default)]
+#[component(map_entities)]
+pub struct EntityCountMapWeightedSampler {
+    weights: Vec<(EntityHashMap<u32>, f32)>,
+    cumulative_weights: Vec<f32>,
+    total_weight: f32,
+}
+define_weightedsampler_impl!(EntityCountMapWeightedSampler, EntityHashMap<u32>);
+impl MapEntities for EntityCountMapWeightedSampler {
+    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
+        for (count_map, _) in &mut self.weights {
+            let old_map = std::mem::take(count_map);
+            let mut remapped = EntityHashMap::with_capacity(old_map.len());
+            for (ent, count) in old_map {
+                remapped.insert(entity_mapper.get_mapped(ent), count);
+            }
+            *count_map = remapped;
         }
     }
 }

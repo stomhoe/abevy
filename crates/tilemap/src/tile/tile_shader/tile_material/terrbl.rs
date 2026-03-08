@@ -4,8 +4,7 @@ use bevy_ecs_tilemap::prelude::MaterialTilemap;
 use serde::{Serialize, Deserialize, };
 use bevy_inspector_egui::prelude::*;
 
-#[derive(AsBindGroup, Debug, Clone, Asset, Reflect, InspectorOptions, Deserialize, Serialize)]
-#[reflect(Default, InspectorOptions)]
+#[derive(AsBindGroup, Debug, Clone, Asset, TypePath, InspectorOptions, Deserialize, Serialize)]
 pub struct TerrBlendMat {
     #[texture(1)]
     #[serde(skip)]

@@ -28,18 +28,18 @@ pub fn on_spritetile_despawn(
 
 pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
     ezero_query: Query<
-        (Option<&AcZ>, Option<&DeleteOtherTiles>, Option<&TagSet>, Option<&SizeInTiles>),
+        (Option<&AcZ>, Option<&DeleteOtherTilesInSamePos>, Option<&TagSet>, Option<&SizeInTiles>),
         (With<EntityZero>, common::AnyDisabling),
     >,
     query: Query<
         (
             Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef,
-            Option<&TagSet>, Option<&DeleteOtherTiles>,
+            Option<&TagSet>, Option<&DeleteOtherTilesInSamePos>,
         ),
         (common::AnyDisabling, Without<EntityZero>),
     >,
     otile_query: Query<
-        (&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTiles>),
+        (&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTilesInSamePos>),
         (common::AnyDisabling, Without<EntityZero>),
     >,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
@@ -112,7 +112,7 @@ pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
     writer.write_batch(msgs.drain(..));
 }
 fn should_delete_tile_based_on_tag_sets(
-    spec: &DeleteOtherTiles,
+    spec: &DeleteOtherTilesInSamePos,
     target_z: &AcZ,
     target_tags: Option<&TagSet>,
 ) -> bool {

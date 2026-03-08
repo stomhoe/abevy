@@ -1,12 +1,17 @@
-use bevy::{input::common_conditions::input_toggle_active, log::LogPlugin, prelude::*,};
+use bevy::{log::LogPlugin, prelude::*,};
 use avian2d::prelude::PhysicsPlugins;
+use bevy_enhanced_input::prelude::*;
 use bevy_inspector_egui::{
     bevy_egui::EguiPlugin,
     quick::WorldInspectorPlugin,
 };
+use ac_input::ac_input_actions::ToggleInspectorAction;
 use tracing::Level;
 #[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, };
 use common::log_targets;
+use common::common_states::AssetLoading;
+use item_systems::ItemSystems;
+use tilemap::prelude::TilingSystems;
 use tilemap_shared::GlobalTilePos;
 
 const ERROR: &str = "error";
@@ -14,6 +19,9 @@ const WARN: &str = "warn";
 const INFO: &str = "info";
 const DEBUG: &str = "debug";
 const TRACE: &str = "trace";
+
+#[derive(Resource, Default)]
+struct InspectorVisibility(bool);
 
 fn build_filter() -> String {
     format!(
@@ -149,6 +157,7 @@ cargo run -r --features bevy/trace_tracy,bevy/debug
 fn main() {
 
     App::new()
+        .init_resource::<InspectorVisibility>()
         .set_error_handler(warn)
         .add_plugins((
             DefaultPlugins
@@ -160,9 +169,10 @@ fn main() {
                 })
             .set(ImagePlugin::default_nearest(),),
             EguiPlugin::default(),
-            WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::Escape)),
+            WorldInspectorPlugin::default().run_if(|visible: Res<InspectorVisibility>| visible.0),
             PhysicsPlugins::default().with_length_unit(GlobalTilePos::TILE_SIZE_PXS.x as f32),
         ))
+        .add_systems(Update, toggle_inspector_visibility)
         .add_plugins((
             multiplayer_shared::plugin, //VA ARRIBA
             host::plugin,
@@ -172,6 +182,7 @@ fn main() {
         .add_plugins((
             asset_loading::plugin,
             common::plugin,
+            ac_input::plugin,
             game_common::plugin,
             ui_shared::plugin,
             shader::plugin,
@@ -187,17 +198,30 @@ fn main() {
             sprite_animation::plugin,
             movement::plugin,
             sprite::plugin,
-            modifier::plugin,
-            item::plugin,
+            modifier_systems::plugin,
+            item_systems::plugin,
             tilemap::plugin,
             setup_screen::plugin,
             pregame_screen::plugin,
             color_sampler::plugin,
         ))
+        .configure_sets(
+            OnEnter(AssetLoading::SpawnReplicatedEntities),
+            ItemSystems.before(TilingSystems),
+        )
         .add_plugins((wildlife::plugin,))
         .run()
 
     ;
+}
+
+fn toggle_inspector_visibility(
+    toggle_events: Single<&ActionEvents, With<Action<ToggleInspectorAction>>>,
+    mut visible: ResMut<InspectorVisibility>,
+) {
+    if toggle_events.contains(ActionEvents::START) {
+        visible.0 = !visible.0;
+    }
 }
 /*
 Log Levels

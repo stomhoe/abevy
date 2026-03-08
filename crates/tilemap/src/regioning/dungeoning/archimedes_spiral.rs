@@ -8,7 +8,7 @@ use ::tilemap_shared::*;
 
 use crate::regioning::{regioning_components::*, regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_sgc_components::StructuredGenConfig
 };
-use crate::tile::{tile_components::DeleteOtherTiles, tile_resources::*};
+use crate::tile::{tile_components::DeleteOtherTilesInSamePos, tile_resources::*};
 use crate::tile::tile_sampler_components::TileWeightedSampler;
 use crate::tile::tile_sampler_resources::TileWeightedSamplerEntityMap;
 use crate::regioning::dungeoning_utils::resolve_sampled_tile_entity_from_sampler;
@@ -322,7 +322,7 @@ pub fn archimedes_spiral_building_system(
             }
         }
 
-        let mut delete_template = DeleteOtherTiles::default();
+        let mut delete_template = DeleteOtherTilesInSamePos::default();
         let spared_tags = structured_gen_cfg
             .args
             .get("delete_spared_tags")

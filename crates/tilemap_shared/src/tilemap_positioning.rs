@@ -6,7 +6,7 @@ use common::common_components::{HashId, StrId};
 use rand::{Rng, seq::SliceRandom};
 use serde::{Deserialize, Serialize};
 
-use crate::{*, tilemap_shared::GlobalGenSettings};
+use crate::{tilemap_shared::GlobalGenSettings, *};
 
 pub trait HashablePosVec: Hash {
     fn hash_value(&self, settings: &GlobalGenSettings, dimension_hash: HashId, seed: u64) -> u64 {
@@ -48,9 +48,9 @@ pub struct PrevPos {
 impl GlobalTilePos {
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 32, y: 32 };
 
-    pub fn to_tilepos(&self, /*size_in_tiles: SizeInTiles*/) -> TilePos {
+    pub fn to_tilepos(&self) -> TilePos {
         let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
-        let ivec2 = (((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size) /*/ size_in_tiles.inner().as_ivec2()*/;
+        let ivec2 = ((Into::<IVec2>::into(*self) % chunk_size) + chunk_size) % chunk_size;
         TilePos::from(ivec2.as_uvec2())
     }
     pub fn to_chunkpos(&self) -> ChunkPos {
@@ -166,19 +166,16 @@ impl ChunkPos {
         }
     }
 }
-
 impl From<GlobalTilePos> for ChunkPos {
     fn from(global_tile_pos: GlobalTilePos) -> Self {
         ChunkPos(global_tile_pos.0.div_euclid(Self::CHUNK_SIZE.as_ivec2()))
     }
 }
-
 impl From<Vec2> for ChunkPos {
     fn from(pixel_pos: Vec2) -> Self {
         ChunkPos(pixel_pos.as_ivec2().div_euclid(GlobalTilePos::TILE_SIZE_PXS.as_ivec2() * Self::CHUNK_SIZE.as_ivec2()))
     }
 }
-
 impl From<Vec3> for ChunkPos {
     fn from(translation: Vec3) -> Self {
         ChunkPos::from(translation.xy())
@@ -281,7 +278,7 @@ pub mod prelude {
 }
 
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect, PartialEq, Eq, Hash)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SizeInTiles(pub UVec2);
 impl SizeInTiles{
     pub fn new(str_id: &StrId, size_in_tiles: Option<(u32, u32)>, is_spritetile: bool) -> Self {

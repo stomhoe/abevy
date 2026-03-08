@@ -1,9 +1,11 @@
 use ::being_shared::{BeingInstTemplate, MappedSpritesToSample};
 use bevy::prelude::*;
+use bevy::platform::collections::HashMap;
 use common::{common_components::StrId, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_components::BelongsToFaction;
 use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist}, game_common_timers::EntityZero};
 use sprite_shared::SampleSpriteEnts;
+use tilemap_shared::{tilemap_seris::InteractionZoneSeri, InteractionZones};
 
 use crate::{
     being_components::Being,
@@ -167,6 +169,37 @@ pub fn build_beings_from_refs(
     cmd.try_insert_batch(body_sampler_to_ins);
     cmd.try_insert_batch_if_new(belongs_to_fac_refs_to_ins);
     cmd.try_insert_batch_if_new(sex_refs_to_ins);
+}
+
+pub fn sync_melee_interaction_zone_from_sources(
+    mut cmd: Commands,
+    beings: Query<
+        (Entity, Option<&BitRef>, Option<&RaceRef>),
+        (With<Being>, Or<(Added<Being>, Changed<BitRef>, Changed<RaceRef>)>),
+    >,
+    bit_zones: Query<&InteractionZones>,
+    race_zones: Query<&InteractionZones, With<Race>>,
+) {
+    for (being_ent, bit_ref, race_ref) in beings.iter() {
+        let zones = bit_ref
+            .and_then(|bit_ref| bit_zones.get(bit_ref.0).ok())
+            .or_else(|| race_ref.and_then(|race_ref| race_zones.get(race_ref.0).ok()))
+            .cloned()
+            .unwrap_or_else(default_melee_interaction_zones);
+        cmd.entity(being_ent).try_insert(zones);
+    }
+}
+
+fn default_melee_interaction_zones() -> InteractionZones {
+    let mut map = HashMap::with_capacity(1);
+    map.insert(
+        "melee".to_string(),
+        InteractionZoneSeri {
+            offset_positions: vec![(0, 1)],
+            radius_offset: Vec::new(),
+        },
+    );
+    InteractionZones::new(map)
 }
 
 #[allow(unused_parens)]

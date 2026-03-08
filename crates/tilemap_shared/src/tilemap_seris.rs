@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-#[derive(Component, Deserialize, TypePath, Clone, Default)]
+#[derive(Component, Deserialize, TypePath, Clone, Default, Debug)]
 pub struct InteractionZoneSeri{
     #[serde(default)]
     pub offset_positions: Vec<(i8, i8)>,
