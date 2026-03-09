@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use ac_audio::AcAudioSystems;
 use common::common_states::AssetLoading;
 use game_common::game_common::SimRunningSystems;
-use sprite::AcSpriteSystems;
+use sprite_systems::AcSpriteSystems;
 use ::sprite_animation_shared::*;
 use crate::{sprite_animation_init_systems::*, sprite_animation_systems::*};
 
@@ -44,7 +44,7 @@ pub fn plugin(app: &mut App) {
         (init_animations, map_ac_animation_id_to_entity).chain()
     ).in_set(SpriteAnimationSystems))
 
-    .add_mapped_server_message::<SyncMoveState>(Channel::Unordered)
+    .add_mapped_server_message::<SyncMoveState>(Channel::Unreliable)
 
     .add_message::<BeingChangedMoveState>()
 

@@ -12,7 +12,6 @@ tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 item_shared = { path = "../item_shared" }
 item_systems = { path = "../item_systems" }
-sprite = { path = "../sprite" }
 
 bevy = { workspace = true }
 serde = { workspace = true }

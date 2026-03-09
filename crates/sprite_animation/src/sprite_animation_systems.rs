@@ -3,16 +3,15 @@
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet};
 use bevy_replicon::prelude::*;
 use ac_audio::ac_audio_components::{AnimationFrameSfxState, AnimationSeriSfxConfig, AnimationSeriSfxState};
-use being_shared::{Grounding, ControlledBy};
+use being_shared::{Grounding, ControlledBy, ComputedLocally};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
 use game_common::game_common_components::{Directionable, EntityZeroRef, };
 use movement::movement_components::MoveVecMag;
 use player::player_components::*;
-use sprite::sprite_components::*;
 use ::sprite_animation_shared::*;
-use ::sprite_shared::*;
+use ::sprite_shared::prelude::*;
 use ::tilemap_shared::directions::*;
 
 //TODO hacer animation speed para walking proporcional a la velocidad real del being
@@ -80,11 +79,8 @@ pub fn animate_sprite(
                 continue
             };
             let Some(sprite_cfg_animations_map) = sprite_cfg_animations_map else {
-                if has_fallback {
+                if let Some(fallback_img_path) = fallback_img_path {
                     if !has_sprite {
-                        let Some(fallback_img_path) = fallback_img_path else {
-                            continue;
-                        };
                         cmd.entity(ent).insert(Sprite {
                             image: asset_server.load(fallback_img_path.path()),
                             ..Default::default()
@@ -93,7 +89,7 @@ pub fn animate_sprite(
                     continue;
                 }
                 let sprite_cfg_strid = strid_query.get(sprite_cfg_ref.0).ok().cloned().unwrap_or_default();
-                error_once!(target: SPRITE_ANIMATION_SYSTEM, "SpriteConfig {:?} {} has no MappedAnimations and no fallback image", sprite_cfg_ref.0, sprite_cfg_strid);
+                error_once!(target: SPRITE_ANIMATION_SYSTEM, "SpriteConfig {:?} {} has no MappedAnimations and no image path", sprite_cfg_ref.0, sprite_cfg_strid);
                 continue;
             };
 
@@ -323,7 +319,7 @@ pub fn update_animstate_for_clients(
 pub fn client_receive_moving_anim(
     mut mreader: MessageReader<SyncMoveState>,
     mut beings_changed_move_state_writer: MessageWriter<BeingChangedMoveState>,
-    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection)>,
+    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection, Has<ComputedLocally>)>,
 ) {
     let mut being_changed_state_set: HashSet<BeingChangedMoveState> = HashSet::new();
 
@@ -331,7 +327,10 @@ pub fn client_receive_moving_anim(
         let SyncMoveState { being_ent, moving, grounding, direction } = message.0;
         trace!(target: SPRITE_ANIMATION_SYSTEM, "Received moving {} for entity {:?}", moving, being_ent);
 
-        if let Ok((mut move_anim, mut grounding_comp, mut direction_comp)) = query.get_mut(*being_ent) {
+        if let Ok((mut move_anim, mut grounding_comp, mut direction_comp, computed_locally)) = query.get_mut(*being_ent) {
+            if computed_locally {
+                continue;
+            }
             move_anim.set(*moving, *being_ent, &mut being_changed_state_set);
             if let Some(grounding) = grounding {
                 *grounding_comp = *grounding;

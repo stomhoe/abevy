@@ -6,7 +6,7 @@ use bevy_inspector_egui::{
     quick::WorldInspectorPlugin,
 };
 use ac_input::ac_input_actions::ToggleInspectorAction;
-use sprite::AcSpriteSystems;
+use sprite_systems::AcSpriteSystems;
 use tracing::Level;
 #[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, };
 use common::log_targets;
@@ -200,7 +200,7 @@ fn main() {
             camera::plugin,
             sprite_animation::plugin,
             movement::plugin,
-            sprite::plugin,
+            sprite_systems::plugin,
             modifier_systems::plugin,
             item_systems::plugin,
             tilemap::plugin,

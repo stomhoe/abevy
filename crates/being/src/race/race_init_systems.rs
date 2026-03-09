@@ -6,8 +6,8 @@ use common::common_id_components::{HashId, HashIdMap};
 use game_common::game_common_components::EntityZero;
 use game_common::game_common_samplers::*;
 use game_common::game_common_string_components::*;
-use sprite_shared::SampleSpriteEnts;
-use sprite::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
+use common::common_components::SampleSpriteEnts;
+use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
 
 use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeEntityMap;

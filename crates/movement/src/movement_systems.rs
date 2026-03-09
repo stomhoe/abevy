@@ -1,6 +1,6 @@
 use core::f32;
 
-use being_shared::{BodyTreeWeightSum, ComputedLocally};
+use being_shared::{BodyTreeWeightSum, ComputedLocally, ControlledBy};
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
@@ -56,7 +56,7 @@ pub fn do_free_movement(
 
 pub fn send_transforms_to_clients(
     query: Query<
-        (Entity, &Transform, &MoveVecMag),
+        (Entity, &Transform, &MoveVecMag, Option<&ControlledBy>),
         (Without<GridLockedMovement>, Changed<Transform>),
     >,
     server_state: Res<State<ServerState>>,
@@ -66,9 +66,12 @@ pub fn send_transforms_to_clients(
         return;
     }
 
-    for (being_ent, transform, _) in query.iter() {
+    for (being_ent, transform, _, controlled_by) in query.iter() {
         let to_clients = ToClients {
-            mode: SendMode::BroadcastExcept(ClientId::Server),
+            mode: controlled_by.map_or(
+                SendMode::BroadcastExcept(ClientId::Server),
+                |controlled_by| SendMode::BroadcastExcept(ClientId::Client(controlled_by.client_ent)),
+            ),
             message: UnreliableTransform::new(being_ent, transform.clone(), ),
         };
         ewriter.write(to_clients);
@@ -91,6 +94,7 @@ pub fn prepare_grid_locked_movement(
             &MoveVecMag,
             &DimensionRef,
             &mut GridLockedMovement,
+            Option<&ControlledBy>,
             Has<ComputedLocally>,
         ),
     >,
@@ -108,6 +112,7 @@ pub fn prepare_grid_locked_movement(
         move_state,
         &dim_ref,
         mut glm,
+        controlled_by,
         controlled_locally,
     ) in query.iter_mut()
     {
@@ -299,7 +304,10 @@ pub fn prepare_grid_locked_movement(
 
             if !is_client {
                 let to_clients = ToClients {
-                    mode: SendMode::BroadcastExcept(ClientId::Server),
+                    mode: controlled_by.map_or(
+                        SendMode::BroadcastExcept(ClientId::Server),
+                        |controlled_by| SendMode::BroadcastExcept(ClientId::Client(controlled_by.client_ent)),
+                    ),
                     message: UnreliableTransform::new(being_ent, transform.clone(), ),
                 };
                 transforms_to_send.push(to_clients);
@@ -315,12 +323,58 @@ pub fn prepare_grid_locked_movement(
 #[allow(unused_parens)]
 pub fn set_transforms_to_received(
     mut reader: MessageReader<UnreliableTransform>,
-    mut query: Query<(&mut Transform), ()>
+    mut cmd: Commands,
+    mut query: Query<(Entity, &mut Transform, Has<ComputedLocally>, Option<&mut PendingServerTransform>), ()>
 ) {
     for msg in reader.read() {
-        let Ok(mut transf) = query.get_mut(msg.being_ent)
+        let Ok((being_ent, mut transf, computed_locally, pending_server_transform)) = query.get_mut(msg.being_ent)
         else {continue;};
+        if computed_locally {
+            let error = transf.translation.xy().distance(msg.trans.translation.xy());
+            if error <= 1.0 {
+                continue;
+            }
+            if let Some(mut pending_server_transform) = pending_server_transform {
+                pending_server_transform.0 = msg.trans.clone();
+            } else {
+                cmd.entity(being_ent).try_insert(PendingServerTransform(msg.trans.clone()));
+            }
+            continue;
+        }
         *transf = msg.trans;
+    }
+}
+
+pub fn reconcile_controlled_transforms(
+    mut cmd: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Transform, &PendingServerTransform), With<ComputedLocally>>,
+) {
+    const IGNORE_DIST: f32 = 1.0;
+    const SNAP_DIST: f32 = GlobalTilePos::TILE_SIZE_PXS.x as f32 * 0.75;
+    const RECONCILE_RATE: f32 = 12.0;
+
+    for (being_ent, mut transform, pending_server_transform) in query.iter_mut() {
+        let target = &pending_server_transform.0;
+        let error = transform.translation.xy().distance(target.translation.xy());
+        if error <= IGNORE_DIST {
+            cmd.entity(being_ent).remove::<PendingServerTransform>();
+            continue;
+        }
+        if error >= SNAP_DIST {
+            *transform = target.clone();
+            cmd.entity(being_ent).remove::<PendingServerTransform>();
+            continue;
+        }
+
+        let alpha = (time.delta_secs() * RECONCILE_RATE).clamp(0.0, 1.0);
+        transform.translation.x += (target.translation.x - transform.translation.x) * alpha;
+        transform.translation.y += (target.translation.y - transform.translation.y) * alpha;
+        transform.translation.z = target.translation.z;
+
+        if transform.translation.xy().distance(target.translation.xy()) <= IGNORE_DIST {
+            cmd.entity(being_ent).remove::<PendingServerTransform>();
+        }
     }
 }
 

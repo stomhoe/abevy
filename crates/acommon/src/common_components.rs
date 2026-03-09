@@ -1,3 +1,4 @@
+use bevy::ecs::entity::MapEntities;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 #[allow(unused_imports)]
@@ -110,6 +111,49 @@ impl MultipleImagePathHolder {
     }
     pub fn paths(&self) -> &Vec<bevy::asset::AssetPath<'static>> {
         &self.0
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities)]
+pub struct SampleSpriteEnts(#[entities] pub Vec<Entity>);
+impl SampleSpriteEnts {
+    pub fn new(entities: Vec<Entity>) -> Self {
+        Self(entities)
+    }
+    pub fn entities(&self) -> &Vec<Entity> {
+        &self.0
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Eq, Clone, Copy, Hash, PartialEq)]
+pub enum Grounding {
+    #[default]
+    Grounded,
+    Swimming,
+    Floating,
+}
+impl From<u8> for Grounding {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Self::Grounded,
+            1 => Self::Swimming,
+            2 => Self::Floating,
+            _ => Self::Grounded,
+        }
+    }
+}
+impl From<String> for Grounding {
+    fn from(s: String) -> Self {
+        Self::from(s.as_str())
+    }
+}
+impl From<&str> for Grounding {
+    fn from(s: &str) -> Self {
+        match s.trim().to_lowercase().as_str() {
+            "swimming" | "swim" | "s" | "1" => Self::Swimming,
+            "floating" | "float" | "f" | "2" => Self::Floating,
+            _ => Self::Grounded,
+        }
     }
 }
 

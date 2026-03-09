@@ -3,7 +3,7 @@ use crate::game_common_bundles::DenyForEntityZeroClonedChild;
 use crate::game_common_states::*;
 use crate::game_common_timers::*;
 use common::prelude::*;
-use ::sprite_shared::*;
+use ::sprite_shared::prelude::*;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::*;

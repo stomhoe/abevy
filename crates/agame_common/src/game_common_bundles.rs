@@ -2,7 +2,7 @@ use crate::game_common_components::*;
 use crate::prelude::GameCommonStringComponentsBundle;
 use common::prelude::*;
 use ::sprite_shared::sprite_scale_offset::AllScalesAndOffsets;
-use ::sprite_shared::*;
+use ::sprite_shared::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::prelude::*;
 use tilemap_shared::*;

@@ -4,7 +4,7 @@ use color_sampler::ColorSampleSystems;
 use common::{common_states::AssetLoading };
 use bevy_ecs_tilemap::prelude::*;
 use game_common::{game_common_samplers::EntityWeightedSampler};
-use sprite::AcSpriteSystems;
+use sprite_systems::AcSpriteSystems;
 use bevy::prelude::*;
 
 use crate::tile::{

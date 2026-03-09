@@ -5,7 +5,7 @@ use common::common_states::AssetLoading;
 use game_common::game_common::GameplaySystems;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use ::item_shared::*;
-use sprite::prelude::ScsToBuild;
+use sprite_shared::prelude::ScsToBuild;
 use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
 
 use crate::item_init_systems::*;

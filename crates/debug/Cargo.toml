@@ -16,7 +16,7 @@ camera = { path = "../camera" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 sprite_shared = { path = "../sprite_shared" }
-sprite = { path = "../sprite" }
+
 fnl = { path = "../fnl" }
 param_sets = { path = "../param_sets" }
 

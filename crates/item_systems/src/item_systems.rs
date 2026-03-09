@@ -6,7 +6,7 @@ use item_shared::{Item, ItemsGeneratedOnDeath, ToDenyOnItemClone};
 use modifier_shared::modifier_components::{CurrEffectiveValue, ModifierTarget};
 use modifier_shared::modifier_item_types::StackLimit;
 use param_sets::BlockingTileParamSet;
-use sprite::prelude::ScsToBuild;
+use sprite_shared::prelude::ScsToBuild;
 use std::collections::HashSet;
 use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
 

@@ -4,7 +4,7 @@
 use common::{common_components::{Prefix, StrId}};
 use game_common::game_common_samplers::EntityWeightedSampler;
 use crate::sprite_sampler::load_sprite_weighted_sampler_seri_defs;
-use crate::{sprite_resources::*, sprite_sampler::{SpriteWeightedSamplerEntityMap, sprite_sampler_components::{EguiSpriteSamplerHolder, SpriteWeightedSampler}, sprite_sampler_resources::*}};
+use crate::{sprite_resources::*, sprite_sampler::{SpriteWeightedSamplerEntityMap, sprite_sampler_components::{EguiSpriteSamplerHolder, SpriteWeightedSampler}}};
 
 
 

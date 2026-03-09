@@ -1,6 +1,6 @@
-use being_shared::Grounding;
 use bevy::prelude::*;
 use bevy::ecs::entity::MapEntities;
+use common::common_components::Grounding;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::CardinalDirection;
 

@@ -86,7 +86,7 @@ dimension = { path = "crates/dimension" }
 #sprite_animation_shared = { path = "crates/sprite_animation_shared" }
 #sprite_shared = { path = "crates/sprite_shared" }
 sprite_animation = { path = "crates/sprite_animation" }
-sprite = { path = "crates/sprite" }
+sprite_systems = { path = "crates/sprite" }
 faction = { path = "crates/faction" }
 player = { path = "crates/player" }
 ac_input = { path = "crates/ac_input" }

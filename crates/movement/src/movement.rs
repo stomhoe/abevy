@@ -38,12 +38,13 @@ pub fn plugin(app: &mut App) {
                 set_transforms_to_received
                     .after(send_transforms_to_clients)
                     .run_if(on_message::<UnreliableTransform>),
+                reconcile_controlled_transforms.after(set_transforms_to_received),
             )
             .in_set(MovementSystems),
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
-        .add_mapped_client_message::<SendMoveInput>(Channel::Unreliable)
+        .add_mapped_client_message::<SendMoveInput>(Channel::Ordered)
         .add_mapped_server_message::<UnreliableTransform>(Channel::Unreliable)
         .replicate_once::<GridLockedMovement>()
         .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>,)>()

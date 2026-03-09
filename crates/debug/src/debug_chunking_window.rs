@@ -9,7 +9,7 @@ use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugW
 use camera::camera_components::CameraTarget;
 use common::common_components::*;
 use game_common::game_common_components::*;
-use ::sprite_shared::*;
+use ::sprite_shared::prelude::*;
 use tilemap::chunking::chunking_components::*;
 use tilemap::chunking::chunking_resources::*;
 use tilemap::tile::tile_components::*;

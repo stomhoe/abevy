@@ -2,7 +2,7 @@ use being_shared::{BeingInstTemplate, Predator, PredatorHuntThreshold};
 use bevy::prelude::*;
 use common::common_components::*;
 
-use ::sprite_shared::*;
+use ::sprite_shared::prelude::*;
 use game_common::game_common_samplers::*;
 
 use crate::being_inst_template::{being_inst_template_resources::*,

@@ -46,3 +46,6 @@ impl Default for HitboxReceiver {
         Self(COLLISION_MASK_HASHID)
     }
 }
+
+#[derive(Component, Debug, Default, Copy, Clone)]
+pub struct RemoteMeleeAttack;

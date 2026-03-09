@@ -18,5 +18,8 @@ pub struct GridLockedMovement{
     pub active_move_dir: Vec2,
 }
 
+#[derive(Component, Debug, Clone)]
+pub struct PendingServerTransform(pub Transform);
+
 //PONER WALLCLIMBER? PUEDE TRASPASAR MURALLAS SI NO HAY TECHO DEL OTRO LADO
 //UTIL PARA RAZAS DE IGUANAS O ARAÑAS

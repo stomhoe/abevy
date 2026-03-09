@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
+sprite_animation_shared = { path = "../sprite_animation_shared" }
+tilemap_shared = { path = "../tilemap_shared" }
 
 bevy = { workspace = true }
 serde = { workspace = true }

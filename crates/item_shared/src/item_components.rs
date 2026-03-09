@@ -9,7 +9,7 @@ use common::common_components::*;
 use game_common::game_common_samplers::EntityCountMapWeightedSampler;
 use crate::{ItemEntityMap, ItemsGeneratedOnDeathSeri};
 use serde::{Deserialize, Serialize};
-use sprite::prelude::*;
+use sprite_shared::prelude::*;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Default)]
 #[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading, Visibility, )]

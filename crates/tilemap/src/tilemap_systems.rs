@@ -12,7 +12,7 @@ use bevy_replicon::prelude::*;
 use common::{TILEMAP_SYSTEM, common_components::HashId, common_resources::ImageSizeMap };
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{EntityZero, EntityZeroRef, Persisted, };
-use sprite_shared::{AcZ, YSortOrigin};
+use sprite_shared::prelude::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
 use crate::{chunking::chunking_resources::*, tile::{tile_bundles::*, tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_bundles::*, tilemap_resources::*};
 
@@ -204,7 +204,7 @@ pub fn process_tiles_pre(
             continue;
         }
 
-        cmd.entity(tile_ent).try_insert((Signature::from((ez_hash_id, dim_hash, bundle.gpos)),));
+        cmd.entity(tile_ent).try_insert_if_new(Signature::from((ez_hash_id, dim_hash, bundle.gpos)));
 
         if to_persist {
             if is_host {

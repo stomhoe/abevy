@@ -1,6 +1,6 @@
 use ::game_common::game_common_components::*;
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
-use sprite_shared::AcZ;
+use sprite_shared::prelude::AcZ;
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
 use bevy::prelude::*;

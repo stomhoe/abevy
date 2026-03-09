@@ -6,7 +6,6 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
-use sprite_shared::SampleSpriteEnts;
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct ComputedLocally;
@@ -34,41 +33,6 @@ pub struct ControlledBy  {
     #[relationship] #[entities]
     pub client_ent: Entity,
     pub human_input: bool,
-}
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Eq, Clone, Copy, Hash, PartialEq)]
-pub enum Grounding {
-    #[default]
-    Grounded,
-    Swimming,
-    Floating,
-}
-
-impl From<u8> for Grounding {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => Grounding::Grounded,
-            1 => Grounding::Swimming,
-            2 => Grounding::Floating,
-            _ => Grounding::Grounded, // unreachable, but for completeness
-        }
-    }
-}
-
-impl From<String> for Grounding {
-    fn from(s: String) -> Self {
-        Grounding::from(s.as_str())
-    }
-}
-
-impl From<&str> for Grounding {
-    fn from(s: &str) -> Self {
-        match s.trim().to_lowercase().as_str() {
-            "swimming" | "swim" | "s" | "1" => Grounding::Swimming,
-            "floating" | "float" | "f" | "2" => Grounding::Floating,
-            _ => Grounding::Grounded,
-        }
-    }
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]

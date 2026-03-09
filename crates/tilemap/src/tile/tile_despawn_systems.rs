@@ -2,7 +2,7 @@ use crate::{
     tile::{tile_components::*, tile_messages::*},
     tilemap_resources::*,
 };
-use ::sprite_shared::*;
+use ::sprite_shared::prelude::*;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;

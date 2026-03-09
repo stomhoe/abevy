@@ -13,7 +13,7 @@ tilemap_shared ={ path = "../tilemap_shared" }
 #being_shared = { path = "../being_shared" }
 sprite_shared = { path = "../sprite_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
-sprite = { path = "../sprite" }
+sprite_systems = { path = "../sprite" }
 color_sampler = { path = "../color_sampler" }
 item_shared = { path = "../item_shared" }
 

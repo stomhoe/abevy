@@ -4,7 +4,7 @@ use bevy::platform::collections::HashMap;
 use common::{common_components::StrId, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_components::BelongsToFaction;
 use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist}, game_common_timers::EntityZero};
-use sprite_shared::SampleSpriteEnts;
+use common::common_components::SampleSpriteEnts;
 use tilemap_shared::{tilemap_seris::InteractionZoneSeri, InteractionZones};
 
 use crate::{

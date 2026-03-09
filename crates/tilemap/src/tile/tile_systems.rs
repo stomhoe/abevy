@@ -3,7 +3,7 @@ use crate::{
 
     tilemap_resources::*,
 };
-use ::sprite_shared::*;
+use ::sprite_shared::prelude::*;
 use avian2d::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
 use bevy::ecs::entity_disabling::Disabled;

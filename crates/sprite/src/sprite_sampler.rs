@@ -1,24 +1,22 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use common::define_entity_map_systems;
 use game_common::HostSystems;
 
 use crate::sprite_sampler::sprite_sampler_components::*;
 use crate::sprite_sampler::sprite_sampler_init_systems::*;
-use crate::sprite_sampler::sprite_sampler_resources::*;
 use crate::sprite_sampler::sprite_sampler_systems::*;
+pub use sprite_shared::sprite_sampler::*;
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct SpriteSamplerSystems;
-
-
-define_entity_map_systems!(
+common::define_entity_map_systems!(
     SpriteWeightedSampler,
     SpriteWeightedSamplerSeri, "seri.sprite.weighted_sampler", "ssampler.ron",
 );
 
 pub type SpriteWeightedSamplerHandles = SpriteWeightedSamplerSerisHandles;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct SpriteSamplerSystems;
 
 pub fn plugin(app: &mut App) {
     app
@@ -38,7 +36,6 @@ pub fn plugin(app: &mut App) {
 }
 
 pub mod sprite_sampler_components;
-pub mod sprite_sampler_resources;
 pub mod sprite_sampler_seris;
 mod sprite_sampler_init_systems;
 pub mod sprite_sampler_systems;
@@ -48,7 +45,6 @@ pub mod prelude {
     pub use super::{
         sprite_sampler_components::*,
         sprite_sampler_init_systems::*,
-        sprite_sampler_resources::*,
         sprite_sampler_seris::*,
         sprite_sampler_systems::*,
     };

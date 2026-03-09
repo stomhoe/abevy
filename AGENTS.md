@@ -6,4 +6,4 @@ EntityHashmap/set over Hashmap/set<Entity>. use .read() to read MessageReader's 
 for target: in error!, info!, etc. put the corresponding constant from log_targets.rs. if constant is missing, add it in there and then into main.rs's
 
 
-for freshly implemented features, add debug! prints and update main.rs to actually show the logs, so that the user can give you feedback.
+for freshly implemented features, add debug! prints and update main.rs to actually show the logs, so that the user can give you feedback. for systems which are ran both by server and clients, make sure that you .replicate::<ComponentName>'d all involved components in the corresponding module's pub fn plugin. make sure to replicate tile related components.

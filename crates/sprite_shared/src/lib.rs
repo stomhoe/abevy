@@ -1,5 +1,8 @@
 pub use sprite_shared::*;
 
+pub mod sprite_components;
+pub mod sprite_resources;
+pub mod sprite_sampler;
 pub mod sprite_shared;
 pub mod sprite_scale_offset;
 
@@ -11,6 +14,10 @@ pub mod sprite_scale_offset;
 pub mod prelude {
     pub use crate::{
         sprite_shared::*,
+        sprite_components::*,
+        sprite_resources::*,
+        sprite_sampler::*,
+        sprite_sampler::prelude::*,
         sprite_scale_offset::*,
     };
 }

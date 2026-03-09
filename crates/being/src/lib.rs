@@ -2,6 +2,7 @@ pub mod being;
 pub use being::*;
 
 pub mod being_components;
+mod being_messages;
 mod being_systems;
 mod being_behavior_systems;
 mod being_build_systems;
@@ -20,6 +21,7 @@ pub mod prelude {
     pub use crate::{
         being::*,
         being_components::*,
+        being_messages::*,
         being_systems::*,
         being_behavior_systems::*,
         being_build_systems::*,

@@ -1,6 +1,7 @@
 use ::being_shared::*;
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
 use bevy_enhanced_input::prelude::*;
+use bevy_replicon::prelude::*;
 use camera::camera_components::CameraTarget;
 use common::log_targets::{BEING_CONTROL, BEING_SYSTEM};
 use faction::faction_components::*;
@@ -10,9 +11,9 @@ use modifier_shared::{modifier_components::*, modifier_move_bundles::TempSpeedMo
 use player::player_components::*;
 use tilemap::{chunking::chunking_components::ActivatingChunks, chunking::chunking_resources::AaChunkRangeSettings, tile::tile_components::*};
 use ::tilemap_shared::*;
-use ac_input::ac_input_actions::BeingMeleeAttackAction;
+use ac_input::ac_input_actions::{BeingInputContext, BeingMeleeAttackAction};
 
-use crate::{being_components::*};
+use crate::{being_components::*, being_messages::*};
 
 #[allow(unused_parens)]
 // A L CENTRO DE LA BASE VA A HABER Q PONERLE UNO DE ALGUNA FORMA
@@ -356,4 +357,67 @@ pub fn apply_melee_attack(
         );
     }
     health_damage_writer.write_batch(health_damage_messages.drain(..));
+}
+
+pub fn send_melee_attack_to_server(
+    mut event_writer: MessageWriter<SendMeleeAttack>,
+    changed_melee_actions: Query<
+        (&Action<BeingMeleeAttackAction>, &ActionOf<BeingInputContext>),
+        Changed<Action<BeingMeleeAttackAction>>,
+    >,
+    controlled_beings: Query<(&ControlledBy, Has<ComputedLocally>)>,
+    mut messages: Local<Vec<SendMeleeAttack>>,
+) {
+    for (melee_action, action_of) in changed_melee_actions.iter() {
+        if !**melee_action {
+            continue;
+        }
+        let being_ent = **action_of;
+        let Ok((controlled_by, controlled_locally)) = controlled_beings.get(being_ent) else {
+            continue;
+        };
+        if !controlled_locally || !controlled_by.human_input {
+            continue;
+        }
+        messages.push(SendMeleeAttack { being_ent });
+    }
+    event_writer.write_batch(messages.drain(..));
+}
+
+pub fn receive_melee_attack_from_client(
+    mut events: MessageReader<FromClient<SendMeleeAttack>>,
+    mut commands: Commands,
+    controlled_beings_query: Query<&ControlledBy>,
+) {
+    for from_client in events.read() {
+        let SendMeleeAttack { being_ent } = from_client.message.clone();
+        let Ok(controlled_by) = controlled_beings_query.get(being_ent) else {
+            warn!(target: BEING_SYSTEM, "Client tried to melee with missing/uncontrolled being {}", being_ent);
+            continue;
+        };
+        let Some(client_entity) = from_client.client_id.entity() else { continue; };
+        if controlled_by.client_ent != client_entity {
+            warn!(
+                target: BEING_SYSTEM,
+                "Client tried to melee with a being not controlled by them: {} (controlled_by.client: {:?}, from_client.client_entity: {:?})",
+                being_ent,
+                controlled_by.client_ent,
+                client_entity
+            );
+            continue;
+        }
+        commands.entity(being_ent).try_insert(RemoteMeleeAttack);
+    }
+}
+
+pub fn apply_remote_melee_attack_actions(
+    mut commands: Commands,
+    beings: Query<Entity, (With<RemoteMeleeAttack>, Without<ComputedLocally>, With<Actions<BeingInputContext>>)>,
+) {
+    for being_ent in beings.iter() {
+        commands
+            .entity(being_ent)
+            .remove::<RemoteMeleeAttack>()
+            .try_mock::<BeingInputContext, BeingMeleeAttackAction>(TriggerState::Fired, true, MockSpan::once());
+    }
 }

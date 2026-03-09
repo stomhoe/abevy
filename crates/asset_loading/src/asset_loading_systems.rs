@@ -6,7 +6,7 @@ use common::{common_components::{AssetScoped, HotReload}, common_states::*};
 use being::race::race_components::Race;
 use being::sex::sex_components::Sex;
 use being_shared::BeingInstTemplate;
-use sprite::sprite_components::SpriteConfig;
+use sprite_shared::prelude::SpriteConfig;
 use sprite_animation_shared::sprite_animation_components::AcAnimation;
 use tilemap_shared::GlobalGenSettings;
 

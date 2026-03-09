@@ -4,10 +4,9 @@
 use bevy_spritesheet_animation::prelude::*;
 use common::def_db::discover_assets_files_by_suffixes;
 use common::common_components::*;
-use sprite::{sprite_components::*, sprite_resources::*, };
+use ::sprite_shared::prelude::*;
+use sprite_systems::prelude::*;
 use ::sprite_animation_shared::*;
-use ::sprite_shared::*;
-use ::sprite_shared::sprite_scale_offset::*;
 
 fn load_animation_defs_from_filesystem() -> Vec<AnimationSeri> {
     let mut out = Vec::new();
