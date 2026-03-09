@@ -207,9 +207,18 @@ pub fn apply_melee_attack(
         &GlobalTransform,
         &CardinalDirection,
         Option<&InteractionZones>,
+        Option<&HitboxReceiver>,
+    ), With<Being>>,
+    being_receivers: Query<(
+        &GlobalTransform,
+        Option<&InteractionZones>,
+        Option<&HitboxReceiver>,
+        Option<&CardinalDirection>,
     ), With<Being>>,
     beings_at_gpos: Res<BeingsAtGpos>,
     tile_gathering: TileGatheringParamSet,
+    tile_instances: Query<(&GlobalTilePos, &EntityZeroRef, Option<&TileFlip>, Option<&CardinalDirection>)>,
+    tile_receivers: Query<(Option<&InteractionZones>, Option<&TiledCollisionMask>)>,
     mut health_damage_writer: MessageWriter<HealthDamage>,
     mut tiles_to_drain: Local<Vec<Entity>>,
     mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
@@ -217,18 +226,31 @@ pub fn apply_melee_attack(
 ) {
     const MELEE_DAMAGE: f32 = 10.0;
 
-    let Ok((&attacker_dim, attacker_transform, &attacker_direction, interaction_zones)) = beings.get(melee.context) else {
+    let Ok((&attacker_dim, attacker_transform, &attacker_direction, interaction_zones, _)) = beings.get(melee.context) else {
+        info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} not found", melee.context);
         return;
     };
     let Some(interaction_zones) = interaction_zones else {
+        info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} has no InteractionZones", melee.context);
         return;
     };
     let Ok(melee_zone) = interaction_zones.0.get(InteractionZones::MELEE) else {
+        info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} has no melee zone", melee.context);
         return;
     };
 
     let attacker_pos = attacker_transform.translation().xy();
     let mut hit_entities = EntityHashSet::default();
+    let mut hit_beings = 0usize;
+    let mut hit_tiles = 0usize;
+
+    info!(
+        target: BEING_SYSTEM,
+        "Melee started by {:?} at dim {:?}, facing {:?}",
+        melee.context,
+        attacker_dim,
+        attacker_direction
+    );
 
     for (&(dim_ref, target_pos), target_entities) in beings_at_gpos.0.iter() {
         if dim_ref != attacker_dim {
@@ -241,10 +263,32 @@ pub fn apply_melee_attack(
             if target_entity == melee.context || !hit_entities.insert(target_entity) {
                 continue;
             }
+            let Ok((target_transform, target_zones, target_hitbox_receiver, target_direction)) = being_receivers.get(target_entity) else {
+                continue;
+            };
+            let receiver = target_hitbox_receiver.copied().unwrap_or_default().0;
+            let target_pos_px = target_transform.translation().xy();
+            let hit_point = target_pos.to_pixelpos();
+            let accepts_hit = if receiver == COLLISION_MASK_HASHID {
+                true
+            } else {
+                let Some(target_zones) = target_zones else { continue; };
+                target_zones.is_inside_interaction_zone(
+                    receiver,
+                    target_pos_px,
+                    hit_point,
+                    target_direction.copied().unwrap_or_default(),
+                )
+            };
+            if !accepts_hit {
+                continue;
+            }
             health_damage_messages.push(HealthDamage {
                 entity: target_entity,
                 amount: MELEE_DAMAGE,
             });
+            hit_beings += 1;
+            info!(target: BEING_SYSTEM, "Melee hit being {:?}", target_entity);
         }
     }
 
@@ -260,12 +304,56 @@ pub fn apply_melee_attack(
             if !hit_entities.insert(target_entity) {
                 continue;
             }
+            let Ok((&tile_origin, &EntityZeroRef(tile_ezero), tile_flip, tile_direction)) = tile_instances.get(target_entity) else {
+                continue;
+            };
+            let Ok((target_zones, target_collision_mask)) = tile_receivers.get(tile_ezero) else {
+                continue;
+            };
+            let hit_point = candidate_gpos;
+            let accepts_hit = if let Some(target_zones) = target_zones {
+                target_zones.is_inside_interaction_zone(
+                    HITBOX_HASHID,
+                    tile_origin.to_pixelpos(),
+                    hit_point.to_pixelpos(),
+                    tile_direction.copied().unwrap_or_default(),
+                )
+            } else {
+                target_collision_mask.is_some_and(|mask| {
+                    mask.is_solid_at_world_pos_with_flip(
+                        tile_origin,
+                        hit_point,
+                        tile_flip.copied().unwrap_or_default(),
+                        tile_direction.copied().unwrap_or_default(),
+                    )
+                })
+            };
+            if !accepts_hit {
+                continue;
+            }
             health_damage_messages.push(HealthDamage {
                 entity: target_entity,
                 amount: MELEE_DAMAGE,
             });
+            hit_tiles += 1;
+            info!(
+                target: BEING_SYSTEM,
+                "Melee hit tile instance {:?} (ezero {:?})",
+                target_entity,
+                tile_ezero
+            );
         }
     }
 
+    if hit_beings == 0 && hit_tiles == 0 {
+        info!(target: BEING_SYSTEM, "Melee ended: no valid receiver hit");
+    } else {
+        info!(
+            target: BEING_SYSTEM,
+            "Melee ended: {} being hit(s), {} tile hit(s)",
+            hit_beings,
+            hit_tiles
+        );
+    }
     health_damage_writer.write_batch(health_damage_messages.drain(..));
 }

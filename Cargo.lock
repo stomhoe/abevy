@@ -5975,8 +5975,11 @@ dependencies = [
  "bevy_replicon",
  "common",
  "game_common",
+ "item_shared",
  "modifier_shared",
+ "rand 0.9.2",
  "serde",
+ "sprite",
  "tilemap",
  "tilemap_shared",
 ]

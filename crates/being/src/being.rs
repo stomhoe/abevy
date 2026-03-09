@@ -13,7 +13,7 @@ use sprite::AcSpriteSystems;
 
 
 use crate::{
-    being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations, sync_melee_interaction_zone_from_sources},
+    being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations, sync_hitbox_receiver_from_sources, sync_melee_interaction_zone_from_sources},
     being_components::*,
     being_inst_template::BeingInstTemplateSystems,
     being_behavior_systems::*,
@@ -39,6 +39,7 @@ pub fn plugin(app: &mut App) {
         (
             build_beings_from_refs,
             sync_melee_interaction_zone_from_sources,
+            sync_hitbox_receiver_from_sources,
             sample_sprite_normal_variations,
         ).chain().in_set(HostSystems),
         (

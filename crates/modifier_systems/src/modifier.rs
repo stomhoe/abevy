@@ -33,6 +33,9 @@ pub fn plugin(app: &mut App) {
             apply_health_damage.run_if(on_message::<HealthDamage>),
             update_body_manipulation_totals,
             mark_dead_by_health.after(apply_health_damage),
+            spawn_items_on_death
+                .after(mark_dead_by_health)
+                .before(despawn_entities_on_death),
             despawn_entities_on_death.after(mark_dead_by_health),
         )
             .in_set(ModifierSystems),

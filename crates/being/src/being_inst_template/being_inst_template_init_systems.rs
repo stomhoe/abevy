@@ -11,6 +11,7 @@ use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
 use tilemap_shared::InteractionZones;
+use crate::being_components::{COLLISION_MASK_HASHID, HitboxReceiver};
 
 pub fn init_being_templates(
     mut cmd: Commands,
@@ -93,6 +94,12 @@ pub fn init_being_templates(
         let mut interaction_zones = bevy::platform::collections::HashMap::with_capacity(1);
         interaction_zones.insert("melee".to_string(), template_seri.melee_interaction_zone.clone());
         cmd.entity(bit_entity).insert(InteractionZones::new(interaction_zones));
+        let hitbox_hashid = if template_seri.hitbox_hashid.trim().is_empty() {
+            COLLISION_MASK_HASHID
+        } else {
+            HashId::from(template_seri.hitbox_hashid.as_str())
+        };
+        cmd.entity(bit_entity).insert(HitboxReceiver(hitbox_hashid));
 
         // Resolve race entity from race string
         let race_str_id = StrId::trunc(&template_seri.race);

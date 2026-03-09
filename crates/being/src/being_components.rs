@@ -35,3 +35,14 @@ impl ToChase {
         }
     }
 }
+
+pub const COLLISION_MASK_HASHID: HashId = HashId::hash("collision_mask");
+pub const HITBOX_HASHID: HashId = HashId::hash("hitbox");
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+pub struct HitboxReceiver(pub HashId);
+impl Default for HitboxReceiver {
+    fn default() -> Self {
+        Self(COLLISION_MASK_HASHID)
+    }
+}

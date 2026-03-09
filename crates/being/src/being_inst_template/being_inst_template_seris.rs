@@ -31,6 +31,8 @@ pub struct BitSeri {
     pub predator_hunt_threshold: f32,
     #[serde(default = "default_melee_interaction_zone")]
     pub melee_interaction_zone: InteractionZoneSeri,
+    #[serde(default)]
+    pub hitbox_hashid: String,
 }
 
 fn default_multiplier() -> f32 { 1.0 }

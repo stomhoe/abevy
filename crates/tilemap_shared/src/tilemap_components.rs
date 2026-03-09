@@ -429,9 +429,9 @@ fn rotate_gpos_offset(offset: GlobalTilePos, direction: CardinalDirection) -> Gl
     let x = offset.0.x;
     let y = offset.0.y;
     match direction {
-        CardinalDirection::South => offset,
+        CardinalDirection::South => GlobalTilePos::new(-x, -y),
         CardinalDirection::West => GlobalTilePos::new(-y, x),
-        CardinalDirection::North => GlobalTilePos::new(-x, -y),
+        CardinalDirection::North => offset,
         CardinalDirection::East => GlobalTilePos::new(y, -x),
     }
 }
@@ -440,9 +440,9 @@ fn rotate_vec2_offset(offset: Vec2, direction: CardinalDirection) -> Vec2 {
     let x = offset.x;
     let y = offset.y;
     match direction {
-        CardinalDirection::South => offset,
+        CardinalDirection::South => Vec2::new(-x, -y),
         CardinalDirection::West => Vec2::new(-y, x),
-        CardinalDirection::North => Vec2::new(-x, -y),
+        CardinalDirection::North => offset,
         CardinalDirection::East => Vec2::new(y, -x),
     }
 }

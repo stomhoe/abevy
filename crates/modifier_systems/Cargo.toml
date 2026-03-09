@@ -10,7 +10,10 @@ being = { path = "../being" }
 modifier_shared = { path = "../modifier_shared" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
+item_shared = { path = "../item_shared" }
+sprite = { path = "../sprite" }
 
 bevy = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
+rand = { workspace = true }

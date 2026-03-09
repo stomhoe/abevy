@@ -138,7 +138,7 @@ fn build_filter() -> String {
         log_targets::TILEMAP_LOAD, WARN,
         log_targets::DIMENSION_LOAD, WARN,
         log_targets::CONTROL, WARN,
-        log_targets::BEING_SYSTEM, WARN,
+        log_targets::BEING_SYSTEM, INFO,
         log_targets::FACTION_SYSTEM, WARN,
         log_targets::Z_SORT_SYSTEM, INFO,
         log_targets::ENTITY_MAP_SYSTEM, WARN,

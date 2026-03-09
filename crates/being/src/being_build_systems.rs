@@ -8,7 +8,7 @@ use sprite_shared::SampleSpriteEnts;
 use tilemap_shared::{tilemap_seris::InteractionZoneSeri, InteractionZones};
 
 use crate::{
-    being_components::Being,
+    being_components::{Being, HitboxReceiver},
     being_inst_template::being_inst_template_resources::{BitRef},
     body::{BodyTreeRef, body_sampler::body_sampler_resources::BodyWeightedSamplerRef},
     race::race_components::{Race, SexesSampler, SexSizeVariationsBySex},
@@ -187,6 +187,25 @@ pub fn sync_melee_interaction_zone_from_sources(
             .cloned()
             .unwrap_or_else(default_melee_interaction_zones);
         cmd.entity(being_ent).try_insert(zones);
+    }
+}
+
+pub fn sync_hitbox_receiver_from_sources(
+    mut cmd: Commands,
+    beings: Query<
+        (Entity, Option<&BitRef>, Option<&RaceRef>),
+        (With<Being>, Or<(Added<Being>, Changed<BitRef>, Changed<RaceRef>)>),
+    >,
+    bit_hitboxes: Query<&HitboxReceiver>,
+    race_hitboxes: Query<&HitboxReceiver, With<Race>>,
+) {
+    for (being_ent, bit_ref, race_ref) in beings.iter() {
+        let hitbox_receiver = bit_ref
+            .and_then(|bit_ref| bit_hitboxes.get(bit_ref.0).ok())
+            .or_else(|| race_ref.and_then(|race_ref| race_hitboxes.get(race_ref.0).ok()))
+            .copied()
+            .unwrap_or_default();
+        cmd.entity(being_ent).try_insert(hitbox_receiver);
     }
 }
 
