@@ -5,7 +5,7 @@ use bevy_ecs_tilemap::tiles::TileFlip;
 
 use common::{common_components::{Tag}, };
 use game_common::game_common_components::EntityZero;
-use item_shared::ItemsDroppedOnDeathSeri;
+use item_shared::ItemsGeneratedOnDeathSeri;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::InteractionZoneSeri;
 
@@ -172,7 +172,7 @@ pub struct TileSeri {
     pub blocks_projectiles: bool,
 
     #[serde(default)]
-    pub items_dropped_on_death: ItemsDroppedOnDeathSeri,
+    pub items_dropped_on_death: ItemsGeneratedOnDeathSeri,
     #[serde(default)]
     pub hp: f32,
 }

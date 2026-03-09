@@ -114,12 +114,11 @@ macro_rules! define_entity_map_systems {
         $(,)?
     ) => {
         paste::paste! {
-            #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone, Reflect)]
+            #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone, )]
             #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility::Hidden, Transform)]
             pub struct [<Egui $abbreviation sHolder>];
 
-            #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone, Reflect)]
-            #[reflect(Resource)]
+            #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone)]
             pub struct [<$main_component EntityMap>](pub common::common_types::HashIdToEntityMap);
 
             impl Default for [<$main_component EntityMap>] { fn default() -> Self { Self(Default::default()) } }
@@ -248,7 +247,6 @@ macro_rules! define_entity_map_systems {
                 $crate::__entity_map_register_reflect_type!(app, $($ref_reflect,)? [<$abbreviation Ref>]);
                 app
                     .init_resource::<[<$main_component EntityMap>]>()
-                    .register_type::<[<$main_component EntityMap>]>()
                     //.register_type::<[<Egui $abbreviation sHolder>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
                          [<add_ $main_component:snake _ezeros_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1))),

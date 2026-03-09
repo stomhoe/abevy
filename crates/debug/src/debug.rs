@@ -14,6 +14,7 @@ use crate::{
     player_details_inspector::*, players_list_window::*, portals_details_inspector::*, portals_list_window::*, region_details_inspector::*,
     regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
     sprite_cfgs_list_window::*, terrgen_editor_window::*, terrgen_values_window::*,
+    world_tile_click_picker_window::*,
     tile_details_inspector::*,
     tilemap_details_inspector::*,
 };
@@ -31,6 +32,7 @@ pub fn plugin(app: &mut App) {
                 apply_initial_hot_reload_visibility_from_world_settings,
                 debug_toggle_hot_reload_window,
                 debug_toggle_main_menu,
+                capture_world_tile_click_selection,
             )
                 .run_if(debug_enabled),
         )
@@ -60,6 +62,7 @@ pub fn plugin(app: &mut App) {
                 hot_reload_window,
                 registered_positions_window,
                 gpos_maps_window_system,
+                world_tile_click_picker_window,
                 terrgen_debug_window_system
                     .run_if(|visible: Res<DubugWindowsVisibility>| visible.terrgen_values),
             )
@@ -86,6 +89,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()
+        .init_resource::<WorldTileClickInspectorState>()
         .init_resource::<common::common_states::HotReloadSelection>()
         .init_resource::<common::common_states::HotReloadRequest>()
         .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered);

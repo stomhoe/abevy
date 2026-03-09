@@ -26,7 +26,7 @@ pub struct BodyOf {
     pub being: Entity,
 }
 
-#[derive(Component, Debug, Reflect, Clone)]
+#[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = BodyOf)]
 pub struct Bodies(Vec<Entity>);
 impl Bodies {
@@ -35,7 +35,7 @@ impl Bodies {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct BodyTreeDistributedTotals(pub HashIdMap<f32>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]

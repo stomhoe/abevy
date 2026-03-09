@@ -1,11 +1,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, )]
 #[states(scoped_entities)]//el default es para que el despawnonexit se active al salir de ese estado
 pub enum AppState {NoSession, #[default]StatefulGameSession, }
 
-#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, )]
 #[source(AppState = AppState::NoSession)]
 #[states(scoped_entities)]
 pub enum PreGameState {
@@ -14,7 +14,7 @@ pub enum PreGameState {
     Settings
 }
 
-#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, )]
 #[source(AppState = AppState::StatefulGameSession)]
 #[states(scoped_entities)]
 pub enum GamePhase {#[default]Setup, ActiveGame,}
@@ -24,7 +24,7 @@ pub enum GamePhase {#[default]Setup, ActiveGame,}
 // pub enum ConnectionAttempt {#[default]Not, Triggered, PostAttempt,}
 
 #[allow(unused_parens, dead_code)]
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, )]
 #[states(scoped_entities,)]
 pub enum AssetLoading {
     #[default]
@@ -42,8 +42,7 @@ pub enum AssetLoading {
 
 
 #[allow(unused_parens, dead_code)]
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-#[reflect(State, Default)]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, )]
 #[states(scoped_entities,)]
 pub enum AssetHotReloadState {#[default]Stopped, Ongoing,}
 

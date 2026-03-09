@@ -122,6 +122,7 @@ impl MassCollectedTiles {
             builder.deny::<ToDenyOnTileClone>();
             //builder.deny::<BundleToDenyOnReleaseBuild>();
         }).id();
+
         //let tile_size = param_set.size_in_tiles.get(ezero_ref.0).cloned().unwrap_or_default();
 
         let tile_bundle = TileBundle {

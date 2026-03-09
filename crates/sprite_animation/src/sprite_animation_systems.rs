@@ -20,15 +20,17 @@ use ::tilemap_shared::directions::*;
 #[allow(unused_parens, )]
 pub fn animate_sprite(
     mut cmd: Commands,
+    asset_server: Res<AssetServer>,
 
     mut move_anims_changed: MessageReader<BeingChangedMoveState>,
     changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
     changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<EntityZeroRef>, Without<SpriteConfig>)>,
 
-    base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, &Grounding, ), ()>,
+    base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, Option<&Grounding>, ), ()>,
 
     mut sprites_query: Query<(
         Entity,
+        Has<Sprite>,
         Option<&mut SpritesheetAnimation>,
         &BaseHolderRef,
         &EntityZeroRef,
@@ -38,8 +40,18 @@ pub fn animate_sprite(
         Option<&mut Transform>,
     ), ()>,
 
-    spriteconfig: Query<(&MappedAnimations, Has<Directionable>, Has<MovementBased>, Has<GroundingBased>, Option<&BaseMovementSpeed>, Option<&SpriteAnimationSfx>), ()>,
+    spriteconfig: Query<(
+        Option<&MappedAnimations>,
+        Has<UseFallbackSprite>,
+        Option<&ImagePathHolder>,
+        Has<Directionable>,
+        Has<MovementBased>,
+        Has<GroundingBased>,
+        Option<&BaseMovementSpeed>,
+        Option<&SpriteAnimationSfx>
+    ), ()>,
     base_movevec_query: Query<&MoveVecMag>,
+    strid_query: Query<&StrId>,
 
     mut animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>, Option<&ClipStartFrames>, Has<SaveAnimationProgress>, Option<&AlternatingStartFramesConfig>, Option<&mut AlternatingStartFramesState>, Option<&PlayingSpeed>, Option<&AnimationSeri>),()>,
 
@@ -56,33 +68,59 @@ pub fn animate_sprite(
 
     for (held_sprites, direction, moving, grounding) in base.iter_many(entis_to_iter) {
         for held_sprite in held_sprites.entities() {
-            let Ok((ent, prev_anim, base_holder, sprite_cfg_ref, state_id, playing_speed, animation_progresses, transform, )) = sprites_query.get_mut(*held_sprite)
-            else { error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get sprite entity {:?}", held_sprite); continue };
+            let held_sprite_strid = strid_query.get(*held_sprite).ok().cloned().unwrap_or_default();
+            let Ok((ent, has_sprite, prev_anim, base_holder, sprite_cfg_ref, state_id, playing_speed, animation_progresses, transform, )) = sprites_query.get_mut(*held_sprite)
+            else { error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get sprite entity {:?} {}", held_sprite, held_sprite_strid); continue };
 
 
-            let Ok((sprite_cfg_animations_map, directionable, movement_based, grounding_based, base_movement_speed, sprite_cfg_sfx)) = spriteconfig.get(sprite_cfg_ref.0)
-            else { error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get SpriteConfigRef entity {:?}", sprite_cfg_ref.0); continue };
+            let Ok((sprite_cfg_animations_map, has_fallback, fallback_img_path, directionable, movement_based, grounding_based, base_movement_speed, sprite_cfg_sfx)) = spriteconfig.get(sprite_cfg_ref.0)
+            else {
+                let sprite_cfg_strid = strid_query.get(sprite_cfg_ref.0).ok().cloned().unwrap_or_default();
+                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get SpriteConfigRef entity {:?} {}", sprite_cfg_ref.0, sprite_cfg_strid);
+                continue
+            };
+            let Some(sprite_cfg_animations_map) = sprite_cfg_animations_map else {
+                if has_fallback {
+                    if !has_sprite {
+                        let Some(fallback_img_path) = fallback_img_path else {
+                            continue;
+                        };
+                        cmd.entity(ent).insert(Sprite {
+                            image: asset_server.load(fallback_img_path.path()),
+                            ..Default::default()
+                        });
+                    }
+                    continue;
+                }
+                let sprite_cfg_strid = strid_query.get(sprite_cfg_ref.0).ok().cloned().unwrap_or_default();
+                error_once!(target: SPRITE_ANIMATION_SYSTEM, "SpriteConfig {:?} {} has no MappedAnimations and no fallback image", sprite_cfg_ref.0, sprite_cfg_strid);
+                continue;
+            };
 
             let anim_type = AnimType {
                 direction: if directionable { direction.copied().unwrap_or_default() } else { CardinalDirection::default() },
                 moving: if movement_based { moving.copied().unwrap_or_default() } else { MoveAnimActive::default() },
-                grounding: if grounding_based { *grounding } else { Grounding::default() },
+                grounding: if grounding_based { grounding.copied().unwrap_or_default() } else { Grounding::default() },
                 state_id: state_id.cloned(),
             };
-            trace!(target: SPRITE_ANIMATION_SYSTEM, "Determined AnimType {:?} for sprite entity {:?}", anim_type, ent);
+            trace!(target: SPRITE_ANIMATION_SYSTEM, "Determined AnimType {:?} for sprite entity {:?} {}", anim_type, ent, held_sprite_strid);
 
             let Some(anim_ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
-                warn_once!(target: SPRITE_ANIMATION_SYSTEM, "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?}", anim_type, ent);
+                if !has_fallback {
+                    warn_once!(target: SPRITE_ANIMATION_SYSTEM, "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?} {}", anim_type, ent, held_sprite_strid);
+                }
                 continue;
             };
 
             let Ok((_, anim_handle, anim_sheet, z, y_sort, clip_start_frames, should_save_anim_progress, alternating_config, mut alternating_state, anim_playing_speed, anim_seri )) = animation_query.get_mut(*anim_ent) else {
-                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?}", anim_ent);
+                let anim_strid = strid_query.get(*anim_ent).ok().cloned().unwrap_or_default();
+                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?} {}", anim_ent, anim_strid);
                 continue;
             };
 
             let Some(sprite) = anim_sheet.0.with_loaded_image(&images) else {
-                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to create sprite for animation entity {:?} because image is not loaded yet.", anim_ent);
+                let anim_strid = strid_query.get(*anim_ent).ok().cloned().unwrap_or_default();
+                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to create sprite for animation entity {:?} {} because image is not loaded yet.", anim_ent, anim_strid);
                 continue;
             };
             let mut sprite = sprite.sprite(&mut atlas_layouts);

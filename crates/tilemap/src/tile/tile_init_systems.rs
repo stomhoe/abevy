@@ -14,7 +14,7 @@ use bevy_replicon::prelude::*;
 use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
 use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::{DespawnOnDeath, Health};
-use item_shared::{ItemEntityMap, ItemsDroppedOnDeath};
+use item_shared::{ItemEntityMap, ItemsGeneratedOnDeath};
 use sprite::sprite_components::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
 use std::{fs, path::PathBuf};
@@ -213,7 +213,7 @@ pub fn init_tiles(
         }
         if !seri.items_dropped_on_death.is_sentinel() {
             if let Some(item_map) = item_map.as_ref() {
-                cmd.entity(tile_enti).insert(ItemsDroppedOnDeath::from_droppedondeath_seri(
+                cmd.entity(tile_enti).insert(ItemsGeneratedOnDeath::from_gen_on_death_seri(
                     &seri.items_dropped_on_death,
                     item_map,
                     &dropped_on_death_seris,

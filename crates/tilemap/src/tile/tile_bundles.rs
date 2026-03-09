@@ -9,7 +9,7 @@ use game_common::game_common_components::*;
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 
 use game_common::prelude::*;
-use item_shared::ItemsDroppedOnDeath;
+use item_shared::ItemsGeneratedOnDeath;
 use ::tilemap_shared::*;
 
 use crate::tile::tile_components::*;
@@ -52,7 +52,8 @@ pub struct ToDenyOnTileClone(
     RotateCardinallyBasedOnHash,
     TransformBasedCardRotation,
     TerrBlendParams,
-    ItemsDroppedOnDeath,
+    ItemsGeneratedOnDeath,
+
 
 );
 

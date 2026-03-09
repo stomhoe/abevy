@@ -16,7 +16,7 @@ pub struct BodyRootPart;
 #[relationship(relationship_target = BodyParts)]
 pub struct BodyPartOf {#[relationship] #[entities] pub body: Entity,}
 
-#[derive(Component, Debug, Clone, Reflect)]
+#[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = BodyPartOf)]
 pub struct BodyParts(Vec<Entity>);
 impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
@@ -41,10 +41,10 @@ impl BodyPartSlots {
 #[derive(Component, Debug, Default, Copy, Clone, )]
 pub struct BodyPartCoverageWeight(pub u16);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BodyPartForcedDistribution(pub HashIdMap<f32>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BodyPartWeightedDistribution(pub HashIdMap<f32>);
 
 pub struct BodyPartStat;

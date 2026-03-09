@@ -12,3 +12,6 @@ game_common = { path = "../agame_common" }
 item_shared = { path = "../item_shared" }
 modifier_shared = { path = "../modifier_shared" }
 sprite = { path = "../sprite" }
+tilemap_shared = { path = "../tilemap_shared" }
+param_sets = { path = "../param_sets" }
+rand = { workspace = true }

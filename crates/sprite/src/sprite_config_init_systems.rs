@@ -3,7 +3,7 @@ use ::sprite_shared::{sprite_scale_offset::*, *};
 use bevy::prelude::*;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
-use common::{common_components::*, common_tag_components::TagSet};
+use common::{SPRITE_INIT, common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::*;
 use sprite_animation_shared::AcAnimationEntityMap;
 
@@ -31,7 +31,7 @@ pub fn init_sprite_configs(
             Err(e) => {
                 let err =
                     BevyError::from(format!("Failed to create StrId for SpriteConfig: {}", e));
-                error!(target: "sprite_init", "{}", err);
+                error!(target: SPRITE_INIT, "{}", err);
                 continue;
             }
         };
@@ -43,7 +43,7 @@ pub fn init_sprite_configs(
             Some(1) => Visibility::Visible,
             Some(2) => Visibility::Hidden,
             Some(v) => {
-                warn!(target: "sprite_init", "Invalid visibility value: {} for SpriteConfig '{}', falling back to inherited", v, str_id);
+                warn!(target: SPRITE_INIT, "Invalid visibility value: {} for SpriteConfig '{}', falling back to inherited", v, str_id);
                 Visibility::default()
             }
             None => Visibility::Inherited,
@@ -113,7 +113,7 @@ pub fn init_sprite_configs(
         }
 
         if seri.name.trim().is_empty() {
-            warn!(target: "sprite_init", "SpriteConfig name is empty for SpriteConfig '{}', using StrId as name", str_id);
+            warn!(target: SPRITE_INIT, "SpriteConfig name is empty for SpriteConfig '{}', using StrId as name", str_id);
             cmd.entity(spritecfg_ent)
                 .insert(DisplayName::trunc(str_id.as_str()));
         } else {
@@ -139,24 +139,40 @@ pub fn init_sprite_configs(
             cmd.entity(spritecfg_ent).insert(to_become_child);
         }
 
+        let fallback_img_path = seri.fallback_img_path.trim();
+        let has_fallback = !fallback_img_path.is_empty();
+        if has_fallback {
+            let Ok(img_path_holder) = ImagePathHolder::new(fallback_img_path.to_string()) else {
+                error!(target: SPRITE_INIT, "SpriteConfig '{}' fallback_img_path '{}' is invalid", str_id, fallback_img_path);
+                continue;
+            };
+            cmd.entity(spritecfg_ent).insert((UseFallbackSprite, img_path_holder));
+            if seri.fallback_z.is_finite() {
+                cmd.entity(spritecfg_ent).insert(AcZ(seri.fallback_z));
+            }
+            if seri.fallback_y_sort.is_finite() {
+                cmd.entity(spritecfg_ent).insert(YSortOrigin(seri.fallback_y_sort));
+            }
+        }
+
         if !seri.mapped_anims.is_empty() {
             let mut anims_map = MappedAnimations::default();
             for (anim_type, anim_id) in seri.mapped_anims {
                 let anim_type = AnimType::from_tuple(anim_type);
                 let anim_id = StrId::trunc(anim_id);
                 let Ok(&anim_ent) = library.0.get(&anim_id) else {
-                    error!(target: "sprite_init", "SpriteConfig {}: AcAnimationEntityMap does not contain: {} ", str_id, anim_id);
+                    error!(target: SPRITE_INIT, "SpriteConfig {}: AcAnimationEntityMap does not contain: {} ", str_id, anim_id);
                     continue;
                 };
                 anims_map.0.insert(anim_type, anim_ent);
             }
             if anims_map.0.is_empty() {
-                error!(target: "sprite_init", "SpriteConfig '{}' animations map has no valid entries", str_id);
+                error!(target: SPRITE_INIT, "SpriteConfig '{}' animations map has no valid entries", str_id);
             } else {
                 cmd.entity(spritecfg_ent).insert(anims_map);
             }
-        } else {
-            error!(target: "sprite_init", "SpriteConfig '{}' was given an empty animations map", str_id);
+        } else if !has_fallback {
+            error!(target: SPRITE_INIT, "SpriteConfig '{}' needs either mapped_anims or fallback_img_path", str_id);
         }
 
         if !seri.children_sprites.is_empty() {

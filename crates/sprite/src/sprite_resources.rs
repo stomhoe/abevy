@@ -36,6 +36,13 @@ pub struct SfxLoopSeri {
 pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,
+    #[serde(default)]
+    pub fallback_img_path: String,
+    #[serde(default = "default_fallback_scalar")]
+    pub fallback_z: f32,
+    #[serde(default = "default_fallback_scalar")]
+    pub fallback_y_sort: f32,
+    #[serde(default)]
     pub mapped_anims: HashMap<(String, String, String, String), String>,
     #[serde(default)]
     pub parent_cat: String, //adds ChildOf referencing other brother entity sprite possessing this tag
@@ -100,6 +107,7 @@ fn default_scale_2d() -> (f32, f32) { (1.0, 1.0) }
 fn default_base_movement_speed() -> f32 { 0.0 }
 fn default_animation_sfx_every_n_frame_changes() -> f32 { 1.0 }
 fn default_sfx_interval_secs() -> f32 { 0.35 }
+fn default_fallback_scalar() -> f32 { f32::NAN }
 // PARA LAS BODY PARTS INTANGIBLES LASTIMABLES/CON HP, HACER Q EN LA DEFINICIÓN DE ESTOS SEAN ASOCIABLES A SPRITES CONCRETOS MEDIANTE SU ID O CATEGORY (AL DESTRUIR LA BODY PART SE INVISIBILIZA (NO BORRAR POR SI SE CURA DESP)). NO ASOCIAR BODY PARTS A SPRITE MEDIANTE EL PROPIO SPRITE PORQ AFECTA EL REUSO DE ESTE (P EJ EL CUERPO DE UN HUMANO PUEDE SER USADO EN OTRAS ESPECIES Q LE ASIGNAN OTRA HP U ÓRGANOS)
 
 

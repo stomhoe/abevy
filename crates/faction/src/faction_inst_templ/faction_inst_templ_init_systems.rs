@@ -55,7 +55,9 @@ pub fn init_faction_inst_templates(
             ecmd.insert(FactionTemplateBitWeightMap(bit_weightmap));
         }
 
-        ecmd.insert(PlayerJoinable(seri.player_joinable));
+        if seri.player_joinable {
+            ecmd.insert(PlayerJoinable);
+        }
         ecmd.insert(FactionTemplateRpgProfile {
             starting_wealth: seri.starting_wealth,
             lawfulness: seri.lawfulness,

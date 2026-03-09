@@ -46,7 +46,7 @@ pub struct ItemSeri {
 fn default_stack_limit() -> u16 { 1 }
 
 #[derive(Deserialize, Asset, TypePath, Default, Debug, Clone)]
-pub struct ItemsDroppedOnDeathSeri {
+pub struct ItemsGeneratedOnDeathSeri {
     pub id: String,
     /// Weighted drop entries where each entry is an item-id -> count map
     #[serde(default)]
@@ -56,16 +56,16 @@ pub struct ItemsDroppedOnDeathSeri {
     pub refs: Vec<(String, f32)>,
 
     #[serde(default = "default_drop_count_multiplier")]
-    pub drop_count_multiplier: f32,
+    pub count_multiplier: f32,
 }
 
 fn default_drop_count_multiplier() -> f32 { 1.0 }
 
-impl ItemsDroppedOnDeathSeri {
+impl ItemsGeneratedOnDeathSeri {
     pub fn is_sentinel(&self) -> bool {
         self.id.trim().is_empty()
             && self.weights.is_empty()
             && self.refs.is_empty()
-            && self.drop_count_multiplier == default_drop_count_multiplier()
+            && self.count_multiplier == default_drop_count_multiplier()
     }
 }

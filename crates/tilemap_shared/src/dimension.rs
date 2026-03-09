@@ -12,7 +12,7 @@ use common::common_tag_components::TagSet;
 #[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
 pub struct Dimension;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, )]
 pub struct Gravity(pub f32);
 impl Default for Gravity {
     fn default() -> Self {

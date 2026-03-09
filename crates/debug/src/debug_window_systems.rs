@@ -183,6 +183,7 @@ pub fn main_menu_window(
                 window_visible.sprite_configs_list = false;
                 window_visible.sprite_details = false;
                 window_visible.gpos_maps = false;
+                window_visible.world_tile_click_picker = false;
                 window_visible.hot_reload_menu = false;
                 window_visible.river_debug = false;
             }
@@ -198,6 +199,9 @@ pub fn main_menu_window(
             }
             if ui.button(egui::RichText::new("GPos Maps").size(16.0)).clicked() {
                 window_visible.gpos_maps = !window_visible.gpos_maps;
+            }
+            if ui.button(egui::RichText::new("Tile Click Picker").size(16.0)).clicked() {
+                window_visible.world_tile_click_picker = !window_visible.world_tile_click_picker;
             }
             if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
                 window_visible.beings_list = !window_visible.beings_list;

@@ -103,7 +103,7 @@ macro_rules! define_tag_hashset_and_impl_methods {
 #[allow(dead_code, )]
 macro_rules! define_tag_vec_and_impl_methods {
     ($name:ident, $tag_type:ty) => {
-        #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect, Default, PartialEq, Eq)]
+        #[derive(Component, Debug, Deserialize, Serialize, Clone, Default, PartialEq, Eq)]
         pub struct $name(pub Vec<$tag_type>);
         impl_tag_vec_methods!($name, $tag_type);
     };
@@ -115,7 +115,7 @@ define_tag_hashset_and_impl_methods!(TagSet, Tag);
 #[require(HashedTagsVec)]
 pub struct AddSameHashedTags;
 
-#[derive(Component, Debug, Default, Clone, Reflect, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Component, Debug, Default, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub struct HashedTagsVec(pub Vec<HashId>);
 impl_tag_vec_methods!(HashedTagsVec, HashId);
 

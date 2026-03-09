@@ -7,12 +7,12 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_components::*;
 use game_common::game_common_samplers::EntityCountMapWeightedSampler;
-use crate::{ItemEntityMap, ItemsDroppedOnDeathSeri};
+use crate::{ItemEntityMap, ItemsGeneratedOnDeathSeri};
 use serde::{Deserialize, Serialize};
 use sprite::prelude::*;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Default)]
-#[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading)]
+#[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading, Visibility, )]
 pub struct Item;
 impl Item {
     pub const MIN_ID_LENGTH: u8 = 1;
@@ -32,6 +32,7 @@ pub struct ItemHeldIn {
     #[relationship] #[entities]
     pub holder: Entity,
 }
+pub type Dropped = Without<ItemHeldIn>;
 
 #[derive(Component, Debug, )]
 #[relationship_target(relationship = ItemHeldIn)]
@@ -41,34 +42,31 @@ impl HeldItems { pub fn entities(&self) -> &[Entity] { &self.0 } }
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct DropHeldItemsOnDowned;
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities)]
-pub struct ItemsDroppedOnDeath(
-    pub EntityCountMapWeightedSampler,
-    pub f32,
-);
+#[derive(Component, Debug, Clone, )]
+pub struct ItemsGeneratedOnDeath { pub sampler: EntityCountMapWeightedSampler, pub count_multiplier: f32 }
 
-impl Default for ItemsDroppedOnDeath {
+impl Default for ItemsGeneratedOnDeath {
     fn default() -> Self {
-        Self(EntityCountMapWeightedSampler::default(), 1.0)
+        Self { sampler: EntityCountMapWeightedSampler::default(), count_multiplier: 1.0 }
     }
 }
 
-impl ItemsDroppedOnDeath {
-    pub fn from_droppedondeath_seri(
-        seri: &ItemsDroppedOnDeathSeri,
+impl ItemsGeneratedOnDeath {
+    pub fn from_gen_on_death_seri(
+        seri: &ItemsGeneratedOnDeathSeri,
         item_map: &ItemEntityMap,
-        all_drop_seris: &HashMap<String, ItemsDroppedOnDeathSeri>,
+        all_drop_seris: &HashMap<String, ItemsGeneratedOnDeathSeri>,
     ) -> Self {
         let mut visited = std::collections::HashSet::new();
         let mut weights: Vec<(EntityHashMap<u32>, f32)> = Vec::new();
         Self::append_weights_from_seri(seri, item_map, all_drop_seris, &mut visited, 1.0, &mut weights);
-        Self(EntityCountMapWeightedSampler::new(&weights), seri.drop_count_multiplier.max(0.0))
+        Self { sampler: EntityCountMapWeightedSampler::new(&weights), count_multiplier: seri.count_multiplier.max(0.0) }
     }
 
     fn append_weights_from_seri(
-        seri: &ItemsDroppedOnDeathSeri,
+        seri: &ItemsGeneratedOnDeathSeri,
         item_map: &ItemEntityMap,
-        all_drop_seris: &HashMap<String, ItemsDroppedOnDeathSeri>,
+        all_drop_seris: &HashMap<String, ItemsGeneratedOnDeathSeri>,
         visited: &mut std::collections::HashSet<String>,
         parent_weight: f32,
         out: &mut Vec<(EntityHashMap<u32>, f32)>,

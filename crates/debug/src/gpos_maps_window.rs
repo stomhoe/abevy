@@ -4,13 +4,14 @@ use camera::camera_components::CameraTarget;
 use bevy_ecs_tilemap::tiles::TileFlip;
 use game_common::game_common_components::EntityZeroRef;
 use std::collections::HashSet;
-use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, SpriteTilesAtGpos, TiledCollisionMask, TileGatheringParamSet, WalkSpeedMultIfOnTop};
+use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, ItemsAtGpos, SpriteTilesAtGpos, TiledCollisionMask, TileGatheringParamSet, WalkSpeedMultIfOnTop};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
 pub struct GposMapsUiState {
     radius: i32,
     cell_px: f32,
+    fit_grids_to_window: bool,
     follow_camera_target: bool,
     center_dim: Entity,
     center_x: i32,
@@ -21,6 +22,7 @@ impl Default for GposMapsUiState {
         Self {
             radius: 12,
             cell_px: 16.0,
+            fit_grids_to_window: true,
             follow_camera_target: true,
             center_dim: Entity::PLACEHOLDER,
             center_x: 0,
@@ -34,13 +36,15 @@ fn paint_grid(
     title: &str,
     radius: i32,
     cell_px: f32,
+    camera_local: Option<GlobalTilePos>,
     count_at: impl Fn(GlobalTilePos) -> usize,
-) {
+) -> Option<GlobalTilePos> {
     ui.label(title);
     let side = (radius * 2 + 1).max(1) as usize;
     let grid_size = egui::vec2(side as f32 * cell_px, side as f32 * cell_px);
     let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
     let painter = ui.painter_at(rect);
+    let mut clicked = None;
 
     for row in 0..side {
         for col in 0..side {
@@ -51,6 +55,8 @@ fn paint_grid(
             let x = rect.left() + col as f32 * cell_px;
             let y = rect.top() + row as f32 * cell_px;
             let cell_rect = egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(cell_px, cell_px));
+            let id = ui.make_persistent_id((title, row, col));
+            let response = ui.interact(cell_rect, id, egui::Sense::click());
             let fill = if count == 0 {
                 egui::Color32::from_rgb(18, 18, 18)
             } else {
@@ -64,6 +70,14 @@ fn paint_grid(
                 egui::Stroke::new(0.5, egui::Color32::from_gray(40)),
                 egui::StrokeKind::Inside,
             );
+            if camera_local == Some(gpos) {
+                painter.rect_stroke(
+                    cell_rect.shrink(0.5),
+                    0.0,
+                    egui::Stroke::new(1.5, egui::Color32::YELLOW),
+                    egui::StrokeKind::Inside,
+                );
+            }
             if count > 0 && cell_px >= 12.0 {
                 painter.text(
                     cell_rect.center(),
@@ -73,15 +87,20 @@ fn paint_grid(
                     egui::Color32::WHITE,
                 );
             }
+            if response.clicked() {
+                clicked = Some(gpos);
+            }
         }
     }
+    clicked
 }
 
 pub fn gpos_maps_window_system(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
-    selected: Res<DebugSelectedEntities>,
+    mut selected: ResMut<DebugSelectedEntities>,
     beings_at_gpos: Res<BeingsAtGpos>,
+    items_at_gpos: Res<ItemsAtGpos>,
     spritetiles_at_gpos: Res<SpriteTilesAtGpos>,
     tile_gathering: TileGatheringParamSet,
     tile_instance_query: Query<(&EntityZeroRef, &GlobalTilePos, Option<&TileFlip>, Option<&CardinalDirection>)>,
@@ -116,6 +135,10 @@ pub fn gpos_maps_window_system(
             }
         }
     }
+    let camera_pos = camera_target_query
+        .iter()
+        .next()
+        .map(|(dim_ref, gtf)| (*dim_ref, GlobalTilePos::from(gtf.translation().xy())));
 
     egui::Window::new("GPos Blocker Maps")
         .default_size([900.0, 520.0])
@@ -123,8 +146,13 @@ pub fn gpos_maps_window_system(
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut ui_state.follow_camera_target, "Follow camera target");
+                ui.checkbox(&mut ui_state.fit_grids_to_window, "Fit grids to window");
                 ui.add(egui::Slider::new(&mut ui_state.radius, 4..=64).text("radius"));
-                ui.add(egui::Slider::new(&mut ui_state.cell_px, 6.0..=28.0).text("cell px"));
+                if !ui_state.fit_grids_to_window {
+                    ui.add(egui::Slider::new(&mut ui_state.cell_px, 6.0..=28.0).text("cell px"));
+                } else {
+                    ui.label(format!("cell px: {:.1} (auto)", ui_state.cell_px));
+                }
             });
 
             ui.horizontal(|ui| {
@@ -171,18 +199,76 @@ pub fn gpos_maps_window_system(
                 }
             }
 
-            ui.columns(3, |cols| {
-                paint_grid(&mut cols[0], "SpriteTilesAtGpos (tile occupancy)", ui_state.radius, ui_state.cell_px, |local| {
+            let camera_local = camera_pos.and_then(|(camera_dim_ref, camera_gpos)| {
+                if camera_dim_ref != dim_ref {
+                    return None;
+                }
+                let local = GlobalTilePos(camera_gpos.0 - center.0);
+                if local.0.x < -ui_state.radius
+                    || local.0.x > ui_state.radius
+                    || local.0.y < -ui_state.radius
+                    || local.0.y > ui_state.radius
+                {
+                    return None;
+                }
+                Some(local)
+            });
+
+            ui.columns(4, |cols| {
+                let side = (ui_state.radius * 2 + 1).max(1) as f32;
+                if ui_state.fit_grids_to_window {
+                    let cell_from_col = ((cols[0].available_width() - 2.0) / side).clamp(4.0, 32.0);
+                    ui_state.cell_px = cell_from_col;
+                }
+                let clicked_tiles = paint_grid(&mut cols[0], "SpriteTilesAtGpos (tile occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     let gpos = center + local;
                     spritetiles_at_gpos.tiles_at_pos(dim_ref, gpos).len()
                 });
-                paint_grid(&mut cols[1], "BeingsAtGpos (being occupancy)", ui_state.radius, ui_state.cell_px, |local| {
+                let clicked_beings = paint_grid(&mut cols[1], "BeingsAtGpos (being occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     let gpos = center + local;
                     beings_at_gpos.beings_at_pos(dim_ref, gpos).len()
                 });
-                paint_grid(&mut cols[2], "Terrain Blocking (mask/speed<=0.01)", ui_state.radius, ui_state.cell_px, |local| {
+                let clicked_items = paint_grid(&mut cols[2], "ItemsAtGpos (item occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
+                    let gpos = center + local;
+                    items_at_gpos.items_at_pos(dim_ref, gpos).len()
+                });
+                let clicked_terrain = paint_grid(&mut cols[3], "Terrain Blocking (mask/speed<=0.01)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     if terrain_blocked.contains(&(local.0.x, local.0.y)) { 1 } else { 0 }
                 });
+
+                if let Some(local) = clicked_tiles {
+                    let entities = spritetiles_at_gpos.tiles_at_pos(dim_ref, center + local);
+                    if let Some(tile_entity) = entities.first().copied() {
+                        selected.selected_tile = Some(tile_entity);
+                        window_visible.tile_details = true;
+                    }
+                }
+                if let Some(local) = clicked_beings {
+                    let entities = beings_at_gpos.beings_at_pos(dim_ref, center + local);
+                    if let Some(being_entity) = entities.first().copied() {
+                        selected.selected_being = Some(being_entity);
+                        selected.selected_being_bodypart = None;
+                        selected.show_full_being_components = false;
+                        window_visible.being_details = true;
+                    }
+                }
+                if let Some(local) = clicked_items {
+                    let entities = items_at_gpos.items_at_pos(dim_ref, center + local);
+                    if let Some(item_entity) = entities.first().copied() {
+                        selected.selected_exempted_entity = Some(item_entity);
+                        window_visible.exempted_entity_details = true;
+                    }
+                }
+                if let Some(local) = clicked_terrain {
+                    let gpos = center + local;
+                    tile_scratch.clear();
+                    tile_gathering.gather_tiles_at(&mut *tile_scratch, dim_ref, gpos);
+                    if let Some(tile_entity) = tile_scratch.first().copied() {
+                        selected.selected_tile = Some(tile_entity);
+                        window_visible.tile_details = true;
+                    }
+                    tile_scratch.clear();
+                }
             });
         });
     window_visible.gpos_maps = open;

@@ -98,6 +98,9 @@ pub enum FlipHorizIfDir{Left, Right, Any,}
 #[derive(Component, Debug, Default, Clone, Reflect)]
 pub struct ColorHolder(pub Color);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct UseFallbackSprite;
+
 #[derive(Component, Debug, Default, Clone)]
 pub struct Exclusive;
 

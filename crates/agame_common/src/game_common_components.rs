@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 pub use crate::entity_zero_components::*;
+use crate::prelude::EntityCountMapWeightedSampler;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
@@ -15,7 +16,7 @@ pub struct Directionable;
 #[derive(Component, Debug, Default, Copy, Clone)]
 pub struct ExcludedFromAutoRenamer;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, )]
 /// this component shouldn't be added preemptively to trees, only when their state is altered/differs from generation state
 pub struct Persisted;
 

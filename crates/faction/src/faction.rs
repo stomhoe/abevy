@@ -26,7 +26,5 @@ pub fn plugin(app: &mut App) {
     .replicate::<Faction>()
     .replicate::<FactionInstTempl>()
     .replicate::<BelongsToFaction>()
-
-    .register_type::<BelongsToFaction>()
     ;
 }

@@ -26,8 +26,8 @@ pub struct FactionTemplateTags(pub Vec<Tag>);
 #[derive(Component, Debug, Default, Clone)]
 pub struct FactionTemplateBitWeightMap(pub HashMap<StrId, f32>);
 
-#[derive(Component, Debug, Default, Clone, Copy, Reflect)]
-pub struct PlayerJoinable(pub bool);
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct PlayerJoinable;
 
 #[derive(Component, Debug, Clone, Copy, MapEntities)]
 pub struct FactionInstancedFromTemplate(#[entities] pub Entity);

@@ -188,7 +188,7 @@ impl MapEntities for EntityCountMapWeightedSampler {
 }
 
 
-#[derive(Debug, Clone, Component, Default, Reflect)]
+#[derive(Debug, Clone, Component, Default, )]
 pub struct GlobalTilePosWeightedSampler {
     weights: Vec<(GlobalTilePos, f32)>,
     cumulative_weights: Vec<f32>,

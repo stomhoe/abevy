@@ -18,6 +18,7 @@ tilemap_shared = { path = "../tilemap_shared" }
 sprite_shared = { path = "../sprite_shared" }
 sprite = { path = "../sprite" }
 fnl = { path = "../fnl" }
+param_sets = { path = "../param_sets" }
 
 bevy = { workspace = true }
 bevy_enhanced_input = { workspace = true }

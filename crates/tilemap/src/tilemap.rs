@@ -58,6 +58,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<PoissonDisk>()
 
 
+    .init_resource::<ItemsAtGpos>()
 
 
 

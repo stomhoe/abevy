@@ -21,7 +21,7 @@ pub struct GroundingBased;
 #[require(Prefix::trunc("Sprite"), )]
 pub struct BaseHolderRef {#[relationship]#[entities]pub base: Entity, }
 
-#[derive(Component, Debug, Reflect, Clone)]
+#[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = BaseHolderRef)]
 pub struct HeldSprites(Vec<Entity>);
 
@@ -79,7 +79,7 @@ impl SampleSpriteEnts {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Clone, Copy, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, )]
 pub struct YSortOrigin(pub f32);//TAL VEZ ES BUENA IDEA PONERLE ESTO OBLIGATORIAMENTE A TODOS LOS SPRITES, ASÍ TODOS AUMENTAN O DISMINUYEN CONJUNTAMENTE DE Z
 impl YSortOrigin {
     pub const Y_SORT_DIV: f32 = 1e-6;//-7

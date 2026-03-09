@@ -4,14 +4,10 @@ use game_common::game_common_components::{
     Dead,
     DespawnOnDeath,
     EntityZero,
-    EntityZeroRef,
     Health,
     HealthDamage,
 };
-use item_shared::{Item, ItemsDroppedOnDeath, ToDenyOnItemClone};
-use sprite::prelude::ScsToBuild;
 use tilemap::prelude::tile_components::Tile;
-use tilemap_shared::{DimensionRef, GlobalTilePos};
 use tilemap_shared::SafeDespawn;
 
 pub fn apply_health_damage(
@@ -82,64 +78,4 @@ pub fn despawn_entities_on_death(
         messages.push(SafeDespawn(entity));
     }
     writer.write_batch(messages.drain(..));
-}
-
-pub fn spawn_items_on_death(
-    mut cmd: Commands,
-    query: Query<
-        (
-            Option<&DimensionRef>,
-            Option<&GlobalTransform>,
-            Option<&GlobalTilePos>,
-            &ItemsDroppedOnDeath,
-        ),
-        (Without<EntityZero>, With<Dead>, With<DespawnOnDeath>, Changed<Dead>),
-    >,
-    item_cfg_query: Query<&item_shared::ItemSpritesConfig, (With<Item>, With<EntityZero>)>,
-) {
-    let mut rng = rand::rng();
-    for (dim_ref, global_transform, tile_pos, dropped_on_death) in query.iter() {
-        let Some(item_counts) = dropped_on_death.0.sample_with_rng(&mut rng) else {
-            continue;
-        };
-        let drop_pos = global_transform
-            .map(|transform| transform.translation().xy())
-            .or_else(|| tile_pos.map(GlobalTilePos::to_pixelpos))
-            .unwrap_or_default();
-        let drop_z = global_transform
-            .map(|transform| transform.translation().z)
-            .unwrap_or_default();
-
-        for (item_ezero, base_count) in item_counts {
-            let dropped_sprite_cfg = item_cfg_query
-                .get(item_ezero)
-                .ok()
-                .map(|cfg| cfg.dropped_sprite_cfg.0)
-                .filter(|&cfg_ent| cfg_ent != Entity::PLACEHOLDER);
-            let scaled_count = (base_count as f32 * dropped_on_death.1).max(0.0);
-            let drop_count = scaled_count.round() as u32;
-            for _ in 0..drop_count {
-                let item_instance = cmd
-                    .entity(item_ezero)
-                    .clone_and_spawn_with_opt_out(|builder| {
-                        builder.deny::<ToDenyOnItemClone>();
-                    })
-                    .id();
-                let mut item_cmd = cmd.entity(item_instance);
-                item_cmd.insert((
-                    Item,
-                    EntityZeroRef(item_ezero),
-                    Transform::from_translation(drop_pos.extend(drop_z)),
-                    GlobalTransform::default(),
-                ));
-                if let Some(cfg_ent) = dropped_sprite_cfg {
-                    let mut scs_to_build = ScsToBuild::with_capacity(1);
-                    scs_to_build.0.insert(cfg_ent);
-                    item_cmd.insert(scs_to_build);
-                }
-                let Some(&dim_ref) = dim_ref else { continue };
-                item_cmd.insert((dim_ref, ChildOf(dim_ref.0)));
-            }
-        }
-    }
 }

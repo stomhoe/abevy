@@ -18,6 +18,7 @@ use ::tilemap_shared::*;
 pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
     being_query: Query<'w, 's, (Has<WallPhaser>, )>,
+    tile_lifecycle_query: Query<'w, 's, (Has<Dead>, Has<DespawnOnDeath>)>,
     tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), >,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
     tile_tags: Query<'w, 's, &'static TagSet, >,
@@ -50,8 +51,12 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         self.is_blocked_at_impl(to_drain, dim_ref, gpos, being, true)
     }
 
-    pub fn is_blocked_at_terrain_only(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
+    pub fn is_blocked_at_tiles_only(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
         self.is_blocked_at_impl(to_drain, dim_ref, gpos, being, false)
+    }
+
+    pub fn is_blocked_at_tiles_only_except_dead_despawning(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
+        self.is_blocked_at_impl_except_dead_despawning(to_drain, dim_ref, gpos, being, false)
     }
 
     fn is_blocked_at_impl(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, include_beings: bool) -> bool {
@@ -105,5 +110,84 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             return false;
         }
         false
+    }
+
+    fn is_blocked_at_impl_except_dead_despawning(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, include_beings: bool) -> bool {
+        if include_beings
+            && self
+                .beings_at_gpos
+                .beings_at_pos(dim_ref, gpos)
+                .iter()
+                .any(|&ent| ent != being)
+        {
+            return true;
+        }
+
+        let can_phase = if let Ok((can_phase, ..)) = self.being_query.get(being) {
+            can_phase
+        } else {
+            false
+        };
+        if can_phase {
+            return false;
+        }
+        to_drain.clear();
+        self.tile_gathering_params.gather_tiles_at(to_drain, dim_ref, gpos);
+
+        let mut all_tiles_failed = true;
+        for tile_entity in to_drain.drain(..) {
+            let Ok((ezero_ref, tile_origin, tile_flip, direction)) = self.tile_instance_query.get(tile_entity) else {
+                continue;
+            };
+            all_tiles_failed = false;
+            if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
+                let Ok((is_dead, despawns_on_death)) = self.tile_lifecycle_query.get(tile_entity) else {
+                    return true;
+                };
+                if !(is_dead && despawns_on_death) {
+                    return true;
+                }
+                continue;
+            }
+
+            let blocks_here = if let Ok(mask) = self.tile_collision_masks.get(ezero_ref.0) {
+                mask.is_solid_at_world_pos_with_flip(
+                    *tile_origin,
+                    gpos,
+                    tile_flip.copied().unwrap_or_default(),
+                    direction.copied().unwrap_or_default(),
+                )
+            } else {
+                false
+            };
+            if blocks_here {
+                let Ok((is_dead, despawns_on_death)) = self.tile_lifecycle_query.get(tile_entity) else {
+                    return true;
+                };
+                if !(is_dead && despawns_on_death) {
+                    return true;
+                }
+            }
+        }
+        if all_tiles_failed {
+            trace!("No tile found at position {:?} in dimension {:?} for movement blocking check.", gpos, dim_ref);
+            return false;
+        }
+        false
+    }
+}
+
+#[derive(SystemParam)]
+pub struct EntitiesAtGposParamSet<'w> {
+    sprite_tiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
+    beings_at_gpos: Res<'w, BeingsAtGpos>,
+    items_at_gpos: Res<'w, ItemsAtGpos>,
+}
+
+impl<'w> EntitiesAtGposParamSet<'w> {
+    pub fn gather_entities_at(&self, out: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos) {
+        out.extend(self.sprite_tiles_at_gpos.tiles_at_pos(dim_ref, gpos).iter().copied());
+        out.extend(self.beings_at_gpos.beings_at_pos(dim_ref, gpos).iter().copied());
+        out.extend(self.items_at_gpos.items_at_pos(dim_ref, gpos).iter().copied());
     }
 }

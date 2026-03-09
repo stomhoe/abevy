@@ -104,7 +104,7 @@ define_fixedstr_id!(Prefix, 32);
 #[derive(Component, Debug, Default, Copy, Clone)]
 pub struct AddHashIdFromStrId;
 
-#[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect)]
+#[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, )]
 pub struct HashId(u64);
 impl HashId {
     pub fn new(id: u64) -> Self {
@@ -153,7 +153,7 @@ impl Debug for HashId {
     }
 }
 
-#[derive(Component, Deserialize, Serialize, Clone, Debug, Reflect)]
+#[derive(Component, Deserialize, Serialize, Clone, Debug, )]
 pub struct HashIdMap<T>(pub HashMap<HashId, T>);
 impl<T: Clone> HashIdMap<T> {
     pub fn new() -> Self {

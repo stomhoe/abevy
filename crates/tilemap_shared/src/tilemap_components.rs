@@ -147,7 +147,7 @@ impl HashIdToTexIndex {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, )]
 pub struct WalkSpeedMultIfOnTop(pub f32);
 impl WalkSpeedMultIfOnTop {
     pub fn is_extremely_low(&self) -> bool {
@@ -160,7 +160,7 @@ impl Default for WalkSpeedMultIfOnTop {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, )]
 pub struct TiledCollisionMask {
     width: u8,
     height: u8,

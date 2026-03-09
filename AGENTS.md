@@ -4,3 +4,6 @@ if a queried component has no fields, to use present use Has<ComponentName> inst
 EntityHashmap/set over Hashmap/set<Entity>. use .read() to read MessageReader's received messages, not .iter(). to write messages with a MessageWriter, define a mut messages: Local<Vec<MessageType>> in the system params, then use writer.write_batch(messages.drain(..)); at the end of the system. don't forget to add imports. if you use something from a crate, add it. if you alter a *Seri, fix affected .ron files
 
 for target: in error!, info!, etc. put the corresponding constant from log_targets.rs. if constant is missing, add it in there and then into main.rs's
+
+
+for freshly implemented features, add debug! prints and update main.rs to actually show the logs, so that the user can give you feedback.

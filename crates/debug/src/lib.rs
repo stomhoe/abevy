@@ -26,6 +26,7 @@ mod debug_systems;
 mod debug_fonts;
 mod debug_messages;
 mod gpos_maps_window;
+mod world_tile_click_picker_window;
 
 
 
@@ -58,5 +59,6 @@ pub mod prelude {
         debug_fonts::*,
         debug_messages::*,
         gpos_maps_window::*,
+        world_tile_click_picker_window::*,
     };
 }

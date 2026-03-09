@@ -66,8 +66,6 @@ pub fn plugin(app: &mut App) {
 
     //.replicate::<BodyTreeWeightSum>()
 
-    .register_type::<BodyParts>()
-
     .replicate::<BodyTree>()
     .replicate::<BodyOf>()
     .replicate_filtered::<ChildOf, With<BodyOf>>()

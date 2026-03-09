@@ -29,6 +29,7 @@ pub struct DubugWindowsVisibility{
     pub sprite_configs_list: bool,
     pub sprite_details: bool,
     pub gpos_maps: bool,
+    pub world_tile_click_picker: bool,
     pub hot_reload_menu: bool,
     pub river_debug: bool,
 }
@@ -58,6 +59,7 @@ impl Default for DubugWindowsVisibility {
             sprite_configs_list: false,
             sprite_details: false,
             gpos_maps: false,
+            world_tile_click_picker: false,
             hot_reload_menu: false,
             river_debug: false,
         }
@@ -114,6 +116,14 @@ impl Default for DebugSelectedEntities {
             river_samples_show_none_points: true,
         }
     }
+}
+
+#[derive(Resource, Default)]
+pub struct WorldTileClickInspectorState {
+    pub enabled: bool,
+    pub clicked_dim: Option<Entity>,
+    pub clicked_gpos: Option<tilemap_shared::GlobalTilePos>,
+    pub entities_at_gpos: Vec<Entity>,
 }
 
 #[derive(Resource, Default)]

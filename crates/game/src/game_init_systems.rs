@@ -32,10 +32,14 @@ pub struct CommonSpawnOriginFound {
 #[derive(Resource, Clone, Debug)]
 pub struct GameInitSettings {
     pub players_spawn_probe_id: StrId,
+    pub players_initial_bit_ref_strid: StrId,
 }
 impl Default for GameInitSettings {
     fn default() -> Self {
-        Self { players_spawn_probe_id: StrId::trunc("coland") }
+        Self {
+            players_spawn_probe_id: StrId::trunc("coland"),
+            players_initial_bit_ref_strid: StrId::trunc("player_warrior"),
+        }
     }
 }
 
@@ -44,15 +48,19 @@ pub struct GameInitSettingsSeri {
     pub id: String,
     #[serde(default = "default_players_spawn_probe_id")]
     pub players_spawn_probe_id: String,
+    #[serde(default = "default_players_initial_bit_ref_strid")]
+    pub players_initial_bit_ref_strid: String,
 }
 impl GameInitSettingsSeri {
     pub fn to_settings(&self) -> GameInitSettings {
         GameInitSettings {
             players_spawn_probe_id: StrId::trunc(self.players_spawn_probe_id.trim()),
+            players_initial_bit_ref_strid: StrId::trunc(self.players_initial_bit_ref_strid.trim()),
         }
     }
 }
 fn default_players_spawn_probe_id() -> String { "coland".to_string() }
+fn default_players_initial_bit_ref_strid() -> String { "player_warrior".to_string() }
 
 pub fn load_game_init_settings(mut settings: ResMut<GameInitSettings>) {
     let db = match common::def_db::DefDatabase::<GameInitSettingsSeri>::load_from_assets_dir_with_type(
@@ -106,6 +114,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 pub fn host_on_player_added(mut cmd: Commands,
     query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>,
     player_query: Query<(&CreatedCharacters)>,
+    settings: Res<GameInitSettings>,
 
     host_faction: Query<Entity, (With<Faction>, With<Mine>)>,
 ) {
@@ -126,7 +135,7 @@ pub fn host_on_player_added(mut cmd: Commands,
             let created_character = cmd.spawn((Being::default(), username.clone(),
                 ControlledBy { client_ent: player_ent, human_input: true },
                 CharacterCreatedBy { player: player_ent },
-                BitStrIdRef(StrId::trunc("pig")),
+                BitStrIdRef::new(settings.players_initial_bit_ref_strid.as_str()),
                 BelongsToFaction(host_faction),
                 Transform::default(),
             )).id();

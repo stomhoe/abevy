@@ -36,7 +36,7 @@ pub struct ControlledBy  {
     pub human_input: bool,
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Reflect, Eq, Clone, Copy, Hash, PartialEq)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Eq, Clone, Copy, Hash, PartialEq)]
 pub enum Grounding {
     #[default]
     Grounded,

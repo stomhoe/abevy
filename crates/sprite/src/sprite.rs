@@ -89,7 +89,6 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<Transform, With<SpriteConfig>>()
 
     .replicate_filtered::<ChildOf, With<BaseHolderRef>>()
-    .register_type::<HeldSprites>()
 
     .add_message::<SpriteChanged>()
 

@@ -10,6 +10,7 @@ use modifier_shared::modifier_helpers::spawn_modifier;
 use sprite::prelude::{ScRef, SpriteConfigEntityMap};
 use ::item_shared::*;
 use std::collections::HashMap;
+use common::log_targets::ITEM_SYSTEM;
 
 #[allow(unused_parens)]
 pub fn init_items(
@@ -34,8 +35,15 @@ pub fn init_items(
         };
 
         let item_ent = cmd.spawn_empty().id();
-        let map_sc_ref = |id: &str| -> ScRef {
+        let resolve_sprite_cfg_ref = |id: &str, label: &str| -> ScRef {
             let Some(sprite_cfg_map) = sprite_cfg_map.as_ref() else {
+                error!(
+                    target: ITEM_SYSTEM,
+                    "Item '{}' could not resolve {} sprite cfg '{}': SpriteConfigEntityMap missing",
+                    str_id,
+                    label,
+                    id.trim(),
+                );
                 return ScRef(Entity::PLACEHOLDER);
             };
             let trimmed = id.trim();
@@ -43,6 +51,13 @@ pub fn init_items(
                 return ScRef(Entity::PLACEHOLDER);
             }
             let Ok(ent) = sprite_cfg_map.0.get_cloned(StrId::trunc(trimmed)) else {
+                error!(
+                    target: ITEM_SYSTEM,
+                    "Item '{}' could not resolve {} sprite cfg '{}'",
+                    str_id,
+                    label,
+                    trimmed,
+                );
                 return ScRef(Entity::PLACEHOLDER);
             };
             ScRef(ent)
@@ -55,18 +70,27 @@ pub fn init_items(
                 if trimmed.is_empty() {
                     None
                 } else {
-                    let sc_ref = map_sc_ref(trimmed);
+                    let sc_ref = resolve_sprite_cfg_ref(trimmed, "equip");
                     Some((StrId::trunc(trimmed), sc_ref))
                 }
             })
             .collect();
+        let dropped_sprite_cfg = resolve_sprite_cfg_ref(seri.dropped_sprite_cfg_id.trim(), "dropped");
+        let icon_sprite_cfg = resolve_sprite_cfg_ref(seri.icon_sprite_cfg_id.trim(), "icon");
+        if dropped_sprite_cfg.0 == Entity::PLACEHOLDER && icon_sprite_cfg.0 == Entity::PLACEHOLDER {
+            error!(
+                target: ITEM_SYSTEM,
+                "Item '{}' has neither dropped nor icon sprite cfg resolved; ground instances will be invisible",
+                str_id,
+            );
+        }
         let mut entity_cmd = cmd.entity(item_ent);
         entity_cmd.insert((
             Item,
             ItemSpritesConfig {
                 sprite_cfg_per_state,
-                dropped_sprite_cfg: map_sc_ref(seri.dropped_sprite_cfg_id.trim()),
-                icon_sprite_cfg: map_sc_ref(seri.icon_sprite_cfg_id.trim()),
+                dropped_sprite_cfg,
+                icon_sprite_cfg,
                 icon_img_path: seri.icon_img_path.trim().to_string(),
             },
             str_id.clone(),

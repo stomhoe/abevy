@@ -5,9 +5,9 @@ use bevy::ecs::entity::EntityHashSet;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use common::{log_targets::Z_SORT_SYSTEM, prelude::StrId};
+use common::{common_components::Prefix, log_targets::Z_SORT_SYSTEM, prelude::StrId};
 use game_common::game_common_components::{EntityZero, EntityZeroRef, };
-use tilemap_shared::GlobalTilePos;
+use tilemap_shared::{Dimension, GlobalTilePos};
 use ::tilemap_shared::directions::*;
 
 use ::sprite_shared::{sprite_scale_offset::*, *};
@@ -18,6 +18,45 @@ use crate::sprite_components::*;
 
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct SpriteChanged(pub Entity);
+
+fn effective_acz(
+    maybe_z_index: Option<&AcZ>,
+    ezero_ref: Option<&EntityZeroRef>,
+    ezero_query: &Query<(&AcZ, Option<&YSortOrigin>)>,
+) -> f32 {
+    if let Some(ezero_ref) = ezero_ref
+        && let Ok((ezero_z_index, _)) = ezero_query.get(ezero_ref.0)
+    {
+        return ezero_z_index.used_float();
+    }
+    maybe_z_index.cloned().unwrap_or_default().used_float()
+}
+
+fn dropped_item_override_z(
+    ent: Entity,
+    global_transform: &GlobalTransform,
+    child_of: &ChildOf,
+    base_holder_query: &Query<(&Prefix, Has<GlobalTilePos>, &ChildOf), Without<EntityZero>>,
+    dimension_query: &Query<(), With<Dimension>>,
+    z_candidates_query: &Query<(Entity, &GlobalTransform, Option<&AcZ>, Option<&EntityZeroRef>), Or<(With<Sprite>, With<TilemapAnchor>)>>,
+    ezero_query: &Query<(&AcZ, Option<&YSortOrigin>)>,
+) -> Option<f32> {
+    let Ok((prefix, has_gpos, base_child_of)) = base_holder_query.get(child_of.parent()) else {
+        return None;
+    };
+    if !prefix.eq_str("Item") || !has_gpos || dimension_query.get(base_child_of.parent()).is_err() {
+        return None;
+    }
+    let gpos = GlobalTilePos::from(global_transform.translation().xy());
+    let mut max_acz: f32 = 0.0;
+    for (other_ent, other_transform, other_z_index, other_ezero_ref) in z_candidates_query.iter() {
+        if other_ent == ent || GlobalTilePos::from(other_transform.translation().xy()) != gpos {
+            continue;
+        }
+        max_acz = max_acz.max(effective_acz(other_z_index, other_ezero_ref, ezero_query));
+    }
+    Some(max_acz + AcZ::Z_MULTIPLIER * 0.1)
+}
 
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
@@ -62,9 +101,6 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
     }
     cmd.try_insert_batch(disableds);
 }
-
-
-
 #[allow(unused_parens, )]
 pub fn z_sort_system(
     changed_query: Query<Entity,
@@ -74,6 +110,9 @@ pub fn z_sort_system(
         Option<&AcZ>, Option<&EntityZeroRef>, Has<TilemapAnchor>, &ChildOf, ),>,
 
     parent_sprite_query: Query<Has<Sprite>, (common::AnyDisabling,)>,
+    base_holder_query: Query<(&Prefix, Has<GlobalTilePos>, &ChildOf), Without<EntityZero>>,
+    dimension_query: Query<(), With<Dimension>>,
+    z_candidates_query: Query<(Entity, &GlobalTransform, Option<&AcZ>, Option<&EntityZeroRef>), Or<(With<Sprite>, With<TilemapAnchor>)>>,
 
     ezero_query: Query<(&AcZ, Option<&YSortOrigin>), ()>,
 
@@ -95,7 +134,17 @@ pub fn z_sort_system(
             continue;
         };
 
-        let (base_z, maybe_ysort_origin) = if let Some(ezero_ref) = ezero_ref
+        let (base_z, maybe_ysort_origin) = if let Some(override_z) = dropped_item_override_z(
+            ent,
+            global_transform,
+            child_of,
+            &base_holder_query,
+            &dimension_query,
+            &z_candidates_query,
+            &ezero_query,
+        ) {
+            (override_z, None)
+        } else if let Some(ezero_ref) = ezero_ref
             && let Ok((ezero_z_index, ezero_ysort_origin)) = ezero_query.get(ezero_ref.0)
         {
             (ezero_z_index.used_float(), ezero_ysort_origin.copied().or(ysort_origin.copied()))
@@ -110,7 +159,8 @@ pub fn z_sort_system(
         }
 
         let y_pos = y - origin_y;
-        let y_pos_tiles = y_pos / GlobalTilePos::TILE_SIZE_PXS.y as f32;
+        const TILE_FRAC_SENS: f32 = 0.3;
+        let y_pos_tiles = TILE_FRAC_SENS * y_pos / GlobalTilePos::TILE_SIZE_PXS.y as f32;
         let use_y_sort = (maybe_ysort_origin.is_some() && !has_parent_sprite) as i32 as f32;
         let sigmoid = 1.0f32 / (1.0f32 + 2.0f32.powf(-0.01 * y_pos_tiles));
         let signed_sigmoid = (0.5 - sigmoid) * 2.0;

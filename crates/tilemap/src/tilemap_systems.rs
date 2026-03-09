@@ -8,7 +8,7 @@ use bevy::{
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
 use bevy_ecs_tilemap::prelude::{*, TilemapTexture::Vector};
-use bevy_replicon::prelude::{ClientState, Replicated};
+use bevy_replicon::prelude::*;
 use common::{TILEMAP_SYSTEM, common_components::HashId, common_resources::ImageSizeMap };
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::{EntityZero, EntityZeroRef, Persisted, };
@@ -133,6 +133,7 @@ pub fn process_tiles_pre(
         Option<&TileColor>,
         Has<YSortOrigin>,
     ), common::AnyDisabling>,
+    dim_hash_query: Query<(&HashId), With<Dimension>>,
     mut spritetiles_map: ResMut<SpriteTilesAtGpos>,
     mut tmap_map: ResMut<TmapMap>,
     mut changed_structs: Local<HashSet<MapKey>>,
@@ -170,14 +171,19 @@ pub fn process_tiles_pre(
         };
         let bundle = unsafe { &mut *bundle_ptr };
 
-        let query_result = ezero_query.get(bundle.ezero_ref.0);
-        if query_result.is_err() {
+        let Ok((_tile_strid, &ez_hash_id, size_in_tiles, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, terrbl_params, is_spritetile, color, y_sort)) = ezero_query.get(bundle.ezero_ref.0) else {
             error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} is despawned", bundle.ezero_ref.0);
             cmd.entity(tile_ent).try_despawn();
             params.collected_tiles.0.swap_remove(i);
             continue;
-        }
-        let (_tile_strid, hash_id, size_in_tiles, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, terrbl_params, is_spritetile, color, y_sort) = query_result.unwrap();
+        };
+
+        let Ok(&dim_hash) = dim_hash_query.get(bundle.dim_ref.0) else {
+            error_once!(target: TILEMAP_SYSTEM, "Dimension entity {} is despawned", bundle.dim_ref.0);
+            cmd.entity(tile_ent).try_despawn();
+            params.collected_tiles.0.swap_remove(i);
+            continue;
+        };
 
         if !params.regpos_map.check_min_distances(
             &mut cmd,
@@ -197,6 +203,9 @@ pub fn process_tiles_pre(
             info!(target: TILEMAP_SYSTEM, "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
             continue;
         }
+
+        cmd.entity(tile_ent).try_insert((Signature::from((ez_hash_id, dim_hash, bundle.gpos)),));
+
         if to_persist {
             if is_host {
                 child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
@@ -242,7 +251,7 @@ pub fn process_tiles_pre(
         process_tile_into_corresponding_tilemap(
             &mut cmd,
             tile_ent,
-            *hash_id,
+            ez_hash_id,
             *size_in_tiles,
             &mut bundle.tile_bundle.visible,
             &mut bundle.tile_bundle.texture_index,

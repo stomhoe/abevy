@@ -124,7 +124,7 @@ impl TerrProbeTempl {
 #[derive(Component, Debug, Default, Copy, Clone, )]
 pub struct AwaitingStartSearch;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, )]
 pub struct SearchingForSuitablePos {
     pub requester: Entity,
     pub collect_all_successes: bool,

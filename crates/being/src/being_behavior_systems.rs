@@ -43,7 +43,7 @@ pub struct AiNavGridCache {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct WanderState {
+pub struct WanderState {
     dir: Vec2,
     dir_timer: Timer,
     move_speed: f32,
@@ -262,7 +262,7 @@ pub fn sync_ai_nav_grids(
             for y in 0..height {
                 for x in 0..width {
                     let world = GlobalTilePos(min_tile + IVec2::new(x as i32, y as i32));
-                    if param_set.is_blocked_at_terrain_only(&mut to_drain, ::tilemap_shared::DimensionRef(dim), world, Entity::PLACEHOLDER) {
+                    if param_set.is_blocked_at_tiles_only(&mut to_drain, ::tilemap_shared::DimensionRef(dim), world, Entity::PLACEHOLDER) {
                         grid.set_nav(UVec3::new(x, y, 0), Nav::Impassable);
                     }
                 }

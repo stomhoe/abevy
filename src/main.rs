@@ -6,6 +6,7 @@ use bevy_inspector_egui::{
     quick::WorldInspectorPlugin,
 };
 use ac_input::ac_input_actions::ToggleInspectorAction;
+use sprite::AcSpriteSystems;
 use tracing::Level;
 #[allow(unused_imports)] use bevy::ecs::error::{panic, error, warn, };
 use common::log_targets;
@@ -83,6 +84,7 @@ fn build_filter() -> String {
         {}={},\
         {}={},\
         {}={},\
+        {}={},\
         {}={},",
         log_targets::NAGA, ERROR,
         log_targets::WGPU_HAL, ERROR,
@@ -144,6 +146,7 @@ fn build_filter() -> String {
         log_targets::ENTITY_MAP_SYSTEM, WARN,
         log_targets::INSPECTOR, WARN,
         log_targets::RIVER_SYSTEM, WARN,
+        log_targets::ITEM_SYSTEM, INFO,
     )
 }
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
@@ -206,9 +209,9 @@ fn main() {
             color_sampler::plugin,
         ))
         .configure_sets(
-            OnEnter(AssetLoading::SpawnReplicatedEntities),
-            ItemSystems.before(TilingSystems),
-        )
+            OnEnter(AssetLoading::SpawnReplicatedEntities),(
+            ItemSystems.before(TilingSystems).after(AcSpriteSystems),
+            ))
         .add_plugins((wildlife::plugin,))
         .run()
 

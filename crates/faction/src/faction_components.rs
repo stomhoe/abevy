@@ -27,7 +27,7 @@ pub struct IsAffiliatedToMyFaction;
 #[derive(Component, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct BelongsToAPlayerFaction;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, )]
 #[relationship(relationship_target = FactionThings)]
 pub struct BelongsToFaction(
     #[relationship] #[entities]

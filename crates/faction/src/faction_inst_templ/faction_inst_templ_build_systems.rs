@@ -16,7 +16,7 @@ pub fn spawn_faction_instance_from_template(
         Option<&FactionTemplateTags>,
         Option<&FacDefaultRelationsByTag>,
         Option<&CultureRef>,
-        Option<&PlayerJoinable>,
+        Has<PlayerJoinable>,
         Option<&FactionTemplateBitWeightMap>,
         Option<&FactionTemplateRpgProfile>,
     )>,
@@ -33,7 +33,7 @@ pub fn spawn_faction_instance_from_template(
             template_tags,
             relation_by_tag,
             culture_ref,
-            player_joinable,
+            is_player_joinable,
             bit_weightmap,
             rpg_profile,
         )) = fit_query.get(fit_ref.0)
@@ -61,8 +61,8 @@ pub fn spawn_faction_instance_from_template(
         if let Some(culture_ref) = culture_ref {
             ins.insert(*culture_ref);
         }
-        if let Some(player_joinable) = player_joinable {
-            ins.insert(*player_joinable);
+        if is_player_joinable {
+            ins.insert(PlayerJoinable);
         }
         if let Some(bit_weightmap) = bit_weightmap {
             ins.insert(bit_weightmap.clone());
