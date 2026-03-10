@@ -26,6 +26,7 @@ pub fn debug_increase_speed(
                 let mut new_val = val.clone();
                 new_val.0 *= 1.05;
                 if is_client {
+                    val.0 = new_val.0;
                     msgs.push( UpdateBeingSpeed { being_ent: target.0, value: new_val, } );
                 } else {
                     val.0 = new_val.0;
@@ -39,6 +40,7 @@ pub fn debug_increase_speed(
                 new_val.0 *= 0.95;
                 new_val.0 = new_val.0.max(1.);
                 if is_client {
+                    val.0 = new_val.0;
                     msgs.push( UpdateBeingSpeed { being_ent: target.0, value: new_val, } );
                 } else {
                     val.0 = new_val.0;

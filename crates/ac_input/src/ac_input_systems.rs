@@ -10,7 +10,7 @@ pub fn spawn_player_input_context(mut commands: Commands) {
             (Action::<ToggleSimulationAction>::new(), bindings![KeyCode::Space]),
             (
                 Action::<DebugIncreaseSpeedAction>::new(),
-                bindings![KeyCode::NumpadAdd],
+                bindings![KeyCode::NumpadAdd, KeyCode::Equal],
             ),
             (
                 Action::<DebugDecreaseSpeedAction>::new(),
