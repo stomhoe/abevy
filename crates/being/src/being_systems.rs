@@ -32,8 +32,9 @@ pub fn add_activates_chunks(mut cmd: Commands,
 pub fn on_control_change(
     mut commands: Commands,
     self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<Mine>)>,
-
-    query: Query<(Entity, &ControlledBy, Has<CameraTarget>),(Or<(Changed<ControlledBy>, )>)>,
+    self_player_became_mine: Query<(), (With<Player>, With<Mine>, Added<Mine>)>,
+    changed_query: Query<(Entity, &ControlledBy, Has<CameraTarget>), Changed<ControlledBy>>,
+    query: Query<(Entity, &ControlledBy, Has<CameraTarget>)>,
     mut removed_controlled_by: RemovedComponents<ControlledBy>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
@@ -43,10 +44,12 @@ pub fn on_control_change(
         commands.entity(being_ent).try_remove::<CameraTarget>();
     }
     let Ok((self_entity, is_host)) = self_player.single() else {
-        error!(target: BEING_SYSTEM, "No self player found when trying to update control changes");
+        debug_once!(target: BEING_CONTROL, "Skipping control refresh until local player is marked Mine");
         return;
     };
-    query.iter().for_each(|(being_ent, controlled_by, is_camera_target)| {
+    let mut apply_control_change = |being_ent: Entity, controlled_by: &ControlledBy, is_camera_target: bool| {
+        commands.entity(being_ent).remove::<BeingInputContext>();
+        commands.entity(being_ent).remove::<Actions<BeingInputContext>>();
         if controlled_by.client_ent == self_entity {
             info!(target: BEING_CONTROL, "debug {:?} is now controlled locally by self", being_ent);
             commands.entity(being_ent).try_insert_if_new((ComputedLocally, ActivatingChunks::new(&chunk_range)));
@@ -72,7 +75,16 @@ pub fn on_control_change(
                 commands.entity(being_ent).try_insert(PlayerControlled);
             }
         }
-    });
+    };
+    if !self_player_became_mine.is_empty() {
+        for (being_ent, controlled_by, is_camera_target) in query.iter() {
+            apply_control_change(being_ent, controlled_by, is_camera_target);
+        }
+        return;
+    }
+    for (being_ent, controlled_by, is_camera_target) in changed_query.iter() {
+        apply_control_change(being_ent, controlled_by, is_camera_target);
+    }
 
 }
 

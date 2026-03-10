@@ -28,7 +28,7 @@ pub struct ModifierSystems;
 pub struct HostSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct ClientSystems;
+pub struct AcClientSystems;
 
 #[allow(unused_parens, path_statements)]
 pub fn plugin(app: &mut App) {
@@ -61,7 +61,7 @@ pub fn plugin(app: &mut App) {
                 .in_set(StatefulSessionSystems),
             StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
             HostSystems.run_if(in_state(ClientState::Disconnected)),
-            ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
+            AcClientSystems.run_if(not(in_state(ClientState::Disconnected))),
         ),
     )
     .configure_sets(
@@ -82,7 +82,7 @@ pub fn plugin(app: &mut App) {
             SimRunningSystems.run_if(in_state(SimulationState::Running)),
             SimPausedSystems.run_if(in_state(SimulationState::Paused)),
             HostSystems.run_if(in_state(ClientState::Disconnected)),
-            ClientSystems.run_if(not(in_state(ClientState::Disconnected))),
+            AcClientSystems.run_if(not(in_state(ClientState::Disconnected))),
         ),
     )
     .configure_sets(

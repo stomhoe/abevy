@@ -27,7 +27,7 @@ struct InspectorVisibility(bool);
 fn build_filter() -> String {
     format!(
         "info,\
-        {}={},{}={},\
+        {}={},\
         {}={},\
         {}={},\
         {}={},\
@@ -119,8 +119,7 @@ fn build_filter() -> String {
         log_targets::DEBUG, INFO,
 
         log_targets::Z_LEVEL_SYSTEM, INFO,
-        log_targets::MOVEMENT_SYSTEM, WARN,
-        "grid_movement", DEBUG,
+        log_targets::MOVEMENT_SYSTEM, DEBUG,
         "sprite_sampler_systems", TRACE,
         log_targets::SPRITE_INIT, WARN,
         log_targets::SPRITE_BUILD, INFO,

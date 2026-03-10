@@ -5,6 +5,7 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use common::log_targets;
 use game_common::game_common_components::EntityZeroRef;
 
 use modifier_shared::modifier_types::WalkSpeed;
@@ -45,8 +46,16 @@ pub fn do_free_movement(
         let velocity = move_state.norm_move_dir * move_state.speed_magnitude;
         if velocity != Vec2::ZERO {
             move_anim.set(true, being_ent, &mut move_anim_msgs);
-
+            let from = transform.translation;
             transform.translation += (velocity * time.delta_secs()).extend(0.0);
+            debug!(
+                target: log_targets::MOVEMENT_SYSTEM,
+                "Applied free movement being_ent={:?} from={:?} to={:?} velocity={:?}",
+                being_ent,
+                from,
+                transform.translation,
+                velocity
+            );
         } else {
             move_anim.set(false, being_ent, &mut move_anim_msgs);
         }
@@ -70,7 +79,7 @@ pub fn send_transforms_to_clients(
         let to_clients = ToClients {
             mode: controlled_by.map_or(
                 SendMode::BroadcastExcept(ClientId::Server),
-                |controlled_by| SendMode::BroadcastExcept(ClientId::Client(controlled_by.client_ent)),
+                |controller| SendMode::BroadcastExcept(ClientId::Client(controller.client_ent)),
             ),
             message: UnreliableTransform::new(being_ent, transform.clone(), ),
         };
@@ -119,6 +128,7 @@ pub fn prepare_grid_locked_movement(
         if !controlled_locally && is_client {
             continue;
         }
+        let starting_translation = transform.translation;
 
         let snapped_translation: Vec3 = GlobalTilePos::from(transform.translation.truncate())
             .to_translation(transform.translation.z);
@@ -301,12 +311,21 @@ pub fn prepare_grid_locked_movement(
         transform.translation = current_translation;
         if moved {
             move_anim.set(true, being_ent, &mut being_changed_state_set);
-
+            debug!(
+                target: log_targets::MOVEMENT_SYSTEM,
+                "Applied grid movement being_ent={:?} controlled_locally={} input_dir={:?} active_dir={:?} from={:?} to={:?}",
+                being_ent,
+                controlled_locally,
+                move_state.norm_move_dir,
+                glm.active_move_dir,
+                starting_translation,
+                transform.translation
+            );
             if !is_client {
                 let to_clients = ToClients {
                     mode: controlled_by.map_or(
                         SendMode::BroadcastExcept(ClientId::Server),
-                        |controlled_by| SendMode::BroadcastExcept(ClientId::Client(controlled_by.client_ent)),
+                        |controller| SendMode::BroadcastExcept(ClientId::Client(controller.client_ent)),
                     ),
                     message: UnreliableTransform::new(being_ent, transform.clone(), ),
                 };
@@ -323,61 +342,20 @@ pub fn prepare_grid_locked_movement(
 #[allow(unused_parens)]
 pub fn set_transforms_to_received(
     mut reader: MessageReader<UnreliableTransform>,
-    mut cmd: Commands,
-    mut query: Query<(Entity, &mut Transform, Has<ComputedLocally>, Option<&mut PendingServerTransform>), ()>
+    mut query: Query<(&mut Transform), ()>
 ) {
     for msg in reader.read() {
-        let Ok((being_ent, mut transf, computed_locally, pending_server_transform)) = query.get_mut(msg.being_ent)
+        let Ok(mut transf) = query.get_mut(msg.being_ent)
         else {continue;};
-        if computed_locally {
-            let error = transf.translation.xy().distance(msg.trans.translation.xy());
-            if error <= 1.0 {
-                continue;
-            }
-            if let Some(mut pending_server_transform) = pending_server_transform {
-                pending_server_transform.0 = msg.trans.clone();
-            } else {
-                cmd.entity(being_ent).try_insert(PendingServerTransform(msg.trans.clone()));
-            }
-            continue;
-        }
+        debug!(
+            target: log_targets::MOVEMENT_SYSTEM,
+            "Applied authoritative remote transform being_ent={:?} translation={:?}",
+            msg.being_ent,
+            msg.trans.translation
+        );
         *transf = msg.trans;
     }
 }
-
-pub fn reconcile_controlled_transforms(
-    mut cmd: Commands,
-    time: Res<Time>,
-    mut query: Query<(Entity, &mut Transform, &PendingServerTransform), With<ComputedLocally>>,
-) {
-    const IGNORE_DIST: f32 = 1.0;
-    const SNAP_DIST: f32 = GlobalTilePos::TILE_SIZE_PXS.x as f32 * 0.75;
-    const RECONCILE_RATE: f32 = 12.0;
-
-    for (being_ent, mut transform, pending_server_transform) in query.iter_mut() {
-        let target = &pending_server_transform.0;
-        let error = transform.translation.xy().distance(target.translation.xy());
-        if error <= IGNORE_DIST {
-            cmd.entity(being_ent).remove::<PendingServerTransform>();
-            continue;
-        }
-        if error >= SNAP_DIST {
-            *transform = target.clone();
-            cmd.entity(being_ent).remove::<PendingServerTransform>();
-            continue;
-        }
-
-        let alpha = (time.delta_secs() * RECONCILE_RATE).clamp(0.0, 1.0);
-        transform.translation.x += (target.translation.x - transform.translation.x) * alpha;
-        transform.translation.y += (target.translation.y - transform.translation.y) * alpha;
-        transform.translation.z = target.translation.z;
-
-        if transform.translation.xy().distance(target.translation.xy()) <= IGNORE_DIST {
-            cmd.entity(being_ent).remove::<PendingServerTransform>();
-        }
-    }
-}
-
 
 pub fn process_speed_modifiers(
     state: Res<State<ClientState>>,
@@ -495,7 +473,7 @@ pub fn emit_move_state_on_movevecmag_value_change(
             prev_by_ent.insert(ent, curr);
             continue;
         };
-        if prev.0 != curr.0 || (prev.1 - curr.1).abs() > f32::EPSILON {
+        if (prev.1 - curr.1).abs() > f32::EPSILON {
             messages.push(BeingChangedMoveState(ent));
             prev_by_ent.insert(ent, curr);
         }
@@ -526,10 +504,12 @@ pub fn update_facing_dir(
             } else {
                 Vec2::ZERO
             }
-        } else if move_vec != Vec2::ZERO {
-            move_vec
         } else {
-            Vec2::ZERO
+            if move_vec != Vec2::ZERO {
+                move_vec
+            } else {
+                Vec2::ZERO
+            }
         };
 
         if dir_vec == Vec2::ZERO {

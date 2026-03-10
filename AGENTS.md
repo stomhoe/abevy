@@ -7,3 +7,5 @@ for target: in error!, info!, etc. put the corresponding constant from log_targe
 
 
 for freshly implemented features, add debug! prints and update main.rs to actually show the logs, so that the user can give you feedback. for systems which are ran both by server and clients, make sure that you .replicate::<ComponentName>'d all involved components in the corresponding module's pub fn plugin. make sure to replicate tile related components.
+
+if you write a client-only system, put .in_set(ClientSystems). if serveropened-only, put .run_if(in_state(ServerState::Running)). if either for singleplayer/host, .in_set(HostSystems)

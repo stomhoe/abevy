@@ -1,4 +1,5 @@
 use being::being_components::*;
+use being::being_bundles::{BeingBundle, PlayerStartBeingBundle};
 use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use ::being_shared::*;
 use common::{GAME_INIT, common_components::StrId, common_states::AppState};
@@ -132,12 +133,9 @@ pub fn host_on_player_added(mut cmd: Commands,
 
             //USAR EL DEFAULT ASE Q SE DESPAWNEE
 
-            let created_character = cmd.spawn((Being::default(), username.clone(),
-                ControlledBy { client_ent: player_ent, human_input: true },
+            let created_character = cmd.spawn((Being, username.clone(),
                 CharacterCreatedBy { player: player_ent },
-                BitStrIdRef::new(settings.players_initial_bit_ref_strid.as_str()),
                 BelongsToFaction(host_faction),
-                Transform::default(),
             )).id();
             //cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));
 
@@ -212,7 +210,9 @@ pub fn put_player_beings_on_map(
     trigger: On<CommonSpawnOriginFound>,
     mut cmd: Commands,
     players: Query<(&CreatedCharacters, ), (With<Player>)>,
+    created_by_query: Query<&CharacterCreatedBy>,
     chunk_range: Res<AaChunkRangeSettings>,
+    settings: Res<GameInitSettings>,
     mut next_spawn_offset_x: Local<i32>,
 ) {
     let found = trigger.event();
@@ -231,21 +231,29 @@ pub fn put_player_beings_on_map(
 
         for &being_ent in created_characters.entities() {
             let transform = compute_transform(origin, &mut *next_spawn_offset_x);
+            let Ok(created_by) = created_by_query.get(being_ent) else { continue; };
 
             cmd.entity(being_ent)
                 .try_remove::<Transform>()
+                .try_remove::<DimensionRef>()
                 .try_insert((
                 transform,
                 DimensionRef(spawn_dim.0),
                 ActivatingChunks::new(&chunk_range),
+                ControlledBy {
+                    client_ent: created_by.player,
+                    human_input: true,
+                },
+                BitStrIdRef::new(settings.players_initial_bit_ref_strid.as_str()),
+                Being,
+
             ));
         }
     }
     let transform = compute_transform(origin, &mut *next_spawn_offset_x);
     let bear_ent = cmd.spawn((
+        BeingBundle::new(DimensionRef(spawn_dim.0), transform),
         BitStrIdRef::new("pobear"),
-        DimensionRef(spawn_dim.0),
-        transform,
         Predator::default(),
     )).id();
 }

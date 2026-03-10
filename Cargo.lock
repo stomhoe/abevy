@@ -5993,6 +5993,7 @@ dependencies = [
  "bevy 0.18.0",
  "bevy_enhanced_input",
  "bevy_replicon",
+ "common",
  "game_common",
  "modifier_shared",
  "param_sets",
