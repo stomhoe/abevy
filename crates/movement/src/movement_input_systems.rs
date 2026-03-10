@@ -6,15 +6,12 @@ use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::*;
 
-use modifier_shared::{modifier_components::*, modifier_move_components::*, modifier_types::*};
+use modifier_shared::{modifier_components::*, modifier_types::*};
 use ac_input::ac_input_actions::*;
 
 use crate::{movement_components::*, movement_drift_log::drift_log, movement_messages::SendMoveInput};
 
 const INPUT_DEADZONE: f32 = 0.2;
-const INPUT_CHANGE_EPSILON: f32 = 0.01;
-const INPUT_RESEND_SECS: f32 = 0.12;
-
 fn log_role(client_state: &State<ClientState>) -> &'static str {
     if client_state.get() == &ClientState::Connected {
         "client"
@@ -84,7 +81,6 @@ pub fn send_move_input_to_server(
     mut last_sent_by_being: Local<EntityHashMap<Vec2>>,
     mut next_seq_by_being: Local<EntityHashMap<u32>>,
     mut client_tick: Local<u32>,
-    mut last_send_time_by_being: Local<EntityHashMap<f32>>,
     mut messages: Local<Vec<SendMoveInput>>,
 ) {
     let role = log_role(&client_state);
@@ -101,19 +97,16 @@ pub fn send_move_input_to_server(
         }
         current_beings.insert(being_ent);
         let input_dir = sanitize_input_dir(**move_action);
-        let unchanged = last_sent_by_being
-            .get(&being_ent)
-            .is_some_and(|last_sent| last_sent.distance(input_dir) <= INPUT_CHANGE_EPSILON);
-        let is_resend_due = last_send_time_by_being
-            .get(&being_ent)
-            .is_none_or(|last_send| now - *last_send >= INPUT_RESEND_SECS);
-        if unchanged && (input_dir == Vec2::ZERO || !is_resend_due) {
+        if input_dir == Vec2::ZERO
+            && last_sent_by_being
+                .get(&being_ent)
+                .is_some_and(|last_sent| *last_sent == Vec2::ZERO)
+        {
             continue;
         }
         let input_seq = next_seq_by_being.get(&being_ent).copied().unwrap_or(0).wrapping_add(1);
         next_seq_by_being.insert(being_ent, input_seq);
         last_sent_by_being.insert(being_ent, input_dir);
-        last_send_time_by_being.insert(being_ent, now);
         drift_log(
             role,
             &format!(
@@ -143,7 +136,6 @@ pub fn send_move_input_to_server(
     }
     last_sent_by_being.retain(|being_ent, _| current_beings.contains(being_ent));
     next_seq_by_being.retain(|being_ent, _| current_beings.contains(being_ent));
-    last_send_time_by_being.retain(|being_ent, _| current_beings.contains(being_ent));
     event_writer.write_batch(messages.drain(..));
 }
 
@@ -153,8 +145,9 @@ pub fn receive_move_input_from_client(
     mut commands: Commands,
     mut controlled_beings_query: Query<(
         Option<&mut RemoteMoveInput>,
-        Option<&mut LastProcessedMoveInputSeq>,
-        Option<&mut LastProcessedMoveInputTick>,
+        Option<&mut LastReceivedMoveInputSeq>,
+        Option<&mut LastReceivedMoveInputTick>,
+        Option<&mut ServerQueuedMoveIntents>,
         &ControlledBy,
     )>,
 ) {
@@ -162,11 +155,11 @@ pub fn receive_move_input_from_client(
     for from_client in events.read() {
         let SendMoveInput { vec: new_vec, being_ent, input_seq, client_tick } = from_client.message.clone();
 
-        if let Ok((remote_input, last_processed_seq, last_processed_tick, controlled_by)) = controlled_beings_query.get_mut(being_ent) {
+        if let Ok((remote_input, last_received_seq, last_received_tick, queued_intents, controlled_by)) = controlled_beings_query.get_mut(being_ent) {
             let Some(client_entity) = from_client.client_id.entity() else { continue; };
 
             if controlled_by.client_ent == client_entity {
-                let prev_seq = last_processed_seq.as_ref().map_or(0, |seq| seq.0);
+                let prev_seq = last_received_seq.as_ref().map_or(0, |seq| seq.0);
                 if input_seq <= prev_seq {
                     drift_log(
                         role,
@@ -183,28 +176,44 @@ pub fn receive_move_input_from_client(
                 let mut should_insert_remote = true;
                 if let Some(mut remote_input) = remote_input {
                     should_insert_remote = false;
-                    if remote_input.0 != new_vec {
+                    if remote_input.0 == Vec2::ZERO {
                         remote_input.0 = new_vec;
                     }
                 }
                 let mut should_insert_seq = true;
-                if let Some(mut seq) = last_processed_seq {
+                if let Some(mut seq) = last_received_seq {
                     should_insert_seq = false;
                     seq.0 = input_seq;
                 }
                 let mut should_insert_tick = true;
-                if let Some(mut tick) = last_processed_tick {
+                if let Some(mut tick) = last_received_tick {
                     should_insert_tick = false;
                     tick.0 = client_tick;
+                }
+                let mut should_insert_queue = true;
+                if let Some(mut queued_intents) = queued_intents {
+                    should_insert_queue = false;
+                    queued_intents.0.push(PendingMoveIntent {
+                        input_seq,
+                        client_tick,
+                        dir: new_vec,
+                    });
                 }
                 if should_insert_remote {
                     commands.entity(being_ent).try_insert(RemoteMoveInput(new_vec));
                 }
                 if should_insert_seq {
-                    commands.entity(being_ent).try_insert(LastProcessedMoveInputSeq(input_seq));
+                    commands.entity(being_ent).try_insert(LastReceivedMoveInputSeq(input_seq));
                 }
                 if should_insert_tick {
-                    commands.entity(being_ent).try_insert(LastProcessedMoveInputTick(client_tick));
+                    commands.entity(being_ent).try_insert(LastReceivedMoveInputTick(client_tick));
+                }
+                if should_insert_queue {
+                    commands.entity(being_ent).try_insert(ServerQueuedMoveIntents(vec![PendingMoveIntent {
+                        input_seq,
+                        client_tick,
+                        dir: new_vec,
+                    }]));
                 }
             } else {
                 warn!(
@@ -215,6 +224,50 @@ pub fn receive_move_input_from_client(
         } else {
             warn!("Client tried to control a being that does not exist in server or is not controllable {}", being_ent);
         }
+    }
+}
+
+pub fn consume_remote_move_input_buffers(
+    client_state: Res<State<ClientState>>,
+    mut beings: Query<(
+        Entity,
+        &mut RemoteMoveInput,
+        &mut ServerQueuedMoveIntents,
+        Option<&mut LastAppliedMoveInputSeq>,
+        Option<&mut LastAppliedMoveInputTick>,
+        Has<ComputedLocally>,
+    )>,
+    mut commands: Commands,
+) {
+    let role = log_role(&client_state);
+    for (being_ent, mut remote_input, mut queued_intents, applied_seq, applied_tick, controlled_locally) in beings.iter_mut() {
+        if controlled_locally || queued_intents.0.is_empty() {
+            continue;
+        }
+        let intent = queued_intents.0.remove(0);
+        remote_input.0 = intent.dir;
+        if let Some(mut applied_seq) = applied_seq {
+            applied_seq.0 = intent.input_seq;
+        } else {
+            commands.entity(being_ent).try_insert(LastAppliedMoveInputSeq(intent.input_seq));
+        }
+        if let Some(mut applied_tick) = applied_tick {
+            applied_tick.0 = intent.client_tick;
+        } else {
+            commands.entity(being_ent).try_insert(LastAppliedMoveInputTick(intent.client_tick));
+        }
+        drift_log(
+            role,
+            &format!(
+                "consume_remote_input ent={:?} seq={} tick={} dir=({:.0},{:.0}) queued_left={}",
+                being_ent,
+                intent.input_seq,
+                intent.client_tick,
+                intent.dir.x,
+                intent.dir.y,
+                queued_intents.0.len()
+            ),
+        );
     }
 }
 

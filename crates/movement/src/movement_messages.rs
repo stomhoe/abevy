@@ -1,5 +1,6 @@
 use bevy::{ecs::entity::MapEntities, prelude::*};
 use serde::{Deserialize, Serialize};
+use tilemap_shared::CardinalDirection;
 
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
 pub struct SendMoveInput {
@@ -27,8 +28,10 @@ impl UnreliableTransform {
 pub struct GridMoveStateAck {
     #[entities]
     pub being_ent: Entity,
-    pub tile_pos: Vec2,
+    pub tile_pos: IVec2,
     pub moving_dir: Vec2,
-    pub step_progress: f32,
+    pub facing_dir: CardinalDirection,
+    pub progress_ticks: u16,
+    pub step_ticks_total: u16,
     pub last_processed_input_seq: u32,
 }

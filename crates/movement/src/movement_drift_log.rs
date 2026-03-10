@@ -47,6 +47,25 @@ fn make_log_path(role: &str) -> Option<PathBuf> {
     Some(dir)
 }
 
+fn clear_old_role_logs(role: &str) {
+    let Ok(mut dir) = std::env::current_dir() else {
+        return;
+    };
+    dir.push("logs");
+    dir.push("drift");
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let prefix = format!("{role}_pid");
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else { continue };
+        if name.starts_with(&prefix) && name.ends_with(".log") {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
 pub fn drift_log(role: &str, line: &str) {
     let logger = DRIFT_FILE_LOGGER.get_or_init(|| {
         Mutex::new(DriftFileLogger {
@@ -59,8 +78,16 @@ pub fn drift_log(role: &str, line: &str) {
         return;
     }
     if !guard.files.contains_key(role) {
+        clear_old_role_logs(role);
         let Some(path) = make_log_path(role) else { return; };
-        let Ok(file) = OpenOptions::new().create(true).append(true).open(path) else { return; };
+        let Ok(file) = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path)
+        else {
+            return;
+        };
         guard.files.insert(role.to_string(), file);
     }
     let Some(file) = guard.files.get_mut(role) else { return; };

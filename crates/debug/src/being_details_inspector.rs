@@ -181,6 +181,14 @@ pub fn being_details_inspector(world: &mut World) {
             if let Ok(grid_move) = grid_move_query.get(world, selected_being_entity) {
                 if let Some(grid_move) = grid_move {
                     ui.label(format!(
+                        "GridLocked.origin_tile: [{}, {}]",
+                        grid_move.origin_tile.x, grid_move.origin_tile.y
+                    ));
+                    ui.label(format!(
+                        "GridLocked.progress_ticks: {} / {}",
+                        grid_move.progress_ticks, grid_move.step_ticks_total
+                    ));
+                    ui.label(format!(
                         "GridLocked.active: [{:.2}, {:.2}]",
                         grid_move.active_move_dir.x, grid_move.active_move_dir.y
                     ));

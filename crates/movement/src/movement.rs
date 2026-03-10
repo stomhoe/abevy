@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use game_common::{AcClientSystems, game_common::SimRunningSystems };
-use tilemap_shared::{CardinalDirection, PreChunkDespawnSystems};
+use tilemap_shared::CardinalDirection;
 
 use crate::{
     movement_components::*, movement_input_systems::*, movement_messages::*, movement_systems::*,
@@ -21,31 +21,28 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
+                set_transforms_to_received
+                    .run_if(on_message::<UnreliableTransform>)
+                    .in_set(AcClientSystems),
+                reconcile_grid_move_state_acks
+                    .run_if(on_message::<GridMoveStateAck>)
+                    .in_set(AcClientSystems),
                 send_move_input_to_server.run_if(in_state(ClientState::Connected)),
                 receive_move_input_from_client
                     .run_if(in_state(ServerState::Running))
                     .run_if(on_message::<FromClient<SendMoveInput>>),
+                consume_remote_move_input_buffers.run_if(in_state(ServerState::Running)),
                 apply_remote_move_input_actions.run_if(in_state(ServerState::Running)),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
                 emit_move_state_on_movevecmag_value_change,
-                (
-                    prepare_grid_locked_movement,
-                    do_free_movement,
-                ),
+                prepare_grid_locked_movement,
+                do_free_movement,
                 update_facing_dir,
                 send_grid_move_state_acks.run_if(in_state(ServerState::Running)),
                 send_transforms_to_clients.run_if(in_state(ServerState::Running)),
-                set_transforms_to_received
-                    .after(send_transforms_to_clients)
-                    .run_if(on_message::<UnreliableTransform>)
-                    .in_set(AcClientSystems),
-                reconcile_grid_move_state_acks
-                    .after(send_grid_move_state_acks)
-                    .run_if(on_message::<GridMoveStateAck>)
-                    .in_set(AcClientSystems),
-
             )
+            .chain()
             .in_set(MovementSystems),
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))

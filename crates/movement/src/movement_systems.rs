@@ -5,10 +5,11 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use common::log_targets::MOVEMENT_SYSTEM;
 use game_common::game_common_components::EntityZeroRef;
 
 use modifier_shared::modifier_types::WalkSpeed;
-use modifier_shared::{modifier_components::*, modifier_move_components::*};
+use modifier_shared::modifier_components::*;
 use param_sets::BlockingTileParamSet;
 use sprite_animation_shared::{MoveAnimActive, BeingChangedMoveState};
 use ::tilemap_shared::*;
@@ -27,47 +28,6 @@ fn log_role(client_state: &State<ClientState>) -> &'static str {
     }
 }
 
-fn get_step_origin_tile_and_progress(transform: &Transform, moving_dir: Vec2) -> (GlobalTilePos, f32) {
-    let current_tile = GlobalTilePos::from(transform.translation.truncate());
-    if moving_dir == Vec2::ZERO {
-        return (current_tile, 0.0);
-    }
-
-    let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-    let pos = transform.translation.truncate();
-    const EPS: f32 = 0.0001;
-
-    if moving_dir.x != 0.0 {
-        let tile_coord = pos.x / tile_size.x.max(1.0);
-        let floored = tile_coord.floor();
-        let frac = tile_coord - floored;
-        if moving_dir.x > 0.0 {
-            (GlobalTilePos(IVec2::new(floored as i32, current_tile.0.y)), frac.clamp(0.0, 1.0))
-        } else if frac <= EPS {
-            (GlobalTilePos(IVec2::new(floored as i32, current_tile.0.y)), 0.0)
-        } else {
-            (
-                GlobalTilePos(IVec2::new((floored as i32) + 1, current_tile.0.y)),
-                (1.0 - frac).clamp(0.0, 1.0),
-            )
-        }
-    } else {
-        let tile_coord = pos.y / tile_size.y.max(1.0);
-        let floored = tile_coord.floor();
-        let frac = tile_coord - floored;
-        if moving_dir.y > 0.0 {
-            (GlobalTilePos(IVec2::new(current_tile.0.x, floored as i32)), frac.clamp(0.0, 1.0))
-        } else if frac <= EPS {
-            (GlobalTilePos(IVec2::new(current_tile.0.x, floored as i32)), 0.0)
-        } else {
-            (
-                GlobalTilePos(IVec2::new(current_tile.0.x, (floored as i32) + 1)),
-                (1.0 - frac).clamp(0.0, 1.0),
-            )
-        }
-    }
-}
-
 fn normalize_to_axis_dir(input: Vec2) -> Vec2 {
     if input == Vec2::ZERO {
         Vec2::ZERO
@@ -76,6 +36,155 @@ fn normalize_to_axis_dir(input: Vec2) -> Vec2 {
     } else {
         Vec2::new(0.0, input.y.signum())
     }
+}
+
+fn translation_differs(a: Vec3, b: Vec3) -> bool {
+    (a.x - b.x).abs() > 0.01 || (a.y - b.y).abs() > 0.01 || (a.z - b.z).abs() > 0.01
+}
+
+fn grid_progress_ratio(glm: &GridLockedMovement) -> f32 {
+    if glm.progress_ticks == 0 || glm.step_ticks_total == 0 {
+        0.0
+    } else {
+        (glm.progress_ticks as f32 / glm.step_ticks_total as f32).clamp(0.0, 1.0)
+    }
+}
+
+fn ticks_per_tile(speed: f32, delta: f32, dir: Vec2) -> u16 {
+    if speed <= 0.0 || delta <= 0.0 || dir == Vec2::ZERO {
+        return 0;
+    }
+    let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
+    let distance = if dir.x != 0.0 { tile_size.x } else { tile_size.y }.max(1.0);
+    ((distance / (speed * delta)).ceil() as u16).max(1)
+}
+
+fn next_step_dir(glm: &mut GridLockedMovement, axis_input_dir: Vec2, finish_current_tile_only: bool) -> Vec2 {
+    if glm.queued_move_dir != Vec2::ZERO {
+        let queued = glm.queued_move_dir;
+        glm.queued_move_dir = Vec2::ZERO;
+        queued
+    } else if !finish_current_tile_only && axis_input_dir != Vec2::ZERO {
+        axis_input_dir
+    } else {
+        Vec2::ZERO
+    }
+}
+
+fn step_grid_motor(
+    blocking_tiles: &BlockingTileParamSet,
+    to_drain: &mut Vec<Entity>,
+    dim_ref: DimensionRef,
+    being_ent: Entity,
+    glm: &mut GridLockedMovement,
+    axis_input_dir: Vec2,
+    speed: f32,
+    delta: f32,
+) -> bool {
+    let mut finish_current_tile_only = false;
+    if glm.progress_ticks > 0 && glm.active_move_dir != Vec2::ZERO {
+        if axis_input_dir == Vec2::ZERO {
+            glm.queued_move_dir = Vec2::ZERO;
+            finish_current_tile_only = true;
+        } else if axis_input_dir == glm.active_move_dir {
+            glm.queued_move_dir = Vec2::ZERO;
+        } else {
+            glm.queued_move_dir = axis_input_dir;
+            finish_current_tile_only = true;
+        }
+    } else {
+        glm.progress_ticks = 0;
+        glm.step_ticks_total = 0;
+        glm.active_move_dir = if axis_input_dir != Vec2::ZERO {
+            axis_input_dir
+        } else if glm.queued_move_dir != Vec2::ZERO {
+            let queued = glm.queued_move_dir;
+            glm.queued_move_dir = Vec2::ZERO;
+            queued
+        } else {
+            Vec2::ZERO
+        };
+        if axis_input_dir != Vec2::ZERO {
+            glm.queued_move_dir = Vec2::ZERO;
+        }
+    }
+    if glm.active_move_dir == Vec2::ZERO || speed <= 0.0 || delta <= 0.0 {
+        glm.progress_ticks = 0;
+        glm.step_ticks_total = 0;
+        return false;
+    }
+    if glm.progress_ticks == 0 {
+        let next_tile = GlobalTilePos(glm.origin_tile + glm.active_move_dir.as_ivec2());
+        if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
+            glm.queued_move_dir = Vec2::ZERO;
+            glm.active_move_dir = Vec2::ZERO;
+            glm.progress_ticks = 0;
+            glm.step_ticks_total = 0;
+            return false;
+        }
+        glm.step_ticks_total = ticks_per_tile(speed, delta, glm.active_move_dir);
+        if glm.step_ticks_total == 0 {
+            glm.queued_move_dir = Vec2::ZERO;
+            glm.active_move_dir = Vec2::ZERO;
+            return false;
+        }
+    }
+    glm.progress_ticks = glm.progress_ticks.saturating_add(1).min(glm.step_ticks_total.max(1));
+    if glm.progress_ticks < glm.step_ticks_total {
+        return true;
+    }
+    glm.origin_tile += glm.active_move_dir.as_ivec2();
+    glm.progress_ticks = 0;
+    glm.step_ticks_total = 0;
+    glm.active_move_dir = next_step_dir(glm, axis_input_dir, finish_current_tile_only);
+    if glm.active_move_dir == Vec2::ZERO {
+        return true;
+    }
+    let next_tile = GlobalTilePos(glm.origin_tile + glm.active_move_dir.as_ivec2());
+    if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
+        glm.queued_move_dir = Vec2::ZERO;
+        glm.active_move_dir = Vec2::ZERO;
+    }
+    true
+}
+
+fn grid_translation(glm: &GridLockedMovement, z: f32) -> Vec3 {
+    let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
+    GlobalTilePos(glm.origin_tile).to_translation(z)
+        + (glm.active_move_dir * grid_progress_ratio(glm) * tile_size).extend(0.0)
+}
+
+fn sync_grid_origin_from_transform(transform: &Transform, glm: &mut GridLockedMovement) {
+    if glm.progress_ticks > 0 || glm.active_move_dir != Vec2::ZERO {
+        return;
+    }
+    let tile = GlobalTilePos::from(transform.translation.truncate());
+    if glm.origin_tile != tile.0 {
+        glm.origin_tile = tile.0;
+        glm.queued_move_dir = Vec2::ZERO;
+    }
+}
+
+fn replay_predicted_grid_movement(
+    blocking_tiles: &BlockingTileParamSet,
+    to_drain: &mut Vec<Entity>,
+    dim_ref: DimensionRef,
+    being_ent: Entity,
+    glm: &mut GridLockedMovement,
+    axis_input_dir: Vec2,
+    speed: f32,
+    delta: f32,
+) -> bool {
+    step_grid_motor(
+        blocking_tiles,
+        to_drain,
+        dim_ref,
+        being_ent,
+        glm,
+        axis_input_dir,
+        speed,
+        delta,
+    )
 }
 
 pub fn do_free_movement(
@@ -101,7 +210,7 @@ pub fn do_free_movement(
 
 pub fn send_transforms_to_clients(
     query: Query<
-        (Entity, &Transform, &MoveVecMag, Option<&LastProcessedMoveInputSeq>, Option<&ControlledBy>),
+        (Entity, &Transform, &MoveVecMag, Option<&LastAppliedMoveInputSeq>, Option<&ControlledBy>),
         (Without<GridLockedMovement>, Changed<Transform>),
     >,
     server_state: Res<State<ServerState>>,
@@ -128,12 +237,13 @@ pub fn send_transforms_to_clients(
 }
 
 pub fn send_grid_move_state_acks(
-    query: Query<
+    mut query: Query<
         (
             Entity,
             &Transform,
-            &GridLockedMovement,
-            Option<&LastProcessedMoveInputSeq>,
+            &mut GridLockedMovement,
+            &CardinalDirection,
+            Option<&LastAppliedMoveInputSeq>,
             Option<&ControlledBy>,
         ),
         Changed<Transform>,
@@ -146,9 +256,8 @@ pub fn send_grid_move_state_acks(
         return;
     }
 
-    for (being_ent, transform, glm, last_processed_seq, controlled_by) in query.iter() {
-        let (origin_tile, step_progress) =
-            get_step_origin_tile_and_progress(transform, glm.active_move_dir);
+    for (being_ent, transform, mut glm, facing_dir, last_processed_seq, controlled_by) in query.iter_mut() {
+        sync_grid_origin_from_transform(transform, &mut glm);
         let mode = controlled_by.map_or(
             SendMode::BroadcastExcept(ClientId::Server),
             |controller| SendMode::Direct(ClientId::Client(controller.client_ent)),
@@ -157,9 +266,11 @@ pub fn send_grid_move_state_acks(
             mode,
             message: GridMoveStateAck {
                 being_ent,
-                tile_pos: origin_tile.0.as_vec2(),
+                tile_pos: glm.origin_tile,
                 moving_dir: glm.active_move_dir,
-                step_progress,
+                facing_dir: *facing_dir,
+                progress_ticks: glm.progress_ticks,
+                step_ticks_total: glm.step_ticks_total,
                 last_processed_input_seq: last_processed_seq.map_or(0, |seq| seq.0),
             },
         });
@@ -184,7 +295,8 @@ pub fn prepare_grid_locked_movement(
             &MoveVecMag,
             &DimensionRef,
             &mut GridLockedMovement,
-            Option<&LastProcessedMoveInputSeq>,
+            &CardinalDirection,
+            Option<&LastAppliedMoveInputSeq>,
             Option<&ControlledBy>,
             Has<ComputedLocally>,
         ),
@@ -203,6 +315,7 @@ pub fn prepare_grid_locked_movement(
         move_state,
         &dim_ref,
         mut glm,
+        facing_dir,
         last_processed_seq,
         controlled_by,
         controlled_locally,
@@ -211,180 +324,72 @@ pub fn prepare_grid_locked_movement(
         if !controlled_locally && is_client {
             continue;
         }
-        let snapped_translation: Vec3 = GlobalTilePos::from(transform.translation.truncate())
-            .to_translation(transform.translation.z);
-        let offset = transform.translation - snapped_translation;
-        let is_mid_tile = offset.x.abs() > 0.01 || offset.y.abs() > 0.01;
+        sync_grid_origin_from_transform(&transform, &mut glm);
         let raw_input = move_state.norm_move_dir;
-
-
         let axis_input_dir = normalize_to_axis_dir(raw_input);
-
-        let (mut dir_vec, finish_current_tile_only) = if is_mid_tile {
-            let mut active_dir = glm.active_move_dir;
-            if active_dir == Vec2::ZERO {
-                active_dir = axis_input_dir;
-            }
-            if active_dir == Vec2::ZERO {
-                if offset.x.abs() >= offset.y.abs() {
-                    active_dir = Vec2::new(offset.x.signum(), 0.0);
-                } else {
-                    active_dir = Vec2::new(0.0, offset.y.signum());
-                }
-            }
-
+        if (glm.active_move_dir == Vec2::ZERO && glm.progress_ticks == 0 && axis_input_dir == Vec2::ZERO)
+            || move_state.speed_magnitude <= 0.0
+        {
+            glm.progress_ticks = 0;
+            glm.step_ticks_total = 0;
             if axis_input_dir == Vec2::ZERO {
-                if active_dir != Vec2::ZERO {
-                    glm.active_move_dir = active_dir;
-                }
-                (active_dir, true)
-            } else if active_dir == Vec2::ZERO {
-                glm.active_move_dir = axis_input_dir;
-                (axis_input_dir, false)
-            } else if axis_input_dir == active_dir {
-                glm.active_move_dir = active_dir;
-                (active_dir, false)
-            } else if axis_input_dir == -active_dir {
-                glm.queued_move_dir = Vec2::ZERO;
-                glm.active_move_dir = axis_input_dir;
-                (axis_input_dir, false)
-            } else {
-                glm.queued_move_dir = axis_input_dir;
-                glm.active_move_dir = active_dir;
-                (active_dir, true)
-            }
-        } else if glm.queued_move_dir != Vec2::ZERO {
-            let queued = glm.queued_move_dir;
-            glm.queued_move_dir = Vec2::ZERO;
-            glm.active_move_dir = queued;
-            (queued, false)
-        } else {
-            if axis_input_dir != Vec2::ZERO {
-                glm.active_move_dir = axis_input_dir;
-            } else {
                 glm.active_move_dir = Vec2::ZERO;
+                glm.queued_move_dir = Vec2::ZERO;
             }
-            (axis_input_dir, false)
-        };
-        if dir_vec == Vec2::ZERO {
-            transform.translation = snapped_translation;
+            let snapped_translation = GlobalTilePos(glm.origin_tile).to_translation(transform.translation.z);
+            if translation_differs(transform.translation, snapped_translation) {
+                transform.translation = snapped_translation;
+            }
             move_anim.set(false, being_ent, &mut being_changed_state_set);
             continue;
         }
-        let input = {
-            if dir_vec.x.abs() >= dir_vec.y.abs() {
-                dir_vec.y = 0.0;
-                if (transform.translation.y - snapped_translation.y).abs() > 0.01 {
-                    transform.translation.y = snapped_translation.y;
-                }
-                dir_vec.x = dir_vec.x.signum();
-            } else {
-                dir_vec.x = 0.0;
-                if (transform.translation.x - snapped_translation.x).abs() > 0.01 {
-                    transform.translation.x = snapped_translation.x;
-                }
-                dir_vec.y = dir_vec.y.signum();
-            }
-            dir_vec
-        };
-
         let delta = time.delta_secs();
         if delta <= 0.0 {
             continue;
         }
-
-        let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-        let distance = move_state.speed_magnitude * delta;
-        let mut remaining_distance = distance;
-
-        let mut current_translation = transform.translation;
-        let mut current_dir = input;
-        let mut moved = false;
-
-        let mut safety = 0;
-        while remaining_distance > 0.0 && safety < 64 {
-            safety += 1;
-
-            let current_snapped = GlobalTilePos::from(current_translation.truncate())
-                .to_translation(current_translation.z);
-            let current_offset = current_translation - current_snapped;
-            let step_distance = if current_dir.x != 0.0 {
-                tile_size.x
-            } else {
-                tile_size.y
-            };
-
-            let next_target = current_snapped.xy() + (current_dir * step_distance);
-            if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(next_target), being_ent) {
-                glm.queued_move_dir = Vec2::ZERO;
-                glm.active_move_dir = Vec2::ZERO;
-                if !moved {
-                    current_translation = current_snapped;
-                }
-                break;
-            }
-
-            let mut remaining_to_boundary = if current_dir.x != 0.0 {
-                if current_dir.x > 0.0 {
-                    (step_distance - current_offset.x).max(0.0)
-                } else {
-                    current_offset.x.abs().max(0.0)
-                }
-            } else {
-                if current_dir.y > 0.0 {
-                    (step_distance - current_offset.y).max(0.0)
-                } else {
-                    current_offset.y.abs().max(0.0)
-                }
-            };
-
-            if remaining_to_boundary <= 0.0001 {
-                let target = current_snapped.xy() + (current_dir * step_distance);
-                if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
-                    glm.queued_move_dir = Vec2::ZERO;
-                    glm.active_move_dir = Vec2::ZERO;
-                    break;
-                }
-                remaining_to_boundary = step_distance;
-            }
-
-            let step = remaining_distance.min(remaining_to_boundary);
-            let will_reach_boundary = step >= remaining_to_boundary - 0.0001;
-
-            if will_reach_boundary {
-                let target = current_snapped.xy() + (current_dir * step_distance);
-                if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, GlobalTilePos::from(target), being_ent) {
-                    glm.queued_move_dir = Vec2::ZERO;
-                    glm.active_move_dir = Vec2::ZERO;
-                    if !moved {
-                        current_translation = current_snapped;
-                    }
-                    break;
-                }
-
-                current_translation += (current_dir * remaining_to_boundary).extend(0.0);
-                remaining_distance -= remaining_to_boundary;
-                moved |= remaining_to_boundary > 0.0;
-                //client never reaches this point
-
-                if finish_current_tile_only && glm.queued_move_dir == Vec2::ZERO {
-                    glm.active_move_dir = Vec2::ZERO;
-                    break;
-                }
-
-                if glm.queued_move_dir != Vec2::ZERO {
-                    current_dir = glm.queued_move_dir;
-                    glm.queued_move_dir = Vec2::ZERO;
-                    glm.active_move_dir = current_dir;
-                }
-            } else {
-                current_translation += (current_dir * step).extend(0.0);
-                moved |= step > 0.0;
-                break;
-            }
+        let blocked_check_tile = if glm.progress_ticks == 0 && glm.active_move_dir != Vec2::ZERO {
+            Some(GlobalTilePos(glm.origin_tile + glm.active_move_dir.as_ivec2()))
+        } else {
+            None
+        };
+        let moved = step_grid_motor(
+            &blocking_tiles,
+            &mut to_drain,
+            dim_ref,
+            being_ent,
+            &mut glm,
+            axis_input_dir,
+            move_state.speed_magnitude,
+            delta,
+        );
+        if !moved && blocked_check_tile.is_some() {
+            let snapped_translation = GlobalTilePos(glm.origin_tile).to_translation(transform.translation.z);
+            let blocked_tile = blocked_check_tile.unwrap();
+            drift_log(
+                log_role(&client_state),
+                &format!(
+                    "t={:.3} blocked_idle ent={:?} pos=({:.2},{:.2}) snap=({:.2},{:.2}) face={:?} input=({:.0},{:.0}) active=({:.0},{:.0}) queued=({:.0},{:.0}) blocked_tile={:?}",
+                    time.elapsed_secs(),
+                    being_ent,
+                    transform.translation.x,
+                    transform.translation.y,
+                    snapped_translation.x,
+                    snapped_translation.y,
+                    facing_dir,
+                    axis_input_dir.x,
+                    axis_input_dir.y,
+                    glm.active_move_dir.x,
+                    glm.active_move_dir.y,
+                    glm.queued_move_dir.x,
+                    glm.queued_move_dir.y,
+                    blocked_tile,
+                ),
+            );
         }
-
-        transform.translation = current_translation;
+        let current_translation = grid_translation(&glm, transform.translation.z);
+        if translation_differs(transform.translation, current_translation) {
+            transform.translation = current_translation;
+        }
         if moved {
             move_anim.set(true, being_ent, &mut being_changed_state_set);
             if !is_client {
@@ -447,131 +452,170 @@ pub fn reconcile_grid_move_state_acks(
     mut reader: MessageReader<GridMoveStateAck>,
     client_state: Res<State<ClientState>>,
     time: Res<Time>,
-    mut query: Query<(
-        &mut Transform,
-        &mut GridLockedMovement,
-        Option<&mut PendingMoveIntents>,
-        Has<ComputedLocally>,
+    mut param_set: ParamSet<(
+        BlockingTileParamSet,
+        Query<(
+            &mut Transform,
+            &mut GridLockedMovement,
+            &mut CardinalDirection,
+            &MoveVecMag,
+            &DimensionRef,
+            Option<&mut PendingMoveIntents>,
+            Has<ComputedLocally>,
+        )>,
     )>,
     mut last_ack_by_being: Local<EntityHashMap<u32>>,
     mut last_sample_log_by_being: Local<EntityHashMap<f32>>,
+    mut to_drain: Local<Vec<Entity>>,
 ) {
     let role = log_role(&client_state);
     const DRIFT_SAMPLE_SECS: f32 = 0.35;
-    const HARD_SNAP_DRIFT: f32 = 48.0;
-    const SOFT_CORRECTION_START: f32 = 1.5;
-    let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
     let now = time.elapsed_secs();
+    let mut latest_by_being = EntityHashMap::default();
     for msg in reader.read() {
-        let Ok((mut transform, mut glm, pending_intents, controlled_locally)) =
-            query.get_mut(msg.being_ent)
-        else {
-            continue;
-        };
-        if !controlled_locally {
-            continue;
-        }
         if last_ack_by_being
             .get(&msg.being_ent)
             .is_some_and(|ack| msg.last_processed_input_seq < *ack)
         {
             continue;
         }
-
-        let authoritative_origin_tile = GlobalTilePos(msg.tile_pos.as_ivec2());
-        let authoritative_translation =
-            authoritative_origin_tile.to_translation(transform.translation.z)
-                + (msg.moving_dir * msg.step_progress * tile_size).extend(0.0);
-        let authoritative_current_tile = GlobalTilePos::from(authoritative_translation.truncate());
-        let local_tile = GlobalTilePos::from(transform.translation.truncate());
-        let tile_mismatch = local_tile != authoritative_current_tile;
-
-        let pending_count;
-        if let Some(mut pending_intents) = pending_intents {
-            pending_intents
-                .0
-                .retain(|intent| intent.input_seq > msg.last_processed_input_seq);
-            pending_count = pending_intents.0.len();
-            if let Some(last_intent) = pending_intents.0.last().copied() {
-                glm.queued_move_dir = last_intent.dir;
-            } else {
-                glm.queued_move_dir = Vec2::ZERO;
+        latest_by_being.insert(msg.being_ent, msg.clone());
+    }
+    for (_, msg) in latest_by_being.drain() {
+        let (
+            mut authoritative_glm,
+            local_translation,
+            local_facing_dir,
+            move_speed,
+            move_input_dir,
+            dim_ref,
+            pending_count,
+            pending_snapshot,
+        ) = {
+            let mut beings = param_set.p1();
+            let Ok((transform, glm, facing_dir, move_state, &dim_ref, pending_intents, controlled_locally)) =
+                beings.get_mut(msg.being_ent)
+            else {
+                continue;
+            };
+            if !controlled_locally {
+                continue;
             }
-        } else {
-            pending_count = 0;
-            glm.queued_move_dir = Vec2::ZERO;
+            if last_ack_by_being
+                .get(&msg.being_ent)
+                .is_some_and(|ack| msg.last_processed_input_seq < *ack)
+            {
+                continue;
+            }
+            let mut authoritative_glm = *glm;
+            authoritative_glm.origin_tile = msg.tile_pos;
+            authoritative_glm.active_move_dir = msg.moving_dir;
+            authoritative_glm.progress_ticks = msg.progress_ticks.min(msg.step_ticks_total);
+            authoritative_glm.step_ticks_total = msg.step_ticks_total;
+            let mut pending_snapshot = Vec::new();
+            let pending_count;
+            if let Some(mut pending_intents) = pending_intents {
+                pending_intents
+                    .0
+                    .retain(|intent| intent.input_seq > msg.last_processed_input_seq);
+                pending_count = pending_intents.0.len();
+                pending_snapshot.extend(pending_intents.0.iter().copied());
+                if let Some(last_intent) = pending_intents.0.last().copied() {
+                    authoritative_glm.queued_move_dir = last_intent.dir;
+                } else {
+                    authoritative_glm.queued_move_dir = Vec2::ZERO;
+                }
+            } else {
+                pending_count = 0;
+                authoritative_glm.queued_move_dir = Vec2::ZERO;
+            }
+            (
+                authoritative_glm,
+                transform.translation,
+                *facing_dir,
+                move_state.speed_magnitude,
+                move_state.norm_move_dir,
+                dim_ref,
+                pending_count,
+                pending_snapshot,
+            )
+        };
+        let mut replayed_ticks = 0usize;
+        if pending_count == 0 && authoritative_glm.active_move_dir == Vec2::ZERO {
+            authoritative_glm.queued_move_dir = Vec2::ZERO;
         }
-
-        glm.active_move_dir = msg.moving_dir;
-        let drift_dist = transform.translation.distance(authoritative_translation);
-        let hard_snap = tile_mismatch || drift_dist >= HARD_SNAP_DRIFT;
-        if hard_snap {
-            drift_log(
-                role,
-                &format!(
-                    "t={:.3} snap ent={:?} ack_seq={} tile_mismatch={} drift={:.3} local_tile={:?} server_tile={:?} from=({:.2},{:.2}) to=({:.2},{:.2}) dir=({:.0},{:.0}) step={:.3}",
-                    now,
-                    msg.being_ent,
-                    msg.last_processed_input_seq,
-                    tile_mismatch,
-                    drift_dist,
-                    local_tile,
-                    authoritative_current_tile,
-                    transform.translation.x,
-                    transform.translation.y,
-                    authoritative_translation.x,
-                    authoritative_translation.y,
-                    msg.moving_dir.x,
-                    msg.moving_dir.y,
-                    msg.step_progress
-                ),
+        for intent in pending_snapshot {
+            replay_predicted_grid_movement(
+                &param_set.p0(),
+                &mut to_drain,
+                dim_ref,
+                msg.being_ent,
+                &mut authoritative_glm,
+                normalize_to_axis_dir(intent.dir),
+                move_speed,
+                time.delta_secs(),
             );
-            transform.translation = authoritative_translation;
-        } else if drift_dist >= SOFT_CORRECTION_START {
-            let alpha = (drift_dist / tile_size.max_element()).clamp(0.12, 0.40);
-            let corrected = transform.translation.lerp(authoritative_translation, alpha);
-            drift_log(
-                role,
-                &format!(
-                    "t={:.3} soft_correct ent={:?} ack_seq={} drift={:.3} alpha={:.3} local_tile={:?} server_tile={:?} from=({:.2},{:.2}) to=({:.2},{:.2})",
-                    now,
-                    msg.being_ent,
-                    msg.last_processed_input_seq,
-                    drift_dist,
-                    alpha,
-                    local_tile,
-                    authoritative_current_tile,
-                    transform.translation.x,
-                    transform.translation.y,
-                    corrected.x,
-                    corrected.y
-                ),
-            );
-            transform.translation = corrected;
-        } else if last_sample_log_by_being
+            replayed_ticks += 1;
+        }
+        let authoritative_translation = grid_translation(&authoritative_glm, local_translation.z);
+        let authoritative_current_tile = GlobalTilePos::from(authoritative_translation.truncate());
+        let local_tile = GlobalTilePos::from(local_translation.truncate());
+        let drift_dist = local_translation.distance(authoritative_translation);
+        if last_sample_log_by_being
             .get(&msg.being_ent)
             .is_none_or(|last| now - *last >= DRIFT_SAMPLE_SECS)
-            && (msg.moving_dir != Vec2::ZERO || pending_count > 0 || drift_dist > 0.25)
+            && drift_dist > 0.25
         {
             drift_log(
                 role,
                 &format!(
-                    "t={:.3} sample ent={:?} ack_seq={} drift={:.3} local_tile={:?} server_tile={:?} pos=({:.2},{:.2}) auth=({:.2},{:.2}) pending={}",
+                    "t={:.3} reconcile ent={:?} ack_seq={} drift={:.3} local_tile={:?} server_tile={:?} from=({:.2},{:.2}) to=({:.2},{:.2}) pending={} replayed={} input=({:.0},{:.0}) local_face={:?} auth_face={:?} active=({:.0},{:.0}) queued=({:.0},{:.0}) step={:.3}",
                     now,
                     msg.being_ent,
                     msg.last_processed_input_seq,
                     drift_dist,
                     local_tile,
                     authoritative_current_tile,
-                    transform.translation.x,
-                    transform.translation.y,
+                    local_translation.x,
+                    local_translation.y,
                     authoritative_translation.x,
                     authoritative_translation.y,
-                    pending_count
+                    pending_count,
+                    replayed_ticks,
+                    move_input_dir.x,
+                    move_input_dir.y,
+                    local_facing_dir,
+                    msg.facing_dir,
+                    authoritative_glm.active_move_dir.x,
+                    authoritative_glm.active_move_dir.y,
+                    authoritative_glm.queued_move_dir.x,
+                    authoritative_glm.queued_move_dir.y,
+                    grid_progress_ratio(&authoritative_glm)
                 ),
             );
             last_sample_log_by_being.insert(msg.being_ent, now);
         }
+        if drift_dist > 8.0 {
+            debug!(
+                target: MOVEMENT_SYSTEM,
+                "Resetting predicted grid state for {:?}: drift {:.2}, ack_seq {}, pending {}, replayed {}",
+                msg.being_ent,
+                drift_dist,
+                msg.last_processed_input_seq,
+                pending_count,
+                replayed_ticks
+            );
+        }
+        let mut beings = param_set.p1();
+        let Ok((mut transform, mut glm, mut facing_dir, _, _, _, _)) = beings.get_mut(msg.being_ent)
+        else {
+            continue;
+        };
+        if *facing_dir != msg.facing_dir {
+            *facing_dir = msg.facing_dir;
+        }
+        *glm = authoritative_glm;
+        transform.translation = authoritative_translation;
         last_ack_by_being.insert(msg.being_ent, msg.last_processed_input_seq);
     }
 }

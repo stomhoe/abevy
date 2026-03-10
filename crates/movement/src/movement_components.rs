@@ -6,10 +6,16 @@ use serde::{Deserialize, Serialize};
 pub struct RemoteMoveInput(pub Vec2);
 
 #[derive(Component, Debug, Default, Clone, Copy)]
-pub struct LastProcessedMoveInputSeq(pub u32);
+pub struct LastReceivedMoveInputSeq(pub u32);
 
 #[derive(Component, Debug, Default, Clone, Copy)]
-pub struct LastProcessedMoveInputTick(pub u32);
+pub struct LastReceivedMoveInputTick(pub u32);
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct LastAppliedMoveInputSeq(pub u32);
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct LastAppliedMoveInputTick(pub u32);
 
 #[derive(Debug, Clone, Copy)]
 pub struct PendingMoveIntent {
@@ -21,6 +27,9 @@ pub struct PendingMoveIntent {
 #[derive(Component, Debug, Default, Clone)]
 pub struct PendingMoveIntents(pub Vec<PendingMoveIntent>);
 
+#[derive(Component, Debug, Default, Clone)]
+pub struct ServerQueuedMoveIntents(pub Vec<PendingMoveIntent>);
+
 /// Processed movement state - direction after modifiers and calculated speed
 #[derive(Component, Debug, Default, Clone, )]
 pub struct MoveVecMag {
@@ -30,6 +39,9 @@ pub struct MoveVecMag {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct GridLockedMovement{
+    pub origin_tile: IVec2,
+    pub progress_ticks: u16,
+    pub step_ticks_total: u16,
     pub queued_move_dir: Vec2,
     pub active_move_dir: Vec2,
 }
