@@ -5,6 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct RemoteMoveInput(pub Vec2);
 
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct LastProcessedMoveInputSeq(pub u32);
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct LastProcessedMoveInputTick(pub u32);
+
+#[derive(Debug, Clone, Copy)]
+pub struct PendingMoveIntent {
+    pub input_seq: u32,
+    pub client_tick: u32,
+    pub dir: Vec2,
+}
+
+#[derive(Component, Debug, Default, Clone)]
+pub struct PendingMoveIntents(pub Vec<PendingMoveIntent>);
+
 /// Processed movement state - direction after modifiers and calculated speed
 #[derive(Component, Debug, Default, Clone, )]
 pub struct MoveVecMag {

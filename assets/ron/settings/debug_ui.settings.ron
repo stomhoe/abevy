@@ -3,6 +3,7 @@
 
     // If false, all debug menu toggles and windows are disabled.
     enable_debug_menus: true,
+    drift_file_logging: true,
 
     // Defaults for the Hot Reload window checkboxes.
     hot_reload_defaults: (

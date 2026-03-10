@@ -17,6 +17,7 @@ param_sets = { path = "../param_sets" }
 bevy = { workspace = true }
 bevy_enhanced_input = { workspace = true }
 serde = { workspace = true }
+ron = { workspace = true }
 bevy_replicon = { workspace = true }
 
 #avian2d = { workspace = true }

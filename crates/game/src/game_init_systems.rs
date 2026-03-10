@@ -251,6 +251,7 @@ pub fn put_player_beings_on_map(
         }
     }
     let transform = compute_transform(origin, &mut *next_spawn_offset_x);
+    return;
     let bear_ent = cmd.spawn((
         BeingBundle::new(DimensionRef(spawn_dim.0), transform),
         BitStrIdRef::new("pobear"),

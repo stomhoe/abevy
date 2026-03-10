@@ -34,12 +34,16 @@ pub fn plugin(app: &mut App) {
                     do_free_movement,
                 ),
                 update_facing_dir,
+                send_grid_move_state_acks.run_if(in_state(ServerState::Running)),
                 send_transforms_to_clients.run_if(in_state(ServerState::Running)),
                 set_transforms_to_received
                     .after(send_transforms_to_clients)
                     .run_if(on_message::<UnreliableTransform>)
-                    .in_set(AcClientSystems)
-                ,
+                    .in_set(AcClientSystems),
+                reconcile_grid_move_state_acks
+                    .after(send_grid_move_state_acks)
+                    .run_if(on_message::<GridMoveStateAck>)
+                    .in_set(AcClientSystems),
 
             )
             .in_set(MovementSystems),
@@ -48,6 +52,7 @@ pub fn plugin(app: &mut App) {
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendMoveInput>(Channel::Ordered)
         .add_mapped_server_message::<UnreliableTransform>(Channel::Ordered)
+        .add_mapped_server_message::<GridMoveStateAck>(Channel::Ordered)
         .replicate_once::<GridLockedMovement>()
         .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>,)>()
 
