@@ -1,0 +1,17 @@
+Argentum Online tile-locked movement 
+===============================================
+
+Repositories to examine
+- https://github.com/ao-org/argentum-online-server
+- https://github.com/ao-org/argentum-online-client
+
+Primary upstream to examine
+- Server: `Codigo/Protocol.bas`
+- Server: `Codigo/Modulo_UsUaRiOs.bas`
+- Server: `Codigo/GameLogic.bas`
+- Server: `Codigo/Protocol_Writes.bas`
+- Client: `CODIGO/General.bas`
+- Client: `CODIGO/Protocol_Writes.bas`
+- Client: `CODIGO/Protocol.bas`
+- Client: `CODIGO/TileEngine_Chars.bas`
+- Client: `CODIGO/engine.bas`
