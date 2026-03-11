@@ -18,6 +18,12 @@ pub struct BufferedMoveInput {
     pub dir: IVec2,
 }
 
+#[derive(Component, Debug, Clone, Copy)]
+pub struct PendingTileCorrection {
+    pub gpos: GlobalTilePos,
+    pub secs_left: f32,
+}
+
 #[derive(Resource, Debug, Default, Clone, Copy)]
 pub struct MovementSimTick(pub u32);
 

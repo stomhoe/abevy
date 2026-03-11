@@ -12,6 +12,8 @@ use crate::movement_components::*;
 use crate::movement_helpers::*;
 use crate::movement_messages::*;
 
+const TILE_CORRECTION_INTERVAL_SECS: f32 = 2.0;
+
 pub fn start_grid_locked_steps(
     fixed_time: Res<Time<Fixed>>,
     client_state: Res<State<ClientState>>,
@@ -40,7 +42,7 @@ pub fn start_grid_locked_steps(
     for (
         entity,
         controlled_locally,
-        controlled_by,
+        _controlled_by,
         input_move_dir,
         &dim_ref,
         move_state,
@@ -76,14 +78,11 @@ pub fn start_grid_locked_steps(
                 being_ent: entity,
                 gpos: *tile_pos,
             };
-            let mode = match controlled_by {
-                Some(controlled_by) => {
-                    SendMode::BroadcastExcept(ClientId::Client(controlled_by.client_ent))
-                }
-                None => SendMode::Broadcast,
-            };
             debug!(target: MOVEMENT_SYSTEM, "Sending gpos {:?} for {:?}", tile_pos, entity);
-            messages.push(ToClients { mode, message });
+            messages.push(ToClients {
+                mode: SendMode::Broadcast,
+                message: message.clone(),
+            });
         }
         *facing_dir = CardinalDirection::from_dir_vec(dir);
     }
@@ -136,19 +135,71 @@ pub fn progress_tile_transition_transform(
 }
 
 pub fn receive_gpos_from_server(
+    mut commands: Commands,
     mut reader: MessageReader<SyncGpos>,
-    mut beings: Query<(&mut GlobalTilePos, Has<ComputedLocally>), With<Being>>,
+    mut beings: Query<(&mut GlobalTilePos, &mut Transform, &mut GridLockedMovement, Has<ComputedLocally>), With<Being>>,
 ) {
     for message in reader.read() {
         let SyncGpos { being_ent, gpos } = message;
-        let Ok((mut being_gpos, computed_locally)) = beings.get_mut(*being_ent) else {
+        let Ok((mut being_gpos, mut transform, mut glm, computed_locally)) = beings.get_mut(*being_ent) else {
             continue;
         };
         if computed_locally {
+            let delta = being_gpos.0 - gpos.0;
+            if delta.x.abs().max(delta.y.abs()) < 1 {
+                commands.entity(*being_ent).remove::<PendingTileCorrection>();
+                continue;
+            }
+            debug!(
+                target: MOVEMENT_SYSTEM,
+                "Queued client tile correction for {:?}: {:?} -> {:?}",
+                being_ent,
+                being_gpos,
+                gpos
+            );
+            let _ = (&mut transform, &mut glm);
+            commands.entity(*being_ent).insert(PendingTileCorrection {
+                gpos: *gpos,
+                secs_left: TILE_CORRECTION_INTERVAL_SECS,
+            });
             continue;
         }
         *being_gpos = *gpos;
         debug!(target: MOVEMENT_SYSTEM, "Received gpos {:?} for {:?}", gpos, being_ent);
+    }
+}
+
+pub fn apply_pending_tile_corrections(
+    fixed_time: Res<Time<Fixed>>,
+    mut commands: Commands,
+    mut beings: Query<(
+        Entity,
+        &mut GlobalTilePos,
+        &mut Transform,
+        &mut GridLockedMovement,
+        &mut PendingTileCorrection,
+    ), With<ComputedLocally>>,
+) {
+    for (being_ent, mut gpos, mut transform, mut glm, mut correction) in beings.iter_mut() {
+        if gpos.0 == correction.gpos.0 {
+            commands.entity(being_ent).remove::<PendingTileCorrection>();
+            continue;
+        }
+        correction.secs_left -= fixed_time.delta_secs();
+        if correction.secs_left > 0.0 {
+            continue;
+        }
+        debug!(
+            target: MOVEMENT_SYSTEM,
+            "Snapping client tile correction for {:?}: {:?} -> {:?}",
+            being_ent,
+            gpos,
+            correction.gpos
+        );
+        *gpos = correction.gpos;
+        glm.clear_step(correction.gpos);
+        transform.translation = correction.gpos.to_translation(transform.translation.z);
+        commands.entity(being_ent).remove::<PendingTileCorrection>();
     }
 }
 

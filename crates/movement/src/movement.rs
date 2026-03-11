@@ -60,6 +60,8 @@ pub fn plugin(app: &mut App) {
                     apply_buffered_move_input
                         .run_if(in_state(ServerState::Running)),
                 ).chain(),
+                apply_pending_tile_corrections
+                    .run_if(in_state(ClientState::Connected)),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
                 emit_move_state_on_movevecmag_speed_mag_change,

@@ -87,7 +87,7 @@ pub fn receive_trusted_gpos_from_client(
         }
         *being_gpos = gpos;
         messages.push(ToClients {
-            mode: SendMode::BroadcastExcept(ClientId::Client(client_ent)),
+            mode: SendMode::Broadcast,
             message: SyncGpos { being_ent, gpos },
         });
         debug!(
