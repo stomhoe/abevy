@@ -12,7 +12,7 @@ use crate::debug_messages::UpdateBeingSpeed;
 pub fn debug_increase_speed(
     speed_up: Single<&Action<DebugIncreaseSpeedAction>>,
     speed_down: Single<&Action<DebugDecreaseSpeedAction>>,
-    my_being_query: Query<(&Being), (LocalPlayerControlled)>,
+    my_being_query: Query<(&Being), (LocalHumanControlled)>,
     mut query: Query<(&ModifierTarget, &mut BaseValue),(With<WalkSpeed>, )>,
     client_state: Res<State<ClientState>>,
     mut writer: MessageWriter<UpdateBeingSpeed>,
@@ -54,7 +54,7 @@ pub fn debug_increase_speed(
 #[allow(unused_parens, )]
 pub fn receive_increase_speed_from_client(
     mut events: MessageReader<FromClient<UpdateBeingSpeed>>,
-    controlled_beings_query: Query<(&AppliedModifiers, &ControlledBy, ), ()>,
+    controlled_beings_query: Query<(&AppliedModifiers, &ComputedBy, ), ()>,
     mut modifiers_query: Query<(&mut BaseValue),(With<WalkSpeed>, )>,
 ) {
     for from_client in events.read() {

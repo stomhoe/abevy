@@ -34,7 +34,7 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
-    .add_observer(apply_melee_attack)
+    .add_message::<LocalMeleeAttackRequested>()
 
     .add_systems(Update, (
         (
@@ -64,11 +64,12 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         FixedUpdate,
         (
+            trigger_melee_requests_from_player_input,
             send_melee_attack_to_server.run_if(in_state(ClientState::Connected)),
             receive_melee_attack_from_client
                 .run_if(in_state(ServerState::Running))
-                .run_if(on_message::<FromClient<SendMeleeAttack>>),
-            apply_remote_melee_attack_actions.run_if(in_state(ServerState::Running)),
+                .run_if(on_message::<FromClient<ClientMeleeAttack>>),
+            apply_melee_attack,
             sync_transform_on_added_gpos.before(sync_beings_at_gpos),
             sync_beings_at_gpos.before(MovementSystems),
         )
@@ -80,7 +81,7 @@ pub fn plugin(app: &mut App) {
         BeingInstTemplateSystems.after(RaceSystems)
     ))
     .replicate::<Being>()
-    .replicate::<ControlledBy>()
+    .replicate::<ComputedBy>()
     .replicate::<Grounding>()
     .replicate::<FollowerOf>()
     .replicate::<CharacterCreatedBy>()
@@ -91,10 +92,10 @@ pub fn plugin(app: &mut App) {
 
 
     .replicate::<Sentient>()
-    .replicate::<PlayerControlled>()
+    .replicate::<HumanControlled>()
 
     .replicate_filtered::<ChildOf, With<Being>>()
-    .add_mapped_client_message::<SendMeleeAttack>(Channel::Ordered)
+    .add_mapped_client_message::<ClientMeleeAttack>(Channel::Ordered)
 
 
 

@@ -3,7 +3,7 @@
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet};
 use bevy_replicon::prelude::*;
 use ac_audio::ac_audio_components::{AnimationFrameSfxState, AnimationSeriSfxConfig, AnimationSeriSfxState};
-use being_shared::{Grounding, ControlledBy, ComputedLocally};
+use being_shared::{Grounding, ComputedBy, ComputedLocally};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
@@ -288,7 +288,7 @@ pub fn update_animstate_for_clients(
     changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
 
     bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>)>,
-    controller: Query<&ControlledBy>,
+    controller: Query<&ComputedBy>,
     mut mwriter: MessageWriter<ToClients<SyncMoveState>>,
 ){
     if connected.is_empty() { return; }

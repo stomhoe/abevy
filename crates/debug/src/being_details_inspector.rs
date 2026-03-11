@@ -1,7 +1,10 @@
 use being::body::{Bodies, BodyPartDamage, BodyParts, BodySums};
+use being_shared::{ComputedBy, ComputedLocally};
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
+use ac_input::ac_input_actions::{BeingInputContext, BeingMoveAction};
 use common::common_components::DisplayName;
 use modifier_shared::modifier_components::ApplyMode;
 use modifier_shared::modifier_components::{BaseValue, CurrEffectiveValue, ModifierTarget};
@@ -9,7 +12,8 @@ use modifier_shared::modifier_types::{
     BleedRate, BloodCapacity, HitpointRegenRate, HitpointsCapacity, ManipulationDexterity,
     ManipulationStrength, PainSensitivity, Vision, WalkSpeed,
 };
-use movement::movement_components::{GridLockedMovement, MoveVecMag};
+use movement::movement_components::{GridLockedMovement, InputMoveDir, MoveVecMag};
+use player::player_components::{Mine, Player};
 use tilemap_shared::CardinalDirection;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
@@ -60,6 +64,12 @@ pub fn being_details_inspector(world: &mut World) {
     let mut body_part_name_query = world.query::<Option<&DisplayName>>();
     let mut body_part_damage_query = world.query::<Option<&BodyPartDamage>>();
     let mut move_vec_query = world.query::<&MoveVecMag>();
+    let mut input_move_dir_query = world.query::<&InputMoveDir>();
+    let mut computed_by_query = world.query::<Option<&ComputedBy>>();
+    let mut computed_locally_query = world.query::<Has<ComputedLocally>>();
+    let mut player_actions_query =
+        world.query_filtered::<&Actions<BeingInputContext>, (With<Mine>, With<Player>)>();
+    let mut player_move_action_query = world.query::<&Action<BeingMoveAction>>();
     let mut grid_move_query = world.query::<Option<&GridLockedMovement>>();
     let mut gpos_query = world.query::<Option<&tilemap_shared::GlobalTilePos>>();
     let mut facing_query = world.query::<Option<&CardinalDirection>>();
@@ -168,6 +178,38 @@ pub fn being_details_inspector(world: &mut World) {
             ui.separator();
 
             ui.heading("Movement");
+            let mut is_human_input = false;
+            if let Ok(computed_by) = computed_by_query.get(world, selected_being_entity) {
+                if let Some(computed_by) = computed_by {
+                    is_human_input = computed_by.human_input;
+                    ui.label(format!(
+                        "ComputedBy: client_ent={:?}, human_input={}",
+                        computed_by.client_ent, computed_by.human_input
+                    ));
+                } else {
+                    ui.label("ComputedBy: missing");
+                }
+            }
+            if let Ok(computed_locally) = computed_locally_query.get(world, selected_being_entity)
+            {
+                ui.label(format!("ComputedLocally: {}", computed_locally));
+            }
+            if is_human_input {
+                if let Some(player_actions) = player_actions_query.iter(world).next() {
+                    if let Some(player_move_action) =
+                        player_move_action_query.iter_many(world, player_actions).next()
+                    {
+                    ui.label(format!(
+                        "Player BeingMoveAction: [{:.2}, {:.2}]",
+                        player_move_action.x, player_move_action.y
+                    ));
+                    } else {
+                        ui.label("Player BeingMoveAction: missing");
+                    }
+                } else {
+                    ui.label("Player BeingMoveAction: missing context");
+                }
+            }
             if let Ok(move_vec) = move_vec_query.get(world, selected_being_entity) {
                 ui.label(format!(
                     "MoveVecMag.norm_move_dir: [{:.2}, {:.2}]",
@@ -179,6 +221,14 @@ pub fn being_details_inspector(world: &mut World) {
                 ));
             } else {
                 ui.label("MoveVecMag: missing");
+            }
+            if let Ok(input_move_dir) = input_move_dir_query.get(world, selected_being_entity) {
+                ui.label(format!(
+                    "InputMoveDir: [{:.2}, {:.2}]",
+                    input_move_dir.0.x, input_move_dir.0.y
+                ));
+            } else {
+                ui.label("InputMoveDir: missing");
             }
             if let Ok(grid_move) = grid_move_query.get(world, selected_being_entity) {
                 if let Some(grid_move) = grid_move {

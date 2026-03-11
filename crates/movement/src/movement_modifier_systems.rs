@@ -3,25 +3,21 @@ use core::f32;
 use being_shared::{BodyTreeWeightSum, ComputedLocally};
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
-use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::ClientState;
 use game_common::game_common_components::EntityZeroRef;
 
-use ac_input::ac_input_actions::*;
-use ac_input::prelude::BeingInputContext;
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
 use tilemap_shared::*;
 
-use crate::movement_components::MoveVecMag;
+use crate::movement_components::{InputMoveDir, MoveVecMag};
 
 pub fn process_input_direction_modifiers(
     state: Res<State<ClientState>>,
-    move_actions: Query<&Action<BeingMoveAction>>,
     mut being_query: Query<(
         Entity,
         &AppliedModifiers,
-        &Actions<BeingInputContext>,
+        &InputMoveDir,
         &mut MoveVecMag,
         Has<ComputedLocally>,
     )>,
@@ -34,16 +30,13 @@ pub fn process_input_direction_modifiers(
     )>,
 ) {
     let is_client = state.get() == &ClientState::Connected;
-    for (being_ent, applied, actions, mut move_state, controlled_locally) in being_query.iter_mut()
+    for (being_ent, applied, input_move_dir, mut move_state, controlled_locally) in being_query.iter_mut()
     {
         if is_client && !controlled_locally {
             continue;
         }
-        let Some(move_action) = move_actions.iter_many(actions).next() else {
-            continue;
-        };
         let input_dir = if controlled_locally {
-            **move_action
+            input_move_dir.0
         } else {
             Vec2::ZERO
         };

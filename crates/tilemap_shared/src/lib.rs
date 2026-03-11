@@ -1,6 +1,7 @@
 
 pub use chunking_resources::*;
 pub use entities_at_gpos::*;
+pub use tile::*;
 pub use tilemap_components::*;
 pub use tilemap_messages::*;
 pub use tilemap_param_sets::*;
@@ -8,6 +9,7 @@ pub use tilemap_seris::*;
 pub use tilemap_shared::*;
 pub mod chunking_resources;
 pub mod entities_at_gpos;
+pub mod tile;
 pub mod tilemap_components;
 pub mod tilemap_messages;
 pub mod tilemap_param_sets;
@@ -28,6 +30,7 @@ pub mod prelude {
         tilemap_components::*,
         chunking_resources::*,
         entities_at_gpos::*,
+        tile::*,
         tilemap_messages::*,
         tilemap_param_sets::*,
         tilemap_seris::*,

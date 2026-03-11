@@ -10,6 +10,7 @@ being_shared = { path = "../being_shared" }
 #sprite = { path = "../sprite" }
 #sprite_shared = { path = "../sprite_shared" }
 tilemap_shared = { path = "../tilemap_shared" }
+tilemap = { path = "../tilemap" }
 
 bevy = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }

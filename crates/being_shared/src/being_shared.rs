@@ -10,11 +10,17 @@ use bevy::ecs::entity::MapEntities;
 #[derive(Component, Debug, Default, Clone)]
 pub struct ComputedLocally;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct PlayerControlled;
+#[derive(Component, Debug, Copy, Clone, Default, Deserialize, Serialize)]
+pub struct Being;
+impl Being {
+    pub const Z_LEVEL: f32 = 1_000.;
+}
 
-pub type LocalAiControlled = (With<ComputedLocally>, Without<PlayerControlled>);
-pub type LocalPlayerControlled = (With<ComputedLocally>, With<PlayerControlled>);
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct HumanControlled;
+
+pub type LocalAiControlled = (With<ComputedLocally>, Without<HumanControlled>);
+pub type LocalHumanControlled = (With<ComputedLocally>, With<HumanControlled>);
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 
@@ -22,14 +28,14 @@ pub type LocalPlayerControlled = (With<ComputedLocally>, With<PlayerControlled>)
 pub struct IsHumanControlled(pub bool);
 
 #[derive(Component, Debug, Clone)]
-#[relationship_target(relationship = ControlledBy)]
-pub struct ControlledBeings(Vec<Entity>);
-impl ControlledBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
+#[relationship_target(relationship = ComputedBy)]
+pub struct ComputedBeings(Vec<Entity>);
+impl ComputedBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 
 
 #[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone)]
-#[relationship(relationship_target = ControlledBeings)]
-pub struct ControlledBy  {
+#[relationship(relationship_target = ComputedBeings)]
+pub struct ComputedBy  {
     #[relationship] #[entities]
     pub client_ent: Entity,
     pub human_input: bool,

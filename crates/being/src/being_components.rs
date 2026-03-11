@@ -15,25 +15,7 @@ use common::common_components::*;
 use serde::{Deserialize, Serialize};
 use sprite_animation_shared::MoveAnimActive;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Default)]
-#[require(
-    MoveVecMag,
-    Replicated,
-    MoveAnimActive,
-    Grounding,
-    Visibility,
-    CardinalDirection,
-    AppliedModifiers,
-    Prefix::trunc("Being"),
-    DimensionStrIdRef::overworld_fallback(),
-    AssetScoped,
-    GlobalTilePos,
-    GridLockedMovement
-)] //don't add Transform so I can tell if it's missing instead of the being going to 0,0
-pub struct Being;
-impl Being {
-    pub const Z_LEVEL: f32 = 1_000.;
-}
+pub use ::being_shared::Being;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
 pub struct ToChase {
@@ -59,6 +41,3 @@ impl Default for HitboxReceiver {
         Self(COLLISION_MASK_HASHID)
     }
 }
-
-#[derive(Component, Debug, Default, Copy, Clone)]
-pub struct RemoteMeleeAttack;

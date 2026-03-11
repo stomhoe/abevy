@@ -9,6 +9,7 @@ use common::common_tag_components::TagSet;
 
 use ::being_shared::*;
 use game_common::game_common_components::*;
+use tilemap::tile::prelude::*;
 use ::tilemap_shared::*;
 
 
@@ -19,7 +20,7 @@ pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
     being_query: Query<'w, 's, (Has<WallPhaser>, )>,
     tile_lifecycle_query: Query<'w, 's, (Has<Dead>, Has<DespawnOnDeath>)>,
-    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), >,
+    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), (With<Tile>)>,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
     tile_tags: Query<'w, 's, &'static TagSet, >,
     tile_collision_masks: Query<'w, 's, &'static TiledCollisionMask, >,

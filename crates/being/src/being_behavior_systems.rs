@@ -5,20 +5,18 @@ use crate::race::race_components::Race;
 use crate::race::race_components::WanderConfig;
 use crate::race::race_resources::RaceRef;
 use ::being_shared::*;
-use ::being_shared::{ControlledBy, Hunger, Predator, PredatorHuntThreshold};
+use ::being_shared::{ComputedBy, Hunger, Predator, PredatorHuntThreshold};
 use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks};
-use ac_input::ac_input_actions::{BeingInputContext, BeingMoveAction};
 #[allow(unused_imports)]
 use bevy::{
     ecs::entity::EntityHashMap,
     platform::collections::{HashMap, HashSet},
     prelude::*,
 };
-use bevy_enhanced_input::action::mock::MockEntityCommandsExt;
-use bevy_enhanced_input::prelude::*;
 use bevy_northstar::prelude::*;
 use common::common_components::StrId;
 use common::common_tag_components::TagSet;
+use movement::movement_components::InputMoveDir;
 use param_sets::BlockingTileParamSet;
 use rand::Rng;
 use std::time::Duration;
@@ -122,17 +120,6 @@ fn apply_wander_input(
     }
 }
 
-fn set_ai_movement_action(commands: &mut Commands, being_ent: Entity, input: Vec2) {
-    let state = if input == Vec2::ZERO {
-        TriggerState::None
-    } else {
-        TriggerState::Fired
-    };
-    commands
-        .entity(being_ent)
-        .try_mock::<BeingInputContext, BeingMoveAction>(state, input, MockSpan::once());
-}
-
 pub fn add_predator_behavior_components(
     mut commands: Commands,
     query: Query<Entity, (With<Predator>, Without<Hunger>)>,
@@ -188,7 +175,7 @@ pub fn sync_ai_nav_grids(
         (
             &GlobalTilePos,
             &::tilemap_shared::DimensionRef,
-            Option<&ControlledBy>,
+            Option<&ComputedBy>,
             &ToChase,
         ),
         With<Being>,
@@ -363,7 +350,7 @@ pub fn update_predator_chase_targets(
             &Predator,
             Option<&RaceRef>,
             Option<&BodyTreeWeightSum>,
-            Option<&ControlledBy>,
+            Option<&ComputedBy>,
             &Hunger,
             &PredatorHuntThreshold,
         ),
@@ -463,7 +450,6 @@ pub fn update_predator_chase_targets(
 }
 
 pub fn chase_behavior(
-    mut commands: Commands,
     mut chasers: Query<
         (
             Entity,
@@ -476,18 +462,22 @@ pub fn chase_behavior(
     beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
     grids: Res<AiNavGrids>,
     mut dynamic_blocking: Local<HashMap<UVec3, Entity>>,
+    mut input_dirs: Query<&mut InputMoveDir>,
 ) {
     for (chaser_ent, chaser_gpos, &chaser_dim, to_chase) in chasers.iter_mut() {
+        let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
+            continue;
+        };
         if to_chase.target == chaser_ent {
-            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
+            input_move_dir.0 = Vec2::ZERO;
             continue;
         }
         let Ok((_target_ent, target_gpos, &target_dim)) = beings_query.get(to_chase.target) else {
-            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
+            input_move_dir.0 = Vec2::ZERO;
             continue;
         };
         if target_dim != chaser_dim {
-            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
+            input_move_dir.0 = Vec2::ZERO;
             continue;
         }
 
@@ -496,26 +486,26 @@ pub fn chase_behavior(
 
         let stop_threshold = to_chase.stop_distance.max(0.0);
         if chaser_pos.0.as_vec2().distance(target_pos.0.as_vec2()) <= stop_threshold {
-            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
+            input_move_dir.0 = Vec2::ZERO;
             continue;
         }
 
         let desired_to_prey = (target_pos.0 - chaser_pos.0).as_vec2();
         if desired_to_prey == Vec2::ZERO {
-            set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
+            input_move_dir.0 = Vec2::ZERO;
             continue;
         }
         let direct_chase_dir = desired_to_prey.normalize();
 
         let Some(cache) = grids.by_dim.get(&chaser_dim.0) else {
-            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
+            input_move_dir.0 = direct_chase_dir;
             continue;
         };
 
         let start_i = chaser_pos.0 - cache.min;
         let goal_i = target_pos.0 - cache.min;
         if start_i.x < 0 || start_i.y < 0 || goal_i.x < 0 || goal_i.y < 0 {
-            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
+            input_move_dir.0 = direct_chase_dir;
             continue;
         }
         let start = UVec3::new(start_i.x as u32, start_i.y as u32, 0);
@@ -525,7 +515,7 @@ pub fn chase_behavior(
             || goal.x >= cache.grid.width()
             || goal.y >= cache.grid.height()
         {
-            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
+            input_move_dir.0 = direct_chase_dir;
             continue;
         }
 
@@ -542,13 +532,13 @@ pub fn chase_behavior(
 
         let mut req = PathfindArgs::new(start, goal).blocking(&dynamic_blocking);
         let Some(path) = cache.grid.pathfind(&mut req) else {
-            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
+            input_move_dir.0 = direct_chase_dir;
             continue;
         };
 
         let steps = path.path();
         let Some(next) = steps.first() else {
-            set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
+            input_move_dir.0 = direct_chase_dir;
             continue;
         };
         let next = next.xy().as_ivec2() + cache.min;
@@ -558,7 +548,7 @@ pub fn chase_behavior(
         } else {
             desired.normalize()
         };
-        set_ai_movement_action(&mut commands, chaser_ent, move_input);
+        input_move_dir.0 = move_input;
     }
 }
 
@@ -577,7 +567,7 @@ pub fn wander_behavior(
     race_wander_cfg_query: Query<&WanderConfig>,
     mut wander_states: Local<HashMap<Entity, WanderState>>,
     mut to_drain: Local<Vec<Entity>>,
-    mut commands: Commands,
+    mut input_dirs: Query<&mut InputMoveDir>,
 ) {
     let mut rng = rand::rng();
     let dt = time.delta_secs();
@@ -593,6 +583,9 @@ pub fn wander_behavior(
         avoid_tile_tags: TagSet::default(),
     };
     for (pred_ent, gpos, &dim_ref, race_ref) in beings.iter_mut() {
+        let Ok(mut input_move_dir) = input_dirs.get_mut(pred_ent) else {
+            continue;
+        };
         let cfg = race_ref
             .and_then(|r| race_wander_cfg_query.get(r.0).ok())
             .unwrap_or(&default_cfg);
@@ -612,6 +605,6 @@ pub fn wander_behavior(
                 input_dir = Vec2::ZERO;
             }
         }
-        set_ai_movement_action(&mut commands, pred_ent, input_dir);
+        input_move_dir.0 = input_dir;
     }
 }

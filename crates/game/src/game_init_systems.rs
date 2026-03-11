@@ -246,7 +246,7 @@ pub fn put_player_beings_on_map(
                 },
                 DimensionRef(spawn_dim.0),
                 ActivatingChunks::new(&chunk_range),
-                ControlledBy {
+                ComputedBy {
                     client_ent: created_by.player,
                     human_input: true,
                 },
