@@ -17,7 +17,10 @@ use param_sets::BlockingTileParamSet;
 use sprite_animation_shared::{BeingChangedMoveState, MoveAnimActive};
 use tilemap_shared::*;
 
-use crate::{movement_components::*, movement_drift_log::drift_log, movement_messages::*};
+use crate::{
+    movement_components::*, movement_drift_log::drift_log, movement_log::movement_log,
+    movement_messages::*,
+};
 
 fn log_role(client_state: &State<ClientState>) -> &'static str {
     if client_state.get() == &ClientState::Connected {
@@ -125,6 +128,18 @@ pub fn server_receive_move_inputs(
                 from_client.message.dir.y
             ),
         );
+        movement_log(
+            role,
+            &format!(
+                "t={:.3} recv_step client={:?} ent={:?} seq={} dir=({}, {})",
+                time.elapsed_secs(),
+                client_entity,
+                from_client.message.being_ent,
+                from_client.message.input_seq,
+                from_client.message.dir.x,
+                from_client.message.dir.y
+            ),
+        );
         let (
             being_ent,
             dim_ref,
@@ -176,6 +191,18 @@ pub fn server_receive_move_inputs(
                     controlled_by_client_ent == client_entity
                 ),
             );
+            movement_log(
+                role,
+                &format!(
+                    "t={:.3} drop_step ent={:?} client={:?} seq={} prev_seq={} owner_match={}",
+                    time.elapsed_secs(),
+                    being_ent,
+                    client_entity,
+                    from_client.message.input_seq,
+                    prev_seq,
+                    controlled_by_client_ent == client_entity
+                ),
+            );
             continue;
         }
         let dir = from_client.message.dir;
@@ -206,6 +233,22 @@ pub fn server_receive_move_inputs(
                 tile_pos_snapshot.0.y,
                 glm_snapshot.visual_origin_tile.x,
                 glm_snapshot.visual_origin_tile.y,
+                glm_snapshot.step_dir.x,
+                glm_snapshot.step_dir.y,
+                glm_snapshot.progress_ticks,
+                glm_snapshot.step_ticks_total
+            ),
+        );
+        movement_log(
+            role,
+            &format!(
+                "t={:.3} server_step_result ent={:?} seq={} accepted={} tile=({}, {}) dir=({}, {}) ticks={}/{}",
+                time.elapsed_secs(),
+                being_ent,
+                from_client.message.input_seq,
+                accepted,
+                tile_pos_snapshot.0.x,
+                tile_pos_snapshot.0.y,
                 glm_snapshot.step_dir.x,
                 glm_snapshot.step_dir.y,
                 glm_snapshot.progress_ticks,
@@ -350,6 +393,16 @@ pub fn start_local_predicted_steps(
                 dir.y
             ),
         );
+        movement_log(
+            role,
+            &format!(
+                "t={:.3} local_step_attempt ent={:?} dir=({}, {})",
+                time.elapsed_secs(),
+                entity,
+                dir.x,
+                dir.y
+            ),
+        );
         if !glm_snapshot.try_start_step(
             &param_set.p0(),
             &mut to_drain,
@@ -360,6 +413,18 @@ pub fn start_local_predicted_steps(
             ticks_per_tile(move_speed, time.delta_secs(), dir),
         ) {
             drift_log(
+                role,
+                &format!(
+                    "t={:.3} local_step_blocked ent={:?} tile=({}, {}) dir=({}, {})",
+                    time.elapsed_secs(),
+                    entity,
+                    tile_pos_snapshot.0.x,
+                    tile_pos_snapshot.0.y,
+                    dir.x,
+                    dir.y
+                ),
+            );
+            movement_log(
                 role,
                 &format!(
                     "t={:.3} local_step_blocked ent={:?} tile=({}, {}) dir=({}, {})",
@@ -404,6 +469,21 @@ pub fn start_local_predicted_steps(
                 tile_pos_snapshot.0.y,
                 glm_snapshot.visual_origin_tile.x,
                 glm_snapshot.visual_origin_tile.y,
+                glm_snapshot.step_dir.x,
+                glm_snapshot.step_dir.y,
+                glm_snapshot.progress_ticks,
+                glm_snapshot.step_ticks_total
+            ),
+        );
+        movement_log(
+            role,
+            &format!(
+                "t={:.3} local_step_started ent={:?} seq={} tile=({}, {}) dir=({}, {}) ticks={}/{}",
+                time.elapsed_secs(),
+                entity,
+                input_seq,
+                tile_pos_snapshot.0.x,
+                tile_pos_snapshot.0.y,
                 glm_snapshot.step_dir.x,
                 glm_snapshot.step_dir.y,
                 glm_snapshot.progress_ticks,
@@ -461,6 +541,19 @@ pub fn progress_grid_locked_movement(
                     transform.translation.z
                 ),
             );
+            movement_log(
+                role,
+                &format!(
+                    "t={:.3} step_complete ent={:?} tile=({}, {}) final_translation=({:.2}, {:.2}, {:.2})",
+                    time.elapsed_secs(),
+                    being_ent,
+                    tile_pos.0.x,
+                    tile_pos.0.y,
+                    transform.translation.x,
+                    transform.translation.y,
+                    transform.translation.z
+                ),
+            );
         }
         move_anim_changed(being_ent, &mut move_anim, glm.is_stepping(), &mut messages);
     }
@@ -513,6 +606,23 @@ pub fn apply_grid_move_state_acks(
                 tile_pos.0.y,
                 glm.visual_origin_tile.x,
                 glm.visual_origin_tile.y,
+                glm.step_dir.x,
+                glm.step_dir.y,
+                glm.progress_ticks,
+                glm.step_ticks_total,
+                *facing_dir
+            ),
+        );
+        movement_log(
+            role,
+            &format!(
+                "t={:.3} apply_ack ent={:?} owner_local={} ack_seq={} tile=({}, {}) dir=({}, {}) ticks={}/{} facing={:?}",
+                time.elapsed_secs(),
+                msg.being_ent,
+                controlled_locally,
+                msg.last_processed_input_seq,
+                tile_pos.0.x,
+                tile_pos.0.y,
                 glm.step_dir.x,
                 glm.step_dir.y,
                 glm.progress_ticks,
