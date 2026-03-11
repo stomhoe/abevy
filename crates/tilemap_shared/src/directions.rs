@@ -13,6 +13,15 @@ pub enum CardinalDirection {
     North,
 }
 impl CardinalDirection {
+    pub fn from_dir_vec(dir: IVec2) -> CardinalDirection {
+        let dir = dir.clamp(IVec2::NEG_ONE, IVec2::ONE);
+        match dir {
+            IVec2 { x: -1, y: 0 } => CardinalDirection::West,
+            IVec2 { x: 1, y: 0 } => CardinalDirection::East,
+            IVec2 { x: 0, y: 1 } => CardinalDirection::North,
+            _ => CardinalDirection::South,
+        }
+    }
     pub fn next_clockwise(&self) -> CardinalDirection {
         match self {
             CardinalDirection::South => CardinalDirection::West,
@@ -23,9 +32,9 @@ impl CardinalDirection {
     }
     pub fn to_dir_vec(&self) -> IVec2 {
         match self {
-            CardinalDirection::South => IVec2::new(0, 1),
+            CardinalDirection::South => IVec2::new(0, -1),
             CardinalDirection::West => IVec2::new(-1, 0),
-            CardinalDirection::North => IVec2::new(0, -1),
+            CardinalDirection::North => IVec2::new(0, 1),
             CardinalDirection::East => IVec2::new(1, 0),
         }
     }

@@ -1,24 +1,28 @@
+use crate::being_components::{Being, ToChase};
+use crate::being_inst_template::being_inst_template_resources::BitRef;
+use crate::body::{Bodies, BodySums};
+use crate::race::race_components::Race;
+use crate::race::race_components::WanderConfig;
+use crate::race::race_resources::RaceRef;
 use ::being_shared::*;
-#[allow(unused_imports, )]
-use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
-use bevy_enhanced_input::prelude::*;
+use ::being_shared::{ControlledBy, Hunger, Predator, PredatorHuntThreshold};
+use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks};
+use ac_input::ac_input_actions::{BeingInputContext, BeingMoveAction};
+#[allow(unused_imports)]
+use bevy::{
+    ecs::entity::EntityHashMap,
+    platform::collections::{HashMap, HashSet},
+    prelude::*,
+};
 use bevy_enhanced_input::action::mock::MockEntityCommandsExt;
+use bevy_enhanced_input::prelude::*;
 use bevy_northstar::prelude::*;
+use common::common_components::StrId;
+use common::common_tag_components::TagSet;
 use param_sets::BlockingTileParamSet;
 use rand::Rng;
 use std::time::Duration;
-use tilemap::{chunking::chunking_resources::AaChunkRangeSettings};
-use ::tilemap_shared::{GlobalTilePos, ChunkPos, LoadedChunks};
-use ac_input::ac_input_actions::{BeingInputContext, BeingMoveAction};
-use crate::being_components::{Being, ToChase};
-use crate::being_inst_template::being_inst_template_resources::BitRef;
-use crate::body::{BodySums, Bodies};
-use crate::race::race_components::WanderConfig;
-use crate::race::race_resources::RaceRef;
-use ::being_shared::{Predator, ControlledBy, Hunger, PredatorHuntThreshold};
-use common::common_components::StrId;
-use common::common_tag_components::TagSet;
-use crate::race::race_components::Race;
+use tilemap::chunking::chunking_resources::AaChunkRangeSettings;
 
 #[derive(Resource)]
 pub struct AiNavGrids {
@@ -55,10 +59,16 @@ impl WanderState {
     fn new(rng: &mut impl Rng, cfg: &WanderConfig) -> Self {
         Self {
             dir: pick_wander_dir(rng),
-            dir_timer: Timer::from_seconds(rng.random_range(cfg.dir_secs_min..cfg.dir_secs_max), TimerMode::Once),
+            dir_timer: Timer::from_seconds(
+                rng.random_range(cfg.dir_secs_min..cfg.dir_secs_max),
+                TimerMode::Once,
+            ),
             move_speed: rng.random_range(cfg.speed_min..cfg.speed_max),
             halting: false,
-            phase_timer: Timer::from_seconds(rng.random_range(cfg.move_secs_min..cfg.move_secs_max), TimerMode::Once),
+            phase_timer: Timer::from_seconds(
+                rng.random_range(cfg.move_secs_min..cfg.move_secs_max),
+                TimerMode::Once,
+            ),
         }
     }
 }
@@ -82,21 +92,34 @@ fn apply_wander_input(
     state.dir_timer.tick(Duration::from_secs_f32(dt));
     if state.dir_timer.just_finished() {
         state.dir = pick_wander_dir(rng);
-        state.dir_timer = Timer::from_seconds(rng.random_range(cfg.dir_secs_min..cfg.dir_secs_max), TimerMode::Once);
+        state.dir_timer = Timer::from_seconds(
+            rng.random_range(cfg.dir_secs_min..cfg.dir_secs_max),
+            TimerMode::Once,
+        );
     }
 
     state.phase_timer.tick(Duration::from_secs_f32(dt));
     if state.phase_timer.just_finished() {
         state.halting = !state.halting;
         if state.halting {
-            state.phase_timer = Timer::from_seconds(rng.random_range(cfg.halt_secs_min..cfg.halt_secs_max), TimerMode::Once);
+            state.phase_timer = Timer::from_seconds(
+                rng.random_range(cfg.halt_secs_min..cfg.halt_secs_max),
+                TimerMode::Once,
+            );
         } else {
-            state.phase_timer = Timer::from_seconds(rng.random_range(cfg.move_secs_min..cfg.move_secs_max), TimerMode::Once);
+            state.phase_timer = Timer::from_seconds(
+                rng.random_range(cfg.move_secs_min..cfg.move_secs_max),
+                TimerMode::Once,
+            );
             state.move_speed = rng.random_range(cfg.speed_min..cfg.speed_max);
         }
     }
 
-    if state.halting { Vec2::ZERO } else { state.dir * state.move_speed }
+    if state.halting {
+        Vec2::ZERO
+    } else {
+        state.dir * state.move_speed
+    }
 }
 
 fn set_ai_movement_action(commands: &mut Commands, being_ent: Entity, input: Vec2) {
@@ -115,34 +138,28 @@ pub fn add_predator_behavior_components(
     query: Query<Entity, (With<Predator>, Without<Hunger>)>,
 ) {
     for being_ent in query.iter() {
-        commands.entity(being_ent).try_insert((
-            Hunger::default(),
-            PredatorHuntThreshold::default(),
-        ));
+        commands
+            .entity(being_ent)
+            .try_insert((Hunger::default(), PredatorHuntThreshold::default()));
     }
 }
 
 pub fn sync_predator_config_from_sources(
     mut commands: Commands,
-    beings: Query<(Entity, Option<&BitRef>, Option<&RaceRef>), (With<Being>, Or<(Changed<BitRef>, Changed<RaceRef>)>)>,
+    beings: Query<
+        (Entity, Option<&BitRef>, Option<&RaceRef>),
+        (With<Being>, Or<(Changed<BitRef>, Changed<RaceRef>)>),
+    >,
     bit_pred_cfg: Query<&Predator>,
     race_pred_cfg: Query<&Predator>,
     bit_cfg: Query<&PredatorHuntThreshold>,
     race_cfg: Query<&PredatorHuntThreshold>,
 ) {
     for (being_ent, bit_ref, race_ref) in beings.iter() {
-        let bit_predator = bit_ref
-            .and_then(|r| bit_pred_cfg.get(r.0).ok())
-            .cloned();
-        let race_predator = race_ref
-            .and_then(|r| race_pred_cfg.get(r.0).ok())
-            .cloned();
-        let bit_threshold = bit_ref
-            .and_then(|r| bit_cfg.get(r.0).ok())
-            .copied();
-        let race_threshold = race_ref
-            .and_then(|r| race_cfg.get(r.0).ok())
-            .copied();
+        let bit_predator = bit_ref.and_then(|r| bit_pred_cfg.get(r.0).ok()).cloned();
+        let race_predator = race_ref.and_then(|r| race_pred_cfg.get(r.0).ok()).cloned();
+        let bit_threshold = bit_ref.and_then(|r| bit_cfg.get(r.0).ok()).copied();
+        let race_threshold = race_ref.and_then(|r| race_cfg.get(r.0).ok()).copied();
 
         let Some(chosen) = bit_threshold.or(race_threshold) else {
             continue;
@@ -152,10 +169,7 @@ pub fn sync_predator_config_from_sources(
     }
 }
 
-pub fn tick_hunger(
-    time: Res<Time>,
-    mut query: Query<&mut Hunger>,
-) {
+pub fn tick_hunger(time: Res<Time>, mut query: Query<&mut Hunger>) {
     let delta = time.delta_secs();
     if delta <= 0.0 {
         return;
@@ -172,14 +186,14 @@ pub fn sync_ai_nav_grids(
     param_set: BlockingTileParamSet,
     chasers_query: Query<
         (
-            &Transform,
+            &GlobalTilePos,
             &::tilemap_shared::DimensionRef,
             Option<&ControlledBy>,
             &ToChase,
         ),
         With<Being>,
     >,
-    beings_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef), With<Being>>,
+    beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
     mut grids: ResMut<AiNavGrids>,
     mut to_drain: Local<Vec<Entity>>,
 ) {
@@ -187,21 +201,23 @@ pub fn sync_ai_nav_grids(
     let mut dim_centers: HashMap<Entity, IVec2> = HashMap::default();
     let mut dim_center_counts: HashMap<Entity, i32> = HashMap::default();
 
-    for (transform, dim_ref, controlled_by, _to_chase) in chasers_query.iter() {
+    for (gpos, dim_ref, controlled_by, _to_chase) in chasers_query.iter() {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_input {
                 continue;
             }
         }
         needed_dims.insert(dim_ref.0);
-        let pos = GlobalTilePos::from(transform.translation.xy()).0;
+        let pos = gpos.0;
         let center = dim_centers.entry(dim_ref.0).or_insert(IVec2::ZERO);
         *center += pos;
         *dim_center_counts.entry(dim_ref.0).or_insert(0) += 1;
     }
 
     grids.by_dim.retain(|dim, _| needed_dims.contains(dim));
-    grids.center_by_dim.retain(|dim, _| needed_dims.contains(dim));
+    grids
+        .center_by_dim
+        .retain(|dim, _| needed_dims.contains(dim));
 
     let max_side = (((chunk_range.discovery_range as i32 * 2) - 1).max(1) as u32)
         * ChunkPos::CHUNK_SIZE.x.max(1);
@@ -258,21 +274,33 @@ pub fn sync_ai_nav_grids(
         let rebuild_grid = needs_new_grid || should_rebuild || center_changed;
 
         if rebuild_grid {
-            let mut grid = CardinalGrid::new(&GridSettingsBuilder::new_2d(width, height).chunk_size(8).build());
+            let mut grid = CardinalGrid::new(
+                &GridSettingsBuilder::new_2d(width, height)
+                    .chunk_size(8)
+                    .build(),
+            );
             for y in 0..height {
                 for x in 0..width {
                     let world = GlobalTilePos(min_tile + IVec2::new(x as i32, y as i32));
-                    if param_set.is_blocked_at_tiles_only(&mut to_drain, ::tilemap_shared::DimensionRef(dim), world, Entity::PLACEHOLDER) {
+                    if param_set.is_blocked_at_tiles_only(
+                        &mut to_drain,
+                        ::tilemap_shared::DimensionRef(dim),
+                        world,
+                        Entity::PLACEHOLDER,
+                    ) {
                         grid.set_nav(UVec3::new(x, y, 0), Nav::Impassable);
                     }
                 }
             }
             grid.build();
-            grids.by_dim.insert(dim, AiNavGridCache {
-                min: min_tile,
-                grid,
-                occupied: HashMap::default(),
-            });
+            grids.by_dim.insert(
+                dim,
+                AiNavGridCache {
+                    min: min_tile,
+                    grid,
+                    occupied: HashMap::default(),
+                },
+            );
             grids.center_by_dim.insert(dim, center);
         }
 
@@ -280,17 +308,26 @@ pub fn sync_ai_nav_grids(
             continue;
         };
         cache.occupied.clear();
-        for (being_ent, transform, dim_ref) in beings_query.iter() {
+        for (being_ent, gpos, dim_ref) in beings_query.iter() {
             if dim_ref.0 != dim {
                 continue;
             }
-            let gpos = GlobalTilePos::from(transform.translation.xy()).0;
-            let max_grid = cache.min + IVec2::new(cache.grid.width() as i32 - 1, cache.grid.height() as i32 - 1);
-            if gpos.x < cache.min.x || gpos.y < cache.min.y || gpos.x > max_grid.x || gpos.y > max_grid.y {
+            let max_grid = cache.min
+                + IVec2::new(
+                    cache.grid.width() as i32 - 1,
+                    cache.grid.height() as i32 - 1,
+                );
+            if gpos.0.x < cache.min.x
+                || gpos.0.y < cache.min.y
+                || gpos.0.x > max_grid.x
+                || gpos.0.y > max_grid.y
+            {
                 continue;
             }
-            let local = (gpos - cache.min).as_uvec2();
-            cache.occupied.insert(UVec3::new(local.x, local.y, 0), being_ent);
+            let local = (gpos.0 - cache.min).as_uvec2();
+            cache
+                .occupied
+                .insert(UVec3::new(local.x, local.y, 0), being_ent);
         }
     }
 }
@@ -300,9 +337,15 @@ fn health_ratio(
     bodies_query: &Query<&Bodies, With<Being>>,
     body_health_query: &Query<&BodySums>,
 ) -> f32 {
-    let Ok(bodies) = bodies_query.get(being) else { return 0.0; };
-    let Some(body_ent) = bodies.entities().first() else { return 0.0; };
-    let Ok(health) = body_health_query.get(*body_ent) else { return 0.0; };
+    let Ok(bodies) = bodies_query.get(being) else {
+        return 0.0;
+    };
+    let Some(body_ent) = bodies.entities().first() else {
+        return 0.0;
+    };
+    let Ok(health) = body_health_query.get(*body_ent) else {
+        return 0.0;
+    };
     if health.total_hp <= 0.0 {
         return 0.0;
     }
@@ -312,22 +355,46 @@ fn health_ratio(
 pub fn update_predator_chase_targets(
     bodies_query: Query<&Bodies, With<Being>>,
     body_health_query: Query<&BodySums>,
-    predators: Query<(
-        Entity,
-        &Transform,
-        &::tilemap_shared::DimensionRef,
-        &Predator,
-        Option<&RaceRef>,
-        Option<&BodyTreeWeightSum>,
-        Option<&ControlledBy>,
-        &Hunger,
-        &PredatorHuntThreshold,
-    ), With<Predator>>,
-    prey_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef, Option<&RaceRef>, Option<&BodyTreeWeightSum>, Option<&TagSet>), With<Being>>,
+    predators: Query<
+        (
+            Entity,
+            &GlobalTilePos,
+            &::tilemap_shared::DimensionRef,
+            &Predator,
+            Option<&RaceRef>,
+            Option<&BodyTreeWeightSum>,
+            Option<&ControlledBy>,
+            &Hunger,
+            &PredatorHuntThreshold,
+        ),
+        With<Predator>,
+    >,
+    prey_query: Query<
+        (
+            Entity,
+            &GlobalTilePos,
+            &::tilemap_shared::DimensionRef,
+            Option<&RaceRef>,
+            Option<&BodyTreeWeightSum>,
+            Option<&TagSet>,
+        ),
+        With<Being>,
+    >,
     race_str_id_query: Query<&StrId, With<Race>>,
     mut cmd: Commands,
 ) {
-    for (pred_ent, pred_transf, &pred_dim, predator_cfg, pred_race, pred_weight_sum, controlled_by, hunger, hunt_threshold) in predators.iter() {
+    for (
+        pred_ent,
+        pred_gpos,
+        &pred_dim,
+        predator_cfg,
+        pred_race,
+        pred_weight_sum,
+        controlled_by,
+        hunger,
+        hunt_threshold,
+    ) in predators.iter()
+    {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_input {
                 cmd.entity(pred_ent).try_remove::<ToChase>();
@@ -341,10 +408,12 @@ pub fn update_predator_chase_targets(
             continue;
         }
 
-        let pred_pos = GlobalTilePos::from(pred_transf.translation.xy());
+        let pred_pos = *pred_gpos;
         let pred_weight_newtons = pred_weight_sum.map(|sum| sum.0).unwrap_or_default();
         let mut closest: Option<(Entity, i32)> = None;
-        for (prey_ent, prey_transf, &prey_dim, prey_race, prey_weight_sum, prey_tags) in prey_query.iter() {
+        for (prey_ent, prey_gpos, &prey_dim, prey_race, prey_weight_sum, prey_tags) in
+            prey_query.iter()
+        {
             if prey_ent == pred_ent || prey_dim != pred_dim {
                 continue;
             }
@@ -356,7 +425,8 @@ pub fn update_predator_chase_targets(
             let prey_weight_newtons = prey_weight_sum.map(|sum| sum.0).unwrap_or_default();
             if predator_cfg.prey_body_size_ratio_tolerance > 0.0
                 && pred_weight_newtons > 0.0
-                && prey_weight_newtons > pred_weight_newtons * predator_cfg.prey_body_size_ratio_tolerance
+                && prey_weight_newtons
+                    > pred_weight_newtons * predator_cfg.prey_body_size_ratio_tolerance
             {
                 continue;
             }
@@ -372,7 +442,7 @@ pub fn update_predator_chase_targets(
                     continue;
                 }
             }
-            let prey_pos = GlobalTilePos::from(prey_transf.translation.xy());
+            let prey_pos = *prey_gpos;
             let delta = prey_pos.0 - pred_pos.0;
             let manhattan = delta.x.abs() + delta.y.abs();
             let Some((_, curr_best)) = closest else {
@@ -394,23 +464,25 @@ pub fn update_predator_chase_targets(
 
 pub fn chase_behavior(
     mut commands: Commands,
-    mut chasers: Query<(
-        Entity,
-        &Transform,
-        &::tilemap_shared::DimensionRef,
-        &ToChase,
-    ), (With<Being>, LocalAiControlled)>,
-    beings_query: Query<(Entity, &Transform, &::tilemap_shared::DimensionRef), With<Being>, >,
+    mut chasers: Query<
+        (
+            Entity,
+            &GlobalTilePos,
+            &::tilemap_shared::DimensionRef,
+            &ToChase,
+        ),
+        (With<Being>, LocalAiControlled),
+    >,
+    beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
     grids: Res<AiNavGrids>,
     mut dynamic_blocking: Local<HashMap<UVec3, Entity>>,
 ) {
-    for (chaser_ent, chaser_transf, &chaser_dim, to_chase, ) in chasers.iter_mut() {
-
+    for (chaser_ent, chaser_gpos, &chaser_dim, to_chase) in chasers.iter_mut() {
         if to_chase.target == chaser_ent {
             set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
             continue;
         }
-        let Ok((_target_ent, target_transf, &target_dim)) = beings_query.get(to_chase.target) else {
+        let Ok((_target_ent, target_gpos, &target_dim)) = beings_query.get(to_chase.target) else {
             set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
             continue;
         };
@@ -419,11 +491,11 @@ pub fn chase_behavior(
             continue;
         }
 
-        let chaser_pos = GlobalTilePos::from(chaser_transf.translation.xy());
-        let target_pos = GlobalTilePos::from(target_transf.translation.xy());
+        let chaser_pos = *chaser_gpos;
+        let target_pos = *target_gpos;
 
         let stop_threshold = to_chase.stop_distance.max(0.0);
-        if chaser_transf.translation.xy().distance(target_transf.translation.xy()) <= stop_threshold {
+        if chaser_pos.0.as_vec2().distance(target_pos.0.as_vec2()) <= stop_threshold {
             set_ai_movement_action(&mut commands, chaser_ent, Vec2::ZERO);
             continue;
         }
@@ -448,7 +520,11 @@ pub fn chase_behavior(
         }
         let start = UVec3::new(start_i.x as u32, start_i.y as u32, 0);
         let goal = UVec3::new(goal_i.x as u32, goal_i.y as u32, 0);
-        if start.x >= cache.grid.width() || start.y >= cache.grid.height() || goal.x >= cache.grid.width() || goal.y >= cache.grid.height() {
+        if start.x >= cache.grid.width()
+            || start.y >= cache.grid.height()
+            || goal.x >= cache.grid.width()
+            || goal.y >= cache.grid.height()
+        {
             set_ai_movement_action(&mut commands, chaser_ent, direct_chase_dir);
             continue;
         }
@@ -477,7 +553,11 @@ pub fn chase_behavior(
         };
         let next = next.xy().as_ivec2() + cache.min;
         let desired = (next - chaser_pos.0).as_vec2();
-        let move_input = if desired == Vec2::ZERO { direct_chase_dir } else { desired.normalize() };
+        let move_input = if desired == Vec2::ZERO {
+            direct_chase_dir
+        } else {
+            desired.normalize()
+        };
         set_ai_movement_action(&mut commands, chaser_ent, move_input);
     }
 }
@@ -486,7 +566,12 @@ pub fn wander_behavior(
     time: Res<Time>,
     blocking_tiles: BlockingTileParamSet,
     mut beings: Query<
-        (Entity, &Transform, &::tilemap_shared::DimensionRef, Option<&RaceRef>),
+        (
+            Entity,
+            &GlobalTilePos,
+            &::tilemap_shared::DimensionRef,
+            Option<&RaceRef>,
+        ),
         (With<Being>, Without<ToChase>, LocalAiControlled),
     >,
     race_wander_cfg_query: Query<&WanderConfig>,
@@ -507,21 +592,22 @@ pub fn wander_behavior(
         speed_max: 0.6,
         avoid_tile_tags: TagSet::default(),
     };
-    for (pred_ent, transform, &dim_ref, race_ref) in beings.iter_mut() {
+    for (pred_ent, gpos, &dim_ref, race_ref) in beings.iter_mut() {
         let cfg = race_ref
             .and_then(|r| race_wander_cfg_query.get(r.0).ok())
             .unwrap_or(&default_cfg);
-        let state = wander_states.entry(pred_ent).or_insert_with(|| WanderState::new(&mut rng, cfg));
+        let state = wander_states
+            .entry(pred_ent)
+            .or_insert_with(|| WanderState::new(&mut rng, cfg));
         let mut input_dir = apply_wander_input(state, dt, &mut rng, cfg);
 
         if !cfg.avoid_tile_tags.is_empty() && input_dir != Vec2::ZERO {
-            let curr = GlobalTilePos::from(transform.translation.xy());
             let step = if input_dir.x.abs() >= input_dir.y.abs() {
                 IVec2::new(input_dir.x.signum() as i32, 0)
             } else {
                 IVec2::new(0, input_dir.y.signum() as i32)
             };
-            let next = GlobalTilePos(curr.0 + step);
+            let next = GlobalTilePos(gpos.0 + step);
             if blocking_tiles.has_tagset_at(&mut to_drain, dim_ref, next, &cfg.avoid_tile_tags) {
                 input_dir = Vec2::ZERO;
             }

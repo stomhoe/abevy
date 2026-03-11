@@ -1,34 +1,23 @@
-use core::f32;
-
 use ::being_shared::*;
-use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
+use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
-use bevy_replicon::prelude::*;
 
-use modifier_shared::{modifier_components::*, modifier_types::*};
 use ac_input::ac_input_actions::*;
 
-use crate::{movement_components::*, movement_drift_log::drift_log, movement_messages::SendMoveInput};
+use crate::{movement_components::*, movement_messages::SendMoveInput};
 
 const INPUT_DEADZONE: f32 = 0.2;
-fn log_role(client_state: &State<ClientState>) -> &'static str {
-    if client_state.get() == &ClientState::Connected {
-        "client"
-    } else {
-        "server"
-    }
-}
 
-fn sanitize_input_dir(input: Vec2) -> Vec2 {
+fn sanitize_input_dir(input: Vec2) -> IVec2 {
     if input.length() <= INPUT_DEADZONE {
-        Vec2::ZERO
+        IVec2::ZERO
     } else {
         let n = input.normalize();
         if n.x.abs() >= n.y.abs() {
-            Vec2::new(n.x.signum(), 0.0)
+            IVec2::new(n.x.signum() as i32, 0)
         } else {
-            Vec2::new(0.0, n.y.signum())
+            IVec2::new(0, n.y.signum() as i32)
         }
     }
 }
@@ -69,317 +58,45 @@ pub fn add_being_input_context(
 
 pub fn send_move_input_to_server(
     mut commands: Commands,
-    mut event_writer: MessageWriter<SendMoveInput>,
-    client_state: Res<State<ClientState>>,
-    time: Res<Time>,
+    mut writer: MessageWriter<SendMoveInput>,
     move_actions: Query<(&Action<BeingMoveAction>, &ActionOf<BeingInputContext>)>,
-    mut controlled_beings: Query<(
+    beings: Query<(
         &ControlledBy,
         Has<ComputedLocally>,
-        Option<&mut PendingMoveIntents>,
+        Option<&PendingMoveIntents>,
     )>,
-    mut last_sent_by_being: Local<EntityHashMap<Vec2>>,
     mut next_seq_by_being: Local<EntityHashMap<u32>>,
-    mut client_tick: Local<u32>,
     mut messages: Local<Vec<SendMoveInput>>,
 ) {
-    let role = log_role(&client_state);
-    *client_tick = client_tick.wrapping_add(1);
-    let mut current_beings = EntityHashSet::default();
-    let now = time.elapsed_secs();
     for (move_action, action_of) in move_actions.iter() {
         let being_ent = **action_of;
-        let Ok((controlled_by, controlled_locally, pending_intents)) = controlled_beings.get_mut(being_ent) else {
+        let Ok((controlled_by, controlled_locally, pending)) = beings.get(being_ent) else {
             continue;
         };
         if !controlled_locally || !controlled_by.human_input {
             continue;
         }
-        current_beings.insert(being_ent);
-        let input_dir = sanitize_input_dir(**move_action);
-        if input_dir == Vec2::ZERO
-            && last_sent_by_being
-                .get(&being_ent)
-                .is_some_and(|last_sent| *last_sent == Vec2::ZERO)
-        {
+        let dir = sanitize_input_dir(**move_action);
+        if dir == IVec2::ZERO {
             continue;
         }
-        let input_seq = next_seq_by_being.get(&being_ent).copied().unwrap_or(0).wrapping_add(1);
-        next_seq_by_being.insert(being_ent, input_seq);
-        last_sent_by_being.insert(being_ent, input_dir);
-        drift_log(
-            role,
-            &format!(
-                "t={:.3} send_input ent={:?} tick={} seq={} dir=({:.0},{:.0})",
-                now,
-                being_ent,
-                *client_tick,
-                input_seq,
-                input_dir.x,
-                input_dir.y
-            ),
-        );
-        if let Some(mut pending_intents) = pending_intents {
-            pending_intents.0.push(PendingMoveIntent {
-                input_seq,
-                client_tick: *client_tick,
-                dir: input_dir,
-            });
-        } else {
-            commands.entity(being_ent).try_insert(PendingMoveIntents(vec![PendingMoveIntent {
-                input_seq,
-                client_tick: *client_tick,
-                dir: input_dir,
-            }]));
-        }
-        messages.push(SendMoveInput { being_ent, vec: input_dir, input_seq, client_tick: *client_tick });
-    }
-    last_sent_by_being.retain(|being_ent, _| current_beings.contains(being_ent));
-    next_seq_by_being.retain(|being_ent, _| current_beings.contains(being_ent));
-    event_writer.write_batch(messages.drain(..));
-}
-
-pub fn receive_move_input_from_client(
-    mut events: MessageReader<FromClient<SendMoveInput>>,
-    client_state: Res<State<ClientState>>,
-    mut commands: Commands,
-    mut controlled_beings_query: Query<(
-        Option<&mut RemoteMoveInput>,
-        Option<&mut LastReceivedMoveInputSeq>,
-        Option<&mut LastReceivedMoveInputTick>,
-        Option<&mut ServerQueuedMoveIntents>,
-        &ControlledBy,
-    )>,
-) {
-    let role = log_role(&client_state);
-    for from_client in events.read() {
-        let SendMoveInput { vec: new_vec, being_ent, input_seq, client_tick } = from_client.message.clone();
-
-        if let Ok((remote_input, last_received_seq, last_received_tick, queued_intents, controlled_by)) = controlled_beings_query.get_mut(being_ent) {
-            let Some(client_entity) = from_client.client_id.entity() else { continue; };
-
-            if controlled_by.client_ent == client_entity {
-                let prev_seq = last_received_seq.as_ref().map_or(0, |seq| seq.0);
-                if input_seq <= prev_seq {
-                    drift_log(
-                        role,
-                        &format!(
-                            "drop_stale_input ent={:?} client={:?} seq={} last_seq={}",
-                            being_ent,
-                            client_entity,
-                            input_seq,
-                            prev_seq
-                        ),
-                    );
-                    continue;
-                }
-                let mut should_insert_remote = true;
-                if let Some(mut remote_input) = remote_input {
-                    should_insert_remote = false;
-                    if remote_input.0 == Vec2::ZERO {
-                        remote_input.0 = new_vec;
-                    }
-                }
-                let mut should_insert_seq = true;
-                if let Some(mut seq) = last_received_seq {
-                    should_insert_seq = false;
-                    seq.0 = input_seq;
-                }
-                let mut should_insert_tick = true;
-                if let Some(mut tick) = last_received_tick {
-                    should_insert_tick = false;
-                    tick.0 = client_tick;
-                }
-                let mut should_insert_queue = true;
-                if let Some(mut queued_intents) = queued_intents {
-                    should_insert_queue = false;
-                    queued_intents.0.push(PendingMoveIntent {
-                        input_seq,
-                        client_tick,
-                        dir: new_vec,
-                    });
-                }
-                if should_insert_remote {
-                    commands.entity(being_ent).try_insert(RemoteMoveInput(new_vec));
-                }
-                if should_insert_seq {
-                    commands.entity(being_ent).try_insert(LastReceivedMoveInputSeq(input_seq));
-                }
-                if should_insert_tick {
-                    commands.entity(being_ent).try_insert(LastReceivedMoveInputTick(client_tick));
-                }
-                if should_insert_queue {
-                    commands.entity(being_ent).try_insert(ServerQueuedMoveIntents(vec![PendingMoveIntent {
-                        input_seq,
-                        client_tick,
-                        dir: new_vec,
-                    }]));
-                }
-            } else {
-                warn!(
-                    "Client tried to control a being not controlled by them: {} (controlled_by.client: {:?}, from_client.client_entity: {:?})",
-                    being_ent, controlled_by.client_ent, client_entity
-                );
-            }
-        } else {
-            warn!("Client tried to control a being that does not exist in server or is not controllable {}", being_ent);
-        }
-    }
-}
-
-pub fn consume_remote_move_input_buffers(
-    client_state: Res<State<ClientState>>,
-    mut beings: Query<(
-        Entity,
-        &mut RemoteMoveInput,
-        &mut ServerQueuedMoveIntents,
-        Option<&mut LastAppliedMoveInputSeq>,
-        Option<&mut LastAppliedMoveInputTick>,
-        Has<ComputedLocally>,
-    )>,
-    mut commands: Commands,
-) {
-    let role = log_role(&client_state);
-    for (being_ent, mut remote_input, mut queued_intents, applied_seq, applied_tick, controlled_locally) in beings.iter_mut() {
-        if controlled_locally || queued_intents.0.is_empty() {
-            continue;
-        }
-        let intent = queued_intents.0.remove(0);
-        remote_input.0 = intent.dir;
-        if let Some(mut applied_seq) = applied_seq {
-            applied_seq.0 = intent.input_seq;
-        } else {
-            commands.entity(being_ent).try_insert(LastAppliedMoveInputSeq(intent.input_seq));
-        }
-        if let Some(mut applied_tick) = applied_tick {
-            applied_tick.0 = intent.client_tick;
-        } else {
-            commands.entity(being_ent).try_insert(LastAppliedMoveInputTick(intent.client_tick));
-        }
-        drift_log(
-            role,
-            &format!(
-                "consume_remote_input ent={:?} seq={} tick={} dir=({:.0},{:.0}) queued_left={}",
-                being_ent,
-                intent.input_seq,
-                intent.client_tick,
-                intent.dir.x,
-                intent.dir.y,
-                queued_intents.0.len()
-            ),
-        );
-    }
-}
-
-pub fn apply_remote_move_input_actions(
-    client_state: Res<State<ClientState>>,
-    mut commands: Commands,
-    beings: Query<(Entity, &RemoteMoveInput), (Without<ComputedLocally>, With<Actions<BeingInputContext>>)>,
-    mut last_applied_by_being: Local<EntityHashMap<Vec2>>,
-    mut current_beings: Local<EntityHashSet>,
-) {
-    let role = log_role(&client_state);
-    current_beings.clear();
-    for (being_ent, remote_input) in beings.iter() {
-        current_beings.insert(being_ent);
-        if remote_input.0 == Vec2::ZERO
-            && last_applied_by_being
-                .get(&being_ent)
-                .is_some_and(|prev| *prev == Vec2::ZERO)
-        {
-            continue;
-        }
-        if last_applied_by_being
+        let next_seq = next_seq_by_being
             .get(&being_ent)
-            .is_none_or(|prev| *prev != remote_input.0)
-        {
-            drift_log(
-                role,
-                &format!(
-                    "apply_remote_input ent={:?} dir=({:.0},{:.0})",
-                    being_ent,
-                    remote_input.0.x,
-                    remote_input.0.y
-                ),
-            );
-        }
-        let state = if remote_input.0 == Vec2::ZERO {
-            TriggerState::None
-        } else {
-            TriggerState::Fired
-        };
-        commands
-            .entity(being_ent)
-            .try_mock::<BeingInputContext, BeingMoveAction>(state, remote_input.0, MockSpan::once());
-        last_applied_by_being.insert(being_ent, remote_input.0);
+            .copied()
+            .unwrap_or_default()
+            .wrapping_add(1);
+        next_seq_by_being.insert(being_ent, next_seq);
+        let mut pending_intents = pending.cloned().unwrap_or_default();
+        pending_intents.0.push(PendingMoveIntent {
+            input_seq: next_seq,
+            dir,
+        });
+        commands.entity(being_ent).insert(pending_intents);
+        messages.push(SendMoveInput {
+            being_ent,
+            dir,
+            input_seq: next_seq,
+        });
     }
-    last_applied_by_being.retain(|being_ent, _| current_beings.contains(being_ent));
-}
-
-pub fn process_input_direction_modifiers(
-    state: Res<State<ClientState>>,
-    move_actions: Query<&Action<BeingMoveAction>>,
-    mut being_query: Query<
-        (
-            Entity,
-            &AppliedModifiers,
-            &Actions<BeingInputContext>,
-            &mut MoveVecMag,
-            Option<&RemoteMoveInput>,
-            Has<ComputedLocally>,
-        ),
-    >,
-    modifiers_query: Query<
-        (Entity, &ModifierTarget, &CurrEffectiveValue, &ApplyMode, Has<InvertMovement>),
-    >,
-    mut prev_dir_by_being: Local<EntityHashMap<Vec2>>,
-) {
-    let is_client = state.get() == &ClientState::Connected;
-    let mut current_beings = EntityHashSet::default();
-
-    for (being_ent, applied, actions, mut move_state, remote_input, controlled_locally) in being_query.iter_mut() {
-        if is_client && !controlled_locally { continue; }
-        current_beings.insert(being_ent);
-        let input_dir = if controlled_locally {
-            let Some(move_action) = move_actions.iter_many(actions).next() else {
-                continue;
-            };
-            sanitize_input_dir(**move_action)
-        } else {
-            remote_input.map_or(Vec2::ZERO, |remote_input| sanitize_input_dir(remote_input.0))
-        };
-
-        let mut invert_sum: f32 = 0.0;
-        let mut invert_scale: f32 = 1.0;
-
-        let mut effects = EntityHashSet::default();
-        applied.entities().iter().for_each(|&ent| { effects.insert(ent); });
-
-        for (modifier_ent, target, ..) in modifiers_query.iter() {
-            if target.0 == being_ent {
-                effects.insert(modifier_ent);
-            }
-        }
-
-        for effect in effects.iter() {
-            if let Ok((_, _, &CurrEffectiveValue(val), optype, invert)) = modifiers_query.get(*effect) {
-                match optype {
-                    ApplyMode::Add if invert => invert_sum += val,
-                    ApplyMode::Mul if invert => invert_scale *= val.max(0.0),
-                    _ => {}
-                }
-            }
-        }
-
-        move_state.norm_move_dir = if input_dir == Vec2::ZERO {
-            Vec2::ZERO
-        } else {
-            let dir = input_dir;
-            if invert_sum * invert_scale > 1.0 { -dir } else { dir }
-        };
-        if prev_dir_by_being.get(&being_ent).is_none_or(|prev| *prev != move_state.norm_move_dir) {
-            prev_dir_by_being.insert(being_ent, move_state.norm_move_dir);
-        }
-    }
-    prev_dir_by_being.retain(|being_ent, _| current_beings.contains(being_ent));
+    writer.write_batch(messages.drain(..));
 }

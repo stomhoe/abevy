@@ -64,7 +64,7 @@ pub fn portals_list_window(
         let distance = direction.length();
 
         // Check if the target entity exists
-        let target_exists = target_query.get(portal_to.dest_portal).is_ok();
+        let target_exists = target_query.get(portal_to.dest_tile).is_ok();
 
         portals_by_dimension
             .entry(dim_name)

@@ -95,7 +95,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<PortalsZeroEguiHolder>()
     .replicate::<BlocksProjectiles>()
     .replicate::<WalkSpeedMultIfOnTop>()
-    .replicate::<GlobalTilePos>()
     .replicate::<OffsetForTerrgenPlacement>()
     .replicate::<SizeInTiles>()
     .replicate::<FlipHorizontallyBasedOnHash>()
@@ -106,6 +105,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<OffsetForTerrgenPlacement>()
 
 
+    .replicate_once::<GlobalTilePos>()
 
     .replicate_bundle::<(TilePos, TileTextureIndex, TileFlip, TileVisible, TileColor, TilePosOld, )>()
     .replicate_filtered::<Transform, With<Tile>>()

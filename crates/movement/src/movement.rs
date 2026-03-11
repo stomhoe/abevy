@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use game_common::{AcClientSystems, game_common::SimRunningSystems };
+use game_common::{game_common::SimRunningSystems, AcClientSystems};
 use tilemap_shared::CardinalDirection;
 
 use crate::{
@@ -13,45 +13,31 @@ pub struct MovementSystems;
 const MOVEMENT_SCHEDULE: FixedUpdate = FixedUpdate;
 
 pub fn plugin(app: &mut App) {
-    app
-        .add_systems(
-            Update,
-            add_being_input_context,
-        )
+    app.add_systems(Update, add_being_input_context)
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
-                set_transforms_to_received
-                    .run_if(on_message::<UnreliableTransform>)
-                    .in_set(AcClientSystems),
-                reconcile_grid_move_state_acks
+                apply_grid_move_state_acks
                     .run_if(on_message::<GridMoveStateAck>)
                     .in_set(AcClientSystems),
-                send_move_input_to_server.run_if(in_state(ClientState::Connected)),
-                receive_move_input_from_client
+                server_receive_move_inputs
                     .run_if(in_state(ServerState::Running))
                     .run_if(on_message::<FromClient<SendMoveInput>>),
-                consume_remote_move_input_buffers.run_if(in_state(ServerState::Running)),
-                apply_remote_move_input_actions.run_if(in_state(ServerState::Running)),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
-                emit_move_state_on_movevecmag_value_change,
-                prepare_grid_locked_movement,
+                emit_move_state_on_movevecmag_speed_mag_change,
+                start_local_predicted_steps,
+                progress_grid_locked_movement,
                 do_free_movement,
                 update_facing_dir,
-                send_grid_move_state_acks.run_if(in_state(ServerState::Running)),
-                send_transforms_to_clients.run_if(in_state(ServerState::Running)),
             )
-            .chain()
-            .in_set(MovementSystems),
+                .chain()
+                .in_set(MovementSystems),
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendMoveInput>(Channel::Ordered)
-        .add_mapped_server_message::<UnreliableTransform>(Channel::Ordered)
         .add_mapped_server_message::<GridMoveStateAck>(Channel::Ordered)
         .replicate_once::<GridLockedMovement>()
-        .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>,)>()
-
-    ;
+        .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>,)>();
 }

@@ -5,6 +5,7 @@ use ::being_shared::*;
 use common::{GAME_INIT, common_components::StrId, common_states::AppState};
 use faction::{faction_components::*, faction_resources::*};
 use modifier_shared::{modifier_components::*, modifier_move_bundles::SpeedModifier,};
+use movement::movement_components::GridLockedMovement;
 use player::player_components::*;
 use tilemap::{
     chunking::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings},
@@ -219,25 +220,30 @@ pub fn put_player_beings_on_map(
     let spawn_dim = found.dim_ref;
     let origin = found.pos;
 
-    let compute_transform = |origin: GlobalTilePos, next_x: &mut i32| -> Transform {
+    let compute_spawn_pos = |origin: GlobalTilePos, next_x: &mut i32| -> GlobalTilePos {
         let spawn_pos = origin + GlobalTilePos::new(*next_x, 0);
         *next_x += 1;
-        let world_pos: Vec2 = spawn_pos.into();
-        Transform::from_translation(world_pos.extend(0.0))
+        spawn_pos
     };
 
     for (created_characters, ) in players.iter() {
         debug!(target: GAME_INIT, "Spawning player being: {:?}", created_characters);
 
         for &being_ent in created_characters.entities() {
-            let transform = compute_transform(origin, &mut *next_spawn_offset_x);
+            let gpos = compute_spawn_pos(origin, &mut *next_spawn_offset_x);
             let Ok(created_by) = created_by_query.get(being_ent) else { continue; };
 
             cmd.entity(being_ent)
                 .try_remove::<Transform>()
+                .try_remove::<GlobalTilePos>()
                 .try_remove::<DimensionRef>()
                 .try_insert((
-                transform,
+                Transform::from_translation(gpos.to_translation(0.0)),
+                gpos,
+                GridLockedMovement {
+                    visual_origin_tile: gpos.0,
+                    ..default()
+                },
                 DimensionRef(spawn_dim.0),
                 ActivatingChunks::new(&chunk_range),
                 ControlledBy {
@@ -250,10 +256,10 @@ pub fn put_player_beings_on_map(
             ));
         }
     }
-    let transform = compute_transform(origin, &mut *next_spawn_offset_x);
+    let gpos = compute_spawn_pos(origin, &mut *next_spawn_offset_x);
     return;
     let bear_ent = cmd.spawn((
-        BeingBundle::new(DimensionRef(spawn_dim.0), transform),
+        BeingBundle::new(DimensionRef(spawn_dim.0), gpos),
         BitStrIdRef::new("pobear"),
         Predator::default(),
     )).id();

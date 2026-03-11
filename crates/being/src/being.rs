@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use ::being_shared::*;
 use movement::MovementSystems;
-use tilemap_shared::{BeingsAtGpos, PreChunkDespawnSystems};
+use tilemap_shared::{BeingsAtGpos, GlobalTilePos, PreChunkDespawnSystems};
 
 use common::{AppRegisterAndReplicateExt, common_states::AssetLoading};
 use game_common::{
@@ -69,6 +69,7 @@ pub fn plugin(app: &mut App) {
                 .run_if(in_state(ServerState::Running))
                 .run_if(on_message::<FromClient<SendMeleeAttack>>),
             apply_remote_melee_attack_actions.run_if(in_state(ServerState::Running)),
+            sync_transform_on_added_gpos.before(sync_beings_at_gpos),
             sync_beings_at_gpos.before(MovementSystems),
         )
             .in_set(GameplaySystems),
@@ -86,6 +87,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<PlayerDirectControllable>()
     .replicate::<BodyCollisionRadius>()
     .replicate::<ToChase>()
+    .replicate_filtered::<GlobalTilePos, Without<Being>>()
 
 
     .replicate::<Sentient>()

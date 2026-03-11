@@ -1,16 +1,15 @@
+use being::body::{Bodies, BodyPartDamage, BodyParts, BodySums};
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
-use being::body::{Bodies, BodyPartDamage, BodyParts, BodySums};
 use common::common_components::DisplayName;
-use movement::movement_components::{GridLockedMovement, MoveVecMag, RemoteMoveInput};
+use modifier_shared::modifier_components::ApplyMode;
 use modifier_shared::modifier_components::{BaseValue, CurrEffectiveValue, ModifierTarget};
 use modifier_shared::modifier_types::{
     BleedRate, BloodCapacity, HitpointRegenRate, HitpointsCapacity, ManipulationDexterity,
-    ManipulationStrength, PainSensitivity, Vision,
-    WalkSpeed,
+    ManipulationStrength, PainSensitivity, Vision, WalkSpeed,
 };
-use modifier_shared::modifier_components::ApplyMode;
+use movement::movement_components::{GridLockedMovement, MoveVecMag};
 use tilemap_shared::CardinalDirection;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
@@ -62,7 +61,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut body_part_damage_query = world.query::<Option<&BodyPartDamage>>();
     let mut move_vec_query = world.query::<&MoveVecMag>();
     let mut grid_move_query = world.query::<Option<&GridLockedMovement>>();
-    let mut remote_move_query = world.query::<Option<&RemoteMoveInput>>();
+    let mut gpos_query = world.query::<Option<&tilemap_shared::GlobalTilePos>>();
     let mut facing_query = world.query::<Option<&CardinalDirection>>();
     let mut modifiers_query = world.query::<(
         &ModifierTarget,
@@ -77,15 +76,12 @@ pub fn being_details_inspector(world: &mut World) {
         Has<ManipulationDexterity>,
         Has<ManipulationStrength>,
     )>();
-    let mut walk_modifiers_query = world.query_filtered::<
-        (
-            &ModifierTarget,
-            Option<&CurrEffectiveValue>,
-            &ApplyMode,
-            Has<modifier_shared::modifier_components::MitigatingOnly>,
-        ),
-        With<WalkSpeed>,
-    >();
+    let mut walk_modifiers_query = world.query_filtered::<(
+        &ModifierTarget,
+        Option<&CurrEffectiveValue>,
+        &ApplyMode,
+        Has<modifier_shared::modifier_components::MitigatingOnly>,
+    ), With<WalkSpeed>>();
 
     let mut body_infos = Vec::new();
     let mut part_infos: Vec<(Entity, String)> = Vec::new();
@@ -115,7 +111,10 @@ pub fn being_details_inspector(world: &mut World) {
     }
     if selected_part.is_none() {
         selected_part = part_infos.first().map(|(entity, _)| *entity);
-    } else if !part_infos.iter().any(|(entity, _)| Some(*entity) == selected_part) {
+    } else if !part_infos
+        .iter()
+        .any(|(entity, _)| Some(*entity) == selected_part)
+    {
         selected_part = part_infos.first().map(|(entity, _)| *entity);
     }
 
@@ -154,7 +153,10 @@ pub fn being_details_inspector(world: &mut World) {
             for (body_entity, body_label, sums) in &body_infos {
                 ui.collapsing(format!("{} [{:?}]", body_label, body_entity), |ui| {
                     ui.label(format!("HP: {:.2}/{:.2}", sums.current_hp, sums.total_hp));
-                    ui.label(format!("Blood: {:.2}/{:.2}", sums.blood, sums.blood_capacity));
+                    ui.label(format!(
+                        "Blood: {:.2}/{:.2}",
+                        sums.blood, sums.blood_capacity
+                    ));
                     ui.label(format!("Bleed rate: {:.2}", sums.bleed_rate));
                     ui.label(format!("Consciousness: {:.2}", sums.consciousness));
                     ui.label(format!("Pain: {:.2}", sums.pain));
@@ -180,32 +182,25 @@ pub fn being_details_inspector(world: &mut World) {
             }
             if let Ok(grid_move) = grid_move_query.get(world, selected_being_entity) {
                 if let Some(grid_move) = grid_move {
+                    if let Ok(gpos) = gpos_query.get(world, selected_being_entity) {
+                        if let Some(gpos) = gpos {
+                            ui.label(format!("GlobalTilePos: [{}, {}]", gpos.0.x, gpos.0.y));
+                        }
+                    }
                     ui.label(format!(
-                        "GridLocked.origin_tile: [{}, {}]",
-                        grid_move.origin_tile.x, grid_move.origin_tile.y
+                        "GridLocked.origin: [{}, {}]",
+                        grid_move.visual_origin_tile.x, grid_move.visual_origin_tile.y
                     ));
                     ui.label(format!(
-                        "GridLocked.progress_ticks: {} / {}",
+                        "GridLocked.progress: {} / {}",
                         grid_move.progress_ticks, grid_move.step_ticks_total
                     ));
                     ui.label(format!(
-                        "GridLocked.active: [{:.2}, {:.2}]",
-                        grid_move.active_move_dir.x, grid_move.active_move_dir.y
-                    ));
-                    ui.label(format!(
-                        "GridLocked.queued: [{:.2}, {:.2}]",
-                        grid_move.queued_move_dir.x, grid_move.queued_move_dir.y
+                        "GridLocked.step_dir: [{}, {}]",
+                        grid_move.step_dir.x, grid_move.step_dir.y
                     ));
                 } else {
                     ui.label("GridLockedMovement: missing");
-                }
-            }
-            if let Ok(remote_move) = remote_move_query.get(world, selected_being_entity) {
-                if let Some(remote_move) = remote_move {
-                    ui.label(format!(
-                        "RemoteMoveInput: [{:.2}, {:.2}]",
-                        remote_move.0.x, remote_move.0.y
-                    ));
                 }
             }
             if let Ok(facing) = facing_query.get(world, selected_being_entity) {

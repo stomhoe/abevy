@@ -4,21 +4,20 @@ use being_shared::{BodyTreeWeightSum, ComputedLocally, ControlledBy};
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::*;
 use common::log_targets::MOVEMENT_SYSTEM;
 use game_common::game_common_components::EntityZeroRef;
 
-use modifier_shared::modifier_types::WalkSpeed;
+use ac_input::ac_input_actions::*;
 use modifier_shared::modifier_components::*;
+use modifier_shared::modifier_types::InvertMovement;
+use modifier_shared::modifier_types::WalkSpeed;
 use param_sets::BlockingTileParamSet;
-use sprite_animation_shared::{MoveAnimActive, BeingChangedMoveState};
-use ::tilemap_shared::*;
+use sprite_animation_shared::{BeingChangedMoveState, MoveAnimActive};
+use tilemap_shared::*;
 
-use crate::{
-    movement_components::*,
-    movement_drift_log::drift_log,
-    movement_messages::*,
-};
+use crate::{movement_components::*, movement_drift_log::drift_log, movement_messages::*};
 
 fn log_role(client_state: &State<ClientState>) -> &'static str {
     if client_state.get() == &ClientState::Connected {
@@ -28,169 +27,48 @@ fn log_role(client_state: &State<ClientState>) -> &'static str {
     }
 }
 
-fn normalize_to_axis_dir(input: Vec2) -> Vec2 {
+fn normalize_to_axis_dir(input: Vec2) -> IVec2 {
     if input == Vec2::ZERO {
-        Vec2::ZERO
+        IVec2::ZERO
     } else if input.x.abs() >= input.y.abs() {
-        Vec2::new(input.x.signum(), 0.0)
+        IVec2::new(input.x.signum() as i32, 0)
     } else {
-        Vec2::new(0.0, input.y.signum())
+        IVec2::new(0, input.y.signum() as i32)
     }
 }
 
-fn translation_differs(a: Vec3, b: Vec3) -> bool {
-    (a.x - b.x).abs() > 0.01 || (a.y - b.y).abs() > 0.01 || (a.z - b.z).abs() > 0.01
-}
-
-fn grid_progress_ratio(glm: &GridLockedMovement) -> f32 {
-    if glm.progress_ticks == 0 || glm.step_ticks_total == 0 {
-        0.0
-    } else {
-        (glm.progress_ticks as f32 / glm.step_ticks_total as f32).clamp(0.0, 1.0)
-    }
-}
-
-fn ticks_per_tile(speed: f32, delta: f32, dir: Vec2) -> u16 {
-    if speed <= 0.0 || delta <= 0.0 || dir == Vec2::ZERO {
+fn ticks_per_tile(speed: f32, delta: f32, dir: IVec2) -> u16 {
+    if speed <= 0.0 || delta <= 0.0 || dir == IVec2::ZERO {
         return 0;
     }
     let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-    let distance = if dir.x != 0.0 { tile_size.x } else { tile_size.y }.max(1.0);
+    let distance = if dir.x != 0 { tile_size.x } else { tile_size.y }.max(1.0);
     ((distance / (speed * delta)).ceil() as u16).max(1)
 }
 
-fn next_step_dir(glm: &mut GridLockedMovement, axis_input_dir: Vec2, finish_current_tile_only: bool) -> Vec2 {
-    if glm.queued_move_dir != Vec2::ZERO {
-        let queued = glm.queued_move_dir;
-        glm.queued_move_dir = Vec2::ZERO;
-        queued
-    } else if !finish_current_tile_only && axis_input_dir != Vec2::ZERO {
-        axis_input_dir
-    } else {
-        Vec2::ZERO
+fn grid_translation(tile_pos: GlobalTilePos, glm: &GridLockedMovement, z: f32) -> Vec3 {
+    let origin = GlobalTilePos(glm.visual_origin_tile).to_translation(z);
+    if !glm.is_stepping() || glm.step_ticks_total == 0 {
+        return tile_pos.to_translation(z);
     }
+    let t = (glm.progress_ticks as f32 / glm.step_ticks_total as f32).clamp(0.0, 1.0);
+    let target = tile_pos.to_translation(z);
+    origin.lerp(target, t)
 }
 
-fn step_grid_motor(
-    blocking_tiles: &BlockingTileParamSet,
-    to_drain: &mut Vec<Entity>,
-    dim_ref: DimensionRef,
+fn move_anim_changed(
     being_ent: Entity,
-    glm: &mut GridLockedMovement,
-    axis_input_dir: Vec2,
-    speed: f32,
-    delta: f32,
-) -> bool {
-    let mut finish_current_tile_only = false;
-    if glm.progress_ticks > 0 && glm.active_move_dir != Vec2::ZERO {
-        if axis_input_dir == Vec2::ZERO {
-            glm.queued_move_dir = Vec2::ZERO;
-            finish_current_tile_only = true;
-        } else if axis_input_dir == glm.active_move_dir {
-            glm.queued_move_dir = Vec2::ZERO;
-        } else {
-            glm.queued_move_dir = axis_input_dir;
-            finish_current_tile_only = true;
-        }
-    } else {
-        glm.progress_ticks = 0;
-        glm.step_ticks_total = 0;
-        glm.active_move_dir = if axis_input_dir != Vec2::ZERO {
-            axis_input_dir
-        } else if glm.queued_move_dir != Vec2::ZERO {
-            let queued = glm.queued_move_dir;
-            glm.queued_move_dir = Vec2::ZERO;
-            queued
-        } else {
-            Vec2::ZERO
-        };
-        if axis_input_dir != Vec2::ZERO {
-            glm.queued_move_dir = Vec2::ZERO;
-        }
-    }
-    if glm.active_move_dir == Vec2::ZERO || speed <= 0.0 || delta <= 0.0 {
-        glm.progress_ticks = 0;
-        glm.step_ticks_total = 0;
-        return false;
-    }
-    if glm.progress_ticks == 0 {
-        let next_tile = GlobalTilePos(glm.origin_tile + glm.active_move_dir.as_ivec2());
-        if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
-            glm.queued_move_dir = Vec2::ZERO;
-            glm.active_move_dir = Vec2::ZERO;
-            glm.progress_ticks = 0;
-            glm.step_ticks_total = 0;
-            return false;
-        }
-        glm.step_ticks_total = ticks_per_tile(speed, delta, glm.active_move_dir);
-        if glm.step_ticks_total == 0 {
-            glm.queued_move_dir = Vec2::ZERO;
-            glm.active_move_dir = Vec2::ZERO;
-            return false;
-        }
-    }
-    glm.progress_ticks = glm.progress_ticks.saturating_add(1).min(glm.step_ticks_total.max(1));
-    if glm.progress_ticks < glm.step_ticks_total {
-        return true;
-    }
-    glm.origin_tile += glm.active_move_dir.as_ivec2();
-    glm.progress_ticks = 0;
-    glm.step_ticks_total = 0;
-    glm.active_move_dir = next_step_dir(glm, axis_input_dir, finish_current_tile_only);
-    if glm.active_move_dir == Vec2::ZERO {
-        return true;
-    }
-    let next_tile = GlobalTilePos(glm.origin_tile + glm.active_move_dir.as_ivec2());
-    if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
-        glm.queued_move_dir = Vec2::ZERO;
-        glm.active_move_dir = Vec2::ZERO;
-    }
-    true
-}
-
-fn grid_translation(glm: &GridLockedMovement, z: f32) -> Vec3 {
-    let tile_size = GlobalTilePos::TILE_SIZE_PXS.as_vec2();
-    GlobalTilePos(glm.origin_tile).to_translation(z)
-        + (glm.active_move_dir * grid_progress_ratio(glm) * tile_size).extend(0.0)
-}
-
-fn sync_grid_origin_from_transform(transform: &Transform, glm: &mut GridLockedMovement) {
-    if glm.progress_ticks > 0 || glm.active_move_dir != Vec2::ZERO {
-        return;
-    }
-    let tile = GlobalTilePos::from(transform.translation.truncate());
-    if glm.origin_tile != tile.0 {
-        glm.origin_tile = tile.0;
-        glm.queued_move_dir = Vec2::ZERO;
-    }
-}
-
-fn replay_predicted_grid_movement(
-    blocking_tiles: &BlockingTileParamSet,
-    to_drain: &mut Vec<Entity>,
-    dim_ref: DimensionRef,
-    being_ent: Entity,
-    glm: &mut GridLockedMovement,
-    axis_input_dir: Vec2,
-    speed: f32,
-    delta: f32,
-) -> bool {
-    step_grid_motor(
-        blocking_tiles,
-        to_drain,
-        dim_ref,
-        being_ent,
-        glm,
-        axis_input_dir,
-        speed,
-        delta,
-    )
+    move_anim: &mut MoveAnimActive,
+    active: bool,
+    messages: &mut HashSet<BeingChangedMoveState>,
+) {
+    move_anim.set(active, being_ent, messages);
 }
 
 pub fn do_free_movement(
     mut query: Query<
         (Entity, &mut Transform, &mut MoveAnimActive, &MoveVecMag),
-        (Without<GridLockedMovement>,),
+        Without<GridLockedMovement>,
     >,
     time: Res<Time>,
     mut writer: MessageWriter<BeingChangedMoveState>,
@@ -199,424 +77,449 @@ pub fn do_free_movement(
     for (being_ent, mut transform, mut move_anim, move_state) in query.iter_mut() {
         let velocity = move_state.norm_move_dir * move_state.speed_magnitude;
         if velocity != Vec2::ZERO {
-            move_anim.set(true, being_ent, &mut move_anim_msgs);
+            move_anim_changed(being_ent, &mut move_anim, true, &mut move_anim_msgs);
             transform.translation += (velocity * time.delta_secs()).extend(0.0);
         } else {
-            move_anim.set(false, being_ent, &mut move_anim_msgs);
+            move_anim_changed(being_ent, &mut move_anim, false, &mut move_anim_msgs);
         }
     }
     writer.write_batch(move_anim_msgs);
 }
 
-pub fn send_transforms_to_clients(
-    query: Query<
-        (Entity, &Transform, &MoveVecMag, Option<&LastAppliedMoveInputSeq>, Option<&ControlledBy>),
-        (Without<GridLockedMovement>, Changed<Transform>),
-    >,
-    server_state: Res<State<ServerState>>,
-    mut ewriter: MessageWriter<ToClients<UnreliableTransform>>,
-) {
-    if server_state.get() != &ServerState::Running {
-        return;
-    }
-
-    for (being_ent, transform, _, last_processed_seq, controlled_by) in query.iter() {
-        let to_clients = ToClients {
-            mode: controlled_by.map_or(
-                SendMode::BroadcastExcept(ClientId::Server),
-                |controller| SendMode::BroadcastExcept(ClientId::Client(controller.client_ent)),
-            ),
-            message: UnreliableTransform::new(
-                being_ent,
-                transform.clone(),
-                last_processed_seq.map_or(0, |seq| seq.0),
-            ),
-        };
-        ewriter.write(to_clients);
-    }
-}
-
-pub fn send_grid_move_state_acks(
-    mut query: Query<
-        (
-            Entity,
-            &Transform,
-            &mut GridLockedMovement,
-            &CardinalDirection,
-            Option<&LastAppliedMoveInputSeq>,
-            Option<&ControlledBy>,
-        ),
-        Changed<Transform>,
-    >,
-    server_state: Res<State<ServerState>>,
-    mut ewriter: MessageWriter<ToClients<GridMoveStateAck>>,
-    mut messages: Local<Vec<ToClients<GridMoveStateAck>>>,
-) {
-    if server_state.get() != &ServerState::Running {
-        return;
-    }
-
-    for (being_ent, transform, mut glm, facing_dir, last_processed_seq, controlled_by) in query.iter_mut() {
-        sync_grid_origin_from_transform(transform, &mut glm);
-        let mode = controlled_by.map_or(
-            SendMode::BroadcastExcept(ClientId::Server),
-            |controller| SendMode::Direct(ClientId::Client(controller.client_ent)),
-        );
-        messages.push(ToClients {
-            mode,
-            message: GridMoveStateAck {
-                being_ent,
-                tile_pos: glm.origin_tile,
-                moving_dir: glm.active_move_dir,
-                facing_dir: *facing_dir,
-                progress_ticks: glm.progress_ticks,
-                step_ticks_total: glm.step_ticks_total,
-                last_processed_input_seq: last_processed_seq.map_or(0, |seq| seq.0),
-            },
-        });
-    }
-
-    ewriter.write_batch(messages.drain(..));
-}
-
-pub fn prepare_grid_locked_movement(
-    blocking_tiles: BlockingTileParamSet,
-    time: Res<Time>,
-    client_state: Res<State<ClientState>>,
-    mut tsf_from_server_writer: MessageWriter<ToClients<UnreliableTransform>>,
-    mut beings_changed_anim_move_state_writer: MessageWriter<BeingChangedMoveState>,
-    mut being_changed_state_set: Local<HashSet<BeingChangedMoveState>>,
-
-    mut query: Query<
-        (
-            &mut Transform,
-            &mut MoveAnimActive,
-            Entity,
-            &MoveVecMag,
-            &DimensionRef,
-            &mut GridLockedMovement,
-            &CardinalDirection,
-            Option<&LastAppliedMoveInputSeq>,
-            Option<&ControlledBy>,
-            Has<ComputedLocally>,
-        ),
-    >,
-    mut to_drain: Local<Vec<Entity>>,
-    mut transforms_to_send: Local<Vec<ToClients<UnreliableTransform>>>,
-) {
-    being_changed_state_set.reserve(query.iter().size_hint().0);
-
-    let is_client = client_state.get() == &ClientState::Connected;
-
-    for (
-        mut transform,
-        mut move_anim,
-        being_ent,
-        move_state,
-        &dim_ref,
-        mut glm,
-        facing_dir,
-        last_processed_seq,
-        controlled_by,
-        controlled_locally,
-    ) in query.iter_mut()
-    {
-        if !controlled_locally && is_client {
-            continue;
-        }
-        sync_grid_origin_from_transform(&transform, &mut glm);
-        let raw_input = move_state.norm_move_dir;
-        let axis_input_dir = normalize_to_axis_dir(raw_input);
-        if (glm.active_move_dir == Vec2::ZERO && glm.progress_ticks == 0 && axis_input_dir == Vec2::ZERO)
-            || move_state.speed_magnitude <= 0.0
-        {
-            glm.progress_ticks = 0;
-            glm.step_ticks_total = 0;
-            if axis_input_dir == Vec2::ZERO {
-                glm.active_move_dir = Vec2::ZERO;
-                glm.queued_move_dir = Vec2::ZERO;
-            }
-            let snapped_translation = GlobalTilePos(glm.origin_tile).to_translation(transform.translation.z);
-            if translation_differs(transform.translation, snapped_translation) {
-                transform.translation = snapped_translation;
-            }
-            move_anim.set(false, being_ent, &mut being_changed_state_set);
-            continue;
-        }
-        let delta = time.delta_secs();
-        if delta <= 0.0 {
-            continue;
-        }
-        let blocked_check_tile = if glm.progress_ticks == 0 && glm.active_move_dir != Vec2::ZERO {
-            Some(GlobalTilePos(glm.origin_tile + glm.active_move_dir.as_ivec2()))
-        } else {
-            None
-        };
-        let moved = step_grid_motor(
-            &blocking_tiles,
-            &mut to_drain,
-            dim_ref,
-            being_ent,
-            &mut glm,
-            axis_input_dir,
-            move_state.speed_magnitude,
-            delta,
-        );
-        if !moved && blocked_check_tile.is_some() {
-            let snapped_translation = GlobalTilePos(glm.origin_tile).to_translation(transform.translation.z);
-            let blocked_tile = blocked_check_tile.unwrap();
-            drift_log(
-                log_role(&client_state),
-                &format!(
-                    "t={:.3} blocked_idle ent={:?} pos=({:.2},{:.2}) snap=({:.2},{:.2}) face={:?} input=({:.0},{:.0}) active=({:.0},{:.0}) queued=({:.0},{:.0}) blocked_tile={:?}",
-                    time.elapsed_secs(),
-                    being_ent,
-                    transform.translation.x,
-                    transform.translation.y,
-                    snapped_translation.x,
-                    snapped_translation.y,
-                    facing_dir,
-                    axis_input_dir.x,
-                    axis_input_dir.y,
-                    glm.active_move_dir.x,
-                    glm.active_move_dir.y,
-                    glm.queued_move_dir.x,
-                    glm.queued_move_dir.y,
-                    blocked_tile,
-                ),
-            );
-        }
-        let current_translation = grid_translation(&glm, transform.translation.z);
-        if translation_differs(transform.translation, current_translation) {
-            transform.translation = current_translation;
-        }
-        if moved {
-            move_anim.set(true, being_ent, &mut being_changed_state_set);
-            if !is_client {
-                let to_clients = ToClients {
-                    mode: controlled_by.map_or(
-                        SendMode::BroadcastExcept(ClientId::Server),
-                        |controller| SendMode::BroadcastExcept(ClientId::Client(controller.client_ent)),
-                    ),
-                    message: UnreliableTransform::new(
-                        being_ent,
-                        transform.clone(),
-                        last_processed_seq.map_or(0, |seq| seq.0),
-                    ),
-                };
-                transforms_to_send.push(to_clients);
-            }
-        } else {
-            move_anim.set(false, being_ent, &mut being_changed_state_set);
-        }
-    }
-    beings_changed_anim_move_state_writer.write_batch(being_changed_state_set.drain());
-    tsf_from_server_writer.write_batch(transforms_to_send.drain(..));
-}
-
-#[allow(unused_parens)]
-pub fn set_transforms_to_received(
-    mut reader: MessageReader<UnreliableTransform>,
-    client_state: Res<State<ClientState>>,
-    mut query: Query<&mut Transform>,
-    mut last_ack_by_being: Local<EntityHashMap<u32>>,
-) {
-    let role = log_role(&client_state);
-    for msg in reader.read() {
-        if last_ack_by_being
-            .get(&msg.being_ent)
-            .is_some_and(|ack| msg.last_processed_input_seq < *ack)
-        {
-            drift_log(
-                role,
-                &format!(
-                    "drop_out_of_order_transform ent={:?} ack_seq={} last_ack_seq={}",
-                    msg.being_ent,
-                    msg.last_processed_input_seq,
-                    last_ack_by_being
-                        .get(&msg.being_ent)
-                        .copied()
-                        .unwrap_or_default()
-                ),
-            );
-            continue;
-        }
-        let Ok(mut transf) = query.get_mut(msg.being_ent)
-        else {continue;};
-        *transf = msg.trans;
-        last_ack_by_being.insert(msg.being_ent, msg.last_processed_input_seq);
-    }
-}
-
-pub fn reconcile_grid_move_state_acks(
-    mut reader: MessageReader<GridMoveStateAck>,
+pub fn server_receive_move_inputs(
+    mut reader: MessageReader<FromClient<SendMoveInput>>,
     client_state: Res<State<ClientState>>,
     time: Res<Time>,
     mut param_set: ParamSet<(
         BlockingTileParamSet,
         Query<(
-            &mut Transform,
-            &mut GridLockedMovement,
-            &mut CardinalDirection,
-            &MoveVecMag,
+            Entity,
             &DimensionRef,
-            Option<&mut PendingMoveIntents>,
-            Has<ComputedLocally>,
+            &mut GlobalTilePos,
+            &mut GridLockedMovement,
+            &MoveVecMag,
+            &mut CardinalDirection,
+            Option<&mut LastProcessedMoveInputSeq>,
+            &ControlledBy,
         )>,
     )>,
-    mut last_ack_by_being: Local<EntityHashMap<u32>>,
-    mut last_sample_log_by_being: Local<EntityHashMap<f32>>,
+    mut commands: Commands,
+    mut writer: MessageWriter<ToClients<GridMoveStateAck>>,
     mut to_drain: Local<Vec<Entity>>,
+    mut messages: Local<Vec<ToClients<GridMoveStateAck>>>,
 ) {
     let role = log_role(&client_state);
-    const DRIFT_SAMPLE_SECS: f32 = 0.35;
-    let now = time.elapsed_secs();
-    let mut latest_by_being = EntityHashMap::default();
-    for msg in reader.read() {
-        if last_ack_by_being
-            .get(&msg.being_ent)
-            .is_some_and(|ack| msg.last_processed_input_seq < *ack)
-        {
+    for from_client in reader.read() {
+        let Some(client_entity) = from_client.client_id.entity() else {
             continue;
-        }
-        latest_by_being.insert(msg.being_ent, msg.clone());
-    }
-    for (_, msg) in latest_by_being.drain() {
+        };
+        drift_log(
+            role,
+            &format!(
+                "t={:.3} recv_step client={:?} ent={:?} seq={} dir=({}, {})",
+                time.elapsed_secs(),
+                client_entity,
+                from_client.message.being_ent,
+                from_client.message.input_seq,
+                from_client.message.dir.x,
+                from_client.message.dir.y
+            ),
+        );
         let (
-            mut authoritative_glm,
-            local_translation,
-            local_facing_dir,
-            move_speed,
-            move_input_dir,
+            being_ent,
             dim_ref,
-            pending_count,
-            pending_snapshot,
+            prev_seq,
+            move_speed,
+            controlled_by_client_ent,
+            mut tile_pos_snapshot,
+            mut glm_snapshot,
+            mut facing_snapshot,
+            had_last_processed_seq,
         ) = {
             let mut beings = param_set.p1();
-            let Ok((transform, glm, facing_dir, move_state, &dim_ref, pending_intents, controlled_locally)) =
-                beings.get_mut(msg.being_ent)
+            let Ok((
+                being_ent,
+                &dim_ref,
+                tile_pos,
+                mut glm,
+                move_state,
+                facing_dir,
+                last_processed_seq,
+                controlled_by,
+            )) = beings.get_mut(from_client.message.being_ent)
             else {
                 continue;
             };
-            if !controlled_locally {
-                continue;
-            }
-            if last_ack_by_being
-                .get(&msg.being_ent)
-                .is_some_and(|ack| msg.last_processed_input_seq < *ack)
-            {
-                continue;
-            }
-            let mut authoritative_glm = *glm;
-            authoritative_glm.origin_tile = msg.tile_pos;
-            authoritative_glm.active_move_dir = msg.moving_dir;
-            authoritative_glm.progress_ticks = msg.progress_ticks.min(msg.step_ticks_total);
-            authoritative_glm.step_ticks_total = msg.step_ticks_total;
-            let mut pending_snapshot = Vec::new();
-            let pending_count;
-            if let Some(mut pending_intents) = pending_intents {
-                pending_intents
-                    .0
-                    .retain(|intent| intent.input_seq > msg.last_processed_input_seq);
-                pending_count = pending_intents.0.len();
-                pending_snapshot.extend(pending_intents.0.iter().copied());
-                if let Some(last_intent) = pending_intents.0.last().copied() {
-                    authoritative_glm.queued_move_dir = last_intent.dir;
-                } else {
-                    authoritative_glm.queued_move_dir = Vec2::ZERO;
-                }
-            } else {
-                pending_count = 0;
-                authoritative_glm.queued_move_dir = Vec2::ZERO;
-            }
+            glm.ensure_grid_anchor(*tile_pos);
             (
-                authoritative_glm,
-                transform.translation,
-                *facing_dir,
-                move_state.speed_magnitude,
-                move_state.norm_move_dir,
+                being_ent,
                 dim_ref,
-                pending_count,
-                pending_snapshot,
+                last_processed_seq.as_ref().map_or(0, |seq| seq.0),
+                move_state.speed_magnitude,
+                controlled_by.client_ent,
+                *tile_pos,
+                *glm,
+                *facing_dir,
+                last_processed_seq.is_some(),
             )
         };
-        let mut replayed_ticks = 0usize;
-        if pending_count == 0 && authoritative_glm.active_move_dir == Vec2::ZERO {
-            authoritative_glm.queued_move_dir = Vec2::ZERO;
-        }
-        for intent in pending_snapshot {
-            replay_predicted_grid_movement(
-                &param_set.p0(),
-                &mut to_drain,
-                dim_ref,
-                msg.being_ent,
-                &mut authoritative_glm,
-                normalize_to_axis_dir(intent.dir),
-                move_speed,
-                time.delta_secs(),
-            );
-            replayed_ticks += 1;
-        }
-        let authoritative_translation = grid_translation(&authoritative_glm, local_translation.z);
-        let authoritative_current_tile = GlobalTilePos::from(authoritative_translation.truncate());
-        let local_tile = GlobalTilePos::from(local_translation.truncate());
-        let drift_dist = local_translation.distance(authoritative_translation);
-        if last_sample_log_by_being
-            .get(&msg.being_ent)
-            .is_none_or(|last| now - *last >= DRIFT_SAMPLE_SECS)
-            && drift_dist > 0.25
-        {
+        if controlled_by_client_ent != client_entity || from_client.message.input_seq <= prev_seq {
             drift_log(
                 role,
                 &format!(
-                    "t={:.3} reconcile ent={:?} ack_seq={} drift={:.3} local_tile={:?} server_tile={:?} from=({:.2},{:.2}) to=({:.2},{:.2}) pending={} replayed={} input=({:.0},{:.0}) local_face={:?} auth_face={:?} active=({:.0},{:.0}) queued=({:.0},{:.0}) step={:.3}",
-                    now,
-                    msg.being_ent,
-                    msg.last_processed_input_seq,
-                    drift_dist,
-                    local_tile,
-                    authoritative_current_tile,
-                    local_translation.x,
-                    local_translation.y,
-                    authoritative_translation.x,
-                    authoritative_translation.y,
-                    pending_count,
-                    replayed_ticks,
-                    move_input_dir.x,
-                    move_input_dir.y,
-                    local_facing_dir,
-                    msg.facing_dir,
-                    authoritative_glm.active_move_dir.x,
-                    authoritative_glm.active_move_dir.y,
-                    authoritative_glm.queued_move_dir.x,
-                    authoritative_glm.queued_move_dir.y,
-                    grid_progress_ratio(&authoritative_glm)
+                    "t={:.3} drop_step ent={:?} client={:?} seq={} prev_seq={} owner_match={}",
+                    time.elapsed_secs(),
+                    being_ent,
+                    client_entity,
+                    from_client.message.input_seq,
+                    prev_seq,
+                    controlled_by_client_ent == client_entity
                 ),
             );
-            last_sample_log_by_being.insert(msg.being_ent, now);
+            continue;
         }
-        if drift_dist > 8.0 {
-            debug!(
-                target: MOVEMENT_SYSTEM,
-                "Resetting predicted grid state for {:?}: drift {:.2}, ack_seq {}, pending {}, replayed {}",
-                msg.being_ent,
-                drift_dist,
-                msg.last_processed_input_seq,
-                pending_count,
-                replayed_ticks
+        let dir = from_client.message.dir;
+        let mut accepted = false;
+        if dir != IVec2::ZERO {
+            accepted = glm_snapshot.try_start_step(
+                &param_set.p0(),
+                &mut to_drain,
+                dim_ref,
+                being_ent,
+                &mut tile_pos_snapshot,
+                dir,
+                ticks_per_tile(move_speed, time.delta_secs(), dir),
+            );
+            if accepted {
+                facing_snapshot = CardinalDirection::from_dir_vec(dir);
+            }
+        }
+        drift_log(
+            role,
+            &format!(
+                "t={:.3} server_step_result ent={:?} seq={} accepted={} tile=({}, {}) origin=({}, {}) dir=({}, {}) ticks={}/{}",
+                time.elapsed_secs(),
+                being_ent,
+                from_client.message.input_seq,
+                accepted,
+                tile_pos_snapshot.0.x,
+                tile_pos_snapshot.0.y,
+                glm_snapshot.visual_origin_tile.x,
+                glm_snapshot.visual_origin_tile.y,
+                glm_snapshot.step_dir.x,
+                glm_snapshot.step_dir.y,
+                glm_snapshot.progress_ticks,
+                glm_snapshot.step_ticks_total
+            ),
+        );
+        {
+            let mut beings = param_set.p1();
+            let Ok((_, _, mut tile_pos, mut glm, _, mut facing_dir, last_processed_seq, _)) =
+                beings.get_mut(from_client.message.being_ent)
+            else {
+                continue;
+            };
+            *tile_pos = tile_pos_snapshot;
+            *glm = glm_snapshot;
+            *facing_dir = facing_snapshot;
+            if let Some(mut last_processed_seq) = last_processed_seq {
+                last_processed_seq.0 = from_client.message.input_seq;
+            } else if !had_last_processed_seq {
+                commands
+                    .entity(being_ent)
+                    .insert(LastProcessedMoveInputSeq(from_client.message.input_seq));
+            }
+        }
+        let owner_message = GridMoveStateAck {
+            being_ent,
+            tile_pos: tile_pos_snapshot.0,
+            visual_origin_tile: glm_snapshot.visual_origin_tile,
+            step_dir: if accepted {
+                glm_snapshot.step_dir
+            } else {
+                IVec2::ZERO
+            },
+            progress_ticks: if accepted {
+                glm_snapshot.progress_ticks
+            } else {
+                0
+            },
+            step_ticks_total: if accepted {
+                glm_snapshot.step_ticks_total
+            } else {
+                0
+            },
+            facing_dir: facing_snapshot,
+            last_processed_input_seq: from_client.message.input_seq,
+        };
+        messages.push(ToClients {
+            mode: SendMode::Direct(ClientId::Client(client_entity)),
+            message: owner_message.clone(),
+        });
+        if accepted {
+            messages.push(ToClients {
+                mode: SendMode::BroadcastExcept(ClientId::Client(client_entity)),
+                message: GridMoveStateAck {
+                    last_processed_input_seq: 0,
+                    ..owner_message
+                },
+            });
+        }
+    }
+    writer.write_batch(messages.drain(..));
+}
+
+pub fn start_local_predicted_steps(
+    client_state: Res<State<ClientState>>,
+    time: Res<Time>,
+    move_actions: Query<(&Action<BeingMoveAction>, &ActionOf<BeingInputContext>)>,
+    mut param_set: ParamSet<(
+        BlockingTileParamSet,
+        Query<(
+            Entity,
+            &ControlledBy,
+            Has<ComputedLocally>,
+            &DimensionRef,
+            &MoveVecMag,
+            &mut GlobalTilePos,
+            &mut GridLockedMovement,
+            &mut CardinalDirection,
+            Option<&PendingMoveIntents>,
+        )>,
+    )>,
+    mut commands: Commands,
+    mut writer: MessageWriter<SendMoveInput>,
+    mut next_seq_by_being: Local<EntityHashMap<u32>>,
+    mut to_drain: Local<Vec<Entity>>,
+    mut messages: Local<Vec<SendMoveInput>>,
+) {
+    let role = log_role(&client_state);
+    for (move_action, action_of) in move_actions.iter() {
+        let being_ent = **action_of;
+        let (
+            entity,
+            controlled_locally,
+            human_input,
+            dim_ref,
+            move_speed,
+            mut tile_pos_snapshot,
+            mut glm_snapshot,
+            pending_snapshot,
+        ) = {
+            let mut beings = param_set.p1();
+            let Ok((
+                entity,
+                controlled_by,
+                controlled_locally,
+                &dim_ref,
+                move_state,
+                tile_pos,
+                mut glm,
+                _facing_dir,
+                pending,
+            )) = beings.get_mut(being_ent)
+            else {
+                continue;
+            };
+            glm.ensure_grid_anchor(*tile_pos);
+            (
+                entity,
+                controlled_locally,
+                controlled_by.human_input,
+                dim_ref,
+                move_state.speed_magnitude,
+                *tile_pos,
+                *glm,
+                pending.cloned().unwrap_or_default(),
+            )
+        };
+        if !controlled_locally || !human_input {
+            continue;
+        }
+        let dir = normalize_to_axis_dir(**move_action);
+        if dir == IVec2::ZERO {
+            continue;
+        }
+        drift_log(
+            role,
+            &format!(
+                "t={:.3} local_step_attempt ent={:?} dir=({}, {})",
+                time.elapsed_secs(),
+                entity,
+                dir.x,
+                dir.y
+            ),
+        );
+        if !glm_snapshot.try_start_step(
+            &param_set.p0(),
+            &mut to_drain,
+            dim_ref,
+            entity,
+            &mut tile_pos_snapshot,
+            dir,
+            ticks_per_tile(move_speed, time.delta_secs(), dir),
+        ) {
+            drift_log(
+                role,
+                &format!(
+                    "t={:.3} local_step_blocked ent={:?} tile=({}, {}) dir=({}, {})",
+                    time.elapsed_secs(),
+                    entity,
+                    tile_pos_snapshot.0.x,
+                    tile_pos_snapshot.0.y,
+                    dir.x,
+                    dir.y
+                ),
+            );
+            continue;
+        }
+        {
+            let mut beings = param_set.p1();
+            let Ok((_, _, _, _, _, mut tile_pos, mut glm, mut facing_dir, _)) =
+                beings.get_mut(entity)
+            else {
+                continue;
+            };
+            *tile_pos = tile_pos_snapshot;
+            *glm = glm_snapshot;
+            *facing_dir = CardinalDirection::from_dir_vec(dir);
+        }
+        let input_seq = next_seq_by_being
+            .get(&entity)
+            .copied()
+            .unwrap_or_default()
+            .wrapping_add(1);
+        next_seq_by_being.insert(entity, input_seq);
+        let mut pending = pending_snapshot;
+        pending.0.push(PendingMoveIntent { input_seq, dir });
+        commands.entity(entity).insert(pending);
+        drift_log(
+            role,
+            &format!(
+                "t={:.3} local_step_started ent={:?} seq={} tile=({}, {}) origin=({}, {}) dir=({}, {}) ticks={}/{}",
+                time.elapsed_secs(),
+                entity,
+                input_seq,
+                tile_pos_snapshot.0.x,
+                tile_pos_snapshot.0.y,
+                glm_snapshot.visual_origin_tile.x,
+                glm_snapshot.visual_origin_tile.y,
+                glm_snapshot.step_dir.x,
+                glm_snapshot.step_dir.y,
+                glm_snapshot.progress_ticks,
+                glm_snapshot.step_ticks_total
+            ),
+        );
+        messages.push(SendMoveInput {
+            being_ent: entity,
+            dir,
+            input_seq,
+        });
+    }
+    writer.write_batch(messages.drain(..));
+}
+
+pub fn progress_grid_locked_movement(
+    client_state: Res<State<ClientState>>,
+    time: Res<Time>,
+    mut query: Query<(
+        Entity,
+        &GlobalTilePos,
+        &mut Transform,
+        &mut MoveAnimActive,
+        &mut GridLockedMovement,
+        Has<ComputedLocally>,
+    )>,
+    mut writer: MessageWriter<BeingChangedMoveState>,
+    mut messages: Local<HashSet<BeingChangedMoveState>>,
+) {
+    let is_client = client_state.get() == &ClientState::Connected;
+    let role = log_role(&client_state);
+    for (being_ent, tile_pos, mut transform, mut move_anim, mut glm, controlled_locally) in
+        query.iter_mut()
+    {
+        if is_client && !controlled_locally {
+            // Remote entities animate from authoritative step messages only on clients.
+        }
+        glm.ensure_grid_anchor(*tile_pos);
+        let was_stepping = glm.is_stepping();
+        let prev_progress = glm.progress_ticks;
+        glm.progress_grid_step(*tile_pos);
+        transform.translation = grid_translation(*tile_pos, &glm, transform.translation.z);
+        if was_stepping && !glm.is_stepping() {
+            drift_log(
+                role,
+                &format!(
+                    "t={:.3} step_complete ent={:?} tile=({}, {}) prev_progress={} final_translation=({:.2}, {:.2}, {:.2})",
+                    time.elapsed_secs(),
+                    being_ent,
+                    tile_pos.0.x,
+                    tile_pos.0.y,
+                    prev_progress,
+                    transform.translation.x,
+                    transform.translation.y,
+                    transform.translation.z
+                ),
             );
         }
-        let mut beings = param_set.p1();
-        let Ok((mut transform, mut glm, mut facing_dir, _, _, _, _)) = beings.get_mut(msg.being_ent)
+        move_anim_changed(being_ent, &mut move_anim, glm.is_stepping(), &mut messages);
+    }
+    writer.write_batch(messages.drain());
+}
+
+pub fn apply_grid_move_state_acks(
+    client_state: Res<State<ClientState>>,
+    time: Res<Time>,
+    mut reader: MessageReader<GridMoveStateAck>,
+    mut beings: Query<(
+        &mut GlobalTilePos,
+        &mut Transform,
+        &mut GridLockedMovement,
+        &mut CardinalDirection,
+        Has<ComputedLocally>,
+        Option<&mut PendingMoveIntents>,
+    )>,
+) {
+    let role = log_role(&client_state);
+    for msg in reader.read() {
+        let Ok((mut tile_pos, mut transform, mut glm, mut facing_dir, controlled_locally, pending)) =
+            beings.get_mut(msg.being_ent)
         else {
             continue;
         };
-        if *facing_dir != msg.facing_dir {
-            *facing_dir = msg.facing_dir;
+        if controlled_locally {
+            if let Some(mut pending) = pending {
+                pending
+                    .0
+                    .retain(|intent| intent.input_seq > msg.last_processed_input_seq);
+            }
         }
-        *glm = authoritative_glm;
-        transform.translation = authoritative_translation;
-        last_ack_by_being.insert(msg.being_ent, msg.last_processed_input_seq);
+        tile_pos.0 = msg.tile_pos;
+        glm.visual_origin_tile = msg.visual_origin_tile;
+        glm.step_dir = msg.step_dir;
+        glm.progress_ticks = msg.progress_ticks.min(msg.step_ticks_total);
+        glm.step_ticks_total = msg.step_ticks_total;
+        *facing_dir = msg.facing_dir;
+        transform.translation = grid_translation(*tile_pos, &glm, transform.translation.z);
+        drift_log(
+            role,
+            &format!(
+                "t={:.3} apply_ack ent={:?} owner_local={} ack_seq={} tile=({}, {}) origin=({}, {}) dir=({}, {}) ticks={}/{} facing={:?}",
+                time.elapsed_secs(),
+                msg.being_ent,
+                controlled_locally,
+                msg.last_processed_input_seq,
+                tile_pos.0.x,
+                tile_pos.0.y,
+                glm.visual_origin_tile.x,
+                glm.visual_origin_tile.y,
+                glm.step_dir.x,
+                glm.step_dir.y,
+                glm.progress_ticks,
+                glm.step_ticks_total,
+                *facing_dir
+            ),
+        );
     }
 }
 
@@ -624,8 +527,8 @@ pub fn process_speed_modifiers(
     state: Res<State<ClientState>>,
     mut being_query: Query<(
         Entity,
-        &Transform,
         &DimensionRef,
+        &GlobalTilePos,
         &AppliedModifiers,
         &mut MoveVecMag,
         Option<&BodyTreeWeightSum>,
@@ -633,23 +536,33 @@ pub fn process_speed_modifiers(
     )>,
     modifiers_query: Query<
         (
-            Entity, &ModifierTarget, &CurrEffectiveValue,
-            &ApplyMode, Has<MitigatingOnly>,
+            Entity,
+            &ModifierTarget,
+            &CurrEffectiveValue,
+            &ApplyMode,
+            Has<MitigatingOnly>,
         ),
-        (With<WalkSpeed>,),
+        With<WalkSpeed>,
     >,
     tile_entity_zero_refs: Query<&EntityZeroRef>,
     tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
     tile_gathering: TileGatheringParamSet,
     mut entity_vec: Local<Vec<Entity>>,
 ) {
-
-    for (being_ent, transform, &dim_ref, applied, mut move_state, body_weight_sum, controlled_locally) in being_query.iter_mut() {
+    for (
+        being_ent,
+        &dim_ref,
+        tile_pos,
+        applied,
+        mut move_state,
+        body_weight_sum,
+        controlled_locally,
+    ) in being_query.iter_mut()
+    {
         let is_client = state.get() == &ClientState::Connected;
         if is_client && !controlled_locally {
             continue;
         }
-
         let mut speed_max: f32 = f32::INFINITY;
         let mut speed_min: f32 = 0.0;
         let mut speed_scale: f32 = 1.0;
@@ -661,41 +574,35 @@ pub fn process_speed_modifiers(
         applied.entities().iter().for_each(|&ent| {
             effects.insert(ent);
         });
-
         for (modifier_ent, target, ..) in modifiers_query.iter() {
             if target.0 == being_ent {
                 effects.insert(modifier_ent);
             }
         }
-
         for effect in effects.iter() {
-            if let Ok((_, _, &CurrEffectiveValue(val), optype, mitigating)) =
+            let Ok((_, _, &CurrEffectiveValue(val), optype, mitigating)) =
                 modifiers_query.get(*effect)
-            {
-                match optype {
-                    ApplyMode::Add => {
-                        if val > 0.0 {
-                            if mitigating {
-                                slowdown_mitigators_sum += val;
-                            } else {
-                                speed_sum += val;
-                            }
+            else {
+                continue;
+            };
+            match optype {
+                ApplyMode::Add => {
+                    if val > 0.0 {
+                        if mitigating {
+                            slowdown_mitigators_sum += val;
                         } else {
-                            speed_substractors_sum += val;
+                            speed_sum += val;
                         }
-                    }
-                    ApplyMode::Mul => {
-                        speed_scale *= val.max(0.0);
-                    }
-                    ApplyMode::Min => speed_min = speed_min.max(val),
-                    ApplyMode::Max => {
-                        speed_max = speed_max.min(val).max(0.0);
+                    } else {
+                        speed_substractors_sum += val;
                     }
                 }
+                ApplyMode::Mul => speed_scale *= val.max(0.0),
+                ApplyMode::Min => speed_min = speed_min.max(val),
+                ApplyMode::Max => speed_max = speed_max.min(val).max(0.0),
             }
         }
         speed_sum += speed_substractors_sum + slowdown_mitigators_sum;
-
         let total_weight_newtons = body_weight_sum
             .map(|sum| sum.0)
             .unwrap_or_default()
@@ -708,10 +615,14 @@ pub fn process_speed_modifiers(
 
         let mut tile_walk_mult: f32 = 1.0;
         entity_vec.clear();
-        tile_gathering.gather_tiles_at(&mut *entity_vec, dim_ref, GlobalTilePos::from(transform.translation.truncate()));
+        tile_gathering.gather_tiles_at(&mut *entity_vec, dim_ref, *tile_pos);
         for tile_ent in entity_vec.iter() {
-            let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(*tile_ent) else { continue };
-            let Ok(tile_walk_mult_cfg) = tile_walk_speed_mults.get(tile_cfg_ref.0) else { continue };
+            let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(*tile_ent) else {
+                continue;
+            };
+            let Ok(tile_walk_mult_cfg) = tile_walk_speed_mults.get(tile_cfg_ref.0) else {
+                continue;
+            };
             tile_walk_mult = tile_walk_mult.min(tile_walk_mult_cfg.0);
         }
         let final_speed = final_speed * tile_walk_mult.max(0.0);
@@ -721,28 +632,87 @@ pub fn process_speed_modifiers(
     }
 }
 
-pub fn emit_move_state_on_movevecmag_value_change(
+pub fn process_input_direction_modifiers(
+    state: Res<State<ClientState>>,
+    move_actions: Query<&Action<BeingMoveAction>>,
+    mut being_query: Query<(
+        Entity,
+        &AppliedModifiers,
+        &Actions<BeingInputContext>,
+        &mut MoveVecMag,
+        Has<ComputedLocally>,
+    )>,
+    modifiers_query: Query<(
+        Entity,
+        &ModifierTarget,
+        &CurrEffectiveValue,
+        &ApplyMode,
+        Has<InvertMovement>,
+    )>,
+) {
+    let is_client = state.get() == &ClientState::Connected;
+    for (being_ent, applied, actions, mut move_state, controlled_locally) in being_query.iter_mut()
+    {
+        if is_client && !controlled_locally {
+            continue;
+        }
+        let Some(move_action) = move_actions.iter_many(actions).next() else {
+            continue;
+        };
+        let input_dir = if controlled_locally {
+            **move_action
+        } else {
+            Vec2::ZERO
+        };
+        let mut invert_sum: f32 = 0.0;
+        let mut invert_scale: f32 = 1.0;
+        let mut effects = EntityHashSet::default();
+        applied.entities().iter().for_each(|&ent| {
+            effects.insert(ent);
+        });
+        for (modifier_ent, target, ..) in modifiers_query.iter() {
+            if target.0 == being_ent {
+                effects.insert(modifier_ent);
+            }
+        }
+        for effect in effects.iter() {
+            let Ok((_, _, &CurrEffectiveValue(val), optype, invert)) = modifiers_query.get(*effect)
+            else {
+                continue;
+            };
+            match optype {
+                ApplyMode::Add if invert => invert_sum += val,
+                ApplyMode::Mul if invert => invert_scale *= val.max(0.0),
+                _ => {}
+            }
+        }
+        move_state.norm_move_dir = if input_dir == Vec2::ZERO {
+            Vec2::ZERO
+        } else if invert_sum * invert_scale > 1.0 {
+            -input_dir.normalize()
+        } else {
+            input_dir.normalize()
+        };
+    }
+}
+
+pub fn emit_move_state_on_movevecmag_speed_mag_change(
     query: Query<(Entity, &MoveVecMag)>,
     mut writer: MessageWriter<BeingChangedMoveState>,
     mut prev_by_ent: Local<EntityHashMap<(Vec2, f32)>>,
     mut messages: Local<Vec<BeingChangedMoveState>>,
 ) {
-    let mut current_ents = EntityHashSet::with_capacity(query.iter().size_hint().0);
-
     for (ent, move_vec_mag) in query.iter() {
-        current_ents.insert(ent);
         let curr = (move_vec_mag.norm_move_dir, move_vec_mag.speed_magnitude);
         let Some(prev) = prev_by_ent.get(&ent) else {
             prev_by_ent.insert(ent, curr);
             continue;
         };
-        if (prev.1 - curr.1).abs() > f32::EPSILON {
+        if prev.1 != curr.1 {
             messages.push(BeingChangedMoveState(ent));
             prev_by_ent.insert(ent, curr);
         }
     }
-
-    prev_by_ent.retain(|ent, _| current_ents.contains(ent));
     writer.write_batch(messages.drain(..));
 }
 
@@ -753,49 +723,28 @@ pub fn update_facing_dir(
         Option<&GridLockedMovement>,
         &mut CardinalDirection,
     )>,
-    mut beings_changed_anim_move_state_writer: MessageWriter<BeingChangedMoveState>,
-    mut being_changed_state_set: Local<HashSet<BeingChangedMoveState>>,
+    mut writer: MessageWriter<BeingChangedMoveState>,
+    mut messages: Local<HashSet<BeingChangedMoveState>>,
 ) {
-    being_changed_state_set.reserve(query.iter().size_hint().0);
     for (being_ent, move_state, glm, mut facing_dir) in query.iter_mut() {
-        let move_vec = move_state.norm_move_dir * move_state.speed_magnitude;
-        let dir_vec = if let Some(glm) = glm {
-            if glm.active_move_dir != Vec2::ZERO {
-                glm.active_move_dir
-            } else if move_vec != Vec2::ZERO {
-                move_vec
-            } else {
-                Vec2::ZERO
-            }
-        } else {
-            if move_vec != Vec2::ZERO {
-                move_vec
-            } else {
-                Vec2::ZERO
-            }
-        };
-
-        if dir_vec == Vec2::ZERO {
+        let dir = glm
+            .and_then(|glm| {
+                if glm.step_dir == IVec2::ZERO {
+                    None
+                } else {
+                    Some(glm.step_dir)
+                }
+            })
+            .unwrap_or_else(|| normalize_to_axis_dir(move_state.norm_move_dir));
+        if dir == IVec2::ZERO {
             continue;
         }
-
-        let new_dir = if dir_vec.x.abs() > dir_vec.y.abs() || (dir_vec.x.abs() == dir_vec.y.abs()) {
-            if dir_vec.x < 0.0 {
-                CardinalDirection::West
-            } else {
-                CardinalDirection::East
-            }
-        } else {
-            if dir_vec.y <= 0.0 {
-                CardinalDirection::South
-            } else {
-                CardinalDirection::North
-            }
-        };
-        if new_dir != *facing_dir {
-            *facing_dir = new_dir;
-            being_changed_state_set.insert(BeingChangedMoveState(being_ent));
+        let next = CardinalDirection::from_dir_vec(dir);
+        if *facing_dir != next {
+            *facing_dir = next;
+            debug!(target: MOVEMENT_SYSTEM, "Facing updated for {:?} to {:?}", being_ent, next);
+            messages.insert(BeingChangedMoveState(being_ent));
         }
     }
-    beings_changed_anim_move_state_writer.write_batch(being_changed_state_set.drain());
+    writer.write_batch(messages.drain());
 }

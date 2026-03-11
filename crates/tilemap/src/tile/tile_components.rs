@@ -231,12 +231,12 @@ pub struct PortalRecipe {
 
 #[derive(Component, Debug, Clone, )]
 pub struct PortalTo {
-    pub dest_portal: Entity,
+    pub dest_tile: Entity,
     pub offset_pos_destinations: GlobalTilePosWeightedSampler
 }
 impl PortalTo {
     pub fn new(dest_portal: Entity, offset_pos_destinations: GlobalTilePosWeightedSampler) -> Self {
-        Self { dest_portal, offset_pos_destinations }
+        Self { dest_tile: dest_portal, offset_pos_destinations }
     }
 }
 
