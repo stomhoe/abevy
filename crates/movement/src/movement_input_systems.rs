@@ -91,26 +91,24 @@ pub fn replay_move_inputs_on_server(
     mut query: Query<(
         Entity,
         &mut PendingMoveIntents,
-        Has<ComputedLocally>,
         &mut InputMoveDir,
-    )>,
+    ), (Without<ComputedLocally>)>,
     mut current_tick: Local<u32>,
     mut last_tick_by_being: Local<EntityHashMap<u32>>,
 ) {
     *current_tick = current_tick.wrapping_add(1);
-    for (being_ent, mut pending, controlled_locally, mut input_move_dir) in query.iter_mut() {
-        if controlled_locally {
-            continue;
-        }
+    for (being_ent, mut pending, mut input_move_dir) in query.iter_mut() {
+
         let Some(intent) = pending.front() else {
             continue;
         };
+        let wait_ticks = intent.ticks_since_prev_intent.max(1);
         let last_tick = last_tick_by_being
             .get(&being_ent)
             .copied()
-            .unwrap_or(*current_tick);
+            .unwrap_or(current_tick.wrapping_sub(wait_ticks));
         let elapsed_ticks = current_tick.wrapping_sub(last_tick);
-        if elapsed_ticks < intent.ticks_since_prev_intent.max(1) {
+        if elapsed_ticks < wait_ticks {
             continue;
         }
         let Some(intent) = pending.pop_front() else {

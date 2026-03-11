@@ -35,11 +35,8 @@ pub fn process_input_direction_modifiers(
         if is_client && !controlled_locally {
             continue;
         }
-        let input_dir = if controlled_locally {
-            input_move_dir.0
-        } else {
-            Vec2::ZERO
-        };
+        let input_dir = input_move_dir.0;
+
         let mut invert_sum: f32 = 0.0;
         let mut invert_scale: f32 = 1.0;
         let mut effects = EntityHashSet::default();
