@@ -1,0 +1,441 @@
+Argentum Online tile-locked movement investigation
+===============================================
+
+Repositories examined
+- https://github.com/ao-org/argentum-online-server
+- https://github.com/ao-org/argentum-online-client
+
+Primary upstream files examined
+- Server: `Codigo/Protocol.bas`
+- Server: `Codigo/Modulo_UsUaRiOs.bas`
+- Server: `Codigo/GameLogic.bas`
+- Server: `Codigo/Protocol_Writes.bas`
+- Client: `CODIGO/General.bas`
+- Client: `CODIGO/Protocol_Writes.bas`
+- Client: `CODIGO/Protocol.bas`
+- Client: `CODIGO/TileEngine_Chars.bas`
+- Client: `CODIGO/engine.bas`
+
+Primary local files compared
+- `crates/movement/src/movement.rs`
+- `crates/movement/src/movement_input_systems.rs`
+- `crates/movement/src/movement_systems.rs`
+
+
+High-level summary
+------------------
+
+AO keeps multiplayer tile movement synchronized with very low visible drift by making the authoritative state fundamentally tile-discrete, not free-positional:
+
+1. The client sends a discrete walk command: one heading, one intent.
+2. The server immediately validates the destination tile and commits the mover to that destination tile in server state.
+3. Other clients receive a tile destination update and animate from old tile to new tile using a local offset.
+4. The moving client also predicts immediately, but the server sends explicit position corrections whenever movement is denied or when some server-side translation/warp happens.
+5. Visual interpolation is just rendering glue over tile endpoints. The actual synchronized state is tile index occupancy.
+
+Because of that, AO does not need high-precision continuous reconciliation to look stable under low latency. It mostly only needs to agree on:
+- current tile
+- heading
+- whether a 1-tile step was accepted
+- how long to visually ease to that tile
+
+
+Implementation point 1: input is discrete, not analog
+-----------------------------------------------------
+
+AO:
+- Client movement is sent by `WriteWalk(Heading)` in `argentum-online-client/CODIGO/Protocol_Writes.bas`.
+- Packet contains only heading plus a packet counter/timestamp.
+- Local move trigger comes from `MoveTo` in `argentum-online-client/CODIGO/General.bas`, which first checks whether the next tile is legal locally, then sends `WriteWalk(Heading)`, then immediately runs local movement with `Char_Move_by_Head`.
+
+Meaning:
+- The command space is tiny and deterministic: north/east/south/west.
+- No analog magnitude, no arbitrary vector normalization, no per-frame client force accumulation.
+
+Our code:
+- `send_move_input_to_server` sends a normalized axis vector plus `input_seq` and `client_tick`.
+- Input starts as analog and gets sanitized by `sanitize_input_dir`, then queued as `PendingMoveIntent`.
+- This is still tile-oriented after sanitization, but the pipeline is more general and has more state.
+
+Comparison:
+- AO is stricter. It never exposes the network protocol to anything except a cardinal step command.
+- Our pipeline is still mostly axis-locked, but it is architected like a prediction/reconciliation system for continuous movement with tile locking layered on top.
+
+Potential weak point in our code:
+- More representational states means more ways for client and server to diverge before the tile lock logic collapses them back together.
+- If the goal is AO-like determinism, the network-facing command should ideally be a discrete cardinal intent or explicit tile-step intent, not a float vector even if sanitized.
+
+
+Implementation point 2: local prediction is tile-step immediate
+---------------------------------------------------------------
+
+AO:
+- In `MoveTo`, once the local legality test passes, the client:
+  - marks moving
+  - restarts the walk timer
+  - sends `WriteWalk(Heading)`
+  - immediately calls `Char_Move_by_Head(UserCharIndex, Heading)`
+  - moves the screen
+- That means the player sees the move immediately, before the server answer arrives.
+
+Meaning:
+- Prediction exists, but it is extremely constrained.
+- The prediction is not "simulate velocity for an arbitrary period"; it is "commit to the next tile locally and render an offset back toward the origin until it resolves visually".
+
+Our code:
+- Local player also predicts immediately via `prepare_grid_locked_movement`.
+- `step_grid_motor` advances a `GridLockedMovement` state with `origin_tile`, `active_move_dir`, `queued_move_dir`, `progress_ticks`, `step_ticks_total`.
+
+Comparison:
+- Both systems predict immediately.
+- AO predicts a whole accepted tile step as the primitive.
+- Our code predicts an in-progress motor state over fixed ticks, which is richer but more sensitive to tick-count disagreement and speed disagreement.
+
+Potential weak point in our code:
+- AO only really needs client/server agreement on tile acceptance.
+- Our code needs agreement on:
+  - tile acceptance
+  - exact `step_ticks_total`
+  - exact replay count
+  - exact speed used during replay
+  - exact fixed-delta assumptions
+- That is a much larger determinism surface.
+
+
+Implementation point 3: server authority is tile occupancy authority
+--------------------------------------------------------------------
+
+AO:
+- `HandleWalk` on server reads heading and anti-cheat packet counter.
+- `MoveUserChar` computes adjacent destination tile and calls `LegalWalk`.
+- If legal, server immediately:
+  - updates map occupancy
+  - updates user tile position
+  - updates heading
+  - broadcasts `PrepareMessageCharacterMove(charindex, x, y)` to other clients
+- If not legal, server sends `WritePosUpdate(UserIndex)` to snap the player back to authoritative tile.
+
+Meaning:
+- The server commits the mover to destination tile immediately, not after a simulated transit period.
+- Occupancy is discrete and authoritative.
+- The visual travel between tiles is client-side presentation.
+
+Our code:
+- Server also owns blocking and tile validity in `step_grid_motor` through `blocking_tiles.is_blocked_at`.
+- But the server state contains partial movement progress and not just tile occupancy.
+- Server acks include `tile_pos`, `moving_dir`, `progress_ticks`, `step_ticks_total`, `facing_dir`, `last_processed_input_seq`.
+
+Comparison:
+- AO authority surface: "you are now at tile X,Y".
+- Our authority surface: "you are at tile X,Y and N/T ticks through an active step with this queued direction".
+
+Potential weak point in our code:
+- This bigger authoritative state is harder to replay identically.
+- Any mismatch in replay order, delta, speed modifier evaluation, or tile-block timing creates drift even when tile acceptance was identical.
+
+
+Implementation point 4: animation/interpolation is visual offset, not authoritative motion
+------------------------------------------------------------------------------------------
+
+AO:
+- `Char_Move_by_Pos` on client:
+  - updates tile position immediately
+  - sets `MoveOffsetX/Y` to `-TilePixelWidth * diff`
+  - render loop eases offset back toward zero in `engine.bas`
+- So the actual synchronized entity state is already at the destination tile, while rendering still slides the sprite from old tile to new tile.
+
+AO also has a `CharacterTranslate` path:
+- `PrepareCharacterTranslate` sends destination tile plus `TranslationTime`.
+- Client `TranslateCharacterToPos` sets tile pos immediately, stores translation time, and render loop interpolates offset toward zero over that time.
+
+Meaning:
+- Simulation state is tile-snapped.
+- Interpolation state is purely presentational offset.
+- This sharply limits positional drift because "real position" is still the tile coordinate.
+
+Our code:
+- `grid_translation` derives actual `Transform.translation` from tile origin plus progress ratio.
+- The transform itself is the in-progress simulated state.
+- Reconciliation rewrites transform from replayed authoritative grid motor.
+
+Comparison:
+- AO separates authoritative tile state from rendered offset.
+- Our code uses transform as part of the simulation state itself.
+
+Potential weak point in our code:
+- When transform is both the rendered result and reconciliation target, every replay mismatch becomes actual positional drift.
+- AO’s render-offset model is more forgiving because the discrete tile state can remain correct even if visual interpolation is imperfect.
+
+
+Implementation point 5: failed prediction is corrected by immediate tile snap, not by deep rollback
+---------------------------------------------------------------------------------------------------
+
+AO:
+- If `MoveUserChar` fails or movement is disallowed in `HandleWalk`, server sends `WritePosUpdate(UserIndex)`.
+- Client can also manually request resync with `WriteRequestPositionUpdate()`.
+- Position update packets are tile coordinates only.
+- Client handlers zero movement offsets on hard correction paths.
+
+Meaning:
+- AO tolerates occasional prediction mismatch by snapping the client back to authoritative tile.
+- Because movement is tile-discrete, these snaps are cheap and understandable.
+
+Our code:
+- Reconciliation is more advanced:
+  - discard stale acks
+  - retain only pending intents after ack seq
+  - rebuild authoritative grid state from ack
+  - replay pending intents
+  - set `Transform` and `GridLockedMovement` to replayed result
+- This is in `reconcile_grid_move_state_acks`.
+
+Comparison:
+- Our code is more sophisticated.
+- AO is cruder, but the crude approach works well because the synchronized state is much simpler.
+
+Potential weak point in our code:
+- Sophisticated replay does not automatically mean more stable.
+- If the replay model is not bit-for-bit equivalent to live server stepping, the complexity itself becomes a source of drift.
+
+
+Implementation point 6: step timing is presentation-facing in AO, simulation-facing in our code
+------------------------------------------------------------------------------------------------
+
+AO:
+- Movement speed is enforced server-side in `HandleWalk` using elapsed real time and anti-speedhack checks.
+- But once a step is accepted, other clients mostly just receive the new tile; interpolation speed is a client visual concern.
+- The `CharacterTranslate` path explicitly sends a translation duration when the server wants a timed translation.
+
+Meaning:
+- The server does not require all peers to simulate identical per-tick movement progress for ordinary walking.
+- It mostly requires that they agree on when a tile step was accepted.
+
+Our code:
+- `ticks_per_tile(speed, delta, dir)` converts continuous speed and frame delta into simulation ticks required to cross a tile.
+- `progress_ticks` and `step_ticks_total` are core simulation state.
+- Reconciliation reuses current `time.delta_secs()` during replay.
+
+Comparison:
+- AO avoids tying synchronized correctness to per-tick interpolation length for normal walking.
+- Our code directly ties correctness to tick-count math.
+
+Potential weak points in our code:
+- `step_ticks_total` depends on `speed * delta` and ceil logic.
+- Replay also depends on `time.delta_secs()` at the moment the ack is processed, not necessarily the exact fixed delta that was used when the original intents were simulated.
+- If speed modifiers or tile walk multipliers changed between original prediction and replay, replay can diverge even when inputs and acks are correct.
+
+This is one of the strongest relative determinism risks in the current implementation.
+
+
+Implementation point 7: AO updates remote actors from authoritative tile events, not input stream replay
+--------------------------------------------------------------------------------------------------------
+
+AO:
+- Other clients do not replay another player's input stream.
+- They receive server-authored movement packets like `CharacterMove` or `CharacterTranslate`.
+- They animate from those authoritative events.
+
+Meaning:
+- Remote actor synchronization is event-driven and authoritative.
+- There is no need to keep remote input queue semantics in sync across peers.
+
+Our code:
+- Server receives input from controlled client.
+- It stores `ServerQueuedMoveIntents`, consumes them, applies mocked move actions, and simulates remote movers from input stream on the server.
+- Other clients receive server transforms for non-grid or grid movement acks / transform messages depending on path.
+
+Comparison:
+- For the owning client, our model is closer to modern prediction+reconciliation.
+- For remote peers, AO’s model is simpler and more stable because remote visuals derive from authoritative tile events only.
+
+Potential weak point in our code:
+- Because the movement core is unified around input-driven simulation, more parts of the system have to stay deterministically aligned than in AO’s remote-actor approach.
+
+
+Implementation point 8: AO snaps tile occupancy first, then clears visual offset on correction
+-----------------------------------------------------------------------------------------------
+
+AO:
+- Client hard correction handlers (`PosUpdate`, `PosUpdateChar`, several other state updates) directly set tile pos and often zero `MoveOffsetX/Y`.
+- There are sanity guards that zero offsets if they exceed one tile or become diagonal when they should not.
+
+Meaning:
+- AO actively refuses to let visual drift accumulate across packets.
+- It accepts occasional visible snaps in order to preserve discrete correctness.
+
+Our code:
+- `set_transforms_to_received` directly overwrites transforms for non-grid movement.
+- Grid movement path instead preserves more state and attempts replay.
+
+Comparison:
+- AO prefers robust tile correctness over preserving a predicted interpolation history.
+- Our code prefers preserving prediction continuity.
+
+Potential weak point in our code:
+- If preserving continuity is the goal, replay must be nearly perfectly deterministic.
+- If it is not, AO’s harder snap policy may actually yield better perceived sync under low latency because tile correctness dominates.
+
+
+Implementation point 9: AO local legality check reduces rejected moves before they hit the server
+-------------------------------------------------------------------------------------------------
+
+AO:
+- Client `MoveTo` checks `LegalPos` before sending `WriteWalk`.
+- Server still does authoritative `LegalWalk`.
+
+Meaning:
+- Low-latency play feels clean because obviously illegal moves are filtered locally first.
+- Server still remains authoritative.
+
+Our code:
+- Client prediction also checks blockage through `step_grid_motor` in local simulation.
+- Server checks the same kind of thing independently.
+
+Comparison:
+- Conceptually similar.
+- The difference is again that AO’s prediction result is just "did I step to next tile", while ours is a richer moving motor state.
+
+Potential weak point in our code:
+- Any difference in local/server speed modifier resolution or tile query timing can produce disagreement even if raw blockage agreement is fine.
+
+
+Implementation point 10: AO’s anti-cheat/rate control is about step cadence, not continuous position
+-----------------------------------------------------------------------------------------------------
+
+AO:
+- `HandleWalk` verifies packet timestamp / counter and elapsed time since previous accepted step.
+- If suspicious, server can reject and send authoritative position update.
+
+Meaning:
+- Anti-cheat is aligned with the step model.
+- The server measures whether tile-step cadence is plausible.
+
+Our code:
+- `input_seq` and `client_tick` are tracked, but cadence validation is not the core issue shown in the compared files.
+- The system is more about reconciling accepted inputs than rate-limiting step cadence.
+
+Comparison:
+- AO’s step-based protocol naturally fits step-based anti-cheat.
+- Our richer protocol may need stronger guarantees that accepted inputs cannot cause client/server step-count skew.
+
+
+Main differences that likely explain why AO can feel extremely locked-in
+------------------------------------------------------------------------
+
+1. AO’s synchronized truth is tile occupancy, not continuous transform.
+2. AO’s client prediction unit is one discrete tile step.
+3. AO’s visual smoothing is a render offset layered on top of already-authoritative tile coordinates.
+4. AO’s correction packets are cheap because they only need to restore tile coordinates.
+5. AO does not require deterministic replay of partial movement progress to remain visually stable.
+
+This is the core answer to "how is tile-locked movement implemented so it stays synchronized with almost no local positional drift under low latency":
+
+AO avoids making the drifting quantity authoritative.
+
+The drifting quantity is only the temporary sprite offset. The synchronized quantity is the tile.
+
+
+Weak points / relative lack in our sync determinism
+---------------------------------------------------
+
+1. Authoritative state is too rich for AO-style stability.
+- Our ack carries partial progress state, not just tile commitment.
+- More state means more replay divergence opportunities.
+
+2. Replay depends on present-time delta.
+- `reconcile_grid_move_state_acks` replays pending intents with current `time.delta_secs()`.
+- If ack processing delta differs from original simulation delta assumptions, replayed progress can differ.
+
+3. Replay depends on current speed evaluation.
+- Replay uses current `move_speed`.
+- If speed modifiers or tile multipliers changed since the original local prediction path, the replay result can differ from what the server actually simulated for those inputs.
+
+4. Transform is simulation state, not only render state.
+- In AO, visual interpolation can be wrong briefly while tile state stays correct.
+- In our code, replay mismatch directly becomes transform mismatch.
+
+5. Input protocol is still vector-based.
+- Even though sanitized, the protocol is conceptually broader than needed for tile steps.
+- A discrete movement command would reduce the state surface.
+
+6. Queued direction is replay-derived state.
+- `queued_move_dir` is reconstructed from pending intents, but exact turn-boundary behavior is subtle.
+- These are the exact places where "almost deterministic" systems usually leak drift.
+
+7. Correction strategy is softer than AO’s.
+- AO is willing to snap hard to preserve tile truth.
+- Our code tries to preserve predicted continuity more aggressively, which only wins if replay is extremely exact.
+
+
+Where our code is already strong
+--------------------------------
+
+1. The movement core is already grid-aware.
+- `GridLockedMovement` with `origin_tile`, `active_move_dir`, and queued direction is the right general shape for tile locking.
+
+2. Inputs are sequenced.
+- `input_seq` and ack pruning are good foundations.
+
+3. Owner-only authoritative ack exists.
+- `GridMoveStateAck` already carries the data needed for owner reconciliation.
+
+4. Local and server both use the same grid motor shape.
+- This is much closer to deterministic synchronization than many action-game movement systems.
+
+
+Most important practical conclusions
+------------------------------------
+
+If the target is specifically AO-like "almost no local positional drift under low latency", the most important design lesson is not "add more replay sophistication". It is:
+
+1. Keep the authoritative synchronized state tile-discrete.
+2. Make visual interpolation a presentation layer over tile state, not the synchronized state itself.
+3. Reduce owner correction to restoring tile step state, not a continuously evolving transform whenever possible.
+
+Translated to our current codebase, the biggest relative risks are:
+
+1. `step_ticks_total` and replay both derive from dynamic speed and delta.
+2. `Transform.translation` is treated as part of movement truth.
+3. Reconciliation replays with current frame/tick conditions instead of a fully recorded deterministic step history.
+
+
+If I had to rank the likely top three causes of remaining drift in our implementation
+-------------------------------------------------------------------------------------
+
+1. Replaying pending intents with current `time.delta_secs()` instead of a fixed recorded simulation quantum.
+2. Replaying with current effective speed instead of the exact speed assumptions that were used when those steps were originally predicted/accepted.
+3. Using transform-progress as synchronized state rather than keeping a stricter tile-committed state plus separate visual offset interpolation.
+
+
+Concrete AO-inspired changes worth considering later
+----------------------------------------------------
+
+1. Make the net movement command fully discrete.
+- Send cardinal direction or explicit "attempt step north/east/south/west".
+
+2. Make tile commitment more authoritative than transform progress.
+- Prefer "authoritative tile + maybe current intended direction" over "authoritative partial transform progress" where possible.
+
+3. Move interpolation into a render-only offset layer.
+- Keep simulation state snapped to tile progression.
+- Let visuals interpolate between committed tile states.
+
+4. If replay remains, replay against a true fixed simulation quantum.
+- Never use variable/current frame delta during ack replay.
+
+5. Consider hard snap policy when drift exceeds tiny thresholds in grid mode.
+- AO accepts this tradeoff and benefits from it.
+
+
+Bottom line
+-----------
+
+AO’s near-driftless feel does not come from a highly advanced rollback system. It comes from a narrower problem definition:
+
+- movement command is discrete
+- server authority is discrete
+- synchronized state is discrete
+- interpolation is cosmetic
+- correction is cheap
+
+Our code is more advanced, but it also asks much more of determinism. The main relative weakness is that partial progress through a tile is part of the synchronized simulation contract, while in AO it is mostly a local visual concern.
