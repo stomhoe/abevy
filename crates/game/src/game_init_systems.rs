@@ -137,6 +137,10 @@ pub fn host_on_player_added(mut cmd: Commands,
             let created_character = cmd.spawn((Being, username.clone(),
                 CharacterCreatedBy { player: player_ent },
                 BelongsToFaction(host_faction),
+                ComputedBy {
+                    client_ent: player_ent,
+                    human_input: true,
+                },
             )).id();
             //cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));
 
@@ -246,10 +250,7 @@ pub fn put_player_beings_on_map(
                 },
                 DimensionRef(spawn_dim.0),
                 ActivatingChunks::new(&chunk_range),
-                ComputedBy {
-                    client_ent: created_by.player,
-                    human_input: true,
-                },
+
                 BitStrIdRef::new(settings.players_initial_bit_ref_strid.as_str()),
                 Being,
 

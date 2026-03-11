@@ -8,7 +8,7 @@ use bevy::{
 use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::*;
 use camera::camera_components::CameraTarget;
-use common::log_targets::{BEING_CONTROL, BEING_SYSTEM};
+use common::log_targets::{BEING_CONTROL, BEING_SYSTEM, MOVEMENT_SYSTEM};
 use faction::faction_components::*;
 use game_common::game_common_components::{EntityZeroRef, HealthDamage};
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
@@ -63,11 +63,15 @@ pub fn on_control_change(
     let mut apply_control_change = |being_ent: Entity,
                                     controlled_by: &ComputedBy,
                                     is_camera_target: bool| {
-
-        if !controlled_by.human_input {
-            if let Ok(mut input_dir) = input_dirs.get_mut(being_ent) {
-                input_dir.0 = Vec2::ZERO;
-            }
+        if let Ok(mut input_dir) = input_dirs.get_mut(being_ent) {
+            error!(
+                target: MOVEMENT_SYSTEM,
+                "InputMoveDir reset on control change for {:?}: {:?} -> {:?}",
+                being_ent,
+                input_dir.0,
+                Vec2::ZERO
+            );
+            input_dir.0 = Vec2::ZERO;
         }
         if controlled_by.client_ent == self_entity {
             info!(target: BEING_CONTROL, "debug {:?} is now controlled locally by self", being_ent);

@@ -6,36 +6,6 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct PendingMoveIntent {
     pub dir: IVec2,
-    pub ticks_since_prev_intent: u32,
-}
-impl PendingMoveIntent {
-    pub fn new(dir: IVec2, curr: u32, prev: u32) -> Self {
-        Self {
-            dir,
-            ticks_since_prev_intent: curr.saturating_sub(prev),
-        }
-    }
-}
-
-#[derive(Component, Debug, Default, Clone)]
-pub struct PendingMoveIntents(pub std::collections::VecDeque<PendingMoveIntent>);
-
-impl PendingMoveIntents {
-    pub fn new(intent: PendingMoveIntent) -> Self {
-        Self(std::collections::VecDeque::from([intent]))
-    }
-
-    pub fn enqueue(&mut self, intent: PendingMoveIntent) {
-        self.0.push_back(intent);
-    }
-
-    pub fn pop_front(&mut self) -> Option<PendingMoveIntent> {
-        self.0.pop_front()
-    }
-
-    pub fn front(&self) -> Option<&PendingMoveIntent> {
-        self.0.front()
-    }
 }
 
 #[derive(Component, Debug, Default, Clone, Copy)]
