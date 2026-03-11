@@ -13,7 +13,7 @@ use crate::movement_helpers::*;
 use crate::movement_messages::*;
 
 pub fn start_grid_locked_steps(
-    time: Res<Time>,
+    fixed_time: Res<Time<Fixed>>,
     client_state: Res<State<ClientState>>,
     server_state: Res<State<ServerState>>,
     connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
@@ -57,8 +57,7 @@ pub fn start_grid_locked_steps(
             entity,
             &mut tile_pos,
             dir,
-            step_duration_secs(move_state.speed_magnitude, dir),
-            ticks_per_tile(move_state.speed_magnitude, time.delta_secs(), dir),
+            ticks_per_tile(move_state.speed_magnitude, fixed_time.delta_secs(), dir),
         ) {
             continue;
         }
@@ -82,7 +81,6 @@ pub fn start_grid_locked_steps(
 }
 
 pub fn progress_tile_transition_transform(
-    time: Res<Time>,
     server_state: Res<State<ServerState>>,
     connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
     mut query: Query<(
@@ -101,7 +99,7 @@ pub fn progress_tile_transition_transform(
     let should_sync = server_state.get() == &ServerState::Running && !connected.is_empty();
     for (being_ent, tile_pos, controlled_by, mut transform, mut move_anim, mut glm) in query.iter_mut() {
         glm.ensure_grid_anchor(*tile_pos);
-        glm.progress_grid_step(*tile_pos, time.delta_secs());
+        glm.progress_grid_step(*tile_pos);
         let new_translation = glm.grid_translation(*tile_pos, transform.translation.z);
         if transform.translation != new_translation {
             transform.translation = new_translation;

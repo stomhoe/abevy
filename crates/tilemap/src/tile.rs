@@ -94,6 +94,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<PrevPos>()
     .replicate::<PortalsZeroEguiHolder>()
     .replicate::<BlocksProjectiles>()
+    .replicate::<TiledCollisionMask>()
     .replicate::<WalkSpeedMultIfOnTop>()
     .replicate::<OffsetForTerrgenPlacement>()
     .replicate::<SizeInTiles>()

@@ -1,7 +1,7 @@
 use bevy_replicon::prelude::Channel;
 use serde::{Deserialize, Serialize};
 
-use super::channels::{AO_MOVEMENT_CORRECTION_CHANNEL, AO_MOVEMENT_INPUT_CHANNEL};
+use super::channels::{AO_MOVEMENT_CORRECTION_CHANNEL, Channel::Unordered};
 use super::types::AoHeading;
 
 /*
@@ -63,7 +63,7 @@ pub struct AoWalkInput {
 }
 
 impl AoWalkInput {
-    pub const CHANNEL: Channel = AO_MOVEMENT_INPUT_CHANNEL;
+    pub const CHANNEL: Channel = Channel::Unordered;
 }
 
 #[derive(Debug, Clone, Copy, Message, Serialize, Deserialize)]
@@ -73,12 +73,12 @@ pub struct AoChangeHeadingInput {
 }
 
 impl AoChangeHeadingInput {
-    pub const CHANNEL: Channel = AO_MOVEMENT_INPUT_CHANNEL;
+    pub const CHANNEL: Channel = Channel::Unordered;
 }
 
 #[derive(Debug, Clone, Copy, Message, Serialize, Deserialize, Default)]
 pub struct AoRequestPositionSync;
 
 impl AoRequestPositionSync {
-    pub const CHANNEL: Channel = AO_MOVEMENT_CORRECTION_CHANNEL;
+    pub const CHANNEL: Channel = Channel::Unordered;
 }

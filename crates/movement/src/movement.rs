@@ -20,7 +20,6 @@ pub fn plugin(app: &mut App) {
         (
             add_movement_components_to_beings,
             add_being_input_context,
-            copy_player_move_input_to_beings,
         )
             .in_set(MovementSystems),
     )
@@ -41,6 +40,7 @@ pub fn plugin(app: &mut App) {
             MOVEMENT_SCHEDULE,
             (
                 (
+                    copy_player_move_input_to_beings,
                 send_move_input_to_server
                     .in_set(MovementSystems)
                     .run_if(in_state(ClientState::Connected)),
@@ -61,7 +61,7 @@ pub fn plugin(app: &mut App) {
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
-        .add_mapped_client_message::<SendMoveInput>(Channel::Unreliable)
+        .add_mapped_client_message::<SendMoveInput>(Channel::Ordered)
         .add_mapped_server_message::<SyncGpos>(Channel::Ordered)
         .add_mapped_server_message::<SyncTransform>(Channel::Unreliable)
         .replicate_once::<GridLockedMovement>()

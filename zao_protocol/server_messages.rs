@@ -3,9 +3,7 @@ use bevy::prelude::Entity;
 use bevy_replicon::prelude::Channel;
 use serde::{Deserialize, Serialize};
 
-use super::channels::{
-    AO_MOVEMENT_CORRECTION_CHANNEL, AO_MOVEMENT_HEADING_CHANNEL, AO_MOVEMENT_STEP_CHANNEL,
-};
+
 use super::types::{AoHeading, AoTilePos};
 
 #[derive(Debug, Clone, Copy, Message, Serialize, Deserialize, MapEntities)]
@@ -17,7 +15,7 @@ pub struct AoSyncGridPosition {
 }
 
 impl AoSyncGridPosition {
-    pub const CHANNEL: Channel = AO_MOVEMENT_CORRECTION_CHANNEL;
+    pub const CHANNEL: Channel = Channel::Unordered;
 }
 
 #[derive(Debug, Clone, Copy, Message, Serialize, Deserialize, MapEntities)]
@@ -32,7 +30,7 @@ pub struct AoSyncGridStep {
 }
 
 impl AoSyncGridStep {
-    pub const CHANNEL: Channel = AO_MOVEMENT_STEP_CHANNEL;
+    pub const CHANNEL: Channel = Channel::Unreliable;
 }
 
 #[derive(Debug, Clone, Copy, Message, Serialize, Deserialize, MapEntities)]
@@ -44,7 +42,7 @@ pub struct AoSyncGridHeading {
 }
 
 impl AoSyncGridHeading {
-    pub const CHANNEL: Channel = AO_MOVEMENT_HEADING_CHANNEL;
+    pub const CHANNEL: Channel = Channel::Ordered;
 }
 
 #[derive(Debug, Clone, Copy, Message, Serialize, Deserialize, MapEntities)]
@@ -55,5 +53,5 @@ pub struct AoForceMove {
 }
 
 impl AoForceMove {
-    pub const CHANNEL: Channel = AO_MOVEMENT_CORRECTION_CHANNEL;
+    pub const CHANNEL: Channel = Channel::Unordered;
 }
