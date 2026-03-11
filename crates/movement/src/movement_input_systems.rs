@@ -5,56 +5,10 @@ use bevy_enhanced_input::prelude::*;
 
 use ac_input::ac_input_actions::*;
 
-use crate::{movement_components::*, movement_messages::SendMoveInput};
-
-const INPUT_DEADZONE: f32 = 0.2;
-
-fn sanitize_input_dir(input: Vec2) -> IVec2 {
-    if input.length() <= INPUT_DEADZONE {
-        IVec2::ZERO
-    } else {
-        let n = input.normalize();
-        if n.x.abs() >= n.y.abs() {
-            IVec2::new(n.x.signum() as i32, 0)
-        } else {
-            IVec2::new(0, n.y.signum() as i32)
-        }
-    }
-}
-
-pub fn add_being_input_context(
-    mut commands: Commands,
-    being_query: Query<
-        Entity,
-        (
-            Or<(With<ComputedLocally>, With<ControlledBy>)>,
-            Without<Actions<BeingInputContext>>,
-        ),
-    >,
-) {
-    for being_ent in being_query.iter() {
-        commands.entity(being_ent).try_insert((
-            BeingInputContext,
-            actions!(BeingInputContext[
-                (
-                    Action::<BeingMoveAction>::new(),
-                    Down::default(),
-                    DeadZone::default(),
-                    Bindings::spawn((
-                        Cardinal::wasd_keys(),
-                        Cardinal::arrows(),
-                        Cardinal::dpad(),
-                        Axial::left_stick(),
-                    )),
-                ),
-                (
-                    Action::<BeingMeleeAttackAction>::new(),
-                    bindings![KeyCode::ControlLeft],
-                ),
-            ]),
-        ));
-    }
-}
+use crate::{
+    movement_components::*, movement_helpers::normalize_to_axis_dir,
+    movement_messages::SendMoveInput, movement_secondary_systems::INPUT_DEADZONE,
+};
 
 pub fn send_move_input_to_server(
     mut commands: Commands,
@@ -76,7 +30,11 @@ pub fn send_move_input_to_server(
         if !controlled_locally || !controlled_by.human_input {
             continue;
         }
-        let dir = sanitize_input_dir(**move_action);
+        let dir = if move_action.length() <= INPUT_DEADZONE {
+            IVec2::ZERO
+        } else {
+            normalize_to_axis_dir(move_action.normalize())
+        };
         if dir == IVec2::ZERO {
             continue;
         }

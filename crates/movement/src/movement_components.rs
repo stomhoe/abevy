@@ -27,6 +27,7 @@ pub struct GridLockedMovement {
     pub step_dir: IVec2,
     pub progress_ticks: u16,
     pub step_ticks_total: u16,
+    pub move_cooldown_secs_left: f32,
 }
 
 impl GridLockedMovement {
@@ -47,12 +48,19 @@ impl GridLockedMovement {
         self.step_ticks_total = 0;
     }
 
-    pub fn start_step(&mut self, tile_pos: &mut GlobalTilePos, dir: IVec2, step_ticks_total: u16) {
+    pub fn start_step(
+        &mut self,
+        tile_pos: &mut GlobalTilePos,
+        dir: IVec2,
+        step_ticks_total: u16,
+        move_duration_secs: f32,
+    ) {
         self.visual_origin_tile = tile_pos.0;
         tile_pos.0 += dir;
         self.step_dir = dir;
         self.progress_ticks = 0;
         self.step_ticks_total = step_ticks_total.max(1);
+        self.move_cooldown_secs_left = move_duration_secs.max(0.0);
     }
 
     pub fn try_start_step(
@@ -63,20 +71,22 @@ impl GridLockedMovement {
         being_ent: Entity,
         tile_pos: &mut GlobalTilePos,
         dir: IVec2,
+        move_duration_secs: f32,
         step_ticks_total: u16,
     ) -> bool {
-        if dir == IVec2::ZERO || self.is_stepping() || step_ticks_total == 0 {
+        if dir == IVec2::ZERO || self.move_cooldown_secs_left > 0.0 || step_ticks_total == 0 {
             return false;
         }
         let next_tile = GlobalTilePos(tile_pos.0 + dir);
         if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
             return false;
         }
-        self.start_step(tile_pos, dir, step_ticks_total);
+        self.start_step(tile_pos, dir, step_ticks_total, move_duration_secs);
         true
     }
 
-    pub fn progress_grid_step(&mut self, tile_pos: GlobalTilePos) {
+    pub fn progress_grid_step(&mut self, tile_pos: GlobalTilePos, delta_secs: f32) {
+        self.move_cooldown_secs_left = (self.move_cooldown_secs_left - delta_secs).max(0.0);
         if !self.is_stepping() {
             self.clear_step(tile_pos);
             return;
@@ -85,5 +95,14 @@ impl GridLockedMovement {
         if self.progress_ticks >= self.step_ticks_total {
             self.clear_step(tile_pos);
         }
+    }
+
+    pub fn grid_translation(&self, tile_pos: GlobalTilePos, z: f32) -> Vec3 {
+        let origin = GlobalTilePos(self.visual_origin_tile).to_translation(z);
+        if !self.is_stepping() || self.step_ticks_total == 0 {
+            return tile_pos.to_translation(z);
+        }
+        let t = (self.progress_ticks as f32 / self.step_ticks_total as f32).clamp(0.0, 1.0);
+        origin.lerp(tile_pos.to_translation(z), t)
     }
 }
