@@ -3,17 +3,67 @@ use param_sets::BlockingTileParamSet;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::{DimensionRef, GlobalTilePos};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct PendingMoveIntent {
-    pub input_seq: u32,
-    pub dir: IVec2,
+    pub dir: MoveDir,
+    pub ticks_since_prev_intent: u32,
+}
+impl PendingMoveIntent {
+    pub fn new(dir: IVec2, prev_tick: u32, curr_tick: u32) -> Self {
+        Self {
+            dir: MoveDir::from_ivec2(dir),
+            ticks_since_prev_intent: curr_tick - prev_tick,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum MoveDir {
+    North,
+    South,
+    East,
+    West,
+    Stop,
+}
+
+impl Default for MoveDir {
+    fn default() -> Self {
+        Self::Stop
+    }
+}
+
+impl MoveDir {
+    pub fn from_ivec2(dir: IVec2) -> Self {
+        let dir = dir.clamp(IVec2::NEG_ONE, IVec2::ONE);
+        match dir {
+            IVec2::X => Self::East,
+            IVec2::NEG_X => Self::West,
+            IVec2::Y => Self::North,
+            IVec2::NEG_Y => Self::South,
+            _ => Self::Stop,
+        }
+    }
+
+    pub fn as_vec2(self) -> Vec2 {
+        match self {
+            Self::North => Vec2::Y,
+            Self::South => Vec2::NEG_Y,
+            Self::East => Vec2::X,
+            Self::West => Vec2::NEG_X,
+            Self::Stop => Vec2::ZERO,
+        }
+    }
 }
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct PendingMoveIntents(pub Vec<PendingMoveIntent>);
 
 #[derive(Component, Debug, Default, Clone, Copy)]
-pub struct LastProcessedMoveInputSeq(pub u32);
+pub struct ServerMoveReplayState {
+    pub active_dir: MoveDir,
+    pub ticks_until_next_intent: u32,
+}
+
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct MoveVecMag {

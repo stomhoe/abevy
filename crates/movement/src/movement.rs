@@ -5,7 +5,8 @@ use tilemap_shared::CardinalDirection;
 
 use crate::{
     free_movement_systems::*, movement_components::*, movement_modifier_systems::*,
-    movement_secondary_systems::*, grid_movement_systems::*,
+    movement_secondary_systems::*, grid_movement_systems::*, movement_input_systems::*,
+    movement_messages::*,
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -15,6 +16,23 @@ const MOVEMENT_SCHEDULE: FixedUpdate = FixedUpdate;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Update, add_being_input_context)
+        .add_systems(
+            FixedUpdate,
+            send_move_input_to_server
+                .in_set(MovementSystems)
+                .run_if(in_state(ClientState::Connected)),
+        )
+        .add_systems(
+            FixedUpdate,
+            (
+                receive_move_input_from_client
+                    .run_if(in_state(ServerState::Running))
+                    .run_if(on_message::<FromClient<SendMoveInput>>),
+                replay_move_inputs_on_server.run_if(in_state(ServerState::Running)),
+            )
+                .chain()
+                .in_set(MovementSystems),
+        )
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
@@ -31,6 +49,7 @@ pub fn plugin(app: &mut App) {
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
+        .add_mapped_client_message::<SendMoveInput>(Channel::Ordered)
         .replicate_once::<GridLockedMovement>()
         .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>,)>();
 }
