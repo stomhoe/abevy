@@ -17,7 +17,7 @@ pub struct TrustedForUnaCosa;
 pub struct TrustedForOtracosa;
 
 #[derive(Component, Debug, Default, Clone)]
-pub struct TrustedMovement;
+pub struct TrustedForMovement;
 
 #[derive(Debug, Component, Default, Serialize, Deserialize, Clone)]
 #[require(Player)]

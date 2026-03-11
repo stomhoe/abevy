@@ -19,7 +19,7 @@
     ],
     mass_kg: 70.0,
     distributed_totals: {
-        "walk_speed": 150,
+        "walk_speed": 60,
     },
     body_tree_or_sampler: "human",
 

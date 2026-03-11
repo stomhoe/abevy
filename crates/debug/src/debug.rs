@@ -5,6 +5,8 @@ use bevy_inspector_egui::bevy_egui::EguiPrimaryContextPass;
 use bevy::ecs::schedule::common_conditions::on_message;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
+use game_common::AcClientSystems;
+use movement::MovementSystems;
 
 use crate::{
     being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
@@ -40,6 +42,10 @@ pub fn plugin(app: &mut App) {
             FixedUpdate,
             (
                 debug_increase_speed,
+                (disable_movement_while_speed_debug_update_pending)
+                    .in_set(AcClientSystems)
+                    .before(MovementSystems)
+                    .run_if(in_state(ClientState::Connected)),
                 receive_increase_speed_from_client
                     .after(debug_increase_speed)
                     .run_if(in_state(ServerState::Running))
@@ -86,6 +92,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DubugWindowsVisibility>()
         .init_resource::<DebugSelectedEntities>()
         .init_resource::<DebugChunkingUiState>()
+        .init_resource::<PendingSpeedDebugUpdates>()
         .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()

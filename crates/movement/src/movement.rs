@@ -51,6 +51,9 @@ pub fn plugin(app: &mut App) {
                     copy_player_move_input_to_beings,
                     send_move_input_to_server
                         .run_if(in_state(ClientState::Connected)),
+                    receive_trusted_gpos_from_client
+                        .run_if(in_state(ServerState::Running))
+                        .run_if(on_message::<FromClient<SendTrustedGpos>>),
                     receive_move_input_from_client
                         .run_if(in_state(ServerState::Running))
                         .run_if(on_message::<FromClient<SendMoveInput>>),
@@ -71,6 +74,7 @@ pub fn plugin(app: &mut App) {
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendMoveInput>(Channel::Ordered)
+        .add_mapped_client_message::<SendTrustedGpos>(Channel::Ordered)
         .add_mapped_server_message::<SyncGpos>(Channel::Ordered)
         .add_mapped_server_message::<SyncMovementTick>(Channel::Ordered)
         .add_mapped_server_message::<SyncTransform>(Channel::Unreliable)

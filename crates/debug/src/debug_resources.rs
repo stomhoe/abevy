@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use bevy::ecs::entity::EntityHashSet;
+use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use serde::Deserialize;
 pub use crate::debug_seris::*;
 use std::collections::HashMap;
@@ -130,6 +130,11 @@ pub struct WorldTileClickInspectorState {
 pub struct DebugChunkingUiState {
     pub follow_camera_chunk: bool,
     pub open_tilemap_type: Option<String>,
+}
+
+#[derive(Resource, Default)]
+pub struct PendingSpeedDebugUpdates {
+    pub by_being: EntityHashMap<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

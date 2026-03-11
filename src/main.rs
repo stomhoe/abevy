@@ -116,7 +116,7 @@ fn build_filter() -> String {
 
         log_targets::CHUNK_DESPAWN, INFO,
 
-        log_targets::DEBUG, INFO,
+        log_targets::DEBUG, DEBUG,
 
         log_targets::Z_LEVEL_SYSTEM, INFO,
         log_targets::MOVEMENT_SYSTEM, TRACE,

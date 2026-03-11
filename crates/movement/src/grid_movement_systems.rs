@@ -16,6 +16,7 @@ pub fn start_grid_locked_steps(
     fixed_time: Res<Time<Fixed>>,
     client_state: Res<State<ClientState>>,
     server_state: Res<State<ServerState>>,
+    trusted_player: Query<(), (With<player::player_components::Mine>, With<player::player_components::Player>, With<player::player_components::TrustedForMovement>)>,
     connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
     blocking_tiles: BlockingTileParamSet,
     mut beings: Query<(
@@ -31,8 +32,11 @@ pub fn start_grid_locked_steps(
     ), Without<Tile>>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
+    mut trusted_writer: MessageWriter<SendTrustedGpos>,
+    mut trusted_messages: Local<Vec<SendTrustedGpos>>,
     mut to_drain: Local<Vec<Entity>>,
 ) {
+    let is_trusted_client = client_state.get() == &ClientState::Connected && !trusted_player.is_empty();
     for (
         entity,
         controlled_locally,
@@ -61,6 +65,12 @@ pub fn start_grid_locked_steps(
         ) {
             continue;
         }
+        if is_trusted_client {
+            trusted_messages.push(SendTrustedGpos {
+                being_ent: entity,
+                gpos: *tile_pos,
+            });
+        }
         if server_state.get() == &ServerState::Running && !connected.is_empty() {
             let message = SyncGpos {
                 being_ent: entity,
@@ -78,6 +88,7 @@ pub fn start_grid_locked_steps(
         *facing_dir = CardinalDirection::from_dir_vec(dir);
     }
     writer.write_batch(messages.drain(..));
+    trusted_writer.write_batch(trusted_messages.drain(..));
 }
 
 pub fn progress_tile_transition_transform(

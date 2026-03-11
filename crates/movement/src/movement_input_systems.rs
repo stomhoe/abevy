@@ -1,6 +1,7 @@
 use ::being_shared::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use tilemap_shared::GlobalTilePos;
 
 use common::log_targets::MOVEMENT_SYSTEM;
 
@@ -14,10 +15,14 @@ pub fn tick_movement_sim(mut tick: ResMut<MovementSimTick>) {
 
 pub fn send_move_input_to_server(
     server_tick: Res<LastKnownServerMovementTick>,
+    trusted_player: Query<(), (With<player::player_components::Mine>, With<player::player_components::Player>, With<player::player_components::TrustedForMovement>)>,
     mut writer: MessageWriter<SendMoveInput>,
     beings: Query<(Entity, &InputMoveDir), (With<ComputedLocally>, Changed<InputMoveDir>)>,
     mut messages: Local<Vec<SendMoveInput>>,
 ) {
+    if !trusted_player.is_empty() {
+        return;
+    }
     for (being_ent, input_move_dir) in beings.iter() {
         let start_tick = server_tick.0.wrapping_add(INPUT_TICK_LEAD);
         let dir = input_move_dir.0.as_ivec2();
@@ -34,6 +39,62 @@ pub fn send_move_input_to_server(
             being_ent,
             dir,
             start_tick,
+        );
+    }
+    writer.write_batch(messages.drain(..));
+}
+
+pub fn receive_trusted_gpos_from_client(
+    mut events: MessageReader<FromClient<SendTrustedGpos>>,
+    trusted_players: Query<(), (With<player::player_components::Player>, With<player::player_components::TrustedForMovement>)>,
+    controlled_beings: Query<&ComputedBy>,
+    mut beings: Query<(&mut GlobalTilePos, Has<ComputedLocally>), With<Being>>,
+    mut writer: MessageWriter<ToClients<SyncGpos>>,
+    mut messages: Local<Vec<ToClients<SyncGpos>>>,
+) {
+    for from_client in events.read() {
+        let SendTrustedGpos { being_ent, gpos } = from_client.message.clone();
+        let Some(client_ent) = from_client.client_id.entity() else {
+            continue;
+        };
+        if trusted_players.get(client_ent).is_err() {
+            warn!(
+                target: MOVEMENT_SYSTEM,
+                "Dropped trusted gpos for {:?}: sender {:?} is not TrustedForMovement",
+                being_ent,
+                client_ent
+            );
+            continue;
+        }
+        let Ok(controlled_by) = controlled_beings.get(being_ent) else {
+            continue;
+        };
+        if controlled_by.client_ent != client_ent {
+            warn!(
+                target: MOVEMENT_SYSTEM,
+                "Dropped spoofed trusted gpos for {:?}: owner {:?}, sender {:?}",
+                being_ent,
+                controlled_by.client_ent,
+                client_ent
+            );
+            continue;
+        }
+        let Ok((mut being_gpos, computed_locally)) = beings.get_mut(being_ent) else {
+            continue;
+        };
+        if computed_locally {
+            continue;
+        }
+        *being_gpos = gpos;
+        messages.push(ToClients {
+            mode: SendMode::BroadcastExcept(ClientId::Client(client_ent)),
+            message: SyncGpos { being_ent, gpos },
+        });
+        debug!(
+            target: MOVEMENT_SYSTEM,
+            "Accepted trusted gpos for {:?}: {:?}",
+            being_ent,
+            gpos
         );
     }
     writer.write_batch(messages.drain(..));

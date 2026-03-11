@@ -12,6 +12,13 @@ pub struct SendMoveInput {
 }
 
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
+pub struct SendTrustedGpos {
+    #[entities]
+    pub being_ent: Entity,
+    pub gpos: GlobalTilePos,
+}
+
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
 pub struct SyncGpos {
     #[entities]
     pub being_ent: Entity,
