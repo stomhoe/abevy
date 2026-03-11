@@ -15,7 +15,9 @@ pub struct MovementSystems;
 const MOVEMENT_SCHEDULE: FixedUpdate = FixedUpdate;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(
+    app.init_resource::<MovementSimTick>()
+        .init_resource::<LastKnownServerMovementTick>()
+        .add_systems(
         Update,
         (
             add_movement_components_to_beings,
@@ -32,6 +34,9 @@ pub fn plugin(app: &mut App) {
                 receive_transform_from_server
                     .run_if(in_state(ClientState::Connected))
                     .run_if(on_message::<SyncTransform>),
+                receive_movement_tick_from_server
+                    .run_if(in_state(ClientState::Connected))
+                    .run_if(on_message::<SyncMovementTick>),
             )
                 .in_set(MovementSystems),
         )
@@ -39,14 +44,18 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
+                tick_movement_sim,
+                send_movement_tick_to_clients
+                    .run_if(in_state(ServerState::Running)),
                 (
                     copy_player_move_input_to_beings,
-                send_move_input_to_server
-                    .in_set(MovementSystems)
-                    .run_if(in_state(ClientState::Connected)),
-                receive_move_input_from_client
-                    .run_if(in_state(ServerState::Running))
-                    .run_if(on_message::<FromClient<SendMoveInput>>),
+                    send_move_input_to_server
+                        .run_if(in_state(ClientState::Connected)),
+                    receive_move_input_from_client
+                        .run_if(in_state(ServerState::Running))
+                        .run_if(on_message::<FromClient<SendMoveInput>>),
+                    apply_buffered_move_input
+                        .run_if(in_state(ServerState::Running)),
                 ).chain(),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
@@ -63,6 +72,7 @@ pub fn plugin(app: &mut App) {
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendMoveInput>(Channel::Ordered)
         .add_mapped_server_message::<SyncGpos>(Channel::Ordered)
+        .add_mapped_server_message::<SyncMovementTick>(Channel::Ordered)
         .add_mapped_server_message::<SyncTransform>(Channel::Unreliable)
         .replicate_once::<GridLockedMovement>()
         .replicate_filtered::<CardinalDirection, (Without<MoveVecMag>,)>();

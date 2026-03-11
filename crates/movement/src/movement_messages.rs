@@ -24,3 +24,8 @@ pub struct SyncTransform {
     pub being_ent: Entity,
     pub transform: Transform,
 }
+
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
+pub struct SyncMovementTick {
+    pub tick: u32,
+}

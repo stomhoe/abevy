@@ -5,11 +5,24 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct PendingMoveIntent {
+    pub start_tick: u32,
     pub dir: IVec2,
 }
 
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct InputMoveDir(pub Vec2);
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct BufferedMoveInput {
+    pub start_tick: u32,
+    pub dir: IVec2,
+}
+
+#[derive(Resource, Debug, Default, Clone, Copy)]
+pub struct MovementSimTick(pub u32);
+
+#[derive(Resource, Debug, Default, Clone, Copy)]
+pub struct LastKnownServerMovementTick(pub u32);
 
 
 #[derive(Component, Debug, Default, Clone)]
