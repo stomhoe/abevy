@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
-use sprite_animation_shared::{AnimExtraState, MoveAnimActive};
+use ::sprite_animation_shared::*;
 use crate::sprite_scale_offset::Offset2D;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
@@ -92,11 +92,11 @@ pub struct SpriteConfig;
 pub struct BaseMovementSpeed(pub f32);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
-pub struct SpriteAnimationSfx {
+pub struct SpriteAnimSfx {
     pub sound_paths: Vec<String>,
     pub every_n_frame_changes: f32,
 }
-impl Default for SpriteAnimationSfx {
+impl Default for SpriteAnimSfx {
     fn default() -> Self {
         Self {
             sound_paths: Vec::new(),

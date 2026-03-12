@@ -1,9 +1,27 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use tilemap_shared::CardinalDirection;
 
 #[derive(Component, Deserialize, Asset, TypePath, Default, Clone)]
 pub struct MultipleAnimationSeri(pub Vec<AnimationSeri>);
+
+#[derive(Component, Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum CardinalRotation {
+    #[default]
+    None,
+    West,
+    North,
+    East,
+}
+impl CardinalRotation {
+    pub fn angle(&self) -> Option<f32> {
+        match self {
+            CardinalRotation::None => None,
+            CardinalRotation::West => Some(std::f32::consts::FRAC_PI_2),
+            CardinalRotation::North => Some(std::f32::consts::PI),
+            CardinalRotation::East => Some(-std::f32::consts::FRAC_PI_2),
+        }
+    }
+}
 
 #[derive(Component, Deserialize, Serialize, Asset, TypePath, Default, Clone)]
 pub struct AnimationSeri {
@@ -34,8 +52,8 @@ pub struct AnimationSeri {
     pub flip_x: bool,
     #[serde(default)]
     pub flip_y: bool,
-    #[serde(default = "default_cardinal_direction")]
-    pub cardinal_rotation: CardinalDirection,
+    #[serde(default)]
+    pub cardinal_rotation: CardinalRotation,
     #[serde(default = "default_animation_speed")]
     pub speed: f32,
     #[serde(default)]
@@ -58,6 +76,5 @@ pub struct ClipConfig {
 
 fn default_scale_2d() -> [f32; 2] { [1.0, 1.0] }
 fn default_rows_cols() -> (usize, usize) { (1, 1) }
-fn default_cardinal_direction() -> CardinalDirection { CardinalDirection::South }
 fn default_animation_speed() -> f32 { 1.0 }
 fn default_sound_effects_every_n_frames() -> f32 { 1.0 }

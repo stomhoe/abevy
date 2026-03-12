@@ -4,7 +4,8 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use param_sets::BlockingTileParamSet;
 use common::log_targets::MOVEMENT_SYSTEM;
-use sprite_animation_shared::{BeingChangedMoveState, MoveAnimActive};
+use ::sprite_animation_shared::*;
+
 use tilemap::tile::prelude::Tile;
 use tilemap_shared::*;
 
@@ -92,8 +93,8 @@ pub fn progress_tile_transition_transform(
         &mut MoveAnimActive,
         &mut GridLockedMovement,
     )>,
-    mut writer: MessageWriter<BeingChangedMoveState>,
-    mut messages: Local<HashSet<BeingChangedMoveState>>,
+    mut writer: MessageWriter<UpdateSpriteAnimState>,
+    mut messages: Local<HashSet<UpdateSpriteAnimState>>,
 ) {
     for (being_ent, tile_pos, mut transform, mut move_anim, mut glm) in query.iter_mut() {
         glm.ensure_grid_anchor(*tile_pos);

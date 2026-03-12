@@ -1,6 +1,6 @@
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use sprite_animation_shared::{BeingChangedMoveState, MoveAnimActive};
+use ::sprite_animation_shared::*;
 use tilemap_shared::GlobalTilePos;
 
 pub fn ticks_per_tile(speed: f32, delta: f32, dir: IVec2) -> u16 {
@@ -20,7 +20,7 @@ pub fn move_anim_changed(
     being_ent: Entity,
     move_anim: &mut MoveAnimActive,
     active: bool,
-    messages: &mut HashSet<BeingChangedMoveState>,
+    messages: &mut HashSet<UpdateSpriteAnimState>,
 ) {
     move_anim.set(active, being_ent, messages);
 }

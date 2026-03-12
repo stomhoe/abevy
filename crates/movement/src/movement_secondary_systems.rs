@@ -9,7 +9,7 @@ use common::log_targets::MOVEMENT_SYSTEM;
 use common::prelude::*;
 use modifier_shared::modifier_components::AppliedModifiers;
 use sprite_animation_shared::MoveAnimActive;
-use sprite_animation_shared::BeingChangedMoveState;
+use sprite_animation_shared::UpdateSpriteAnimState;
 use tilemap_shared::{CardinalDirection, DimensionStrIdRef, GlobalTilePos};
 
 use ::being_shared::*;
@@ -46,8 +46,8 @@ pub fn add_movement_components_to_beings(
 
 pub fn update_facing_dir(
     mut query: Query<(Entity, &NormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
-    mut writer: MessageWriter<BeingChangedMoveState>,
-    mut messages: Local<HashSet<BeingChangedMoveState>>,
+    mut writer: MessageWriter<UpdateSpriteAnimState>,
+    mut messages: Local<HashSet<UpdateSpriteAnimState>>,
 ) {
     for (being_ent, norm_move_dir, glm, mut facing_dir) in query.iter_mut() {
         let dir = glm
@@ -67,7 +67,7 @@ pub fn update_facing_dir(
         if *facing_dir != next {
             *facing_dir = next;
             trace!(target: MOVEMENT_SYSTEM, "Facing updated for {:?} to {:?}", being_ent, next);
-            messages.insert(BeingChangedMoveState(being_ent));
+            messages.insert(UpdateSpriteAnimState(being_ent));
         }
     }
     writer.write_batch(messages.drain());
@@ -148,9 +148,9 @@ pub fn copy_player_move_input_to_beings(
 /// Emits a `BeingChangedMoveState` message when the speed magnitude changes.
 pub fn emit_move_state_on_movevecmag_speed_mag_change(
     query: Query<(Entity, &SpeedMagnitude)>,
-    mut writer: MessageWriter<BeingChangedMoveState>,
+    mut writer: MessageWriter<UpdateSpriteAnimState>,
     mut prev_by_ent: Local<EntityHashMap<SpeedMagnitude>>,
-    mut messages: Local<Vec<BeingChangedMoveState>>,
+    mut messages: Local<Vec<UpdateSpriteAnimState>>,
 ) {
     for (ent, &speed_magnitude) in query.iter() {
         let Some(&prev) = prev_by_ent.get(&ent) else {
@@ -158,7 +158,7 @@ pub fn emit_move_state_on_movevecmag_speed_mag_change(
             continue;
         };
         if prev != speed_magnitude {
-            messages.push(BeingChangedMoveState(ent));
+            messages.push(UpdateSpriteAnimState(ent));
             prev_by_ent.insert(ent, speed_magnitude);
         }
     }

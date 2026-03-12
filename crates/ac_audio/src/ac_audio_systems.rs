@@ -25,7 +25,7 @@ pub fn play_sprite_animation_sfx_on_frame_change(
         Option<&mut SpatialAudioEmitter>,
         Option<&mut AnimationFrameSfxState>,
     ), Changed<SpritesheetAnimation>>,
-    sprite_configs: Query<&SpriteAnimationSfx>,
+    sprite_configs: Query<&SpriteAnimSfx>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
 ) {

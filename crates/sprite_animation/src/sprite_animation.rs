@@ -4,7 +4,7 @@ use bevy_spritesheet_animation::plugin::SpritesheetAnimationPlugin;
 use bevy::prelude::*;
 use ac_audio::AcAudioSystems;
 use common::common_states::AssetLoading;
-use game_common::game_common::SimRunningSystems;
+use game_common::{AcClientSystems, game_common::SimRunningSystems};
 use sprite_systems::AcSpriteSystems;
 use ::sprite_animation_shared::*;
 use crate::{sprite_animation_init_systems::*, sprite_animation_systems::*};
@@ -20,14 +20,12 @@ pub fn plugin(app: &mut App) {
         plugin_ac_animation,
     ))
     .add_systems(Update, ((
-           animate_sprite,
-           update_animstate_for_clients
-               .run_if(in_state(ServerState::Running))
-               .after(animate_sprite),
+           switch_or_readjust_sprite_animation,
+           msg_movestate_update_to_clients_for_sprite_animation
+               .run_if(in_state(ServerState::Running)),
            client_receive_moving_anim
-               .run_if(in_state(ClientState::Connected))
+               .in_set(AcClientSystems)
                .run_if(on_message::<SyncMoveState>)
-               .after(update_animstate_for_clients),
         ).in_set(SpriteAnimationSystems),
     ))
     .add_systems(FixedUpdate, ((//está en fixed update para q no le afecte lo de SimRunningSystems del SpriteAnimationSystems
@@ -46,7 +44,7 @@ pub fn plugin(app: &mut App) {
 
     .add_mapped_server_message::<SyncMoveState>(Channel::Ordered)
 
-    .add_message::<BeingChangedMoveState>()
+    .add_message::<UpdateSpriteAnimState>()
 
     .replicate_once::<AnimExtraState>()
     .replicate_once::<MoveAnimActive>()
@@ -54,7 +52,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<AnimationSeri>()
     .replicate::<ClipStartFrames>()
     .replicate::<AlternatingStartFramesConfig>()
-    .replicate_once::<PlayingSpeed>()
+    .replicate::<PlayingSpeed>()
 
 
     //.replicate::<AlternatingStartFramesState>()

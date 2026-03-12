@@ -14,19 +14,16 @@ use ::sprite_animation_shared::*;
 use ::sprite_shared::prelude::*;
 use ::tilemap_shared::directions::*;
 
-//TODO hacer animation speed para walking proporcional a la velocidad real del being
-
 #[allow(unused_parens, )]
-pub fn animate_sprite(
-    mut cmd: Commands,
-    asset_server: Res<AssetServer>,
+pub fn switch_or_readjust_sprite_animation(
+    mut cmd: Commands, asset_server: Res<AssetServer>,
 
-    mut move_anims_changed: MessageReader<BeingChangedMoveState>,
+    mut move_anims_changed: MessageReader<UpdateSpriteAnimState>,
+
     changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
     changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<EntityZeroRef>, Without<SpriteConfig>)>,
 
     base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, Option<&Grounding>, ), ()>,
-
     mut sprites_query: Query<(
         Entity,
         Has<Sprite>,
@@ -47,7 +44,7 @@ pub fn animate_sprite(
         Has<MovementBased>,
         Has<GroundingBased>,
         Option<&BaseMovementSpeed>,
-        Option<&SpriteAnimationSfx>
+        Option<&SpriteAnimSfx>
     ), ()>,
     base_speed_query: Query<&SpeedMagnitude>,
     strid_query: Query<&StrId>,
@@ -56,16 +53,17 @@ pub fn animate_sprite(
 
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     images: Res<Assets<Image>>,
+    mut sprite_entis_to_iter: Local<EntityHashSet>,
 ) {
 
-    let mut entis_to_iter = EntityHashSet::with_capacity(
+    sprite_entis_to_iter.reserve(
         changers.iter().size_hint().0 + move_anims_changed.len() + changed_sprite_cfg_refs.iter().size_hint().0
     );
-    entis_to_iter.extend(changers.iter());
-    entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
-    entis_to_iter.extend(changed_sprite_cfg_refs.iter().map(|base_holder| base_holder.base));
+    sprite_entis_to_iter.extend(changers.iter());
+    sprite_entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
+    sprite_entis_to_iter.extend(changed_sprite_cfg_refs.iter().map(|base_holder| base_holder.base));
 
-    for (held_sprites, direction, moving, grounding) in base.iter_many(entis_to_iter) {
+    for (held_sprites, direction, moving, grounding) in base.iter_many(sprite_entis_to_iter.iter()) {
         for held_sprite in held_sprites.entities() {
             let held_sprite_strid = strid_query.get(*held_sprite).ok().cloned().unwrap_or_default();
             let Ok((ent, has_sprite, prev_anim, base_holder, sprite_cfg_ref, state_id, playing_speed, animation_progresses, transform, )) = sprites_query.get_mut(*held_sprite)
@@ -99,7 +97,6 @@ pub fn animate_sprite(
                 grounding: if grounding_based { grounding.copied().unwrap_or_default() } else { Grounding::default() },
                 state_id: state_id.cloned(),
             };
-            trace!(target: SPRITE_ANIMATION_SYSTEM, "Determined AnimType {:?} for sprite entity {:?} {}", anim_type, ent, held_sprite_strid);
 
             let Some(anim_ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
                 if !has_fallback {
@@ -148,7 +145,6 @@ pub fn animate_sprite(
                     (base_frame, false)
                 }
             };
-
             let base_anim_speed = anim_seri.map(|seri| seri.speed).unwrap_or(PlayingSpeed::default().0);
             let speed_factor = playing_speed
                 .map(|speed| speed.0)
@@ -170,7 +166,6 @@ pub fn animate_sprite(
             } else {
                 speed_factor
             };
-
             let playing = !anim_seri.map(|seri| seri.paused).unwrap_or(false);
 
             let mut spritesheet_animation =
@@ -183,9 +178,7 @@ pub fn animate_sprite(
                 playing,
                 speed_factor,
             };
-
             let mut insert_needed = false;
-
 
             if let Some(mut prev_animation) = prev_anim {
                 if prev_animation.animation != anim_handle.0 {
@@ -217,23 +210,17 @@ pub fn animate_sprite(
                 }
                 insert_needed = true;
             }
-            let target_direction = anim_seri
+            let cardinal_rotation = anim_seri
                 .map(|seri| seri.cardinal_rotation)
-                .unwrap_or(CardinalDirection::South);
+                .unwrap_or_default();
 
             if let Some(mut transform) = transform {
-                if target_direction != CardinalDirection::South {
-                    transform.rotation = Quat::from_rotation_z(cardinal_rotation_angle(target_direction));
-                } else {
-                    transform.rotation = Quat::IDENTITY;
-                }
+                transform.rotation = cardinal_rotation
+                    .angle()
+                    .map(Quat::from_rotation_z)
+                    .unwrap_or(Quat::IDENTITY);
             }
 
-            if target_direction != CardinalDirection::South {
-                cmd.entity(ent).insert(target_direction);
-            } else {
-                cmd.entity(ent).remove::<CardinalDirection>();
-            }
 
             if insert_needed {
                 let initial_frame = spritesheet_animation.progress.frame;
@@ -259,7 +246,6 @@ pub fn animate_sprite(
                         });
                     }
                 }
-
                 // Update alternating state after using it
                 if should_update_alternating_state {
                     if let Some(alt_state) = alternating_state.as_mut() {
@@ -272,19 +258,10 @@ pub fn animate_sprite(
         }
     }
 }
-
-fn cardinal_rotation_angle(direction: CardinalDirection) -> f32 {
-    match direction {
-        CardinalDirection::South => 0.0,
-        CardinalDirection::West => std::f32::consts::FRAC_PI_2,
-        CardinalDirection::North => std::f32::consts::PI,
-        CardinalDirection::East => -std::f32::consts::FRAC_PI_2,
-    }
-}
 #[allow(unused_parens)]
-pub fn update_animstate_for_clients(
+pub fn msg_movestate_update_to_clients_for_sprite_animation(
     connected: Query<&Player, Without<Mine>>,
-    mut move_anims_changed: MessageReader<BeingChangedMoveState>,
+    mut move_anims_changed: MessageReader<UpdateSpriteAnimState>,
     changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
 
     bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>)>,
@@ -318,11 +295,10 @@ pub fn update_animstate_for_clients(
 #[allow(unused_parens, )]
 pub fn client_receive_moving_anim(
     mut mreader: MessageReader<SyncMoveState>,
-    mut beings_changed_move_state_writer: MessageWriter<BeingChangedMoveState>,
+    mut beings_changed_move_state_writer: MessageWriter<UpdateSpriteAnimState>,
     mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection, Has<ComputedLocally>)>,
+    mut being_changed_state_set: Local<HashSet<UpdateSpriteAnimState>>
 ) {
-    let mut being_changed_state_set: HashSet<BeingChangedMoveState> = HashSet::new();
-
     for message in mreader.par_read() {
         let SyncMoveState { being_ent, moving, grounding, direction } = message.0;
         trace!(target: SPRITE_ANIMATION_SYSTEM, "Received moving {} for entity {:?}", moving, being_ent);
@@ -339,11 +315,8 @@ pub fn client_receive_moving_anim(
                 *direction_comp = *direction;
             }
         } else {
-            warn!("Received moving state for entity {:?} that does not exist in this client.", being_ent);
+            warn_once!("Received moving state for entity {:?} that does not exist in this client.", being_ent);
         }
-
     }
-    beings_changed_move_state_writer.write_batch(being_changed_state_set);
-
-
+    beings_changed_move_state_writer.write_batch(being_changed_state_set.drain());
 }

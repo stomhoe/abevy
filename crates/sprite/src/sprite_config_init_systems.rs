@@ -180,7 +180,7 @@ pub fn init_sprite_configs(
             cmd.entity(spritecfg_ent).insert(ids);
         }
         if !seri.sfx_every_n_frames.paths.is_empty() {
-            cmd.entity(spritecfg_ent).insert(SpriteAnimationSfx {
+            cmd.entity(spritecfg_ent).insert(SpriteAnimSfx {
                 sound_paths: seri.sfx_every_n_frames.paths.clone(),
                 every_n_frame_changes: seri.sfx_every_n_frames.n.max(0.001),
             });

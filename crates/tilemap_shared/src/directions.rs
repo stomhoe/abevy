@@ -38,6 +38,14 @@ impl CardinalDirection {
             CardinalDirection::East => IVec2::new(1, 0),
         }
     }
+    pub fn rotation_angle(&self) -> f32 {
+        match self {
+            CardinalDirection::South => 0.0,
+            CardinalDirection::West => std::f32::consts::FRAC_PI_2,
+            CardinalDirection::North => std::f32::consts::PI,
+            CardinalDirection::East => -std::f32::consts::FRAC_PI_2,
+        }
+    }
 }
 impl From<u8> for CardinalDirection {
     fn from(value: u8) -> Self {

@@ -39,7 +39,7 @@ pub fn receive_step_request_from_client(
     mut rate_states: Local<EntityHashMap<ClientStepRateState>>,
 ) {
     for from_client in events.read() {
-        let SendStepRequest { being_ent, dir } = from_client.message.clone();
+        let SendStepRequest { being_ent, dir: step_dir } = from_client.message.clone();
         let client_id = from_client.client_id;
         let Some(client_ent) = from_client.client_id.entity() else { continue; };
         let Ok(controlled_by) = controlled_beings.get(being_ent) else {
@@ -64,17 +64,17 @@ pub fn receive_step_request_from_client(
         let Ok((entity, &dim_ref, speed_magnitude, mut tile_pos, mut glm, mut facing_dir)) = beings.get_mut(being_ent) else {
             continue;
         };
-        let dir_vec = dir.to_dir_vec();
+        let dir_vec = step_dir.to_dir_vec();
         glm.step_dir = dir_vec;
-        if *facing_dir != dir {
+        if *facing_dir != step_dir {
             movement_log(
                 "server",
                 &format!(
-                    "turn_request ent={being_ent:?} gpos={tile_pos:?} facing_before={facing_dir:?} facing_after={dir:?} stepping={}",
+                    "turn_request ent={being_ent:?} gpos={tile_pos:?} facing_before={facing_dir:?} facing_after={step_dir:?} stepping={}",
                     glm.is_stepping()
                 ),
             );
-            *facing_dir = dir;
+            *facing_dir = step_dir;
         }
         let secs_per_step = secs_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         if secs_per_step <= 0.0 {
@@ -94,14 +94,14 @@ pub fn receive_step_request_from_client(
                 message: SyncGpos {
                     being_ent,
                     gpos: *tile_pos,
-                    dir,
+                    dir: step_dir,
                     force_resync: true,
                 },
             });
             movement_log(
                 "server",
                 &format!(
-                    "reject_early ent={being_ent:?} gpos={tile_pos:?} facing={dir:?} credit={:.2} elapsed={elapsed:.3} expected={secs_per_step:.3}",
+                    "reject_early ent={being_ent:?} gpos={tile_pos:?} facing={step_dir:?} credit={:.2} elapsed={elapsed:.3} expected={secs_per_step:.3}",
                     state.step_credit
                 ),
             );
@@ -115,7 +115,7 @@ pub fn receive_step_request_from_client(
                 message: SyncGpos {
                     being_ent,
                     gpos: *tile_pos,
-                    dir,
+                    dir: step_dir,
                     force_resync: true,
                 },
             });
@@ -124,15 +124,15 @@ pub fn receive_step_request_from_client(
                 "Rejected step request for {:?}: blocked target {:?} from dir {:?}, credit {:.2}; facing {:?}, forcing {:?}",
                 being_ent,
                 next_gpos,
-                dir,
+                step_dir,
                 state.step_credit,
-                dir,
+                step_dir,
                 tile_pos
             );
             movement_log(
                 "server",
                 &format!(
-                    "reject_blocked ent={being_ent:?} gpos={tile_pos:?} next={next_gpos:?} facing={dir:?} requested={dir:?} credit={:.2}",
+                    "reject_blocked ent={being_ent:?} gpos={tile_pos:?} next={next_gpos:?} facing={step_dir:?} requested={step_dir:?} credit={:.2}",
                     state.step_credit
                 ),
             );
@@ -149,7 +149,7 @@ pub fn receive_step_request_from_client(
             message: SyncGpos {
                 being_ent,
                 gpos: *tile_pos,
-                dir,
+                dir: step_dir,
                 force_resync: false,
             },
         });
@@ -157,7 +157,7 @@ pub fn receive_step_request_from_client(
             target: MOVEMENT_SYSTEM,
             "Accepted step request for {:?}: dir {:?}, target {:?}, credit {:.2}, expected {:.3}s",
             being_ent,
-            dir,
+            step_dir,
             tile_pos,
             state.step_credit,
             secs_per_step
