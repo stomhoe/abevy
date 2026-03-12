@@ -14,4 +14,6 @@ pub struct SyncGpos {
     #[entities]
     pub being_ent: Entity,
     pub gpos: GlobalTilePos,
+    pub dir: CardinalDirection,
+    pub force_resync: bool,
 }

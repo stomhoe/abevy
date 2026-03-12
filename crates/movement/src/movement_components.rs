@@ -6,6 +6,18 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct InputMoveDir(pub Vec2);
 
+impl InputMoveDir {
+    pub fn normalize_to_axis_dir(self) -> IVec2 {
+        if self.0 == Vec2::ZERO {
+            IVec2::ZERO
+        } else if self.0.x.abs() >= self.0.y.abs() {
+            IVec2::new(self.0.x.signum() as i32, 0)
+        } else {
+            IVec2::new(0, self.0.y.signum() as i32)
+        }
+    }
+}
+
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PendingTileCorrection {
     pub gpos: GlobalTilePos,

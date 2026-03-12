@@ -17,7 +17,6 @@ use ac_input::ac_input_actions::*;
 use player::player_components::{Mine, Player};
 
 use crate::movement_components::{GridLockedMovement, InputMoveDir, NormMoveDir, SpeedMagnitude};
-use crate::movement_helpers::normalize_to_axis_dir;
 
 pub const INPUT_DEADZONE: f32 = 0.2;
 
@@ -46,7 +45,7 @@ pub fn add_movement_components_to_beings(
 }
 
 pub fn update_facing_dir(
-    mut query: Query<(Entity, &NormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection)>,
+    mut query: Query<(Entity, &NormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
     mut writer: MessageWriter<BeingChangedMoveState>,
     mut messages: Local<HashSet<BeingChangedMoveState>>,
 ) {
@@ -59,7 +58,7 @@ pub fn update_facing_dir(
                     Some(glm.step_dir)
                 }
             })
-            .unwrap_or_else(|| normalize_to_axis_dir(norm_move_dir.0));
+            .unwrap_or_else(|| InputMoveDir(norm_move_dir.0).normalize_to_axis_dir());
         let next = if dir == IVec2::ZERO {
             *facing_dir
         } else {
@@ -119,7 +118,7 @@ pub fn copy_player_move_input_to_beings(
         let vec = if move_action.length() <= INPUT_DEADZONE {
             Vec2::ZERO
         } else {
-            normalize_to_axis_dir(move_action.normalize()).as_vec2()
+            InputMoveDir(move_action.normalize()).normalize_to_axis_dir().as_vec2()
         };
         for &being_ent in computed_beings.being_ents() {
             let Ok((computed_by, mut input_move_dir)) = beings.get_mut(being_ent) else {

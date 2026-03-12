@@ -9,6 +9,7 @@ use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 use common::log_targets::MOVEMENT_SYSTEM;
 
 use crate::{movement_components::*, movement_helpers::{secs_per_tile, ticks_per_tile}, movement_messages::*};
+use crate::movement_log::movement_log;
 
 const STEP_CREDIT_CAP: f32 = 1.75;
 const STEP_EARLY_TOLERANCE: f32 = 0.35;
@@ -20,8 +21,7 @@ pub struct ClientStepRateState {
 }
 
 pub fn receive_step_request_from_client(
-    fixed_time: Res<Time<Fixed>>,
-    real_time: Res<Time<Real>>,
+    time_fixed: Res<Time<Fixed>>,
     mut events: MessageReader<FromClient<SendStepRequest>>,
     blocking_tiles: BlockingTileParamSet,
     controlled_beings: Query<&ComputedBy>,
@@ -62,26 +62,25 @@ pub fn receive_step_request_from_client(
             continue;
         }
         let Ok((entity, &dim_ref, speed_magnitude, mut tile_pos, mut glm, mut facing_dir)) = beings.get_mut(being_ent) else {
-            warn!(
-                target: MOVEMENT_SYSTEM,
-                "Dropped step request for {:?}: missing movement state or unexpectedly ComputedLocally",
-                being_ent
-            );
             continue;
         };
         let dir_vec = dir.to_dir_vec();
-        let secs_per_step = secs_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir_vec);
-        if secs_per_step <= 0.0 {
-            debug!(
-                target: MOVEMENT_SYSTEM,
-                "Rejected step request for {:?}: invalid secs_per_step from speed {} and dir {:?}",
-                being_ent,
-                speed_magnitude.0,
-                dir
+        glm.step_dir = dir_vec;
+        if *facing_dir != dir {
+            movement_log(
+                "server",
+                &format!(
+                    "turn_request ent={being_ent:?} gpos={tile_pos:?} facing_before={facing_dir:?} facing_after={dir:?} stepping={}",
+                    glm.is_stepping()
+                ),
             );
+            *facing_dir = dir;
+        }
+        let secs_per_step = secs_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
+        if secs_per_step <= 0.0 {
             continue;
         }
-        let now = real_time.elapsed_secs_f64();
+        let now = time_fixed.elapsed_secs_f64();
         let state = rate_states.entry(being_ent).or_insert(ClientStepRateState {
             last_server_secs: now,
             step_credit: 1.0,
@@ -92,16 +91,19 @@ pub fn receive_step_request_from_client(
         if state.step_credit + STEP_EARLY_TOLERANCE < 1.0 {
             messages.push(ToClients {
                 mode: SendMode::Direct(client_id),
-                message: SyncGpos { being_ent, gpos: *tile_pos },
+                message: SyncGpos {
+                    being_ent,
+                    gpos: *tile_pos,
+                    dir,
+                    force_resync: true,
+                },
             });
-            debug!(
-                target: MOVEMENT_SYSTEM,
-                "Rejected early step request for {:?}: credit {:.2}, elapsed {:.3}s, expected {:.3}s; forcing {:?}",
-                being_ent,
-                state.step_credit,
-                elapsed,
-                secs_per_step,
-                tile_pos
+            movement_log(
+                "server",
+                &format!(
+                    "reject_early ent={being_ent:?} gpos={tile_pos:?} facing={dir:?} credit={:.2} elapsed={elapsed:.3} expected={secs_per_step:.3}",
+                    state.step_credit
+                ),
             );
             continue;
         }
@@ -110,16 +112,29 @@ pub fn receive_step_request_from_client(
         if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, next_gpos, entity) {
             messages.push(ToClients {
                 mode: SendMode::Direct(client_id),
-                message: SyncGpos { being_ent, gpos: *tile_pos },
+                message: SyncGpos {
+                    being_ent,
+                    gpos: *tile_pos,
+                    dir,
+                    force_resync: true,
+                },
             });
             debug!(
                 target: MOVEMENT_SYSTEM,
-                "Rejected step request for {:?}: blocked target {:?} from dir {:?}, credit {:.2}; forcing {:?}",
+                "Rejected step request for {:?}: blocked target {:?} from dir {:?}, credit {:.2}; facing {:?}, forcing {:?}",
                 being_ent,
                 next_gpos,
                 dir,
                 state.step_credit,
+                dir,
                 tile_pos
+            );
+            movement_log(
+                "server",
+                &format!(
+                    "reject_blocked ent={being_ent:?} gpos={tile_pos:?} next={next_gpos:?} facing={dir:?} requested={dir:?} credit={:.2}",
+                    state.step_credit
+                ),
             );
             continue;
         }
@@ -127,12 +142,16 @@ pub fn receive_step_request_from_client(
         glm.start_step(
             &mut tile_pos,
             dir_vec,
-            ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir_vec),
+            ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec),
         );
-        *facing_dir = dir;
         messages.push(ToClients {
             mode: SendMode::Broadcast,
-            message: SyncGpos { being_ent, gpos: *tile_pos },
+            message: SyncGpos {
+                being_ent,
+                gpos: *tile_pos,
+                dir,
+                force_resync: false,
+            },
         });
         debug!(
             target: MOVEMENT_SYSTEM,

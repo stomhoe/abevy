@@ -3,16 +3,6 @@ use bevy::prelude::*;
 use sprite_animation_shared::{BeingChangedMoveState, MoveAnimActive};
 use tilemap_shared::GlobalTilePos;
 
-pub fn normalize_to_axis_dir(input: Vec2) -> IVec2 {
-    if input == Vec2::ZERO {
-        IVec2::ZERO
-    } else if input.x.abs() >= input.y.abs() {
-        IVec2::new(input.x.signum() as i32, 0)
-    } else {
-        IVec2::new(0, input.y.signum() as i32)
-    }
-}
-
 pub fn ticks_per_tile(speed: f32, delta: f32, dir: IVec2) -> u16 {
     if speed <= 0.0 || delta <= 0.0 || dir == IVec2::ZERO {
         return 0;

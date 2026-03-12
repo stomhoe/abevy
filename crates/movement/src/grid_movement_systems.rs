@@ -10,6 +10,7 @@ use tilemap_shared::*;
 
 use crate::movement_components::*;
 use crate::movement_helpers::*;
+use crate::movement_log::movement_log;
 use crate::movement_messages::*;
 
 const TILE_CORRECTION_INTERVAL_SECS: f32 = 2.0;
@@ -17,20 +18,17 @@ const TILE_CORRECTION_INTERVAL_SECS: f32 = 2.0;
 pub fn start_grid_locked_steps(
     fixed_time: Res<Time<Fixed>>,
     client_state: Res<State<ClientState>>,
-    server_state: Res<State<ServerState>>,
     connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
     blocking_tiles: BlockingTileParamSet,
     mut beings: Query<(
         Entity,
-        Has<ComputedLocally>,
-        Option<&being_shared::ComputedBy>,
         &InputMoveDir,
         &DimensionRef,
         &SpeedMagnitude,
         &mut GlobalTilePos,
         &mut GridLockedMovement,
         &mut CardinalDirection,
-    ), Without<Tile>>,
+    ), (With<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
     mut step_writer: MessageWriter<SendStepRequest>,
@@ -39,8 +37,6 @@ pub fn start_grid_locked_steps(
 ) {
     for (
         entity,
-        controlled_locally,
-        _controlled_by,
         input_move_dir,
         &dim_ref,
         speed_magnitude,
@@ -49,11 +45,9 @@ pub fn start_grid_locked_steps(
         mut facing_dir,
     ) in beings.iter_mut()
     {
-        if client_state.get() == &ClientState::Connected && !controlled_locally  {
-            continue;
-        }
         glm.ensure_grid_anchor(*tile_pos);
-        let dir = normalize_to_axis_dir(input_move_dir.0);
+        let dir = input_move_dir.normalize_to_axis_dir();
+
         if !glm.try_start_step(
             &blocking_tiles,
             &mut to_drain,
@@ -65,16 +59,19 @@ pub fn start_grid_locked_steps(
         ) {
             continue;
         }
-        if client_state.get() == &ClientState::Connected && controlled_locally {
+        *facing_dir = CardinalDirection::from_dir_vec(dir);
+        if client_state.get() == &ClientState::Connected {
             step_messages.push(SendStepRequest {
                 being_ent: entity,
                 dir: CardinalDirection::from_dir_vec(dir),
             });
         }
-        if server_state.get() == &ServerState::Running && !connected.is_empty() {
+        else if !connected.is_empty() {
             let message = SyncGpos {
                 being_ent: entity,
                 gpos: *tile_pos,
+                dir: *facing_dir,
+                force_resync: false,
             };
             trace!(target: MOVEMENT_SYSTEM, "Sending gpos {:?} for {:?}", tile_pos, entity);
             messages.push(ToClients {
@@ -82,7 +79,6 @@ pub fn start_grid_locked_steps(
                 message: message.clone(),
             });
         }
-        *facing_dir = CardinalDirection::from_dir_vec(dir);
     }
     writer.write_batch(messages.drain(..));
     step_writer.write_batch(step_messages.drain(..));
@@ -117,6 +113,7 @@ pub fn receive_gpos_from_server(
     mut reader: MessageReader<SyncGpos>,
     mut beings: Query<(
         &mut GlobalTilePos,
+        &mut CardinalDirection,
         &mut Transform,
         &mut GridLockedMovement,
         &SpeedMagnitude,
@@ -124,23 +121,36 @@ pub fn receive_gpos_from_server(
     ), With<Being>>,
 ) {
     for message in reader.read() {
-        let SyncGpos { being_ent, gpos } = message;
-        let Ok((mut being_gpos, mut transform, mut glm, speed_magnitude, computed_locally)) = beings.get_mut(*being_ent) else {
+        let SyncGpos { being_ent, gpos, dir, force_resync } = message;
+        let Ok((mut being_gpos, mut facing_dir, mut transform, mut glm, speed_magnitude, computed_locally)) = beings.get_mut(*being_ent) else {
             continue;
         };
+        *facing_dir = *dir;
         if computed_locally {
+            if *force_resync {
+                *being_gpos = *gpos;
+                glm.clear_step(*gpos);
+                transform.translation = gpos.to_translation(transform.translation.z);
+                commands.entity(*being_ent).remove::<PendingTileCorrection>();
+                trace!(
+                    target: MOVEMENT_SYSTEM,
+                    "Forced client resync for {:?}: {:?} facing {:?}",
+                    being_ent,
+                    gpos,
+                    dir
+                );
+                movement_log(
+                    "client",
+                    &format!("forced_resync ent={being_ent:?} gpos={gpos:?} facing={dir:?}"),
+                );
+                continue;
+            }
             let delta = being_gpos.0 - gpos.0;
             if delta.x.abs().max(delta.y.abs()) < 1 {
                 commands.entity(*being_ent).remove::<PendingTileCorrection>();
                 continue;
             }
-            trace!(
-                target: MOVEMENT_SYSTEM,
-                "Queued client tile correction for {:?}: {:?} -> {:?}",
-                being_ent,
-                being_gpos,
-                gpos
-            );
+
             let _ = (&mut transform, &mut glm);
             commands.entity(*being_ent).insert(PendingTileCorrection {
                 gpos: *gpos,
@@ -162,7 +172,7 @@ pub fn receive_gpos_from_server(
             glm.clear_step(*gpos);
             transform.translation = gpos.to_translation(transform.translation.z);
         }
-        trace!(target: MOVEMENT_SYSTEM, "Received gpos {:?} for {:?}", gpos, being_ent);
+        trace!(target: MOVEMENT_SYSTEM, "Received gpos {:?} facing {:?} for {:?}", gpos, dir, being_ent);
     }
 }
 

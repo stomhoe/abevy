@@ -20,17 +20,17 @@ pub fn plugin(app: &mut App) {
         (
             add_movement_components_to_beings,
             add_being_input_context,
+            copy_player_move_input_to_beings,
+            receive_gpos_from_server
+                .run_if(in_state(ClientState::Connected))
+                .run_if(on_message::<SyncGpos>),
         )
             .in_set(MovementSystems),
     )
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
-                receive_gpos_from_server
-                    .run_if(in_state(ClientState::Connected))
-                    .run_if(on_message::<SyncGpos>),
                 (
-                    copy_player_move_input_to_beings,
                     receive_step_request_from_client
                         .run_if(in_state(ServerState::Running))
                         .run_if(on_message::<FromClient<SendStepRequest>>),
