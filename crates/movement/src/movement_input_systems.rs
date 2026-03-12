@@ -65,6 +65,7 @@ pub fn receive_step_request_from_client(
             continue;
         };
         let dir_vec = step_dir.to_dir_vec();
+        glm.step_dir = dir_vec;
         if *facing_dir != step_dir {
             movement_log(
                 "server",
@@ -106,6 +107,37 @@ pub fn receive_step_request_from_client(
             );
             continue;
         }
+        state.step_credit -= 1.0;
+        let next_gpos = GlobalTilePos(tile_pos.0 + dir_vec);
+        if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, next_gpos, entity) {
+            messages.push(ToClients {
+                mode: SendMode::Direct(client_id),
+                message: SyncGpos {
+                    being_ent,
+                    gpos: *tile_pos,
+                    dir: step_dir,
+                    force_resync: true,
+                },
+            });
+            debug!(
+                target: MOVEMENT_SYSTEM,
+                "Rejected step request for {:?}: blocked target {:?} from dir {:?}, credit {:.2}; facing {:?}, forcing {:?}",
+                being_ent,
+                next_gpos,
+                step_dir,
+                state.step_credit,
+                step_dir,
+                tile_pos
+            );
+            movement_log(
+                "server",
+                &format!(
+                    "reject_blocked ent={being_ent:?} gpos={tile_pos:?} next={next_gpos:?} facing={step_dir:?} requested={step_dir:?} credit={:.2}",
+                    state.step_credit
+                ),
+            );
+            continue;
+        }
         glm.ensure_grid_anchor(*tile_pos);
         let step_result = glm.try_start_step(
             &blocking_tiles,
@@ -118,7 +150,6 @@ pub fn receive_step_request_from_client(
         );
         match step_result {
             TryStartStepOutcome::Started => {
-                state.step_credit -= 1.0;
                 messages.push(ToClients {
                     mode: SendMode::Broadcast,
                     message: SyncGpos {
@@ -138,7 +169,12 @@ pub fn receive_step_request_from_client(
                     secs_per_step
                 );
             }
-            TryStartStepOutcome::Blocked => {
+            TryStartStepOutcome::AlreadyStepping => {
+                glm.start_step(
+                    &mut tile_pos,
+                    dir_vec,
+                    ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec),
+                );
                 messages.push(ToClients {
                     mode: SendMode::Broadcast,
                     message: SyncGpos {
@@ -150,16 +186,24 @@ pub fn receive_step_request_from_client(
                 });
                 debug!(
                     target: MOVEMENT_SYSTEM,
-                    "Blocked step request for {:?}: dir {:?}, gpos {:?}, credit {:.2}",
+                    "Accepted overlapping step request for {:?}: dir {:?}, target {:?}, credit {:.2}, expected {:.3}s",
                     being_ent,
                     step_dir,
                     tile_pos,
-                    state.step_credit
+                    state.step_credit,
+                    secs_per_step
                 );
             }
-            TryStartStepOutcome::ZeroDir
-            | TryStartStepOutcome::AlreadyStepping
-            | TryStartStepOutcome::ZeroStepTicks => {}
+            TryStartStepOutcome::Blocked => {
+                error!(
+                    target: MOVEMENT_SYSTEM,
+                    "Unexpected blocked try_start_step after precheck for {:?}: dir {:?}, target {:?}",
+                    being_ent,
+                    step_dir,
+                    next_gpos
+                );
+            }
+            TryStartStepOutcome::ZeroDir | TryStartStepOutcome::ZeroStepTicks => {}
         }
     }
     writer.write_batch(messages.drain(..));
