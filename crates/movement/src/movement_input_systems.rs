@@ -12,7 +12,7 @@ use crate::{movement_components::*, movement_helpers::{secs_per_tile, ticks_per_
 use crate::movement_log::movement_log;
 
 const STEP_CREDIT_CAP: f32 = 1.75;
-const STEP_EARLY_TOLERANCE: f32 = 0.35;
+const STEP_EARLY_TOLERANCE: f32 = 0.6;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ClientStepRateState {
@@ -159,7 +159,7 @@ pub fn receive_step_request_from_client(
                         force_resync: false,
                     },
                 });
-                debug!(
+                trace!(
                     target: MOVEMENT_SYSTEM,
                     "Accepted step request for {:?}: dir {:?}, target {:?}, credit {:.2}, expected {:.3}s",
                     being_ent,
