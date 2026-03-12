@@ -30,6 +30,15 @@ pub struct NormMoveDir(pub Vec2);
 #[derive(Component, Debug, Default, Clone, Copy, Deserialize, Serialize, PartialEq, )]
 pub struct SpeedMagnitude(pub f32);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TryStartStepOutcome {
+    Started,
+    ZeroDir,
+    AlreadyStepping,
+    ZeroStepTicks,
+    Blocked,
+}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct GridLockedMovement {
     pub visual_origin_tile: IVec2,
@@ -78,16 +87,22 @@ impl GridLockedMovement {
         tile_pos: &mut GlobalTilePos,
         dir: IVec2,
         step_ticks_total: u16,
-    ) -> bool {
+    ) -> TryStartStepOutcome {
         if dir == IVec2::ZERO || self.is_stepping() || step_ticks_total == 0 {
-            return false;
+            return if dir == IVec2::ZERO {
+                TryStartStepOutcome::ZeroDir
+            } else if self.is_stepping() {
+                TryStartStepOutcome::AlreadyStepping
+            } else {
+                TryStartStepOutcome::ZeroStepTicks
+            };
         }
         let next_tile = GlobalTilePos(tile_pos.0 + dir);
         if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
-            return false;
+            return TryStartStepOutcome::Blocked;
         }
         self.start_step(tile_pos, dir, step_ticks_total);
-        true
+        TryStartStepOutcome::Started
     }
 
     pub fn progress_grid_step(&mut self, tile_pos: GlobalTilePos) {

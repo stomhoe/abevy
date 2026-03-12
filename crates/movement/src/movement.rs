@@ -42,8 +42,8 @@ pub fn plugin(app: &mut App) {
                 emit_move_state_on_movevecmag_speed_mag_change,
                 start_grid_locked_steps,
                 progress_tile_transition_transform,
-                do_free_movement,
                 update_facing_dir,
+                do_free_movement,
             )
                 .in_set(MovementSystems),
         )

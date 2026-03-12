@@ -49,7 +49,7 @@ pub fn start_grid_locked_steps(
         glm.ensure_grid_anchor(*tile_pos);
         let dir = input_move_dir.normalize_to_axis_dir();
 
-        if !glm.try_start_step(
+        let step_result = glm.try_start_step(
             &blocking_tiles,
             &mut to_drain,
             dim_ref,
@@ -57,17 +57,40 @@ pub fn start_grid_locked_steps(
             &mut tile_pos,
             dir,
             ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir),
-        ) {
+        );
+        let next_dir = CardinalDirection::from_dir_vec(dir);
+        let should_sync_with_others = match step_result {
+            TryStartStepOutcome::Started => {
+                *facing_dir = next_dir;
+                true
+            }
+            TryStartStepOutcome::Blocked => {
+                if *facing_dir == next_dir {
+                    false
+                } else {
+                    *facing_dir = next_dir;
+                    debug!(
+                        target: MOVEMENT_SYSTEM,
+                        "Blocked local step for {:?}, sending facing-only request {:?}",
+                        entity,
+                        next_dir
+                    );
+                    true
+                }
+            }
+            TryStartStepOutcome::ZeroDir
+            | TryStartStepOutcome::AlreadyStepping
+            | TryStartStepOutcome::ZeroStepTicks => false,
+        };
+        if !should_sync_with_others {
             continue;
         }
-        *facing_dir = CardinalDirection::from_dir_vec(dir);
         if client_state.get() == &ClientState::Connected {
             step_messages.push(SendStepRequest {
                 being_ent: entity,
-                dir: CardinalDirection::from_dir_vec(dir),
+                dir: next_dir,
             });
-        }
-        else if !connected.is_empty() {
+        } else if !connected.is_empty() {
             let message = SyncGpos {
                 being_ent: entity,
                 gpos: *tile_pos,
