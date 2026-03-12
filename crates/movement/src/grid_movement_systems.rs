@@ -68,7 +68,7 @@ pub fn start_grid_locked_steps(
         if client_state.get() == &ClientState::Connected && controlled_locally {
             step_messages.push(SendStepRequest {
                 being_ent: entity,
-                gpos: *tile_pos,
+                dir: CardinalDirection::from_dir_vec(dir),
             });
         }
         if server_state.get() == &ServerState::Running && !connected.is_empty() {
@@ -76,7 +76,7 @@ pub fn start_grid_locked_steps(
                 being_ent: entity,
                 gpos: *tile_pos,
             };
-            debug!(target: MOVEMENT_SYSTEM, "Sending gpos {:?} for {:?}", tile_pos, entity);
+            trace!(target: MOVEMENT_SYSTEM, "Sending gpos {:?} for {:?}", tile_pos, entity);
             messages.push(ToClients {
                 mode: SendMode::Broadcast,
                 message: message.clone(),
@@ -89,47 +89,26 @@ pub fn start_grid_locked_steps(
 }
 
 pub fn progress_tile_transition_transform(
-    server_state: Res<State<ServerState>>,
-    connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
     mut query: Query<(
         Entity,
         &GlobalTilePos,
-        Option<&being_shared::ComputedBy>,
         &mut Transform,
         &mut MoveAnimActive,
         &mut GridLockedMovement,
     )>,
     mut writer: MessageWriter<BeingChangedMoveState>,
     mut messages: Local<HashSet<BeingChangedMoveState>>,
-    mut sync_writer: MessageWriter<ToClients<SyncTransform>>,
-    mut sync_messages: Local<Vec<ToClients<SyncTransform>>>,
 ) {
-    let should_sync = server_state.get() == &ServerState::Running && !connected.is_empty();
-    for (being_ent, tile_pos, controlled_by, mut transform, mut move_anim, mut glm) in query.iter_mut() {
+    for (being_ent, tile_pos, mut transform, mut move_anim, mut glm) in query.iter_mut() {
         glm.ensure_grid_anchor(*tile_pos);
         glm.progress_grid_step(*tile_pos);
         let new_translation = glm.grid_translation(*tile_pos, transform.translation.z);
         if transform.translation != new_translation {
             transform.translation = new_translation;
-            if should_sync {
-                let message = SyncTransform {
-                    being_ent,
-                    transform: *transform,
-                };
-                let mode = match controlled_by {
-                    Some(controlled_by) => {
-                        SendMode::BroadcastExcept(ClientId::Client(controlled_by.client_ent))
-                    }
-                    None => SendMode::Broadcast,
-                };
-                debug!(target: MOVEMENT_SYSTEM, "Sending transform for {:?}", being_ent);
-                sync_messages.push(ToClients { mode, message });
-            }
         }
         move_anim_changed(being_ent, &mut move_anim, glm.is_stepping(), &mut messages);
     }
     writer.write_batch(messages.drain());
-    sync_writer.write_batch(sync_messages.drain(..));
 }
 
 pub fn receive_gpos_from_server(
@@ -155,7 +134,7 @@ pub fn receive_gpos_from_server(
                 commands.entity(*being_ent).remove::<PendingTileCorrection>();
                 continue;
             }
-            debug!(
+            trace!(
                 target: MOVEMENT_SYSTEM,
                 "Queued client tile correction for {:?}: {:?} -> {:?}",
                 being_ent,
@@ -183,7 +162,7 @@ pub fn receive_gpos_from_server(
             glm.clear_step(*gpos);
             transform.translation = gpos.to_translation(transform.translation.z);
         }
-        debug!(target: MOVEMENT_SYSTEM, "Received gpos {:?} for {:?}", gpos, being_ent);
+        trace!(target: MOVEMENT_SYSTEM, "Received gpos {:?} for {:?}", gpos, being_ent);
     }
 }
 
@@ -207,7 +186,7 @@ pub fn apply_pending_tile_corrections(
         if correction.secs_left > 0.0 {
             continue;
         }
-        debug!(
+        trace!(
             target: MOVEMENT_SYSTEM,
             "Snapping client tile correction for {:?}: {:?} -> {:?}",
             being_ent,
@@ -218,22 +197,5 @@ pub fn apply_pending_tile_corrections(
         glm.clear_step(correction.gpos);
         transform.translation = correction.gpos.to_translation(transform.translation.z);
         commands.entity(being_ent).remove::<PendingTileCorrection>();
-    }
-}
-
-pub fn receive_transform_from_server(
-    mut reader: MessageReader<SyncTransform>,
-    mut beings: Query<(&mut Transform, Has<ComputedLocally>, Has<GridLockedMovement>)>,
-) {
-    for message in reader.read() {
-        let SyncTransform { being_ent, transform } = message;
-        let Ok((mut being_transform, computed_locally, has_grid_locked_movement)) = beings.get_mut(*being_ent) else {
-            continue;
-        };
-        if computed_locally || has_grid_locked_movement {
-            continue;
-        }
-        *being_transform = transform.clone();
-        debug!(target: MOVEMENT_SYSTEM, "Received transform for {:?}", being_ent);
     }
 }

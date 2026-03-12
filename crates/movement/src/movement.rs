@@ -24,27 +24,17 @@ pub fn plugin(app: &mut App) {
             .in_set(MovementSystems),
     )
         .add_systems(
-            FixedUpdate,
+            MOVEMENT_SCHEDULE,
             (
                 receive_gpos_from_server
                     .run_if(in_state(ClientState::Connected))
                     .run_if(on_message::<SyncGpos>),
-                receive_transform_from_server
-                    .run_if(in_state(ClientState::Connected))
-                    .run_if(on_message::<SyncTransform>),
-            )
-                .in_set(MovementSystems),
-        )
-
-        .add_systems(
-            MOVEMENT_SCHEDULE,
-            (
                 (
                     copy_player_move_input_to_beings,
                     receive_step_request_from_client
                         .run_if(in_state(ServerState::Running))
                         .run_if(on_message::<FromClient<SendStepRequest>>),
-                ).chain(),
+                ),
                 apply_pending_tile_corrections
                     .run_if(in_state(ClientState::Connected)),
                 process_input_direction_modifiers,
@@ -55,14 +45,12 @@ pub fn plugin(app: &mut App) {
                 do_free_movement,
                 update_facing_dir,
             )
-                .chain()
                 .in_set(MovementSystems),
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
         .add_mapped_client_message::<SendStepRequest>(Channel::Ordered)
         .add_mapped_server_message::<SyncGpos>(Channel::Ordered)
-        .add_mapped_server_message::<SyncTransform>(Channel::Unreliable)
         .replicate_once::<GridLockedMovement>()
         .replicate::<SpeedMagnitude>()
         .replicate_filtered::<CardinalDirection, (Without<NormMoveDir>,)>();

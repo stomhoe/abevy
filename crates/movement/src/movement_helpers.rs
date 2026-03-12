@@ -22,6 +22,10 @@ pub fn ticks_per_tile(speed: f32, delta: f32, dir: IVec2) -> u16 {
     ((distance / (speed * delta)).ceil() as u16).max(1)
 }
 
+pub fn secs_per_tile(speed: f32, delta: f32, dir: IVec2) -> f32 {
+    ticks_per_tile(speed, delta, dir) as f32 * delta
+}
+
 pub fn move_anim_changed(
     being_ent: Entity,
     move_anim: &mut MoveAnimActive,
