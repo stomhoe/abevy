@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use param_sets::BlockingTileParamSet;
 use common::log_targets::MOVEMENT_SYSTEM;
+use common::file_logging::file_log;
 use ::sprite_animation_shared::*;
 
 use tilemap::tile::prelude::Tile;
@@ -11,7 +12,6 @@ use tilemap_shared::*;
 
 use crate::movement_components::*;
 use crate::movement_helpers::*;
-use crate::movement_log::movement_log;
 use crate::movement_messages::*;
 
 const TILE_CORRECTION_INTERVAL_SECS: f32 = 2.0;
@@ -60,7 +60,7 @@ pub fn start_grid_locked_steps(
         );
         let next_dir = CardinalDirection::from_dir_vec(dir);
         let should_sync_with_others = match step_result {
-            TryStartStepOutcome::Started => {
+            TryStartStepOutcome::Successful => {
                 *facing_dir = next_dir;
                 true
             }
@@ -69,16 +69,10 @@ pub fn start_grid_locked_steps(
                     false
                 } else {
                     *facing_dir = next_dir;
-                    debug!(
-                        target: MOVEMENT_SYSTEM,
-                        "Blocked local step for {:?}, sending facing-only request {:?}",
-                        entity,
-                        next_dir
-                    );
                     true
                 }
             }
-            TryStartStepOutcome::ZeroDir
+            TryStartStepOutcome::IVec2ZeroDir
             | TryStartStepOutcome::AlreadyStepping
             | TryStartStepOutcome::ZeroStepTicks => false,
         };
@@ -97,7 +91,6 @@ pub fn start_grid_locked_steps(
                 dir: *facing_dir,
                 force_resync: false,
             };
-            trace!(target: MOVEMENT_SYSTEM, "Sending gpos {:?} for {:?}", tile_pos, entity);
             messages.push(ToClients {
                 mode: SendMode::Broadcast,
                 message: message.clone(),
@@ -163,7 +156,8 @@ pub fn receive_gpos_from_server(
                     gpos,
                     dir
                 );
-                movement_log(
+                file_log(
+                    "move",
                     "client",
                     &format!("forced_resync ent={being_ent:?} gpos={gpos:?} facing={dir:?}"),
                 );

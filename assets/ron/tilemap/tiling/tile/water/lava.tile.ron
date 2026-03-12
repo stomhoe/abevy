@@ -9,6 +9,7 @@
     shader: "terrbl",
     terrbl_params: (
         texture_path: "texture/world/terr/water/lava.png",
+        priority: 80.0,
         scale: 25,
         speed: 0.0,
         wavy_strength: 0.0,

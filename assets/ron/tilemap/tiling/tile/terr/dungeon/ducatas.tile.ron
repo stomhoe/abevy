@@ -9,6 +9,7 @@
     shader: "terrbl",
     terrbl_params: (
         texture_path: "texture/world/terr/dungeon/ducatas.png",
+        priority: 100.0,
         scale: 17,
         speed: 0.0,
         wavy_strength: 0.0,

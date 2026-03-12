@@ -4,15 +4,11 @@ use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
-use ac_input::ac_input_actions::{BeingInputContext, BeingMoveAction};
+use ac_input::ac_input_actions::*;
 use common::common_components::DisplayName;
-use modifier_shared::modifier_components::ApplyMode;
-use modifier_shared::modifier_components::{BaseValue, CurrEffectiveValue, ModifierTarget};
-use modifier_shared::modifier_types::{
-    BleedRate, BloodCapacity, HitpointRegenRate, HitpointsCapacity, ManipulationDexterity,
-    ManipulationStrength, PainSensitivity, Vision, WalkSpeed,
-};
-use movement::movement_components::{GridLockedMovement, InputMoveDir, NormMoveDir, SpeedMagnitude};
+use modifier_shared::modifier_components::*;
+use modifier_shared::modifier_types::*;
+use movement::movement_components::*;
 use player::player_components::{Mine, Player};
 use tilemap_shared::CardinalDirection;
 
@@ -69,8 +65,8 @@ pub fn being_details_inspector(world: &mut World) {
     let mut computed_by_query = world.query::<Option<&ComputedBy>>();
     let mut computed_locally_query = world.query::<Has<ComputedLocally>>();
     let mut player_actions_query =
-        world.query_filtered::<&Actions<BeingInputContext>, (With<Mine>, With<Player>)>();
-    let mut player_move_action_query = world.query::<&Action<BeingMoveAction>>();
+        world.query_filtered::<&Actions<BeingDirectControlInputContext>, (With<Mine>, With<Player>)>();
+    let mut player_move_action_query = world.query::<&Action<BeingWasdAction>>();
     let mut grid_move_query = world.query::<Option<&GridLockedMovement>>();
     let mut gpos_query = world.query::<Option<&tilemap_shared::GlobalTilePos>>();
     let mut facing_query = world.query::<Option<&CardinalDirection>>();

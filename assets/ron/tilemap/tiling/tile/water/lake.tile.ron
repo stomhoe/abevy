@@ -8,6 +8,7 @@
     shader: "terrbl",
     terrbl_params: (
         texture_path: "texture/world/terr/water/lake.png",
+        priority: 60.0,
         scale: 25,
         speed: 0.0,
         wavy_strength: 0.0,

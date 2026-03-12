@@ -144,7 +144,7 @@ pub fn init_tiles(
         }
 
         let delete_other_tiles_seri = std::mem::take(&mut seri.delete_other_tiles);
-        let delete_other_tiles = delete_other_tiles_seri.to_delete_other_tiles();
+        let delete_other_tiles = delete_other_tiles_from_seri(&delete_other_tiles_seri);
         if !delete_other_tiles.is_empty() {
             cmd.entity(tile_enti).insert(delete_other_tiles);
         }
@@ -228,7 +228,7 @@ pub fn init_tiles(
         if !seri.is_spritetile {
             cmd.entity(tile_enti).insert(TileImagePaths(std::mem::take(&mut seri.img_paths)));
             if seri.shader.trim() == "terrbl" {
-                cmd.entity(tile_enti).insert(seri.terrbl_params.to_terrbl_params());
+                cmd.entity(tile_enti).insert(terrbl_params_from_seri(&seri.terrbl_params));
                 let Ok(shader_ent) = shader_map.0.get_cloned("terrbl") else {
                     error!("Tile '{}' could not resolve single terrbl shader entity", str_id);
                     return;

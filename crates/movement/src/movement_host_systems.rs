@@ -6,10 +6,10 @@ use param_sets::BlockingTileParamSet;
 use tilemap::tile::prelude::Tile;
 use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 
+use common::file_logging::file_log;
 use common::log_targets::MOVEMENT_SYSTEM;
 
 use crate::{movement_components::*, movement_helpers::{secs_per_tile, ticks_per_tile}, movement_messages::*};
-use crate::movement_log::movement_log;
 
 const STEP_CREDIT_CAP: f32 = 1.75;
 const STEP_EARLY_TOLERANCE: f32 = 0.6;
@@ -67,7 +67,8 @@ pub fn receive_step_request_from_client(
         let dir_vec = step_dir.to_dir_vec();
         glm.step_dir = dir_vec;
         if *facing_dir != step_dir {
-            movement_log(
+            file_log(
+                "move",
                 "server",
                 &format!(
                     "turn_request ent={being_ent:?} gpos={tile_pos:?} facing_before={facing_dir:?} facing_after={step_dir:?} stepping={}",
@@ -98,7 +99,8 @@ pub fn receive_step_request_from_client(
                     force_resync: true,
                 },
             });
-            movement_log(
+            file_log(
+                "move",
                 "server",
                 &format!(
                     "reject_early ent={being_ent:?} gpos={tile_pos:?} facing={step_dir:?} credit={:.2} elapsed={elapsed:.3} expected={secs_per_step:.3}",
@@ -129,7 +131,8 @@ pub fn receive_step_request_from_client(
                 step_dir,
                 tile_pos
             );
-            movement_log(
+            file_log(
+                "move",
                 "server",
                 &format!(
                     "reject_blocked ent={being_ent:?} gpos={tile_pos:?} next={next_gpos:?} facing={step_dir:?} requested={step_dir:?} credit={:.2}",
@@ -149,7 +152,7 @@ pub fn receive_step_request_from_client(
             ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec),
         );
         match step_result {
-            TryStartStepOutcome::Started => {
+            TryStartStepOutcome::Successful => {
                 messages.push(ToClients {
                     mode: SendMode::Broadcast,
                     message: SyncGpos {
@@ -203,7 +206,7 @@ pub fn receive_step_request_from_client(
                     next_gpos
                 );
             }
-            TryStartStepOutcome::ZeroDir | TryStartStepOutcome::ZeroStepTicks => {}
+            TryStartStepOutcome::IVec2ZeroDir | TryStartStepOutcome::ZeroStepTicks => {}
         }
     }
     writer.write_batch(messages.drain(..));

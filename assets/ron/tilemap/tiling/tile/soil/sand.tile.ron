@@ -10,7 +10,9 @@
     shader: "terrbl",
     terrbl_params: (
         texture_path: "texture/world/terr/sand.png",
-        scale: 100,
+        priority: 30.0,
+        tint: (255, 255, 255 , 255),
+        scale: 8,
         speed: 0.0,
         wavy_strength: 0.0,
         time_offset: 0.0,

@@ -32,8 +32,8 @@ pub struct SpeedMagnitude(pub f32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TryStartStepOutcome {
-    Started,
-    ZeroDir,
+    Successful,
+    IVec2ZeroDir,
     AlreadyStepping,
     ZeroStepTicks,
     Blocked,
@@ -90,7 +90,7 @@ impl GridLockedMovement {
     ) -> TryStartStepOutcome {
         if dir == IVec2::ZERO || self.is_stepping() || step_ticks_total == 0 {
             return if dir == IVec2::ZERO {
-                TryStartStepOutcome::ZeroDir
+                TryStartStepOutcome::IVec2ZeroDir
             } else if self.is_stepping() {
                 TryStartStepOutcome::AlreadyStepping
             } else {
@@ -102,7 +102,7 @@ impl GridLockedMovement {
             return TryStartStepOutcome::Blocked;
         }
         self.start_step(tile_pos, dir, step_ticks_total);
-        TryStartStepOutcome::Started
+        TryStartStepOutcome::Successful
     }
 
     pub fn progress_grid_step(&mut self, tile_pos: GlobalTilePos) {

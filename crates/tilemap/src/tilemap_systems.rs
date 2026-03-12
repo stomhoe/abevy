@@ -501,6 +501,7 @@ fn build_terrbl_material_for_map(
     let mut tile_indices_data = vec![0_u8; px_count * 4];
     let mut tile_flags_data = vec![0_u8; px_count * 4];
     let mut tile_params_data = vec![0_u8; px_count * 16];
+    let mut tile_tint_data = vec![0_u8; px_count * 16];
     let mut overlay_textures: Vec<Handle<Image>> = Vec::new();
 
     for y in 0..height {
@@ -546,6 +547,17 @@ fn build_terrbl_material_for_map(
             if params.blend_enabled {
                 flags |= 1 << 1;
             }
+            if params.has_tint {
+                flags |= 1 << 3;
+            }
+            if params.has_tint_mask_target {
+                flags |= 1 << 4;
+                tile_flags_data[px_i + 1] = (params.tint_mask_target.x.clamp(0.0, 1.0) * 255.0) as u8;
+                tile_flags_data[px_i + 2] = (params.tint_mask_target.y.clamp(0.0, 1.0) * 255.0) as u8;
+                tile_flags_data[px_i + 3] = (params.tint_mask_target.z.clamp(0.0, 1.0) * 255.0) as u8;
+            } else {
+                tile_flags_data[px_i + 3] = 255;
+            }
 
             let mut overlay_idx = 0_u16;
             if let Some(path_holder) = params.texture_path.as_ref() {
@@ -588,7 +600,6 @@ fn build_terrbl_material_for_map(
             }
             encode_u16(&mut tile_indices_data, px_i + 2, overlay_idx);
             tile_flags_data[px_i] = flags;
-            tile_flags_data[px_i + 3] = 255;
             if *terrbl_debug_budget > 0 {
                 *terrbl_debug_budget -= 1;
                 trace!(
@@ -606,18 +617,25 @@ fn build_terrbl_material_for_map(
             encode_f32x4(
                 &mut tile_params_data,
                 px_i * 4,
-                [params.scale, params.speed, params.wavy_strength, params.time_offset],
+                [params.scale, params.speed, params.wavy_strength, params.priority],
+            );
+            encode_f32x4(
+                &mut tile_tint_data,
+                px_i * 4,
+                [params.tint.x, params.tint.y, params.tint.z, params.time_offset],
             );
         }
     }
     let tile_indices_map = images.add(create_image_u8(width, height, tile_indices_data));
     let tile_flags_map = images.add(create_image_u8(width, height, tile_flags_data));
     let tile_params_map = images.add(create_image_f32(width, height, tile_params_data));
+    let tile_tint_map = images.add(create_image_f32(width, height, tile_tint_data));
 
     let mut mat = TerrBlendMat {
         tile_indices_map,
         tile_flags_map,
         tile_params_map,
+        tile_tint_map,
         map_size_tiles: Vec2::new(width as f32, height as f32),
         time: 0.0,
         ..Default::default()

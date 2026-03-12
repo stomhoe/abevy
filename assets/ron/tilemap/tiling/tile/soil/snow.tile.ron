@@ -8,6 +8,7 @@
     shader: "terrbl",
     terrbl_params: (
         texture_path: "texture/world/terr/snow.png",
+        priority: 40.0,
         scale: 8,
         speed: 0.0,
         wavy_strength: 0.0,

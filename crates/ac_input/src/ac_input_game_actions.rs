@@ -1,8 +1,4 @@
-use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
-
-#[derive(Component)]
-pub struct PlayerInputContext;
 
 #[derive(Debug, InputAction)]
 #[action_output(bool)]

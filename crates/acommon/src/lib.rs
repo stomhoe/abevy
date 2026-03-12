@@ -12,6 +12,7 @@ pub mod common_types;
 pub mod common_states;
 pub mod common_resources;
 pub mod def_db;
+pub mod file_logging;
 mod common_systems;
 mod common_tag_systems;
 pub mod entity_map_macros;
@@ -34,6 +35,7 @@ pub mod prelude {
         common_states::*,
         common_resources::*,
         def_db::*,
+        file_logging::*,
         common_systems::*,
         common_tag_systems::*,
         entity_map_macros::*,

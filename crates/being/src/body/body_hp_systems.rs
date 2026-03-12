@@ -475,13 +475,11 @@ pub fn update_body_health_from_parts(
 /// Slowdown multiplier is 1.0 - pain, so pain = 0 means no slowdown, pain = 1.0 means full stop.
 pub fn apply_pain_slowdown(
     mut cmd: Commands,
-    mut body_health_query: Query<(&BodyOf, &BodySums), Changed<BodySums>>,
+    mut body_health_query: Query<(Entity, &BodyOf, &BodySums), Changed<BodySums>>,
     mut slowdown_mod_query: Query<(&ModifierTarget, &mut BaseValue), With<PainSlowdown>>,
 ) {
-    let mut common_to_insert = Vec::new();
-
     for (target, mut base_value) in slowdown_mod_query.iter_mut() {
-        for (body_of, body_health) in body_health_query.iter_mut() {
+        for (_, body_of, body_health) in body_health_query.iter_mut() {
             if body_of.being != target.0 {
                 continue;
             }
@@ -495,7 +493,7 @@ pub fn apply_pain_slowdown(
         has_slowdown.insert(target.0);
     }
 
-    for (body_of, body_health) in body_health_query.iter_mut() {
+    for (body_ent, body_of, body_health) in body_health_query.iter_mut() {
         if has_slowdown.contains(&body_of.being) {
             continue;
         }
@@ -503,22 +501,19 @@ pub fn apply_pain_slowdown(
 
         let pain_multiplier = (1.0 - body_health.pain).max(0.0);
 
-        let walk_entity = cmd.spawn(WalkSpeed).id();
-        let swim_entity = cmd.spawn(SwimSpeed).id();
-        let fly_entity = cmd.spawn(FlySpeed).id();
-
         let bundle = (
             ModifierTarget(body_of.being),
             BaseValue(pain_multiplier),
+            CurrEffectiveValue(pain_multiplier),
             ApplyMode::Mul,
             PainSlowdown,
             ModifierTags::default(),
             StrId::trunc("pain_slowdown"),
+            ChildOf(body_ent),
         );
 
-        common_to_insert.push((walk_entity, bundle.clone()));
-        common_to_insert.push((swim_entity, bundle.clone()));
-        common_to_insert.push((fly_entity, bundle.clone()));
+        cmd.spawn((WalkSpeed, bundle.clone()));
+        cmd.spawn((SwimSpeed, bundle.clone()));
+        cmd.spawn((FlySpeed, bundle.clone()));
     }
-    cmd.try_insert_batch(common_to_insert);
 }

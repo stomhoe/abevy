@@ -1,12 +1,15 @@
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
+use player::player_components::{Mine, Player};
 
 use crate::ac_input_actions::*;
 
-pub fn spawn_player_input_context(mut commands: Commands) {
+pub fn spawn_input_contexts(mut commands: Commands) {
+    let holder = commands.spawn(InputContextsHolder).id();
     commands.spawn((
-        PlayerInputContext,
-        actions!(PlayerInputContext[
+        DebugInputContext,
+        ChildOf(holder),
+        actions!(DebugInputContext[
             (Action::<ToggleSimulationAction>::new(), bindings![KeyCode::Space]),
             (
                 Action::<DebugIncreaseSpeedAction>::new(),
@@ -33,4 +36,39 @@ pub fn spawn_player_input_context(mut commands: Commands) {
             ),
         ]),
     ));
+}
+
+pub fn add_being_input_context(
+    mut commands: Commands,
+    my_player_query: Query<Entity, (With<Mine>, With<Player>, Without<Actions<BeingDirectControlInputContext>>)>,
+    players_query: Query<Entity, With<Player>>,
+    mut removed_mine_query: RemovedComponents<Mine>,
+) {
+    for player_ent in my_player_query.iter() {
+        commands.entity(player_ent).try_insert((
+            BeingDirectControlInputContext,
+            actions!(BeingDirectControlInputContext[
+                (
+                    Action::<BeingWasdAction>::new(),
+                    DeadZone::default(),
+                    Bindings::spawn((
+                        Cardinal::wasd_keys(),
+                        Cardinal::arrows(),
+                        Cardinal::dpad(),
+                        Axial::left_stick(),
+                    )),
+                ),
+                (
+                    Action::<BeingMeleeAttackAction>::new(),
+                    bindings![KeyCode::ControlLeft],
+                ),
+            ]),
+        ));
+    }
+    for removed_mine in removed_mine_query.read() {
+        let Ok(player_ent) = players_query.get(removed_mine) else {
+            continue;
+        };
+        commands.entity(player_ent).try_remove::<Actions<BeingDirectControlInputContext>>();
+    }
 }

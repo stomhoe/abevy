@@ -12,6 +12,7 @@
     shader: "terrbl",
     terrbl_params: (
         texture_path: "texture/world/terr/water/19.png",
+        priority: 70.0,
         scale: 25,
         speed: 0.5,
         wavy_strength: 1.0,

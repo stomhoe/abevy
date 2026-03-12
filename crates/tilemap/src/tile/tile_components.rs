@@ -358,7 +358,11 @@ pub struct TerrBlendParams {
     pub texture_path: Option<ImagePathHolder>,
     #[serde(skip, default)]
     pub texture_handle: Handle<Image>,
-    pub mask_color: Vec4,
+    pub priority: f32,
+    pub tint: Vec4,
+    pub tint_mask_target: Vec4,
+    pub has_tint: bool,
+    pub has_tint_mask_target: bool,
     pub scale: f32,
     pub speed: f32,
     pub wavy_strength: f32,
@@ -366,74 +370,67 @@ pub struct TerrBlendParams {
     pub blend_enabled: bool,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct TerrblParamsSeri {
-    #[serde(default)]
-    pub texture_path: String,
-    #[serde(default = "default_terrbl_scale")]
-    pub scale: f32,
-    #[serde(default)]
-    pub speed: f32,
-    #[serde(default)]
-    pub wavy_strength: f32,
-    #[serde(default)]
-    pub time_offset: f32,
-    #[serde(default = "default_true")]
-    pub blend_enabled: bool,
-}
-impl Default for TerrblParamsSeri {
-    fn default() -> Self {
-        Self {
-            texture_path: String::new(),
-            scale: default_terrbl_scale(),
-            speed: 0.0,
-            wavy_strength: 0.0,
-            time_offset: 0.0,
-            blend_enabled: default_true(),
-        }
-    }
-}
-impl TerrblParamsSeri {
-    pub fn to_terrbl_params(&self) -> TerrBlendParams {
-        let texture_path = if self.texture_path.trim().is_empty() {
-            None
-        } else {
-            let Ok(path_holder) = ImagePathHolder::new(self.texture_path.clone()) else {
-                error!(
-                    target: TILE_INIT,
-                    "Invalid terrbl texture path '{}', falling back to no overlay",
-                    self.texture_path
-                );
-                return TerrBlendParams {
-                    texture_path: None,
-                    texture_handle: Handle::default(),
-                    mask_color: Vec4::new(255.0, 0.0, 0.0, 255.0),
-                    scale: self.scale,
-                    speed: self.speed,
-                    wavy_strength: self.wavy_strength,
-                    time_offset: self.time_offset,
-                    blend_enabled: self.blend_enabled,
-                };
+pub fn terrbl_params_from_seri(seri: &TerrblParamsSeri) -> TerrBlendParams {
+    let texture_path = if seri.texture_path.trim().is_empty() {
+        None
+    } else {
+        let Ok(path_holder) = ImagePathHolder::new(seri.texture_path.clone()) else {
+            error!(
+                target: TILE_INIT,
+                "Invalid terrbl texture path '{}', falling back to no overlay",
+                seri.texture_path
+            );
+            return TerrBlendParams {
+                texture_path: None,
+                texture_handle: Handle::default(),
+                priority: seri.priority,
+                tint: Vec4::ONE,
+                tint_mask_target: Vec4::ZERO,
+                has_tint: false,
+                has_tint_mask_target: false,
+                scale: seri.scale,
+                speed: seri.speed,
+                wavy_strength: seri.wavy_strength,
+                time_offset: seri.time_offset,
+                blend_enabled: seri.blend_enabled,
             };
-            Some(path_holder)
         };
-        TerrBlendParams {
-            texture_path,
-            texture_handle: Handle::default(),
-            mask_color: Vec4::new(255.0, 0.0, 0.0, 255.0),
-            scale: self.scale,
-            speed: self.speed,
-            wavy_strength: self.wavy_strength,
-            time_offset: self.time_offset,
-            blend_enabled: self.blend_enabled,
-        }
+        Some(path_holder)
+    };
+    let has_tint = seri.tint != [255, 255, 255, 255];
+    let has_tint_mask_target = seri.tint_mask_target != [255, 0, 255, 0];
+    TerrBlendParams {
+        texture_path,
+        texture_handle: Handle::default(),
+        priority: seri.priority,
+        tint: if has_tint {
+            Vec4::new(
+                seri.tint[0] as f32 / 255.0,
+                seri.tint[1] as f32 / 255.0,
+                seri.tint[2] as f32 / 255.0,
+                seri.tint[3] as f32 / 255.0,
+            )
+        } else {
+            Vec4::ONE
+        },
+        tint_mask_target: if has_tint_mask_target {
+            Vec4::new(
+                seri.tint_mask_target[0] as f32 / 255.0,
+                seri.tint_mask_target[1] as f32 / 255.0,
+                seri.tint_mask_target[2] as f32 / 255.0,
+                seri.tint_mask_target[3] as f32 / 255.0,
+            )
+        } else {
+            Vec4::ZERO
+        },
+        has_tint,
+        has_tint_mask_target,
+        scale: seri.scale,
+        speed: seri.speed,
+        wavy_strength: seri.wavy_strength,
+        time_offset: seri.time_offset,
+        blend_enabled: seri.blend_enabled,
     }
-}
-fn default_terrbl_scale() -> f32 {
-    1e-5
-}
-fn default_true() -> bool {
-    true
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
@@ -456,47 +453,30 @@ impl DeleteOtherTilesInSamePos {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct DeleteOtherTilesSeri {
-    #[serde(default)]
-    pub spared_z: Vec<f32>,
-    #[serde(default)]
-    pub targeted_z: Vec<f32>,
-    #[serde(default)]
-    pub spared_tags: Vec<String>,
-    #[serde(default)]
-    pub targeted_tags: Vec<String>,
-    #[serde(default)]
-    pub extra_radius: u32,
-    #[serde(default)]
-    pub priority: f32,
-}
-impl DeleteOtherTilesSeri {
-    pub fn to_delete_other_tiles(&self) -> DeleteOtherTilesInSamePos {
-        let mut spared_z = HashSet::default();
-        for &z in &self.spared_z {
-            spared_z.insert(AcZ::new(z));
-        }
-        let mut targeted_z = HashSet::default();
-        for &z in &self.targeted_z {
-            targeted_z.insert(AcZ::new(z));
-        }
-        let mut spared_tags = TagSet::default();
-        for tag in &self.spared_tags {
-            spared_tags.insert(Tag::trunc(tag));
-        }
-        let mut targeted_tags = TagSet::default();
-        for tag in &self.targeted_tags {
-            targeted_tags.insert(Tag::trunc(tag));
-        }
-        DeleteOtherTilesInSamePos {
-            spared_z,
-            targeted_z,
-            spared_tags,
-            targeted_tags,
-            extra_radius: self.extra_radius,
-            priority: self.priority,
-        }
+pub fn delete_other_tiles_from_seri(seri: &DeleteOtherTilesSeri) -> DeleteOtherTilesInSamePos {
+    let mut spared_z = HashSet::default();
+    for &z in &seri.spared_z {
+        spared_z.insert(AcZ::new(z));
+    }
+    let mut targeted_z = HashSet::default();
+    for &z in &seri.targeted_z {
+        targeted_z.insert(AcZ::new(z));
+    }
+    let mut spared_tags = TagSet::default();
+    for tag in &seri.spared_tags {
+        spared_tags.insert(Tag::trunc(tag));
+    }
+    let mut targeted_tags = TagSet::default();
+    for tag in &seri.targeted_tags {
+        targeted_tags.insert(Tag::trunc(tag));
+    }
+    DeleteOtherTilesInSamePos {
+        spared_z,
+        targeted_z,
+        spared_tags,
+        targeted_tags,
+        extra_radius: seri.extra_radius,
+        priority: seri.priority,
     }
 }
 

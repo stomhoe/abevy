@@ -7,7 +7,7 @@ use common::{common_components::{Tag}, };
 use game_common::game_common_components::EntityZero;
 use item_shared::ItemsGeneratedOnDeathSeri;
 use serde::{Deserialize, Serialize};
-use tilemap_shared::InteractionZoneSeri;
+use tilemap_shared::{DeleteOtherTilesSeri, InteractionZoneSeri, TerrblParamsSeri};
 
 pub use crate::tilemap_resources::*;
 use crate::tile::tile_components::*;

@@ -6,15 +6,15 @@ use std::sync::{Mutex, OnceLock};
 
 use serde::Deserialize;
 
-struct MoveFileLogger {
+struct FileLogger {
     enabled: bool,
-    files: HashMap<String, std::fs::File>,
+    files: HashMap<(String, String), std::fs::File>,
 }
 
-static MOVE_FILE_LOGGER: OnceLock<Mutex<MoveFileLogger>> = OnceLock::new();
+static FILE_LOGGER: OnceLock<Mutex<FileLogger>> = OnceLock::new();
 
 #[derive(Deserialize)]
-struct MoveLogSettingsSeri {
+struct FileLogSettingsSeri {
     #[serde(default)]
     drift_file_logging: bool,
 }
@@ -31,28 +31,28 @@ fn settings_flag_enabled() -> bool {
     let Ok(text) = std::fs::read_to_string(path) else {
         return false;
     };
-    let Ok(parsed) = ron::from_str::<MoveLogSettingsSeri>(&text) else {
+    let Ok(parsed) = ron::from_str::<FileLogSettingsSeri>(&text) else {
         return false;
     };
     parsed.drift_file_logging
 }
 
-fn make_log_path(role: &str) -> Option<PathBuf> {
+fn make_log_path(category: &str, role: &str) -> Option<PathBuf> {
     let mut dir = std::env::current_dir().ok()?;
     dir.push("logs");
-    dir.push("move");
+    dir.push(category);
     create_dir_all(&dir).ok()?;
     let pid = std::process::id();
     dir.push(format!("{role}_pid{pid}.log"));
     Some(dir)
 }
 
-fn clear_old_role_logs(role: &str) {
+fn clear_old_role_logs(category: &str, role: &str) {
     let Ok(mut dir) = std::env::current_dir() else {
         return;
     };
     dir.push("logs");
-    dir.push("move");
+    dir.push(category);
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
@@ -68,9 +68,9 @@ fn clear_old_role_logs(role: &str) {
     }
 }
 
-pub fn movement_log(role: &str, line: &str) {
-    let logger = MOVE_FILE_LOGGER.get_or_init(|| {
-        Mutex::new(MoveFileLogger {
+pub fn file_log(category: &str, role: &str, line: &str) {
+    let logger = FILE_LOGGER.get_or_init(|| {
+        Mutex::new(FileLogger {
             enabled: settings_flag_enabled(),
             files: HashMap::default(),
         })
@@ -81,9 +81,10 @@ pub fn movement_log(role: &str, line: &str) {
     if !guard.enabled {
         return;
     }
-    if !guard.files.contains_key(role) {
-        clear_old_role_logs(role);
-        let Some(path) = make_log_path(role) else {
+    let key = (category.to_string(), role.to_string());
+    if !guard.files.contains_key(&key) {
+        clear_old_role_logs(category, role);
+        let Some(path) = make_log_path(category, role) else {
             return;
         };
         let Ok(file) = OpenOptions::new()
@@ -94,9 +95,9 @@ pub fn movement_log(role: &str, line: &str) {
         else {
             return;
         };
-        guard.files.insert(role.to_string(), file);
+        guard.files.insert(key.clone(), file);
     }
-    let Some(file) = guard.files.get_mut(role) else {
+    let Some(file) = guard.files.get_mut(&key) else {
         return;
     };
     let _ = writeln!(file, "{line}");

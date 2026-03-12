@@ -1,6 +1,6 @@
 use ::being_shared::*;
 use ::tilemap_shared::*;
-use ac_input::ac_input_actions::{BeingInputContext, BeingMeleeAttackAction};
+use ac_input::ac_input_actions::{BeingDirectControlInputContext, BeingMeleeAttackAction};
 use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
     prelude::*,

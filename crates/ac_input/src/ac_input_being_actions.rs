@@ -1,12 +1,9 @@
-use bevy::prelude::*;
+use bevy::prelude::Vec2;
 use bevy_enhanced_input::prelude::*;
-
-#[derive(Component)]
-pub struct BeingInputContext;
 
 #[derive(Debug, InputAction)]
 #[action_output(Vec2)]
-pub struct BeingMoveAction;
+pub struct BeingWasdAction;
 
 #[derive(Debug, InputAction)]
 #[action_output(bool)]

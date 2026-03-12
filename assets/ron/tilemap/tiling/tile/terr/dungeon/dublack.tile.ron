@@ -9,6 +9,7 @@
     shader: "terrbl",
     terrbl_params: (
         texture_path: "texture/world/terr/dungeon/dublack.png",
+        priority: 110.0,
         scale: 10,
         speed: 0.0,
         wavy_strength: 0.0,

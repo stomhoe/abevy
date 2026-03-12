@@ -5,7 +5,7 @@ use tilemap_shared::CardinalDirection;
 
 use crate::{
     free_movement_systems::*, movement_components::*, movement_modifier_systems::*,
-    movement_secondary_systems::*, grid_movement_systems::*, movement_input_systems::*,
+    movement_secondary_systems::*, grid_movement_systems::*, movement_host_systems::*,
     movement_messages::*,
 };
 
@@ -19,7 +19,6 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             add_movement_components_to_beings,
-            add_being_input_context,
             copy_player_move_input_to_beings,
             receive_gpos_from_server
                 .run_if(in_state(ClientState::Connected))

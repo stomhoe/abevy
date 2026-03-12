@@ -5,8 +5,10 @@
 @group(3) @binding(1) var tile_indices_map: texture_2d<f32>;
 // Packed tile flags texture (bitfield: has_params, blend_enabled, has_overlay).
 @group(3) @binding(2) var tile_flags_map: texture_2d<f32>;
-// Per-tile overlay animation params (scale, speed, wave strength, time offset).
+// Per-tile overlay animation params (scale, speed, wave strength, priority).
 @group(3) @binding(3) var tile_params_map: texture_2d<f32>;
+// Per-tile overlay tint plus time offset in alpha.
+@group(3) @binding(14) var tile_tint_map: texture_2d<f32>;
 // Map size in tiles, used for bounds checks when sampling neighbors.
 @group(3) @binding(4) var<uniform> map_size_tiles: vec2<f32>;
 // Global shader time used for animated overlay sampling.
@@ -37,6 +39,10 @@ struct TileData {
     blend_enabled: bool,
     // Whether this tile has an overlay at all.
     has_overlay: bool,
+    // Whether overlay tint should be applied.
+    has_tint: bool,
+    // Whether tint only applies to matching overlay pixels.
+    has_tint_mask_target: bool,
     // Overlay world-space tiling scale.
     scale: f32,
     // Overlay animation speed multiplier.
@@ -45,6 +51,12 @@ struct TileData {
     wavy_strength: f32,
     // Per-tile time phase offset.
     time_offset: f32,
+    // Higher priority dominates border blending.
+    priority: f32,
+    // Overlay tint.
+    tint: vec3<f32>,
+    // Optional overlay color target for tint masking.
+    tint_mask_target: vec3<f32>,
 };
 
 // Decode helpers for packed tile metadata textures.
@@ -72,22 +84,44 @@ fn in_bounds(tile: vec2<i32>) -> bool {
 // Read and decode all per-tile data from packed metadata textures.
 fn read_tile_data(tile: vec2<i32>) -> TileData {
     if !in_bounds(tile) {
-        return TileData(0u, 0u, false, false, false, 0.0, 0.0, 0.0, 0.0);
+        return TileData(
+            0u,
+            0u,
+            false,
+            false,
+            false,
+            false,
+            false,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            vec3<f32>(1.0, 1.0, 1.0),
+            vec3<f32>(0.0, 0.0, 0.0),
+        );
     }
 
     let tex = textureLoad(tile_indices_map, tile, 0);
-    let flags_raw = decode_flags(textureLoad(tile_flags_map, tile, 0).r);
+    let flag_tex = textureLoad(tile_flags_map, tile, 0);
+    let flags_raw = decode_flags(flag_tex.r);
     let params = textureLoad(tile_params_map, tile, 0);
+    let tint = textureLoad(tile_tint_map, tile, 0);
     return TileData(
         decode_u16(tex.r, tex.g),
         decode_u16(tex.b, tex.a),
         (flags_raw & 1u) != 0u,
         (flags_raw & 2u) != 0u,
         (flags_raw & 4u) != 0u,
+        (flags_raw & 8u) != 0u,
+        (flags_raw & 16u) != 0u,
         params.r,
         params.g,
         params.b,
+        tint.a,
         params.a,
+        tint.rgb,
+        vec3<f32>(flag_tex.g, flag_tex.b, flag_tex.a),
     );
 }
 
@@ -144,6 +178,18 @@ fn sample_overlay_only(data: TileData, world_uv: vec2<f32>) -> vec4<f32> {
     return sample_overlay_texture(data.overlay_tex_index, sample_uv);
 }
 
+fn apply_overlay_tint(data: TileData, overlay: vec4<f32>) -> vec4<f32> {
+    if !data.has_tint {
+        return overlay;
+    }
+    let tint_allowed = !data.has_tint_mask_target
+        || distance(overlay.rgb, data.tint_mask_target) <= MASK_TOLERANCE;
+    if !tint_allowed {
+        return overlay;
+    }
+    return vec4<f32>(overlay.rgb * data.tint.rgb, overlay.a);
+}
+
 // Compose base tile texture with this tile's own overlay where mask permits.
 fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, world_uv: vec2<f32>, tint: vec4<f32>) -> vec4<f32> {
     let data = read_tile_data(tile);
@@ -158,7 +204,7 @@ fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, world_uv: vec2<f32>, tint: 
     if !data.has_overlay {
         return base;
     }
-    let overlay = sample_overlay_only(data, world_uv);
+    let overlay = apply_overlay_tint(data, sample_overlay_only(data, world_uv));
     let composed_rgb = mix(base.rgb, overlay.rgb, clamp(overlay.a, 0.0, 1.0));
     return vec4<f32>(composed_rgb, base.a);
 }
@@ -185,12 +231,18 @@ fn sample_neighbor_contribution(
     if neighbor_data.overlay_tex_index == self_data.overlay_tex_index {
         return vec4<f32>(0.0, 0.0, 0.0, 0.0);
     }
-    // One-sided ownership: only the higher overlay index (submissive) blends inward from lower (dominant).
-    // Ownership rule rejects this direction (prevents two-sided painting).
-    if self_data.overlay_tex_index <= neighbor_data.overlay_tex_index {
+    // One-sided ownership: the lower priority side blends inward from the higher priority side.
+    // Equal priority falls back to overlay index so the result stays deterministic.
+    let self_is_dominant = self_data.priority > neighbor_data.priority
+        || (self_data.priority == neighbor_data.priority
+            && self_data.overlay_tex_index < neighbor_data.overlay_tex_index);
+    if self_is_dominant {
         return vec4<f32>(0.0, 0.0, 0.0, 0.0);
     }
-    let neighbor_overlay = sample_overlay_only(neighbor_data, world_uv);
+    let neighbor_overlay = apply_overlay_tint(
+        neighbor_data,
+        sample_overlay_only(neighbor_data, world_uv),
+    );
     let overlay_alpha = clamp(neighbor_overlay.a, 0.0, 1.0);
     // Fully transparent sampled neighbor overlay: no contribution.
     if overlay_alpha <= 0.0 {

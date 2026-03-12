@@ -1,9 +1,7 @@
 use bevy::ecs::entity::EntityHashMap;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy_enhanced_input::actions;
-use bevy_enhanced_input::bindings;
-use bevy_enhanced_input::prelude::{Action, Actions, Axial, Bindings, Cardinal, DeadZone};
+use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_replicon::prelude::Replicated;
 use common::log_targets::MOVEMENT_SYSTEM;
 use common::prelude::*;
@@ -73,36 +71,9 @@ pub fn update_facing_dir(
     writer.write_batch(messages.drain());
 }
 
-pub fn add_being_input_context(
-    mut commands: Commands,
-    player_query: Query<Entity, (With<Mine>, With<Player>, Without<Actions<BeingInputContext>>)>,
-) {
-    for player_ent in player_query.iter() {
-        commands.entity(player_ent).try_insert((
-            BeingInputContext,
-            actions!(BeingInputContext[
-                (
-                    Action::<BeingMoveAction>::new(),
-                    DeadZone::default(),
-                    Bindings::spawn((
-                        Cardinal::wasd_keys(),
-                        Cardinal::arrows(),
-                        Cardinal::dpad(),
-                        Axial::left_stick(),
-                    )),
-                ),
-                (
-                    Action::<BeingMeleeAttackAction>::new(),
-                    bindings![KeyCode::ControlLeft],
-                ),
-            ]),
-        ));
-    }
-}
-
 pub fn copy_player_move_input_to_beings(
-    move_action_query: Query<&Action<BeingMoveAction>>,
-    player_query: Query<(&Actions<BeingInputContext>, &ComputedBeings), (With<Mine>, With<Player>)>,
+    move_action_query: Query<&Action<BeingWasdAction>>,
+    player_query: Query<(&Actions<BeingDirectControlInputContext>, &ComputedBeings), (With<Mine>, With<Player>)>,
     mut beings: Query<(&ComputedBy, &mut InputMoveDir)>,
 ) {
     let mut found_player = false;
