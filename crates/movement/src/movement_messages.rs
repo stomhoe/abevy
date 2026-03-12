@@ -2,17 +2,8 @@ use bevy::{ecs::entity::MapEntities, prelude::*};
 use serde::{Deserialize, Serialize};
 use tilemap_shared::GlobalTilePos;
 
-use crate::prelude::PendingMoveIntent;
-
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
-pub struct SendMoveInput {
-    #[entities]
-    pub being_ent: Entity,
-    pub intent: PendingMoveIntent
-}
-
-#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
-pub struct SendTrustedGpos {
+pub struct SendStepRequest {
     #[entities]
     pub being_ent: Entity,
     pub gpos: GlobalTilePos,
@@ -30,9 +21,4 @@ pub struct SyncTransform {
     #[entities]
     pub being_ent: Entity,
     pub transform: Transform,
-}
-
-#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
-pub struct SyncMovementTick {
-    pub tick: u32,
 }

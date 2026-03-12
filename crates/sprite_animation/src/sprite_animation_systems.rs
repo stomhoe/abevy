@@ -8,7 +8,7 @@ use being_shared::{Grounding, ComputedBy, ComputedLocally};
 use bevy_spritesheet_animation::{prelude::*, };
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
 use game_common::game_common_components::{Directionable, EntityZeroRef, };
-use movement::movement_components::MoveVecMag;
+use movement::movement_components::SpeedMagnitude;
 use player::player_components::*;
 use ::sprite_animation_shared::*;
 use ::sprite_shared::prelude::*;
@@ -49,7 +49,7 @@ pub fn animate_sprite(
         Option<&BaseMovementSpeed>,
         Option<&SpriteAnimationSfx>
     ), ()>,
-    base_movevec_query: Query<&MoveVecMag>,
+    base_speed_query: Query<&SpeedMagnitude>,
     strid_query: Query<&StrId>,
 
     mut animation_query: Query<(&StrId, &AnimationHandle, &AnimationSheet, &AcZ, Option<&YSortOrigin>, Option<&ClipStartFrames>, Has<SaveAnimationProgress>, Option<&AlternatingStartFramesConfig>, Option<&mut AlternatingStartFramesState>, Option<&PlayingSpeed>, Option<&AnimationSeri>),()>,
@@ -159,9 +159,9 @@ pub fn animate_sprite(
                     if base_speed.0 <= 0.01 {
                         speed_factor
                     } else {
-                        let current_speed = base_movevec_query
+                        let current_speed = base_speed_query
                             .get(base_holder.base)
-                            .map_or(base_speed.0, |m| m.speed_magnitude.max(0.0));
+                            .map_or(base_speed.0, |speed| speed.0.max(0.0));
                         speed_factor * (current_speed / base_speed.0)
                     }
                 } else {

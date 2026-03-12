@@ -10,7 +10,7 @@ use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
 use tilemap_shared::*;
 
-use crate::movement_components::{InputMoveDir, MoveVecMag};
+use crate::movement_components::{InputMoveDir, NormMoveDir, SpeedMagnitude};
 
 pub fn process_input_direction_modifiers(
     state: Res<State<ClientState>>,
@@ -18,7 +18,7 @@ pub fn process_input_direction_modifiers(
         Entity,
         &AppliedModifiers,
         &InputMoveDir,
-        &mut MoveVecMag,
+        &mut NormMoveDir,
         Has<ComputedLocally>,
     )>,
     modifiers_query: Query<(
@@ -30,7 +30,7 @@ pub fn process_input_direction_modifiers(
     )>,
 ) {
     let is_client = state.get() == &ClientState::Connected;
-    for (being_ent, applied, input_move_dir, mut move_state, controlled_locally) in being_query.iter_mut()
+    for (being_ent, applied, input_move_dir, mut norm_move_dir, controlled_locally) in being_query.iter_mut()
     {
         if is_client && !controlled_locally {
             continue;
@@ -59,7 +59,7 @@ pub fn process_input_direction_modifiers(
                 _ => {}
             }
         }
-        move_state.norm_move_dir = if input_dir == Vec2::ZERO {
+        norm_move_dir.0 = if input_dir == Vec2::ZERO {
             Vec2::ZERO
         } else if invert_sum * invert_scale > 1.0 {
             -input_dir.normalize()
@@ -76,7 +76,7 @@ pub fn process_speed_modifiers(
         &DimensionRef,
         &GlobalTilePos,
         &AppliedModifiers,
-        &mut MoveVecMag,
+        &mut SpeedMagnitude,
         Option<&BodyTreeWeightSum>,
         Has<ComputedLocally>,
     )>,
@@ -100,7 +100,7 @@ pub fn process_speed_modifiers(
         &dim_ref,
         tile_pos,
         applied,
-        mut move_state,
+        mut speed_magnitude,
         body_weight_sum,
         controlled_locally,
     ) in being_query.iter_mut()
@@ -172,8 +172,9 @@ pub fn process_speed_modifiers(
             tile_walk_mult = tile_walk_mult.min(tile_walk_mult_cfg.0);
         }
         let final_speed = final_speed * tile_walk_mult.max(0.0);
-        if (move_state.speed_magnitude - final_speed).abs() > f32::EPSILON {
-            move_state.speed_magnitude = final_speed * 5000.;
+        let final_speed = final_speed * 5000.;
+        if (speed_magnitude.0 - final_speed).abs() > f32::EPSILON {
+            speed_magnitude.0 = final_speed;
         }
     }
 }

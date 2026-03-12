@@ -16,7 +16,7 @@ use ::being_shared::*;
 use ac_input::ac_input_actions::*;
 use player::player_components::{Mine, Player};
 
-use crate::movement_components::{GridLockedMovement, InputMoveDir, MoveVecMag};
+use crate::movement_components::{GridLockedMovement, InputMoveDir, NormMoveDir, SpeedMagnitude};
 use crate::movement_helpers::normalize_to_axis_dir;
 
 pub const INPUT_DEADZONE: f32 = 0.2;
@@ -28,7 +28,8 @@ pub fn add_movement_components_to_beings(
     for being_ent in beings.iter() {
         commands.entity(being_ent).try_insert_if_new((
             InputMoveDir::default(),
-            MoveVecMag::default(),
+            NormMoveDir::default(),
+            SpeedMagnitude::default(),
             Replicated,
             MoveAnimActive::default(),
             Grounding::default(),
@@ -45,11 +46,11 @@ pub fn add_movement_components_to_beings(
 }
 
 pub fn update_facing_dir(
-    mut query: Query<(Entity, &MoveVecMag, Option<&GridLockedMovement>, &mut CardinalDirection)>,
+    mut query: Query<(Entity, &NormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection)>,
     mut writer: MessageWriter<BeingChangedMoveState>,
     mut messages: Local<HashSet<BeingChangedMoveState>>,
 ) {
-    for (being_ent, move_state, glm, mut facing_dir) in query.iter_mut() {
+    for (being_ent, norm_move_dir, glm, mut facing_dir) in query.iter_mut() {
         let dir = glm
             .and_then(|glm| {
                 if glm.step_dir == IVec2::ZERO {
@@ -58,7 +59,7 @@ pub fn update_facing_dir(
                     Some(glm.step_dir)
                 }
             })
-            .unwrap_or_else(|| normalize_to_axis_dir(move_state.norm_move_dir));
+            .unwrap_or_else(|| normalize_to_axis_dir(norm_move_dir.0));
         let next = if dir == IVec2::ZERO {
             *facing_dir
         } else {
@@ -147,20 +148,19 @@ pub fn copy_player_move_input_to_beings(
 
 /// Emits a `BeingChangedMoveState` message when the speed magnitude changes.
 pub fn emit_move_state_on_movevecmag_speed_mag_change(
-    query: Query<(Entity, &MoveVecMag)>,
+    query: Query<(Entity, &SpeedMagnitude)>,
     mut writer: MessageWriter<BeingChangedMoveState>,
-    mut prev_by_ent: Local<EntityHashMap<(Vec2, f32)>>,
+    mut prev_by_ent: Local<EntityHashMap<SpeedMagnitude>>,
     mut messages: Local<Vec<BeingChangedMoveState>>,
 ) {
-    for (ent, move_vec_mag) in query.iter() {
-        let curr = (move_vec_mag.norm_move_dir, move_vec_mag.speed_magnitude);
-        let Some(prev) = prev_by_ent.get(&ent) else {
-            prev_by_ent.insert(ent, curr);
+    for (ent, &speed_magnitude) in query.iter() {
+        let Some(&prev) = prev_by_ent.get(&ent) else {
+            prev_by_ent.insert(ent, speed_magnitude);
             continue;
         };
-        if prev != &curr {
+        if prev != speed_magnitude {
             messages.push(BeingChangedMoveState(ent));
-            prev_by_ent.insert(ent, curr);
+            prev_by_ent.insert(ent, speed_magnitude);
         }
     }
     writer.write_batch(messages.drain(..));

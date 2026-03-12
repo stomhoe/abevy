@@ -18,7 +18,6 @@ pub fn start_grid_locked_steps(
     fixed_time: Res<Time<Fixed>>,
     client_state: Res<State<ClientState>>,
     server_state: Res<State<ServerState>>,
-    trusted_player: Query<(), (With<player::player_components::Mine>, With<player::player_components::Player>, With<player::player_components::TrustedForMovement>)>,
     connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
     blocking_tiles: BlockingTileParamSet,
     mut beings: Query<(
@@ -27,25 +26,24 @@ pub fn start_grid_locked_steps(
         Option<&being_shared::ComputedBy>,
         &InputMoveDir,
         &DimensionRef,
-        &MoveVecMag,
+        &SpeedMagnitude,
         &mut GlobalTilePos,
         &mut GridLockedMovement,
         &mut CardinalDirection,
     ), Without<Tile>>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
-    mut trusted_writer: MessageWriter<SendTrustedGpos>,
-    mut trusted_messages: Local<Vec<SendTrustedGpos>>,
+    mut step_writer: MessageWriter<SendStepRequest>,
+    mut step_messages: Local<Vec<SendStepRequest>>,
     mut to_drain: Local<Vec<Entity>>,
 ) {
-    let is_trusted_client = client_state.get() == &ClientState::Connected && !trusted_player.is_empty();
     for (
         entity,
         controlled_locally,
         _controlled_by,
         input_move_dir,
         &dim_ref,
-        move_state,
+        speed_magnitude,
         mut tile_pos,
         mut glm,
         mut facing_dir,
@@ -63,12 +61,12 @@ pub fn start_grid_locked_steps(
             entity,
             &mut tile_pos,
             dir,
-            ticks_per_tile(move_state.speed_magnitude, fixed_time.delta_secs(), dir),
+            ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir),
         ) {
             continue;
         }
-        if is_trusted_client {
-            trusted_messages.push(SendTrustedGpos {
+        if client_state.get() == &ClientState::Connected && controlled_locally {
+            step_messages.push(SendStepRequest {
                 being_ent: entity,
                 gpos: *tile_pos,
             });
@@ -87,7 +85,7 @@ pub fn start_grid_locked_steps(
         *facing_dir = CardinalDirection::from_dir_vec(dir);
     }
     writer.write_batch(messages.drain(..));
-    trusted_writer.write_batch(trusted_messages.drain(..));
+    step_writer.write_batch(step_messages.drain(..));
 }
 
 pub fn progress_tile_transition_transform(
@@ -135,13 +133,20 @@ pub fn progress_tile_transition_transform(
 }
 
 pub fn receive_gpos_from_server(
+    fixed_time: Res<Time<Fixed>>,
     mut commands: Commands,
     mut reader: MessageReader<SyncGpos>,
-    mut beings: Query<(&mut GlobalTilePos, &mut Transform, &mut GridLockedMovement, Has<ComputedLocally>), With<Being>>,
+    mut beings: Query<(
+        &mut GlobalTilePos,
+        &mut Transform,
+        &mut GridLockedMovement,
+        &SpeedMagnitude,
+        Has<ComputedLocally>,
+    ), With<Being>>,
 ) {
     for message in reader.read() {
         let SyncGpos { being_ent, gpos } = message;
-        let Ok((mut being_gpos, mut transform, mut glm, computed_locally)) = beings.get_mut(*being_ent) else {
+        let Ok((mut being_gpos, mut transform, mut glm, speed_magnitude, computed_locally)) = beings.get_mut(*being_ent) else {
             continue;
         };
         if computed_locally {
@@ -164,7 +169,20 @@ pub fn receive_gpos_from_server(
             });
             continue;
         }
+        let prev_gpos = *being_gpos;
         *being_gpos = *gpos;
+        let dir = gpos.0 - prev_gpos.0;
+        if dir.x.abs() + dir.y.abs() == 1 {
+            glm.visual_origin_tile = prev_gpos.0;
+            glm.step_dir = dir;
+            glm.progress_ticks = 0;
+            glm.step_ticks_total =
+                ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir).max(1);
+            transform.translation = prev_gpos.to_translation(transform.translation.z);
+        } else {
+            glm.clear_step(*gpos);
+            transform.translation = gpos.to_translation(transform.translation.z);
+        }
         debug!(target: MOVEMENT_SYSTEM, "Received gpos {:?} for {:?}", gpos, being_ent);
     }
 }
@@ -205,14 +223,14 @@ pub fn apply_pending_tile_corrections(
 
 pub fn receive_transform_from_server(
     mut reader: MessageReader<SyncTransform>,
-    mut beings: Query<(&mut Transform, Has<ComputedLocally>),>,
+    mut beings: Query<(&mut Transform, Has<ComputedLocally>, Has<GridLockedMovement>)>,
 ) {
     for message in reader.read() {
         let SyncTransform { being_ent, transform } = message;
-        let Ok((mut being_transform, computed_locally)) = beings.get_mut(*being_ent) else {
+        let Ok((mut being_transform, computed_locally, has_grid_locked_movement)) = beings.get_mut(*being_ent) else {
             continue;
         };
-        if computed_locally {
+        if computed_locally || has_grid_locked_movement {
             continue;
         }
         *being_transform = transform.clone();

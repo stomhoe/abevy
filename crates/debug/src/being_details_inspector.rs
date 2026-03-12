@@ -12,7 +12,7 @@ use modifier_shared::modifier_types::{
     BleedRate, BloodCapacity, HitpointRegenRate, HitpointsCapacity, ManipulationDexterity,
     ManipulationStrength, PainSensitivity, Vision, WalkSpeed,
 };
-use movement::movement_components::{GridLockedMovement, InputMoveDir, MoveVecMag};
+use movement::movement_components::{GridLockedMovement, InputMoveDir, NormMoveDir, SpeedMagnitude};
 use player::player_components::{Mine, Player};
 use tilemap_shared::CardinalDirection;
 
@@ -63,7 +63,8 @@ pub fn being_details_inspector(world: &mut World) {
     let mut body_parts_query = world.query::<&BodyParts>();
     let mut body_part_name_query = world.query::<Option<&DisplayName>>();
     let mut body_part_damage_query = world.query::<Option<&BodyPartDamage>>();
-    let mut move_vec_query = world.query::<&MoveVecMag>();
+    let mut norm_move_dir_query = world.query::<&NormMoveDir>();
+    let mut speed_magnitude_query = world.query::<&SpeedMagnitude>();
     let mut input_move_dir_query = world.query::<&InputMoveDir>();
     let mut computed_by_query = world.query::<Option<&ComputedBy>>();
     let mut computed_locally_query = world.query::<Has<ComputedLocally>>();
@@ -210,17 +211,18 @@ pub fn being_details_inspector(world: &mut World) {
                     ui.label("Player BeingMoveAction: missing context");
                 }
             }
-            if let Ok(move_vec) = move_vec_query.get(world, selected_being_entity) {
+            if let Ok(norm_move_dir) = norm_move_dir_query.get(world, selected_being_entity) {
                 ui.label(format!(
-                    "MoveVecMag.norm_move_dir: [{:.2}, {:.2}]",
-                    move_vec.norm_move_dir.x, move_vec.norm_move_dir.y
-                ));
-                ui.label(format!(
-                    "MoveVecMag.speed_magnitude: {:.2}",
-                    move_vec.speed_magnitude
+                    "NormMoveDir: [{:.2}, {:.2}]",
+                    norm_move_dir.0.x, norm_move_dir.0.y
                 ));
             } else {
-                ui.label("MoveVecMag: missing");
+                ui.label("NormMoveDir: missing");
+            }
+            if let Ok(speed_magnitude) = speed_magnitude_query.get(world, selected_being_entity) {
+                ui.label(format!("SpeedMagnitude: {:.2}", speed_magnitude.0));
+            } else {
+                ui.label("SpeedMagnitude: missing");
             }
             if let Ok(input_move_dir) = input_move_dir_query.get(world, selected_being_entity) {
                 ui.label(format!(

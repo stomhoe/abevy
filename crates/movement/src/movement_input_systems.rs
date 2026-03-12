@@ -1,140 +1,38 @@
 use ::being_shared::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use tilemap_shared::GlobalTilePos;
+use param_sets::BlockingTileParamSet;
+use tilemap::tile::prelude::Tile;
+use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 
 use common::log_targets::MOVEMENT_SYSTEM;
 
-use crate::{movement_components::*, movement_messages::*};
+use crate::{movement_components::*, movement_helpers::ticks_per_tile, movement_messages::*};
 
-const INPUT_TICK_LEAD: u32 = 2;
-
-pub fn tick_movement_sim(mut tick: ResMut<MovementSimTick>) {
-    tick.0 = tick.0.wrapping_add(1);
-}
-
-pub fn send_move_input_to_server(
-    server_tick: Res<LastKnownServerMovementTick>,
-    trusted_player: Query<(), (With<player::player_components::Mine>, With<player::player_components::Player>, With<player::player_components::TrustedForMovement>)>,
-    mut writer: MessageWriter<SendMoveInput>,
-    beings: Query<(Entity, &InputMoveDir), (With<ComputedLocally>, Changed<InputMoveDir>)>,
-    mut messages: Local<Vec<SendMoveInput>>,
-) {
-    if !trusted_player.is_empty() {
-        return;
-    }
-    for (being_ent, input_move_dir) in beings.iter() {
-        let start_tick = server_tick.0.wrapping_add(INPUT_TICK_LEAD);
-        let dir = input_move_dir.0.as_ivec2();
-        messages.push(SendMoveInput {
-            being_ent,
-            intent: PendingMoveIntent {
-                start_tick,
-                dir,
-            },
-        });
-        debug!(
-            target: MOVEMENT_SYSTEM,
-            "Queued client move input for {:?}: dir={:?} start_tick={}",
-            being_ent,
-            dir,
-            start_tick,
-        );
-    }
-    writer.write_batch(messages.drain(..));
-}
-
-pub fn receive_trusted_gpos_from_client(
-    mut events: MessageReader<FromClient<SendTrustedGpos>>,
-    trusted_players: Query<(), (With<player::player_components::Player>, With<player::player_components::TrustedForMovement>)>,
-    controlled_beings: Query<&ComputedBy>,
-    mut beings: Query<(&mut GlobalTilePos, Has<ComputedLocally>), With<Being>>,
-    mut writer: MessageWriter<ToClients<SyncGpos>>,
-    mut messages: Local<Vec<ToClients<SyncGpos>>>,
-) {
-    for from_client in events.read() {
-        let SendTrustedGpos { being_ent, gpos } = from_client.message.clone();
-        let Some(client_ent) = from_client.client_id.entity() else {
-            continue;
-        };
-        if trusted_players.get(client_ent).is_err() {
-            warn!(
-                target: MOVEMENT_SYSTEM,
-                "Dropped trusted gpos for {:?}: sender {:?} is not TrustedForMovement",
-                being_ent,
-                client_ent
-            );
-            continue;
-        }
-        let Ok(controlled_by) = controlled_beings.get(being_ent) else {
-            continue;
-        };
-        if controlled_by.client_ent != client_ent {
-            warn!(
-                target: MOVEMENT_SYSTEM,
-                "Dropped spoofed trusted gpos for {:?}: owner {:?}, sender {:?}",
-                being_ent,
-                controlled_by.client_ent,
-                client_ent
-            );
-            continue;
-        }
-        let Ok((mut being_gpos, computed_locally)) = beings.get_mut(being_ent) else {
-            continue;
-        };
-        if computed_locally {
-            continue;
-        }
-        *being_gpos = gpos;
-        messages.push(ToClients {
-            mode: SendMode::Broadcast,
-            message: SyncGpos { being_ent, gpos },
-        });
-        debug!(
-            target: MOVEMENT_SYSTEM,
-            "Accepted trusted gpos for {:?}: {:?}",
-            being_ent,
-            gpos
-        );
-    }
-    writer.write_batch(messages.drain(..));
-}
-
-pub fn send_movement_tick_to_clients(
-    tick: Res<MovementSimTick>,
-    connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
-    mut writer: MessageWriter<ToClients<SyncMovementTick>>,
-    mut messages: Local<Vec<ToClients<SyncMovementTick>>>,
-) {
-    if connected.is_empty() {
-        return;
-    }
-    messages.push(ToClients {
-        mode: SendMode::Broadcast,
-        message: SyncMovementTick { tick: tick.0 },
-    });
-    writer.write_batch(messages.drain(..));
-}
-
-pub fn receive_move_input_from_client(
-    tick: Res<MovementSimTick>,
-    mut events: MessageReader<FromClient<SendMoveInput>>,
+pub fn receive_step_request_from_client(
+    fixed_time: Res<Time<Fixed>>,
+    mut events: MessageReader<FromClient<SendStepRequest>>,
+    blocking_tiles: BlockingTileParamSet,
     controlled_beings: Query<&ComputedBy>,
     mut beings: Query<(
-        &mut InputMoveDir,
-        Option<&mut BufferedMoveInput>,
-    ), Without<ComputedLocally>>,
-    mut commands: Commands,
+        Entity,
+        &DimensionRef,
+        &SpeedMagnitude,
+        &mut GlobalTilePos,
+        &mut GridLockedMovement,
+        &mut CardinalDirection,
+    ), (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
+    mut writer: MessageWriter<ToClients<SyncGpos>>,
+    mut messages: Local<Vec<ToClients<SyncGpos>>>,
+    mut to_drain: Local<Vec<Entity>>,
 ) {
     for from_client in events.read() {
-        let SendMoveInput { being_ent, intent } = from_client.message.clone();
-        let Some(client_ent) = from_client.client_id.entity() else {
-            continue;
-        };
+        let SendStepRequest { being_ent, gpos } = from_client.message.clone();
+        let Some(client_ent) = from_client.client_id.entity() else { continue; };
         let Ok(controlled_by) = controlled_beings.get(being_ent) else {
             warn!(
                 target: MOVEMENT_SYSTEM,
-                "Dropped move input for uncontrolled/missing being {:?} from {:?}",
+                "Dropped step request for uncontrolled/missing being {:?} from {:?}",
                 being_ent,
                 client_ent
             );
@@ -143,76 +41,51 @@ pub fn receive_move_input_from_client(
         if controlled_by.client_ent != client_ent {
             warn!(
                 target: MOVEMENT_SYSTEM,
-                "Dropped spoofed move input for {:?}: owner {:?}, sender {:?}",
+                "Dropped spoofed step request for {:?}: owner {:?}, sender {:?}",
                 being_ent,
                 controlled_by.client_ent,
                 client_ent
             );
             continue;
         }
-        let Ok((mut input_move_dir, buffered)) = beings.get_mut(being_ent) else {
+        let Ok((entity, &dim_ref, speed_magnitude, mut tile_pos, mut glm, mut facing_dir)) = beings.get_mut(being_ent) else {
             warn!(
                 target: MOVEMENT_SYSTEM,
-                "Dropped move input for {:?}: missing InputMoveDir or unexpectedly ComputedLocally",
+                "Dropped step request for {:?}: missing movement state or unexpectedly ComputedLocally",
                 being_ent
             );
             continue;
         };
-        if intent.start_tick <= tick.0 {
-            error!(
-                target: MOVEMENT_SYSTEM,
-                "InputMoveDir set from client message for {:?}: {:?} -> {:?}",
-                being_ent,
-                input_move_dir.0,
-                intent.dir.as_vec2()
-            );
-            input_move_dir.0 = intent.dir.as_vec2();
-        } else if let Some(mut buffered) = buffered {
-            buffered.start_tick = intent.start_tick;
-            buffered.dir = intent.dir;
-        } else {
-            commands.entity(being_ent).insert(BufferedMoveInput {
-                start_tick: intent.start_tick,
-                dir: intent.dir,
-            });
-        }
-        debug!(
-            target: MOVEMENT_SYSTEM,
-            "Accepted server move input for {:?}: dir={:?} start_tick={} curr_tick={}",
-            being_ent,
-            intent.dir,
-            intent.start_tick,
-            tick.0,
-        );
-    }
-}
-
-pub fn apply_buffered_move_input(
-    tick: Res<MovementSimTick>,
-    mut beings: Query<(Entity, &mut InputMoveDir, &BufferedMoveInput), Without<ComputedLocally>>,
-    mut commands: Commands,
-) {
-    for (being_ent, mut input_move_dir, buffered) in beings.iter_mut() {
-        if buffered.start_tick > tick.0 {
+        let dir = gpos.0 - tile_pos.0;
+        if dir == IVec2::ZERO {
             continue;
         }
-        error!(
-            target: MOVEMENT_SYSTEM,
-            "InputMoveDir set from buffered client input for {:?}: {:?} -> {:?}",
-            being_ent,
-            input_move_dir.0,
-            buffered.dir.as_vec2()
+        if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, gpos, entity) {
+            debug!(
+                target: MOVEMENT_SYSTEM,
+                "Rejected step request for {:?}: blocked target {:?}",
+                being_ent,
+                gpos
+            );
+            continue;
+        }
+        glm.ensure_grid_anchor(*tile_pos);
+        glm.start_step(
+            &mut tile_pos,
+            dir,
+            ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir),
         );
-        input_move_dir.0 = buffered.dir.as_vec2();
-        commands.entity(being_ent).remove::<BufferedMoveInput>();
+        *facing_dir = CardinalDirection::from_dir_vec(dir);
+        messages.push(ToClients {
+            mode: SendMode::Broadcast,
+            message: SyncGpos { being_ent, gpos: *tile_pos },
+        });
+        debug!(
+            target: MOVEMENT_SYSTEM,
+            "Accepted step request for {:?}: target {:?}",
+            being_ent,
+            tile_pos
+        );
     }
-}
-
-pub fn receive_movement_tick_from_server(
-    mut reader: MessageReader<SyncMovementTick>,
-    mut server_tick: ResMut<LastKnownServerMovementTick>,
-) {
-    for message in reader.read() {
-        server_tick.0 = message.tick;
-    }
+    writer.write_batch(messages.drain(..));
 }
