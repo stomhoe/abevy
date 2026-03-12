@@ -7,7 +7,7 @@ use being_shared::{Grounding, ComputedBy, ComputedLocally};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
-use game_common::game_common_components::{Directionable, EntityZeroRef, };
+use game_common::{game_common_components::{Directionable, EntityZeroRef, }, prelude::EntityZero};
 use movement::movement_components::SpeedMagnitude;
 use player::player_components::*;
 use ::sprite_animation_shared::*;
@@ -18,12 +18,12 @@ use ::tilemap_shared::directions::*;
 pub fn switch_or_readjust_sprite_animation(
     mut cmd: Commands, asset_server: Res<AssetServer>,
 
-    mut move_anims_changed: MessageReader<UpdateSpriteAnimState>,
+    mut move_anims_changed: MessageReader<MatchHeldSpritesAnimStateToBeingState>,
 
-    changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
-    changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<EntityZeroRef>, Without<SpriteConfig>)>,
+    changers: Query<Entity, (Or<(Changed<HeldSprites>, Changed<Grounding>, )>, Without<EntityZero>)>,
+    changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<EntityZeroRef>, Without<SpriteConfig>, Without<EntityZero>)>,
 
-    base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, Option<&Grounding>, ), ()>,
+    base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, Option<&Grounding>, ), (Without<EntityZero>)>,
     mut sprites_query: Query<(
         Entity,
         Has<Sprite>,
@@ -34,7 +34,7 @@ pub fn switch_or_readjust_sprite_animation(
         Option<&PlayingSpeed>,
         Option<&mut AcAnimationProgresses>,
         Option<&mut Transform>,
-    ), ()>,
+    ), (Without<EntityZero>)>,
 
     spriteconfig: Query<(
         Option<&MappedAnimations>,
@@ -261,7 +261,7 @@ pub fn switch_or_readjust_sprite_animation(
 #[allow(unused_parens)]
 pub fn msg_movestate_update_to_clients_for_sprite_animation(
     connected: Query<&Player, Without<Mine>>,
-    mut move_anims_changed: MessageReader<UpdateSpriteAnimState>,
+    mut move_anims_changed: MessageReader<MatchHeldSpritesAnimStateToBeingState>,
     changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
 
     bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>)>,
@@ -295,9 +295,9 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
 #[allow(unused_parens, )]
 pub fn client_receive_moving_anim(
     mut mreader: MessageReader<SyncMoveState>,
-    mut beings_changed_move_state_writer: MessageWriter<UpdateSpriteAnimState>,
+    mut beings_changed_move_state_writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
     mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection, Has<ComputedLocally>)>,
-    mut being_changed_state_set: Local<HashSet<UpdateSpriteAnimState>>
+    mut being_changed_state_set: Local<HashSet<MatchHeldSpritesAnimStateToBeingState>>
 ) {
     for message in mreader.par_read() {
         let SyncMoveState { being_ent, moving, grounding, direction } = message.0;

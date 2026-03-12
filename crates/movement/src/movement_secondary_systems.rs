@@ -6,15 +6,14 @@ use bevy_replicon::prelude::Replicated;
 use common::log_targets::MOVEMENT_SYSTEM;
 use common::prelude::*;
 use modifier_shared::modifier_components::AppliedModifiers;
-use sprite_animation_shared::MoveAnimActive;
-use sprite_animation_shared::UpdateSpriteAnimState;
-use tilemap_shared::{CardinalDirection, DimensionStrIdRef, GlobalTilePos};
+use ::sprite_animation_shared::*;
+use ::tilemap_shared::*;
 
 use ::being_shared::*;
 use ac_input::ac_input_actions::*;
 use player::player_components::{Mine, Player};
 
-use crate::movement_components::{GridLockedMovement, InputMoveDir, NormMoveDir, SpeedMagnitude};
+use crate::movement_components::*;
 
 pub const INPUT_DEADZONE: f32 = 0.2;
 
@@ -44,8 +43,8 @@ pub fn add_movement_components_to_beings(
 
 pub fn update_facing_dir(
     mut query: Query<(Entity, &NormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
-    mut writer: MessageWriter<UpdateSpriteAnimState>,
-    mut messages: Local<HashSet<UpdateSpriteAnimState>>,
+    mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
+    mut messages: Local<HashSet<MatchHeldSpritesAnimStateToBeingState>>,
 ) {
     for (being_ent, norm_move_dir, glm, mut facing_dir) in query.iter_mut() {
         let dir = glm
@@ -65,22 +64,25 @@ pub fn update_facing_dir(
         if *facing_dir != next {
             *facing_dir = next;
             trace!(target: MOVEMENT_SYSTEM, "Facing updated for {:?} to {:?}", being_ent, next);
-            messages.insert(UpdateSpriteAnimState(being_ent));
+            messages.insert(MatchHeldSpritesAnimStateToBeingState(being_ent));
         }
     }
     writer.write_batch(messages.drain());
 }
-
+#[allow(unused_parens, )]
 pub fn copy_player_move_input_to_beings(
     move_action_query: Query<&Action<BeingWasdAction>>,
     player_query: Query<(&Actions<BeingDirectControlInputContext>, &ComputedBeings), (With<Mine>, With<Player>)>,
-    mut beings: Query<(&ComputedBy, &mut InputMoveDir)>,
+    mut beings: Query<(&ComputedBy, &mut InputMoveDir), (LocalHumanControlled)>,
 ) {
     let mut found_player = false;
+    if beings.is_empty(){
+        return;
+    }
     for (actions, computed_beings) in player_query.iter() {
         found_player = true;
         let Some(move_action) = move_action_query.iter_many(actions).next() else {
-            error!(
+            error_once!(
                 target: MOVEMENT_SYSTEM,
                 "copy_player_move_input_to_beings: Mine+Player entity missing linked Action<BeingMoveAction>"
             );
@@ -93,11 +95,6 @@ pub fn copy_player_move_input_to_beings(
         };
         for &being_ent in computed_beings.being_ents() {
             let Ok((computed_by, mut input_move_dir)) = beings.get_mut(being_ent) else {
-                error!(
-                    target: MOVEMENT_SYSTEM,
-                    "copy_player_move_input_to_beings: computed being {:?} missing InputMoveDir/ComputedBy",
-                    being_ent
-                );
                 continue;
             };
             if !computed_by.human_input {
@@ -116,12 +113,12 @@ pub fn copy_player_move_input_to_beings(
     }
 }
 
-/// Emits a `BeingChangedMoveState` message when the speed magnitude changes.
+/// Emits a `UpdateSpriteAnimState` message when the speed magnitude changes.
 pub fn emit_move_state_on_movevecmag_speed_mag_change(
     query: Query<(Entity, &SpeedMagnitude)>,
-    mut writer: MessageWriter<UpdateSpriteAnimState>,
+    mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
     mut prev_by_ent: Local<EntityHashMap<SpeedMagnitude>>,
-    mut messages: Local<Vec<UpdateSpriteAnimState>>,
+    mut messages: Local<Vec<MatchHeldSpritesAnimStateToBeingState>>,
 ) {
     for (ent, &speed_magnitude) in query.iter() {
         let Some(&prev) = prev_by_ent.get(&ent) else {
@@ -129,7 +126,7 @@ pub fn emit_move_state_on_movevecmag_speed_mag_change(
             continue;
         };
         if prev != speed_magnitude {
-            messages.push(UpdateSpriteAnimState(ent));
+            messages.push(MatchHeldSpritesAnimStateToBeingState(ent));
             prev_by_ent.insert(ent, speed_magnitude);
         }
     }

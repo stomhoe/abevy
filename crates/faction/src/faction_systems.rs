@@ -1,7 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{StrId};
 use player::player_components::*;
 
 use crate::{faction_components::*, faction_resources::*, };
@@ -9,29 +8,54 @@ use crate::{faction_components::*, faction_resources::*, };
 
 #[allow(unused_parens)]///todo arreglar, se puede ejecutar antes de que se le ponga Mine a nuestra faccion
 pub fn set_stuff_as_self_faction(mut cmd: Commands,
-    things_query: Query<(Entity, &BelongsToFaction), (Changed<BelongsToFaction>, )>,
-    selfplayer_query: Query<&BelongsToFaction, (With<Player>, With<Mine>)>,
-    player_factions: Query<(&PlayerMembers),>,
+    things_query: Query<
+        (
+            Entity,
+            Ref<BelongsToFaction>,
+            Has<BelongsToAPlayerFaction>,
+            Has<IsAffiliatedToMyFaction>,
+        ),
+        Without<Player>,
+    >,
+    selfplayer_faction_query: Query<Ref<BelongsToFaction>, (With<Player>, With<Mine>)>,
+    added_mine_query: Query<(), (With<Player>, Added<Mine>)>,
+    player_factions: Query<(), With<PlayerMembers>>,
 
 ) {
-    if things_query.is_empty() {
+    let rerun_all = !added_mine_query.is_empty()
+        || selfplayer_faction_query
+            .single()
+            .is_ok_and(|selfplayer_faction| selfplayer_faction.is_changed());
+    if !rerun_all && things_query.iter().all(|(_, faction, _, _)| !faction.is_changed()) {
         return;
     }
-    let Ok(selfplayer_faction) = selfplayer_query.single() else {
+    let Ok(selfplayer_faction) = selfplayer_faction_query.single() else {
         error!("Failed to get my player faction");
         return;
     };
-    for (thing_ent, otherthing_faction) in things_query.iter() {
+    for (thing_ent, otherthing_faction, has_player_faction, is_affiliated_to_my_faction) in things_query.iter() {
+        if !rerun_all && !otherthing_faction.is_changed() {
+            continue;
+        }
         if player_factions.get(otherthing_faction.0).is_ok() {
-            cmd.entity(thing_ent).try_insert(BelongsToAPlayerFaction);
+            if !has_player_faction {
+                cmd.entity(thing_ent).try_insert(BelongsToAPlayerFaction);
+            }
 
             if otherthing_faction.0 == selfplayer_faction.0 {
-                cmd.entity(thing_ent).try_insert_if_new(IsAffiliatedToMyFaction);
-            } else {
+                if !is_affiliated_to_my_faction {
+                    cmd.entity(thing_ent).try_insert(IsAffiliatedToMyFaction);
+                }
+            } else if is_affiliated_to_my_faction {
                 cmd.entity(thing_ent).try_remove::<IsAffiliatedToMyFaction>();
             }
-        } else{
-            cmd.entity(thing_ent).try_remove::<BelongsToAPlayerFaction>();
+        } else {
+            if has_player_faction {
+                cmd.entity(thing_ent).try_remove::<BelongsToAPlayerFaction>();
+            }
+            if is_affiliated_to_my_faction {
+                cmd.entity(thing_ent).try_remove::<IsAffiliatedToMyFaction>();
+            }
         }
     }
 

@@ -46,15 +46,13 @@ pub fn on_control_change(
     self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<Mine>)>,
     self_player_became_mine: Query<(), (With<Player>, With<Mine>, Added<Mine>)>,
     changed_query: Query<(Entity, &ComputedBy, Has<CameraTarget>), Changed<ComputedBy>>,
-    query: Query<(Entity, &ComputedBy, Has<CameraTarget>)>,
+    computed_by_query: Query<(Entity, &ComputedBy, Has<CameraTarget>)>,
     mut input_dirs: Query<&mut InputMoveDir>,
     mut removed_controlled_by: RemovedComponents<ComputedBy>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
     for being_ent in removed_controlled_by.read() {
-        commands.entity(being_ent).try_remove::<ComputedLocally>();
-        commands.entity(being_ent).try_remove::<HumanControlled>();
-        commands.entity(being_ent).try_remove::<CameraTarget>();
+        commands.entity(being_ent).try_remove::<(ComputedLocally, HumanControlled, CameraTarget)>();
     }
     let Ok((self_entity, is_host)) = self_player.single() else {
         debug_once!(target: BEING_CONTROL, "Skipping control refresh until local player is marked Mine");
@@ -64,8 +62,8 @@ pub fn on_control_change(
                                     controlled_by: &ComputedBy,
                                     is_camera_target: bool| {
         if let Ok(mut input_dir) = input_dirs.get_mut(being_ent) {
-            error!(
-                target: MOVEMENT_SYSTEM,
+            trace!(
+                target: BEING_CONTROL,
                 "InputMoveDir reset on control change for {:?}: {:?} -> {:?}",
                 being_ent,
                 input_dir.0,
@@ -74,24 +72,22 @@ pub fn on_control_change(
             input_dir.0 = Vec2::ZERO;
         }
         if controlled_by.client_ent == self_entity {
-            info!(target: BEING_CONTROL, "debug {:?} is now controlled locally by self", being_ent);
+            info!(target: BEING_CONTROL, "debug {:?} is now computed locally by self", being_ent);
             commands
                 .entity(being_ent)
                 .try_insert_if_new((ComputedLocally, ActivatingChunks::new(&chunk_range)));
             if controlled_by.human_input {
                 //PROVISORIO
-                debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget", being_ent);
+                debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget due to human input", being_ent);
                 commands
                     .entity(being_ent)
                     .try_insert((HumanControlled, CameraTarget::default()));
             } else {
                 debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
-                commands.entity(being_ent).try_remove::<CameraTarget>();
-                commands.entity(being_ent).try_remove::<HumanControlled>();
+                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled)>();
             } //ENDOF PROVISORIO
         } else {
-            commands.entity(being_ent).try_remove::<ComputedLocally>();
-            commands.entity(being_ent).try_remove::<CameraTarget>();
+            commands.entity(being_ent).try_remove::<(ComputedLocally, CameraTarget)>();
             if !is_host {
                 commands.entity(being_ent).try_remove::<HumanControlled>();
                 if !is_camera_target {
@@ -103,7 +99,7 @@ pub fn on_control_change(
         }
     };
     if !self_player_became_mine.is_empty() {
-        for (being_ent, controlled_by, is_camera_target) in query.iter() {
+        for (being_ent, controlled_by, is_camera_target) in computed_by_query.iter() {
             apply_control_change(being_ent, controlled_by, is_camera_target);
         }
         return;

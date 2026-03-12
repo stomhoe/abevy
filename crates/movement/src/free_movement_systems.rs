@@ -1,6 +1,6 @@
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use sprite_animation_shared::{UpdateSpriteAnimState, MoveAnimActive};
+use sprite_animation_shared::{MatchHeldSpritesAnimStateToBeingState, MoveAnimActive};
 
 use crate::movement_components::{GridLockedMovement, NormMoveDir, SpeedMagnitude};
 use crate::movement_helpers::move_anim_changed;
@@ -11,7 +11,7 @@ pub fn do_free_movement(
         Without<GridLockedMovement>,
     >,
     time: Res<Time>,
-    mut writer: MessageWriter<UpdateSpriteAnimState>,
+    mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
 ) {
     let mut move_anim_msgs = HashSet::new();
     for (being_ent, mut transform, mut move_anim, norm_move_dir, speed_magnitude) in query.iter_mut() {

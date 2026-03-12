@@ -20,7 +20,7 @@ pub fn move_anim_changed(
     being_ent: Entity,
     move_anim: &mut MoveAnimActive,
     active: bool,
-    messages: &mut HashSet<UpdateSpriteAnimState>,
+    messages: &mut HashSet<MatchHeldSpritesAnimStateToBeingState>,
 ) {
     move_anim.set(active, being_ent, messages);
 }

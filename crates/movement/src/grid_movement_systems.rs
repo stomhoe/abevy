@@ -109,8 +109,8 @@ pub fn progress_tile_transition_transform(
         &mut MoveAnimActive,
         &mut GridLockedMovement,
     )>,
-    mut writer: MessageWriter<UpdateSpriteAnimState>,
-    mut messages: Local<HashSet<UpdateSpriteAnimState>>,
+    mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
+    mut messages: Local<HashSet<MatchHeldSpritesAnimStateToBeingState>>,
 ) {
     for (being_ent, tile_pos, mut transform, mut move_anim, mut glm) in query.iter_mut() {
         glm.ensure_grid_anchor(*tile_pos);

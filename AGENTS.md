@@ -8,3 +8,5 @@ For target: in error!, info!, etc. put the corresponding constant from log_targe
 For freshly implemented features, add debug! prints and update main.rs to actually show the logs, so that the user can help debug, but make these occupy a single line even if long. if spammy use trace! instead. For systems which are ran both by server and clients, make sure that you .replicate::<ComponentName>'d all involved components in the corresponding module's pub fn plugin. Make sure to .replicate::<T> newly added components which the client also uses in his locally running systems.
 
 if you write a client-only system, put .in_set(ClientSystems). If server-running only, put .run_if(in_state(ServerState::Running)). If it's a system for either singleplayer/hosting, use .in_set(HostSystems)
+
+if you are using an Or<(T, U)> as query filter, put it before any other filter.

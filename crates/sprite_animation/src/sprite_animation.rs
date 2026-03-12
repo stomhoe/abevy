@@ -44,7 +44,7 @@ pub fn plugin(app: &mut App) {
 
     .add_mapped_server_message::<SyncMoveState>(Channel::Ordered)
 
-    .add_message::<UpdateSpriteAnimState>()
+    .add_message::<MatchHeldSpritesAnimStateToBeingState>()
 
     .replicate_once::<AnimExtraState>()
     .replicate_once::<MoveAnimActive>()
