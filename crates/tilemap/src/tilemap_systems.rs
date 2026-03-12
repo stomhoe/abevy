@@ -51,11 +51,6 @@ impl MapStruct {
     pub fn take_hash_id_map(&mut self) -> HashIdToTexIndex {take(&mut self.tmap_hash_id_map)}
 }
 
-
-//ESTRATEGIA PERSISTENCIA: DEJAR TODAS LAS TILES MODIFICADAS EN WORLD (COMO ENTITIES), MARCARLAS CON ALGO.
-//NO SE PUEDEN GUARDAR EN ESTRUCTURAS DE DATOS COMO HASHMAPS POR LA INFINIDAD DE COMBINACIONES POSIBLES DE COMPONENTES
-
-
 #[derive(SystemParam)]
 pub struct ProcessTilesPreParams<'w, 's> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,
@@ -152,10 +147,9 @@ pub fn process_tiles_pre(
     let tiles_len = params.collected_tiles.0.len();
     changed_structs.reserve(reserved);
 
-    let mut tilemap_bundles = Vec::with_capacity(200);//TODO HACER ALGO CON EL CHILDOF (CAMBIAR POR OTRO STRUCT?)
+    let mut tilemap_bundles = Vec::with_capacity(200);
 
     let mut to_insert_replicated = Vec::with_capacity(tiles_len/100);
-    //let mut spritetiles_to_insert_pos_and_dim_ref = Vec::with_capacity(tiles_len/20);
     let mut spritetiles_to_remove_bundle = Vec::with_capacity(tiles_len/20);
 
     let mut child_ofs_to_insert: Vec<(Entity, ChildOf)> = Vec::with_capacity(tiles_len);

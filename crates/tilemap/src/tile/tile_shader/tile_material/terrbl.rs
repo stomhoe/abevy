@@ -44,28 +44,6 @@ pub struct TerrBlendMat {
     #[serde(skip)]
     pub overlay_tex_7: Handle<Image>,
 }
-
-impl TerrBlendMat {
-    pub fn new() -> Self {
-        Self {
-            tile_indices_map: Handle::default(),
-            tile_flags_map: Handle::default(),
-            tile_params_map: Handle::default(),
-            map_size_tiles: Vec2::ONE,
-            time: 0.0,
-            overlay_tex_0: Handle::default(),
-            overlay_tex_1: Handle::default(),
-            overlay_tex_2: Handle::default(),
-            overlay_tex_3: Handle::default(),
-            overlay_tex_4: Handle::default(),
-            overlay_tex_5: Handle::default(),
-            overlay_tex_6: Handle::default(),
-            overlay_tex_7: Handle::default(),
-        }
-    }
-}
-
-//https://docs.rs/bevy-inspector-egui/latest/bevy_inspector_egui/struct.InspectorOptions.html
 impl PartialEq for TerrBlendMat {
     fn eq(&self, other: &Self) -> bool {
         self.tile_indices_map == other.tile_indices_map

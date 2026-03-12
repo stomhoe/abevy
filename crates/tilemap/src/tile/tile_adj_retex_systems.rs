@@ -1,6 +1,5 @@
 use crate::{
     tile::{tile_components::*, tile_messages::*},
-    tilemap_resources::*,
 };
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
@@ -39,6 +38,7 @@ pub fn tile_adjacency_dependent_retexturing_system(
     hash2tex_query: Query<(&HashIdToTexIndex), ()>,
     params: TileGatheringParamSet,
     mut adj_masks_by_hid: Local<HashMap<HashId, AdjMask>>,
+    mut tiles_to_recheck: Local<Vec<Entity>>,
     mut north_adj_tiles_ezeros: Local<Vec<Entity>>,
     mut south_adj_tiles_ezeros: Local<Vec<Entity>>,
     mut west_adj_tiles_ezeros: Local<Vec<Entity>>,
@@ -55,10 +55,8 @@ pub fn tile_adjacency_dependent_retexturing_system(
         if !unique_rechecks.insert(key) {
             continue;
         }
-        north_adj_tiles_ezeros.clear();
-        params.gather_tiles_at(&mut *north_adj_tiles_ezeros, msg.dim, msg.gpos);
-        let mut tiles_to_recheck: Vec<Entity> = north_adj_tiles_ezeros.drain(..).collect();
-
+        tiles_to_recheck.clear();
+        params.gather_tiles_at(&mut *tiles_to_recheck, msg.dim, msg.gpos);
         for tile_ent in tiles_to_recheck.drain(..) {
             let Ok((ezero_ref, &dim, &gpos, ..)) = tile_query.get(tile_ent) else {
                 continue;
@@ -75,7 +73,6 @@ pub fn tile_adjacency_dependent_retexturing_system(
             southeast_adj_tiles_ezeros.clear();
             southwest_adj_tiles_ezeros.clear();
             adj_masks_by_hid.clear();
-
             params.gather_tiles_at(&mut *north_adj_tiles_ezeros, dim, gpos.adjacent_north());
             params.gather_tiles_at(&mut *south_adj_tiles_ezeros, dim, gpos.adjacent_south());
             params.gather_tiles_at(&mut *west_adj_tiles_ezeros, dim, gpos.adjacent_west());
@@ -84,7 +81,6 @@ pub fn tile_adjacency_dependent_retexturing_system(
             params.gather_tiles_at(&mut *northwest_adj_tiles_ezeros, dim, gpos.adjacent_northwest());
             params.gather_tiles_at(&mut *southeast_adj_tiles_ezeros, dim, gpos.adjacent_southeast());
             params.gather_tiles_at(&mut *southwest_adj_tiles_ezeros, dim, gpos.adjacent_southwest());
-
             let mut process_adjacent_tiles = |adj_mask: AdjMask, adj_tiles: &mut Vec<Entity>| {
                 for adj_tile_ent in adj_tiles.drain(..) {
                     let Ok((ezero_ref, ..)) = tile_query.get(adj_tile_ent) else {

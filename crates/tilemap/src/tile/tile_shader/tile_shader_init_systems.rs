@@ -18,8 +18,6 @@ pub fn init_shaders(
     let mut shader_comps_to_insert = Vec::new();
 
     for seri in load_shader_terrbl_seri_defs() {
-            //trace!(target: TILE_SHADER_INIT, "Loading Shader from handle: {:?}", handle);
-
             let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
                 Ok(id) => id,
                 Err(err) => {
@@ -27,11 +25,10 @@ pub fn init_shaders(
                     continue;
                 }
             };
-
             let ent = cmd.spawn_empty().id();
             shader_comps_to_insert.push((ent, (
                 str_id.clone(),
-                TileShader::TerrBlend(TerrBlendMat::new()),
+                TileShader::TerrBlend(TerrBlendMat::default()),
             )));
     }
     cmd.insert_batch(shader_comps_to_insert);

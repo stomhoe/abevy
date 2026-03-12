@@ -15,12 +15,12 @@ pub fn setup_debug_fonts(
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
-    
+
     let mut fonts = egui::FontDefinitions::default();
 
-    const FONT_NAME: &str = "";
+    const FONT_NAME: &str = "debug_dejavu_sans";
 
-    if let Some(font_data) = fonts.font_data.get(FONT_NAME) {
+    if fonts.font_data.contains_key(FONT_NAME) {
         fonts
             .families
             .entry(egui::FontFamily::Proportional)

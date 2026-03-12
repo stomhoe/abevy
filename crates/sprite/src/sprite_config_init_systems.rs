@@ -147,11 +147,11 @@ pub fn init_sprite_configs(
                 continue;
             };
             cmd.entity(spritecfg_ent).insert((UseFallbackSprite, img_path_holder));
-            if seri.fallback_z.is_finite() {
-                cmd.entity(spritecfg_ent).insert(AcZ(seri.fallback_z));
+            if seri.z.is_finite() {
+                cmd.entity(spritecfg_ent).insert(AcZ(seri.z));
             }
-            if seri.fallback_y_sort.is_finite() {
-                cmd.entity(spritecfg_ent).insert(YSortOrigin(seri.fallback_y_sort));
+            if seri.y_sort.is_finite() {
+                cmd.entity(spritecfg_ent).insert(YSortOrigin(seri.y_sort));
             }
         }
 
