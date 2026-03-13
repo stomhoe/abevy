@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
-use bevy::ecs::entity::{EntityHashMap, MapEntities};
+use bevy::ecs::entity::{EntityHashMap, EntityHashSet, EntityMapper, MapEntities};
 #[allow(unused_imports)]
 use bevy::prelude::*;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::common_components::*;
+use common::common_tag_components::TagSet;
 use game_common::game_common_samplers::EntityCountMapWeightedSampler;
-use crate::{ItemEntityMap, ItemsGeneratedOnDeathSeri};
+use crate::{ItemEntityMap, ItemsGeneratedOnDeathSeri, SlottedItemHolderSeri};
 use serde::{Deserialize, Serialize};
 use sprite_shared::prelude::*;
 
@@ -32,7 +33,7 @@ pub struct ItemHeldIn {
     #[relationship] #[entities]
     pub holder: Entity,
 }
-pub type Dropped = Without<ItemHeldIn>;
+pub type DroppedItem = (With<Item>, Without<ItemHeldIn>);
 
 #[derive(Component, Debug, )]
 #[relationship_target(relationship = ItemHeldIn)]
@@ -41,6 +42,12 @@ impl HeldItems { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct DropHeldItemsOnDowned;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct WieldRequirements;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct SlotableIn(pub TagSet);
 
 #[derive(Component, Debug, Clone, )]
 pub struct ItemsGeneratedOnDeath { pub sampler: EntityCountMapWeightedSampler, pub count_multiplier: f32 }
@@ -107,6 +114,49 @@ impl ItemsGeneratedOnDeath {
                 out,
             );
             visited.remove(ref_id);
+        }
+    }
+}
+
+#[derive(Component, Debug, Default, Clone)]
+/// don't complicate further, define external systems if needed to reject based on extra special conditions
+pub struct SlottedItemHolder(pub HashMap<Tag, (EntityHashSet, u32)>);
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum InsertIntoSlotError {
+    LimitReached,
+    SlotNotPresent,
+}
+
+impl SlottedItemHolder {
+    pub fn new(seri: &SlottedItemHolderSeri) -> Self {
+        let mut out = HashMap::default();
+        for (slot, &limit) in &seri.slots {
+            out.insert(Tag::from(slot.as_str()), (EntityHashSet::default(), limit));
+        }
+        Self(out)
+    }
+
+    pub fn insert_into_slot(&mut self, slot: Tag, entity: Entity) -> Result<(), InsertIntoSlotError> {
+        let Some((entities, limit)) = self.0.get_mut(&slot) else {
+            return Err(InsertIntoSlotError::SlotNotPresent);
+        };
+        if entities.len() as u32 >= *limit && !entities.contains(&entity) {
+            return Err(InsertIntoSlotError::LimitReached);
+        }
+        entities.insert(entity);
+        Ok(())
+    }
+}
+
+impl MapEntities for SlottedItemHolder {
+    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
+        for (entities, _) in self.0.values_mut() {
+            let mut mapped_entities = EntityHashSet::default();
+            for &entity in entities.iter() {
+                mapped_entities.insert(entity_mapper.get_mapped(entity));
+            }
+            *entities = mapped_entities;
         }
     }
 }

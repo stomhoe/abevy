@@ -45,6 +45,12 @@ pub struct ItemSeri {
 
 fn default_stack_limit() -> u16 { 1 }
 
+#[derive(Deserialize, Default, Debug, Clone)]
+pub struct SlottedItemHolderSeri {
+    #[serde(default)]
+    pub slots: HashMap<String, u32>,
+}
+
 #[derive(Deserialize, Asset, TypePath, Default, Debug, Clone)]
 pub struct ItemsGeneratedOnDeathSeri {
     pub id: String,

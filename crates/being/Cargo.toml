@@ -13,6 +13,7 @@ camera = { path = "../camera" }
 movement = { path = "../movement" }
 ac_input = { path = "../ac_input" }
 being_shared = { path = "../being_shared" }
+item_shared = { path = "../item_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 modifier_shared = { path = "../modifier_shared" }
 sprite_systems = { path = "../sprite" }

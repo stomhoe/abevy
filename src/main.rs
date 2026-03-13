@@ -129,7 +129,7 @@ fn build_filter() -> String {
         log_targets::GAME_INIT, DEBUG,
 
         log_targets::SPRITE_ANIMATION_INIT, WARN,
-        log_targets::SPRITE_ANIMATION_SYSTEM, WARN,
+        log_targets::SPRITE_ANIMATION_SYSTEM, DEBUG,
         log_targets::ENTITY_ZERO_SYSTEM, INFO,
         log_targets::DUNGEONING_SYSTEM, WARN,
         log_targets::SGC_CHUNK_CLAIM, WARN,

@@ -48,12 +48,12 @@ pub struct BodySums {
     pub consciousness: f32,
     pub pain: f32,
     pub vision: f32,
-    pub manipulation_dexterity: f32,
+    pub manip_dex: f32,
     pub manip_str: f32,
 }
 
 #[derive(Debug, Deserialize, Serialize, Copy, Clone, Message)]
-pub struct BodyDamage {
+pub struct IncomingDamage {
     pub body: Entity,
     pub amount: f32,
 }

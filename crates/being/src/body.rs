@@ -40,7 +40,7 @@ pub fn plugin(app: &mut App) {
         (
             (update_body_tree_weight_sum).in_set(ModifierSystems),
             (
-                apply_body_damage.run_if(on_message::<BodyDamage>),
+                apply_body_damage.run_if(on_message::<IncomingDamage>),
                 sync_body_part_missing,
                 update_body_health_from_parts,
                 apply_pain_slowdown,
@@ -70,7 +70,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyOf>()
     .replicate_filtered::<ChildOf, With<BodyOf>>()
     .replicate::<BodySums>()
-    .add_message::<BodyDamage>();
+    .add_message::<IncomingDamage>();
 }
 
 #[allow(unused_imports, ambiguous_glob_reexports)]

@@ -42,7 +42,7 @@ fn add_modifier_sum(
 pub fn apply_body_damage(
     mut cmd: Commands,
     time: Res<Time>,
-    mut reader: MessageReader<BodyDamage>,
+    mut reader: MessageReader<IncomingDamage>,
     bodies_query: Query<(Option<&BodyParts>), (With<BodyOf>, Without<EntityZero>)>,
     parts_query: Query<
         (Option<&BodyPartCoverageWeight>, Option<&BodyPartMissing>),
@@ -419,7 +419,7 @@ pub fn update_body_health_from_parts(
                     consciousness,
                     pain,
                     vision,
-                    manipulation_dexterity: 0.0,
+                    manip_dex: 0.0,
                     manip_str: 0.0,
                 });
             }

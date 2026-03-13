@@ -9,4 +9,4 @@ For freshly implemented features, add debug! prints and update main.rs to actual
 
 if you write a client-only system, put .in_set(ClientSystems). If server-running only, put .run_if(in_state(ServerState::Running)). If it's a system for either singleplayer/hosting, use .in_set(HostSystems)
 
-if you are using an Or<(T, U)> as query filter, put it before any other filter.
+if using Or<(T, U)> as query filter, put it before any other filter. use bevy's hashmaps and hashsets over std ones.

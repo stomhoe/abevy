@@ -580,6 +580,7 @@ dependencies = [
  "common",
  "faction",
  "game_common",
+ "item_shared",
  "modifier_shared",
  "movement",
  "param_sets",
@@ -5612,6 +5613,7 @@ dependencies = [
 name = "item_systems"
 version = "0.1.0"
 dependencies = [
+ "being_shared",
  "bevy 0.18.0",
  "bevy_replicon",
  "common",

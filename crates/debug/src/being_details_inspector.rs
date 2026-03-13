@@ -168,7 +168,7 @@ pub fn being_details_inspector(world: &mut World) {
                     ui.label(format!("Consciousness: {:.2}", sums.consciousness));
                     ui.label(format!("Pain: {:.2}", sums.pain));
                     ui.label(format!("Vision: {:.2}", sums.vision));
-                    ui.label(format!("Manip dex: {:.2}", sums.manipulation_dexterity));
+                    ui.label(format!("Manip dex: {:.2}", sums.manip_dex));
                     ui.label(format!("Manip str: {:.2}", sums.manip_str));
                 });
             }

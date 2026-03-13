@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::EntityZero;
+use item_shared::item_components::SlottedItemHolder;
 use modifier_shared::{modifier_components::*, modifier_types::*};
 use modifier_shared::modifier_seris::ModifierSynergySeri;
 
@@ -72,9 +73,9 @@ pub fn init_body_parts(
                 .insert(DisplayName::trunc(part_id.as_str()));
         }
 
-        if !part.slots.is_empty() {
+        if !part.slots.slots.is_empty() {
             cmd.entity(part_ent)
-                .insert(BodyPartSlots::new(part.slots.clone()));
+                .insert(SlottedItemHolder::new(&part.slots));
         }
 
         if !part.tags.is_empty() {

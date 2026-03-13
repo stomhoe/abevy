@@ -1,6 +1,7 @@
 use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)]
 use bevy::prelude::*;
+use item_shared::item_seris::SlottedItemHolderSeri;
 use modifier_shared::modifier_seris::ModifierSynergySeri;
 
 #[derive(Asset, serde::Deserialize, TypePath, Default, Debug, Clone)]
@@ -12,7 +13,7 @@ pub struct BodyPartSeri {
     #[serde(default)]
     pub parent: String,
     #[serde(default)]
-    pub slots: Vec<String>,
+    pub slots: SlottedItemHolderSeri,
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]

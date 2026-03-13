@@ -13,6 +13,11 @@
         "swim_speed": 0.2,
         "caloric_burn_rate": 0.8,
     },
+    slots: (
+        slots: {
+            "hand": 1,
+        },
+    ),
     weighted_stats: {
         "walk_speed": 0.0,
         "mass_kg": 0.4,

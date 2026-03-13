@@ -33,7 +33,7 @@ pub fn update_body_manipulation_totals(
         let Ok(mut health) = body_health_query.get_mut(body) else {
             continue;
         };
-        health.manipulation_dexterity = dexterity_by_body.get(&body).copied().unwrap_or(0.0);
+        health.manip_dex = dexterity_by_body.get(&body).copied().unwrap_or(0.0);
         health.manip_str = strength_by_body.get(&body).copied().unwrap_or(0.0);
     }
 }

@@ -67,14 +67,6 @@ pub fn receive_step_request_from_client(
         let dir_vec = step_dir.to_dir_vec();
         glm.step_dir = dir_vec;
         if *facing_dir != step_dir {
-            file_log(
-                "move",
-                "server",
-                &format!(
-                    "turn_request ent={being_ent:?} gpos={tile_pos:?} facing_before={facing_dir:?} facing_after={step_dir:?} stepping={}",
-                    glm.is_stepping()
-                ),
-            );
             *facing_dir = step_dir;
         }
         let secs_per_step = secs_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
@@ -99,14 +91,6 @@ pub fn receive_step_request_from_client(
                     force_resync: true,
                 },
             });
-            file_log(
-                "move",
-                "server",
-                &format!(
-                    "reject_early ent={being_ent:?} gpos={tile_pos:?} facing={step_dir:?} credit={:.2} elapsed={elapsed:.3} expected={secs_per_step:.3}",
-                    state.step_credit
-                ),
-            );
             continue;
         }
         state.step_credit -= 1.0;
@@ -121,24 +105,6 @@ pub fn receive_step_request_from_client(
                     force_resync: true,
                 },
             });
-            debug!(
-                target: MOVEMENT_SYSTEM,
-                "Rejected step request for {:?}: blocked target {:?} from dir {:?}, credit {:.2}; facing {:?}, forcing {:?}",
-                being_ent,
-                next_gpos,
-                step_dir,
-                state.step_credit,
-                step_dir,
-                tile_pos
-            );
-            file_log(
-                "move",
-                "server",
-                &format!(
-                    "reject_blocked ent={being_ent:?} gpos={tile_pos:?} next={next_gpos:?} facing={step_dir:?} requested={step_dir:?} credit={:.2}",
-                    state.step_credit
-                ),
-            );
             continue;
         }
         glm.ensure_grid_anchor(*tile_pos);

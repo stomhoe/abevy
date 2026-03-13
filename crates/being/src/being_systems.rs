@@ -474,16 +474,20 @@ pub fn apply_melee_attack(
 }
 
 pub fn trigger_melee_requests_from_player_input(
-    player_melee_actions: Query<
-        (&Action<BeingMeleeAttackAction>, &ComputedBeings),
-        (With<Mine>, With<Player>, Changed<Action<BeingMeleeAttackAction>>),
+    melee_action_query: Query<Ref<Action<BeingMeleeAttackAction>>>,
+    player_query: Query<
+        (&Actions<BeingDirectControlInputContext>, &ComputedBeings),
+        (With<Mine>, With<Player>),
     >,
     controlled_beings: Query<&ComputedBy>,
     mut writer: MessageWriter<LocalMeleeAttackRequested>,
     mut messages: Local<Vec<LocalMeleeAttackRequested>>,
 ) {
-    for (melee_action, computed_beings) in player_melee_actions.iter() {
-        if !**melee_action {
+    for (actions, computed_beings) in player_query.iter() {
+        let Some(melee_action) = melee_action_query.iter_many(actions).next() else {
+            continue;
+        };
+        if !melee_action.is_changed() || !**melee_action {
             continue;
         }
         for &being_ent in computed_beings.being_ents() {

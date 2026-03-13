@@ -55,7 +55,6 @@ impl MapStruct {
 pub struct ProcessTilesPreParams<'w, 's> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,
 
-
     pub tilemaps: Query<'w, 's, (
         &'static mut TilemapTexture,
         &'static mut TileStorage,
@@ -123,7 +122,6 @@ pub fn process_tiles_pre(
         Option<&AcZ>,
         Option<&TileHashIdsHandles>,
         Option<&TileShaderRef>,
-        Option<&TerrBlendParams>,
         Has<SpriteTile>,
         Option<&TileColor>,
         Has<YSortOrigin>,
@@ -165,7 +163,7 @@ pub fn process_tiles_pre(
         };
         let bundle = unsafe { &mut *bundle_ptr };
 
-        let Ok((_tile_strid, &ez_hash_id, size_in_tiles, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, terrbl_params, is_spritetile, color, y_sort)) = ezero_query.get(bundle.ezero_ref.0) else {
+        let Ok((_tile_strid, &ez_hash_id, size_in_tiles, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, is_spritetile, color, y_sort)) = ezero_query.get(bundle.ezero_ref.0) else {
             error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} is despawned", bundle.ezero_ref.0);
             cmd.entity(tile_ent).try_despawn();
             params.collected_tiles.0.swap_remove(i);

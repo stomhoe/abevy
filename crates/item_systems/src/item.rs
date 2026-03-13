@@ -9,11 +9,13 @@ use sprite_shared::prelude::ScsToBuild;
 use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
 
 use crate::item_init_systems::*;
+use crate::item_messages::*;
+use crate::item_systems::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ItemSystems;
 
-pub fn clone_item_from_ezero(cmd: &mut Commands, ezero_ref: EntityZeroRef) -> Entity {
+pub fn clone_item_from_ezero(cmd: &mut Commands, ezero_ref: EntityZeroRef, dimension_ref: DimensionRef) -> Entity {
     let item_instance = cmd
         .entity(ezero_ref.0)
         .clone_and_spawn_with_opt_out(|builder| {
@@ -21,7 +23,7 @@ pub fn clone_item_from_ezero(cmd: &mut Commands, ezero_ref: EntityZeroRef) -> En
         })
         .id();
     cmd.entity(item_instance)
-        .insert((Item, EntityZeroRef(ezero_ref.0)));
+        .insert((Item, EntityZeroRef(ezero_ref.0), dimension_ref));
     item_instance
 }
 
@@ -33,11 +35,18 @@ pub fn plugin(app: &mut App) {
         )
         .add_systems(
             Update,
-            sync_items_at_gpos.in_set(GameplaySystems),
+            (
+                generate_items_from_messages,
+                readjust_child_of_for_items,
+                sync_items_at_gpos,
+                on_being_held_items_changed,
+            ).in_set(GameplaySystems),
         )
+        .add_message::<GenerateItem>()
         .replicate::<Item>()
         .replicate::<ItemHeldIn>()
         .replicate::<DropHeldItemsOnDowned>()
+        .replicate::<SlotableIn>()
         .replicate_filtered::<ChildOf, With<Item>>()
     ;
 }

@@ -40,7 +40,7 @@ pub fn add_movement_components_to_beings(
         ));
     }
 }
-
+#[allow(unused_parens, )]
 pub fn update_facing_dir(
     mut query: Query<(Entity, &NormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
     mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,

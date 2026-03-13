@@ -31,10 +31,10 @@ pub fn start_grid_locked_steps(
         &mut CardinalDirection,
     ), (With<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
-    mut messages: Local<Vec<ToClients<SyncGpos>>>,
-    mut step_writer: MessageWriter<SendStepRequest>,
-    mut step_messages: Local<Vec<SendStepRequest>>,
+    mut sync_gpos_msgs: Local<Vec<ToClients<SyncGpos>>>,
+    mut req_step_msgs: Local<Vec<SendStepRequest>>,
     mut to_drain: Local<Vec<Entity>>,
+    mut client_req_step_writer: MessageWriter<SendStepRequest>,
 ) {
     for (
         entity,
@@ -80,7 +80,7 @@ pub fn start_grid_locked_steps(
             continue;
         }
         if client_state.get() == &ClientState::Connected {
-            step_messages.push(SendStepRequest {
+            req_step_msgs.push(SendStepRequest {
                 being_ent: entity,
                 dir: next_dir,
             });
@@ -91,14 +91,14 @@ pub fn start_grid_locked_steps(
                 dir: *facing_dir,
                 force_resync: false,
             };
-            messages.push(ToClients {
+            sync_gpos_msgs.push(ToClients {
                 mode: SendMode::Broadcast,
                 message: message.clone(),
             });
         }
     }
-    writer.write_batch(messages.drain(..));
-    step_writer.write_batch(step_messages.drain(..));
+    writer.write_batch(sync_gpos_msgs.drain(..));
+    client_req_step_writer.write_batch(req_step_msgs.drain(..));
 }
 
 pub fn progress_tile_transition_transform(
@@ -114,12 +114,18 @@ pub fn progress_tile_transition_transform(
 ) {
     for (being_ent, tile_pos, mut transform, mut move_anim, mut glm) in query.iter_mut() {
         glm.ensure_grid_anchor(*tile_pos);
+        let was_stepping = glm.is_stepping();
         glm.progress_grid_step(*tile_pos);
         let new_translation = glm.grid_translation(*tile_pos, transform.translation.z);
         if transform.translation != new_translation {
             transform.translation = new_translation;
         }
-        move_anim_changed(being_ent, &mut move_anim, glm.is_stepping(), &mut messages);
+        move_anim_changed(
+            being_ent,
+            &mut move_anim,
+            glm.is_stepping() || was_stepping,
+            &mut messages,
+        );
     }
     writer.write_batch(messages.drain());
 }

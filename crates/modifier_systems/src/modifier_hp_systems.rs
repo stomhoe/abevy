@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use being::body::{Bodies, BodyDamage};
+use being::body::{Bodies, IncomingDamage};
 use game_common::game_common_components::{
     Dead,
     DespawnOnDeath,
@@ -14,8 +14,8 @@ pub fn apply_health_damage(
     mut reader: MessageReader<HealthDamage>,
     mut health_query: Query<&mut Health, Without<EntityZero>>,
     body_query: Query<&Bodies, Without<EntityZero>>,
-    mut body_damage_writer: MessageWriter<BodyDamage>,
-    mut body_damage_messages: Local<Vec<BodyDamage>>,
+    mut body_damage_writer: MessageWriter<IncomingDamage>,
+    mut body_damage_messages: Local<Vec<IncomingDamage>>,
 ) {
     for msg in reader.read() {
         if msg.amount <= 0.0 {
@@ -37,7 +37,7 @@ pub fn apply_health_damage(
         let Some(&body) = target_bodies.entities().first() else {
             continue;
         };
-        body_damage_messages.push(BodyDamage {
+        body_damage_messages.push(IncomingDamage {
             body,
             amount: msg.amount,
         });
