@@ -1,6 +1,4 @@
 use bevy::prelude::*;
-use serde::Deserialize;
-use std::collections::HashSet;
 pub use crate::terrain::terrprobe::terrprobe_seris::*;
 
 use crate::terrain::terrprobe::terrprobe_components::TerrProbeTempl;

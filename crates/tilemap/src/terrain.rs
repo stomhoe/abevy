@@ -22,6 +22,7 @@ pub mod operation_list;
 pub mod terrgen_components;
 pub mod terrgen_async_resources;
 pub mod terrgen_resources;
+pub mod terrgen_seris;
 pub mod terrgen_messages;
 pub mod terrgen_expression;
 pub mod terrprobe;
@@ -96,6 +97,7 @@ pub mod prelude {
         terrgen_components::*,
         terrgen_async_resources::*,
         terrgen_resources::*,
+        terrgen_seris::*,
         terrgen_messages::*,
         terrgen_expression::*,
         terrprobe::*,

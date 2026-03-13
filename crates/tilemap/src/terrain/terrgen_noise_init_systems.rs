@@ -2,7 +2,12 @@ use bevy::prelude::*;
 use ::fnl::*;
 use common::common_components::{Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
-use crate::terrain::{prelude::TerrgenEntityMap, terrgen_components::*, terrgen_resources::*};
+use crate::terrain::{
+    prelude::TerrgenEntityMap,
+    terrgen_components::*,
+    terrgen_resources::*,
+    terrgen_seris::*,
+};
 
 #[allow(unused_parens)]
 pub fn init_noises(

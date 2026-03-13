@@ -109,12 +109,28 @@ pub fn switch_or_readjust_sprite_animation(
                 error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?} {}", anim_ent, anim_strid);
                 continue;
             };
+            let anim_strid = strid_query.get(*anim_ent).ok().cloned().unwrap_or_default();
 
             let Some(sprite) = anim_sheet.0.with_loaded_image(&images) else {
-                let anim_strid = strid_query.get(*anim_ent).ok().cloned().unwrap_or_default();
                 error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to create sprite for animation entity {:?} {} because image is not loaded yet.", anim_ent, anim_strid);
                 continue;
             };
+            if let Some(anim_seri) = anim_seri {
+                let required_row = if directionable { anim_type.direction.sprite_sheet_row() } else { 0 };
+                if required_row >= anim_seri.rows_cols.0 {
+                    error_once!(
+                        target: SPRITE_ANIMATION_SYSTEM,
+                        "Animation {:?} {} rows_cols {:?} is out of bounds for row {} on entity {:?} {}",
+                        anim_ent,
+                        anim_strid,
+                        anim_seri.rows_cols,
+                        required_row,
+                        ent,
+                        held_sprite_strid,
+                    );
+                    continue;
+                }
+            }
             let mut sprite = sprite.sprite(&mut atlas_layouts);
             if let Some(anim_seri) = anim_seri {
                 sprite.flip_x = anim_seri.flip_x;
@@ -144,6 +160,21 @@ pub fn switch_or_readjust_sprite_animation(
                     (base_frame, false)
                 }
             };
+            if let Some(anim_seri) = anim_seri {
+                if start_frame >= anim_seri.rows_cols.1 {
+                    error_once!(
+                        target: SPRITE_ANIMATION_SYSTEM,
+                        "Animation {:?} {} rows_cols {:?} is out of bounds for start_frame {} on entity {:?} {}",
+                        anim_ent,
+                        anim_strid,
+                        anim_seri.rows_cols,
+                        start_frame,
+                        ent,
+                        held_sprite_strid,
+                    );
+                    continue;
+                }
+            }
             let sprite_playing_speed = playing_speed.map(|speed| speed.0).unwrap_or(1.0);
             let anim_playing_speed = anim_playing_speed
                 .map(|speed| speed.0)

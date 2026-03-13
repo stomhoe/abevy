@@ -46,6 +46,14 @@ impl CardinalDirection {
             CardinalDirection::East => -std::f32::consts::FRAC_PI_2,
         }
     }
+    pub fn sprite_sheet_row(&self) -> usize {
+        match self {
+            CardinalDirection::South => 0,
+            CardinalDirection::North => 1,
+            CardinalDirection::West => 2,
+            CardinalDirection::East => 3,
+        }
+    }
 }
 impl From<u8> for CardinalDirection {
     fn from(value: u8) -> Self {
