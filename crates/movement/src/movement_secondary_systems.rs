@@ -71,7 +71,7 @@ pub fn update_facing_dir(
 }
 #[allow(unused_parens, )]
 pub fn copy_player_move_input_to_beings(
-    move_action_query: Query<&Action<BeingWasdAction>>,
+    move_action_query: Query<&Action<DcWasdAction>>,
     player_query: Query<(&Actions<BeingDirectControlInputContext>, &ComputedBeings), (With<Mine>, With<Player>)>,
     mut beings: Query<(&ComputedBy, &mut InputMoveDir), (LocalHumanControlled)>,
 ) {
@@ -97,7 +97,7 @@ pub fn copy_player_move_input_to_beings(
             let Ok((computed_by, mut input_move_dir)) = beings.get_mut(being_ent) else {
                 continue;
             };
-            if !computed_by.human_input {
+            if !computed_by.human_dc_input {
                 continue;
             }
             if input_move_dir.0 != vec {
@@ -112,10 +112,10 @@ pub fn copy_player_move_input_to_beings(
         );
     }
 }
-
 /// Emits a `UpdateSpriteAnimState` message when the speed magnitude changes.
+#[allow(unused_parens, )]
 pub fn emit_move_state_on_movevecmag_speed_mag_change(
-    query: Query<(Entity, &SpeedMagnitude)>,
+    query: Query<(Entity, &SpeedMagnitude), (Changed<SpeedMagnitude>, )>,
     mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
     mut prev_by_ent: Local<EntityHashMap<SpeedMagnitude>>,
     mut messages: Local<Vec<MatchHeldSpritesAnimStateToBeingState>>,

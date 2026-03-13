@@ -1,8 +1,30 @@
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
+use game_common::game_common_states::SimulationState;
 use player::player_components::{Mine, Player};
 
 use crate::ac_input_actions::*;
+
+pub fn toggle_simulation(
+    toggle_events: Single<&ActionEvents, With<Action<ToggleSimulationAction>>>,
+    current_state: Res<State<SimulationState>>,
+    mut next_state: ResMut<NextState<SimulationState>>,
+) {
+    if !toggle_events.contains(ActionEvents::START) {
+        return;
+    }
+
+    match current_state.get() {
+        SimulationState::Paused => {
+            info!("Switching to Running state");
+            next_state.set(SimulationState::Running)
+        }
+        SimulationState::Running => {
+            info!("Switching to Paused state");
+            next_state.set(SimulationState::Paused)
+        }
+    }
+}
 
 pub fn spawn_input_contexts(mut commands: Commands) {
     let holder = commands.spawn(InputContextsHolder).id();
@@ -47,22 +69,7 @@ pub fn add_being_input_context(
     for player_ent in my_player_query.iter() {
         commands.entity(player_ent).try_insert((
             BeingDirectControlInputContext,
-            actions!(BeingDirectControlInputContext[
-                (
-                    Action::<BeingWasdAction>::new(),
-                    DeadZone::default(),
-                    Bindings::spawn((
-                        Cardinal::wasd_keys(),
-                        Cardinal::arrows(),
-                        Cardinal::dpad(),
-                        Axial::left_stick(),
-                    )),
-                ),
-                (
-                    Action::<BeingMeleeAttackAction>::new(),
-                    bindings![KeyCode::ControlLeft],
-                ),
-            ]),
+            ::bevy::prelude::related!(bevy_enhanced_input::prelude::Actions<BeingDirectControlInputContext>[(Action::<DcWasdAction>::new(),DeadZone::default(),Bindings::spawn((Cardinal::wasd_keys(),Cardinal::arrows(),Cardinal::dpad(),Axial::left_stick(),)),),(Action::<DcMeleeAttackAction>::new(),bindings![KeyCode::ControlLeft],),(Action::<DcItemPickupAction>::new(),bindings![KeyCode::KeyQ],)]),
         ));
     }
     for removed_mine in removed_mine_query.read() {

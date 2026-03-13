@@ -24,8 +24,6 @@ pub type LocalHumanControlled = (With<ComputedLocally>, With<HumanControlled>);
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
-pub struct IsHumanControlled(pub bool);
 
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = ComputedBy)]
@@ -38,7 +36,7 @@ impl ComputedBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 pub struct ComputedBy  {
     #[relationship] #[entities]
     pub client_ent: Entity,
-    pub human_input: bool,
+    pub human_dc_input: bool,
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]

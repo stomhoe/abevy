@@ -6,7 +6,6 @@ use ac_audio::ac_audio_components::{AnimationFrameSfxState, AnimationSeriSfxConf
 use being_shared::{Grounding, ComputedBy, ComputedLocally};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
-use common::file_logging::file_log;
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
 use game_common::{game_common_components::{Directionable, EntityZeroRef, }, prelude::EntityZero};
 use movement::movement_components::SpeedMagnitude;
@@ -14,21 +13,6 @@ use player::player_components::*;
 use ::sprite_animation_shared::*;
 use ::sprite_shared::prelude::*;
 use ::tilemap_shared::directions::*;
-
-fn fmt_sig3(value: f32) -> String {
-    if !value.is_finite() || value == 0.0 {
-        return value.to_string();
-    }
-    let digits = value.abs().log10().floor() as i32;
-    let scale = 10f32.powi(2 - digits);
-    let rounded = (value * scale).round() / scale;
-    let decimals = (2 - digits).max(0) as usize;
-    format!("{rounded:.decimals$}")
-}
-
-fn fmt_sig3_opt(value: Option<f32>) -> Option<String> {
-    value.map(fmt_sig3)
-}
 
 #[allow(unused_parens, )]
 pub fn switch_or_readjust_sprite_animation(
@@ -71,7 +55,6 @@ pub fn switch_or_readjust_sprite_animation(
     images: Res<Assets<Image>>,
     mut sprite_entis_to_iter: Local<EntityHashSet>,
 ) {
-    sprite_entis_to_iter.clear();
     sprite_entis_to_iter.reserve(
         changers.iter().size_hint().0 + move_anims_changed.len() + changed_sprite_cfg_refs.iter().size_hint().0
     );
@@ -79,7 +62,7 @@ pub fn switch_or_readjust_sprite_animation(
     sprite_entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
     sprite_entis_to_iter.extend(changed_sprite_cfg_refs.iter().map(|base_holder| base_holder.base));
 
-    for (held_sprites, direction, moving, grounding) in base.iter_many(sprite_entis_to_iter.iter()) {
+    for (held_sprites, direction, moving, grounding) in base.iter_many(sprite_entis_to_iter.drain()) {
         for held_sprite in held_sprites.entities() {
             let held_sprite_strid = strid_query.get(*held_sprite).ok().cloned().unwrap_or_default();
             let Ok((ent, has_sprite, prev_anim, base_holder, sprite_cfg_ref, state_id, playing_speed, animation_progresses, transform, )) = sprites_query.get_mut(*held_sprite)
@@ -165,7 +148,6 @@ pub fn switch_or_readjust_sprite_animation(
             let anim_playing_speed = anim_playing_speed
                 .map(|speed| speed.0)
                 .unwrap_or(PlayingSpeed::default().0);
-            let should_debug_anim = anim_playing_speed != 0.0;
 
             let speed_factor = sprite_playing_speed * anim_playing_speed;
             let speed_factor = if movement_based && anim_type.moving.get() {
@@ -184,21 +166,6 @@ pub fn switch_or_readjust_sprite_animation(
             } else {
                 speed_factor
             };
-            if should_debug_anim {
-                file_log(
-                    "anim",
-                    "shared",
-                    &format!(
-                    "anim_speed moving={} movement_based={} sprite_playing_speed={:?} anim_playing_speed={:?} base_movement_speed={:?} current_speed={:?} final_speed_factor={}",
-                    anim_type.moving.get(),
-                    movement_based,
-                    Some(fmt_sig3(sprite_playing_speed)),
-                    Some(fmt_sig3(anim_playing_speed)),
-                    fmt_sig3_opt(baseline_move_speed.map(|speed| speed.0)),
-                    fmt_sig3_opt(baseline_speed_query.get(base_holder.base).ok().map(|speed| speed.0)),
-                    fmt_sig3(speed_factor),
-                ));
-            }
             let playing = !anim_seri.map(|seri| seri.paused).unwrap_or(false);
 
             let mut spritesheet_animation =
@@ -215,19 +182,6 @@ pub fn switch_or_readjust_sprite_animation(
 
             if let Some(mut prev_animation) = prev_anim {
                 if prev_animation.animation != anim_handle.0 {
-                    if should_debug_anim {
-                        file_log(
-                            "anim",
-                            "shared",
-                            &format!(
-                            "anim_switch prev_anim={:?} next_anim={:?} prev_frame={} next_start_frame={} save_progress={}",
-                            prev_animation.animation.id(),
-                            anim_handle.0.id(),
-                            prev_animation.progress.frame,
-                            spritesheet_animation.progress.frame,
-                            should_save_anim_progress,
-                        ));
-                    }
                     if let Some(mut anim_progresses) = animation_progresses {
                         if should_save_anim_progress {
                             anim_progresses.0.insert(prev_animation.animation.clone(), prev_animation.progress);
@@ -239,19 +193,6 @@ pub fn switch_or_readjust_sprite_animation(
                     }
                     insert_needed = true;
                 } else {
-                    if should_debug_anim {
-                        file_log(
-                            "anim",
-                            "shared",
-                            &format!(
-                            "anim_reuse frame={} prev_speed_factor={} next_speed_factor={} playing={} changed_speed={}",
-                            prev_animation.progress.frame,
-                            fmt_sig3(prev_animation.speed_factor),
-                            fmt_sig3(speed_factor),
-                            prev_animation.playing,
-                            (prev_animation.speed_factor - speed_factor).abs() > f32::EPSILON,
-                        ));
-                    }
                     if (prev_animation.speed_factor - speed_factor).abs() > f32::EPSILON {
                         prev_animation.speed_factor = speed_factor;
                     }
@@ -266,18 +207,6 @@ pub fn switch_or_readjust_sprite_animation(
                             spritesheet_animation.progress = *stored_progress;
                         }
                     }
-                }
-                if should_debug_anim {
-                    file_log(
-                        "anim",
-                        "shared",
-                        &format!(
-                        "anim_insert anim={:?} start_frame={} playing={} speed_factor={}",
-                        anim_handle.0.id(),
-                        spritesheet_animation.progress.frame,
-                        playing,
-                        fmt_sig3(speed_factor),
-                    ));
                 }
                 insert_needed = true;
             }
@@ -295,17 +224,6 @@ pub fn switch_or_readjust_sprite_animation(
 
             if insert_needed {
                 let initial_frame = spritesheet_animation.progress.frame;
-                if should_debug_anim {
-                    file_log(
-                        "anim",
-                        "shared",
-                        &format!(
-                        "anim_apply_insert anim={:?} initial_frame={} speed_factor={}",
-                        anim_handle.0.id(),
-                        initial_frame,
-                        fmt_sig3(spritesheet_animation.speed_factor),
-                    ));
-                }
                 cmd.entity(ent).try_insert((sprite, spritesheet_animation, z.clone(), y_sort.cloned().unwrap_or_default()));
                 if sprite_cfg_sfx.is_some() {
                     cmd.entity(ent).insert(AnimationFrameSfxState {

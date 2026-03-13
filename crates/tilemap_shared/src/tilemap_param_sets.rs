@@ -14,9 +14,9 @@ pub struct TileGatheringParamSet<'w, 's> {
     pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static HashIdToTexIndex),>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
-    pub fn gather_tiles_at(&self, vec_to_drain: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
+    pub fn gather_tiles_at(&self, collected_entis: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
         let chunk_pos = gpos.to_chunkpos();
-        vec_to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
+        collected_entis.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
         let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
             return;
         };
@@ -27,7 +27,7 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
                 };
                 let tpos = gpos.to_tilepos();
                 if let Some(tile_ent) = storage.get(&tpos) {
-                    vec_to_drain.extend(std::iter::once(tile_ent));
+                    collected_entis.extend(std::iter::once(tile_ent));
                 }
             }
         }

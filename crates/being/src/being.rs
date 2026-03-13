@@ -15,8 +15,10 @@ use sprite_systems::AcSpriteSystems;
 use crate::{
     being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations, sync_hitbox_receiver_from_sources, sync_melee_interaction_zone_from_sources},
     being_components::*,
+    being_control_systems::*,
     being_inst_template::BeingInstTemplateSystems,
     being_messages::*,
+    being_portal_systems::*,
     being_behavior_systems::*,
     being_systems::*,
     body::{self, prelude::*, BodySystems},
@@ -34,7 +36,6 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
-    .add_message::<LocalMeleeAttackRequested>()
 
     .add_systems(Update, (
         (
@@ -54,7 +55,7 @@ pub fn plugin(app: &mut App) {
                 sync_predator_config_from_sources,
                 add_predator_behavior_components,
                 tick_hunger,
-                sync_ai_nav_grids,//.in_set(PreChunkDespawnReaders),
+                sync_ai_nav_grids,
                 update_predator_chase_targets,
                 chase_behavior,
                 wander_behavior,
@@ -64,14 +65,9 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         FixedUpdate,
         (
-            trigger_melee_requests_from_player_input,
-            send_melee_attack_to_server.run_if(in_state(ClientState::Connected)),
-            receive_melee_attack_from_client
-                .run_if(in_state(ServerState::Running))
-                .run_if(on_message::<FromClient<ClientMeleeAttack>>),
-            apply_melee_attack,
-            sync_transform_on_added_gpos.before(sync_beings_at_gpos),
-            sync_beings_at_gpos.before(MovementSystems),
+            apply_melee_attack.in_set(HostSystems),
+            beings_sync_transform_to_added_gpos.before(sync_occupancy_for_beings_at_gpos_res),
+            sync_occupancy_for_beings_at_gpos_res.before(MovementSystems),
         )
             .in_set(GameplaySystems),
     )
@@ -95,7 +91,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<HumanControlled>()
 
     .replicate_filtered::<ChildOf, With<Being>>()
-    .add_mapped_client_message::<ClientMeleeAttack>(Channel::Ordered)
 
 
 

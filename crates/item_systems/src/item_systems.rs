@@ -1,5 +1,6 @@
 use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
+use ac_input::player_action_requests::LocalItemPickupRequest;
 use being_shared::Being;
 use common::log_targets;
 use game_common::game_common_components::{Dead, EntityZero, EntityZeroRef};
@@ -7,15 +8,48 @@ use item_shared::{DroppedItem, HeldItems, Item, ItemHeldIn, ItemsGeneratedOnDeat
 use modifier_shared::modifier_components::{CurrEffectiveValue, ModifierTarget};
 use modifier_shared::modifier_item_types::StackLimit;
 use param_sets::BlockingTileParamSet;
-use sprite_shared::prelude::AcZ;
+use sprite_shared::prelude::{AcZ, HeldSprites, ScsToBuild};
+use bevy::ecs::entity::EntityHashSet;
 use std::collections::HashSet;
-use tilemap_shared::{DimensionRef, GlobalTilePos, TileGatheringParamSet};
+use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos, TileGatheringParamSet};
 
 use crate::{clone_item_from_ezero, item_helpers::*, item_messages::*};
 
 pub fn on_being_held_items_changed(//chequear si caben todos en slots
     _query: Query<(), (Changed<HeldItems>, With<Being>)>,
 ) {
+}
+
+pub fn pick_up_locally_requested_items(
+    mut cmd: Commands,
+    mut pickup_requests: MessageReader<LocalItemPickupRequest>,
+    items_at_gpos: Res<ItemsAtGpos>,
+    being_query: Query<(&DimensionRef, &GlobalTilePos), With<Being>>,
+    held_sprites_query: Query<&HeldSprites>,
+    item_query: Query<(), DroppedItem>,
+) {
+    for &LocalItemPickupRequest { being_ent } in pickup_requests.read() {
+        let Ok((&dim_ref, &gpos)) = being_query.get(being_ent) else {
+            trace!(target: log_targets::ITEM_SYSTEM, "Skipping pickup request: missing being position for {:?}", being_ent);
+            continue;
+        };
+        let Some(&item_ent) = items_at_gpos
+            .items_at_pos(dim_ref, gpos)
+            .iter()
+            .find(|&&item_ent| item_query.get(item_ent).is_ok())
+        else {
+            trace!(target: log_targets::ITEM_SYSTEM, "Pickup request found no dropped item at dim={:?} gpos={:?} for {:?}", dim_ref.0, gpos, being_ent);
+            continue;
+        };
+        if let Ok(held_sprites) = held_sprites_query.get(item_ent) {
+            for &sprite_ent in held_sprites.entities() {
+                cmd.entity(sprite_ent).try_despawn();
+            }
+        }
+        cmd.entity(item_ent).try_insert(ItemHeldIn { holder: being_ent });
+        cmd.entity(item_ent).try_remove::<(GlobalTilePos, ScsToBuild)>();
+        debug!(target: log_targets::ITEM_SYSTEM, "Picked up item {:?} into being {:?} at dim={:?} gpos={:?}", item_ent, being_ent, dim_ref.0, gpos);
+    }
 }
 #[allow(unused_parens, )]
 pub fn readjust_child_of_for_items(

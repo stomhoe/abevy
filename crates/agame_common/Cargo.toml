@@ -7,7 +7,6 @@ edition = "2024"
 common = { path = "../acommon" }
 sprite_shared = { path = "../sprite_shared" }
 tilemap_shared = { path = "../tilemap_shared" }
-ac_input = { path = "../ac_input" }
 
 bevy = { workspace = true }
 bevy_enhanced_input = { workspace = true }

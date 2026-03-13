@@ -22,4 +22,4 @@ out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature)
 bif normal5 -> []
 bif "" -> [tempveg_sampler, ]
 bif "" -> [temptree_sampler, ]
-bif "" -> [portal_cave, ]
+bif "" -> [portal_cave, cyan]

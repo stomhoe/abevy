@@ -1,0 +1,38 @@
+poner rocky cliffs para playas
+
+
+poner inland cliffs
+
+poner rocas dispersadas en temp
+
+hacer poblados amurallados
+
+cambiar textura de agua por una parecida a los que tienen los del IAO en banderbill
+
+decorar mas interior de dungeons (rocas, chests, cadaveres, zombies)
+
+
+sistema poblacional de criaturas
+
+
+hacer barcos que sean sus propios tilemaps?
+
+empezar a usar error_once! en sistemas con update
+
+
+cuando te muevas con plate armor hacer que haga ruido real de plate armor moviendose
+
+https://www.youtube.com/watch?v=rC5QSqAh8gg
+
+
+desert island
+
+pendiente antartida:
+gravel más gricasea oscura
+
+
+pendiente general:
+
+dentro de una region, hacer algoritmo de generacion de rios sin usar noisess
+
+arreglar calculo de gradiente de inlandess, hace q portales no spawnee y beaches spawneen en cualquier lugar

@@ -4,6 +4,8 @@ pub use being::*;
 pub mod being_components;
 mod being_messages;
 mod being_systems;
+mod being_control_systems;
+mod being_portal_systems;
 mod being_behavior_systems;
 mod being_build_systems;
 pub mod being_bundles;
@@ -23,6 +25,8 @@ pub mod prelude {
         being_components::*,
         being_messages::*,
         being_systems::*,
+        being_control_systems::*,
+        being_portal_systems::*,
         being_behavior_systems::*,
         being_build_systems::*,
         being_bundles::*,

@@ -5,30 +5,7 @@ use crate::game_common_timers::*;
 use common::prelude::*;
 use ::sprite_shared::prelude::*;
 use bevy::prelude::*;
-use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::*;
-use ac_input::ac_input_actions::ToggleSimulationAction;
-
-pub fn toggle_simulation(
-    toggle_events: Single<&ActionEvents, With<Action<ToggleSimulationAction>>>,
-    current_state: Res<State<SimulationState>>,
-    mut next_state: ResMut<NextState<SimulationState>>,
-) {
-    if !toggle_events.contains(ActionEvents::START) {
-        return;
-    }
-
-    match current_state.get() {
-        SimulationState::Paused => {
-            info!("Switching to Running state");
-            next_state.set(SimulationState::Running)
-        }
-        SimulationState::Running => {
-            info!("Switching to Paused state");
-            next_state.set(SimulationState::Paused)
-        }
-    }
-}
 pub fn tick_time_based_multipliers(
     time: Res<Time>,
     mut query: Query<(

@@ -192,7 +192,7 @@ pub fn process_tiles_pre(
         ) {
             cmd.entity(tile_ent).try_despawn();
             params.collected_tiles.0.swap_remove(i);
-            info!(target: TILEMAP_SYSTEM, "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
+            trace!(target: TILEMAP_SYSTEM, "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
             continue;
         }
 

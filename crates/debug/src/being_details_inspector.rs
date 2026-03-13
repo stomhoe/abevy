@@ -66,7 +66,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut computed_locally_query = world.query::<Has<ComputedLocally>>();
     let mut player_actions_query =
         world.query_filtered::<&Actions<BeingDirectControlInputContext>, (With<Mine>, With<Player>)>();
-    let mut player_move_action_query = world.query::<&Action<BeingWasdAction>>();
+    let mut player_move_action_query = world.query::<&Action<DcWasdAction>>();
     let mut grid_move_query = world.query::<Option<&GridLockedMovement>>();
     let mut gpos_query = world.query::<Option<&tilemap_shared::GlobalTilePos>>();
     let mut facing_query = world.query::<Option<&CardinalDirection>>();
@@ -178,10 +178,10 @@ pub fn being_details_inspector(world: &mut World) {
             let mut is_human_input = false;
             if let Ok(computed_by) = computed_by_query.get(world, selected_being_entity) {
                 if let Some(computed_by) = computed_by {
-                    is_human_input = computed_by.human_input;
+                    is_human_input = computed_by.human_dc_input;
                     ui.label(format!(
                         "ComputedBy: client_ent={:?}, human_input={}",
-                        computed_by.client_ent, computed_by.human_input
+                        computed_by.client_ent, computed_by.human_dc_input
                     ));
                 } else {
                     ui.label("ComputedBy: missing");

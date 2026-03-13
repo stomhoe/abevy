@@ -190,7 +190,7 @@ pub fn sync_ai_nav_grids(
 
     for (gpos, dim_ref, controlled_by, _to_chase) in chasers_query.iter() {
         if let Some(controlled_by) = controlled_by {
-            if controlled_by.human_input {
+            if controlled_by.human_dc_input {
                 continue;
             }
         }
@@ -383,7 +383,7 @@ pub fn update_predator_chase_targets(
     ) in predators.iter()
     {
         if let Some(controlled_by) = controlled_by {
-            if controlled_by.human_input {
+            if controlled_by.human_dc_input {
                 cmd.entity(pred_ent).try_remove::<ToChase>();
                 continue;
             }

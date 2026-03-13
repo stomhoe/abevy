@@ -1,7 +1,9 @@
-use bevy::prelude::*;
-use bevy_replicon::prelude::*;
 use bevy::ecs::entity::EntityHashMap;
+use bevy::prelude::*;
+use bevy_replicon::prelude::AppRuleExt;
+use ac_input::player_action_requests::LocalItemPickupRequest;
 use common::common_states::AssetLoading;
+use game_common::HostSystems;
 use game_common::game_common::GameplaySystems;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use ::item_shared::*;
@@ -37,6 +39,10 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 generate_items_from_messages,
+                pick_up_locally_requested_items
+                    .run_if(on_message::<LocalItemPickupRequest>)
+                    .in_set(HostSystems)
+                ,
                 readjust_child_of_for_items,
                 sync_items_at_gpos,
                 on_being_held_items_changed,

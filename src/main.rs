@@ -145,7 +145,7 @@ fn build_filter() -> String {
         log_targets::ENTITY_MAP_SYSTEM, WARN,
         log_targets::INSPECTOR, WARN,
         log_targets::RIVER_SYSTEM, WARN,
-        log_targets::ITEM_SYSTEM, INFO,
+        log_targets::ITEM_SYSTEM, TRACE,
     )
 }
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force

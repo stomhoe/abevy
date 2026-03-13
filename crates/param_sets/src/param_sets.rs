@@ -28,13 +28,13 @@ pub struct BlockingTileParamSet<'w, 's> {
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
-    pub fn has_tagset_at(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, target_tags: &TagSet) -> bool {
+    pub fn has_tagset_at(&self, tile_ents_to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, target_tags: &TagSet) -> bool {
         if target_tags.is_empty() {
             return false;
         }
-        to_drain.clear();
-        self.tile_gathering_params.gather_tiles_at(to_drain, dim_ref, gpos);
-        for tile_entity in to_drain.drain(..) {
+        tile_ents_to_drain.clear();
+        self.tile_gathering_params.gather_tiles_at(tile_ents_to_drain, dim_ref, gpos);
+        for tile_entity in tile_ents_to_drain.drain(..) {
             let Ok((ezero_ref, ..)) = self.tile_instance_query.get(tile_entity) else {
                 continue;
             };
@@ -48,8 +48,8 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         false
     }
 
-    pub fn is_blocked_at(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
-        self.is_blocked_at_impl_except_dead_despawning(to_drain, dim_ref, gpos, being, true)
+    pub fn is_blocked_at(&self, tile_ents_to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
+        self.is_blocked_at_impl_except_dead_despawning(tile_ents_to_drain, dim_ref, gpos, being, true)
     }
 
     pub fn is_blocked_at_tiles_only(&self, to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
@@ -88,7 +88,6 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 let Ok(_) = self.tiles_2b_despawned_query.get(tile_entity) else {
                     return true;
                 };
-
                 continue;
             }
 

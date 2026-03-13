@@ -3,7 +3,7 @@ size: (1, 1)
 debug: [beach_avg_noise, shore_proximity, beachness, gravelness, inlandness, continentness, normal_diff]
 tags: ["inlandness", "river_candidate"]
 
-let inlandness = (continentness/(COMPL continent_threshold) - 1.)*0.19
+let inlandness = (continentness - continent_threshold)*6
 
 let shore_proximity = COMPL inlandness * 0.66
 

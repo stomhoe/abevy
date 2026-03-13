@@ -5,7 +5,7 @@ debug: [normal_diff, antiriver, riverness]
 
 
 let continentness = max(fnl.conti, fnl.penin)
-let continentness = *(continentness, normal_diff) - riverness
+let continentness = *(continentness, normal_diff)
 
 let continent_threshold = 0.47
 

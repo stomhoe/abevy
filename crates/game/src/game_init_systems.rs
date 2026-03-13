@@ -139,7 +139,7 @@ pub fn host_on_player_added(mut cmd: Commands,
                 BelongsToFaction(host_faction),
                 ComputedBy {
                     client_ent: player_ent,
-                    human_input: true,
+                    human_dc_input: true,
                 },
             )).id();
             //cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));
