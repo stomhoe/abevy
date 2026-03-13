@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "bat",
+    name: "Bat",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "bat_south_idle",
+        ("south", "move", "g", "") : "bat_south_move",
+        ("west", "idle", "g", "") : "bat_west_idle",
+        ("west", "move", "g", "") : "bat_west_move",
+        ("east", "idle", "g", "") : "bat_east_idle",
+        ("east", "move", "g", "") : "bat_east_move",
+        ("north", "idle", "g", "") : "bat_north_idle",
+        ("north", "move", "g", "") : "bat_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 4.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

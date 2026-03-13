@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "elemental_fire_ancient",
+    name: "Elemental Fire Ancient",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "elemental_fire_ancient_south_idle",
+        ("south", "move", "g", "") : "elemental_fire_ancient_south_move",
+        ("west", "idle", "g", "") : "elemental_fire_ancient_west_idle",
+        ("west", "move", "g", "") : "elemental_fire_ancient_west_move",
+        ("east", "idle", "g", "") : "elemental_fire_ancient_east_idle",
+        ("east", "move", "g", "") : "elemental_fire_ancient_east_move",
+        ("north", "idle", "g", "") : "elemental_fire_ancient_north_idle",
+        ("north", "move", "g", "") : "elemental_fire_ancient_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

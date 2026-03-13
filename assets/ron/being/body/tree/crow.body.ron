@@ -1,0 +1,34 @@
+(
+    id: "crow",
+    name: "Crow Body",
+    tags: ["bird"],
+    root: (
+        part_id: "body",
+        label_override: "Body",
+        children: [
+            (part_id: "neck", label_override: "Neck", children: [(
+                part_id: "head", label_override: "Head", children: [
+                    (part_id: "brain", label_override: "Brain", children: []),
+                    (part_id: "eye", label_override: "Left Eye", children: []),
+                    (part_id: "eye", label_override: "Right Eye", children: []),
+                    (part_id: "nose", label_override: "Beak", children: []),
+                    (part_id: "jaw", label_override: "Jaw", children: [(part_id: "mouth", label_override: "Mouth", children: [])]),
+                ],
+            )]),
+            (part_id: "chest", label_override: "Chest", children: [
+                (part_id: "heart", label_override: "Heart", children: []),
+                (part_id: "lung", label_override: "Left Lung", children: []),
+                (part_id: "lung", label_override: "Right Lung", children: []),
+            ]),
+            (part_id: "abdomen", label_override: "Abdomen", children: [
+                (part_id: "stomach", label_override: "Stomach", children: []),
+                (part_id: "liver", label_override: "Liver", children: []),
+            ]),
+            (part_id: "wing", label_override: "Left Wing", children: []),
+            (part_id: "wing", label_override: "Right Wing", children: []),
+            (part_id: "leg", label_override: "Left Leg", children: [(part_id: "foot", label_override: "Left Foot", children: [])]),
+            (part_id: "leg", label_override: "Right Leg", children: [(part_id: "foot", label_override: "Right Foot", children: [])]),
+            (part_id: "tail", label_override: "Tail", children: []),
+        ],
+    ),
+)

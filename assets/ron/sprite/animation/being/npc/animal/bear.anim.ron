@@ -1,92 +1,53 @@
 ([(
-    id: "bear_east_idle",
-    paused: true,
-    rows_cols: (8, 4),
-    speed: 0.,
-    img_path: "texture/being/npc/bear.png",
-    clips: [
-        (
-            target: 6,
-            is_row: true,
-            partial: Some((1, 1)),
-        )
-    ],
-    z: 1000,
-    y_sort: Some(0),
-),(
-    id: "bear_east_move",
-    rows_cols: (8, 4),
-    img_path: "texture/being/npc/bear.png",
-    alternating_start_frames: Some((0, 2)),
-    clips: [
-        (
-            target: 6,
-            is_row: true,
-        ),
-        (
-            target: 7,
-            is_row: true,
-        ),
-    ],
-    z: 1000,
-    y_sort: Some(0),
-),(
-    id: "bear_north_idle",
-    paused: true,
-    rows_cols: (8, 4),
-    speed: 0.,
-    img_path: "texture/being/npc/bear.png",
-    clips: [
-        (
-            target: 2,
-            is_row: true,
-            partial: Some((0, 0)),
-        )
-    ],
-    z: 1000,
-    y_sort: Some(0),
-),(
-    id: "bear_north_move",
-    rows_cols: (8, 4),
-    img_path: "texture/being/npc/bear.png",
-    alternating_start_frames: Some((2, 4)),
-    clips: [
-        (
-            target: 2,
-            is_row: true,
-        ),
-        (
-            target: 3,
-            is_row: true,
-        ),
-    ],
-    z: 1000,
-    y_sort: Some(0),
-),(
     id: "bear_south_idle",
     paused: true,
-    rows_cols: (8, 4),
-    speed: 0.,
+    rows_cols: (1, 1),
+    speed: 1.0,
     img_path: "texture/being/npc/bear.png",
     clips: [
         (
             target: 0,
             is_row: true,
             partial: Some((0, 0)),
-        )
+        ),
     ],
     z: 1000,
     y_sort: Some(0),
-),(
+),
+(
     id: "bear_south_move",
-    rows_cols: (8, 4),
+    rows_cols: (1, 1),
     img_path: "texture/being/npc/bear.png",
-    alternating_start_frames: Some((1, 4)),
     clips: [
         (
             target: 0,
             is_row: true,
         ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),
+(
+    id: "bear_north_idle",
+    paused: true,
+    rows_cols: (1, 1),
+    speed: 1.0,
+    img_path: "texture/being/npc/bear.png",
+    clips: [
+        (
+            target: 1,
+            is_row: true,
+            partial: Some((0, 0)),
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),
+(
+    id: "bear_north_move",
+    rows_cols: (1, 1),
+    img_path: "texture/being/npc/bear.png",
+    clips: [
         (
             target: 1,
             is_row: true,
@@ -94,33 +55,59 @@
     ],
     z: 1000,
     y_sort: Some(0),
-),(
+),
+(
     id: "bear_west_idle",
     paused: true,
-    rows_cols: (8, 4),
-    speed: 0.,
+    rows_cols: (1, 1),
+    speed: 1.0,
     img_path: "texture/being/npc/bear.png",
     clips: [
         (
-            target: 4,
+            target: 2,
             is_row: true,
-            partial: Some((2, 2)),
-        )
+            partial: Some((0, 0)),
+        ),
     ],
     z: 1000,
     y_sort: Some(0),
-),(
+),
+(
     id: "bear_west_move",
-    rows_cols: (8, 4),
+    rows_cols: (1, 1),
     img_path: "texture/being/npc/bear.png",
-    alternating_start_frames: Some((0, 4)),
     clips: [
         (
-            target: 4,
+            target: 2,
             is_row: true,
         ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),
+(
+    id: "bear_east_idle",
+    paused: true,
+    rows_cols: (1, 1),
+    speed: 1.0,
+    img_path: "texture/being/npc/bear.png",
+    clips: [
         (
-            target: 5,
+            target: 3,
+            is_row: true,
+            partial: Some((0, 0)),
+        ),
+    ],
+    z: 1000,
+    y_sort: Some(0),
+),
+(
+    id: "bear_east_move",
+    rows_cols: (1, 1),
+    img_path: "texture/being/npc/bear.png",
+    clips: [
+        (
+            target: 3,
             is_row: true,
         ),
     ],

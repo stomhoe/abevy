@@ -1,0 +1,20 @@
+(
+    id: "fang",
+    name: "Fang",
+    coverage_weight: 2,
+    forced_stats: {
+        "hp_capacity": 3.0,
+        "hp_regen_rate": 0.6,
+        "pain_sensitivity": 0.9,
+        "blood_capacity": 1.2,
+        "manip_dex": 0.0,
+        "manip_str": 0.2,
+        "caloric_burn_rate": 0.1,
+    },
+    weighted_stats: {
+        "mass_kg": 0.02,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.5,
+)

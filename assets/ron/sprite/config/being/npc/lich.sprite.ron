@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "lich",
+    name: "Lich",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "lich_south_idle",
+        ("south", "move", "g", "") : "lich_south_move",
+        ("west", "idle", "g", "") : "lich_west_idle",
+        ("west", "move", "g", "") : "lich_west_move",
+        ("east", "idle", "g", "") : "lich_east_idle",
+        ("east", "move", "g", "") : "lich_east_move",
+        ("north", "idle", "g", "") : "lich_north_idle",
+        ("north", "move", "g", "") : "lich_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

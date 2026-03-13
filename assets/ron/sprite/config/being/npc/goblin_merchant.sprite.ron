@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "goblin_merchant",
+    name: "Goblin Merchant",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "goblin_merchant_south_idle",
+        ("south", "move", "g", "") : "goblin_merchant_south_move",
+        ("west", "idle", "g", "") : "goblin_merchant_west_idle",
+        ("west", "move", "g", "") : "goblin_merchant_west_move",
+        ("east", "idle", "g", "") : "goblin_merchant_east_idle",
+        ("east", "move", "g", "") : "goblin_merchant_east_move",
+        ("north", "idle", "g", "") : "goblin_merchant_north_idle",
+        ("north", "move", "g", "") : "goblin_merchant_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

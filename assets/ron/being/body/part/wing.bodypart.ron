@@ -1,0 +1,20 @@
+(
+    id: "wing",
+    name: "Wing",
+    coverage_weight: 18,
+    forced_stats: {
+        "hp_capacity": 16.0,
+        "hp_regen_rate": 0.8,
+        "pain_sensitivity": 1.0,
+        "blood_capacity": 8.0,
+        "manip_dex": 0.1,
+        "fly_speed": 1.4,
+        "caloric_burn_rate": 1.4,
+    },
+    weighted_stats: {
+        "mass_kg": 1.5,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.7,
+)

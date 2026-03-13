@@ -1,0 +1,10 @@
+(
+    id: "elemental_fire_ancient",
+    points: 10,
+    race: "elemental_fire_ancient",
+    sprites_scale_ranges: {},
+    health_multiplier: 1.0,
+    recruitment_difficulty: None,
+    whitelisted_tiles_for_spawning: [],
+    blacklisted_tiles_for_spawning: [],
+)

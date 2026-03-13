@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "scorpion",
+    name: "Scorpion",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "scorpion_south_idle",
+        ("south", "move", "g", "") : "scorpion_south_move",
+        ("west", "idle", "g", "") : "scorpion_west_idle",
+        ("west", "move", "g", "") : "scorpion_west_move",
+        ("east", "idle", "g", "") : "scorpion_east_idle",
+        ("east", "move", "g", "") : "scorpion_east_move",
+        ("north", "idle", "g", "") : "scorpion_north_idle",
+        ("north", "move", "g", "") : "scorpion_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

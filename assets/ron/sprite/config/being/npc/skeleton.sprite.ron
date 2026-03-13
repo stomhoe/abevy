@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "skeleton",
+    name: "Skeleton",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "skeleton_south_idle",
+        ("south", "move", "g", "") : "skeleton_south_move",
+        ("west", "idle", "g", "") : "skeleton_west_idle",
+        ("west", "move", "g", "") : "skeleton_west_move",
+        ("east", "idle", "g", "") : "skeleton_east_idle",
+        ("east", "move", "g", "") : "skeleton_east_move",
+        ("north", "idle", "g", "") : "skeleton_north_idle",
+        ("north", "move", "g", "") : "skeleton_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

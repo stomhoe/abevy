@@ -1,0 +1,20 @@
+(
+    id: "cobra_green",
+    name: "Cobra Green Body",
+    tags: ["serpent"],
+    root: (
+        part_id: "body",
+        label_override: "Body",
+        children: [
+            (part_id: "head", label_override: "Head", children: [
+                (part_id: "brain", label_override: "Brain", children: []),
+                (part_id: "eye", label_override: "Left Eye", children: []),
+                (part_id: "eye", label_override: "Right Eye", children: []),
+                (part_id: "nose", label_override: "Nose", children: []),
+                (part_id: "jaw", label_override: "Jaw", children: [(part_id: "mouth", label_override: "Mouth", children: [])]),
+            ]),
+            (part_id: "spine", label_override: "Spine", children: []),
+            (part_id: "tail", label_override: "Tail", children: []),
+        ],
+    ),
+)

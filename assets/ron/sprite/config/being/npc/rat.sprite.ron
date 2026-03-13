@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "rat",
+    name: "Rat",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "rat_south_idle",
+        ("south", "move", "g", "") : "rat_south_move",
+        ("west", "idle", "g", "") : "rat_west_idle",
+        ("west", "move", "g", "") : "rat_west_move",
+        ("east", "idle", "g", "") : "rat_east_idle",
+        ("east", "move", "g", "") : "rat_east_move",
+        ("north", "idle", "g", "") : "rat_north_idle",
+        ("north", "move", "g", "") : "rat_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

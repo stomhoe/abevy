@@ -1,0 +1,21 @@
+(
+    id: "cephalothorax",
+    name: "Cephalothorax",
+    coverage_weight: 55,
+    forced_stats: {
+        "hp_capacity": 18.0,
+        "hp_regen_rate": 0.8,
+        "pain_sensitivity": 1.0,
+        "blood_capacity": 8.0,
+        "manip_dex": 0.4,
+        "walk_speed": 0.0,
+        "caloric_burn_rate": 1.8,
+    },
+    weighted_stats: {
+        "walk_speed": 0.9,
+        "mass_kg": 2.8,
+    },
+    depth: "surface",
+    vital: true,
+    bleed_rate: 0.9,
+)

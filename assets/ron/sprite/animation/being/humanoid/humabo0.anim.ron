@@ -1,7 +1,7 @@
 ([(
     id: "mahubo0_east_idle", img_path: "texture/being/body/human/humabo0.png",
     paused: true,
-    rows_cols: (4, 6), speed: 0., clips: [
+    rows_cols: (4, 6), speed: 1.0, clips: [
         (
             target: 3,
             is_row: true,
@@ -11,7 +11,7 @@
 ),(
     id: "mahubo0_north_idle", img_path: "texture/being/body/human/humabo0.png",
     paused: true,
-    rows_cols: (4, 6), speed: 0., clips: [
+    rows_cols: (4, 6), speed: 1.0, clips: [
         (
             target: 1,
             is_row: true,
@@ -21,7 +21,7 @@
 ),(
     id: "mahubo0_south_idle", img_path: "texture/being/body/human/humabo0.png",
     paused: true,
-    rows_cols: (4, 6), speed: 0., clips: [
+    rows_cols: (4, 6), speed: 1.0, clips: [
         (
             target: 0,
             is_row: true,
@@ -31,7 +31,7 @@
 ),(
     id: "mahubo0_west_idle", img_path: "texture/being/body/human/humabo0.png",
     paused: true,
-    rows_cols: (4, 6), speed: 0., clips: [
+    rows_cols: (4, 6), speed: 1.0, clips: [
         (
             target: 2,
             is_row: true,
@@ -79,7 +79,7 @@
 ),(
     id: "mahuhe0_east_idle", img_path: "texture/being/head/human/0.png",
     paused: true,
-    rows_cols: (1, 4), speed: 0., clips: [
+    rows_cols: (1, 4), speed: 1.0, clips: [
         (
             target: 1,
             is_row: false,
@@ -88,7 +88,7 @@
 ),(
     id: "mahuhe0_north_idle", img_path: "texture/being/head/human/0.png",
     paused: true,
-    rows_cols: (1, 4), speed: 0., clips: [
+    rows_cols: (1, 4), speed: 1.0, clips: [
         (
             target: 3,
             is_row: false,
@@ -97,7 +97,7 @@
 ),(
     id: "mahuhe0_south_idle", img_path: "texture/being/head/human/0.png",
     paused: true,
-    rows_cols: (1, 4), speed: 0., clips: [
+    rows_cols: (1, 4), speed: 1.0, clips: [
         (
             target: 0,
             is_row: false,
@@ -106,7 +106,7 @@
 ),(
     id: "mahuhe0_west_idle", img_path: "texture/being/head/human/0.png",
     paused: true,
-    rows_cols: (1, 4), speed: 0., clips: [
+    rows_cols: (1, 4), speed: 1.0, clips: [
         (
             target: 2,
             is_row: false,

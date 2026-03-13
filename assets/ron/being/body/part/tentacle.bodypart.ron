@@ -1,0 +1,21 @@
+(
+    id: "tentacle",
+    name: "Tentacle",
+    coverage_weight: 16,
+    forced_stats: {
+        "hp_capacity": 18.0,
+        "hp_regen_rate": 0.8,
+        "pain_sensitivity": 1.1,
+        "blood_capacity": 9.0,
+        "manip_dex": 0.8,
+        "manip_str": 0.8,
+        "swim_speed": 0.9,
+        "caloric_burn_rate": 1.0,
+    },
+    weighted_stats: {
+        "mass_kg": 1.1,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.8,
+)

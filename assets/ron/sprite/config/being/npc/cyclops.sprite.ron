@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "cyclops",
+    name: "Cyclops",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "cyclops_south_idle",
+        ("south", "move", "g", "") : "cyclops_south_move",
+        ("west", "idle", "g", "") : "cyclops_west_idle",
+        ("west", "move", "g", "") : "cyclops_west_move",
+        ("east", "idle", "g", "") : "cyclops_east_idle",
+        ("east", "move", "g", "") : "cyclops_east_move",
+        ("north", "idle", "g", "") : "cyclops_north_idle",
+        ("north", "move", "g", "") : "cyclops_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

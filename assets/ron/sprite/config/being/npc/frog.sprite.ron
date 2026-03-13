@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "frog",
+    name: "Frog",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "frog_south_idle",
+        ("south", "move", "g", "") : "frog_south_move",
+        ("west", "idle", "g", "") : "frog_west_idle",
+        ("west", "move", "g", "") : "frog_west_move",
+        ("east", "idle", "g", "") : "frog_east_idle",
+        ("east", "move", "g", "") : "frog_east_move",
+        ("north", "idle", "g", "") : "frog_north_idle",
+        ("north", "move", "g", "") : "frog_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

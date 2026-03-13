@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "demon",
+    name: "Demon",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "demon_south_idle",
+        ("south", "move", "g", "") : "demon_south_move",
+        ("west", "idle", "g", "") : "demon_west_idle",
+        ("west", "move", "g", "") : "demon_west_move",
+        ("east", "idle", "g", "") : "demon_east_idle",
+        ("east", "move", "g", "") : "demon_east_move",
+        ("north", "idle", "g", "") : "demon_north_idle",
+        ("north", "move", "g", "") : "demon_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

@@ -1,14 +1,14 @@
 SpriteConfigSeri(
     id: "wolf",
-    name: "wolf",
+    name: "Wolf",
     mapped_anims: {
         ("south", "idle", "g", "") : "wolf_south_idle",
-        ("west", "idle", "g", "") : "wolf_west_idle",
-        ("east", "idle", "g", "") : "wolf_east_idle",
-        ("north", "idle", "g", "") : "wolf_north_idle",
         ("south", "move", "g", "") : "wolf_south_move",
+        ("west", "idle", "g", "") : "wolf_west_idle",
         ("west", "move", "g", "") : "wolf_west_move",
+        ("east", "idle", "g", "") : "wolf_east_idle",
         ("east", "move", "g", "") : "wolf_east_move",
+        ("north", "idle", "g", "") : "wolf_north_idle",
         ("north", "move", "g", "") : "wolf_north_move",
     },
     children_sprites: [],
@@ -16,8 +16,8 @@ SpriteConfigSeri(
     directionable: true,
     movement_based: true,
     grounding_based: false,
-    offset: (0., 6.),//ta bien
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
     scale: (1.2, 1.2),
+    tags: [],
 )
-
-// TODO: hacer que se puedan aplicar colorses sobre máscaras como en humanoid alien races del rimworld

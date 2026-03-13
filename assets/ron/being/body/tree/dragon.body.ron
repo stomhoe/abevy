@@ -1,0 +1,41 @@
+(
+    id: "dragon",
+    name: "Dragon Body",
+    tags: ["humanoid"],
+    root: (
+        part_id: "torso",
+        label_override: "Torso",
+        children: [
+            (part_id: "neck", label_override: "Neck", children: [(
+                part_id: "head", label_override: "Head", children: [
+                    (part_id: "brain", label_override: "Brain", children: []),
+                    (part_id: "eye", label_override: "Left Eye", children: []),
+                    (part_id: "eye", label_override: "Right Eye", children: []),
+                    (part_id: "ear", label_override: "Left Ear", children: []),
+                    (part_id: "ear", label_override: "Right Ear", children: []),
+                    (part_id: "nose", label_override: "Nose", children: []),
+                    (part_id: "jaw", label_override: "Jaw", children: [
+                        (part_id: "mouth", label_override: "Mouth", children: []),
+                    ]),
+                ],
+            )]),
+            (part_id: "chest", label_override: "Chest", children: [
+                (part_id: "heart", label_override: "Heart", children: []),
+                (part_id: "lung", label_override: "Left Lung", children: []),
+                (part_id: "lung", label_override: "Right Lung", children: []),
+            ]),
+            (part_id: "abdomen", label_override: "Abdomen", children: [
+                (part_id: "stomach", label_override: "Stomach", children: []),
+                (part_id: "liver", label_override: "Liver", children: []),
+                (part_id: "kidney", label_override: "Left Kidney", children: []),
+                (part_id: "kidney", label_override: "Right Kidney", children: []),
+            ]),
+            (part_id: "spine", label_override: "Spine", children: []),
+            (part_id: "pelvis", label_override: "Pelvis", children: []),
+            (part_id: "arm", label_override: "Left Arm", children: [(part_id: "hand", label_override: "Left Hand", children: [])]),
+            (part_id: "arm", label_override: "Right Arm", children: [(part_id: "hand", label_override: "Right Hand", children: [])]),
+            (part_id: "leg", label_override: "Left Leg", children: [(part_id: "foot", label_override: "Left Foot", children: [])]),
+            (part_id: "leg", label_override: "Right Leg", children: [(part_id: "foot", label_override: "Right Foot", children: [])]),
+        ],
+    ),
+)

@@ -6,5 +6,5 @@ pub use crate::body::body_tree_seris::*;
 
 common::define_entity_map_systems!(
     BodyTree,
-    BodyTreeSeri, "seri.being.body.tree", "bodytree.ron",
+    BodyTreeSeri, "seri.being.body.tree", "body.ron",
 );

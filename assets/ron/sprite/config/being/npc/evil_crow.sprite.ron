@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "evil_crow",
+    name: "Evil Crow",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "evil_crow_south_idle",
+        ("south", "move", "g", "") : "evil_crow_south_move",
+        ("west", "idle", "g", "") : "evil_crow_west_idle",
+        ("west", "move", "g", "") : "evil_crow_west_move",
+        ("east", "idle", "g", "") : "evil_crow_east_idle",
+        ("east", "move", "g", "") : "evil_crow_east_move",
+        ("north", "idle", "g", "") : "evil_crow_north_idle",
+        ("north", "move", "g", "") : "evil_crow_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

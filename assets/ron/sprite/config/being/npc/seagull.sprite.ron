@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "seagull",
+    name: "Seagull",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "seagull_south_idle",
+        ("south", "move", "g", "") : "seagull_south_move",
+        ("west", "idle", "g", "") : "seagull_west_idle",
+        ("west", "move", "g", "") : "seagull_west_move",
+        ("east", "idle", "g", "") : "seagull_east_idle",
+        ("east", "move", "g", "") : "seagull_east_move",
+        ("north", "idle", "g", "") : "seagull_north_idle",
+        ("north", "move", "g", "") : "seagull_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    base_movement_speed: 200.0,
+    offset: (0., 4.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

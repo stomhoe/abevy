@@ -1,0 +1,18 @@
+(
+    id: "kraken",
+    name: "Kraken Body",
+    tags: ["tentacled"],
+    root: (
+        part_id: "head",
+        label_override: "Mantle",
+        children: [
+            (part_id: "brain", label_override: "Brain", children: []),
+            (part_id: "eye", label_override: "Left Eye", children: []),
+            (part_id: "eye", label_override: "Right Eye", children: []),
+            (part_id: "tentacle", label_override: "Tentacle A", children: []),
+            (part_id: "tentacle", label_override: "Tentacle B", children: []),
+            (part_id: "tentacle", label_override: "Tentacle C", children: []),
+            (part_id: "tentacle", label_override: "Tentacle D", children: []),
+        ],
+    ),
+)
