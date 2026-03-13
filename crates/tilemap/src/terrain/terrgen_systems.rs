@@ -500,89 +500,50 @@ fn process_pending_ops_batch(
             let (output_value, computed_vars) = oplist.expr_tree.eval(&frame.variables, &eval_context);
             frame.variables = computed_vars;
             if capture_debug {
-                let mut debug_values = HashIdMap::new();
-                if let Some(var_ids) = context.oplist_debug_var_ids.get(&frame.oplist) {
-                    for var_id in var_ids {
-                        if let Ok(value) = frame.variables.get(*var_id) {
-                            let _ = debug_values.overwrite(*var_id, *value);
-                        }
-                    }
-                }
-                result.debug_samples.push(TerrGenDebugSample {
-                    dimension_ref: ev.dimension_ref,
-                    gpos: frame.gpos,
-                    oplist: frame.oplist,
-                    oplist_id: context.oplist_ids.get(&frame.oplist).cloned().unwrap_or_default(),
-                    output: output_value,
-                    variables: debug_values,
-                });
+                push_debug_sample(
+                    &mut result,
+                    &context,
+                    ev.dimension_ref,
+                    frame.gpos,
+                    frame.oplist,
+                    output_value,
+                    &frame.variables,
+                );
             }
 
             let destination_i = (output_value as usize).min(oplist.bifurcations.len() - 1);
-            let passes_value_filter = passes_filter_value(filter, &frame.variables, output_value);
-            if has_filter
-                && let Some(filter) = filter
-                && let Some(Some(oplist_tags)) = context.oplist_tags.get(&frame.oplist)
-                && oplist_tags.intersects(&filter.tags)
-                && passes_value_filter
-            {
-                if ev.matrix_spec.is_some() {
-                    let sampled_value = sampled_value_from_filter(Some(filter), &frame.variables, output_value);
-                    set_sample_matrix_value_for_pending(&ev, Some(sampled_value), &mut sampled_matrices_by_requester);
-                } else {
-                    let emitted = emitted_per_probe.entry(ev.requester).or_insert(0);
-                    if *emitted < ev.max_emitted_results {
-                        result.sampled_value_events.push(SuitablePosFound {
-                            requester: ev.requester,
-                            val: output_value,
-                            found_pos: frame.gpos,
-                            is_last: false,
-                        });
-                        if ev.mark_last_success_in_batch {
-                            last_success_idx_for_requester.insert(ev.requester, result.sampled_value_events.len() - 1);
-                        }
-                        *emitted = emitted.saturating_add(1);
-                    }
-                }
-            }
+            try_emit_filter_match(
+                &ev,
+                &context,
+                frame.oplist,
+                frame.gpos,
+                output_value,
+                &frame.variables,
+                filter,
+                has_filter,
+                &mut emitted_per_probe,
+                &mut last_success_idx_for_requester,
+                &mut sampled_matrices_by_requester,
+                &mut result,
+            );
 
             let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
-            if !bifurcation.biome_tags.is_empty() && ev.filtered_op == Entity::PLACEHOLDER {
-                result.biome_tag_samples.push(TerrGenBiomeTagSample {
-                    dimension_ref: ev.dimension_ref,
-                    chunk_pos: frame.gpos.to_chunkpos(),
-                    biome_tags: bifurcation.biome_tags.clone(),
-                });
-            }
-
-            if !bifurcation.tiles.is_empty() && ev.filtered_op == Entity::PLACEHOLDER {
-                result.tile_requests.push(TerrGenTileRequest {
-                    bif_tiles: bifurcation.tiles.clone(),
-                    pending: PendingOp {
-                        oplist: DimensionRootOplist(frame.oplist),
-                        dimension_ref: ev.dimension_ref,
-                        gpos: frame.gpos,
-                        filtered_op: ev.filtered_op,
-                        requester: ev.requester,
-                        max_emitted_results: ev.max_emitted_results,
-                        mark_last_success_in_batch: ev.mark_last_success_in_batch,
-                        matrix_spec: ev.matrix_spec,
-                    },
-                    oplist_size: frame.oplist_size,
-                    dimension_hash,
-                });
-            }
+            collect_branch_outputs(
+                &mut result,
+                &ev,
+                frame.oplist,
+                frame.gpos,
+                frame.oplist_size,
+                dimension_hash,
+                &bifurcation.biome_tags,
+                &bifurcation.tiles,
+            );
 
             if let Some(child_oplist) = bifurcation.oplist
                 && let Some(child_sizes) = context.child_oplist_sizes.get(&frame.oplist)
                 && let Some(&child_oplist_size) = child_sizes.get(&child_oplist)
             {
-                spawn_bifurcation_frames(
-                    &mut frame_stack,
-                    &frame,
-                    child_oplist,
-                    child_oplist_size,
-                );
+                spawn_bifurcation_frames(&mut frame_stack, &frame, child_oplist, child_oplist_size);
             }
         }
     }}
@@ -633,66 +594,168 @@ fn process_compiled_branch_node(
     };
     let (output_value, computed_vars) = node.expr_tree.eval(inherited_vars, &eval_context);
     if capture_debug {
-        let mut debug_values = HashIdMap::new();
-        if let Some(var_ids) = context.oplist_debug_var_ids.get(&node.source_oplist) {
-            for var_id in var_ids {
-                if let Ok(value) = computed_vars.get(*var_id) {
-                    let _ = debug_values.overwrite(*var_id, *value);
-                }
-            }
-        }
-        result.debug_samples.push(TerrGenDebugSample {
-            dimension_ref: source_ev.dimension_ref,
+        push_debug_sample(
+            result,
+            context,
+            source_ev.dimension_ref,
             gpos,
-            oplist: node.source_oplist,
-            oplist_id: context.oplist_ids.get(&node.source_oplist).cloned().unwrap_or_default(),
-            output: output_value,
-            variables: debug_values,
-        });
+            node.source_oplist,
+            output_value,
+            &computed_vars,
+        );
     }
 
     let destination_i = (output_value as usize).min(node.branches.len() - 1);
-    let passes_value_filter = passes_filter_value(filter, &computed_vars, output_value);
-    if has_filter
-        && let Some(filter) = filter
-        && let Some(Some(oplist_tags)) = context.oplist_tags.get(&node.source_oplist)
-        && oplist_tags.intersects(&filter.tags)
-        && passes_value_filter
-    {
-        if source_ev.matrix_spec.is_some() {
-            let sampled_value = sampled_value_from_filter(Some(filter), &computed_vars, output_value);
-            set_sample_matrix_value_for_pending(source_ev, Some(sampled_value), sampled_matrices_by_requester);
-        } else {
-            let emitted = emitted_per_probe.entry(source_ev.requester).or_insert(0);
-            if *emitted < source_ev.max_emitted_results {
-                result.sampled_value_events.push(SuitablePosFound {
-                    requester: source_ev.requester,
-                    val: output_value,
-                    found_pos: gpos,
-                    is_last: false,
-                });
-                if source_ev.mark_last_success_in_batch {
-                    last_success_idx_for_requester.insert(source_ev.requester, result.sampled_value_events.len() - 1);
-                }
-                *emitted = emitted.saturating_add(1);
-            }
-        }
-    }
+    try_emit_filter_match(
+        source_ev,
+        context,
+        node.source_oplist,
+        gpos,
+        output_value,
+        &computed_vars,
+        filter,
+        has_filter,
+        emitted_per_probe,
+        last_success_idx_for_requester,
+        sampled_matrices_by_requester,
+        result,
+    );
 
     let branch = &node.branches[destination_i];
-    if !branch.biome_tags.is_empty() && source_ev.filtered_op == Entity::PLACEHOLDER {
+    collect_branch_outputs(
+        result,
+        source_ev,
+        node.source_oplist,
+        gpos,
+        oplist_size,
+        dimension_hash,
+        &branch.biome_tags,
+        &branch.tiles,
+    );
+
+    if let Some(child) = branch.child.as_ref()
+        && let Some(child_oplist_size) = branch.child_size
+    {
+        for child_gpos in child_positions(gpos, oplist_size, child_oplist_size) {
+            process_compiled_branch_node(
+                child,
+                child_gpos,
+                child_oplist_size,
+                &computed_vars,
+                source_ev,
+                context,
+                gen_settings,
+                dimension_hash,
+                filter,
+                has_filter,
+                emitted_per_probe,
+                last_success_idx_for_requester,
+                sampled_matrices_by_requester,
+                result,
+                capture_debug,
+            );
+        }
+    }
+}
+
+fn push_debug_sample(
+    result: &mut TerrGenOpTaskResult,
+    context: &TerrGenTaskContext,
+    dimension_ref: DimensionRef,
+    gpos: GlobalTilePos,
+    oplist: Entity,
+    output: f32,
+    variables: &HashIdMap<f32>,
+) {
+    let mut debug_values = HashIdMap::new();
+    if let Some(var_ids) = context.oplist_debug_var_ids.get(&oplist) {
+        for var_id in var_ids {
+            let Ok(value) = variables.get(*var_id) else { continue; };
+            let _ = debug_values.overwrite(*var_id, *value);
+        }
+    }
+    result.debug_samples.push(TerrGenDebugSample {
+        dimension_ref,
+        gpos,
+        oplist,
+        oplist_id: context.oplist_ids.get(&oplist).cloned().unwrap_or_default(),
+        output,
+        variables: debug_values,
+    });
+}
+
+fn try_emit_filter_match(
+    source_ev: &PendingOp,
+    context: &TerrGenTaskContext,
+    source_oplist: Entity,
+    gpos: GlobalTilePos,
+    output_value: f32,
+    computed_vars: &HashIdMap<f32>,
+    filter: Option<&OpFilter>,
+    has_filter: bool,
+    emitted_per_probe: &mut EntityHashMap<u32>,
+    last_success_idx_for_requester: &mut EntityHashMap<usize>,
+    sampled_matrices_by_requester: &mut EntityHashMap<SampledValues>,
+    result: &mut TerrGenOpTaskResult,
+) {
+    if !has_filter {
+        return;
+    }
+    let Some(filter) = filter else {
+        return;
+    };
+    let Some(Some(oplist_tags)) = context.oplist_tags.get(&source_oplist) else {
+        return;
+    };
+    if !oplist_tags.intersects(&filter.tags) || !passes_filter_value(Some(filter), computed_vars, output_value) {
+        return;
+    }
+    if source_ev.matrix_spec.is_some() {
+        let sampled_value = sampled_value_from_filter(Some(filter), computed_vars, output_value);
+        set_sample_matrix_value_for_pending(source_ev, Some(sampled_value), sampled_matrices_by_requester);
+        return;
+    }
+    let emitted = emitted_per_probe.entry(source_ev.requester).or_insert(0);
+    if *emitted >= source_ev.max_emitted_results {
+        return;
+    }
+    result.sampled_value_events.push(SuitablePosFound {
+        requester: source_ev.requester,
+        val: output_value,
+        found_pos: gpos,
+        is_last: false,
+    });
+    if source_ev.mark_last_success_in_batch {
+        last_success_idx_for_requester.insert(source_ev.requester, result.sampled_value_events.len() - 1);
+    }
+    *emitted = emitted.saturating_add(1);
+}
+
+fn collect_branch_outputs(
+    result: &mut TerrGenOpTaskResult,
+    source_ev: &PendingOp,
+    source_oplist: Entity,
+    gpos: GlobalTilePos,
+    oplist_size: OplistSize,
+    dimension_hash: HashId,
+    biome_tags: &[(HashId, f32)],
+    tiles: &[Entity],
+) {
+    if source_ev.filtered_op != Entity::PLACEHOLDER {
+        return;
+    }
+    if !biome_tags.is_empty() {
         result.biome_tag_samples.push(TerrGenBiomeTagSample {
             dimension_ref: source_ev.dimension_ref,
             chunk_pos: gpos.to_chunkpos(),
-            biome_tags: branch.biome_tags.clone(),
+            biome_tags: biome_tags.to_vec(),
         });
     }
-
-    if !branch.tiles.is_empty() && source_ev.filtered_op == Entity::PLACEHOLDER {
+    if !tiles.is_empty() {
         result.tile_requests.push(TerrGenTileRequest {
-            bif_tiles: branch.tiles.clone(),
+            bif_tiles: tiles.to_vec(),
             pending: PendingOp {
-                oplist: DimensionRootOplist(node.source_oplist),
+                oplist: DimensionRootOplist(source_oplist),
                 dimension_ref: source_ev.dimension_ref,
                 gpos,
                 filtered_op: source_ev.filtered_op,
@@ -705,56 +768,29 @@ fn process_compiled_branch_node(
             dimension_hash,
         });
     }
+}
 
-    if let Some(child) = branch.child.as_ref()
-        && let Some(child_oplist_size) = branch.child_size
-    {
-        if oplist_size <= child_oplist_size {
-            if gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO {
-                process_compiled_branch_node(
-                    child,
-                    gpos,
-                    child_oplist_size,
-                    &computed_vars,
-                    source_ev,
-                    context,
-                    gen_settings,
-                    dimension_hash,
-                    filter,
-                    has_filter,
-                    emitted_per_probe,
-                    last_success_idx_for_requester,
-                    sampled_matrices_by_requester,
-                    result,
-                    capture_debug,
-                );
-            }
+fn child_positions(
+    gpos: GlobalTilePos,
+    parent_size: OplistSize,
+    child_size: OplistSize,
+) -> Vec<GlobalTilePos> {
+    if parent_size <= child_size {
+        return if gpos.0.abs().as_uvec2() % child_size.inner() == UVec2::ZERO {
+            vec![gpos]
         } else {
-            let x_end = oplist_size.x() as i32 / child_oplist_size.x() as i32;
-            let y_end = oplist_size.y() as i32 / child_oplist_size.y() as i32;
-            for x in 0..x_end {
-                for y in 0..y_end {
-                    process_compiled_branch_node(
-                        child,
-                        gpos + GlobalTilePos::new(x, y),
-                        child_oplist_size,
-                        &computed_vars,
-                        source_ev,
-                        context,
-                        gen_settings,
-                        dimension_hash,
-                        filter,
-                        has_filter,
-                        emitted_per_probe,
-                        last_success_idx_for_requester,
-                        sampled_matrices_by_requester,
-                        result,
-                        capture_debug,
-                    );
-                }
-            }
+            Vec::new()
+        };
+    }
+    let x_end = parent_size.x() as i32 / child_size.x() as i32;
+    let y_end = parent_size.y() as i32 / child_size.y() as i32;
+    let mut positions = Vec::with_capacity((x_end * y_end) as usize);
+    for x in 0..x_end {
+        for y in 0..y_end {
+            positions.push(gpos + GlobalTilePos::new(x, y));
         }
     }
+    positions
 }
 
 #[inline]
@@ -833,28 +869,12 @@ fn spawn_bifurcation_frames(
     child_oplist: Entity,
     child_oplist_size: OplistSize,
 ) {
-    if frame.oplist_size <= child_oplist_size {
-        if frame.gpos.0.abs().as_uvec2() % child_oplist_size.inner() == UVec2::ZERO {
-            frames.push(EvalFrame {
-                oplist: child_oplist,
-                gpos: frame.gpos,
-                oplist_size: child_oplist_size,
-                variables: frame.variables.clone(),
-            });
-        }
-    } else {
-        let x_end = frame.oplist_size.x() as i32 / child_oplist_size.x() as i32;
-        let y_end = frame.oplist_size.y() as i32 / child_oplist_size.y() as i32;
-        for x in 0..x_end {
-            for y in 0..y_end {
-                let gpos = frame.gpos + GlobalTilePos::new(x, y);
-                frames.push(EvalFrame {
-                    oplist: child_oplist,
-                    gpos,
-                    oplist_size: child_oplist_size,
-                    variables: frame.variables.clone(),
-                });
-            }
-        }
+    for gpos in child_positions(frame.gpos, frame.oplist_size, child_oplist_size) {
+        frames.push(EvalFrame {
+            oplist: child_oplist,
+            gpos,
+            oplist_size: child_oplist_size,
+            variables: frame.variables.clone(),
+        });
     }
 }

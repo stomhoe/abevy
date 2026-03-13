@@ -10,6 +10,7 @@ bevy_replicon = { workspace = true }
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 sprite_shared = { path = "../sprite_shared" }
+tilemap_shared = { path = "../tilemap_shared" }
 
 paste = { workspace = true }
 bevy_common_assets = { workspace = true }

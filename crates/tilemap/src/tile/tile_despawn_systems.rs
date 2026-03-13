@@ -44,8 +44,7 @@ pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
     >,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
     registered_positions: Res<ImportantRegisteredPositions>,
-    params: TileGatheringParamSet,
-    mut otile_ents: Local<Vec<Entity>>,
+    mut params: TileGatheringParamSet,
     mut checked_ents: Local<HashSet<Entity>>,
     mut writer: MessageWriter<SafeDespawn>,
     mut msgs: Local<Vec<SafeDespawn>>,
@@ -65,8 +64,7 @@ pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
         checked_ents.clear();
         for y in (gpos.0.y - scan_radius)..=(gpos.0.y + newtile_size.y - 1 + scan_radius) {
             for x in (gpos.0.x - scan_radius)..=(gpos.0.x + newtile_size.x - 1 + scan_radius) {
-                params.gather_tiles_at(&mut *otile_ents, dim, GlobalTilePos::new(x, y));
-                for ent in otile_ents.drain(..) {
+                for &ent in params.gather_tiles_at_to_drain(dim, GlobalTilePos::new(x, y)) {
                     checked_ents.insert(ent);
                 }
             }

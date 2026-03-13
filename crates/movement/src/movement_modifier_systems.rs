@@ -92,8 +92,7 @@ pub fn process_speed_modifiers(
     >,
     tile_entity_zero_refs: Query<&EntityZeroRef>,
     tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
-    tile_gathering: TileGatheringParamSet,
-    mut entity_vec: Local<Vec<Entity>>,
+    mut tile_gathering: TileGatheringParamSet,
 ) {
     for (
         being_ent,
@@ -160,9 +159,7 @@ pub fn process_speed_modifiers(
         final_speed /= total_weight_newtons;
 
         let mut tile_walk_mult: f32 = 1.0;
-        entity_vec.clear();
-        tile_gathering.gather_tiles_at(&mut *entity_vec, dim_ref, *tile_pos);
-        for tile_ent in entity_vec.iter() {
+        for tile_ent in tile_gathering.gather_tiles_at_to_drain(dim_ref, *tile_pos) {
             let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(*tile_ent) else {
                 continue;
             };

@@ -1,5 +1,7 @@
 use bevy::ecs::entity::EntityHashMap;
+use bevy::ecs::schedule::IntoScheduleConfigs;
 use bevy::prelude::*;
+use bevy::ecs::schedule::common_conditions::on_message;
 use bevy_replicon::prelude::AppRuleExt;
 use ac_input::player_action_requests::LocalItemPickupRequest;
 use common::common_states::AssetLoading;
@@ -11,23 +13,10 @@ use sprite_shared::prelude::ScsToBuild;
 use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
 
 use crate::item_init_systems::*;
-use crate::item_messages::*;
 use crate::item_systems::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ItemSystems;
-
-pub fn clone_item_from_ezero(cmd: &mut Commands, ezero_ref: EntityZeroRef, dimension_ref: DimensionRef) -> Entity {
-    let item_instance = cmd
-        .entity(ezero_ref.0)
-        .clone_and_spawn_with_opt_out(|builder| {
-            builder.deny::<ToDenyOnItemClone>();
-        })
-        .id();
-    cmd.entity(item_instance)
-        .insert((Item, EntityZeroRef(ezero_ref.0), dimension_ref));
-    item_instance
-}
 
 pub fn plugin(app: &mut App) {
     app.add_plugins((plugin_item,))
@@ -38,7 +27,8 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                generate_items_from_messages,
+                execute_item_operations
+                    .run_if(on_message::<ItemOperation>),
                 pick_up_locally_requested_items
                     .run_if(on_message::<LocalItemPickupRequest>)
                     .in_set(HostSystems)
@@ -46,9 +36,9 @@ pub fn plugin(app: &mut App) {
                 readjust_child_of_for_items,
                 sync_items_at_gpos,
                 on_being_held_items_changed,
-            ).in_set(GameplaySystems),
+            ).chain().in_set(GameplaySystems),
         )
-        .add_message::<GenerateItem>()
+        .add_message::<ItemOperation>()
         .replicate::<Item>()
         .replicate::<ItemHeldIn>()
         .replicate::<DropHeldItemsOnDowned>()

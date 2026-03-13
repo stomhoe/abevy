@@ -28,6 +28,10 @@ pub struct BlockingTileParamSet<'w, 's> {
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
+    pub fn gather_tiles_at_to_drain(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
+        self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos)
+    }
+
     pub fn has_tagset_at(&self, tile_ents_to_drain: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos, target_tags: &TagSet) -> bool {
         if target_tags.is_empty() {
             return false;

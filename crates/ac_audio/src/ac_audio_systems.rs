@@ -302,12 +302,11 @@ pub fn play_step_sfx_from_moved_distance(
     sprite_step_cfgs: Query<&SpriteTimedSfx>,
     tile_entity_zero_refs: Query<&EntityZeroRef>,
     tile_step_sfxs: Query<(&TileStepSfx, Option<&TileStepSfxConfig>)>,
-    tile_gathering: TileGatheringParamSet,
+    mut tile_gathering: TileGatheringParamSet,
     settings: Res<SpatialAudioSettings>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
     mut step_paths: Local<Vec<String>>,
-    mut tiles_scratch: Local<Vec<Entity>>,
 ) {
     fn hash_path(path: &str) -> u64 {
         let mut hasher = DefaultHasher::new();
@@ -381,9 +380,7 @@ pub fn play_step_sfx_from_moved_distance(
         }
 
         if !disable_tile_step_sfx {
-            tiles_scratch.clear();
-            tile_gathering.gather_tiles_at(&mut *tiles_scratch, dim_ref, GlobalTilePos::from(current_pos_px));
-            for tile_ent in tiles_scratch.iter() {
+            for tile_ent in tile_gathering.gather_tiles_at_to_drain(dim_ref, GlobalTilePos::from(current_pos_px)) {
                 let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(*tile_ent) else { continue };
                 let Ok((tile_step_sfx, tile_step_sfx_cfg)) = tile_step_sfxs.get(tile_cfg_ref.0) else { continue };
                 if tile_step_sfx_cfg.is_some_and(|cfg| !cfg.prevent_repeat) {

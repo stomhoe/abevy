@@ -4339,6 +4339,7 @@ dependencies = [
  "common",
  "fnl",
  "game_common",
+ "item_shared",
  "modifier_shared",
  "movement",
  "param_sets",
@@ -5613,6 +5614,7 @@ dependencies = [
  "paste",
  "serde",
  "sprite_shared",
+ "tilemap_shared",
 ]
 
 [[package]]

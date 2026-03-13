@@ -12,6 +12,7 @@ player = { path = "../player" }
 ac_input = { path = "../ac_input" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
+item_shared = { path = "../item_shared" }
 camera = { path = "../camera" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }

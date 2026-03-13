@@ -1,20 +1,13 @@
-use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 use ac_input::player_action_requests::LocalItemPickupRequest;
 use being_shared::Being;
 use common::log_targets;
 use game_common::game_common_components::{Dead, EntityZero, EntityZeroRef};
-use item_shared::{DroppedItem, HeldItems, Item, ItemHeldIn, ItemsGeneratedOnDeath};
-use modifier_shared::modifier_components::{CurrEffectiveValue, ModifierTarget};
-use modifier_shared::modifier_item_types::StackLimit;
-use param_sets::BlockingTileParamSet;
-use sprite_shared::prelude::{AcZ, HeldSprites, ScsToBuild};
-use bevy::ecs::entity::EntityHashSet;
-use std::collections::HashSet;
-use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos, TileGatheringParamSet};
+use item_shared::{clone_item_from_ezero, DroppedItem, HeldItems, Item, ItemHeldIn, ItemOperation, ItemsGeneratedOnDeath, KnownItemDest};
+use sprite_shared::prelude::{HeldSprites, ScsToBuild};
+use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
 
-use crate::{clone_item_from_ezero, item_helpers::*, item_messages::*};
-
+use crate::ItemGroundMaterializeParamSet;
 pub fn on_being_held_items_changed(//chequear si caben todos en slots
     _query: Query<(), (Changed<HeldItems>, With<Being>)>,
 ) {
@@ -78,61 +71,106 @@ pub fn readjust_child_of_for_items(
     cmd.try_insert_batch(child_ofs_to_insert);
 }
 
-pub fn generate_items_from_messages(
+pub fn execute_item_operations(
     mut cmd: Commands,
-    mut generate_items: MessageReader<GenerateItem>,
-    mut removed_item_held_in: RemovedComponents<ItemHeldIn>,
-    tile_gathering: TileGatheringParamSet,
-    item_cfg_query: Query<&item_shared::ItemSpritesConfig, (With<Item>, With<EntityZero>)>,
-    dropped_lookup: Query<(Entity, &EntityZeroRef, &DimensionRef, &GlobalTilePos), DroppedItem>,
-    ac_z_query: Query<&AcZ>,
-    mut to_drain: Local<Vec<Entity>>,
+    mut item_operations: MessageReader<ItemOperation>,
+    dim_ref_query: Query<&DimensionRef>,
+    item_instance_query: Query<Option<&ItemHeldIn>, (With<Item>, Without<EntityZero>)>,
+    ezero_item_query: Query<(), (With<Item>, With<EntityZero>)>,
+    location_query: Query<(Option<&DimensionRef>, Option<&GlobalTilePos>, Option<&ChildOf>)>,
+    mut materialize_params: ItemGroundMaterializeParamSet,
 ) {
-    for &GenerateItem { ezero_ref, dim_ref, dest } in generate_items.read() {
-        match dest {
-            GenerateItemDest::Gpos(gpos) => {
+    for &item_operation in item_operations.read() {
+        match item_operation {
+            ItemOperation::FromEzero(ezero_ref, KnownItemDest::Holder(target)) => {
+                let Ok(&dim_ref) = dim_ref_query.get(target) else {
+                    warn!(
+                        target: log_targets::ITEM_SYSTEM,
+                        "Skipping item op for ezero {:?}: target {:?} has no DimensionRef",
+                        ezero_ref.0,
+                        target,
+                    );
+                    continue;
+                };
                 let item_instance = clone_item_from_ezero(&mut cmd, ezero_ref, dim_ref);
-                materialize_item_on_ground(
-                    &mut cmd,
-                    &item_cfg_query,
-                    &tile_gathering,
-                    &ac_z_query,
-                    &mut to_drain,
-                    item_instance,
-                    ezero_ref,
-                    (dim_ref, gpos),
-                );
+                cmd.entity(item_instance).insert((ItemHeldIn { holder: target }, ChildOf(target)));
             }
-            GenerateItemDest::Entity(target) => {
-                let item_instance = clone_item_from_ezero(&mut cmd, ezero_ref, dim_ref);
-                cmd.entity(item_instance).insert((
-                    ItemHeldIn { holder: target },
-                    ChildOf(target),
-                ));
+            ItemOperation::FromEzero(ezero_ref, KnownItemDest::Ground(dim_ref, gpos)) => {
+                materialize_params.materialize_item_on_ground_from_ezero(&mut cmd, None, ezero_ref, dim_ref, gpos);
+            }
+            ItemOperation::Preexisting(item, known_dest) => {
+                if ezero_item_query.get(item).is_ok() {
+                    warn!(
+                        target: log_targets::ITEM_SYSTEM,
+                        "Skipping preexisting item op for ezero {:?}; expected an item instance",
+                        item,
+                    );
+                    continue;
+                }
+                let Ok(held_in) = item_instance_query.get(item) else {
+                    warn!(
+                        target: log_targets::ITEM_SYSTEM,
+                        "Skipping preexisting item op: entity {:?} is not a valid item instance",
+                        item,
+                    );
+                    continue;
+                };
+                match known_dest {
+                    Some(KnownItemDest::Holder(target)) => {
+                        let Ok(&dim_ref) = dim_ref_query.get(target) else {
+                            warn!(
+                                target: log_targets::ITEM_SYSTEM,
+                                "Skipping preexisting item op for {:?}: holder {:?} has no DimensionRef",
+                                item,
+                                target,
+                            );
+                            continue;
+                        };
+                        cmd.entity(item).insert((dim_ref, ItemHeldIn { holder: target }, ChildOf(target)));
+                    }
+                    Some(KnownItemDest::Ground(dim_ref, gpos)) => {
+                        cmd.entity(item).insert((dim_ref, gpos));
+                        materialize_params.materialize_item_on_ground(&mut cmd, item);
+                    }
+                    None => {
+                        let mut current = held_in.map(|held_in| held_in.holder).unwrap_or(item);
+                        let found_pos = loop {
+                            let Ok((dim_ref, gpos, child_of)) = location_query.get(current) else {
+                                warn!(
+                                    target: log_targets::ITEM_SYSTEM,
+                                    "Skipping preexisting item op for {:?}: failed to inspect location chain at {:?}",
+                                    item,
+                                    current,
+                                );
+                                break None;
+                            };
+                            if let Some((&dim_ref, &gpos)) = dim_ref.zip(gpos) {
+                                break Some((dim_ref, gpos));
+                            }
+                            let Some(child_of) = child_of else {
+                                warn!(
+                                    target: log_targets::ITEM_SYSTEM,
+                                    "Skipping preexisting item op for {:?}: no DimensionRef/GlobalTilePos found in holder chain",
+                                    item,
+                                );
+                                break None;
+                            };
+                            current = child_of.parent();
+                        };
+                        let Some((dim_ref, gpos)) = found_pos else {
+                            continue;
+                        };
+                        cmd.entity(item).insert((dim_ref, gpos));
+                        materialize_params.materialize_item_on_ground(&mut cmd, item);
+                    }
+                }
             }
         }
-    }
-
-    for item_ent in removed_item_held_in.read() {
-        let Ok((item_ent, ezero_ref, dim_ref, gpos)) = dropped_lookup.get(item_ent) else {
-            continue;
-        };
-        materialize_item_on_ground(
-            &mut cmd,
-            &item_cfg_query,
-            &tile_gathering,
-            &ac_z_query,
-            &mut to_drain,
-            item_ent,
-            *ezero_ref,
-            (*dim_ref, *gpos),
-        );
     }
 }
 
 pub fn generate_items_on_deaths(
-    blocking_tiles: BlockingTileParamSet,
-    mut generate_item_writer: MessageWriter<GenerateItem>,
+    mut item_operation_writer: MessageWriter<ItemOperation>,
     query: Query<
         (
             Has<Dead>,
@@ -145,15 +183,8 @@ pub fn generate_items_on_deaths(
         (Without<EntityZero>, Added<Dead>),
     >,
     ezero_drop_query: Query<&ItemsGeneratedOnDeath, With<EntityZero>>,
-    stack_limit_query: Query<(&ModifierTarget, &CurrEffectiveValue), With<StackLimit>>,
-    mut generate_item_messages: Local<Vec<GenerateItem>>,
-    mut to_drain: Local<Vec<Entity>>,
-    mut occupied_nonstackable: Local<HashSet<GlobalTilePos>>,
+    mut item_operations: Local<Vec<ItemOperation>>,
 ) {
-    let mut stack_limit_by_item = EntityHashMap::default();
-    for (&ModifierTarget(target), &CurrEffectiveValue(limit)) in stack_limit_query.iter() {
-        stack_limit_by_item.insert(target, limit.max(1.0));
-    }
     let mut rng = rand::rng();
     for (is_dead, dim_ref, global_transform, tile_pos, generated_on_death, ezero_ref) in query.iter() {
         if !is_dead {
@@ -183,14 +214,10 @@ pub fn generate_items_on_deaths(
         let drop_gpos = tile_pos
             .copied()
             .unwrap_or_else(|| GlobalTilePos::from(drop_pos));
-        occupied_nonstackable.clear();
         let count_multiplier = generated_on_death.count_multiplier.max(0.0);
         let dim_ref = dim_ref.copied();
-        let stackable_drop_gpos = find_stackable_drop_gpos(&blocking_tiles, &mut to_drain, dim_ref, drop_gpos);
 
         for (item_ezero, base_count) in item_counts {
-            let stack_limit = stack_limit_by_item.get(&item_ezero).copied().unwrap_or(1.0);
-            let is_nonstackable = stack_limit <= 1.0;
             let scaled_count = base_count as f32 * count_multiplier;
             let drop_count = scaled_count.round() as u32;
             if drop_count == 0 {
@@ -207,11 +234,6 @@ pub fn generate_items_on_deaths(
                 info!(target: log_targets::ITEM_SYSTEM, " - Spawning {} x {:?} at {:?}", drop_count, item_ezero, drop_gpos);
             }
             for _ in 0..drop_count {
-                let spawn_gpos = if is_nonstackable {
-                    find_nonstackable_drop_gpos(&blocking_tiles, &mut to_drain, &mut occupied_nonstackable, dim_ref, drop_gpos)
-                } else {
-                    stackable_drop_gpos
-                };
                 let Some(dim_ref) = dim_ref else {
                     warn!(
                         target: log_targets::ITEM_SYSTEM,
@@ -222,14 +244,14 @@ pub fn generate_items_on_deaths(
                 };
                 info!(
                     target: log_targets::ITEM_SYSTEM,
-                    "   -> queued GenerateItem dim={:?} gpos={:?} ezero={:?}",
+                    "   -> queued item op dim={:?} gpos={:?} ezero={:?}",
                     dim_ref.0,
-                    spawn_gpos,
+                    drop_gpos,
                     item_ezero,
                 );
-                generate_item_messages.push(GenerateItem::on_ground(EntityZeroRef(item_ezero), dim_ref, spawn_gpos));
+                item_operations.push(ItemOperation::spawn_on_ground(EntityZeroRef(item_ezero), dim_ref, drop_gpos));
             }
         }
     }
-    generate_item_writer.write_batch(generate_item_messages.drain(..));
+    item_operation_writer.write_batch(item_operations.drain(..));
 }

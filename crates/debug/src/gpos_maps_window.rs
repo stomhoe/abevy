@@ -102,13 +102,12 @@ pub fn gpos_maps_window_system(
     beings_at_gpos: Res<BeingsAtGpos>,
     items_at_gpos: Res<ItemsAtGpos>,
     spritetiles_at_gpos: Res<SpriteTilesAtGpos>,
-    tile_gathering: TileGatheringParamSet,
+    mut tile_gathering: TileGatheringParamSet,
     tile_instance_query: Query<(&EntityZeroRef, &GlobalTilePos, Option<&TileFlip>, Option<&CardinalDirection>)>,
     walk_speed: Query<&WalkSpeedMultIfOnTop>,
     tile_collision_masks: Query<&TiledCollisionMask>,
     camera_target_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     being_dim_pos: Query<(&DimensionRef, &Transform)>,
-    mut tile_scratch: Local<Vec<Entity>>,
     mut terrain_blocked: Local<HashSet<(i32, i32)>>,
     mut ui_state: Local<GposMapsUiState>,
 ) {
@@ -169,13 +168,11 @@ pub fn gpos_maps_window_system(
             let center = GlobalTilePos::new(ui_state.center_x, ui_state.center_y);
             let dim_ref = DimensionRef(ui_state.center_dim);
             terrain_blocked.clear();
-            tile_scratch.clear();
             for y in -ui_state.radius..=ui_state.radius {
                 for x in -ui_state.radius..=ui_state.radius {
                     let gpos = center + GlobalTilePos::new(x, y);
-                    tile_gathering.gather_tiles_at(&mut *tile_scratch, dim_ref, gpos);
                     let mut blocked = false;
-                    for tile_ent in tile_scratch.drain(..) {
+                    for &tile_ent in tile_gathering.gather_tiles_at_to_drain(dim_ref, gpos) {
                         let Ok((ezero_ref, tile_origin, tile_flip, direction)) = tile_instance_query.get(tile_ent) else { continue; };
                         if walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
                             blocked = true;
@@ -261,13 +258,10 @@ pub fn gpos_maps_window_system(
                 }
                 if let Some(local) = clicked_terrain {
                     let gpos = center + local;
-                    tile_scratch.clear();
-                    tile_gathering.gather_tiles_at(&mut *tile_scratch, dim_ref, gpos);
-                    if let Some(tile_entity) = tile_scratch.first().copied() {
+                    if let Some(tile_entity) = tile_gathering.gather_tiles_at_to_drain(dim_ref, gpos).first().copied() {
                         selected.selected_tile = Some(tile_entity);
                         window_visible.tile_details = true;
                     }
-                    tile_scratch.clear();
                 }
             });
         });

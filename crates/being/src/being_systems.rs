@@ -78,7 +78,7 @@ pub fn apply_melee_attack(
         With<Being>,
     >,
     beings_at_gpos: Res<BeingsAtGpos>,
-    tile_gathering: TileGatheringParamSet,
+    mut tile_gathering: TileGatheringParamSet,
     tile_instances: Query<(
         &GlobalTilePos,
         &EntityZeroRef,
@@ -87,7 +87,6 @@ pub fn apply_melee_attack(
     )>,
     tile_receivers: Query<(Option<&InteractionZones>, Option<&TiledCollisionMask>)>,
     mut health_damage_writer: MessageWriter<HealthDamage>,
-    mut tiles_to_drain: Local<Vec<Entity>>,
     mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
     mut health_damage_messages: Local<Vec<HealthDamage>>,
 ) {
@@ -180,9 +179,7 @@ pub fn apply_melee_attack(
             ) {
                 continue;
             }
-            tiles_to_drain.clear();
-            tile_gathering.gather_tiles_at(&mut *tiles_to_drain, attacker_dim, candidate_gpos);
-            for &target_entity in tiles_to_drain.iter() {
+            for &target_entity in tile_gathering.gather_tiles_at_to_drain(attacker_dim, candidate_gpos) {
                 if !hit_entities.insert(target_entity) {
                     continue;
                 }
