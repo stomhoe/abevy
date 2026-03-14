@@ -1,10 +1,10 @@
-use being_shared::BiomeHidPackSamplers;
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, platform::collections::HashMap, prelude::*};
-use common::common_components::{HashId, StrId};
+use common::common_components::StrId;
 use game_common::{
     game_common_components::EntityZero,
     game_common_samplers::CappedNormalDist,
 };
+use tilemap::terrain::biome::{biome_components::BiomePackSampler, biome_resources::BiomeEntityMap};
 
 use crate::{
     being_inst_template::being_inst_template_resources::{BeingInstTemplateEntityMap, load_bit_seri_defs},
@@ -17,7 +17,8 @@ pub fn init_packs(
     pack_emap: Res<PackEntityMap>,
     race_emap: Option<Res<RaceEntityMap>>,
     bit_emap: Option<Res<BeingInstTemplateEntityMap>>,
-    mut biome_wildlife_samplers: ResMut<BiomeHidPackSamplers>,
+    biome_emap: Res<BiomeEntityMap>,
+    mut biome_pack_samplers: Query<&mut BiomePackSampler>,
 ) {
     if !pack_emap.0.is_empty() {
         return;
@@ -77,15 +78,17 @@ pub fn init_packs(
                 )));
         }
 
-        for (biome_tag, weight) in &pack_seri.biome_affinity {
+        for (biome_id, weight) in &pack_seri.biome_affinity {
             if *weight <= 0.0 {
                 continue;
             }
-            biome_wildlife_samplers
-                .0
-                .entry(HashId::from(biome_tag.as_str()))
-                .or_default()
-                .insert(pack_entity, *weight);
+            let Ok(biome_ent) = biome_emap.0.get_cloned(biome_id) else {
+                continue;
+            };
+            let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
+                continue;
+            };
+            biome_pack_sampler.0.insert(pack_entity, *weight);
         }
     }
 

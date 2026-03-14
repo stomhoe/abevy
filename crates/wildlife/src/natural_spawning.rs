@@ -1,4 +1,3 @@
-use bevy::ecs::entity::EntityHashMap;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use being::{
@@ -7,21 +6,20 @@ use being::{
     pack::pack_components::PackInitialSpawnNormalDist,
     race::{race_components::Race, race_resources::RaceRef},
 };
-use being_shared::{BeingInstTemplate, BiomeHidPackSamplers};
+use being_shared::BeingInstTemplate;
 use common::log_targets::WILDLIFE_SYSTEM;
-use game_common::{game_common_samplers::EntityWeightedSampler, game_common_timers::TimerComp};
+use game_common::{game_common_samplers::MacroChunkBiomeTagDistributionMap, game_common_timers::TimerComp};
+use tilemap::terrain::biome::biome_components::BiomePackSampler;
 use tilemap_shared::{
-    BiomeTagDistributionAtTimeout,
     DiscoveredMacroChunks,
     DimensionRef,
-    MacroChunkBiomeTagDistributionMap,
     MacroChunkPos,
 };
 
 pub fn spawn_natural_wildlife_for_chunk(
     mut cmd: Commands,
-    discovered_areas: Res<DiscoveredMacroChunks>,
-    biome_wildlife_samplers: Res<BiomeHidPackSamplers>,
+    discovered_macro_chunks: Res<DiscoveredMacroChunks>,
+    biome_pack_samplers: Query<&BiomePackSampler>,
     mut pending_macro_chunks: Local<HashMap<(DimensionRef, MacroChunkPos), TimerComp>>,
     mut ready_macro_chunks: Local<Vec<(DimensionRef, MacroChunkPos)>>,
     mut macro_chunk_biome_tag_dist: ResMut<MacroChunkBiomeTagDistributionMap>,
@@ -29,10 +27,10 @@ pub fn spawn_natural_wildlife_for_chunk(
     spawn_pack_size_query: Query<&PackInitialSpawnNormalDist>,
     time: Res<Time>,
 ) {
-    if !discovered_areas.is_changed() && pending_macro_chunks.is_empty() {
+    if !discovered_macro_chunks.is_changed() && pending_macro_chunks.is_empty() {
         return;
     }
-    for &key in discovered_areas.0.iter() {
+    for &key in discovered_macro_chunks.0.iter() {
         pending_macro_chunks.entry(key).or_insert_with(|| TimerComp::new(4.0));
     }
     if pending_macro_chunks.is_empty() {
@@ -61,10 +59,19 @@ pub fn spawn_natural_wildlife_for_chunk(
             continue;
         };
 
-        let macro_sampler = build_weighted_spawn_target_sampler(distribution, &biome_wildlife_samplers);
-        let Some(spawn_target) = macro_sampler.sample_with_rng(&mut rng) else {
+        let Some(biome_ent) = distribution.0.sample_with_rng(&mut rng) else {
             macro_chunk_biome_tag_dist.0.remove(&key);
-            debug!(target: WILDLIFE_SYSTEM, "Natural spawn found no candidate wildlife for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
+            debug!(target: WILDLIFE_SYSTEM, "Natural spawn found no weighted biome for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
+            continue;
+        };
+        let Ok(biome_pack_sampler) = biome_pack_samplers.get(biome_ent) else {
+            macro_chunk_biome_tag_dist.0.remove(&key);
+            debug!(target: WILDLIFE_SYSTEM, "Natural spawn found no pack sampler for biome {:?} in macrochunk {} in {:?}", biome_ent, macro_chunk_pos, dim_ref);
+            continue;
+        };
+        let Some(spawn_target) = biome_pack_sampler.0.sample_with_rng(&mut rng) else {
+            macro_chunk_biome_tag_dist.0.remove(&key);
+            debug!(target: WILDLIFE_SYSTEM, "Natural spawn found no candidate wildlife for biome {:?} in macrochunk {} in {:?}", biome_ent, macro_chunk_pos, dim_ref);
             continue;
         };
 
@@ -96,30 +103,6 @@ pub fn spawn_natural_wildlife_for_chunk(
         }
 
         macro_chunk_biome_tag_dist.0.remove(&key);
-        trace!(target: WILDLIFE_SYSTEM, "Natural spawn seeded macrochunk {} in {:?} with target {:?} and pack size {}", macro_chunk_pos, dim_ref, spawn_target, pack_size);
+        trace!(target: WILDLIFE_SYSTEM, "Natural spawn seeded macrochunk {} in {:?} with biome {:?}, target {:?}, pack size {}", macro_chunk_pos, dim_ref, biome_ent, spawn_target, pack_size);
     }
-}
-
-fn build_weighted_spawn_target_sampler(
-    distribution: &BiomeTagDistributionAtTimeout,
-    biome_wildlife_samplers: &BiomeHidPackSamplers,
-) -> EntityWeightedSampler {
-    let mut weights_by_entity: EntityHashMap<f32> = EntityHashMap::default();
-    for (tag, biome_weight) in distribution.sums.iter() {
-        if *biome_weight <= 0.0 {
-            continue;
-        }
-        let Some(sampler) = biome_wildlife_samplers.0.get(tag) else {
-            continue;
-        };
-        for &(entity, sampler_weight) in sampler.iter() {
-            if sampler_weight <= 0.0 {
-                continue;
-            }
-            let total = weights_by_entity.entry(entity).or_insert(0.0);
-            *total += *biome_weight * sampler_weight;
-        }
-    }
-    let weights = weights_by_entity.into_iter().collect::<Vec<_>>();
-    EntityWeightedSampler::new(&weights)
 }

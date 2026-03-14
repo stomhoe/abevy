@@ -7,6 +7,7 @@ use common::{common_components::{ StrId}, common_tag_components::TagSet};
 
 use crate::{
     terrain::{
+        biome::biome_resources::BiomeEntityMap,
         operation_list::operation_list_components::{Bifurcation, CompiledBranch, CompiledBranchNode, OperationList},
         operation_list::operation_list_resources::{EguiOperationListsHolder, OperationListEntityMap, TgCompiledOpLists, load_op_list_seri_defs},
         operation_list::operation_list_script::load_tg_oplists,
@@ -87,6 +88,7 @@ pub fn init_oplists_from_assets(
     terr_gen_map: Res<TerrgenEntityMap>,
     samplers_map: Res<TileWeightedSamplerEntityMap>,
     tiles_map: Res<TileEntityMap>,
+    biome_map: Res<BiomeEntityMap>,
     dimension_map: Res<DimensionEntityMap>,
     oplist_map: Res<OperationListEntityMap>,
     tg_oplists: Res<TgCompiledOpLists>,
@@ -155,7 +157,11 @@ pub fn init_oplists_from_assets(
                     if bt.tag.trim().is_empty() || !bt.weight.is_finite() || bt.weight <= 0.0 {
                         return None;
                     }
-                    Some((common::common_components::HashId::from(bt.tag.trim()), bt.weight))
+                    let Ok(biome_ent) = biome_map.0.get_cloned(bt.tag.trim()) else {
+                        warn!(target: "oplist_init", "Biome '{}' not found in BiomeEntityMap", bt.tag.trim());
+                        return None;
+                    };
+                    Some((biome_ent, bt.weight))
                 })
                 .collect();
             let bifurcation = Bifurcation { oplist: None, tiles, biome_tags };

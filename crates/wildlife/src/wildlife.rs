@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use game_common::HostSystems;
 
-use crate::terrgen_natural_spawning::*;
+use crate::natural_spawning::*;
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {

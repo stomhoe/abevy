@@ -8,11 +8,11 @@ use {common::common_components::*, };
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Debug, Deserialize, Serialize, Clone, MapEntities)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Bifurcation{
-    #[entities] pub oplist: Option<Entity>,
-    #[entities]pub tiles: Vec<Entity>,
-    pub biome_tags: Vec<(HashId, f32)>,
+    pub oplist: Option<Entity>,
+    pub tiles: Vec<Entity>,
+    pub biome_tags: Vec<(Entity, f32)>,
 }
 #[derive(Component, Debug, Clone, Serialize, Deserialize)]
 #[require(Prefix::trunc("OpList"), Replicated, AssetScoped, HotReload, AddSameHashedTags)]
@@ -51,6 +51,7 @@ impl MapEntities for OperationList {
         for bifur in self.bifurcations.iter_mut() {
             bifur.oplist = bifur.oplist.map(|oplist_entity| entity_mapper.get_mapped(oplist_entity));
             bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = entity_mapper.get_mapped(*tile_entity));
+            bifur.biome_tags.iter_mut().for_each(|(biome_entity, _)| *biome_entity = entity_mapper.get_mapped(*biome_entity));
         }
         if let Some(ast) = self.compiled_branch_ast.as_mut() {
             map_compiled_branch_entities(ast, entity_mapper);
@@ -68,7 +69,7 @@ pub struct CompiledBranchNode {
 #[derive(Debug, Clone)]
 pub struct CompiledBranch {
     pub tiles: Vec<Entity>,
-    pub biome_tags: Vec<(HashId, f32)>,
+    pub biome_tags: Vec<(Entity, f32)>,
     pub child_size: Option<tilemap_shared::OplistSize>,
     pub child: Option<Box<CompiledBranchNode>>,
 }
@@ -134,6 +135,9 @@ fn map_compiled_branch_entities<E: EntityMapper>(
     for branch in node.branches.iter_mut() {
         for tile in branch.tiles.iter_mut() {
             *tile = entity_mapper.get_mapped(*tile);
+        }
+        for (biome_entity, _) in branch.biome_tags.iter_mut() {
+            *biome_entity = entity_mapper.get_mapped(*biome_entity);
         }
         if let Some(child) = branch.child.as_mut() {
             map_compiled_branch_entities(child, entity_mapper);

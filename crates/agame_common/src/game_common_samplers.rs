@@ -1,5 +1,6 @@
 
-use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, MapEntities}, platform::collections::HashMap, prelude::*};
+use common::common_id_components::HashId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use::tilemap_shared::*;
 use crate::game_common_seris::NormalDistSeri;
@@ -198,6 +199,51 @@ define_weightedsampler_impl!(GlobalTilePosWeightedSampler, GlobalTilePos);
 
 
 define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");
+
+#[derive(Debug, Clone, Default)]
+pub struct BiomeTagDistributionAtTimeout(pub EntityWeightedSampler);
+
+#[derive(Resource, Debug, Default)]
+pub struct MacroChunkBiomeTagDistributionMap(pub HashMap<(DimensionRef, MacroChunkPos), BiomeTagDistributionAtTimeout>);
+impl MacroChunkBiomeTagDistributionMap {
+    pub fn add_tag_weights<I>(&mut self, dim_ref: DimensionRef, chunk_pos: MacroChunkPos, tag_weights: I)
+    where
+        I: IntoIterator<Item = (Entity, f32)>,
+    {
+        let dist = self.0.entry((dim_ref, chunk_pos)).or_default();
+        let mut changed = false;
+        for (tag, weight) in tag_weights {
+            if !weight.is_finite() || weight <= 0.0 {
+                continue;
+            }
+            changed = true;
+            let Some((_, accumulated_weight)) = dist
+                .0
+                .weights
+                .iter_mut()
+                .find(|(existing_tag, _)| *existing_tag == tag)
+            else {
+                dist.0.weights.push((tag, weight));
+                continue;
+            };
+            *accumulated_weight += weight;
+        }
+        if changed {
+            rebuild_entity_weighted_sampler(&mut dist.0);
+        }
+    }
+}
+
+fn rebuild_entity_weighted_sampler(sampler: &mut EntityWeightedSampler) {
+    sampler.cumulative_weights.clear();
+    sampler.cumulative_weights.reserve(sampler.weights.len());
+    let mut acc = 0.0;
+    for &(_, weight) in &sampler.weights {
+        acc += weight;
+        sampler.cumulative_weights.push(acc);
+    }
+    sampler.total_weight = acc;
+}
 
 macro_rules! define_sprite_normal_dist {
     ($dist_name:ident) => {

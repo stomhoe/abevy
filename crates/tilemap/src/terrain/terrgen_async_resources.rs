@@ -33,7 +33,7 @@ pub struct TerrGenTileRequest {
 pub struct TerrGenBiomeTagSample {
     pub dimension_ref: DimensionRef,
     pub macro_chunk_pos: MacroChunkPos,
-    pub biome_tags: Vec<(HashId, f32)>,
+    pub biome_tags: Vec<(Entity, f32)>,
 }
 
 #[derive(Debug, Default)]

@@ -38,7 +38,6 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
-    .init_resource::<BiomeHidPackSamplers>()
 
     .add_systems(Update, (
         (
@@ -76,6 +75,9 @@ pub fn plugin(app: &mut App) {
             .in_set(GameplaySystems),
     )
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
+        RaceSystems.after(tilemap::terrain::biome::BiomeSystems),
+        BeingInstTemplateSystems.after(tilemap::terrain::biome::BiomeSystems),
+        PackSystems.after(tilemap::terrain::biome::BiomeSystems),
         RaceSystems.after(BodySystems),
         RaceSystems.after(AcSpriteSystems),
         BeingInstTemplateSystems.after(RaceSystems),

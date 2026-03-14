@@ -1,4 +1,4 @@
-use being_shared::{BeingInstTemplate, BiomeHidPackSamplers, Predator, PredatorHuntThreshold};
+use being_shared::{BeingInstTemplate, Predator, PredatorHuntThreshold};
 use bevy::prelude::*;
 use common::common_components::*;
 
@@ -11,6 +11,7 @@ use crate::pack::pack_components::PackInitialSpawnNormalDist;
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
+use tilemap::terrain::biome::{biome_components::BiomePackSampler, biome_resources::BiomeEntityMap};
 use tilemap_shared::InteractionZones;
 use crate::being_components::{COLLISION_MASK_HASHID, HitboxReceiver};
 
@@ -21,7 +22,8 @@ pub fn init_being_templates(
     bit_map: Res<BeingInstTemplateEntityMap>,
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
-    mut biome_wildlife_samplers: ResMut<BiomeHidPackSamplers>,
+    biome_emap: Res<BiomeEntityMap>,
+    mut biome_pack_samplers: Query<&mut BiomePackSampler>,
 ) {
     if !bit_map.0.is_empty(){
         return;
@@ -126,11 +128,13 @@ pub fn init_being_templates(
             if *weight <= 0.0 {
                 continue;
             }
-            biome_wildlife_samplers
-                .0
-                .entry(HashId::from(biome_tag.as_str()))
-                .or_default()
-                .insert(bit_entity, *weight);
+            let Ok(biome_ent) = biome_emap.0.get_cloned(biome_tag) else {
+                continue;
+            };
+            let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
+                continue;
+            };
+            biome_pack_sampler.0.insert(bit_entity, *weight);
         }
     }
     cmd.try_insert_batch(main_comps);

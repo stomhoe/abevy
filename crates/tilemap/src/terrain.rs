@@ -1,6 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
+use game_common::game_common_samplers::MacroChunkBiomeTagDistributionMap;
 use ::tilemap_shared::*;
 use crate::{terrain::{
         operation_list::{
@@ -18,6 +19,7 @@ use crate::{terrain::{
 
 pub mod terrgen_systems;
 mod terrgen_noise_init_systems;
+pub mod biome;
 pub mod operation_list;
 pub mod terrgen_components;
 pub mod terrgen_async_resources;
@@ -66,6 +68,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<MacroChunkBiomeTagDistributionMap>()
 
         .add_plugins((
+            biome::plugin,
             plugin_terrgen,
             operation_list::plugin,
             terrprobe::opfilter::plugin,
@@ -93,6 +96,7 @@ pub fn plugin(app: &mut App) {
 pub mod prelude {
     pub use super::{
         terrgen_systems::*,
+        biome::*,
         operation_list::*,
         terrgen_components::*,
         terrgen_async_resources::*,

@@ -39,6 +39,7 @@ pub const SPRITE_INIT: &str = "sprite_init";
 pub const SPRITE_ANIMATION_INIT: &str = "sprite_animation_init";
 pub const TILE_INIT: &str = "tile_init";
 pub const TERRGEN_INIT: &str = "terrgen_init";
+pub const BIOME_INIT: &str = "biome_init";
 pub const OPLIST_INIT: &str = "oplist_init";
 pub const SGC_INIT: &str = "sgc_init";
 pub const PORTAL_INIT: &str = "portal_init";

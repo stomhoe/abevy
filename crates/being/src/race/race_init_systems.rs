@@ -1,4 +1,4 @@
-use being_shared::{BiomeHidPackSamplers, MappedSpritesToSample};
+use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
@@ -8,6 +8,7 @@ use game_common::game_common_samplers::*;
 use game_common::game_common_string_components::*;
 use common::common_components::SampleSpriteEnts;
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
+use tilemap::terrain::biome::{biome_components::BiomePackSampler, biome_resources::BiomeEntityMap};
 
 use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeEntityMap;
@@ -31,7 +32,8 @@ pub fn init_races(
     sexes_map: Res<SexEntityMap>,
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map:Res<BodyWeightedSamplerEntityMap>,
-    mut biome_wildlife_samplers: ResMut<BiomeHidPackSamplers>,
+    biome_emap: Res<BiomeEntityMap>,
+    mut biome_pack_samplers: Query<&mut BiomePackSampler>,
 ) {
     for race_seri in load_race_seri_defs() {
             let str_id = StrId::trunc(&race_seri.id);
@@ -309,11 +311,13 @@ pub fn init_races(
                 if *weight <= 0.0 {
                     continue;
                 }
-                biome_wildlife_samplers
-                    .0
-                    .entry(HashId::from(biome_tag.as_str()))
-                    .or_default()
-                    .insert(entity, *weight);
+                let Ok(biome_ent) = biome_emap.0.get_cloned(biome_tag) else {
+                    continue;
+                };
+                let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
+                    continue;
+                };
+                biome_pack_sampler.0.insert(entity, *weight);
             }
 
             trace!(target: "race_init", "Initialized race '{}' with entity {:?}", str_id, entity);
