@@ -1,4 +1,5 @@
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy_replicon::prelude::ClientState;
 use camera::camera_components::CameraTarget;
 use common::{common_components::{HashId, HashIdMap, StrId}, common_tag_components::HashedTagsVec};
 use debug_unwraps::DebugUnwrapExt;
@@ -9,7 +10,7 @@ use crate::{
     terrain::{
         terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
-        terrprobe::terrprobe_messages::{SampledValues, SampledValuesCollected, SuitablePosFound},
+        terrprobe::terrprobe_messages::*,
         terrgen_async_resources::*,
         terrgen_components::*,
         terrgen_messages::PendingOp,
@@ -23,7 +24,7 @@ pub use crate::terrain::terrprobe::terrprobe_systems::search_suitable_positions;
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct TerrgenCollectBuffers<'w, 's> {
-    pub chunk_biome_tag_dist: ResMut<'w, ChunkBiomeTagDistributionMap>,
+    pub chunk_biome_tag_dist: ResMut<'w, MacroChunkBiomeTagDistributionMap>,
     pub pending_ops_batch: Local<'s, Vec<PendingOp>>,
     pub tile_requests: Local<'s, Vec<TerrGenTileRequest>>,
     pub biome_tag_samples: Local<'s, Vec<TerrGenBiomeTagSample>>,
@@ -32,7 +33,7 @@ pub struct TerrgenCollectBuffers<'w, 's> {
 #[allow(unused_parens)]
 pub fn launch_terrain_operations(
     mut commands: Commands,
-    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<TerrGenOpsLaunched>, With<Chunk>, With<ReadyForTerrgen>)>,
+    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), With<Chunk>>,
     dimension_query: Query<(&DimensionRootOplist), ()>,
     oplists: Query<(&OplistSize), (With<OperationList>,)>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
@@ -41,7 +42,10 @@ pub fn launch_terrain_operations(
 
     let chunk_count = chunks_query.iter().size_hint().0;
     let mut terr_gen_ops = Vec::with_capacity(chunk_count);
-    for (chunk_ent, &chunk_pos, &dim_ref) in chunks_query.iter() {
+    for (chunk_ent, &chunk_pos, &dim_ref, terrgen_state) in chunks_query.iter() {
+        if *terrgen_state != TerrGenState::Ready {
+            continue;
+        }
         let Ok(&dim_root_op_list) = dimension_query.get(dim_ref.0) else {
             error!(target: "terrgen_systems", "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
             continue;
@@ -57,7 +61,7 @@ pub fn launch_terrain_operations(
             root_oplist: dim_root_op_list,
             oplist_size: oplist_size,
         });
-        terr_gen_ops.push((chunk_ent, TerrGenOpsLaunched));
+        terr_gen_ops.push((chunk_ent, TerrGenState::OpsLaunched));
     }
     commands.try_insert_batch(terr_gen_ops);
 }
@@ -79,6 +83,7 @@ pub fn process_pending_ops_and_collect_tiles(
     mut buffers: TerrgenCollectBuffers,
     mut ewriter_sampled_value: MessageWriter<SuitablePosFound>,
     mut ewriter_sampled_value_matrix: MessageWriter<SampledValuesCollected>,
+    client_state: Res<State<ClientState>>,
 ) {
     let Ok(gen_settings) = param_set.gen_settings.single() else {
         error!("Failed to get gen settings");
@@ -201,12 +206,16 @@ pub fn process_pending_ops_and_collect_tiles(
         );
     }
 
-    for sample in buffers.biome_tag_samples.drain(..) {
-        buffers.chunk_biome_tag_dist.add_tag_weights(
-            sample.dimension_ref,
-            sample.chunk_pos,
-            sample.biome_tags.into_iter(),
-        );
+    if *client_state.get() == ClientState::Disconnected {
+        for sample in buffers.biome_tag_samples.drain(..) {
+            buffers.chunk_biome_tag_dist.add_tag_weights(
+                sample.dimension_ref,
+                sample.macro_chunk_pos,
+                sample.biome_tags.into_iter(),
+            );
+        }
+    } else {
+        buffers.biome_tag_samples.clear();
     }
 
     if !sampled_value_events.is_empty() {
@@ -747,7 +756,7 @@ fn collect_branch_outputs(
     if !biome_tags.is_empty() {
         result.biome_tag_samples.push(TerrGenBiomeTagSample {
             dimension_ref: source_ev.dimension_ref,
-            chunk_pos: gpos.to_chunkpos(),
+            macro_chunk_pos: gpos.to_chunkpos().to_macrochunk_pos(),
             biome_tags: biome_tags.to_vec(),
         });
     }

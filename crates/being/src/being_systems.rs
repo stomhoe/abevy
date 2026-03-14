@@ -1,6 +1,7 @@
 use ::being_shared::*;
 use ::tilemap_shared::*;
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
+use common::common_components::StrId;
 use common::log_targets::{BEING_SYSTEM, MOVEMENT_SYSTEM};
 use game_common::game_common_components::{EntityZeroRef, HealthDamage};
 use movement::movement_components::InputMoveDir;
@@ -15,6 +16,24 @@ pub fn beings_sync_transform_to_added_gpos(
 ) {
     for (&gpos, mut transform) in query.iter_mut() {
         transform.translation = gpos.to_translation(transform.translation.z);
+    }
+}
+
+pub fn validate_added_beings_have_position_and_transform(
+    query: Query<(Entity, Option<&StrId>, Has<GlobalTilePos>, Has<Transform>), (With<Being>, Added<Being>)>,
+) {
+    for (ent, str_id, has_gpos, has_transform) in query.iter() {
+        if has_gpos && has_transform {
+            continue;
+        }
+        error_once!(
+            target: BEING_SYSTEM,
+            "Added Being {:?} {} missing required components: GlobalTilePos={} Transform={}",
+            ent,
+            str_id.map(StrId::as_str).unwrap_or("<no-strid>"),
+            has_gpos,
+            has_transform
+        );
     }
 }
 

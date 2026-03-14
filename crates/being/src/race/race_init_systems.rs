@@ -1,4 +1,4 @@
-use being_shared::MappedSpritesToSample;
+use being_shared::{BiomeHidPackSamplers, MappedSpritesToSample};
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
@@ -17,6 +17,7 @@ use crate::body::body_tree_components::BodyTreeDistributedTotals;
 use crate::body::BodyTreeStrIdRef;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntityMap;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
+use crate::pack::pack_components::PackInitialSpawnNormalDist;
 use crate::{race::{race_components::*, race_resources::*}, sex };
 use crate::being_components::{COLLISION_MASK_HASHID, HitboxReceiver};
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
@@ -30,6 +31,7 @@ pub fn init_races(
     sexes_map: Res<SexEntityMap>,
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map:Res<BodyWeightedSamplerEntityMap>,
+    mut biome_wildlife_samplers: ResMut<BiomeHidPackSamplers>,
 ) {
     for race_seri in load_race_seri_defs() {
             let str_id = StrId::trunc(&race_seri.id);
@@ -182,13 +184,13 @@ pub fn init_races(
             if let Some(selectable) = sets_of_monochoosable_sprites {
                 entity_cmds.insert(selectable);
             }
-            if !normal_dist_is_disabled(&race_seri.size_variation) {
+            if !race_seri.size_variation.is_disabled() {
                 entity_cmds.insert(SpriteGlobalNormalDist::new(race_seri.size_variation.clone()));
             }
-            if !normal_dist_is_disabled(&race_seri.hori_variation) {
+            if !race_seri.hori_variation.is_disabled() {
                 entity_cmds.insert(SpriteHoriNormalDist::new(race_seri.hori_variation.clone()));
             }
-            if !normal_dist_is_disabled(&race_seri.vert_variation) {
+            if !race_seri.vert_variation.is_disabled() {
                 entity_cmds.insert(SpriteVertNormalDist::new(race_seri.vert_variation.clone()));
             }
             if race_seri.produces_step_sfx {
@@ -202,6 +204,11 @@ pub fn init_races(
             }
 
             let entity = entity_cmds.id();
+            if !race_seri.spawn_pack_size_normal_dist.is_disabled() {
+                cmd.entity(entity).insert(PackInitialSpawnNormalDist(CappedNormalDist::from_seri(
+                    race_seri.spawn_pack_size_normal_dist.clone(),
+                )));
+            }
             if PredatorHuntThreshold::is_configured_in_seri(race_seri.predator_hunt_threshold) {
                 let mut own_races = bevy::platform::collections::HashSet::default();
                 for race_id in &race_seri.friend_races {
@@ -252,15 +259,15 @@ pub fn init_races(
                 for (sex_id, sex_cfg) in &race_seri.sexes {
                     match sexes_map.0.get_cloned(sex_id) {
                         Ok(sex_entity) => {
-                            sex_entities_weights.push((sex_entity, sex_cfg.weight() as f32));
-                            if let Some(size_var) = sex_cfg.size_variation() {
+                            sex_entities_weights.push((sex_entity, sex_cfg.weight as f32));
+                            if let Some(size_var) = sex_cfg.size_variation.clone() {
                                 sex_size_variations.insert(sex_entity, SpriteGlobalNormalDist::new(size_var));
                             }
 
-                            let mut resolved_entities = if sex_cfg.sprites().is_empty() {
+                            let mut resolved_entities = if sex_cfg.sprites.is_empty() {
                                 fallback_sprite_entities.clone()
                             } else {
-                                resolve_sprite_entities(sex_cfg.sprites())
+                                resolve_sprite_entities(&sex_cfg.sprites)
                             };
 
                             if resolved_entities.is_empty() && !fallback_sprite_entities.is_empty() {
@@ -297,6 +304,17 @@ pub fn init_races(
 
             cmd.entity(entity)
                 .insert(MappedSpritesToSample(mapped_sprites_to_sample));
+
+            for (biome_tag, weight) in &race_seri.biome_affinity {
+                if *weight <= 0.0 {
+                    continue;
+                }
+                biome_wildlife_samplers
+                    .0
+                    .entry(HashId::from(biome_tag.as_str()))
+                    .or_default()
+                    .insert(entity, *weight);
+            }
 
             trace!(target: "race_init", "Initialized race '{}' with entity {:?}", str_id, entity);
     }

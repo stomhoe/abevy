@@ -19,8 +19,6 @@ use crate::tile::tile_resources::*;
 
 
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
-pub struct KeepDisabled;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 //Don't add RequiredComponents here because it is forced onto clones and when removed it despawns the new entity

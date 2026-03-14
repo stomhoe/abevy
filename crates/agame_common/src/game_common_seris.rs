@@ -11,6 +11,12 @@ pub struct NormalDistSeri {
     pub mean: f32,
     pub std_dev: f32,
 }
+impl NormalDistSeri {
+    #[inline]
+    pub fn is_disabled(&self) -> bool {
+        self.min == 0.0 && self.max == 0.0 && self.mean == 0.0 && self.std_dev == 0.0
+    }
+}
 impl From<CappedNormalDist> for NormalDistSeri {
     fn from(value: CappedNormalDist) -> Self {
         Self {

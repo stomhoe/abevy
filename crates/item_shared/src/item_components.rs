@@ -11,9 +11,10 @@ use game_common::game_common_samplers::EntityCountMapWeightedSampler;
 use crate::{ItemEntityMap, ItemsGeneratedOnDeathSeri, SlottedItemHolderSeri};
 use serde::{Deserialize, Serialize};
 use sprite_shared::prelude::*;
+use tilemap_shared::SnapTransformToGpos;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Default)]
-#[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading, Visibility, )]
+#[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading, Visibility, SnapTransformToGpos, )]
 pub struct Item;
 impl Item {
     pub const MIN_ID_LENGTH: u8 = 1;

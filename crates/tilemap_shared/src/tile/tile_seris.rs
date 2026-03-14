@@ -9,7 +9,7 @@ pub struct InteractionZoneSeri {
     pub radius_offset: Vec<(f32, (f32, f32))>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct TerrblParamsSeri {
     #[serde(default)]
     pub texture_path: String,
@@ -29,21 +29,6 @@ pub struct TerrblParamsSeri {
     pub tint: [u8; 4],
     #[serde(default = "default_tint_mask_target_sentinel")]
     pub tint_mask_target: [u8; 4],
-}
-impl Default for TerrblParamsSeri {
-    fn default() -> Self {
-        Self {
-            texture_path: String::new(),
-            priority: 0.0,
-            scale: default_terrbl_scale(),
-            speed: 0.0,
-            wavy_strength: 0.0,
-            time_offset: 0.0,
-            blend_enabled: default_true(),
-            tint: default_tint(),
-            tint_mask_target: default_tint_mask_target_sentinel(),
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]

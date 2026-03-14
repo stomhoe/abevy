@@ -6,6 +6,7 @@ pub use tilemap_components::*;
 pub use tilemap_messages::*;
 pub use tilemap_param_sets::*;
 pub use tilemap_seris::*;
+pub use terrgen_components::*;
 pub use tilemap_shared::*;
 pub mod chunking_resources;
 pub mod entities_at_gpos;
@@ -14,6 +15,7 @@ pub mod tilemap_components;
 pub mod tilemap_messages;
 pub mod tilemap_param_sets;
 pub mod tilemap_seris;
+pub mod terrgen_components;
 mod tilemap_shared;
 #[macro_use]
 mod positioning_macro_rules;
@@ -34,6 +36,7 @@ pub mod prelude {
         tilemap_messages::*,
         tilemap_param_sets::*,
         tilemap_seris::*,
+        terrgen_components::*,
         tilemap_shared::*,
         positioning_macro_rules::*,
         tilemap_positioning::*,

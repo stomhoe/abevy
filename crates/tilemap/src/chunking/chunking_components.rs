@@ -28,14 +28,14 @@ pub struct SaveTile {
 pub struct TilesToSave(pub EntityHashSet);
 impl TilesToSave { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 
-#[derive(Component, Debug, Default, Clone)]
-pub struct TerrGenOpsLaunched;
-
-#[derive(Component, Debug, Default, Clone)]
-pub struct ReadyForTerrgen;
-
-#[derive(Component, Debug, Default, Clone)]
-pub struct TerrGenDisabled;
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum TerrGenState {
+    #[default]
+    Pending,
+    Ready,
+    OpsLaunched,
+    Disabled,
+}
 
 
 

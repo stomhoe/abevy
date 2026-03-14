@@ -1,25 +1,22 @@
 use crate::{
     tile::{tile_components::*, tile_messages::*},
 
-    tilemap_resources::*,
 };
-use ::sprite_shared::prelude::*;
 use avian2d::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
-use bevy::ecs::entity_disabling::Disabled;
-use bevy::platform::collections::HashSet;
+
 use bevy::prelude::*;
-use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, tiles::TileFlip};
+use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, };
 use bevy_replicon::prelude::*;
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
 
 #[allow(unused_parens)]
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
-pub fn spritetile_snap_transform_to_global_pos(
+pub fn snap_transform_to_gpos(
     mut cmd: Commands,
-    mut query: Query<(Entity, &mut Transform, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, &EntityZeroRef, Has<Replicated>, Has<KeepDisabled>),
-        (Or<(Changed<GlobalTilePos>, Changed<EntityZeroRef>, Changed<ChildOf>, Added<Replicated>)>, common::AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, With<Tile>)>,
+    mut query: Query<(Entity, Option<&mut Transform>, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, Has<Replicated>, ),
+        (Or<(Changed<GlobalTilePos>, Changed<ChildOf>, Added<Replicated>, Added<SnapTransformToGpos>)>, common::AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, With<SnapTransformToGpos>)>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
     parent_query: Query<&GlobalTransform, common::AnyDisabling>,
     state: Res<State<ClientState>>,
@@ -29,15 +26,14 @@ pub fn spritetile_snap_transform_to_global_pos(
     query.iter_mut().for_each(
         |(
             ent,
-            mut transform,
+            transform,
             global_pos,
             visibility,
             child_of,
-            _ezero_ref,
             replicated,
-            keep_disabled,
         )| {
-            let transl_from_global_pos = global_pos.to_translation(transform.translation.z);
+            let z = transform.as_ref().map(|t| t.translation.z).unwrap_or_default();
+            let transl_from_global_pos = global_pos.to_translation(z);
 
             let parent_global_transl = child_of
                 .and_then(|co| parent_query.get(co.parent()).ok())
@@ -45,13 +41,16 @@ pub fn spritetile_snap_transform_to_global_pos(
                 .unwrap_or(Vec3::ZERO);
 
             if is_host || !replicated {
-                transform.translation = transl_from_global_pos - parent_global_transl;
+                let local_translation = transl_from_global_pos - parent_global_transl;
+                if let Some(mut transform) = transform {
+                    transform.translation = local_translation;
+                } else {
+                    cmd.entity(ent).try_insert(Transform::from_translation(local_translation));
+                }
             }
-            if false == keep_disabled {
-                cmd.entity(ent).try_remove::<(Disabled,)>();
-            }
+
             if let Some(visibility) = visibility {
-                //para arreglar un bug de q no se ve
+                //DON'T REMOVE, FIXES A BUG
                 *visibility.into_inner() = visibility.clone();
             }
         },

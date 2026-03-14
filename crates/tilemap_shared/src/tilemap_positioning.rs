@@ -86,6 +86,18 @@ impl Into<Vec2> for GlobalTilePos {
     }
 }
 
+
+#[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, )]
+pub struct MacroChunkPos(pub IVec2);
+impl_basic_funcs!(MacroChunkPos);
+impl_hashed_position!(MacroChunkPos);
+impl_display_debug!(MacroChunkPos, "Macrochunk pos", "Mcpos");
+impl_position_ops!(MacroChunkPos);
+impl_position_conversions!(MacroChunkPos);
+
+pub const MACRO_CHUNK_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::new(16, 16);
+
+
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, )]
 pub struct ChunkPos(pub IVec2);
 impl_basic_funcs!(ChunkPos);
@@ -95,11 +107,6 @@ impl_position_ops!(ChunkPos);
 impl_position_conversions!(ChunkPos);
 
 impl ChunkPos {
-    pub fn rand_within_region(region_pos: RegionPos, rng: &mut impl Rng) -> Self {
-        let local_x = rng.random_range(0..REGION_SIZE_IN_CHUNKS.x());
-        let local_y = rng.random_range(0..REGION_SIZE_IN_CHUNKS.y());
-        Self(region_pos.0 * REGION_SIZE_IN_CHUNKS.0 + IVec2::new(local_x, local_y))
-    }
     pub const CHUNK_SIZE: UVec2 = UVec2::splat(30);//may change later. fed
     pub const CHUNK_AREA: usize = (Self::CHUNK_SIZE.x * Self::CHUNK_SIZE.y) as usize;
 
@@ -111,6 +118,9 @@ impl ChunkPos {
     }
     pub fn to_region_pos(&self) -> RegionPos {
         RegionPos(self.0.div_euclid(REGION_SIZE_IN_CHUNKS.0))
+    }
+    pub fn to_macrochunk_pos(&self) -> MacroChunkPos {
+        MacroChunkPos(self.0.div_euclid(MACRO_CHUNK_SIZE_IN_CHUNKS.0))
     }
 
     pub fn chunk_pos_from_flat_index_within_region(index: usize, region_pos: RegionPos) -> Self {
@@ -182,6 +192,47 @@ impl From<Vec3> for ChunkPos {
     }
 }
 
+impl MacroChunkPos {
+    pub fn chunk_bounds(&self) -> (ChunkPos, ChunkPos) {
+        let min = ChunkPos(self.0 * MACRO_CHUNK_SIZE_IN_CHUNKS.0);
+        let max = ChunkPos((self.0 + IVec2::ONE) * MACRO_CHUNK_SIZE_IN_CHUNKS.0);
+        (min, max)
+    }
+    pub fn to_chunkpos(&self) -> ChunkPos {
+        ChunkPos(self.0 * MACRO_CHUNK_SIZE_IN_CHUNKS.0)
+    }
+    pub fn contains_chunkpos(&self, cp: ChunkPos) -> bool {
+        let (min, max) = self.chunk_bounds();
+        cp.x() >= min.x() && cp.y() >= min.y() && cp.x() < max.x() && cp.y() < max.y()
+    }
+    pub fn random_unique_gposes(&self, n: usize, rng: &mut impl Rng) -> Vec<GlobalTilePos> {
+        if n == 0 {
+            return Vec::new();
+        }
+        let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
+        let macro_size_chunks = MACRO_CHUNK_SIZE_IN_CHUNKS.0;
+        let macro_size_tiles = macro_size_chunks * chunk_size;
+        let total_tiles = (macro_size_tiles.x as usize).saturating_mul(macro_size_tiles.y as usize);
+        if total_tiles == 0 {
+            return Vec::new();
+        }
+        let target = n.min(total_tiles);
+        let mut chosen: bevy::platform::collections::HashSet<usize> = bevy::platform::collections::HashSet::default();
+        let mut out: Vec<GlobalTilePos> = Vec::with_capacity(target);
+        let base_tile = self.to_chunkpos().to_tilepos().0;
+        while out.len() < target {
+            let idx = rng.random_range(0..total_tiles);
+            if !chosen.insert(idx) {
+                continue;
+            }
+            let local_x = (idx % macro_size_tiles.x as usize) as i32;
+            let local_y = (idx / macro_size_tiles.x as usize) as i32;
+            out.push(GlobalTilePos(base_tile + IVec2::new(local_x, local_y)));
+        }
+        out
+    }
+}
+
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, )]
 pub struct OplistSize(UVec2);
 impl OplistSize {
@@ -240,6 +291,11 @@ impl_position_conversions!(RegionPos);
 impl_display_debug!(RegionPos, "Region pos", "Rpos");
 
 impl RegionPos {
+    pub fn rand_within_region(&self, rng: &mut impl Rng) -> ChunkPos {
+        let local_x = rng.random_range(0..REGION_SIZE_IN_CHUNKS.x());
+        let local_y = rng.random_range(0..REGION_SIZE_IN_CHUNKS.y());
+        ChunkPos(self.0 * REGION_SIZE_IN_CHUNKS.0 + IVec2::new(local_x, local_y))
+    }
     pub fn chunk_bounds(&self) -> (ChunkPos, ChunkPos) {
         let min = ChunkPos(self.0 * REGION_SIZE_IN_CHUNKS.0);
         let max = ChunkPos((self.0 + IVec2::ONE) * REGION_SIZE_IN_CHUNKS.0);
@@ -272,8 +328,8 @@ impl RegionPos {
 
 pub mod prelude {
     pub use super::{
-        ChunkPos, GlobalTilePos, HashablePosVec, OplistSize, PrevPos, RegionPos,
-        REGION_SIZE_IN_CHUNKS,
+        ChunkPos, GlobalTilePos, HashablePosVec, MacroChunkPos, OplistSize, PrevPos, RegionPos,
+        MACRO_CHUNK_SIZE_IN_CHUNKS, REGION_SIZE_IN_CHUNKS,
     };
 }
 
@@ -281,7 +337,7 @@ pub mod prelude {
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SizeInTiles(pub UVec2);
 impl SizeInTiles{
-    pub fn new(str_id: &StrId, size_in_tiles: Option<(u32, u32)>, is_spritetile: bool) -> Self {
+    pub fn new(str_id: &StrId, size_in_tiles: Option<(u32, u32)>, ) -> Self {
         let (mut x, mut y) = size_in_tiles.unwrap_or((1, 1));
         if x == 0 {
             error!("{}: TileOccupancy width must be greater than 0", str_id);

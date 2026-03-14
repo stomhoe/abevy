@@ -64,6 +64,7 @@ struct ToDenyOnReleaseBuild(Name);
 pub struct TileMassSpawnBundle {
     pub ezero_ref: EntityZeroRef,
     pub gpos: GlobalTilePos,
+    pub snap_to_gpos: SnapTransformToGpos,
     pub dim_ref: DimensionRef,
     pub tile_bundle: bevy_ecs_tilemap::prelude::TileBundle,
     pub initial_pos: InitialPos,

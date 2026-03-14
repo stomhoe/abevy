@@ -43,7 +43,7 @@ pub fn plugin(app: &mut App) {
             .after(emit_global_tile_pos_change)
             .run_if(on_message::<GlobalTilePosChanged>),
         add_projectile_colliders_to_tiles,
-        (spritetile_snap_transform_to_global_pos).chain(),
+        (snap_transform_to_gpos).chain(),
         add_handles,
         init_childrensprite,
         emit_global_tile_pos_change,

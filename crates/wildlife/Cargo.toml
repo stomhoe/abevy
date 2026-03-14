@@ -5,3 +5,11 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
+being = { path = "../being" }
+being_shared = { path = "../being_shared" }
+common = { path = "../acommon" }
+game_common = { path = "../agame_common" }
+tilemap = { path = "../tilemap" }
+tilemap_shared = { path = "../tilemap_shared" }
+rand = { workspace = true }
+bevy_replicon = { workspace = true }

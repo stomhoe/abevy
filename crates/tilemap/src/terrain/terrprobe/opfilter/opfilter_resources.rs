@@ -12,5 +12,5 @@ common::define_entity_map_systems!(
     "opfilter",
     OpFilter,
     common::common_components::StrId,
-    OpFilterSeri, "seri.tilemap.opfilter", "opfilter.ron",
+    OpFilterSeri, "seri.tilemap.of", "of.ron",
 );

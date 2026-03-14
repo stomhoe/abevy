@@ -34,13 +34,14 @@ pub fn init_terrain_probes(
 
     let mut comps = Vec::new();
     for seri in load_terrain_probe_seri_defs() {
-
         let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 1) else {
             error!(target: "terrprobe_init", "Failed to create StrId for terrain probe id '{}'", seri.id);
             continue;
         };
-        let opfilter_ent = if !seri.opfilter_id.trim().is_empty() {
-            let Ok(opfilter_ent) = opfilter_entity_map.0.get_cloned(&seri.opfilter_id) else {
+        let opfilter_id = seri.opfilter_id.trim();
+        let opfilter_var_name = seri.opfilter_var_name.trim();
+        let opfilter_ent = if !opfilter_id.is_empty() {
+            let Ok(opfilter_ent) = opfilter_entity_map.0.get_cloned(opfilter_id) else {
                 error!(target: "terrprobe_init", "Failed to resolve opfilter '{}' for terrain probe '{}'", seri.opfilter_id, seri.id);
                 continue;
             };
@@ -50,51 +51,50 @@ pub fn init_terrain_probes(
         };
 
         let has_inline_overrides = !seri.opfilter_tags.is_empty()
-            || !seri.opfilter_var_name.trim().is_empty()
+            || !opfilter_var_name.is_empty()
             || seri.opfilter_min_val != f32::NEG_INFINITY
             || seri.opfilter_max_val != f32::INFINITY;
         if opfilter_ent.is_none() && !has_inline_overrides {
             error!(target: "terrprobe_init", "Terrain probe '{}' requires either opfilter_id or inline opfilter_* fields", seri.id);
             continue;
         }
-        let mut opfilter = if let Some(opfilter_ent) = opfilter_ent {
-            let Ok(opfilter) = opfilter_query.get(opfilter_ent) else {
-                error!(target: "terrprobe_init", "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
-                continue;
-            };
-            opfilter.clone()
-        } else {
-            OpFilter {
-                tags: HashedTagsVec::new(seri.opfilter_tags.iter()),
-                var_name_hash: (!seri.opfilter_var_name.trim().is_empty()).then_some(HashId::hash(seri.opfilter_var_name.trim())),
-                min_val: seri.opfilter_min_val,
-                max_val: seri.opfilter_max_val,
+        let opfilter_ref = match (opfilter_ent, has_inline_overrides) {
+            (Some(opfilter_ent), false) => {
+                let Ok(_) = opfilter_query.get(opfilter_ent) else {
+                    error!(target: "terrprobe_init", "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
+                    continue;
+                };
+                OpFilterRef(opfilter_ent)
             }
-        };
-        if has_inline_overrides {
-            if !seri.opfilter_tags.is_empty() {
-                opfilter.tags = HashedTagsVec::new(seri.opfilter_tags.iter());
+            (opfilter_ent, _) => {
+                let mut opfilter = if let Some(opfilter_ent) = opfilter_ent {
+                    let Ok(opfilter) = opfilter_query.get(opfilter_ent) else {
+                        error!(target: "terrprobe_init", "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
+                        continue;
+                    };
+                    opfilter.clone()
+                } else {
+                    OpFilter {
+                        tags: HashedTagsVec::new(seri.opfilter_tags.iter()),
+                        var_name_hash: (!opfilter_var_name.is_empty()).then_some(HashId::hash(opfilter_var_name)),
+                        min_val: seri.opfilter_min_val,
+                        max_val: seri.opfilter_max_val,
+                    }
+                };
+                if !seri.opfilter_tags.is_empty() {
+                    opfilter.tags = HashedTagsVec::new(seri.opfilter_tags.iter());
+                }
+                if !opfilter_var_name.is_empty() {
+                    opfilter.var_name_hash = Some(HashId::hash(opfilter_var_name));
+                }
+                if seri.opfilter_min_val != f32::NEG_INFINITY {
+                    opfilter.min_val = seri.opfilter_min_val;
+                }
+                if seri.opfilter_max_val != f32::INFINITY {
+                    opfilter.max_val = seri.opfilter_max_val;
+                }
+                OpFilterRef(cmd.spawn((Replicated, AssetScoped, HotReload, opfilter)).id())
             }
-            if !seri.opfilter_var_name.trim().is_empty() {
-                opfilter.var_name_hash = Some(HashId::hash(seri.opfilter_var_name.trim()));
-            }
-            if seri.opfilter_min_val != f32::NEG_INFINITY {
-                opfilter.min_val = seri.opfilter_min_val;
-            }
-            if seri.opfilter_max_val != f32::INFINITY {
-                opfilter.max_val = seri.opfilter_max_val;
-            }
-        }
-        let opfilter_ref = if has_inline_overrides || opfilter_ent.is_none() {
-            let opfilter_ent = cmd.spawn((
-                Replicated,
-                AssetScoped,
-                HotReload,
-                opfilter.clone(),
-            )).id();
-            OpFilterRef(opfilter_ent)
-        } else {
-            OpFilterRef(opfilter_ent.unwrap_or(Entity::PLACEHOLDER))
         };
 
         let mut structuregen_whitelist = Vec::with_capacity(seri.structuregen_whitelist.len());

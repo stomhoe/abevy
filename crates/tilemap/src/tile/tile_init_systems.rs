@@ -68,7 +68,7 @@ pub fn init_tiles(
             }
         };
         let my_z = AcZ(seri.z);
-        let size_in_tiles = SizeInTiles::new(&str_id, Some(seri.size_in_tiles), seri.is_spritetile);
+        let size_in_tiles = SizeInTiles::new(&str_id, Some(seri.size_in_tiles), );
         let tile_enti = cmd.spawn((
             Tile, Replicated, str_id.clone(), //PROBLEMA: EL DISABLED HACE Q EL DESPAWNONEXIT NO FUNCIONE
             Prefix::trunc("Tile"),

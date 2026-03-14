@@ -4,6 +4,7 @@ use bevy::platform::collections::HashSet;
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
+use game_common::game_common_samplers::EntityWeightedSampler;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
 
@@ -115,6 +116,9 @@ pub struct MappedSpritesToSample(
     /// sexent - samplespriteents
     pub EntityHashMap<SampleSpriteEnts>,
 );
+
+#[derive(Resource, Debug, Default, Clone)]
+pub struct BiomeHidPackSamplers(pub bevy::platform::collections::HashMap<HashId, EntityWeightedSampler>);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct Predator {

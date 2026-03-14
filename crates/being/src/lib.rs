@@ -13,6 +13,7 @@ pub mod being_bundles;
 pub mod being_inst_template;
 
 pub mod race;
+pub mod pack;
 pub mod sex;
 pub mod body;
 
@@ -32,6 +33,7 @@ pub mod prelude {
         being_bundles::*,
         being_inst_template::*,
         race::*,
+        pack::*,
         sex::*,
         body::*,
     };

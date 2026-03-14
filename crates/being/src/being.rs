@@ -22,6 +22,7 @@ use crate::{
     being_behavior_systems::*,
     being_systems::*,
     body::{self, prelude::*, BodySystems},
+    pack::PackSystems,
     race::RaceSystems,
 };
 
@@ -33,9 +34,11 @@ pub fn plugin(app: &mut App) {
         crate::sex::plugin,
         body::plugin,
         crate::being_inst_template::plugin,
+        crate::pack::plugin,
     ))
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
+    .init_resource::<BiomeHidPackSamplers>()
 
     .add_systems(Update, (
         (
@@ -66,6 +69,7 @@ pub fn plugin(app: &mut App) {
         FixedUpdate,
         (
             apply_melee_attack.in_set(HostSystems),
+            validate_added_beings_have_position_and_transform.before(sync_occupancy_for_beings_at_gpos_res),
             beings_sync_transform_to_added_gpos.before(sync_occupancy_for_beings_at_gpos_res),
             sync_occupancy_for_beings_at_gpos_res.before(MovementSystems),
         )
@@ -74,7 +78,9 @@ pub fn plugin(app: &mut App) {
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         RaceSystems.after(BodySystems),
         RaceSystems.after(AcSpriteSystems),
-        BeingInstTemplateSystems.after(RaceSystems)
+        BeingInstTemplateSystems.after(RaceSystems),
+        PackSystems.after(RaceSystems),
+        PackSystems.after(BeingInstTemplateSystems),
     ))
     .replicate::<Being>()
     .replicate::<ComputedBy>()

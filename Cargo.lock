@@ -9281,7 +9281,15 @@ dependencies = [
 name = "wildlife"
 version = "0.1.0"
 dependencies = [
+ "being",
+ "being_shared",
  "bevy 0.18.0",
+ "bevy_replicon",
+ "common",
+ "game_common",
+ "rand 0.9.2",
+ "tilemap",
+ "tilemap_shared",
 ]
 
 [[package]]

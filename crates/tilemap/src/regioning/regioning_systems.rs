@@ -8,7 +8,7 @@ use game_common::{game_common_timers::*, game_common_samplers::EntityWeightedSam
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
-use crate::{chunking::chunking_components::ReadyForTerrgen, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking::chunking_components::{Chunk, TerrGenState}, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
 use crate::regioning::natural::RiverDebugData;
 
 use bit_vec::BitVec;
@@ -459,7 +459,7 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
 #[allow(unused_parens, )]
 pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
     region_query: Query<(&ChunksActiveInRegion, &RegionPlannedTiles, &RegionState),(Or<(Changed<ChunksActiveInRegion>, Changed<RegionPlannedTiles>, Changed<RegionState>)>, )>,
-    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef), (Without<ReadyForTerrgen>)>,
+    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), With<Chunk>>,
     mut collected: ResMut<MassCollectedTiles>,
 ) {
     let mut ready = Vec::new();
@@ -471,7 +471,10 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
         {
             return;
         }
-        chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref)| {
+        chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref, terrgen_state)| {
+            if *terrgen_state != TerrGenState::Pending {
+                return;
+            }
             if reg_planned.is_chunk_pending_build(chunk_pos) {
                 return;
             }
@@ -487,7 +490,7 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
             } else {
                 trace!(target: "structure_spawn", "No structure tiles to spawn in chunk at {:?}", chunk_pos);
             }
-            ready.push((chunk_ent, ReadyForTerrgen));
+            ready.push((chunk_ent, TerrGenState::Ready));
         });
     });
     cmd.try_insert_batch(ready);

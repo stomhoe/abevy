@@ -1,5 +1,5 @@
 use being::being_components::*;
-use being::being_bundles::{BeingBundle, PlayerStartBeingBundle};
+use being::being_bundles::{BeingBundle, };
 use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use ::being_shared::*;
 use common::{GAME_INIT, common_components::StrId, common_states::AppState};

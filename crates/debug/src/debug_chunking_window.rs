@@ -312,8 +312,7 @@ pub fn debug_chunking_window(
         &ChunkPos,
         Option<&Children>,
         Option<&TilesToSave>,
-        Has<TerrGenOpsLaunched>,
-        Has<ReadyForTerrgen>,
+        &TerrGenState,
         Option<&ActivatingChunks>,
     ), With<Chunk>>,
 
@@ -352,10 +351,10 @@ pub fn debug_chunking_window(
     });
 
     // Group chunks by dimension and position
-    let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Children>, Option<&TilesToSave>, bool, bool, Option<&ActivatingChunks>)>> =
+    let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Children>, Option<&TilesToSave>, TerrGenState, Option<&ActivatingChunks>)>> =
         BTreeMap::new();
 
-    for (entity, _chunk, dim_ref, chunk_pos, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks) in chunk_query.iter() {
+    for (entity, _chunk, dim_ref, chunk_pos, children, tiles_to_save, terrgen_state, activating_chunks) in chunk_query.iter() {
         let dim_name = if let Ok(str_id) = id_query.get(dim_ref.0) {
             str_id.as_str().to_string()
         } else {
@@ -365,7 +364,7 @@ pub fn debug_chunking_window(
         chunks_by_dimension
             .entry(dim_name)
             .or_insert_with(HashMap::new)
-            .insert(*chunk_pos, (entity, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks));
+            .insert(*chunk_pos, (entity, children, tiles_to_save, *terrgen_state, activating_chunks));
     }
 
     if chunking_ui.follow_camera_chunk {
@@ -448,7 +447,7 @@ pub fn debug_chunking_window(
                                     for y in (min_y..=max_y).rev() {
                                         for x in min_x..=max_x {
                                             let pos = ChunkPos(IVec2::new(x, y));
-                                            if let Some((entity, children, _tiles_to_save, _has_terrgen_ops, _has_ready_for_terrgen, _activating_chunks)) = chunks_map.get(&pos) {
+                                            if let Some((entity, children, _tiles_to_save, _terrgen_state, _activating_chunks)) = chunks_map.get(&pos) {
                                                 let is_selected = selected_chunk == Some(*entity);
                                                 let is_camera_pos = camera_chunk_pos.map_or(false, |cam_pos| cam_pos == pos);
 
@@ -502,7 +501,7 @@ pub fn debug_chunking_window(
                 .collect();
             selected_chunk_details.sort_by_key(|(_, _, (entity, ..))| entity.index());
 
-            for (dim_key, chunk_pos, (entity, children, tiles_to_save, has_terrgen_ops, has_ready_for_terrgen, activating_chunks)) in selected_chunk_details {
+            for (dim_key, chunk_pos, (entity, children, tiles_to_save, terrgen_state, activating_chunks)) in selected_chunk_details {
                 egui::CollapsingHeader::new(format!("Details: {:?} ({:?})", chunk_pos, entity))
                     .default_open(true)
                     .show(ui, |ui| {
@@ -514,13 +513,7 @@ pub fn debug_chunking_window(
                             ui.label(format!("TilesToSave: {} tiles", tiles.entities().len()));
                         }
 
-                        if *has_terrgen_ops {
-                            ui.label("✓ TerrGenOpsLaunched");
-                        }
-
-                        if *has_ready_for_terrgen {
-                            ui.label("✓ ReadyForTerrgen");
-                        }
+                        ui.label(format!("TerrGenState: {:?}", terrgen_state));
 
                         if let Some(activating) = activating_chunks {
                             ui.label(format!("⏳ ActivatingChunks: {} entities, timer: {:.2}s",

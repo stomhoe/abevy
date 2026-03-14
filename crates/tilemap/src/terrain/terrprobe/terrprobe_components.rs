@@ -48,25 +48,6 @@ pub struct TerrProbeTempl {
     pub collect: bool,
 }
 
-impl Default for TerrProbeTempl {
-    fn default() -> Self {
-        Self {
-            opfilter_ref: OpFilterRef(Entity::PLACEHOLDER),
-            sgc_admitted_tiles_as_found_pos: Vec::new(),
-            sgc_whitelist: Vec::new(),
-            sgc_blacklist: Vec::new(),
-            sgc_required_tile_tags: HashSet::default(),
-            probe_pattern: ProbePattern::spiral(GlobalTilePos::default()),
-            step_size: 1,
-            max_batches: 1000,
-            iterations_per_batch: 10000,
-            max_emitted_results: 1,
-            min_result_distance: 0,
-            collect: false,
-        }
-    }
-}
-
 impl TerrProbeTempl {
     pub fn from_seri(
         opfilter_ref: OpFilterRef,

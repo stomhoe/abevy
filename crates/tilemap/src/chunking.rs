@@ -30,6 +30,7 @@ pub fn plugin(app: &mut App) {
             .after(despawn_chunks)
             .run_if(on_message::<ReactivateChunksFor>),//DON'T TOUCH
         activate_chunks_every_second,
+        track_discovered_areas,
         on_message_signal_despawn_all_chunks
             .run_if(on_message::<ForceAllChunksDespawn>),
 
@@ -52,6 +53,7 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<LoadedChunks>()
+    .init_resource::<DiscoveredMacroChunks>()
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), load_chunking_settings)
 
     .add_observer(on_chunk_despawn)

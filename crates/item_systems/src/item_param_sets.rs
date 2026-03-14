@@ -105,8 +105,8 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
         let mut item_cmd = cmd.entity(item_ent);
         item_cmd.remove::<ItemHeldIn>();
         item_cmd.insert((
-            Transform::from_translation(gpos.to_translation(z)),
-            GlobalTransform::default(),
+            gpos,
+            AcZ(z),
             ChildOf(dim_ref.0),
         ));
         let Some(scs_to_build) = dropped_scs_to_build(&self.item_cfg_query, item_ezero_ref) else {

@@ -8,8 +8,8 @@
     singular: "ent",
     plural: "ents",
     sexes: {
-        "male": (1, []),
-        "female": (1, []),
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
     },
     sentient: false,
     fallback_sprites_to_sample: ["ent"],

@@ -1,4 +1,4 @@
-use being_shared::{BeingInstTemplate, Predator, PredatorHuntThreshold};
+use being_shared::{BeingInstTemplate, BiomeHidPackSamplers, Predator, PredatorHuntThreshold};
 use bevy::prelude::*;
 use common::common_components::*;
 
@@ -7,6 +7,7 @@ use game_common::game_common_samplers::*;
 
 use crate::being_inst_template::{being_inst_template_resources::*,
 };
+use crate::pack::pack_components::PackInitialSpawnNormalDist;
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
@@ -20,7 +21,7 @@ pub fn init_being_templates(
     bit_map: Res<BeingInstTemplateEntityMap>,
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
-
+    mut biome_wildlife_samplers: ResMut<BiomeHidPackSamplers>,
 ) {
     if !bit_map.0.is_empty(){
         return;
@@ -85,6 +86,11 @@ pub fn init_being_templates(
         if let Some(vert_variation) = template_seri.vert_variation {
             cmd.entity(bit_entity).insert(SpriteVertNormalDist::new(vert_variation));
         }
+        if let Some(spawn_pack_size_normal_dist) = template_seri.spawn_pack_size_normal_dist {
+            cmd.entity(bit_entity).insert(PackInitialSpawnNormalDist(CappedNormalDist::from_seri(
+                spawn_pack_size_normal_dist,
+            )));
+        }
         if PredatorHuntThreshold::is_configured_in_seri(template_seri.predator_hunt_threshold) {
             cmd.entity(bit_entity).insert((
                 Predator::default(),
@@ -114,6 +120,17 @@ pub fn init_being_templates(
 
         if template_seri.health_multiplier < 0.0 {
             warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, not applying", str_id, template_seri.health_multiplier);
+        }
+
+        for (biome_tag, weight) in &template_seri.biome_affinity {
+            if *weight <= 0.0 {
+                continue;
+            }
+            biome_wildlife_samplers
+                .0
+                .entry(HashId::from(biome_tag.as_str()))
+                .or_default()
+                .insert(bit_entity, *weight);
         }
     }
     cmd.try_insert_batch(main_comps);

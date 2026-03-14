@@ -1,5 +1,7 @@
 pub mod wildlife;
+pub mod terrgen_natural_spawning;
 pub use wildlife::*;
+pub use terrgen_natural_spawning::*;
 
 
 
@@ -7,5 +9,6 @@ pub use wildlife::*;
 pub mod prelude {
     pub use crate::{
         wildlife::*,
+        terrgen_natural_spawning::*,
     };
 }

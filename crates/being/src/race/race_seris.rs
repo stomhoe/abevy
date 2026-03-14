@@ -2,7 +2,6 @@ use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use game_common::game_common_seris::NormalDistSeri;
 use tilemap_shared::tilemap_seris::InteractionZoneSeri;
 
-use crate::race::race_resources::RaceSexSeri;
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct RaceSeri {
@@ -24,7 +23,7 @@ pub struct RaceSeri {
     pub singular: String,
     #[serde(default)]
     pub plural: String,
-    pub sexes: HashMap<String, RaceSexSeri>,
+    pub sexes: HashMap<String, RaceSexEntrySeri>,
     #[serde(default)]
     pub sentient: bool,
     pub fallback_sprites_to_sample: Vec<String>,
@@ -52,7 +51,7 @@ pub struct RaceSeri {
     pub whitelisted_tiles_for_spawning: HashSet<String>,
     #[serde(default)]
     pub blacklisted_tiles_for_spawning: HashSet<String>,
-    #[serde(default)]
+    #[serde(default)]// these are not hunted/attacked even if hungry and carnivore
     pub friend_races: HashSet<String>,
     #[serde(default)]
     pub predator_territorialism: f32,
@@ -70,6 +69,18 @@ pub struct RaceSeri {
     pub melee_interaction_zone: InteractionZoneSeri,
     #[serde(default)]
     pub hitbox_hashid: String,
+
+    #[serde(default)]//targets for already-spawned packs
+    pub pack_size_min_max: (u32, u32),
+
+    #[serde(default)]//if this race wins sampling, it will spawn with a pack size drawn from this distribution
+    pub spawn_pack_size_normal_dist: NormalDistSeri,
+    #[serde(default)]//additive membership into already-defined packs
+    pub belongs_to_packs: Vec<String>,
+
+    // IMPLEMENT THIS in race_init_systems.rs
+    #[serde(default)]
+    pub biome_affinity: HashMap<String, f32>,//f32: multiplier for own weight, when there are multiple candidate races/bitrefs to spawn for a given biome.
 }
 
 #[derive(serde::Deserialize, Debug, Clone, Default)]
@@ -81,7 +92,7 @@ pub struct RaceFootstepSfxSeri {
 }
 
 #[derive(serde::Deserialize, Debug, Clone, Default)]
-pub struct RaceSexEntrySeri {
+pub struct RaceSexEntrySeri {//TODO fix usage
     #[serde(default)]
     pub weight: u32,
     #[serde(default)]

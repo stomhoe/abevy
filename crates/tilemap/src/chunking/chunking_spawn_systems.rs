@@ -2,7 +2,7 @@
 use bevy::prelude::*;
 use common::common_components::{StrId20B};
 use common::log_targets::CHUNK_ACTIVATION;
-use tilemap_shared::{DimensionRef, LoadedChunks};
+use tilemap_shared::{DimensionRef, DiscoveredMacroChunks, LoadedChunks};
 use tilemap_shared::{ChunkPos, HashablePosVec};
 
 use super::chunking_components::*;
@@ -71,6 +71,7 @@ pub fn spawn_chunks_around_activators(
                     loaded_chunks.0.insert(key, chunk_ent);
                     comps_for_chunk_ents.push((chunk_ent, (
                         Chunk { region_ent, },
+                        TerrGenState::Pending,
                         Visibility::Hidden,
                         TilesToSave::default(),
                         StrId20B::trunc(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
@@ -90,6 +91,18 @@ pub fn spawn_chunks_around_activators(
     cmd.try_insert_batch(comps_for_region_ents);
     cmd.try_insert_batch(comps_for_chunk_ents);
 
+}
+
+pub fn track_discovered_areas(
+    mut discovered_areas: ResMut<DiscoveredMacroChunks>,
+    chunk_query: Query<(&DimensionRef, &ChunkPos, &TerrGenState), (With<Chunk>, Changed<TerrGenState>)>,
+) {
+    for (&dim_ref, &chunk_pos, terrgen_state) in chunk_query.iter() {
+        if *terrgen_state != TerrGenState::OpsLaunched {
+            continue;
+        }
+        discovered_areas.0.insert((dim_ref, chunk_pos.to_macrochunk_pos()));
+    }
 }
 
 

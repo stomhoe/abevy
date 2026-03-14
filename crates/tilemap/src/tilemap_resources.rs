@@ -131,6 +131,7 @@ impl MassCollectedTiles {
         let helper = TileMassSpawnBundle {
             ezero_ref,
             gpos,
+            snap_to_gpos: SnapTransformToGpos,
             dim_ref,
             tile_bundle,
             initial_pos: InitialPos { pos: gpos, dim: dim_ref },

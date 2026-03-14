@@ -10,13 +10,7 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 
 use crate::being_components::*;
 
-#[derive(Bundle, Debug)]
-pub struct PlayerStartBeingBundle(pub Being, pub Transform);
-impl PlayerStartBeingBundle {
-    pub fn new(transform: Transform) -> Self {
-        Self(Being::default(), transform)
-    }
-}
+
 
 #[derive(Bundle, Debug)]
 pub struct BeingBundle(

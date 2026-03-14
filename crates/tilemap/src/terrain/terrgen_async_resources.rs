@@ -32,7 +32,7 @@ pub struct TerrGenTileRequest {
 #[derive(Debug, Clone)]
 pub struct TerrGenBiomeTagSample {
     pub dimension_ref: DimensionRef,
-    pub chunk_pos: ChunkPos,
+    pub macro_chunk_pos: MacroChunkPos,
     pub biome_tags: Vec<(HashId, f32)>,
 }
 

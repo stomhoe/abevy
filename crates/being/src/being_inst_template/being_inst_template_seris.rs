@@ -33,6 +33,12 @@ pub struct BitSeri {
     pub melee_interaction_zone: InteractionZoneSeri,
     #[serde(default)]
     pub hitbox_hashid: String,
+    #[serde(default)]
+    pub spawn_pack_size_normal_dist: Option<NormalDistSeri>,
+    #[serde(default)]
+    pub belongs_to_packs: Vec<String>,
+    #[serde(default)]
+    pub biome_affinity: HashMap<String, f32>,
 }
 
 fn default_multiplier() -> f32 { 1.0 }
