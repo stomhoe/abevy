@@ -9,16 +9,20 @@ use being::{
 use being_shared::BeingInstTemplate;
 use common::log_targets::WILDLIFE_SYSTEM;
 use game_common::{game_common_samplers::MacroChunkBiomeTagDistributionMap, game_common_timers::TimerComp};
+use tilemap::chunking::chunking_components::{Chunk, TerrGenState};
 use tilemap::terrain::biome::biome_components::BiomePackSampler;
 use tilemap_shared::{
-    DiscoveredMacroChunks,
+    ChunkPos,
     DimensionRef,
     MacroChunkPos,
 };
 
 pub fn spawn_natural_wildlife_for_chunk(
     mut cmd: Commands,
-    discovered_macro_chunks: Res<DiscoveredMacroChunks>,
+    launched_chunk_query: Query<
+        (&DimensionRef, &ChunkPos, &TerrGenState),
+        (With<Chunk>, Changed<TerrGenState>),
+    >,
     biome_pack_samplers: Query<&BiomePackSampler>,
     mut pending_macro_chunks: Local<HashMap<(DimensionRef, MacroChunkPos), TimerComp>>,
     mut ready_macro_chunks: Local<Vec<(DimensionRef, MacroChunkPos)>>,
@@ -27,11 +31,16 @@ pub fn spawn_natural_wildlife_for_chunk(
     spawn_pack_size_query: Query<&PackInitialSpawnNormalDist>,
     time: Res<Time>,
 ) {
-    if !discovered_macro_chunks.is_changed() && pending_macro_chunks.is_empty() {
+    if launched_chunk_query.is_empty() && pending_macro_chunks.is_empty() {
         return;
     }
-    for &key in discovered_macro_chunks.0.iter() {
-        pending_macro_chunks.entry(key).or_insert_with(|| TimerComp::new(4.0));
+    for (&dim_ref, &chunk_pos, terrgen_state) in launched_chunk_query.iter() {
+        if *terrgen_state != TerrGenState::OpsLaunched {
+            continue;
+        }
+        pending_macro_chunks
+            .entry((dim_ref, chunk_pos.to_macrochunk_pos()))
+            .or_insert_with(|| TimerComp::new(4.0));
     }
     if pending_macro_chunks.is_empty() {
         return;

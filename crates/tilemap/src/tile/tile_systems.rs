@@ -16,7 +16,8 @@ use ::tilemap_shared::*;
 pub fn snap_transform_to_gpos(
     mut cmd: Commands,
     mut query: Query<(Entity, Option<&mut Transform>, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, Has<Replicated>, ),
-        (Or<(Changed<GlobalTilePos>, Changed<ChildOf>, Added<Replicated>, Added<SnapTransformToGpos>)>, common::AnyDisabling, Without<EntityZero>, Without<TilemapAnchor>, With<SnapTransformToGpos>)>,
+        (With<SnapTransformToGpos>,  Without<EntityZero>,common::AnyDisabling,
+            Or<(Changed<GlobalTilePos>, Changed<ChildOf>, Added<SnapTransformToGpos>)>, Without<TilemapAnchor>, Without<TilePos>, )>,
     //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
     parent_query: Query<&GlobalTransform, common::AnyDisabling>,
     state: Res<State<ClientState>>,

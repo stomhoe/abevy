@@ -89,14 +89,6 @@ impl Followers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
 #[derive(Component, Debug, Clone)]
 pub struct LearningMultiplier(pub EntityHashMap<f32>);
 
-#[derive(Component, Debug, Default, Clone)]
-pub struct TargetSpawnPos(pub Vec2);//NO SÉ SI PONERLE UN FIELD Q SEA LA DIMENSIÓN
-impl TargetSpawnPos {
-    pub fn new(x: f32, y: f32) -> Self {
-        Self(Vec2::new(x, y))
-    }
-}
-
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, )]
 #[relationship(relationship_target = CreatedCharacters)]
 #[require(PlayerDirectControllable, )]
