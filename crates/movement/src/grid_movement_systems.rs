@@ -1,4 +1,5 @@
 use being_shared::{Being, ComputedLocally};
+use bevy::ecs::entity::EntityHashMap;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
@@ -34,6 +35,7 @@ pub fn start_grid_locked_steps(
     mut sync_gpos_msgs: Local<Vec<ToClients<SyncGpos>>>,
     mut req_step_msgs: Local<Vec<SendStepRequest>>,
     mut to_drain: Local<Vec<Entity>>,
+    mut burst_step_credit_by_ent: Local<EntityHashMap<f32>>,
     mut client_req_step_writer: MessageWriter<SendStepRequest>,
 ) {
     for (
@@ -48,33 +50,65 @@ pub fn start_grid_locked_steps(
     {
         glm.ensure_grid_anchor(*tile_pos);
         let dir = input_move_dir.normalize_to_axis_dir();
-
-        let step_result = glm.try_start_step(
-            &blocking_tiles,
-            &mut to_drain,
-            dim_ref,
-            entity,
-            &mut tile_pos,
-            dir,
-            ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir),
-        );
         let next_dir = CardinalDirection::from_dir_vec(dir);
-        let should_sync_with_others = match step_result {
-            TryStartStepOutcome::Successful => {
-                *facing_dir = next_dir;
-                true
-            }
-            TryStartStepOutcome::Blocked => {
-                if *facing_dir == next_dir {
-                    false
-                } else {
+        let step_ticks = ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir);
+
+        let mut steps_to_request = 0;
+        let should_sync_with_others = if step_ticks > 1 {
+            burst_step_credit_by_ent.remove(&entity);
+            match glm.try_start_step(
+                &blocking_tiles,
+                &mut to_drain,
+                dim_ref,
+                entity,
+                &mut tile_pos,
+                dir,
+                step_ticks,
+            ) {
+                TryStartStepOutcome::Successful => {
                     *facing_dir = next_dir;
+                    steps_to_request = 1;
                     true
                 }
+                TryStartStepOutcome::Blocked => {
+                    if *facing_dir == next_dir {
+                        false
+                    } else {
+                        *facing_dir = next_dir;
+                        steps_to_request = 1;
+                        true
+                    }
+                }
+                TryStartStepOutcome::IVec2ZeroDir
+                | TryStartStepOutcome::AlreadyStepping
+                | TryStartStepOutcome::ZeroStepTicks => false,
             }
-            TryStartStepOutcome::IVec2ZeroDir
-            | TryStartStepOutcome::AlreadyStepping
-            | TryStartStepOutcome::ZeroStepTicks => false,
+        } else {
+            let credit = burst_step_credit_by_ent.entry(entity).or_insert(0.0);
+            *credit = (*credit + tiles_per_tick(speed_magnitude.0, fixed_time.delta_secs(), dir))
+                .min(MAX_GRID_STEPS_PER_FIXED_TICK as f32);
+            let requested_steps = credit.floor().min(MAX_GRID_STEPS_PER_FIXED_TICK as f32) as u16;
+            let steps_taken = glm.advance_steps_immediate(
+                &blocking_tiles,
+                &mut to_drain,
+                dim_ref,
+                entity,
+                &mut tile_pos,
+                dir,
+                requested_steps,
+            );
+            if steps_taken > 0 {
+                *credit = (*credit - steps_taken as f32).max(0.0);
+                *facing_dir = next_dir;
+                steps_to_request = steps_taken;
+                true
+            } else if dir != IVec2::ZERO && *facing_dir != next_dir {
+                *facing_dir = next_dir;
+                steps_to_request = 1;
+                true
+            } else {
+                false
+            }
         };
         if !should_sync_with_others {
             continue;
@@ -83,6 +117,7 @@ pub fn start_grid_locked_steps(
             req_step_msgs.push(SendStepRequest {
                 being_ent: entity,
                 dir: next_dir,
+                steps: steps_to_request.max(1),
             });
         } else if !connected.is_empty() {
             let message = SyncGpos {
@@ -113,6 +148,7 @@ pub fn progress_tile_transition_transform(
     mut messages: Local<HashSet<MatchHeldSpritesAnimStateToBeingState>>,
 ) {
     for (being_ent, tile_pos, mut transform, mut move_anim, mut glm) in query.iter_mut() {
+        let had_motion_this_tick = glm.consume_recent_motion();
         glm.ensure_grid_anchor(*tile_pos);
         let was_stepping = glm.is_stepping();
         glm.progress_grid_step(*tile_pos);
@@ -123,7 +159,7 @@ pub fn progress_tile_transition_transform(
         move_anim_changed(
             being_ent,
             &mut move_anim,
-            glm.is_stepping() || was_stepping,
+            glm.is_stepping() || was_stepping || had_motion_this_tick,
             &mut messages,
         );
     }

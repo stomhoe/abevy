@@ -4,8 +4,10 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
 use common::common_components::StrId;
 use game_common::game_common_components::EntityZeroRef;
-use tilemap_shared::{BeingsAtGpos, DimensionRef, GlobalTilePos, ItemsAtGpos, SpriteTilesAtGpos};
 use param_sets::EntitiesAtGposParamSet;
+use sprite_shared::prelude::AcZ;
+use std::cmp::Ordering;
+use tilemap_shared::{DimensionRef, GlobalTilePos, TileGatheringParamSet};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility, WorldTileClickInspectorState};
 
@@ -17,6 +19,7 @@ pub fn capture_world_tile_click_selection(
     camera_query: Query<(&Camera, &GlobalTransform), Without<CameraTarget>>,
     camera_target_query: Query<&DimensionRef, With<CameraTarget>>,
     entities_at_gpos: EntitiesAtGposParamSet,
+    mut tile_gathering: TileGatheringParamSet,
     mut state: ResMut<WorldTileClickInspectorState>,
 ) {
     if !state.enabled || !mouse.just_pressed(MouseButton::Left) {
@@ -49,6 +52,12 @@ pub fn capture_world_tile_click_selection(
     state.clicked_gpos = Some(clicked_gpos);
     state.entities_at_gpos.clear();
     entities_at_gpos.gather_entities_at(&mut state.entities_at_gpos, dim_ref, clicked_gpos);
+    state.entities_at_gpos.extend(
+        tile_gathering
+            .gather_tiles_at_to_drain(dim_ref, clicked_gpos)
+            .iter()
+            .copied(),
+    );
     state.entities_at_gpos.sort_unstable_by_key(|entity| entity.index());
     state.entities_at_gpos.dedup();
 }
@@ -61,6 +70,7 @@ pub fn world_tile_click_picker_window(
     mut selected_entities: ResMut<DebugSelectedEntities>,
     strid_query: Query<&StrId>,
     ezero_ref_query: Query<&EntityZeroRef>,
+    acz_query: Query<&AcZ>,
 ) {
     if !window_visible.world_tile_click_picker {
         state.enabled = false;
@@ -89,6 +99,15 @@ pub fn world_tile_click_picker_window(
             ui.label(format!("Entities at tile: {}", state.entities_at_gpos.len()));
             ui.separator();
 
+            state.entities_at_gpos.sort_unstable_by(|left, right| {
+                let left_acz = acz_for_entity(*left, &acz_query, &ezero_ref_query);
+                let right_acz = acz_for_entity(*right, &acz_query, &ezero_ref_query);
+                right_acz
+                    .partial_cmp(&left_acz)
+                    .unwrap_or(Ordering::Equal)
+                    .then_with(|| left.index().cmp(&right.index()))
+            });
+
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for &entity in &state.entities_at_gpos {
                     let strid_label = if let Ok(str_id) = strid_query.get(entity) {
@@ -114,4 +133,22 @@ pub fn world_tile_click_picker_window(
 
     window_visible.world_tile_click_picker = open;
     state.enabled = open;
+}
+
+fn acz_for_entity(
+    entity: Entity,
+    acz_query: &Query<&AcZ>,
+    ezero_ref_query: &Query<&EntityZeroRef>,
+) -> f32 {
+    acz_query
+        .get(entity)
+        .map(|acz| acz.0)
+        .ok()
+        .or_else(|| {
+            ezero_ref_query
+                .get(entity)
+                .ok()
+                .and_then(|ezero_ref| acz_query.get(ezero_ref.0).ok().map(|acz| acz.0))
+        })
+        .unwrap_or(f32::NEG_INFINITY)
 }

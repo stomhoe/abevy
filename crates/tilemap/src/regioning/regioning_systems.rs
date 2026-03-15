@@ -471,8 +471,8 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
         {
             return;
         }
-        chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref, terrgen_state)| {
-            if *terrgen_state != TerrGenState::Pending {
+        chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref, chunk_terrgen_state)| {
+            if *chunk_terrgen_state != TerrGenState::Pending {
                 return;
             }
             if reg_planned.is_chunk_pending_build(chunk_pos) {

@@ -95,7 +95,7 @@ impl_display_debug!(MacroChunkPos, "Macrochunk pos", "Mcpos");
 impl_position_ops!(MacroChunkPos);
 impl_position_conversions!(MacroChunkPos);
 
-pub const MACRO_CHUNK_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::new(16, 16);
+pub const MACRO_CHUNK_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(16);
 
 
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, )]
@@ -280,7 +280,8 @@ impl std::cmp::Ord for OplistSize {
 
 impl Default for OplistSize { fn default() -> Self { Self(UVec2::ONE) } }
 
-pub const REGION_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::new(256, 256);
+//don't increase further
+pub const REGION_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(64);
 
 #[derive(Component, Clone, Deserialize, Serialize, Default, Hash, PartialEq, Eq, Copy, )]
 pub struct RegionPos(pub IVec2);

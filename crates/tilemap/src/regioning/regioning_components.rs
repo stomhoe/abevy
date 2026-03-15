@@ -278,11 +278,11 @@ impl GridOfSgcs {
         self.0.get_value(gpos.to_chunkpos(), region_pos)
     }
     pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) -> Option<Entity> {
-        let base = ui.text_style_height(&egui::TextStyle::Monospace);
-        let cell_w = (base * 0.105).clamp(0.75, 1.5);
-        let cell_h = (base * 0.105).clamp(0.75, 1.5);
         let width = REGION_SIZE_IN_CHUNKS.x() as usize;
         let height = REGION_SIZE_IN_CHUNKS.y() as usize;
+        let cell_side = (ui.available_width() / width.max(1) as f32).clamp(6.0, 28.0);
+        let cell_w = cell_side;
+        let cell_h = cell_side;
         let grid_size = egui::vec2(width as f32 * cell_w, height as f32 * cell_h);
         let (rect, response) = ui.allocate_exact_size(grid_size, egui::Sense::click());
         let painter = ui.painter_at(rect);

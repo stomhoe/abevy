@@ -45,6 +45,7 @@ pub struct GridLockedMovement {
     pub step_dir: IVec2,
     pub progress_ticks: u16,
     pub step_ticks_total: u16,
+    pub moved_this_tick: bool,
 }
 
 impl GridLockedMovement {
@@ -76,6 +77,7 @@ impl GridLockedMovement {
         self.step_dir = dir;
         self.progress_ticks = 0;
         self.step_ticks_total = step_ticks_total.max(1);
+        self.moved_this_tick = true;
     }
 
     pub fn try_start_step(
@@ -103,6 +105,41 @@ impl GridLockedMovement {
         }
         self.start_step(tile_pos, dir, step_ticks_total);
         TryStartStepOutcome::Successful
+    }
+
+    pub fn advance_steps_immediate(
+        &mut self,
+        blocking_tiles: &BlockingTileParamSet,
+        to_drain: &mut Vec<Entity>,
+        dim_ref: DimensionRef,
+        being_ent: Entity,
+        tile_pos: &mut GlobalTilePos,
+        dir: IVec2,
+        steps: u16,
+    ) -> u16 {
+        if dir == IVec2::ZERO || steps == 0 || self.is_stepping() {
+            return 0;
+        }
+        let mut steps_taken = 0;
+        for _ in 0..steps {
+            let next_tile = GlobalTilePos(tile_pos.0 + dir);
+            if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
+                break;
+            }
+            tile_pos.0 += dir;
+            steps_taken += 1;
+        }
+        if steps_taken > 0 {
+            self.clear_step(*tile_pos);
+            self.moved_this_tick = true;
+        }
+        steps_taken
+    }
+
+    pub fn consume_recent_motion(&mut self) -> bool {
+        let moved_this_tick = self.moved_this_tick;
+        self.moved_this_tick = false;
+        moved_this_tick
     }
 
     pub fn progress_grid_step(&mut self, tile_pos: GlobalTilePos) {

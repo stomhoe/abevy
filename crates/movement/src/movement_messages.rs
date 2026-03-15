@@ -7,6 +7,7 @@ pub struct SendStepRequest {
     #[entities]
     pub being_ent: Entity,
     pub dir: CardinalDirection,
+    pub steps: u16,
 }
 
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
