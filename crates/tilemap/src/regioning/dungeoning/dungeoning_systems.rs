@@ -1,7 +1,8 @@
-//! Re-exports all dungeoning building systems from the dungeoning submodule for backward compatibility.
-//! All actual implementations are in crates/tilemap/src/regioning/dungeoning/
+//! Re-exports all dungeoning building systems from the dungeoning submodule.
+//! All actual implementations are in crates/tilemap/src/regioning/dungeoning/.
 
-pub use super::dungeoning::{
+#[allow(unused_imports)]
+pub use super::{
     claim_chunks_for_various_dungeon_types,
     drunkwalk_dungeon_building_system,
     corridor_dungeon_building_system,

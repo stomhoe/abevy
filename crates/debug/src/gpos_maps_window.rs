@@ -240,7 +240,8 @@ pub fn gpos_maps_window_system(
                     let entities = items_at_gpos.items_at_pos(dim_ref, center + local);
                     if let Some(item_entity) = entities.first().copied() {
                         selected.selected_exempted_entity = Some(item_entity);
-                        window_visible.exempted_entity_details = true;
+                        selected.selected_tile = None;
+                        window_visible.tile_details = true;
                     }
                 }
                 if let Some(local) = clicked_terrain {

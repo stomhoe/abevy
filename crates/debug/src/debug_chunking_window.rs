@@ -400,7 +400,26 @@ pub fn debug_chunking_window(
         .show(ctx, |ui| {
             ui.heading(format!("Chunks: {}", chunk_query.iter().count()));
             ui.separator();
-            ui.checkbox(&mut chunking_ui.follow_camera_chunk, "Follow camera chunk");
+            egui::Frame::group(ui.style())
+                .inner_margin(egui::Margin::symmetric(8, 6))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.add_sized(
+                            [260.0, 32.0],
+                            egui::Checkbox::new(
+                                &mut chunking_ui.follow_camera_chunk,
+                                egui::RichText::new("Follow Camera Chunk").size(18.0).strong(),
+                            ),
+                        );
+                        let status = if chunking_ui.follow_camera_chunk { "ON" } else { "OFF" };
+                        let status_color = if chunking_ui.follow_camera_chunk {
+                            egui::Color32::LIGHT_GREEN
+                        } else {
+                            egui::Color32::LIGHT_RED
+                        };
+                        ui.label(egui::RichText::new(status).strong().color(status_color));
+                    });
+                });
 
             // Chunk Range Settings
             ui.heading("Range Settings");
@@ -477,6 +496,10 @@ pub fn debug_chunking_window(
                                                 let button_response = ui.selectable_label(is_selected, rich_text);
 
                                                 if button_response.clicked() {
+                                                    if !(is_camera_dim && is_camera_pos) {
+                                                        chunking_ui.follow_camera_chunk = false;
+                                                    }
+                                                    chunking_ui.chunk_details_open_nonce = chunking_ui.chunk_details_open_nonce.wrapping_add(1);
                                                     // Single select: clear previous selection and select new chunk
                                                     selected_entities.selected_chunks.clear();
                                                     selected_entities.selected_chunks.insert(*entity);
@@ -504,8 +527,10 @@ pub fn debug_chunking_window(
             for (dim_key, chunk_pos, (entity, children, tiles_to_save, terrgen_state, activating_chunks)) in selected_chunk_details {
                 let should_start_open = camera_dim_name.as_ref().is_some_and(|camera_dim_name| camera_dim_name == dim_key)
                     && camera_chunk_pos == Some(*chunk_pos);
+                let is_selected = selected_entities.selected_chunks.contains(entity);
                 egui::CollapsingHeader::new(format!("Details: {:?} ({:?})", chunk_pos, entity))
-                    .default_open(should_start_open)
+                    .id_salt(("chunk_details_header", entity.index(), if is_selected { chunking_ui.chunk_details_open_nonce } else { 0 }))
+                    .default_open(is_selected || should_start_open)
                     .show(ui, |ui| {
                     ui.vertical(|ui| {
                         let children_count = children.map_or(0, |c| c.len());
@@ -657,6 +682,7 @@ pub fn debug_chunking_window(
 
                 // Display each dimension's chunks in a grid
                 for (dim_name, chunks) in chunks_by_dim.into_iter() {
+                    let is_camera_dim = camera_dim_name.as_ref().is_some_and(|camera_dim_name| camera_dim_name == &dim_name);
                     let header_label = format!("{} - {} chunks", dim_name, chunks.len());
                     egui::CollapsingHeader::new(&header_label)
                         .default_open(true)
@@ -718,6 +744,10 @@ pub fn debug_chunking_window(
                                                             .background_color(bg_color)
                                                             .color(text_color)
                                                     ).clicked() {
+                                                        if !(is_camera_dim && is_camera_chunk) {
+                                                            chunking_ui.follow_camera_chunk = false;
+                                                        }
+                                                        chunking_ui.chunk_details_open_nonce = chunking_ui.chunk_details_open_nonce.wrapping_add(1);
                                                         // Single select: clear previous selection and select new chunk
                                                         selected_entities.selected_chunks.clear();
                                                         selected_entities.selected_chunks.insert(*entity);

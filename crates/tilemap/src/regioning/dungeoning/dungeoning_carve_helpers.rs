@@ -1,71 +1,5 @@
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
-use bevy::{platform::collections::HashMap, prelude::*};
-use common::{common_components::{HashId, Tag}, common_tag_components::TagSet};
-use game_common::{game_common_components::ArgsDict, game_common_samplers::EntityWeightedSampler};
-use sprite_shared::prelude::AcZ;
-use ::tilemap_shared::{GlobalGenSettings, GlobalTilePos};
-use crate::tile::{tile_components::DeleteOtherTilesInSamePos, tile_sampler_components::TileWeightedSampler};
-
-#[derive(Default)]
-pub struct DeleteOtherTilesConfigMap {
-    global: Option<DeleteOtherTilesInSamePos>,
-    by_used_tile_tag: HashMap<Tag, DeleteOtherTilesInSamePos>,
-    by_tile_id: HashMap<HashId, DeleteOtherTilesInSamePos>,
-}
-impl DeleteOtherTilesConfigMap {
-    pub fn get(&self, tile_id: &HashId, used_tile_tags: Option<&TagSet>) -> Option<DeleteOtherTilesInSamePos> {
-        let mut merged = self.global.clone().unwrap_or_default();
-        let mut has_any = self.global.is_some();
-        if let Some(used_tile_tags) = used_tile_tags {
-            for (tag, spec) in &self.by_used_tile_tag {
-                if used_tile_tags.contains(tag.clone()) {
-                    merged.merge_from(spec);
-                    has_any = true;
-                }
-            }
-        }
-        if let Some(specific) = self.by_tile_id.get(tile_id) {
-            merged.merge_from(specific);
-            has_any = true;
-        }
-        has_any.then_some(merged)
-    }
-}
-
-pub fn build_delete_other_tiles_by_tile_id(args: &ArgsDict) -> DeleteOtherTilesConfigMap {
-    let mut out = DeleteOtherTilesConfigMap::default();
-    for (key, values) in args.iter() {
-        let Some(key) = key.as_str().strip_prefix("delete_other_tiles.") else {
-            let Some(key) = key.as_str().strip_prefix("delete_other_tiles_tag.") else {
-                continue;
-            };
-            let Some((tag, field)) = key.rsplit_once('.') else {
-                continue;
-            };
-            if tag.trim().is_empty() {
-                continue;
-            }
-            let spec = out.by_used_tile_tag.entry(Tag::trunc(tag)).or_default();
-            spec.apply_delete_other_tiles_field(field, values);
-            continue;
-        };
-        let Some((tile_id, field)) = key.rsplit_once('.') else {
-            continue;
-        };
-        if tile_id.trim().is_empty() {
-            continue;
-        }
-        if tile_id == "*" {
-            let spec = out.global.get_or_insert_with(DeleteOtherTilesInSamePos::default);
-            spec.apply_delete_other_tiles_field(field, values);
-        } else {
-            let spec = out.by_tile_id.entry(HashId::hash(tile_id)).or_default();
-            spec.apply_delete_other_tiles_field(field, values);
-        }
-    }
-    out
-}
 
 pub fn carve_room_rectangle(
     floor_map: &mut [bool],
@@ -115,9 +49,6 @@ pub fn carve_room_circle(
     }
 }
 
-/// Carve a triangle with arbitrary vertices and rotation angle.
-/// v0, v1, v2 are the three vertices of the triangle as (x, y) coordinates.
-/// This supports any triangle type and orientation.
 pub fn carve_room_triangle_vertices(
     floor_map: &mut [bool],
     tile_width: usize,
@@ -130,7 +61,6 @@ pub fn carve_room_triangle_vertices(
     let (x1, y1) = v1;
     let (x2, y2) = v2;
 
-    // Find bounding box
     let min_x = x0.min(x1).min(x2).max(0) as usize;
     let max_x = x0.max(x1).max(x2).min((tile_width - 1) as i32) as usize;
     let min_y = y0.min(y1).min(y2).max(0) as usize;
@@ -140,12 +70,10 @@ pub fn carve_room_triangle_vertices(
         return;
     }
 
-    // Helper function to compute sign of point relative to triangle edge
     fn sign(px: i32, py: i32, x1: i32, y1: i32, x2: i32, y2: i32) -> i32 {
         (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2)
     }
 
-    // Fill triangle using barycentric coordinates
     for y in min_y..=max_y {
         for x in min_x..=max_x {
             let px = x as i32;
@@ -337,25 +265,4 @@ pub fn carve_corridor_vertical(
             }
         }
     }
-}
-
-pub fn resolve_sampled_tile_entity_from_sampler(
-    root_sampler: &EntityWeightedSampler,
-    sampler_query: &Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
-    anchor_gpos: GlobalTilePos,
-    settings: &GlobalGenSettings,
-    dimension_hash: HashId,
-) -> Option<Entity> {
-    let mut current_sampler = root_sampler;
-    let mut depth = 0u8;
-    while depth < 8 {
-        let sampled_ent = current_sampler.sample_with_pos(anchor_gpos, settings, dimension_hash)?;
-        if let Ok(next_sampler) = sampler_query.get(sampled_ent) {
-            current_sampler = next_sampler;
-            depth += 1;
-            continue;
-        }
-        return Some(sampled_ent);
-    }
-    None
 }

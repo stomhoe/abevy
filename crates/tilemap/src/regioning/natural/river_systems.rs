@@ -417,6 +417,7 @@ pub fn river_structure_building_system(
             structure_gen_cfg_ent: order.structured_gen_cfg_ent,
             dimension_ref: order.dimension_ref,
             chunks: Vec::new(),
+            terrgen_disabled_gpos_for_chunks: Vec::new(),
             terrgen_disabled_for_chunks: Vec::new(),
         };
 

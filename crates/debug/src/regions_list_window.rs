@@ -201,60 +201,72 @@ pub fn regions_list_window(
                             }
                         });
                         ui.separator();
-                        ui.horizontal(|ui| {
-                            ui.vertical(|ui| {
-                                if let Some(grid_sgcs) = grid {
-                                    ui.label("GridOfSgcs:");
-                                    ui.indent("grid_sgcs", |ui| {
-                                        // Only highlight if camera is in the same dimension as the region
-                                        let highlight_pos = if let (Some(cam_pos), Some(cam_dim)) = (camera_chunk_pos, camera_dim_ref) {
-                                            // Find the region's dimension ref
-                                            let region_dim_matches = region_query.get(*entity).map(|(_, _, region_dim_ref, _, ..)| region_dim_ref == cam_dim).unwrap_or(false);
-                                            let cam_region_pos = cam_pos.to_region_pos();
-                                            if region_dim_matches && cam_region_pos == *region_pos {
-                                                Some(cam_pos)
-                                            } else {
-                                                None
-                                            }
-                                        } else {
-                                            None
-                                        };
-                                        if let Some(clicked_sgc_ent) = grid_sgcs.render_grid(ui, highlight_pos, Some(*region_pos)) {
-                                            selected_entities.selected_exempted_entity = Some(clicked_sgc_ent);
-                                            window_visible.exempted_entity_details = true;
-                                        }
-                                    });
-                                }
+                        let highlight_pos = if let (Some(cam_pos), Some(cam_dim)) = (camera_chunk_pos, camera_dim_ref) {
+                            let region_dim_matches = region_query.get(*entity).map(|(_, _, region_dim_ref, _, ..)| region_dim_ref == cam_dim).unwrap_or(false);
+                            let cam_region_pos = cam_pos.to_region_pos();
+                            if region_dim_matches && cam_region_pos == *region_pos {
+                                Some(cam_pos)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+                        let render_grid_panel = |ui: &mut egui::Ui,
+                                                 grid: Option<&GridOfSgcs>,
+                                                 highlight_pos: Option<ChunkPos>,
+                                                 region_pos: RegionPos,
+                                                 selected_entities: &mut DebugSelectedEntities,
+                                                 window_visible: &mut DubugWindowsVisibility| {
+                            if let Some(grid_sgcs) = grid {
+                                ui.label("GridOfSgcs:");
+                                ui.indent("grid_sgcs", |ui| {
+                                    if let Some(clicked_sgc_ent) = grid_sgcs.render_grid(ui, highlight_pos, Some(region_pos)) {
+                                        selected_entities.selected_exempted_entity = Some(clicked_sgc_ent);
+                                        selected_entities.selected_tile = None;
+                                        window_visible.tile_details = true;
+                                    }
+                                });
+                            }
+                        };
+                        let render_region_stats = |ui: &mut egui::Ui| {
+                            if let Some(claim) = claim_list {
+                                ui.label(format!("ClaimList: {}/{}", claim.processed_up_to_i, tilemap::regioning::regioning_components::MAX_CLAIMS));
+                            }
+
+                            if let Some(planned) = planned_tiles {
+                                ui.label(format!("PlannedTiles pending: {}", planned.pending_chunks_count()));
+                            }
+
+                            if let Some(chunks) = chunks_active {
+                                ui.label(format!("ChunksActive: {}", chunks.entities().len()));
+                            }
+
+                            if let Some(count_sgcs) = counts {
+                                ui.label(format!("CountSgcs: {}", count_sgcs.0.len()));
+                            }
+
+                            if *timeout {
+                                ui.label("⏱ PendingOfferTimeout");
+                            }
+
+                            if *despawn {
+                                ui.label("🗑 DespawnOnTimeout");
+                            }
+
+                            ui.label(format!("State: {:?}", region_state));
+                        };
+
+                        if ui.available_width() < 560.0 {
+                            render_grid_panel(ui, *grid, highlight_pos, *region_pos, &mut selected_entities, &mut window_visible);
+                            ui.separator();
+                            render_region_stats(ui);
+                        } else {
+                            ui.columns(2, |columns| {
+                                render_grid_panel(&mut columns[0], *grid, highlight_pos, *region_pos, &mut selected_entities, &mut window_visible);
+                                render_region_stats(&mut columns[1]);
                             });
-
-                            ui.vertical(|ui| {
-                                if let Some(claim) = claim_list {
-                                    ui.label(format!("ClaimList: {}/{}", claim.processed_up_to_i, tilemap::regioning::regioning_components::MAX_CLAIMS));
-                                }
-
-                                if let Some(planned) = planned_tiles {
-                                    ui.label(format!("PlannedTiles pending: {}", planned.pending_chunks_count()));
-                                }
-
-                                if let Some(chunks) = chunks_active {
-                                    ui.label(format!("ChunksActive: {}", chunks.entities().len()));
-                                }
-
-                                if let Some(count_sgcs) = counts {
-                                    ui.label(format!("CountSgcs: {}", count_sgcs.0.len()));
-                                }
-
-                                if *timeout {
-                                    ui.label("⏱ PendingOfferTimeout");
-                                }
-
-                                if *despawn {
-                                    ui.label("🗑 DespawnOnTimeout");
-                                }
-
-                                ui.label(format!("State: {:?}", region_state));
-                            });
-                        });
+                        }
 
                     });
             }

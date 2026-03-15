@@ -125,7 +125,8 @@ pub fn world_tile_click_picker_window(
                     let row = format!("{}  ({:?})", strid_label, entity);
                     if ui.selectable_label(is_selected, row).clicked() {
                         selected_entities.selected_exempted_entity = Some(entity);
-                        window_visible.exempted_entity_details = true;
+                        selected_entities.selected_tile = None;
+                        window_visible.tile_details = true;
                     }
                 }
             });

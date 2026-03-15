@@ -74,12 +74,16 @@ fn process_tile_despawns(
             trace!(target: "tilemap", "Failed to get AcZ for tile entity {:?}, skipping despawn check", otile_ent);
             return;
         };
+        let Ok(otile_size) = size_query.get(otile_ezero_ref.0) else {
+            trace!(target: "tilemap", "Failed to get SizeInTiles for tile entity {:?}, skipping despawn check", otile_ent);
+            return;
+        };
         let ezero_otile_delete_others_excp = ezero_delete_query.get(otile_ezero_ref.0).ok();
         if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
             let otile_tags = tag_set_query.get(otile_ent).ok().or_else(|| tag_set_query.get(otile_ezero_ref.0).ok());
             if should_delete_tile_based_on_tag_sets(newtile_delete_others_excp, otile_z, otile_tags) {
                 trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, otile_gpos, dim, newtile_ent);
-                if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, otile_gpos) && !registered_positions.exempted.contains(&otile_ent) {
+                if !is_any_occupied_pos_registered(registered_positions, *otile_ezero_ref, dim, otile_gpos, otile_size.inner().as_ivec2()) && !registered_positions.exempted.contains(&otile_ent) {
                     msgs.push(SafeDespawn(otile_ent));
                 }
                 return;
@@ -89,12 +93,29 @@ fn process_tile_despawns(
         if let Some(otile_delete_others_excp) = otile_delete_others_excp {
             if should_delete_tile_based_on_tag_sets(otile_delete_others_excp, newtile_z, newtile_tags) {
                 trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
-                if !registered_positions.is_pos_registered(ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
+                if !is_any_occupied_pos_registered(registered_positions, ezero_ref, dim, gpos, newtile_size) && !registered_positions.exempted.contains(&newtile_ent) {
                     msgs.push(SafeDespawn(newtile_ent));
                 }
             }
         }
     });
+}
+
+fn is_any_occupied_pos_registered(
+    registered_positions: &ImportantRegisteredPositions,
+    ezero_ref: EntityZeroRef,
+    dim: DimensionRef,
+    anchor_gpos: GlobalTilePos,
+    size: IVec2,
+) -> bool {
+    for y in anchor_gpos.0.y..(anchor_gpos.0.y + size.y) {
+        for x in anchor_gpos.0.x..(anchor_gpos.0.x + size.x) {
+            if registered_positions.is_pos_registered(ezero_ref, dim, GlobalTilePos::new(x, y)) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 #[allow(clippy::too_many_arguments)]

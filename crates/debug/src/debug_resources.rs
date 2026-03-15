@@ -126,10 +126,21 @@ pub struct WorldTileClickInspectorState {
     pub entities_at_gpos: Vec<Entity>,
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct DebugChunkingUiState {
     pub follow_camera_chunk: bool,
     pub open_tilemap_type: Option<String>,
+    pub chunk_details_open_nonce: u64,
+}
+
+impl Default for DebugChunkingUiState {
+    fn default() -> Self {
+        Self {
+            follow_camera_chunk: true,
+            open_tilemap_type: None,
+            chunk_details_open_nonce: 0,
+        }
+    }
 }
 
 #[derive(Resource, Default)]

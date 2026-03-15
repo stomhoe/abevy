@@ -1,27 +1,19 @@
 pub mod dungeoning_ids;
+pub mod dungeoning_carve_helpers;
 pub mod aclaim_chunks;
-pub mod drunkwalk;
-pub mod cha;
-pub mod spiral;
-pub mod archimedes_spiral;
-pub mod maze;
+mod dungeoning_utils;
+mod dungeoning_systems;
+pub mod structure_generators;
 
 pub use aclaim_chunks::claim_chunks_for_various_dungeon_types;
-pub use drunkwalk::drunkwalk_dungeon_building_system;
-pub use cha::corridor_dungeon_building_system;
-pub use spiral::spiral_dungeon_building_system;
-pub use archimedes_spiral::archimedes_spiral_building_system;
-pub use maze::maze_dungeon_building_system;
+pub use structure_generators::*;
 
 #[allow(unused_imports, ambiguous_glob_reexports)]
 pub mod prelude {
     pub use super::{
         dungeoning_ids::*,
+        dungeoning_carve_helpers::*,
         aclaim_chunks::*,
-        drunkwalk::*,
-        cha::*,
-        spiral::*,
-        archimedes_spiral::*,
-        maze::*,
+        structure_generators::*,
     };
 }

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use game_common::game_common_timers::TimedOut;
-use crate::{ regioning::{dungeoning_systems::*, natural::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::{StructuredGenConfig, *}, regioning_sgc_init_systems::*, regioning_systems::*}, terrain::terrprobe::terrprobe_messages::*, };
+use crate::{ regioning::{dungeoning::*, natural::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::{StructuredGenConfig, *}, regioning_sgc_init_systems::*, regioning_systems::*}, terrain::terrprobe::terrprobe_messages::*, };
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -98,10 +98,8 @@ pub mod regioning_messages;
 pub mod regioning_sgc_components;
 pub mod dungeoning;
 pub mod natural;
-mod dungeoning_utils;
 mod regioning_systems;
 mod regioning_sgc_init_systems;
-mod dungeoning_systems;
 
 #[allow(unused_imports, ambiguous_glob_reexports)]
 pub mod prelude {

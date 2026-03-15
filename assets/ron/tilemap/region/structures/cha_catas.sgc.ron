@@ -31,10 +31,7 @@
         "corridor_wiggle_step_max": ["1"],
         "corridor_detour_chance": ["0.0"],
         "corridor_detour_max_offset": ["0"],
-        "delete_other_tiles.*.spared_tags": ["boulder"],
-        "delete_other_tiles_tag.boulder.spared_tags": ["floor", "dungeon_floor"],
-        "delete_other_tiles_tag.dungeon_floor.targeted_tags": ["floor"],
-        "delete_other_tiles_tag.dungeon_floor.spared_tags": ["dungeon_floor"],
+        "delete.floor_tile_id.targeted_tags": ["floor"],
     },
     // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),

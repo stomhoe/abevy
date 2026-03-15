@@ -5,19 +5,15 @@ poner inland cliffs
 
 poner rocas dispersadas en temp
 
-hacer poblados amurallados
+hacer poblados amurallados y  villages orcas
 
 cambiar textura de agua por una parecida a los que tienen los del IAO en banderbill
 
 decorar mas interior de dungeons (rocas, chests, cadaveres, zombies)
 
+spawnear npcs en dungeons
 
 sistema poblacional de criaturas
-
-
-hacer barcos que sean sus propios tilemaps?
-
-empezar a usar error_once! en sistemas con update
 
 
 cuando te muevas con plate armor hacer que haga ruido real de plate armor moviendose
@@ -35,10 +31,8 @@ pendiente general:
 
 dentro de una region, hacer algoritmo de generacion de rios sin usar noisess
 
-arreglar calculo de gradiente de inlandess, hace q portales no spawnee y beaches spawneen en cualquier lugar
-
 guardar a las entities spawneadas en un macrochunk disableadas y sacarles el disabled cuando llegues a su pos.
 marcar a los animales spawneados naturalmente con un componente pra chequearlos a ver si spawnearon en una pared, desp hacer un sistema q los saca de la pared cuando cargue su chunk
 
 
-arreglar tiles rojas en dungeon chunks. causa: es porq hay q regenerar los parameters del material del tilemap para las tiles nuevas q se ponen encima (faltan sus parametros)
+intentar hacer q la tilemap crate externa no queryee todas las tiles de un tilemap no visible, para poder tener muchas tiles cargadas para pathfinding sin matar el fps

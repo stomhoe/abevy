@@ -71,6 +71,7 @@ pub struct PendingBuildOrder {
 #[derive(Component, Debug, Default, Clone)]
 pub struct RegionPlannedTiles {
     tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, TilesFromBuilder>,
+    terrgen_disabled_gpos_on_chunk_load_map: HashMap<ChunkPos, HashSet<GlobalTilePos>>,
     // store pending build orders along with their timeout timer
     pending_build_orders: HashMap<u64, PendingBuildOrder>,
     pending_chunks: HashSet<ChunkPos>,
@@ -108,6 +109,7 @@ impl RegionPlannedTiles {
         &mut self,
         order_i: u64,
         chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)>,
+        terrgen_disabled_gpos_for_chunks: Vec<(ChunkPos, HashSet<GlobalTilePos>)>,
     ) -> Result<bool, BevyError> {
         let Some(order) = self.pending_build_orders.remove(&order_i) else {
             return Err(BevyError::from(format!(
@@ -129,9 +131,23 @@ impl RegionPlannedTiles {
             self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new).extend(tile_data);
             provided_chunks.insert(chunk_pos);
         }
+        for (chunk_pos, blocked_gpos) in terrgen_disabled_gpos_for_chunks {
+            if !order.chunks.contains(&chunk_pos) {
+                return Err(BevyError::from(format!(
+                    "ChunkPos {:?} is not part of build order {}",
+                    chunk_pos, order_i
+                )));
+            }
+            self.terrgen_disabled_gpos_on_chunk_load_map
+                .entry(chunk_pos)
+                .or_default()
+                .extend(blocked_gpos);
+            provided_chunks.insert(chunk_pos);
+        }
         for chunk_pos in order.chunks {
             if !provided_chunks.contains(&chunk_pos) {
                 self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
+                self.terrgen_disabled_gpos_on_chunk_load_map.entry(chunk_pos).or_default();
             }
             self.pending_chunks.remove(&chunk_pos);
         }
@@ -140,6 +156,10 @@ impl RegionPlannedTiles {
 
     pub fn get(&self, chunk_pos: &ChunkPos,) -> Option<&TilesFromBuilder> {
         self.tiles_to_spawn_on_chunk_load_map.get(chunk_pos)
+    }
+
+    pub fn take_terrgen_disabled_gpos(&mut self, chunk_pos: ChunkPos) -> HashSet<GlobalTilePos> {
+        self.terrgen_disabled_gpos_on_chunk_load_map.remove(&chunk_pos).unwrap_or_default()
     }
 
     pub fn pending_build_orders_iter(&self) -> impl Iterator<Item = (&u64, &PendingBuildOrder)> {
@@ -157,6 +177,7 @@ impl RegionPlannedTiles {
     pub fn mark_chunk_timed_out(&mut self, chunk_pos: ChunkPos) {
         self.pending_chunks.remove(&chunk_pos);
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
+        self.terrgen_disabled_gpos_on_chunk_load_map.entry(chunk_pos).or_default();
     }
     pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTilesInSamePos>)]> {
         let chunk_pos = gpos.to_chunkpos();
@@ -280,7 +301,7 @@ impl GridOfSgcs {
     pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) -> Option<Entity> {
         let width = REGION_SIZE_IN_CHUNKS.x() as usize;
         let height = REGION_SIZE_IN_CHUNKS.y() as usize;
-        let cell_side = (ui.available_width() / width.max(1) as f32).clamp(6.0, 28.0);
+        let cell_side = (ui.available_width() / width.max(1) as f32).clamp(1.0, 28.0);
         let cell_w = cell_side;
         let cell_h = cell_side;
         let grid_size = egui::vec2(width as f32 * cell_w, height as f32 * cell_h);

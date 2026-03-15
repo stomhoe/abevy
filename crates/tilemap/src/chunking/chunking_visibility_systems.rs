@@ -54,8 +54,8 @@ pub fn update_chunk_visib(
     event_writer.write_batch(to_draw.drain(..));
 }
 
-#[derive(Message, Debug, Clone, )]
-pub struct RecheckChunksVisibility;
+#[derive(Message, Debug, Clone, Default)]
+pub struct RecheckChunksVisibility{pub force_redraw_tilemaps: bool}
 
 #[allow(unused_parens)]
 pub fn detect_camera_change_pos_visib(
@@ -69,13 +69,13 @@ pub fn detect_camera_change_pos_visib(
         error!("More than one active camera target");
         return;
     };
-    recheck_writer.write(RecheckChunksVisibility);
+    recheck_writer.write(RecheckChunksVisibility { force_redraw_tilemaps: true });
     trace!(target: "chunk_visibility", "Camera position or dimension changed, rechecking chunk visibility.");
 }
 
 pub fn periodically_recheck_chunk_visibility(
     mut recheck_writer: MessageWriter<RecheckChunksVisibility>,
 ) {
-    recheck_writer.write(RecheckChunksVisibility);
+    recheck_writer.write(RecheckChunksVisibility { force_redraw_tilemaps: false });
     trace!(target: "chunk_visibility", "Rechecking chunk visibility due to timer.");
 }

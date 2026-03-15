@@ -38,6 +38,7 @@ pub fn launch_terrain_operations(
     dimension_query: Query<(&DimensionRootOplist), ()>,
     oplists: Query<(&OplistSize), (With<OperationList>,)>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
+    mut blocked_terrgen_gpos: ResMut<TerrGenDisabledGposByChunk>,
 ) {
     if chunks_query.is_empty() { return; }
 
@@ -61,6 +62,7 @@ pub fn launch_terrain_operations(
             dim_ref,
             root_oplist: dim_root_op_list,
             oplist_size: oplist_size,
+            blocked_gpos: blocked_terrgen_gpos.take_for_chunk(dim_ref, chunk_pos),
         });
         terr_gen_ops.push((chunk_ent, TerrGenState::OpsLaunched));
     }
@@ -391,6 +393,9 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
             for y in 0..ChunkPos::CHUNK_SIZE.y / work.oplist_size.y() {
                 let pos_within_chunk = IVec2::new(x as i32, y as i32);
                 let gpos = work.chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * work.oplist_size.inner().as_ivec2());
+                if work.blocked_gpos.contains(&gpos) {
+                    continue;
+                }
                 trace!(
                     target: "terrgen_systems",
                     "Spawning terr operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
@@ -415,6 +420,8 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
     }
     batch
 }
+
+
 
 fn collect_noise_entities(oplist: &OperationList) -> Vec<Entity> {
     let mut out = Vec::new();

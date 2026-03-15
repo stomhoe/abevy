@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
+use common::common_tag_components::TagSet;
+use game_common::game_common_components::EntityZeroRef;
+use tilemap::tile::tile_components::DeleteOtherTilesInSamePos;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -29,6 +32,23 @@ pub fn exempted_entity_details_inspector(world: &mut World) {
     let mut egui_context = egui_context.clone();
     let screen_rect = egui_context.get_mut().content_rect();
 
+    let mut delete_other_tiles_here = None;
+    let mut delete_other_tiles_ezero = None;
+    let mut tags_here = None;
+    let mut tags_ezero = None;
+    let mut referenced_ezero_entity = None;
+    if let Ok(entity_ref) = world.get_entity(selected_entity) {
+        delete_other_tiles_here = entity_ref.get::<DeleteOtherTilesInSamePos>().cloned();
+        tags_here = entity_ref.get::<TagSet>().cloned();
+        if let Some(ezero_ref) = entity_ref.get::<EntityZeroRef>() {
+            referenced_ezero_entity = Some(ezero_ref.0);
+            if let Ok(ezero_entity_ref) = world.get_entity(ezero_ref.0) {
+                delete_other_tiles_ezero = ezero_entity_ref.get::<DeleteOtherTilesInSamePos>().cloned();
+                tags_ezero = ezero_entity_ref.get::<TagSet>().cloned();
+            }
+        }
+    }
+
     let world_ptr = world as *mut World;
     let mut is_open = true;
 
@@ -51,6 +71,26 @@ pub fn exempted_entity_details_inspector(world: &mut World) {
             }
 
             ui.separator();
+            ui.heading("Manual component details");
+            render_tagset_section(ui, "TagSet on selected entity", tags_here.as_ref());
+            render_delete_other_tiles_section(
+                ui,
+                "DeleteOtherTilesInSamePos on selected entity",
+                delete_other_tiles_here.as_ref(),
+            );
+
+            if let Some(ezero_entity) = referenced_ezero_entity {
+                ui.separator();
+                ui.label(format!("EntityZeroRef target: {:?}", ezero_entity));
+                render_tagset_section(ui, "TagSet on EntityZero", tags_ezero.as_ref());
+                render_delete_other_tiles_section(
+                    ui,
+                    "DeleteOtherTilesInSamePos on EntityZero",
+                    delete_other_tiles_ezero.as_ref(),
+                );
+            }
+
+            ui.separator();
             if ui.button("Clear Selection").clicked() {
                 if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
                     selected_entities.selected_exempted_entity = None;
@@ -63,4 +103,54 @@ pub fn exempted_entity_details_inspector(world: &mut World) {
             window_visible.exempted_entity_details = false;
         }
     }
+}
+
+fn render_tagset_section(ui: &mut egui::Ui, title: &str, tags: Option<&TagSet>) {
+    ui.collapsing(title, |ui| {
+        let Some(tags) = tags else {
+            ui.label("Missing");
+            return;
+        };
+        if tags.is_empty() {
+            ui.label("Empty");
+            return;
+        }
+
+        let mut values: Vec<String> = tags.iter().map(|tag| format!("{:?}", tag)).collect();
+        values.sort_unstable();
+        ui.label(format!("count: {}", values.len()));
+        ui.label(values.join(", "));
+    });
+}
+
+fn render_delete_other_tiles_section(
+    ui: &mut egui::Ui,
+    title: &str,
+    spec: Option<&DeleteOtherTilesInSamePos>,
+) {
+    ui.collapsing(title, |ui| {
+        let Some(spec) = spec else {
+            ui.label("Missing");
+            return;
+        };
+
+        let mut spared_z: Vec<f32> = spec.spared_z.iter().map(|z| z.0).collect();
+        spared_z.sort_by(|a, b| a.total_cmp(b));
+        let mut targeted_z: Vec<f32> = spec.targeted_z.iter().map(|z| z.0).collect();
+        targeted_z.sort_by(|a, b| a.total_cmp(b));
+
+        let mut spared_tags: Vec<String> = spec.spared_tags.iter().map(|tag| format!("{:?}", tag)).collect();
+        spared_tags.sort_unstable();
+        let mut targeted_tags: Vec<String> = spec.targeted_tags.iter().map(|tag| format!("{:?}", tag)).collect();
+        targeted_tags.sort_unstable();
+
+        ui.label(format!("priority: {:.3}", spec.priority));
+        ui.label(format!("extra_radius: {}", spec.extra_radius));
+        ui.label(format!("displacement: ({}, {})", spec.displacement.x, spec.displacement.y));
+        ui.label(format!("spared_z: {:?}", spared_z));
+        ui.label(format!("targeted_z: {:?}", targeted_z));
+        ui.label(format!("spared_tags: {:?}", spared_tags));
+        ui.label(format!("targeted_tags: {:?}", targeted_tags));
+        ui.label(format!("is_empty(): {}", spec.is_empty()));
+    });
 }

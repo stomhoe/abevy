@@ -1,6 +1,5 @@
 
 use std::{mem::take};
-use bevy::ecs::message;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{common_components::{HashId}, common_tag_components::TagSet, log_targets::SGC_CHUNK_CLAIM};
 use debug_unwraps::DebugUnwrapExt;
@@ -10,6 +9,7 @@ use ::tilemap_shared::*;
 
 use crate::{chunking::chunking_components::{Chunk, TerrGenState}, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
 use crate::regioning::natural::RiverDebugData;
+use crate::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
 
 use bit_vec::BitVec;
 
@@ -421,10 +421,14 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
 ) {
     for build in reader.read() {
         let order_i = build.i;
+        let region_pos = build
+            .chunks
+            .first()
+            .map(|(chunk_pos, _)| chunk_pos.to_region_pos())
+            .or_else(|| build.terrgen_disabled_gpos_for_chunks.first().map(|(chunk_pos, _)| chunk_pos.to_region_pos()));
         let chunks = take(&mut build.chunks);
-        let region_pos = if let Some((chunk_pos, _)) = chunks.first() {
-            chunk_pos.to_region_pos()
-        } else {
+        let terrgen_disabled_gpos_for_chunks = take(&mut build.terrgen_disabled_gpos_for_chunks);
+        let Some(region_pos) = region_pos else {
             continue;
         };
         let Some(&region_ent) = loaded_regions.0.get(&(build.dimension_ref, region_pos))
@@ -444,7 +448,7 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
             continue;
         }
 
-        let Ok(finished) = planned_tiles.add_planned_tiles_and_remove_from_pending(order_i, chunks)
+        let Ok(finished) = planned_tiles.add_planned_tiles_and_remove_from_pending(order_i, chunks, terrgen_disabled_gpos_for_chunks)
         else {
             error!(target: "structure_spawn", "Failed to add planned tiles for structure build compliance in region entity {:?} for build order {}, skipping", region_ent, order_i);
             continue;
@@ -458,13 +462,14 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
 }
 #[allow(unused_parens, )]
 pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
-    region_query: Query<(&ChunksActiveInRegion, &RegionPlannedTiles, &RegionState),(Or<(Changed<ChunksActiveInRegion>, Changed<RegionPlannedTiles>, Changed<RegionState>)>, )>,
+    mut region_query: Query<(&ChunksActiveInRegion, &mut RegionPlannedTiles, &RegionState),(Or<(Changed<ChunksActiveInRegion>, Changed<RegionPlannedTiles>, Changed<RegionState>)>, )>,
     chunk_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), With<Chunk>>,
     mut collected: ResMut<MassCollectedTiles>,
+    mut blocked_terrgen_gpos: ResMut<TerrGenDisabledGposByChunk>,
 ) {
     let mut ready = Vec::new();
     let mut to_insert_delete_others = Vec::new();
-    region_query.iter().for_each(|(chunks_active_in_region, reg_planned, state)| {
+    region_query.iter_mut().for_each(|(chunks_active_in_region, mut reg_planned, state)| {
         if *state != RegionState::BuildingStarted
             && *state != RegionState::ClaimsProcessed
             && *state != RegionState::AllTilesPrepared
@@ -490,6 +495,8 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
             } else {
                 trace!(target: "structure_spawn", "No structure tiles to spawn in chunk at {:?}", chunk_pos);
             }
+            let blocked_gpos = reg_planned.take_terrgen_disabled_gpos(chunk_pos);
+            blocked_terrgen_gpos.insert_for_chunk(dimension_ref, chunk_pos, blocked_gpos);
             ready.push((chunk_ent, TerrGenState::Ready));
         });
     });

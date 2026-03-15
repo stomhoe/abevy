@@ -1,17 +1,20 @@
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy::platform::collections::HashSet;
 
 use common::common_components::HashId;
 use common::common_tag_components::TagSet;
+use common::log_targets::DUNGEONING_SYSTEM;
 use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
-use crate::regioning::{    dungeoning_utils::build_delete_other_tiles_by_tile_id, regioning_components::*,
+use crate::regioning::{    regioning_components::*,
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
 use crate::tile::tile_resources::*;
-use super::dungeoning_ids::MAZE;
+use super::super::dungeoning_ids::MAZE;
+use super::super::dungeoning_utils::extend_occupied_gpos;
 
 #[allow(unused_parens, )]
 pub fn maze_dungeon_building_system(
@@ -19,7 +22,8 @@ pub fn maze_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
-    ezero_tag_query: Query<Option<&'static TagSet>, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    _ezero_tag_query: Query<Option<&'static TagSet>, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {
@@ -49,8 +53,12 @@ pub fn maze_dungeon_building_system(
         let lava_tile_id = structured_gen_cfg.args
             .get("lava_tile_id")
             .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()));
-        let delete_other_tiles_by_tile_id = build_delete_other_tiles_by_tile_id(&structured_gen_cfg.args);
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("lava"));
+        let delete_other_tiles_by_tile_id = super::super::dungeoning_utils::DeleteOtherTilesConfigMap::from_args(&structured_gen_cfg.args);
+        let terrgen_disable_by_tile_id = super::super::dungeoning_utils::TerrGenDisableConfigMap::from_args(&structured_gen_cfg.args);
+        debug!(target: DUNGEONING_SYSTEM, "structure={} delete_other_tiles_by_tile_id={:?}", structured_gen_cfg.structure_id(), delete_other_tiles_by_tile_id);
+        debug!(target: DUNGEONING_SYSTEM, "structure={} terrgen_disable_by_tile_id={:?}", structured_gen_cfg.structure_id(), terrgen_disable_by_tile_id);
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
@@ -68,7 +76,13 @@ pub fn maze_dungeon_building_system(
             }
         };
 
-        let lava_entity = lava_tile_id.and_then(|id| ezeros_map.0.get_cloned(id).ok()).map(EntityZeroRef);
+        let lava_entity = match ezeros_map.0.get_cloned(lava_tile_id) {
+            Ok(entity) => EntityZeroRef(entity),
+            Err(_) => {
+                error!(target: "dungeoning", "TileEzero '{:?}' not found for maze dungeon", lava_tile_id);
+                continue;
+            }
+        };
 
         let chunk_positions = &build_order.chunks_gpos;
         if chunk_positions.is_empty() { continue; }
@@ -482,28 +496,26 @@ pub fn maze_dungeon_building_system(
             }
         }
 
-        if lava_entity.is_some() {
-            let hazard_count = rng.random_range(0..=4);
-            for _ in 0..hazard_count {
-                if rng.random_range(0..100) > 40 { continue; }
+        let hazard_count = rng.random_range(0..=4);
+        for _ in 0..hazard_count {
+            if rng.random_range(0..100) > 40 { continue; }
 
-                let haz_x = rng.random_range(4..tile_width.saturating_sub(4));
-                let haz_y = rng.random_range(4..tile_height.saturating_sub(4));
-                let hazard_radius = rng.random_range(1..=3) as i32;
+            let haz_x = rng.random_range(4..tile_width.saturating_sub(4));
+            let haz_y = rng.random_range(4..tile_height.saturating_sub(4));
+            let hazard_radius = rng.random_range(1..=3) as i32;
 
-                for dy in -hazard_radius..=hazard_radius {
-                    for dx in -hazard_radius..=hazard_radius {
-                        let dist_sq = dx * dx + dy * dy;
-                        if dist_sq > hazard_radius * hazard_radius { continue; }
+            for dy in -hazard_radius..=hazard_radius {
+                for dx in -hazard_radius..=hazard_radius {
+                    let dist_sq = dx * dx + dy * dy;
+                    if dist_sq > hazard_radius * hazard_radius { continue; }
 
-                        let hx = (haz_x as i32 + dx).max(0) as usize;
-                        let hy = (haz_y as i32 + dy).max(0) as usize;
-                        if hx < tile_width && hy < tile_height {
-                            let idx = hy * tile_width + hx;
-                            if floor_map[idx] {
-                                hazard_map[idx] = true;
-                                floor_map[idx] = false;
-                            }
+                    let hx = (haz_x as i32 + dx).max(0) as usize;
+                    let hy = (haz_y as i32 + dy).max(0) as usize;
+                    if hx < tile_width && hy < tile_height {
+                        let idx = hy * tile_width + hx;
+                        if floor_map[idx] {
+                            hazard_map[idx] = true;
+                            floor_map[idx] = false;
                         }
                     }
                 }
@@ -535,14 +547,20 @@ pub fn maze_dungeon_building_system(
             }
         }
 
-        let floor_delete_other_tiles = delete_other_tiles_by_tile_id.get(&floor_tile_id, ezero_tag_query.get(floor_entity.0).ok().flatten());
-        let wall_delete_other_tiles = delete_other_tiles_by_tile_id.get(&wall_tile_id, ezero_tag_query.get(wall_entity.0).ok().flatten());
-        let lava_delete_other_tiles = lava_tile_id.and_then(|tile_id| {
-            lava_entity.and_then(|lava_entity| delete_other_tiles_by_tile_id.get(&tile_id, ezero_tag_query.get(lava_entity.0).ok().flatten()))
-        });
+        let floor_delete_other_tiles = delete_other_tiles_by_tile_id.get("floor_tile_id");
+        let wall_delete_other_tiles = delete_other_tiles_by_tile_id.get("wall_tile_id");
+        let lava_delete_other_tiles = delete_other_tiles_by_tile_id.get("lava_tile_id");
+        let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
+        let disable_wall_terrgen = terrgen_disable_by_tile_id.should_disable_for("wall_tile_id");
+        let disable_lava_terrgen = terrgen_disable_by_tile_id.should_disable_for("lava_tile_id");
+        let mut floor_tiles = 0usize;
+        let mut wall_tiles = 0usize;
+        let mut lava_tiles = 0usize;
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
+        let mut terrgen_disabled_gpos_for_chunks = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
+            let mut blocked_gpos = HashSet::default();
             for tile_pos in chunk_pos.get_tilepositions_within_chunk() {
                 let local_tile = tile_pos.0 - origin_tile.0;
                 if local_tile.x < 0 || local_tile.y < 0 { continue; }
@@ -552,32 +570,42 @@ pub fn maze_dungeon_building_system(
                 let map_idx = idx_y * tile_width + idx_x;
 
                 if hazard_map[map_idx] {
-                    let ezero_ref = if let Some(lava) = lava_entity { lava } else { wall_entity };
-                    let delete_other_tiles = if lava_entity.is_some() {
-                        lava_delete_other_tiles.clone()
-                    } else {
-                        wall_delete_other_tiles.clone()
-                    };
-                    tiles4chunk.push((tile_pos, ezero_ref, delete_other_tiles));
+                    lava_tiles += 1;
+                    tiles4chunk.push((tile_pos, lava_entity, lava_delete_other_tiles.clone()));
+                    if disable_lava_terrgen {
+                        let size = ezero_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
+                        extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
+                    }
                 } else if floor_map[map_idx] {
+                    floor_tiles += 1;
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
+                    if disable_floor_terrgen {
+                        let size = ezero_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                        extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
+                    }
                 } else if wall_map[map_idx] {
+                    wall_tiles += 1;
                     tiles4chunk.push((tile_pos, wall_entity, wall_delete_other_tiles.clone()));
+                    if disable_wall_terrgen {
+                        let size = ezero_size_query.get(wall_entity.0).copied().unwrap_or_default().inner();
+                        extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
+                    }
                 }
             }
 
             chunk_tiles.push((chunk_pos, tiles4chunk));
+            terrgen_disabled_gpos_for_chunks.push((chunk_pos, blocked_gpos));
         }
+        debug!(target: DUNGEONING_SYSTEM, "structure={} floor_delete={:?} floor_tiles={} wall_delete={:?} wall_tiles={} lava_tile={:?} lava_delete={:?} lava_tiles={}", structured_gen_cfg.structure_id(), floor_delete_other_tiles, floor_tiles, wall_delete_other_tiles, wall_tiles, lava_tile_id, lava_delete_other_tiles, lava_tiles);
         compliances_to_emit.push(StructureBuildCompliance {
             i: build_order.i,
             structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
             dimension_ref: build_order.dimension_ref,
             chunks: chunk_tiles,
+            terrgen_disabled_gpos_for_chunks,
             terrgen_disabled_for_chunks: Vec::new(),
 
         });
-        let region_pos = chunk_positions[0].to_region_pos();
-        debug!(target: "dungeoning", "Spawned minotaur maze with {} islands across {} chunks at {:?}", island_seeds.len(), chunk_positions.len(), region_pos);
     }
     writer.write_batch(compliances_to_emit);
 }

@@ -55,7 +55,8 @@ pub fn registered_positions_window(
                             let label = format!("  {:?}", entity);
                             if ui.selectable_label(is_selected, label).clicked() {
                                 selected_entities.selected_exempted_entity = Some(*entity);
-                                window_visible.exempted_entity_details = true;
+                                selected_entities.selected_tile = None;
+                                window_visible.tile_details = true;
                             }
                         }
                         ui.separator();

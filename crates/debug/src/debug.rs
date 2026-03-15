@@ -11,7 +11,7 @@ use movement::MovementSystems;
 use crate::{
     being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
     debug_chunking_window::*, debug_fonts::*, debug_messages::*, debug_resources::*,
-    debug_systems::*, debug_window_systems::*, exempted_entity_details_inspector::*,
+    debug_systems::*, debug_window_systems::*,
     gpos_maps_window::*,
     player_details_inspector::*, players_list_window::*, portals_details_inspector::*, portals_list_window::*, region_details_inspector::*,
     regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
@@ -84,7 +84,6 @@ pub fn plugin(app: &mut App) {
                 tilemap_details_inspector,
                 being_details_inspector,
                 player_details_inspector,
-                exempted_entity_details_inspector,
                 sprite_details_inspector,
             )
                 .run_if(debug_enabled),

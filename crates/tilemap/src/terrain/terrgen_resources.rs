@@ -1,13 +1,12 @@
 #[allow(unused_imports, )]
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, platform::collections::{HashMap, HashSet}, prelude::*};
 use common::common_components::{HashId, HashIdMap};
 
 use crate::terrain::{
     terrgen_components::Terrgen,
     terrgen_seris::*,
 };
-use tilemap_shared::{DimensionRef, GlobalTilePos};
-use std::collections::HashMap;
+use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos};
 
 #[derive(Debug, Clone)]
 pub struct TerrGenDebugSample {
@@ -54,6 +53,30 @@ pub struct TerrGenDebugGrid {
     pub bucket_radius: i32,
     pub capture_margin_buckets: i32,
     pub tiles: HashMap<TerrGenDebugTileKey, TerrGenTileDebugInfo>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct TerrGenDisabledGposByChunk(pub HashMap<(DimensionRef, ChunkPos), HashSet<GlobalTilePos>>);
+
+impl TerrGenDisabledGposByChunk {
+    pub fn insert_for_chunk(
+        &mut self,
+        dim_ref: DimensionRef,
+        chunk_pos: ChunkPos,
+        blocked_gpos: HashSet<GlobalTilePos>,
+    ) {
+        if blocked_gpos.is_empty() {
+            return;
+        }
+        self.0
+            .entry((dim_ref, chunk_pos))
+            .or_default()
+            .extend(blocked_gpos);
+    }
+
+    pub fn take_for_chunk(&mut self, dim_ref: DimensionRef, chunk_pos: ChunkPos) -> HashSet<GlobalTilePos> {
+        self.0.remove(&(dim_ref, chunk_pos)).unwrap_or_default()
+    }
 }
 
 impl Default for TerrGenDebugGrid {

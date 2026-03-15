@@ -33,7 +33,6 @@ pub struct ToDenyOnTileClone(
     PortalRecipe,
     PortalSeri,
 
-    //children entities don't get cloned
     Children,
 
     TileImagePaths,

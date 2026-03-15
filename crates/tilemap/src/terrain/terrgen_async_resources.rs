@@ -1,4 +1,4 @@
-use bevy::{prelude::*, tasks::Task};
+use bevy::{platform::collections::HashSet, prelude::*, tasks::Task};
 use common::common_components::HashId;
 use game_common::game_common_samplers::BiomeTagWeightAtMacroChunk;
 
@@ -17,6 +17,7 @@ pub struct TerrGenLaunchWork {
     pub dim_ref: DimensionRef,
     pub root_oplist: DimensionRootOplist,
     pub oplist_size: OplistSize,
+    pub blocked_gpos: HashSet<GlobalTilePos>,
 }
 
 #[derive(Resource, Debug, Default)]

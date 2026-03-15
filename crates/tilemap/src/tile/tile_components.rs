@@ -450,68 +450,83 @@ impl DeleteOtherTilesInSamePos {
         && self.spared_tags.is_empty()
         && self.targeted_tags.is_empty()
     }
-    pub fn apply_delete_other_tiles_field(&mut self, field: &str, values: &[String]) {
+    pub fn apply_delete_other_tiles_field(&mut self, field: &str, values: &[String]) -> bool {
         match field {
             "spared_tags" => {
+                let mut applied = false;
                 for value in values {
                     if value.trim().is_empty() {
                         continue;
                     }
                     self.spared_tags.insert(Tag::trunc(value));
+                    applied = true;
                 }
+                applied
             }
             "targeted_tags" => {
+                let mut applied = false;
                 for value in values {
                     if value.trim().is_empty() {
                         continue;
                     }
                     self.targeted_tags.insert(Tag::trunc(value));
+                    applied = true;
                 }
+                applied
             }
             "spared_z" => {
+                let mut applied = false;
                 for value in values {
                     let Ok(value) = value.parse::<f32>() else {
                         continue;
                     };
                     self.spared_z.insert(AcZ::new(value));
+                    applied = true;
                 }
+                applied
             }
             "targeted_z" => {
+                let mut applied = false;
                 for value in values {
                     let Ok(value) = value.parse::<f32>() else {
                         continue;
                     };
                     self.targeted_z.insert(AcZ::new(value));
+                    applied = true;
                 }
+                applied
             }
             "extra_radius" => {
                 let Some(value) = values.first() else {
-                    return;
+                    return false;
                 };
                 let Ok(value) = value.parse::<u32>() else {
-                    return;
+                    return false;
                 };
                 self.extra_radius = value;
+                true
             }
             "priority" => {
                 let Some(value) = values.first() else {
-                    return;
+                    return false;
                 };
                 let Ok(value) = value.parse::<f32>() else {
-                    return;
+                    return false;
                 };
                 self.priority = value;
+                true
             }
             "displacement" => {
                 let Some(x) = values.first().and_then(|value| value.parse::<i32>().ok()) else {
-                    return;
+                    return false;
                 };
                 let Some(y) = values.get(1).and_then(|value| value.parse::<i32>().ok()) else {
-                    return;
+                    return false;
                 };
                 self.displacement = IVec2::new(x, y);
+                true
             }
-            _ => {}
+            _ => false,
         }
     }
     pub fn merge_from(&mut self, other: &Self) {
