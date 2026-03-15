@@ -181,12 +181,7 @@ pub fn instantiate_portal(
             .try_remove::<(SearchingForSuitablePos, AwaitingStartSearch)>();
 
         cmd.entity(oe_portal)
-            .try_remove::<(AwaitingStartSearch)>()
-            .try_insert(DeleteOtherTilesInSamePos {
-                spared_z: HashSet::from_iter(vec![AcZ::new(-900.0)]),
-                extra_radius: 2,
-                ..Default::default()
-            });
+            .try_remove::<(AwaitingStartSearch)>();
 
         if !portal_recipe.one_way {
             cmd.entity(oe_portal).try_insert(PortalTo::new(portal_ent, portal_recipe.sampler.clone()));

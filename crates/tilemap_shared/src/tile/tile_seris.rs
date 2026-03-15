@@ -44,6 +44,8 @@ pub struct DeleteOtherTilesSeri {
     #[serde(default)]
     pub extra_radius: u32,
     #[serde(default)]
+    pub displacement: (i32, i32),
+    #[serde(default)]
     pub priority: f32,
 }
 

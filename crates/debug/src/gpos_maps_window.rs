@@ -4,7 +4,7 @@ use camera::camera_components::CameraTarget;
 use bevy_ecs_tilemap::tiles::TileFlip;
 use game_common::game_common_components::EntityZeroRef;
 use std::collections::HashSet;
-use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, ItemsAtGpos, SpriteTilesAtGpos, TiledCollisionMask, TileGatheringParamSet, WalkSpeedMultIfOnTop};
+use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, ItemsAtGpos, TiledCollisionMask, TileGatheringParamSet, WalkSpeedMultIfOnTop};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -101,7 +101,6 @@ pub fn gpos_maps_window_system(
     mut selected: ResMut<DebugSelectedEntities>,
     beings_at_gpos: Res<BeingsAtGpos>,
     items_at_gpos: Res<ItemsAtGpos>,
-    spritetiles_at_gpos: Res<SpriteTilesAtGpos>,
     mut tile_gathering: TileGatheringParamSet,
     tile_instance_query: Query<(&EntityZeroRef, &GlobalTilePos, Option<&TileFlip>, Option<&CardinalDirection>)>,
     walk_speed: Query<&WalkSpeedMultIfOnTop>,
@@ -211,35 +210,23 @@ pub fn gpos_maps_window_system(
                 Some(local)
             });
 
-            ui.columns(4, |cols| {
+            ui.columns(3, |cols| {
                 let side = (ui_state.radius * 2 + 1).max(1) as f32;
                 if ui_state.fit_grids_to_window {
                     let cell_from_col = ((cols[0].available_width() - 2.0) / side).clamp(4.0, 32.0);
                     ui_state.cell_px = cell_from_col;
                 }
-                let clicked_tiles = paint_grid(&mut cols[0], "SpriteTilesAtGpos (tile occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
-                    let gpos = center + local;
-                    spritetiles_at_gpos.tiles_at_pos(dim_ref, gpos).len()
-                });
-                let clicked_beings = paint_grid(&mut cols[1], "BeingsAtGpos (being occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
+                let clicked_beings = paint_grid(&mut cols[0], "BeingsAtGpos (being occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     let gpos = center + local;
                     beings_at_gpos.beings_at_pos(dim_ref, gpos).len()
                 });
-                let clicked_items = paint_grid(&mut cols[2], "ItemsAtGpos (item occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
+                let clicked_items = paint_grid(&mut cols[1], "ItemsAtGpos (item occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     let gpos = center + local;
                     items_at_gpos.items_at_pos(dim_ref, gpos).len()
                 });
-                let clicked_terrain = paint_grid(&mut cols[3], "Terrain Blocking (mask/speed<=0.01)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
+                let clicked_terrain = paint_grid(&mut cols[2], "Terrain Blocking (mask/speed<=0.01)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     if terrain_blocked.contains(&(local.0.x, local.0.y)) { 1 } else { 0 }
                 });
-
-                if let Some(local) = clicked_tiles {
-                    let entities = spritetiles_at_gpos.tiles_at_pos(dim_ref, center + local);
-                    if let Some(tile_entity) = entities.first().copied() {
-                        selected.selected_tile = Some(tile_entity);
-                        window_visible.tile_details = true;
-                    }
-                }
                 if let Some(local) = clicked_beings {
                     let entities = beings_at_gpos.beings_at_pos(dim_ref, center + local);
                     if let Some(being_entity) = entities.first().copied() {

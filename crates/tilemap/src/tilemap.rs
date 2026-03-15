@@ -32,6 +32,7 @@ pub fn plugin(app: &mut App) {
             process_tiles_pre
             .in_set(PreChunkDespawnSystems)//if this is removed everything breaks
             .before(despawn_other_tiles_in_same_pos_if_not_excepted),//if this is removed you can get a glimpse of the tilemap which was there before removal
+            refresh_terrbl_tilemaps.after(process_tiles_pre),
         ).in_set(ChunkSystems)
     ))
     .add_observer(on_tilemap_despawn)

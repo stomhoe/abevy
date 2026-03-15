@@ -49,5 +49,7 @@
         targeted_tags: [
             "veg",
         ],
+        extra_radius: 2,
+        displacement: (2, 0),
     ),
 )

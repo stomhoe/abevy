@@ -2,13 +2,13 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::{DimensionRef, GlobalTilePos, HashIdToTexIndex, LoadedChunks, SpriteTilesAtGpos, Tilemaps};
+use crate::{DimensionRef, GlobalTilePos, HashIdToTexIndex, LoadedChunks, SizeInTiles, SpriteTilesAtGpos, Tilemaps};
 
 #[derive(SystemParam)]
 #[allow(unused_parens, )]
 /// system which uses this must be put .in_set(PreChunkDespawnReaders)
 pub struct TileGatheringParamSet<'w, 's> {
-    spritetiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
+    spritetiles_at_gpos: ResMut<'w, SpriteTilesAtGpos>,
     loaded_chunks: Res<'w, LoadedChunks>,
     chunk_children: Query<'w, 's, &'static Tilemaps>,
     pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static HashIdToTexIndex),>,
@@ -54,5 +54,9 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
             }
         }
         &self.to_drain
+    }
+
+    pub fn insert_spritetile(&mut self, tile_ent: Entity, dim: DimensionRef, gpos: GlobalTilePos, size: SizeInTiles) {
+        self.spritetiles_at_gpos.insert(tile_ent, dim, gpos, size);
     }
 }

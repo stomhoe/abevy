@@ -41,4 +41,4 @@ guardar a las entities spawneadas en un macrochunk disableadas y sacarles el dis
 marcar a los animales spawneados naturalmente con un componente pra chequearlos a ver si spawnearon en una pared, desp hacer un sistema q los saca de la pared cuando cargue su chunk
 
 
-arreglar tiles rojas en dungeon chunks
+arreglar tiles rojas en dungeon chunks. causa: es porq hay q regenerar los parameters del material del tilemap para las tiles nuevas q se ponen encima (faltan sus parametros)

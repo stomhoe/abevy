@@ -502,8 +502,10 @@ pub fn debug_chunking_window(
             selected_chunk_details.sort_by_key(|(_, _, (entity, ..))| entity.index());
 
             for (dim_key, chunk_pos, (entity, children, tiles_to_save, terrgen_state, activating_chunks)) in selected_chunk_details {
+                let should_start_open = camera_dim_name.as_ref().is_some_and(|camera_dim_name| camera_dim_name == dim_key)
+                    && camera_chunk_pos == Some(*chunk_pos);
                 egui::CollapsingHeader::new(format!("Details: {:?} ({:?})", chunk_pos, entity))
-                    .default_open(true)
+                    .default_open(should_start_open)
                     .show(ui, |ui| {
                     ui.vertical(|ui| {
                         let children_count = children.map_or(0, |c| c.len());

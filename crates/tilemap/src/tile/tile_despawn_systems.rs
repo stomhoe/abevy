@@ -1,5 +1,5 @@
 use crate::{
-    tile::{tile_components::*, tile_messages::*},
+    tile::{tile_components::*, tile_delete_others_helpers::*, tile_messages::*},
     tilemap_resources::*,
 };
 use ::sprite_shared::prelude::*;
@@ -9,6 +9,8 @@ use bevy_ecs_tilemap::prelude::*;
 use common::{AnyDisabling, common_tag_components::TagSet};
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
+
+pub use crate::tile::tile_delete_others_helpers::{process_tile_despawns_from_ezero, tile_is_pending_despawn};
 
 
 
@@ -26,126 +28,85 @@ pub fn on_spritetile_despawn(
     spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, size);
 }
 
-pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
-    ezero_query: Query<
-        (Option<&AcZ>, Option<&DeleteOtherTilesInSamePos>, Option<&TagSet>, Option<&SizeInTiles>),
-        (With<EntityZero>, common::AnyDisabling),
-    >,
+pub fn despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles(
     query: Query<
-        (
-            Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef,
-            Option<&TagSet>, Option<&DeleteOtherTilesInSamePos>,
-        ),
-        (common::AnyDisabling, Without<EntityZero>),
+        (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, &DeleteOtherTilesInSamePos, Option<&TagSet>),
+        (Added<DeleteOtherTilesInSamePos>, common::AnyDisabling, Without<EntityZero>),
     >,
-    otile_query: Query<
-        (&EntityZeroRef, Option<&TagSet>, Option<&DeleteOtherTilesInSamePos>),
-        (common::AnyDisabling, Without<EntityZero>),
-    >,
-    mut changed_pos: MessageReader<GlobalTilePosChanged>,
+    z_query: Query<&AcZ, common::AnyDisabling>,
+    size_query: Query<&SizeInTiles, common::AnyDisabling>,
+    ezero_delete_query: Query<&DeleteOtherTilesInSamePos>,
+    tile_ezero_ref_query: Query<&EntityZeroRef, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
+    gpos_query: Query<&GlobalTilePos, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
+    tag_set_query: Query<&TagSet, common::AnyDisabling>,
     registered_positions: Res<ImportantRegisteredPositions>,
-    mut params: TileGatheringParamSet,
+    mut gather_params: TileGatheringParamSet,
     mut checked_ents: Local<HashSet<Entity>>,
     mut writer: MessageWriter<SafeDespawn>,
     mut msgs: Local<Vec<SafeDespawn>>,
 ) {
-    query.iter_many(changed_pos.read().map(|msg| msg.entity)).for_each(|(newtile_ent, &dim, &gpos, ezero_ref, newtile_tag_hashset, newtile_delete_others_excp)| {
-        let Ok((newtile_z, ezero_newtile_delete_others_excp, ezero_newtile_tagset, newtile_size)) = ezero_query.get(ezero_ref.0) else {
-            warn_once!(target: common::DEBUG_TILE, "Failed to get EntityZero for tile entity {:?}, skipping despawn check", newtile_ent);
-            return;
-        };
-        let Some(newtile_z) = newtile_z else {
-            warn_once!(target: "tilemap", "Tile entity {:?} has no AcZ, skipping despawn check", newtile_ent);
-            return;
-        };
-        let newtile_delete_others_excp = newtile_delete_others_excp.or(ezero_newtile_delete_others_excp);
-        let scan_radius = newtile_delete_others_excp.map(|s| s.extra_radius as i32).unwrap_or_default();
-        let newtile_size = newtile_size.copied().unwrap_or_default().inner().as_ivec2();
-        checked_ents.clear();
-        for y in (gpos.0.y - scan_radius)..=(gpos.0.y + newtile_size.y - 1 + scan_radius) {
-            for x in (gpos.0.x - scan_radius)..=(gpos.0.x + newtile_size.x - 1 + scan_radius) {
-                for &ent in params.gather_tiles_at_to_drain(dim, GlobalTilePos::new(x, y)) {
-                    checked_ents.insert(ent);
-                }
-            }
-        }
-        checked_ents.drain().for_each(|otile_ent| {
-            if otile_ent == newtile_ent {
-                return;
-            }
-            let Ok((otile_ezero_ref, otile_tag_hashset, otile_delete_others_excp)) = otile_query.get(otile_ent) else {
-                trace!(target: "tilemap", "Failed to get prev tile entity {:?}, skipping despawn check", otile_ent);
-                return;
-            };
-            let Ok((otile_z, ezero_otile_delete_others_excp, ezero_otile_tagset, _)) = ezero_query.get(otile_ezero_ref.0) else {
-                trace!(target: "tilemap", "Failed to get EntityZero for tile entity {:?}, skipping despawn check", otile_ent);
-                return;
-            };
-            let Some(otile_z) = otile_z else {
-                trace!(target: "tilemap", "Tile entity {:?} has no AcZ, skipping despawn check", otile_ent);
-                return;
-            };
-            if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
-                let otile_tags = otile_tag_hashset.or(ezero_otile_tagset);
-                if should_delete_tile_based_on_tag_sets(newtile_delete_others_excp, otile_z, otile_tags) {
-                    trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, gpos, dim, newtile_ent);
-                    if !registered_positions.is_pos_registered(*otile_ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&otile_ent) {
-                        msgs.push(SafeDespawn(otile_ent));
-                    }
-                    return;
-                }
-            }
-            let otile_delete_others_excp = otile_delete_others_excp.or(ezero_otile_delete_others_excp);
-            if let Some(otile_delete_others_excp) = otile_delete_others_excp {
-                let newtile_tags = newtile_tag_hashset.or(ezero_newtile_tagset);
-                if should_delete_tile_based_on_tag_sets(otile_delete_others_excp, newtile_z, newtile_tags) {
-                    trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
-                    if !registered_positions.is_pos_registered(*ezero_ref, dim, gpos) && !registered_positions.exempted.contains(&newtile_ent) {
-                        msgs.push(SafeDespawn(newtile_ent));
-                    }
-                }
-            }
-        });
-    });
+    for (newtile_ent, &dim, &gpos, &ezero_ref, delete_others, newtile_tags) in &query {
+        let bundle = temp_tile_mass_spawn_bundle(ezero_ref, dim, gpos);
+        process_tile_despawns_from_added_delete_others(
+            &registered_positions,
+            newtile_ent,
+            &bundle,
+            delete_others,
+            newtile_tags,
+            &tile_ezero_ref_query,
+            &gpos_query,
+            &z_query,
+            &size_query,
+            &ezero_delete_query,
+            &mut gather_params,
+            &tag_set_query,
+            &mut checked_ents,
+            &mut msgs,
+        );
+    }
     writer.write_batch(msgs.drain(..));
 }
-fn should_delete_tile_based_on_tag_sets(
-    spec: &DeleteOtherTilesInSamePos,
-    target_z: &AcZ,
-    target_tags: Option<&TagSet>,
-) -> bool {
-    if !spec.targeted_z.is_empty() {
-        if !spec.targeted_z.contains(target_z) {
-            return false;
-        }
-        if let Some(tags) = target_tags {
-            if spec.spared_tags.intersects(tags) {
-                return false;
-            }
-        }
-        return true;
-    }
-    if !spec.targeted_tags.is_empty() {
-        let Some(tags) = target_tags else {
-            return false;
+
+pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
+    query: Query<
+        (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef),
+        (common::AnyDisabling, Without<EntityZero>),
+    >,
+    z_query: Query<&AcZ, common::AnyDisabling>,
+    size_query: Query<&SizeInTiles, common::AnyDisabling>,
+    ezero_delete_query: Query<&DeleteOtherTilesInSamePos>,
+    tile_ezero_ref_query: Query<&EntityZeroRef, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
+    gpos_query: Query<&GlobalTilePos, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
+    tag_set_query: Query<&TagSet, common::AnyDisabling>,
+    mut changed_pos: MessageReader<GlobalTilePosChanged>,
+    registered_positions: Res<ImportantRegisteredPositions>,
+    mut gather_params: TileGatheringParamSet,
+    mut checked_ents: Local<HashSet<Entity>>,
+    mut writer: MessageWriter<SafeDespawn>,
+    mut msgs: Local<Vec<SafeDespawn>>,
+) {
+    let ents: Vec<Entity> = changed_pos.read().map(|msg| msg.entity).collect();
+    for ent in ents {
+        let Ok((newtile_ent, &dim, &gpos, &ezero_ref)) = query.get(ent) else {
+            continue;
         };
-        if !spec.targeted_tags.intersects(tags) {
-            return false;
-        }
-        if spec.spared_z.contains(target_z) {
-            return false;
-        }
-        return true;
+        let bundle = temp_tile_mass_spawn_bundle(ezero_ref, dim, gpos);
+        process_tile_despawns_from_ezero(
+            &registered_positions,
+            newtile_ent,
+            &bundle,
+            &tile_ezero_ref_query,
+            &gpos_query,
+            &z_query,
+            &size_query,
+            &ezero_delete_query,
+            &mut gather_params,
+            &tag_set_query,
+            &mut checked_ents,
+            &mut msgs,
+        );
     }
-    if spec.spared_z.contains(target_z) {
-        return false;
-    }
-    if let Some(tags) = target_tags {
-        if spec.spared_tags.intersects(tags) {
-            return false;
-        }
-    }
-    true
+    writer.write_batch(msgs.drain(..));
 }
 
 pub fn safe_despawn_tile_at(
@@ -155,11 +116,12 @@ pub fn safe_despawn_tile_at(
     loaded_chunks: Res<LoadedChunks>,
     chunk_children: Query<&Tilemaps>,
     mut tilemap_query: Query<(&mut TileStorage, &HashIdToTexIndex)>,
-    tile_query: Query<(&DimensionRef, &GlobalTilePos), (With<Tile>, common::AnyDisabling)>,
+    dim_query: Query<&DimensionRef, (With<Tile>, common::AnyDisabling)>,
+    gpos_query: Query<&GlobalTilePos, (With<Tile>, common::AnyDisabling)>,
     mut rechecks: Local<Vec<RecheckTileAdjacency>>,
 ) {
     for &SafeDespawn(tile_ent) in reader.read() {
-        let Ok((&dim, &gpos)) = tile_query.get(tile_ent) else {
+        let (Ok(&dim), Ok(&gpos)) = (dim_query.get(tile_ent), gpos_query.get(tile_ent)) else {
             cmd.entity(tile_ent).try_despawn();
             continue;
         };

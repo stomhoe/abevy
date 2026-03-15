@@ -1,6 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
+use common::common_tag_components::TagSet;
 use game_common::game_common_components::EntityZeroRef;
 use game_common::game_common_samplers::EntityWeightedSampler;
 use rand::{Rng, SeedableRng, seq::SliceRandom};
@@ -11,10 +12,10 @@ use crate::regioning::{    regioning_components::*,
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
-use crate::tile::{tile_components::DeleteOtherTilesInSamePos, tile_resources::*};
+use crate::tile::tile_resources::*;
 use crate::tile::tile_sampler_components::TileWeightedSampler;
 use crate::tile::tile_sampler_resources::TileWeightedSamplerEntityMap;
-use crate::regioning::dungeoning_utils::resolve_sampled_tile_entity_from_sampler;
+use crate::regioning::dungeoning_utils::{build_delete_other_tiles_by_tile_id, resolve_sampled_tile_entity_from_sampler};
 use super::dungeoning_ids::DRUNKWALK;
 
 #[allow(unused_parens)]
@@ -26,6 +27,8 @@ pub fn drunkwalk_dungeon_building_system(
     sampler_map: Res<TileWeightedSamplerEntityMap>,
     sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
     ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    ezero_hash_query: Query<&HashId, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    ezero_tag_query: Query<Option<&'static TagSet>, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
     dimension_hash: Query<&HashId>,
     settings: Query<&GlobalGenSettings>,
 ) {
@@ -59,6 +62,7 @@ pub fn drunkwalk_dungeon_building_system(
             .get("lava_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()));
+        let delete_other_tiles_by_tile_id = build_delete_other_tiles_by_tile_id(&structured_gen_cfg.args);
         let boulder_sampler_id = structured_gen_cfg.args
             .get("boulder_sampler_id")
             .and_then(|v| v.first())
@@ -505,23 +509,11 @@ pub fn drunkwalk_dungeon_building_system(
             }
         }
 
-        let mut delete_template = DeleteOtherTilesInSamePos::default();
-        let spared_tags = structured_gen_cfg
-            .args
-            .get("delete_spared_tags")
-            .cloned()
-            .unwrap_or_else(|| vec![
-                "boulder".to_string(),
-                "dungeon_floor".to_string(),
-            ]);
-        for tag in spared_tags {
-            if tag.trim().is_empty() {
-                continue;
-            }
-            delete_template
-                .spared_tags
-                .insert(common::common_components::Tag::trunc(tag));
-        }
+        let floor_delete_other_tiles = delete_other_tiles_by_tile_id.get(&floor_tile_id, ezero_tag_query.get(floor_entity.0).ok().flatten());
+        let wall_delete_other_tiles = delete_other_tiles_by_tile_id.get(&wall_tile_id, ezero_tag_query.get(wall_entity.0).ok().flatten());
+        let lava_delete_other_tiles = lava_tile_id.and_then(|tile_id| {
+            lava_entity.and_then(|lava_entity| delete_other_tiles_by_tile_id.get(&tile_id, ezero_tag_query.get(lava_entity.0).ok().flatten()))
+        });
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
@@ -538,16 +530,25 @@ pub fn drunkwalk_dungeon_building_system(
                 let map_idx = idx_y * tile_width + idx_x;
                 if let Some(boulder_entity) = boulder_anchor_map[map_idx] {
                     if floor_map[map_idx] {
-                        tiles4chunk.push((tile_pos, floor_entity, Some(delete_template.clone())));
+                        tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     }
-                    tiles4chunk.push((tile_pos, boulder_entity, Some(delete_template.clone())));
+                    let boulder_delete_other_tiles = ezero_hash_query
+                        .get(boulder_entity.0)
+                        .ok()
+                        .and_then(|hash_id| delete_other_tiles_by_tile_id.get(hash_id, ezero_tag_query.get(boulder_entity.0).ok().flatten()));
+                    tiles4chunk.push((tile_pos, boulder_entity, boulder_delete_other_tiles));
                 } else if hazard_map[map_idx] {
                     let ezero_ref = if let Some(lava) = lava_entity { lava } else { wall_entity };
-                    tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
+                    let delete_other_tiles = if lava_entity.is_some() {
+                        lava_delete_other_tiles.clone()
+                    } else {
+                        wall_delete_other_tiles.clone()
+                    };
+                    tiles4chunk.push((tile_pos, ezero_ref, delete_other_tiles));
                 } else if floor_map[map_idx] {
-                    tiles4chunk.push((tile_pos, floor_entity, Some(delete_template.clone())));
+                    tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                 } else if wall_map[map_idx] {
-                    tiles4chunk.push((tile_pos, wall_entity, Some(delete_template.clone())));
+                    tiles4chunk.push((tile_pos, wall_entity, wall_delete_other_tiles.clone()));
                 }
             }
             chunk_tiles.push((chunk_pos, tiles4chunk));

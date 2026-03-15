@@ -1,12 +1,14 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use common::common_components::HashId;
+use common::common_tag_components::TagSet;
 use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
 use rand_distr::num_traits::Float;
 use ::tilemap_shared::*;
 
 use crate::regioning::{    dungeoning_utils::{
+        build_delete_other_tiles_by_tile_id,
         carve_corridor_horizontal, carve_corridor_vertical, carve_room_circle, carve_room_rectangle,
         carve_room_regular_polygon, carve_room_triangle_vertices,
     },
@@ -14,7 +16,7 @@ use crate::regioning::{    dungeoning_utils::{
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
     regioning_sgc_components::StructuredGenConfig,
 };
-use crate::tile::{tile_components::DeleteOtherTilesInSamePos, tile_resources::*};
+use crate::tile::tile_resources::*;
 use super::dungeoning_ids::CHAMBERS_CORRIDORS;
 
 #[allow(unused_parens, )]
@@ -23,6 +25,7 @@ pub fn corridor_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
+    ezero_tag_query: Query<Option<&'static TagSet>, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {
@@ -54,6 +57,7 @@ pub fn corridor_dungeon_building_system(
             .get("lava_tile_id")
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()));
+        let delete_other_tiles_by_tile_id = build_delete_other_tiles_by_tile_id(&structured_gen_cfg.args);
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),
@@ -553,7 +557,11 @@ pub fn corridor_dungeon_building_system(
             }
         }
 
-        let delete_template = DeleteOtherTilesInSamePos::default();
+        let floor_delete_other_tiles = delete_other_tiles_by_tile_id.get(&floor_tile_id, ezero_tag_query.get(floor_entity.0).ok().flatten());
+        let wall_delete_other_tiles = delete_other_tiles_by_tile_id.get(&wall_tile_id, ezero_tag_query.get(wall_entity.0).ok().flatten());
+        let lava_delete_other_tiles = lava_tile_id.and_then(|tile_id| {
+            lava_entity.and_then(|lava_entity| delete_other_tiles_by_tile_id.get(&tile_id, ezero_tag_query.get(lava_entity.0).ok().flatten()))
+        });
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
@@ -567,11 +575,16 @@ pub fn corridor_dungeon_building_system(
 
                 if hazard_map[map_idx] {
                     let ezero_ref = if let Some(lava) = lava_entity { lava } else { wall_entity };
-                    tiles4chunk.push((tile_pos, ezero_ref, Some(delete_template.clone())));
+                    let delete_other_tiles = if lava_entity.is_some() {
+                        lava_delete_other_tiles.clone()
+                    } else {
+                        wall_delete_other_tiles.clone()
+                    };
+                    tiles4chunk.push((tile_pos, ezero_ref, delete_other_tiles));
                 } else if floor_map[map_idx] {
-                    tiles4chunk.push((tile_pos, floor_entity, Some(delete_template.clone())));
+                    tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                 } else if wall_map[map_idx] {
-                    tiles4chunk.push((tile_pos, wall_entity, Some(delete_template.clone())));
+                    tiles4chunk.push((tile_pos, wall_entity, wall_delete_other_tiles.clone()));
                 }
             }
             chunk_tiles.push((chunk_pos, tiles4chunk));

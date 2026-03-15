@@ -12,6 +12,7 @@ use crate::tile::{
 } ;
 pub mod tile_systems;
 pub mod tile_adj_retex_systems;
+pub mod tile_delete_others_helpers;
 pub mod tile_despawn_systems;
 pub mod tile_flip_rotate_systems;
 pub mod tile_init_systems;
@@ -38,6 +39,7 @@ pub fn plugin(app: &mut App) {
         flip_tile_based_on_initial_pos_hash,
         rotate_tile_based_on_initial_pos_hash,
         sync_sprite_flips_with_tileflip,
+        despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles.in_set(PreChunkDespawnSystems),
         despawn_other_tiles_in_same_pos_if_not_excepted.in_set(PreChunkDespawnSystems),//DON'T TOUCH
         add_spawned_tiles_to_gpos_map
             .after(emit_global_tile_pos_change)

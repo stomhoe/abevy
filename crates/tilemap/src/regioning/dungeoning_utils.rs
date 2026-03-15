@@ -1,10 +1,71 @@
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
-use bevy::prelude::*;
-use common::common_components::HashId;
-use game_common::game_common_samplers::EntityWeightedSampler;
+use bevy::{platform::collections::HashMap, prelude::*};
+use common::{common_components::{HashId, Tag}, common_tag_components::TagSet};
+use game_common::{game_common_components::ArgsDict, game_common_samplers::EntityWeightedSampler};
+use sprite_shared::prelude::AcZ;
 use ::tilemap_shared::{GlobalGenSettings, GlobalTilePos};
-use crate::tile::tile_sampler_components::TileWeightedSampler;
+use crate::tile::{tile_components::DeleteOtherTilesInSamePos, tile_sampler_components::TileWeightedSampler};
+
+#[derive(Default)]
+pub struct DeleteOtherTilesConfigMap {
+    global: Option<DeleteOtherTilesInSamePos>,
+    by_used_tile_tag: HashMap<Tag, DeleteOtherTilesInSamePos>,
+    by_tile_id: HashMap<HashId, DeleteOtherTilesInSamePos>,
+}
+impl DeleteOtherTilesConfigMap {
+    pub fn get(&self, tile_id: &HashId, used_tile_tags: Option<&TagSet>) -> Option<DeleteOtherTilesInSamePos> {
+        let mut merged = self.global.clone().unwrap_or_default();
+        let mut has_any = self.global.is_some();
+        if let Some(used_tile_tags) = used_tile_tags {
+            for (tag, spec) in &self.by_used_tile_tag {
+                if used_tile_tags.contains(tag.clone()) {
+                    merged.merge_from(spec);
+                    has_any = true;
+                }
+            }
+        }
+        if let Some(specific) = self.by_tile_id.get(tile_id) {
+            merged.merge_from(specific);
+            has_any = true;
+        }
+        has_any.then_some(merged)
+    }
+}
+
+pub fn build_delete_other_tiles_by_tile_id(args: &ArgsDict) -> DeleteOtherTilesConfigMap {
+    let mut out = DeleteOtherTilesConfigMap::default();
+    for (key, values) in args.iter() {
+        let Some(key) = key.as_str().strip_prefix("delete_other_tiles.") else {
+            let Some(key) = key.as_str().strip_prefix("delete_other_tiles_tag.") else {
+                continue;
+            };
+            let Some((tag, field)) = key.rsplit_once('.') else {
+                continue;
+            };
+            if tag.trim().is_empty() {
+                continue;
+            }
+            let spec = out.by_used_tile_tag.entry(Tag::trunc(tag)).or_default();
+            spec.apply_delete_other_tiles_field(field, values);
+            continue;
+        };
+        let Some((tile_id, field)) = key.rsplit_once('.') else {
+            continue;
+        };
+        if tile_id.trim().is_empty() {
+            continue;
+        }
+        if tile_id == "*" {
+            let spec = out.global.get_or_insert_with(DeleteOtherTilesInSamePos::default);
+            spec.apply_delete_other_tiles_field(field, values);
+        } else {
+            let spec = out.by_tile_id.entry(HashId::hash(tile_id)).or_default();
+            spec.apply_delete_other_tiles_field(field, values);
+        }
+    }
+    out
+}
 
 pub fn carve_room_rectangle(
     floor_map: &mut [bool],

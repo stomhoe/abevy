@@ -31,6 +31,9 @@ impl ArgsDict {
     pub fn with_capacity(capacity: usize) -> Self {
         Self(HashMap::with_capacity(capacity))
     }
+    pub fn iter(&self) -> impl Iterator<Item = (&StrId, &Vec<String>)> {
+        self.0.iter()
+    }
     pub fn insert<T: Into<StrId>, U: Into<String>>(&mut self, key: T, val: Vec<U>) {
         let val_strs: Vec<String> = val.into_iter().map(|v| v.into()).collect();
         self.0.insert(key.into(), val_strs);

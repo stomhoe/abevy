@@ -1,149 +1,115 @@
 use bevy::{
-    asset::RenderAssetUsages,
     ecs::entity::EntityHashMap,
     ecs::system::SystemParam,
     math::U16Vec2,
     platform::collections::HashSet,
     prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
 use bevy_ecs_tilemap::prelude::{*, TilemapTexture::Vector};
 use bevy_replicon::prelude::*;
 use common::{TILEMAP_SYSTEM, common_components::HashId, common_resources::ImageSizeMap };
+use common::common_tag_components::TagSet;
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{EntityZero, EntityZeroRef, Persisted, };
+use game_common::game_common_components::{EntityZero, EntityZeroRef, Persisted};
 use sprite_shared::prelude::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
-use crate::{chunking::chunking_resources::*, tile::{tile_bundles::*, tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*} }, tilemap_bundles::*, tilemap_resources::*};
+use crate::{
+    chunking::chunking_resources::*,
+    tile::{
+        tile_bundles::*,
+        tile_components::*,
+        tile_despawn_systems::*,
+        tile_shader::tile_material::prelude::*,
+        tile_shader::tile_shader_components::*,
+    },
+    tilemap_bundles::*,
+    tilemap_resources::*,
+    tilemap_structs::*,
+    tilemap_terrbl_systems::build_terrbl_material_for_map,
+};
+use std::{collections::HashMap, mem::take};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, )]
-pub struct MapKey {
-    dim_ref: DimensionRef,
-    chunk_pos: ChunkPos,
-    ac_z: AcZ,
-    tile_size: U16Vec2,
-    shader_ref: Option<TileShaderRef>,
-}
-impl MapKey {
-    pub fn new(
-        dim_ref: DimensionRef,
-        chunk_pos: ChunkPos,
-        ac_z: AcZ,
-        tile_size: U16Vec2,
-        shader_ref: Option<TileShaderRef>,
-    ) -> Self {
-        Self { dim_ref, chunk_pos, ac_z, tile_size, shader_ref }
-    }
-    pub fn shader_ref(&self) -> Option<TileShaderRef> {self.shader_ref}
+#[derive(SystemParam)]
+pub struct ProcessTilesPreLocals<'s> {
+    pub changed_structs: Local<'s, HashSet<MapKey>>,
+    pub tile_runtime_info: Local<'s, EntityHashMap<(EntityZeroRef, TileTextureIndex)>>,
+    pub terrbl_debug_budget: Local<'s, u32>,
+    pub safe_despawns: Local<'s, Vec<SafeDespawn>>,
+    pub checked_ents: Local<'s, HashSet<Entity>>,
 }
 
-#[derive(Debug, Clone, )]
-pub struct MapStruct{
-    pub tmap_ent: Entity,
-    pub texture: TilemapTexture,
-    pub storage: TileStorage,
-    pub tmap_hash_id_map: HashIdToTexIndex,
+#[derive(SystemParam)]
+pub struct ProcessTilesPreResources<'w> {
+    pub collected_tiles: ResMut<'w, MassCollectedTiles>,
+    pub image_size_map: Res<'w, ImageSizeMap>,
+    pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
+    pub images: ResMut<'w, Assets<Image>>,
+    pub chunkrange: Res<'w, AaChunkRangeSettings>,
+    pub regpos_map: ResMut<'w, ImportantRegisteredPositions>,
+    pub loaded_chunks: Res<'w, LoadedChunks>,
+    pub state: Res<'w, State<ClientState>>,
+    pub tmap_map: ResMut<'w, TmapMap>,
 }
-use std::{collections::HashMap, mem::take, };
-impl MapStruct {
-    pub fn take_texture(&mut self) -> TilemapTexture {take(&mut self.texture)}
-    pub fn take_storage(&mut self) -> TileStorage {take(&mut self.storage)}
-    pub fn take_hash_id_map(&mut self) -> HashIdToTexIndex {take(&mut self.tmap_hash_id_map)}
+
+#[derive(SystemParam)]
+pub struct ProcessTilesPreTileComponents<'w, 's> {
+    pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
+    pub hash_id_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
+    pub size_query: Query<'w, 's, &'static SizeInTiles, common::AnyDisabling>,
+    pub keep_distance_query: Query<'w, 's, &'static KeepDistanceFrom, common::AnyDisabling>,
+    pub persisted_query: Query<'w, 's, (), (With<Persisted>, common::AnyDisabling)>,
+    pub z_query: Query<'w, 's, &'static AcZ, common::AnyDisabling>,
+    pub handles_query: Query<'w, 's, &'static TileHashIdsHandles, common::AnyDisabling>,
+    pub shader_ref_query: Query<'w, 's, &'static TileShaderRef, common::AnyDisabling>,
+    pub sprite_tile_query: Query<'w, 's, (), (With<SpriteTile>, common::AnyDisabling)>,
+    pub color_query: Query<'w, 's, &'static TileColor, common::AnyDisabling>,
+    pub y_sort_query: Query<'w, 's, (), (With<YSortOrigin>, common::AnyDisabling)>,
+    pub tile_ezero_ref_query: Query<'w, 's, &'static EntityZeroRef, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
+    pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex, (With<Tile>, Without<EntityZero>)>,
+    pub tag_set_query: Query<'w, 's, &'static TagSet, common::AnyDisabling>,
+    pub delete_others_query: Query<'w, 's, &'static DeleteOtherTilesInSamePos>,
+    pub gpos_query: Query<'w, 's, &'static GlobalTilePos, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
 }
 
 #[derive(SystemParam)]
 pub struct ProcessTilesPreParams<'w, 's> {
-    pub collected_tiles: ResMut<'w, MassCollectedTiles>,
-
-    pub tilemaps: Query<'w, 's, (
-        &'static mut TilemapTexture,
-        &'static mut TileStorage,
-        &'static mut HashIdToTexIndex,
-    ), ()>,
-    pub image_size_map: Res<'w, ImageSizeMap>,
-
-    pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
-    pub images: ResMut<'w, Assets<Image>>,
-    pub chunkrange: Res<'w, AaChunkRangeSettings>,
-
-    pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
-    pub regpos_map: ResMut<'w, ImportantRegisteredPositions>,
+    pub resources: ParamSet<'w, 's, (ProcessTilesPreResources<'w>,)>,
+    pub tilemap_paramset: ParamSet<'w, 's, (
+        Query<'w, 's, (
+            &'static mut TilemapTexture,
+            &'static mut TileStorage,
+            &'static mut HashIdToTexIndex,
+        ), ()>,
+        TileGatheringParamSet<'w, 's>,
+    )>,
+    pub tile_components: ParamSet<'w, 's, (ProcessTilesPreTileComponents<'w, 's>,)>,
     pub shader_query: Query<'w, 's, &'static TileShader, ()>,
-    pub tile_query: Query<'w, 's, (&'static EntityZeroRef, &'static TileTextureIndex), (With<Tile>, Without<EntityZero>)>,
     pub ezero_terrbl_query: Query<'w, 's, Option<&'static TerrBlendParams>, With<EntityZero>>,
-
-    pub loaded_chunks: Res<'w, LoadedChunks>,
-    pub state: Res<'w, State<ClientState>>,
-}
-
-#[derive(Resource, Debug, Default, )]
-pub struct TmapMap (
-    pub HashMap<MapKey, MapStruct>
-);
-
-#[allow(unused_parens)]
-pub fn on_tilemap_despawn(trig: On<Despawn, (TilemapTileSize, )>,
-    query: Query<(&DimensionRef, &ChunkPos, &AcZ, &TilemapTileSize, &TileShaderRef)>,
-    mut tmap_map: ResMut<TmapMap>,
-) {
-    let Ok((dimension_ref, chunk_pos, ac_z, tile_size, shader_ref)) = query.get(trig.entity)
-    else {
-        error_once!("Failed to get tilemap despawn query for entity {:?}", trig.entity);
-        return;
-    };
-    let opt_shader = if shader_ref.is_placeholder() {
-        None
-    } else {
-        Some(*shader_ref)
-    };
-    let tile_size_u16vec2 = U16Vec2::new(tile_size.x as u16, tile_size.y as u16);
-    let map_key = MapKey::new(
-        *dimension_ref,
-        *chunk_pos,
-        *ac_z,
-        tile_size_u16vec2,
-        opt_shader,
-    );
-    tmap_map.0.remove(&map_key);
-
+    pub dim_hash_query: Query<'w, 's, &'static HashId, With<Dimension>>,
+    pub locals: ProcessTilesPreLocals<'s>,
 }
 
 #[allow(unused_parens, )]
 pub fn process_tiles_pre(
     mut cmd: Commands,
     mut params: ProcessTilesPreParams,
-    ezero_query: Query<(
-        &TileStrId,
-        &HashId,
-        &SizeInTiles,
-        Option<&MinDistancesMap>,
-        Option<&KeepDistanceFrom>,
-        Has<Persisted>,
-        Option<&AcZ>,
-        Option<&TileHashIdsHandles>,
-        Option<&TileShaderRef>,
-        Has<SpriteTile>,
-        Option<&TileColor>,
-        Has<YSortOrigin>,
-    ), common::AnyDisabling>,
-    dim_hash_query: Query<(&HashId), With<Dimension>>,
-    mut spritetiles_map: ResMut<SpriteTilesAtGpos>,
-    mut tmap_map: ResMut<TmapMap>,
-    mut changed_structs: Local<HashSet<MapKey>>,
-    mut tile_runtime_info: Local<EntityHashMap<(EntityZeroRef, TileTextureIndex)>>,
-    mut terrbl_debug_budget: Local<u32>,
+    mut safe_despawn_writer: MessageWriter<SafeDespawn>,
 ) {
-    if *terrbl_debug_budget == 0 {
-        *terrbl_debug_budget = 40;
+    let resources = &mut params.resources.p0();
+    let tile_components = &mut params.tile_components.p0();
+    let locals = &mut params.locals;
+
+    if *locals.terrbl_debug_budget == 0 {
+        *locals.terrbl_debug_budget = 40;
     }
-    tile_runtime_info.clear();
-    let is_host = *params.state.get() == ClientState::Disconnected;
+    locals.tile_runtime_info.clear();
+    let is_host = *resources.state.get() == ClientState::Disconnected;
 
-    if params.collected_tiles.0.is_empty() { return; }
+    if resources.collected_tiles.0.is_empty() { return; }
 
-    let reserved = params.chunkrange.approximate_number_of_chunks(0.06);
-    let tiles_len = params.collected_tiles.0.len();
-    changed_structs.reserve(reserved);
+    let reserved = resources.chunkrange.approximate_number_of_chunks(0.06);
+    let tiles_len = resources.collected_tiles.0.len();
+    locals.changed_structs.reserve(reserved);
 
     let mut tilemap_bundles = Vec::with_capacity(200);
 
@@ -153,31 +119,50 @@ pub fn process_tiles_pre(
     let mut child_ofs_to_insert: Vec<(Entity, ChildOf)> = Vec::with_capacity(tiles_len);
 
     let mut i = 0;
-    while i < params.collected_tiles.0.len() {
+    while i < resources.collected_tiles.0.len() {
         // To avoid borrow checker issues
         let (tile_ent, bundle_ptr) = {
             unsafe{
-                let (tile_ent, bundle) = &mut params.collected_tiles.0.get_mut(i).debug_unwrap_unchecked();
+                let (tile_ent, bundle) = &mut resources.collected_tiles.0.get_mut(i).debug_unwrap_unchecked();
                 (*tile_ent, bundle as *mut TileMassSpawnBundle)
             }
         };
         let bundle = unsafe { &mut *bundle_ptr };
 
-        let Ok((_tile_strid, &ez_hash_id, size_in_tiles, min_dists, keep_distance_from, to_persist, tile_z_index, tile_handles, shader_ref, is_spritetile, color, y_sort)) = ezero_query.get(bundle.ezero_ref.0) else {
+        let Ok(&ez_hash_id) = tile_components.hash_id_query.get(bundle.ezero_ref.0) else {
             error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} is despawned", bundle.ezero_ref.0);
             cmd.entity(tile_ent).try_despawn();
-            params.collected_tiles.0.swap_remove(i);
+            resources.collected_tiles.0.swap_remove(i);
             continue;
         };
-
-        let Ok(&dim_hash) = dim_hash_query.get(bundle.dim_ref.0) else {
+        let Ok(&size_in_tiles) = tile_components.size_query.get(bundle.ezero_ref.0) else {
+            error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} missing SizeInTiles", bundle.ezero_ref.0);
+            cmd.entity(tile_ent).try_despawn();
+            resources.collected_tiles.0.swap_remove(i);
+            continue;
+        };
+        let Ok(&tile_z_index) = tile_components.z_query.get(bundle.ezero_ref.0) else {
+            error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} missing AcZ query access", bundle.ezero_ref.0);
+            cmd.entity(tile_ent).try_despawn();
+            resources.collected_tiles.0.swap_remove(i);
+            continue;
+        };
+        let tile_handles = tile_components.handles_query.get(bundle.ezero_ref.0).ok().cloned();
+        let shader_ref = tile_components.shader_ref_query.get(bundle.ezero_ref.0).ok().copied();
+        let color = tile_components.color_query.get(bundle.ezero_ref.0).cloned();
+        let is_spritetile = tile_components.sprite_tile_query.get(bundle.ezero_ref.0).is_ok();
+        let y_sort = tile_components.y_sort_query.get(bundle.ezero_ref.0).is_ok();
+        let to_persist = tile_components.persisted_query.get(bundle.ezero_ref.0).is_ok();
+        let min_dists = tile_components.min_dists_query.get(bundle.ezero_ref.0).ok();
+        let keep_distance_from = tile_components.keep_distance_query.get(bundle.ezero_ref.0).ok();
+        let Ok(&_dim_hash) = params.dim_hash_query.get(bundle.dim_ref.0) else {
             error_once!(target: TILEMAP_SYSTEM, "Dimension entity {} is despawned", bundle.dim_ref.0);
             cmd.entity(tile_ent).try_despawn();
-            params.collected_tiles.0.swap_remove(i);
+            resources.collected_tiles.0.swap_remove(i);
             continue;
         };
 
-        if !params.regpos_map.check_min_distances(
+        if !resources.regpos_map.check_min_distances(
             &mut cmd,
             is_host,
             (
@@ -188,12 +173,34 @@ pub fn process_tiles_pre(
                 min_dists,
                 keep_distance_from,
             ),
-            params.min_dists_query,
+            tile_components.min_dists_query,
         ) {
             cmd.entity(tile_ent).try_despawn();
-            params.collected_tiles.0.swap_remove(i);
+            resources.collected_tiles.0.swap_remove(i);
             trace!(target: TILEMAP_SYSTEM, "Tile entity {:?} at gpos {:?} in dim {:?} despawned due to min distance check failure", tile_ent, bundle.gpos, bundle.dim_ref);
             continue;
+        }
+
+        {
+            process_tile_despawns_from_ezero(
+                &resources.regpos_map,
+                tile_ent,
+                bundle,
+                &tile_components.tile_ezero_ref_query,
+                &tile_components.gpos_query,
+                &tile_components.z_query,
+                &tile_components.size_query,
+                &tile_components.delete_others_query,
+                &mut params.tilemap_paramset.p1(),
+                &tile_components.tag_set_query,
+                &mut locals.checked_ents,
+                &mut locals.safe_despawns,
+            );
+            if tile_is_pending_despawn(&locals.safe_despawns, tile_ent) {
+                cmd.entity(tile_ent).try_despawn();
+                resources.collected_tiles.0.swap_remove(i);
+                continue;
+            }
         }
 
         //cmd.entity(tile_ent).try_insert_if_new(Signature::from((ez_hash_id, dim_hash, bundle.gpos)));
@@ -203,72 +210,72 @@ pub fn process_tiles_pre(
                 child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
                 to_insert_replicated.push((tile_ent, Replicated));
                 if is_spritetile{
-                    spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos, *size_in_tiles);
+                    params.tilemap_paramset.p1().insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, size_in_tiles);
                     spritetiles_to_remove_bundle.push(tile_ent);
                     i += 1;
                     continue;
                 }
             } else {
                 cmd.entity(tile_ent).try_despawn();
-                params.collected_tiles.0.swap_remove(i);
+                resources.collected_tiles.0.swap_remove(i);
                 continue;
             }
         }
 
-        let Some(chunk_ent) = params.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied()
+        let Some(chunk_ent) = resources.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied()
         else{
             cmd.entity(tile_ent).try_despawn();
-            params.collected_tiles.0.swap_remove(i);
+            resources.collected_tiles.0.swap_remove(i);
             continue;
         };
 
         if is_spritetile {
             spritetiles_to_remove_bundle.push(tile_ent);
-            spritetiles_map.insert(tile_ent, bundle.dim_ref, bundle.gpos, *size_in_tiles);
+            params.tilemap_paramset.p1().insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, size_in_tiles);
             child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
             i += 1;
             continue;
         }
 
-        bundle.tile_bundle.color = color.cloned().unwrap_or_default();
+        bundle.tile_bundle.color = color.unwrap_or_default();
 
         let chunk_pos = ChunkPos::from(bundle.gpos);
 
-        let tile_img_size = if let Some(ref handles) = tile_handles {
-            params.image_size_map.0.get(&handles.first_handle().id()).copied().unwrap_or(U16Vec2::ONE)
-        } else {
-            U16Vec2::ONE
-        };
+        let tile_img_size = tile_handles
+            .as_ref()
+            .and_then(|handles| resources.image_size_map.0.get(&handles.first_handle().id()).copied())
+            .unwrap_or(U16Vec2::ONE);
 
         process_tile_into_corresponding_tilemap(
             &mut cmd,
             tile_ent,
             ez_hash_id,
-            *size_in_tiles,
+            size_in_tiles,
             &mut bundle.tile_bundle.visible,
             &mut bundle.tile_bundle.texture_index,
             &mut bundle.tile_bundle.tilemap_id,
             bundle.tile_bundle.position,
-            tile_z_index.cloned().unwrap_or_default(),
-            tile_handles,
-            shader_ref,
+            tile_z_index,
+            tile_handles.as_ref(),
+            shader_ref.as_ref(),
             tile_img_size,
-            &mut tmap_map.0,
+            &mut resources.tmap_map.0,
             chunk_ent,
             chunk_pos,
             bundle.dim_ref,
-            &mut params.tilemaps,
-            &mut changed_structs,
+            &mut params.tilemap_paramset.p0(),
+            &mut locals.changed_structs,
             &mut tilemap_bundles,
             y_sort,
             &mut child_ofs_to_insert,
             to_persist,
         );
-        tile_runtime_info.insert(tile_ent, (bundle.ezero_ref, bundle.tile_bundle.texture_index));
+        locals.tile_runtime_info.insert(tile_ent, (bundle.ezero_ref, bundle.tile_bundle.texture_index));
         i += 1;
     }
+    safe_despawn_writer.write_batch(locals.safe_despawns.drain(..));
     //DEJAR CON IF NEW ASÍ TILES DE TILEMAP PUEDEN SER REPLICADAS
-    cmd.try_insert_batch_if_new(take(&mut params.collected_tiles.0));
+    cmd.try_insert_batch_if_new(take(&mut resources.collected_tiles.0));
 
     for tile_ent in spritetiles_to_remove_bundle.drain(..) {
         cmd.entity(tile_ent).try_remove::<TileBundleNoTileFlip>();
@@ -279,12 +286,12 @@ pub fn process_tiles_pre(
 
     cmd.try_insert_batch(tilemap_bundles);
 
-    let mut insert2tmaps = Vec::with_capacity(changed_structs.len());
-    let mut default_mats = Vec::with_capacity(changed_structs.len());
-    let mut terrbl_mats = Vec::with_capacity(changed_structs.len());
+    let mut insert2tmaps = Vec::with_capacity(locals.changed_structs.len());
+    let mut default_mats = Vec::with_capacity(locals.changed_structs.len());
+    let mut terrbl_mats = Vec::with_capacity(locals.changed_structs.len());
 
-    for mapkey in changed_structs.drain() {
-        let Some(mapstruct) = tmap_map.0.get_mut(&mapkey) else {
+    for mapkey in locals.changed_structs.drain() {
+        let Some(mapstruct) = resources.tmap_map.0.get_mut(&mapkey) else {
             continue;
         };
         let tmap_ent = mapstruct.tmap_ent;
@@ -302,16 +309,17 @@ pub fn process_tiles_pre(
             match shader {
                 TileShader::TerrBlend(_) => {
                     if let Some(material) = build_terrbl_material_for_map(
-                        &mut params.images,
-                        &params.tile_query,
-                        &tile_runtime_info,
+                        &mut resources.images,
+                        &tile_components.tile_ezero_ref_query,
+                        &tile_components.tile_texture_index_query,
+                        &locals.tile_runtime_info,
                         &params.ezero_terrbl_query,
                         &storage,
                         tmap_ent,
                         mapkey.tile_size,
-                        &mut terrbl_debug_budget,
+                        &mut locals.terrbl_debug_budget,
                     ) {
-                        let material = MaterialTilemapHandle::from(params.texture_overlay_mat.add(material));
+                        let material = MaterialTilemapHandle::from(resources.texture_overlay_mat.add(material));
                         terrbl_mats.push((tmap_ent, material));
                     } else {
                         error!(
@@ -338,6 +346,7 @@ pub fn process_tiles_pre(
     cmd.try_insert_batch(default_mats);
     cmd.try_insert_batch(terrbl_mats);
 }
+
 #[allow(clippy::too_many_arguments)]
 fn process_tile_into_corresponding_tilemap(
     cmd: &mut Commands,
@@ -385,6 +394,9 @@ fn process_tile_into_corresponding_tilemap(
 
     if let Some(mapstruct) = tmap_map.get_mut(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;
+        if map_key.shader_ref().is_some() {
+            cmd.entity(tmap_ent).insert(NeedsTerrblRefresh);
+        }
 
         let (tmap_handles, storage, tmap_hash_id_map) =
         if let Ok((tmap_handles, storage, tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent)
@@ -456,6 +468,9 @@ fn process_tile_into_corresponding_tilemap(
                 shader_ref.copied().unwrap_or_default(),
             ))
         );
+        if map_key.shader_ref().is_some() {
+            cmd.entity(tmap_ent).insert(NeedsTerrblRefresh);
+        }
         tilemap_id.0 = tmap_ent;
 
         let mut storage = TilemapConfig::new_storage(size_in_tiles);
@@ -470,242 +485,4 @@ fn process_tile_into_corresponding_tilemap(
             childofs.push((tile_ent, ChildOf(tmap_ent)));
         }
     }
-}
-fn build_terrbl_material_for_map(
-    images: &mut Assets<Image>,
-    tile_query: &Query<(&EntityZeroRef, &TileTextureIndex), (With<Tile>, Without<EntityZero>)>,
-    tile_runtime_info: &EntityHashMap<(EntityZeroRef, TileTextureIndex)>,
-    ezero_terrbl_query: &Query<Option<&TerrBlendParams>, With<EntityZero>>,
-    storage: &TileStorage,
-    tmap_ent: Entity,
-    tile_size_px: U16Vec2,
-    terrbl_debug_budget: &mut u32,
-) -> Option<TerrBlendMat> {
-    const MAX_TERRBL_OVERLAYS: usize = 8;
-    let width = storage.size.x;
-    let height = storage.size.y;
-    if width == 0 || height == 0 {
-        error!(
-            target: TILEMAP_SYSTEM,
-            "terrbl debug: build skipped due to zero storage size for tmap {:?} (storage: {}x{}, tile_size: {:?}, )",
-            tmap_ent,
-            width,
-            height,
-            tile_size_px,
-        );
-        return None;
-    }
-    let px_count = (width as usize) * (height as usize);
-    let mut tile_indices_data = vec![0_u8; px_count * 4];
-    let mut tile_flags_data = vec![0_u8; px_count * 4];
-    let mut tile_params_data = vec![0_u8; px_count * 16];
-    let mut tile_tint_data = vec![0_u8; px_count * 16];
-    let mut overlay_textures: Vec<Handle<Image>> = Vec::new();
-
-    for y in 0..height {
-        for x in 0..width {
-            let tile_pos = TilePos { x, y };
-            let Some(tile_ent) = storage.get(&tile_pos) else {
-                continue;
-            };
-            let (ezero_ref, base_texture_index) = if let Some((ezero_ref, base_texture_index)) =
-                tile_runtime_info.get(&tile_ent)
-            {
-                (*ezero_ref, *base_texture_index)
-            } else if let Ok((ezero_ref, base_texture_index)) = tile_query.get(tile_ent) {
-                (*ezero_ref, *base_texture_index)
-            } else {
-                if *terrbl_debug_budget > 0 {
-                    *terrbl_debug_budget -= 1;
-                    error!(
-                        target: TILEMAP_SYSTEM,
-                        "terrbl debug: missing tile runtime/query data at tile {:?} ent {:?}",
-                        tile_pos,
-                        tile_ent
-                    );
-                }
-                continue;
-            };
-            let px_i = ((y as usize) * (width as usize) + (x as usize)) * 4;
-            encode_u16(&mut tile_indices_data, px_i, base_texture_index.0 as u16);
-            let Some(params) = ezero_terrbl_query.get(ezero_ref.0).ok().flatten() else {
-                if *terrbl_debug_budget > 0 {
-                    *terrbl_debug_budget -= 1;
-                    error!(
-                        target: TILEMAP_SYSTEM,
-                        "terrbl debug: no TerrBlendParams on ezero {:?} tile {:?}",
-                        ezero_ref.0,
-                        tile_pos
-                    );
-                }
-                continue;
-            };
-            let mut flags = 0_u8;
-            flags |= 1 << 0; // has params
-            if params.blend_enabled {
-                flags |= 1 << 1;
-            }
-            if params.has_tint {
-                flags |= 1 << 3;
-            }
-            if params.has_tint_mask_target {
-                flags |= 1 << 4;
-                tile_flags_data[px_i + 1] = (params.tint_mask_target.x.clamp(0.0, 1.0) * 255.0) as u8;
-                tile_flags_data[px_i + 2] = (params.tint_mask_target.y.clamp(0.0, 1.0) * 255.0) as u8;
-                tile_flags_data[px_i + 3] = (params.tint_mask_target.z.clamp(0.0, 1.0) * 255.0) as u8;
-            } else {
-                tile_flags_data[px_i + 3] = 255;
-            }
-
-            let mut overlay_idx = 0_u16;
-            if let Some(path_holder) = params.texture_path.as_ref() {
-                let overlay_handle = params.texture_handle.clone();
-                if overlay_handle == Handle::default() {
-                    if *terrbl_debug_budget > 0 {
-                        *terrbl_debug_budget -= 1;
-                        error!(
-                            target: TILEMAP_SYSTEM,
-                            "terrbl debug: missing texture handle for '{}' at tile {:?}",
-                            path_holder.path(),
-                            tile_pos
-                        );
-                    }
-                    continue;
-                }
-                flags |= 1 << 2;
-                overlay_idx = match overlay_textures.iter().position(|h| *h == overlay_handle) {
-                    Some(i) => i as u16,
-                    None => {
-                        if overlay_textures.len() >= MAX_TERRBL_OVERLAYS {
-                            if *terrbl_debug_budget > 0 {
-                                *terrbl_debug_budget -= 1;
-                                error!(
-                                    target: TILEMAP_SYSTEM,
-                                    "terrbl debug: too many overlay textures in one terrbl map (max {}), skipping '{}' at tile {:?}",
-                                    MAX_TERRBL_OVERLAYS,
-                                    path_holder.path(),
-                                    tile_pos
-                                );
-                            }
-                            flags &= !(1 << 2);
-                            0
-                        } else {
-                            overlay_textures.push(overlay_handle);
-                            (overlay_textures.len() - 1) as u16
-                        }
-                    }
-                };
-            }
-            encode_u16(&mut tile_indices_data, px_i + 2, overlay_idx);
-            tile_flags_data[px_i] = flags;
-            if *terrbl_debug_budget > 0 {
-                *terrbl_debug_budget -= 1;
-                trace!(
-                    target: TILEMAP_SYSTEM,
-                    "terrbl debug: tile {:?} base_idx {} overlay_idx {} flags {:08b} has_params {} blend_enabled {} tex '{}'",
-                    tile_pos,
-                    base_texture_index.0,
-                    overlay_idx,
-                    flags,
-                    true,
-                    params.blend_enabled,
-                    params.texture_path.as_ref().map(ToString::to_string).unwrap_or_default()
-                );
-            }
-            encode_f32x4(
-                &mut tile_params_data,
-                px_i * 4,
-                [params.scale, params.speed, params.wavy_strength, params.priority],
-            );
-            encode_f32x4(
-                &mut tile_tint_data,
-                px_i * 4,
-                [params.tint.x, params.tint.y, params.tint.z, params.time_offset],
-            );
-        }
-    }
-    let tile_indices_map = images.add(create_image_u8(width, height, tile_indices_data));
-    let tile_flags_map = images.add(create_image_u8(width, height, tile_flags_data));
-    let tile_params_map = images.add(create_image_f32(width, height, tile_params_data));
-    let tile_tint_map = images.add(create_image_f32(width, height, tile_tint_data));
-
-    let mut mat = TerrBlendMat {
-        tile_indices_map,
-        tile_flags_map,
-        tile_params_map,
-        tile_tint_map,
-        map_size_tiles: Vec2::new(width as f32, height as f32),
-        time: 0.0,
-        ..Default::default()
-    };
-    if let Some(h) = overlay_textures.first() {
-        mat.overlay_tex_0 = h.clone();
-    }
-    if let Some(h) = overlay_textures.get(1) {
-        mat.overlay_tex_1 = h.clone();
-    }
-    if let Some(h) = overlay_textures.get(2) {
-        mat.overlay_tex_2 = h.clone();
-    }
-    if let Some(h) = overlay_textures.get(3) {
-        mat.overlay_tex_3 = h.clone();
-    }
-    if let Some(h) = overlay_textures.get(4) {
-        mat.overlay_tex_4 = h.clone();
-    }
-    if let Some(h) = overlay_textures.get(5) {
-        mat.overlay_tex_5 = h.clone();
-    }
-    if let Some(h) = overlay_textures.get(6) {
-        mat.overlay_tex_6 = h.clone();
-    }
-    if let Some(h) = overlay_textures.get(7) {
-        mat.overlay_tex_7 = h.clone();
-    }
-    Some(mat)
-}
-
-fn encode_u16(out: &mut [u8], index: usize, value: u16) {
-    out[index] = (value & 0x00FF) as u8;
-    out[index + 1] = ((value >> 8) & 0x00FF) as u8;
-}
-
-fn encode_f32x4(out: &mut [u8], index: usize, values: [f32; 4]) {
-    let mut byte_i = index;
-    for value in values {
-        let bytes = value.to_ne_bytes();
-        out[byte_i] = bytes[0];
-        out[byte_i + 1] = bytes[1];
-        out[byte_i + 2] = bytes[2];
-        out[byte_i + 3] = bytes[3];
-        byte_i += 4;
-    }
-}
-
-fn create_image_u8(width: u32, height: u32, data: Vec<u8>) -> Image {
-    Image::new(
-        Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        data,
-        TextureFormat::Rgba8Unorm,
-        RenderAssetUsages::default(),
-    )
-}
-
-fn create_image_f32(width: u32, height: u32, data: Vec<u8>) -> Image {
-    Image::new(
-        Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        data,
-        TextureFormat::Rgba32Float,
-        RenderAssetUsages::default(),
-    )
 }

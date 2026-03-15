@@ -121,14 +121,12 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
 #[derive(SystemParam)]
 pub struct EntitiesAtGposParamSet<'w> {
-    sprite_tiles_at_gpos: Res<'w, SpriteTilesAtGpos>,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
     items_at_gpos: Res<'w, ItemsAtGpos>,
 }
 
 impl<'w> EntitiesAtGposParamSet<'w> {
     pub fn gather_entities_at(&self, out: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos) {
-        out.extend(self.sprite_tiles_at_gpos.tiles_at_pos(dim_ref, gpos).iter().copied());
         out.extend(self.beings_at_gpos.beings_at_pos(dim_ref, gpos).iter().copied());
         out.extend(self.items_at_gpos.items_at_pos(dim_ref, gpos).iter().copied());
     }
