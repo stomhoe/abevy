@@ -3,7 +3,7 @@ use bevy_replicon::prelude::ClientState;
 use camera::camera_components::CameraTarget;
 use common::{common_components::{HashId, HashIdMap, StrId}, common_tag_components::HashedTagsVec};
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_samplers::MacroChunkBiomeTagDistributionMap;
+use game_common::game_common_samplers::{BiomeTagWeightAtMacroChunk, MacroChunkBiomeTagDistributionMap};
 use std::mem::take;
 
 use crate::{
@@ -748,7 +748,7 @@ fn collect_branch_outputs(
     gpos: GlobalTilePos,
     oplist_size: OplistSize,
     dimension_hash: HashId,
-    biome_tags: &[(Entity, f32)],
+    biome_tags: &[BiomeTagWeightAtMacroChunk],
     tiles: &[Entity],
 ) {
     if source_ev.filtered_op != Entity::PLACEHOLDER {

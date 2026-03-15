@@ -1,4 +1,4 @@
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
 use common::common_components::StrId;
 use game_common::{
     game_common_components::EntityZero,
@@ -30,40 +30,44 @@ pub fn init_packs(
         return;
     };
     let mut pack_by_id: HashMap<StrId, Entity> = HashMap::default();
-    let mut race_members_by_pack: EntityHashMap<EntityHashSet> = EntityHashMap::default();
-    let mut bit_members_by_pack: EntityHashMap<EntityHashSet> = EntityHashMap::default();
+    let mut being_samplers_by_pack: EntityHashMap<PackBeingSampler> = EntityHashMap::default();
+    let mut leader_priority_by_pack: EntityHashMap<PackBeingLeaderPriority> = EntityHashMap::default();
 
     for pack_seri in load_pack_seri_defs() {
         let str_id = StrId::trunc(&pack_seri.id);
         let pack_entity = cmd.spawn((Pack, EntityZero, str_id.clone())).id();
         pack_by_id.insert(str_id, pack_entity);
 
-        let race_members = race_members_by_pack
+        let being_sampler = being_samplers_by_pack
             .entry(pack_entity)
-            .or_insert_with(EntityHashSet::default);
-        for race_id in &pack_seri.race_ids {
-            let trimmed = race_id.trim();
-            if trimmed.is_empty() {
+            .or_default();
+        let leader_priority = leader_priority_by_pack
+            .entry(pack_entity)
+            .or_default();
+        for (race_id, config) in &pack_seri.race_ids {
+            let trimmed = race_id.as_str().trim();
+            let (weight, priority) = *config;
+            if trimmed.is_empty() || weight <= 0.0 {
                 continue;
             }
             let Ok(race_ent) = race_emap.0.get_cloned(trimmed) else {
                 continue;
             };
-            race_members.insert(race_ent);
+            being_sampler.insert(race_ent, weight);
+            leader_priority.insert(race_ent, priority);
         }
 
-        let bit_members = bit_members_by_pack
-            .entry(pack_entity)
-            .or_insert_with(EntityHashSet::default);
-        for bit_id in &pack_seri.bit_ids {
-            let trimmed = bit_id.trim();
-            if trimmed.is_empty() {
+        for (bit_id, config) in &pack_seri.bit_ids {
+            let trimmed = bit_id.as_str().trim();
+            let (weight, priority) = *config;
+            if trimmed.is_empty() || weight <= 0.0 {
                 continue;
             }
             let Ok(bit_ent) = bit_emap.0.get_cloned(trimmed) else {
                 continue;
             };
-            bit_members.insert(bit_ent);
+            being_sampler.insert(bit_ent, weight);
+            leader_priority.insert(bit_ent, priority);
         }
 
         if !pack_seri.behavior.trim().is_empty() {
@@ -73,7 +77,7 @@ pub fn init_packs(
 
         if !pack_seri.initial_spawn_normal_dist.is_disabled() {
             cmd.entity(pack_entity)
-                .insert(PackInitialSpawnNormalDist(CappedNormalDist::from_seri(
+                .insert(PackInitialSize(CappedNormalDist::from_seri(
                     pack_seri.initial_spawn_normal_dist.clone(),
                 )));
         }
@@ -105,10 +109,14 @@ pub fn init_packs(
             let Some(&pack_ent) = pack_by_id.get(&StrId::trunc(trimmed)) else {
                 continue;
             };
-            race_members_by_pack
+            being_samplers_by_pack
                 .entry(pack_ent)
-                .or_insert_with(EntityHashSet::default)
-                .insert(race_ent);
+                .or_default()
+                .insert(race_ent, 1.0);
+            leader_priority_by_pack
+                .entry(pack_ent)
+                .or_default()
+                .insert(race_ent, 0.0);
         }
     }
 
@@ -125,25 +133,29 @@ pub fn init_packs(
             let Some(&pack_ent) = pack_by_id.get(&StrId::trunc(trimmed)) else {
                 continue;
             };
-            bit_members_by_pack
+            being_samplers_by_pack
                 .entry(pack_ent)
-                .or_insert_with(EntityHashSet::default)
-                .insert(bit_ent);
+                .or_default()
+                .insert(bit_ent, 1.0);
+            leader_priority_by_pack
+                .entry(pack_ent)
+                .or_default()
+                .insert(bit_ent, 0.0);
         }
     }
 
-    for (pack_ent, race_members) in race_members_by_pack {
-        if race_members.is_empty() {
+    for (pack_ent, being_sampler) in being_samplers_by_pack {
+        if being_sampler.is_empty() {
             continue;
         }
         cmd.entity(pack_ent)
-            .insert(PackRaceMembers(race_members.into_iter().collect()));
+            .insert(being_sampler);
     }
-    for (pack_ent, bit_members) in bit_members_by_pack {
-        if bit_members.is_empty() {
+    for (pack_ent, leader_priority) in leader_priority_by_pack {
+        if leader_priority.is_empty() {
             continue;
         }
         cmd.entity(pack_ent)
-            .insert(PackBitMembers(bit_members.into_iter().collect()));
+            .insert(leader_priority);
     }
 }

@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use game_common::game_common_components::EntityZeroRef;
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 use modifier_shared::{modifier_components::ApplyMode, modifier_move_bundles::TempSpeedModifier};
-use tilemap::tile::tile_components::PortalTo;
+use tilemap::tile::tile_components::{PortalTo, TileFlip};
 
 pub fn cross_portal(
     mut cmd: Commands,
@@ -15,11 +15,12 @@ pub fn cross_portal(
             &GlobalTilePos,
             Option<&PortalTo>,
             Option<&EntityZeroRef>,
+            Option<&TileFlip>,
             Option<&CardinalDirection>,
         ),
         Without<Being>,
     >,
-    interaction_zones_query: Query<&InteractionZones>,
+    interaction_zones_query: Query<(&InteractionZones, &tilemap_shared::SizeInTiles)>,
     portal_arrival_sampler_query: Query<&GlobalTilePosWeightedSampler>,
     mut being_query: Query<
         (
@@ -29,13 +30,15 @@ pub fn cross_portal(
             &GlobalTransform,
             Option<&TouchingPortal>,
         ),
-        With<Being>,
-    >,
+        (
+            With<Being>,
+            Changed<GlobalTilePos>,
+        )>,
 ) {
     let mut rng = rand::rng();
     for (being_entity, mut being_dimension_ref, &being_gpos, being_globtransform, touching_portal) in being_query.iter_mut() {
         portal_query.iter().for_each(
-            |(portal0_ent, &portal0_dim, &portal0_gpos, portal_to, portal0_ezero_ref, portal0_facedir)| {
+            |(portal0_ent, &portal0_dim, &portal0_gpos, portal_to, portal0_ezero_ref, portal0_flip, portal0_facedir)| {
                 if *being_dimension_ref != portal0_dim {
                     return;
                 }
@@ -44,11 +47,13 @@ pub fn cross_portal(
                 };
 
                 let is_interacting = if let Some(ezero_ref) = portal0_ezero_ref {
-                    if let Ok(interaction_zones) = interaction_zones_query.get(ezero_ref.0) {
+                    if let Ok((interaction_zones, &size_in_tiles)) = interaction_zones_query.get(ezero_ref.0) {
                         interaction_zones.is_inside_interaction_zone(
                             InteractionZones::ENTER,
+                            size_in_tiles,
                             portal0_gpos.to_pixelpos(),
                             being_globtransform.translation().xy(),
+                            portal0_flip.copied().unwrap_or_default(),
                             portal0_facedir.copied().unwrap_or_default(),
                         )
                     } else {
@@ -74,7 +79,7 @@ pub fn cross_portal(
                         cmd.spawn((TempSpeedModifier::new(being_entity, being_entity, 0.0, ApplyMode::Max, 1.0),));
                         cmd.entity(being_entity).try_insert(TouchingPortal(portal0_ent));
 
-                        let Ok((_, &dest_dim, &dest_tile_gpos, _, dest_tile_ezero_ref, _)) = portal_query.get(portal_to.dest_tile) else {
+                        let Ok((_, &dest_dim, &dest_tile_gpos, _, dest_tile_ezero_ref, _, _)) = portal_query.get(portal_to.dest_tile) else {
                             error!("Portal entity {:?} not found in portal query", portal_to.dest_tile);
                             return;
                         };

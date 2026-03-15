@@ -104,7 +104,7 @@ pub fn apply_melee_attack(
         Option<&TileFlip>,
         Option<&CardinalDirection>,
     )>,
-    tile_receivers: Query<(Option<&InteractionZones>, Option<&TiledCollisionMask>)>,
+    tile_receivers: Query<(Option<&InteractionZones>, Option<&SizeInTiles>, Option<&TiledCollisionMask>)>,
     mut health_damage_writer: MessageWriter<HealthDamage>,
     mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
     mut health_damage_messages: Local<Vec<HealthDamage>>,
@@ -144,7 +144,13 @@ pub fn apply_melee_attack(
             if dim_ref != attacker_dim {
                 continue;
             }
-            if !melee_zone.is_inside_any(attacker_direction, attacker_pos, target_pos.to_pixelpos()) {
+            if !melee_zone.is_inside_any(
+                SizeInTiles::default(),
+                TileFlip::default(),
+                attacker_direction,
+                attacker_pos,
+                target_pos.to_pixelpos(),
+            ) {
                 continue;
             }
             for &target_entity in target_entities.iter() {
@@ -167,8 +173,10 @@ pub fn apply_melee_attack(
                     };
                     target_zones.is_inside_interaction_zone(
                         receiver,
+                        SizeInTiles::default(),
                         target_pos_px,
                         hit_point,
+                        TileFlip::default(),
                         target_direction.copied().unwrap_or_default(),
                     )
                 };
@@ -192,6 +200,8 @@ pub fn apply_melee_attack(
         );
         for &candidate_gpos in candidate_tile_gposes.iter() {
             if !melee_zone.is_inside_any(
+                SizeInTiles::default(),
+                TileFlip::default(),
                 attacker_direction,
                 attacker_pos,
                 candidate_gpos.to_pixelpos(),
@@ -207,15 +217,17 @@ pub fn apply_melee_attack(
                 else {
                     continue;
                 };
-                let Ok((target_zones, target_collision_mask)) = tile_receivers.get(tile_ezero) else {
+                let Ok((target_zones, target_size_in_tiles, target_collision_mask)) = tile_receivers.get(tile_ezero) else {
                     continue;
                 };
                 let hit_point = candidate_gpos;
                 let accepts_hit = if let Some(target_zones) = target_zones {
                     target_zones.is_inside_interaction_zone(
                         HITBOX_HASHID,
+                        target_size_in_tiles.copied().unwrap_or_default(),
                         tile_origin.to_pixelpos(),
                         hit_point.to_pixelpos(),
+                        tile_flip.copied().unwrap_or_default(),
                         tile_direction.copied().unwrap_or_default(),
                     )
                 } else {

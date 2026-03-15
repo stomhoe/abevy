@@ -2,6 +2,7 @@
 
 
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
+use game_common::game_common_samplers::BiomeTagWeightAtMacroChunk;
 
 use common::{common_components::{ StrId}, common_tag_components::TagSet};
 
@@ -161,7 +162,12 @@ pub fn init_oplists_from_assets(
                         warn!(target: "oplist_init", "Biome '{}' not found in BiomeEntityMap", bt.tag.trim());
                         return None;
                     };
-                    Some((biome_ent, bt.weight))
+                    Some(BiomeTagWeightAtMacroChunk {
+                        biome: biome_ent,
+                        weight: bt.weight,
+                        pack_count_multiplier_mean: bt.pack_count_multiplier_mean.max(0.0),
+                        pack_count_multiplier_std_dev: bt.pack_count_multiplier_std_dev.max(0.0),
+                    })
                 })
                 .collect();
             let bifurcation = Bifurcation { oplist: None, tiles, biome_tags };

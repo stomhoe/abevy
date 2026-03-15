@@ -48,13 +48,13 @@ pub fn on_control_change(
         }
         if controlled_by.client_ent == self_entity {
             info!(target: BEING_CONTROL, "debug {:?} is now computed locally by self", being_ent);
-            commands.entity(being_ent).try_insert_if_new((ComputedLocally, ActivatingChunks::new(&chunk_range)));
+            commands.entity(being_ent).try_insert_if_new((ComputedLocally, ));
             if controlled_by.human_dc_input {
                 debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget due to human input", being_ent);
-                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default()));
+                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), ActivatingChunks::new(&chunk_range)));
             } else {
                 debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
-                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled)>();
+                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, ActivatingChunks)>();
             }
         } else {
             commands.entity(being_ent).try_remove::<(ComputedLocally, CameraTarget)>();

@@ -9,7 +9,7 @@
         ("", "texture/world/portal/cave.png"),
     ],
     is_spritetile: true,
-    randflipx: true,
+    randflipx: false,
     min_distances: {
         "portal": 1000,
     },

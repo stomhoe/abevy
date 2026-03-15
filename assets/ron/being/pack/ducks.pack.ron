@@ -1,0 +1,13 @@
+(
+    id: "ducks",
+    initial_spawn_normal_dist: (min: 1.0, max: 1.0, mean: 1.0, std_dev: 0.0),
+    race_ids: {
+        "duck": (1.0, 0.6),
+    },
+    bit_ids: {},
+    biome_affinity: {
+        "beach": 1.1,
+        "temp": 0.6,
+    },
+    behavior: "",
+)

@@ -7,7 +7,7 @@ use game_common::game_common_samplers::*;
 
 use crate::being_inst_template::{being_inst_template_resources::*,
 };
-use crate::pack::pack_components::PackInitialSpawnNormalDist;
+use crate::pack::pack_components::PackInitialSize;
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
@@ -89,7 +89,7 @@ pub fn init_being_templates(
             cmd.entity(bit_entity).insert(SpriteVertNormalDist::new(vert_variation));
         }
         if let Some(spawn_pack_size_normal_dist) = template_seri.spawn_pack_size_normal_dist {
-            cmd.entity(bit_entity).insert(PackInitialSpawnNormalDist(CappedNormalDist::from_seri(
+            cmd.entity(bit_entity).insert(PackInitialSize(CappedNormalDist::from_seri(
                 spawn_pack_size_normal_dist,
             )));
         }

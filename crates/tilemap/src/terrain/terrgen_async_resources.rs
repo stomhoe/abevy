@@ -1,5 +1,6 @@
 use bevy::{prelude::*, tasks::Task};
 use common::common_components::HashId;
+use game_common::game_common_samplers::BiomeTagWeightAtMacroChunk;
 
 use crate::terrain::{
     terrprobe::terrprobe_messages::{SampledValuesCollected, SuitablePosFound, TerrProbeJob},
@@ -33,7 +34,7 @@ pub struct TerrGenTileRequest {
 pub struct TerrGenBiomeTagSample {
     pub dimension_ref: DimensionRef,
     pub macro_chunk_pos: MacroChunkPos,
-    pub biome_tags: Vec<(Entity, f32)>,
+    pub biome_tags: Vec<BiomeTagWeightAtMacroChunk>,
 }
 
 #[derive(Debug, Default)]

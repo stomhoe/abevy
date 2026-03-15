@@ -18,7 +18,7 @@ use crate::body::body_tree_components::BodyTreeDistributedTotals;
 use crate::body::BodyTreeStrIdRef;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntityMap;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
-use crate::pack::pack_components::PackInitialSpawnNormalDist;
+use crate::pack::pack_components::PackInitialSize;
 use crate::{race::{race_components::*, race_resources::*}, sex };
 use crate::being_components::{COLLISION_MASK_HASHID, HitboxReceiver};
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
@@ -207,7 +207,7 @@ pub fn init_races(
 
             let entity = entity_cmds.id();
             if !race_seri.spawn_pack_size_normal_dist.is_disabled() {
-                cmd.entity(entity).insert(PackInitialSpawnNormalDist(CappedNormalDist::from_seri(
+                cmd.entity(entity).insert(PackInitialSize(CappedNormalDist::from_seri(
                     race_seri.spawn_pack_size_normal_dist.clone(),
                 )));
             }

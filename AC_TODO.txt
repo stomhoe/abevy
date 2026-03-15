@@ -36,3 +36,6 @@ pendiente general:
 dentro de una region, hacer algoritmo de generacion de rios sin usar noisess
 
 arreglar calculo de gradiente de inlandess, hace q portales no spawnee y beaches spawneen en cualquier lugar
+
+guardar a las entities spawneadas en un macrochunk disableadas y sacarles el disabled cuando llegues a su pos.
+marcar a los animales spawneados naturalmente con un componente pra chequearlos a ver si spawnearon en una pared, desp hacer un sistema q los saca de la pared cuando cargue su chunk

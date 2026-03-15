@@ -3,6 +3,7 @@ use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_tag_components::AddSameHashedTags;
+use game_common::game_common_samplers::BiomeTagWeightAtMacroChunk;
 
 use {common::common_components::*, };
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize};
 pub struct Bifurcation{
     pub oplist: Option<Entity>,
     pub tiles: Vec<Entity>,
-    pub biome_tags: Vec<(Entity, f32)>,
+    pub biome_tags: Vec<BiomeTagWeightAtMacroChunk>,
 }
 #[derive(Component, Debug, Clone, Serialize, Deserialize)]
 #[require(Prefix::trunc("OpList"), Replicated, AssetScoped, HotReload, AddSameHashedTags)]
@@ -51,7 +52,7 @@ impl MapEntities for OperationList {
         for bifur in self.bifurcations.iter_mut() {
             bifur.oplist = bifur.oplist.map(|oplist_entity| entity_mapper.get_mapped(oplist_entity));
             bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = entity_mapper.get_mapped(*tile_entity));
-            bifur.biome_tags.iter_mut().for_each(|(biome_entity, _)| *biome_entity = entity_mapper.get_mapped(*biome_entity));
+            bifur.biome_tags.iter_mut().for_each(|biome_tag| biome_tag.biome = entity_mapper.get_mapped(biome_tag.biome));
         }
         if let Some(ast) = self.compiled_branch_ast.as_mut() {
             map_compiled_branch_entities(ast, entity_mapper);
@@ -69,7 +70,7 @@ pub struct CompiledBranchNode {
 #[derive(Debug, Clone)]
 pub struct CompiledBranch {
     pub tiles: Vec<Entity>,
-    pub biome_tags: Vec<(Entity, f32)>,
+    pub biome_tags: Vec<BiomeTagWeightAtMacroChunk>,
     pub child_size: Option<tilemap_shared::OplistSize>,
     pub child: Option<Box<CompiledBranchNode>>,
 }
@@ -136,9 +137,7 @@ fn map_compiled_branch_entities<E: EntityMapper>(
         for tile in branch.tiles.iter_mut() {
             *tile = entity_mapper.get_mapped(*tile);
         }
-        for (biome_entity, _) in branch.biome_tags.iter_mut() {
-            *biome_entity = entity_mapper.get_mapped(*biome_entity);
-        }
+        branch.biome_tags.iter_mut().for_each(|biome_tag| biome_tag.biome = entity_mapper.get_mapped(biome_tag.biome));
         if let Some(child) = branch.child.as_mut() {
             map_compiled_branch_entities(child, entity_mapper);
         }

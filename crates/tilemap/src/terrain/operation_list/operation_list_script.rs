@@ -710,46 +710,113 @@ fn parse_weighted_biome_tags(
     line_no: usize,
 ) -> Result<Vec<OpListBifBiomeTagSeri>, String> {
     let mut out = Vec::new();
-    for token in split_csv_like(input.trim_matches(|c| c == '[' || c == ']' || c == '(' || c == ')')) {
+    let mut raw = input.trim();
+    if raw.len() >= 2
+        && ((raw.starts_with('[') && raw.ends_with(']')) || (raw.starts_with('(') && raw.ends_with(')')))
+    {
+        raw = &raw[1..raw.len() - 1];
+    }
+    for token in split_csv_like(raw) {
         let token = token.trim();
         if token.is_empty() {
             continue;
         }
-        let (tag_raw, weight_raw_opt) = if let Some((left, right)) = token.split_once('=') {
-            (left, Some(right))
-        } else if let Some((left, right)) = token.split_once(':') {
-            (left, Some(right))
-        } else {
-            (token, None)
-        };
-        let tag = trim_token(tag_raw).trim();
+        let tag_end = token.find(['=', ':', '(']).unwrap_or(token.len());
+        let tag = trim_token(&token[..tag_end]).trim();
         if tag.is_empty() {
             return Err(format!("{}:{} biome tag cannot be empty", path.display(), line_no));
         }
-        let weight = if let Some(weight_raw) = weight_raw_opt {
-            let parsed = weight_raw.trim().parse::<f32>().map_err(|_| {
+
+        let mut rest = token[tag_end..].trim();
+        let mut weight = 1.0;
+        if rest.starts_with('=') || rest.starts_with(':') {
+            let delimiter_len = rest.chars().next().map(char::len_utf8).unwrap_or(0);
+            rest = rest[delimiter_len..].trim_start();
+            let weight_end = rest.find('(').unwrap_or(rest.len());
+            let weight_raw = rest[..weight_end].trim();
+            weight = weight_raw.parse::<f32>().map_err(|_| {
                 format!(
                     "{}:{} invalid biome tag weight '{}'",
                     path.display(),
                     line_no,
-                    weight_raw.trim()
+                    weight_raw
                 )
             })?;
-            if !parsed.is_finite() || parsed <= 0.0 {
+            rest = rest[weight_end..].trim_start();
+        }
+        if !weight.is_finite() || weight <= 0.0 {
+            return Err(format!(
+                "{}:{} biome tag weight must be > 0 (got {})",
+                path.display(),
+                line_no,
+                weight
+            ));
+        }
+
+        let mut pack_count_multiplier_mean = 1.0;
+        let mut pack_count_multiplier_std_dev = 0.0;
+        if !rest.is_empty() {
+            if !(rest.starts_with('(') && rest.ends_with(')')) {
                 return Err(format!(
-                    "{}:{} biome tag weight must be > 0 (got {})",
+                    "{}:{} invalid biome pack multiplier '{}'; expected '(mean,std_dev)'",
                     path.display(),
                     line_no,
-                    parsed
+                    rest
                 ));
             }
-            parsed
-        } else {
-            1.0
-        };
+            let inner = &rest[1..rest.len() - 1];
+            let mut parts = split_csv_like(inner).into_iter();
+            let Some(mean_raw) = parts.next() else {
+                return Err(format!("{}:{} biome pack multiplier mean missing", path.display(), line_no));
+            };
+            let Some(std_dev_raw) = parts.next() else {
+                return Err(format!("{}:{} biome pack multiplier std_dev missing", path.display(), line_no));
+            };
+            if parts.next().is_some() {
+                return Err(format!(
+                    "{}:{} biome pack multiplier expects exactly 2 numbers",
+                    path.display(),
+                    line_no
+                ));
+            }
+            pack_count_multiplier_mean = mean_raw.trim().parse::<f32>().map_err(|_| {
+                format!(
+                    "{}:{} invalid biome pack multiplier mean '{}'",
+                    path.display(),
+                    line_no,
+                    mean_raw.trim()
+                )
+            })?;
+            pack_count_multiplier_std_dev = std_dev_raw.trim().parse::<f32>().map_err(|_| {
+                format!(
+                    "{}:{} invalid biome pack multiplier std_dev '{}'",
+                    path.display(),
+                    line_no,
+                    std_dev_raw.trim()
+                )
+            })?;
+            if !pack_count_multiplier_mean.is_finite() || pack_count_multiplier_mean <= 0.0 {
+                return Err(format!(
+                    "{}:{} biome pack multiplier mean must be > 0 (got {})",
+                    path.display(),
+                    line_no,
+                    pack_count_multiplier_mean
+                ));
+            }
+            if !pack_count_multiplier_std_dev.is_finite() || pack_count_multiplier_std_dev < 0.0 {
+                return Err(format!(
+                    "{}:{} biome pack multiplier std_dev must be >= 0 (got {})",
+                    path.display(),
+                    line_no,
+                    pack_count_multiplier_std_dev
+                ));
+            }
+        }
         out.push(OpListBifBiomeTagSeri {
             tag: tag.to_string(),
             weight,
+            pack_count_multiplier_mean,
+            pack_count_multiplier_std_dev,
         });
     }
     Ok(out)

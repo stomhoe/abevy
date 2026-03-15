@@ -1,6 +1,5 @@
 
 use bevy::{ecs::entity::{EntityHashMap, MapEntities}, platform::collections::HashMap, prelude::*};
-use common::common_id_components::HashId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use::tilemap_shared::*;
 use crate::game_common_seris::NormalDistSeri;
@@ -200,36 +199,94 @@ define_weightedsampler_impl!(GlobalTilePosWeightedSampler, GlobalTilePos);
 
 define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub struct BiomeTagWeightAtMacroChunk {
+    pub biome: Entity,
+    pub weight: f32,
+    pub pack_count_multiplier_mean: f32,
+    pub pack_count_multiplier_std_dev: f32,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BiomePackCountMultiplierStats {
+    pub mean_sum: f32,
+    pub std_dev_sum: f32,
+    pub samples: u32,
+}
+impl BiomePackCountMultiplierStats {
+    pub fn add_sample(&mut self, mean: f32, std_dev: f32) {
+        self.mean_sum += mean;
+        self.std_dev_sum += std_dev.max(0.0);
+        self.samples = self.samples.saturating_add(1);
+    }
+
+    pub fn averaged_mean(&self) -> f32 {
+        if self.samples == 0 {
+            return 1.0;
+        }
+        self.mean_sum / self.samples as f32
+    }
+
+    pub fn averaged_std_dev(&self) -> f32 {
+        if self.samples == 0 {
+            return 0.0;
+        }
+        self.std_dev_sum / self.samples as f32
+    }
+}
+
 #[derive(Debug, Clone, Default)]
-pub struct BiomeTagDistributionAtTimeout(pub EntityWeightedSampler);
+pub struct BiomeTagDistributionAtTimeout {
+    pub biome_sampler: EntityWeightedSampler,
+    pub pack_count_multiplier_stats: EntityHashMap<BiomePackCountMultiplierStats>,
+}
+impl BiomeTagDistributionAtTimeout {
+    pub fn averaged_pack_count_multiplier_stats(&self, biome: Entity) -> BiomePackCountMultiplierStats {
+        self.pack_count_multiplier_stats.get(&biome).copied().unwrap_or(BiomePackCountMultiplierStats {
+            mean_sum: 1.0,
+            std_dev_sum: 0.0,
+            samples: 1,
+        })
+    }
+}
 
 #[derive(Resource, Debug, Default)]
 pub struct MacroChunkBiomeTagDistributionMap(pub HashMap<(DimensionRef, MacroChunkPos), BiomeTagDistributionAtTimeout>);
 impl MacroChunkBiomeTagDistributionMap {
     pub fn add_tag_weights<I>(&mut self, dim_ref: DimensionRef, chunk_pos: MacroChunkPos, tag_weights: I)
     where
-        I: IntoIterator<Item = (Entity, f32)>,
+        I: IntoIterator<Item = BiomeTagWeightAtMacroChunk>,
     {
         let dist = self.0.entry((dim_ref, chunk_pos)).or_default();
         let mut changed = false;
-        for (tag, weight) in tag_weights {
+        for tag_weight in tag_weights {
+            let tag = tag_weight.biome;
+            let weight = tag_weight.weight;
             if !weight.is_finite() || weight <= 0.0 {
                 continue;
             }
             changed = true;
+            dist
+                .pack_count_multiplier_stats
+                .entry(tag)
+                .or_default()
+                .add_sample(
+                    tag_weight.pack_count_multiplier_mean,
+                    tag_weight.pack_count_multiplier_std_dev,
+                );
             let Some((_, accumulated_weight)) = dist
-                .0
+                .biome_sampler
                 .weights
                 .iter_mut()
                 .find(|(existing_tag, _)| *existing_tag == tag)
             else {
-                dist.0.weights.push((tag, weight));
+                dist.biome_sampler.weights.push((tag, weight));
                 continue;
             };
             *accumulated_weight += weight;
         }
         if changed {
-            rebuild_entity_weighted_sampler(&mut dist.0);
+            rebuild_entity_weighted_sampler(&mut dist.biome_sampler);
         }
     }
 }
@@ -292,7 +349,7 @@ impl CappedNormalDist {
         let mut min = min.max(0.01);
         let mut max = max.max(0.01);
         let mut mean = mean;
-        let std_dev = std_dev.max(0.01);
+        let std_dev = std_dev.max(0.0);
         if min > max {
             error!(
                 "CappedNormalDist: min ({}) is greater than max ({}). Swapping values.",
@@ -320,6 +377,10 @@ impl CappedNormalDist {
 
     pub fn sample(&self, rng: &mut impl rand::Rng) -> f32 {
         use rand_distr::{Normal, Distribution};
+
+        if self.std_dev == 0.0 || self.min == self.max {
+            return self.mean.clamp(self.min, self.max);
+        }
 
         let normal = match Normal::new(self.mean, self.std_dev) {
             Ok(dist) => dist,

@@ -26,6 +26,11 @@ pub struct OpListBifBiomeTagSeri {
     pub tag: String,
     #[serde(default = "default_biome_tag_weight")]
     pub weight: f32,
+    #[serde(default = "default_pack_count_multiplier_mean")]
+    pub pack_count_multiplier_mean: f32,
+    #[serde(default)]
+    pub pack_count_multiplier_std_dev: f32,
 }
 
 fn default_biome_tag_weight() -> f32 { 1.0 }
+fn default_pack_count_multiplier_mean() -> f32 { 1.0 }

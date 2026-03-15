@@ -216,12 +216,14 @@ impl InteractionZones {
     pub fn is_inside_interaction_zone(
         &self,
         zone_id: HashId,
+        size_in_tiles: SizeInTiles,
         anchor_transf: Vec2,
         client_transf: Vec2,
+        flip: TileFlip,
         direction: CardinalDirection,
     ) -> bool {
         let zone = self.0.get(zone_id).ok();
-        zone.is_some_and(|zone| zone.is_inside_any(direction, anchor_transf, client_transf))
+        zone.is_some_and(|zone| zone.is_inside_any(size_in_tiles, flip, direction, anchor_transf, client_transf))
     }
     pub const ENTER: HashId = HashId::hash("enter");
     pub const MELEE: HashId = HashId::hash("melee");
@@ -254,6 +256,8 @@ impl InteractionZone {
 
     pub fn is_inside_any(
         &self,
+        size_in_tiles: SizeInTiles,
+        flip: TileFlip,
         direction: CardinalDirection,
         anchor_transf: Vec2,
         client_transf: Vec2,
@@ -261,13 +265,13 @@ impl InteractionZone {
         for &offset_pos in &self.offset_positions {
             let anchor_gpos: GlobalTilePos = anchor_transf.into();
             let client_pos: GlobalTilePos = client_transf.into();
-            let checked_pos = anchor_gpos + rotate_gpos_offset(offset_pos, direction);
+            let checked_pos = anchor_gpos + transform_gpos_offset(offset_pos, size_in_tiles, flip, direction);
             if checked_pos == client_pos {
                 return true;
             }
         }
         for &(radius, offset) in &self.radius_paired_w_offsets {
-            let pos = anchor_transf + rotate_vec2_offset(offset, direction);
+            let pos = anchor_transf + transform_vec2_offset(offset, size_in_tiles, flip, direction);
             if pos.distance(client_transf) <= radius {
                 return true;
             }
@@ -308,9 +312,9 @@ fn rotate_gpos_offset(offset: GlobalTilePos, direction: CardinalDirection) -> Gl
     let x = offset.0.x;
     let y = offset.0.y;
     match direction {
-        CardinalDirection::South => GlobalTilePos::new(-x, -y),
+        CardinalDirection::South => offset,
         CardinalDirection::West => GlobalTilePos::new(-y, x),
-        CardinalDirection::North => offset,
+        CardinalDirection::North => GlobalTilePos::new(-x, -y),
         CardinalDirection::East => GlobalTilePos::new(y, -x),
     }
 }
@@ -319,9 +323,52 @@ fn rotate_vec2_offset(offset: Vec2, direction: CardinalDirection) -> Vec2 {
     let x = offset.x;
     let y = offset.y;
     match direction {
-        CardinalDirection::South => Vec2::new(-x, -y),
+        CardinalDirection::South => offset,
         CardinalDirection::West => Vec2::new(-y, x),
-        CardinalDirection::North => offset,
+        CardinalDirection::North => Vec2::new(-x, -y),
         CardinalDirection::East => Vec2::new(y, -x),
     }
+}
+
+fn transform_gpos_offset(
+    offset: GlobalTilePos,
+    size_in_tiles: SizeInTiles,
+    flip: TileFlip,
+    direction: CardinalDirection,
+) -> GlobalTilePos {
+    let mut transformed = offset;
+    let mut size = size_in_tiles.inner().as_ivec2();
+    if flip.d {
+        transformed.0 = IVec2::new(transformed.0.y, transformed.0.x);
+        size = IVec2::new(size.y, size.x);
+    }
+    if flip.x {
+        transformed.0.x = size.x - 1 - transformed.0.x;
+    }
+    if flip.y {
+        transformed.0.y = size.y - 1 - transformed.0.y;
+    }
+    rotate_gpos_offset(transformed, direction)
+}
+
+fn transform_vec2_offset(
+    offset: Vec2,
+    size_in_tiles: SizeInTiles,
+    flip: TileFlip,
+    direction: CardinalDirection,
+) -> Vec2 {
+    let tile_span = (size_in_tiles.to_pixel_size() - GlobalTilePos::TILE_SIZE_PXS.as_vec2()).max(Vec2::ZERO);
+    let mut transformed = offset;
+    let mut span = tile_span;
+    if flip.d {
+        transformed = Vec2::new(transformed.y, transformed.x);
+        span = Vec2::new(span.y, span.x);
+    }
+    if flip.x {
+        transformed.x = span.x - transformed.x;
+    }
+    if flip.y {
+        transformed.y = span.y - transformed.y;
+    }
+    rotate_vec2_offset(transformed, direction)
 }

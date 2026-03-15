@@ -9,7 +9,9 @@ being = { path = "../being" }
 being_shared = { path = "../being_shared" }
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
+param_sets = { path = "../param_sets" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 rand = { workspace = true }
+rand_distr = { workspace = true }
 bevy_replicon = { workspace = true }
