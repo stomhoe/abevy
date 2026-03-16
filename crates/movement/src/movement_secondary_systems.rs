@@ -1,4 +1,4 @@
-use bevy::ecs::entity::EntityHashMap;
+use bevy::ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
@@ -19,30 +19,36 @@ pub const INPUT_DEADZONE: f32 = 0.2;
 
 pub fn add_movement_components_to_beings(
     mut commands: Commands,
-    beings: Query<Entity, Added<Being>>,
+    added_beings: Query<Entity, Added<Being>>,
+    beings: Query<(), With<Being>>,
+    mut removed_disabled: RemovedComponents<Disabled>,
+    mut beings_to_update: Local<EntityHashSet>,
 ) {
-    for being_ent in beings.iter() {
+    beings_to_update.reserve(removed_disabled.len() + added_beings.iter().size_hint().0);
+    beings_to_update.extend(removed_disabled.read());
+    beings_to_update.extend(added_beings.iter());
+    let mut rng = rand::rng();
+
+    for being_ent in beings_to_update.drain() {
+        if beings.get(being_ent).is_err() {
+            continue;
+        }
         commands.entity(being_ent).try_insert_if_new((
-            InputMoveDir::default(),
-            NormMoveDir::default(),
-            SpeedMagnitude::default(),
             Replicated,
-            MoveAnimActive::default(),
             Grounding::default(),
             Visibility::default(),
-            CardinalDirection::default(),
+            CardinalDirection::random(&mut rng),
             AppliedModifiers::default(),
-            Prefix::trunc("Being"),
-            DimensionStrIdRef::overworld_fallback(),
+
             AssetScoped,
-            GlobalTilePos::default(),
             GridLockedMovement::default(),
         ));
     }
 }
+
 #[allow(unused_parens, )]
 pub fn update_facing_dir(
-    mut query: Query<(Entity, &NormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
+    mut query: Query<(Entity, &FinalNormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
     mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
     mut messages: Local<HashSet<MatchHeldSpritesAnimStateToBeingState>>,
 ) {
@@ -55,7 +61,7 @@ pub fn update_facing_dir(
                     Some(glm.step_dir)
                 }
             })
-            .unwrap_or_else(|| InputMoveDir(norm_move_dir.0).normalize_to_axis_dir());
+            .unwrap_or_else(|| norm_move_dir.normalize_to_axis_dir());
         let next = if dir == IVec2::ZERO {
             *facing_dir
         } else {
@@ -70,7 +76,7 @@ pub fn update_facing_dir(
     writer.write_batch(messages.drain());
 }
 #[allow(unused_parens, )]
-pub fn copy_player_move_input_to_beings(
+pub fn copy_client_move_input_to_controlled_beings(
     move_action_query: Query<&Action<DcWasdAction>>,
     player_query: Query<(&Actions<BeingDirectControlInputContext>, &ComputedBeings), (With<Mine>, With<Player>)>,
     mut beings: Query<(&ComputedBy, &mut InputMoveDir), (LocalHumanControlled)>,
@@ -84,14 +90,14 @@ pub fn copy_player_move_input_to_beings(
         let Some(move_action) = move_action_query.iter_many(actions).next() else {
             error_once!(
                 target: MOVEMENT_SYSTEM,
-                "copy_player_move_input_to_beings: Mine+Player entity missing linked Action<BeingMoveAction>"
+                "copy_client_move_input_to_controlled_beings: Mine+Player entity missing linked Action<BeingMoveAction>"
             );
             continue;
         };
         let vec = if move_action.length() <= INPUT_DEADZONE {
             Vec2::ZERO
         } else {
-            InputMoveDir(move_action.normalize()).normalize_to_axis_dir().as_vec2()
+            FinalNormMoveDir(move_action.normalize()).normalize_to_axis_dir().as_vec2()
         };
         for &being_ent in computed_beings.being_ents() {
             let Ok((computed_by, mut input_move_dir)) = beings.get_mut(being_ent) else {
@@ -108,7 +114,7 @@ pub fn copy_player_move_input_to_beings(
     if !found_player {
         error!(
             target: MOVEMENT_SYSTEM,
-            "copy_player_move_input_to_beings: no Mine+Player entity with Actions<BeingInputContext> found"
+            "copy_client_move_input_to_controlled_beings: no Mine+Player entity with Actions<BeingInputContext> found"
         );
     }
 }

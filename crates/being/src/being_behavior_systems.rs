@@ -9,11 +9,12 @@ use ::being_shared::{ComputedBy, Hunger, Predator, PredatorHuntThreshold};
 use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks};
 #[allow(unused_imports)]
 use bevy::{
-    ecs::entity::EntityHashMap,
+    ecs::{entity::EntityHashMap, entity::EntityHashSet, entity_disabling::Disabled},
     platform::collections::{HashMap, HashSet},
     prelude::*,
 };
 use bevy_northstar::prelude::*;
+use common::AnyDisabling;
 use common::common_components::StrId;
 use common::common_tag_components::TagSet;
 use movement::movement_components::InputMoveDir;
@@ -133,16 +134,25 @@ pub fn add_predator_behavior_components(
 
 pub fn sync_predator_config_from_sources(
     mut commands: Commands,
+    changed_beings: Query<Entity, (With<Being>, Or<(Changed<BitRef>, Changed<RaceRef>)>)>,
     beings: Query<
-        (Entity, Option<&BitRef>, Option<&RaceRef>),
-        (With<Being>, Or<(Changed<BitRef>, Changed<RaceRef>)>),
+        (Option<&BitRef>, Option<&RaceRef>),
+        (With<Being>, AnyDisabling),
     >,
     bit_pred_cfg: Query<&Predator>,
     race_pred_cfg: Query<&Predator>,
     bit_cfg: Query<&PredatorHuntThreshold>,
     race_cfg: Query<&PredatorHuntThreshold>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
-    for (being_ent, bit_ref, race_ref) in beings.iter() {
+    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
+    let mut beings_to_sync = reenabled_beings;
+    beings_to_sync.extend(changed_beings.iter());
+
+    for being_ent in beings_to_sync {
+        let Ok((bit_ref, race_ref)) = beings.get(being_ent) else {
+            continue;
+        };
         let bit_predator = bit_ref.and_then(|r| bit_pred_cfg.get(r.0).ok()).cloned();
         let race_predator = race_ref.and_then(|r| race_pred_cfg.get(r.0).ok()).cloned();
         let bit_threshold = bit_ref.and_then(|r| bit_cfg.get(r.0).ok()).copied();
@@ -154,6 +164,12 @@ pub fn sync_predator_config_from_sources(
         let predator = bit_predator.or(race_predator).unwrap_or_default();
         commands.entity(being_ent).try_insert((predator, chosen));
     }
+}
+
+fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>) -> EntityHashSet {
+    let mut entities = EntityHashSet::default();
+    entities.extend(removed_disabled.read());
+    entities
 }
 
 pub fn tick_hunger(time: Res<Time>, mut query: Query<&mut Hunger>) {
@@ -170,7 +186,7 @@ pub fn sync_ai_nav_grids(
     time: Res<Time>,
     loaded_chunks: Res<LoadedChunks>,
     chunk_range: Res<AaChunkRangeSettings>,
-    param_set: BlockingTileParamSet,
+    mut param_set: BlockingTileParamSet,
     chasers_query: Query<
         (
             &GlobalTilePos,
@@ -182,7 +198,6 @@ pub fn sync_ai_nav_grids(
     >,
     beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
     mut grids: ResMut<AiNavGrids>,
-    mut to_drain: Local<Vec<Entity>>,
 ) {
     let mut needed_dims: HashSet<Entity> = HashSet::default();
     let mut dim_centers: HashMap<Entity, IVec2> = HashMap::default();
@@ -270,7 +285,6 @@ pub fn sync_ai_nav_grids(
                 for x in 0..width {
                     let world = GlobalTilePos(min_tile + IVec2::new(x as i32, y as i32));
                     if param_set.is_blocked_at_tiles_only(
-                        &mut to_drain,
                         ::tilemap_shared::DimensionRef(dim),
                         world,
                         Entity::PLACEHOLDER,
@@ -554,7 +568,7 @@ pub fn chase_behavior(
 
 pub fn wander_behavior(
     time: Res<Time>,
-    blocking_tiles: BlockingTileParamSet,
+    mut blocking_tiles: BlockingTileParamSet,
     mut beings: Query<
         (
             Entity,
@@ -566,7 +580,6 @@ pub fn wander_behavior(
     >,
     race_wander_cfg_query: Query<&WanderConfig>,
     mut wander_states: Local<HashMap<Entity, WanderState>>,
-    mut to_drain: Local<Vec<Entity>>,
     mut input_dirs: Query<&mut InputMoveDir>,
 ) {
     let mut rng = rand::rng();
@@ -601,7 +614,7 @@ pub fn wander_behavior(
                 IVec2::new(0, input_dir.y.signum() as i32)
             };
             let next = GlobalTilePos(gpos.0 + step);
-            if blocking_tiles.has_tagset_at(&mut to_drain, dim_ref, next, &cfg.avoid_tile_tags) {
+            if blocking_tiles.has_tagset_at(dim_ref, next, &cfg.avoid_tile_tags) {
                 input_dir = Vec2::ZERO;
             }
         }

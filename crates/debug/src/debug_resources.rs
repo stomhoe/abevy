@@ -10,6 +10,7 @@ pub struct DubugWindowsVisibility{
     pub states: bool,
     pub main_menu: bool,
     pub chunks_list: bool,
+    pub macrochunks_grid: bool,
     pub regions_list: bool,
     pub beings_list: bool,
     pub players_list: bool,
@@ -40,6 +41,7 @@ impl Default for DubugWindowsVisibility {
             states: false,
             main_menu: true,
             chunks_list: false,
+            macrochunks_grid: false,
             regions_list: false,
             beings_list: false,
             players_list: false,
@@ -70,6 +72,7 @@ impl Default for DubugWindowsVisibility {
 pub struct DebugSelectedEntities {
     pub selected_regions: EntityHashSet,
     pub selected_chunks: EntityHashSet,
+    pub selected_macrochunk: Option<Entity>,
     pub selected_portals: EntityHashSet,
     pub selected_operationlist: Option<Entity>,
     pub selected_noise: Option<Entity>,
@@ -95,6 +98,7 @@ impl Default for DebugSelectedEntities {
         Self {
             selected_regions: EntityHashSet::default(),
             selected_chunks: EntityHashSet::default(),
+            selected_macrochunk: None,
             selected_portals: EntityHashSet::default(),
             selected_operationlist: None,
             selected_noise: None,
@@ -129,16 +133,20 @@ pub struct WorldTileClickInspectorState {
 #[derive(Resource)]
 pub struct DebugChunkingUiState {
     pub follow_camera_chunk: bool,
+    pub follow_camera_macrochunk: bool,
     pub open_tilemap_type: Option<String>,
     pub chunk_details_open_nonce: u64,
+    pub selected_macrochunk_chunk: Option<tilemap_shared::ChunkPos>,
 }
 
 impl Default for DebugChunkingUiState {
     fn default() -> Self {
         Self {
             follow_camera_chunk: true,
+            follow_camera_macrochunk: true,
             open_tilemap_type: None,
             chunk_details_open_nonce: 0,
+            selected_macrochunk_chunk: None,
         }
     }
 }

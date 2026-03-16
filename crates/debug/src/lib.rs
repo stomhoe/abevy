@@ -3,6 +3,7 @@ pub use debug::*;
 pub mod debug;
 mod debug_window_systems;
 mod debug_chunking_window;
+mod macrochunks_grid_window;
 mod tile_details_inspector;
 mod chunk_details_inspector;
 mod region_details_inspector;
@@ -27,6 +28,7 @@ mod debug_fonts;
 mod debug_messages;
 mod gpos_maps_window;
 mod world_tile_click_picker_window;
+mod debug_ui_helpers;
 
 
 
@@ -36,6 +38,7 @@ pub mod prelude {
         debug::*,
         debug_window_systems::*,
         debug_chunking_window::*,
+        macrochunks_grid_window::*,
         tile_details_inspector::*,
         chunk_details_inspector::*,
         region_details_inspector::*,

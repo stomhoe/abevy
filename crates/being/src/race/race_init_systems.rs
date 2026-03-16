@@ -3,12 +3,14 @@ use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_id_components::{HashId, HashIdMap};
+use common::common_tag_components::TagSet;
 use game_common::game_common_components::EntityZero;
 use game_common::game_common_samplers::*;
 use game_common::game_common_string_components::*;
 use common::common_components::SampleSpriteEnts;
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
 use tilemap::terrain::biome::{biome_components::BiomePackSampler, biome_resources::BiomeEntityMap};
+use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
 
 use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeEntityMap;
@@ -235,7 +237,7 @@ pub fn init_races(
                         pack_size_min: pack_min,
                         pack_size_max: pack_max,
                         do_not_hunt_tags: common::common_tag_components::TagSet::new(&race_seri.predator_dont_hunt),
-                        prey_body_size_ratio_tolerance: race_seri.predator_prey_body_size_ratio_tolerance,
+                        prey_body_size_ratio_tolerance: race_seri.predator_prey_kg_ratio_over_us_tolerance,
                     },
                     PredatorHuntThreshold(race_seri.predator_hunt_threshold),
                 ));
@@ -253,6 +255,12 @@ pub fn init_races(
                     speed_max: wander_cfg.speed_max.max(wander_cfg.speed_min.max(0.0)),
                     avoid_tile_tags: common::common_tag_components::TagSet::new(&wander_cfg.avoid),
                 });
+            }
+            if !race_seri.whitelisted_spawn_tile_tags.is_empty() {
+                cmd.entity(entity).insert(WhitelistedSpawnTileTags(TagSet::new(&race_seri.whitelisted_spawn_tile_tags)));
+            }
+            if !race_seri.blacklisted_spawn_tile_tags.is_empty() {
+                cmd.entity(entity).insert(BlacklistedSpawnTileTags(TagSet::new(&race_seri.blacklisted_spawn_tile_tags)));
             }
 
             if !race_seri.sexes.is_empty() {

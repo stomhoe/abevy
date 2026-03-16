@@ -1,7 +1,10 @@
 use ::sprite_shared::*;
 use being_shared::BeingInstTemplate;
 #[allow(unused_imports)]
-use bevy::prelude::*;
+use bevy::{
+    ecs::{entity::EntityHashSet, entity_disabling::Disabled},
+    prelude::*,
+};
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
@@ -13,12 +16,20 @@ use crate::{sprite_components::*, sprite_resources::*};
 #[allow(unused_parens)]
 pub fn add_spritechildren_and_comps(
     mut cmd: Commands,
-    father_query: Query<
-        (Entity, &ScsToBuild, Option<&BaseHolderRef>),
+    changed_fathers: Query<
+        Entity,
         (
             Without<SpriteConfig>,
             Without<BeingInstTemplate>,
             Changed<ScsToBuild>,
+        ),
+    >,
+    father_query: Query<
+        (&ScsToBuild, Option<&BaseHolderRef>),
+        (
+            Without<SpriteConfig>,
+            Without<BeingInstTemplate>,
+            common::AnyDisabling,
         ),
     >,
     spritecfgs_query: Query<
@@ -27,16 +38,24 @@ pub fn add_spritechildren_and_comps(
     >,
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
     sprite_config_ref_query: Query<&EntityZeroRef, common::AnyDisabling>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
-    father_query.iter().for_each(|(parent_of_sprite, to_build, baseholder_ref)| {
+    let reenabled_fathers = collect_reenabled_entities(&mut removed_disabled);
+    let mut fathers_to_build = reenabled_fathers.clone();
+    fathers_to_build.extend(changed_fathers.iter());
+
+    fathers_to_build.into_iter().for_each(|parent_of_sprite| {
+        let Ok((to_build, baseholder_ref)) = father_query.get(parent_of_sprite) else {
+            return;
+        };
+        let baseholder_ref = baseholder_ref.cloned().unwrap_or(BaseHolderRef { base: parent_of_sprite });
+        let is_reenabled_only = reenabled_fathers.contains(&parent_of_sprite) && changed_fathers.get(parent_of_sprite).is_err();
+        if is_reenabled_only && !needs_sprite_build(to_build, &baseholder_ref, &held_sprites_query, &sprite_config_ref_query) {
+            return;
+        }
         spritecfgs_query.iter_many(to_build.0.iter()).for_each(|(spritecfg_ent, str_id, extra_to_build)| {
             info!(target: "sprite_building", "Building sprite {}", str_id);
 
-            let baseholder_ref = if let Some(baseholder_ref) = baseholder_ref {
-                baseholder_ref.clone()
-            } else {
-                BaseHolderRef{ base: parent_of_sprite }
-            };
             if let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) {
                 for &sprite_ent in held_sprites.entities() {
                     if let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) {
@@ -101,18 +120,26 @@ pub fn remap_broken_sprite_config_refs_after_hotreload(
 #[allow(unused_parens)]
 pub fn become_child_of_sprite_with_tag(
     mut cmd: Commands,
+    changed_new_sprites: Query<Entity, (Without<SpriteConfig>, Changed<EntityZeroRef>)>,
     new_sprites: Query<
-        (Entity, &BaseHolderRef, &EntityZeroRef),
-        (Without<SpriteConfig>, Changed<EntityZeroRef>),
+        (&BaseHolderRef, &EntityZeroRef),
+        (Without<SpriteConfig>, common::AnyDisabling),
     >,
     sprite_holder: Query<&HeldSprites>,
     other_sprites: Query<(Entity, &EntityZeroRef), (Without<SpriteConfig>,)>,
     becomes_query: Query<(&BecomeChildOfSpriteWithTag), (common::AnyDisabling)>,
     other_cats: Query<&TagSet, (common::AnyDisabling)>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
+    let reenabled_sprites = collect_reenabled_entities(&mut removed_disabled);
+    let mut sprites_to_process = reenabled_sprites;
+    sprites_to_process.extend(changed_new_sprites.iter());
     let mut childofs_to_add = Vec::new();
 
-    for (new_ent, &sprite_holder_ref, &new_sprite_cfg_ref) in new_sprites.iter() {
+    for new_ent in sprites_to_process {
+        let Ok((&sprite_holder_ref, &new_sprite_cfg_ref)) = new_sprites.get(new_ent) else {
+            continue;
+        };
         let Ok(becomes_child_of_sprite_with_cat) = becomes_query.get(new_sprite_cfg_ref.0) else {
             continue;
         };
@@ -141,4 +168,31 @@ pub fn become_child_of_sprite_with_tag(
         }
     }
     cmd.try_insert_batch(childofs_to_add);
+}
+
+fn needs_sprite_build(
+    to_build: &ScsToBuild,
+    baseholder_ref: &BaseHolderRef,
+    held_sprites_query: &Query<&HeldSprites, common::AnyDisabling>,
+    sprite_config_ref_query: &Query<&EntityZeroRef, common::AnyDisabling>,
+) -> bool {
+    let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) else {
+        return true;
+    };
+
+    let mut built_cfgs = EntityHashSet::with_capacity(held_sprites.entities().len());
+    for &sprite_ent in held_sprites.entities() {
+        let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) else {
+            continue;
+        };
+        built_cfgs.insert(sprite_cfg_ref.0);
+    }
+
+    to_build.0.iter().any(|cfg_ent| !built_cfgs.contains(cfg_ent))
+}
+
+fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>) -> EntityHashSet {
+    let mut entities = EntityHashSet::default();
+    entities.extend(removed_disabled.read());
+    entities
 }

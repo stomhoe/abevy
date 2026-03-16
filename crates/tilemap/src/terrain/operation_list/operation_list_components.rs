@@ -3,10 +3,10 @@ use bevy::ecs::entity::MapEntities;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_tag_components::AddSameHashedTags;
-use game_common::game_common_samplers::BiomeTagWeightAtMacroChunk;
 
 use {common::common_components::*, };
 use serde::{Deserialize, Serialize};
+use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacroChunk;
 
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 
 use crate::terrain::{
     terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_messages::TerrProbeJob},
-    terrgen_messages::PendingOp,
+    terrgen_messages::{PendingOp, PendingOpInput, PendingOpPurpose, PendingOpValueProbe},
 };
 use ::tilemap_shared::*;
 
@@ -32,13 +32,17 @@ pub fn process_concentric_pattern(
         if radius <= 0.0 {
             new_pending_ops.push(PendingOp {
                 oplist: root_oplist,
-                dimension_ref: pos_search.dimension_ref,
-                gpos: pos_search.search_start_pos,
-                filtered_op: templ.opfilter_ref.0,
-                requester: pos_search.requester,
-                max_emitted_results: templ.max_emitted_results,
-                mark_last_success_in_batch: false,
-                matrix_spec: None,
+                input: PendingOpInput {
+                    dimension_ref: pos_search.dimension_ref,
+                    gpos: pos_search.search_start_pos,
+                },
+                purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
+                    filtered_op: templ.opfilter_ref.0,
+                    requester: pos_search.requester,
+                    max_emitted_results: templ.max_emitted_results,
+                    mark_last_success_in_batch: false,
+                    matrix_spec: None,
+                }),
             });
             continue;
         }
@@ -49,17 +53,21 @@ pub fn process_concentric_pattern(
             let angle = 2.0 * PI * sample_i as f32 / sample_count as f32;
             new_pending_ops.push(PendingOp {
                 oplist: root_oplist,
-                dimension_ref: pos_search.dimension_ref,
-                gpos: pos_search.search_start_pos
-                    + GlobalTilePos::from(IVec2::new(
-                        (radius * angle.cos()) as i32,
-                        (radius * angle.sin()) as i32,
-                    )),
-                filtered_op: templ.opfilter_ref.0,
-                requester: pos_search.requester,
-                max_emitted_results: templ.max_emitted_results,
-                mark_last_success_in_batch: false,
-                matrix_spec: None,
+                input: PendingOpInput {
+                    dimension_ref: pos_search.dimension_ref,
+                    gpos: pos_search.search_start_pos
+                        + GlobalTilePos::from(IVec2::new(
+                            (radius * angle.cos()) as i32,
+                            (radius * angle.sin()) as i32,
+                        )),
+                },
+                purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
+                    filtered_op: templ.opfilter_ref.0,
+                    requester: pos_search.requester,
+                    max_emitted_results: templ.max_emitted_results,
+                    mark_last_success_in_batch: false,
+                    matrix_spec: None,
+                }),
             });
         }
     }

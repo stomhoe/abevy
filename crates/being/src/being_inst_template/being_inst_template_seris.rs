@@ -39,6 +39,14 @@ pub struct BitSeri {
     pub belongs_to_packs: Vec<String>,
     #[serde(default)]
     pub biome_affinity: HashMap<String, f32>,
+
+    #[serde(default)]
+    //if empty, can spawn on any tile. if nonempty, can only spawn on tiles with at least one of these tags
+    pub whitelisted_spawn_tile_tags: HashSet<String>,
+
+    #[serde(default)]
+    //if empty, can spawn on any tile. if nonempty, cannot spawn on tiles with any of these tags, except if they are also in the whitelist, in which case the whitelist takes priority and the tags in this blacklist are ignored.
+    pub blacklisted_spawn_tile_tags: HashSet<String>,
 }
 
 fn default_multiplier() -> f32 { 1.0 }

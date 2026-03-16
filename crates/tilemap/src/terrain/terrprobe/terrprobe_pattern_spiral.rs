@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::terrain::{
     terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_messages::TerrProbeJob},
-    terrgen_messages::PendingOp,
+    terrgen_messages::{PendingOp, PendingOpInput, PendingOpPurpose, PendingOpValueProbe},
 };
 use ::tilemap_shared::*;
 
@@ -27,14 +27,18 @@ pub fn process_spiral_pattern(
     for _ in 0..templ.iterations_per_batch {
         pos = pos + GlobalTilePos(dir_vec.saturating_mul(IVec2::splat(templ.step_size as i32)));
         new_pending_ops.push(PendingOp {
-            dimension_ref: pos_search.dimension_ref,
             oplist: root_oplist,
-            gpos: pos,
-            filtered_op: templ.opfilter_ref.0,
-            requester: pos_search.requester,
-            max_emitted_results: templ.max_emitted_results,
-            mark_last_success_in_batch: false,
-            matrix_spec: None,
+            input: PendingOpInput {
+                dimension_ref: pos_search.dimension_ref,
+                gpos: pos,
+            },
+            purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
+                filtered_op: templ.opfilter_ref.0,
+                requester: pos_search.requester,
+                max_emitted_results: templ.max_emitted_results,
+                mark_last_success_in_batch: false,
+                matrix_spec: None,
+            }),
         });
 
         steps_taken += 1;

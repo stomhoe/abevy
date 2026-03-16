@@ -1,13 +1,12 @@
 (
-    id: "bats",
+    id: "seagull",
     initial_spawn_normal_dist: (min: 1.0, max: 1.0, mean: 1.0, std_dev: 0.0),
     race_ids: {
-        "bat": (1.0, 0.7),
+        "seagull": (1.0, 0.65),
     },
     bit_ids: {},
     biome_affinity: {
-        "temp": 1.0,
-        "desert": 0.7,
+        "beach": 1.3,
     },
     behavior: "",
 )

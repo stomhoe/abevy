@@ -36,3 +36,6 @@ marcar a los animales spawneados naturalmente con un componente pra chequearlos 
 
 
 intentar hacer q la tilemap crate externa no queryee todas las tiles de un tilemap no visible, para poder tener muchas tiles cargadas para pathfinding sin matar el fps
+
+
+prevenir descargar chunks de bichos que estan persiguiendo beings de la hostfaction, prevenir descargar los chunks del pathfinding

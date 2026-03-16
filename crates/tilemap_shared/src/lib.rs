@@ -1,5 +1,6 @@
 
 pub use chunking_resources::*;
+pub use being_components::*;
 pub use entities_at_gpos::*;
 pub use tile::*;
 pub use tilemap_components::*;
@@ -8,6 +9,7 @@ pub use tilemap_param_sets::*;
 pub use tilemap_seris::*;
 pub use terrgen_components::*;
 pub use tilemap_shared::*;
+pub mod being_components;
 pub mod chunking_resources;
 pub mod entities_at_gpos;
 pub mod tile;
@@ -30,6 +32,7 @@ pub use dimension::*;
 pub mod prelude {
     pub use crate::{
         tilemap_components::*,
+        being_components::*,
         chunking_resources::*,
         entities_at_gpos::*,
         tile::*,

@@ -1,7 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use game_common::game_common_samplers::MacroChunkBiomeTagDistributionMap;
 use ::tilemap_shared::*;
 use crate::{terrain::{
         operation_list::{
@@ -11,13 +10,14 @@ use crate::{terrain::{
         },
     terrgen_components::*,
     terrgen_async_resources::*,
-    terrgen_messages::PendingOp,
+    terrgen_messages::{ChunkTerrainBuilt, MacroChunkBiomeSampled, PendingOp, RequestMacroChunkBiomeSampling},
     terrgen_noise_init_systems::*,
     terrgen_resources::*,
     terrgen_systems::*, terrprobe::TerrainProbeSystems,
 }, tilemap_systems::process_tiles_pre};
 
 pub mod terrgen_systems;
+mod terrgen_helpers;
 mod terrgen_noise_init_systems;
 pub mod biome;
 pub mod operation_list;
@@ -40,6 +40,7 @@ pub struct TerrainSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, ((
+            request_macrochunk_biome_sampling,
             launch_terrain_operations,
             process_pending_ops_and_collect_tiles.before(process_tiles_pre),//DON'T TOUCH THIS LINE
             ).in_set(TerrainGenSystems),
@@ -66,7 +67,6 @@ pub fn plugin(app: &mut App) {
         .init_resource::<TerrGenAsyncTasks>()
         .init_resource::<TerrGenDebugGrid>()
         .init_resource::<TerrGenDisabledGposByChunk>()
-        .init_resource::<MacroChunkBiomeTagDistributionMap>()
 
         .add_plugins((
             biome::plugin,
@@ -86,6 +86,9 @@ pub fn plugin(app: &mut App) {
         .replicate::<GlobalGenSettings>()
 
         .add_message::<PendingOp>()
+        .add_message::<ChunkTerrainBuilt>()
+        .add_message::<RequestMacroChunkBiomeSampling>()
+        .add_message::<MacroChunkBiomeSampled>()
 
 
         ;

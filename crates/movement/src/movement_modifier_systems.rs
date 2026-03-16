@@ -10,7 +10,7 @@ use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
 use tilemap_shared::*;
 
-use crate::movement_components::{InputMoveDir, NormMoveDir, SpeedMagnitude};
+use crate::movement_components::{InputMoveDir, FinalNormMoveDir, SpeedMagnitude};
 
 pub fn process_input_direction_modifiers(
     state: Res<State<ClientState>>,
@@ -18,7 +18,7 @@ pub fn process_input_direction_modifiers(
         Entity,
         &AppliedModifiers,
         &InputMoveDir,
-        &mut NormMoveDir,
+        &mut FinalNormMoveDir,
         Has<ComputedLocally>,
     )>,
     modifiers_query: Query<(

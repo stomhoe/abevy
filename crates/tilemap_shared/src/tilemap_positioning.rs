@@ -95,7 +95,7 @@ impl_display_debug!(MacroChunkPos, "Macrochunk pos", "Mcpos");
 impl_position_ops!(MacroChunkPos);
 impl_position_conversions!(MacroChunkPos);
 
-pub const MACRO_CHUNK_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(16);
+pub const MACRO_CHUNK_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(8);
 
 
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, )]
@@ -174,6 +174,23 @@ impl ChunkPos {
             };
             Err(BevyError::from(format!("{} out of chunk bounds ({},{}): {} tiles away (dx: {}, dy: {})", tile_pos, chunk_origin, chunk_ocorner, dx.max(dy), dx, dy)))
         }
+    }
+
+    pub fn clamp_gpos_to_chunk(&self, gpos: GlobalTilePos) -> GlobalTilePos {
+        let min_tile = self.to_tilepos().0;
+        let max_tile = min_tile + Self::CHUNK_SIZE.as_ivec2() - IVec2::ONE;
+        GlobalTilePos(IVec2::new(
+            gpos.0.x.clamp(min_tile.x, max_tile.x),
+            gpos.0.y.clamp(min_tile.y, max_tile.y),
+        ))
+    }
+
+    pub fn random_gpos_within(&self, rng: &mut impl Rng) -> GlobalTilePos {
+        let chunk_origin = self.to_tilepos().0;
+        GlobalTilePos(IVec2::new(
+            chunk_origin.x + rng.random_range(0..Self::CHUNK_SIZE.x as i32),
+            chunk_origin.y + rng.random_range(0..Self::CHUNK_SIZE.y as i32),
+        ))
     }
 }
 impl From<GlobalTilePos> for ChunkPos {

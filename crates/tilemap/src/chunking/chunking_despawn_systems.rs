@@ -131,7 +131,9 @@ pub fn on_chunk_despawn(
     trig: On<Despawn, (Chunk, )>,
     chunk_query: Query<(&DimensionRef, &ChunkPos), ()>,
     mut activator_query: Query<(&mut ActivatingChunks), >,
+    mut cmd: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
+    mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
 ){
     for mut activates_chunks in activator_query.iter_mut() {
         let mut i = 0;
@@ -156,4 +158,15 @@ pub fn on_chunk_despawn(
     if *chunk_ent == trig.entity {
         loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
     }
+    let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
+    let has_remaining_chunks = loaded_chunks.0.keys().any(|&(dim_ref, chunk_pos)| {
+        dim_ref == chunk_dimension && chunk_pos.to_macrochunk_pos() == macro_chunk_pos
+    });
+    if has_remaining_chunks {
+        return;
+    }
+    let Some(macro_chunk_ent) = loaded_macro_chunks.0.remove(&(chunk_dimension, macro_chunk_pos)) else {
+        return;
+    };
+    cmd.entity(macro_chunk_ent).try_despawn();
 }

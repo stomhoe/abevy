@@ -21,7 +21,7 @@ pub struct ClientStepRateState {
 pub fn receive_step_request_from_client(
     time_fixed: Res<Time<Fixed>>,
     mut events: MessageReader<FromClient<SendStepRequest>>,
-    blocking_tiles: BlockingTileParamSet,
+    mut blocking_tiles: BlockingTileParamSet,
     controlled_beings: Query<&ComputedBy>,
     mut beings: Query<(
         Entity,
@@ -33,7 +33,6 @@ pub fn receive_step_request_from_client(
     ), (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
-    mut to_drain: Local<Vec<Entity>>,
     mut rate_states: Local<EntityHashMap<ClientStepRateState>>,
 ) {
     for from_client in events.read() {
@@ -100,7 +99,7 @@ pub fn receive_step_request_from_client(
         let step_ticks = ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         let steps_taken = if step_ticks > 1 {
             let next_gpos = GlobalTilePos(tile_pos.0 + dir_vec);
-            if blocking_tiles.is_blocked_at(&mut to_drain, dim_ref, next_gpos, entity) {
+            if blocking_tiles.is_blocked_at(dim_ref, next_gpos, entity) {
                 messages.push(ToClients {
                     mode: SendMode::Direct(client_id),
                     message: SyncGpos {
@@ -113,8 +112,7 @@ pub fn receive_step_request_from_client(
                 continue;
             }
             match glm.try_start_step(
-                &blocking_tiles,
-                &mut to_drain,
+                &mut blocking_tiles,
                 dim_ref,
                 entity,
                 &mut tile_pos,
@@ -138,8 +136,7 @@ pub fn receive_step_request_from_client(
             }
         } else {
             let steps_taken = glm.advance_steps_immediate(
-                &blocking_tiles,
-                &mut to_drain,
+                &mut blocking_tiles,
                 dim_ref,
                 entity,
                 &mut tile_pos,

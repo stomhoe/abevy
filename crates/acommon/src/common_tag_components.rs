@@ -53,6 +53,18 @@ macro_rules! impl_tags_common_methods {
                 }
                 false
             }
+            pub fn clear(&mut self) {
+                self.0.clear();
+            }
+            pub fn extend_from(&mut self, other: &Self)
+            where
+                $tag_type: Clone,
+            {
+                self.0.reserve(other.0.len());
+                for tag in other.iter() {
+                    self.insert(tag.clone());
+                }
+            }
         }
     };
 }

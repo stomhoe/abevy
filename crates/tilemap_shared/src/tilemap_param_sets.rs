@@ -1,6 +1,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
+use common::{common_components::Tag, common_tag_components::TagSet};
 
 use crate::{DimensionRef, GlobalTilePos, HashIdToTexIndex, LoadedChunks, SizeInTiles, SpriteTilesAtGpos, Tilemaps};
 
@@ -12,6 +13,7 @@ pub struct TileGatheringParamSet<'w, 's> {
     loaded_chunks: Res<'w, LoadedChunks>,
     chunk_children: Query<'w, 's, &'static Tilemaps>,
     pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static HashIdToTexIndex),>,
+    tile_tags: Query<'w, 's, &'static TagSet>,
     to_drain: Local<'s, Vec<Entity>>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
@@ -32,6 +34,40 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
                 }
             }
         }
+    }
+
+    pub fn has_tile_at(&self, dim: DimensionRef, gpos: GlobalTilePos, tag: Tag) -> bool {
+        for &tile_ent in self.spritetiles_at_gpos.tiles_at_pos(dim, gpos) {
+            let Ok(tile_tags) = self.tile_tags.get(tile_ent) else {
+                continue;
+            };
+            if tile_tags.contains(tag.clone()) {
+                return true;
+            }
+        }
+        let chunk_pos = gpos.to_chunkpos();
+        let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
+            return false;
+        };
+        let Ok(tilemaps) = self.chunk_children.get(chunk_ent) else {
+            return false;
+        };
+        let tpos = gpos.to_tilepos();
+        for &tmap_ent in tilemaps.entities() {
+            let Ok((storage, ..)) = self.tilemap_query.get(tmap_ent) else {
+                continue;
+            };
+            let Some(tile_ent) = storage.get(&tpos) else {
+                continue;
+            };
+            let Ok(tile_tags) = self.tile_tags.get(tile_ent) else {
+                continue;
+            };
+            if tile_tags.contains(tag.clone()) {
+                return true;
+            }
+        }
+        false
     }
 
     pub fn gather_tiles_at_to_drain(&mut self, dim: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {

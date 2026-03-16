@@ -23,7 +23,6 @@
     distributed_totals: {
         "walk_speed": 40,
     },
-    predator_hunt_threshold: 0.0,
     wander: (
         dir_secs_min: 1.0,
         dir_secs_max: 2.5,

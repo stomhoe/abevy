@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::terrain::{
     terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_messages::TerrProbeJob},
-    terrgen_messages::{PendingOp, PendingOpMatrixSpec},
+    terrgen_messages::{PendingOp, PendingOpInput, PendingOpMatrixSpec, PendingOpPurpose, PendingOpValueProbe},
 };
 use ::tilemap_shared::*;
 
@@ -12,10 +12,7 @@ pub fn process_region_pattern(
     root_oplist: DimensionRootOplist,
     spacing: u16,
     region_multiplier: f32,
-    _curr_iteration_batch_i: i16,
     new_pending_ops: &mut Vec<PendingOp>,
-    _new_pos_searches: &mut Vec<TerrProbeJob>,
-    _search_failed: &mut Vec<Entity>,
 ) {
     let spacing = spacing.max(16) as usize;
     let spacing_u16 = spacing as u16;
@@ -57,14 +54,18 @@ pub fn process_region_pattern(
     for y in (min_tile.0.y..max_tile_excl.0.y).step_by(spacing) {
         for x in (min_tile.0.x..max_tile_excl.0.x).step_by(spacing) {
             new_pending_ops.push(PendingOp {
-                dimension_ref: pos_search.dimension_ref,
                 oplist: root_oplist,
-                gpos: GlobalTilePos(IVec2::new(x, y)),
-                filtered_op: templ.opfilter_ref.0,
-                requester: pos_search.requester,
-                max_emitted_results: u32::MAX,
-                mark_last_success_in_batch: pos_search.collect_all_successes,
-                matrix_spec,
+                input: PendingOpInput {
+                    dimension_ref: pos_search.dimension_ref,
+                    gpos: GlobalTilePos(IVec2::new(x, y)),
+                },
+                purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
+                    filtered_op: templ.opfilter_ref.0,
+                    requester: pos_search.requester,
+                    max_emitted_results: u32::MAX,
+                    mark_last_success_in_batch: pos_search.collect_all_successes,
+                    matrix_spec,
+                }),
             });
         }
     }

@@ -6,12 +6,14 @@ use bevy::time::common_conditions::on_timer;
 use common::common_states::AssetLoading;
 
 pub mod chunking_components;
+pub mod macro_chunk_components;
 pub mod chunking_resources;
 pub mod chunking_spawn_systems;
 pub mod chunking_visibility_systems;
 pub mod chunking_despawn_systems;
 
 pub use chunking_components::*;
+pub use macro_chunk_components::*;
 pub use chunking_resources::*;
 pub use chunking_spawn_systems::*;
 pub use chunking_visibility_systems::*;
@@ -53,13 +55,14 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<AaChunkRangeSettings>()
     .init_resource::<LoadedChunks>()
-    .init_resource::<DiscoveredMacroChunks>()
+    .init_resource::<LoadedMacroChunks>()
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), load_chunking_settings)
 
     .add_observer(on_chunk_despawn)
 
     .add_message::<CheckChunkDespawn>()
     .add_message::<ReactivateChunksFor>()
+    .add_message::<MacroChunkLoaded>()
     .add_message::<RecheckChunksVisibility>()
     .add_message::<ForceChunkDespawn>()
     .add_message::<ForceAllChunksDespawn>()
@@ -71,6 +74,7 @@ pub fn plugin(app: &mut App) {
 pub mod prelude {
     pub use super::{
         chunking_components::*,
+        macro_chunk_components::*,
         chunking_resources::*,
         chunking_spawn_systems::*,
         chunking_visibility_systems::*,

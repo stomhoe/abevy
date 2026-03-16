@@ -1,7 +1,7 @@
 ([(
     id: "tiger_south_idle",
     paused: true,
-    rows_cols: (4, 2),
+    rows_cols: (4, 4),
     speed: 1.0,
     img_path: "texture/being/npc/tiger.png",
     clips: [
@@ -16,7 +16,7 @@
 ),
 (
     id: "tiger_south_move",
-    rows_cols: (4, 2),
+    rows_cols: (4, 4),
     img_path: "texture/being/npc/tiger.png",
     clips: [
         (
@@ -31,7 +31,7 @@
 (
     id: "tiger_north_idle",
     paused: true,
-    rows_cols: (4, 2),
+    rows_cols: (4, 4),
     speed: 1.0,
     img_path: "texture/being/npc/tiger.png",
     clips: [
@@ -46,7 +46,7 @@
 ),
 (
     id: "tiger_north_move",
-    rows_cols: (4, 2),
+    rows_cols: (4, 4),
     img_path: "texture/being/npc/tiger.png",
     clips: [
         (
@@ -61,7 +61,7 @@
 (
     id: "tiger_west_idle",
     paused: true,
-    rows_cols: (4, 2),
+    rows_cols: (4, 4),
     speed: 1.0,
     img_path: "texture/being/npc/tiger.png",
     clips: [
@@ -76,7 +76,7 @@
 ),
 (
     id: "tiger_west_move",
-    rows_cols: (4, 2),
+    rows_cols: (4, 4),
     img_path: "texture/being/npc/tiger.png",
     clips: [
         (
@@ -91,7 +91,7 @@
 (
     id: "tiger_east_idle",
     paused: true,
-    rows_cols: (4, 2),
+    rows_cols: (4, 4),
     speed: 1.0,
     img_path: "texture/being/npc/tiger.png",
     clips: [
@@ -106,7 +106,7 @@
 ),
 (
     id: "tiger_east_move",
-    rows_cols: (4, 2),
+    rows_cols: (4, 4),
     img_path: "texture/being/npc/tiger.png",
     clips: [
         (

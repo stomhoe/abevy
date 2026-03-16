@@ -1,7 +1,7 @@
 use being_shared::BeingInstTemplate;
-use bevy::ecs::entity::EntityHashSet;
+use bevy::ecs::{entity::EntityHashSet, entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::{common_components::StrId, };
+use common::{AnyDisabling, common_components::StrId, };
 
 use game_common::{game_common_components::EntityZero, game_common_samplers::EntityWeightedSampler};
 use common::common_components::SampleSpriteEnts;
@@ -13,11 +13,16 @@ use crate::{sprite_components::ScsToBuild, sprite_resources::*, sprite_sampler::
 #[allow(unused_parens)]
 pub fn replace_sampler_string_ids_by_entities(
     mut cmd: Commands,
-    query: Query<(Entity, &SampleSpritesFromStrIds, Option<&StrId>), (Changed<SampleSpritesFromStrIds>,)>,
+    changed_query: Query<Entity, Changed<SampleSpritesFromStrIds>>,
+    query: Query<(&SampleSpritesFromStrIds, Option<&StrId>, Has<SampleSpriteEnts>), AnyDisabling>,
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sprite_map: Option<Res<SpriteConfigEntityMap>>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
-    if query.is_empty() {
+    let reenabled_entities = collect_reenabled_entities(&mut removed_disabled);
+    let mut entities_to_process = reenabled_entities.clone();
+    entities_to_process.extend(changed_query.iter());
+    if entities_to_process.is_empty() {
         return;
     }
     let Some(sprite_map) = sprite_map else {
@@ -34,7 +39,14 @@ pub fn replace_sampler_string_ids_by_entities(
 
     let mut sample_sprites_to_insert = Vec::new();
 
-    for (ent, sampler_ids, strid) in query.iter() {
+    for ent in entities_to_process {
+        let Ok((sampler_ids, strid, has_sample_sprites)) = query.get(ent) else {
+            continue;
+        };
+        let is_reenabled_only = reenabled_entities.contains(&ent) && changed_query.get(ent).is_err();
+        if is_reenabled_only && has_sample_sprites {
+            continue;
+        }
         debug!(target: "sprite_sampler_systems", "Resolving sampler string ids for {}", strid.cloned().unwrap_or_default());
         let mut resolved_entities = Vec::new();
 
@@ -59,16 +71,28 @@ pub fn replace_sampler_string_ids_by_entities(
 #[allow(unused_parens)]
 pub fn sample_from_sprite_entities(
     mut cmd: Commands,
-    being_query: Query<(Entity, &SampleSpriteEnts, ), (Changed<SampleSpriteEnts>, Without<BeingInstTemplate>, Without<EntityZero>)>,
+    changed_beings: Query<Entity, (Changed<SampleSpriteEnts>, Without<BeingInstTemplate>, Without<EntityZero>)>,
+    being_query: Query<(&SampleSpriteEnts, Has<ScsToBuild>), (Without<BeingInstTemplate>, Without<EntityZero>, AnyDisabling)>,
     samplers_query: Query<&EntityWeightedSampler>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
-    if being_query.is_empty() {
+    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
+    let mut beings_to_process = reenabled_beings.clone();
+    beings_to_process.extend(changed_beings.iter());
+    if beings_to_process.is_empty() {
         return;
     }
 
     let mut configs_to_build = Vec::new();
 
-    for (ent, sample_sprites, ) in being_query.iter() {
+    for ent in beings_to_process {
+        let Ok((sample_sprites, has_scs_to_build)) = being_query.get(ent) else {
+            continue;
+        };
+        let is_reenabled_only = reenabled_beings.contains(&ent) && changed_beings.get(ent).is_err();
+        if is_reenabled_only && has_scs_to_build {
+            continue;
+        }
         debug!(target: "sprite_sampler_systems", "Sampling from sprite entities for entity {:?}", ent);
         let mut sampled_configs = EntityHashSet::new();
         let mut visited = EntityHashSet::new();
@@ -138,4 +162,10 @@ fn sample_from_entity_recursive(
         debug!(target: "sprite_sampler_systems", "Resolved entity {:?} to sprite config", ent);
         sampled_configs.insert(ent);
     }
+}
+
+fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>) -> EntityHashSet {
+    let mut entities = EntityHashSet::default();
+    entities.extend(removed_disabled.read());
+    entities
 }

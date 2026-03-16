@@ -60,7 +60,7 @@ pub struct RaceSeri {
     #[serde(default)]
     pub predator_dont_hunt: HashSet<String>,
     #[serde(default = "default_prey_body_size_ratio_tolerance")]
-    pub predator_prey_body_size_ratio_tolerance: f32,
+    pub predator_prey_kg_ratio_over_us_tolerance: f32,
     #[serde(default = "default_predator_hunt_threshold")]
     pub predator_hunt_threshold: f32,
     #[serde(default)]
@@ -81,6 +81,14 @@ pub struct RaceSeri {
     // IMPLEMENT THIS in race_init_systems.rs
     #[serde(default)]
     pub biome_affinity: HashMap<String, f32>,//f32: multiplier for own weight, when there are multiple candidate races/bitrefs to spawn for a given biome.
+
+    #[serde(default)]
+    //if empty, can spawn on any tile. if nonempty, can only spawn on tiles with at least one of these tags
+    pub whitelisted_spawn_tile_tags: HashSet<String>,
+
+    #[serde(default)]
+    //if empty, can spawn on any tile. if nonempty, cannot spawn on tiles with any of these tags, except if they are also in the whitelist, in which case the whitelist takes priority and the tags in this blacklist are ignored.
+    pub blacklisted_spawn_tile_tags: HashSet<String>,
 }
 
 #[derive(serde::Deserialize, Debug, Clone, Default)]

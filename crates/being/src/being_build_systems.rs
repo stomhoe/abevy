@@ -1,10 +1,12 @@
 use ::being_shared::{BeingInstTemplate, MappedSpritesToSample};
-use bevy::prelude::*;
+use bevy::{
+    ecs::{entity::EntityHashSet, entity_disabling::Disabled},
+    prelude::*,
+};
 use bevy::platform::collections::HashMap;
-use common::{common_components::StrId, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
+use common::{AnyDisabling, common_components::{SampleSpriteEnts, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_components::BelongsToFaction;
-use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist}, game_common_timers::EntityZero};
-use common::common_components::SampleSpriteEnts;
+use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteGlobalNormalDistResult, SpriteHoriNormalDist, SpriteHoriNormalDistResult, SpriteVertNormalDist, SpriteVertNormalDistResult}, game_common_timers::EntityZero};
 use tilemap_shared::{tilemap_seris::InteractionZoneSeri, InteractionZones};
 
 use crate::{
@@ -18,18 +20,27 @@ use crate::{
 
 pub fn build_beings_from_refs(
     mut cmd: Commands,
+    changed_beings: Query<
+        Entity,
+        (
+            Without<EntityZero>,
+            Without<BeingInstTemplate>,
+            Or<(Changed<BitRef>, Changed<RaceRef>)>,
+        ),
+    >,
     mut beings_query: Query<
         (
-            Entity,
             Option<&BitRef>,
             Option<&RaceRef>,
             Has<Being>,
             Has<SampleSpriteEnts>,
             Has<BodyTreeRef>,
+            Has<BodyWeightedSamplerRef>,
             Has<SexRef>,
+            Has<TagSet>,
             Option<&mut TagSet>,
-        ),(Without<EntityZero>, Without<BeingInstTemplate>,
-            Or<(Changed<BitRef>, Changed<RaceRef>, )>,)
+        ),
+        (Without<EntityZero>, Without<BeingInstTemplate>, AnyDisabling),
     >,
     bit_query: Query<(
         &BeingInstTemplate,
@@ -46,8 +57,12 @@ pub fn build_beings_from_refs(
         Option<&BodyTreeRef>,
     ), With<Race>>,
     str_ids: Query<&StrId>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
-    if beings_query.is_empty() {
+    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
+    let mut beings_to_build = reenabled_beings.clone();
+    beings_to_build.extend(changed_beings.iter());
+    if beings_to_build.is_empty() {
         return;
     }
 
@@ -58,14 +73,27 @@ pub fn build_beings_from_refs(
     let mut belongs_to_fac_refs_to_ins: Vec<(Entity, BelongsToFaction)> = Vec::new();
     let mut sex_refs_to_ins: Vec<(Entity, SexRef)> = Vec::new();
 
-    for (being_ent, bit_ref, race_ref, has_being, has_sample_sprites, has_body_tree_ref, has_sex_ref, tags) in beings_query.iter_mut() {
+    for being_ent in beings_to_build {
+        let Ok((bit_ref, race_ref, has_being, has_sample_sprites, has_body_tree_ref, has_body_sampler_ref, has_sex_ref, has_tags, tags)) = beings_query.get_mut(being_ent) else {
+            continue;
+        };
+        let is_reenabled_only = reenabled_beings.contains(&being_ent) && changed_beings.get(being_ent).is_err();
+        if is_reenabled_only
+            && has_being
+            && has_sample_sprites
+            && (has_body_tree_ref || has_body_sampler_ref)
+            && has_sex_ref
+            && has_tags
+        {
+            continue;
+        }
         if !has_being {
             cmd.entity(being_ent).try_insert(Being);
         }
 
         let mut effective_race_ref = race_ref.copied();
         let mut has_sample_sprites_now = has_sample_sprites;
-        let mut has_body_tree_ref_now = has_body_tree_ref;
+        let mut has_body_tree_ref_now = has_body_tree_ref || has_body_sampler_ref;
 
         if let Some(bit_ref) = bit_ref {
             let Ok((template, sample_sprites, bit_race_ref, sample_body_body_tree, belongs_to_fac, _norm_dist)) = bit_query.get(bit_ref.0) else {
@@ -173,14 +201,26 @@ pub fn build_beings_from_refs(
 
 pub fn sync_melee_interaction_zone_from_sources(
     mut cmd: Commands,
-    beings: Query<
-        (Entity, Option<&BitRef>, Option<&RaceRef>),
+    changed_beings: Query<
+        Entity,
         (With<Being>, Or<(Added<Being>, Changed<BitRef>, Changed<RaceRef>)>),
+    >,
+    beings: Query<
+        (Option<&BitRef>, Option<&RaceRef>),
+        (With<Being>, AnyDisabling),
     >,
     bit_zones: Query<&InteractionZones>,
     race_zones: Query<&InteractionZones, With<Race>>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
-    for (being_ent, bit_ref, race_ref) in beings.iter() {
+    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
+    let mut beings_to_sync = reenabled_beings;
+    beings_to_sync.extend(changed_beings.iter());
+
+    for being_ent in beings_to_sync {
+        let Ok((bit_ref, race_ref)) = beings.get(being_ent) else {
+            continue;
+        };
         let zones = bit_ref
             .and_then(|bit_ref| bit_zones.get(bit_ref.0).ok())
             .or_else(|| race_ref.and_then(|race_ref| race_zones.get(race_ref.0).ok()))
@@ -192,14 +232,26 @@ pub fn sync_melee_interaction_zone_from_sources(
 
 pub fn sync_hitbox_receiver_from_sources(
     mut cmd: Commands,
-    beings: Query<
-        (Entity, Option<&BitRef>, Option<&RaceRef>),
+    changed_beings: Query<
+        Entity,
         (With<Being>, Or<(Added<Being>, Changed<BitRef>, Changed<RaceRef>)>),
+    >,
+    beings: Query<
+        (Option<&BitRef>, Option<&RaceRef>),
+        (With<Being>, AnyDisabling),
     >,
     bit_hitboxes: Query<&HitboxReceiver>,
     race_hitboxes: Query<&HitboxReceiver, With<Race>>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
-    for (being_ent, bit_ref, race_ref) in beings.iter() {
+    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
+    let mut beings_to_sync = reenabled_beings;
+    beings_to_sync.extend(changed_beings.iter());
+
+    for being_ent in beings_to_sync {
+        let Ok((bit_ref, race_ref)) = beings.get(being_ent) else {
+            continue;
+        };
         let hitbox_receiver = bit_ref
             .and_then(|bit_ref| bit_hitboxes.get(bit_ref.0).ok())
             .or_else(|| race_ref.and_then(|race_ref| race_hitboxes.get(race_ref.0).ok()))
@@ -224,9 +276,17 @@ fn default_melee_interaction_zones() -> InteractionZones {
 #[allow(unused_parens)]
 pub fn sample_sprite_normal_variations(
     mut cmd: Commands,
+    changed_beings: Query<Entity, (Or<(Changed<BitRef>, Changed<RaceRef>)>, With<Being>)>,
     beings_to_sample: Query<
-        (Entity, Option<&BitRef>, Option<&RaceRef>, Option<&SexRef>),
-        (Or<(Changed<BitRef>, Changed<RaceRef>)>, With<Being>),
+        (
+            Option<&BitRef>,
+            Option<&RaceRef>,
+            Option<&SexRef>,
+            Has<SpriteGlobalNormalDistResult>,
+            Has<SpriteHoriNormalDistResult>,
+            Has<SpriteVertNormalDistResult>,
+        ),
+        (With<Being>, AnyDisabling),
     >,
     race_sex_size_dists: Query<&SexSizeVariationsBySex, With<Race>>,
     dists_query: Query<(
@@ -234,13 +294,28 @@ pub fn sample_sprite_normal_variations(
         Option<&SpriteHoriNormalDist>,
         Option<&SpriteVertNormalDist>,
     )>,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
+    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
+    let mut beings_to_process = reenabled_beings.clone();
+    beings_to_process.extend(changed_beings.iter());
+    if beings_to_process.is_empty() {
+        return;
+    }
+
     let mut rng = rand::rng();
     let mut global_dist_results = Vec::new();
     let mut hori_dist_results = Vec::new();
     let mut vert_dist_results = Vec::new();
 
-    for (being_ent, bit_ref, race_ref, sex_ref, ) in beings_to_sample.iter() {
+    for being_ent in beings_to_process {
+        let Ok((bit_ref, race_ref, sex_ref, has_global_result, has_hori_result, has_vert_result)) = beings_to_sample.get(being_ent) else {
+            continue;
+        };
+        let is_reenabled_only = reenabled_beings.contains(&being_ent) && changed_beings.get(being_ent).is_err();
+        if is_reenabled_only && has_global_result && has_hori_result && has_vert_result {
+            continue;
+        }
         let mut global_dist: Option<&SpriteGlobalNormalDist> = None;
         let mut hori_dist: Option<&SpriteHoriNormalDist> = None;
         let mut vert_dist: Option<&SpriteVertNormalDist> = None;
@@ -286,4 +361,10 @@ pub fn sample_sprite_normal_variations(
     cmd.try_insert_batch(global_dist_results);
     cmd.try_insert_batch(hori_dist_results);
     cmd.try_insert_batch(vert_dist_results);
+}
+
+fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>) -> EntityHashSet {
+    let mut entities = EntityHashSet::default();
+    entities.extend(removed_disabled.read());
+    entities
 }

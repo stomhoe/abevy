@@ -73,17 +73,10 @@ impl DeleteOtherTilesConfigMap {
         let mut has_any = self.global.is_some();
         let key = placeholder_id.trim();
         let Some(spec) = self.by_placeholder_id.get(key) else {
-            if !has_any {
-                debug!(target: DUNGEONING_SYSTEM, "No delete rule matched for placeholder {:?}", key);
-            }
             return has_any.then_some(merged);
         };
-        debug!(target: DUNGEONING_SYSTEM, "Matched delete_other_tiles placeholder {:?}: {:?}", key, spec);
         merged.merge_from(spec);
         has_any = true;
-        if !has_any {
-            debug!(target: DUNGEONING_SYSTEM, "No delete_other_tiles rule matched for placeholder {:?}", key);
-        }
         has_any.then_some(merged)
     }
 

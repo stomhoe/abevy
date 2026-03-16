@@ -12,7 +12,8 @@ use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
 use tilemap::terrain::biome::{biome_components::BiomePackSampler, biome_resources::BiomeEntityMap};
-use tilemap_shared::InteractionZones;
+use tilemap_shared::{BlacklistedSpawnTileTags, InteractionZones, WhitelistedSpawnTileTags};
+use common::common_tag_components::TagSet;
 use crate::being_components::{COLLISION_MASK_HASHID, HitboxReceiver};
 
 pub fn init_being_templates(
@@ -92,6 +93,12 @@ pub fn init_being_templates(
             cmd.entity(bit_entity).insert(PackInitialSize(CappedNormalDist::from_seri(
                 spawn_pack_size_normal_dist,
             )));
+        }
+        if !template_seri.whitelisted_spawn_tile_tags.is_empty() {
+            cmd.entity(bit_entity).insert(WhitelistedSpawnTileTags(TagSet::new(&template_seri.whitelisted_spawn_tile_tags)));
+        }
+        if !template_seri.blacklisted_spawn_tile_tags.is_empty() {
+            cmd.entity(bit_entity).insert(BlacklistedSpawnTileTags(TagSet::new(&template_seri.blacklisted_spawn_tile_tags)));
         }
         if PredatorHuntThreshold::is_configured_in_seri(template_seri.predator_hunt_threshold) {
             cmd.entity(bit_entity).insert((

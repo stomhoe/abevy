@@ -29,19 +29,31 @@ pub fn init_packs(
     let Some(bit_emap) = bit_emap else {
         return;
     };
+    let pack_seris = load_pack_seri_defs();
     let mut pack_by_id: HashMap<StrId, Entity> = HashMap::default();
     let mut being_samplers_by_pack: EntityHashMap<PackBeingSampler> = EntityHashMap::default();
     let mut leader_priority_by_pack: EntityHashMap<PackBeingLeaderPriority> = EntityHashMap::default();
+    let mut min_dists_by_pack: EntityHashMap<PackMinDistsToPacksOrRaces> = EntityHashMap::default();
 
-    for pack_seri in load_pack_seri_defs() {
+    for pack_seri in &pack_seris {
         let str_id = StrId::trunc(&pack_seri.id);
         let pack_entity = cmd.spawn((Pack, EntityZero, str_id.clone())).id();
         pack_by_id.insert(str_id, pack_entity);
+    }
+
+    for pack_seri in &pack_seris {
+        let str_id = StrId::trunc(&pack_seri.id);
+        let Some(&pack_entity) = pack_by_id.get(&str_id) else {
+            continue;
+        };
 
         let being_sampler = being_samplers_by_pack
             .entry(pack_entity)
             .or_default();
         let leader_priority = leader_priority_by_pack
+            .entry(pack_entity)
+            .or_default();
+        let min_dists = min_dists_by_pack
             .entry(pack_entity)
             .or_default();
         for (race_id, config) in &pack_seri.race_ids {
@@ -80,6 +92,21 @@ pub fn init_packs(
                 .insert(PackInitialSize(CappedNormalDist::from_seri(
                     pack_seri.initial_spawn_normal_dist.clone(),
                 )));
+        }
+
+        for (target_id, min_inbetween_chunks) in &pack_seri.min_dists_to_packs_or_races {
+            let trimmed = target_id.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            if let Some(&other_pack_ent) = pack_by_id.get(&StrId::trunc(trimmed)) {
+                min_dists.insert(other_pack_ent, *min_inbetween_chunks);
+                continue;
+            }
+            let Ok(race_ent) = race_emap.0.get_cloned(trimmed) else {
+                continue;
+            };
+            min_dists.insert(race_ent, *min_inbetween_chunks);
         }
 
         for (biome_id, weight) in &pack_seri.biome_affinity {
@@ -157,5 +184,12 @@ pub fn init_packs(
         }
         cmd.entity(pack_ent)
             .insert(leader_priority);
+    }
+    for (pack_ent, min_dists) in min_dists_by_pack {
+        if min_dists.is_empty() {
+            continue;
+        }
+        cmd.entity(pack_ent)
+            .insert(min_dists);
     }
 }

@@ -21,10 +21,10 @@ pub fn start_grid_locked_steps(
     fixed_time: Res<Time<Fixed>>,
     client_state: Res<State<ClientState>>,
     connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
-    blocking_tiles: BlockingTileParamSet,
+    mut blocking_tiles: BlockingTileParamSet,
     mut beings: Query<(
         Entity,
-        &InputMoveDir,
+        &FinalNormMoveDir,
         &DimensionRef,
         &SpeedMagnitude,
         &mut GlobalTilePos,
@@ -34,13 +34,12 @@ pub fn start_grid_locked_steps(
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut sync_gpos_msgs: Local<Vec<ToClients<SyncGpos>>>,
     mut req_step_msgs: Local<Vec<SendStepRequest>>,
-    mut to_drain: Local<Vec<Entity>>,
     mut burst_step_credit_by_ent: Local<EntityHashMap<f32>>,
     mut client_req_step_writer: MessageWriter<SendStepRequest>,
 ) {
     for (
         entity,
-        input_move_dir,
+        final_norm_move_dir,
         &dim_ref,
         speed_magnitude,
         mut tile_pos,
@@ -49,7 +48,7 @@ pub fn start_grid_locked_steps(
     ) in beings.iter_mut()
     {
         glm.ensure_grid_anchor(*tile_pos);
-        let dir = input_move_dir.normalize_to_axis_dir();
+        let dir = final_norm_move_dir.normalize_to_axis_dir();
         let next_dir = CardinalDirection::from_dir_vec(dir);
         let step_ticks = ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir);
 
@@ -57,8 +56,7 @@ pub fn start_grid_locked_steps(
         let should_sync_with_others = if step_ticks > 1 {
             burst_step_credit_by_ent.remove(&entity);
             match glm.try_start_step(
-                &blocking_tiles,
-                &mut to_drain,
+                &mut blocking_tiles,
                 dim_ref,
                 entity,
                 &mut tile_pos,
@@ -89,8 +87,7 @@ pub fn start_grid_locked_steps(
                 .min(MAX_GRID_STEPS_PER_FIXED_TICK as f32);
             let requested_steps = credit.floor().min(MAX_GRID_STEPS_PER_FIXED_TICK as f32) as u16;
             let steps_taken = glm.advance_steps_immediate(
-                &blocking_tiles,
-                &mut to_drain,
+                &mut blocking_tiles,
                 dim_ref,
                 entity,
                 &mut tile_pos,

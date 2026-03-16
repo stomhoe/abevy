@@ -2,11 +2,11 @@
 
 
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
-use game_common::game_common_samplers::BiomeTagWeightAtMacroChunk;
 
 use common::{common_components::{ StrId}, common_tag_components::TagSet};
 
 use crate::{
+    chunking::macro_chunk_components::BiomeTagWeightAtMacroChunk,
     terrain::{
         biome::biome_resources::BiomeEntityMap,
         operation_list::operation_list_components::{Bifurcation, CompiledBranch, CompiledBranchNode, OperationList},
@@ -159,7 +159,7 @@ pub fn init_oplists_from_assets(
                         return None;
                     }
                     let Ok(biome_ent) = biome_map.0.get_cloned(bt.tag.trim()) else {
-                        warn!(target: "oplist_init", "Biome '{}' not found in BiomeEntityMap", bt.tag.trim());
+                        error!(target: "oplist_init", "Biome '{}' not found in BiomeEntityMap", bt.tag.trim());
                         return None;
                     };
                     Some(BiomeTagWeightAtMacroChunk {

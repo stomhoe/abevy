@@ -1,4 +1,4 @@
-use bevy::platform::collections::{HashMap, HashSet};
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use smallvec::SmallVec;
 
@@ -7,8 +7,8 @@ use crate::*;
 #[derive(Resource, Default)]
 pub struct LoadedChunks (pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 
-#[derive(Resource, Debug, Default)]
-pub struct DiscoveredMacroChunks(pub HashSet<(DimensionRef, MacroChunkPos)>);
+#[derive(Resource, Default)]
+pub struct LoadedMacroChunks(pub HashMap<(DimensionRef, MacroChunkPos), Entity>,);
 
 pub type ReturnedVec = SmallVec<[Entity; 16]>;
 

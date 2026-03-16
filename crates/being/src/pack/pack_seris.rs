@@ -18,4 +18,7 @@ pub struct PackSeri {
     pub biome_affinity: HashMap<String, f32>,
     #[serde(default)]//placeholder, dont use this
     pub behavior: String,
+
+    #[serde(default)]//if empty, default to 1 inbetween chunk for all other packs
+    pub min_dists_to_packs_or_races: HashMap<String, u8>,//u8: inbetween chunks of separation (should work radially)
 }

@@ -1,11 +1,13 @@
 use bevy::{platform::collections::HashSet, prelude::*, tasks::Task};
 use common::common_components::HashId;
-use game_common::game_common_samplers::BiomeTagWeightAtMacroChunk;
 
-use crate::terrain::{
-    terrprobe::terrprobe_messages::{SampledValuesCollected, SuitablePosFound, TerrProbeJob},
-    terrgen_messages::PendingOp,
-    terrgen_resources::TerrGenDebugSample,
+use crate::{
+    chunking::macro_chunk_components::BiomeTagWeightAtMacroChunk,
+    terrain::{
+        terrprobe::terrprobe_messages::{SampledValuesCollected, SuitablePosFound, TerrProbeJob},
+        terrgen_messages::PendingOp,
+        terrgen_resources::TerrGenDebugSample,
+    },
 };
 
 use ::tilemap_shared::*;
@@ -33,14 +35,16 @@ pub struct TerrGenTileRequest {
 
 #[derive(Debug, Clone)]
 pub struct TerrGenBiomeTagSample {
-    pub dimension_ref: DimensionRef,
-    pub macro_chunk_pos: MacroChunkPos,
+    pub macro_chunk_ent: Entity,
+    pub sample_chunk_pos: ChunkPos,
     pub biome_tags: Vec<BiomeTagWeightAtMacroChunk>,
 }
 
 #[derive(Debug, Default)]
 pub struct TerrGenOpTaskResult {
     pub new_pending_ops: Vec<PendingOp>,
+    pub completed_chunk_gpos: Vec<(Entity, GlobalTilePos)>,
+    pub completed_macro_chunk_biome_samples: Vec<Entity>,
     pub sampled_value_events: Vec<SuitablePosFound>,
     pub sampled_value_matrix_events: Vec<SampledValuesCollected>,
     pub tile_requests: Vec<TerrGenTileRequest>,

@@ -67,8 +67,6 @@ pub fn drunkwalk_dungeon_building_system(
             .unwrap_or_else(|| HashId::hash("lava"));
         let delete_other_tiles_by_tile_id = super::super::dungeoning_utils::DeleteOtherTilesConfigMap::from_args(&structured_gen_cfg.args);
         let terrgen_disable_by_tile_id = super::super::dungeoning_utils::TerrGenDisableConfigMap::from_args(&structured_gen_cfg.args);
-        debug!(target: DUNGEONING_SYSTEM, "structure={} delete_other_tiles_by_tile_id={:?}", structured_gen_cfg.structure_id(), delete_other_tiles_by_tile_id);
-        debug!(target: DUNGEONING_SYSTEM, "structure={} terrgen_disable_by_tile_id={:?}", structured_gen_cfg.structure_id(), terrgen_disable_by_tile_id);
         let boulder_sampler_id = structured_gen_cfg.args
             .get("boulder_sampler_id")
             .and_then(|v| v.first())
@@ -161,7 +159,6 @@ pub fn drunkwalk_dungeon_building_system(
             .parse_arg("corridor_detour_max_offset", 0)
             .clamp(0, 32);
 
-        // Multiple drunkwalks with wider paths and more aggressive carving
         let num_walkers = rng.random_range(5..=10);
         let target_floor_tiles = std::cmp::max(1, ((tile_map_size as f32) * 0.45).ceil() as usize);
         let mut carved = 0;

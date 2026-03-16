@@ -39,3 +39,4 @@ pub struct Noiz(pub Box<dyn DynamicConfigurableSampleable<Vec2, f32> + Send + Sy
 #[derive(Component, Debug, Default, Copy, Clone)]
 #[require(Replicated, Prefix::trunc("FailedPosSearches"), AssetScoped, )]
 pub struct FailedSearchOplistFilterHolder;
+

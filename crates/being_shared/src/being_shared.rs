@@ -6,14 +6,63 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
+use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct ComputedLocally;
 
 #[derive(Component, Debug, Copy, Clone, Default, Deserialize, Serialize)]
+#[require(Prefix::trunc("Being"),)]
 pub struct Being;
 impl Being {
     pub const Z_LEVEL: f32 = 1_000.;
+
+    pub fn collect_spawn_tile_tag_filters(
+        bit_ent: Option<Entity>,
+        race_ent: Option<Entity>,
+        spawn_tile_tags_query: &Query<(
+            Option<&WhitelistedSpawnTileTags>,
+            Option<&BlacklistedSpawnTileTags>,
+        )>,
+        mut bit_race_ent: impl FnMut(Entity) -> Option<Entity>,
+        whitelisted_tags: &mut WhitelistedSpawnTileTags,
+        blacklisted_tags: &mut BlacklistedSpawnTileTags,
+    ) {
+        whitelisted_tags.0.clear();
+        blacklisted_tags.0.clear();
+
+        let mut effective_race_ent = race_ent;
+        if let Some(bit_ent) = bit_ent {
+            let Ok((bit_whitelist, bit_blacklist)) = spawn_tile_tags_query.get(bit_ent) else {
+                return;
+            };
+            if let Some(bit_whitelist) = bit_whitelist {
+                whitelisted_tags.0.extend_from(&bit_whitelist.0);
+            }
+            if let Some(bit_blacklist) = bit_blacklist {
+                blacklisted_tags.0.extend_from(&bit_blacklist.0);
+            }
+            if effective_race_ent.is_none() {
+                effective_race_ent = bit_race_ent(bit_ent);
+            }
+        }
+
+        let Some(race_ent) = effective_race_ent else {
+            blacklisted_tags.0.0.retain(|tag| !whitelisted_tags.0.contains(tag.clone()));
+            return;
+        };
+        let Ok((race_whitelist, race_blacklist)) = spawn_tile_tags_query.get(race_ent) else {
+            blacklisted_tags.0.0.retain(|tag| !whitelisted_tags.0.contains(tag.clone()));
+            return;
+        };
+        if let Some(race_whitelist) = race_whitelist {
+            whitelisted_tags.0.extend_from(&race_whitelist.0);
+        }
+        if let Some(race_blacklist) = race_blacklist {
+            blacklisted_tags.0.extend_from(&race_blacklist.0);
+        }
+        blacklisted_tags.0.0.retain(|tag| !whitelisted_tags.0.contains(tag.clone()));
+    }
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
@@ -154,7 +203,7 @@ impl Default for PredatorHuntThreshold {
     }
 }
 impl PredatorHuntThreshold {
-    pub const SERI_SENTINEL: f32 = -1.0;
+    pub const SERI_SENTINEL: f32 = f32::NEG_INFINITY;
     pub fn is_configured_in_seri(value: f32) -> bool {
         value > Self::SERI_SENTINEL
     }

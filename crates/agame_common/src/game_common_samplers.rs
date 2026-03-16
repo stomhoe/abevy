@@ -1,5 +1,5 @@
 
-use bevy::{ecs::entity::{EntityHashMap, MapEntities}, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use::tilemap_shared::*;
 use crate::game_common_seris::NormalDistSeri;
@@ -46,6 +46,39 @@ macro_rules! define_weightedsampler_impl {
                 self.cumulative_weights.push(self.total_weight);
             }
 
+            pub fn add_or_accumulate_weight(&mut self, item: $inner, weight: f32)
+            where
+                $inner: PartialEq,
+            {
+                if weight < 0.0 {
+                    warn!(
+                        "Negative weight ({}) encountered in WeightedSampler for value {:?}.",
+                        weight, item
+                    );
+                }
+                let weight = weight.max(0.0);
+                if weight == 0.0 {
+                    return;
+                }
+                let Some((_, existing_weight)) = self.weights.iter_mut().find(|(existing_item, _)| *existing_item == item) else {
+                    self.insert(item, weight);
+                    return;
+                };
+                *existing_weight += weight;
+                self.rebuild();
+            }
+
+            fn rebuild(&mut self) {
+                self.cumulative_weights.clear();
+                self.cumulative_weights.reserve(self.weights.len());
+                let mut acc = 0.0;
+                for &(_, w) in &self.weights {
+                    acc += w;
+                    self.cumulative_weights.push(acc);
+                }
+                self.total_weight = acc;
+            }
+
             fn sample_index(&self, rng_val: f32) -> Option<usize> {
                 if self.weights.is_empty() {
                     return None;
@@ -69,18 +102,21 @@ macro_rules! define_weightedsampler_impl {
                 self.sample_index(rng_val)
                     .and_then(|idx| self.weights.get(idx).map(|(e, _)| e.clone()))
             }
+            pub fn sample_n_with_rng(&self, sample_count: usize, rng: &mut impl rand::Rng, out: &mut impl Extend<$inner>) {
+                for _ in 0..sample_count {
+                    let Some(sample) = self.sample_with_rng(rng) else {
+                        break;
+                    };
+                    out.extend(std::iter::once(sample));
+                }
+            }
             pub fn sample_with_rng_and_remove(&mut self, rng: &mut impl rand::Rng) -> Option<$inner> {
                 if self.weights.is_empty() { return None; }
                 let rng_val = rng.random_range(0.0..=1.0);
                 let idx = self.sample_index(rng_val)?;
                 let (item, weight) = self.weights.remove(idx);//don't use swap_remove, order is important
                 self.total_weight -= weight;
-                self.cumulative_weights.clear();
-                let mut acc = 0.0;
-                for &(_, w) in &self.weights {
-                    acc += w;
-                    self.cumulative_weights.push(acc);
-                }
+                self.rebuild();
                 Some(item)
             }
             pub fn remove(&mut self, item: &$inner) -> bool
@@ -90,12 +126,7 @@ macro_rules! define_weightedsampler_impl {
                 if let Some(pos) = self.weights.iter().position(|(e, _)| e == item) {
                     let (_, weight) = self.weights.remove(pos);
                     self.total_weight -= weight;
-                    self.cumulative_weights.clear();
-                    let mut acc = 0.0;
-                    for &(_, w) in &self.weights {
-                        acc += w;
-                        self.cumulative_weights.push(acc);
-                    }
+                    self.rebuild();
                     true
                 } else {
                     false
@@ -198,109 +229,6 @@ define_weightedsampler_impl!(GlobalTilePosWeightedSampler, GlobalTilePos);
 
 
 define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");
-
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-pub struct BiomeTagWeightAtMacroChunk {
-    pub biome: Entity,
-    pub weight: f32,
-    pub pack_count_multiplier_mean: f32,
-    pub pack_count_multiplier_std_dev: f32,
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct BiomePackCountMultiplierStats {
-    pub mean_sum: f32,
-    pub std_dev_sum: f32,
-    pub samples: u32,
-}
-impl BiomePackCountMultiplierStats {
-    pub fn add_sample(&mut self, mean: f32, std_dev: f32) {
-        self.mean_sum += mean;
-        self.std_dev_sum += std_dev.max(0.0);
-        self.samples = self.samples.saturating_add(1);
-    }
-
-    pub fn averaged_mean(&self) -> f32 {
-        if self.samples == 0 {
-            return 1.0;
-        }
-        self.mean_sum / self.samples as f32
-    }
-
-    pub fn averaged_std_dev(&self) -> f32 {
-        if self.samples == 0 {
-            return 0.0;
-        }
-        self.std_dev_sum / self.samples as f32
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct BiomeTagDistributionAtTimeout {
-    pub biome_sampler: EntityWeightedSampler,
-    pub pack_count_multiplier_stats: EntityHashMap<BiomePackCountMultiplierStats>,
-}
-impl BiomeTagDistributionAtTimeout {
-    pub fn averaged_pack_count_multiplier_stats(&self, biome: Entity) -> BiomePackCountMultiplierStats {
-        self.pack_count_multiplier_stats.get(&biome).copied().unwrap_or(BiomePackCountMultiplierStats {
-            mean_sum: 1.0,
-            std_dev_sum: 0.0,
-            samples: 1,
-        })
-    }
-}
-
-#[derive(Resource, Debug, Default)]
-pub struct MacroChunkBiomeTagDistributionMap(pub HashMap<(DimensionRef, MacroChunkPos), BiomeTagDistributionAtTimeout>);
-impl MacroChunkBiomeTagDistributionMap {
-    pub fn add_tag_weights<I>(&mut self, dim_ref: DimensionRef, chunk_pos: MacroChunkPos, tag_weights: I)
-    where
-        I: IntoIterator<Item = BiomeTagWeightAtMacroChunk>,
-    {
-        let dist = self.0.entry((dim_ref, chunk_pos)).or_default();
-        let mut changed = false;
-        for tag_weight in tag_weights {
-            let tag = tag_weight.biome;
-            let weight = tag_weight.weight;
-            if !weight.is_finite() || weight <= 0.0 {
-                continue;
-            }
-            changed = true;
-            dist
-                .pack_count_multiplier_stats
-                .entry(tag)
-                .or_default()
-                .add_sample(
-                    tag_weight.pack_count_multiplier_mean,
-                    tag_weight.pack_count_multiplier_std_dev,
-                );
-            let Some((_, accumulated_weight)) = dist
-                .biome_sampler
-                .weights
-                .iter_mut()
-                .find(|(existing_tag, _)| *existing_tag == tag)
-            else {
-                dist.biome_sampler.weights.push((tag, weight));
-                continue;
-            };
-            *accumulated_weight += weight;
-        }
-        if changed {
-            rebuild_entity_weighted_sampler(&mut dist.biome_sampler);
-        }
-    }
-}
-
-fn rebuild_entity_weighted_sampler(sampler: &mut EntityWeightedSampler) {
-    sampler.cumulative_weights.clear();
-    sampler.cumulative_weights.reserve(sampler.weights.len());
-    let mut acc = 0.0;
-    for &(_, weight) in &sampler.weights {
-        acc += weight;
-        sampler.cumulative_weights.push(acc);
-    }
-    sampler.total_weight = acc;
-}
 
 macro_rules! define_sprite_normal_dist {
     ($dist_name:ident) => {

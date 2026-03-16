@@ -1,5 +1,5 @@
 
-use bevy::{ecs::{entity::EntityHashSet, }, prelude::*};
+use bevy::{ecs::{entity::EntityHashSet, system::SystemParam}, prelude::*};
 
 use super::chunking_resources::AaChunkRangeSettings;
 use crate::regioning::regioning_components::ChunksActiveInRegion;
@@ -13,6 +13,15 @@ pub struct Chunk {
     #[relationship]
     pub region_ent: Entity,
 }
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct MacroChunk;
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct MacroChunkRef(pub Entity);
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct TerrgenDiscoveredMacroChunk;
 
 #[derive(Component, Debug, Copy, Clone, )]
 pub struct SaveTile {
@@ -34,7 +43,28 @@ pub enum TerrGenState {
     Pending,
     Ready,
     OpsLaunched,
+    Finished,
     Disabled,
+}
+
+#[derive(SystemParam)]
+pub struct ChunkParamSet<'w, 's> {
+    terrgen_states: Query<'w, 's, &'static TerrGenState, With<Chunk>>,
+}
+
+impl ChunkParamSet<'_, '_> {
+    pub fn is_chunk_spawn_ready(&self, chunk_ent: Entity) -> bool {
+        let Ok(terrgen_state) = self.terrgen_states.get(chunk_ent) else {
+            return false;
+        };
+        *terrgen_state == TerrGenState::Finished
+    }
+}
+
+impl TerrGenState {
+    pub fn is_ready(&self) -> bool {
+        *self == TerrGenState::Finished
+    }
 }
 
 

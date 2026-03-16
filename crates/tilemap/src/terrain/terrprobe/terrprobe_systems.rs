@@ -187,10 +187,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                     pos_search,
                     &templ,
                     root_oplist,
-                    curr_iteration_batch_i,
                     &mut new_pending_ops,
-                    &mut new_pos_searches,
-                    &mut search_failed,
                 );
             }
             ProbePattern::Region {
@@ -203,10 +200,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                     root_oplist,
                     spacing,
                     region_multiplier,
-                    curr_iteration_batch_i,
                     &mut new_pending_ops,
-                    &mut new_pos_searches,
-                    &mut search_failed,
                 );
             }
         }

@@ -15,12 +15,10 @@ pub struct ItemGroundMaterializeParamSet<'w, 's> {
     item_ground_query: Query<'w, 's, (&'static EntityZeroRef, &'static DimensionRef, &'static GlobalTilePos), (With<Item>, Without<EntityZero>)>,
     ac_z_query: Query<'w, 's, &'static AcZ>,
     occupied_nonstackable: Local<'s, HashSet<GlobalTilePos>>,
-    blocking_to_drain: Local<'s, Vec<Entity>>,
 }
 
 impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
     fn find_nonstackable_drop_gpos(&mut self, dim_ref: Option<DimensionRef>, drop_gpos: GlobalTilePos) -> GlobalTilePos {
-        let blocking_to_drain: &mut Vec<Entity> = self.blocking_to_drain.as_mut();
         let occupied_nonstackable: &mut HashSet<GlobalTilePos> = &mut self.occupied_nonstackable;
         let mut next = drop_gpos;
         if let Some(dim_ref) = dim_ref {
@@ -29,7 +27,7 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
                     let dy_abs = dist - dx.abs();
                     let cand_a = drop_gpos + GlobalTilePos::new(dx, dy_abs);
                     if !occupied_nonstackable.contains(&cand_a)
-                        && !self.blocking_tiles.is_blocked_at_tiles_only(blocking_to_drain, dim_ref, cand_a, Entity::PLACEHOLDER)
+                        && !self.blocking_tiles.is_blocked_at_tiles_only(dim_ref, cand_a, Entity::PLACEHOLDER)
                     {
                         next = cand_a;
                         break 'nonstack_search;
@@ -39,7 +37,7 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
                     }
                     let cand_b = drop_gpos + GlobalTilePos::new(dx, -dy_abs);
                     if !occupied_nonstackable.contains(&cand_b)
-                        && !self.blocking_tiles.is_blocked_at_tiles_only(blocking_to_drain, dim_ref, cand_b, Entity::PLACEHOLDER)
+                        && !self.blocking_tiles.is_blocked_at_tiles_only(dim_ref, cand_b, Entity::PLACEHOLDER)
                     {
                         next = cand_b;
                         break 'nonstack_search;

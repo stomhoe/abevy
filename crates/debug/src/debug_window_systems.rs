@@ -164,6 +164,7 @@ pub fn main_menu_window(
             if ui.add_sized([ui.available_width(), 28.0], close_all).clicked() {
                 window_visible.states = false;
                 window_visible.chunks_list = false;
+                window_visible.macrochunks_grid = false;
                 window_visible.regions_list = false;
                 window_visible.beings_list = false;
                 window_visible.players_list = false;
@@ -193,6 +194,9 @@ pub fn main_menu_window(
             }
             if ui.button(egui::RichText::new("▢▢  Chunking").size(16.0)).clicked() {
                 window_visible.chunks_list = !window_visible.chunks_list;
+            }
+            if ui.button(egui::RichText::new("▦ MacroChunks Grid").size(16.0)).clicked() {
+                window_visible.macrochunks_grid = !window_visible.macrochunks_grid;
             }
             if ui.button(egui::RichText::new("⬜ Regions").size(16.0)).clicked() {
                 window_visible.regions_list = !window_visible.regions_list;

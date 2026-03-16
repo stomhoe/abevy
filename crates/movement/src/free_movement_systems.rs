@@ -2,12 +2,12 @@ use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use sprite_animation_shared::{MatchHeldSpritesAnimStateToBeingState, MoveAnimActive};
 
-use crate::movement_components::{GridLockedMovement, NormMoveDir, SpeedMagnitude};
+use crate::movement_components::{GridLockedMovement, FinalNormMoveDir, SpeedMagnitude};
 use crate::movement_helpers::move_anim_changed;
 
 pub fn do_free_movement(
     mut query: Query<
-        (Entity, &mut Transform, &mut MoveAnimActive, &NormMoveDir, &SpeedMagnitude),
+        (Entity, &mut Transform, &mut MoveAnimActive, &FinalNormMoveDir, &SpeedMagnitude),
         Without<GridLockedMovement>,
     >,
     time: Res<Time>,

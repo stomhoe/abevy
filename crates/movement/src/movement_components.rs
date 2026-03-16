@@ -1,12 +1,22 @@
 use bevy::prelude::*;
+use modifier_shared::prelude::AppliedModifiers;
 use param_sets::BlockingTileParamSet;
 use serde::{Deserialize, Serialize};
+use sprite_animation_shared::MoveAnimActive;
 use tilemap_shared::{DimensionRef, GlobalTilePos};
 
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct InputMoveDir(pub Vec2);
 
-impl InputMoveDir {
+#[derive(Component, Debug, Clone, Copy)]
+pub struct PendingTileCorrection {
+    pub gpos: GlobalTilePos,
+    pub secs_left: f32,
+}
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct FinalNormMoveDir(pub Vec2);
+impl FinalNormMoveDir {
     pub fn normalize_to_axis_dir(self) -> IVec2 {
         if self.0 == Vec2::ZERO {
             IVec2::ZERO
@@ -17,15 +27,6 @@ impl InputMoveDir {
         }
     }
 }
-
-#[derive(Component, Debug, Clone, Copy)]
-pub struct PendingTileCorrection {
-    pub gpos: GlobalTilePos,
-    pub secs_left: f32,
-}
-
-#[derive(Component, Debug, Default, Clone, Copy)]
-pub struct NormMoveDir(pub Vec2);
 
 #[derive(Component, Debug, Default, Clone, Copy, Deserialize, Serialize, PartialEq, )]
 pub struct SpeedMagnitude(pub f32);
@@ -40,6 +41,7 @@ pub enum TryStartStepOutcome {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+#[require(SpeedMagnitude, FinalNormMoveDir, InputMoveDir, MoveAnimActive, AppliedModifiers)]
 pub struct GridLockedMovement {
     pub visual_origin_tile: IVec2,
     pub step_dir: IVec2,
@@ -82,8 +84,7 @@ impl GridLockedMovement {
 
     pub fn try_start_step(
         &mut self,
-        blocking_tiles: &BlockingTileParamSet,
-        to_drain: &mut Vec<Entity>,
+        blocking_tiles: &mut BlockingTileParamSet,
         dim_ref: DimensionRef,
         being_ent: Entity,
         tile_pos: &mut GlobalTilePos,
@@ -100,7 +101,7 @@ impl GridLockedMovement {
             };
         }
         let next_tile = GlobalTilePos(tile_pos.0 + dir);
-        if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
+        if blocking_tiles.is_blocked_at(dim_ref, next_tile, being_ent) {
             return TryStartStepOutcome::Blocked;
         }
         self.start_step(tile_pos, dir, step_ticks_total);
@@ -109,8 +110,7 @@ impl GridLockedMovement {
 
     pub fn advance_steps_immediate(
         &mut self,
-        blocking_tiles: &BlockingTileParamSet,
-        to_drain: &mut Vec<Entity>,
+        blocking_tiles: &mut BlockingTileParamSet,
         dim_ref: DimensionRef,
         being_ent: Entity,
         tile_pos: &mut GlobalTilePos,
@@ -123,7 +123,7 @@ impl GridLockedMovement {
         let mut steps_taken = 0;
         for _ in 0..steps {
             let next_tile = GlobalTilePos(tile_pos.0 + dir);
-            if blocking_tiles.is_blocked_at(to_drain, dim_ref, next_tile, being_ent) {
+            if blocking_tiles.is_blocked_at(dim_ref, next_tile, being_ent) {
                 break;
             }
             tile_pos.0 += dir;

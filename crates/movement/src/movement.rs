@@ -19,7 +19,7 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             add_movement_components_to_beings,
-            copy_player_move_input_to_beings,
+            copy_client_move_input_to_controlled_beings,
             receive_gpos_from_server
                 .run_if(in_state(ClientState::Connected))
                 .run_if(on_message::<SyncGpos>),
@@ -52,5 +52,5 @@ pub fn plugin(app: &mut App) {
         .add_mapped_server_message::<SyncGpos>(Channel::Ordered)
         .replicate_once::<GridLockedMovement>()
         .replicate::<SpeedMagnitude>()
-        .replicate_filtered::<CardinalDirection, (Without<NormMoveDir>,)>();
+        .replicate_filtered::<CardinalDirection, (Without<FinalNormMoveDir>,)>();
 }

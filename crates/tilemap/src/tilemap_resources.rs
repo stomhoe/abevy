@@ -176,8 +176,8 @@ impl MassCollectedTiles {
     )  {
         self.collect_tiles_at_positions(
             cmd,
-            ezero_refs.into_iter().map(|tile_ent| (tile_ent, ev.gpos)),
-            ev.dimension_ref,
+            ezero_refs.into_iter().map(|tile_ent| (tile_ent, ev.gpos())),
+            ev.dimension_ref(),
             param_set,
             dim_hash_id,
         );

@@ -8,6 +8,7 @@ use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use tilemap::tile::tile_components::{PortalTo, TileStrId};
 use ::tilemap_shared::*;
 
+use crate::debug_ui_helpers::direction_arrow;
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
 #[allow(unused_parens)]
@@ -85,27 +86,6 @@ pub fn portals_list_window(
         }
     }
 
-    // Helper function to get directional arrow
-    let get_arrow = |dir: Vec2| -> &'static str {
-        if dir == Vec2::ZERO {
-            "?"
-        } else {
-            let angle = dir.y.atan2(dir.x);
-            let normalized = ((angle * 4.0 / std::f32::consts::PI + 8.5) as i32 % 8) as usize;
-            match normalized {
-                0 => "→",
-                1 => "↗",
-                2 => "↑",
-                3 => "↖",
-                4 => "←",
-                5 => "↙",
-                6 => "↓",
-                7 => "↘",
-                _ => "?",
-            }
-        }
-    };
-
     egui::Window::new("Portals List")
         .default_pos([default_x, default_y])
         .resizable(true)
@@ -141,7 +121,7 @@ pub fn portals_list_window(
                                     "NoType".to_string()
                                 };
 
-                                let arrow = get_arrow(*direction);
+                                let arrow = direction_arrow(*direction);
                                 let portal_label = format!("{} {} {:?} [{}]", arrow, str_id_str, entity, distance.round() as i32);
 
                                 let text = egui::RichText::new(&portal_label);

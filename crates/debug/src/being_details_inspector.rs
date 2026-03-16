@@ -70,7 +70,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut item_name_query = world.query::<Option<&DisplayName>>();
     let mut item_strid_query = world.query::<Option<&StrId>>();
     let mut slot_holder_query = world.query::<Option<&SlottedItemHolder>>();
-    let mut norm_move_dir_query = world.query::<&NormMoveDir>();
+    let mut norm_move_dir_query = world.query::<&FinalNormMoveDir>();
     let mut speed_magnitude_query = world.query::<&SpeedMagnitude>();
     let mut input_move_dir_query = world.query::<&InputMoveDir>();
     let mut computed_by_query = world.query::<Option<&ComputedBy>>();

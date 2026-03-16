@@ -54,7 +54,6 @@ pub fn archimedes_spiral_building_system(
             .unwrap_or_else(|| HashId::hash("gray"));
         let delete_other_tiles_by_tile_id = super::super::dungeoning_utils::DeleteOtherTilesConfigMap::from_args(&structured_gen_cfg.args);
         let terrgen_disable_by_tile_id = super::super::dungeoning_utils::TerrGenDisableConfigMap::from_args(&structured_gen_cfg.args);
-        debug!(target: DUNGEONING_SYSTEM, "structure={} terrgen_disable_by_tile_id={:?}", structured_gen_cfg.structure_id(), terrgen_disable_by_tile_id);
 
         let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
             Ok(entity) => EntityZeroRef(entity),

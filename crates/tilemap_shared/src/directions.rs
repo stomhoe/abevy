@@ -54,6 +54,14 @@ impl CardinalDirection {
             CardinalDirection::East => 3,
         }
     }
+    pub fn random(rng: &mut impl rand::Rng) -> Self {
+        match rng.gen_range(0..4) {
+            0 => CardinalDirection::South,
+            1 => CardinalDirection::West,
+            2 => CardinalDirection::North,
+            _ => CardinalDirection::East,
+        }
+    }
 }
 impl From<u8> for CardinalDirection {
     fn from(value: u8) -> Self {
