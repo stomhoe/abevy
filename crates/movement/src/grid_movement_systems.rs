@@ -29,7 +29,7 @@ pub fn start_grid_locked_steps(
         &SpeedMagnitude,
         &mut GlobalTilePos,
         &mut GridLockedMovement,
-        &mut CardinalDirection,
+        &CardinalDirection,
     ), (With<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut sync_gpos_msgs: Local<Vec<ToClients<SyncGpos>>>,
@@ -44,7 +44,7 @@ pub fn start_grid_locked_steps(
         speed_magnitude,
         mut tile_pos,
         mut glm,
-        mut facing_dir,
+        facing_dir,
     ) in beings.iter_mut()
     {
         glm.ensure_grid_anchor(*tile_pos);
@@ -64,7 +64,6 @@ pub fn start_grid_locked_steps(
                 step_ticks,
             ) {
                 TryStartStepOutcome::Successful => {
-                    *facing_dir = next_dir;
                     steps_to_request = 1;
                     true
                 }
@@ -72,7 +71,6 @@ pub fn start_grid_locked_steps(
                     if *facing_dir == next_dir {
                         false
                     } else {
-                        *facing_dir = next_dir;
                         steps_to_request = 1;
                         true
                     }
@@ -96,11 +94,9 @@ pub fn start_grid_locked_steps(
             );
             if steps_taken > 0 {
                 *credit = (*credit - steps_taken as f32).max(0.0);
-                *facing_dir = next_dir;
                 steps_to_request = steps_taken;
                 true
             } else if dir != IVec2::ZERO && *facing_dir != next_dir {
-                *facing_dir = next_dir;
                 steps_to_request = 1;
                 true
             } else {
@@ -120,7 +116,7 @@ pub fn start_grid_locked_steps(
             let message = SyncGpos {
                 being_ent: entity,
                 gpos: *tile_pos,
-                dir: *facing_dir,
+                dir: next_dir,
                 force_resync: false,
             };
             sync_gpos_msgs.push(ToClients {
@@ -205,6 +201,19 @@ pub fn receive_gpos_from_server(
             let delta = being_gpos.0 - gpos.0;
             if delta.x.abs().max(delta.y.abs()) < 1 {
                 commands.entity(*being_ent).remove::<PendingTileCorrection>();
+                continue;
+            }
+            if delta.x.abs().max(delta.y.abs()) > 1 {
+                *being_gpos = *gpos;
+                glm.clear_step(*gpos);
+                transform.translation = gpos.to_translation(transform.translation.z);
+                commands.entity(*being_ent).remove::<PendingTileCorrection>();
+                trace!(target: MOVEMENT_SYSTEM, "Immediate client burst resync for {:?}: {:?} facing {:?}", being_ent, gpos, dir);
+                file_log(
+                    "move",
+                    "client",
+                    &format!("immediate_burst_resync ent={being_ent:?} gpos={gpos:?} facing={dir:?}"),
+                );
                 continue;
             }
 

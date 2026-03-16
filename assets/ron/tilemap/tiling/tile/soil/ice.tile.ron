@@ -1,5 +1,6 @@
 (
     id: "ice",
+    tags: ["land"],
     name: "Ice",
     z: -1000,
     img_paths: [

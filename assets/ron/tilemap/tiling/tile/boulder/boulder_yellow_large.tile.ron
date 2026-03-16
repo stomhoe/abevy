@@ -1,7 +1,7 @@
 (
     id: "boulder_yellow_large",
     name: "Yellow large boulder",
-    tags: ["boulder", "rock", "yellow"],
+    tags: ["land", "boulder", "rock", "yellow"],
     z: 1000,
     y_sort: Some(10),
     img_paths: [

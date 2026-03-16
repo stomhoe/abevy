@@ -10,8 +10,7 @@ use tilemap::tile::tile_components::TileFlip;
 use crate::{being_components::*, being_messages::*};
 
 #[allow(unused_parens)]
-#[allow(unused_parens)]
-pub fn beings_sync_transform_to_added_gpos(
+pub fn beings_snap_transform_to_added_gpos(
     mut query: Query<(&GlobalTilePos, &mut Transform), (With<Being>, Added<GlobalTilePos>)>,
 ) {
     for (&gpos, mut transform) in query.iter_mut() {

@@ -69,7 +69,7 @@ pub fn plugin(app: &mut App) {
         (
             apply_melee_attack.in_set(HostSystems),
             validate_added_beings_have_position_and_transform.before(sync_occupancy_for_beings_at_gpos_res),
-            beings_sync_transform_to_added_gpos.before(sync_occupancy_for_beings_at_gpos_res),
+            beings_snap_transform_to_added_gpos.before(sync_occupancy_for_beings_at_gpos_res),
             sync_occupancy_for_beings_at_gpos_res.before(MovementSystems),
         )
             .in_set(GameplaySystems),

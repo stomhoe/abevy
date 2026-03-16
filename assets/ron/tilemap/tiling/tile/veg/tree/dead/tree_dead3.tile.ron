@@ -1,7 +1,7 @@
 (
     id: "tree_dead3",
     name: "Dead tree",
-    tags: ["tree", "veg"],
+    tags: ["land", "tree", "veg"],
     z: 1000,
     y_sort: Some(0),
     img_paths: [

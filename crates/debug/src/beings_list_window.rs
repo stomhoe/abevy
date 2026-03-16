@@ -1,23 +1,83 @@
 use bevy::prelude::*;
 use bevy::transform::components::GlobalTransform;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
+use common::common_components::{DisplayName, StrId};
 use ::tilemap_shared::*;
 use std::collections::BTreeMap;
 
 use being::being_components::Being;
+use being::{being_inst_template::being_inst_template_resources::BitRef, race::race_resources::RaceRef};
 use camera::camera_components::CameraTarget;
 
 use crate::debug_ui_helpers::direction_arrow;
 use crate::debug_resources::*;
+
+fn ref_id_label(entity: Entity, id_query: &Query<&StrId>) -> String {
+    id_query
+        .get(entity)
+        .map(|str_id| str_id.as_str().to_string())
+        .unwrap_or_else(|_| format!("{:?}", entity))
+}
+
+fn being_list_entry_label(
+    entity: Entity,
+    display_name: Option<&DisplayName>,
+    name: Option<&Name>,
+    being_id: Option<&StrId>,
+    race_ref: Option<&RaceRef>,
+    bit_ref: Option<&BitRef>,
+    id_query: &Query<&StrId>,
+) -> String {
+    let mut parts = Vec::with_capacity(4);
+
+    let main_name = display_name
+        .map(|dn| dn.0.as_str())
+        .or_else(|| name.map(|n| n.as_str()))
+        .filter(|s| !s.is_empty() && *s != "Being");
+
+    if let Some(n) = main_name {
+        parts.push(n.to_string());
+    }
+
+    parts.push(
+        being_id
+            .map(|str_id| str_id.as_str().to_string())
+            .unwrap_or_else(|| format!("{:?}", entity)),
+    );
+    parts.push(
+        race_ref
+            .map(|race_ref| ref_id_label(race_ref.0, id_query))
+            .unwrap_or_else(|| "-".to_string()),
+    );
+    parts.push(
+        bit_ref
+            .map(|bit_ref| ref_id_label(bit_ref.0, id_query))
+            .unwrap_or_else(|| "-".to_string()),
+    );
+    parts.join(" | ")
+}
 
 #[allow(unused_parens)]
 pub fn beings_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    being_query: Query<(Entity, Option<&Name>, &DimensionRef, &GlobalTilePos), With<Being>>,
+    being_query: Query<
+        (
+            Entity,
+            Option<&DisplayName>,
+            Option<&Name>,
+            Option<&StrId>,
+            Option<&RaceRef>,
+            Option<&BitRef>,
+            &DimensionRef,
+            &GlobalTilePos,
+        ),
+        With<Being>,
+    >,
     dimension_query: Query<&Name>,
     camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    id_query: Query<&StrId>,
 ) {
     if !window_visible.beings_list {
         return;
@@ -37,14 +97,15 @@ pub fn beings_list_window(
     let camera_dim_ref = camera_info.map(|(dim_ref, _)| dim_ref);
 
     // Group beings by dimension
-    let mut beings_by_dimension: BTreeMap<String, Vec<(Entity, Option<&Name>, Vec2, f32)>> = BTreeMap::new();
+    let mut beings_by_dimension: BTreeMap<String, Vec<(Entity, String, Vec2, f32)>> = BTreeMap::new();
 
-    for (entity, name, dim_ref, global_pos) in being_query.iter() {
+    for (entity, display_name, name, being_id, race_ref, bit_ref, dim_ref, global_pos) in being_query.iter() {
         let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
             format!("{}", n)
         } else {
             format!("{:?}", dim_ref)
         };
+        let label = being_list_entry_label(entity, display_name, name, being_id, race_ref, bit_ref, &id_query);
         let direction = if camera_dim_ref.map(|camera_ref| camera_ref == dim_ref).unwrap_or(false) {
             if let Some(cam_pos) = camera_pos {
                 let being_pixel_pos: Vec2 = (*global_pos).into();
@@ -59,7 +120,7 @@ pub fn beings_list_window(
         beings_by_dimension
             .entry(dim_name)
             .or_insert_with(Vec::new)
-            .push((entity, name, direction, distance));
+            .push((entity, label, direction, distance));
     }
 
     // Sort dimensions with camera dimension first
@@ -101,12 +162,14 @@ pub fn beings_list_window(
                     egui::CollapsingHeader::new(format!("{} ({})", dim_key, beings.len()))
                         .default_open(is_camera_dim)
                         .show(ui, |ui| {
-                            for (entity, name, direction, distance) in beings.iter() {
-                                let label = if let Some(n) = name {
-                                    format!("{} {} ({:?}) [{}]", n, direction_arrow(*direction), entity, distance.round() as i32)
-                                } else {
-                                    format!("Unnamed {} ({:?}) [{}]", direction_arrow(*direction), entity, distance.round() as i32)
-                                };
+                            for (entity, base_label, direction, distance) in beings.iter() {
+                                let label = format!(
+                                    "{} {} [{:?}] [{}]",
+                                    base_label,
+                                    direction_arrow(*direction),
+                                    entity,
+                                    distance.round() as i32
+                                );
                                 let is_selected = selected_entities.selected_being == Some(*entity);
                                 if ui.selectable_label(is_selected, label).clicked() {
                                     selected_entities.selected_being = Some(*entity);

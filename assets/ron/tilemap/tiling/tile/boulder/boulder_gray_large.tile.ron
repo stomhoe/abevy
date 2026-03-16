@@ -1,7 +1,7 @@
 (
     id: "boulder_gray_large",
     name: "Gray large boulder",
-    tags: ["boulder", "rock"],
+    tags: ["land", "boulder", "rock"],
     z: 1000,
     y_sort: Some(10),
     img_paths: [

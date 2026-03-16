@@ -54,13 +54,8 @@ pub fn update_facing_dir(
 ) {
     for (being_ent, norm_move_dir, glm, mut facing_dir) in query.iter_mut() {
         let dir = glm
-            .and_then(|glm| {
-                if glm.step_dir == IVec2::ZERO {
-                    None
-                } else {
-                    Some(glm.step_dir)
-                }
-            })
+            .filter(|glm| glm.is_stepping())
+            .map(|glm| glm.step_dir)
             .unwrap_or_else(|| norm_move_dir.normalize_to_axis_dir());
         let next = if dir == IVec2::ZERO {
             *facing_dir

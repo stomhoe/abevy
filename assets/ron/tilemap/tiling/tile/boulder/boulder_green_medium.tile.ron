@@ -1,7 +1,7 @@
 (
     id: "boulder_green_medium",
     name: "Green medium boulder",
-    tags: ["boulder", "rock", "green"],
+    tags: ["land", "boulder", "rock", "green"],
     z: 1000,
     y_sort: Some(10),
     img_paths: [

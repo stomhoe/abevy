@@ -3,6 +3,7 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use param_sets::BlockingTileParamSet;
+use sprite_animation_shared::MatchHeldSpritesAnimStateToBeingState;
 use tilemap::tile::prelude::Tile;
 use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 
@@ -33,6 +34,8 @@ pub fn receive_step_request_from_client(
     ), (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
+    mut move_state_writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
+    mut move_state_msgs: Local<Vec<MatchHeldSpritesAnimStateToBeingState>>,
     mut rate_states: Local<EntityHashMap<ClientStepRateState>>,
 ) {
     for from_client in events.read() {
@@ -62,10 +65,6 @@ pub fn receive_step_request_from_client(
             continue;
         };
         let dir_vec = step_dir.to_dir_vec();
-        glm.step_dir = dir_vec;
-        if *facing_dir != step_dir {
-            *facing_dir = step_dir;
-        }
         let secs_per_step = secs_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         if secs_per_step <= 0.0 {
             continue;
@@ -80,16 +79,13 @@ pub fn receive_step_request_from_client(
         state.last_server_secs = now;
         state.step_credit = (state.step_credit + elapsed / secs_per_step)
             .min(MAX_GRID_STEPS_PER_FIXED_TICK as f32 + STEP_EARLY_TOLERANCE);
-        let allowed_steps = (state.step_credit + STEP_EARLY_TOLERANCE)
-            .floor()
-            .clamp(0.0, MAX_GRID_STEPS_PER_FIXED_TICK as f32) as u16;
-        if allowed_steps == 0 {
+        if state.step_credit + STEP_EARLY_TOLERANCE < requested_steps as f32 {
             messages.push(ToClients {
                 mode: SendMode::Direct(client_id),
                 message: SyncGpos {
                     being_ent,
                     gpos: *tile_pos,
-                    dir: step_dir,
+                    dir: *facing_dir,
                     force_resync: true,
                 },
             });
@@ -105,7 +101,7 @@ pub fn receive_step_request_from_client(
                     message: SyncGpos {
                         being_ent,
                         gpos: *tile_pos,
-                        dir: step_dir,
+                        dir: *facing_dir,
                         force_resync: true,
                     },
                 });
@@ -119,14 +115,32 @@ pub fn receive_step_request_from_client(
                 dir_vec,
                 step_ticks,
             ) {
-                TryStartStepOutcome::Successful | TryStartStepOutcome::AlreadyStepping => 1,
+                TryStartStepOutcome::Successful => {
+                    if *facing_dir != step_dir {
+                        *facing_dir = step_dir;
+                        move_state_msgs.push(MatchHeldSpritesAnimStateToBeingState(being_ent));
+                    }
+                    1
+                }
+                TryStartStepOutcome::AlreadyStepping => {
+                    messages.push(ToClients {
+                        mode: SendMode::Direct(client_id),
+                        message: SyncGpos {
+                            being_ent,
+                            gpos: *tile_pos,
+                            dir: *facing_dir,
+                            force_resync: true,
+                        },
+                    });
+                    continue;
+                }
                 TryStartStepOutcome::Blocked => {
                     messages.push(ToClients {
                         mode: SendMode::Direct(client_id),
                         message: SyncGpos {
                             being_ent,
                             gpos: *tile_pos,
-                            dir: step_dir,
+                            dir: *facing_dir,
                             force_resync: true,
                         },
                     });
@@ -141,7 +155,7 @@ pub fn receive_step_request_from_client(
                 entity,
                 &mut tile_pos,
                 dir_vec,
-                requested_steps.min(allowed_steps),
+                requested_steps,
             );
             if steps_taken == 0 {
                 messages.push(ToClients {
@@ -149,11 +163,15 @@ pub fn receive_step_request_from_client(
                     message: SyncGpos {
                         being_ent,
                         gpos: *tile_pos,
-                        dir: step_dir,
+                        dir: *facing_dir,
                         force_resync: true,
                     },
                 });
                 continue;
+            }
+            if *facing_dir != step_dir {
+                *facing_dir = step_dir;
+                move_state_msgs.push(MatchHeldSpritesAnimStateToBeingState(being_ent));
             }
             steps_taken
         };
@@ -179,4 +197,5 @@ pub fn receive_step_request_from_client(
         );
     }
     writer.write_batch(messages.drain(..));
+    move_state_writer.write_batch(move_state_msgs.drain(..));
 }

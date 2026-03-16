@@ -1,7 +1,7 @@
 (
     id: "banyan",
     name: "Banyan",
-    tags: ["tree", "veg"],
+    tags: ["land", "tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/elf/banyan.png")
     ],

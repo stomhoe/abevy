@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
-use common::common_components::StrId;
 use game_common::game_common_components::EntityZeroRef;
 use param_sets::EntitiesAtGposParamSet;
 use sprite_shared::prelude::AcZ;
@@ -68,7 +67,7 @@ pub fn world_tile_click_picker_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut state: ResMut<WorldTileClickInspectorState>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    strid_query: Query<&StrId>,
+    name_query: Query<&Name>,
     ezero_ref_query: Query<&EntityZeroRef>,
     acz_query: Query<&AcZ>,
 ) {
@@ -110,19 +109,19 @@ pub fn world_tile_click_picker_window(
 
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for &entity in &state.entities_at_gpos {
-                    let strid_label = if let Ok(str_id) = strid_query.get(entity) {
-                        str_id.as_str().to_string()
+                    let name_label = if let Ok(name) = name_query.get(entity) {
+                        name.as_str().to_string()
                     } else if let Ok(&EntityZeroRef(ezero_entity)) = ezero_ref_query.get(entity) {
-                        if let Ok(str_id) = strid_query.get(ezero_entity) {
-                            str_id.as_str().to_string()
+                        if let Ok(name) = name_query.get(ezero_entity) {
+                            name.as_str().to_string()
                         } else {
-                            "<no StrId>".to_string()
+                            "<no Name>".to_string()
                         }
                     } else {
-                        "<no StrId>".to_string()
+                        "<no Name>".to_string()
                     };
                     let is_selected = selected_entities.selected_exempted_entity == Some(entity);
-                    let row = format!("{}  ({:?})", strid_label, entity);
+                    let row = format!("{}  ({:?})", name_label, entity);
                     if ui.selectable_label(is_selected, row).clicked() {
                         selected_entities.selected_exempted_entity = Some(entity);
                         selected_entities.selected_tile = None;
