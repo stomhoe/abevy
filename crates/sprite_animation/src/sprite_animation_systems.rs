@@ -6,7 +6,7 @@ use ac_audio::ac_audio_components::{AnimationFrameSfxState, AnimationSeriSfxConf
 use being_shared::{Grounding, ComputedBy, ComputedLocally};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
-use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
+use common::{SPRITE_ANIMATION_SYSTEM, common_components::*, file_logging::file_log};
 use game_common::{game_common_components::{Directionable, EntityZeroRef, }, prelude::EntityZero};
 use movement::movement_components::SpeedMagnitude;
 use player::player_components::*;
@@ -98,11 +98,35 @@ pub fn switch_or_readjust_sprite_animation(
             };
 
             let Some(anim_ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
+                file_log(
+                    "move",
+                    "sprite",
+                    &format!(
+                        "no_anim base={:?} sprite={ent:?} dir={:?} moving={:?} grounding={:?} state={:?}",
+                        base_holder.base,
+                        anim_type.direction,
+                        anim_type.moving,
+                        anim_type.grounding,
+                        anim_type.state_id,
+                    ),
+                );
                 if !has_fallback {
                     warn_once!(target: SPRITE_ANIMATION_SYSTEM, "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?} {}", anim_type, ent, held_sprite_strid);
                 }
                 continue;
             };
+            file_log(
+                "move",
+                "sprite",
+                &format!(
+                    "select_anim base={:?} sprite={ent:?} anim={anim_ent:?} dir={:?} moving={:?} grounding={:?} state={:?}",
+                    base_holder.base,
+                    anim_type.direction,
+                    anim_type.moving,
+                    anim_type.grounding,
+                    anim_type.state_id,
+                ),
+            );
 
             let Ok((_, anim_handle, anim_sheet, z, y_sort, clip_start_frames, should_save_anim_progress, alternating_config, mut alternating_state, anim_playing_speed, anim_seri )) = animation_query.get_mut(*anim_ent) else {
                 let anim_strid = strid_query.get(*anim_ent).ok().cloned().unwrap_or_default();

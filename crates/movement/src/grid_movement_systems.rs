@@ -1,21 +1,174 @@
 use being_shared::{Being, ComputedLocally};
 use bevy::ecs::entity::EntityHashMap;
-use bevy::platform::collections::HashSet;
+use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use common::common_components::StrId;
 use param_sets::BlockingTileParamSet;
-use common::log_targets::MOVEMENT_SYSTEM;
+use common::log_targets::{BEING_SYSTEM, MOVEMENT_SYSTEM};
 use common::file_logging::file_log;
 use ::sprite_animation_shared::*;
 
 use tilemap::tile::prelude::Tile;
-use tilemap_shared::*;
+use tilemap_shared::{BeingsAtGpos, *};
 
 use crate::movement_components::*;
+use crate::grid_movement_helpers::*;
 use crate::movement_helpers::*;
 use crate::movement_messages::*;
 
 const TILE_CORRECTION_INTERVAL_SECS: f32 = 2.0;
+
+#[allow(unused_parens)]
+pub fn beings_snap_transform_to_added_gpos(
+    mut query: Query<(&GlobalTilePos, &mut Transform), (With<Being>, Added<GlobalTilePos>)>,
+) {
+    for (&gpos, mut transform) in query.iter_mut() {
+        transform.translation = gpos.to_translation(transform.translation.z);
+    }
+}
+
+#[allow(unused_parens)]
+pub fn sync_occupancy_for_beings_at_gpos_res(
+    mut beings_at_gpos: ResMut<BeingsAtGpos>,
+    mut removed_beings: RemovedComponents<Being>,
+    mut tracked_pos: Local<EntityHashMap<(DimensionRef, GlobalTilePos)>>,
+    query: Query<
+        (Entity, &DimensionRef, &GlobalTilePos),
+        (
+            With<Being>,
+            Or<(Added<Being>, Changed<GlobalTilePos>, Changed<DimensionRef>)>,
+        ),
+    >,
+) {
+    for ent in removed_beings.read() {
+        let Some((old_dim, old_gpos)) = tracked_pos.remove(&ent) else {
+            continue;
+        };
+        beings_at_gpos.remove_being(old_dim, old_gpos, ent);
+    }
+
+    for (being_ent, &dim_ref, &gpos) in query.iter() {
+        let prev = tracked_pos.get(&being_ent).copied();
+
+        let Some((old_dim, old_gpos)) = prev else {
+            tracked_pos.insert(being_ent, (dim_ref, gpos));
+            beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
+            continue;
+        };
+
+        if old_dim == dim_ref && old_gpos == gpos {
+            continue;
+        }
+        beings_at_gpos.remove_being(old_dim, old_gpos, being_ent);
+        beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
+        tracked_pos.insert(being_ent, (dim_ref, gpos));
+    }
+}
+
+pub fn resolve_overlapping_beings(
+    mut beings: ParamSet<(
+        Query<(Entity, &DimensionRef, &GlobalTilePos), With<Being>>,
+        Query<(
+            Option<&StrId>,
+            &DimensionRef,
+            &mut GlobalTilePos,
+            &mut Transform,
+            Option<&mut GridLockedMovement>,
+        ), With<Being>>,
+    )>,
+    loaded_chunks: Res<LoadedChunks>,
+    mut blocking_tiles: BlockingTileParamSet,
+    mut occupied_positions: Local<HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>>,
+    mut duplicate_positions: Local<Vec<((DimensionRef, GlobalTilePos), Vec<Entity>)>>,
+    mut reserved_positions: Local<HashSet<(DimensionRef, GlobalTilePos)>>,
+) {
+    occupied_positions.clear();
+    duplicate_positions.clear();
+    reserved_positions.clear();
+
+    for (being_ent, &dim_ref, &gpos) in beings.p0().iter() {
+        occupied_positions
+            .entry((dim_ref, gpos))
+            .or_default()
+            .push(being_ent);
+    }
+
+    for (&position_key, overlapping_beings) in occupied_positions.iter_mut() {
+        overlapping_beings.sort_unstable_by_key(|ent| ent.to_bits());
+        reserved_positions.insert(position_key);
+        if overlapping_beings.len() > 1 {
+            duplicate_positions.push((position_key, overlapping_beings.clone()));
+        }
+    }
+
+    if duplicate_positions.is_empty() {
+        return;
+    }
+
+    duplicate_positions.sort_unstable_by_key(|((dim_ref, gpos), _)| {
+        (dim_ref.0.to_bits(), gpos.0.x, gpos.0.y)
+    });
+
+    let mut corrected_beings = 0usize;
+    for &((dim_ref, source_gpos), ref overlapping_beings) in duplicate_positions.iter() {
+        let keeper = overlapping_beings[0];
+        for &being_ent in overlapping_beings.iter().skip(1) {
+            let Some(found_gpos) = find_nearest_overlap_resolution_gpos(
+                &mut blocking_tiles,
+                &loaded_chunks,
+                &reserved_positions,
+                dim_ref,
+                source_gpos,
+                being_ent,
+            ) else {
+                warn!(
+                    target: BEING_SYSTEM,
+                    "Could not resolve overlapping beings at {:?} {:?}; keeping {:?} in place",
+                    dim_ref,
+                    source_gpos,
+                    being_ent
+                );
+                continue;
+            };
+
+            let mut beings_mut = beings.p1();
+            let Ok((str_id, &current_dim, mut gpos, mut transform, movement)) = beings_mut.get_mut(being_ent) else {
+                continue;
+            };
+            if current_dim != dim_ref || *gpos == found_gpos {
+                continue;
+            }
+
+            *gpos = found_gpos;
+            transform.translation = found_gpos.to_translation(transform.translation.z);
+            if let Some(mut movement) = movement {
+                movement.clear_step(found_gpos);
+            }
+            reserved_positions.insert((dim_ref, found_gpos));
+            corrected_beings += 1;
+
+            debug!(
+                target: BEING_SYSTEM,
+                "Resolved overlap at {:?} {:?}: kept {:?}, moved {:?} ({}) to {:?}",
+                dim_ref,
+                source_gpos,
+                keeper,
+                being_ent,
+                str_id.map(StrId::as_str).unwrap_or("<no-strid>"),
+                found_gpos
+            );
+        }
+    }
+
+    if corrected_beings > 0 {
+        info!(
+            target: BEING_SYSTEM,
+            "Resolved {} overlapping being positions",
+            corrected_beings
+        );
+    }
+}
 
 pub fn start_grid_locked_steps(
     fixed_time: Res<Time<Fixed>>,

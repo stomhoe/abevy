@@ -1,25 +1,16 @@
 use ::being_shared::*;
 use ::tilemap_shared::*;
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
+use bevy::{ecs::entity::EntityHashSet, prelude::*};
 use common::common_components::StrId;
-use common::log_targets::{BEING_SYSTEM, MOVEMENT_SYSTEM};
+use common::log_targets::BEING_SYSTEM;
 use game_common::game_common_components::{EntityZeroRef, HealthDamage};
-use movement::movement_components::InputMoveDir;
 use tilemap::tile::tile_components::TileFlip;
 
 use crate::{being_components::*, being_messages::*};
 
 #[allow(unused_parens)]
-pub fn beings_snap_transform_to_added_gpos(
-    mut query: Query<(&GlobalTilePos, &mut Transform), (With<Being>, Added<GlobalTilePos>)>,
-) {
-    for (&gpos, mut transform) in query.iter_mut() {
-        transform.translation = gpos.to_translation(transform.translation.z);
-    }
-}
-
 pub fn validate_added_beings_have_position_and_transform(
-    query: Query<(Entity, Option<&StrId>, Has<GlobalTilePos>, Has<Transform>), (With<Being>, Added<Being>)>,
+    query: Query<(Entity, Option<&StrId>, Has<GlobalTilePos>, Has<Transform>), (Added<Being>)>,
 ) {
     for (ent, str_id, has_gpos, has_transform) in query.iter() {
         if has_gpos && has_transform {
@@ -33,44 +24,6 @@ pub fn validate_added_beings_have_position_and_transform(
             has_gpos,
             has_transform
         );
-    }
-}
-
-#[allow(unused_parens)]
-pub fn sync_occupancy_for_beings_at_gpos_res(
-    mut beings_at_gpos: ResMut<BeingsAtGpos>,
-    mut removed_beings: RemovedComponents<Being>,
-    mut tracked_pos: Local<EntityHashMap<(DimensionRef, GlobalTilePos)>>,
-    query: Query<
-        (Entity, &DimensionRef, &GlobalTilePos),
-        (
-            With<Being>,
-            Or<(Added<Being>, Changed<GlobalTilePos>, Changed<DimensionRef>)>,
-        ),
-    >,
-) {
-    for ent in removed_beings.read() {
-        let Some((old_dim, old_gpos)) = tracked_pos.remove(&ent) else {
-            continue;
-        };
-        beings_at_gpos.remove_being(old_dim, old_gpos, ent);
-    }
-
-    for (being_ent, &dim_ref, &gpos) in query.iter() {
-        let prev = tracked_pos.get(&being_ent).copied();
-
-        let Some((old_dim, old_gpos)) = prev else {
-            tracked_pos.insert(being_ent, (dim_ref, gpos));
-            beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
-            continue;
-        };
-
-        if old_dim == dim_ref && old_gpos == gpos {
-            continue;
-        }
-        beings_at_gpos.remove_being(old_dim, old_gpos, being_ent);
-        beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
-        tracked_pos.insert(being_ent, (dim_ref, gpos));
     }
 }
 

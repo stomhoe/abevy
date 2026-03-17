@@ -8,6 +8,7 @@ use crate::{
     movement_secondary_systems::*, grid_movement_systems::*, movement_host_systems::*,
     movement_messages::*,
 };
+use game_common::HostSystems;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct MovementSystems;
@@ -36,6 +37,9 @@ pub fn plugin(app: &mut App) {
                 ),
                 apply_pending_tile_corrections
                     .run_if(in_state(ClientState::Connected)),
+                beings_snap_transform_to_added_gpos,
+                sync_occupancy_for_beings_at_gpos_res,
+                resolve_overlapping_beings.in_set(HostSystems),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
                 emit_move_state_on_movevecmag_speed_mag_change,

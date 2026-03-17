@@ -1,13 +1,15 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use ::being_shared::*;
-use movement::MovementSystems;
-use tilemap_shared::{BeingsAtGpos, GlobalTilePos, PreChunkDespawnSystems};
+use movement::{
+    MovementSystems,
+};
+use tilemap_shared::{BeingsAtGpos, GlobalTilePos};
 
-use common::{AppRegisterAndReplicateExt, common_states::AssetLoading};
+use common::common_states::AssetLoading;
 use game_common::{
     HostSystems,
-    game_common::{GameplaySystems, StatefulSessionSystems},
+    game_common::GameplaySystems,
 };
 use sprite_systems::AcSpriteSystems;
 
@@ -17,11 +19,10 @@ use crate::{
     being_components::*,
     being_control_systems::*,
     being_inst_template::BeingInstTemplateSystems,
-    being_messages::*,
     being_portal_systems::*,
     being_behavior_systems::*,
     being_systems::*,
-    body::{self, prelude::*, BodySystems},
+    body::{self, BodySystems},
     pack::PackSystems,
     race::RaceSystems,
 };
@@ -65,12 +66,11 @@ pub fn plugin(app: &mut App) {
         ).in_set(GameplaySystems),
     ))
     .add_systems(
-        FixedUpdate,
+        Update,
         (
             apply_melee_attack.in_set(HostSystems),
-            validate_added_beings_have_position_and_transform.before(sync_occupancy_for_beings_at_gpos_res),
-            beings_snap_transform_to_added_gpos.before(sync_occupancy_for_beings_at_gpos_res),
-            sync_occupancy_for_beings_at_gpos_res.before(MovementSystems),
+            validate_added_beings_have_position_and_transform,
+
         )
             .in_set(GameplaySystems),
     )

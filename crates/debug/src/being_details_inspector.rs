@@ -73,6 +73,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut norm_move_dir_query = world.query::<&FinalNormMoveDir>();
     let mut speed_magnitude_query = world.query::<&SpeedMagnitude>();
     let mut input_move_dir_query = world.query::<&InputMoveDir>();
+    let mut gtrans_query = world.query::<Option<&GlobalTransform>>();
     let mut computed_by_query = world.query::<Option<&ComputedBy>>();
     let mut computed_locally_query = world.query::<Has<ComputedLocally>>();
     let mut player_actions_query =
@@ -248,6 +249,15 @@ pub fn being_details_inspector(world: &mut World) {
                     ));
                 } else {
                     ui.label("InputMoveDir: missing");
+                }
+                if let Ok(gtrans) = gtrans_query.get(world, selected_being_entity)
+                    && let Some(gtrans) = gtrans
+                {
+                    let translation = gtrans.translation();
+                    ui.label(format!(
+                        "GlobalTransform: [{:.0}, {:.0}, {}]",
+                        translation.x, translation.y, translation.z
+                    ));
                 }
                 if let Ok(grid_move) = grid_move_query.get(world, selected_being_entity) {
                     if let Some(grid_move) = grid_move {

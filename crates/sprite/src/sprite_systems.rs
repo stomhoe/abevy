@@ -60,13 +60,17 @@ fn dropped_item_override_z(
 
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
-    sprite_query: Query<(Entity), (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<EntityZeroRef> , Changed<Offset2D>, Added<Sprite>)>)>,
-    baseholder_query: Query<(&HeldSprites), (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Changed<HeldSprites>)>)>,
+    sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<EntityZeroRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>)>)>,
+    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>)>)>,
+    mut removed_disabled: RemovedComponents<Disabled>,
     mut writer: MessageWriter<SpriteChanged>,
     mut changed: Local<HashSet<SpriteChanged>>,
 )
 {
     for sprite_ent in sprite_query.iter() {
+        changed.insert(SpriteChanged(sprite_ent));
+    }
+    for sprite_ent in removed_disabled.read() {
         changed.insert(SpriteChanged(sprite_ent));
     }
     for held_sprites in baseholder_query.iter() {
@@ -105,7 +109,7 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
 pub fn z_sort_system(
     changed_query: Query<Entity,
         (Or<(Changed<EntityZeroRef>, Changed<GlobalTransform>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>,)>,
-        Or<(With<Sprite>, With<TilemapAnchor>, )>)>,
+        Or<(With<Sprite>, With<TilemapAnchor>, With<Mesh2d>)>)>,
     mut process_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>,
         Option<&AcZ>, Option<&EntityZeroRef>, Has<TilemapAnchor>, &ChildOf, ),>,
 
@@ -159,7 +163,7 @@ pub fn z_sort_system(
         }
 
         let y_pos = y - origin_y;
-        const TILE_FRAC_SENS: f32 = 0.3;
+        const TILE_FRAC_SENS: f32 = 0.7;
         let y_pos_tiles = TILE_FRAC_SENS * y_pos / GlobalTilePos::TILE_SIZE_PXS.y as f32;
         let use_y_sort = (maybe_ysort_origin.is_some() && !has_parent_sprite) as i32 as f32;
         let sigmoid = 1.0f32 / (1.0f32 + 2.0f32.powf(-0.01 * y_pos_tiles));

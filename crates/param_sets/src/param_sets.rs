@@ -19,11 +19,11 @@ use tilemap::chunking::chunking_components::{Chunk, TerrGenState};
 #[derive(SystemParam)]
 pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
-    being_query: Query<'w, 's, (Has<WallPhaser>, )>,
-    tiles_2b_despawned_query: Query<'w, 's, (), (With<Dead>, With<DespawnOnDeath>)>,
-    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), With<Tile>>,
+    wallphaser_query: Query<'w, 's, (), With<WallPhaser>>,
+    will_despawn_query: Query<'w, 's, (), (With<Dead>, With<DespawnOnDeath>)>,
+    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), (With<Tile>, Without<Being>)>,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
-    tile_tags: Query<'w, 's, &'static TagSet, >,
+    tile_tags: Query<'w, 's, &'static TagSet, (With<Tile>, Without<Being>)>,
     tile_collision_masks: Query<'w, 's, &'static TiledCollisionMask, >,
     terrgen_states: Query<'w, 's, &'static TerrGenState, With<Chunk>>,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
@@ -99,7 +99,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             return false;
         }
 
-        let can_phase = self.being_query.get(being).map(|(can_phase,)| can_phase).unwrap_or(false);
+        let can_phase = self.wallphaser_query.get(being).is_ok();
         let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos).to_vec();
 
         let mut all_tiles_failed = true;
@@ -126,7 +126,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             }
 
             if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
-                if self.tiles_2b_despawned_query.get(tile_entity).is_err() {
+                if self.will_despawn_query.get(tile_entity).is_err() {
                     return false;
                 }
                 continue;
@@ -144,7 +144,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                     )
                 })
                 .unwrap_or(false);
-            if blocks_here && self.tiles_2b_despawned_query.get(tile_entity).is_err() {
+            if blocks_here && self.will_despawn_query.get(tile_entity).is_err() {
                 return false;
             }
         }
@@ -197,11 +197,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             return true;
         }
 
-        let can_phase = if let Ok((can_phase, ..)) = self.being_query.get(being) {
-            can_phase
-        } else {
-            false
-        };
+        let can_phase = self.wallphaser_query.get(being).is_ok();
         if can_phase {
             return false;
         }
@@ -215,7 +211,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             };
             all_tiles_failed = false;
             if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
-                let Ok(_) = self.tiles_2b_despawned_query.get(tile_entity) else {
+                let Ok(_) = self.will_despawn_query.get(tile_entity) else {
                     return true;
                 };
                 continue;
@@ -232,7 +228,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 false
             };
             if blocks_here {
-                let Ok(_) = self.tiles_2b_despawned_query.get(tile_entity) else {
+                let Ok(_) = self.will_despawn_query.get(tile_entity) else {
                     return true;
                 };
             }

@@ -11,7 +11,7 @@ use common::{common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::*;
 use sprite_animation_shared::AcAnimationProgresses;
 
-use crate::{sprite_components::*, sprite_resources::*, sprite_systems::SpriteChanged};
+use crate::{sprite_components::*, sprite_resources::*};
 
 #[allow(unused_parens)]
 pub fn add_spritechildren_and_comps(
@@ -39,8 +39,6 @@ pub fn add_spritechildren_and_comps(
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
     sprite_config_ref_query: Query<&EntityZeroRef, common::AnyDisabling>,
     mut removed_disabled: RemovedComponents<Disabled>,
-    mut sprite_changed_writer: MessageWriter<SpriteChanged>,
-    mut sprite_changed_msgs: Local<Vec<SpriteChanged>>,
 ) {
     let reenabled_fathers = collect_reenabled_entities(&mut removed_disabled);
     let mut fathers_to_build = reenabled_fathers.clone();
@@ -81,7 +79,6 @@ pub fn add_spritechildren_and_comps(
             )).id();
 
             cmd.entity(sprite).try_insert(baseholder_ref);
-            sprite_changed_msgs.push(SpriteChanged(sprite));
 
             if let Some(extra_to_build) = extra_to_build {
                 cmd.entity(sprite).try_insert(extra_to_build.clone());
@@ -96,8 +93,6 @@ pub fn add_spritechildren_and_comps(
         //cmd.entity(parent_of_sprite).remove::<SpriteCfgsToBuild>();
         //NO HACER ESO PORQ HACE FALTA PARA LA REPLICACIÓN ^^
     });
-
-    sprite_changed_writer.write_batch(sprite_changed_msgs.drain(..));
 }
 
 #[allow(unused_parens)]
