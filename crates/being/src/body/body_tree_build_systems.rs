@@ -26,8 +26,10 @@ pub fn build_body_tree(
     toclone_query: Query<(&EntityZeroRef, &BodyPartOf, Option<&BodyPartChildren>)>,
     children_query: Query<&Children>,
     modifier_target_query: Query<&ModifierTarget>,
+    mut cloned_parts: Local<Vec<(Entity, Entity)>>,
 ) {
     for (being_ent, tree_to_build, race_ref, global_size) in query.iter() {
+        cloned_parts.clear();
         let body_ent = cmd.spawn((
             BodyOf { being: being_ent },
             ChildOf(being_ent),

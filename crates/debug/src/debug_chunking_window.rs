@@ -543,9 +543,8 @@ pub fn debug_chunking_window(
                         ui.label(format!("TerrGenState: {:?}", terrgen_state));
 
                         if let Some(activating) = activating_chunks {
-                            ui.label(format!("⏳ ActivatingChunks: {} entities, timer: {:.2}s",
-                                activating.entities.len(),
-                                activating.reactivation_timer.elapsed_secs()));
+                            ui.label(format!("⏳ ActivatingChunks: {} positions",
+                                activating.chunk_positions.len()));
                         }
 
                         // Display children details

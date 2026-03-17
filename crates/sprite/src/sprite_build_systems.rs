@@ -1,3 +1,4 @@
+use bevy::render::render_asset;
 use ::sprite_shared::*;
 use being_shared::BeingInstTemplate;
 #[allow(unused_imports)]
@@ -39,17 +40,18 @@ pub fn add_spritechildren_and_comps(
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
     sprite_config_ref_query: Query<&EntityZeroRef, common::AnyDisabling>,
     mut removed_disabled: RemovedComponents<Disabled>,
+    mut fathers_to_build: Local<Vec<Entity>>,
 ) {
-    let reenabled_fathers = collect_reenabled_entities(&mut removed_disabled);
-    let mut fathers_to_build = reenabled_fathers.clone();
+    fathers_to_build.clear();
+    fathers_to_build.extend(removed_disabled.read());
     fathers_to_build.extend(changed_fathers.iter());
 
-    fathers_to_build.into_iter().for_each(|parent_of_sprite| {
+    fathers_to_build.iter().for_each(|&parent_of_sprite| {
         let Ok((to_build, baseholder_ref)) = father_query.get(parent_of_sprite) else {
             return;
         };
         let baseholder_ref = baseholder_ref.cloned().unwrap_or(BaseHolderRef { base: parent_of_sprite });
-        let is_reenabled_only = reenabled_fathers.contains(&parent_of_sprite) && changed_fathers.get(parent_of_sprite).is_err();
+        let is_reenabled_only = changed_fathers.get(parent_of_sprite).is_err();
         if is_reenabled_only && !needs_sprite_build(to_build, &baseholder_ref, &held_sprites_query, &sprite_config_ref_query) {
             return;
         }
@@ -130,13 +132,15 @@ pub fn become_child_of_sprite_with_tag(
     becomes_query: Query<(&BecomeChildOfSpriteWithTag), (common::AnyDisabling)>,
     other_cats: Query<&TagSet, (common::AnyDisabling)>,
     mut removed_disabled: RemovedComponents<Disabled>,
+    mut sprites_to_process: Local<EntityHashSet>,
 ) {
-    let reenabled_sprites = collect_reenabled_entities(&mut removed_disabled);
-    let mut sprites_to_process = reenabled_sprites;
-    sprites_to_process.extend(changed_new_sprites.iter());
     let mut childofs_to_add = Vec::new();
+    sprites_to_process.reserve(removed_disabled.len() + changed_new_sprites.iter().size_hint().0);
+    sprites_to_process.extend(changed_new_sprites.iter());
+    sprites_to_process.extend(removed_disabled.read());
 
-    for new_ent in sprites_to_process {
+
+    for new_ent in sprites_to_process.drain() {
         let Ok((&sprite_holder_ref, &new_sprite_cfg_ref)) = new_sprites.get(new_ent) else {
             continue;
         };
@@ -156,7 +160,7 @@ pub fn become_child_of_sprite_with_tag(
 
             let other_cats = match other_cats.get(o_spritecfg_ref.0) {
                 Ok(cats) => cats,
-                Err(e) => {
+                Err(_) => {
                     break;
                 }
             };
@@ -167,7 +171,7 @@ pub fn become_child_of_sprite_with_tag(
             }
         }
     }
-    cmd.try_insert_batch(childofs_to_add);
+    cmd.try_insert_batch(std::mem::take(&mut childofs_to_add));
 }
 
 fn needs_sprite_build(
@@ -191,8 +195,4 @@ fn needs_sprite_build(
     to_build.0.iter().any(|cfg_ent| !built_cfgs.contains(cfg_ent))
 }
 
-fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>) -> EntityHashSet {
-    let mut entities = EntityHashSet::default();
-    entities.extend(removed_disabled.read());
-    entities
-}
+

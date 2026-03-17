@@ -8,7 +8,7 @@ use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugW
 use being::{being_inst_template::being_inst_template_resources::BitRef, race::race_resources::RaceRef};
 use camera::camera_components::CameraTarget;
 use common::common_components::StrId;
-use tilemap::chunking::{chunking_components::{Chunk, MacroChunk, MacroChunkRef, TerrGenState, TerrgenDiscoveredMacroChunk}, macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState}};
+use tilemap::chunking::{chunking_components::{Chunk, MacroChunk, MacroChunkRef, TerrGenState}, macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState}};
 use tilemap_shared::{ChunkPos, DimensionRef, LoadedMacroChunks, MacroChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
 use wildlife::{NaturalSpawnOrigin, NaturalSpawnReservationIndex, SeededNaturalWildlifeMacroChunks};
 
@@ -49,7 +49,6 @@ struct MacroChunkCell {
     pos: MacroChunkPos,
     biome_distribution: BiomeDistribution,
     biome_sampling_state: MacroChunkBiomeSamplingState,
-    discovered: bool,
     loaded: bool,
     chunk_stats: MacroChunkChunkStats,
     chunk_states: Vec<(Entity, ChunkPos, TerrGenState)>,
@@ -184,7 +183,7 @@ fn macrochunk_stroke(cell: &MacroChunkCell, is_selected: bool, is_camera_macroch
         egui::Stroke::new(2.0, egui::Color32::YELLOW)
     } else if is_selected {
         egui::Stroke::new(1.5, egui::Color32::WHITE)
-    } else if cell.discovered {
+    } else if cell.chunk_states.iter().any(|(_, _, state)| *state != TerrGenState::Pending) {
         egui::Stroke::new(1.0, egui::Color32::from_rgb(160, 200, 235))
     } else {
         egui::Stroke::new(0.5, egui::Color32::from_gray(35))
@@ -196,7 +195,7 @@ fn macrochunk_hover_text(cell: &MacroChunkCell, id_query: &Query<&StrId>) -> Str
         format!("Macrochunk: {}", cell.pos),
         format!("Entity: {:?}", cell.entity),
         format!("Loaded: {}", cell.loaded),
-        format!("Discovered: {}", cell.discovered),
+        format!("Discovered: {}", cell.chunk_states.iter().any(|(_, _, state)| *state != TerrGenState::Pending)),
         format!("Wildlife seeded: {}", cell.seeded_for_wildlife),
         format!(
             "Chunks: total {} | pending {} | ready {} | ops {} | finished {} | disabled {}",
@@ -464,7 +463,7 @@ fn show_macrochunk_details(
     ui.label(format!("Entity: {:?}", cell.entity));
     ui.label(format!("{}", cell.pos));
     ui.label(format!("Loaded: {}", cell.loaded));
-    ui.label(format!("Discovered: {}", cell.discovered));
+    ui.label(format!("Discovered: {}", cell.chunk_states.iter().any(|(_, _, state)| *state != TerrGenState::Pending)));
     ui.label(format!("Wildlife seeded: {}", cell.seeded_for_wildlife));
     ui.label(format!(
         "Pending wildlife: reserved {} | watched chunks {}",
@@ -633,7 +632,7 @@ pub fn macrochunks_grid_window(
             &MacroChunkPos,
             &BiomeDistribution,
             &MacroChunkBiomeSamplingState,
-            Has<TerrgenDiscoveredMacroChunk>,
+            &TerrGenState,
         ),
         With<MacroChunk>,
     >,
@@ -719,7 +718,7 @@ pub fn macrochunks_grid_window(
     let mut macrochunks_by_dimension: BTreeMap<String, HashMap<MacroChunkPos, MacroChunkCell>> = BTreeMap::new();
     let mut selected_macrochunk_dimension = None;
 
-    for (entity, &dim_ref, &macro_chunk_pos, biome_distribution, biome_sampling_state, discovered) in macro_chunk_query.iter() {
+    for (entity, &dim_ref, &macro_chunk_pos, biome_distribution, biome_sampling_state, terrgen_state) in macro_chunk_query.iter() {
         let dim_name = id_query
             .get(dim_ref.0)
             .map(|str_id| str_id.as_str().to_string())
@@ -751,7 +750,6 @@ pub fn macrochunks_grid_window(
                     pos: macro_chunk_pos,
                     biome_distribution: biome_distribution.clone(),
                     biome_sampling_state: biome_sampling_state.clone(),
-                    discovered,
                     loaded,
                     chunk_stats,
                     chunk_states,

@@ -135,7 +135,7 @@ pub fn init_races(
             let mut entity_cmds = cmd.spawn((Race, EntityZero, str_id.clone(), ingame_name, singular, plural));
             let mut interaction_zones = bevy::platform::collections::HashMap::with_capacity(1);
             interaction_zones.insert("melee".to_string(), race_seri.melee_interaction_zone.clone());
-            entity_cmds.insert(InteractionZones::new(interaction_zones));
+            entity_cmds.insert(InteractionZones::from_seri(interaction_zones));
             let hitbox_hashid = if race_seri.hitbox_hashid.trim().is_empty() {
                 COLLISION_MASK_HASHID
             } else {

@@ -29,7 +29,7 @@ impl NaturalSpawnReservationIndex {
         let Some((dim_ref, home_chunk)) = self.reservation_by_being.remove(&being_ent) else {
             return;
         };
-        let mut empty_keys = Vec::new();
+        let mut empty_keys = Vec::with_capacity(4);
         for key in watched_chunk_keys(dim_ref, home_chunk) {
             let Some(being_ents) = self.by_chunk.get_mut(&key) else {
                 continue;

@@ -4,8 +4,7 @@ use bevy::{ecs::{entity::EntityHashSet, system::SystemParam}, prelude::*};
 use super::chunking_resources::AaChunkRangeSettings;
 use crate::regioning::regioning_components::ChunksActiveInRegion;
 use ::tilemap_shared::*;
-use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
-use serde::{Deserialize, Serialize};
+use bevy_inspector_egui::egui;
 
 #[derive(Component, Debug, Clone)]
 #[relationship(relationship_target = ChunksActiveInRegion)]
@@ -19,9 +18,6 @@ pub struct MacroChunk;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct MacroChunkRef(pub Entity);
-
-#[derive(Component, Debug, Clone, Copy)]
-pub struct TerrgenDiscoveredMacroChunk;
 
 #[derive(Component, Debug, Copy, Clone, )]
 pub struct SaveTile {
@@ -69,23 +65,47 @@ impl TerrGenState {
 
 
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, Default)]
 pub struct ActivatingChunks {
+    pub chunk_positions: Vec<ChunkPos>,
+}
+
+#[derive(Component, Debug, Clone)]
+#[require(ActivatingChunks)]
+pub struct ActivateChunksAround {
     pub reactivation_timer: Timer,
-    pub entities: Vec<Entity>,
+}
+
+impl Default for ActivateChunksAround {
+    fn default() -> Self {
+        Self {
+            reactivation_timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+        }
+    }
 }
 
 impl ActivatingChunks {
     pub fn new(chunkrange: &AaChunkRangeSettings) -> Self {
         Self {
-            entities: Vec::with_capacity((chunkrange.approximate_number_of_chunks(1.2)) as usize),
-            reactivation_timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+            chunk_positions: Vec::with_capacity((chunkrange.approximate_number_of_chunks(1.2)) as usize),
         }
     }
+
+    pub fn insert_positions_around(&mut self, center_chunk_pos: ChunkPos, chunk_range: i32) {
+        for y in (center_chunk_pos.y() - chunk_range + 1)..(center_chunk_pos.y() + chunk_range) {
+            for x in (center_chunk_pos.x() - chunk_range + 1)..(center_chunk_pos.x() + chunk_range) {
+                let chunk_pos = ChunkPos::new(x, y);
+                if !self.chunk_positions.contains(&chunk_pos) {
+                    self.chunk_positions.push(chunk_pos);
+                }
+            }
+        }
+    }
+
     pub fn render_grid(&self, ui: &mut egui::Ui, ) {
         use bevy_inspector_egui::egui;
 
-        let num_chunks = self.entities.len();
+        let num_chunks = self.chunk_positions.len();
         ui.label(format!("Activating Chunks: {}", num_chunks));
         let grid_size = (num_chunks as f32).sqrt().ceil() as usize;
         let chunk_size = 50.0;
@@ -97,7 +117,7 @@ impl ActivatingChunks {
             egui::Sense::hover(),
         );
 
-        for (i, entity) in self.entities.iter().enumerate() {
+        for (i, chunk_pos) in self.chunk_positions.iter().enumerate() {
             let row = i / grid_size;
             let col = i % grid_size;
             let rect = egui::Rect::from_min_size(
@@ -108,7 +128,7 @@ impl ActivatingChunks {
             painter.text(
             rect.center(),
             egui::Align2::CENTER_CENTER,
-            entity.index().to_string(),
+            format!("{}, {}", chunk_pos.x(), chunk_pos.y()),
             egui::FontId::proportional(14.0),
             egui::Color32::BLACK,
             );

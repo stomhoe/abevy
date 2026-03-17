@@ -27,12 +27,6 @@ use ::tilemap_shared::*;
 pub use crate::terrain::terrprobe::terrprobe_systems::search_suitable_positions;
 
 #[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenCollectBuffers<'s> {
-    pub pending_ops_batch: Local<'s, Vec<PendingOp>>,
-    pub tile_requests: Local<'s, Vec<TerrGenTileRequest>>,
-}
-
-#[derive(bevy::ecs::system::SystemParam)]
 pub struct TerrgenQueriesParamSet<'w, 's> {
     pub oplist_query: Query<'w, 's, (&'static OperationList, &'static OplistSize, Option<&'static HashedTagsVec>, &'static StrId), ()>,
     pub fnl_noises: Query<'w, 's, &'static FnlNoiseComp>,
@@ -45,7 +39,6 @@ pub struct TerrgenQueriesParamSet<'w, 's> {
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct TerrgenResourcesParamSet<'w> {
-    pub pending_ops_events: ResMut<'w, Messages<PendingOp>>,
     pub collected: ResMut<'w, MassCollectedTiles>,
     pub terrgen_tasks: ResMut<'w, TerrGenAsyncTasks>,
     pub debug_grid: ResMut<'w, TerrGenDebugGrid>,
@@ -53,15 +46,26 @@ pub struct TerrgenResourcesParamSet<'w> {
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenCompletionBuffers<'w, 's> {
+pub struct TerrgenMessageBuffers<'w> {
     pub chunk_built_writer: MessageWriter<'w, ChunkTerrainBuilt>,
     pub macro_chunk_biome_sampled_writer: MessageWriter<'w, MacroChunkBiomeSampled>,
     pub sampled_value_writer: MessageWriter<'w, SuitablePosFound>,
     pub sampled_value_matrix_writer: MessageWriter<'w, SampledValuesCollected>,
+}
+
+#[derive(bevy::ecs::system::SystemParam)]
+pub struct TerrgenLocalBuffers<'s> {
+    pub pending_ops_batch: Local<'s, Vec<PendingOp>>,
+    pub tile_requests: Local<'s, Vec<TerrGenTileRequest>>,
     pub expected_root_gpos_by_chunk: Local<'s, EntityHashMap<usize>>,
     pub completed_root_gpos_by_chunk: Local<'s, EntityHashMap<HashSet<GlobalTilePos>>>,
     pub chunk_built_msgs: Local<'s, Vec<ChunkTerrainBuilt>>,
     pub macro_chunk_biome_sampled_msgs: Local<'s, Vec<MacroChunkBiomeSampled>>,
+    pub sampled_value_events: Local<'s, Vec<SuitablePosFound>>,
+    pub sampled_value_matrix_events: Local<'s, Vec<SampledValuesCollected>>,
+    pub finished_macro_chunk_biome_samples: Local<'s, Vec<(Vec<TerrGenBiomeTagSample>, Vec<Entity>)>>,
+    pub pending_ops: Local<'s, Vec<PendingOp>>,
+    pub sampled_macrochunks: Local<'s, Vec<MacroChunkBiomeSampled>>,
 }
 
 const BIOME_SAMPLE_GRID_AXIS_STEPS: [i32; 3] = [1, 3, 5];
@@ -72,12 +76,11 @@ pub fn request_macrochunk_biome_sampling(
     dimension_query: Query<&DimensionRootOplist>,
     oplists: Query<&OplistSize, With<OperationList>>,
     mut pending_ops_writer: MessageWriter<PendingOp>,
-    mut macro_chunk_biome_sampled_writer: MessageWriter<MacroChunkBiomeSampled>,
-    mut pending_ops: Local<Vec<PendingOp>>,
-    mut sampled_macrochunks: Local<Vec<MacroChunkBiomeSampled>>,
+    mut msg_buffers: TerrgenMessageBuffers,
+    mut local_buffers: TerrgenLocalBuffers,
 ) {
-    pending_ops.clear();
-    sampled_macrochunks.clear();
+    local_buffers.pending_ops.clear();
+    local_buffers.sampled_macrochunks.clear();
     for request in reader.read() {
         let Ok((&dim_ref, &macro_chunk_pos, mut biome_state)) = macro_chunk_query.get_mut(request.macro_chunk_ent) else {
             continue;
@@ -97,7 +100,7 @@ pub fn request_macrochunk_biome_sampling(
         let expected_samples = sample_positions.len();
         if expected_samples == 0 {
             *biome_state = MacroChunkBiomeSamplingState::Sampled;
-            sampled_macrochunks.push(MacroChunkBiomeSampled {
+            local_buffers.sampled_macrochunks.push(MacroChunkBiomeSampled {
                 macro_chunk_ent: request.macro_chunk_ent,
             });
             continue;
@@ -107,7 +110,7 @@ pub fn request_macrochunk_biome_sampling(
             completed_samples: 0,
         };
         for gpos in sample_positions {
-            pending_ops.push(PendingOp {
+            local_buffers.pending_ops.push(PendingOp {
                 oplist: root_oplist,
                 input: PendingOpInput {
                     dimension_ref: dim_ref,
@@ -120,8 +123,10 @@ pub fn request_macrochunk_biome_sampling(
         }
         trace!(target: "terrgen_systems", "Queued {} biome samples for macrochunk {} in {:?}", expected_samples, macro_chunk_pos, dim_ref);
     }
-    pending_ops_writer.write_batch(pending_ops.drain(..));
-    macro_chunk_biome_sampled_writer.write_batch(sampled_macrochunks.drain(..));
+    pending_ops_writer.write_batch(local_buffers.pending_ops.drain(..));
+    msg_buffers
+        .macro_chunk_biome_sampled_writer
+        .write_batch(local_buffers.sampled_macrochunks.drain(..));
 }
 
 #[allow(unused_parens)]
@@ -168,15 +173,15 @@ pub fn process_pending_ops_and_collect_tiles(
     mut queries: TerrgenQueriesParamSet,
     mut resources: TerrgenResourcesParamSet,
     param_set: CloneSpawnParamSet,
-    mut buffers: TerrgenCollectBuffers,
-    mut completion: TerrgenCompletionBuffers,
+    mut msg_buffers: TerrgenMessageBuffers,
+    mut local_buffers: TerrgenLocalBuffers,
+    mut pending_ops_reader: MessageReader<PendingOp>,
 ) {
     let oplist_query = &queries.oplist_query;
     let fnl_noises = &queries.fnl_noises;
     let op_filters = &queries.op_filters;
     let dim_hash_query = &queries.dim_hash_query;
     let camera_query = &queries.camera_query;
-    let pending_ops_events = &mut resources.pending_ops_events;
     let collected = &mut resources.collected;
     let terrgen_tasks = &mut resources.terrgen_tasks;
     let debug_grid = &mut resources.debug_grid;
@@ -186,11 +191,11 @@ pub fn process_pending_ops_and_collect_tiles(
         error!("Failed to get gen settings");
         return;
     };
-    buffers.pending_ops_batch.clear();
-    buffers.tile_requests.clear();
-    let mut sampled_value_events: Vec<SuitablePosFound> = Vec::new();
-    let mut sampled_value_matrix_events: Vec<SampledValuesCollected> = Vec::new();
-    let mut finished_macro_chunk_biome_samples = Vec::new();
+    local_buffers.pending_ops_batch.clear();
+    local_buffers.tile_requests.clear();
+    local_buffers.sampled_value_events.clear();
+    local_buffers.sampled_value_matrix_events.clear();
+    local_buffers.finished_macro_chunk_biome_samples.clear();
 
     let bucket_size = debug_grid.bucket_size_tiles.max(1);
     let capture_margin = (debug_grid.bucket_radius + debug_grid.capture_margin_buckets).max(4);
@@ -217,7 +222,7 @@ pub fn process_pending_ops_and_collect_tiles(
 
     terrgen_tasks.launch_tasks.retain_mut(|task| {
         if let Some(batch) = future::block_on(future::poll_once(task)) {
-            buffers.pending_ops_batch.extend(batch);
+            local_buffers.pending_ops_batch.extend(batch);
             false
         } else {
             true
@@ -228,14 +233,14 @@ pub fn process_pending_ops_and_collect_tiles(
         if let Some(result) = future::block_on(future::poll_once(task)) {
             register_completed_chunk_gpos(
                 &result.completed_chunk_gpos,
-                &mut completion.expected_root_gpos_by_chunk,
-                &mut completion.completed_root_gpos_by_chunk,
-                &mut completion.chunk_built_msgs,
+                &mut local_buffers.expected_root_gpos_by_chunk,
+                &mut local_buffers.completed_root_gpos_by_chunk,
+                &mut local_buffers.chunk_built_msgs,
             );
-            sampled_value_events.extend(result.sampled_value_events);
-            sampled_value_matrix_events.extend(result.sampled_value_matrix_events);
-            buffers.tile_requests.extend(result.tile_requests);
-            finished_macro_chunk_biome_samples.push((
+            local_buffers.sampled_value_events.extend(result.sampled_value_events);
+            local_buffers.sampled_value_matrix_events.extend(result.sampled_value_matrix_events);
+            local_buffers.tile_requests.extend(result.tile_requests);
+            local_buffers.finished_macro_chunk_biome_samples.push((
                 result.biome_tag_samples,
                 result.completed_macro_chunk_biome_samples,
             ));
@@ -292,7 +297,7 @@ pub fn process_pending_ops_and_collect_tiles(
         }
     });
 
-    for request in buffers.tile_requests.drain(..) {
+    for request in local_buffers.tile_requests.drain(..) {
         let dim_ref = request.pending.dimension_ref();
         let base_gpos = request.pending.gpos();
         collected.collect_tiles_at_positions(
@@ -313,7 +318,7 @@ pub fn process_pending_ops_and_collect_tiles(
     }
 
     let mut finished_macro_chunk_ents = Vec::new();
-    for (samples, completed) in finished_macro_chunk_biome_samples {
+    for (samples, completed) in local_buffers.finished_macro_chunk_biome_samples.drain(..) {
         for sample in samples {
             let Ok(mut distribution) = queries.macro_chunk_biome_distributions.get_mut(sample.macro_chunk_ent) else {
                 continue;
@@ -348,50 +353,50 @@ pub fn process_pending_ops_and_collect_tiles(
             continue;
         };
         *biome_sampling_state = MacroChunkBiomeSamplingState::Sampled;
-        completion.macro_chunk_biome_sampled_msgs.push(MacroChunkBiomeSampled {
+        local_buffers.macro_chunk_biome_sampled_msgs.push(MacroChunkBiomeSampled {
             macro_chunk_ent,
         });
     }
 
-    completion.sampled_value_writer.write_batch(sampled_value_events);
-    completion
+    msg_buffers.sampled_value_writer.write_batch(local_buffers.sampled_value_events.drain(..));
+    msg_buffers
         .sampled_value_matrix_writer
-        .write_batch(sampled_value_matrix_events);
-    for chunk_built in completion.chunk_built_msgs.iter() {
+        .write_batch(local_buffers.sampled_value_matrix_events.drain(..));
+    for chunk_built in local_buffers.chunk_built_msgs.iter() {
         cmd.entity(chunk_built.chunk_ent).try_insert(TerrGenState::Finished);
     }
-    completion
+    msg_buffers
         .chunk_built_writer
-        .write_batch(completion.chunk_built_msgs.drain(..));
-    completion
+        .write_batch(local_buffers.chunk_built_msgs.drain(..));
+    msg_buffers
         .macro_chunk_biome_sampled_writer
-        .write_batch(completion.macro_chunk_biome_sampled_msgs.drain(..));
+        .write_batch(local_buffers.macro_chunk_biome_sampled_msgs.drain(..));
 
     if !launch_queue.0.is_empty() {
         let work_items = take(&mut launch_queue.0);
         for work in work_items.iter() {
             let expected_count = pending_root_gpos_count_for_chunk(work);
             if expected_count == 0 {
-                completion.chunk_built_msgs.push(ChunkTerrainBuilt {
+                local_buffers.chunk_built_msgs.push(ChunkTerrainBuilt {
                     chunk_ent: work.chunk_ent,
                 });
                 continue;
             }
-            completion.expected_root_gpos_by_chunk.insert(work.chunk_ent, expected_count);
-            completion.completed_root_gpos_by_chunk
+            local_buffers.expected_root_gpos_by_chunk.insert(work.chunk_ent, expected_count);
+            local_buffers.completed_root_gpos_by_chunk
                 .entry(work.chunk_ent)
                 .or_default()
                 .clear();
         }
-        completion
+        local_buffers
             .chunk_built_msgs
             .iter()
             .for_each(|chunk_built| {
                 cmd.entity(chunk_built.chunk_ent).insert(TerrGenState::Finished);
             });
-        completion
+        msg_buffers
             .chunk_built_writer
-            .write_batch(completion.chunk_built_msgs.drain(..));
+            .write_batch(local_buffers.chunk_built_msgs.drain(..));
         let task_pool = AsyncComputeTaskPool::get();
         terrgen_tasks.launch_tasks.push(task_pool.spawn(async move {
             build_pending_ops_for_launch(work_items)
@@ -399,18 +404,18 @@ pub fn process_pending_ops_and_collect_tiles(
     }
 
     let gen_settings = gen_settings.clone();
-    buffers.pending_ops_batch.extend(pending_ops_events.drain());
-    if buffers.pending_ops_batch.is_empty() { return; }
+    local_buffers.pending_ops_batch.extend(pending_ops_reader.read().cloned());
+    if local_buffers.pending_ops_batch.is_empty() { return; }
 
     let task_context = build_terrgen_task_context(
-        &buffers.pending_ops_batch,
+        &local_buffers.pending_ops_batch,
         &oplist_query,
         &fnl_noises,
         &op_filters,
         &dim_hash_query,
     );
 
-    let pending_ops_batch = take(&mut *buffers.pending_ops_batch);
+    let pending_ops_batch = take(&mut *local_buffers.pending_ops_batch);
     let capture_debug = debug_grid.enabled;
     let task_pool = AsyncComputeTaskPool::get();
     terrgen_tasks.op_tasks.push(task_pool.spawn(async move {

@@ -8,7 +8,7 @@ use modifier_shared::{modifier_components::*, modifier_move_bundles::SpeedModifi
 use movement::movement_components::GridLockedMovement;
 use player::player_components::*;
 use tilemap::{
-    chunking::{chunking_components::ActivatingChunks, chunking_resources::AaChunkRangeSettings},
+    chunking::{chunking_components::{ActivateChunksAround, ActivatingChunks}, chunking_resources::AaChunkRangeSettings},
     terrain::{
         terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_resources::TerrProbeTemplEntityMap},
     },
@@ -249,6 +249,7 @@ pub fn put_player_beings_on_map(
                     ..default()
                 },
                 DimensionRef(spawn_dim.0),
+                ActivateChunksAround::default(),
                 ActivatingChunks::new(&chunk_range),
 
                 BitStrIdRef::new(settings.players_initial_bit_ref_strid.as_str()),

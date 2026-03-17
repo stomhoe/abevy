@@ -6,7 +6,7 @@ use faction::faction_components::BelongsToAPlayerFaction;
 use movement::movement_components::InputMoveDir;
 use player::player_components::{HostPlayer, Mine, Player};
 use tilemap::{
-    chunking::chunking_components::ActivatingChunks,
+    chunking::chunking_components::{ActivateChunksAround, ActivatingChunks},
     chunking::chunking_resources::AaChunkRangeSettings,
 };
 
@@ -16,10 +16,10 @@ pub fn add_activates_chunks(
     mut removed: RemovedComponents<BelongsToAPlayerFaction>,
     chunk_range: Res<AaChunkRangeSettings>,
 ) {
-    let mut activates_chunks = Vec::new();
-    query.iter().for_each(|ent| activates_chunks.push((ent, ActivatingChunks::new(&chunk_range))));
+    let mut activates_chunks = Vec::with_capacity(query.iter().size_hint().0);
+    query.iter().for_each(|ent| activates_chunks.push((ent, (ActivateChunksAround::default(), ActivatingChunks::new(&chunk_range)))));
     for ent in removed.read() {
-        cmd.entity(ent).try_remove::<ActivatingChunks>();
+        cmd.entity(ent).try_remove::<(ActivateChunksAround, ActivatingChunks)>();
     }
     cmd.try_insert_batch(activates_chunks);
 }
@@ -51,17 +51,17 @@ pub fn on_control_change(
             commands.entity(being_ent).try_insert_if_new((ComputedLocally, ));
             if controlled_by.human_dc_input {
                 debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget due to human input", being_ent);
-                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), ActivatingChunks::new(&chunk_range)));
+                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), ActivateChunksAround::default(), ActivatingChunks::new(&chunk_range)));
             } else {
                 debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
-                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, ActivatingChunks)>();
+                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, ActivateChunksAround, ActivatingChunks)>();
             }
         } else {
             commands.entity(being_ent).try_remove::<(ComputedLocally, CameraTarget)>();
             if !is_host {
                 commands.entity(being_ent).try_remove::<HumanControlled>();
                 if !is_camera_target {
-                    commands.entity(being_ent).try_remove::<ActivatingChunks>();
+                    commands.entity(being_ent).try_remove::<(ActivateChunksAround, ActivatingChunks)>();
                 }
             } else {
                 commands.entity(being_ent).try_insert(HumanControlled);

@@ -63,6 +63,31 @@ impl GlobalTilePos {
     pub fn to_pixelpos(&self) -> Vec2 {
         self.0.as_vec2() * GlobalTilePos::TILE_SIZE_PXS.as_vec2()
     }
+    pub fn taxicab_tile_distance(&self, other: GlobalTilePos) -> f32 {
+        let delta = (other.0 - self.0).abs();
+        (delta.x + delta.y) as f32
+    }
+    pub fn direct_chase_dir(
+        &self,
+        target_pos: GlobalTilePos,
+        stop_distance: f32,
+    ) -> Option<Vec2> {
+        if self.taxicab_tile_distance(target_pos) <= stop_distance.max(0.0) {
+            return None;
+        }
+        let delta = target_pos.0 - self.0;
+        let step = if delta == IVec2::ZERO {
+            IVec2::ZERO
+        } else if delta.x.abs() >= delta.y.abs() {
+            IVec2::new(delta.x.signum(), 0)
+        } else {
+            IVec2::new(0, delta.y.signum())
+        };
+        if step == IVec2::ZERO {
+            return None;
+        }
+        Some(step.as_vec2())
+    }
     impl_adjacent_position_methods!();
 }
 impl From<ChunkPos> for GlobalTilePos {

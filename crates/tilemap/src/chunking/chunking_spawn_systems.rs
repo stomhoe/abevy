@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use common::common_components::{StrId20B};
 use common::log_targets::CHUNK_ACTIVATION;
 use tilemap_shared::{DimensionRef, LoadedChunks, LoadedMacroChunks};
-use tilemap_shared::{ChunkPos, HashablePosVec, MACRO_CHUNK_SIZE_IN_CHUNKS};
+use tilemap_shared::{ChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
 
 use super::chunking_components::*;
 use super::macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState};
@@ -13,10 +13,28 @@ use crate::regioning::{regioning_components::Region, regioning_resources::Loaded
 
 
 #[allow(unused_parens, )]
-pub fn spawn_chunks_around_activators(
+pub fn update_activating_chunk_positions(
     mut reader: MessageReader<ReactivateChunksFor>,
+    mut query: Query<(&GlobalTransform, &mut ActivateChunksAround, &mut ActivatingChunks, )>,
+    tilemap_settings: Res<AaChunkRangeSettings>,
+) {
+    let cnt = tilemap_settings.discovery_range as i32;
+
+    for msg in reader.read() {
+        let Ok((transform, mut activate_chunks_around, mut activates_chunks, )) = query.get_mut(msg.0) else {
+            debug!(target: CHUNK_ACTIVATION, "Skipping stale chunk reactivation request for missing activator {:?}", msg.0);
+            continue;
+        };
+        let center_chunk_pos = ChunkPos::from(transform.translation().xy());
+        activate_chunks_around.reactivation_timer.reset();
+        activates_chunks.insert_positions_around(center_chunk_pos, cnt);
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn spawn_activated_chunks(
     mut cmd: Commands,
-    mut query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), ()>,
+    query: Query<(&ActivatingChunks, &DimensionRef), Changed<ActivatingChunks>>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
     tilemap_settings: Res<AaChunkRangeSettings>,
@@ -33,90 +51,72 @@ pub fn spawn_chunks_around_activators(
     let mut comps_for_region_ents = Vec::new();
     let mut comps_for_chunk_ents = Vec::new();
 
-    for msg in reader.read() {
-        let Ok((transform, mut activates_chunks, &dimension_ref)) = query.get_mut(msg.0) else {
-            debug!(target: CHUNK_ACTIVATION, "Skipping stale chunk reactivation request for missing activator {:?}", msg.0);
-            continue;
-        };
+    for (activates_chunks, &dimension_ref) in query.iter() {
         comps_for_macrochunk_ents.reserve(approx_macro_chunks);
         comps_for_chunk_ents.reserve(approx_chunks);
         comps_for_region_ents.reserve(approx_chunks / 8);
-        let center_chunk_pos = ChunkPos::from(transform.translation().xy());
-
-        activates_chunks.reactivation_timer.reset();
-
-        for y in (center_chunk_pos.y() - cnt + 1)..(center_chunk_pos.y() + cnt) {
-            for x in (center_chunk_pos.x() - cnt + 1)..(center_chunk_pos.x() + cnt) {
-
-                let chunk_pos = ChunkPos::new(x, y);
+        for &chunk_pos in activates_chunks.chunk_positions.iter() {
                 let key = (dimension_ref, chunk_pos);
-                let chunk_ent = loaded_chunks.0.get(&key)
-                .copied()
-                .or_else(|| loaded_chunks.0.get(&key).copied())
-                .unwrap_or_else(|| {
-                    let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
-                    let macro_chunk_key = (dimension_ref, macro_chunk_pos);
-                    let macro_chunk_ent = loaded_macro_chunks.0.get(&macro_chunk_key)
-                        .copied()
-                        .unwrap_or_else(|| {
-                            let macro_chunk_ent = cmd.spawn_empty().id();
-                            comps_for_macrochunk_ents.push((macro_chunk_ent, (
-                                MacroChunk,
-                                BiomeDistribution::default(),
-                                MacroChunkBiomeSamplingState::default(),
-                                macro_chunk_pos,
-                                StrId20B::trunc(format!("MacroChunk({}, {})", macro_chunk_pos.0.x, macro_chunk_pos.0.y)),
-                                Transform::default(),
-                                ChildOf(dimension_ref.0),
-                                dimension_ref,
-                            )));
-                            loaded_macro_chunks.0.insert(macro_chunk_key, macro_chunk_ent);
-                            macro_chunk_loaded_msgs.push(MacroChunkLoaded {
-                                macro_chunk_ent,
-                            });
-                            macro_chunk_ent
-                        });
-                    let region_ent = {
-                        let region_pos = chunk_pos.to_region_pos();
-                        let region_key = (dimension_ref, region_pos);
-                        loaded_regions.0.get(&region_key)
-                        .copied()
-                        .or_else(|| loaded_regions.0.get(&region_key).copied())
-                        .unwrap_or_else(|| {
-                            let region_ent = cmd.spawn_empty().id();
-                            comps_for_region_ents.push((region_ent, (
-                                region_pos,
-                                Region,
-                                StrId20B::trunc(format!("Region({}, {})", region_pos.0.x, region_pos.0.y)),
-                                Transform::default(),
-                                ChildOf(dimension_ref.0),
-                                dimension_ref,
-                            )));
-                            loaded_regions.0.insert(region_key, region_ent);
-                            region_ent
-                        })
-                    };
-
-                    let chunk_ent = cmd.spawn_empty().id();
-                    loaded_chunks.0.insert(key, chunk_ent);
-                    comps_for_chunk_ents.push((chunk_ent, (
-                        Chunk { region_ent, },
-                        MacroChunkRef(macro_chunk_ent),
-                        TerrGenState::Pending,
-                        Visibility::Hidden,
-                        TilesToSave::default(),
-                        StrId20B::trunc(format!("Chunk({}, {})", chunk_pos.0.x, chunk_pos.0.y)),
-                        Transform::default(),
-                        chunk_pos,
-                        ChildOf(region_ent),
-                        dimension_ref,
-                    )));
-                    chunk_ent
-                });
-                if !activates_chunks.entities.contains(&chunk_ent) {
-                    activates_chunks.entities.push(chunk_ent);
+                if loaded_chunks.0.contains_key(&key) {
+                    continue;
                 }
-            }
+
+                let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
+                let macro_chunk_key = (dimension_ref, macro_chunk_pos);
+                let macro_chunk_ent = loaded_macro_chunks.0.get(&macro_chunk_key)
+                    .copied()
+                    .unwrap_or_else(|| {
+                        let macro_chunk_ent = cmd.spawn_empty().id();
+                        comps_for_macrochunk_ents.push((macro_chunk_ent, (
+                            MacroChunk,
+                            BiomeDistribution::default(),
+                            MacroChunkBiomeSamplingState::default(),
+                            macro_chunk_pos,
+                            StrId20B::trunc(format!("{:?}", macro_chunk_pos)),
+                            Transform::default(),
+                            ChildOf(dimension_ref.0),
+                            dimension_ref,
+                        )));
+                        loaded_macro_chunks.0.insert(macro_chunk_key, macro_chunk_ent);
+                        macro_chunk_loaded_msgs.push(MacroChunkLoaded {
+                            macro_chunk_ent,
+                        });
+                        macro_chunk_ent
+                    });
+                let region_ent = {
+                    let region_pos = chunk_pos.to_region_pos();
+                    let region_key = (dimension_ref, region_pos);
+                    loaded_regions.0.get(&region_key)
+                    .copied()
+                    .unwrap_or_else(|| {
+                        let region_ent = cmd.spawn_empty().id();
+                        comps_for_region_ents.push((region_ent, (
+                            region_pos,
+                            Region,
+                            StrId20B::trunc(format!("{:?}", region_pos)),
+                            Transform::default(),
+                            ChildOf(dimension_ref.0),
+                            dimension_ref,
+                        )));
+                        loaded_regions.0.insert(region_key, region_ent);
+                        region_ent
+                    })
+                };
+
+                let chunk_ent = cmd.spawn_empty().id();
+                loaded_chunks.0.insert(key, chunk_ent);
+                comps_for_chunk_ents.push((chunk_ent, (
+                    Chunk { region_ent, },
+                    MacroChunkRef(macro_chunk_ent),
+                    TerrGenState::Pending,
+                    Visibility::Hidden,
+                    TilesToSave::default(),
+                    StrId20B::trunc(format!("{:?}", chunk_pos)),
+                    Transform::default(),
+                    chunk_pos,
+                    ChildOf(region_ent),
+                    dimension_ref,
+                )));
         }
     }
     cmd.try_insert_batch(comps_for_macrochunk_ents);
@@ -126,17 +126,7 @@ pub fn spawn_chunks_around_activators(
 
 }
 
-pub fn track_discovered_areas(
-    mut cmd: Commands,
-    chunk_query: Query<(&MacroChunkRef, &TerrGenState), (With<Chunk>, Changed<TerrGenState>)>,
-) {
-    for (&macro_chunk_ref, terrgen_state) in chunk_query.iter() {
-        if *terrgen_state != TerrGenState::OpsLaunched {
-            continue;
-        }
-        cmd.entity(macro_chunk_ref.0).try_insert(TerrgenDiscoveredMacroChunk);
-    }
-}
+
 
 
 
@@ -151,14 +141,14 @@ pub struct MacroChunkLoaded {
 
 #[allow(unused_parens)]
 pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 segundo despues del ultimo movimiento
-    mut query: Query<(Entity, &mut ActivatingChunks),(With<DimensionRef>, With<GlobalTransform>)>,
+    mut query: Query<(Entity, &mut ActivateChunksAround), (With<ActivatingChunks>, With<DimensionRef>, With<GlobalTransform>)>,
     time: Res<Time>,
     mut writer: MessageWriter<ReactivateChunksFor>,
     mut to_reactivate: Local<Vec<ReactivateChunksFor>>,
 ) {
-    for (being_entity, mut activates_chunks) in query.iter_mut() {
-        activates_chunks.reactivation_timer.tick(time.delta());
-        if activates_chunks.reactivation_timer.is_finished() {
+    for (being_entity, mut activate_chunks_around) in query.iter_mut() {
+        activate_chunks_around.reactivation_timer.tick(time.delta());
+        if activate_chunks_around.reactivation_timer.is_finished() {
             to_reactivate.push(ReactivateChunksFor(being_entity));
         }
     }
@@ -167,7 +157,7 @@ pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 se
 #[allow(unused_parens, )]
 pub fn detect_activators_with_pos_changes(
     query: Query<(Entity),
-    (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>,)>, With<ActivatingChunks>, With<DimensionRef>, With<GlobalTransform>)>,
+    (Or<(Changed<GlobalTransform>, Changed<DimensionRef>, Added<ActivatingChunks>, Added<ActivateChunksAround>)>, With<ActivatingChunks>, With<ActivateChunksAround>, With<DimensionRef>, With<GlobalTransform>)>,
     mut writer: MessageWriter<ReactivateChunksFor>,
     mut msgs: Local<Vec<ReactivateChunksFor>>,
 ) {

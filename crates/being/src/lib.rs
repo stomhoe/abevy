@@ -7,6 +7,7 @@ mod being_systems;
 mod being_control_systems;
 mod being_portal_systems;
 mod being_behavior_systems;
+pub mod nav;
 mod being_build_systems;
 pub mod being_bundles;
 
@@ -29,6 +30,10 @@ pub mod prelude {
         being_control_systems::*,
         being_portal_systems::*,
         being_behavior_systems::*,
+        nav::being_nav_systems::*,
+        nav::being_nav_resources::*,
+        nav::being_nav_structs::*,
+        nav::being_nav_helpers::*,
         being_build_systems::*,
         being_bundles::*,
         being_inst_template::*,

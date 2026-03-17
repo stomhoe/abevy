@@ -117,7 +117,7 @@ pub fn init_tiles(
             cmd.entity(tile_enti).insert(AdjRetexConfig::new(std::mem::take(adj_retex_config)));
         }
         if !seri.interaction_zones.is_empty() {
-            cmd.entity(tile_enti).insert(InteractionZones::new(std::mem::take(&mut seri.interaction_zones)));
+            cmd.entity(tile_enti).insert(InteractionZones::from_seri(std::mem::take(&mut seri.interaction_zones)));
         }
 
         if !seri.color_map.is_empty() {

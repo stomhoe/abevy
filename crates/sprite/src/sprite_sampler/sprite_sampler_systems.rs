@@ -18,9 +18,14 @@ pub fn replace_sampler_string_ids_by_entities(
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sprite_map: Option<Res<SpriteConfigEntityMap>>,
     mut removed_disabled: RemovedComponents<Disabled>,
+    mut resolved_entities: Local<Vec<Entity>>,
+    mut entities_to_process: Local<Vec<Entity>>,
 ) {
-    let reenabled_entities = collect_reenabled_entities(&mut removed_disabled);
-    let mut entities_to_process = reenabled_entities.clone();
+    let mut sample_sprites_to_insert = Vec::new();
+    resolved_entities.clear();
+    entities_to_process.clear();
+    
+    entities_to_process.extend(removed_disabled.read());
     entities_to_process.extend(changed_query.iter());
     if entities_to_process.is_empty() {
         return;
@@ -37,18 +42,16 @@ pub fn replace_sampler_string_ids_by_entities(
         error!(target: "sprite_sampler_systems", "SpriteConfigEntityMap has no entries, cannot replace sampler string ids");
     }
 
-    let mut sample_sprites_to_insert = Vec::new();
-
-    for ent in entities_to_process {
+    for ent in entities_to_process.drain(..) {
         let Ok((sampler_ids, strid, has_sample_sprites)) = query.get(ent) else {
             continue;
         };
-        let is_reenabled_only = reenabled_entities.contains(&ent) && changed_query.get(ent).is_err();
+        let is_reenabled_only = changed_query.get(ent).is_err();
         if is_reenabled_only && has_sample_sprites {
             continue;
         }
         debug!(target: "sprite_sampler_systems", "Resolving sampler string ids for {}", strid.cloned().unwrap_or_default());
-        let mut resolved_entities = Vec::new();
+        resolved_entities.clear();
 
         for strid in sampler_ids.ids() {
             resolve_sampler_id_no_sample(
@@ -60,11 +63,11 @@ pub fn replace_sampler_string_ids_by_entities(
         }
 
         if !resolved_entities.is_empty() {
-            sample_sprites_to_insert.push((ent, SampleSpriteEnts::new(resolved_entities)));
+            sample_sprites_to_insert.push((ent, SampleSpriteEnts::new(resolved_entities.drain(..).collect())));
         }
     }
 
-    cmd.try_insert_batch(sample_sprites_to_insert);
+    cmd.try_insert_batch(std::mem::take(&mut sample_sprites_to_insert));
 }
 
 /// Samples from SampleSprites entities and creates SpriteCfgsToBuild
@@ -75,27 +78,31 @@ pub fn sample_from_sprite_entities(
     being_query: Query<(&SampleSpriteEnts, Has<ScsToBuild>), (Without<BeingInstTemplate>, Without<EntityZero>, AnyDisabling)>,
     samplers_query: Query<&EntityWeightedSampler>,
     mut removed_disabled: RemovedComponents<Disabled>,
+    mut beings_to_process: Local<Vec<Entity>>,
+    mut visited: Local<EntityHashSet>,
 ) {
-    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
-    let mut beings_to_process = reenabled_beings.clone();
+    let mut configs_to_build = Vec::new();
+    let mut sampled_configs = EntityHashSet::new();
+    beings_to_process.clear();
+    visited.clear();
+
+    beings_to_process.extend(removed_disabled.read());
     beings_to_process.extend(changed_beings.iter());
     if beings_to_process.is_empty() {
         return;
     }
 
-    let mut configs_to_build = Vec::new();
-
-    for ent in beings_to_process {
-        let Ok((sample_sprites, has_scs_to_build)) = being_query.get(ent) else {
+    for ent in beings_to_process.iter() {
+        let Ok((sample_sprites, has_scs_to_build)) = being_query.get(*ent) else {
             continue;
         };
-        let is_reenabled_only = reenabled_beings.contains(&ent) && changed_beings.get(ent).is_err();
+        let is_reenabled_only = changed_beings.get(*ent).is_err();
         if is_reenabled_only && has_scs_to_build {
             continue;
         }
         debug!(target: "sprite_sampler_systems", "Sampling from sprite entities for entity {:?}", ent);
-        let mut sampled_configs = EntityHashSet::new();
-        let mut visited = EntityHashSet::new();
+        sampled_configs.clear();
+        visited.clear();
 
         for entity in sample_sprites.entities().iter() {
             sample_from_entity_recursive(
@@ -107,11 +114,11 @@ pub fn sample_from_sprite_entities(
         }
 
         if !sampled_configs.is_empty() {
-            configs_to_build.push((ent, ScsToBuild(sampled_configs)));
+            configs_to_build.push((*ent, ScsToBuild(std::mem::take(&mut sampled_configs))));
         }
     }
 
-    cmd.try_insert_batch(configs_to_build);
+    cmd.try_insert_batch(std::mem::take(&mut configs_to_build));
 }
 
 fn resolve_sampler_id_no_sample(
@@ -164,8 +171,6 @@ fn sample_from_entity_recursive(
     }
 }
 
-fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>) -> EntityHashSet {
-    let mut entities = EntityHashSet::default();
+fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>, entities: &mut EntityHashSet) {
     entities.extend(removed_disabled.read());
-    entities
 }

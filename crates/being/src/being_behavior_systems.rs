@@ -1,19 +1,17 @@
-use crate::being_components::{Being, ToChase};
 use crate::being_inst_template::being_inst_template_resources::BitRef;
 use crate::body::{Bodies, BodySums};
+use crate::being_components::{Being, Chaser};
 use crate::race::race_components::Race;
 use crate::race::race_components::WanderConfig;
 use crate::race::race_resources::RaceRef;
 use ::being_shared::*;
 use ::being_shared::{ComputedBy, Hunger, Predator, PredatorHuntThreshold};
-use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks};
 #[allow(unused_imports)]
 use bevy::{
     ecs::{entity::EntityHashMap, entity::EntityHashSet, entity_disabling::Disabled},
     platform::collections::{HashMap, HashSet},
     prelude::*,
 };
-use bevy_northstar::prelude::*;
 use common::AnyDisabling;
 use common::common_components::StrId;
 use common::common_tag_components::TagSet;
@@ -21,29 +19,7 @@ use movement::movement_components::InputMoveDir;
 use param_sets::BlockingTileParamSet;
 use rand::Rng;
 use std::time::Duration;
-use tilemap::chunking::chunking_resources::AaChunkRangeSettings;
-
-#[derive(Resource)]
-pub struct AiNavGrids {
-    pub by_dim: HashMap<Entity, AiNavGridCache>,
-    pub center_by_dim: HashMap<Entity, IVec2>,
-    pub rebuild_timer: Timer,
-}
-impl Default for AiNavGrids {
-    fn default() -> Self {
-        Self {
-            by_dim: HashMap::default(),
-            center_by_dim: HashMap::default(),
-            rebuild_timer: Timer::from_seconds(0.35, TimerMode::Repeating),
-        }
-    }
-}
-
-pub struct AiNavGridCache {
-    pub min: IVec2,
-    pub grid: CardinalGrid,
-    pub occupied: HashMap<UVec3, Entity>,
-}
+use tilemap_shared::GlobalTilePos;
 
 #[derive(Debug, Clone)]
 pub struct WanderState {
@@ -182,157 +158,6 @@ pub fn tick_hunger(time: Res<Time>, mut query: Query<&mut Hunger>) {
     }
 }
 
-pub fn sync_ai_nav_grids(
-    time: Res<Time>,
-    loaded_chunks: Res<LoadedChunks>,
-    chunk_range: Res<AaChunkRangeSettings>,
-    mut param_set: BlockingTileParamSet,
-    chasers_query: Query<
-        (
-            &GlobalTilePos,
-            &::tilemap_shared::DimensionRef,
-            Option<&ComputedBy>,
-            &ToChase,
-        ),
-        With<Being>,
-    >,
-    beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
-    mut grids: ResMut<AiNavGrids>,
-) {
-    let mut needed_dims: HashSet<Entity> = HashSet::default();
-    let mut dim_centers: HashMap<Entity, IVec2> = HashMap::default();
-    let mut dim_center_counts: HashMap<Entity, i32> = HashMap::default();
-
-    for (gpos, dim_ref, controlled_by, _to_chase) in chasers_query.iter() {
-        if let Some(controlled_by) = controlled_by {
-            if controlled_by.human_dc_input {
-                continue;
-            }
-        }
-        needed_dims.insert(dim_ref.0);
-        let pos = gpos.0;
-        let center = dim_centers.entry(dim_ref.0).or_insert(IVec2::ZERO);
-        *center += pos;
-        *dim_center_counts.entry(dim_ref.0).or_insert(0) += 1;
-    }
-
-    grids.by_dim.retain(|dim, _| needed_dims.contains(dim));
-    grids
-        .center_by_dim
-        .retain(|dim, _| needed_dims.contains(dim));
-
-    let max_side = (((chunk_range.discovery_range as i32 * 2) - 1).max(1) as u32)
-        * ChunkPos::CHUNK_SIZE.x.max(1);
-    let should_rebuild = grids.rebuild_timer.tick(time.delta()).just_finished();
-
-    for dim in needed_dims.iter().copied() {
-        let mut min_tile: Option<IVec2> = None;
-        let mut max_tile: Option<IVec2> = None;
-
-        for (&(dim_ref, chunk_pos), _) in loaded_chunks.0.iter() {
-            if dim_ref.0 != dim {
-                continue;
-            }
-            let cmin = chunk_pos.to_tilepos().0;
-            let cmax = cmin + ChunkPos::CHUNK_SIZE.as_ivec2() - IVec2::ONE;
-            min_tile = Some(min_tile.map(|m| m.min(cmin)).unwrap_or(cmin));
-            max_tile = Some(max_tile.map(|m| m.max(cmax)).unwrap_or(cmax));
-        }
-
-        let Some(mut min_tile) = min_tile else {
-            continue;
-        };
-        let Some(mut max_tile) = max_tile else {
-            continue;
-        };
-
-        let center = dim_centers
-            .get(&dim)
-            .zip(dim_center_counts.get(&dim))
-            .map(|(sum, count)| *sum / count.max(&1))
-            .unwrap_or((min_tile + max_tile) / 2);
-
-        let mut width = (max_tile.x - min_tile.x + 1).max(3) as u32;
-        let mut height = (max_tile.y - min_tile.y + 1).max(3) as u32;
-        if width > max_side {
-            let half = (max_side as i32) / 2;
-            min_tile.x = center.x - half;
-            max_tile.x = min_tile.x + max_side as i32 - 1;
-            width = max_side;
-        }
-        if height > max_side {
-            let half = (max_side as i32) / 2;
-            min_tile.y = center.y - half;
-            max_tile.y = min_tile.y + max_side as i32 - 1;
-            height = max_side;
-        }
-
-        let center_changed = grids
-            .center_by_dim
-            .get(&dim)
-            .map(|prev| (*prev - center).abs().max_element() >= ChunkPos::CHUNK_SIZE.x as i32)
-            .unwrap_or(true);
-        let needs_new_grid = !grids.by_dim.contains_key(&dim);
-        let rebuild_grid = needs_new_grid || should_rebuild || center_changed;
-
-        if rebuild_grid {
-            let mut grid = CardinalGrid::new(
-                &GridSettingsBuilder::new_2d(width, height)
-                    .chunk_size(8)
-                    .build(),
-            );
-            for y in 0..height {
-                for x in 0..width {
-                    let world = GlobalTilePos(min_tile + IVec2::new(x as i32, y as i32));
-                    if param_set.is_blocked_at_tiles_only(
-                        ::tilemap_shared::DimensionRef(dim),
-                        world,
-                        Entity::PLACEHOLDER,
-                    ) {
-                        grid.set_nav(UVec3::new(x, y, 0), Nav::Impassable);
-                    }
-                }
-            }
-            grid.build();
-            grids.by_dim.insert(
-                dim,
-                AiNavGridCache {
-                    min: min_tile,
-                    grid,
-                    occupied: HashMap::default(),
-                },
-            );
-            grids.center_by_dim.insert(dim, center);
-        }
-
-        let Some(cache) = grids.by_dim.get_mut(&dim) else {
-            continue;
-        };
-        cache.occupied.clear();
-        for (being_ent, gpos, dim_ref) in beings_query.iter() {
-            if dim_ref.0 != dim {
-                continue;
-            }
-            let max_grid = cache.min
-                + IVec2::new(
-                    cache.grid.width() as i32 - 1,
-                    cache.grid.height() as i32 - 1,
-                );
-            if gpos.0.x < cache.min.x
-                || gpos.0.y < cache.min.y
-                || gpos.0.x > max_grid.x
-                || gpos.0.y > max_grid.y
-            {
-                continue;
-            }
-            let local = (gpos.0 - cache.min).as_uvec2();
-            cache
-                .occupied
-                .insert(UVec3::new(local.x, local.y, 0), being_ent);
-        }
-    }
-}
-
 fn health_ratio(
     being: Entity,
     bodies_query: &Query<&Bodies, With<Being>>,
@@ -398,14 +223,14 @@ pub fn update_predator_chase_targets(
     {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_dc_input {
-                cmd.entity(pred_ent).try_remove::<ToChase>();
+                cmd.entity(pred_ent).try_remove::<Chaser>();
                 continue;
             }
         }
 
         let hp = health_ratio(pred_ent, &bodies_query, &body_health_query);
         if hunger.curr < hunt_threshold.0 || hp <= 0.9 {
-            cmd.entity(pred_ent).try_remove::<ToChase>();
+            cmd.entity(pred_ent).try_remove::<Chaser>();
             continue;
         }
 
@@ -456,113 +281,10 @@ pub fn update_predator_chase_targets(
         }
 
         let Some((target, _)) = closest else {
-            cmd.entity(pred_ent).try_remove::<ToChase>();
+            cmd.entity(pred_ent).try_remove::<Chaser>();
             continue;
         };
-        cmd.entity(pred_ent).try_insert(ToChase::new(target, 1.5));
-    }
-}
-
-pub fn chase_behavior(
-    mut chasers: Query<
-        (
-            Entity,
-            &GlobalTilePos,
-            &::tilemap_shared::DimensionRef,
-            &ToChase,
-        ),
-        (With<Being>, LocalAiControlled),
-    >,
-    beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
-    grids: Res<AiNavGrids>,
-    mut dynamic_blocking: Local<HashMap<UVec3, Entity>>,
-    mut input_dirs: Query<&mut InputMoveDir>,
-) {
-    for (chaser_ent, chaser_gpos, &chaser_dim, to_chase) in chasers.iter_mut() {
-        let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
-            continue;
-        };
-        if to_chase.target == chaser_ent {
-            input_move_dir.0 = Vec2::ZERO;
-            continue;
-        }
-        let Ok((_target_ent, target_gpos, &target_dim)) = beings_query.get(to_chase.target) else {
-            input_move_dir.0 = Vec2::ZERO;
-            continue;
-        };
-        if target_dim != chaser_dim {
-            input_move_dir.0 = Vec2::ZERO;
-            continue;
-        }
-
-        let chaser_pos = *chaser_gpos;
-        let target_pos = *target_gpos;
-
-        let stop_threshold = to_chase.stop_distance.max(0.0);
-        if chaser_pos.0.as_vec2().distance(target_pos.0.as_vec2()) <= stop_threshold {
-            input_move_dir.0 = Vec2::ZERO;
-            continue;
-        }
-
-        let desired_to_prey = (target_pos.0 - chaser_pos.0).as_vec2();
-        if desired_to_prey == Vec2::ZERO {
-            input_move_dir.0 = Vec2::ZERO;
-            continue;
-        }
-        let direct_chase_dir = desired_to_prey.normalize();
-
-        let Some(cache) = grids.by_dim.get(&chaser_dim.0) else {
-            input_move_dir.0 = direct_chase_dir;
-            continue;
-        };
-
-        let start_i = chaser_pos.0 - cache.min;
-        let goal_i = target_pos.0 - cache.min;
-        if start_i.x < 0 || start_i.y < 0 || goal_i.x < 0 || goal_i.y < 0 {
-            input_move_dir.0 = direct_chase_dir;
-            continue;
-        }
-        let start = UVec3::new(start_i.x as u32, start_i.y as u32, 0);
-        let goal = UVec3::new(goal_i.x as u32, goal_i.y as u32, 0);
-        if start.x >= cache.grid.width()
-            || start.y >= cache.grid.height()
-            || goal.x >= cache.grid.width()
-            || goal.y >= cache.grid.height()
-        {
-            input_move_dir.0 = direct_chase_dir;
-            continue;
-        }
-
-        dynamic_blocking.clear();
-        dynamic_blocking.reserve(cache.occupied.len());
-        for (&pos, &ent) in cache.occupied.iter() {
-            if ent == chaser_ent || ent == to_chase.target {
-                continue;
-            }
-            dynamic_blocking.insert(pos, ent);
-        }
-        dynamic_blocking.remove(&goal);
-        dynamic_blocking.remove(&start);
-
-        let mut req = PathfindArgs::new(start, goal).blocking(&dynamic_blocking);
-        let Some(path) = cache.grid.pathfind(&mut req) else {
-            input_move_dir.0 = direct_chase_dir;
-            continue;
-        };
-
-        let steps = path.path();
-        let Some(next) = steps.first() else {
-            input_move_dir.0 = direct_chase_dir;
-            continue;
-        };
-        let next = next.xy().as_ivec2() + cache.min;
-        let desired = (next - chaser_pos.0).as_vec2();
-        let move_input = if desired == Vec2::ZERO {
-            direct_chase_dir
-        } else {
-            desired.normalize()
-        };
-        input_move_dir.0 = move_input;
+        cmd.entity(pred_ent).try_insert(Chaser::new(target, 1.5));
     }
 }
 
@@ -576,7 +298,7 @@ pub fn wander_behavior(
             &::tilemap_shared::DimensionRef,
             Option<&RaceRef>,
         ),
-        (With<Being>, Without<ToChase>, LocalAiControlled),
+        (With<Being>, Without<Chaser>, LocalAiControlled),
     >,
     race_wander_cfg_query: Query<&WanderConfig>,
     mut wander_states: Local<HashMap<Entity, WanderState>>,

@@ -28,11 +28,13 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
     (
         //spawn systems
-        spawn_chunks_around_activators
+        update_activating_chunk_positions
             .after(despawn_chunks)
+            .run_if(on_message::<ReactivateChunksFor>),
+        spawn_activated_chunks
+            .after(update_activating_chunk_positions)
             .run_if(on_message::<ReactivateChunksFor>),//DON'T TOUCH
         activate_chunks_every_second,
-        track_discovered_areas,
         on_message_signal_despawn_all_chunks
             .run_if(on_message::<ForceAllChunksDespawn>),
 

@@ -208,3 +208,11 @@ impl PredatorHuntThreshold {
         value > Self::SERI_SENTINEL
     }
 }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
+pub struct BackgroundSimulated;
+
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
+pub struct Unloaded;
+

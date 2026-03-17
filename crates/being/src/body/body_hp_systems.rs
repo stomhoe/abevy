@@ -1,4 +1,5 @@
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use common::common_components::StrId;
 use game_common::game_common_components::EntityZero;
@@ -17,6 +18,43 @@ struct BodyAggregates {
     blood_capacity: f32,
     regen_rate: f32,
     vital_missing: bool,
+}
+
+#[derive(SystemParam)]
+pub struct BodyHealthQueryParams<'w, 's> {
+    bodies_query: Query<'w, 's, Entity, With<BodyOf>>,
+    parts_query: Query<'w, 's, (Entity, &'static BodyPartOf, Option<&'static BodyPartVital>, Has<BodyPartMissing>), (With<BodyPart>, Without<EntityZero>)>,
+    hp_capacity_mods_query: Query<'w, 's, (&'static ModifierTarget, Option<&'static ModifierTags>, Option<&'static BaseValue>, Option<&'static CurrEffectiveValue>), With<HitpointsCapacity>>,
+    damage_query: Query<'w, 's, (Entity, Option<&'static mut BodyPartDamage>), With<BodyPart>>,
+    body_health_query: Query<'w, 's, Option<&'static mut BodySums>>,
+    dead_query: Query<'w, 's, Option<&'static mut Dead>>,
+    bleed_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<BleedRate>>,
+    blood_capacity_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<BloodCapacity>>,
+    hp_regen_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<HitpointRegenRate>>,
+    consciousness_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<Consciousness>>,
+    pain_infliction_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<PainInfliction>>,
+    pain_sensitivity_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<PainSensitivity>>,
+    vision_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<Vision>>,
+}
+
+#[derive(SystemParam)]
+pub struct BodyHealthLocalParams<'s> {
+    bodies: Local<'s, EntityHashSet>,
+    parts: Local<'s, EntityHashSet>,
+    part_to_body: Local<'s, EntityHashMap<Entity>>,
+    aggregates: Local<'s, EntityHashMap<BodyAggregates>>,
+    max_hp_by_part: Local<'s, EntityHashMap<f32>>,
+    body_max_hp_bonus: Local<'s, EntityHashMap<f32>>,
+    pain_infliction_by_part: Local<'s, EntityHashMap<f32>>,
+    pain_sensitivity_by_part: Local<'s, EntityHashMap<f32>>,
+    pain_infliction_by_body: Local<'s, EntityHashMap<f32>>,
+    pain_sensitivity_by_body: Local<'s, EntityHashMap<f32>>,
+    bleed_mod_sum: Local<'s, EntityHashMap<f32>>,
+    blood_capacity_mod_sum: Local<'s, EntityHashMap<f32>>,
+    hp_regen_mod_sum: Local<'s, EntityHashMap<f32>>,
+    consciousness_mod_sum: Local<'s, EntityHashMap<f32>>,
+    vision_mod_sum: Local<'s, EntityHashMap<f32>>,
+    body_regen_map: Local<'s, EntityHashMap<(f32, f32)>>,
 }
 
 #[inline]
@@ -49,8 +87,12 @@ pub fn apply_body_damage(
         (With<BodyPart>, Without<EntityZero>),
     >,
     mut damage_query: Query<Option<&mut BodyPartDamage>, (With<BodyPart>, Without<EntityZero>)>,
+    mut weighted_parts: Local<Vec<(Entity, u16)>>,
 ) {
     for damage_msg in reader.read() {
+        weighted_parts.clear();
+        let mut total_weight: u32 = 0;
+
         let body_ent = damage_msg.body;
         let damage_amount = damage_msg.amount;
 
@@ -58,9 +100,6 @@ pub fn apply_body_damage(
             Ok(Some(p)) => p,
             Ok(None) | Err(_) => continue,
         };
-
-        let mut weighted_parts: Vec<(Entity, u16)> = Vec::new();
-        let mut total_weight: u32 = 0;
 
         for &part_ent in parts.entities().iter() {
             let Ok((weight_opt, missing)) = parts_query.get(part_ent) else {
@@ -118,13 +157,19 @@ pub fn sync_body_part_missing(
         With<HitpointsCapacity>,
     >,
     mut damage_query: Query<(Entity, Option<&mut BodyPartDamage>), With<BodyPart>>,
+    mut to_remove_missing: Local<Vec<Entity>>,
+    mut to_add_missing: Local<Vec<Entity>>,
+    mut parts: Local<EntityHashSet>,
+    mut max_hp_by_part: Local<EntityHashMap<f32>>,
 ) {
-    let mut parts: EntityHashSet = EntityHashSet::default();
+    to_remove_missing.clear();
+    to_add_missing.clear();
+    parts.clear();
+    max_hp_by_part.clear();
+
     parts_query.iter().for_each(|(ent, _)| {
         parts.insert(ent);
     });
-
-    let mut max_hp_by_part: EntityHashMap<f32> = EntityHashMap::new();
     for (_mod_ent, target, _tags, base_value, current_value) in hp_mods_query.iter() {
         let value = current_value
             .map(|v| v.0)
@@ -134,9 +179,6 @@ pub fn sync_body_part_missing(
             *max_hp_by_part.entry(target.0).or_insert(0.0) += value;
         }
     }
-
-    let mut to_remove_missing = Vec::new();
-    let mut to_add_missing = Vec::new();
 
     for (part_ent, missing) in parts_query.iter() {
         let max_hp = max_hp_by_part
@@ -178,100 +220,72 @@ pub fn sync_body_part_missing(
 pub fn update_body_health_from_parts(
     mut cmd: Commands,
     time: Res<Time>,
-    bodies_query: Query<Entity, With<BodyOf>>,
-    parts_query: Query<
-        (
-            Entity,
-            &BodyPartOf,
-            Option<&BodyPartVital>,
-            Has<BodyPartMissing>,
-        ),
-        (With<BodyPart>, Without<EntityZero>),
-    >,
-    hp_capacity_mods_query: Query<
-        (
-            &ModifierTarget,
-            Option<&ModifierTags>,
-            Option<&BaseValue>,
-            Option<&CurrEffectiveValue>,
-        ),
-        With<HitpointsCapacity>,
-    >,
-    mut damage_query: Query<(Entity, Option<&mut BodyPartDamage>), With<BodyPart>>,
-    mut body_health_query: Query<Option<&mut BodySums>>,
-    mut dead_query: Query<Option<&mut Dead>>,
-    bleed_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<BleedRate>>,
-    blood_capacity_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<BloodCapacity>>,
-    hp_regen_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<HitpointRegenRate>>,
-    consciousness_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<Consciousness>>,
-    pain_infliction_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<PainInfliction>>,
-    pain_sensitivity_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<PainSensitivity>>,
-    vision_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<Vision>>,
+    mut queries: BodyHealthQueryParams,
+    mut local_params: BodyHealthLocalParams,
 ) {
-    let mut bodies: EntityHashSet = EntityHashSet::default();
-    bodies_query.iter().for_each(|ent| {
-        bodies.insert(ent);
+    local_params.bodies.clear();
+    local_params.parts.clear();
+    local_params.part_to_body.clear();
+    local_params.aggregates.clear();
+    local_params.max_hp_by_part.clear();
+    local_params.body_max_hp_bonus.clear();
+    local_params.pain_infliction_by_part.clear();
+    local_params.pain_sensitivity_by_part.clear();
+    local_params.pain_infliction_by_body.clear();
+    local_params.pain_sensitivity_by_body.clear();
+
+    queries.bodies_query.iter().for_each(|ent| {
+        local_params.bodies.insert(ent);
     });
 
-    let mut parts: EntityHashSet = EntityHashSet::default();
-    parts_query.iter().for_each(|(ent, ..)| {
-        parts.insert(ent);
+    queries.parts_query.iter().for_each(|(ent, ..)| {
+        local_params.parts.insert(ent);
     });
 
-    let mut part_to_body: EntityHashMap<Entity> = EntityHashMap::new();
-    let mut aggregates: EntityHashMap<BodyAggregates> = EntityHashMap::new();
-
-    let mut max_hp_by_part: EntityHashMap<f32> = EntityHashMap::new();
-    let mut body_max_hp_bonus: EntityHashMap<f32> = EntityHashMap::new();
-    let mut pain_infliction_by_part: EntityHashMap<f32> = EntityHashMap::new();
-    let mut pain_sensitivity_by_part: EntityHashMap<f32> = EntityHashMap::new();
-    let mut pain_infliction_by_body: EntityHashMap<f32> = EntityHashMap::new();
-    let mut pain_sensitivity_by_body: EntityHashMap<f32> = EntityHashMap::new();
-
-    for (target, tags, base_value, current_value) in hp_capacity_mods_query.iter() {
+    for (target, tags, base_value, current_value) in queries.hp_capacity_mods_query.iter() {
         let value = current_value
             .map(|v| v.0)
             .or_else(|| base_value.map(|v| v.0))
             .unwrap_or(0.0);
         let is_current = tags.map(|t| t.contains("current_hp")).unwrap_or(false);
 
-        if parts.contains(&target.0) && !is_current {
-            *max_hp_by_part.entry(target.0).or_insert(0.0) += value;
-        } else if bodies.contains(&target.0) && !is_current {
-            *body_max_hp_bonus.entry(target.0).or_insert(0.0) += value;
+        if local_params.parts.contains(&target.0) && !is_current {
+            *local_params.max_hp_by_part.entry(target.0).or_insert(0.0) += value;
+        } else if local_params.bodies.contains(&target.0) && !is_current {
+            *local_params.body_max_hp_bonus.entry(target.0).or_insert(0.0) += value;
         }
     }
 
-    for (target, value) in pain_infliction_mods.iter() {
-        if parts.contains(&target.0) {
-            *pain_infliction_by_part.entry(target.0).or_insert(0.0) += value.0;
-        } else if bodies.contains(&target.0) {
-            *pain_infliction_by_body.entry(target.0).or_insert(0.0) += value.0;
+    for (target, value) in queries.pain_infliction_mods.iter() {
+        if local_params.parts.contains(&target.0) {
+            *local_params.pain_infliction_by_part.entry(target.0).or_insert(0.0) += value.0;
+        } else if local_params.bodies.contains(&target.0) {
+            *local_params.pain_infliction_by_body.entry(target.0).or_insert(0.0) += value.0;
         }
     }
-    for (target, value) in pain_sensitivity_mods.iter() {
-        if parts.contains(&target.0) {
-            *pain_sensitivity_by_part.entry(target.0).or_insert(0.0) += value.0;
-        } else if bodies.contains(&target.0) {
-            *pain_sensitivity_by_body.entry(target.0).or_insert(0.0) += value.0;
+    for (target, value) in queries.pain_sensitivity_mods.iter() {
+        if local_params.parts.contains(&target.0) {
+            *local_params.pain_sensitivity_by_part.entry(target.0).or_insert(0.0) += value.0;
+        } else if local_params.bodies.contains(&target.0) {
+            *local_params.pain_sensitivity_by_body.entry(target.0).or_insert(0.0) += value.0;
         }
     }
 
-    for (part_ent, body_of, vital, missing) in parts_query.iter() {
-        if !bodies.contains(&body_of.body) {
+    for (part_ent, body_of, vital, missing) in queries.parts_query.iter() {
+        if !local_params.bodies.contains(&body_of.body) {
             continue;
         }
 
-        part_to_body.insert(part_ent, body_of.body);
-        let agg = aggregates.entry(body_of.body).or_default();
+        local_params.part_to_body.insert(part_ent, body_of.body);
+        let agg = local_params.aggregates.entry(body_of.body).or_default();
 
-        let max_hp = max_hp_by_part
+        let max_hp = local_params.max_hp_by_part
             .get(&part_ent)
             .copied()
             .unwrap_or(0.0)
             .max(0.0);
         let mut current_hp = max_hp;
-        if let Ok((_ent, damage)) = damage_query.get_mut(part_ent) {
+        if let Ok((_ent, damage)) = queries.damage_query.get_mut(part_ent) {
             if let Some(damage) = damage {
                 current_hp = (max_hp - damage.0).max(0.0);
             }
@@ -283,19 +297,19 @@ pub fn update_body_health_from_parts(
         } else {
             0.0
         };
-        let pain_infliction = pain_infliction_by_part
+        let pain_infliction = local_params.pain_infliction_by_part
             .get(&part_ent)
             .copied()
             .unwrap_or(0.0)
-            + pain_infliction_by_body
+            + local_params.pain_infliction_by_body
                 .get(&body_of.body)
                 .copied()
                 .unwrap_or(0.0);
-        let pain_sensitivity_part = pain_sensitivity_by_part
+        let pain_sensitivity_part = local_params.pain_sensitivity_by_part
             .get(&part_ent)
             .copied()
             .unwrap_or(1.0);
-        let pain_sensitivity_body = pain_sensitivity_by_body
+        let pain_sensitivity_body = local_params.pain_sensitivity_by_body
             .get(&body_of.body)
             .copied()
             .unwrap_or(1.0);
@@ -312,69 +326,71 @@ pub fn update_body_health_from_parts(
         }
     }
 
-    let mut bleed_mod_sum: EntityHashMap<f32> = EntityHashMap::new();
-    let mut blood_capacity_mod_sum: EntityHashMap<f32> = EntityHashMap::new();
-    let mut hp_regen_mod_sum: EntityHashMap<f32> = EntityHashMap::new();
-    let mut consciousness_mod_sum: EntityHashMap<f32> = EntityHashMap::new();
-    let mut vision_mod_sum: EntityHashMap<f32> = EntityHashMap::new();
+    // Note: bleed_mod_sum, blood_capacity_mod_sum, hp_regen_mod_sum, consciousness_mod_sum, vision_mod_sum are reused
+    // They are accessed in the body loop below, so they are scoped here
+    local_params.bleed_mod_sum.clear();
+    local_params.blood_capacity_mod_sum.clear();
+    local_params.hp_regen_mod_sum.clear();
+    local_params.consciousness_mod_sum.clear();
+    local_params.vision_mod_sum.clear();
+    local_params.body_regen_map.clear();
 
-    for (target, value) in bleed_mods.iter() {
-        add_modifier_sum(&mut bleed_mod_sum, target.0, value.0, &bodies, &part_to_body);
+    for (target, value) in queries.bleed_mods.iter() {
+        add_modifier_sum(&mut local_params.bleed_mod_sum, target.0, value.0, &local_params.bodies, &local_params.part_to_body);
     }
-    for (target, value) in blood_capacity_mods.iter() {
+    for (target, value) in queries.blood_capacity_mods.iter() {
         add_modifier_sum(
-            &mut blood_capacity_mod_sum,
+            &mut local_params.blood_capacity_mod_sum,
             target.0,
             value.0,
-            &bodies,
-            &part_to_body,
+            &local_params.bodies,
+            &local_params.part_to_body,
         );
     }
-    for (target, value) in hp_regen_mods.iter() {
+    for (target, value) in queries.hp_regen_mods.iter() {
         add_modifier_sum(
-            &mut hp_regen_mod_sum,
+            &mut local_params.hp_regen_mod_sum,
             target.0,
             value.0,
-            &bodies,
-            &part_to_body,
+            &local_params.bodies,
+            &local_params.part_to_body,
         );
     }
-    for (target, value) in consciousness_mods.iter() {
+    for (target, value) in queries.consciousness_mods.iter() {
         add_modifier_sum(
-            &mut consciousness_mod_sum,
+            &mut local_params.consciousness_mod_sum,
             target.0,
             value.0,
-            &bodies,
-            &part_to_body,
+            &local_params.bodies,
+            &local_params.part_to_body,
         );
     }
-    for (target, value) in vision_mods.iter() {
-        add_modifier_sum(&mut vision_mod_sum, target.0, value.0, &bodies, &part_to_body);
+    for (target, value) in queries.vision_mods.iter() {
+        add_modifier_sum(&mut local_params.vision_mod_sum, target.0, value.0, &local_params.bodies, &local_params.part_to_body);
     }
 
-    let mut body_regen_map: EntityHashMap<(f32, f32)> = EntityHashMap::new();
     let delta = time.delta_secs();
 
-    for body in bodies.iter() {
-        let agg = aggregates.get(body).cloned().unwrap_or_default();
+    for body in local_params.bodies.iter() {
+        let agg = local_params.aggregates.get(body).cloned().unwrap_or_default();
         let total_max_hp =
-            (agg.total_max_hp + body_max_hp_bonus.get(body).copied().unwrap_or(0.0)).max(0.0);
+            (agg.total_max_hp + local_params.body_max_hp_bonus.get(body).copied().unwrap_or(0.0)).max(0.0);
         let total_hp = agg.total_hp.clamp(0.0, total_max_hp);
-        let bleed_rate = agg.bleed_rate + bleed_mod_sum.get(body).copied().unwrap_or(0.0);
+        let bleed_rate = agg.bleed_rate + local_params.bleed_mod_sum.get(body).copied().unwrap_or(0.0);
         let blood_capacity =
-            (agg.blood_capacity + blood_capacity_mod_sum.get(body).copied().unwrap_or(0.0))
+            (agg.blood_capacity + local_params.blood_capacity_mod_sum.get(body).copied().unwrap_or(0.0))
                 .max(0.0);
-        let regen_rate = agg.regen_rate + hp_regen_mod_sum.get(body).copied().unwrap_or(0.0);
+        let regen_rate = agg.regen_rate + local_params.hp_regen_mod_sum.get(body).copied().unwrap_or(0.0);
         let base_consciousness =
-            (1.0 + consciousness_mod_sum.get(body).copied().unwrap_or(0.0)).max(0.0);
+            (1.0 + local_params.consciousness_mod_sum.get(body).copied().unwrap_or(0.0)).max(0.0);
         let pain = agg.total_pain.max(0.0);
-        let vision = vision_mod_sum
+        let vision = local_params.vision_mod_sum
             .get(body)
             .copied()
             .unwrap_or(0.0)
             .clamp(0.0, 1.0);
 
-        let mut blood = match body_health_query.get_mut(*body) {
+        let mut blood = match queries.body_health_query.get_mut(*body) {
             Ok(Some(ref mut health)) => health.blood,
             Ok(None) => blood_capacity,
             Err(_) => blood_capacity,
@@ -398,7 +414,7 @@ pub fn update_body_health_from_parts(
 
         let dead = agg.vital_missing || blood <= 0.0;
 
-        match body_health_query.get_mut(*body) {
+        match queries.body_health_query.get_mut(*body) {
             Ok(Some(mut health)) => {
                 health.total_hp = total_max_hp;
                 health.current_hp = total_hp;
@@ -426,7 +442,7 @@ pub fn update_body_health_from_parts(
             Err(_) => {}
         }
 
-        match dead_query.get_mut(*body) {
+        match queries.dead_query.get_mut(*body) {
             Ok(Some(_)) if !dead => {
                 cmd.entity(*body).try_remove::<Dead>();
             }
@@ -437,13 +453,13 @@ pub fn update_body_health_from_parts(
             Err(_) => {}
         }
 
-        body_regen_map.insert(*body, (regen_rate, total_max_hp));
+        local_params.body_regen_map.insert(*body, (regen_rate, total_max_hp));
     }
 
-    for (part_ent, damage) in damage_query.iter_mut() {
-        let Some((regen_rate, total_max_hp)) = part_to_body
+    for (part_ent, damage) in queries.damage_query.iter_mut() {
+        let Some((regen_rate, total_max_hp)) = local_params.part_to_body
             .get(&part_ent)
-            .and_then(|body| body_regen_map.get(body))
+            .and_then(|body| local_params.body_regen_map.get(body))
         else {
             continue;
         };
@@ -451,7 +467,7 @@ pub fn update_body_health_from_parts(
             continue;
         }
 
-        let max_hp = max_hp_by_part
+        let max_hp = local_params.max_hp_by_part
             .get(&part_ent)
             .copied()
             .unwrap_or(0.0)
@@ -477,7 +493,10 @@ pub fn apply_pain_slowdown(
     mut cmd: Commands,
     mut body_health_query: Query<(Entity, &BodyOf, &BodySums), Changed<BodySums>>,
     mut slowdown_mod_query: Query<(&ModifierTarget, &mut BaseValue), With<PainSlowdown>>,
+    mut has_slowdown: Local<EntityHashSet>,
 ) {
+    has_slowdown.clear();
+
     for (target, mut base_value) in slowdown_mod_query.iter_mut() {
         for (_, body_of, body_health) in body_health_query.iter_mut() {
             if body_of.being != target.0 {
@@ -487,8 +506,6 @@ pub fn apply_pain_slowdown(
             break;
         }
     }
-
-    let mut has_slowdown: EntityHashSet = EntityHashSet::default();
     for (target, _) in slowdown_mod_query.iter() {
         has_slowdown.insert(target.0);
     }

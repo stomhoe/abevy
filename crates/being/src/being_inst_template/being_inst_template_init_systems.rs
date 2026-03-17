@@ -108,7 +108,7 @@ pub fn init_being_templates(
         }
         let mut interaction_zones = bevy::platform::collections::HashMap::with_capacity(1);
         interaction_zones.insert("melee".to_string(), template_seri.melee_interaction_zone.clone());
-        cmd.entity(bit_entity).insert(InteractionZones::new(interaction_zones));
+        cmd.entity(bit_entity).insert(InteractionZones::from_seri(interaction_zones));
         let hitbox_hashid = if template_seri.hitbox_hashid.trim().is_empty() {
             COLLISION_MASK_HASHID
         } else {

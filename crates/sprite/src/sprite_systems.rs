@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, mem::take};
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
@@ -83,7 +83,8 @@ pub fn sprite_change_detection(
 
 
 #[allow(unused_parens)]
-pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
+pub fn disable_children_sprites_of_disabled(
+    mut cmd: Commands,
     ezero_bases: Query<(&HeldSprites),(With<EntityZero>, Added<Disabled>)>,
     non_ezero_bases: Query<(&HeldSprites),(Without<EntityZero>,)>,
     mut removed: RemovedComponents<Disabled>,
@@ -102,8 +103,8 @@ pub fn disable_children_sprites_of_disabled(mut cmd: Commands,
                 //trace!(target: "sprite_systems","Re-enabled sprite entity {:?} as its base entity {:?} was re-enabled", sprite_ent, ent);
             }
         }
-    }
-    cmd.try_insert_batch(disableds);
+    }  
+    cmd.try_insert_batch(std::mem::take(&mut disableds));
 }
 #[allow(unused_parens, )]
 pub fn z_sort_system(
@@ -128,11 +129,10 @@ pub fn z_sort_system(
     mut ents_to_process: Local<EntityHashSet>,
 ) {
     draw_tmaps.clear();
-    ents_to_process.clear();
     for ent in changed_query.iter() {
         ents_to_process.insert(ent);
     }
-    let mut iter = process_query.iter_many_mut(ents_to_process.iter().copied());
+    let mut iter = process_query.iter_many_mut(ents_to_process.drain());
     while let Some((ent, mut transform, global_transform, ysort_origin, maybe_z_index, ezero_ref, is_tilemap, child_of)) = iter.fetch_next() {
         let Ok(has_parent_sprite) = parent_sprite_query.get(child_of.parent()) else {
             continue;

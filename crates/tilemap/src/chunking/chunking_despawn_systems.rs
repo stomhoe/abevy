@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use std::collections::HashSet;
+use bevy::ecs::entity::EntityHashSet;
 use ::tilemap_shared::*;
 
 use super::chunking_components::*;
@@ -11,27 +11,23 @@ use crate::tile::tile_messages::SavedTileHadChunkDespawn;
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
     mut activator_query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), (Or<(Changed<GlobalTransform>, Changed<DimensionRef>)>, )>,
-    chunks_query: Query<(&ChunkPos, &DimensionRef), With<Chunk>>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
+    loaded_chunks: Res<LoadedChunks>,
     mut ewriter: MessageWriter<CheckChunkDespawn>,
     mut to_despawn: Local<Vec<CheckChunkDespawn>>,
 ) {
     for (act_transform, mut activates_chunks, &act_dim) in activator_query.iter_mut() {
         let act_chunk_pos = ChunkPos::from(act_transform.translation().xy());
         let mut i = 0;
-        while i < activates_chunks.entities.len() {
-            let chunk_ent = activates_chunks.entities[i];
-            let Ok((&chunk_pos, &chunk_dim)) = chunks_query.get(chunk_ent) else {
-                activates_chunks.entities.swap_remove(i);
-                continue;
-            };
-
-            let keep = chunk_dim == act_dim &&
-            !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos)
+        while i < activates_chunks.chunk_positions.len() {
+            let chunk_pos = activates_chunks.chunk_positions[i];
+            let keep = !(chunkrange_settings.out_of_active_range(act_transform, chunk_pos)
             && chunkrange_settings.out_of_discovery_range(act_chunk_pos, chunk_pos));
             if !keep {
-                to_despawn.push(CheckChunkDespawn(chunk_ent));
-                activates_chunks.entities.swap_remove(i);
+                if let Some(&chunk_ent) = loaded_chunks.0.get(&(act_dim, chunk_pos)) {
+                    to_despawn.push(CheckChunkDespawn(chunk_ent));
+                }
+                activates_chunks.chunk_positions.swap_remove(i);
             } else {
                 i += 1;
             }
@@ -82,17 +78,23 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
     mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
     chunks_query: Query<(Option<&Tilemaps>, Option<&TilesToSave>), >,
+    loaded_chunks: Res<LoadedChunks>,
     mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
     mut force_despawn_reader: MessageReader<ForceChunkDespawn>,
-    mut referenced_chunks: Local<HashSet<Entity>>,
+    mut referenced_chunks: Local<EntityHashSet>,
     mut tosave_events: Local<Vec<SavedTileHadChunkDespawn>>,
     mut chunks_to_despawn: Local<Vec<Entity>>,
 ) {
     referenced_chunks.clear();
-    referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.entities.len()).sum());
-    for (_, activates_chunks) in activator_query.iter() {
-        referenced_chunks.extend(activates_chunks.entities.iter().copied());
+    referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.chunk_positions.len()).sum());
+    for (&dimension_ref, activates_chunks) in activator_query.iter() {
+        referenced_chunks.extend(
+            activates_chunks
+                .chunk_positions
+                .iter()
+                .filter_map(|&chunk_pos| loaded_chunks.0.get(&(dimension_ref, chunk_pos)).copied())
+        );
     }
     tosave_events.clear();
 
@@ -130,21 +132,10 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
 pub fn on_chunk_despawn(
     trig: On<Despawn, (Chunk, )>,
     chunk_query: Query<(&DimensionRef, &ChunkPos), ()>,
-    mut activator_query: Query<(&mut ActivatingChunks), >,
     mut cmd: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
 ){
-    for mut activates_chunks in activator_query.iter_mut() {
-        let mut i = 0;
-        while i < activates_chunks.entities.len() {
-            if activates_chunks.entities[i] == trig.entity {
-                activates_chunks.entities.swap_remove(i);
-            } else {
-                i += 1;
-            }
-        }
-    }
     let Ok((&chunk_dimension, &chunk_pos)) = chunk_query.get(trig.entity) else {
         error!(target: "chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
         loaded_chunks.0.retain(|_, chunk_entity| chunk_entity.clone() != trig.entity);
