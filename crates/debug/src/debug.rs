@@ -32,7 +32,6 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 setup_debug_fonts,
-                apply_initial_hot_reload_visibility_from_world_settings,
                 debug_toggle_hot_reload_window,
                 debug_toggle_main_menu,
                 capture_world_tile_click_selection,

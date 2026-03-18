@@ -6,7 +6,7 @@ use ac_input::ac_input_actions::CameraZoomAction;
 use crate::camera_components::*;
 
 pub fn spawn_camera(mut commands: Commands, ) {
-    commands.spawn((Camera2d::default(), SpatialAudioReceiver));
+    commands.spawn((Camera2d::default(), SpatialAudioReceiver, GlobalTilePos::default()));
 }
 
 pub fn delete_prev_camera_target(
@@ -22,8 +22,8 @@ pub fn delete_prev_camera_target(
 }
 
 pub fn camera_follow_target(
-    target: Query<&Transform, With<CameraTarget>>,
-    mut camera_query: Query<&mut Transform, (With<Camera>, Without<CameraTarget>)>,
+    target: Query<&GlobalTransform, (With<CameraTarget>, Changed<GlobalTransform>)>,
+    mut camera_query: Query<(&mut Transform, &mut GlobalTilePos), (With<Camera>, Without<CameraTarget>)>,
 ) {
     if target.is_empty() {
         return;
@@ -33,12 +33,16 @@ pub fn camera_follow_target(
         error!("Camera is missing");
         return;
     }
-    let Ok(mut camera_query) = camera_query.single_mut() else {
-        error!("Failed to get camera query");
+    let Ok((mut camera_tansform, mut camera_global_tile_pos)) = camera_query.single_mut() else {
+        error!("There's more than one Camera entity");
         return;
     };
-    camera_query.translation.x = target.translation.x; camera_query.translation.y = target.translation.y;
-    camera_query.translation.z = 0.0;
+    camera_tansform.translation.x = target.translation().x; camera_tansform.translation.y = target.translation().y;
+    let calculated_gpos = GlobalTilePos::from(target.translation().xy());
+    if calculated_gpos != *camera_global_tile_pos {
+        *camera_global_tile_pos = calculated_gpos;
+    }
+    camera_tansform.translation.z = 0.0;
 }
 
 pub fn camera_zoom_system(
@@ -58,7 +62,7 @@ pub fn camera_zoom_system(
     }
 }
 
-use tilemap_shared::{Dimension, DimensionRef };
+use tilemap_shared::{Dimension, DimensionRef, GlobalTilePos };
 
 #[allow(unused_parens, )]
 pub fn hide_nonvisualized_dimension(

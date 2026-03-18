@@ -6,7 +6,7 @@
     },
     bit_ids: {},
     biome_affinity: {
-        "temp": 500.3,
+        "temp": 99999999.3,
         "artic": 1.0,
     },
     behavior: "",

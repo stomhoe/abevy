@@ -12,6 +12,11 @@ use crate::prelude::EntityCountMapWeightedSampler;
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
 
+#[derive(Component, Clone, Copy, Default)]
+#[require(Transform)]
+/// timer gets reset when camera moves
+pub struct CameraTarget;
+
 
 #[derive(Component, Debug, Default, Copy, Clone)]
 pub struct ExcludedFromAutoRenamer;

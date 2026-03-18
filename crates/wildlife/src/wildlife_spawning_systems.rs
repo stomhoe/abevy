@@ -470,8 +470,8 @@ pub fn unfreeze_natural_wildlife_for_first_time_loaded_chunks(
                 dim_ref,
                 *gpos,
                 being_ent,
-                &whitelisted_spawn_tile_tags,
-                &blacklisted_spawn_tile_tags,
+                &whitelisted_spawn_tile_tags.0,
+                &blacklisted_spawn_tile_tags.0,
                 1, // max chunk manhattan distance (1 preserves previous behaviour of checking neighbors)
             ) else {
                 trace!(target: WILDLIFE_SYSTEM, "Natural spawn is still waiting for a valid tile for {:?} in {:?} around chunk {}", being_ent, dim_ref, home_chunk);

@@ -9,11 +9,11 @@ use game_common::{
     game_common::GameplaySystems,
 };
 use sprite_systems::AcSpriteSystems;
-use tilemap::chunking::{despawn_chunks, rem_outofrange_chunks_from_activators};
+use tilemap::chunking::{despawn_chunks, rem_outofrange_chunks_from_activators, BeingChunkDespawned};
 
 
 use crate::{
-    being_behavior_systems::*, being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations, sync_hitbox_receiver_from_sources, sync_melee_interaction_zone_from_sources}, being_components::*, being_control_systems::*, being_inst_template::BeingInstTemplateSystems, being_portal_systems::*, being_systems::*, body::{self, BodySystems}, nav::being_nav_systems::*, pack::PackSystems, prelude::*, race::RaceSystems
+    being_behavior_systems::*, being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations, sync_hitbox_receiver_from_sources, sync_melee_interaction_zone_from_sources}, being_on_chunk_despawn_systems::*, being_components::*, being_control_systems::*, being_inst_template::BeingInstTemplateSystems, being_portal_systems::*, being_systems::*, body::{self, BodySystems}, nav::{being_nav_systems::*, being_nav_wander_systems::*, being_nav_chase_systems::*}, pack::PackSystems, prelude::*, race::RaceSystems
 };
 
 #[allow(unused_parens)]
@@ -52,6 +52,11 @@ pub fn plugin(app: &mut App) {
                 update_predator_chase_targets,
                 rebuild_chaser_nav_plans,
                 chase_behavior,
+                on_being_chunk_despawned
+                    .in_set(HostSystems)
+                    .before(retain_chunks_for_player_faction_chasers)
+                    .run_if(on_message::<BeingChunkDespawned>),
+                extend_retained_chasepaths_for_moving_player_prey,
                 retain_chunks_for_player_faction_chasers
                     .after(rem_outofrange_chunks_from_activators)
                     .before(despawn_chunks),

@@ -1,15 +1,16 @@
 
 use std::{mem::take};
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::{common_components::{HashId}, common_tag_components::TagSet, log_targets::SGC_CHUNK_CLAIM};
+use common::{common_components::{HashId, Prefix}, common_tag_components::TagSet, log_targets::SGC_CHUNK_CLAIM};
 use debug_unwraps::DebugUnwrapExt;
 use game_common::{game_common_timers::*, game_common_samplers::EntityWeightedSampler};
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
-use crate::{chunking::chunking_components::{Chunk, TerrGenState}, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{chunking::chunking_components::{Chunk, TerrGenState}, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion, StructureGenerationSettings}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
 use crate::regioning::natural::RiverDebugData;
 use crate::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
+use crate::regioning::regioning_seris::load_structure_generation_settings_seri_defs;
 
 use bit_vec::BitVec;
 
@@ -191,12 +192,12 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
     mut claims: MessageMutator<ChunksClaim>,
     mut region_query: Query<(&RegionPos, &DimensionRef, &mut ClaimList, &mut CountsOfSgcs, &mut GridOfSgcs, &mut RegionPlannedTiles),()>,
     structured_gens: Query<(&StructuredGenConfig, Option<&TagSet>),()>,
-    settings: Query<&GlobalGenSettings>,
+    structure_settings: Query<&StructureGenerationSettings>,
     mut recheck_reader: MessageReader<RecheckRegion>,
     mut writer: MessageWriter<SgcPrepareTilesOrder>,
 ){
-    let Ok(settings) = settings.single() else {
-        error!("Failed to get global gen settings");
+    let Ok(structure_settings) = structure_settings.single() else {
+        error!("Failed to get structure generation settings");
         return;
     };
     let mut regions_with_new_claims: Vec<Entity> = recheck_reader.read().map(|ent| ent.0).collect();
@@ -379,7 +380,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                             claim.chunks_gpos.swap_remove(i);
                         }
                     }
-                    planned.add_build_order_pending(claim.i, &claim.chunks_gpos, settings.structure_build_timeout_secs as f32);
+                    planned.add_build_order_pending(claim.i, &claim.chunks_gpos, structure_settings.structure_build_timeout_secs as f32);
                     regions_which_started_building.push((region_ent, RegionState::BuildingStarted));
                     debug!(target: "sgc_chunk_claim", "Region at {:?} emitting {} build orders for structure '{}'",
                         region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id());
@@ -595,4 +596,24 @@ pub fn mark_as_building_started_timed_out(
         cmd.entity(*region_ent).try_insert(RegionState::BuildingStarted);
         cmd.entity(*region_ent).try_remove::<TimeoutTimer>();
     }
+}
+
+#[allow(unused_parens)]
+pub fn init_structure_generation_settings(
+    mut cmd: Commands,
+    mut settings: Query<&mut StructureGenerationSettings>,
+) {
+    let settings_from_defs = load_structure_generation_settings_seri_defs()
+        .into_iter()
+        .next()
+        .map(|seri| seri.to_structure_generation_settings());
+    if settings.is_empty() {
+        let settings_to_spawn = settings_from_defs.clone().unwrap_or_default();
+        cmd.spawn((settings_to_spawn, Prefix::trunc("STRUCTURE_GENERATION_SETTINGS")));
+    } else if let Some(settings_from_defs) = settings_from_defs {
+        for mut existing_settings in &mut settings {
+            *existing_settings = settings_from_defs.clone();
+        }
+    }
+    info!(target: common::log_targets::TERRGEN_INIT, "Loaded Structure Generation Settings");
 }

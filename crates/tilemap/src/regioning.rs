@@ -65,7 +65,8 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            init_structured_gen_configs, map_structured_gen_config_id_to_entity
+            init_structured_gen_configs, map_structured_gen_config_id_to_entity,
+            init_structure_generation_settings,
         ).in_set(RegioningSystems))
     .add_observer(on_region_despawn_remove_from_loaded_regions)
 
@@ -77,6 +78,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<WhitelistedFilterOf>()
     .replicate::<StructuredGenConfig>()
+    .replicate::<StructureGenerationSettings>()
     .replicate::<SgcsWeightedSampler>()
     .replicate_once::<Region>()
 

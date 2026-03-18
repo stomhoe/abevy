@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_northstar::CardinalGrid;
-use ::being_shared::*;
 use ::tilemap_shared::GlobalTilePos;
 use bevy::platform::collections::HashMap;
 use std::time::Duration;
@@ -42,6 +41,7 @@ pub struct ChaserNavPlan {
     pub next_step_ix: usize,
     pub rebuild_timer: Timer,
     pub last_target_pos: Option<GlobalTilePos>,
+    pub holds_at_partial_endpoint: bool,
 }
 
 impl Default for ChaserNavPlan {
@@ -51,6 +51,7 @@ impl Default for ChaserNavPlan {
             next_step_ix: 0,
             rebuild_timer: Timer::from_seconds(0.1, TimerMode::Once),
             last_target_pos: None,
+            holds_at_partial_endpoint: false,
         }
     }
 }
@@ -68,6 +69,15 @@ impl ChaserNavPlan {
         self.path_tiles.clear();
         self.next_step_ix = 0;
         self.last_target_pos = None;
+        self.holds_at_partial_endpoint = false;
+        self.rebuild_timer = Timer::new(interval, TimerMode::Once);
+    }
+
+    pub fn clear_path_and_retry(&mut self, interval: Duration, target_pos: GlobalTilePos) {
+        self.path_tiles.clear();
+        self.next_step_ix = 0;
+        self.last_target_pos = Some(target_pos);
+        self.holds_at_partial_endpoint = false;
         self.rebuild_timer = Timer::new(interval, TimerMode::Once);
     }
 

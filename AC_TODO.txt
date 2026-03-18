@@ -13,7 +13,7 @@ decorar mas interior de dungeons (rocas, chests, cadaveres, zombies)
 
 spawnear npcs en dungeons
 
-sistema poblacional de criaturas
+sistema de simulado poblacional de carnivoros herbiboros y 
 
 
 cuando te muevas con plate armor hacer que haga ruido real de plate armor moviendose
@@ -35,7 +35,3 @@ guardar a las entities spawneadas en un macrochunk disableadas y sacarles el dis
 marcar a los animales spawneados naturalmente con un componente pra chequearlos a ver si spawnearon en una pared, desp hacer un sistema q los saca de la pared cuando cargue su chunk
 
 
-intentar hacer q la tilemap crate externa no queryee todas las tiles de un tilemap no visible, para poder tener muchas tiles cargadas para pathfinding sin matar el fps
-
-
-prevenir descargar chunks de bichos que estan persiguiendo beings de la hostfaction, prevenir descargar los chunks del pathfinding

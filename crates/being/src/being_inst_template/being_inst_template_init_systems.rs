@@ -95,10 +95,10 @@ pub fn init_being_templates(
             )));
         }
         if !template_seri.whitelisted_spawn_tile_tags.is_empty() {
-            cmd.entity(bit_entity).insert(WhitelistedSpawnTileTags(TagSet::new(&template_seri.whitelisted_spawn_tile_tags)));
+            cmd.entity(bit_entity).insert(WhitelistedSpawnTileTags(tilemap_shared::being_components::WhitelistedTags(TagSet::new(&template_seri.whitelisted_spawn_tile_tags))));
         }
         if !template_seri.blacklisted_spawn_tile_tags.is_empty() {
-            cmd.entity(bit_entity).insert(BlacklistedSpawnTileTags(TagSet::new(&template_seri.blacklisted_spawn_tile_tags)));
+            cmd.entity(bit_entity).insert(BlacklistedSpawnTileTags(tilemap_shared::being_components::BlacklistedTags(TagSet::new(&template_seri.blacklisted_spawn_tile_tags))));
         }
         if PredatorHuntThreshold::is_configured_in_seri(template_seri.predator_hunt_threshold) {
             cmd.entity(bit_entity).insert((

@@ -8,6 +8,7 @@ use std::hash::{Hash, };
 use crate::common_components::{HashId, Tag};
 use std::fmt::{Debug, };
 use serde::{Deserialize, Serialize};
+use delegate::delegate;
 
 macro_rules! impl_tags_common_methods {
     ($collection_type_name:ty, $tag_type:ty, $collection_kind:ident) => {
@@ -123,6 +124,24 @@ macro_rules! define_tag_vec_and_impl_methods {
 
 define_tag_hashset_and_impl_methods!(TagSet, Tag);
 
+impl IntoIterator for TagSet {
+    type Item = Tag;
+    type IntoIter = <bevy::platform::collections::HashSet<Tag> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a TagSet {
+    type Item = &'a Tag;
+    type IntoIter = <&'a bevy::platform::collections::HashSet<Tag> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
+}
+
 #[derive(Component, Debug, Default, Copy, Clone)]
 #[require(HashedTagsVec)]
 pub struct AddSameHashedTags;
@@ -134,5 +153,146 @@ impl_tag_vec_methods!(HashedTagsVec, HashId);
 impl From<&TagSet> for HashedTagsVec {
     fn from(tag: &TagSet) -> Self {
         Self(tag.0.iter().map(|t| HashId::from(t)).collect())
+    }
+}
+
+impl IntoIterator for HashedTagsVec {
+    type Item = HashId;
+    type IntoIter = std::vec::IntoIter<HashId>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a HashedTagsVec {
+    type Item = &'a HashId;
+    type IntoIter = std::slice::Iter<'a, HashId>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WhitelistedTags(pub TagSet);
+
+impl WhitelistedTags {
+    pub fn new<S: AsRef<str>>(tags: impl IntoIterator<Item = S>) -> Self {
+        Self(TagSet::new(tags))
+    }
+    delegate! {
+        to self.0 {
+            pub fn is_empty(&self) -> bool;
+            pub fn len(&self) -> usize;
+            pub fn clear(&mut self);
+        }
+    }
+
+    pub fn contains(&self, tag: impl Into<Tag>) -> bool {
+        self.0.contains(tag)
+    }
+
+    pub fn contains_ref(&self, tag: &Tag) -> bool {
+        self.0.contains(tag.clone())
+    }
+
+    pub fn intersects(&self, other: &WhitelistedTags) -> bool {
+        self.0.intersects(&other.0)
+    }
+
+    pub fn extend_from(&mut self, other: &WhitelistedTags) {
+        for tag in other.0.iter() {
+            self.0.0.insert(tag.clone());
+        }
+    }
+}
+//impl into tagset
+impl From<&WhitelistedTags> for TagSet {
+    fn from(tags: &WhitelistedTags) -> Self {
+        tags.0.clone()
+    }
+}
+
+impl IntoIterator for WhitelistedTags {
+    type Item = Tag;
+    type IntoIter = <bevy::platform::collections::HashSet<Tag> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a WhitelistedTags {
+    type Item = &'a Tag;
+    type IntoIter = <&'a bevy::platform::collections::HashSet<Tag> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0.0).into_iter()
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BlacklistedTags(pub TagSet);
+
+impl BlacklistedTags {
+    delegate! {
+        to self.0 {
+            pub fn is_empty(&self) -> bool;
+            pub fn len(&self) -> usize;
+            pub fn clear(&mut self);
+        }
+    }
+    pub fn new<S: AsRef<str>>(tags: impl IntoIterator<Item = S>) -> Self {
+        Self(TagSet::new(tags))
+    }
+
+    pub fn contains(&self, tag: impl Into<Tag>) -> bool {
+        self.0.contains(tag)
+    }
+
+    pub fn contains_ref(&self, tag: &Tag) -> bool {
+        self.0.contains(tag.clone())
+    }
+
+    pub fn intersects(&self, other: &BlacklistedTags) -> bool {
+        self.0.intersects(&other.0)
+    }
+
+    pub fn extend_from(&mut self, other: &BlacklistedTags) {
+        for tag in other.0.iter() {
+            self.0.0.insert(tag.clone());
+        }
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Tag) -> bool,
+    {
+        self.0.0.retain(f);
+    }
+}
+
+impl From<&BlacklistedTags> for TagSet {
+    fn from(tags: &BlacklistedTags) -> Self {
+        tags.0.clone()
+    }
+}
+
+impl IntoIterator for BlacklistedTags {
+    type Item = Tag;
+    type IntoIter = <bevy::platform::collections::HashSet<Tag> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a BlacklistedTags {
+    type Item = &'a Tag;
+    type IntoIter = <&'a bevy::platform::collections::HashSet<Tag> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0.0).into_iter()
     }
 }

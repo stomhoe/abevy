@@ -1,8 +1,8 @@
 use ::being_shared::*;
 use bevy::prelude::*;
-use camera::camera_components::CameraTarget;
 use common::log_targets::BEING_CONTROL;
 use faction::faction_components::BelongsToAPlayerFaction;
+use game_common::game_common_components::CameraTarget;
 use movement::movement_components::InputMoveDir;
 use player::player_components::{HostPlayer, Mine, Player};
 use tilemap::{

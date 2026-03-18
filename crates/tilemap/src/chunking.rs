@@ -50,6 +50,8 @@ pub fn plugin(app: &mut App) {
         detect_camera_change_pos_visib,
         periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
 
+        update_within_chunk,
+
     ).in_set(ChunkSystems),
         despawn_chunks.after(PreChunkDespawnSystems),
         rem_outofrange_chunks_from_activators,
@@ -68,6 +70,7 @@ pub fn plugin(app: &mut App) {
     .add_message::<RecheckChunksVisibility>()
     .add_message::<ForceChunkDespawn>()
     .add_message::<ForceAllChunksDespawn>()
+    .add_message::<BeingChunkDespawned>()
 
     ;
 }

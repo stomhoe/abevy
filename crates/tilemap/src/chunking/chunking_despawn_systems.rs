@@ -2,9 +2,11 @@
 use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
 use ::tilemap_shared::*;
+use common::log_targets::CHUNK_ACTIVATION;
 
 use super::chunking_components::*;
 use super::chunking_resources::*;
+use crate::prelude::BeingChunkDespawned;
 use crate::tile::tile_messages::SavedTileHadChunkDespawn;
 
 
@@ -77,7 +79,7 @@ pub fn periodically_check_despawn_unreferenced_chunks(
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
-    chunks_query: Query<(Option<&Tilemaps>, Option<&TilesToSave>), >,
+    chunks_query: Query<(Option<&Tilemaps>, Option<&TilesToSave>, Option<&BeingsWithinChunk>), >,
     loaded_chunks: Res<LoadedChunks>,
     mut despawn_events: ResMut<Messages<CheckChunkDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
@@ -85,6 +87,8 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
     mut referenced_chunks: Local<EntityHashSet>,
     mut tosave_events: Local<Vec<SavedTileHadChunkDespawn>>,
     mut chunks_to_despawn: Local<Vec<Entity>>,
+    mut bcd_writer: MessageWriter<BeingChunkDespawned>,
+    mut bcd_msgs: Local<Vec<BeingChunkDespawned>>,
 ) {
     referenced_chunks.clear();
     referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.chunk_positions.len()).sum());
@@ -109,7 +113,8 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
     chunks_to_despawn.extend(force_despawn_reader.read().map(|msg| msg.0));
 
     for chunk_ent in chunks_to_despawn.drain(..) {
-        let Ok((children, _tiles_to_save)) = chunks_query.get(chunk_ent) else {
+        let mut delegate_chunk_despawn_to_other_system = false;
+        let Ok((children, _tiles_to_save, beings_within_chunk)) = chunks_query.get(chunk_ent) else {
             //cmd.entity(chunk_ent).try_despawn();
             continue;
         };
@@ -123,20 +128,32 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
                 // }
             }
         }
-        cmd.entity(chunk_ent).try_despawn();
+        let beings_within_chunk_count = beings_within_chunk.map_or(0, |beings| beings.entities().len());
+        if beings_within_chunk_count > 0 {
+            bcd_msgs.push(BeingChunkDespawned { chunk_ent });
+            delegate_chunk_despawn_to_other_system = true;
+        }
+
+        if !delegate_chunk_despawn_to_other_system {
+            cmd.entity(chunk_ent).try_despawn();
+        } else {
+            debug!(target: CHUNK_ACTIVATION, "Delegated chunk {:?} despawn decision for {} beings", chunk_ent, beings_within_chunk_count);
+        }
     }
     tosave_event_writer.write_batch(tosave_events.drain(..));
 
+    bcd_writer.write_batch(bcd_msgs.drain(..));
 }
 #[allow(unused_parens)]
 pub fn on_chunk_despawn(
     trig: On<Despawn, (Chunk, )>,
-    chunk_query: Query<(&DimensionRef, &ChunkPos), ()>,
+    chunk_query: Query<(&DimensionRef, &ChunkPos, ), ()>,
     mut cmd: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
 ){
-    let Ok((&chunk_dimension, &chunk_pos)) = chunk_query.get(trig.entity) else {
+    
+    let Ok((&chunk_dimension, &chunk_pos, )) = chunk_query.get(trig.entity) else {
         error!(target: "chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
         loaded_chunks.0.retain(|_, chunk_entity| chunk_entity.clone() != trig.entity);
 

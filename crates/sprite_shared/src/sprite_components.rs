@@ -223,9 +223,11 @@ impl AcZ {
         Self(z)
     }
     pub fn used_float(&self) -> f32 {
-        self.0 as f32 * Self::Z_MULTIPLIER
+        self.0 * Self::Z_MULT
     }
-    pub const Z_MULTIPLIER: f32 = 1e-5;
+    const Z_MULT: f32 = 1e-3;
+
+    pub const Z_SORT_MULT: f32 = 1e-6;
 }
 impl PartialEq for AcZ {
     fn eq(&self, other: &Self) -> bool {

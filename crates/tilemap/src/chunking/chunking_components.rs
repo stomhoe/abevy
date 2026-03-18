@@ -135,3 +135,17 @@ impl ActivatingChunks {
         }
     }
 }
+
+#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, )]
+#[relationship(relationship_target = BeingsWithinChunk)]
+pub struct WithinChunk(#[relationship]#[entities]pub Entity);
+
+#[derive(Component, )]
+#[relationship_target(relationship = WithinChunk)]
+pub struct BeingsWithinChunk(Vec<Entity>);
+impl BeingsWithinChunk { 
+    pub fn entities(&self) -> &[Entity] { &self.0 }
+
+}
+
+

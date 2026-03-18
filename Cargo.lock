@@ -8008,6 +8008,7 @@ dependencies = [
  "bevy_common_assets",
  "bevy_ecs_tilemap",
  "bevy_replicon",
+ "camera",
  "common",
  "game_common",
  "paste",
@@ -8367,6 +8368,7 @@ name = "tilemap"
 version = "0.1.0"
 dependencies = [
  "avian2d",
+ "being_shared",
  "bevy 0.18.0",
  "bevy-inspector-egui",
  "bevy_asset_loader",

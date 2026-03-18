@@ -1,9 +1,12 @@
 
+use std::mem::take;
+
 use bevy::prelude::*;
 use common::common_components::{StrId20B};
 use common::log_targets::CHUNK_ACTIVATION;
-use tilemap_shared::{DimensionRef, LoadedChunks, LoadedMacroChunks};
+use tilemap_shared::{DimensionRef, LoadedChunks, LoadedMacroChunks, GlobalTilePos};
 use tilemap_shared::{ChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
+use being_shared::Being;
 
 use super::chunking_components::*;
 use super::macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState};
@@ -138,6 +141,10 @@ pub struct MacroChunkLoaded {
     pub macro_chunk_ent: Entity,
 }
 
+#[derive(Message, Debug, Clone, )]
+pub struct BeingChunkDespawned{
+    pub chunk_ent: Entity,
+}
 
 #[allow(unused_parens)]
 pub fn activate_chunks_every_second( //TODO borrar esto y hacer que se haga 1 segundo despues del ultimo movimiento
@@ -163,4 +170,38 @@ pub fn detect_activators_with_pos_changes(
 ) {
     msgs.extend(query.iter().map(ReactivateChunksFor));
     writer.write_batch(msgs.drain(..));
+}
+
+
+
+#[allow(unused_parens)]
+pub fn update_within_chunk(
+    mut cmd: Commands,
+    mut query: Query<
+        (Entity, &GlobalTilePos, &DimensionRef, Option<&WithinChunk>, Option<&mut ChunkPos>),
+        (With<Being>, Changed<GlobalTilePos>),
+    >,
+    loaded_chunks: Res<LoadedChunks>,
+) {
+    let mut within_chunks: Vec<(Entity, WithinChunk)> = Vec::new();
+    for (being_ent, gpos, &dim_ref, within_chunk, being_chunk_pos) in query.iter_mut() {
+        let new_chunk_pos = ChunkPos::from(*gpos);
+        let new_chunk_key = (dim_ref, new_chunk_pos);
+        
+        let Some(&new_chunk_ent) = loaded_chunks.0.get(&new_chunk_key) else {
+            debug!(target: common::log_targets::CHUNK_ACTIVATION, "Being {:?} at {:?} moved to unloaded chunk", being_ent, gpos);
+            continue;
+        };
+        
+        if within_chunk.map(|c| c.0) != Some(new_chunk_ent) {
+
+            within_chunks.push((being_ent, WithinChunk(new_chunk_ent)));
+            if let Some(mut being_chunk_pos) = being_chunk_pos {
+                *being_chunk_pos = new_chunk_pos;
+            } else{
+                cmd.entity(being_ent).try_insert(new_chunk_pos);
+            }
+        }
+    }
+    cmd.try_insert_batch(take(&mut within_chunks));
 }

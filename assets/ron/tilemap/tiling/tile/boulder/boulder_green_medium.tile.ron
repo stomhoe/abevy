@@ -3,7 +3,7 @@
     name: "Green medium boulder",
     tags: ["land", "boulder", "rock", "green"],
     z: 1000,
-    y_sort: Some(10),
+    y_sort: Some(15),
     img_paths: [
         ("", "texture/world/boulder/green.png"),
     ],

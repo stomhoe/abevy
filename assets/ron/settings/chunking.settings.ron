@@ -1,6 +1,6 @@
 (
     id: "chunking_settings",
-    chunk_visib_max_dist: 1000.0,
+    chunk_visib_max_dist: 100000.0,
     chunk_active_max_dist: 250.0,
     discovery_range: 3,
 )

@@ -1,0 +1,4 @@
+(
+    id: "structure_generation_settings",
+    structure_build_timeout_secs: 4.0,
+)

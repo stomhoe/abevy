@@ -7,6 +7,7 @@ use ac_input::ac_input_actions::{
 use common::common_states::*;
 use game_common::game_common_states::*;
 use tilemap_shared::{ForceAllChunksDespawn, GlobalGenSettings};
+use tilemap::regioning::regioning_resources::StructureGenerationSettings;
 
 use crate::debug_resources::{DebugUiConfig, DubugWindowsVisibility, load_debug_ui_config_seri_defs};
 
@@ -17,23 +18,8 @@ pub fn debug_toggle_hot_reload_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
 ) {
     if hot_reload_toggle_events.contains(ActionEvents::START) && !***main_menu_toggle {
-        window_visible.hot_reload_menu = !window_visible.hot_reload_menu;
+        window_visible.hot_reload_window_open_on_start = !window_visible.hot_reload_window_open_on_start;
     }
-}
-
-pub fn apply_initial_hot_reload_visibility_from_world_settings(
-    mut initialized: Local<bool>,
-    mut window_visible: ResMut<DubugWindowsVisibility>,
-    gen_settings: Query<&GlobalGenSettings>,
-) {
-    if *initialized {
-        return;
-    }
-    let Ok(gen_settings) = gen_settings.single() else {
-        return;
-    };
-    window_visible.hot_reload_menu = gen_settings.hot_reload_window_open_on_start;
-    *initialized = true;
 }
 
 pub fn apply_debug_ui_config_once(
@@ -185,7 +171,7 @@ pub fn main_menu_window(
                 window_visible.sprite_details = false;
                 window_visible.gpos_maps = false;
                 window_visible.world_tile_click_picker = false;
-                window_visible.hot_reload_menu = false;
+                window_visible.hot_reload_window_open_on_start = false;
                 window_visible.river_debug = false;
             }
             ui.separator();
@@ -232,7 +218,7 @@ pub fn main_menu_window(
                 window_visible.registered_positions = !window_visible.registered_positions;
             }
             if ui.button(egui::RichText::new("♻ Hot Reload").size(16.0)).clicked() {
-                window_visible.hot_reload_menu = !window_visible.hot_reload_menu;
+                window_visible.hot_reload_window_open_on_start = !window_visible.hot_reload_window_open_on_start;
             }
             ui.separator();
             ui.label("F11: Toggle this menu");
@@ -249,14 +235,14 @@ pub fn hot_reload_window(
     mut request: ResMut<HotReloadRequest>,
     mut force_all_chunks_despawn_writer: MessageWriter<ForceAllChunksDespawn>,
 ) {
-    if !window_visible.hot_reload_menu {
+    if !window_visible.hot_reload_window_open_on_start {
         return;
     }
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
     let screen_rect = ctx.content_rect();
-    let mut open = window_visible.hot_reload_menu;
+    let mut open = window_visible.hot_reload_window_open_on_start;
     egui::Window::new("Hot Reload")
         .default_pos([screen_rect.left() + 24.0, screen_rect.top() + 24.0])
         .resizable(true)
@@ -295,7 +281,7 @@ pub fn hot_reload_window(
         force_all_chunks_despawn_writer.write(ForceAllChunksDespawn);
     }
 
-    window_visible.hot_reload_menu = open;
+    window_visible.hot_reload_window_open_on_start = open;
 }
 
 #[allow(unused_parens)]
@@ -303,6 +289,7 @@ pub fn terrgen_settings_editor_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut gen_settings: Query<&mut GlobalGenSettings>,
+    mut structure_settings: Query<&mut StructureGenerationSettings>,
 ) {
     if !window_visible.settings_editor {
         return;
@@ -312,6 +299,9 @@ pub fn terrgen_settings_editor_window(
         return;
     };
     let Ok(mut gen_settings) = gen_settings.single_mut() else {
+        return;
+    };
+    let Ok(mut structure_settings) = structure_settings.single_mut() else {
         return;
     };
 
@@ -346,7 +336,7 @@ pub fn terrgen_settings_editor_window(
 
             ui.horizontal(|ui| {
                 ui.label("Structure Build Timeout (s):");
-                ui.add(egui::Slider::new(&mut gen_settings.structure_build_timeout_secs, 0.1..=60.0));
+                ui.add(egui::Slider::new(&mut structure_settings.structure_build_timeout_secs, 0.1..=60.0));
             });
         });
     window_visible.settings_editor = open;

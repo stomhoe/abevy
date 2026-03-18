@@ -116,7 +116,7 @@ impl Into<Vec2> for GlobalTilePos {
 pub struct MacroChunkPos(pub IVec2);
 impl_basic_funcs!(MacroChunkPos);
 impl_hashed_position!(MacroChunkPos);
-impl_display_debug!(MacroChunkPos, "Macrochunk pos", "Mcpos");
+impl_display_debug!(MacroChunkPos, "Macrochunk pos", "Mpos");
 impl_position_ops!(MacroChunkPos);
 impl_position_conversions!(MacroChunkPos);
 
@@ -275,7 +275,7 @@ impl MacroChunkPos {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, )]
+#[derive(Component, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, )]
 pub struct OplistSize(UVec2);
 impl OplistSize {
     pub fn new([x, y]: [u32; 2]) -> Result<Self, BevyError> {
@@ -293,6 +293,8 @@ impl OplistSize {
     pub fn inner(&self) -> UVec2 { self.0 }
     pub fn size(&self) -> usize { (self.x() * self.y()) as usize }
 }
+impl_display_debug!(OplistSize, "OplistSize", "OplistSize");
+
 impl std::ops::Div<TilePos> for OplistSize {
     type Output = Self;
     fn div(self, rhs: TilePos) -> Self {

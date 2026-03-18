@@ -51,8 +51,6 @@ pub struct TerrgenSettingsSeri {
     pub world_freq: f32,
     #[serde(default = "default_global_tectonic_frequency")]
     pub tectonic_frequency: f32,
-    #[serde(default = "default_global_structure_build_timeout_secs")]
-    pub structure_build_timeout_secs: f64,
 }
 
 impl TerrgenSettingsSeri {
@@ -61,7 +59,6 @@ impl TerrgenSettingsSeri {
             seed: self.seed,
             world_freq: self.world_freq,
             tectonic_frequency: self.tectonic_frequency,
-            structure_build_timeout_secs: self.structure_build_timeout_secs,
             ..Default::default()
         }
     }

@@ -31,7 +31,7 @@ pub struct DubugWindowsVisibility{
     pub sprite_details: bool,
     pub gpos_maps: bool,
     pub world_tile_click_picker: bool,
-    pub hot_reload_menu: bool,
+    pub hot_reload_window_open_on_start: bool,
     pub river_debug: bool,
 }
 
@@ -62,7 +62,7 @@ impl Default for DubugWindowsVisibility {
             sprite_details: false,
             gpos_maps: false,
             world_tile_click_picker: false,
-            hot_reload_menu: false,
+            hot_reload_window_open_on_start: false,
             river_debug: false,
         }
     }
@@ -229,7 +229,7 @@ impl DebugUiConfigSeri {
             windows_open_on_start: {
                 let mut v = DubugWindowsVisibility::default();
                 v.main_menu = self.windows_open_on_start.main_menu;
-                v.hot_reload_menu = self.windows_open_on_start.hot_reload_menu;
+                v.hot_reload_window_open_on_start = self.windows_open_on_start.hot_reload_window_open_on_start;
                 v.terrgen_editor = self.windows_open_on_start.terrgen_editor;
                 v.terrgen_values = self.windows_open_on_start.terrgen_values;
                 v.settings_editor = self.windows_open_on_start.settings_editor;

@@ -48,11 +48,11 @@ impl Being {
         }
 
         let Some(race_ent) = effective_race_ent else {
-            blacklisted_tags.0.0.retain(|tag| !whitelisted_tags.0.contains(tag.clone()));
+            blacklisted_tags.0.retain(|tag| !whitelisted_tags.0.contains_ref(tag));
             return;
         };
         let Ok((race_whitelist, race_blacklist)) = spawn_tile_tags_query.get(race_ent) else {
-            blacklisted_tags.0.0.retain(|tag| !whitelisted_tags.0.contains(tag.clone()));
+            blacklisted_tags.0.retain(|tag| !whitelisted_tags.0.contains_ref(tag));
             return;
         };
         if let Some(race_whitelist) = race_whitelist {
@@ -61,7 +61,7 @@ impl Being {
         if let Some(race_blacklist) = race_blacklist {
             blacklisted_tags.0.extend_from(&race_blacklist.0);
         }
-        blacklisted_tags.0.0.retain(|tag| !whitelisted_tags.0.contains(tag.clone()));
+        blacklisted_tags.0.retain(|tag| !whitelisted_tags.0.contains_ref(tag));
     }
 }
 
@@ -210,9 +210,11 @@ impl PredatorHuntThreshold {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
+#[require(Unloaded)]
 pub struct BackgroundSimulated;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct Unloaded;
 
+pub type NonUnloadedBeing = (With<Being>, Without<Unloaded>);

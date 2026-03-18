@@ -39,8 +39,8 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         dim_ref: DimensionRef,
         anchor: GlobalTilePos,
         being: Entity,
-        whitelisted_tags: &WhitelistedSpawnTileTags,
-        blacklisted_tags: &BlacklistedSpawnTileTags,
+        whitelisted_tags: &WhitelistedTags,
+        blacklisted_tags: &BlacklistedTags,
     ) -> Option<GlobalTilePos> {
         let chunk_pos = anchor.to_chunkpos();
         let min_tile = chunk_pos.to_tilepos().0;
@@ -65,12 +65,12 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                         continue;
                     }
                     let candidate = GlobalTilePos(min_tile + IVec2::new(local_x, local_y));
-                    if !self.allows_spawn_at(
+                    if !self.allowed_at(
                         dim_ref,
                         candidate,
                         being,
-                        whitelisted_tags,
-                        blacklisted_tags,
+                        &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
+                        &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
                     ) {
                         continue;
                     }
@@ -82,7 +82,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         None
     }
 
-    pub fn allows_spawn_at(
+    pub fn allowed_at(
         &mut self,
         dim_ref: DimensionRef,
         gpos: GlobalTilePos,
@@ -113,10 +113,10 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             all_tiles_failed = false;
 
             if let Ok(tile_tags) = self.tile_tags.get(ezero_ref.0) {
-                if !whitelisted_tags.0.is_empty() && tile_tags.intersects(&whitelisted_tags.0) {
+                if !whitelisted_tags.0.is_empty() && tile_tags.intersects(&whitelisted_tags.0.0) {
                     has_whitelist_match = true;
                 }
-                if !blacklisted_tags.0.is_empty() && tile_tags.intersects(&blacklisted_tags.0) {
+                if !blacklisted_tags.0.is_empty() && tile_tags.intersects(&blacklisted_tags.0.0) {
                     has_blacklist_match = true;
                 }
             }
@@ -235,7 +235,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         }
         if all_tiles_failed {
             trace!("No tile found at position {:?} in dimension {:?} for movement blocking check.", gpos, dim_ref);
-            return false;
+            return true;
         }
         false
     }
@@ -246,8 +246,8 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         dim_ref: DimensionRef,
         target_gpos: GlobalTilePos,
         being: Entity,
-        whitelisted_tags: &WhitelistedSpawnTileTags,
-        blacklisted_tags: &BlacklistedSpawnTileTags,
+        whitelisted_tags: &WhitelistedTags,
+        blacklisted_tags: &BlacklistedTags,
         max_chunk_manhattan: i32,
     ) -> Option<GlobalTilePos> {
         let home_chunk = target_gpos.to_chunkpos();
@@ -302,6 +302,25 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         }
 
         None
+    }
+
+    pub fn find_closest_allowed_gpos_across_loaded_chunks(
+        &mut self,
+        loaded_chunks: &LoadedChunks,
+        dim_ref: DimensionRef,
+        target_gpos: GlobalTilePos,
+        being: Entity,
+        blacklisted_tags: &BlacklistedTags,
+    ) -> Option<GlobalTilePos> {
+        self.find_closest_spawn_suitable_gpos_across_loaded_chunks(
+            loaded_chunks,
+            dim_ref,
+            target_gpos,
+            being,
+            &WhitelistedTags::default(),
+            blacklisted_tags,
+            i32::MAX,
+        )
     }
 }
 

@@ -5,6 +5,7 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use game_common::game_common_samplers::{EntityWeightedSampler, SpriteGlobalNormalDist};
 use serde::{Deserialize, Serialize};
+use tilemap_shared::BlacklistedTags;
 
 #[derive(Component, Serialize, Deserialize, Clone)]
 #[require(Replicated, Prefix::trunc("Race"), AssetScoped, HotReload)]
@@ -48,7 +49,7 @@ pub struct WanderConfig {
     pub halt_secs_max: f32,
     pub speed_min: f32,
     pub speed_max: f32,
-    pub avoid_tile_tags: TagSet,
+    pub avoid_tile_tags: BlacklistedTags,
 }
 
 #[derive(Component, Debug, Default, Clone, Copy)]
