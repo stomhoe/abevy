@@ -611,6 +611,7 @@ dependencies = [
  "bevy_common_assets",
  "bevy_replicon",
  "common",
+ "faction_shared",
  "game_common",
  "serde",
  "tilemap_shared",
@@ -4741,9 +4742,20 @@ dependencies = [
  "bevy_common_assets",
  "bevy_replicon",
  "common",
+ "faction_shared",
  "game_common",
  "paste",
  "player",
+ "serde",
+]
+
+[[package]]
+name = "faction_shared"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.18.0",
+ "bevy_replicon",
+ "common",
  "serde",
 ]
 

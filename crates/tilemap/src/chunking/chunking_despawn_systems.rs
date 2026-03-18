@@ -12,7 +12,7 @@ use crate::tile::tile_messages::SavedTileHadChunkDespawn;
 
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
-    mut activator_query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), (Or<(Changed<GlobalTransform>, Changed<DimensionRef>)>, )>,
+    mut activator_query: Query<(&GlobalTransform, &mut ActivatingChunks, &DimensionRef), (Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>, )>,
     chunkrange_settings: Res<AaChunkRangeSettings>,
     loaded_chunks: Res<LoadedChunks>,
     mut ewriter: MessageWriter<CheckChunkDespawn>,
@@ -114,12 +114,12 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
 
     for chunk_ent in chunks_to_despawn.drain(..) {
         let mut delegate_chunk_despawn_to_other_system = false;
-        let Ok((children, _tiles_to_save, beings_within_chunk)) = chunks_query.get(chunk_ent) else {
+        let Ok((tilemaps, _tiles_to_save, beings_within_chunk)) = chunks_query.get(chunk_ent) else {
             //cmd.entity(chunk_ent).try_despawn();
             continue;
         };
-        if let Some(children) = children.as_ref() {
-            for _child in children.iter() {
+        if let Some(tilemaps) = tilemaps {
+            for tmap_ent in tilemaps.iter() {
                 // if tiles_to_save.entities().contains(&child) {
                 //     cmd.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
                 //     tosave_events.push(SavedTileHadChunkDespawn(child));
@@ -128,7 +128,7 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
                 // }
             }
         }
-        let beings_within_chunk_count = beings_within_chunk.map_or(0, |beings| beings.entities().len());
+        let beings_within_chunk_count = beings_within_chunk.map_or(0, |beings| beings.len());
         if beings_within_chunk_count > 0 {
             bcd_msgs.push(BeingChunkDespawned { chunk_ent });
             delegate_chunk_despawn_to_other_system = true;
@@ -152,7 +152,7 @@ pub fn on_chunk_despawn(
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
 ){
-    
+
     let Ok((&chunk_dimension, &chunk_pos, )) = chunk_query.get(trig.entity) else {
         error!(target: "chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
         loaded_chunks.0.retain(|_, chunk_entity| chunk_entity.clone() != trig.entity);

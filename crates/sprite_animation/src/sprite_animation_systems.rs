@@ -63,9 +63,9 @@ pub fn switch_or_readjust_sprite_animation(
     sprite_entis_to_iter.extend(changed_sprite_cfg_refs.iter().map(|base_holder| base_holder.base));
 
     for (held_sprites, direction, moving, grounding) in base.iter_many(sprite_entis_to_iter.drain()) {
-        for held_sprite in held_sprites.entities() {
-            let held_sprite_strid = strid_query.get(*held_sprite).ok().cloned().unwrap_or_default();
-            let Ok((ent, has_sprite, prev_anim, base_holder, sprite_cfg_ref, state_id, playing_speed, animation_progresses, transform, )) = sprites_query.get_mut(*held_sprite)
+        for held_sprite in held_sprites.iter() {
+            let held_sprite_strid = strid_query.get(held_sprite).ok().cloned().unwrap_or_default();
+            let Ok((ent, has_sprite, prev_anim, base_holder, sprite_cfg_ref, state_id, playing_speed, animation_progresses, transform, )) = sprites_query.get_mut(held_sprite)
             else { error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get sprite entity {:?} {}", held_sprite, held_sprite_strid); continue };
 
 

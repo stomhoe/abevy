@@ -99,7 +99,7 @@ pub fn wander_behavior(
             &DimensionRef,
             Option<&RaceRef>,
         ),
-        (With<Being>, Without<crate::being_components::Chaser>, LocalAiControlled),
+        (With<Being>, Without<crate::being_components::Chasing>, LocalAiControlled),
     >,
     race_wander_cfg_query: Query<&WanderConfig>,
     mut wander_states: Local<EntityHashMap<WanderState>>,

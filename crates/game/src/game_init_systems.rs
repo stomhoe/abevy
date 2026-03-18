@@ -233,7 +233,7 @@ pub fn put_player_beings_on_map(
     for (created_characters, ) in players.iter() {
         debug!(target: GAME_INIT, "Spawning player being: {:?}", created_characters);
 
-        for &being_ent in created_characters.entities() {
+        for being_ent in created_characters.iter() {
             let gpos = compute_spawn_pos(origin, &mut *next_spawn_offset_x);
             let Ok(created_by) = created_by_query.get(being_ent) else { continue; };
 

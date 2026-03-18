@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use common::{common_tag_components::TagSet, prelude::Tag};
 
 // Re-export for backward compatibility
 pub use common::common_tag_components::{WhitelistedTags, BlacklistedTags};

@@ -59,7 +59,7 @@ pub fn add_spritechildren_and_comps(
             info!(target: "sprite_building", "Building sprite {}", str_id);
 
             if let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) {
-                for &sprite_ent in held_sprites.entities() {
+                for sprite_ent in held_sprites.iter() {
                     if let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) {
                         if sprite_cfg_ref.0 == spritecfg_ent {
                             warn!(target: "sprite_building", "SpriteConfig '{}' already present in HeldSprites of base holder {:?}, skipping.", str_id, baseholder_ref.base);
@@ -153,7 +153,7 @@ pub fn become_child_of_sprite_with_tag(
             continue;
         };
 
-        for (other_ent, o_spritecfg_ref) in other_sprites.iter_many(held_sprites.entities()) {
+        for (other_ent, o_spritecfg_ref) in other_sprites.iter_many(held_sprites.iter()) {
             if new_ent == other_ent {
                 continue;
             }
@@ -184,8 +184,8 @@ fn needs_sprite_build(
         return true;
     };
 
-    let mut built_cfgs = EntityHashSet::with_capacity(held_sprites.entities().len());
-    for &sprite_ent in held_sprites.entities() {
+    let mut built_cfgs = EntityHashSet::with_capacity(held_sprites.iter().len());
+    for sprite_ent in held_sprites.iter() {
         let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) else {
             continue;
         };
@@ -194,5 +194,3 @@ fn needs_sprite_build(
 
     to_build.0.iter().any(|cfg_ent| !built_cfgs.contains(cfg_ent))
 }
-
-

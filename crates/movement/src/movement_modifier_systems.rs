@@ -28,6 +28,8 @@ pub fn process_input_direction_modifiers(
         &ApplyMode,
         Has<InvertMovement>,
     )>,
+    mut effects: Local<EntityHashSet>,
+
 ) {
     let is_client = state.get() == &ClientState::Connected;
     for (being_ent, applied, input_move_dir, mut norm_move_dir, controlled_locally) in being_query.iter_mut()
@@ -39,8 +41,8 @@ pub fn process_input_direction_modifiers(
 
         let mut invert_sum: f32 = 0.0;
         let mut invert_scale: f32 = 1.0;
-        let mut effects = EntityHashSet::default();
-        applied.entities().iter().for_each(|&ent| {
+        effects.clear();
+        applied.iter().for_each(|ent| {
             effects.insert(ent);
         });
         for (modifier_ent, target, ..) in modifiers_query.iter() {
@@ -116,7 +118,7 @@ pub fn process_speed_modifiers(
         let mut speed_sum: f32 = 0.0;
 
         let mut effects = EntityHashSet::default();
-        applied.entities().iter().for_each(|&ent| {
+        applied.iter().for_each(|ent| {
             effects.insert(ent);
         });
         for (modifier_ent, target, ..) in modifiers_query.iter() {

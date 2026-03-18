@@ -13,7 +13,19 @@ use tilemap::chunking::{despawn_chunks, rem_outofrange_chunks_from_activators, B
 
 
 use crate::{
-    being_behavior_systems::*, being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations, sync_hitbox_receiver_from_sources, sync_melee_interaction_zone_from_sources}, being_on_chunk_despawn_systems::*, being_components::*, being_control_systems::*, being_inst_template::BeingInstTemplateSystems, being_portal_systems::*, being_systems::*, body::{self, BodySystems}, nav::{being_nav_systems::*, being_nav_wander_systems::*, being_nav_chase_systems::*}, pack::PackSystems, prelude::*, race::RaceSystems
+    being_behavior_systems::*,
+    being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations, sync_melee_interaction_zone_from_sources},
+    being_components::*,
+    being_control_systems::*,
+    being_inst_template::BeingInstTemplateSystems,
+    being_on_chunk_despawn_systems::on_chunk_with_beings_attempt_unload,
+    being_portal_systems::*,
+    being_systems::*,
+    body::{self, BodySystems},
+    nav,
+    pack::PackSystems,
+    prelude::*,
+    race::RaceSystems,
 };
 
 #[allow(unused_parens)]
@@ -23,6 +35,7 @@ pub fn plugin(app: &mut App) {
         crate::race::plugin,
         crate::sex::plugin,
         body::plugin,
+        nav::plugin,
         crate::being_inst_template::plugin,
         crate::pack::plugin,
     ))
@@ -34,36 +47,21 @@ pub fn plugin(app: &mut App) {
         (
             build_beings_from_refs,
             sync_melee_interaction_zone_from_sources,
-            sync_hitbox_receiver_from_sources,
             sample_sprite_normal_variations,
         ).chain().in_set(HostSystems),
         (
-            (
-                add_activates_chunks,
-                assign_uncontrolled_beings_to_host,
-                cross_portal,
-            ).in_set(HostSystems),
-            on_control_change,
-            (
-                sync_predator_config_from_sources,
-                add_predator_behavior_components,
-                tick_hunger,
-                sync_ai_nav_grids,
-                update_predator_chase_targets,
-                rebuild_chaser_nav_plans,
-                chase_behavior,
-                on_chunk_with_beings_attempt_unload
-                    .in_set(HostSystems)
-                    .before(retain_chunks_for_player_faction_chasers)
-                    .run_if(on_message::<BeingChunkDespawned>),
-                extend_retained_chasepaths_for_moving_player_prey,
-                retain_chunks_for_player_faction_chasers
-                    .after(rem_outofrange_chunks_from_activators)
-                    .before(despawn_chunks),
-                wander_behavior,
-            ),
-        ).in_set(GameplaySystems),
+            add_activates_chunks,
+            assign_uncomputed_beings_to_host,
+            cross_portal,
+        ).in_set(HostSystems),
     ))
+    .add_systems(Update, (
+        on_control_change,
+        sync_predator_config_from_sources,
+        add_predator_behavior_components,
+        tick_hunger,
+        update_predator_chase_targets,
+    ).chain())
     .add_systems(
         Update,
         (
@@ -90,7 +88,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<CharacterCreatedBy>()
     .replicate::<PlayerDirectControllable>()
     .replicate::<BodyCollisionRadius>()
-    .replicate::<Chaser>()
+    .replicate::<Chasing>()
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
 
 
@@ -99,6 +97,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate_filtered::<ChildOf, With<Being>>()
 
+    .add_message::<MakeChunkSnapshotForChaser>()
 
 
 

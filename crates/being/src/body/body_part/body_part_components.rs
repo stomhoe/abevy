@@ -20,7 +20,6 @@ pub struct BodyPartOf {#[relationship] #[entities] pub body: Entity,}
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = BodyPartOf)]
 pub struct BodyParts(Vec<Entity>);
-impl BodyParts { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
 #[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone)]
 #[relationship(relationship_target = BodyPartChildren)]
@@ -29,7 +28,6 @@ pub struct BodyPartParent {#[relationship] #[entities] pub parent: Entity,}
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = BodyPartParent)]
 pub struct BodyPartChildren(Vec<Entity>);
-impl BodyPartChildren { pub fn entities(&self) -> &Vec<Entity> {&self.0} }
 
 pub type BodyPartSlots = SlottedItemHolder;
 

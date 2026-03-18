@@ -10,7 +10,9 @@ pub fn players_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    players_query: Query<(Entity, Has<Mine>, Option<&Name>, Option<&StrId>), With<Player>>,
+    players_query: Query<(Entity, Has<Mine>), With<Player>>,
+    name_query: Query<&Name>,
+    str_id_query: Query<&StrId>,
 ) {
     if !window_visible.players_list {
         return;
@@ -27,10 +29,10 @@ pub fn players_list_window(
 
     let mut players: Vec<(Entity, bool, String)> = players_query
         .iter()
-        .map(|(entity, is_mine, name, strid)| {
-            let label = if let Some(strid) = strid {
+        .map(|(entity, is_mine)| {
+            let label = if let Ok(strid) = str_id_query.get(entity) {
                 strid.to_string()
-            } else if let Some(name) = name {
+            } else if let Ok(name) = name_query.get(entity) {
                 name.to_string()
             } else {
                 "Unnamed".to_string()

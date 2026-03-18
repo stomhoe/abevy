@@ -239,7 +239,7 @@ pub fn regions_list_window(
                             }
 
                             if let Some(chunks) = chunks_active {
-                                ui.label(format!("ChunksActive: {}", chunks.entities().len()));
+                                ui.label(format!("ChunksActive: {}", chunks.iter().len()));
                             }
 
                             if let Some(count_sgcs) = counts {

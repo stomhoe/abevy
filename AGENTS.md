@@ -16,3 +16,20 @@ if writing error!'s for a specific entity's failure, try to query its StrId inst
 try to associate helper fns to types if possible, if not put them in a submodulename_helper.rs file
 
 for dealing with time, use Timer's, not raw f32s
+
+
+VERY IMPORTANT: for bevy systems, always put #[allow(unused_parens, )] on top of their definition, and for each query, ALWAYS include parentheses to delimitate the component querying part from the filtering part, even if unnecessary, also leave trailing commas within parentheses. Like this:
+Query<(&ComponentType, ), (With<ComponentType2>, )>,
+
+Prefer imports like this: 
+use somethings::*
+Over imports like this:
+use something::FinalNormMoveDir;
+use something::InputMoveDir;
+use something::SpeedMagnitude;
+And check if there's a prelude available. Also, if you find 2 or more imported things within curly braces, like this:
+use ::something::{ChunkPos, DimensionRef, GlobalTilePos};
+turn it into this:
+use ::something::*;
+
+in mono-queries (queries for a single component T), NEVER wrap the queried component in Option<&T> or Has<T>. instead, with let Ok(t) else continue or .is_ok() you can handle any possible need.

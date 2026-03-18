@@ -141,7 +141,7 @@ pub fn sync_sprite_flips_with_tileflip(
             my_sprite.flip_y = tile_flip.y;
         }
         if let Some(held_sprites) = held_sprites {
-            held_sprites.entities().iter().for_each(|&sprite_entity| {
+            held_sprites.iter().for_each(|sprite_entity| {
                 if let Ok(mut sprite) = sprites_query.get_mut(sprite_entity) {
                     sprite.flip_x = tile_flip.x;
                     sprite.flip_y = tile_flip.y;

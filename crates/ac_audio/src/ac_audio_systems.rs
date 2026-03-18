@@ -132,15 +132,14 @@ pub fn sync_sprite_loop_sfx(
         Option<&mut SpatialAudioEmitter>,
         Option<&SpriteLoopSfxState>,
     )>,
-    sprite_cfgs: Query<Option<&SpriteLoopSfx>>,
+    sprite_cfgs: Query<&SpriteLoopSfx>,
     move_anims: Query<&MoveAnimActive>,
     mut audio_instances: ResMut<Assets<AudioInstance>>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
 ) {
     for (ent, sprite_cfg_ref, base_holder, sprite_anim, spatial_emitter, loop_state) in &mut sprites {
-        let Ok(loop_cfg) = sprite_cfgs.get(sprite_cfg_ref.0) else { continue };
-        let Some(loop_cfg) = loop_cfg else {
+        let Ok(loop_cfg) = sprite_cfgs.get(sprite_cfg_ref.0) else {
             if let Some(loop_state) = loop_state {
                 for handle in loop_state.instances.iter() {
                     let Some(instance) = audio_instances.get_mut(handle) else { continue };
@@ -208,7 +207,7 @@ pub fn sync_sprite_timed_sfx(
         Option<&mut SpatialAudioEmitter>,
         Option<&SpriteTimedSfxState>,
     )>,
-    sprite_cfgs: Query<Option<&SpriteTimedSfx>>,
+    sprite_cfgs: Query<&SpriteTimedSfx>,
     move_anims: Query<&MoveAnimActive>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
@@ -219,8 +218,7 @@ pub fn sync_sprite_timed_sfx(
         return;
     }
     for (ent, sprite_cfg_ref, base_holder, sprite_anim, spatial_emitter, state) in &mut sprites {
-        let Ok(cfg) = sprite_cfgs.get(sprite_cfg_ref.0) else { continue };
-        let Some(cfg) = cfg else {
+        let Ok(cfg) = sprite_cfgs.get(sprite_cfg_ref.0) else {
             if state.is_some() { cmd.entity(ent).remove::<SpriteTimedSfxState>(); }
             continue;
         };
@@ -296,8 +294,8 @@ pub fn play_step_sfx_from_moved_distance(
         Option<&mut SpatialAudioEmitter>,
         Option<&mut StepDistanceSfxState>,
     ), With<Being>>,
-    race_step_sfx_enabled: Query<Has<ProducesStepSfx>>,
-    race_footstep_sfx_cfgs: Query<Option<&RaceFootstepSfxConfig>>,
+    race_step_sfx_enabled: Query<&ProducesStepSfx>,
+    race_footstep_sfx_cfgs: Query<&RaceFootstepSfxConfig>,
     sprite_entity_zero_refs: Query<&EntityZeroRef>,
     sprite_step_cfgs: Query<&SpriteTimedSfx>,
     tile_entity_zero_refs: Query<&EntityZeroRef>,
@@ -340,7 +338,7 @@ pub fn play_step_sfx_from_moved_distance(
             continue;
         }
         if let Some(race_ref) = race_ref {
-            if race_step_sfx_enabled.get(race_ref.0).is_ok_and(|enabled| !enabled) {
+            if race_step_sfx_enabled.get(race_ref.0).is_err() {
                 continue;
             }
         }
@@ -352,7 +350,7 @@ pub fn play_step_sfx_from_moved_distance(
         let mut prevent_repeat = true;
         let mut disable_tile_step_sfx = false;
         if let Some(race_ref) = race_ref {
-            if let Ok(Some(race_footstep_cfg)) = race_footstep_sfx_cfgs.get(race_ref.0) {
+            if let Ok(race_footstep_cfg) = race_footstep_sfx_cfgs.get(race_ref.0) {
                 disable_tile_step_sfx = race_footstep_cfg.disable_tile_step_sfx;
                 for path in race_footstep_cfg.paths.iter() {
                     if !path.trim().is_empty() {
@@ -362,8 +360,8 @@ pub fn play_step_sfx_from_moved_distance(
             }
         }
         if let Some(held_sprites) = held_sprites {
-            for held_sprite in held_sprites.entities() {
-                let Ok(sprite_cfg_ref) = sprite_entity_zero_refs.get(*held_sprite) else { continue };
+            for held_sprite in held_sprites.iter() {
+                let Ok(sprite_cfg_ref) = sprite_entity_zero_refs.get(held_sprite) else { continue };
                 let Ok(step_cfg) = sprite_step_cfgs.get(sprite_cfg_ref.0) else { continue };
                 if step_cfg.condition != SfxPlayCondition::WhileMoveActive {
                     continue;

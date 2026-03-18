@@ -4,7 +4,6 @@ use bevy::{
     prelude::*,
 };
 use common::common_components::{Prefix, StrId, Tag};
-use serde::{Deserialize, Serialize};
 
 use crate::faction_components::Culture;
 pub use crate::culture::culture_seris::*;

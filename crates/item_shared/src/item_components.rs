@@ -39,7 +39,6 @@ pub type DroppedItem = (With<Item>, Without<ItemHeldIn>);
 #[derive(Component, Debug, )]
 #[relationship_target(relationship = ItemHeldIn)]
 pub struct HeldItems(Vec<Entity>);
-impl HeldItems { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct DropHeldItemsOnDowned;

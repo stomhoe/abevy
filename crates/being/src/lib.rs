@@ -1,3 +1,5 @@
+#![feature(inherent_associated_types)]
+
 pub mod being;
 pub use being::*;
 

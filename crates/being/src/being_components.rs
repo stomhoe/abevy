@@ -7,6 +7,7 @@ use bevy::{
 };
 use bevy_replicon::prelude::Replicated;
 
+use faction::prelude::BelongsToAPlayerFaction;
 use modifier_shared::modifier_components::AppliedModifiers;
 use movement::movement_components::*;
 
@@ -15,14 +16,14 @@ use common::common_components::*;
 use serde::{Deserialize, Serialize};
 use sprite_animation_shared::MoveAnimActive;
 
-pub use ::being_shared::Being;
+pub use ::being_shared::{Being, FactionLeader};
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
-pub struct Chaser {
+pub struct Chasing {
     pub target: Entity,
     pub stop_distance: f32,
 }
-impl Chaser {
+impl Chasing {
     pub fn new(target: Entity, stop_distance: f32) -> Self {
         Self {
             target,
@@ -47,16 +48,8 @@ impl Chaser {
         }
         Some(*target_gpos)
     }
+
 }
 
 pub const COLLISION_MASK_HASHID: HashId = HashId::hash("collision_mask");
 pub const HITBOX_HASHID: HashId = HashId::hash("hitbox");
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
-pub struct HitboxReceiver(pub HashId);
-impl Default for HitboxReceiver {
-    fn default() -> Self {
-        Self(COLLISION_MASK_HASHID)
-    }
-}
-

@@ -19,9 +19,9 @@ pub struct RefreshTerrblTilemapsParams<'w, 's> {
     pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
     pub images: ResMut<'w, Assets<Image>>,
     pub shader_query: Query<'w, 's, &'static TileShader>,
-    pub tile_ezero_ref_query: Query<'w, 's, &'static EntityZeroRef, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
-    pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex, (With<Tile>, Without<EntityZero>)>,
-    pub ezero_terrbl_query: Query<'w, 's, Option<&'static TerrBlendParams>, With<EntityZero>>,
+    pub ezero_ref_query: Query<'w, 's, &'static EntityZeroRef>,
+    pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
+    pub terrbl_params_query: Query<'w, 's, &'static TerrBlendParams>,
     pub tilemaps: Query<'w, 's, (
         Entity,
         &'static TileStorage,
@@ -49,10 +49,10 @@ pub fn refresh_terrbl_tilemaps(
             TileShader::TerrBlend(_) => {
                 let Some(material) = build_terrbl_material_for_map(
                     &mut params.images,
-                    &params.tile_ezero_ref_query,
+                    &params.ezero_ref_query,
                     &params.tile_texture_index_query,
                     &EntityHashMap::default(),
-                    &params.ezero_terrbl_query,
+                    &params.terrbl_params_query,
                     storage,
                     tmap_ent,
                     U16Vec2::new(tile_size.x as u16, tile_size.y as u16),
@@ -79,10 +79,10 @@ pub fn refresh_terrbl_tilemaps(
 
 pub fn build_terrbl_material_for_map(
     images: &mut Assets<Image>,
-    tile_ezero_ref_query: &Query<&EntityZeroRef, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
-    tile_texture_index_query: &Query<&TileTextureIndex, (With<Tile>, Without<EntityZero>)>,
+    tile_ezero_ref_query: &Query<&EntityZeroRef>,
+    tile_texture_index_query: &Query<&TileTextureIndex>,
     tile_runtime_info: &EntityHashMap<(EntityZeroRef, TileTextureIndex)>,
-    ezero_terrbl_query: &Query<Option<&TerrBlendParams>, With<EntityZero>>,
+    ezero_terrbl_query: &Query<&TerrBlendParams>,
     storage: &TileStorage,
     tmap_ent: Entity,
     tile_size_px: U16Vec2,
@@ -131,7 +131,7 @@ pub fn build_terrbl_material_for_map(
             };
             let px_i = ((y as usize) * (width as usize) + (x as usize)) * 4;
             encode_u16(&mut tile_indices_data, px_i, base_texture_index.0 as u16);
-            let Some(params) = ezero_terrbl_query.get(ezero_ref.0).ok().flatten() else {
+            let Ok(params) = ezero_terrbl_query.get(ezero_ref.0) else {
                 if *terrbl_debug_budget > 0 {
                     *terrbl_debug_budget -= 1;
                     error!(target: TILEMAP_SYSTEM, "terrbl debug: no TerrBlendParams on ezero {:?} tile {:?}", ezero_ref.0, tile_pos);

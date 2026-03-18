@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashMap;
+use bevy::prelude::*;
 use ::being_shared::*;
 use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan};
 

@@ -1,3 +1,5 @@
+#![feature(inherent_associated_types)]
+
 use bevy::{log::LogPlugin, prelude::*,};
 use avian2d::prelude::PhysicsPlugins;
 use bevy_enhanced_input::prelude::*;

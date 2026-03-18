@@ -127,6 +127,31 @@ impl TiledCollisionMask {
         self.is_source_bit_set(sx, sy)
     }
 
+    pub fn occupied_world_positions(
+        &self,
+        tile_origin: GlobalTilePos,
+        flip: TileFlip,
+        direction: CardinalDirection,
+        out: &mut Vec<GlobalTilePos>,
+    ) {
+        let (width, height) = match direction {
+            CardinalDirection::South | CardinalDirection::North => {
+                (self.width as u32, self.height as u32)
+            }
+            CardinalDirection::West | CardinalDirection::East => {
+                (self.height as u32, self.width as u32)
+            }
+        };
+        for y in 0..height {
+            for x in 0..width {
+                if !self.is_solid_local_with_flip(x, y, flip, direction) {
+                    continue;
+                }
+                out.push(tile_origin + IVec2::new(x as i32, y as i32));
+            }
+        }
+    }
+
     fn is_source_bit_set(&self, x: u32, y: u32) -> bool {
         let width = self.width as u32;
         let height = self.height as u32;
@@ -228,7 +253,7 @@ impl InteractionZones {
     pub fn melee_default() -> Self {
         let mut zones = HashIdMap::with_capacity(1);
         zones.overwrite(
-            Self::MELEE,
+            Self::MELEE_ATTACK,
             InteractionZone::new(InteractionZoneSeri {
                 offset_positions: vec![(0, 1)],
                 radius_offset: Vec::new(),
@@ -237,7 +262,7 @@ impl InteractionZones {
         Self(zones)
     }
     pub const ENTER: HashId = HashId::hash("enter");
-    pub const MELEE: HashId = HashId::hash("melee");
+    pub const MELEE_ATTACK: HashId = HashId::hash("melee_attack");
 }
 
 #[derive(Component, Clone, Deserialize, Serialize, Debug)]

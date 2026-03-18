@@ -74,7 +74,6 @@ pub struct DimensionRootOplist(#[relationship]#[entities]pub Entity);
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = DimensionRootOplist)]
 pub struct RootInDimensions(EntityHashSet);
-impl RootInDimensions { pub fn entities(&self) -> &EntityHashSet { &self.0 } }
 
 
 

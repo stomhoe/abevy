@@ -1,6 +1,6 @@
-use crate::being_components::{Being, Chaser};
+use crate::being_components::{Being, Chasing};
 use ::being_shared::*;
-use ::tilemap_shared::{ChunkPos, GlobalTilePos};
+use ::tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos};
 use bevy::{
     ecs::entity::EntityHashSet,
     platform::collections::{HashMap, HashSet},
@@ -8,7 +8,6 @@ use bevy::{
 };
 use bevy_northstar::prelude::*;
 use common::log_targets::BEING_SYSTEM;
-use faction::faction_components::BelongsToAPlayerFaction;
 use movement::movement_components::FinalNormMoveDir;
 use movement::movement_components::InputMoveDir;
 use movement::movement_components::SpeedMagnitude;
@@ -28,6 +27,9 @@ use super::being_nav_helpers::{
     retained_target_trail_stale_timeout,
     retained_target_chunk_trails_match_positions,
 };
+use crate::prelude::MakeChunkSnapshotForChaser;
+use faction::faction_components::BelongsToAPlayerFaction;
+use tilemap::chunking::{BeingsWithinChunk, BeingChunkDespawned};
 
 const BOXED_TARGET_RETRY_SECS: f32 = 0.4;
 const PARTIAL_TARGET_RETRY_SECS: f32 = 1.0;
@@ -84,7 +86,7 @@ pub fn rebuild_chaser_nav_plans(
             Entity,
             &GlobalTilePos,
             &::tilemap_shared::DimensionRef,
-            &Chaser,
+            &Chasing,
             Option<&movement::movement_components::SpeedMagnitude>,
         ),
         (With<Being>, LocalAiControlled),
@@ -308,7 +310,7 @@ pub fn chase_behavior(
             Entity,
             &GlobalTilePos,
             &::tilemap_shared::DimensionRef,
-            &Chaser,
+            &Chasing,
         ),
         (With<Being>, LocalAiControlled),
     >,
@@ -377,7 +379,7 @@ pub fn retain_chunks_for_player_faction_chasers(
             &GlobalTilePos,
             &ChunkPos,
             &::tilemap_shared::DimensionRef,
-            &Chaser,
+            &Chasing,
             Option<&SpeedMagnitude>,
             Option<&mut ActivatingChunks>,
             Option<&mut RetainedChasePathSnapshot>,
@@ -481,5 +483,203 @@ pub fn retain_chunks_for_player_faction_chasers(
                 });
             }
         }
+    }
+}
+
+fn unload_being_for_chunk_despawn(commands: &mut Commands, being_ent: Entity) {
+    let mut entity = commands.entity(being_ent);
+    entity.try_insert(BackgroundSimulated);
+    entity.try_remove::<(Name, ActivateChunksAround, ActivatingChunks, RetainedChasePathSnapshot)>();
+}
+
+pub fn on_chunk_with_beings_attempt_unload(
+    mut commands: Commands,
+    mut reader: MessageReader<BeingChunkDespawned>,
+    chunks_query: Query<&BeingsWithinChunk>,
+    beings: Query<&Chasing, With<Being>>,
+    player_targets: Query<(), (With<Being>, PlayerBeing)>,
+    mut writer: MessageWriter<MakeChunkSnapshotForChaser>,
+    mut messages: Local<Vec<MakeChunkSnapshotForChaser>>,
+) {
+    for msg in reader.read() {
+        let Ok(beings_within_chunk) = chunks_query.get(msg.chunk_ent) else {
+            continue;
+        };
+
+        let should_cancel = beings_within_chunk.iter().any(|being_ent| {
+            let Ok(chaser) = beings.get(being_ent) else {
+                return false;
+            };
+            player_targets.get(chaser.target).is_ok()
+        });
+
+        if should_cancel {
+            for being_ent in beings_within_chunk.iter() {
+                let Ok(chaser) = beings.get(being_ent) else {
+                    continue;
+                };
+                if player_targets.get(chaser.target).is_err() {
+                    continue;
+                }
+                messages.push(MakeChunkSnapshotForChaser(being_ent));
+            }
+            debug!(target: BEING_SYSTEM, "Canceled despawn for chunk {:?} because at least one resident must stay loaded", msg.chunk_ent);
+            continue;
+        }
+
+        for being_ent in beings_within_chunk.iter() {
+            unload_being_for_chunk_despawn(&mut commands, being_ent);
+        }
+
+        commands.entity(msg.chunk_ent).try_despawn();
+        writer.write_batch(messages.drain(..));
+    }
+}
+
+#[allow(unused_parens, unused_imports, )]
+pub fn make_chunk_snapshot_for_hunter(
+    mut commands: Commands,
+    mut reader: MessageReader<MakeChunkSnapshotForChaser>,
+    plans: Res<ChaserNavPlans>,
+    beings: Query<
+        (
+            &GlobalTilePos,
+            &ChunkPos,
+            &Chasing,
+            Option<&SpeedMagnitude>,
+            Option<&ActivatingChunks>,
+            Option<&RetainedChasePathSnapshot>,
+        ),
+    >,
+    player_targets: Query<&ChunkPos, (PlayerBeing)>,
+    mut desired_chunks: Local<Vec<ChunkPos>>,
+    mut corridor_chunks: Local<Vec<ChunkPos>>,
+    mut seen_chunks: Local<HashSet<ChunkPos>>,
+) {
+    for MakeChunkSnapshotForChaser(chaser_ent) in reader.read() {
+        let Ok((chaser_gpos, &chaser_chunk_pos, chaser, speed, activating_chunks, snapshot)) = beings.get(*chaser_ent) else {
+            continue;
+        };
+        let Ok(target_chunk_pos) = player_targets.get(chaser.target) else {
+            continue;
+        };
+
+        let stale_timeout = retained_target_trail_stale_timeout(speed.map_or(1.0, |speed| speed.0));
+        let mut target_chunk_trail = snapshot
+            .map(|snapshot| snapshot.target_chunk_trail.clone())
+            .unwrap_or_default();
+
+        if target_chunk_trail.is_empty() {
+            extend_target_chunk_trail(&mut target_chunk_trail, *target_chunk_pos, stale_timeout);
+        } else if target_chunk_trail.last().map(|entry| entry.chunk_pos) != Some(*target_chunk_pos) {
+            extend_target_chunk_trail(&mut target_chunk_trail, *target_chunk_pos, stale_timeout);
+        }
+
+        rebuild_connected_chase_chunk_path(
+            &mut corridor_chunks,
+            &mut seen_chunks,
+            Some(*chaser_gpos),
+            plans.by_ent.get(chaser_ent).map(|plan| plan.path_tiles.as_slice()),
+            chaser_chunk_pos,
+            *target_chunk_pos,
+        );
+
+        rebuild_retained_chase_chunk_positions(
+            &mut desired_chunks,
+            &corridor_chunks,
+            &mut seen_chunks,
+            &mut target_chunk_trail,
+            stale_timeout,
+            Duration::ZERO,
+        );
+
+        let needs_snapshot = snapshot.map(|snapshot| snapshot.chunk_positions.as_slice()) != Some(desired_chunks.as_slice())
+            || snapshot.map(|snapshot| retained_target_chunk_trails_match_positions(&snapshot.target_chunk_trail, &target_chunk_trail)) != Some(true)
+            || snapshot.map(|snapshot| snapshot.last_target_chunk_pos) != Some(*target_chunk_pos);
+        let needs_activating_chunks = activating_chunks.map(|chunks| chunks.chunk_positions.as_slice()) != Some(desired_chunks.as_slice());
+
+        let mut entity = commands.entity(*chaser_ent);
+        if needs_snapshot || needs_activating_chunks {
+            entity.try_insert((
+                RetainedChasePathSnapshot {
+                    chunk_positions: desired_chunks.clone(),
+                    target_chunk_trail,
+                    last_target_chunk_pos: *target_chunk_pos,
+                },
+                ActivatingChunks {
+                    chunk_positions: desired_chunks.clone(),
+                },
+            ));
+        }
+    }
+}
+
+#[allow(unused_parens, unused_imports, )]
+pub fn dynamically_extend_retained_chasepaths_due_to_moving_player_prey(
+    time: Res<Time>,
+    mut chasers: Query<
+        (
+            Entity,
+            &Chasing,
+            &GlobalTilePos,
+            &ChunkPos,
+            &DimensionRef,
+            Option<&SpeedMagnitude>,
+            &mut RetainedChasePathSnapshot,
+            &mut ActivatingChunks,
+        ),
+        (LocalAiControlled),
+    >,
+    targets: Query<(&ChunkPos, &DimensionRef, Has<BelongsToAPlayerFaction>), (With<Being>, Changed<ChunkPos>)>,
+    plans: Res<ChaserNavPlans>,
+    mut corridor_chunks: Local<Vec<ChunkPos>>,
+    mut seen_chunks: Local<HashSet<ChunkPos>>,
+) {
+    for (chaser_ent, chaser, chaser_gpos, &chaser_chunk_pos, &chaser_dim, speed, mut snapshot, mut activating_chunks) in chasers.iter_mut() {
+        let Ok((&target_chunk_pos, &target_dim, target_is_player_faction)) = targets.get(chaser.target) else {
+            continue;
+        };
+        if !target_is_player_faction || target_dim != chaser_dim {
+            continue;
+        }
+
+        let stale_timeout = retained_target_trail_stale_timeout(speed.map_or(1.0, |speed| speed.0));
+
+        if snapshot.target_chunk_trail.is_empty() {
+            extend_target_chunk_trail(&mut snapshot.target_chunk_trail, target_chunk_pos, stale_timeout);
+            snapshot.last_target_chunk_pos = target_chunk_pos;
+        } else if target_chunk_pos != snapshot.last_target_chunk_pos {
+            extend_target_chunk_trail(&mut snapshot.target_chunk_trail, target_chunk_pos, stale_timeout);
+            snapshot.last_target_chunk_pos = target_chunk_pos;
+        }
+
+        rebuild_connected_chase_chunk_path(
+            &mut corridor_chunks,
+            &mut seen_chunks,
+            Some(*chaser_gpos),
+            plans.by_ent.get(&chaser_ent).map(|plan| plan.path_tiles.as_slice()),
+            chaser_chunk_pos,
+            target_chunk_pos,
+        );
+
+        let mut chunk_positions = std::mem::take(&mut snapshot.chunk_positions);
+        rebuild_retained_chase_chunk_positions(
+            &mut chunk_positions,
+            &corridor_chunks,
+            &mut seen_chunks,
+            &mut snapshot.target_chunk_trail,
+            stale_timeout,
+            time.delta(),
+        );
+        snapshot.chunk_positions = chunk_positions;
+
+        if activating_chunks.chunk_positions != snapshot.chunk_positions {
+            activating_chunks.chunk_positions.clear();
+            activating_chunks
+                .chunk_positions
+                .extend(snapshot.chunk_positions.iter().copied());
+        }
+
+        debug!(target: BEING_SYSTEM, "Updated retained chase snapshot for {:?} to prey chunk {:?}, retained {}, trail {}", chaser_ent, target_chunk_pos, snapshot.chunk_positions.len(), snapshot.target_chunk_trail.len());
     }
 }

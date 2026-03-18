@@ -18,6 +18,7 @@ use crate::{
     tile::{
         tile_bundles::*,
         tile_components::*,
+        tile_delete_others_helpers::TileDeleteOthersParamSet,
         tile_despawn_systems::*,
         tile_shader::tile_material::prelude::*,
         tile_shader::tile_shader_components::*,
@@ -30,7 +31,7 @@ use crate::{
 use std::{collections::HashMap, mem::take};
 
 #[derive(SystemParam)]
-pub struct ProcessTilesPreLocals<'s> {
+pub struct SystemLocals<'s> {
     pub changed_structs: Local<'s, HashSet<MapKey>>,
     pub tile_runtime_info: Local<'s, EntityHashMap<(EntityZeroRef, TileTextureIndex)>>,
     pub terrbl_debug_budget: Local<'s, u32>,
@@ -39,7 +40,7 @@ pub struct ProcessTilesPreLocals<'s> {
 }
 
 #[derive(SystemParam)]
-pub struct ProcessTilesPreResources<'w> {
+pub struct SystemResources<'w> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,
     pub image_size_map: Res<'w, ImageSizeMap>,
     pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
@@ -52,7 +53,7 @@ pub struct ProcessTilesPreResources<'w> {
 }
 
 #[derive(SystemParam)]
-pub struct ProcessTilesPreTileComponents<'w, 's> {
+pub struct ComponentsQueries<'w, 's> {
     pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
     pub hash_id_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
     pub size_query: Query<'w, 's, &'static SizeInTiles, common::AnyDisabling>,
@@ -64,29 +65,22 @@ pub struct ProcessTilesPreTileComponents<'w, 's> {
     pub sprite_tile_query: Query<'w, 's, (), (With<SpriteTile>, common::AnyDisabling)>,
     pub color_query: Query<'w, 's, &'static TileColor, common::AnyDisabling>,
     pub y_sort_query: Query<'w, 's, (), (With<YSortOrigin>, common::AnyDisabling)>,
-    pub tile_ezero_ref_query: Query<'w, 's, &'static EntityZeroRef, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
-    pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex, (With<Tile>, Without<EntityZero>)>,
+    pub tile_ezero_ref_query: Query<'w, 's, &'static EntityZeroRef>,
+    pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
     pub tag_set_query: Query<'w, 's, &'static TagSet, common::AnyDisabling>,
     pub delete_others_query: Query<'w, 's, &'static DeleteOtherTilesInSamePos>,
-    pub gpos_query: Query<'w, 's, &'static GlobalTilePos, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
+    pub gpos_query: Query<'w, 's, &'static GlobalTilePos>,
+    pub delete_others_paramset: TileDeleteOthersParamSet<'w, 's>,
 }
 
 #[derive(SystemParam)]
 pub struct ProcessTilesPreParams<'w, 's> {
-    pub resources: ParamSet<'w, 's, (ProcessTilesPreResources<'w>,)>,
-    pub tilemap_paramset: ParamSet<'w, 's, (
-        Query<'w, 's, (
-            &'static mut TilemapTexture,
-            &'static mut TileStorage,
-            &'static mut HashIdToTexIndex,
-        ), ()>,
-        TileGatheringParamSet<'w, 's>,
-    )>,
-    pub tile_components: ParamSet<'w, 's, (ProcessTilesPreTileComponents<'w, 's>,)>,
+    pub resources: ParamSet<'w, 's, (SystemResources<'w>,)>,
+    pub tile_gathering_paramset: TileGatheringParamSet<'w, 's>,
+    pub tile_components_queries: ParamSet<'w, 's, (ComponentsQueries<'w, 's>,)>,
     pub shader_query: Query<'w, 's, &'static TileShader, ()>,
-    pub ezero_terrbl_query: Query<'w, 's, Option<&'static TerrBlendParams>, With<EntityZero>>,
-    pub dim_hash_query: Query<'w, 's, &'static HashId, With<Dimension>>,
-    pub locals: ProcessTilesPreLocals<'s>,
+    pub terrbl_query: Query<'w, 's, &'static TerrBlendParams>,
+    pub locals: SystemLocals<'s>,
 }
 
 #[allow(unused_parens, )]
@@ -96,7 +90,7 @@ pub fn process_tiles_pre(
     mut safe_despawn_writer: MessageWriter<SafeDespawn>,
 ) {
     let resources = &mut params.resources.p0();
-    let tile_components = &mut params.tile_components.p0();
+    let tile_components = &mut params.tile_components_queries.p0();
     let locals = &mut params.locals;
 
     if *locals.terrbl_debug_budget == 0 {
@@ -155,7 +149,7 @@ pub fn process_tiles_pre(
         let to_persist = tile_components.persisted_query.get(bundle.ezero_ref.0).is_ok();
         let min_dists = tile_components.min_dists_query.get(bundle.ezero_ref.0).ok();
         let keep_distance_from = tile_components.keep_distance_query.get(bundle.ezero_ref.0).ok();
-        let Ok(&_dim_hash) = params.dim_hash_query.get(bundle.dim_ref.0) else {
+        let Ok(&_dim_hash) = tile_components.hash_id_query.get(bundle.dim_ref.0) else {
             error_once!(target: TILEMAP_SYSTEM, "Dimension entity {} is despawned", bundle.dim_ref.0);
             cmd.entity(tile_ent).try_despawn();
             resources.collected_tiles.0.swap_remove(i);
@@ -183,18 +177,11 @@ pub fn process_tiles_pre(
 
         {
             process_tile_despawns_from_ezero(
+                &mut tile_components.delete_others_paramset,
                 &resources.regpos_map,
+                &params.tile_gathering_paramset,
                 tile_ent,
                 bundle,
-                &tile_components.tile_ezero_ref_query,
-                &tile_components.gpos_query,
-                &tile_components.z_query,
-                &tile_components.size_query,
-                &tile_components.delete_others_query,
-                &mut params.tilemap_paramset.p1(),
-                &tile_components.tag_set_query,
-                &mut locals.checked_ents,
-                &mut locals.safe_despawns,
             );
             if tile_is_pending_despawn(&locals.safe_despawns, tile_ent) {
                 cmd.entity(tile_ent).try_despawn();
@@ -210,7 +197,7 @@ pub fn process_tiles_pre(
                 child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
                 to_insert_replicated.push((tile_ent, Replicated));
                 if is_spritetile{
-                    params.tilemap_paramset.p1().insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, size_in_tiles);
+                    params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, size_in_tiles);
                     spritetiles_to_remove_bundle.push(tile_ent);
                     i += 1;
                     continue;
@@ -231,7 +218,7 @@ pub fn process_tiles_pre(
 
         if is_spritetile {
             spritetiles_to_remove_bundle.push(tile_ent);
-            params.tilemap_paramset.p1().insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, size_in_tiles);
+            params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, size_in_tiles);
             child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
             i += 1;
             continue;
@@ -263,7 +250,7 @@ pub fn process_tiles_pre(
             chunk_ent,
             chunk_pos,
             bundle.dim_ref,
-            &mut params.tilemap_paramset.p0(),
+            &mut params.tile_gathering_paramset.tilemap_query,
             &mut locals.changed_structs,
             &mut tilemap_bundles,
             y_sort,
@@ -313,7 +300,7 @@ pub fn process_tiles_pre(
                         &tile_components.tile_ezero_ref_query,
                         &tile_components.tile_texture_index_query,
                         &locals.tile_runtime_info,
-                        &params.ezero_terrbl_query,
+                        &params.terrbl_query,
                         &storage,
                         tmap_ent,
                         mapkey.tile_size,
@@ -365,7 +352,7 @@ fn process_tile_into_corresponding_tilemap(
     chunk: Entity,
     chunk_pos: ChunkPos,
     dim_ref: DimensionRef,
-    tilemaps: &mut Query<(&mut TilemapTexture, &mut TileStorage, &mut HashIdToTexIndex)>,
+    tilemaps: &mut Query<(&mut TileStorage, &mut HashIdToTexIndex, &mut TilemapTexture)>,
     changed_structs: &mut HashSet<MapKey>,
     tilemap_bundles: &mut Vec<(Entity, (TilemapConfig, ChildOf, TilemapOf, DimensionRef, TileShaderRef))>,
     y_sort: bool,
@@ -398,14 +385,14 @@ fn process_tile_into_corresponding_tilemap(
             cmd.entity(tmap_ent).insert(NeedsTerrblRefresh);
         }
 
-        let (tmap_handles, storage, tmap_hash_id_map) =
-        if let Ok((tmap_handles, storage, tmap_hash_id_map)) = tilemaps.get_mut(tmap_ent)
+        let (storage, tmap_hash_id_map, tmap_handles) =
+        if let Ok((storage, tmap_hash_id_map, tmap_handles)) = tilemaps.get_mut(tmap_ent)
         {
-            (tmap_handles.into_inner(), storage.into_inner(), tmap_hash_id_map.into_inner())
+            (storage.into_inner(), tmap_hash_id_map.into_inner(), tmap_handles.into_inner())
         } else {
             changed_structs.insert(map_key.clone());
             let MapStruct { texture: tmap_handles, storage, tmap_hash_id_map, .. } = mapstruct;
-            (tmap_handles, storage, tmap_hash_id_map)
+            (storage, tmap_hash_id_map, tmap_handles)
         };
         let Vector(tmap_handles) = tmap_handles else {
             return;

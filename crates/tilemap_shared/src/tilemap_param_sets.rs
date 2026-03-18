@@ -12,7 +12,7 @@ pub struct TileGatheringParamSet<'w, 's> {
     spritetiles_at_gpos: ResMut<'w, SpriteTilesAtGpos>,
     loaded_chunks: Res<'w, LoadedChunks>,
     chunk_children: Query<'w, 's, &'static Tilemaps>,
-    pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static HashIdToTexIndex),>,
+    pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static mut HashIdToTexIndex, &'static mut TilemapTexture),>,
     tile_tags: Query<'w, 's, &'static TagSet>,
     to_drain: Local<'s, Vec<Entity>>,
 }
@@ -24,7 +24,7 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
             return;
         };
         if let Ok(tilemaps) = self.chunk_children.get(chunk_ent) {
-            for &tmap_ent in tilemaps.entities() {
+            for tmap_ent in tilemaps.iter() {
                 let Ok((storage, ..)) = self.tilemap_query.get(tmap_ent) else {
                     continue;
                 };
@@ -53,7 +53,7 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
             return false;
         };
         let tpos = gpos.to_tilepos();
-        for &tmap_ent in tilemaps.entities() {
+        for tmap_ent in tilemaps.iter() {
             let Ok((storage, ..)) = self.tilemap_query.get(tmap_ent) else {
                 continue;
             };
@@ -79,7 +79,7 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
             return &self.to_drain;
         };
         if let Ok(tilemaps) = self.chunk_children.get(chunk_ent) {
-            for &tmap_ent in tilemaps.entities() {
+            for tmap_ent in tilemaps.iter() {
                 let Ok((storage, ..)) = self.tilemap_query.get(tmap_ent) else {
                     continue;
                 };

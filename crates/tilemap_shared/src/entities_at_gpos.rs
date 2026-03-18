@@ -1,4 +1,5 @@
-use bevy::platform::collections::HashMap;
+use bevy::ecs::entity::EntityHashMap;
+use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 
 use crate::{DimensionRef, GlobalTilePos, ReturnedVec, SizeInTiles};
@@ -62,29 +63,65 @@ impl SpriteTilesAtGpos {
 }
 
 #[derive(Resource, Debug, Default)]
-pub struct BeingsAtGpos(pub HashMap<(DimensionRef, GlobalTilePos), ReturnedVec>);
+pub struct BeingsAtGpos {
+    pub by_pos: HashMap<(DimensionRef, GlobalTilePos), ReturnedVec>,
+    by_ent: EntityHashMap<(DimensionRef, HashSet<GlobalTilePos>)>,
+}
 impl BeingsAtGpos {
     pub fn beings_at_pos(&self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
-        self.0.get(&(dim_ref, gpos)).map(|entities| entities.as_slice()).unwrap_or(&[])
+        self.by_pos
+            .get(&(dim_ref, gpos))
+            .map(|entities| entities.as_slice())
+            .unwrap_or(&[])
     }
-    pub fn remove_being(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being_ent: Entity) {
-        let key = (dim_ref, gpos);
-        let Some(entities) = self.0.get_mut(&key) else {
+
+    pub fn remove_being(&mut self, being_ent: Entity) {
+        let Some((dim_ref, positions)) = self.by_ent.remove(&being_ent) else {
             return;
         };
-        let Some(idx) = entities.iter().position(|&e| e == being_ent) else {
-            return;
-        };
-        entities.swap_remove(idx);
-        if entities.is_empty() {
-            self.0.remove(&key);
+        for gpos in positions {
+            let key = (dim_ref, gpos);
+            let Some(entities) = self.by_pos.get_mut(&key) else {
+                continue;
+            };
+            let Some(idx) = entities.iter().position(|&e| e == being_ent) else {
+                continue;
+            };
+            entities.swap_remove(idx);
+            if entities.is_empty() {
+                self.by_pos.remove(&key);
+            }
         }
     }
-    pub fn insert_being(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being_ent: Entity) {
-        self.0
-            .entry((dim_ref, gpos))
-            .or_default()
-            .push(being_ent);
+
+    pub fn set_being_positions(
+        &mut self,
+        being_ent: Entity,
+        dim_ref: DimensionRef,
+        positions: impl IntoIterator<Item = GlobalTilePos>,
+    ) {
+        let positions: HashSet<GlobalTilePos> = positions.into_iter().collect();
+        let Some((prev_dim_ref, prev_positions)) = self.by_ent.get(&being_ent) else {
+            self.insert_being_positions(being_ent, dim_ref, positions);
+            return;
+        };
+        if *prev_dim_ref == dim_ref && *prev_positions == positions {
+            return;
+        }
+        self.remove_being(being_ent);
+        self.insert_being_positions(being_ent, dim_ref, positions);
+    }
+
+    pub fn insert_being_positions(
+        &mut self,
+        being_ent: Entity,
+        dim_ref: DimensionRef,
+        positions: HashSet<GlobalTilePos>,
+    ) {
+        for gpos in positions.iter().copied() {
+            self.by_pos.entry((dim_ref, gpos)).or_default().push(being_ent);
+        }
+        self.by_ent.insert(being_ent, (dim_ref, positions));
     }
 }
 

@@ -1,6 +1,5 @@
 use bevy::{ecs::entity::MapEntities, platform::collections::HashMap, prelude::*};
 use common::common_components::{StrId, Tag};
-use serde::{Deserialize, Serialize};
 
 use crate::faction_components::FactionInstTempl;
 pub use crate::faction_inst_templ::faction_inst_templ_seris::*;

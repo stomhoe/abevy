@@ -45,4 +45,3 @@ impl TilemapOf {
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = TilemapOf)]
 pub struct Tilemaps(Vec<Entity>);
-impl Tilemaps { pub fn entities(&self) -> &[Entity] { &self.0 } }

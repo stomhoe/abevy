@@ -3,7 +3,6 @@ use crate::{
     tilemap_resources::*,
 };
 use ::sprite_shared::prelude::*;
-use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use common::{AnyDisabling, common_tag_components::TagSet};
@@ -33,38 +32,16 @@ pub fn despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_t
         (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef, &DeleteOtherTilesInSamePos, Option<&TagSet>),
         (Added<DeleteOtherTilesInSamePos>, common::AnyDisabling, Without<EntityZero>),
     >,
-    z_query: Query<&AcZ, common::AnyDisabling>,
-    size_query: Query<&SizeInTiles, common::AnyDisabling>,
-    ezero_delete_query: Query<&DeleteOtherTilesInSamePos>,
-    tile_ezero_ref_query: Query<&EntityZeroRef, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
-    gpos_query: Query<&GlobalTilePos, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
-    tag_set_query: Query<&TagSet, common::AnyDisabling>,
     registered_positions: Res<ImportantRegisteredPositions>,
-    mut gather_params: TileGatheringParamSet,
-    mut checked_ents: Local<HashSet<Entity>>,
+    gather_params: TileGatheringParamSet,
+    mut despawn_params: TileDeleteOthersParamSet,
     mut writer: MessageWriter<SafeDespawn>,
-    mut msgs: Local<Vec<SafeDespawn>>,
 ) {
     for (newtile_ent, &dim, &gpos, &ezero_ref, delete_others, newtile_tags) in &query {
         let bundle = temp_tile_mass_spawn_bundle(ezero_ref, dim, gpos);
-        process_tile_despawns_from_added_delete_others(
-            &registered_positions,
-            newtile_ent,
-            &bundle,
-            delete_others,
-            newtile_tags,
-            &tile_ezero_ref_query,
-            &gpos_query,
-            &z_query,
-            &size_query,
-            &ezero_delete_query,
-            &mut gather_params,
-            &tag_set_query,
-            &mut checked_ents,
-            &mut msgs,
-        );
+        process_tile_despawns_from_added_delete_others(&mut despawn_params, &registered_positions, &gather_params, newtile_ent, &bundle, delete_others, newtile_tags);
     }
-    writer.write_batch(msgs.drain(..));
+    writer.write_batch(despawn_params.msgs.drain(..));
 }
 
 pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
@@ -72,41 +49,20 @@ pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
         (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef),
         (common::AnyDisabling, Without<EntityZero>),
     >,
-    z_query: Query<&AcZ, common::AnyDisabling>,
-    size_query: Query<&SizeInTiles, common::AnyDisabling>,
-    ezero_delete_query: Query<&DeleteOtherTilesInSamePos>,
-    tile_ezero_ref_query: Query<&EntityZeroRef, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
-    gpos_query: Query<&GlobalTilePos, (With<Tile>, common::AnyDisabling, Without<EntityZero>)>,
-    tag_set_query: Query<&TagSet, common::AnyDisabling>,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
     registered_positions: Res<ImportantRegisteredPositions>,
-    mut gather_params: TileGatheringParamSet,
-    mut checked_ents: Local<HashSet<Entity>>,
+    gather_params: TileGatheringParamSet,
+    mut despawn_params: TileDeleteOthersParamSet,
     mut writer: MessageWriter<SafeDespawn>,
-    mut msgs: Local<Vec<SafeDespawn>>,
 ) {
-    let ents: Vec<Entity> = changed_pos.read().map(|msg| msg.entity).collect();
-    for ent in ents {
+    for ent in changed_pos.read().map(|msg| msg.entity) {
         let Ok((newtile_ent, &dim, &gpos, &ezero_ref)) = query.get(ent) else {
             continue;
         };
         let bundle = temp_tile_mass_spawn_bundle(ezero_ref, dim, gpos);
-        process_tile_despawns_from_ezero(
-            &registered_positions,
-            newtile_ent,
-            &bundle,
-            &tile_ezero_ref_query,
-            &gpos_query,
-            &z_query,
-            &size_query,
-            &ezero_delete_query,
-            &mut gather_params,
-            &tag_set_query,
-            &mut checked_ents,
-            &mut msgs,
-        );
+        process_tile_despawns_from_ezero(&mut despawn_params, &registered_positions, &gather_params, newtile_ent, &bundle);
     }
-    writer.write_batch(msgs.drain(..));
+    writer.write_batch(despawn_params.msgs.drain(..));
 }
 
 pub fn safe_despawn_tile_at(
@@ -137,7 +93,7 @@ pub fn safe_despawn_tile_at(
         let Ok(tilemaps) = chunk_children.get(chunk_ent) else {
             continue;
         };
-        for &tmap_ent in tilemaps.entities() {
+        for tmap_ent in tilemaps.iter() {
             let Ok((mut storage, ..)) = tilemap_query.get_mut(tmap_ent) else {
                 continue;
             };

@@ -10,6 +10,7 @@ use common::file_logging::file_log;
 use ::sprite_animation_shared::*;
 
 use tilemap::tile::prelude::Tile;
+use tilemap::tile::tile_components::TileFlip;
 use tilemap_shared::{BeingsAtGpos, *};
 
 use crate::movement_components::*;
@@ -32,37 +33,38 @@ pub fn beings_snap_transform_to_added_gpos(
 pub fn sync_occupancy_for_beings_at_gpos_res(
     mut beings_at_gpos: ResMut<BeingsAtGpos>,
     mut removed_beings: RemovedComponents<Being>,
-    mut tracked_pos: Local<EntityHashMap<(DimensionRef, GlobalTilePos)>>,
     query: Query<
-        (Entity, &DimensionRef, &GlobalTilePos),
         (
-            With<Being>,
-            Or<(Added<Being>, Changed<GlobalTilePos>, Changed<DimensionRef>)>,
+            Entity,
+            &DimensionRef,
+            &GlobalTilePos,
+            Option<&CardinalDirection>,
+            Option<&TiledCollisionMask>,
+        ),
+        (
+            With<Being>,//<-don't delete
+            Or<(Added<Being>, Changed<GlobalTilePos>, Changed<DimensionRef>, Changed<CardinalDirection>, Changed<TiledCollisionMask>)>,
         ),
     >,
+    mut occupied_positions: Local<Vec<GlobalTilePos>>,
 ) {
     for ent in removed_beings.read() {
-        let Some((old_dim, old_gpos)) = tracked_pos.remove(&ent) else {
-            continue;
-        };
-        beings_at_gpos.remove_being(old_dim, old_gpos, ent);
+        beings_at_gpos.remove_being(ent);
     }
 
-    for (being_ent, &dim_ref, &gpos) in query.iter() {
-        let prev = tracked_pos.get(&being_ent).copied();
-
-        let Some((old_dim, old_gpos)) = prev else {
-            tracked_pos.insert(being_ent, (dim_ref, gpos));
-            beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
-            continue;
-        };
-
-        if old_dim == dim_ref && old_gpos == gpos {
-            continue;
+    for (being_ent, &dim_ref, &gpos, facing_dir, collision_mask) in query.iter() {
+        occupied_positions.clear();
+        if let Some(collision_mask) = collision_mask {
+            collision_mask.occupied_world_positions(
+                gpos,
+                TileFlip::default(),
+                facing_dir.copied().unwrap_or_default(),
+                &mut occupied_positions,
+            );
+        } else {
+            occupied_positions.push(gpos);
         }
-        beings_at_gpos.remove_being(old_dim, old_gpos, being_ent);
-        beings_at_gpos.insert_being(dim_ref, gpos, being_ent);
-        tracked_pos.insert(being_ent, (dim_ref, gpos));
+        beings_at_gpos.set_being_positions(being_ent, dim_ref, occupied_positions.iter().copied());
     }
 }
 

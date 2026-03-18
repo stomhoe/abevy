@@ -26,11 +26,6 @@ pub struct ModifierTarget(
 #[derive(Component, Debug, Default, Clone, Reflect)]
 #[relationship_target(relationship = ModifierTarget)]
 pub struct AppliedModifiers(Vec<Entity>);
-impl AppliedModifiers {
-    pub fn entities(&self) -> &Vec<Entity> {
-        &self.0
-    }
-}
 
 // BORRÉ TODOS LOS Reflect PORQUE QUIERO QUE SE IMPLEMENTEN DEBUG WINDOWS PARA VER ESTOS COMPONENTES COMODAMENTE
 

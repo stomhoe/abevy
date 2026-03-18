@@ -6,6 +6,7 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
+use faction_shared::prelude::BelongsToAPlayerFaction;
 use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
 
 #[derive(Component, Debug, Default, Clone)]
@@ -133,7 +134,6 @@ pub struct FollowerOf {#[relationship] #[entities] pub master: Entity,}
 #[derive(Component, Debug, Reflect, Clone)]
 #[relationship_target(relationship = FollowerOf)]
 pub struct Followers(Vec<Entity>);
-impl Followers {pub fn entities(&self) -> &Vec<Entity> {&self.0}}
 
 #[derive(Component, Debug, Clone)]
 pub struct LearningMultiplier(pub EntityHashMap<f32>);
@@ -148,7 +148,6 @@ pub struct CharacterCreatedBy {
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = CharacterCreatedBy)]
 pub struct CreatedCharacters(Vec<Entity>);
-impl CreatedCharacters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 
 #[derive(Component, Debug, Clone, )]
@@ -217,4 +216,12 @@ pub struct BackgroundSimulated;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct Unloaded;
 
+#[derive(Component, Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct FactionLeader {
+    #[entities]
+    pub being: Entity,
+}
+
 pub type NonUnloadedBeing = (With<Being>, Without<Unloaded>);
+
+pub type PlayerBeing = (With<Being>, With<BelongsToAPlayerFaction>);

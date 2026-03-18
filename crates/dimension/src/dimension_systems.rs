@@ -11,22 +11,22 @@ use ::tilemap_shared::*;
 pub fn replace_dim_string_ref_by_entity_ref(
     mut cmd: Commands,
     dimension_entity_map: Res<DimensionEntityMap>,
-    dimension_query: Query<Option<&DimensionRootOplist>>,
+    dimension_query: Query<&DimensionRootOplist>,
     dimension_strid_query: Query<(Entity, Option<&StrId>, &DimensionStrIdRef, Option<&ChildOf>),>,
 ) {
     for (thing_ent, ent_strid, dimension_strid, child_of) in dimension_strid_query.iter() {
 
         if let Ok(dimension_entity) = dimension_entity_map.0.get_cloned(&dimension_strid.0) {
             cmd.entity(thing_ent)
-                .insert(DimensionRef(dimension_entity))
-                .remove::<DimensionStrIdRef>();
+                .try_insert(DimensionRef(dimension_entity))
+                .try_remove::<DimensionStrIdRef>();
 
             if let Some(child_of) = child_of {
                 if dimension_query.get(child_of.parent()).is_err() {
                     warn!(target: "dimension_loading", "{} {} with added DimensionStrIdRef '{}' shouldn't have ChildOf component, the parent should be the one with the DimensionStrIdRef", ent_strid.cloned().unwrap_or_default(), thing_ent, dimension_strid.0);
                 }
             }
-            cmd.entity(thing_ent).insert(ChildOf(dimension_entity));
+            cmd.entity(thing_ent).try_insert(ChildOf(dimension_entity));
         }
         else {
             warn!(target: "dimension_loading", "DimensionStrIdRef '{}' does not have a corresponding Dimension entity in the map.", dimension_strid.0);

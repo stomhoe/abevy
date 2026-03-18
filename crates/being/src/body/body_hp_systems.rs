@@ -81,12 +81,12 @@ pub fn apply_body_damage(
     mut cmd: Commands,
     time: Res<Time>,
     mut reader: MessageReader<IncomingDamage>,
-    bodies_query: Query<(Option<&BodyParts>), (With<BodyOf>, Without<EntityZero>)>,
+    bodies_query: Query<&BodyParts, (With<BodyOf>, Without<EntityZero>)>,
     parts_query: Query<
         (Option<&BodyPartCoverageWeight>, Option<&BodyPartMissing>),
         (With<BodyPart>, Without<EntityZero>),
     >,
-    mut damage_query: Query<Option<&mut BodyPartDamage>, (With<BodyPart>, Without<EntityZero>)>,
+    mut damage_query: Query<&mut BodyPartDamage, (With<BodyPart>, Without<EntityZero>)>,
     mut weighted_parts: Local<Vec<(Entity, u16)>>,
 ) {
     for damage_msg in reader.read() {
@@ -96,12 +96,11 @@ pub fn apply_body_damage(
         let body_ent = damage_msg.body;
         let damage_amount = damage_msg.amount;
 
-        let parts = match bodies_query.get(body_ent) {
-            Ok(Some(p)) => p,
-            Ok(None) | Err(_) => continue,
+        let Ok(parts) = bodies_query.get(body_ent) else {
+            continue;
         };
 
-        for &part_ent in parts.entities().iter() {
+        for part_ent in parts.iter() {
             let Ok((weight_opt, missing)) = parts_query.get(part_ent) else {
                 continue;
             };
@@ -130,13 +129,11 @@ pub fn apply_body_damage(
         }
 
         if let Some(part_ent) = selected {
-            match damage_query.get_mut(part_ent) {
-                Ok(Some(mut part_damage)) => part_damage.0 += damage_amount.max(0.0),
-                Ok(None) => {
-                    cmd.entity(part_ent)
-                        .try_insert(BodyPartDamage(damage_amount.max(0.0)));
-                }
-                Err(_) => {}
+            if let Ok(mut part_damage) = damage_query.get_mut(part_ent) {
+                part_damage.0 += damage_amount.max(0.0);
+            } else {
+                cmd.entity(part_ent)
+                    .try_insert(BodyPartDamage(damage_amount.max(0.0)));
             }
         }
     }

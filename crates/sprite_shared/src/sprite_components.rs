@@ -28,11 +28,7 @@ pub struct BaseHolderRef {
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = BaseHolderRef)]
 pub struct HeldSprites(Vec<Entity>);
-impl HeldSprites {
-    pub fn entities(&self) -> &Vec<Entity> {
-        &self.0
-    }
-}
+
 impl std::ops::Deref for HeldSprites {
     type Target = [Entity];
     fn deref(&self) -> &Self::Target {

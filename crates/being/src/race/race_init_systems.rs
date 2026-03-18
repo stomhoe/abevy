@@ -20,7 +20,7 @@ use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntity
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
 use crate::pack::pack_components::PackInitialSize;
 use crate::{race::{race_components::*, race_resources::*}, sex };
-use crate::being_components::{COLLISION_MASK_HASHID, HitboxReceiver};
+use crate::being_components::COLLISION_MASK_HASHID;
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::{Predator, PredatorHuntThreshold};
 use tilemap_shared::{BlacklistedSpawnTileTags, InteractionZones, WhitelistedSpawnTileTags};
@@ -134,12 +134,6 @@ pub fn init_races(
             let mut interaction_zones = bevy::platform::collections::HashMap::with_capacity(1);
             interaction_zones.insert("melee".to_string(), race_seri.melee_interaction_zone.clone());
             entity_cmds.insert(InteractionZones::from_seri(interaction_zones));
-            let hitbox_hashid = if race_seri.hitbox_hashid.trim().is_empty() {
-                COLLISION_MASK_HASHID
-            } else {
-                HashId::from(race_seri.hitbox_hashid.as_str())
-            };
-            entity_cmds.insert(HitboxReceiver(hitbox_hashid));
             let mut totals = HashIdMap::default();
             for (key, val) in &race_seri.distributed_totals {
                 totals.overwrite(HashId::from(key), val.max(0.0));

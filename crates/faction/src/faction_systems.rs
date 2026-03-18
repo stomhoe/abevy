@@ -68,14 +68,14 @@ pub fn update_as_belonging_to_player_faction(mut cmd: Commands,
 
 ) {
     for faction_things in player_factions.iter() {
-        for &thing_ent in faction_things.entities() {
+        for thing_ent in faction_things.iter() {
             cmd.entity(thing_ent).try_insert(BelongsToAPlayerFaction);
             debug!("Entity {:?} now has BelongsToAPlayerFaction", thing_ent);
         }
     }
     for ent in removed_player_factions.read() {
         if let Ok(faction_things) = faction_things.get(ent) {
-            for &thing_ent in faction_things.entities() {
+            for thing_ent in faction_things.iter() {
                 cmd.entity(thing_ent).try_remove::<BelongsToAPlayerFaction>();
             }
         }

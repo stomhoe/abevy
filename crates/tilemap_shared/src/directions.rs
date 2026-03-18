@@ -55,7 +55,7 @@ impl CardinalDirection {
         }
     }
     pub fn random(rng: &mut impl rand::Rng) -> Self {
-        match rng.gen_range(0..4) {
+        match rng.random_range(0..4) {
             0 => CardinalDirection::South,
             1 => CardinalDirection::West,
             2 => CardinalDirection::North,

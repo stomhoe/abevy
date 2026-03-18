@@ -1,12 +1,9 @@
 use ::game_common::game_common_components::*;
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
-use sprite_shared::prelude::AcZ;
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
 use bevy::prelude::*;
-use bevy::{
-    platform::collections::HashSet,
-};
+
 use common::PORTAL_INIT;
 
 use crate::{
@@ -64,7 +61,7 @@ pub fn map_portal_tiles(
 pub fn validate_portal_recipes(
     mut cmd: Commands,
     mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>)>,
-    dimension_query: Query<Option<&DimensionRootOplist>>,
+    dimension_query: Query<&DimensionRootOplist>,
     terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
 ) {
     for (ezero_portal, mut recipe, portal_seri_opt) in portal_recipes.iter_mut() {
@@ -72,11 +69,7 @@ pub fn validate_portal_recipes(
             continue;
         }
         let Ok(root_oplist) = dimension_query.get(recipe.dest_dimension) else {
-            error!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} references a Dimension that doesn't exist.", recipe.dest_dimension);
-            continue;
-        };
-        let Some(root_oplist) = root_oplist else {
-            error!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} references a Dimension that has no DimensionRootOplist.", recipe.dest_dimension);
+            error!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} references a Dimension that doesn't exist or has no DimensionRootOplist.", recipe.dest_dimension);
             continue;
         };
         if recipe.terrprobe_ent == Entity::PLACEHOLDER

@@ -39,7 +39,7 @@ pub fn sprite_change_detection(
         changed.insert(SpriteChanged(sprite_ent));
     }
     for held_sprites in baseholder_query.iter() {
-        for &sprite_ent in held_sprites.entities() {
+        for sprite_ent in held_sprites.iter() {
             changed.insert(SpriteChanged(sprite_ent));
         }
     }
@@ -56,17 +56,17 @@ pub fn disable_children_sprites_of_disabled(
 ) {
     let mut disableds = Vec::new();
     for (held_sprites) in ezero_bases.iter() {
-        for &sprite_ent in held_sprites.entities() {
+        for sprite_ent in held_sprites.iter() {
             disableds.push((sprite_ent, Disabled));
         }
     }
     for ent in removed.read() {
         if let Ok((held_sprites)) = non_ezero_bases.get(ent) {
-            for &sprite_ent in held_sprites.entities() {
+            for sprite_ent in held_sprites.iter() {
                 cmd.entity(sprite_ent).try_remove::<Disabled>();
             }
         }
-    }  
+    }
     cmd.try_insert_batch(std::mem::take(&mut disableds));
 }
 
@@ -80,7 +80,7 @@ pub fn z_sort_system(
     mut process_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>,
         Option<&AcZ>, Option<&EntityZeroRef>, Has<TilemapAnchor>, &ChildOf, ),>,
 
-    parent_sprite_query: Query<Has<Sprite>, (common::AnyDisabling,)>,
+    parent_sprite_query: Query<&Sprite, (common::AnyDisabling,)>,
     camera_query: Query<Ref<GlobalTilePos>, With<Camera>>,
     all_spriteable_query: Query<Entity, (Zsortable)>,
 
@@ -96,7 +96,7 @@ pub fn z_sort_system(
     let (camera_y, camera_moved) = camera_query.iter().next()
         .map(|cam| (cam.to_pixelpos().y, cam.is_changed()))
         .unwrap_or((0.0, false));
-    
+
     if camera_moved {
         for ent in all_spriteable_query.iter() {
             ents_to_process.insert(ent);
@@ -104,9 +104,7 @@ pub fn z_sort_system(
     }
     let mut iter = process_query.iter_many_mut(ents_to_process.drain());
     while let Some((ent, mut transform, global_transform, ysort_origin, maybe_z_index, ezero_ref, is_tilemap, child_of)) = iter.fetch_next() {
-        let Ok(has_parent_sprite) = parent_sprite_query.get(child_of.parent()) else {
-            continue;
-        };
+        let has_parent_sprite = parent_sprite_query.get(child_of.parent()).is_ok();
 
         let (base_z, maybe_ysort_origin) = if let Some(ezero_ref) = ezero_ref
             && let Ok((ezero_z_index, ezero_ysort_origin)) = ezero_query.get(ezero_ref.0)

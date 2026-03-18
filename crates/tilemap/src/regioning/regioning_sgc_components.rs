@@ -62,7 +62,6 @@ impl WhitelistedFilterOf{
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = WhitelistedFilterOf)]
 pub struct AcceptedFilters(Vec<Entity>);
-impl AcceptedFilters { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGCsWeightedSampler"), )]

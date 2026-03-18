@@ -103,8 +103,8 @@ pub fn receive_increase_speed_from_client(
             let Some(client_entity) = from_client.client_id.entity() else { continue; };
 
             if controlled_by.client_ent == client_entity {
-                for modifier_ent in applied_modifiers.entities() {
-                    if let Ok(mut effective_value) = modifiers_query.get_mut(*modifier_ent) {
+                for modifier_ent in applied_modifiers.iter() {
+                    if let Ok(mut effective_value) = modifiers_query.get_mut(modifier_ent) {
                         effective_value.0 = new_value.0;
                     }
                 }

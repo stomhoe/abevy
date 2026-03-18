@@ -79,7 +79,7 @@ pub fn on_control_change(
     }
 }
 
-pub fn assign_uncontrolled_beings_to_host(
+pub fn assign_uncomputed_beings_to_host(
     mut commands: Commands,
     self_player: Query<Entity, (With<Mine>, With<Player>, With<HostPlayer>)>,
     beings: Query<Entity, (With<Being>, Without<ComputedBy>)>,

@@ -25,7 +25,6 @@ pub enum RegionState {
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = Chunk)]
 pub struct ChunksActiveInRegion(Vec<Entity>);
-impl ChunksActiveInRegion { pub fn entities(&self) -> &[Entity] { &self.0 } }
 
 #[derive(Component, Debug, Clone)]
 #[require(CountsOfSgcs, GridOfSgcs)]

@@ -10,7 +10,7 @@ use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDis
 use tilemap_shared::{tilemap_seris::InteractionZoneSeri, InteractionZones};
 
 use crate::{
-    being_components::{Being, HitboxReceiver},
+    being_components::Being,
     being_inst_template::being_inst_template_resources::{BitRef},
     body::{BodyTreeRef, body_sampler::body_sampler_resources::BodyWeightedSamplerRef},
     race::race_components::{Race, SexesSampler, SexSizeVariationsBySex},
@@ -65,7 +65,7 @@ pub fn build_beings_from_refs(
     let mut body_sampler_to_ins = Vec::new();
     let mut belongs_to_fac_refs_to_ins = Vec::new();
     let mut sex_refs_to_ins = Vec::new();
-    
+
     beings_to_build.clear();
     beings_to_build.extend(removed_disabled.read());
     beings_to_build.extend(changed_beings.iter());
@@ -231,40 +231,6 @@ pub fn sync_melee_interaction_zone_from_sources(
         cmd.entity(being_ent).try_insert(zones);
     }
 }
-
-pub fn sync_hitbox_receiver_from_sources(
-    mut cmd: Commands,
-    changed_beings: Query<
-        Entity,
-        (With<Being>, Or<(Added<Being>, Changed<BitRef>, Changed<RaceRef>)>),
-    >,
-    beings: Query<
-        (Option<&BitRef>, Option<&RaceRef>),
-        (With<Being>, AnyDisabling),
-    >,
-    bit_hitboxes: Query<&HitboxReceiver>,
-    race_hitboxes: Query<&HitboxReceiver, With<Race>>,
-    mut removed_disabled: RemovedComponents<Disabled>,
-    mut to_iter: Local<Vec<Entity>>,
-) {
-    to_iter.extend(removed_disabled.read());
-
-    to_iter.extend(changed_beings.iter());
-
-    for being_ent in to_iter.drain(..) {
-        let Ok((bit_ref, race_ref)) = beings.get(being_ent) else {
-            continue;
-        };
-        let hitbox_receiver = bit_ref
-            .and_then(|bit_ref| bit_hitboxes.get(bit_ref.0).ok())
-            .or_else(|| race_ref.and_then(|race_ref| race_hitboxes.get(race_ref.0).ok()))
-            .copied()
-            .unwrap_or_default();
-        cmd.entity(being_ent).try_insert(hitbox_receiver);
-    }
-}
-
-
 
 #[allow(unused_parens)]
 pub fn sample_sprite_normal_variations(

@@ -477,7 +477,7 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
         {
             return;
         }
-        chunk_query.iter_many(chunks_active_in_region.entities()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref, chunk_terrgen_state)| {
+        chunk_query.iter_many(chunks_active_in_region.iter()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref, chunk_terrgen_state)| {
             if *chunk_terrgen_state != TerrGenState::Pending {
                 return;
             }
@@ -515,7 +515,7 @@ pub fn despawn_empty_regions(mut cmd: Commands,
         cmd.entity(region_ent).try_insert_if_new(DespawnTimer::secs(0.5));
     }
     for (region_ent, &dimension_ref, &region_pos, chunks_active_in_region, ) in regions_which_regained_chunks_query.iter() {
-        if chunks_active_in_region.entities().is_empty() {
+        if chunks_active_in_region.is_empty() {
             continue;
         }
         debug!(target: "region", "Region entity {:?} at position {:?} in dimension {:?} regained active chunks, cancelling despawn",

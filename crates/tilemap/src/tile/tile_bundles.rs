@@ -3,7 +3,6 @@ use bevy_ecs_tilemap::map::TilemapId;
 pub use bevy_ecs_tilemap::tiles::*;
 use bevy_replicon::prelude::*;
 use common::common_components::*;
-use common::common_tag_components::{HashedTagsVec, TagSet};
 
 use game_common::game_common_components::*;
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;

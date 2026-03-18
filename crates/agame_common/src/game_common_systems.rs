@@ -1,6 +1,5 @@
 use crate::game_common_components::*;
 use crate::game_common_bundles::DenyForEntityZeroClonedChild;
-use crate::game_common_states::*;
 use crate::game_common_timers::*;
 use common::prelude::*;
 use ::sprite_shared::prelude::*;
@@ -60,7 +59,7 @@ pub fn clone_ezero_children_ents(
             debug!(target: "entity_zero", "Cloned child {:?} of EntityZero {:?} as child of {:?}", cloned_child, ezero_ref.0, new_ent);
 
             if let Some(ezero_held_sprites) = ezero_held_sprites {
-                if ezero_held_sprites.entities().contains(&child_to_clone) {
+                if ezero_held_sprites.contains(&child_to_clone) {
                     new_base_holder_ref.push((cloned_child, BaseHolderRef { base: new_ent,  }, ));
                 }
             }
@@ -73,7 +72,7 @@ pub fn clone_ezero_children_ents(
 #[allow(unused_parens)]
 pub fn despawn_sprites_without_childof(
     mut cmd: Commands,
-    query: Query<(Entity), (With<Sprite>, Without<ChildOf>, common::AnyDisabling)>,
+    query: Query<(Entity), (Or<(With<Sprite>, With<Mesh2d>)>, Without<ChildOf>, common::AnyDisabling)>,
 ) {
     query
         .iter()

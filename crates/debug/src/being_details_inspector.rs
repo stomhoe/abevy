@@ -61,27 +61,24 @@ pub fn being_details_inspector(world: &mut World) {
 
     let mut body_query = world.query::<&Bodies>();
     let mut body_sums_query = world.query::<&BodySums>();
-    let mut body_name_query = world.query::<Option<&DisplayName>>();
-    let mut body_strid_query = world.query::<Option<&StrId>>();
+    let mut display_name_query = world.query::<&DisplayName>();
+    let mut str_id_query = world.query::<&StrId>();
     let mut body_parts_query = world.query::<&BodyParts>();
-    let mut body_part_name_query = world.query::<Option<&DisplayName>>();
-    let mut body_part_damage_query = world.query::<Option<&BodyPartDamage>>();
-    let mut held_items_query = world.query::<Option<&HeldItems>>();
-    let mut item_name_query = world.query::<Option<&DisplayName>>();
-    let mut item_strid_query = world.query::<Option<&StrId>>();
-    let mut slot_holder_query = world.query::<Option<&SlottedItemHolder>>();
+    let mut body_part_damage_query = world.query::<&BodyPartDamage>();
+    let mut held_items_query = world.query::<&HeldItems>();
+    let mut slot_holder_query = world.query::<&SlottedItemHolder>();
     let mut norm_move_dir_query = world.query::<&FinalNormMoveDir>();
     let mut speed_magnitude_query = world.query::<&SpeedMagnitude>();
     let mut input_move_dir_query = world.query::<&InputMoveDir>();
-    let mut gtrans_query = world.query::<Option<&GlobalTransform>>();
-    let mut computed_by_query = world.query::<Option<&ComputedBy>>();
-    let mut computed_locally_query = world.query::<Has<ComputedLocally>>();
+    let mut gtrans_query = world.query::<&GlobalTransform>();
+    let mut computed_by_query = world.query::<&ComputedBy>();
+    let mut computed_locally_query = world.query::<&ComputedLocally>();
     let mut player_actions_query =
         world.query_filtered::<&Actions<BeingDirectControlInputContext>, (With<Mine>, With<Player>)>();
     let mut player_move_action_query = world.query::<&Action<DcWasdAction>>();
-    let mut grid_move_query = world.query::<Option<&GridLockedMovement>>();
-    let mut gpos_query = world.query::<Option<&tilemap_shared::GlobalTilePos>>();
-    let mut facing_query = world.query::<Option<&CardinalDirection>>();
+    let mut grid_move_query = world.query::<&GridLockedMovement>();
+    let mut gpos_query = world.query::<&tilemap_shared::GlobalTilePos>();
+    let mut facing_query = world.query::<&CardinalDirection>();
     let mut modifiers_query = world.query::<(
         &ModifierTarget,
         Option<&BaseValue>,
@@ -110,16 +107,16 @@ pub fn being_details_inspector(world: &mut World) {
     let mut inventory_holders = vec![(
         selected_being_entity,
         part_label(
-            selected_being_entity,
-            body_name_query.get(world, selected_being_entity).ok().flatten(),
-            body_strid_query.get(world, selected_being_entity).ok().flatten(),
+        selected_being_entity,
+            display_name_query.get(world, selected_being_entity).ok(),
+            str_id_query.get(world, selected_being_entity).ok(),
         ),
     )];
-    for &body_entity in bodies.entities() {
+    for body_entity in bodies.iter() {
         let label = part_label(
             body_entity,
-            body_name_query.get(world, body_entity).ok().flatten(),
-            body_strid_query.get(world, body_entity).ok().flatten(),
+            display_name_query.get(world, body_entity).ok(),
+            str_id_query.get(world, body_entity).ok(),
         );
         inventory_holders.push((body_entity, label.clone()));
         if let Ok(sums) = body_sums_query.get(world, body_entity) {
@@ -128,11 +125,11 @@ pub fn being_details_inspector(world: &mut World) {
         let Ok(parts) = body_parts_query.get(world, body_entity) else {
             continue;
         };
-        for &part_entity in parts.entities() {
+        for part_entity in parts.iter() {
             let label = part_label(
                 part_entity,
-                body_part_name_query.get(world, part_entity).ok().flatten(),
-                body_strid_query.get(world, part_entity).ok().flatten(),
+                display_name_query.get(world, part_entity).ok(),
+                str_id_query.get(world, part_entity).ok(),
             );
             inventory_holders.push((part_entity, label.clone()));
             part_infos.push((part_entity, label));
@@ -199,19 +196,14 @@ pub fn being_details_inspector(world: &mut World) {
             ui.collapsing("Movement Details", |ui| {
                 let mut is_human_input = false;
                 if let Ok(computed_by) = computed_by_query.get(world, selected_being_entity) {
-                    if let Some(computed_by) = computed_by {
-                        is_human_input = computed_by.human_dc_input;
-                        ui.label(format!(
-                            "ComputedBy: client_ent={:?}, human_input={}",
-                            computed_by.client_ent, computed_by.human_dc_input
-                        ));
-                    } else {
-                        ui.label("ComputedBy: missing");
-                    }
+                    is_human_input = computed_by.human_dc_input;
+                    ui.label(format!(
+                        "ComputedBy: client_ent={:?}, human_input={}",
+                        computed_by.client_ent, computed_by.human_dc_input
+                    ));
                 }
-                if let Ok(computed_locally) = computed_locally_query.get(world, selected_being_entity)
-                {
-                    ui.label(format!("ComputedLocally: {}", computed_locally));
+                if let Ok(computed_locally) = computed_locally_query.get(world, selected_being_entity) {
+                    ui.label(format!("ComputedLocally: {:?}", computed_locally));
                 }
                 if is_human_input {
                     if let Some(player_actions) = player_actions_query.iter(world).next() {
@@ -250,9 +242,7 @@ pub fn being_details_inspector(world: &mut World) {
                 } else {
                     ui.label("InputMoveDir: missing");
                 }
-                if let Ok(gtrans) = gtrans_query.get(world, selected_being_entity)
-                    && let Some(gtrans) = gtrans
-                {
+                if let Ok(gtrans) = gtrans_query.get(world, selected_being_entity) {
                     let translation = gtrans.translation();
                     ui.label(format!(
                         "GlobalTransform: [{:.0}, {:.0}, {}]",
@@ -260,31 +250,23 @@ pub fn being_details_inspector(world: &mut World) {
                     ));
                 }
                 if let Ok(grid_move) = grid_move_query.get(world, selected_being_entity) {
-                    if let Some(grid_move) = grid_move {
-                        if let Ok(gpos) = gpos_query.get(world, selected_being_entity)
-                            && let Some(gpos) = gpos
-                        {
-                            ui.label(format!("GlobalTilePos: [{}, {}]", gpos.0.x, gpos.0.y));
-                        }
-                        ui.label(format!(
-                            "GridLocked.origin: [{}, {}]",
-                            grid_move.visual_origin_tile.x, grid_move.visual_origin_tile.y
-                        ));
-                        ui.label(format!(
-                            "GridLocked.progress: {} / {}",
-                            grid_move.progress_ticks, grid_move.step_ticks_total
-                        ));
-                        ui.label(format!(
-                            "GridLocked.step_dir: [{}, {}]",
-                            grid_move.step_dir.x, grid_move.step_dir.y
-                        ));
-                    } else {
-                        ui.label("GridLockedMovement: missing");
+                    if let Ok(gpos) = gpos_query.get(world, selected_being_entity) {
+                        ui.label(format!("GlobalTilePos: [{}, {}]", gpos.0.x, gpos.0.y));
                     }
+                    ui.label(format!(
+                        "GridLocked.origin: [{}, {}]",
+                        grid_move.visual_origin_tile.x, grid_move.visual_origin_tile.y
+                    ));
+                    ui.label(format!(
+                        "GridLocked.progress: {} / {}",
+                        grid_move.progress_ticks, grid_move.step_ticks_total
+                    ));
+                    ui.label(format!(
+                        "GridLocked.step_dir: [{}, {}]",
+                        grid_move.step_dir.x, grid_move.step_dir.y
+                    ));
                 }
-                if let Ok(facing) = facing_query.get(world, selected_being_entity)
-                    && let Some(facing) = facing
-                {
+                if let Ok(facing) = facing_query.get(world, selected_being_entity) {
                     ui.label(format!("Facing: {:?}", facing));
                 }
                 let mut walk_add: f32 = 0.0;
@@ -314,39 +296,42 @@ pub fn being_details_inspector(world: &mut World) {
             ui.separator();
             ui.collapsing("Inventory", |ui| {
                 for (holder_entity, holder_label) in &inventory_holders {
-                    let held_items = held_items_query
-                        .get(world, *holder_entity)
-                        .ok()
-                        .flatten()
-                        .map(|items: &HeldItems| items.entities().to_vec())
-                        .unwrap_or_default();
-                    let slot_holder = slot_holder_query
-                        .get(world, *holder_entity)
-                        .ok()
-                        .flatten();
-                    let has_available_slots = slot_holder.is_some_and(|slots| {
-                        slots.0.iter().any(|(_, (entities, limit))| entities.len() < *limit as usize)
-                    });
-                    let slot_entries = slot_holder.map(|slot_holder| {
-                        slot_holder
-                            .0
-                            .iter()
-                            .map(|(slot, (entities, limit))| (slot.clone(), entities.iter().copied().collect::<Vec<_>>(), *limit))
-                            .collect::<Vec<_>>()
-                    });
-                    if held_items.is_empty() && !has_available_slots {
+                    let Ok(held_items) = held_items_query.get(world, *holder_entity) else {
+                        continue;
+                    };
+                    let Ok(slot_holder) = slot_holder_query.get(world, *holder_entity) else {
+                        continue;
+                    };
+                    let slot_entries = slot_holder
+                        .0
+                        .iter()
+                        .map(|(slot, (entities, limit))| {
+                            (
+                                slot.clone(),
+                                entities.iter().copied().collect::<Vec<_>>(),
+                                *limit,
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    let has_available_slots = slot_holder
+                        .0
+                        .iter()
+                        .any(|(_, (entities, limit))| entities.len() < *limit as usize);
+                    let held_item_count = held_items.len();
+                    let held_item_entities = held_items.iter().collect::<Vec<_>>();
+                    if held_item_count == 0 && !has_available_slots {
                         continue;
                     }
                     ui.collapsing(holder_label, |ui| {
-                        ui.label(format!("Held items: {}", held_items.len()));
-                        if held_items.is_empty() {
+                        ui.label(format!("Held items: {}", held_item_count));
+                        if held_item_count == 0 {
                             ui.label("No held items.");
                         } else {
-                            for &item_entity in &held_items {
+                            for &item_entity in held_item_entities.iter() {
                                 let item_label = part_label(
                                     item_entity,
-                                    item_name_query.get(world, item_entity).ok().flatten(),
-                                    item_strid_query.get(world, item_entity).ok().flatten(),
+                                    display_name_query.get(world, item_entity).ok(),
+                                    str_id_query.get(world, item_entity).ok(),
                                 );
                                 ui.horizontal(|ui| {
                                     ui.label(item_label);
@@ -359,21 +344,17 @@ pub fn being_details_inspector(world: &mut World) {
                             }
                         }
 
-                        let Some(slot_entries) = slot_entries.as_ref() else {
-                            ui.label("Equip slots: none");
-                            return;
-                        };
                         ui.label(format!("Equip slots: {}", slot_entries.len()));
                         for (slot, entities, limit) in slot_entries {
                             ui.collapsing(format!("{} [{}/{}]", slot, entities.len(), limit), |ui| {
                                 if entities.is_empty() {
                                     ui.label("Empty");
                                 } else {
-                                    for &item_entity in entities {
+                                    for item_entity in entities {
                                         ui.label(part_label(
                                             item_entity,
-                                            item_name_query.get(world, item_entity).ok().flatten(),
-                                            item_strid_query.get(world, item_entity).ok().flatten(),
+                                            display_name_query.get(world, item_entity).ok(),
+                                            str_id_query.get(world, item_entity).ok(),
                                         ));
                                     }
                                 }
@@ -408,8 +389,6 @@ pub fn being_details_inspector(world: &mut World) {
                 };
                 let part_damage = body_part_damage_query
                     .get(world, selected_part_entity)
-                    .ok()
-                    .flatten()
                     .map_or(0.0, |damage| damage.0);
                 ui.label(format!("Part damage: {:.2}", part_damage));
                 ui.separator();

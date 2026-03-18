@@ -1,6 +1,6 @@
 use crate::being_inst_template::being_inst_template_resources::BitRef;
 use crate::body::{Bodies, BodySums};
-use crate::being_components::{Being, Chaser};
+use crate::being_components::{Being, Chasing};
 use crate::race::race_components::Race;
 use crate::race::race_resources::RaceRef;
 use ::being_shared::*;
@@ -143,14 +143,14 @@ pub fn update_predator_chase_targets(
     {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_dc_input {
-                cmd.entity(pred_ent).try_remove::<Chaser>();
+                cmd.entity(pred_ent).try_remove::<Chasing>();
                 continue;
             }
         }
 
         let hp = health_ratio(pred_ent, &bodies_query, &body_health_query);
         if hunger.curr < hunt_threshold.0 || hp <= 0.9 {
-            cmd.entity(pred_ent).try_remove::<Chaser>();
+            cmd.entity(pred_ent).try_remove::<Chasing>();
             continue;
         }
 
@@ -201,9 +201,9 @@ pub fn update_predator_chase_targets(
         }
 
         let Some((target, _)) = closest else {
-            cmd.entity(pred_ent).try_remove::<Chaser>();
+            cmd.entity(pred_ent).try_remove::<Chasing>();
             continue;
         };
-        cmd.entity(pred_ent).try_insert(Chaser::new(target, 1.5));
+        cmd.entity(pred_ent).try_insert(Chasing::new(target, 1.5));
     }
 }

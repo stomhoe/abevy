@@ -26,7 +26,7 @@ pub fn archimedes_spiral_building_system(
     sampler_map: Res<TileWeightedSamplerEntityMap>,
     sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
     ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
-    _ezero_tag_query: Query<Option<&'static TagSet>, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    _ezero_tag_query: Query<&'static TagSet, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {

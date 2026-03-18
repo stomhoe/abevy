@@ -35,7 +35,6 @@ pub fn apply_melee_attack(
             &GlobalTransform,
             &CardinalDirection,
             Option<&InteractionZones>,
-            Option<&HitboxReceiver>,
         ),
         With<Being>,
     >,
@@ -43,7 +42,6 @@ pub fn apply_melee_attack(
         (
             &GlobalTransform,
             Option<&InteractionZones>,
-            Option<&HitboxReceiver>,
             Option<&CardinalDirection>,
         ),
         With<Being>,
@@ -64,7 +62,7 @@ pub fn apply_melee_attack(
     const MELEE_DAMAGE: f32 = 10.0;
     for melee in melee_attacks.read() {
         let attacker_ent = melee.being_ent;
-        let Ok((&attacker_dim, attacker_transform, &attacker_direction, interaction_zones, _)) =
+        let Ok((&attacker_dim, attacker_transform, &attacker_direction, interaction_zones, )) =
             beings.get(attacker_ent)
         else {
             info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} not found", attacker_ent);
@@ -74,7 +72,7 @@ pub fn apply_melee_attack(
             info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} has no InteractionZones", attacker_ent);
             continue;
         };
-        let Ok(melee_zone) = interaction_zones.0.get(InteractionZones::MELEE) else {
+        let Ok(melee_zone) = interaction_zones.0.get(InteractionZones::MELEE_ATTACK) else {
             info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} has no melee zone", attacker_ent);
             continue;
         };
@@ -92,47 +90,47 @@ pub fn apply_melee_attack(
             attacker_direction
         );
 
-        for (&(dim_ref, target_pos), target_entities) in beings_at_gpos.0.iter() {
-            if dim_ref != attacker_dim {
-                continue;
-            }
+        candidate_tile_gposes.clear();
+        melee_zone.gather_candidate_tiles_at(
+            attacker_direction,
+            attacker_pos,
+            &mut candidate_tile_gposes,
+        );
+        for &candidate_gpos in candidate_tile_gposes.iter() {
             if !melee_zone.is_inside_any(
                 SizeInTiles::default(),
                 TileFlip::default(),
                 attacker_direction,
                 attacker_pos,
-                target_pos.to_pixelpos(),
+                candidate_gpos.to_pixelpos(),
             ) {
                 continue;
             }
-            for &target_entity in target_entities.iter() {
+            for &target_entity in beings_at_gpos.beings_at_pos(attacker_dim, candidate_gpos) {
                 if target_entity == attacker_ent || !hit_entities.insert(target_entity) {
                     continue;
                 }
-                let Ok((target_transform, target_zones, target_hitbox_receiver, target_direction)) =
+                let Ok((target_transform, target_zones, target_direction)) =
                     being_receivers.get(target_entity)
                 else {
                     continue;
                 };
-                let receiver = target_hitbox_receiver.copied().unwrap_or_default().0;
+                let receiver = COLLISION_MASK_HASHID;
                 let target_pos_px = target_transform.translation().xy();
-                let hit_point = target_pos.to_pixelpos();
-                let accepts_hit = if receiver == COLLISION_MASK_HASHID {
-                    true
-                } else {
-                    let Some(target_zones) = target_zones else {
-                        continue;
-                    };
-                    target_zones.is_inside_interaction_zone(
-                        receiver,
-                        SizeInTiles::default(),
-                        target_pos_px,
-                        hit_point,
-                        TileFlip::default(),
-                        target_direction.copied().unwrap_or_default(),
-                    )
+                let hit_point = candidate_gpos.to_pixelpos();
+
+                let Some(target_zones) = target_zones else {
+                    continue;
                 };
-                if !accepts_hit {
+                let hit = target_zones.is_inside_interaction_zone(
+                    receiver,
+                    SizeInTiles::default(),
+                    target_pos_px,
+                    hit_point,
+                    TileFlip::default(),
+                    target_direction.copied().unwrap_or_default(),
+                );
+                if !hit {
                     continue;
                 }
                 health_damage_messages.push(HealthDamage {
@@ -144,12 +142,6 @@ pub fn apply_melee_attack(
             }
         }
 
-        candidate_tile_gposes.clear();
-        melee_zone.gather_candidate_tiles_at(
-            attacker_direction,
-            attacker_pos,
-            &mut candidate_tile_gposes,
-        );
         for &candidate_gpos in candidate_tile_gposes.iter() {
             if !melee_zone.is_inside_any(
                 SizeInTiles::default(),

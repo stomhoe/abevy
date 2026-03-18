@@ -36,7 +36,7 @@ pub fn pick_up_locally_requested_items(
             continue;
         };
         if let Ok(held_sprites) = held_sprites_query.get(item_ent) {
-            for &sprite_ent in held_sprites.entities() {
+            for sprite_ent in held_sprites.iter() {
                 cmd.entity(sprite_ent).try_despawn();
             }
         }
@@ -48,7 +48,7 @@ pub fn pick_up_locally_requested_items(
 #[allow(unused_parens, )]
 pub fn readjust_child_of_for_items(
     mut cmd: Commands,
-    held_query: Query<(Entity, &ItemHeldIn, Option<&ChildOf>), (With<Item>, Or<(Changed<ItemHeldIn>, Without<ChildOf>)>)>,
+    held_query: Query<(Entity, &ItemHeldIn, Option<&ChildOf>), (Or<(Changed<ItemHeldIn>, Without<ChildOf>)>)>,
     dropped_query: Query<
         (Entity, &DimensionRef, Option<&ChildOf>),
         (DroppedItem, Or<(Changed<DimensionRef>, Without<ChildOf>)>),
@@ -177,7 +177,7 @@ pub fn execute_item_operations(
     mut cmd: Commands,
     mut item_operations: MessageReader<ItemOperation>,
     dim_ref_query: Query<&DimensionRef>,
-    item_instance_query: Query<Option<&ItemHeldIn>, (With<Item>, Without<EntityZero>)>,
+    item_instance_query: Query<&ItemHeldIn, (With<Item>, Without<EntityZero>)>,
     ezero_item_query: Query<(), (With<Item>, With<EntityZero>)>,
     location_query: Query<(Option<&DimensionRef>, Option<&GlobalTilePos>, Option<&ChildOf>)>,
     mut materialize_params: ItemGroundMaterializeParamSet,
@@ -235,7 +235,7 @@ pub fn execute_item_operations(
                         materialize_params.materialize_item_on_ground(&mut cmd, item);
                     }
                     None => {
-                        let mut current = held_in.map(|held_in| held_in.holder).unwrap_or(item);
+                        let mut current = held_in.holder;
                         let found_pos = loop {
                             let Ok((dim_ref, gpos, child_of)) = location_query.get(current) else {
                                 warn!(

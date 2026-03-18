@@ -7,14 +7,12 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 pub use crate::entity_zero_components::*;
-use crate::prelude::EntityCountMapWeightedSampler;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Directionable;
 
 #[derive(Component, Clone, Copy, Default)]
 #[require(Transform)]
-/// timer gets reset when camera moves
 pub struct CameraTarget;
 
 

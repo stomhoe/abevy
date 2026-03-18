@@ -28,7 +28,7 @@ pub fn corridor_dungeon_building_system(
     mut writer: MessageWriter<StructureBuildCompliance>,
     ezeros_map: Res<TileEntityMap>,
     ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
-    _ezero_tag_query: Query<Option<&'static TagSet>, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    _ezero_tag_query: Query<&'static TagSet, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
 ) {
