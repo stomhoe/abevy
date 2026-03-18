@@ -92,7 +92,7 @@ fn refresh_retained_chase_snapshot(
     }
 }
 
-pub fn on_being_chunk_despawned(
+pub fn on_chunk_with_beings_attempt_unload(
     mut commands: Commands,
     mut reader: MessageReader<BeingChunkDespawned>,
     plans: Res<ChaserNavPlans>,

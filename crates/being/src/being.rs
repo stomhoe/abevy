@@ -52,7 +52,7 @@ pub fn plugin(app: &mut App) {
                 update_predator_chase_targets,
                 rebuild_chaser_nav_plans,
                 chase_behavior,
-                on_being_chunk_despawned
+                on_chunk_with_beings_attempt_unload
                     .in_set(HostSystems)
                     .before(retain_chunks_for_player_faction_chasers)
                     .run_if(on_message::<BeingChunkDespawned>),

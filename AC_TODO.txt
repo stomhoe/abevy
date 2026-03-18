@@ -35,3 +35,5 @@ guardar a las entities spawneadas en un macrochunk disableadas y sacarles el dis
 marcar a los animales spawneados naturalmente con un componente pra chequearlos a ver si spawnearon en una pared, desp hacer un sistema q los saca de la pared cuando cargue su chunk
 
 
+
+mecanica flanqueo: más damage si pegas desde el costado, más damage aun si pegas por la espalda
