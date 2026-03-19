@@ -1,5 +1,5 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use serde::{Deserialize, Serialize};
+#[allow(unused_imports)] use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct LobbyPlayerListing;

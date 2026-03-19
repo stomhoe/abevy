@@ -7,55 +7,65 @@ use bevy::ecs::entity::EntityHashSet;
 
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, };
-use bevy_replicon::prelude::*;
+#[allow(unused_imports, )]use bevy_replicon::prelude::*;
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
+
+pub type ExcludedComps = (Without<EntityZero>, Without<TilemapAnchor>, Without<TilePos>);
 
 #[allow(unused_parens)]
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn snap_transform_to_gpos(
     mut cmd: Commands,
-    mut query: Query<(Entity, Option<&mut Transform>, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, Has<Replicated>, ),
-        (With<SnapTransformToGpos>,  Without<EntityZero>,common::AnyDisabling,
-            Or<(Changed<GlobalTilePos>, Changed<ChildOf>, Added<SnapTransformToGpos>)>, Without<TilemapAnchor>, Without<TilePos>, )>,
-    //NO JUNTAR LOS ORS, NO ES EQUIVALENTE
+    mut main_query: Query<
+        (Entity, Option<&mut Transform>, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, ),
+        (With<SnapTransformToGpos>, common::AnyDisabling, ExcludedComps),
+    >,
+    gpos_state_query: Query<
+        (Entity, Ref<GlobalTilePos>, &SnapTransformToGpos, ),
+        (common::AnyDisabling, Changed<GlobalTilePos>, ExcludedComps),
+    >,
     parent_query: Query<&GlobalTransform, common::AnyDisabling>,
-    state: Res<State<ClientState>>,
+    mut ents_to_process: Local<EntityHashSet>,
 ) {
     //TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
-    let is_host = *state.get() == ClientState::Disconnected;
-    query.iter_mut().for_each(
-        |(
-            ent,
-            transform,
-            global_pos,
-            visibility,
-            child_of,
-            replicated,
-        )| {
-            let z = transform.as_ref().map(|t| t.translation.z).unwrap_or_default();
-            let transl_from_global_pos = global_pos.to_translation(z);
+    for (ent, gpos, snap_on_gpos, ) in gpos_state_query {
+        let should_snap = match snap_on_gpos {
+            SnapTransformToGpos::OnChange => gpos.is_changed(),
+            SnapTransformToGpos::OnAdd => gpos.is_added(),
+        };
+        if should_snap {
+            ents_to_process.insert(ent);
+        }
+    }
+    let mut iter = main_query.iter_many_mut(ents_to_process.drain());
+    while let Some((
+        ent,
+        transform,
+        global_pos,
+        visibility,
+        child_of,
+    )) = iter.fetch_next() {
+        let z = transform.as_ref().map(|t| t.translation.z).unwrap_or_default();
+        let transl_from_global_pos = global_pos.to_translation(z);
 
-            let parent_global_transl = child_of
-                .and_then(|co| parent_query.get(co.parent()).ok())
-                .map(|t| t.translation())
-                .unwrap_or(Vec3::ZERO);
+        let parent_global_transl = child_of
+            .and_then(|co| parent_query.get(co.parent()).ok())
+            .map(|t| t.translation())
+            .unwrap_or(Vec3::ZERO);
 
-            if is_host || !replicated {
-                let local_translation = transl_from_global_pos - parent_global_transl;
-                if let Some(mut transform) = transform {
-                    transform.translation = local_translation;
-                } else {
-                    cmd.entity(ent).try_insert(Transform::from_translation(local_translation));
-                }
-            }
+        let local_translation = transl_from_global_pos - parent_global_transl;
+        if let Some(mut transform) = transform {
+            transform.translation = local_translation;
+        } else {
+            cmd.entity(ent).try_insert(Transform::from_translation(local_translation));
+        }
 
-            if let Some(visibility) = visibility {
-                //DON'T REMOVE, FIXES A BUG
-                *visibility.into_inner() = visibility.clone();
-            }
-        },
-    );
+        if let Some(visibility) = visibility {
+            //DON'T REMOVE, FIXES A BUG
+            *visibility.into_inner() = visibility.clone();
+        }
+    }
 }
 #[allow(unused_parens)]
 pub fn emit_global_tile_pos_change(
@@ -105,7 +115,7 @@ pub fn add_spawned_tiles_to_gpos_map(
         (Entity, &DimensionRef, &GlobalTilePos, &EntityZeroRef),
         (common::AnyDisabling, Without<EntityZero>, Without<TilemapId>),
     >,
-    ezero_size_query: Query<&SizeInTiles, (common::AnyDisabling)>,
+    interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
     mut entities: Local<EntityHashSet>,
 ) {
     entities.reserve(changed_pos.len());
@@ -114,18 +124,17 @@ pub fn add_spawned_tiles_to_gpos_map(
             entities.insert(changed_pos.entity);
             continue;
         };
-        let size = query
+        let interaction_zones = query
             .get(changed_pos.entity)
             .ok()
-            .and_then(|(_, _, _, ezero_ref)| ezero_size_query.get(ezero_ref.0).ok().copied())
-            .unwrap_or_default();
-        map.remove_tile(old.dim, old.gpos, changed_pos.entity, size);
+            .and_then(|(_, _, _, ezero_ref)| interaction_zones_query.get(ezero_ref.0).ok());
+        map.remove_tile(old.dim, old.gpos, changed_pos.entity, interaction_zones);
         entities.insert(changed_pos.entity);
     }
     for ent in entities.drain() {
         let Ok((ent, &dimension_ref, &gpos, ezero_ref)) = query.get(ent) else { continue };
-        let size = ezero_size_query.get(ezero_ref.0).copied().unwrap_or_default();
-        map.insert(ent, dimension_ref, gpos, size);
+        let interaction_zones = interaction_zones_query.get(ezero_ref.0).ok();
+        map.insert(ent, dimension_ref, gpos, interaction_zones);
     }
 }
 

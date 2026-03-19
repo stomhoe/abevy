@@ -1,20 +1,14 @@
-use ::being_shared::*;
 #[allow(unused_imports)]
 use bevy::{
     ecs::entity::{EntityHashSet, MapEntities},
     platform::collections::HashMap,
     prelude::*,
 };
-use bevy_replicon::prelude::Replicated;
 
-use faction::prelude::BelongsToAPlayerFaction;
-use modifier_shared::modifier_components::AppliedModifiers;
-use movement::movement_components::*;
 
 use ::tilemap_shared::*;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
-use sprite_animation_shared::MoveAnimActive;
 
 pub use ::being_shared::{Being, FactionLeader};
 
@@ -52,4 +46,3 @@ impl Chasing {
 }
 
 pub const COLLISION_MASK_HASHID: HashId = HashId::hash("collision_mask");
-pub const HITBOX_HASHID: HashId = HashId::hash("hitbox");

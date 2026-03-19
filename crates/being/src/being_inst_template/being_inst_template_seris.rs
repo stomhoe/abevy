@@ -29,10 +29,11 @@ pub struct BitSeri {
     pub blacklisted_tiles_for_spawning: HashSet<String>,
     #[serde(default = "default_predator_hunt_threshold")]
     pub predator_hunt_threshold: f32,
-    #[serde(default = "default_melee_interaction_zone")]
-    pub melee_interaction_zone: InteractionZoneSeri,
-    #[serde(default)]
-    pub hitbox_hashid: String,
+    #[serde(default = "tilemap_shared::tilemap_seris::sentinel_melee_interaction_zone")]
+    pub melee_attack_zone: InteractionZoneSeri,
+    #[serde(default = "tilemap_shared::tilemap_seris::sentinel_collision_zone")]
+    pub collision_zone: InteractionZoneSeri,
+
     #[serde(default)]
     pub spawn_pack_size_normal_dist: Option<NormalDistSeri>,
     #[serde(default)]
@@ -51,9 +52,3 @@ pub struct BitSeri {
 
 fn default_multiplier() -> f32 { 1.0 }
 fn default_predator_hunt_threshold() -> f32 { ::being_shared::PredatorHuntThreshold::SERI_SENTINEL }
-fn default_melee_interaction_zone() -> InteractionZoneSeri {
-    InteractionZoneSeri {
-        offset_positions: vec![(0, 1)],
-        radius_offset: Vec::new(),
-    }
-}

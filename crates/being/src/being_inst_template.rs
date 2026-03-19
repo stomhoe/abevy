@@ -1,8 +1,5 @@
-use std::time::Duration;
 
-use ::being_shared::*;
-use bevy::{prelude::*, time::common_conditions::on_timer};
-use bevy_replicon::prelude::*;
+use bevy::{prelude::*, };
 use common::{common_states::AssetLoading, };
 
 use crate::{being_inst_template::{ being_inst_template_init_systems::*, being_inst_template_resources::*}, };
@@ -25,7 +22,7 @@ pub fn plugin(app: &mut App) {
     )
 
     .add_systems(Update, (
-        convert_bit_strid_ref_to_ent_ref.run_if(on_timer(Duration::from_secs_f32(0.5))),
+        convert_bit_strid_ref_to_ent_ref,
     ))
 
     ;

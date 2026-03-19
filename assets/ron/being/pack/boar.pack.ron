@@ -1,12 +1,13 @@
 (
     id: "boar",
-    initial_spawn_normal_dist: (min: 1.0, max: 1.0, mean: 1.0, std_dev: 0.0),
+    spawn_being_count_normal_dist: (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0),
     race_ids: {
-        "boar": (1.0, 0.8),
+        "boar": (1.0, (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0)),
     },
     bit_ids: {},
     biome_affinity: {
         "temp": 1.3,
     },
-    behavior: "",
+    behavior_on_member_attack: "",
+    chunk_separation_to_others: {},
 )

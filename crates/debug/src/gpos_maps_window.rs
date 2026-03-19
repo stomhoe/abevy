@@ -4,7 +4,7 @@ use camera::camera_components::CameraTarget;
 use bevy_ecs_tilemap::tiles::TileFlip;
 use game_common::game_common_components::EntityZeroRef;
 use std::collections::HashSet;
-use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, ItemsAtGpos, TiledCollisionMask, TileGatheringParamSet, WalkSpeedMultIfOnTop};
+use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, InteractionZones, ItemsAtGpos, TileGatheringParamSet, WalkSpeedMultIfOnTop};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -104,7 +104,7 @@ pub fn gpos_maps_window_system(
     mut tile_gathering: TileGatheringParamSet,
     tile_instance_query: Query<(&EntityZeroRef, &GlobalTilePos, Option<&TileFlip>, Option<&CardinalDirection>)>,
     walk_speed: Query<&WalkSpeedMultIfOnTop>,
-    tile_collision_masks: Query<&TiledCollisionMask>,
+    tile_interaction_zones: Query<(&InteractionZones, &tilemap_shared::SizeInTiles)>,
     camera_target_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     being_dim_pos: Query<(&DimensionRef, &Transform)>,
     mut terrain_blocked: Local<HashSet<(i32, i32)>>,
@@ -177,16 +177,17 @@ pub fn gpos_maps_window_system(
                             blocked = true;
                             break;
                         }
-                        if let Ok(mask) = tile_collision_masks.get(ezero_ref.0) {
-                            if mask.is_solid_at_world_pos_with_flip(
-                                *tile_origin,
-                                gpos,
-                                tile_flip.copied().unwrap_or_default(),
-                                direction.copied().unwrap_or_default(),
-                            ) {
-                                blocked = true;
-                                break;
-                            }
+                        let Ok((interaction_zones, size_in_tiles)) = tile_interaction_zones.get(ezero_ref.0) else { continue; };
+                        if interaction_zones.is_inside_interaction_zone(
+                            InteractionZones::COLLISION_MASK_HASHID,
+                            *size_in_tiles,
+                            tile_origin.to_pixelpos(),
+                            gpos.to_pixelpos(),
+                            tile_flip.copied().unwrap_or_default(),
+                            direction.copied().unwrap_or_default(),
+                        ) {
+                            blocked = true;
+                            break;
                         }
                     }
                     if blocked {
@@ -218,17 +219,17 @@ pub fn gpos_maps_window_system(
                 }
                 let clicked_beings = paint_grid(&mut cols[0], "BeingsAtGpos (being occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     let gpos = center + local;
-                    beings_at_gpos.beings_at_pos(dim_ref, gpos).len()
+                    beings_at_gpos.get_beings_at_pos(dim_ref, gpos).len()
                 });
                 let clicked_items = paint_grid(&mut cols[1], "ItemsAtGpos (item occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     let gpos = center + local;
                     items_at_gpos.items_at_pos(dim_ref, gpos).len()
                 });
-                let clicked_terrain = paint_grid(&mut cols[2], "Terrain Blocking (mask/speed<=0.01)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
+                let clicked_terrain = paint_grid(&mut cols[2], "Terrain Blocking (zones/speed<=0.01)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     if terrain_blocked.contains(&(local.0.x, local.0.y)) { 1 } else { 0 }
                 });
                 if let Some(local) = clicked_beings {
-                    let entities = beings_at_gpos.beings_at_pos(dim_ref, center + local);
+                    let entities = beings_at_gpos.get_beings_at_pos(dim_ref, center + local);
                     if let Some(being_entity) = entities.first().copied() {
                         selected.selected_being = Some(being_entity);
                         selected.selected_being_bodypart = None;

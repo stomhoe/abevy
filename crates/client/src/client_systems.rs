@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
-use bevy_replicon_renet::{RenetClient, netcode::{NetcodeClientTransport, NetcodeDisconnectReason::{self, *}} };
+use bevy_replicon_renet::{RenetClient, netcode::{NetcodeClientTransport, NetcodeDisconnectReason::{self, }} };
 use common::{common_states::*};
 use multiplayer_shared::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, };
 use player::{player_components::*, player_resources::PlayerData};
@@ -105,7 +105,7 @@ pub fn client_on_disconnect(
 }
 
 #[allow(unused_parens)]
-pub fn client_on_game_started(trigger: On<HostStartedGameplay>, mut state: ResMut<NextState<GamePhase>>, ) {
+pub fn client_on_game_started(_: On<HostStartedGameplay>, mut state: ResMut<NextState<GamePhase>>, ) {
 
     info!(target: "lobby", "Host started game event received, transitioning to GamePhase::ActiveGame");
     state.set(GamePhase::ActiveGame);

@@ -1,6 +1,6 @@
 use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
 use bevy_replicon::prelude::Replicated;
-use common::common_components::{AssetScoped, HotReload, Prefix};
+use common::{common_components::{AssetScoped, HotReload, Prefix}, prelude::StrId};
 use game_common::game_common_samplers::{CappedNormalDist, EntityWeightedSampler};
 use tilemap_shared::{ChunkPos, MacroChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
 
@@ -86,30 +86,13 @@ impl Pack {
 #[derive(Component, Debug, Clone, MapEntities, Default)]
 #[component(map_entities)]
 pub struct PackBeingSampler(#[entities] pub EntityWeightedSampler);
-impl PackBeingSampler {
-    pub fn insert(&mut self, entity: Entity, weight: f32) {
-        self.0.insert(entity, weight);
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct PackBeingLeaderPriority(pub EntityHashMap<f32>);
-impl PackBeingLeaderPriority {
-    pub fn insert(&mut self, entity: Entity, leader_priority: f32) {
-        self.0.insert(entity, leader_priority);
-    }
+pub struct PackMemberRankSampler(pub EntityHashMap<CappedNormalDist>);
 
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct PackBehavior(pub String);
+pub struct PackBehavior(pub StrId);
 
 #[derive(Component, Debug, Clone, Default)]
 pub struct PackMinDistsToPacksOrRaces(pub EntityHashMap<u8>);

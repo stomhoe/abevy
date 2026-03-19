@@ -21,7 +21,7 @@
     blacklisted_tiles_for_spawning: [],
     mass_kg: 2.0,
     distributed_totals: {
-        "walk_speed": 10,
+        "walk_speed": 5,
     },
     wander: (
         dir_secs_min: 1.0,
@@ -34,9 +34,9 @@
         speed_max: 0.28,
         avoid: ["liquid"],
     ),
-    body_tree_or_sampler: "scorpion",
-    size_variation: (min: 0.8, max: 1.2, mean: 1.0, std_dev: 0.1),
-    spawn_pack_size_normal_dist: (min: 1.0, max: 1.0, mean: 1.0, std_dev: 0.0),
+    body_or_sampler: "scorpion",
+    size_variation: (min_dev: 0.251, max_dev: 0.251, mean: 1.0, std_dev: 0.1),
+    spawn_pack_size_normal_dist: (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0),
     biome_affinity: {
         "desert": 1.2,
         "temp": 0.3,

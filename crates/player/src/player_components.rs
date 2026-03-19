@@ -21,3 +21,5 @@ pub struct TrustedForOtracosa;
 #[derive(Debug, Component, Default, Serialize, Deserialize, Clone)]
 #[require(Player)]
 pub struct HostPlayer;
+
+pub type MyPlayer = (With<Player>, With<Mine>);

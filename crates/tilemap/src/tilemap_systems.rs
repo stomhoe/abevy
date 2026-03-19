@@ -10,7 +10,7 @@ use bevy_replicon::prelude::*;
 use common::{TILEMAP_SYSTEM, common_components::HashId, common_resources::ImageSizeMap };
 use common::common_tag_components::TagSet;
 use debug_unwraps::DebugUnwrapExt;
-use game_common::game_common_components::{EntityZero, EntityZeroRef, Persisted};
+use game_common::game_common_components::*;
 use sprite_shared::prelude::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
 use crate::{
@@ -45,7 +45,6 @@ pub struct SystemResources<'w> {
     pub image_size_map: Res<'w, ImageSizeMap>,
     pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
     pub images: ResMut<'w, Assets<Image>>,
-    pub chunkrange: Res<'w, AaChunkRangeSettings>,
     pub regpos_map: ResMut<'w, ImportantRegisteredPositions>,
     pub loaded_chunks: Res<'w, LoadedChunks>,
     pub state: Res<'w, State<ClientState>>,
@@ -68,6 +67,7 @@ pub struct ComponentsQueries<'w, 's> {
     pub tile_ezero_ref_query: Query<'w, 's, &'static EntityZeroRef>,
     pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
     pub tag_set_query: Query<'w, 's, &'static TagSet, common::AnyDisabling>,
+    pub interaction_zones_query: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
     pub delete_others_query: Query<'w, 's, &'static DeleteOtherTilesInSamePos>,
     pub gpos_query: Query<'w, 's, &'static GlobalTilePos>,
     pub delete_others_paramset: TileDeleteOthersParamSet<'w, 's>,
@@ -101,9 +101,7 @@ pub fn process_tiles_pre(
 
     if resources.collected_tiles.0.is_empty() { return; }
 
-    let reserved = resources.chunkrange.approximate_number_of_chunks(0.06);
     let tiles_len = resources.collected_tiles.0.len();
-    locals.changed_structs.reserve(reserved);
 
     let mut tilemap_bundles = Vec::with_capacity(200);
 
@@ -197,7 +195,8 @@ pub fn process_tiles_pre(
                 child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
                 to_insert_replicated.push((tile_ent, Replicated));
                 if is_spritetile{
-                    params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, size_in_tiles);
+                    let interaction_zones = tile_components.interaction_zones_query.get(bundle.ezero_ref.0).ok();
+                    params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
                     spritetiles_to_remove_bundle.push(tile_ent);
                     i += 1;
                     continue;
@@ -218,7 +217,8 @@ pub fn process_tiles_pre(
 
         if is_spritetile {
             spritetiles_to_remove_bundle.push(tile_ent);
-            params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, size_in_tiles);
+            let interaction_zones = tile_components.interaction_zones_query.get(bundle.ezero_ref.0).ok();
+            params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
             child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
             i += 1;
             continue;

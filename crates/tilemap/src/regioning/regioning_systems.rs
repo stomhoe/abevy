@@ -53,11 +53,11 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
 ) {
 
     let Ok(settings) = settings.single() else {
-        error!("Failed to get global gen settings");
+        error!("Failed to terrgen settings");
         return;
     };
     let Ok(weight_map) = weight_map.single() else {
-        error!("Failed to get weight map");
+        error!("Failed to get sgc weight map");
         return;
     };
     let mut offers = Vec::new();

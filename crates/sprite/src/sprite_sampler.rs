@@ -3,7 +3,6 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::HostSystems;
 
-use crate::sprite_sampler::sprite_sampler_components::*;
 use crate::sprite_sampler::sprite_sampler_init_systems::*;
 use crate::sprite_sampler::sprite_sampler_systems::*;
 pub use sprite_shared::sprite_sampler::*;
@@ -35,17 +34,13 @@ pub fn plugin(app: &mut App) {
 
 }
 
-pub mod sprite_sampler_components;
-pub mod sprite_sampler_seris;
 mod sprite_sampler_init_systems;
 pub mod sprite_sampler_systems;
 
 #[allow(unused_imports, ambiguous_glob_reexports)]
 pub mod prelude {
     pub use super::{
-        sprite_sampler_components::*,
         sprite_sampler_init_systems::*,
-        sprite_sampler_seris::*,
         sprite_sampler_systems::*,
     };
 }

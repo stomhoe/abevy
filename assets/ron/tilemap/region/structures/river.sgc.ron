@@ -19,6 +19,6 @@
         "river_worm_length": ["240"],
         "river_max_sources": ["5"],
         "river_mouth_max_inlandness": ["0.05"],
-        "delete.floor_tile_id.targeted_tags": ["floor"],
+        "disable_terrgen.floor_tile_id": ["true"],
     },
 )

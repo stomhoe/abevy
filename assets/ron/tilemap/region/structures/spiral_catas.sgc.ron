@@ -16,7 +16,7 @@
         "spiral_corridor_width_min": ["3"],
         "spiral_corridor_width_max": ["5"],
         "spiral_room_radius": ["6"],
-        "delete.floor_tile_id.targeted_tags": ["floor"],
+        "disable_terrgen.floor_tile_id": ["true"],
     },
     // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),

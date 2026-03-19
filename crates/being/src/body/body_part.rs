@@ -26,7 +26,6 @@ pub fn plugin(app: &mut App) {
     (init_body_parts, map_body_part_id_to_entity).chain().in_set(BodyPartSystems),
     ))
     //.register_type::<BodyParts>()
-    .replicate::<BodyPart>()
     .replicate::<BodyPartOf>()
     .replicate::<BodyPartParent>()
     .replicate::<BodyRootPart>()

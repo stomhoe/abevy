@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use ::being_shared::*;
+use ::being_shared::{prelude::UnloadBeing, *};
 use tilemap_shared::{BeingsAtGpos, GlobalTilePos};
 
 use common::common_states::AssetLoading;
@@ -9,16 +9,14 @@ use game_common::{
     game_common::GameplaySystems,
 };
 use sprite_systems::AcSpriteSystems;
-use tilemap::chunking::{despawn_chunks, rem_outofrange_chunks_from_activators, BeingChunkDespawned};
 
 
 use crate::{
     being_behavior_systems::*,
-    being_build_systems::{build_beings_from_refs, sample_sprite_normal_variations, sync_melee_interaction_zone_from_sources},
+    being_build_systems::{build_beings_from_refs, sample_sprite_normal_size_variations, },
     being_components::*,
     being_control_systems::*,
     being_inst_template::BeingInstTemplateSystems,
-    being_on_chunk_despawn_systems::on_chunk_with_beings_attempt_unload,
     being_portal_systems::*,
     being_systems::*,
     body::{self, BodySystems},
@@ -46,13 +44,15 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         (
             build_beings_from_refs,
-            sync_melee_interaction_zone_from_sources,
-            sample_sprite_normal_variations,
+            sample_sprite_normal_size_variations,
         ).chain().in_set(HostSystems),
         (
             add_activates_chunks,
             assign_uncomputed_beings_to_host,
             cross_portal,
+            on_chunk_with_beings_attempt_unload
+                .in_set(tilemap_shared::PreChunkDespawnSystems)
+                .run_if(on_message::<tilemap::prelude::ChunkWithBeingsWantsDespawn>),
         ).in_set(HostSystems),
     ))
     .add_systems(Update, (
@@ -66,7 +66,7 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             apply_melee_attack.in_set(HostSystems),
-            validate_added_beings_have_position_and_transform,
+            validate_added_beings_have_gpos,
 
         )
             .in_set(GameplaySystems),
@@ -86,11 +86,11 @@ pub fn plugin(app: &mut App) {
     .replicate::<Grounding>()
     .replicate::<FollowerOf>()
     .replicate::<CharacterCreatedBy>()
-    .replicate::<PlayerDirectControllable>()
-    .replicate::<BodyCollisionRadius>()
+    .replicate::<DirectControllable>()
     .replicate::<Chasing>()
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
 
+    .replicate::<PackMemberRank>()
 
     .replicate::<Sentient>()
     .replicate::<HumanControlled>()
@@ -98,6 +98,7 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<ChildOf, With<Being>>()
 
     .add_message::<MakeChunkSnapshotForChaser>()
+    .add_message::<UnloadBeing>()
 
 
 

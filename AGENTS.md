@@ -18,7 +18,7 @@ try to associate helper fns to types if possible, if not put them in a submodule
 for dealing with time, use Timer's, not raw f32s
 
 
-VERY IMPORTANT: for bevy systems, always put #[allow(unused_parens, )] on top of their definition, and for each query, ALWAYS include parentheses to delimitate the component querying part from the filtering part, even if unnecessary, also leave trailing commas within parentheses. Like this:
+VERY IMPORTANT: for bevy systems, always put #[allow(unused_parens, )] on top of their definition, and for each query, ALWAYS include two sets of parentheses, one for the component querying part and for the filtering part, even if unnecessary, also leave trailing commas within parentheses. Always like this:
 Query<(&ComponentType, ), (With<ComponentType2>, )>,
 
 Prefer imports like this: 
@@ -33,3 +33,5 @@ turn it into this:
 use ::something::*;
 
 in mono-queries (queries for a single component T), NEVER wrap the queried component in Option<&T> or Has<T>. instead, with let Ok(t) else continue or .is_ok() you can handle any possible need.
+
+AVOID putting conflicting queries in system params, queries must be disjoint. to avoid conflicts for overlapping queried components, create a monoquery for said overlapping component

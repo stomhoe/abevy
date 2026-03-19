@@ -7,7 +7,7 @@ use tilemap_shared::tilemap_seris::InteractionZoneSeri;
 pub struct RaceSeri {
     pub id: String,
     pub name: String,
-    pub body_tree_or_sampler: String,
+    pub body_or_sampler: String,
     #[serde(default)]
     pub mass_kg: f32,
     #[serde(default)]
@@ -29,11 +29,11 @@ pub struct RaceSeri {
     pub fallback_sprites_to_sample: Vec<String>,
     #[serde(default = "default_true")]
     pub scale_hp_and_strength_with_size: bool,
-    #[serde(default)]
+    #[serde(default = "NormalDistSeri::sentinel")]
     pub size_variation: NormalDistSeri,
-    #[serde(default)]
+    #[serde(default = "NormalDistSeri::sentinel")]
     pub hori_variation: NormalDistSeri,
-    #[serde(default)]
+    #[serde(default = "NormalDistSeri::sentinel")]
     pub vert_variation: NormalDistSeri,
     #[serde(default)]
     pub sets_of_choosable_sprites: Vec<(String, HashSet<String>)>,
@@ -65,15 +65,16 @@ pub struct RaceSeri {
     pub predator_hunt_threshold: f32,
     #[serde(default)]
     pub wander: WanderSeri,
-    #[serde(default = "default_melee_interaction_zone")]
+    #[serde(default = "tilemap_shared::tilemap_seris::sentinel_melee_interaction_zone")]
     pub melee_interaction_zone: InteractionZoneSeri,
-    #[serde(default)]
-    pub hitbox_hashid: String,
+
+    #[serde(default = "tilemap_shared::tilemap_seris::sentinel_collision_zone")]
+    pub collision_zone: InteractionZoneSeri,
 
     #[serde(default)]//targets for already-spawned packs
     pub pack_size_min_max: (u32, u32),
 
-    #[serde(default)]//if this race wins sampling, it will spawn with a pack size drawn from this distribution
+    #[serde(default = "NormalDistSeri::sentinel")]//if this race wins sampling, it will spawn with a pack size drawn from this distribution
     pub spawn_pack_size_normal_dist: NormalDistSeri,
     #[serde(default)]//additive membership into already-defined packs
     pub belongs_to_packs: Vec<String>,
@@ -136,12 +137,6 @@ impl WanderSeri {
 }
 
 fn default_true() -> bool { true }
-fn default_melee_interaction_zone() -> InteractionZoneSeri {
-    InteractionZoneSeri {
-        offset_positions: vec![(0, 1)],
-        radius_offset: Vec::new(),
-    }
-}
 fn default_predator_hunt_threshold() -> f32 { ::being_shared::PredatorHuntThreshold::SERI_SENTINEL }
 fn default_pack_size_range() -> (u32, u32) { (1, 1) }
 fn default_prey_body_size_ratio_tolerance() -> f32 { -1.0 }

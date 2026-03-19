@@ -3,7 +3,35 @@ use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use::tilemap_shared::*;
 use crate::game_common_seris::NormalDistSeri;
-use bevy_replicon::prelude::*;
+
+#[macro_export]
+macro_rules! impl_weighted_sampler_serialization {
+    ($ty:ident, $inner:ty) => {
+        impl Serialize for $ty {
+            fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                self.weights.serialize(serializer)
+            }
+        }
+        impl<'de> Deserialize<'de> for $ty {
+            fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                let weights: Vec<($inner, f32)> = Deserialize::deserialize(deserializer)?;
+                let mut cumulative_weights = Vec::with_capacity(weights.len());
+                let mut acc = 0.0;
+                for &(_, w) in &weights {
+                    acc += w;
+                    cumulative_weights.push(acc);
+                }
+                let total_weight = acc;
+                Ok($ty {
+                    weights,
+                    cumulative_weights,
+                    total_weight,
+                })
+            }
+        }
+    };
+}
+
 #[macro_export]
 macro_rules! define_weightedsampler_impl {
     ($ty:ident, $inner:ty) => {
@@ -144,28 +172,6 @@ macro_rules! define_weightedsampler_impl {
                 &mut self.weights
             }
         }
-        impl Serialize for $ty {
-            fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                self.weights.serialize(serializer)
-            }
-        }
-        impl<'de> Deserialize<'de> for $ty {
-            fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-                let weights: Vec<($inner, f32)> = Deserialize::deserialize(deserializer)?;
-                let mut cumulative_weights = Vec::with_capacity(weights.len());
-                let mut acc = 0.0;
-                for &(_, w) in &weights {
-                    acc += w;
-                    cumulative_weights.push(acc);
-                }
-                let total_weight = acc;
-                Ok($ty {
-                    weights,
-                    cumulative_weights,
-                    total_weight,
-                })
-            }
-        }
     };
 }
 #[macro_export]
@@ -189,6 +195,7 @@ pub struct EntityWeightedSampler {
     total_weight: f32,
 }
 define_weightedsampler_impl!(EntityWeightedSampler, Entity);
+impl_weighted_sampler_serialization!(EntityWeightedSampler, Entity);
 impl MapEntities for EntityWeightedSampler {
     fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
         for (ent, _) in &mut self.weights {
@@ -233,7 +240,7 @@ define_weightedsampler!(StringWeightedSampler, String, "StringWeightedSampler");
 macro_rules! define_sprite_normal_dist {
     ($dist_name:ident) => {
         ::paste::paste! {
-            #[derive(Component, Default, Debug, Clone, Deserialize, Serialize)]
+            #[derive(Component, Default, Debug, Clone, )]
             pub struct $dist_name(pub CappedNormalDist);
             impl $dist_name {
                 pub fn new(seri: NormalDistSeri) -> Self {
@@ -244,15 +251,16 @@ macro_rules! define_sprite_normal_dist {
                 }
             }
 
-            #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, MapEntities)]
+            #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect, )]
             /// must be inserted into Being entities after sampling
             pub struct [<$dist_name Result>](pub f32);
 
             pub fn [<plugin_ $dist_name:snake>](app: &mut App) {
-                use common::AppRegisterAndReplicateExt;
+                use bevy_replicon::prelude::AppRuleExt;
                 app
-                    .replicate::<$dist_name>()
-                    .regrepli::<[<$dist_name Result>]>();
+                    .register_type::<[<$dist_name Result>]>()
+                    .replicate::<[<$dist_name Result>]>()
+                ;
             }
         }
     };
@@ -263,19 +271,21 @@ define_sprite_normal_dist!(SpriteVertNormalDist);
 define_sprite_normal_dist!(SpriteGlobalNormalDist);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
-pub struct ScaleHpAndStrengthWithSize;
+pub struct ScaleHpAndStrengthWithSampledSize;
 
-#[derive(Component, Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Component, Default, Debug, Clone, )]
 pub struct CappedNormalDist {
-    pub min: f32,
-    pub max: f32,
+    pub min_dev: f32,
+    pub max_dev: f32,
     pub mean: f32,
     pub std_dev: f32,
 }
 impl CappedNormalDist {
-    pub fn new(min: f32, max: f32, mean: f32, std_dev: f32) -> Self {
-        let mut min = min.max(0.01);
-        let mut max = max.max(0.01);
+    pub fn new(min_dev: f32, max_dev: f32, mean: f32, std_dev: f32) -> Self {
+        let min_dev = min_dev.max(0.0);
+        let max_dev = max_dev.max(0.0);
+        let mut min = mean - min_dev;
+        let mut max = mean + max_dev;
         let mut mean = mean;
         let std_dev = std_dev.max(0.0);
         if min > max {
@@ -300,14 +310,16 @@ impl CappedNormalDist {
                 std_dev, max, min, range
             );
         }
-        Self {min, max, mean, std_dev,}
+        Self {min_dev, max_dev, mean, std_dev,}
     }
 
     pub fn sample(&self, rng: &mut impl rand::Rng) -> f32 {
         use rand_distr::{Normal, Distribution};
 
-        if self.std_dev == 0.0 || self.min == self.max {
-            return self.mean.clamp(self.min, self.max);
+        let min = self.mean - self.min_dev;
+        let max = self.mean + self.max_dev;
+        if self.std_dev == 0.0 || min == max {
+            return self.mean.clamp(min, max);
         }
 
         let normal = match Normal::new(self.mean, self.std_dev) {
@@ -329,9 +341,9 @@ impl CappedNormalDist {
             }
         };
 
-        normal.sample(rng).clamp(self.min, self.max)
+        normal.sample(rng).clamp(min, max)
     }
     pub fn from_seri(seri: NormalDistSeri) -> Self {
-        Self::new(seri.min, seri.max, seri.mean, seri.std_dev)
+        Self::new(seri.min_dev, seri.max_dev, seri.mean, seri.std_dev)
     }
 }

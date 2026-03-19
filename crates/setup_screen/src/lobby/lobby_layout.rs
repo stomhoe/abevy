@@ -1,9 +1,7 @@
 use bevy::prelude::*;
 use bevy::{color::palettes::css::LIGHT_GOLDENROD_YELLOW};
-use bevy_simple_scroll_view::ScrollableContent;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 use common::common_states::{AppState, GamePhase};
-use multiplayer_shared::multiplayer_events::AttemptHostServer;
 use ui_shared::ui_components::LineEdit;
 use ui_shared::ui_functions::text_button;
 
@@ -159,7 +157,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         BackgroundColor(LIGHT_GOLDENROD_YELLOW.into()),
     )).id();
 
-    let player_listing = commands.spawn((
+    let _player_listing = commands.spawn((
         ChildOf(rightsplit_top_hbox),
         LobbyPlayerListing,
         Node {
@@ -217,7 +215,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             ..Default::default()
         },
     )).id();
-    
+
     LobbyBaseLayout {
         vbox_container,
         top_hbox: top_hbox_container,
@@ -235,7 +233,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
 pub fn layout_for_host(mut commands: Commands) {
     // Spawn the lobby UI for the host
     let shared_layout = do_base_layout(&mut commands);
-    
+
     let _vbox_container = shared_layout.vbox_container;
     let _top_hbox = shared_layout.top_hbox;
     let _middlesplitter_hbox = shared_layout.middlesplitter_hbox;
@@ -246,7 +244,7 @@ pub fn layout_for_host(mut commands: Commands) {
     let _lobby_name = shared_layout.lobby_name;
     let _leave_button = shared_layout.leave_button;
 
-   
+
     let start_game_button = (
 
         lobby_button(LobbyButtonId::Start, "Start",),
@@ -285,7 +283,7 @@ pub fn layout_for_client(mut commands: Commands) {
 
 pub fn lobby_button<T: Into<String>> (
     lobby_button: LobbyButtonId, text: T) -> impl Bundle {
-    
+
     let base = (
         Node{
             height: Val::Percent(100.),
@@ -295,12 +293,10 @@ pub fn lobby_button<T: Into<String>> (
             ..default()
         },
     );
-    
+
     let style = None;
     (
         text_button(base, text, (), style),
         lobby_button,
     )
 }
-
-

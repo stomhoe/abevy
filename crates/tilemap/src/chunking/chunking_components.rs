@@ -1,8 +1,7 @@
 
 use bevy::{ecs::{entity::EntityHashSet, system::SystemParam}, prelude::*};
 
-use super::chunking_resources::AaChunkRangeSettings;
-use crate::regioning::regioning_components::ChunksActiveInRegion;
+use crate::{prelude::ActivateChunksAround, regioning::regioning_components::ChunksActiveInRegion};
 use ::tilemap_shared::*;
 use bevy_inspector_egui::egui;
 
@@ -70,24 +69,10 @@ pub struct ActivatingChunks {
     pub chunk_positions: Vec<ChunkPos>,
 }
 
-#[derive(Component, Debug, Clone)]
-#[require(ActivatingChunks)]
-pub struct ActivateChunksAround {
-    pub reactivation_timer: Timer,
-}
-
-impl Default for ActivateChunksAround {
-    fn default() -> Self {
-        Self {
-            reactivation_timer: Timer::from_seconds(1.0, TimerMode::Repeating),
-        }
-    }
-}
-
 impl ActivatingChunks {
-    pub fn new(chunkrange: &AaChunkRangeSettings) -> Self {
+    pub fn with_capacity(act: &ActivateChunksAround) -> Self {
         Self {
-            chunk_positions: Vec::with_capacity((chunkrange.approximate_number_of_chunks(1.2)) as usize),
+            chunk_positions: Vec::with_capacity(act.discovery_range as usize * 2 + 1),
         }
     }
 

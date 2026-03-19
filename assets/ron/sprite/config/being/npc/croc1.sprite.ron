@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "croc1",
+    name: "Croc2",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "croc1_south_idle",
+        ("south", "move", "g", "") : "croc1_south_move",
+        ("west", "idle", "g", "") : "croc1_west_idle",
+        ("west", "move", "g", "") : "croc1_west_move",
+        ("east", "idle", "g", "") : "croc1_east_idle",
+        ("east", "move", "g", "") : "croc1_east_move",
+        ("north", "idle", "g", "") : "croc1_north_idle",
+        ("north", "move", "g", "") : "croc1_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    baseline_move_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

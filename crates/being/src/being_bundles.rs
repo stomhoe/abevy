@@ -5,10 +5,11 @@ use bevy::{
     prelude::*,
 };
 
-use movement::movement_components::GridLockedMovement;
-use tilemap_shared::{DimensionRef, GlobalTilePos};
+use movement::{movement_components::GridLockedMovement, prelude::MovementRemoveOnFreezeBundle};
+use tilemap::prelude::*;
+use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, };
 
-use crate::being_components::*;
+use crate::{being_components::*, nav::RetainedChasePathSnapshot};
 
 
 
@@ -34,3 +35,18 @@ impl BeingBundle {
         )
     }
 }
+
+#[derive(Bundle, Debug, )]
+pub struct RemoveOnFreeze(
+    pub Name,
+    pub ActivateChunksAround,
+    pub ActivatingChunks,
+    pub RetainedChasePathSnapshot,
+    pub Transform,
+    pub GlobalTransform,
+    pub DimensionRef,
+    pub ChunkPos,
+    pub Visibility,
+    pub MovementRemoveOnFreezeBundle,
+
+);//en vez de esto, hacer un estado serializado?

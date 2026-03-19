@@ -1,8 +1,7 @@
 use bevy::prelude::*;
-use bevy_replicon::prelude::*;
+#[allow(unused_imports, )] use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 
-use crate::sex::sex_components::*;
 use crate::sex::{sex_init_systems::*, sex_resources::*};
 
 

@@ -43,14 +43,21 @@ impl Default for WalkSpeedMultIfOnTop {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
-pub struct TiledCollisionMask {
-    width: u8,
-    height: u8,
-    bits: u64,
-}
-impl TiledCollisionMask {
-    pub fn from_rows(rows: &[String], size_in_tiles: SizeInTiles) -> Result<Self, BevyError> {
+#[derive(Component, Clone, Deserialize, Serialize, Debug)]
+/// interaction positions (offsets relative to the tile's anchor GlobalTilePos)
+pub struct InteractionZones(pub HashIdMap<InteractionZone>);
+impl InteractionZones {
+    pub fn from_seri(map: HashMap<String, InteractionZoneSeri>) -> Self {
+        let mut zones = HashIdMap::with_capacity(map.len());
+        for (id, seri) in map {
+            zones.overwrite(HashId::from(id), InteractionZone::new(seri));
+        }
+        Self(zones)
+    }
+    pub fn collision_mask_zone_from_rows(
+        rows: &[String],
+        size_in_tiles: SizeInTiles,
+    ) -> Result<InteractionZone, BevyError> {
         let width = size_in_tiles.inner().x as usize;
         let height = size_in_tiles.inner().y as usize;
         if rows.len() != height {
@@ -61,7 +68,7 @@ impl TiledCollisionMask {
             )));
         }
 
-        let mut bits = 0u64;
+        let mut offset_positions = Vec::new();
         for (y, row) in rows.iter().enumerate() {
             let row = row.trim();
             if row.chars().count() != width {
@@ -77,8 +84,7 @@ impl TiledCollisionMask {
                     '0' => {}
                     '1' => {
                         let source_y = (height - 1) - y;
-                        let bit_i = source_y * width + x;
-                        bits |= 1u64 << bit_i;
+                        offset_positions.push(GlobalTilePos::new(x as i32, source_y as i32));
                     }
                     _ => {
                         return Err(BevyError::from(format!(
@@ -90,153 +96,10 @@ impl TiledCollisionMask {
             }
         }
 
-        Ok(Self {
-            width: width as u8,
-            height: height as u8,
-            bits,
+        Ok(InteractionZone {
+            offset_positions,
+            radius_paired_w_offsets: Vec::new(),
         })
-    }
-
-    pub fn is_solid_at_world_pos_with_flip(
-        &self,
-        tile_origin: GlobalTilePos,
-        target: GlobalTilePos,
-        flip: TileFlip,
-        direction: CardinalDirection,
-    ) -> bool {
-        let rel = target.0 - tile_origin.0;
-        if rel.x < 0 || rel.y < 0 {
-            return true;
-        }
-        let x = rel.x as u32;
-        let y = rel.y as u32;
-        self.is_solid_local_with_flip(x, y, flip, direction)
-    }
-
-    pub fn is_solid_local_with_flip(
-        &self,
-        x: u32,
-        y: u32,
-        flip: TileFlip,
-        direction: CardinalDirection,
-    ) -> bool {
-        let (sx, sy) = self.target_to_source_local(x, y, flip, direction);
-        let Some((sx, sy)) = sx.zip(sy) else {
-            return true;
-        };
-        self.is_source_bit_set(sx, sy)
-    }
-
-    pub fn occupied_world_positions(
-        &self,
-        tile_origin: GlobalTilePos,
-        flip: TileFlip,
-        direction: CardinalDirection,
-        out: &mut Vec<GlobalTilePos>,
-    ) {
-        let (width, height) = match direction {
-            CardinalDirection::South | CardinalDirection::North => {
-                (self.width as u32, self.height as u32)
-            }
-            CardinalDirection::West | CardinalDirection::East => {
-                (self.height as u32, self.width as u32)
-            }
-        };
-        for y in 0..height {
-            for x in 0..width {
-                if !self.is_solid_local_with_flip(x, y, flip, direction) {
-                    continue;
-                }
-                out.push(tile_origin + IVec2::new(x as i32, y as i32));
-            }
-        }
-    }
-
-    fn is_source_bit_set(&self, x: u32, y: u32) -> bool {
-        let width = self.width as u32;
-        let height = self.height as u32;
-        if x >= width || y >= height {
-            return true;
-        }
-        let bit_i = y * width + x;
-        (self.bits & (1u64 << bit_i)) != 0
-    }
-
-    fn target_to_source_local(
-        &self,
-        x: u32,
-        y: u32,
-        flip: TileFlip,
-        direction: CardinalDirection,
-    ) -> (Option<u32>, Option<u32>) {
-        let width = self.width as u32;
-        let height = self.height as u32;
-
-        let (mut w, mut h) = match direction {
-            CardinalDirection::South | CardinalDirection::North => (width, height),
-            CardinalDirection::West | CardinalDirection::East => (height, width),
-        };
-        if x >= w || y >= h {
-            return (None, None);
-        }
-
-        let mut sx = x;
-        let mut sy = y;
-
-        if flip.y {
-            sy = h - 1 - sy;
-        }
-        if flip.x {
-            sx = w - 1 - sx;
-        }
-        if flip.d {
-            std::mem::swap(&mut sx, &mut sy);
-            std::mem::swap(&mut w, &mut h);
-        }
-
-        if sx >= w || sy >= h {
-            return (None, None);
-        }
-
-        let (src_x, src_y) = match direction {
-            CardinalDirection::South => (sx, sy),
-            CardinalDirection::West => {
-                if w != height || h != width {
-                    return (None, None);
-                }
-                (sy, height - 1 - sx)
-            }
-            CardinalDirection::North => {
-                if w != width || h != height {
-                    return (None, None);
-                }
-                (width - 1 - sx, height - 1 - sy)
-            }
-            CardinalDirection::East => {
-                if w != height || h != width {
-                    return (None, None);
-                }
-                (width - 1 - sy, sx)
-            }
-        };
-
-        if src_x >= width || src_y >= height {
-            return (None, None);
-        }
-        (Some(src_x), Some(src_y))
-    }
-}
-
-#[derive(Component, Clone, Deserialize, Serialize, Debug)]
-/// interaction positions (offsets relative to the tile's anchor GlobalTilePos)
-pub struct InteractionZones(pub HashIdMap<InteractionZone>);
-impl InteractionZones {
-    pub fn from_seri(map: HashMap<String, InteractionZoneSeri>) -> Self {
-        let mut zones = HashIdMap::with_capacity(map.len());
-        for (id, seri) in map {
-            zones.overwrite(HashId::from(id), InteractionZone::new(seri));
-        }
-        Self(zones)
     }
     pub fn is_inside_interaction_zone(
         &self,
@@ -250,19 +113,46 @@ impl InteractionZones {
         let zone = self.0.get(zone_id).ok();
         zone.is_some_and(|zone| zone.is_inside_any(size_in_tiles, flip, direction, anchor_transf, client_transf))
     }
+    pub fn get_collision_mask(&self) -> Option<&InteractionZone> {
+        self.0.get(Self::COLLISION_MASK_HASHID).ok()
+    }
+    pub fn gather_zone_positions_for_hashid(
+        &self,
+        zone_id: HashId,
+        direction: CardinalDirection,
+        anchor_transf: Vec2,
+        out: &mut Vec<GlobalTilePos>,
+    ) {
+        let Some(zone) = self.0.get(zone_id).ok() else {
+            return;
+        };
+        zone.gather_zone_positions(direction, anchor_transf, out);
+    }
+    pub fn melee_default_zone() -> InteractionZone {
+        InteractionZone {
+            offset_positions: vec![GlobalTilePos::new(0, 1)],
+            radius_paired_w_offsets: Vec::new(),
+        }
+    }
+    pub fn collision_default_zone() -> InteractionZone {
+        InteractionZone {
+            offset_positions: vec![GlobalTilePos::new(0, 0)],
+            radius_paired_w_offsets: Vec::new(),
+        }
+    }
     pub fn melee_default() -> Self {
         let mut zones = HashIdMap::with_capacity(1);
-        zones.overwrite(
-            Self::MELEE_ATTACK,
-            InteractionZone::new(InteractionZoneSeri {
-                offset_positions: vec![(0, 1)],
-                radius_offset: Vec::new(),
-            }),
-        );
+        zones.overwrite(Self::MELEE_ATTACK, Self::melee_default_zone());
+        Self(zones)
+    }
+    pub fn collision_default() -> Self {
+        let mut zones = HashIdMap::with_capacity(1);
+        zones.overwrite(Self::COLLISION_MASK_HASHID, Self::collision_default_zone());
         Self(zones)
     }
     pub const ENTER: HashId = HashId::hash("enter");
     pub const MELEE_ATTACK: HashId = HashId::hash("melee_attack");
+    pub const COLLISION_MASK_HASHID: HashId = HashId::hash("collision_mask");
 }
 
 #[derive(Component, Clone, Deserialize, Serialize, Debug)]
@@ -315,7 +205,7 @@ impl InteractionZone {
         false
     }
 
-    pub fn gather_candidate_tiles_at(
+    pub fn gather_zone_positions(
         &self,
         direction: CardinalDirection,
         anchor_transf: Vec2,

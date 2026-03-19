@@ -24,7 +24,7 @@ pub struct BlockingTileParamSet<'w, 's> {
     tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), (With<Tile>, Without<Being>)>,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
     tile_tags: Query<'w, 's, &'static TagSet, (With<Tile>, Without<Being>)>,
-    tile_collision_masks: Query<'w, 's, &'static TiledCollisionMask, >,
+    tile_interaction_zones: Query<'w, 's, (&'static InteractionZones, &'static SizeInTiles), >,
     terrgen_states: Query<'w, 's, &'static TerrGenState, With<Chunk>>,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
 }
@@ -92,7 +92,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
     ) -> bool {
         if self
             .beings_at_gpos
-            .beings_at_pos(dim_ref, gpos)
+            .get_beings_at_pos(dim_ref, gpos)
             .iter()
             .any(|&ent| ent != being)
         {
@@ -132,18 +132,17 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 continue;
             }
 
-            let blocks_here = self
-                .tile_collision_masks
-                .get(ezero_ref.0)
-                .map(|mask| {
-                    mask.is_solid_at_world_pos_with_flip(
-                        *tile_origin,
-                        gpos,
-                        tile_flip.copied().unwrap_or_default(),
-                        direction.copied().unwrap_or_default(),
-                    )
-                })
-                .unwrap_or(false);
+            let Ok((interaction_zones, size_in_tiles)) = self.tile_interaction_zones.get(ezero_ref.0) else {
+                continue;
+            };
+            let blocks_here = interaction_zones.is_inside_interaction_zone(
+                InteractionZones::COLLISION_MASK_HASHID,
+                *size_in_tiles,
+                tile_origin.to_pixelpos(),
+                gpos.to_pixelpos(),
+                tile_flip.copied().unwrap_or_default(),
+                direction.copied().unwrap_or_default(),
+            );
             if blocks_here && self.will_despawn_query.get(tile_entity).is_err() {
                 return false;
             }
@@ -190,7 +189,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         if include_beings
             && self
                 .beings_at_gpos
-                .beings_at_pos(dim_ref, gpos)
+                .get_beings_at_pos(dim_ref, gpos)
                 .iter()
                 .any(|&ent| ent != being)
         {
@@ -201,7 +200,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         if can_phase {
             return false;
         }
-        
+
         let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos).to_vec();
 
         let mut all_tiles_failed = true;
@@ -217,16 +216,17 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 continue;
             }
 
-            let blocks_here = if let Ok(mask) = self.tile_collision_masks.get(ezero_ref.0) {
-                mask.is_solid_at_world_pos_with_flip(
-                    *tile_origin,
-                    gpos,
-                    tile_flip.copied().unwrap_or_default(),
-                    direction.copied().unwrap_or_default(),
-                )
-            } else {
-                false
+            let Ok((interaction_zones, size_in_tiles)) = self.tile_interaction_zones.get(ezero_ref.0) else {
+                continue;
             };
+            let blocks_here = interaction_zones.is_inside_interaction_zone(
+                InteractionZones::COLLISION_MASK_HASHID,
+                *size_in_tiles,
+                tile_origin.to_pixelpos(),
+                gpos.to_pixelpos(),
+                tile_flip.copied().unwrap_or_default(),
+                direction.copied().unwrap_or_default(),
+            );
             if blocks_here {
                 let Ok(_) = self.will_despawn_query.get(tile_entity) else {
                     return true;
@@ -332,7 +332,7 @@ pub struct EntitiesAtGposParamSet<'w> {
 
 impl<'w> EntitiesAtGposParamSet<'w> {
     pub fn gather_entities_at(&self, out: &mut Vec<Entity>, dim_ref: DimensionRef, gpos: GlobalTilePos) {
-        out.extend(self.beings_at_gpos.beings_at_pos(dim_ref, gpos).iter().copied());
+        out.extend(self.beings_at_gpos.get_beings_at_pos(dim_ref, gpos).iter().copied());
         out.extend(self.items_at_gpos.items_at_pos(dim_ref, gpos).iter().copied());
     }
 }

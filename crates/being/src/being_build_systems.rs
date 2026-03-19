@@ -3,11 +3,9 @@ use bevy::{
     ecs::{entity::EntityHashSet, entity_disabling::Disabled},
     prelude::*,
 };
-use bevy::platform::collections::HashMap;
 use common::{AnyDisabling, common_components::{SampleSpriteEnts, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_components::BelongsToFaction;
 use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteGlobalNormalDistResult, SpriteHoriNormalDist, SpriteHoriNormalDistResult, SpriteVertNormalDist, SpriteVertNormalDistResult}, game_common_timers::EntityZero};
-use tilemap_shared::{tilemap_seris::InteractionZoneSeri, InteractionZones};
 
 use crate::{
     being_components::Being,
@@ -28,17 +26,14 @@ pub fn build_beings_from_refs(
             Or<(Changed<BitRef>, Changed<RaceRef>)>,
         ),
     >,
-    mut beings_query: Query<
+    mut customer_query: Query<
         (
             Option<&BitRef>,
             Option<&RaceRef>,
-            Has<Being>,
             Has<SampleSpriteEnts>,
             Has<BodyTreeRef>,
             Has<BodyWeightedSamplerRef>,
             Has<SexRef>,
-            Has<TagSet>,
-            Option<&mut TagSet>,
         ),
         (Without<EntityZero>, Without<BeingInstTemplate>, AnyDisabling),
     >,
@@ -56,9 +51,8 @@ pub fn build_beings_from_refs(
         Option<&BodyWeightedSamplerRef>,
         Option<&BodyTreeRef>,
     ), With<Race>>,
-    str_ids: Query<&StrId>,
     mut removed_disabled: RemovedComponents<Disabled>,
-    mut beings_to_build: Local<Vec<Entity>>,
+    mut beings_to_build: Local<EntityHashSet>,
 ) {
     let mut sample_sprites_to_ins = Vec::new();
     let mut race_refs_to_ins = Vec::new();
@@ -70,27 +64,21 @@ pub fn build_beings_from_refs(
     beings_to_build.extend(removed_disabled.read());
     beings_to_build.extend(changed_beings.iter());
 
-
-
     let mut rng = rand::rng();
 
-    for being_ent in beings_to_build.drain(..) {
-        let Ok((bit_ref, race_ref, has_being, has_sample_sprites, has_body_tree_ref, has_body_sampler_ref, has_sex_ref, has_tags, tags)) = beings_query.get_mut(being_ent) else {
+    for being_ent in beings_to_build.drain() {
+        let Ok((bit_ref, race_ref, has_sample_sprites, has_body_tree_ref, has_body_sampler_ref, has_sex_ref, )) = customer_query.get_mut(being_ent) else {
             continue;
         };
         let is_reenabled_only = changed_beings.get(being_ent).is_err();
         if is_reenabled_only
-            && has_being
             && has_sample_sprites
             && (has_body_tree_ref || has_body_sampler_ref)
             && has_sex_ref
-            && has_tags
         {
             continue;
         }
-        if !has_being {
-            cmd.entity(being_ent).try_insert(Being);
-        }
+        cmd.entity(being_ent).try_insert_if_new(Being);
 
         let mut effective_race_ref = race_ref.copied();
         let mut has_sample_sprites_now = has_sample_sprites;
@@ -166,74 +154,16 @@ pub fn build_beings_from_refs(
                 }
             }
         }
-
-        let race_tag = effective_race_ref.and_then(|race_ref| str_ids.get(race_ref.0).ok());
-        let bit_tag = bit_ref.and_then(|bit_ref| str_ids.get(bit_ref.0).ok());
-        let Some(tag) = race_tag.or(bit_tag) else {
-            continue;
-        };
-        let Some(mut tags) = tags else {
-            let mut new_tags = TagSet::default();
-            new_tags.insert(tag.as_str());
-            if let Some(bit_tag) = bit_tag {
-                new_tags.insert(bit_tag.as_str());
-            }
-            if let Some(race_tag) = race_tag {
-                new_tags.insert(race_tag.as_str());
-            }
-            cmd.entity(being_ent).try_insert(new_tags);
-            continue;
-        };
-        tags.insert(tag.as_str());
-        if let Some(bit_tag) = bit_tag {
-            tags.insert(bit_tag.as_str());
-        }
-        if let Some(race_tag) = race_tag {
-            tags.insert(race_tag.as_str());
-        }
     }
-
-    cmd.try_insert_batch(std::mem::take(&mut sample_sprites_to_ins));
-    cmd.try_insert_batch(std::mem::take(&mut race_refs_to_ins));
-    cmd.try_insert_batch(std::mem::take(&mut body_sampler_to_ins));
-    cmd.try_insert_batch_if_new(std::mem::take(&mut belongs_to_fac_refs_to_ins));
-    cmd.try_insert_batch_if_new(std::mem::take(&mut sex_refs_to_ins));
-}
-
-pub fn sync_melee_interaction_zone_from_sources(
-    mut cmd: Commands,
-    changed_beings: Query<
-        Entity,
-        (With<Being>, Or<(Added<Being>, Changed<BitRef>, Changed<RaceRef>)>),
-    >,
-    beings: Query<
-        (Option<&BitRef>, Option<&RaceRef>),
-        (With<Being>, AnyDisabling),
-    >,
-    bit_zones: Query<&InteractionZones>,
-    race_zones: Query<&InteractionZones, With<Race>>,
-    mut removed_disabled: RemovedComponents<Disabled>,
-    mut to_iter: Local<Vec<Entity>>,
-) {
-    to_iter.reserve(removed_disabled.len() + changed_beings.iter().size_hint().0);
-    to_iter.extend(removed_disabled.read());
-    to_iter.extend(changed_beings.iter());
-
-    for being_ent in to_iter.drain(..) {
-        let Ok((bit_ref, race_ref)) = beings.get(being_ent) else {
-            continue;
-        };
-        let zones = bit_ref
-            .and_then(|bit_ref| bit_zones.get(bit_ref.0).ok())
-            .or_else(|| race_ref.and_then(|race_ref| race_zones.get(race_ref.0).ok()))
-            .cloned()
-            .unwrap_or_else(InteractionZones::melee_default);
-        cmd.entity(being_ent).try_insert(zones);
-    }
+    cmd.try_insert_batch(sample_sprites_to_ins);
+    cmd.try_insert_batch(race_refs_to_ins);
+    cmd.try_insert_batch(body_sampler_to_ins);
+    cmd.try_insert_batch_if_new(belongs_to_fac_refs_to_ins);
+    cmd.try_insert_batch_if_new(sex_refs_to_ins);
 }
 
 #[allow(unused_parens)]
-pub fn sample_sprite_normal_variations(
+pub fn sample_sprite_normal_size_variations(
     mut cmd: Commands,
     changed_beings: Query<Entity, (Or<(Changed<BitRef>, Changed<RaceRef>)>, With<Being>)>,
     beings_to_sample: Query<

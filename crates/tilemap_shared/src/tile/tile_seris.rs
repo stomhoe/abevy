@@ -8,6 +8,42 @@ pub struct InteractionZoneSeri {
     #[serde(default)]
     pub radius_offset: Vec<(f32, (f32, f32))>,
 }
+impl InteractionZoneSeri {
+    pub fn sentinel() -> Self {
+        Self {
+            offset_positions: Vec::new(),
+            radius_offset: vec![(f32::NAN, (f32::NAN, f32::NAN))],
+        }
+    }
+    pub fn sentinel_melee_interaction_zone() -> Self { Self::sentinel() }
+    pub fn sentinel_collision_zone() -> Self { Self::sentinel() }
+    pub fn is_sentinel(&self) -> bool {
+        self.offset_positions.is_empty()
+            && self.radius_offset.len() == 1
+            && self.radius_offset[0].0.is_nan()
+            && self.radius_offset[0].1.0.is_nan()
+            && self.radius_offset[0].1.1.is_nan()
+    }
+    pub fn default_collision_zone() -> Self {
+        Self {
+            offset_positions: vec![(0, 0)],
+            radius_offset: Vec::new(),
+        }
+    }
+    pub fn default_melee_interaction_zone() -> Self {
+        Self {
+            offset_positions: vec![(0, 1)],
+            radius_offset: Vec::new(),
+        }
+    }
+}
+
+pub fn sentinel_melee_interaction_zone() -> InteractionZoneSeri {
+    InteractionZoneSeri::sentinel_melee_interaction_zone()
+}
+pub fn sentinel_collision_zone() -> InteractionZoneSeri {
+    InteractionZoneSeri::sentinel_collision_zone()
+}
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct TerrblParamsSeri {

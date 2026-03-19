@@ -67,8 +67,8 @@ pub struct SpriteConfigSeri {
     pub offset4children: HashMap<String, (f32, f32, String)>,
     #[serde(default)]
     pub exclude_from_sys: bool,
-    #[serde(default = "default_base_movement_speed")]
-    pub base_movement_speed: f32,
+    #[serde(default = "default_baseline_move_speed")]
+    pub baseline_move_speed: f32,
     #[serde(default)]
     pub exclude_from_normal_size_modifier: bool,
     #[serde(default)]
@@ -92,7 +92,7 @@ pub struct SpriteConfigSeri {
 }
 
 fn default_scale_2d() -> (f32, f32) { (1.0, 1.0) }
-fn default_base_movement_speed() -> f32 { 0.0 }
+fn default_baseline_move_speed() -> f32 { 0.0 }
 fn default_animation_sfx_every_n_frame_changes() -> f32 { 1.0 }
 fn default_sfx_interval_secs() -> f32 { 0.35 }
 fn default_fallback_scalar() -> f32 { f32::NAN }

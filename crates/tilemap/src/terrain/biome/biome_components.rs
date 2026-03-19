@@ -8,6 +8,5 @@ use serde::{Deserialize, Serialize};
 #[require(AssetScoped, Replicated, Prefix::trunc("Biome"), HotReload)]
 pub struct Biome;
 
-#[derive(Component, Debug, Clone, Default, Deserialize, Serialize, bevy::ecs::entity::MapEntities)]
-#[component(map_entities)]
-pub struct BiomePackSampler(#[entities] pub EntityWeightedSampler);
+#[derive(Component, Debug, Clone, Default, )]
+pub struct SpawnablesPerBiome(pub EntityWeightedSampler);

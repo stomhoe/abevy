@@ -16,6 +16,7 @@ use common::file_logging::file_log;
 use common::log_targets::WILDLIFE_SYSTEM;
 use movement::movement_components::GridLockedMovement;
 use param_sets::BlockingTileParamSet;
+use tilemap::terrain::biome::prelude::SpawnablesPerBiome;
 use tilemap::{
     chunking::{
         chunking_components::{Chunk, MacroChunk},
@@ -24,7 +25,7 @@ use tilemap::{
     },
     terrain::terrgen_messages::{ChunkTerrainBuilt, MacroChunkBiomeSampled, RequestMacroChunkBiomeSampling},
 };
-use tilemap::terrain::biome::biome_components::BiomePackSampler;
+
 use tilemap_shared::{
     BlacklistedSpawnTileTags,
     ChunkPos,
@@ -63,7 +64,7 @@ struct SampledNaturalPackCenter {
 #[derive(SystemParam)]
 pub struct NaturalWildlifeSpawnQueries<'w, 's> {
     macro_chunk_query: Query<'w, 's, (&'static DimensionRef, &'static MacroChunkPos, &'static BiomeDistribution, &'static MacroChunkBiomeSamplingState), With<MacroChunk>>,
-    biome_pack_samplers: Query<'w, 's, &'static BiomePackSampler>,
+    biome_pack_samplers: Query<'w, 's, &'static SpawnablesPerBiome>,
     pack_being_samplers: Query<'w, 's, &'static PackBeingSampler>,
     pack_min_dists_query: Query<'w, 's, &'static PackMinDistsToPacksOrRaces>,
     bit_race_query: Query<'w, 's, &'static RaceRef>,
@@ -519,4 +520,3 @@ pub fn watched_chunk_keys(
         .into_iter()
         .map(move |offset| (dim_ref, ChunkPos(home_chunk.0 + offset)))
 }
-

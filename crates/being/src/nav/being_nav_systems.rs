@@ -4,10 +4,8 @@ use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
 use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks};
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use common::log_targets::BEING_SYSTEM;
-use movement::movement_components::SpeedMagnitude;
 use param_sets::BlockingTileParamSet;
-use tilemap::chunking::chunking_resources::AaChunkRangeSettings;
+use tilemap::chunking::chunking_resources::LoadChunksAround;
 
 use super::being_nav_resources::AiNavGrids;
 use super::being_nav_structs::{AiNavGridCache, SyncAiNavGridState};
@@ -17,7 +15,7 @@ use super::being_nav_structs::{AiNavGridCache, SyncAiNavGridState};
 pub fn sync_ai_nav_grids(
     time: Res<Time>,
     loaded_chunks: Res<LoadedChunks>,
-    chunk_range: Res<AaChunkRangeSettings>,
+    chunk_range: Res<LoadChunksAround>,
     mut param_set: BlockingTileParamSet,
     chasers_query: Query<
         (

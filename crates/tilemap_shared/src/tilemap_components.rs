@@ -27,8 +27,12 @@ impl Default for GlobalGenSettings {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct SnapTransformToGpos;
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Default)]
+pub enum SnapTransformToGpos {
+    #[default]
+    OnChange,
+    OnAdd,
+}
 
 #[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq, )]
 #[relationship(relationship_target = Tilemaps)]

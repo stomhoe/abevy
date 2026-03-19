@@ -6,7 +6,7 @@ use common::{
 use game_common::game_common_components::EntityZero;
 
 use crate::terrain::biome::{
-    biome_components::{Biome, BiomePackSampler},
+    biome_components::{Biome, SpawnablesPerBiome},
     biome_resources::*,
 };
 
@@ -28,7 +28,7 @@ pub fn init_biomes(
             cmd.spawn_empty().id(),
             (
                 Biome,
-                BiomePackSampler::default(),
+                SpawnablesPerBiome::default(),
                 EntityZero,
                 str_id,
             ),

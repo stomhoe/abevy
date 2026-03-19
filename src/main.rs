@@ -1,4 +1,3 @@
-#![feature(inherent_associated_types)]
 
 use bevy::{log::LogPlugin, prelude::*,};
 use avian2d::prelude::PhysicsPlugins;
@@ -29,8 +28,6 @@ struct InspectorVisibility(bool);
 fn build_filter() -> String {
     format!(
         "info,\
-        {}={},\
-        {}={},\
         {}={},\
         {}={},\
         {}={},\
@@ -123,9 +120,8 @@ fn build_filter() -> String {
 
         log_targets::DEBUG, DEBUG,
 
-        log_targets::Z_LEVEL_SYSTEM, INFO,
         log_targets::MOVEMENT_SYSTEM, INFO,
-        "sprite_sampler_systems", TRACE,
+        log_targets::SPRITE_SAMPLER_SYSTEM, TRACE,
         log_targets::SPRITE_INIT, WARN,
         log_targets::SPRITE_BUILD, INFO,
         log_targets::SPRITE_SYSTEM, WARN,
@@ -146,7 +142,6 @@ fn build_filter() -> String {
         log_targets::CONTROL, WARN,
         log_targets::BEING_SYSTEM, DEBUG,
         log_targets::FACTION_SYSTEM, WARN,
-        log_targets::Z_SORT_SYSTEM, INFO,
         log_targets::ENTITY_MAP_SYSTEM, WARN,
         log_targets::INSPECTOR, WARN,
         log_targets::RIVER_SYSTEM, WARN,

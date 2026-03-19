@@ -9,14 +9,14 @@ use multiplayer_shared::multiplayer_events::{HostStartedGameplay, AttemptHostSer
 use player::{player_components::*, player_resources::PlayerData};
 use crate::lobby::lobby_components::*;
 
-pub fn host_setup(start_server: On<AttemptHostServer>, cmd: Commands, ) {
+pub fn host_setup(_: On<AttemptHostServer>, _cmd: Commands, ) {
 
 }
 
 
 
 #[allow(unused_parens, dead_code)]
-pub fn host_on_server_start_failed(commands: Commands){
+pub fn host_on_server_start_failed(_cmd: Commands){
 
 }
 

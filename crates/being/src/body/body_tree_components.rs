@@ -1,10 +1,8 @@
-use bevy::ecs::entity::{EntityHashSet, MapEntities};
-#[allow(unused_imports)]
+#[allow(unused_imports)]use bevy::ecs::entity::{EntityHashSet, MapEntities};
 use bevy::prelude::*;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::common_components::*;
-use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 pub use being_shared::BodyTreeWeightSum;
 
@@ -52,7 +50,7 @@ pub struct BodySums {
     pub manip_str: f32,
 }
 
-#[derive(Debug, Deserialize, Serialize, Copy, Clone, Message)]
+#[derive(Debug, Copy, Clone, Message)]
 pub struct IncomingDamage {
     pub body: Entity,
     pub amount: f32,

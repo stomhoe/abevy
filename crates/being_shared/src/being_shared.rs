@@ -105,9 +105,6 @@ pub struct WallPhaser;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BodyCollisionRadius(pub u32);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct BodyTreeWeightSum(pub f32);
 
 #[derive(Component, Debug, Clone, Copy, Hash, PartialEq)]
@@ -117,7 +114,7 @@ pub struct MainCharacter{#[entities] created_by: Entity}
 pub struct InfiniteMorale;
 
 #[derive(Component, Default, Deserialize, Serialize, Clone)]
-pub struct PlayerDirectControllable;
+pub struct DirectControllable;
 
 #[derive(Component, MapEntities, Clone)]
 //no insertar este component si no se quiere restringir quien puede tomar control
@@ -140,7 +137,7 @@ pub struct LearningMultiplier(pub EntityHashMap<f32>);
 
 #[derive(Component, Debug, Deserialize, Serialize, Reflect, MapEntities, Copy, Clone, )]
 #[relationship(relationship_target = CreatedCharacters)]
-#[require(PlayerDirectControllable, )]
+#[require(DirectControllable, )]
 pub struct CharacterCreatedBy {
     #[relationship] #[entities] pub player: Entity,
 }
@@ -222,6 +219,11 @@ pub struct FactionLeader {
     pub being: Entity,
 }
 
-pub type NonUnloadedBeing = (With<Being>, Without<Unloaded>);
 
 pub type PlayerBeing = (With<Being>, With<BelongsToAPlayerFaction>);
+
+pub type LoadedBeing = (With<Being>, Without<Unloaded>);
+pub type UnloadedBeing = (With<Being>, With<Unloaded>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct PackMemberRank;

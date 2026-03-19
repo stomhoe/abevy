@@ -11,7 +11,7 @@
         "lava_tile_id": ["lava"],
         "boulder_sampler_id": ["boulder_sampler"],
         "boulder_frequency": ["0.025"],
-        "delete.floor_tile_id.targeted_tags": ["floor"],
+        "disable_terrgen.floor_tile_id": ["true"],
         "claim_square_min_side_length": ["8"],
         "claim_square_max_side_length": ["10"],
         "claim_square_normal_mean": ["9.0"],

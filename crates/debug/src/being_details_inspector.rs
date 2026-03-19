@@ -10,7 +10,7 @@ use item_shared::{item_components::{HeldItems, SlottedItemHolder}, ItemOperation
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::*;
 use movement::movement_components::*;
-use player::player_components::{Mine, Player};
+use player::{prelude::*};
 use tilemap_shared::CardinalDirection;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
@@ -74,7 +74,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut computed_by_query = world.query::<&ComputedBy>();
     let mut computed_locally_query = world.query::<&ComputedLocally>();
     let mut player_actions_query =
-        world.query_filtered::<&Actions<BeingDirectControlInputContext>, (With<Mine>, With<Player>)>();
+        world.query_filtered::<&Actions<BeingDirectControlInputContext>, (MyPlayer)>();
     let mut player_move_action_query = world.query::<&Action<DcWasdAction>>();
     let mut grid_move_query = world.query::<&GridLockedMovement>();
     let mut gpos_query = world.query::<&tilemap_shared::GlobalTilePos>();

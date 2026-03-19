@@ -3,7 +3,6 @@ use crate::{
     tilemap_resources::*,
 };
 use ::sprite_shared::prelude::*;
-use bevy::ecs::entity::EntityHashSet;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use common::common_tag_components::TagSet;
@@ -14,7 +13,7 @@ pub fn temp_tile_mass_spawn_bundle(ezero_ref: EntityZeroRef, dim_ref: DimensionR
     TileMassSpawnBundle {
         ezero_ref,
         gpos,
-        snap_to_gpos: SnapTransformToGpos,
+        snap_to_gpos: SnapTransformToGpos::OnChange,
         dim_ref,
         tile_bundle: TileBundle::default(),
         initial_pos: InitialPos::default(),

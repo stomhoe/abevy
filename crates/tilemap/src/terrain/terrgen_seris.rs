@@ -66,7 +66,6 @@ impl TerrgenSettingsSeri {
 
 fn default_global_world_freq() -> f32 { 0.02 }
 fn default_global_tectonic_frequency() -> f32 { 0.02 }
-fn default_global_structure_build_timeout_secs() -> f64 { 4.0 }
 fn default_frequency() -> f32 { 0.01 }
 fn default_noise_type() -> String { "OpenSimplex2".to_string() }
 fn default_fractal_type() -> String { "None".to_string() }

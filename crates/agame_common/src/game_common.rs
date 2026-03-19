@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::map::TilemapId;
 use bevy_replicon::prelude::*;
 #[allow(unused_imports, )]
-use common::{AppRegisterAndReplicateExt, common_states::*};
+use common::{common_states::*};
 
 use crate::{
     game_common_components::*, game_common_samplers::*, game_common_states::*,
@@ -93,16 +93,16 @@ pub fn plugin(app: &mut App) {
     .replicate::<Description>()
     .replicate::<EntityZero>()
     .replicate::<EntityZeroRef>()
-    .replicate::<CappedNormalDist>()
+
     .replicate::<Directionable>()
-    .replicate::<EntityWeightedSampler>()
-    .replicate::<EntityCountMapWeightedSampler>()
+    //.replicate::<EntityCountMapWeightedSampler>()
     .replicate::<Persisted>()
     .replicate::<Health>()
     .replicate::<Dead>()
     .replicate::<DespawnOnDeath>()
-    .replicate::<ScaleHpAndStrengthWithSize>()
+    .replicate::<ScaleHpAndStrengthWithSampledSize>()
     .replicate_filtered::<ChildOf, Without<TilemapId>>()
+    .replicate::<EntityWeightedSampler>()
 
     .replicate_once::<GlobalTransform>()
     .replicate_once::<Transform>()

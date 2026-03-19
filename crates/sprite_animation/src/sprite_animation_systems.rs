@@ -90,7 +90,7 @@ pub fn switch_or_readjust_sprite_animation(
                 continue;
             };
 
-            let anim_type = AnimType {
+            let anim_type = AnimType {//is OK
                 direction: if directionable { direction.copied().unwrap_or_default() } else { CardinalDirection::default() },
                 moving: if movement_based { moving.copied().unwrap_or_default() } else { MoveAnimActive::default() },
                 grounding: if grounding_based { grounding.copied().unwrap_or_default() } else { Grounding::default() },

@@ -9,7 +9,7 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use common::log_targets::TILE_INIT;
 
-use game_common::{define_weightedsampler, game_common_components::*, game_common_samplers::GlobalTilePosWeightedSampler};
+use game_common::{define_weightedsampler, game_common_components::*, game_common_samplers::GlobalTilePosWeightedSampler, impl_weighted_sampler_serialization};
 
 use ::tilemap_shared::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -32,6 +32,7 @@ pub type TileStrId = StrId;
 pub struct TileChildSprite;
 
 define_weightedsampler!(TileStepSfx, Vec<String>, "TileStepSfx");
+impl_weighted_sampler_serialization!(TileStepSfx, Vec<String>);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct TileStepSfxConfig {
@@ -215,7 +216,7 @@ impl AdjRetexConfig {
 
 
 
-#[derive(Component, Debug, Clone, Deserialize, Serialize, MapEntities)]
+#[derive(Component, Debug, Clone, )]
 pub struct PortalRecipe {
     #[entities]
     pub dest_dimension: Entity,

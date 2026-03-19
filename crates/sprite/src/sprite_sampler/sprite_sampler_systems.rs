@@ -24,7 +24,7 @@ pub fn replace_sampler_string_ids_by_entities(
     let mut sample_sprites_to_insert = Vec::new();
     resolved_entities.clear();
     entities_to_process.clear();
-    
+
     entities_to_process.extend(removed_disabled.read());
     entities_to_process.extend(changed_query.iter());
     if entities_to_process.is_empty() {
@@ -169,8 +169,4 @@ fn sample_from_entity_recursive(
         debug!(target: "sprite_sampler_systems", "Resolved entity {:?} to sprite config", ent);
         sampled_configs.insert(ent);
     }
-}
-
-fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>, entities: &mut EntityHashSet) {
-    entities.extend(removed_disabled.read());
 }

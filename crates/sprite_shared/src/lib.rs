@@ -1,4 +1,3 @@
-pub use sprite_shared::*;
 
 pub mod sprite_components;
 pub mod sprite_resources;

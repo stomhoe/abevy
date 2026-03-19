@@ -13,7 +13,7 @@
         "claim_square_max_side_length": ["11"],
         "claim_square_normal_mean": ["7.0"],
         "claim_square_normal_std_dev": ["3.0"],
-        "delete.floor_tile_id.targeted_tags": ["floor"],
+        "disable_terrgen.floor_tile_id": ["true"],
 
     },
     // pdisk_mindist_and_tag: [

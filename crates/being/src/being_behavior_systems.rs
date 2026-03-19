@@ -14,7 +14,6 @@ use bevy::{
 use common::AnyDisabling;
 use common::common_components::StrId;
 use common::common_tag_components::TagSet;
-use rand::Rng;
 use tilemap_shared::GlobalTilePos;
 
 pub fn add_predator_behavior_components(

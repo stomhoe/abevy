@@ -1,5 +1,4 @@
 use bevy::{ecs::entity::MapEntities, platform::collections::HashMap, prelude::*};
-use common::common_components::*;
 
 use splines::{Interpolation, Key, Spline};
 use std::hash::Hash;

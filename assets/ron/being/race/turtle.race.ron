@@ -34,9 +34,9 @@
         speed_max: 0.28,
         avoid: [],
     ),
-    body_tree_or_sampler: "turtle",
-    size_variation: (min: 0.8, max: 1.2, mean: 1.0, std_dev: 0.1),
-    spawn_pack_size_normal_dist: (min: 1.0, max: 1.0, mean: 1.0, std_dev: 0.0),
+    body_or_sampler: "turtle",
+    size_variation: (min_dev: 0.251, max_dev: 0.251, mean: 1.0, std_dev: 0.1),
+    spawn_pack_size_normal_dist: (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0),
     biome_affinity: {
         "beach": 1.0,
     },

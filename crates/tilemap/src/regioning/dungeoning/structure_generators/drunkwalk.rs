@@ -22,6 +22,12 @@ use super::super::dungeoning_carve_helpers::{
 use super::super::dungeoning_ids::DRUNKWALK;
 use super::super::dungeoning_utils::{extend_occupied_gpos, resolve_sampled_tile_entity_from_sampler};
 
+#[derive(Clone, Copy)]
+pub struct Chamber {
+    center_x: usize,
+    center_y: usize,
+}
+
 #[allow(unused_parens)]
 pub fn drunkwalk_dungeon_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,
@@ -33,11 +39,18 @@ pub fn drunkwalk_dungeon_building_system(
     ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
     dimension_hash: Query<&HashId>,
     settings: Query<&GlobalGenSettings>,
+    mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
+    mut chambers: Local<Vec<Chamber>>,
+    mut candidates: Local<Vec<(usize, usize)>>,
+    mut tiles4chunk: Local<TilesFromBuilder>,
 ) {
     let Ok(settings) = settings.single() else {
         return;
     };
-    let mut compliances_to_emit = Vec::new();
+    compliances_to_emit.clear();
+    chambers.clear();
+    candidates.clear();
+    tiles4chunk.clear();
     for build_order in reader.read() {
         let Ok((structured_gen_cfg,)) = structured_gens.get(build_order.structured_gen_cfg_ent)
         else {
@@ -204,9 +217,6 @@ pub fn drunkwalk_dungeon_building_system(
         }
 
         // Larger, more ambitious chambers
-        #[derive(Clone, Copy)]
-        struct Chamber { center_x: usize, center_y: usize }
-        let mut chambers: Vec<Chamber> = Vec::new();
         let chamber_count = rng.random_range(6..=12);
         for _ in 0..chamber_count {
             let min_center_x = carve_margin + 8;
@@ -439,7 +449,6 @@ pub fn drunkwalk_dungeon_building_system(
                 .ok()
                 .and_then(|sampler_ent| sampler_query.get(sampler_ent).ok());
             if let Some(boulder_sampler) = boulder_sampler {
-                let mut candidates = Vec::new();
                 for y in carve_margin..tile_height - carve_margin {
                     let row_idx = y * tile_width;
                     for x in carve_margin..tile_width - carve_margin {
@@ -455,7 +464,7 @@ pub fn drunkwalk_dungeon_building_system(
                 let mut blocked_map = vec![false; tile_map_size];
                 let padding = 1usize;
 
-                for (x, y) in candidates {
+                for (x, y) in candidates.iter().copied() {
                     if placed >= target_count {
                         break;
                     }
@@ -517,20 +526,14 @@ pub fn drunkwalk_dungeon_building_system(
         }
 
         let floor_delete_other_tiles = delete_other_tiles_by_tile_id.get("floor_tile_id");
-        let wall_delete_other_tiles = delete_other_tiles_by_tile_id.get("wall_tile_id");
         let lava_delete_other_tiles = delete_other_tiles_by_tile_id.get("lava_tile_id");
         let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
-        let disable_wall_terrgen = terrgen_disable_by_tile_id.should_disable_for("wall_tile_id");
         let disable_lava_terrgen = terrgen_disable_by_tile_id.should_disable_for("lava_tile_id");
-        let disable_boulder_terrgen = terrgen_disable_by_tile_id.should_disable_for("boulder_sampler_id");
-        let mut floor_tiles = 0usize;
-        let mut wall_tiles = 0usize;
-        let mut lava_tiles = 0usize;
-        let mut boulder_tiles = 0usize;
+
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
         let mut terrgen_disabled_gpos_for_chunks = Vec::with_capacity(chunk_positions.len());
         for &chunk_pos in chunk_positions {
-            let mut tiles4chunk: TilesFromBuilder = Vec::new();
+            tiles4chunk.clear();
             let mut blocked_gpos = HashSet::default();
             for tile_pos in chunk_pos.get_tilepositions_within_chunk() {
                 let local_tile = tile_pos.0 - origin_tile.0;
@@ -545,46 +548,32 @@ pub fn drunkwalk_dungeon_building_system(
                 let map_idx = idx_y * tile_width + idx_x;
                 if let Some(boulder_entity) = boulder_anchor_map[map_idx] {
                     if floor_map[map_idx] {
-                        floor_tiles += 1;
                         tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                         if disable_floor_terrgen {
                             let size = ezero_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
                             extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                         }
                     }
-                    boulder_tiles += 1;
                     tiles4chunk.push((tile_pos, boulder_entity, None));
-                    if disable_boulder_terrgen {
-                        let size = ezero_size_query.get(boulder_entity.0).copied().unwrap_or_default().inner();
-                        extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
-                    }
                 } else if hazard_map[map_idx] {
-                    lava_tiles += 1;
                     tiles4chunk.push((tile_pos, lava_entity, lava_delete_other_tiles.clone()));
                     if disable_lava_terrgen {
                         let size = ezero_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                     }
                 } else if floor_map[map_idx] {
-                    floor_tiles += 1;
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
                         let size = ezero_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                     }
                 } else if wall_map[map_idx] {
-                    wall_tiles += 1;
-                    tiles4chunk.push((tile_pos, wall_entity, wall_delete_other_tiles.clone()));
-                    if disable_wall_terrgen {
-                        let size = ezero_size_query.get(wall_entity.0).copied().unwrap_or_default().inner();
-                        extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
-                    }
+                    tiles4chunk.push((tile_pos, wall_entity, None));
                 }
             }
-            chunk_tiles.push((chunk_pos, tiles4chunk));
+            chunk_tiles.push((chunk_pos, std::mem::take(&mut *tiles4chunk)));
             terrgen_disabled_gpos_for_chunks.push((chunk_pos, blocked_gpos));
         }
-        debug!(target: DUNGEONING_SYSTEM, "structure={} floor_delete={:?} floor_tiles={} wall_delete={:?} wall_tiles={} lava_tile={:?} lava_delete={:?} lava_tiles={} boulder_tiles={}", structured_gen_cfg.structure_id(), floor_delete_other_tiles, floor_tiles, wall_delete_other_tiles, wall_tiles, lava_tile_id, lava_delete_other_tiles, lava_tiles, boulder_tiles);
         compliances_to_emit.push(StructureBuildCompliance {
             i: build_order.i,
             structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
@@ -594,5 +583,5 @@ pub fn drunkwalk_dungeon_building_system(
             terrgen_disabled_for_chunks: Vec::new(),
         });
     }
-    writer.write_batch(compliances_to_emit);
+    writer.write_batch(compliances_to_emit.drain(..));
 }

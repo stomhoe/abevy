@@ -8,10 +8,10 @@
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
 
-    body_tree_or_sampler: "",
+    body_or_sampler: "",
     recruitment_difficulty: None,
 
     whitelisted_tiles_for_spawning: [],
     blacklisted_tiles_for_spawning: [],
-    size_variation: Some((min: 0.7, max: 2.0, mean: 1.0, std_dev: 0.1)),
+    size_variation: Some((min_dev: 0.30000000000000004, max_dev: 1.0, mean: 1.0, std_dev: 0.1)),
 )

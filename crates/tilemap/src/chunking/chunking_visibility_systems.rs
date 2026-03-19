@@ -14,7 +14,7 @@ pub fn update_chunk_visib(
     mut reader: MessageReader<RecheckChunksVisibility>,
     camera_query: Query<(&GlobalTransform, &DimensionRef), With<CameraTarget>>,
     mut chunks_query: Query<(&mut Visibility, &ChunkPos, &DimensionRef, &Children), With<Chunk>>,
-    chunkrange_settings: Res<AaChunkRangeSettings>,
+    chunkrange_settings: Res<ActivateChunksAround>,
     mut event_writer: MessageWriter<DrawTilemap>,
     mut to_draw: Local<Vec<DrawTilemap>>,
 ) {

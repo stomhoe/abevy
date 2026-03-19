@@ -66,7 +66,7 @@
     img_path: "texture/being/npc/dungeon/croc0.png",
     clips: [
         (
-            target: 2,
+            target: 3,
             is_row: true,
             partial: Some((0, 0)),
         ),
@@ -80,7 +80,7 @@
     img_path: "texture/being/npc/dungeon/croc0.png",
     clips: [
         (
-            target: 2,
+            target: 3,
             is_row: true,
             start_frame: Some(1),
         ),
@@ -96,7 +96,7 @@
     img_path: "texture/being/npc/dungeon/croc0.png",
     clips: [
         (
-            target: 3,
+            target: 2,
             is_row: true,
             partial: Some((0, 0)),
         ),
@@ -110,7 +110,7 @@
     img_path: "texture/being/npc/dungeon/croc0.png",
     clips: [
         (
-            target: 3,
+            target: 2,
             is_row: true,
             start_frame: Some(1),
         ),

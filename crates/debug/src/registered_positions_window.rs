@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 
-use common::common_components::StrId;
 use tilemap::tilemap_resources::ImportantRegisteredPositions;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};

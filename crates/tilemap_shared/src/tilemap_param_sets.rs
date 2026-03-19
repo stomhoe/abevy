@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use common::{common_components::Tag, common_tag_components::TagSet};
 
-use crate::{DimensionRef, GlobalTilePos, HashIdToTexIndex, LoadedChunks, SizeInTiles, SpriteTilesAtGpos, Tilemaps};
+use crate::{DimensionRef, GlobalTilePos, HashIdToTexIndex, InteractionZones, LoadedChunks, SpriteTilesAtGpos, Tilemaps};
 
 #[derive(SystemParam)]
 #[allow(unused_parens, )]
@@ -92,7 +92,13 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
         &self.to_drain
     }
 
-    pub fn insert_spritetile(&mut self, tile_ent: Entity, dim: DimensionRef, gpos: GlobalTilePos, size: SizeInTiles) {
-        self.spritetiles_at_gpos.insert(tile_ent, dim, gpos, size);
+    pub fn insert_spritetile(
+        &mut self,
+        tile_ent: Entity,
+        dim: DimensionRef,
+        gpos: GlobalTilePos,
+        interaction_zones: Option<&InteractionZones>,
+    ) {
+        self.spritetiles_at_gpos.insert(tile_ent, dim, gpos, interaction_zones);
     }
 }

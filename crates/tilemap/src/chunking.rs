@@ -26,51 +26,48 @@ use crate::{ChunkSystems, };
 pub fn plugin(app: &mut App) {
     app
     .add_systems(Update, (
-    (
-        //spawn systems
         update_activating_chunk_positions
             .after(despawn_chunks)
-            .run_if(on_message::<ReactivateChunksFor>),
+            .run_if(on_message::<UpdateActivatedChunkPos>),
         spawn_activated_chunks
             .after(update_activating_chunk_positions)
-            .run_if(on_message::<ReactivateChunksFor>),//DON'T TOUCH
-        activate_chunks_every_second,
+            .run_if(on_message::<UpdateActivatedChunkPos>),//DON'T TOUCH
         on_message_signal_despawn_all_chunks
             .run_if(on_message::<ForceAllChunksDespawn>),
+    ).in_set(ChunkSystems))
 
-        //despawn systems
+    .add_systems(Update, (
         periodically_check_despawn_unreferenced_chunks.run_if(on_timer(Duration::from_secs(2))),
         detect_activators_with_pos_changes,
+        despawn_chunks.after(PreChunkDespawnSystems),
+        rem_outofrange_chunks_from_activators,
+    ).in_set(ChunkSystems))
 
-        //visibility systems
+    .add_systems(Update, (
         update_chunk_visib
             .after(detect_camera_change_pos_visib)
             .after(periodically_recheck_chunk_visibility)
             .run_if(on_message::<RecheckChunksVisibility>),
         detect_camera_change_pos_visib,
         periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
-
         update_within_chunk,
-
-    ).in_set(ChunkSystems),
-        despawn_chunks.after(PreChunkDespawnSystems),
-        rem_outofrange_chunks_from_activators,
-
-    ))
-    .init_resource::<AaChunkRangeSettings>()
+    ).in_set(ChunkSystems))
+    .init_resource::<ActivateChunksAround>()
     .init_resource::<LoadedChunks>()
     .init_resource::<LoadedMacroChunks>()
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), load_chunking_settings)
 
     .add_observer(on_chunk_despawn)
 
-    .add_message::<CheckChunkDespawn>()
-    .add_message::<ReactivateChunksFor>()
+    .add_message::<CheckIfChunkShouldDespawn>()
+    .add_message::<UpdateActivatedChunkPos>()
     .add_message::<MacroChunkLoaded>()
     .add_message::<RecheckChunksVisibility>()
-    .add_message::<ForceChunkDespawn>()
+    .add_message::<MakeChunkDespawn>()
     .add_message::<ForceAllChunksDespawn>()
-    .add_message::<BeingChunkDespawned>()
+    .add_message::<ChunkWithBeingsWantsDespawn>()
+    .add_message::<ChunkLoaded>()
+
 
     ;
 }

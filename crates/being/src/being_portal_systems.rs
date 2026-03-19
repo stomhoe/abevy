@@ -36,10 +36,10 @@ pub fn cross_portal(
         )>,
 ) {
     let mut rng = rand::rng();
-    for (being_entity, mut being_dimension_ref, &being_gpos, being_globtransform, touching_portal) in being_query.iter_mut() {
+    for (being_entity, mut being_dim, &being_gpos, being_gtransf, touching_portal) in being_query.iter_mut() {
         portal_query.iter().for_each(
             |(portal0_ent, &portal0_dim, &portal0_gpos, portal_to, portal0_ezero_ref, portal0_flip, portal0_facedir)| {
-                if *being_dimension_ref != portal0_dim {
+                if *being_dim != portal0_dim {
                     return;
                 }
                 let Some(portal_to) = portal_to else {
@@ -52,7 +52,7 @@ pub fn cross_portal(
                             InteractionZones::ENTER,
                             size_in_tiles,
                             portal0_gpos.to_pixelpos(),
-                            being_globtransform.translation().xy(),
+                            being_gtransf.translation().xy(),
                             portal0_flip.copied().unwrap_or_default(),
                             portal0_facedir.copied().unwrap_or_default(),
                         )
@@ -90,7 +90,7 @@ pub fn cross_portal(
                             .or_else(|| portal_to.offset_pos_destinations.sample_with_rng(&mut rng))
                             .unwrap_or_default();
 
-                        being_dimension_ref.0 = dest_dim.0;
+                        being_dim.0 = dest_dim.0;
                         let arrival_gpos = dest_tile_gpos + sampled_offset;
                         cmd.entity(being_entity).try_insert(arrival_gpos);
                     }

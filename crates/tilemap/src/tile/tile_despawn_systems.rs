@@ -2,7 +2,6 @@ use crate::{
     tile::{tile_components::*, tile_delete_others_helpers::*, tile_messages::*},
     tilemap_resources::*,
 };
-use ::sprite_shared::prelude::*;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use common::{AnyDisabling, common_tag_components::TagSet};
@@ -17,14 +16,14 @@ pub use crate::tile::tile_delete_others_helpers::{process_tile_despawns_from_eze
 pub fn on_spritetile_despawn(
     trig: On<Despawn, (Tile, Transform, SpriteTile)>,
     query: Query<(&DimensionRef, &GlobalTilePos, &EntityZeroRef), (Without<TilemapId>, Without<TilePos>, Without<EntityZero>, AnyDisabling)>,
-    ezero_size_query: Query<&SizeInTiles, (With<EntityZero>, common::AnyDisabling)>,
+    interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
     mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
 ) {
     let Ok((&dim_ref, &gpos, ezero_ref)) = query.get(trig.entity) else {
         return;
     };
-    let size = ezero_size_query.get(ezero_ref.0).copied().unwrap_or_default();
-    spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, size);
+    let interaction_zones = interaction_zones_query.get(ezero_ref.0).ok();
+    spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, interaction_zones);
 }
 
 pub fn despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles(

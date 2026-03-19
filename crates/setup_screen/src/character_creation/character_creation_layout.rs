@@ -22,7 +22,7 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
         ImageNode::new(asset_server.load("apocalypse.jpg")),
         DespawnOnExit(GameSetupScreen::CharacterCreation),
     )).id();
-    
+
     //let borders = produce_grayish_border(18.0);
     // Use absolute positioning for overlapping borders
     let center_rect_node = commands.spawn((
@@ -123,14 +123,14 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
         BackgroundColor(Color::srgba(0., 0., 0., 0.68)),
     )).id();
 
-    let charname_font_size = 25.0; 
+    let charname_font_size = 25.0;
 
     // let colorstops = vec![
     //     ColorStop::new(Color::srgba(0.46, 0.0, 0.0, 0.9), Val::Percent(0.)),
     //     ColorStop::new(Color::srgba(0.0, 0.0, 0.0, 0.0), Val::Px(7.)),
     // ];
 
-    // let borders = produce_gradient_border(7., 
+    // let borders = produce_gradient_border(7.,
     //     colorstops.clone(), colorstops
     // );
 
@@ -164,7 +164,7 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
         CurrentText::new(""),
     )).id();
 
-    
+
 
     let hbox_container = commands.spawn((
         ChildOf(vbox_container),
@@ -207,11 +207,11 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
     let center_vbox = spawn_vbox(&mut commands);
     let right_vbox = spawn_vbox(&mut commands);
 
-    let squares_vbox_margin = UiRect {
+    let _squares_vbox_margin = UiRect {
         left: Val::Px(15.), top: Val::Px(15.),
         right: Val::Px(15.), bottom: Val::Px(10.),
     };
-    
+
     //let borders = produce_grayish_border(8.0,);
 
     let make_squares_node = || (
@@ -239,31 +239,15 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
         )).id()
     };
 
-    let top_square_left = spawn_square(&mut commands, left_vbox);
-    let bottom_square_left = spawn_square(&mut commands, left_vbox);
+    let _top_square_left = spawn_square(&mut commands, left_vbox);
+    let _bottom_square_left = spawn_square(&mut commands, left_vbox);
 
-    let top_square_center = spawn_square(&mut commands, center_vbox);
-    let bottom_square_center = spawn_square(&mut commands, center_vbox);
+    let _top_square_center = spawn_square(&mut commands, center_vbox);
+    let _bottom_square_center = spawn_square(&mut commands, center_vbox);
 
-    let top_square_right = spawn_square(&mut commands, right_vbox);
-    let bottom_square_right = spawn_square(&mut commands, right_vbox);
+    let _top_square_right = spawn_square(&mut commands, right_vbox);
+    let _bottom_square_right = spawn_square(&mut commands, right_vbox);
 
 
     //let _borders = produce_grayish_border(8.0);
 }
-
-// pub fn produce_grayish_border(
-//     thickness: f32,
-// ) -> [BorderBundle; 4] {
-//     produce_gradient_border(
-//         thickness, 
-//         vec![
-//             ColorStop::new(Color::srgba(0.8, 0.8, 0.8, 0.10), Val::Percent(0.)),
-//             ColorStop::new(Color::srgba(0.36, 0.37, 0.3, 0.0), Val::Px(thickness)),
-//         ],
-//         vec![
-//             ColorStop::new(Color::srgba(0., 0., 0., 0.6), Val::Percent(0.)),
-//             ColorStop::new(Color::NONE, Val::Px(thickness)),
-//         ]
-//     )
-// }

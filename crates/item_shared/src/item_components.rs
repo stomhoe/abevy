@@ -14,7 +14,7 @@ use sprite_shared::prelude::*;
 use tilemap_shared::SnapTransformToGpos;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Default)]
-#[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading, Visibility, SnapTransformToGpos, )]
+#[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading, Visibility, SnapTransformToGpos::OnChange, )]
 pub struct Item;
 impl Item {
     pub const MIN_ID_LENGTH: u8 = 1;
@@ -42,9 +42,13 @@ pub struct HeldItems(Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct DropHeldItemsOnDowned;
+//puede ser lvl o strength o afeccion. no aplica para ponerlo en backpack
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct WearRequirements;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct WieldRequirements;
+pub struct MeleeStrikeTool;
+//.replicate::<MeleeStrikeTool>()
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct SlotableIn(pub TagSet);

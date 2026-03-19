@@ -7,7 +7,7 @@ use bevy::{
 };
 use bevy_ecs_tilemap::prelude::*;
 use common::TILEMAP_SYSTEM;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use game_common::game_common_components::{EntityZeroRef};
 
 use crate::{
     tile::{tile_components::*, tile_shader::{tile_material::prelude::*, tile_shader_components::*}},

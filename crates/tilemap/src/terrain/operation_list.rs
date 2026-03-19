@@ -16,7 +16,8 @@ pub fn plugin(app: &mut App) {
     app
         .add_plugins((
             plugin_operation_list,
-        ));
+        ))
+    ;
 }
 
 #[allow(unused_imports, ambiguous_glob_reexports)]

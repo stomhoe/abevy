@@ -718,7 +718,7 @@ pub fn macrochunks_grid_window(
     let mut macrochunks_by_dimension: BTreeMap<String, HashMap<MacroChunkPos, MacroChunkCell>> = BTreeMap::new();
     let mut selected_macrochunk_dimension = None;
 
-    for (entity, &dim_ref, &macro_chunk_pos, biome_distribution, biome_sampling_state, terrgen_state) in macro_chunk_query.iter() {
+    for (entity, &dim_ref, &macro_chunk_pos, biome_distribution, biome_sampling_state, _) in macro_chunk_query.iter() {
         let dim_name = id_query
             .get(dim_ref.0)
             .map(|str_id| str_id.as_str().to_string())

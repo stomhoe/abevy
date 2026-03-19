@@ -9,22 +9,21 @@ use crate::being_inst_template::{being_inst_template_resources::*,
 };
 use crate::pack::pack_components::PackInitialSize;
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
+use crate::being_interaction_zone_helper::build_being_interaction_zones;
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
-use faction::faction_resources::{FactionEntityMap, FactionStrIdRef};
-use tilemap::terrain::biome::{biome_components::BiomePackSampler, biome_resources::BiomeEntityMap};
-use tilemap_shared::{BlacklistedSpawnTileTags, InteractionZones, WhitelistedSpawnTileTags};
+use faction::faction_resources::{FactionStrIdRef};
+use tilemap::terrain::biome::{biome_components::SpawnablesPerBiome, biome_resources::BiomeEntityMap};
+use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
 use common::common_tag_components::TagSet;
-use crate::being_components::COLLISION_MASK_HASHID;
 
 pub fn init_being_templates(
     mut cmd: Commands,
     race_emap: Option<Res<RaceEntityMap>>,
-    faction_emap: Option<Res<FactionEntityMap>>,
     bit_map: Res<BeingInstTemplateEntityMap>,
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
-    mut biome_pack_samplers: Query<&mut BiomePackSampler>,
+    mut biome_pack_samplers: Query<&mut SpawnablesPerBiome>,
 ) {
     if !bit_map.0.is_empty(){
         return;
@@ -41,10 +40,6 @@ pub fn init_being_templates(
     let mut race_refs_to_insert = Vec::new();
     let mut faction_refs_to_insert = Vec::new();
 
-    let Some(faction_emap) = faction_emap else {
-        error!("Faction entity map is missing");
-        return;
-    };
     let Some(race_emap) = race_emap else {
         error!("Race entity map is missing");
         return;
@@ -80,16 +75,16 @@ pub fn init_being_templates(
                 error!(target: "being_template_init", "Body tree/sampler '{}' not found for BeingInstTemplate '{}'", body_tree_str_id, str_id);
             }
         }
-        if let Some(size_variation) = template_seri.size_variation {
+        if let Some(size_variation) = template_seri.size_variation.filter(|v| !v.is_sentinel()) {
             cmd.entity(bit_entity).insert(SpriteGlobalNormalDist::new(size_variation));
         }
-        if let Some(hori_variation) = template_seri.hori_variation {
+        if let Some(hori_variation) = template_seri.hori_variation.filter(|v| !v.is_sentinel()) {
             cmd.entity(bit_entity).insert(SpriteHoriNormalDist::new(hori_variation));
         }
-        if let Some(vert_variation) = template_seri.vert_variation {
+        if let Some(vert_variation) = template_seri.vert_variation.filter(|v| !v.is_sentinel()) {
             cmd.entity(bit_entity).insert(SpriteVertNormalDist::new(vert_variation));
         }
-        if let Some(spawn_pack_size_normal_dist) = template_seri.spawn_pack_size_normal_dist {
+        if let Some(spawn_pack_size_normal_dist) = template_seri.spawn_pack_size_normal_dist.filter(|v| !v.is_sentinel()) {
             cmd.entity(bit_entity).insert(PackInitialSize(CappedNormalDist::from_seri(
                 spawn_pack_size_normal_dist,
             )));
@@ -106,9 +101,10 @@ pub fn init_being_templates(
                 PredatorHuntThreshold(template_seri.predator_hunt_threshold),
             ));
         }
-        let mut interaction_zones = bevy::platform::collections::HashMap::with_capacity(1);
-        interaction_zones.insert("melee".to_string(), template_seri.melee_interaction_zone.clone());
-        cmd.entity(bit_entity).insert(InteractionZones::from_seri(interaction_zones));
+        cmd.entity(bit_entity).insert(build_being_interaction_zones(
+            template_seri.melee_attack_zone.clone(),
+            template_seri.collision_zone.clone(),
+        ));
         // Resolve race entity from race string
         let race_str_id = StrId::trunc(&template_seri.race);
         match race_emap.0.get_cloned(&race_str_id) {

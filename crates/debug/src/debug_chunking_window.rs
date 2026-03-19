@@ -304,7 +304,7 @@ pub fn debug_chunking_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
     mut chunking_ui: ResMut<DebugChunkingUiState>,
-    mut chunk_settings: ResMut<AaChunkRangeSettings>,
+    mut chunk_settings: ResMut<LoadChunksAround>,
     chunk_query: Query<(
         Entity,
         &Chunk,

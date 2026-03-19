@@ -1,14 +1,13 @@
 use being::being_components::*;
-use being::being_bundles::{BeingBundle, };
+#[allow(unused_imports, )]use being::being_bundles::{BeingBundle, };
 use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use ::being_shared::*;
 use common::{GAME_INIT, common_components::StrId, common_states::AppState};
 use faction::{faction_components::*, faction_resources::*};
-use modifier_shared::{modifier_components::*, modifier_move_bundles::SpeedModifier,};
 use movement::movement_components::GridLockedMovement;
 use player::player_components::*;
 use tilemap::{
-    chunking::{chunking_components::{ActivateChunksAround, ActivatingChunks}, chunking_resources::AaChunkRangeSettings},
+    chunking::{chunking_components::{ActivatingChunks}, chunking_resources::ActivateChunksAround},
     terrain::{
         terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_resources::TerrProbeTemplEntityMap},
     },
@@ -34,13 +33,13 @@ pub struct CommonSpawnOriginFound {
 #[derive(Resource, Clone, Debug)]
 pub struct GameInitSettings {
     pub players_spawn_probe_id: StrId,
-    pub players_initial_bit_ref_strid: StrId,
+    pub players_initial_bit: StrId,
 }
 impl Default for GameInitSettings {
     fn default() -> Self {
         Self {
             players_spawn_probe_id: StrId::trunc("coland"),
-            players_initial_bit_ref_strid: StrId::trunc("player_warrior"),
+            players_initial_bit: StrId::trunc("player_warrior"),
         }
     }
 }
@@ -57,7 +56,7 @@ impl GameInitSettingsSeri {
     pub fn to_settings(&self) -> GameInitSettings {
         GameInitSettings {
             players_spawn_probe_id: StrId::trunc(self.players_spawn_probe_id.trim()),
-            players_initial_bit_ref_strid: StrId::trunc(self.players_initial_bit_ref_strid.trim()),
+            players_initial_bit: StrId::trunc(self.players_initial_bit_ref_strid.trim()),
         }
     }
 }
@@ -90,7 +89,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     mut app_state: ResMut<NextState<AppState>>,
 )
 {
-    let Ok(mut settings) = settings.single_mut()
+    let Ok(mut _____settings) = settings.single_mut()
     else {
         error!(target: GAME_INIT, "Failed to get AaGlobalGenSettings");
         return;
@@ -116,7 +115,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 pub fn host_on_player_added(mut cmd: Commands,
     query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>,
     player_query: Query<(&CreatedCharacters)>,
-    settings: Res<GameInitSettings>,
+    ________settings: Res<GameInitSettings>,
 
     host_faction: Query<Entity, (With<Faction>, With<Mine>)>,
 ) {
@@ -134,7 +133,7 @@ pub fn host_on_player_added(mut cmd: Commands,
 
             //USAR EL DEFAULT ASE Q SE DESPAWNEE
 
-            let created_character = cmd.spawn((Being, username.clone(),
+            let _created_character = cmd.spawn((Being, username.clone(),
                 CharacterCreatedBy { player: player_ent },
                 BelongsToFaction(host_faction),
                 ComputedBy {
@@ -216,7 +215,7 @@ pub fn put_player_beings_on_map(
     mut cmd: Commands,
     players: Query<(&CreatedCharacters, ), (With<Player>)>,
     created_by_query: Query<&CharacterCreatedBy>,
-    chunk_range: Res<AaChunkRangeSettings>,
+    chunk_range: Res<ActivateChunksAround>,
     settings: Res<GameInitSettings>,
     mut next_spawn_offset_x: Local<i32>,
 ) {
@@ -235,12 +234,9 @@ pub fn put_player_beings_on_map(
 
         for being_ent in created_characters.iter() {
             let gpos = compute_spawn_pos(origin, &mut *next_spawn_offset_x);
-            let Ok(created_by) = created_by_query.get(being_ent) else { continue; };
+            let Ok(____created_by) = created_by_query.get(being_ent) else { continue; };
 
             cmd.entity(being_ent)
-                .try_remove::<Transform>()
-                .try_remove::<GlobalTilePos>()
-                .try_remove::<DimensionRef>()
                 .try_insert((
                 Transform::from_translation(gpos.to_translation(0.0)),
                 gpos,
@@ -249,20 +245,12 @@ pub fn put_player_beings_on_map(
                     ..default()
                 },
                 DimensionRef(spawn_dim.0),
+                *chunk_range,
                 ActivateChunksAround::default(),
-                ActivatingChunks::new(&chunk_range),
-
-                BitStrIdRef::new(settings.players_initial_bit_ref_strid.as_str()),
+                BitStrIdRef::new(settings.players_initial_bit.as_str()),
                 Being,
 
             ));
         }
     }
-    let gpos = compute_spawn_pos(origin, &mut *next_spawn_offset_x);
-    return;
-    let bear_ent = cmd.spawn((
-        BeingBundle::new(DimensionRef(spawn_dim.0), gpos),
-        BitStrIdRef::new("pobear"),
-        Predator::default(),
-    )).id();
 }

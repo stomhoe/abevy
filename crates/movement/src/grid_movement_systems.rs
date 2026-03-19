@@ -10,7 +10,6 @@ use common::file_logging::file_log;
 use ::sprite_animation_shared::*;
 
 use tilemap::tile::prelude::Tile;
-use tilemap::tile::tile_components::TileFlip;
 use tilemap_shared::{BeingsAtGpos, *};
 
 use crate::movement_components::*;
@@ -20,14 +19,7 @@ use crate::movement_messages::*;
 
 const TILE_CORRECTION_INTERVAL_SECS: f32 = 2.0;
 
-#[allow(unused_parens)]
-pub fn beings_snap_transform_to_added_gpos(
-    mut query: Query<(&GlobalTilePos, &mut Transform), (With<Being>, Added<GlobalTilePos>)>,
-) {
-    for (&gpos, mut transform) in query.iter_mut() {
-        transform.translation = gpos.to_translation(transform.translation.z);
-    }
-}
+
 
 #[allow(unused_parens)]
 pub fn sync_occupancy_for_beings_at_gpos_res(
@@ -35,36 +27,35 @@ pub fn sync_occupancy_for_beings_at_gpos_res(
     mut removed_beings: RemovedComponents<Being>,
     query: Query<
         (
-            Entity,
-            &DimensionRef,
-            &GlobalTilePos,
+            Entity, &DimensionRef, &GlobalTilePos,
             Option<&CardinalDirection>,
-            Option<&TiledCollisionMask>,
+            Option<&InteractionZones>,
         ),
         (
             With<Being>,//<-don't delete
-            Or<(Added<Being>, Changed<GlobalTilePos>, Changed<DimensionRef>, Changed<CardinalDirection>, Changed<TiledCollisionMask>)>,
+            Or<(Added<Being>, Changed<GlobalTilePos>, Changed<DimensionRef>,
+                Changed<CardinalDirection>, Changed<InteractionZones>)>,
         ),
     >,
-    mut occupied_positions: Local<Vec<GlobalTilePos>>,
+    mut reused_colmask_vec: Local<Vec<GlobalTilePos>>,
 ) {
     for ent in removed_beings.read() {
-        beings_at_gpos.remove_being(ent);
+        beings_at_gpos.remove_being_ent_entries(ent);
     }
-
-    for (being_ent, &dim_ref, &gpos, facing_dir, collision_mask) in query.iter() {
-        occupied_positions.clear();
-        if let Some(collision_mask) = collision_mask {
-            collision_mask.occupied_world_positions(
-                gpos,
-                TileFlip::default(),
+    for (being_ent, &dim_ref, &gpos, facing_dir, interaction_zones) in query.iter() {
+        reused_colmask_vec.clear();
+        if let Some(interaction_zones) = interaction_zones {
+            interaction_zones.gather_zone_positions_for_hashid(
+                InteractionZones::COLLISION_MASK_HASHID,
                 facing_dir.copied().unwrap_or_default(),
-                &mut occupied_positions,
+                gpos.to_pixelpos(),
+                &mut reused_colmask_vec,
             );
-        } else {
-            occupied_positions.push(gpos);
         }
-        beings_at_gpos.set_being_positions(being_ent, dim_ref, occupied_positions.iter().copied());
+        if reused_colmask_vec.is_empty() {
+            reused_colmask_vec.push(gpos);
+        }
+        beings_at_gpos.update_being_occupy(being_ent, dim_ref, reused_colmask_vec.as_slice());
     }
 }
 

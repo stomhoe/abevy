@@ -22,7 +22,6 @@ pub fn plugin(app: &mut App) {
                 map_biome_id_to_entity,
             ).chain()
         ).in_set(BiomeSystems))
-        .replicate::<BiomePackSampler>()
         ;
 }
 

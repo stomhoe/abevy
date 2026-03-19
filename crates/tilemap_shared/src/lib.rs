@@ -25,6 +25,10 @@ pub mod directions;
 pub use directions::*;
 mod dimension;
 pub use dimension::*;
+pub use bevy::platform::collections::HashMap;
+pub mod chunking_shared_messages;
+pub use chunking_shared_messages::*;
+
 
 #[allow(unused_imports, ambiguous_glob_reexports)]
 pub mod prelude {
@@ -43,5 +47,7 @@ pub mod prelude {
         tilemap_positioning::*,
         directions::*,
         dimension::*,
+        chunking_shared_messages::*,
     };
+    pub use bevy::platform::collections::HashMap;
 }

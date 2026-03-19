@@ -6,18 +6,18 @@ use game_common::game_common_components::CameraTarget;
 use movement::movement_components::InputMoveDir;
 use player::player_components::{HostPlayer, Mine, Player};
 use tilemap::{
-    chunking::chunking_components::{ActivateChunksAround, ActivatingChunks},
-    chunking::chunking_resources::AaChunkRangeSettings,
+    chunking::chunking_resources::ActivateChunksAround,
+    chunking::chunking_components::ActivatingChunks,
 };
 
 pub fn add_activates_chunks(
     mut cmd: Commands,
     query: Query<Entity, (With<Being>, Added<BelongsToAPlayerFaction>)>,
     mut removed: RemovedComponents<BelongsToAPlayerFaction>,
-    chunk_range: Res<AaChunkRangeSettings>,
+    chunk_range: Res<ActivateChunksAround>,
 ) {
     let mut activates_chunks = Vec::with_capacity(query.iter().size_hint().0);
-    query.iter().for_each(|ent| activates_chunks.push((ent, (ActivateChunksAround::default(), ActivatingChunks::new(&chunk_range)))));
+    query.iter().for_each(|ent| activates_chunks.push((ent, (*chunk_range, ActivateChunksAround::default()))));
     for ent in removed.read() {
         cmd.entity(ent).try_remove::<(ActivateChunksAround, ActivatingChunks)>();
     }
@@ -32,7 +32,7 @@ pub fn on_control_change(
     computed_by_query: Query<(Entity, &ComputedBy, Has<CameraTarget>)>,
     mut input_dirs: Query<&mut InputMoveDir>,
     mut removed_controlled_by: RemovedComponents<ComputedBy>,
-    chunk_range: Res<AaChunkRangeSettings>,
+    chunk_range: Res<ActivateChunksAround>,
 ) {
     for being_ent in removed_controlled_by.read() {
         commands.entity(being_ent).try_remove::<(ComputedLocally, HumanControlled, CameraTarget)>();
@@ -46,12 +46,12 @@ pub fn on_control_change(
             trace!(target: BEING_CONTROL, "InputMoveDir reset on control change for {:?}: {:?} -> {:?}", being_ent, input_dir.0, Vec2::ZERO);
             input_dir.0 = Vec2::ZERO;
         }
-        if controlled_by.client_ent == self_entity {
+            if controlled_by.client_ent == self_entity {
             info!(target: BEING_CONTROL, "debug {:?} is now computed locally by self", being_ent);
             commands.entity(being_ent).try_insert_if_new((ComputedLocally, ));
             if controlled_by.human_dc_input {
                 debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget due to human input", being_ent);
-                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), ActivateChunksAround::default(), ActivatingChunks::new(&chunk_range)));
+                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), *chunk_range, ActivateChunksAround::default(), ));
             } else {
                 debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
                 commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, ActivateChunksAround, ActivatingChunks)>();

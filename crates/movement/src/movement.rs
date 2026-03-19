@@ -37,7 +37,6 @@ pub fn plugin(app: &mut App) {
                 ),
                 apply_pending_tile_corrections
                     .run_if(in_state(ClientState::Connected)),
-                beings_snap_transform_to_added_gpos,
                 sync_occupancy_for_beings_at_gpos_res,
                 resolve_overlapping_beings.in_set(HostSystems),
                 process_input_direction_modifiers,

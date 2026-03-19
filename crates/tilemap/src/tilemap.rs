@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
-use common::{AppRegisterAndReplicateExt, common_states::*};
+use common::{common_states::*};
 
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;

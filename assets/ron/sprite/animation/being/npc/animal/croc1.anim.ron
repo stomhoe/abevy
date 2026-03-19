@@ -1,9 +1,9 @@
 ([(
-    id: "croc2_south_idle",
+    id: "croc1_south_idle",
     paused: true,
     rows_cols: (4, 6),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/croc2.png",
+    img_path: "texture/being/npc/dungeon/croc1.png",
     clips: [
         (
             target: 0,
@@ -15,9 +15,9 @@
     y_sort: Some(0),
 ),
 (
-    id: "croc2_south_move",
+    id: "croc1_south_move",
     rows_cols: (4, 6),
-    img_path: "texture/being/npc/dungeon/croc2.png",
+    img_path: "texture/being/npc/dungeon/croc1.png",
     clips: [
         (
             target: 0,
@@ -29,11 +29,11 @@
     y_sort: Some(0),
 ),
 (
-    id: "croc2_north_idle",
+    id: "croc1_north_idle",
     paused: true,
     rows_cols: (4, 6),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/croc2.png",
+    img_path: "texture/being/npc/dungeon/croc1.png",
     clips: [
         (
             target: 1,
@@ -45,9 +45,9 @@
     y_sort: Some(0),
 ),
 (
-    id: "croc2_north_move",
+    id: "croc1_north_move",
     rows_cols: (4, 6),
-    img_path: "texture/being/npc/dungeon/croc2.png",
+    img_path: "texture/being/npc/dungeon/croc1.png",
     clips: [
         (
             target: 1,
@@ -59,11 +59,11 @@
     y_sort: Some(0),
 ),
 (
-    id: "croc2_west_idle",
+    id: "croc1_east_idle",
     paused: true,
     rows_cols: (4, 6),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/croc2.png",
+    img_path: "texture/being/npc/dungeon/croc1.png",
     clips: [
         (
             target: 2,
@@ -75,9 +75,9 @@
     y_sort: Some(0),
 ),
 (
-    id: "croc2_west_move",
+    id: "croc1_east_move",
     rows_cols: (4, 6),
-    img_path: "texture/being/npc/dungeon/croc2.png",
+    img_path: "texture/being/npc/dungeon/croc1.png",
     clips: [
         (
             target: 2,
@@ -89,11 +89,11 @@
     y_sort: Some(0),
 ),
 (
-    id: "croc2_east_idle",
+    id: "croc1_west_idle",
     paused: true,
     rows_cols: (4, 6),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/croc2.png",
+    img_path: "texture/being/npc/dungeon/croc1.png",
     clips: [
         (
             target: 3,
@@ -105,9 +105,9 @@
     y_sort: Some(0),
 ),
 (
-    id: "croc2_east_move",
+    id: "croc1_west_move",
     rows_cols: (4, 6),
-    img_path: "texture/being/npc/dungeon/croc2.png",
+    img_path: "texture/being/npc/dungeon/croc1.png",
     clips: [
         (
             target: 3,
@@ -117,4 +117,5 @@
     ],
     z: 1000,
     y_sort: Some(0),
-)])
+),
+])

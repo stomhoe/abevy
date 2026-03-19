@@ -42,4 +42,6 @@ rustc*.txt
 *.old
 *.orig
 
-**.lnk
+**.lnk.dual-graph/
+.dual-graph/
+.dual-graph-context/

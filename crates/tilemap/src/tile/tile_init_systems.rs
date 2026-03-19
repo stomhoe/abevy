@@ -116,8 +116,21 @@ pub fn init_tiles(
         if let Some(ref mut adj_retex_config) = seri.adj_retex {
             cmd.entity(tile_enti).insert(AdjRetexConfig::new(std::mem::take(adj_retex_config)));
         }
-        if !seri.interaction_zones.is_empty() {
-            cmd.entity(tile_enti).insert(InteractionZones::from_seri(std::mem::take(&mut seri.interaction_zones)));
+        if !seri.interaction_zones.is_empty() || !seri.colmask.is_empty() {
+            let mut zones = InteractionZones::from_seri(std::mem::take(&mut seri.interaction_zones));
+            if !seri.colmask.is_empty() {
+                match InteractionZones::collision_mask_zone_from_rows(&seri.colmask, size_in_tiles) {
+                    Ok(zone) => {
+                        zones.0.overwrite(InteractionZones::COLLISION_MASK_HASHID, zone);
+                    }
+                    Err(err) => {
+                        error!("Tile '{}' has invalid collision_mask: {}", str_id, err);
+                    }
+                }
+            }
+            if !zones.0.is_empty() {
+                cmd.entity(tile_enti).insert(zones);
+            }
         }
 
         if !seri.color_map.is_empty() {
@@ -190,21 +203,6 @@ pub fn init_tiles(
                 },
             ));
         }
-        if ! seri.colmask.is_empty() {
-            match TiledCollisionMask::from_rows(&seri.colmask, size_in_tiles) {
-                Ok(mask) => {
-                    cmd.entity(tile_enti).insert(mask);
-                }
-                Err(err) => {
-                    error!(
-                        "Tile '{}' has invalid collision_mask: {}",
-                        str_id,
-                        err
-                    );
-                }
-            }
-        }
-
         if seri.blocks_projectiles {
             cmd.entity(tile_enti).insert(BlocksProjectiles);
         }

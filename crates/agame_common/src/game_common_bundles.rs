@@ -13,7 +13,6 @@ pub struct EntityZeroCloneDeny(
     InteractionZones,
     AcZ,
     YSortOrigin,
-    TiledCollisionMask,
     SizeInTiles,
     TagSet,
     HashedTagsVec,

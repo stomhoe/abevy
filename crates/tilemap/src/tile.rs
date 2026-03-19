@@ -96,7 +96,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<PrevPos>()
     .replicate::<PortalsZeroEguiHolder>()
     .replicate::<BlocksProjectiles>()
-    .replicate::<TiledCollisionMask>()
     .replicate::<WalkSpeedMultIfOnTop>()
     .replicate::<OffsetForTerrgenPlacement>()
     .replicate::<SizeInTiles>()
@@ -106,6 +105,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<RotateCardinallyBasedOnHash>()
     .replicate::<TransformBasedCardRotation>()
     .replicate::<OffsetForTerrgenPlacement>()
+    .replicate::<TileStepSfx>()
 
 
     .replicate_once::<GlobalTilePos>()

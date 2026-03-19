@@ -3,7 +3,7 @@ use modifier_shared::prelude::AppliedModifiers;
 use param_sets::BlockingTileParamSet;
 use serde::{Deserialize, Serialize};
 use sprite_animation_shared::MoveAnimActive;
-use tilemap_shared::{DimensionRef, GlobalTilePos};
+use tilemap_shared::{DimensionRef, GlobalTilePos, SnapTransformToGpos};
 
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct InputMoveDir(pub Vec2);
@@ -40,8 +40,8 @@ pub enum TryStartStepOutcome {
     Blocked,
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-#[require(SpeedMagnitude, FinalNormMoveDir, InputMoveDir, MoveAnimActive, AppliedModifiers)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+#[require(SpeedMagnitude, FinalNormMoveDir, InputMoveDir, MoveAnimActive, AppliedModifiers, SnapTransformToGpos::OnAdd,)]
 pub struct GridLockedMovement {
     pub visual_origin_tile: IVec2,
     pub step_dir: IVec2,

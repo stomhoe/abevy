@@ -11,7 +11,7 @@
         "lava_tile_id": ["lava"],
         "boulder_sampler_id": ["boulder_sampler"],
         "boulder_frequency": ["0.02"],
-        "delete.floor_tile_id.targeted_tags": ["floor"],
+        "disable_terrgen.floor_tile_id": ["true"],
     },
     // pdisk_mindist_and_tag: [
     //     (Some(0), "dungeon"),

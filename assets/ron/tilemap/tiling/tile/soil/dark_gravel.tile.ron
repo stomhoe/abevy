@@ -1,0 +1,22 @@
+(
+    id: "dirt",
+    tags: ["land"],
+    name: "Dirt",
+    z: -1000,
+    img_paths: [
+        ("", "texture/world/white.png"),
+    ],
+    walk_speed: 0.7,
+    shader: "terrbl",
+    terrbl_params: (
+        texture_path: "texture/world/terr/gravel.png",
+        priority: 20.0,
+        scale: 8,
+        speed: 0.0,
+        wavy_strength: 0.0,
+        time_offset: 0.0,
+        tint: (100, 90, 70, 255),
+
+    ),
+    color: Some((255, 0, 0, 255)),
+)
