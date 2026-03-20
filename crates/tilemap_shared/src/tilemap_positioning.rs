@@ -371,12 +371,6 @@ impl RegionPos {
 
 }
 
-pub mod prelude {
-    pub use super::{
-        ChunkPos, GlobalTilePos, HashablePosVec, MacroChunkPos, OplistSize, PrevPos, RegionPos,
-        MACRO_CHUNK_SIZE_IN_CHUNKS, REGION_SIZE_IN_CHUNKS,
-    };
-}
 
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]

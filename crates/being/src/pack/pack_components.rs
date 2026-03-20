@@ -1,6 +1,6 @@
 use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
 use bevy_replicon::prelude::Replicated;
-use common::{common_components::{AssetScoped, HotReload, Prefix}, prelude::StrId};
+use ::common::*;
 use game_common::game_common_samplers::{CappedNormalDist, EntityWeightedSampler};
 use tilemap_shared::{ChunkPos, MacroChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
 

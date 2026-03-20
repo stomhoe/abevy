@@ -1,14 +1,17 @@
-use crate::{being_components::Being, prelude::Chasing};
+use crate::being_components::{Being, Chasing};
 use ::being_shared::*;
 use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
-use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks};
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks, LoadChunksAround};
+use bevy::{
+    platform::collections::{HashMap, HashSet},
+    prelude::*,
+};
+use common::log_targets::BEING_SYSTEM;
+use movement::movement_components::SpeedMagnitude;
 use param_sets::BlockingTileParamSet;
-use tilemap::chunking::chunking_resources::LoadChunksAround;
 
 use super::being_nav_resources::AiNavGrids;
-use super::being_nav_structs::{AiNavGridCache, SyncAiNavGridState};
+use super::being_nav_structs::AiNavGridCache;
 
 
 
@@ -28,11 +31,10 @@ pub fn sync_ai_nav_grids(
     >,
     beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
     mut grids: ResMut<AiNavGrids>,
-    mut state: Local<SyncAiNavGridState>,
 ) {
-    state.needed_dims.clear();
-    state.dim_centers.clear();
-    state.dim_center_counts.clear();
+    let mut needed_dims: HashSet<Entity> = HashSet::default();
+    let mut dim_centers: HashMap<Entity, IVec2> = HashMap::default();
+    let mut dim_center_counts: HashMap<Entity, i32> = HashMap::default();
 
     for (gpos, dim_ref, controlled_by, _to_chase) in chasers_query.iter() {
         if let Some(controlled_by) = controlled_by {
@@ -40,26 +42,23 @@ pub fn sync_ai_nav_grids(
                 continue;
             }
         }
-        state.needed_dims.insert(dim_ref.0);
+        needed_dims.insert(dim_ref.0);
         let pos = gpos.0;
-        let center = state.dim_centers.entry(dim_ref.0).or_insert(IVec2::ZERO);
+        let center = dim_centers.entry(dim_ref.0).or_insert(IVec2::ZERO);
         *center += pos;
-        *state.dim_center_counts.entry(dim_ref.0).or_insert(0) += 1;
+        *dim_center_counts.entry(dim_ref.0).or_insert(0) += 1;
     }
 
-    grids.by_dim.retain(|dim, _| state.needed_dims.contains(dim));
+    grids.by_dim.retain(|dim, _| needed_dims.contains(dim));
     grids
         .center_by_dim
-        .retain(|dim, _| state.needed_dims.contains(dim));
+        .retain(|dim, _| needed_dims.contains(dim));
 
     let max_side = (((chunk_range.discovery_range as i32 * 2) - 1).max(1) as u32)
         * ChunkPos::CHUNK_SIZE.x.max(1);
     let should_rebuild = grids.rebuild_timer.tick(time.delta()).just_finished();
 
-    let needed_dims = std::mem::take(&mut state.needed_dims);
-    let dim_centers = &state.dim_centers;
-    let dim_center_counts = &state.dim_center_counts;
-    for dim in needed_dims {
+    for dim in needed_dims.iter().copied() {
         let mut min_tile: Option<IVec2> = None;
         let mut max_tile: Option<IVec2> = None;
 

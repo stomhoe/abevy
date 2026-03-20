@@ -1,11 +1,11 @@
-use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{platform::collections::{HashMap, }, prelude::*};
 use bevy_replicon::prelude::*;
 
 use ::tilemap_shared::*;
 use crate::regioning::regioning_sgc_components::StructuredGenConfig;
 use serde::{Deserialize, Serialize};
 use common::common_components::*;
-pub use crate::regioning::regioning_seris::*;
+pub use crate::regioning::regioning_sgc_seris::*;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 #[require(Replicated, Prefix::trunc("StructureGenerationSettings"), AssetScoped, HotReload)]

@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
 use game_common::HostSystems;
-use tilemap::chunking::{despawn_chunks, rem_outofrange_chunks_from_activators, ChunkWithBeingsWantsDespawn};
+use tilemap::chunking::{despawn_chunks, rem_outofrange_chunks_from_activators};
 
-use crate::{being_on_chunk_despawn_systems::on_chunk_with_beings_attempt_unload, prelude::MakeChunkSnapshotForChaser};
+use crate::being_messages::MakeChunkSnapshotForChaser;
+use crate::being_on_chunk_despawn_systems::on_chunk_with_beings_attempt_unload as on_chunk_with_beings_attempt_unload_system;
 
 pub mod being_nav_resources;
 pub mod being_nav_structs;
@@ -31,7 +32,7 @@ pub fn plugin(app: &mut App) {
             chase_behavior,
 
             make_chunk_snapshot_for_hunter
-                .after(on_chunk_with_beings_attempt_unload)
+                .after(on_chunk_with_beings_attempt_unload_system)
                 .in_set(HostSystems)
                 .run_if(on_message::<MakeChunkSnapshotForChaser>),
             dynamically_extend_retained_chasepaths_due_to_moving_player_prey,

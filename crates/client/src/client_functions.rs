@@ -17,7 +17,7 @@ pub fn join_server (
     info!("attempting connect to {ip}:{port}");
     let server_channels_config = channels.server_configs();
     let client_channels_config = channels.client_configs();
-    
+
 
     let client = RenetClient::new(ConnectionConfig {
         server_channels_config,
@@ -43,7 +43,7 @@ pub fn join_server (
 }
 
 pub fn disconnect_from_server(
-    commands: &mut Commands,
+    ______cmd: &mut Commands,
     client: &mut RenetClient,
 ) {
     info!("Disconnecting from server");

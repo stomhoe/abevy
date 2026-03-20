@@ -1,5 +1,4 @@
-use bevy::platform::collections::{HashMap, HashSet};
-#[allow(unused_imports)]
+#[allow(unused_imports, )] use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use item_shared::item_seris::SlottedItemHolderSeri;
 use modifier_shared::modifier_seris::ModifierSynergySeri;

@@ -30,12 +30,3 @@ mod sex_init_systems;
 pub mod sex_components;
 pub mod sex_resources;
 pub mod sex_seris;
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        sex_components::*,
-        sex_resources::*,
-        sex_seris::*,
-    };
-}

@@ -31,11 +31,3 @@ pub fn plugin(app: &mut App) {
 mod being_inst_template_init_systems;
 pub mod being_inst_template_resources;
 pub mod being_inst_template_seris;
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        being_inst_template_resources::*,
-        being_inst_template_seris::*,
-    };
-}

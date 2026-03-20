@@ -1,18 +1,14 @@
-pub use body_tree_components::*;
-pub use body_part::body_part_components::*;
-pub use body_tree_resources::*;
 use bevy::prelude::*;
 use bevy::ecs::schedule::common_conditions::on_message;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::{HostSystems, game_common::ModifierSystems};
 use crate::body::{
-    body_hp_systems::*,
     body_systems::*,
+    body_hp_systems::*,
     body_tree_build_systems::*,
     body_tree_ezero_init_systems::*,
 };
-use body_sampler::BodySamplerSystems;
 
 pub mod body_tree_components;
 pub mod body_part;
@@ -23,7 +19,10 @@ mod body_systems;
 mod body_hp_systems;
 mod body_tree_build_systems;
 mod body_tree_ezero_init_systems;
-
+#[allow(unused_imports)] pub use body_part::body_part_components::*;
+#[allow(unused_imports)] pub use body_tree_components::*;
+#[allow(unused_imports)] pub use body_tree_resources::*;
+#[allow(unused_imports)] pub use body_tree_seris::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct BodySystems;
@@ -60,7 +59,7 @@ pub fn plugin(app: &mut App) {
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
             crate::body::body_part::BodyPartSystems.before(BodySystems),
-            BodySystems.before(BodySamplerSystems),
+            BodySystems.before(body_sampler::BodySamplerSystems),
         ),
     )
 
@@ -71,15 +70,4 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<ChildOf, With<BodyOf>>()
     .replicate::<BodySums>()
     .add_message::<IncomingDamage>();
-}
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        body_tree_components::*,
-        body_part::*,
-        body_tree_resources::*,
-        body_tree_seris::*,
-        body_sampler::*,
-    };
 }

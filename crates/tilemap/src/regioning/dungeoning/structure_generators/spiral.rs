@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use bevy::platform::collections::HashSet;
 
 use common::common_components::HashId;
-use common::log_targets::DUNGEONING_SYSTEM;
+#[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
 use game_common::game_common_components::EntityZeroRef;
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;

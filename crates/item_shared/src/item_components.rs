@@ -10,7 +10,7 @@ use common::common_tag_components::TagSet;
 use game_common::game_common_samplers::EntityCountMapWeightedSampler;
 use crate::{ItemEntityMap, ItemsGeneratedOnDeathSeri, SlottedItemHolderSeri};
 use serde::{Deserialize, Serialize};
-use sprite_shared::prelude::*;
+use ::sprite_shared::*;
 use tilemap_shared::SnapTransformToGpos;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Default)]

@@ -5,7 +5,7 @@ use common::{AnyDisabling, common_components::StrId, };
 
 use game_common::{game_common_components::EntityZero, game_common_samplers::EntityWeightedSampler};
 use common::common_components::SampleSpriteEnts;
-use sprite_shared::prelude::SampleSpritesFromStrIds;
+use sprite_shared::SampleSpritesFromStrIds;
 
 use crate::{sprite_components::ScsToBuild, sprite_resources::*, sprite_sampler::SpriteWeightedSamplerEntityMap};
 

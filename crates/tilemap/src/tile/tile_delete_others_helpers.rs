@@ -2,7 +2,7 @@ use crate::{
     tile::{tile_bundles::TileMassSpawnBundle, tile_components::*},
     tilemap_resources::*,
 };
-use ::sprite_shared::prelude::*;
+use ::sprite_shared::*;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use common::common_tag_components::TagSet;

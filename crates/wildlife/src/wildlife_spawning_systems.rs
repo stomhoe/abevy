@@ -16,25 +16,17 @@ use common::file_logging::file_log;
 use common::log_targets::WILDLIFE_SYSTEM;
 use movement::movement_components::GridLockedMovement;
 use param_sets::BlockingTileParamSet;
-use tilemap::terrain::biome::prelude::SpawnablesPerBiome;
+use tilemap::terrain::biome::biome_components::CreatureSampler;
 use tilemap::{
     chunking::{
         chunking_components::{Chunk, MacroChunk},
-        chunking_spawn_systems::MacroChunkLoaded,
         macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState},
     },
-    terrain::terrgen_messages::{ChunkTerrainBuilt, MacroChunkBiomeSampled, RequestMacroChunkBiomeSampling},
+    terrain::terrgen_messages::*,
 };
 
 use tilemap_shared::{
-    BlacklistedSpawnTileTags,
-    ChunkPos,
-    DimensionRef,
-    GlobalTilePos,
-    LoadedChunks,
-    MacroChunkPos,
-    MACRO_CHUNK_SIZE_IN_CHUNKS,
-    WhitelistedSpawnTileTags,
+    BlacklistedSpawnTileTags, ChunkPos, DimensionRef, GlobalTilePos, LoadedChunks, MACRO_CHUNK_SIZE_IN_CHUNKS, MacroChunkLoaded, MacroChunkPos, WhitelistedSpawnTileTags
 };
 
 use crate::wildlife_resources::*;
@@ -64,7 +56,7 @@ struct SampledNaturalPackCenter {
 #[derive(SystemParam)]
 pub struct NaturalWildlifeSpawnQueries<'w, 's> {
     macro_chunk_query: Query<'w, 's, (&'static DimensionRef, &'static MacroChunkPos, &'static BiomeDistribution, &'static MacroChunkBiomeSamplingState), With<MacroChunk>>,
-    biome_pack_samplers: Query<'w, 's, &'static SpawnablesPerBiome>,
+    biome_pack_samplers: Query<'w, 's, &'static CreatureSampler>,
     pack_being_samplers: Query<'w, 's, &'static PackBeingSampler>,
     pack_min_dists_query: Query<'w, 's, &'static PackMinDistsToPacksOrRaces>,
     bit_race_query: Query<'w, 's, &'static RaceRef>,

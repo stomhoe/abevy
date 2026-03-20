@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use modifier_shared::prelude::AppliedModifiers;
+use modifier_shared::AppliedModifiers;
 use param_sets::BlockingTileParamSet;
 use serde::{Deserialize, Serialize};
 use sprite_animation_shared::MoveAnimActive;

@@ -64,6 +64,7 @@ impl InterFactionEvent {
 }
 
 #[derive(Component, Debug, Default, Clone)]
+#[allow(dead_code, )]
 pub struct Inclination(i32);
 
 #[derive(Component, Debug, Clone)]

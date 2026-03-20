@@ -1,4 +1,4 @@
-pub use ac_input::player_action_requests::{ClientMeleeAttackRequest, LocalMeleeAttackRequest};
+pub use ac_input::player_action_requests::{LocalMeleeAttackRequest};
 #[allow(unused_imports)] use bevy::prelude::*;
 
 

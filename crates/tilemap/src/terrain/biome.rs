@@ -1,11 +1,9 @@
-#[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon::prelude::*;
+use bevy::prelude::*;
+#[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 
 use crate::terrain::biome::{
-    biome_components::*,
     biome_init_systems::*,
-    biome_resources::*,
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -30,11 +28,5 @@ pub mod biome_resources;
 pub mod biome_seris;
 mod biome_init_systems;
 
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        biome_components::*,
-        biome_resources::*,
-        biome_seris::*,
-    };
-}
+pub use biome_components::*;
+pub use biome_resources::*;

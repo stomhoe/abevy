@@ -1,16 +1,16 @@
 use crate::being_components::{Being, Chasing};
-use crate::prelude::*;
+use crate::being_bundles::RemoveOnFreeze;
+use crate::being_messages::MakeChunkSnapshotForChaser;
 
-use ::being_shared::prelude::*;
+use ::being_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_SYSTEM;
+use tilemap_shared::{ChunkWithBeingsWantsDespawn, MakeChunkDespawn};
 use tilemap::chunking::*;
 use tilemap_shared::{ChunkPos, DimensionRef};
 use ::being_shared::being_shared_resources::FrozenBgSimulatedBeingsMap;
 
 
-
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
 
 #[allow(unused_parens)]
 pub fn freeze_being(mut cmd: Commands,
@@ -34,7 +34,6 @@ pub fn freeze_being(mut cmd: Commands,
 
 #[allow(unused_parens, )]
 pub fn on_chunk_with_beings_attempt_unload(
-    mut commands: Commands,
     mut reader: MessageReader<ChunkWithBeingsWantsDespawn>,
     chunks_query: Query<&BeingsWithinChunk>,
     beings: Query<&Chasing, With<Being>>,

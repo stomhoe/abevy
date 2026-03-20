@@ -11,7 +11,7 @@ use game_common::{game_common_components::{Directionable, EntityZeroRef, }, prel
 use movement::movement_components::SpeedMagnitude;
 use player::player_components::*;
 use ::sprite_animation_shared::*;
-use ::sprite_shared::prelude::*;
+use ::sprite_shared::*;
 use ::tilemap_shared::directions::*;
 
 #[allow(unused_parens, )]

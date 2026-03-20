@@ -3,7 +3,7 @@ use ::fnl::*;
 use common::common_components::{Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
 use crate::terrain::{
-    prelude::TerrgenEntityMap,
+    TerrgenEntityMap,
     terrgen_components::*,
     terrgen_resources::*,
     terrgen_seris::*,

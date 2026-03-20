@@ -7,11 +7,17 @@ use ::tilemap_shared::*;
 use crate::{
     chunking,
     regioning,
+    regioning::RegioningSystems,
     terrain,
+    terrain::{TerrainGenSystems, TerrainSystems, },
     tile,
-    prelude::*,
+    tile::TilingSystems,
+    tilemap_resources::*,
+    tilemap_systems::*,
+    tilemap_despawn_systems::*,
+    tilemap_structs::*,
+    tilemap_terrbl_systems::*,
 };
-use crate::tile::prelude::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ChunkSystems;
@@ -31,7 +37,7 @@ pub fn plugin(app: &mut App) {
         (
             process_tiles_pre
             .in_set(PreChunkDespawnSystems)//if this is removed everything breaks
-            .before(despawn_other_tiles_in_same_pos_if_not_excepted),//if this is removed you can get a glimpse of the tilemap which was there before removal
+            .before(tile::tile_despawn_systems::despawn_other_tiles_in_same_pos_if_not_excepted),//if this is removed you can get a glimpse of the tilemap which was there before removal
             refresh_terrbl_tilemaps.after(process_tiles_pre),
         ).in_set(ChunkSystems)
     ))

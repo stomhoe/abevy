@@ -3,8 +3,13 @@ pub mod opfilter_init_systems;
 pub mod opfilter_resources;
 pub mod opfilter_seris;
 
+pub use opfilter_components::*;
+pub use opfilter_resources::*;
+#[allow(unused_imports, )]pub use opfilter_seris::*;
+
 use bevy::prelude::*;
 use common::common_states::AssetLoading;
+use crate::terrain::terrprobe::opfilter::opfilter_init_systems::*;
 #[allow(unused_imports, )]
 use crate::terrain::{TerrainGenSystems, terrprobe::opfilter::{
     opfilter_components::*, opfilter_init_systems::*, opfilter_resources::*
@@ -27,14 +32,4 @@ pub fn plugin(app: &mut App) {
         OpfilterSystems.before(TerrainGenSystems)
     )
     ;
-}
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        opfilter_components::*,
-        opfilter_init_systems::*,
-        opfilter_resources::*,
-        opfilter_seris::*,
-    };
 }

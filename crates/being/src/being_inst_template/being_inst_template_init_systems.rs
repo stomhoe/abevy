@@ -2,7 +2,7 @@ use being_shared::{BeingInstTemplate, Predator, PredatorHuntThreshold};
 use bevy::prelude::*;
 use common::common_components::*;
 
-use ::sprite_shared::prelude::*;
+use ::sprite_shared::*;
 use game_common::game_common_samplers::*;
 
 use crate::being_inst_template::{being_inst_template_resources::*,
@@ -12,7 +12,7 @@ use crate::race::race_resources::{RaceEntityMap, RaceRef};
 use crate::being_interaction_zone_helper::build_being_interaction_zones;
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionStrIdRef};
-use tilemap::terrain::biome::{biome_components::SpawnablesPerBiome, biome_resources::BiomeEntityMap};
+use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
 use common::common_tag_components::TagSet;
 
@@ -23,7 +23,7 @@ pub fn init_being_templates(
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
-    mut biome_pack_samplers: Query<&mut SpawnablesPerBiome>,
+    mut biome_pack_samplers: Query<&mut CreatureSampler>,
 ) {
     if !bit_map.0.is_empty(){
         return;

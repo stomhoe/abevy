@@ -32,13 +32,3 @@ pub mod body_sampler_resources;
 pub mod body_sampler_seris;
 mod body_sampler_init_systems;
 pub mod body_sampler_systems;
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        body_sampler_components::*,
-        body_sampler_resources::*,
-        body_sampler_seris::*,
-        body_sampler_systems::*,
-    };
-}

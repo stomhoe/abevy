@@ -1,4 +1,3 @@
-
 use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
 use common::{common_states::AssetLoading };
@@ -6,18 +5,22 @@ use bevy_ecs_tilemap::prelude::*;
 use game_common::{game_common_samplers::EntityWeightedSampler};
 use sprite_systems::AcSpriteSystems;
 use bevy::prelude::*;
+use crate::tile::tile_systems::*;
+use crate::tile::portal_init_systems::*;
+use crate::tile::tile_init_systems::*;
+use crate::tile::tile_sampler_init_systems::*;
+use tile_despawn_systems::*;
+use tile_flip_rotate_systems::*;
+use tile_adj_retex_systems::*;
 
-use crate::tile::{
-    portal_init_systems::*, tile_adj_retex_systems::*, tile_components::*, tile_despawn_systems::*, tile_flip_rotate_systems::*, tile_init_systems::*, tile_messages::*, tile_resources::*, tile_sampler_init_systems::*, tile_sampler_resources::*, tile_systems::*
-} ;
-pub mod tile_systems;
-pub mod tile_adj_retex_systems;
+mod tile_systems;
+mod tile_adj_retex_systems;
 pub mod tile_delete_others_helpers;
 pub mod tile_despawn_systems;
-pub mod tile_flip_rotate_systems;
-pub mod tile_init_systems;
-pub mod portal_init_systems;
-pub mod tile_sampler_init_systems;
+mod tile_flip_rotate_systems;
+mod tile_init_systems;
+mod portal_init_systems;
+mod tile_sampler_init_systems;
 pub mod tile_components;
 pub mod tile_resources;
 pub mod tile_sampler_resources;
@@ -25,6 +28,13 @@ pub mod tile_sampler_components;
 pub mod tile_messages;
 pub mod tile_bundles;
 pub mod tile_shader;
+#[allow(unused_imports)] pub use tile_bundles::*;
+#[allow(unused_imports)] pub use tile_components::*;
+#[allow(unused_imports)] pub use tile_messages::*;
+#[allow(unused_imports)] pub use tile_resources::*;
+#[allow(unused_imports)] pub use tile_sampler_components::*;
+#[allow(unused_imports)] pub use tile_sampler_resources::*;
+#[allow(unused_imports)] pub use tile_shader::*;
 use ::tilemap_shared::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -129,24 +139,4 @@ pub fn plugin(app: &mut App) {
 
 
     ;
-}
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        tile_systems::*,
-        tile_adj_retex_systems::*,
-        tile_despawn_systems::*,
-        tile_flip_rotate_systems::*,
-        tile_init_systems::*,
-        portal_init_systems::*,
-        tile_sampler_init_systems::*,
-        tile_components::*,
-        tile_resources::*,
-        tile_sampler_resources::*,
-        tile_sampler_components::*,
-        tile_messages::*,
-        tile_bundles::*,
-        tile_shader::*,
-    };
 }

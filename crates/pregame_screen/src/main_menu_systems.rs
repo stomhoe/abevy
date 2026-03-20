@@ -17,9 +17,9 @@ pub fn menu_button_interaction(
     mut cmd: Commands,
     interaction_query: Query<(&Interaction, &MainMenuButton),
     Changed<Interaction>,>,
-    
+
     mut pregame_state: ResMut<NextState<PreGameState>>,
-    mut game_phase: ResMut<NextState<GamePhase>>,
+    mut ____________game_phase: ResMut<NextState<GamePhase>>,
 ) {
     for (interaction, menu_button_action) in &interaction_query {
         if *interaction == Interaction::Pressed {
@@ -40,20 +40,20 @@ pub fn menu_button_interaction(
                 MainMenuButton::Settings => {
                     pregame_state.set(PreGameState::Settings);
                 }
-            } 
+            }
         }
     }
 }
 
 pub fn handle_line_edits_interaction(
-    mut cmd: Commands, 
+    mut cmd: Commands,
     mut events: MessageReader<SubmitText>,
     mut line_edit_query: Query<(&mut CurrentText, &mut TextInputPrompt, &mut Outline), With<MainMenuIpLineEdit>>,
 
 ) {
     for event in events.read() {
         if let Ok((mut curr_text, mut input_prompt, mut outline)) = line_edit_query.get_mut(event.entity) {
-            
+
             let (valid, prompt) = if event.text.contains(':') {
                 (
                     event.text.parse::<std::net::SocketAddr>().is_ok(),
@@ -71,7 +71,7 @@ pub fn handle_line_edits_interaction(
                 outline.color = bevy::color::palettes::css::LIGHT_GOLDENROD_YELLOW.into();
                 let Ok(target) = TargetJoinServer::new(event.text.clone())
                 else { continue };
-                
+
                 cmd.insert_resource(target);
 
             } else {

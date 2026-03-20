@@ -5,7 +5,7 @@ use being_shared::Being;
 use common::log_targets;
 use game_common::game_common_components::{Dead, EntityZero, EntityZeroRef};
 use item_shared::{clone_item_from_ezero, DroppedItem, HeldItems, Item, ItemHeldIn, ItemOperation, ItemSpritesConfig, ItemsGeneratedOnDeath, KnownItemDest};
-use sprite_shared::prelude::{HeldSprites, ScsToBuild};
+use ::sprite_shared::{HeldSprites, ScsToBuild};
 use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
 
 use crate::ItemGroundMaterializeParamSet;

@@ -9,8 +9,8 @@ pub mod body_part_components;
 pub mod body_part_resources;
 pub mod body_part_seris;
 mod body_part_init_systems;
+use crate::body::body_part::body_part_init_systems::*;
 
-pub use body_part_init_systems::*;
 use common::common_states::AssetLoading;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -33,13 +33,4 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyPartMissing>()
     .replicate::<BodyPartDamage>()
     ;
-}
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        body_part_components::*,
-        body_part_resources::*,
-        body_part_seris::*,
-    };
 }

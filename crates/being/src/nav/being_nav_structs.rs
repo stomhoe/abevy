@@ -3,7 +3,6 @@ use bevy_northstar::CardinalGrid;
 use ::tilemap_shared::GlobalTilePos;
 use bevy::platform::collections::HashMap;
 use std::time::Duration;
-use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 
 pub struct AiNavGridCache {
     pub min: IVec2,
@@ -43,13 +42,6 @@ pub struct ChaserNavPlan {
     pub rebuild_timer: Timer,
     pub last_target_pos: Option<GlobalTilePos>,
     pub holds_at_partial_endpoint: bool,
-}
-
-#[derive(Default)]
-pub struct SyncAiNavGridState {
-    pub needed_dims: EntityHashSet,
-    pub dim_centers: EntityHashMap<IVec2>,
-    pub dim_center_counts: EntityHashMap<i32>,
 }
 
 impl Default for ChaserNavPlan {

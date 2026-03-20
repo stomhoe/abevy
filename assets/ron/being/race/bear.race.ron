@@ -21,7 +21,7 @@
     blacklisted_tiles_for_spawning: [],
     mass_kg: 500.0,
     distributed_totals: {
-        "walk_speed": 70,
+        "walk_speed": 200,
     },
     predator_hunt_threshold: 0.0,
     wander: (

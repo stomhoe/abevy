@@ -7,7 +7,7 @@ use game_common::game_common_components::{
     Health,
     HealthDamage,
 };
-use tilemap::prelude::tile_components::Tile;
+use tilemap::tile::tile_components::Tile;
 use tilemap_shared::SafeDespawn;
 
 pub fn apply_health_damage(

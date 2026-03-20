@@ -7,10 +7,10 @@ use game_common::{game_common_timers::*, game_common_samplers::EntityWeightedSam
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
-use crate::{chunking::chunking_components::{Chunk, TerrGenState}, regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion, StructureGenerationSettings}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
+use crate::{regioning::{regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk, RecheckRegion, StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_resources::{LoadedRegions, Prioritized, PrioritizedPerRegion, StructureGenerationSettings}, regioning_sgc_components::*}, tilemap_resources::MassCollectedTiles};
 use crate::regioning::natural::RiverDebugData;
 use crate::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
-use crate::regioning::regioning_seris::load_structure_generation_settings_seri_defs;
+use crate::regioning::regioning_sgc_seris::load_structure_generation_settings_seri_defs;
 
 use bit_vec::BitVec;
 
@@ -463,7 +463,7 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
 }
 #[allow(unused_parens, )]
 pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
-    mut region_query: Query<(&ChunksActiveInRegion, &mut RegionPlannedTiles, &RegionState),(Or<(Changed<ChunksActiveInRegion>, Changed<RegionPlannedTiles>, Changed<RegionState>)>, )>,
+    mut region_query: Query<(&ActiveChunksInRegion, &mut RegionPlannedTiles, &RegionState),(Or<(Changed<ActiveChunksInRegion>, Changed<RegionPlannedTiles>, Changed<RegionState>)>, )>,
     chunk_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), With<Chunk>>,
     mut collected: ResMut<MassCollectedTiles>,
     mut blocked_terrgen_gpos: ResMut<TerrGenDisabledGposByChunk>,
@@ -508,8 +508,8 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 #[allow(unused_parens, )]
 pub fn despawn_empty_regions(mut cmd: Commands,
     to_add_despawn_timer_query: Query<(Entity, ),
-    (With<Region>, Without<ChunksActiveInRegion>, Without<DespawnOnTimeout>)>,
-    regions_which_regained_chunks_query: Query<(Entity, &DimensionRef, &RegionPos, &ChunksActiveInRegion), (Added<ChunksActiveInRegion>, With<DespawnOnTimeout>)>,
+    (With<Region>, Without<ActiveChunksInRegion>, Without<DespawnOnTimeout>)>,
+    regions_which_regained_chunks_query: Query<(Entity, &DimensionRef, &RegionPos, &ActiveChunksInRegion), (Added<ActiveChunksInRegion>, With<DespawnOnTimeout>)>,
 ){
     for (region_ent, ) in to_add_despawn_timer_query.iter() {
         cmd.entity(region_ent).try_insert_if_new(DespawnTimer::secs(0.5));

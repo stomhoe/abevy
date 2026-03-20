@@ -13,7 +13,7 @@ use tracing::Level;
 use common::log_targets;
 use common::common_states::AssetLoading;
 use item_systems::ItemSystems;
-use tilemap::prelude::TilingSystems;
+use tilemap::tile::TilingSystems;
 use tilemap_shared::GlobalTilePos;
 
 const ERROR: &str = "error";

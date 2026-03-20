@@ -9,4 +9,4 @@ use serde::{Deserialize, Serialize};
 pub struct Biome;
 
 #[derive(Component, Debug, Clone, Default, )]
-pub struct SpawnablesPerBiome(pub EntityWeightedSampler);
+pub struct CreatureSampler(pub EntityWeightedSampler);

@@ -1,7 +1,7 @@
 
 use ::game_common::{game_common_components::*, };
 use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
-use ::sprite_shared::{prelude::*, sprite_scale_offset::Offset2D};
+use ::sprite_shared::{*, sprite_scale_offset::Offset2D};
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
 use bevy::{
@@ -15,7 +15,7 @@ use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
 use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::{DespawnOnDeath, Health};
 use item_shared::{ItemEntityMap, ItemsGeneratedOnDeath};
-use ::sprite_shared::prelude::SpriteConfig;
+use ::sprite_shared::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
 use std::{fs, path::PathBuf};
 

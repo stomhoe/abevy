@@ -6,8 +6,8 @@ use bevy::{
 };
 
 use movement::{movement_components::GridLockedMovement, prelude::MovementRemoveOnFreezeBundle};
-use tilemap::prelude::*;
-use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, };
+use tilemap::chunking::chunking_components::*;
+use tilemap_shared::{LoadChunksAround, ChunkPos, DimensionRef, GlobalTilePos, };
 
 use crate::{being_components::*, nav::RetainedChasePathSnapshot};
 
@@ -39,7 +39,7 @@ impl BeingBundle {
 #[derive(Bundle, Debug, )]
 pub struct RemoveOnFreeze(
     pub Name,
-    pub ActivateChunksAround,
+    pub LoadChunksAround,
     pub ActivatingChunks,
     pub RetainedChasePathSnapshot,
     pub Transform,

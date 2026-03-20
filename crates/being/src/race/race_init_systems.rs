@@ -9,7 +9,7 @@ use game_common::game_common_samplers::*;
 use game_common::game_common_string_components::*;
 use common::common_components::SampleSpriteEnts;
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
-use tilemap::terrain::biome::{biome_components::SpawnablesPerBiome, biome_resources::BiomeEntityMap};
+use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 
 use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeEntityMap;
@@ -33,7 +33,7 @@ pub fn init_races(
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map:Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
-    mut biome_pack_samplers: Query<&mut SpawnablesPerBiome>,
+    mut biome_pack_samplers: Query<&mut CreatureSampler>,
 ) {
     for race_seri in load_race_seri_defs() {
         let str_id = StrId::trunc(&race_seri.id);

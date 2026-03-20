@@ -9,7 +9,7 @@ use game_common::game_common_components::{EntityZero, EntityZeroRef, };
 use tilemap_shared::{GlobalTilePos};
 use ::tilemap_shared::directions::*;
 
-use ::sprite_shared::{sprite_scale_offset::*, *};
+use ::sprite_shared::{sprite_scale_offset::*, };
 
 #[allow(unused_imports, )]
 use crate::sprite_components::*;

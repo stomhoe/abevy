@@ -1,6 +1,6 @@
 use bevy::{math::U16Vec2, prelude::*};
 use bevy_ecs_tilemap::prelude::TilemapTileSize;
-use sprite_shared::prelude::AcZ;
+use sprite_shared::AcZ;
 use tilemap_shared::*;
 
 use crate::tile::tile_shader::tile_shader_components::TileShaderRef;

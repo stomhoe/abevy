@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use common::log_targets;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
-use sprite_shared::prelude::ScsToBuild;
+use sprite_shared::ScsToBuild;
 use tilemap_shared::DimensionRef;
 
 use crate::Item;

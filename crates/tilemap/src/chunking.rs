@@ -5,19 +5,20 @@ use bevy::time::common_conditions::on_timer;
 #[allow(unused_imports)] use bevy_replicon::prelude::Replicated;
 use common::common_states::AssetLoading;
 
-pub mod chunking_components;
+pub mod chunking_components {
+    pub use ::tilemap_shared::chunking_shared_components::*;
+}
+
 pub mod macro_chunk_components;
-pub mod chunking_resources;
 pub mod chunking_spawn_systems;
 pub mod chunking_visibility_systems;
 pub mod chunking_despawn_systems;
 
-pub use chunking_components::*;
 pub use macro_chunk_components::*;
-pub use chunking_resources::*;
 pub use chunking_spawn_systems::*;
 pub use chunking_visibility_systems::*;
 pub use chunking_despawn_systems::*;
+pub use chunking_components::*;
 use ::tilemap_shared::*;
 
 use crate::{ChunkSystems, };
@@ -52,7 +53,11 @@ pub fn plugin(app: &mut App) {
         periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
         update_within_chunk,
     ).in_set(ChunkSystems))
-    .init_resource::<ActivateChunksAround>()
+
+    .add_systems(Update, (
+        add_activating_chunks_to_activate_chunks_around,
+    ))
+    .init_resource::<LoadChunksAround>()
     .init_resource::<LoadedChunks>()
     .init_resource::<LoadedMacroChunks>()
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), load_chunking_settings)
@@ -75,9 +80,8 @@ pub fn plugin(app: &mut App) {
 #[allow(unused_imports, ambiguous_glob_reexports)]
 pub mod prelude {
     pub use super::{
-        chunking_components::*,
         macro_chunk_components::*,
-        chunking_resources::*,
+        chunking_shared_resources::*,
         chunking_spawn_systems::*,
         chunking_visibility_systems::*,
         chunking_despawn_systems::*,

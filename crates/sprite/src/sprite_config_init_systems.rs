@@ -1,4 +1,4 @@
-use ::sprite_shared::{sprite_scale_offset::*, *};
+use ::sprite_shared::{sprite_scale_offset::*, };
 #[allow(unused_imports)]
 use bevy::prelude::*;
 #[allow(unused_imports)]

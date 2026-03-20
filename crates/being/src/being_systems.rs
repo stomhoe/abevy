@@ -4,9 +4,7 @@ use bevy::{ecs::{entity::EntityHashSet, entity_disabling::Disabled}, prelude::*}
 use common::common_components::StrId;
 use common::log_targets::BEING_SYSTEM;
 
-use crate::{
-    being_components::*,
-};
+#[allow(unused_imports, )] use crate::being_components::*;
 
 #[allow(unused_parens, )]
 pub fn validate_added_beings_have_gpos(

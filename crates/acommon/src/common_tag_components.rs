@@ -113,7 +113,7 @@ macro_rules! define_tag_hashset_and_impl_methods {
         impl_tag_hashset_methods!($name, $tag_type);
     };
 }
-#[allow(dead_code, )]
+#[allow(unused_macros)]
 macro_rules! define_tag_vec_and_impl_methods {
     ($name:ident, $tag_type:ty) => {
         #[derive(Component, Debug, Deserialize, Serialize, Clone, Default, PartialEq, Eq)]

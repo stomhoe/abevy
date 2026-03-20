@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileFlip;
 use common::common_components::HashId;
 use game_common::game_common_components::*;
-use ::sprite_shared::prelude::*;
+use ::sprite_shared::*;
 use ::tilemap_shared::*;
 
 #[allow(unused_parens)]

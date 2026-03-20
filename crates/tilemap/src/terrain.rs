@@ -1,20 +1,10 @@
-#[allow(unused_imports)] use bevy::prelude::*;
+use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use ::tilemap_shared::*;
-use crate::{terrain::{
-        operation_list::{
-            operation_list_components::*,
-            operation_list_init_systems::*,
-            operation_list_resources::*,
-        },
-    terrgen_components::*,
-    terrgen_async_resources::*,
-    terrgen_messages::{ChunkTerrainBuilt, MacroChunkBiomeSampled, PendingOp, RequestMacroChunkBiomeSampling},
-    terrgen_noise_init_systems::*,
-    terrgen_resources::*,
-    terrgen_systems::*, terrprobe::TerrainProbeSystems,
-}, tilemap_systems::process_tiles_pre};
+use crate::terrain::terrgen_systems::*;
+use crate::terrain::terrgen_noise_init_systems::*;
+use crate::tilemap_systems::process_tiles_pre;
 
 pub mod terrgen_systems;
 mod terrgen_helpers;
@@ -28,7 +18,15 @@ pub mod terrgen_seris;
 pub mod terrgen_messages;
 pub mod terrgen_expression;
 pub mod terrprobe;
-pub use operation_list::operation_list_components;
+#[allow(unused_imports)] pub use biome::*;
+#[allow(unused_imports)] pub use operation_list::*;
+#[allow(unused_imports)] pub use terrgen_async_resources::*;
+#[allow(unused_imports)] pub use terrgen_components::*;
+#[allow(unused_imports)] pub use terrgen_expression::*;
+#[allow(unused_imports)] pub use terrgen_messages::*;
+#[allow(unused_imports)] pub use terrgen_resources::*;
+#[allow(unused_imports)] pub use terrgen_seris::*;
+#[allow(unused_imports)] pub use terrprobe::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TerrainGenSystems;
@@ -50,19 +48,14 @@ pub fn plugin(app: &mut App) {
             (
                 init_noises,
                 map_terrgen_id_to_entity,
-                cache_tg_oplists,
-                init_oplists_from_assets,
-                map_operation_list_id_to_entity,
-                init_oplists_bifurcations,
-                cycle_detection,
-                assign_rootoplist_to_dimensions,
 
             ).chain(),
             ).in_set(TerrainGenSystems)
         )
-        .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities),
-            (TerrainGenSystems, TerrainProbeSystems).in_set(TerrainSystems)
-        )
+        .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities),(
+            (TerrainGenSystems, TerrainProbeSystems).in_set(TerrainSystems),
+            TerrainGenSystems.before(OperationListSystems),
+        ))
         .init_resource::<TerrGenLaunchQueue>()
         .init_resource::<TerrGenAsyncTasks>()
         .init_resource::<TerrGenDebugGrid>()
@@ -94,20 +87,4 @@ pub fn plugin(app: &mut App) {
         ;
 
 
-}
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        terrgen_systems::*,
-        biome::*,
-        operation_list::*,
-        terrgen_components::*,
-        terrgen_async_resources::*,
-        terrgen_resources::*,
-        terrgen_seris::*,
-        terrgen_messages::*,
-        terrgen_expression::*,
-        terrprobe::*,
-    };
 }

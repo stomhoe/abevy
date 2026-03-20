@@ -253,17 +253,15 @@ pub fn sync_chase_retained_chunks(
     use tilemap::chunking::chunking_components::ActivatingChunks;
     match activating_chunks {
         Some(mut existing) => {
-            if existing.chunk_positions != desired_chunks {
-                existing.chunk_positions.clear();
-                existing.chunk_positions.extend(desired_chunks.iter().copied());
+            if existing.0 != desired_chunks {
+                existing.0.clear();
+                existing.0.extend(desired_chunks.iter().copied());
             }
         }
         None if !desired_chunks.is_empty() => {
             to_insert.push((
                 chaser_ent,
-                ActivatingChunks {
-                    chunk_positions: desired_chunks.to_vec(),
-                },
+                ActivatingChunks(desired_chunks.to_vec()),
             ));
             debug!(target: common::log_targets::BEING_SYSTEM, "Added chase chunk retention for {:?}, chunks: {:?}", chaser_ent, desired_chunks.len());
         }

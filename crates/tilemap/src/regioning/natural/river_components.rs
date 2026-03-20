@@ -60,7 +60,7 @@ impl RiverDebugData {
         };
         info.active_probe_chunks.remove(&start_chunk);
     }
-
+    #[allow(dead_code, )]
     pub(crate) fn mark_sample(&mut self, dimension_ref: DimensionRef, region_pos: RegionPos, pos: GlobalTilePos, val: f32) {
         self.region_mut(dimension_ref, region_pos).sampled_points.insert(pos, val);
     }

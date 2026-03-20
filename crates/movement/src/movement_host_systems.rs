@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use param_sets::BlockingTileParamSet;
 use sprite_animation_shared::MatchHeldSpritesAnimStateToBeingState;
-use tilemap::tile::prelude::Tile;
+use tilemap::tile::tile_components::Tile;
 use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 
 use common::log_targets::MOVEMENT_SYSTEM;

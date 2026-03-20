@@ -27,7 +27,7 @@ pub fn regions_list_window(
         Option<&GridOfSgcs>,
         Option<&ClaimList>,
         Option<&RegionPlannedTiles>,
-        Option<&ChunksActiveInRegion>,
+        Option<&ActiveChunksInRegion>,
         Option<&CountsOfSgcs>,
         &RegionState,
         Has<MessageOnTimeout>,
@@ -51,7 +51,7 @@ pub fn regions_list_window(
     let mut open = window_visible.regions_list;
 
     // Group regions by dimension and position (keyed by StrId and Entity number)
-    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ChunksActiveInRegion>, Option<&CountsOfSgcs>, RegionState, bool, bool)>)> =
+    let mut regions_by_dimension: BTreeMap<String, (Entity, HashMap<RegionPos, (Entity, Option<&Name>, Option<&GridOfSgcs>, Option<&ClaimList>, Option<&RegionPlannedTiles>, Option<&ActiveChunksInRegion>, Option<&CountsOfSgcs>, RegionState, bool, bool)>)> =
         BTreeMap::new();
 
     for (entity, _region, dim_ref, region_pos, name, grid, claim_list, planned_tiles, chunks_active, counts, &region_state, timeout_timer, empty_timer) in region_query.iter() {

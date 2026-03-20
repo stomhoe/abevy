@@ -523,10 +523,6 @@ macro_rules! define_entity_map_systems {
                 [<plugin_common_ $main_component:snake>](app);
             }
 
-            pub fn [<plugin_ $main_component:snake _no_replicate>](app: &mut App) {
-                [<plugin_common_ $main_component:snake>](app);
-            }
-
             fn [<plugin_common_ $main_component:snake>](app: &mut App) {
                 app
                     .init_resource::<[<$main_component EntityMap>]>()
@@ -740,7 +736,7 @@ macro_rules! define_entity_map_systems_no_replicate {
                 cmd.try_insert_batch(refs);
             }
 
-            pub fn [<plugin_ $main_component:snake _no_replicate>](app: &mut App) {
+            pub fn [<plugin_ $main_component:snake>](app: &mut App) {
                 use bevy_asset_loader::prelude::*;
                 $crate::__entity_map_register_reflect_type!(app, $($ref_reflect,)? [<$abbreviation Ref>]);
                 $(

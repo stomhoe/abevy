@@ -9,6 +9,7 @@ common = { path = "../acommon" }
 bevy = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
+bevy-inspector-egui = { workspace = true }
 
 #indexmap = { workspace = true }
 #delegate = { workspace = true }

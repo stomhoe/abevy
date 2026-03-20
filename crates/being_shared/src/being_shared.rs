@@ -6,7 +6,7 @@ use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
-use faction_shared::prelude::BelongsToAPlayerFaction;
+use faction_shared::BelongsToAPlayerFaction;
 use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
 
 #[derive(Component, Debug, Default, Clone)]

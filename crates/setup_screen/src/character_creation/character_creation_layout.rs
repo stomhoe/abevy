@@ -1,9 +1,8 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_ui_gradients::ColorStop;
 use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 use game_common::game_common_states::GameSetupScreen;
-use ui_shared::{ui_components::*, ui_functions::*, };
+#[allow(unused_imports, )]use ui_shared::{ui_components::*, ui_functions::*, };
 
 
 // ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
@@ -72,7 +71,7 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
     )).id();
 
     //add text node
-    let screen_title = commands.spawn((
+    let _screen_title = commands.spawn((
         ChildOf(vbox_container),
         Node {
             width: Val::Percent(100.),

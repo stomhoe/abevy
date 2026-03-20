@@ -2,9 +2,6 @@ use bevy::prelude::*;
 
 use crate::{DiagonalCardinalDirection, DimensionRef, GlobalTilePos};
 
-#[derive(Debug, Message, Default)]
-pub struct ForceAllChunksDespawn;
-
 #[derive(Message, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct RecheckTileAdjacency {
     pub dim: DimensionRef,

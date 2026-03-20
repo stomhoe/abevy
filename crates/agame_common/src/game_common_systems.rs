@@ -1,8 +1,8 @@
 use crate::game_common_components::*;
 use crate::game_common_bundles::DenyForEntityZeroClonedChild;
 use crate::game_common_timers::*;
-use common::prelude::*;
-use ::sprite_shared::prelude::*;
+use ::common::*;
+use ::sprite_shared::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 pub fn tick_time_based_multipliers(

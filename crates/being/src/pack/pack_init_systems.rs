@@ -4,7 +4,7 @@ use game_common::{
     game_common_components::EntityZero,
     game_common_samplers::CappedNormalDist,
 };
-use tilemap::terrain::biome::{biome_components::SpawnablesPerBiome, biome_resources::BiomeEntityMap};
+use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 
 use crate::{
     being_inst_template::being_inst_template_resources::{BeingInstTemplateEntityMap, load_bit_seri_defs},
@@ -18,7 +18,7 @@ pub fn init_packs(
     race_emap: Option<Res<RaceEntityMap>>,
     bit_emap: Option<Res<BeingInstTemplateEntityMap>>,
     biome_emap: Res<BiomeEntityMap>,
-    mut biome_pack_samplers: Query<&mut SpawnablesPerBiome>,
+    mut biome_pack_samplers: Query<&mut CreatureSampler>,
 ) {
     if !pack_emap.0.is_empty() {
         return;

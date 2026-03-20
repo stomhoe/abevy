@@ -9,7 +9,7 @@ use common::log_targets::{BEING_SYSTEM, MOVEMENT_SYSTEM};
 use common::file_logging::file_log;
 use ::sprite_animation_shared::*;
 
-use tilemap::tile::prelude::Tile;
+use tilemap::tile::tile_components::Tile;
 use tilemap_shared::{BeingsAtGpos, *};
 
 use crate::movement_components::*;

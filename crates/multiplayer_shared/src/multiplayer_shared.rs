@@ -2,8 +2,8 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::{prelude::*, shared::RepliconSharedPlugin};
-use common::{common_components::*, common_states::*};
-use crate::prelude::*;
+use common::{common_states::*};
+use crate::*;
 
 
 pub const PROTOCOL_ID: u64 = 7;

@@ -3,7 +3,7 @@
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use player::player_components::*;
 
-use crate::{faction_components::*, faction_resources::*, };
+#[allow(unused_imports, )]use crate::{faction_components::*, faction_resources::*, };
 
 
 #[allow(unused_parens)]///todo arreglar, se puede ejecutar antes de que se le ponga Mine a nuestra faccion

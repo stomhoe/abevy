@@ -19,25 +19,3 @@ pub mod entity_map_macros;
 pub mod marker_macros;
 
 pub mod log_targets;
-
-
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use crate::{
-        common::*,
-        common_components::*,
-        common_id_components::*,
-        common_tag_components::*,
-        common_types::*,
-        common_states::*,
-        common_resources::*,
-        def_db::*,
-        file_logging::*,
-        common_systems::*,
-        common_tag_systems::*,
-        entity_map_macros::*,
-        marker_macros::*,
-        log_targets::*,
-    };
-}

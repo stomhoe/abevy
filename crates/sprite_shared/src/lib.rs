@@ -6,19 +6,7 @@ pub mod sprite_sampler;
 pub mod sprite_shared;
 pub mod sprite_scale_offset;
 
-
-
-
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use crate::{
-        sprite_shared::*,
-        sprite_components::*,
-        sprite_resources::*,
-        sprite_seris::*,
-        sprite_sampler::*,
-        sprite_sampler::prelude::*,
-        sprite_scale_offset::*,
-    };
-}
+pub use sprite_components::*;
+pub use sprite_resources::*;
+pub use sprite_sampler::*;
+pub use sprite_scale_offset::*;

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 use crate::terrain::terrprobe::opfilter::opfilter_resources::OpFilterRef;
-use crate::terrain::terrprobe::terrprobe_messages::{ProbePattern, TerrProbeJob};
+use crate::terrain::terrprobe::terrprobe_messages::*;
 use ::tilemap_shared::*;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]

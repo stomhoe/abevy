@@ -1,6 +1,6 @@
 use bevy::{math::U16Vec2, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
-use sprite_shared::prelude::AcZ;
+use sprite_shared::AcZ;
 use std::{collections::HashMap, mem::take};
 use tilemap_shared::*;
 

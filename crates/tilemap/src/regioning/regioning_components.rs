@@ -3,11 +3,13 @@ use game_common::game_common_components::{ EntityZeroRef};
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use ::tilemap_shared::*;
 
-use crate::{chunking::chunking_components::Chunk, regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
+use crate::{regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
 use bevy_inspector_egui::{egui, };
 
 use common::{common_components::*, };
 use serde::{Deserialize, Serialize};
+
+pub use ::tilemap_shared::ActiveChunksInRegion;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 #[require(ClaimList, RegionPlannedTiles, RegionState, Visibility, Transform, AssetScoped)]
@@ -21,10 +23,6 @@ pub enum RegionState {
     BuildingStarted,
     AllTilesPrepared,
 }
-
-#[derive(Component, Debug, Clone)]
-#[relationship_target(relationship = Chunk)]
-pub struct ChunksActiveInRegion(Vec<Entity>);
 
 #[derive(Component, Debug, Clone)]
 #[require(CountsOfSgcs, GridOfSgcs)]

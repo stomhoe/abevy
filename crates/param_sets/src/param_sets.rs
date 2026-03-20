@@ -9,7 +9,7 @@ use common::common_tag_components::TagSet;
 
 use ::being_shared::*;
 use game_common::game_common_components::*;
-use tilemap::tile::prelude::*;
+use tilemap::tile::*;
 use ::tilemap_shared::*;
 use tilemap::chunking::chunking_components::{Chunk, TerrGenState};
 

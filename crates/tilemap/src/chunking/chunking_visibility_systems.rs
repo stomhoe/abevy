@@ -2,19 +2,15 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{DrawTilemap,};
 use camera::camera_components::CameraTarget;
-use tilemap_shared::DimensionRef;
-use tilemap_shared::ChunkPos;
+use tilemap_shared::{LoadChunksAround, Chunk, ChunkPos, DimensionRef};
 
-use super::chunking_components::*;
-use super::chunking_resources::*;
 
 
 #[allow(unused_parens)]
 pub fn update_chunk_visib(
     mut reader: MessageReader<RecheckChunksVisibility>,
-    camera_query: Query<(&GlobalTransform, &DimensionRef), With<CameraTarget>>,
+    camera_query: Query<(&GlobalTransform, &DimensionRef, &LoadChunksAround), With<CameraTarget>>,
     mut chunks_query: Query<(&mut Visibility, &ChunkPos, &DimensionRef, &Children), With<Chunk>>,
-    chunkrange_settings: Res<ActivateChunksAround>,
     mut event_writer: MessageWriter<DrawTilemap>,
     mut to_draw: Local<Vec<DrawTilemap>>,
 ) {
@@ -26,7 +22,7 @@ pub fn update_chunk_visib(
     if camera_query.is_empty() {
         return;
     }
-    let Ok((camera_transform, camera_dimension)) = camera_query.single() else {
+    let Ok((camera_transform, camera_dimension, chunkrange_settings)) = camera_query.single() else {
         error!("Failed to get singular camera target");
         return;
     };

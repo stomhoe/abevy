@@ -1,10 +1,9 @@
-
-#[allow(unused_imports)] use bevy::prelude::*;
-use crate::prelude::*;
+use bevy::prelude::*;
+use crate::common_tag_components::{AddSameHashedTags, HashedTagsVec, TagSet};
 
 
 #[allow(unused_parens)]
-pub fn add_hashed_tags(mut cmd: Commands, 
+pub fn add_hashed_tags(mut cmd: Commands,
     mut query: Query<(&TagSet, &mut HashedTagsVec),(Changed<TagSet>, With<AddSameHashedTags>)>,
     mut removed: RemovedComponents<TagSet>,
 ) {

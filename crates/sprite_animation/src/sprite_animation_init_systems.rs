@@ -5,7 +5,7 @@ use bevy_spritesheet_animation::prelude::*;
 use common::common_components::*;
 use common::def_db::discover_assets_files_by_suffixes;
 use common::log_targets::SPRITE_ANIMATION_INIT;
-use ::sprite_shared::prelude::*;
+use ::sprite_shared::*;
 use sprite_systems::prelude::*;
 use ::sprite_animation_shared::*;
 

@@ -4,7 +4,7 @@ use common::{common_components::{HashId, StrId}, common_tag_components::HashedTa
 use std::mem::take;
 
 use crate::{
-    chunking::{chunking_components::*, macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState}},
+    chunking::{macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState}},
     terrain::{
         terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,

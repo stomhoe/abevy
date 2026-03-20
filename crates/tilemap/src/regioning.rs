@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use game_common::game_common_timers::TimedOut;
-use crate::{ regioning::{dungeoning::*, natural::*, regioning_components::*, regioning_messages::*, regioning_resources::*, regioning_sgc_components::{StructuredGenConfig, *}, regioning_sgc_init_systems::*, regioning_systems::*}, terrain::terrprobe::terrprobe_messages::*, };
+use crate::{ regioning::{regioning_sgc_init_systems::*, regioning_systems::*}, terrain::terrprobe::terrprobe_messages::*, };
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -80,7 +80,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<StructuredGenConfig>()
     .replicate::<StructureGenerationSettings>()
     .replicate::<SgcsWeightedSampler>()
-    .replicate_once::<Region>()
+    .replicate_once::<crate::regioning::regioning_components::Region>()
 
     .add_message::<OfferChunk>()
     .add_message::<ChunksClaim>()
@@ -95,23 +95,17 @@ pub fn plugin(app: &mut App) {
 
 pub mod regioning_components;
 pub mod regioning_resources;
-pub mod regioning_seris;
+pub mod regioning_sgc_seris;
 pub mod regioning_messages;
 pub mod regioning_sgc_components;
 pub mod dungeoning;
 pub mod natural;
 mod regioning_systems;
 mod regioning_sgc_init_systems;
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        regioning_components::*,
-        regioning_resources::*,
-        regioning_seris::*,
-        regioning_messages::*,
-        regioning_sgc_components::*,
-        dungeoning::*,
-        natural::*,
-    };
-}
+#[allow(unused_imports)] pub use dungeoning::*;
+#[allow(unused_imports)] pub use natural::*;
+#[allow(unused_imports)] pub use regioning_components::*;
+#[allow(unused_imports)] pub use regioning_messages::*;
+#[allow(unused_imports)] pub use regioning_resources::*;
+#[allow(unused_imports)] pub use regioning_sgc_components::*;
+#[allow(unused_imports)] pub use regioning_sgc_seris::*;

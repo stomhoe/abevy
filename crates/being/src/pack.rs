@@ -22,8 +22,3 @@ mod pack_init_systems;
 pub mod pack_components;
 pub mod pack_resources;
 pub mod pack_seris;
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{pack_components::*, pack_resources::*, pack_seris::*};
-}

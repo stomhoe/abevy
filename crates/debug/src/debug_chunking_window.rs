@@ -9,12 +9,11 @@ use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugW
 use camera::camera_components::CameraTarget;
 use common::common_components::*;
 use game_common::game_common_components::*;
-use ::sprite_shared::prelude::*;
+use ::sprite_shared::*;
 use tilemap::chunking::chunking_components::*;
-use tilemap::chunking::chunking_resources::*;
+use tilemap_shared::*;
 use tilemap::tile::tile_components::*;
 use tilemap::tile::tile_shader::tile_shader_components::TileShaderRef;
-use ::tilemap_shared::*;
 
 // Color palette for unique tile types - readable and distinct colors
 const TILE_COLORS: &[egui::Color32] = &[
@@ -304,7 +303,6 @@ pub fn debug_chunking_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
     mut chunking_ui: ResMut<DebugChunkingUiState>,
-    mut chunk_settings: ResMut<LoadChunksAround>,
     chunk_query: Query<(
         Entity,
         &Chunk,
@@ -316,7 +314,7 @@ pub fn debug_chunking_window(
         Option<&ActivatingChunks>,
     ), With<Chunk>>,
 
-    camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    camera_dimension: Query<(&DimensionRef, &GlobalTransform, Option<&LoadChunksAround>), With<CameraTarget>>,
     loaded_chunks: Res<LoadedChunks>,
     // Query for child entities to check their components
     tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
@@ -339,13 +337,13 @@ pub fn debug_chunking_window(
     let mut open = window_visible.chunks_list;
 
     // Get camera target dimension and position
-    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos) = camera_dimension.iter().next()
-        .map(|(dim_ref, transform)| {
+    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos, camera_chunk_settings) = camera_dimension.iter().next()
+        .map(|(dim_ref, transform, chunk_settings)| {
             let chunk_pos = ChunkPos::from(transform.translation());
             let tile_pos = GlobalTilePos::from(transform.translation().xy());
-            (Some(dim_ref), Some(chunk_pos), Some(tile_pos))
+            (Some(dim_ref), Some(chunk_pos), Some(tile_pos), chunk_settings.copied())
         })
-        .unwrap_or((None, None, None));
+        .unwrap_or((None, None, None, None));
     let camera_dim_name = camera_dim_ref.and_then(|camera_ref| {
         id_query.get(camera_ref.0).ok().map(|s| s.as_str().to_string())
     });
@@ -423,18 +421,22 @@ pub fn debug_chunking_window(
 
             // Chunk Range Settings
             ui.heading("Range Settings");
-            ui.horizontal(|ui| {
-                ui.label("Visibility Distance:");
-                ui.add(egui::Slider::new(&mut chunk_settings.chunk_visib_max_dist, 100.0..=10000.0));
-            });
-            ui.horizontal(|ui| {
-                ui.label("Active Distance:");
-                ui.add(egui::Slider::new(&mut chunk_settings.chunk_active_max_dist, 100.0..=10000.0));
-            });
-            ui.horizontal(|ui| {
-                ui.label("Discovery Range:");
-                ui.add(egui::Slider::new(&mut chunk_settings.discovery_range, 1..=10));
-            });
+            if let Some(chunk_settings) = camera_chunk_settings {
+                ui.horizontal(|ui| {
+                    ui.label("Visibility Distance:");
+                    ui.label(format!("{:.1}", chunk_settings.chunk_visib_max_dist));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Active Distance:");
+                    ui.label(format!("{:.1}", chunk_settings.chunk_active_max_dist));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Discovery Range:");
+                    ui.label(format!("{}", chunk_settings.discovery_range));
+                });
+            } else {
+                ui.label("Camera target has no ActivateChunksAround");
+            }
             ui.separator();
 
             for dim_key in sorted_dims.iter() {
@@ -544,7 +546,7 @@ pub fn debug_chunking_window(
 
                         if let Some(activating) = activating_chunks {
                             ui.label(format!("⏳ ActivatingChunks: {} positions",
-                                activating.chunk_positions.len()));
+                                activating.0.len()));
                         }
 
                         // Display children details
@@ -659,7 +661,7 @@ pub fn debug_chunking_window(
                 .show(ui, |ui| {
                 // Get camera position and current chunk
                 let camera_chunk_pos = camera_dimension.iter().next()
-                    .map(|(_, transform)| ChunkPos::from(transform.translation()));
+                    .map(|(_, transform, _)| ChunkPos::from(transform.translation()));
 
                 // Group chunks by dimension
                 let mut chunks_by_dim: BTreeMap<String, Vec<(Entity, ChunkPos)>> = BTreeMap::new();

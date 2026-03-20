@@ -8,12 +8,13 @@ use game_common::{
     StatefulSessionSystems, game_common::GameplaySystems,
 };
 
+#[allow(unused_imports, )]
 use crate::{
     sprite_build_systems::*,
     sprite_components::*,
     sprite_config_init_systems::*,
     sprite_resources::*,
-    sprite_sampler::{self, SpriteSamplerSystems, sprite_sampler_systems::*},
+    sprite_sampler::{SpriteSamplerSystems, sprite_sampler_systems::*},
     sprite_systems::*,
     sprite_scale_systems::*,
     sprite_offset_systems::*,

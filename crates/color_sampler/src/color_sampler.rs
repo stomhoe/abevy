@@ -23,7 +23,7 @@ pub fn plugin(app: &mut App) {
 
     app
     .add_plugins((
-        plugin_color_sampler_no_replicate,
+        plugin_color_sampler,
     ))
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (init_color_samplers, map_color_sampler_id_to_entity).chain().in_set(ColorSampleSystems))
     .add_systems(Update, (

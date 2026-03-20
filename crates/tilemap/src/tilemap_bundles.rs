@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::{FrustumCulling, prelude::*};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::{common_components::*, };
 
-use sprite_shared::prelude::AcZ;
+use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 
 

@@ -4,7 +4,7 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
 use game_common::game_common_components::EntityZeroRef;
 use param_sets::EntitiesAtGposParamSet;
-use sprite_shared::prelude::AcZ;
+use sprite_shared::AcZ;
 use std::cmp::Ordering;
 use tilemap_shared::{DimensionRef, GlobalTilePos, TileGatheringParamSet};
 

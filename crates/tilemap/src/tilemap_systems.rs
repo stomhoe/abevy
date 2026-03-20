@@ -8,25 +8,23 @@ use bevy::{
 use bevy_ecs_tilemap::prelude::{*, TilemapTexture::Vector};
 use bevy_replicon::prelude::*;
 use common::{TILEMAP_SYSTEM, common_components::HashId, common_resources::ImageSizeMap };
-use common::common_tag_components::TagSet;
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_components::*;
-use sprite_shared::prelude::{AcZ, YSortOrigin};
+use sprite_shared::{AcZ, YSortOrigin};
+use crate::tile::tile_shader::tile_material::terrbl::TerrBlendMat;
 use ::tilemap_shared::*;
 use crate::{
-    chunking::chunking_resources::*,
     tile::{
         tile_bundles::*,
         tile_components::*,
         tile_delete_others_helpers::TileDeleteOthersParamSet,
         tile_despawn_systems::*,
-        tile_shader::tile_material::prelude::*,
         tile_shader::tile_shader_components::*,
     },
-    tilemap_bundles::*,
     tilemap_resources::*,
     tilemap_structs::*,
     tilemap_terrbl_systems::build_terrbl_material_for_map,
+    tilemap_bundles::TilemapConfig,
 };
 use std::{collections::HashMap, mem::take};
 
@@ -36,7 +34,6 @@ pub struct SystemLocals<'s> {
     pub tile_runtime_info: Local<'s, EntityHashMap<(EntityZeroRef, TileTextureIndex)>>,
     pub terrbl_debug_budget: Local<'s, u32>,
     pub safe_despawns: Local<'s, Vec<SafeDespawn>>,
-    pub checked_ents: Local<'s, HashSet<Entity>>,
 }
 
 #[derive(SystemParam)]
@@ -66,10 +63,7 @@ pub struct ComponentsQueries<'w, 's> {
     pub y_sort_query: Query<'w, 's, (), (With<YSortOrigin>, common::AnyDisabling)>,
     pub tile_ezero_ref_query: Query<'w, 's, &'static EntityZeroRef>,
     pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
-    pub tag_set_query: Query<'w, 's, &'static TagSet, common::AnyDisabling>,
     pub interaction_zones_query: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
-    pub delete_others_query: Query<'w, 's, &'static DeleteOtherTilesInSamePos>,
-    pub gpos_query: Query<'w, 's, &'static GlobalTilePos>,
     pub delete_others_paramset: TileDeleteOthersParamSet<'w, 's>,
 }
 

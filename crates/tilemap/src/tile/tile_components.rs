@@ -1,5 +1,5 @@
-use ::sprite_shared::prelude::*;
-use bevy::ecs::entity::{EntityHashMap, MapEntities};
+use ::sprite_shared::*;
+#[allow(unused_imports, )]use bevy::ecs::entity::{EntityHashMap, MapEntities};
 #[allow(unused_imports, )]
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;

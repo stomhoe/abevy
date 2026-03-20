@@ -11,16 +11,24 @@ pub mod terrprobe_pattern_chunk;
 pub mod terrprobe_pattern_region;
 pub mod opfilter;
 
+pub use terrprobe_components::*;
+pub use terrprobe_resources::*;
+#[allow(unused_imports)] pub use terrprobe_seris::*;
+pub use terrprobe_messages::*;
+#[allow(unused_imports)] pub use terrprobe_macros::*;
+pub use terrprobe_systems::{search_suitable_positions, SearchParams, };
+pub use terrprobe_pattern_concentric::*;
+pub use terrprobe_pattern_spiral::*;
+pub use terrprobe_pattern_chunk::*;
+pub use terrprobe_pattern_region::*;
+pub use opfilter::*;
+
 use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
 use common::common_states::AssetLoading;
-use ::tilemap_shared::*;
+use crate::terrain::terrprobe_init_systems::*;
+use crate::terrain::TerrainGenSystems;
 
-use crate::terrain::{
-    TerrainGenSystems, terrprobe::{
-        opfilter::OpfilterSystems, terrprobe_components::*, terrprobe_init_systems::*, terrprobe_messages::*, terrprobe_resources::*, terrprobe_systems::*
-    }
-};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TerrainProbeSystems;
@@ -46,22 +54,4 @@ pub fn plugin(app: &mut App) {
         .add_message::<SearchFailed>()
 
     ;
-}
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        terrprobe_components::*,
-        terrprobe_init_systems::*,
-        terrprobe_resources::*,
-        terrprobe_seris::*,
-        terrprobe_messages::*,
-        terrprobe_macros::*,
-        terrprobe_systems::*,
-        terrprobe_pattern_concentric::*,
-        terrprobe_pattern_spiral::*,
-        terrprobe_pattern_chunk::*,
-        terrprobe_pattern_region::*,
-        opfilter::*,
-    };
 }

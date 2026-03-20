@@ -5,7 +5,7 @@ use common::log_targets;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use item_shared::{clone_item_from_ezero, dropped_scs_to_build, Item, ItemHeldIn};
 use param_sets::BlockingTileParamSet;
-use sprite_shared::prelude::AcZ;
+use ::sprite_shared::AcZ;
 use tilemap_shared::{DimensionRef, GlobalTilePos};
 
 #[derive(SystemParam)]

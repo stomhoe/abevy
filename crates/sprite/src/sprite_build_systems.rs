@@ -1,4 +1,3 @@
-use ::sprite_shared::*;
 use being_shared::BeingInstTemplate;
 #[allow(unused_imports)]
 use bevy::{

@@ -1,5 +1,5 @@
 use bevy::{color::palettes::css::{GREY}, input_focus::InputFocus, prelude::*};
-use crate::prelude::*;
+use crate::*;
 
 pub fn update_line_edits_text(
     input_focus: Res<InputFocus>,

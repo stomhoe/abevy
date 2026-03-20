@@ -7,7 +7,6 @@ use faction::{faction_components::*, faction_resources::*};
 use movement::movement_components::GridLockedMovement;
 use player::player_components::*;
 use tilemap::{
-    chunking::{chunking_components::{ActivatingChunks}, chunking_resources::ActivateChunksAround},
     terrain::{
         terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_resources::TerrProbeTemplEntityMap},
     },
@@ -215,7 +214,6 @@ pub fn put_player_beings_on_map(
     mut cmd: Commands,
     players: Query<(&CreatedCharacters, ), (With<Player>)>,
     created_by_query: Query<&CharacterCreatedBy>,
-    chunk_range: Res<ActivateChunksAround>,
     settings: Res<GameInitSettings>,
     mut next_spawn_offset_x: Local<i32>,
 ) {
@@ -245,8 +243,6 @@ pub fn put_player_beings_on_map(
                     ..default()
                 },
                 DimensionRef(spawn_dim.0),
-                *chunk_range,
-                ActivateChunksAround::default(),
                 BitStrIdRef::new(settings.players_initial_bit.as_str()),
                 Being,
 

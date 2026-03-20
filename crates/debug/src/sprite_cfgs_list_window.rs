@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 
-use sprite_shared::prelude::SpriteConfig;
+use sprite_shared::SpriteConfig;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 

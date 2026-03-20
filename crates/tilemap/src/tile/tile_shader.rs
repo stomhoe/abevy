@@ -3,14 +3,16 @@ use bevy_ecs_tilemap::prelude::MaterialTilemapPlugin;
 use bevy_replicon::prelude::*;
 use common::{common_states::AssetLoading};
 
-use crate::tile::prelude::TerrBlendParams;
+use crate::tile::terrbl::TerrBlendMat;
+use crate::tile::TerrBlendParams;
 #[allow(unused_imports, )]
-use crate::tile::tile_shader::{tile_material::prelude::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_shader_systems::*};
+use crate::tile::tile_shader::{tile_material::*, tile_shader_components::*, tile_shader_init_systems::*, tile_shader_resources::*, tile_shader_systems::*};
 
 
 // Bring material types into scope for this file
 
 pub mod tile_material;
+pub use tile_material::*;
 mod tile_shader_init_systems;
 mod tile_shader_systems;
 pub mod tile_shader_components;
@@ -39,12 +41,3 @@ pub fn plugin(app: &mut App) {
     ;
 }
 
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        tile_material::*,
-        tile_shader_components::*,
-        tile_shader_resources::*,
-        tile_shader_seris::*,
-    };
-}

@@ -4,32 +4,32 @@ use std::mem::take;
 use bevy::prelude::*;
 use common::common_components::{StrId20B};
 use common::log_targets::CHUNK_ACTIVATION;
-use tilemap_shared::ChunkLoaded;
-use tilemap_shared::{DimensionRef, LoadedChunks, LoadedMacroChunks, GlobalTilePos};
-use tilemap_shared::{ChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
+use tilemap_shared::*;
 use being_shared::Being;
 
-use super::chunking_components::*;
 use super::macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState};
-use super::chunking_resources::*;
 use crate::regioning::{regioning_components::Region, regioning_resources::LoadedRegions};
 
 
 
 #[allow(unused_parens, )]
-pub fn sync_activating_chunks_capacity(
+pub fn add_activating_chunks_to_activate_chunks_around(
     mut cmd: Commands,
-    query: Query<(Entity, &ActivateChunksAround), Or<(Changed<ActivateChunksAround>, Added<ActivateChunksAround>)>>,
+    load_chunks_around_query: Query<(Entity, &LoadChunksAround), (Changed<LoadChunksAround>, )>,
+    mut removed_load_chunks_around: RemovedComponents<LoadChunksAround>,
 ) {
-    for (ent, chunk_range) in query.iter() {
+    for (ent, chunk_range) in load_chunks_around_query.iter() {
         cmd.entity(ent).insert(ActivatingChunks::with_capacity(chunk_range));
+    }
+    for ent in removed_load_chunks_around.read() {
+        cmd.entity(ent).try_remove::<ActivatingChunks>();
     }
 }
 
 #[allow(unused_parens, )]
 pub fn update_activating_chunk_positions(
     mut reader: MessageReader<UpdateActivatedChunkPos>,
-    mut query: Query<(&GlobalTilePos, &ActivateChunksAround, &mut ActivatingChunks, )>,
+    mut query: Query<(&GlobalTilePos, &LoadChunksAround, &mut ActivatingChunks, )>,
 ) {
     for msg in reader.read() {
         let Ok((gpos, chunk_range_settings, mut activates_chunks, )) = query.get_mut(msg.being_ent) else {
@@ -39,7 +39,7 @@ pub fn update_activating_chunk_positions(
         let center_chunk_pos = ChunkPos::from(*gpos);
         let cnt = chunk_range_settings.discovery_range as i32;
         let is_one_chunk = chunk_range_settings.is_one_chunk();
-        activates_chunks.chunk_positions.clear();
+        activates_chunks.0.clear();
         activates_chunks.insert_positions_around(center_chunk_pos, cnt);
         if is_one_chunk {
             insert_border_chunk_positions(&mut activates_chunks, center_chunk_pos, *gpos);
@@ -56,10 +56,10 @@ fn insert_border_chunk_positions(
     let local_tile_pos = center_gpos.0 - center_chunk_pos.to_tilepos().0;
 
     let mut push_if_missing = |chunk_pos: ChunkPos| {
-        if activates_chunks.chunk_positions.contains(&chunk_pos) {
+        if activates_chunks.0.contains(&chunk_pos) {
             return;
         }
-        activates_chunks.chunk_positions.push(chunk_pos);
+        activates_chunks.0.push(chunk_pos);
     };
 
     if local_tile_pos.x == 0 {
@@ -78,7 +78,7 @@ fn insert_border_chunk_positions(
 #[allow(unused_parens, )]
 pub fn spawn_activated_chunks(
     mut cmd: Commands,
-    query: Query<(&ActivatingChunks, &DimensionRef, &ActivateChunksAround), Changed<ActivatingChunks>>,
+    query: Query<(&ActivatingChunks, &DimensionRef, ), Changed<ActivatingChunks>>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
     mut loaded_regions: ResMut<LoadedRegions>,
@@ -91,21 +91,12 @@ pub fn spawn_activated_chunks(
     let mut comps_for_region_ents = Vec::new();
     let mut comps_for_chunk_ents = Vec::new();
 
-    for (activates_chunks, &dimension_ref, chunk_range_settings) in query.iter() {
-        let cnt = chunk_range_settings.discovery_range as i32;
-        let range_len = (2 * cnt - 1).max(0) as usize;
-        let approx_chunks = range_len.saturating_mul(range_len);
-        let approx_macro_chunks = (range_len / MACRO_CHUNK_SIZE_IN_CHUNKS.0.x as usize + 1)
-            .saturating_mul(range_len / MACRO_CHUNK_SIZE_IN_CHUNKS.0.y as usize + 1);
-        comps_for_macrochunk_ents.reserve(approx_macro_chunks);
-        comps_for_chunk_ents.reserve(approx_chunks);
-        comps_for_region_ents.reserve(approx_chunks / 8);
-        for &chunk_pos in activates_chunks.chunk_positions.iter() {
+    for (activates_chunks, &dimension_ref, ) in query.iter() {
+        for &chunk_pos in activates_chunks.0.iter() {
                 let key = (dimension_ref, chunk_pos);
                 if loaded_chunks.0.contains_key(&key) {
                     continue;
                 }
-
                 let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
                 let macro_chunk_key = (dimension_ref, macro_chunk_pos);
                 let macro_chunk_ent = loaded_macro_chunks.0.get(&macro_chunk_key)
@@ -175,30 +166,10 @@ pub fn spawn_activated_chunks(
     chunk_loaded_writer.write_batch(chunk_loaded_msgs.drain(..));
 
 }
-
-
-
-
-
-#[derive(Message, Debug, Clone, )]
-pub struct UpdateActivatedChunkPos { pub being_ent: Entity }
-
-#[derive(Message, Debug, Clone, Copy)]
-pub struct MacroChunkLoaded {
-    pub macro_chunk_ent: Entity,
-}
-
-#[derive(Message, Debug, Clone, )]
-pub struct ChunkWithBeingsWantsDespawn{
-    pub chunk_ent: Entity,
-}
-
-
-#[allow(unused_parens, )]
 #[allow(unused_parens, )]
 pub fn detect_activators_with_pos_changes(
     query: Query<(Entity),
-    (Or<(Changed<GlobalTilePos>, Changed<DimensionRef>, Changed<ActivateChunksAround>, Added<ActivatingChunks>)>, With<ActivatingChunks>, With<DimensionRef>, With<GlobalTilePos>, With<ActivateChunksAround>)>,
+    (Or<(Changed<GlobalTilePos>, Changed<DimensionRef>, Changed<LoadChunksAround>, Added<ActivatingChunks>)>, With<ActivatingChunks>, With<DimensionRef>, With<GlobalTilePos>, With<LoadChunksAround>)>,
     mut writer: MessageWriter<UpdateActivatedChunkPos>,
     mut msgs: Local<Vec<UpdateActivatedChunkPos>>,
 ) {

@@ -4,12 +4,18 @@ pub mod operation_list_resources;
 pub mod operation_list_seris;
 pub mod operation_list_script;
 
-use bevy::prelude::*;
+use common::common_states::AssetLoading;
+pub use operation_list_components::*;
+pub use operation_list_resources::*;
+#[allow(unused_imports, )] pub use operation_list_seris::*;
+pub use operation_list_script::*;
 
-#[allow(unused_imports)]
-use operation_list_components::OperationList;
-#[allow(unused_imports)]
-use operation_list_resources::*;
+use bevy::prelude::*;
+use crate::terrain::operation_list_init_systems::*;
+
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct OperationListSystems;
 
 #[allow(unused_parens, path_statements)]
 pub fn plugin(app: &mut App) {
@@ -17,16 +23,18 @@ pub fn plugin(app: &mut App) {
         .add_plugins((
             plugin_operation_list,
         ))
-    ;
-}
+        .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
+            (
 
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        operation_list_components::*,
-        operation_list_init_systems::*,
-        operation_list_resources::*,
-        operation_list_seris::*,
-        operation_list_script::*,
-    };
+                cache_tg_oplists,
+                init_oplists_from_assets,
+                map_operation_list_id_to_entity,
+                init_oplists_bifurcations,
+                cycle_detection,
+                assign_rootoplist_to_dimensions,
+
+            ).chain(),
+            ).in_set(OperationListSystems)
+        )
+    ;
 }

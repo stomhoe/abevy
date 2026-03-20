@@ -5,23 +5,33 @@ use faction::faction_components::BelongsToAPlayerFaction;
 use game_common::game_common_components::CameraTarget;
 use movement::movement_components::InputMoveDir;
 use player::player_components::{HostPlayer, Mine, Player};
-use tilemap::{
-    chunking::chunking_resources::ActivateChunksAround,
-    chunking::chunking_components::ActivatingChunks,
-};
+use tilemap::chunking::chunking_components::ActivatingChunks;
+use tilemap_shared::LoadChunksAround;
 
 pub fn add_activates_chunks(
     mut cmd: Commands,
     query: Query<Entity, (With<Being>, Added<BelongsToAPlayerFaction>)>,
     mut removed: RemovedComponents<BelongsToAPlayerFaction>,
-    chunk_range: Res<ActivateChunksAround>,
+    chunk_range: Res<LoadChunksAround>,
 ) {
     let mut activates_chunks = Vec::with_capacity(query.iter().size_hint().0);
-    query.iter().for_each(|ent| activates_chunks.push((ent, (*chunk_range, ActivateChunksAround::default()))));
+    query.iter().for_each(|ent| activates_chunks.push((ent, (*chunk_range, ))));
     for ent in removed.read() {
-        cmd.entity(ent).try_remove::<(ActivateChunksAround, ActivatingChunks)>();
+        cmd.entity(ent).try_remove::<(LoadChunksAround, ActivatingChunks)>();
     }
     cmd.try_insert_batch(activates_chunks);
+}
+
+pub fn sync_player_being_chunk_ranges(
+    default_chunk_range_for_player_beings: Res<LoadChunksAround>,
+    mut query: Query<&mut LoadChunksAround, (With<Being>, With<BelongsToAPlayerFaction>)>,
+) {
+    if !default_chunk_range_for_player_beings.is_changed() {
+        return;
+    }
+    for mut chunk_range in query.iter_mut() {
+        *chunk_range = *default_chunk_range_for_player_beings;
+    }
 }
 
 pub fn on_control_change(
@@ -32,7 +42,7 @@ pub fn on_control_change(
     computed_by_query: Query<(Entity, &ComputedBy, Has<CameraTarget>)>,
     mut input_dirs: Query<&mut InputMoveDir>,
     mut removed_controlled_by: RemovedComponents<ComputedBy>,
-    chunk_range: Res<ActivateChunksAround>,
+    default_chunk_range_for_player_beings: Res<LoadChunksAround>,
 ) {
     for being_ent in removed_controlled_by.read() {
         commands.entity(being_ent).try_remove::<(ComputedLocally, HumanControlled, CameraTarget)>();
@@ -51,17 +61,17 @@ pub fn on_control_change(
             commands.entity(being_ent).try_insert_if_new((ComputedLocally, ));
             if controlled_by.human_dc_input {
                 debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget due to human input", being_ent);
-                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), *chunk_range, ActivateChunksAround::default(), ));
+                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), *default_chunk_range_for_player_beings, ));
             } else {
                 debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
-                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, ActivateChunksAround, ActivatingChunks)>();
+                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, LoadChunksAround, )>();
             }
         } else {
             commands.entity(being_ent).try_remove::<(ComputedLocally, CameraTarget)>();
             if !is_host {
                 commands.entity(being_ent).try_remove::<HumanControlled>();
                 if !is_camera_target {
-                    commands.entity(being_ent).try_remove::<(ActivateChunksAround, ActivatingChunks)>();
+                    commands.entity(being_ent).try_remove::<(LoadChunksAround, ActivatingChunks)>();
                 }
             } else {
                 commands.entity(being_ent).try_insert(HumanControlled);

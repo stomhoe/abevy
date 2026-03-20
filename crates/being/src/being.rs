@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use ::being_shared::{prelude::UnloadBeing, *};
-use tilemap_shared::{BeingsAtGpos, GlobalTilePos};
+use ::being_shared::{*, UnloadBeing};
+use tilemap_shared::{BeingsAtGpos, ChunkWithBeingsWantsDespawn, GlobalTilePos};
 
 use common::common_states::AssetLoading;
 use game_common::{
@@ -9,7 +9,10 @@ use game_common::{
     game_common::GameplaySystems,
 };
 use sprite_systems::AcSpriteSystems;
-
+use crate::being_melee_systems::apply_melee_attack;
+use crate::being_messages::MakeChunkSnapshotForChaser;
+use crate::being_on_chunk_despawn_systems::{freeze_being, on_chunk_with_beings_attempt_unload};
+use crate::nav::{AiNavGrids, ChaserNavPlans};
 
 use crate::{
     being_behavior_systems::*,
@@ -22,7 +25,6 @@ use crate::{
     body::{self, BodySystems},
     nav,
     pack::PackSystems,
-    prelude::*,
     race::RaceSystems,
 };
 
@@ -48,11 +50,13 @@ pub fn plugin(app: &mut App) {
         ).chain().in_set(HostSystems),
         (
             add_activates_chunks,
+            sync_player_being_chunk_ranges,
             assign_uncomputed_beings_to_host,
             cross_portal,
+            freeze_being.run_if(on_message::<UnloadBeing>),
             on_chunk_with_beings_attempt_unload
                 .in_set(tilemap_shared::PreChunkDespawnSystems)
-                .run_if(on_message::<tilemap::prelude::ChunkWithBeingsWantsDespawn>),
+                .run_if(on_message::<ChunkWithBeingsWantsDespawn>),
         ).in_set(HostSystems),
     ))
     .add_systems(Update, (

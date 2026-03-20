@@ -7,7 +7,7 @@ use game_common::game_common_components::EntityZero;
 use game_common::game_common_string_components::Description;
 use modifier_shared::modifier_item_types::*;
 use modifier_shared::modifier_helpers::spawn_modifier;
-use sprite_shared::prelude::ScRef;
+use ::sprite_shared::ScRef;
 use sprite_systems::prelude::SpriteConfigEntityMap;
 use ::item_shared::*;
 use std::collections::HashMap;
