@@ -7,6 +7,7 @@ use bevy::{
 use common::{AnyDisabling, common_components::{SampleSpriteEnts, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_components::BelongsToFaction;
 use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteGlobalNormalDistResult, SpriteHoriNormalDist, SpriteHoriNormalDistResult, SpriteVertNormalDist, SpriteVertNormalDistResult}, game_common_timers::EntityZero};
+use tilemap_shared::InteractionZones;
 
 use crate::{
     being_components::Being,
@@ -35,6 +36,7 @@ pub fn build_beings_from_refs(
             Has<BodyTreeRef>,
             Has<BodyWeightedSamplerRef>,
             Has<SexRef>,
+            Has<InteractionZones>,
         ),
         (Without<EntityZero>, Without<BeingInstTemplate>, AnyDisabling),
     >,
@@ -52,6 +54,7 @@ pub fn build_beings_from_refs(
         Option<&BodyWeightedSamplerRef>,
         Option<&BodyTreeRef>,
     ), With<Race>>,
+    zone_sources: Query<&InteractionZones>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut beings_to_build: Local<EntityHashSet>,
 ) {
@@ -68,7 +71,7 @@ pub fn build_beings_from_refs(
     let mut rng = rand::rng();
 
     for being_ent in beings_to_build.drain() {
-        let Ok((bit_ref, race_ref, has_sample_sprites, has_body_tree_ref, has_body_sampler_ref, has_sex_ref, )) = customer_query.get_mut(being_ent) else {
+        let Ok((bit_ref, race_ref, has_sample_sprites, has_body_tree_ref, has_body_sampler_ref, has_sex_ref, has_interaction_zones, )) = customer_query.get_mut(being_ent) else {
             continue;
         };
         let is_reenabled_only = changed_beings.get(being_ent).is_err();
@@ -76,6 +79,7 @@ pub fn build_beings_from_refs(
             && has_sample_sprites
             && (has_body_tree_ref || has_body_sampler_ref)
             && has_sex_ref
+            && has_interaction_zones
         {
             continue;
         }
@@ -111,6 +115,20 @@ pub fn build_beings_from_refs(
             }
             if template.extra_health_multiplier != 1.0 {
                 // add in a modifier
+            }
+        }
+        let mut inserted_interaction_zones = false;
+        if let Some(bit_ref) = bit_ref {
+            if let Ok(zones) = zone_sources.get(bit_ref.0) {
+                cmd.entity(being_ent).insert(zones.clone());
+                inserted_interaction_zones = true;
+            }
+        }
+        if !inserted_interaction_zones && !has_interaction_zones {
+            if let Some(race_ref) = effective_race_ref {
+                if let Ok(zones) = zone_sources.get(race_ref.0) {
+                    cmd.entity(being_ent).insert(zones.clone());
+                }
             }
         }
 

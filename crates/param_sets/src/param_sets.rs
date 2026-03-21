@@ -106,83 +106,88 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
     ) -> bool {
         let moving_anchor = gpos.to_pixelpos();
         let (moving_collision_zone, moving_direction) = self.resolve_being_collision_zone_and_direction(being);
-        for &target_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, gpos).iter() {
-            if target_being == being {
-                continue;
-            }
-            let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
-                return false;
-            };
-            let target_zone = target_zones
-                .and_then(|zones| zones.get_collision_mask().cloned())
-                .unwrap_or_else(InteractionZones::collision_default_zone);
-            let Ok(target_direction) = self.being_direction_query.get(target_being) else {
-                return false;
-            };
-            let target_anchor = target_transform.translation().xy();
-            let intersects = target_zone.intersects_zone(
-                *target_direction,
-                target_anchor,
-                &moving_collision_zone,
-                moving_direction,
-                moving_anchor,
-            );
-            if intersects {
-                return false;
+        let occupied_gposes = Self::gather_occupied_gposes(&moving_collision_zone, moving_direction, moving_anchor, gpos);
+        for occupied_gpos in occupied_gposes.iter().copied() {
+            for &target_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, occupied_gpos).iter() {
+                if target_being == being {
+                    continue;
+                }
+                let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
+                    return false;
+                };
+                let target_zone = target_zones
+                    .and_then(|zones| zones.get_collision_mask().cloned())
+                    .unwrap_or_else(InteractionZones::collision_default_zone);
+                let Ok(target_direction) = self.being_direction_query.get(target_being) else {
+                    return false;
+                };
+                let target_anchor = target_transform.translation().xy();
+                let intersects = target_zone.intersects_zone(
+                    *target_direction,
+                    target_anchor,
+                    &moving_collision_zone,
+                    moving_direction,
+                    moving_anchor,
+                );
+                if intersects {
+                    return false;
+                }
             }
         }
 
         let can_phase = self.wallphaser_query.get(being).is_ok();
-        let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos).to_vec();
 
         let mut all_tiles_failed = true;
         let mut has_whitelist_match = whitelisted_tags.0.is_empty();
         let mut has_blacklist_match = false;
 
-        for tile_entity in tiles_at_pos {
-            let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
-                continue;
-            };
-            all_tiles_failed = false;
+        for occupied_gpos in occupied_gposes.iter().copied() {
+            let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos).to_vec();
+            for tile_entity in tiles_at_pos {
+                let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
+                    continue;
+                };
+                all_tiles_failed = false;
 
-            if let Ok(tile_tags) = self.tile_tags.get(ezero_ref.0) {
-                if !whitelisted_tags.0.is_empty() && tile_tags.intersects(&whitelisted_tags.0.0) {
-                    has_whitelist_match = true;
+                if let Ok(tile_tags) = self.tile_tags.get(ezero_ref.0) {
+                    if !whitelisted_tags.0.is_empty() && tile_tags.intersects(&whitelisted_tags.0.0) {
+                        has_whitelist_match = true;
+                    }
+                    if !blacklisted_tags.0.is_empty() && tile_tags.intersects(&blacklisted_tags.0.0) {
+                        has_blacklist_match = true;
+                    }
                 }
-                if !blacklisted_tags.0.is_empty() && tile_tags.intersects(&blacklisted_tags.0.0) {
-                    has_blacklist_match = true;
+
+                if can_phase {
+                    continue;
                 }
-            }
 
-            if can_phase {
-                continue;
-            }
+                if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
+                    if self.will_despawn_query.get(tile_entity).is_err() {
+                        return false;
+                    }
+                    continue;
+                }
 
-            if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
-                if self.will_despawn_query.get(tile_entity).is_err() {
+                let Ok(interaction_zones) = self.interaction_zones.get(ezero_ref.0) else {
+                    continue;
+                };
+                let direction = self
+                    .tile_direction_query
+                    .get(tile_entity)
+                    .copied()
+                    .unwrap_or_default();
+                let blocks_here = interaction_zones.interaction_zones_intersect(
+                    InteractionZones::COLLISION_MASK_HASHID,
+                    &moving_collision_zone,
+                    direction,
+                    tile_origin.to_pixelpos(),
+                    moving_direction,
+                    moving_anchor,
+                );
+                if blocks_here && self.will_despawn_query.get(tile_entity).is_err() {
                     return false;
                 }
-                continue;
-            }
-
-            let Ok(interaction_zones) = self.interaction_zones.get(ezero_ref.0) else {
-                continue;
-            };
-            let direction = self
-                .tile_direction_query
-                .get(tile_entity)
-                .copied()
-                .unwrap_or_default();
-            let blocks_here = interaction_zones.interaction_zones_intersect(
-                InteractionZones::COLLISION_MASK_HASHID,
-                &moving_collision_zone,
-                direction,
-                tile_origin.to_pixelpos(),
-                moving_direction,
-                moving_anchor,
-            );
-            if blocks_here && self.will_despawn_query.get(tile_entity).is_err() {
-                return false;
             }
         }
 
@@ -226,30 +231,33 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
     fn is_blocked_at_impl_except_dead_despawning(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, include_beings: bool) -> bool {
         let moving_anchor = gpos.to_pixelpos();
         let (moving_collision_zone, moving_direction) = self.resolve_being_collision_zone_and_direction(being);
+        let occupied_gposes = Self::gather_occupied_gposes(&moving_collision_zone, moving_direction, moving_anchor, gpos);
         if include_beings {
-            for &target_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, gpos).iter() {
-                if target_being == being {
-                    continue;
-                }
-                let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
-                    return true;
-                };
-                let target_zone = target_zones
-                    .and_then(|zones| zones.get_collision_mask().cloned())
-                    .unwrap_or_else(InteractionZones::collision_default_zone);
-                let Ok(target_direction) = self.being_direction_query.get(target_being) else {
-                    return true;
-                };
-                let target_anchor = target_transform.translation().xy();
-                let intersects = target_zone.intersects_zone(
-                    *target_direction,
-                    target_anchor,
-                    &moving_collision_zone,
-                    moving_direction,
-                    moving_anchor,
-                );
-                if intersects {
-                    return true;
+            for occupied_gpos in occupied_gposes.iter().copied() {
+                for &target_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, occupied_gpos).iter() {
+                    if target_being == being {
+                        continue;
+                    }
+                    let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
+                        return true;
+                    };
+                    let target_zone = target_zones
+                        .and_then(|zones| zones.get_collision_mask().cloned())
+                        .unwrap_or_else(InteractionZones::collision_default_zone);
+                    let Ok(target_direction) = self.being_direction_query.get(target_being) else {
+                        return true;
+                    };
+                    let target_anchor = target_transform.translation().xy();
+                    let intersects = target_zone.intersects_zone(
+                        *target_direction,
+                        target_anchor,
+                        &moving_collision_zone,
+                        moving_direction,
+                        moving_anchor,
+                    );
+                    if intersects {
+                        return true;
+                    }
                 }
             }
         }
@@ -259,41 +267,42 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             return false;
         }
 
-        let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos).to_vec();
-
         let mut all_tiles_failed = true;
-        for tile_entity in tiles_at_pos {
-            let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
-                continue;
-            };
-            all_tiles_failed = false;
-            if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
-                let Ok(_) = self.will_despawn_query.get(tile_entity) else {
-                    return true;
+        for occupied_gpos in occupied_gposes.iter().copied() {
+            let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos).to_vec();
+            for tile_entity in tiles_at_pos {
+                let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
+                    continue;
                 };
-                continue;
-            }
+                all_tiles_failed = false;
+                if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
+                    let Ok(_) = self.will_despawn_query.get(tile_entity) else {
+                        return true;
+                    };
+                    continue;
+                }
 
-            let Ok(interaction_zones) = self.interaction_zones.get(ezero_ref.0) else {
-                continue;
-            };
-            let direction = self
-                .tile_direction_query
-                .get(tile_entity)
-                .copied()
-                .unwrap_or_default();
-            let blocks_here = interaction_zones.interaction_zones_intersect(
-                InteractionZones::COLLISION_MASK_HASHID,
-                &moving_collision_zone,
-                direction,
-                tile_origin.to_pixelpos(),
-                moving_direction,
-                moving_anchor,
-            );
-            if blocks_here {
-                let Ok(_) = self.will_despawn_query.get(tile_entity) else {
-                    return true;
+                let Ok(interaction_zones) = self.interaction_zones.get(ezero_ref.0) else {
+                    continue;
                 };
+                let direction = self
+                    .tile_direction_query
+                    .get(tile_entity)
+                    .copied()
+                    .unwrap_or_default();
+                let blocks_here = interaction_zones.interaction_zones_intersect(
+                    InteractionZones::COLLISION_MASK_HASHID,
+                    &moving_collision_zone,
+                    direction,
+                    tile_origin.to_pixelpos(),
+                    moving_direction,
+                    moving_anchor,
+                );
+                if blocks_here {
+                    let Ok(_) = self.will_despawn_query.get(tile_entity) else {
+                        return true;
+                    };
+                }
             }
         }
         if all_tiles_failed {
@@ -321,6 +330,20 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 .unwrap_or_else(InteractionZones::collision_default_zone),
             *direction,
         )
+    }
+
+    fn gather_occupied_gposes(
+        moving_collision_zone: &InteractionZone,
+        moving_direction: CardinalDirection,
+        moving_anchor: Vec2,
+        fallback_gpos: GlobalTilePos,
+    ) -> Vec<GlobalTilePos> {
+        let mut occupied_gposes = Vec::new();
+        moving_collision_zone.gather_zone_positions(moving_direction, moving_anchor, &mut occupied_gposes);
+        if occupied_gposes.is_empty() {
+            occupied_gposes.push(fallback_gpos);
+        }
+        occupied_gposes
     }
 
     pub fn find_closest_spawn_suitable_gpos_across_loaded_chunks(

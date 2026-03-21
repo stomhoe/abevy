@@ -45,6 +45,45 @@ pub fn build_being_interaction_zones(
     InteractionZones(zones)
 }
 
+pub fn build_being_interaction_zones_with_base(
+    base_zones: Option<&InteractionZones>,
+    melee_zone_seri: InteractionZoneSeri,
+    collision_zone_seri: InteractionZoneSeri,
+) -> InteractionZones {
+    let mut zones = HashIdMap::with_capacity(2);
+    zones.overwrite(
+        InteractionZones::MELEE_ATTACK,
+        resolve_zone_with_base(
+            base_zones,
+            InteractionZones::MELEE_ATTACK,
+            melee_zone_seri,
+        ),
+    );
+    zones.overwrite(
+        InteractionZones::COLLISION_MASK_HASHID,
+        resolve_zone_with_base(
+            base_zones,
+            InteractionZones::COLLISION_MASK_HASHID,
+            collision_zone_seri,
+        ),
+    );
+    InteractionZones(zones)
+}
+
+fn resolve_zone_with_base(
+    base_zones: Option<&InteractionZones>,
+    zone_id: HashId,
+    zone_seri: InteractionZoneSeri,
+) -> InteractionZone {
+    if !zone_seri.is_sentinel() {
+        return InteractionZone::new(zone_seri);
+    }
+    if let Some(zone) = base_zones.and_then(|base| base.0.get(zone_id).ok()) {
+        return zone.clone();
+    }
+    default_interaction_zone(zone_id)
+}
+
 pub fn resolve_being_interaction_zone(
     being_interaction_zones: Option<&InteractionZones>,
     bit_ref: Option<&BitRef>,

@@ -2,13 +2,13 @@
     id: "nw",
     name: "Dungeon newbie wall",
     tags: ["wall", "dungeon"],
-    z: -700,
+    z: 1000,
     img_paths: [
         ("", "texture/world/terr/dungeon/newbie_wall.png"),
     ],
     //shader: "nw",
     color: Some((255, 255, 255, 255)),
-    
+
     blocks_projectiles: true,
     hp: 100.0,
     colmask: [

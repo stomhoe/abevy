@@ -10,6 +10,7 @@ use modifier_shared::modifier_components::{ApplyMode, BaseValue, CurrEffectiveVa
 use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_types::*;
 use ::being_shared::*;
+use crate::being_interaction_zone_helper::build_being_interaction_zones;
 
 use crate::body::{
     body_tree_components::*, bodypart::bodypart_resources::*,
@@ -43,6 +44,10 @@ pub fn init_ezero_body_trees(
             body_id.clone(),
             BodyTree,
             EntityZero,
+            build_being_interaction_zones(
+                seri.melee_interaction_zone.clone(),
+                seri.collision_zone.clone(),
+            ),
         ));
 
         if seri.name.trim().is_empty() {

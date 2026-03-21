@@ -8,6 +8,7 @@ use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 use common::common_components::{DisplayName, StrId};
 use common::common_tag_components::TagSet;
+use common::log_targets::DEBUG;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
 use item_shared::{
     item_components::{HeldItems, SlottedItemHolder},
@@ -18,7 +19,7 @@ use modifier_shared::modifier_types::*;
 use modifier_shared::{modifier_has_marker, resolve_modifier_component};
 use movement::movement_components::*;
 use player::prelude::*;
-use tilemap_shared::CardinalDirection;
+use tilemap_shared::{CardinalDirection, GlobalTilePos, InteractionZones};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -82,6 +83,53 @@ fn part_label(entity: Entity, display_name: Option<&DisplayName>, str_id: Option
         }
     }
     format!("{:?}", entity)
+}
+
+fn paint_collision_mask_preview(ui: &mut egui::Ui, collision_zone: &tilemap_shared::InteractionZone, facing: CardinalDirection) {
+    let mut zone_positions = Vec::new();
+    collision_zone.gather_zone_positions(facing, Vec2::ZERO, &mut zone_positions);
+    if zone_positions.is_empty() {
+        ui.label("<empty>");
+        return;
+    }
+
+    let mut min_x = zone_positions[0].0.x;
+    let mut max_x = zone_positions[0].0.x;
+    let mut min_y = zone_positions[0].0.y;
+    let mut max_y = zone_positions[0].0.y;
+    for pos in zone_positions.iter().copied().skip(1) {
+        min_x = min_x.min(pos.0.x);
+        max_x = max_x.max(pos.0.x);
+        min_y = min_y.min(pos.0.y);
+        max_y = max_y.max(pos.0.y);
+    }
+
+    let cell_size = 18.0;
+    let width = (max_x - min_x + 1) as f32 * cell_size;
+    let height = (max_y - min_y + 1) as f32 * cell_size;
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    let background = ui.visuals().extreme_bg_color;
+    let stroke = egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color);
+    painter.rect_filled(rect, 3.0, background);
+
+    for y in (min_y..=max_y).rev() {
+        for x in min_x..=max_x {
+            let cell = GlobalTilePos::new(x, y);
+            let occupied = zone_positions.contains(&cell);
+            let x_idx = (x - min_x) as f32;
+            let y_idx = (max_y - y) as f32;
+            let cell_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.min.x + x_idx * cell_size, rect.min.y + y_idx * cell_size),
+                egui::vec2(cell_size, cell_size),
+            )
+            .shrink(1.0);
+            painter.rect_stroke(cell_rect, 2.0, stroke, egui::StrokeKind::Inside);
+            if occupied {
+                painter.rect_filled(cell_rect.shrink(1.0), 1.0, ui.visuals().selection.bg_fill);
+            }
+        }
+    }
 }
 
 fn modifier_values(
@@ -251,6 +299,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut input_move_dir_query = world.query::<&InputMoveDir>();
     let mut computed_by_query = world.query::<&ComputedBy>();
     let mut computed_locally_query = world.query::<&ComputedLocally>();
+    let mut interaction_zones_query = world.query::<&InteractionZones>();
     let mut player_actions_query =
         world.query_filtered::<&Actions<BeingDirectControlInputContext>, MyPlayer>();
     let mut player_move_action_query = world.query::<&Action<DcWasdAction>>();
@@ -422,6 +471,26 @@ pub fn being_details_inspector(world: &mut World) {
                 }
                 if let Ok(facing) = facing_query.get(world, selected_being_entity) {
                     ui.label(format!("Facing: {:?}", facing));
+                }
+                let facing = facing_query
+                    .get(world, selected_being_entity)
+                    .copied()
+                    .unwrap_or_default();
+                ui.separator();
+                match interaction_zones_query.get(world, selected_being_entity) {
+                    Ok(interaction_zones) => {
+                        if let Some(collision_zone) = interaction_zones.get_collision_mask() {
+                            ui.label(format!("Collision Mask: {:?}", selected_being_entity));
+                            paint_collision_mask_preview(ui, collision_zone, facing);
+                        } else {
+                            warn_once!(target: DEBUG, "Being {:?} has InteractionZones but no collision_mask zone", selected_being_entity);
+                            ui.label("Collision Mask: missing collision_mask zone");
+                        }
+                    }
+                    Err(_) => {
+                        warn_once!(target: DEBUG, "Being {:?} has no InteractionZones component", selected_being_entity);
+                        ui.label("Collision Mask: missing InteractionZones");
+                    }
                 }
 
                 let mut walk_add: f32 = 0.0;

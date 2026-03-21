@@ -9,11 +9,11 @@ use crate::being_inst_template::{being_inst_template_resources::*,
 };
 use crate::pack::pack_components::PackInitialSize;
 use crate::race::race_resources::{RaceEntityMap, RaceRef};
-use crate::being_interaction_zone_helper::build_being_interaction_zones;
+use crate::being_interaction_zone_helper::build_being_interaction_zones_with_base;
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionStrIdRef};
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
-use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
+use tilemap_shared::{BlacklistedSpawnTileTags, InteractionZones, WhitelistedSpawnTileTags};
 use common::common_tag_components::TagSet;
 
 pub fn init_being_templates(
@@ -23,6 +23,7 @@ pub fn init_being_templates(
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
+    race_zones_query: Query<&InteractionZones>,
     mut biome_pack_samplers: Query<&mut CreatureSampler>,
 ) {
     if !bit_map.0.is_empty(){
@@ -101,20 +102,24 @@ pub fn init_being_templates(
                 PredatorHuntThreshold(template_seri.predator_hunt_threshold),
             ));
         }
-        cmd.entity(bit_entity).insert(build_being_interaction_zones(
-            template_seri.melee_attack_zone.clone(),
-            template_seri.collision_zone.clone(),
-        ));
         // Resolve race entity from race string
         let race_str_id = StrId::trunc(&template_seri.race);
-        match race_emap.0.get_cloned(&race_str_id) {
+        let race_entity = match race_emap.0.get_cloned(&race_str_id) {
             Ok(race_entity) => {
                 race_refs_to_insert.push((bit_entity, RaceRef(race_entity)));
+                Some(race_entity)
             }
             Err(_) => {
                 error!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
+                None
             }
-        }
+        };
+        let race_base_zones = race_entity.and_then(|race_entity| race_zones_query.get(race_entity).ok());
+        cmd.entity(bit_entity).insert(build_being_interaction_zones_with_base(
+            race_base_zones,
+            template_seri.melee_attack_zone.clone(),
+            template_seri.collision_zone.clone(),
+        ));
 
         if template_seri.health_multiplier < 0.0 {
             warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, not applying", str_id, template_seri.health_multiplier);

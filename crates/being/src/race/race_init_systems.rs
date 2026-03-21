@@ -16,12 +16,12 @@ use crate::body::BodyTreeRef;
 use crate::body::body_tree_components::*;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntityMap;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
-use crate::being_interaction_zone_helper::build_being_interaction_zones;
+use crate::being_interaction_zone_helper::build_being_interaction_zones_with_base;
 use crate::pack::pack_components::PackInitialSize;
 use crate::{race::{race_components::*, race_resources::*}, sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::{Predator, PredatorHuntThreshold};
-use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
+use tilemap_shared::{BlacklistedSpawnTileTags, InteractionZones, WhitelistedSpawnTileTags};
 
 pub fn init_races(
     mut cmd: Commands,
@@ -29,7 +29,7 @@ pub fn init_races(
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sexes_map: Res<SexEntityMap>,
     body_tree_map: Res<BodyTreeEntityMap>,
-    body_tree_source_query: Query<&BodyTreeSexes, With<BodyTree>>,
+    body_tree_source_query: Query<(&BodyTreeSexes, Option<&InteractionZones>), With<BodyTree>>,
     body_sampler_map:Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
     mut biome_pack_samplers: Query<&mut CreatureSampler>,
@@ -128,19 +128,24 @@ pub fn init_races(
                 None
             }
         };
-
             let mut entity_cmds = cmd.spawn((Race, EntityZero, str_id.clone(), ingame_name, singular, plural));
-            entity_cmds.insert(build_being_interaction_zones(
-                race_seri.melee_interaction_zone.clone(),
-                race_seri.collision_zone.clone(),
-            ));
         let body_tree_str_id = StrId::trunc(&race_seri.body_or_sampler);
+        let mut body_tree_ent = None;
 
         if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_tree_str_id) {
             entity_cmds.insert(BodyWeightedSamplerRef(body_sampler_ent));
-        } else if let Ok(body_tree_ent) = body_tree_map.0.get_cloned(&body_tree_str_id) {
-            entity_cmds.insert(BodyTreeRef(body_tree_ent));
+        } else if let Ok(tree_ent) = body_tree_map.0.get_cloned(&body_tree_str_id) {
+            entity_cmds.insert(BodyTreeRef(tree_ent));
+            body_tree_ent = Some(tree_ent);
         }
+        let body_tree_zones = body_tree_ent
+            .and_then(|body_tree_ent| body_tree_source_query.get(body_tree_ent).ok())
+            .and_then(|(_, zones)| zones);
+        entity_cmds.insert(build_being_interaction_zones_with_base(
+            body_tree_zones,
+            race_seri.melee_interaction_zone.clone(),
+            race_seri.collision_zone.clone(),
+        ));
 
         if !description.is_empty() {
             entity_cmds.insert(Description(description.to_string()));
@@ -226,8 +231,9 @@ pub fn init_races(
             cmd.entity(entity).insert(BlacklistedSpawnTileTags::new(&race_seri.blacklisted_spawn_tile_tags));
         }
 
-        let body_tree_ent = body_tree_map.0.get_cloned(&body_tree_str_id).ok();
-        let body_tree_sexes = body_tree_ent.and_then(|body_tree_ent| body_tree_source_query.get(body_tree_ent).ok());
+        let body_tree_sexes = body_tree_ent
+            .and_then(|body_tree_ent| body_tree_source_query.get(body_tree_ent).ok())
+            .map(|(sexes, _)| sexes);
 
         if let Some(body_tree_sexes) = body_tree_sexes {
             let mut sex_entities_weights: Vec<(Entity, f32)> = Vec::new();
