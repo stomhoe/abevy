@@ -8,6 +8,7 @@ use bevy::{
 use movement::{movement_components::GridLockedMovement, prelude::MovementRemoveOnFreezeBundle};
 use tilemap::chunking::chunking_components::*;
 use tilemap_shared::{LoadChunksAround, ChunkPos, DimensionRef, GlobalTilePos, };
+use being_shared::StepDistanceSfxState;
 
 use crate::{being_components::*, being_nav::RetainedChasePathSnapshot};
 
@@ -50,6 +51,7 @@ pub struct RemoveOnFreeze(
     pub ChunkPos,
     pub Visibility,
     pub MovementRemoveOnFreezeBundle,
+    pub StepDistanceSfxState,
 
 );//en vez de esto, hacer un estado serializado?
 

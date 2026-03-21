@@ -10,6 +10,7 @@ mod being_melee_systems;
 mod being_control_systems;
 mod being_portal_systems;
 mod being_behavior_systems;
+mod being_simulation_systems;
 mod being_on_chunk_despawn_systems;
 mod being_interaction_zone_helper;
 pub mod being_nav;

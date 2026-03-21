@@ -75,10 +75,10 @@ fn decode_flags(v: f32) -> u32 {
 
 // Check if tile coordinates are inside the global map texture bounds.
 fn in_bounds(tile: vec2<i32>) -> bool {
-    return tile.x >= 0
-        && tile.y >= 0
-        && tile.x < i32(map_size_tiles.x)
-        && tile.y < i32(map_size_tiles.y);
+    return tile.x >= -1
+        && tile.y >= -1
+        && tile.x <= i32(map_size_tiles.x)
+        && tile.y <= i32(map_size_tiles.y);
 }
 
 // Read and decode all per-tile data from packed metadata textures.
@@ -102,11 +102,12 @@ fn read_tile_data(tile: vec2<i32>) -> TileData {
         );
     }
 
-    let tex = textureLoad(tile_indices_map, tile, 0);
-    let flag_tex = textureLoad(tile_flags_map, tile, 0);
+    let padded_tile = tile + vec2<i32>(1, 1);
+    let tex = textureLoad(tile_indices_map, padded_tile, 0);
+    let flag_tex = textureLoad(tile_flags_map, padded_tile, 0);
     let flags_raw = decode_flags(flag_tex.r);
-    let params = textureLoad(tile_params_map, tile, 0);
-    let tint = textureLoad(tile_tint_map, tile, 0);
+    let params = textureLoad(tile_params_map, padded_tile, 0);
+    let tint = textureLoad(tile_tint_map, padded_tile, 0);
     return TileData(
         decode_u16(tex.r, tex.g),
         decode_u16(tex.b, tex.a),
@@ -140,16 +141,21 @@ fn compute_water_offset(uv_world: vec2<f32>, t: f32, strength: f32) -> vec2<f32>
 }
 
 // Select the overlay texture by index and sample at UV.
+fn invert_v(uv: vec2<f32>) -> vec2<f32> {
+    return vec2<f32>(uv.x, 1.0 - uv.y);
+}
+
 fn sample_overlay_texture(index: u32, uv: vec2<f32>) -> vec4<f32> {
+    let sample_uv = invert_v(uv);
     switch index {
-        case 0u: { return textureSample(overlay_tex_0, sprite_sampler, uv); }
-        case 1u: { return textureSample(overlay_tex_1, sprite_sampler, uv); }
-        case 2u: { return textureSample(overlay_tex_2, sprite_sampler, uv); }
-        case 3u: { return textureSample(overlay_tex_3, sprite_sampler, uv); }
-        case 4u: { return textureSample(overlay_tex_4, sprite_sampler, uv); }
-        case 5u: { return textureSample(overlay_tex_5, sprite_sampler, uv); }
-        case 6u: { return textureSample(overlay_tex_6, sprite_sampler, uv); }
-        case 7u: { return textureSample(overlay_tex_7, sprite_sampler, uv); }
+        case 0u: { return textureSample(overlay_tex_0, sprite_sampler, sample_uv); }
+        case 1u: { return textureSample(overlay_tex_1, sprite_sampler, sample_uv); }
+        case 2u: { return textureSample(overlay_tex_2, sprite_sampler, sample_uv); }
+        case 3u: { return textureSample(overlay_tex_3, sprite_sampler, sample_uv); }
+        case 4u: { return textureSample(overlay_tex_4, sprite_sampler, sample_uv); }
+        case 5u: { return textureSample(overlay_tex_5, sprite_sampler, sample_uv); }
+        case 6u: { return textureSample(overlay_tex_6, sprite_sampler, sample_uv); }
+        case 7u: { return textureSample(overlay_tex_7, sprite_sampler, sample_uv); }
         default: { return vec4<f32>(1.0, 0.0, 1.0, 1.0); }
     }
 }
@@ -193,7 +199,7 @@ fn apply_overlay_tint(data: TileData, overlay: vec4<f32>) -> vec4<f32> {
 // Compose base tile texture with this tile's own overlay where mask permits.
 fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, world_uv: vec2<f32>, tint: vec4<f32>) -> vec4<f32> {
     let data = read_tile_data(tile);
-    let base = textureSample(sprite_texture, sprite_sampler, uv, i32(data.base_tex_index)) * tint;
+    let base = textureSample(sprite_texture, sprite_sampler, invert_v(uv), i32(data.base_tex_index)) * tint;
     // Allow a small tolerance to survive filtering at tile borders.
     let is_mask = distance(base.rgb, MASK_COLOR) <= MASK_TOLERANCE;
     // If pixel is not the mask color, keep original base color unchanged.

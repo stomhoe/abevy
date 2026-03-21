@@ -15,6 +15,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::ac_audio_components::*;
 use crate::SpatialAudioSettings;
+use being_shared::StepDistanceSfxState;
 
 pub fn play_sprite_animation_sfx_on_frame_change(
     mut cmd: Commands,

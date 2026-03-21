@@ -238,3 +238,10 @@ pub type UnloadedBeing = (With<Being>, With<Unloaded>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct PackMemberRank;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+#[require(Replicated, )]//HACER Q MEJOR ESTO SE REGISTRE EN EL CHUNK PARA NO TENER QUE QUERYEAR TODA TILE O BIENG ADENTRO
+pub struct PreventsChunkUnloading;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct ChunkPersistersWithin(pub u32);

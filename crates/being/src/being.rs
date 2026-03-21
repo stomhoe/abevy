@@ -101,6 +101,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<Sentient>()
     .replicate::<HumanControlled>()
+    .replicate::<PreventsChunkUnloading>()
 
     .replicate_filtered::<ChildOf, With<Being>>()
 

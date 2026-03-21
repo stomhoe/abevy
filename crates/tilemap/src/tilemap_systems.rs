@@ -267,21 +267,120 @@ pub fn process_tiles_pre(
 
     cmd.try_insert_batch(tilemap_bundles);
 
+    for mapkey in locals.changed_structs.iter() {
+        let Some(shader_ref) = mapkey.shader_ref() else {
+            continue;
+        };
+        let Ok(shader) = params.shader_query.get(shader_ref.0) else {
+            continue;
+        };
+        if !matches!(shader, TileShader::TerrBlend(_)) {
+            continue;
+        }
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                let neighbor_key = MapKey::new(
+                    mapkey.dim_ref,
+                    mapkey.chunk_pos + IVec2::new(dx, dy),
+                    mapkey.ac_z,
+                    mapkey.tile_size,
+                    mapkey.shader_ref(),
+                );
+                let Some(neighbor_mapstruct) = resources.tmap_map.0.get(&neighbor_key) else {
+                    continue;
+                };
+                cmd.entity(neighbor_mapstruct.tmap_ent).insert(NeedsTerrblRefresh);
+            }
+        }
+    }
+
     let mut insert2tmaps = Vec::with_capacity(locals.changed_structs.len());
     let mut default_mats = Vec::with_capacity(locals.changed_structs.len());
     let mut terrbl_mats = Vec::with_capacity(locals.changed_structs.len());
 
     for mapkey in locals.changed_structs.drain() {
-        let Some(mapstruct) = resources.tmap_map.0.get_mut(&mapkey) else {
-            continue;
-        };
-        let tmap_ent = mapstruct.tmap_ent;
-
         let shader = if let Some(shader_ref) = mapkey.shader_ref() {
             params.shader_query.get(shader_ref.0).ok().map(|(shader)| shader.clone())
         } else {
             None
         };
+        let terrbl_material = if shader.as_ref().is_some_and(|shader| matches!(shader, TileShader::TerrBlend(_))) {
+            let Some(mapstruct) = resources.tmap_map.0.get(&mapkey) else {
+                continue;
+            };
+            let storage = &mapstruct.storage;
+            let chunk_w = storage.size.x as i32;
+            let chunk_h = storage.size.y as i32;
+            build_terrbl_material_for_map(
+                &mut resources.images,
+                &tile_components.tile_ezero_ref_query,
+                &tile_components.tile_texture_index_query,
+                &locals.tile_runtime_info,
+                &params.terrbl_query,
+                storage,
+                mapstruct.tmap_ent,
+                mapkey.tile_size,
+                &mut locals.terrbl_debug_budget,
+                |x, y| {
+                    let dx = if x < 0 {
+                        -1
+                    } else if x >= chunk_w {
+                        1
+                    } else {
+                        0
+                    };
+                    let dy = if y < 0 {
+                        -1
+                    } else if y >= chunk_h {
+                        1
+                    } else {
+                        0
+                    };
+                    if dx == 0 && dy == 0 {
+                        return storage.get(&TilePos { x: x as u32, y: y as u32 });
+                    }
+                    let neighbor_key = MapKey::new(
+                        mapkey.dim_ref,
+                        mapkey.chunk_pos + IVec2::new(dx, dy),
+                        mapkey.ac_z,
+                        mapkey.tile_size,
+                        mapkey.shader_ref(),
+                    );
+                    let Some(neighbor_mapstruct) = resources.tmap_map.0.get(&neighbor_key) else {
+                        return None;
+                    };
+                    let n_storage = &neighbor_mapstruct.storage;
+                    let nx = if dx < 0 {
+                        n_storage.size.x as i32 - 1
+                    } else if dx > 0 {
+                        0
+                    } else {
+                        x
+                    };
+                    let ny = if dy < 0 {
+                        n_storage.size.y as i32 - 1
+                    } else if dy > 0 {
+                        0
+                    } else {
+                        y
+                    };
+                    if nx < 0 || ny < 0 || nx >= n_storage.size.x as i32 || ny >= n_storage.size.y as i32 {
+                        return None;
+                    }
+                    n_storage.get(&TilePos { x: nx as u32, y: ny as u32 })
+                },
+            )
+        } else {
+            None
+        };
+
+        let Some(mapstruct) = resources.tmap_map.0.get_mut(&mapkey) else {
+            continue;
+        };
+        let tmap_ent = mapstruct.tmap_ent;
         let texture_vec = mapstruct.take_texture();
         let storage = mapstruct.take_storage();
         let tmap_hash_id_map = mapstruct.take_hash_id_map();
@@ -289,17 +388,7 @@ pub fn process_tiles_pre(
         if let Some(shader) = shader {
             match shader {
                 TileShader::TerrBlend(_) => {
-                    if let Some(material) = build_terrbl_material_for_map(
-                        &mut resources.images,
-                        &tile_components.tile_ezero_ref_query,
-                        &tile_components.tile_texture_index_query,
-                        &locals.tile_runtime_info,
-                        &params.terrbl_query,
-                        &storage,
-                        tmap_ent,
-                        mapkey.tile_size,
-                        &mut locals.terrbl_debug_budget,
-                    ) {
+                    if let Some(material) = terrbl_material {
                         let material = MaterialTilemapHandle::from(resources.texture_overlay_mat.add(material));
                         terrbl_mats.push((tmap_ent, material));
                     } else {

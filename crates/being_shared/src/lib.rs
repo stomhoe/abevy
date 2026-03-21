@@ -10,5 +10,7 @@ pub mod bodyparts_shared;
 pub mod being_inst_templ_shared;
 pub mod being_shared_messages;
 pub mod being_shared_resources;
+pub mod being_shared_audio;
 pub use body_tree_shared::*;
 pub use bodyparts_shared::*;
+pub use being_shared_audio::*;

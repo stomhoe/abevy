@@ -77,7 +77,8 @@ pub fn unfreeze_beings_on_chunk_load(
 pub fn on_chunk_with_beings_attempt_unload(
     mut reader: MessageReader<ChunkWithBeingsWantsDespawn>,
     chunks_query: Query<&BeingsWithinChunk>,
-    beings: Query<&Chasing, With<Being>>,
+    chaser_beings: Query<&Chasing, With<Being>>,
+    prevents_chunk_unloading_query: Query<(), (With<PreventsChunkUnloading>, )>,
     player_targets: Query<(), (With<Being>, PlayerBeing)>,
     mut mcsfc_writer: MessageWriter<MakeChunkSnapshotForChaser>,
     mut mcsfc_messages: Local<Vec<MakeChunkSnapshotForChaser>>,
@@ -90,7 +91,10 @@ pub fn on_chunk_with_beings_attempt_unload(
         };
 
         let should_cancel = beings_within_chunk.iter().any(|being_ent| {
-            let Ok(chaser) = beings.get(being_ent) else {
+            if prevents_chunk_unloading_query.get(being_ent).is_ok() {
+                return true;
+            }
+            let Ok(chaser) = chaser_beings.get(being_ent) else {
                 return false;
             };
             player_targets.get(chaser.target).is_ok()
@@ -98,7 +102,11 @@ pub fn on_chunk_with_beings_attempt_unload(
 
         if should_cancel {
             for being_ent in beings_within_chunk.iter() {
-                let Ok(chaser) = beings.get(being_ent) else {
+                if prevents_chunk_unloading_query.get(being_ent).is_ok() {
+                    debug!(target: BEING_SYSTEM, "Canceled despawn for chunk {:?} because being {:?} prevents chunk unloading", msg.chunk_ent, being_ent);
+                    continue;
+                }
+                let Ok(chaser) = chaser_beings.get(being_ent) else {
                     continue;
                 };
                 if player_targets.get(chaser.target).is_err() {
