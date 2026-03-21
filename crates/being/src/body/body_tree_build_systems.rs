@@ -23,7 +23,7 @@ pub fn build_body_trees_on_beings(
     display_name_query: Query<(&DisplayName, Has<EntityZero>),>,
 ) {
     for (being_ent, tree_to_build, ) in consumer_beings_query.iter() {
-        debug!(target: BODY_BUILD, "Building body tree {} for being {} from source ezero {}", entity_dbg(tree_to_build.0, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(tree_to_build.0, &display_name_query));
+        trace!(target: BODY_BUILD, "Building body tree {} for being {} from source ezero {}", entity_dbg(tree_to_build.0, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(tree_to_build.0, &display_name_query));
         let body_ent = cmd.spawn((
             BodyOf { being: being_ent },
             ChildOf(being_ent),
@@ -41,7 +41,7 @@ pub fn build_body_trees_on_beings(
             error!(target: BODY_BUILD, "BodyTree {} has no valid BodyRootPart; skipping source clone for owner {}", entity_dbg(tree_to_build.0, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;
         };
-        debug!(target: BODY_BUILD, "Selected root source body part {} for being {} from body tree {}", entity_dbg(root_ezero_bodypart, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(tree_to_build.0, &display_name_query));
+        trace!(target: BODY_BUILD, "Selected root source body part {} for being {} from body tree {}", entity_dbg(root_ezero_bodypart, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(tree_to_build.0, &display_name_query));
 
         let Some(new_root_ent) = walk_and_clone_tree(
             &mut cmd,
@@ -53,7 +53,7 @@ pub fn build_body_trees_on_beings(
         ) else {
             continue;
         };
-        debug!(target: BODY_BUILD, "Root clone {} finished for being {}; attached to body {}", entity_dbg(new_root_ent, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(body_ent, &display_name_query));
+        trace!(target: BODY_BUILD, "Root clone {} finished for being {}; attached to body {}", entity_dbg(new_root_ent, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(body_ent, &display_name_query));
     }
 }
 
@@ -80,13 +80,13 @@ fn walk_and_clone_tree(
         EntityZeroRef(ezerotree_curr_node_ent),
         Name::default(),
     ));
-    debug!(target: BODY_BUILD, "Created clone {} from source {} for body {}", entity_dbg(cloned_bodypart_ent, display_name_query), entity_dbg(ezerotree_curr_node_ent, display_name_query), entity_dbg(body_ent, display_name_query));
-    debug!(target: BODY_BUILD, "Assigned BodypartChildOf parent {} and ChildOf body {} to clone {}", entity_dbg(parent_bodypart, display_name_query), entity_dbg(body_ent, display_name_query), entity_dbg(cloned_bodypart_ent, display_name_query));
+    trace!(target: BODY_BUILD, "Created clone {} from source {} for body {}", entity_dbg(cloned_bodypart_ent, display_name_query), entity_dbg(ezerotree_curr_node_ent, display_name_query), entity_dbg(body_ent, display_name_query));
+    trace!(target: BODY_BUILD, "Assigned BodypartChildOf parent {} and ChildOf body {} to clone {}", entity_dbg(parent_bodypart, display_name_query), entity_dbg(body_ent, display_name_query), entity_dbg(cloned_bodypart_ent, display_name_query));
 
     if let Ok((bodypart_children, )) = ref_of_bpart_toclone_query.get(ezerotree_curr_node_ent) {
-        debug!(target: BODY_BUILD, "Clone {} has {} bodypart-child nodes", entity_dbg(cloned_bodypart_ent, display_name_query), bodypart_children.iter().count());
+        trace!(target: BODY_BUILD, "Clone {} has {} bodypart-child nodes", entity_dbg(cloned_bodypart_ent, display_name_query), bodypart_children.iter().count());
         for ezero_child_bodypart_ent in bodypart_children.iter() {
-            debug!(target: BODY_BUILD, "Descending from clone {} into source child {}", entity_dbg(cloned_bodypart_ent, display_name_query), entity_dbg(ezero_child_bodypart_ent, display_name_query));
+            trace!(target: BODY_BUILD, "Descending from clone {} into source child {}", entity_dbg(cloned_bodypart_ent, display_name_query), entity_dbg(ezero_child_bodypart_ent, display_name_query));
             walk_and_clone_tree(
                 cmd,
                 ezero_child_bodypart_ent,

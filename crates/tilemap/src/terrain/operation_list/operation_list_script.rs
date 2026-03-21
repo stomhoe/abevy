@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use common::common_components::{HashId, StrId};
+use common::log_targets::OPLIST_INIT;
 use std::collections::{BTreeMap, HashMap, };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -795,22 +796,24 @@ fn parse_weighted_biome_tags(
                     std_dev_raw.trim()
                 )
             })?;
-            // if !pack_count_multiplier_mean.is_finite() || pack_count_multiplier_mean <= 0.0 {
-            //     return Err(format!(
-            //         "{}:{} biome pack multiplier mean must be > 0 (got {})",
-            //         path.display(),
-            //         line_no,
-            //         pack_count_multiplier_mean
-            //     ));
-            // }
-            // if !pack_count_multiplier_std_dev.is_finite() || pack_count_multiplier_std_dev < 0.0 {
-            //     return Err(format!(
-            //         "{}:{} biome pack multiplier std_dev must be >= 0 (got {})",
-            //         path.display(),
-            //         line_no,
-            //         pack_count_multiplier_std_dev
-            //     ));
-            // }
+            if !pack_count_multiplier_mean.is_finite() || pack_count_multiplier_mean <= 0.0 {
+                warn!(
+                    target: OPLIST_INIT,
+                    "{}:{} biome pack multiplier mean is {} (<= 0 disables this biome intentionally)",
+                    path.display(),
+                    line_no,
+                    pack_count_multiplier_mean
+                );
+            }
+            if !pack_count_multiplier_std_dev.is_finite() || pack_count_multiplier_std_dev < 0.0 {
+                warn!(
+                    target: OPLIST_INIT,
+                    "{}:{} biome pack multiplier std_dev is {} (< 0 is clamped downstream)",
+                    path.display(),
+                    line_no,
+                    pack_count_multiplier_std_dev
+                );
+            }
         }
         out.push(OpListBifBiomeTagSeri {
             tag: tag.to_string(),

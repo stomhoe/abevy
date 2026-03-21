@@ -1,6 +1,6 @@
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::{
-    ecs::{entity::EntityHashSet, system::SystemParam},
+    ecs::{entity::{EntityHashMap, EntityHashSet}, system::SystemParam},
     platform::collections::HashSet,
     prelude::*,
 };
@@ -14,6 +14,7 @@ use being::{
 use being_shared::BeingInstTemplate;
 use common::file_logging::file_log;
 use common::log_targets::WILDLIFE_SYSTEM;
+use game_common::game_common_samplers::EntityWeightedSampler;
 use movement::movement_components::GridLockedMovement;
 use param_sets::BlockingTileParamSet;
 use tilemap::terrain::biome::biome_components::CreatureSampler;
@@ -191,6 +192,41 @@ fn spawn_relation_target(
     bit_race_query.get(spawn_target).map(|race_ref| race_ref.0).unwrap_or(spawn_target)
 }
 
+fn collect_macrochunk_pack_scores(
+    distribution: &BiomeDistribution,
+    biome_pack_samplers: &Query<&CreatureSampler>,
+) -> Vec<(Entity, f32)> {
+    let mut scores = EntityHashMap::default();
+    for &(biome_ent, biome_weight) in distribution.produced_biome_sampler.iter() {
+        let Ok(biome_pack_sampler) = biome_pack_samplers.get(biome_ent) else {
+            continue;
+        };
+        for (&pack_ent, affinity) in biome_pack_sampler.0.iter() {
+            let score = biome_weight * *affinity;
+            if score == 0.0 {
+                continue;
+            }
+            *scores.entry(pack_ent).or_insert(0.0) += score;
+        }
+    }
+    scores
+        .into_iter()
+        .filter_map(|(pack_ent, score)| (score > 0.0).then_some((pack_ent, score)))
+        .collect()
+}
+
+fn sample_macrochunk_pack_target(
+    distribution: &BiomeDistribution,
+    biome_pack_samplers: &Query<&CreatureSampler>,
+    rng: &mut impl rand::Rng,
+) -> Option<Entity> {
+    let pack_scores = collect_macrochunk_pack_scores(distribution, biome_pack_samplers);
+    if pack_scores.is_empty() {
+        return None;
+    }
+    EntityWeightedSampler::new(&pack_scores).sample_with_rng(rng)
+}
+
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PendingNaturalSpawnUnfreeze;
 
@@ -260,11 +296,6 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
             debug!(target: WILDLIFE_SYSTEM, "Natural spawn found no weighted biome for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
             continue;
         };
-        let Ok(biome_pack_sampler) = spawn_queries.biome_pack_samplers.get(biome_ent) else {
-            debug!(target: WILDLIFE_SYSTEM, "Natural spawn found no pack sampler for biome {:?} in macrochunk {} in {:?}", biome_ent, macro_chunk_pos, dim_ref);
-            file_log("wildlife", "host", &format!("seed macrochunk={macro_chunk_pos} dim={dim_ref:?} biome={biome_ent:?} result=no_pack_sampler"));
-            continue;
-        };
         let pack_count = distribution
             .averaged_pack_count_multiplier_stats(biome_ent)
             .sample_pack_count_multiplier(&mut rng);
@@ -282,8 +313,8 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
         let mut spawned_beings = 0usize;
 
         for _ in 0..pack_count {
-            let Some(pack_target) = biome_pack_sampler.0.sample_with_rng(&mut rng) else {
-                trace!(target: WILDLIFE_SYSTEM, "Natural spawn found no further candidate wildlife for biome {:?} in macrochunk {} in {:?}", biome_ent, macro_chunk_pos, dim_ref);
+            let Some(pack_target) = sample_macrochunk_pack_target(distribution, &spawn_queries.biome_pack_samplers, &mut rng) else {
+                trace!(target: WILDLIFE_SYSTEM, "Natural spawn found no candidate wildlife for macrochunk {} in {:?} after affinity filtering", macro_chunk_pos, dim_ref);
                 break;
             };
             let Ok((_, is_race, is_pack)) = spawn_queries.spawn_target_query.get(pack_target) else {

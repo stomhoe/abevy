@@ -5,7 +5,7 @@ use bevy_replicon::prelude::*;
 use param_sets::BlockingTileParamSet;
 use sprite_animation_shared::MatchHeldSpritesAnimStateToBeingState;
 use tilemap::tile::tile_components::Tile;
-use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
+use tilemap_shared::{DimensionRef, GlobalTilePos};
 
 use common::log_targets::MOVEMENT_SYSTEM;
 
@@ -30,7 +30,6 @@ pub fn receive_step_request_from_client(
         &SpeedMagnitude,
         &mut GlobalTilePos,
         &mut GridLockedMovement,
-        &mut CardinalDirection,
     ), (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
@@ -61,7 +60,10 @@ pub fn receive_step_request_from_client(
             );
             continue;
         }
-        let Ok((entity, &dim_ref, speed_magnitude, mut tile_pos, mut glm, mut facing_dir)) = beings.get_mut(being_ent) else {
+        let Ok((entity, &dim_ref, speed_magnitude, mut tile_pos, mut glm)) = beings.get_mut(being_ent) else {
+            continue;
+        };
+        let Some(facing_dir) = blocking_tiles.get_being_direction(being_ent) else {
             continue;
         };
         let dir_vec = step_dir.to_dir_vec();
@@ -85,7 +87,7 @@ pub fn receive_step_request_from_client(
                 message: SyncGpos {
                     being_ent,
                     gpos: *tile_pos,
-                    dir: *facing_dir,
+                    dir: facing_dir,
                     force_resync: true,
                 },
             });
@@ -98,14 +100,14 @@ pub fn receive_step_request_from_client(
             if blocking_tiles.is_blocked_at(dim_ref, next_gpos, entity) {
                 messages.push(ToClients {
                     mode: SendMode::Direct(client_id),
-                    message: SyncGpos {
-                        being_ent,
-                        gpos: *tile_pos,
-                        dir: *facing_dir,
-                        force_resync: true,
-                    },
-                });
-                continue;
+                message: SyncGpos {
+                    being_ent,
+                    gpos: *tile_pos,
+                    dir: facing_dir,
+                    force_resync: true,
+                },
+            });
+            continue;
             }
             match glm.try_start_step(
                 &mut blocking_tiles,
@@ -116,8 +118,8 @@ pub fn receive_step_request_from_client(
                 step_ticks,
             ) {
                 TryStartStepOutcome::Successful => {
-                    if *facing_dir != step_dir {
-                        *facing_dir = step_dir;
+                    if facing_dir != step_dir {
+                        let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
                         move_state_msgs.push(MatchHeldSpritesAnimStateToBeingState(being_ent));
                     }
                     1
@@ -128,7 +130,7 @@ pub fn receive_step_request_from_client(
                         message: SyncGpos {
                             being_ent,
                             gpos: *tile_pos,
-                            dir: *facing_dir,
+                            dir: facing_dir,
                             force_resync: true,
                         },
                     });
@@ -140,7 +142,7 @@ pub fn receive_step_request_from_client(
                         message: SyncGpos {
                             being_ent,
                             gpos: *tile_pos,
-                            dir: *facing_dir,
+                            dir: facing_dir,
                             force_resync: true,
                         },
                     });
@@ -163,14 +165,14 @@ pub fn receive_step_request_from_client(
                     message: SyncGpos {
                         being_ent,
                         gpos: *tile_pos,
-                        dir: *facing_dir,
+                        dir: facing_dir,
                         force_resync: true,
                     },
                 });
                 continue;
             }
-            if *facing_dir != step_dir {
-                *facing_dir = step_dir;
+            if facing_dir != step_dir {
+                let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
                 move_state_msgs.push(MatchHeldSpritesAnimStateToBeingState(being_ent));
             }
             steps_taken

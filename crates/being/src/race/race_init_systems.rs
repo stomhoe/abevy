@@ -284,7 +284,7 @@ pub fn init_races(
             .insert(MappedSpritesToSample(mapped_sprites_to_sample));
 
         for (biome_tag, weight) in &race_seri.biome_affinity {
-            if *weight <= 0.0 {
+            if *weight == 0.0 {
                 continue;
             }
             let Ok(biome_ent) = biome_emap.0.get_cloned(biome_tag) else {
@@ -293,7 +293,7 @@ pub fn init_races(
             let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
                 continue;
             };
-            biome_pack_sampler.0.insert(entity, *weight);
+            biome_pack_sampler.add_affinity(entity, *weight);
         }
 
         trace!(target: "race_init", "Initialized race '{}' with entity {:?}", str_id, entity);

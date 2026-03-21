@@ -313,7 +313,7 @@ fn apply_distributions(
         let weights = &weighted_stats.0;
         let synergies = synergy_query.get(source_part).ok();
         if synergies.is_none() {
-            debug!(target: BODY_BUILD, "BodyTree {} source part {:?} has no ModifierSynergies", body_id, source_part);
+            trace!(target: BODY_BUILD, "BodyTree {} source part {:?} has no ModifierSynergies", body_id, source_part);
         }
 
         let mut spawned_modifiers = 0;
@@ -404,7 +404,7 @@ fn apply_distributions(
         if spawned_modifiers == 0 {
             error!(target: BODY_BUILD, "BodyTree {} source part {:?} produced no modifiers; forced and weighted distributions may be empty", body_id, source_part);
         } else {
-            debug!(target: BODY_BUILD, "BodyTree {} source part {:?} spawned {} modifiers", body_id, source_part, spawned_modifiers);
+            trace!(target: BODY_BUILD, "BodyTree {} source part {:?} spawned {} modifiers", body_id, source_part, spawned_modifiers);
         }
     }
 }

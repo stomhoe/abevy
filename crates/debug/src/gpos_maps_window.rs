@@ -178,7 +178,7 @@ pub fn gpos_maps_window_system(
                             break;
                         }
                         let Ok((interaction_zones, size_in_tiles)) = tile_interaction_zones.get(ezero_ref.0) else { continue; };
-                        if interaction_zones.is_inside_interaction_zone(
+                        if interaction_zones.is_point_inside_zone(
                             InteractionZones::COLLISION_MASK_HASHID,
                             *size_in_tiles,
                             tile_origin.to_pixelpos(),

@@ -2,7 +2,6 @@
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::TileFlip;
 #[allow(unused_imports)]
 use bevy::platform::collections::{HashSet, HashMap};
 use common::common_tag_components::TagSet;
@@ -21,10 +20,13 @@ pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
     wallphaser_query: Query<'w, 's, (), With<WallPhaser>>,
     will_despawn_query: Query<'w, 's, (), (With<Dead>, With<DespawnOnDeath>)>,
-    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos, Option<&'static TileFlip>, Option<&'static CardinalDirection>), (With<Tile>, Without<Being>)>,
+    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos), (With<Tile>, Without<Being>)>,
+    tile_direction_query: Query<'w, 's, &'static CardinalDirection, (With<Tile>, Without<Being>)>,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
     tile_tags: Query<'w, 's, &'static TagSet, (With<Tile>, Without<Being>)>,
-    tile_interaction_zones: Query<'w, 's, (&'static InteractionZones, &'static SizeInTiles), >,
+    interaction_zones: Query<'w, 's, &'static InteractionZones, >,
+    being_collision_query: Query<'w, 's, (Option<&'static InteractionZones>, &'static GlobalTransform), (With<Being>, )>,
+    being_direction_query: Query<'w, 's, &'static mut CardinalDirection, (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
     terrgen_states: Query<'w, 's, &'static TerrGenState, With<Chunk>>,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
 }
@@ -32,6 +34,18 @@ pub struct BlockingTileParamSet<'w, 's> {
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
     pub fn gather_tiles_at_to_drain(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
         self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos)
+    }
+
+    pub fn get_being_direction(&mut self, being: Entity) -> Option<CardinalDirection> {
+        self.being_direction_query.get_mut(being).ok().map(|direction| *direction)
+    }
+
+    pub fn set_being_direction(&mut self, being: Entity, direction: CardinalDirection) -> bool {
+        let Ok(mut current_direction) = self.being_direction_query.get_mut(being) else {
+            return false;
+        };
+        *current_direction = direction;
+        true
     }
 
     pub fn find_nearest_unblocked_gpos_in_chunk(
@@ -90,13 +104,32 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         whitelisted_tags: &WhitelistedSpawnTileTags,
         blacklisted_tags: &BlacklistedSpawnTileTags,
     ) -> bool {
-        if self
-            .beings_at_gpos
-            .get_beings_at_pos(dim_ref, gpos)
-            .iter()
-            .any(|&ent| ent != being)
-        {
-            return false;
+        let moving_anchor = gpos.to_pixelpos();
+        let (moving_collision_zone, moving_direction) = self.resolve_being_collision_zone_and_direction(being);
+        for &target_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, gpos).iter() {
+            if target_being == being {
+                continue;
+            }
+            let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
+                return false;
+            };
+            let target_zone = target_zones
+                .and_then(|zones| zones.get_collision_mask().cloned())
+                .unwrap_or_else(InteractionZones::collision_default_zone);
+            let Ok(target_direction) = self.being_direction_query.get(target_being) else {
+                return false;
+            };
+            let target_anchor = target_transform.translation().xy();
+            let intersects = target_zone.intersects_zone(
+                *target_direction,
+                target_anchor,
+                &moving_collision_zone,
+                moving_direction,
+                moving_anchor,
+            );
+            if intersects {
+                return false;
+            }
         }
 
         let can_phase = self.wallphaser_query.get(being).is_ok();
@@ -107,7 +140,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         let mut has_blacklist_match = false;
 
         for tile_entity in tiles_at_pos {
-            let Ok((ezero_ref, tile_origin, tile_flip, direction)) = self.tile_instance_query.get(tile_entity) else {
+            let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
                 continue;
             };
             all_tiles_failed = false;
@@ -132,16 +165,21 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 continue;
             }
 
-            let Ok((interaction_zones, size_in_tiles)) = self.tile_interaction_zones.get(ezero_ref.0) else {
+            let Ok(interaction_zones) = self.interaction_zones.get(ezero_ref.0) else {
                 continue;
             };
-            let blocks_here = interaction_zones.is_inside_interaction_zone(
+            let direction = self
+                .tile_direction_query
+                .get(tile_entity)
+                .copied()
+                .unwrap_or_default();
+            let blocks_here = interaction_zones.interaction_zones_intersect(
                 InteractionZones::COLLISION_MASK_HASHID,
-                *size_in_tiles,
+                &moving_collision_zone,
+                direction,
                 tile_origin.to_pixelpos(),
-                gpos.to_pixelpos(),
-                tile_flip.copied().unwrap_or_default(),
-                direction.copied().unwrap_or_default(),
+                moving_direction,
+                moving_anchor,
             );
             if blocks_here && self.will_despawn_query.get(tile_entity).is_err() {
                 return false;
@@ -186,14 +224,34 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
     }
 
     fn is_blocked_at_impl_except_dead_despawning(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, include_beings: bool) -> bool {
-        if include_beings
-            && self
-                .beings_at_gpos
-                .get_beings_at_pos(dim_ref, gpos)
-                .iter()
-                .any(|&ent| ent != being)
-        {
-            return true;
+        let moving_anchor = gpos.to_pixelpos();
+        let (moving_collision_zone, moving_direction) = self.resolve_being_collision_zone_and_direction(being);
+        if include_beings {
+            for &target_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, gpos).iter() {
+                if target_being == being {
+                    continue;
+                }
+                let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
+                    return true;
+                };
+                let target_zone = target_zones
+                    .and_then(|zones| zones.get_collision_mask().cloned())
+                    .unwrap_or_else(InteractionZones::collision_default_zone);
+                let Ok(target_direction) = self.being_direction_query.get(target_being) else {
+                    return true;
+                };
+                let target_anchor = target_transform.translation().xy();
+                let intersects = target_zone.intersects_zone(
+                    *target_direction,
+                    target_anchor,
+                    &moving_collision_zone,
+                    moving_direction,
+                    moving_anchor,
+                );
+                if intersects {
+                    return true;
+                }
+            }
         }
 
         let can_phase = self.wallphaser_query.get(being).is_ok();
@@ -205,7 +263,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
         let mut all_tiles_failed = true;
         for tile_entity in tiles_at_pos {
-            let Ok((ezero_ref, tile_origin, tile_flip, direction)) = self.tile_instance_query.get(tile_entity) else {
+            let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
                 continue;
             };
             all_tiles_failed = false;
@@ -216,16 +274,21 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 continue;
             }
 
-            let Ok((interaction_zones, size_in_tiles)) = self.tile_interaction_zones.get(ezero_ref.0) else {
+            let Ok(interaction_zones) = self.interaction_zones.get(ezero_ref.0) else {
                 continue;
             };
-            let blocks_here = interaction_zones.is_inside_interaction_zone(
+            let direction = self
+                .tile_direction_query
+                .get(tile_entity)
+                .copied()
+                .unwrap_or_default();
+            let blocks_here = interaction_zones.interaction_zones_intersect(
                 InteractionZones::COLLISION_MASK_HASHID,
-                *size_in_tiles,
+                &moving_collision_zone,
+                direction,
                 tile_origin.to_pixelpos(),
-                gpos.to_pixelpos(),
-                tile_flip.copied().unwrap_or_default(),
-                direction.copied().unwrap_or_default(),
+                moving_direction,
+                moving_anchor,
             );
             if blocks_here {
                 let Ok(_) = self.will_despawn_query.get(tile_entity) else {
@@ -238,6 +301,26 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             return true;
         }
         false
+    }
+
+    fn resolve_being_collision_zone_and_direction(&self, being: Entity) -> (InteractionZone, CardinalDirection) {
+        let Ok((zones, _)) = self.being_collision_query.get(being) else {
+            return (InteractionZones::collision_default_zone(), CardinalDirection::default());
+        };
+        let Ok(direction) = self.being_direction_query.get(being) else {
+            return (
+                zones
+                    .and_then(|zones| zones.get_collision_mask().cloned())
+                    .unwrap_or_else(InteractionZones::collision_default_zone),
+                CardinalDirection::default(),
+            );
+        };
+        (
+            zones
+                .and_then(|zones| zones.get_collision_mask().cloned())
+                .unwrap_or_else(InteractionZones::collision_default_zone),
+            *direction,
+        )
     }
 
     pub fn find_closest_spawn_suitable_gpos_across_loaded_chunks(

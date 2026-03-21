@@ -121,7 +121,7 @@ pub fn init_being_templates(
         }
 
         for (biome_tag, weight) in &template_seri.biome_affinity {
-            if *weight <= 0.0 {
+            if *weight == 0.0 {
                 continue;
             }
             let Ok(biome_ent) = biome_emap.0.get_cloned(biome_tag) else {
@@ -130,7 +130,7 @@ pub fn init_being_templates(
             let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
                 continue;
             };
-            biome_pack_sampler.0.insert(bit_entity, *weight);
+            biome_pack_sampler.add_affinity(bit_entity, *weight);
         }
     }
     cmd.try_insert_batch(main_comps);

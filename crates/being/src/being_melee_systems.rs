@@ -164,7 +164,7 @@ pub fn apply_melee_attack(
                     continue;
                 };
                 let hit_point = candidate_gpos;
-                let accepts_hit = target_zones.is_inside_interaction_zone(
+                let accepts_hit = target_zones.is_point_inside_zone(
                     COLLISION_MASK_HASHID,
                     target_size_in_tiles.copied().unwrap_or_default(),
                     tile_origin.to_pixelpos(),

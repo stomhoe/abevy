@@ -110,7 +110,7 @@ pub fn init_packs(
         }
 
         for (biome_id, weight) in &pack_seri.biome_affinity {
-            if *weight <= 0.0 {
+            if *weight == 0.0 {
                 continue;
             }
             let Ok(biome_ent) = biome_emap.0.get_cloned(biome_id) else {
@@ -119,7 +119,7 @@ pub fn init_packs(
             let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
                 continue;
             };
-            biome_pack_sampler.0.insert(pack_entity, *weight);
+            biome_pack_sampler.add_affinity(pack_entity, *weight);
         }
     }
 

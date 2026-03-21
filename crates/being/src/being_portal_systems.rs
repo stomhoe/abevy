@@ -48,7 +48,7 @@ pub fn cross_portal(
 
                 let is_interacting = if let Some(ezero_ref) = portal0_ezero_ref {
                     if let Ok((interaction_zones, &size_in_tiles)) = interaction_zones_query.get(ezero_ref.0) {
-                        interaction_zones.is_inside_interaction_zone(
+                        interaction_zones.is_point_inside_zone(
                             InteractionZones::ENTER,
                             size_in_tiles,
                             portal0_gpos.to_pixelpos(),

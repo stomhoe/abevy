@@ -101,7 +101,7 @@ impl InteractionZones {
             radius_paired_w_offsets: Vec::new(),
         })
     }
-    pub fn is_inside_interaction_zone(
+    pub fn is_point_inside_zone(
         &self,
         zone_id: HashId,
         size_in_tiles: SizeInTiles,
@@ -112,6 +112,20 @@ impl InteractionZones {
     ) -> bool {
         let zone = self.0.get(zone_id).ok();
         zone.is_some_and(|zone| zone.is_inside_any(size_in_tiles, flip, direction, anchor_transf, client_transf))
+    }
+    pub fn interaction_zones_intersect(
+        &self,
+        zone_id: HashId,
+        other_zone: &InteractionZone,
+        anchor_direction: CardinalDirection,
+        anchor_transf: Vec2,
+        other_direction: CardinalDirection,
+        other_anchor_transf: Vec2,
+    ) -> bool {
+        let Some(zone) = self.0.get(zone_id).ok() else {
+            return false;
+        };
+        zone.intersects_zone(anchor_direction, anchor_transf, other_zone, other_direction, other_anchor_transf)
     }
     pub fn get_collision_mask(&self) -> Option<&InteractionZone> {
         self.0.get(Self::COLLISION_MASK_HASHID).ok()
@@ -186,19 +200,25 @@ impl InteractionZone {
         flip: TileFlip,
         direction: CardinalDirection,
         anchor_transf: Vec2,
-        client_transf: Vec2,
+        consumer_transf: Vec2,
     ) -> bool {
-        for &offset_pos in &self.offset_positions {
-            let anchor_gpos: GlobalTilePos = anchor_transf.into();
-            let client_pos: GlobalTilePos = client_transf.into();
-            let checked_pos = anchor_gpos + transform_gpos_offset(offset_pos, size_in_tiles, flip, direction);
-            if checked_pos == client_pos {
-                return true;
-            }
-        }
-        for &(radius, offset) in &self.radius_paired_w_offsets {
-            let pos = anchor_transf + transform_vec2_offset(offset, size_in_tiles, flip, direction);
-            if pos.distance(client_transf) <= radius {
+        let _ = (size_in_tiles, flip);
+        self.contains_gpos(direction, anchor_transf.into(), consumer_transf.into())
+    }
+
+    pub fn intersects_zone(
+        &self,
+        anchor_direction: CardinalDirection,
+        anchor_transf: Vec2,
+        other_zone: &InteractionZone,
+        other_direction: CardinalDirection,
+        other_anchor_transf: Vec2,
+    ) -> bool {
+        let mut zone_positions = Vec::with_capacity(self.offset_positions.len() + self.radius_paired_w_offsets.len());
+        self.gather_zone_positions(anchor_direction, anchor_transf, &mut zone_positions);
+        let other_anchor_gpos: GlobalTilePos = other_anchor_transf.into();
+        for zone_pos in zone_positions {
+            if other_zone.contains_gpos(other_direction, other_anchor_gpos, zone_pos) {
                 return true;
             }
         }
@@ -232,6 +252,30 @@ impl InteractionZone {
             }
         }
     }
+
+    fn contains_gpos(
+        &self,
+        direction: CardinalDirection,
+        anchor_gpos: GlobalTilePos,
+        checked_pos: GlobalTilePos,
+    ) -> bool {
+        for &offset_pos in &self.offset_positions {
+            let transformed_pos = anchor_gpos + rotate_gpos_offset(offset_pos, direction);
+            if transformed_pos == checked_pos {
+                return true;
+            }
+        }
+
+        let anchor_transf = anchor_gpos.to_pixelpos();
+        let checked_transf = checked_pos.to_pixelpos();
+        for &(radius, offset) in &self.radius_paired_w_offsets {
+            let pos = anchor_transf + rotate_vec2_offset(offset, direction);
+            if pos.distance(checked_transf) <= radius {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 fn rotate_gpos_offset(offset: GlobalTilePos, direction: CardinalDirection) -> GlobalTilePos {
@@ -254,47 +298,4 @@ fn rotate_vec2_offset(offset: Vec2, direction: CardinalDirection) -> Vec2 {
         CardinalDirection::North => Vec2::new(-x, -y),
         CardinalDirection::East => Vec2::new(y, -x),
     }
-}
-
-fn transform_gpos_offset(
-    offset: GlobalTilePos,
-    size_in_tiles: SizeInTiles,
-    flip: TileFlip,
-    direction: CardinalDirection,
-) -> GlobalTilePos {
-    let mut transformed = offset;
-    let mut size = size_in_tiles.inner().as_ivec2();
-    if flip.d {
-        transformed.0 = IVec2::new(transformed.0.y, transformed.0.x);
-        size = IVec2::new(size.y, size.x);
-    }
-    if flip.x {
-        transformed.0.x = size.x - 1 - transformed.0.x;
-    }
-    if flip.y {
-        transformed.0.y = size.y - 1 - transformed.0.y;
-    }
-    rotate_gpos_offset(transformed, direction)
-}
-
-fn transform_vec2_offset(
-    offset: Vec2,
-    size_in_tiles: SizeInTiles,
-    flip: TileFlip,
-    direction: CardinalDirection,
-) -> Vec2 {
-    let tile_span = (size_in_tiles.to_pixel_size() - GlobalTilePos::TILE_SIZE_PXS.as_vec2()).max(Vec2::ZERO);
-    let mut transformed = offset;
-    let mut span = tile_span;
-    if flip.d {
-        transformed = Vec2::new(transformed.y, transformed.x);
-        span = Vec2::new(span.y, span.x);
-    }
-    if flip.x {
-        transformed.x = span.x - transformed.x;
-    }
-    if flip.y {
-        transformed.y = span.y - transformed.y;
-    }
-    rotate_vec2_offset(transformed, direction)
 }
