@@ -130,7 +130,7 @@ impl InteractionZones {
     }
     pub fn melee_default_zone() -> InteractionZone {
         InteractionZone {
-            offset_positions: vec![GlobalTilePos::new(0, 1)],
+            offset_positions: vec![GlobalTilePos::new(0, -1)],
             radius_paired_w_offsets: Vec::new(),
         }
     }
@@ -238,9 +238,9 @@ fn rotate_gpos_offset(offset: GlobalTilePos, direction: CardinalDirection) -> Gl
     let x = offset.0.x;
     let y = offset.0.y;
     match direction {
-        CardinalDirection::North => offset,
+        CardinalDirection::South => offset,
         CardinalDirection::West => GlobalTilePos::new(-y, x),
-        CardinalDirection::South => GlobalTilePos::new(-x, -y),
+        CardinalDirection::North => GlobalTilePos::new(-x, -y),
         CardinalDirection::East => GlobalTilePos::new(y, -x),
     }
 }
@@ -249,9 +249,9 @@ fn rotate_vec2_offset(offset: Vec2, direction: CardinalDirection) -> Vec2 {
     let x = offset.x;
     let y = offset.y;
     match direction {
-        CardinalDirection::North => offset,
+        CardinalDirection::South => offset,
         CardinalDirection::West => Vec2::new(-y, x),
-        CardinalDirection::South => Vec2::new(-x, -y),
+        CardinalDirection::North => Vec2::new(-x, -y),
         CardinalDirection::East => Vec2::new(y, -x),
     }
 }

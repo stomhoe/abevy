@@ -25,7 +25,7 @@ pub struct BodyTreeSexes(pub HashMap<String, crate::race::race_seris::RaceSexEnt
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 pub struct CaloricBurnRateMultiplier(pub f32);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct BodySums {
     pub total_hp: f32,
     pub current_hp: f32,

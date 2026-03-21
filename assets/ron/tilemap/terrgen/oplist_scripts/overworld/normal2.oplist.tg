@@ -15,5 +15,5 @@ let gravelness = *(COMPL beach_avg_noise, shore_proximity)
 out = idxmax(0.4, beachness, gravelness)
 
 bif normal3 -> [] biomes: [temp=3.5(0.0,0.)]
-bif "" -> [sand] biomes: [beach=1.0(0.0,0.0)]
-bif "" -> [gravel] biomes: [beach=1.0(0.0,0.0)]
+bif "" -> [sand] biomes: [beach=1.0(2.7,0.45)]
+bif "" -> [gravel] biomes: [beach=1.0(2.7,0.45)]

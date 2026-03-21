@@ -1,6 +1,6 @@
 (
-    id: "cotemp",
-    opfilter_id: "land_temp",
+    id: "anta",
+    opfilter_id: "anta",
     probe_pattern: "conc",
     concentric_sample_spacing: 30.0,
     step_size: 30,

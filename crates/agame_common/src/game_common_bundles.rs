@@ -1,5 +1,5 @@
 use crate::game_common_components::*;
-use crate::prelude::GameCommonStringComponentsBundle;
+use crate::GameCommonStringComponentsBundle;
 use ::common::*;
 use ::sprite_shared::*;
 use bevy::ecs::entity_disabling::Disabled;

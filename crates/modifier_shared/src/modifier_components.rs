@@ -30,11 +30,11 @@ pub type ModifierTags = TagSet;
     (así se pueden identificar sustancias origen y hacer sistemas de antidotos q contrarresten sustancias específicas)
 */
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 #[require(CurrEffectiveValue)]
 pub struct BaseValue(pub f32); //negate for opposite effect or mitigation
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 #[require(ApplyMode::Add)]
 /// final value after all antidote and OffsetValForSelf and CopyFracOfOthersIntoSelf processing
 pub struct CurrEffectiveValue(pub f32);

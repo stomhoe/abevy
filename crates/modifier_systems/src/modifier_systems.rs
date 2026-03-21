@@ -1,7 +1,7 @@
-use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap};
+use bevy::ecs::entity::EntityHashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
+use common::common_id_components::*;
 use game_common::game_common_components::{EntityZero, EntityZeroRef, TimeBasedMultiplier};
-use common::common_components::Tag;
 
 use modifier_shared::resolve_modifier_component;
 use modifier_shared::modifier_components::*;
@@ -50,17 +50,16 @@ pub fn materialize_modifier_synergies(
         }
     }
 }
-
-#[derive(Default)]
-struct TargetAggregates {
-    tag_counts: HashMap<Tag, usize>,
-    tag_value_sum: HashMap<Tag, f32>,
-    antidote_sum: HashMap<Tag, f32>,
+#[derive(Default, Clone)]
+pub struct TargetAggregate {
+    tag_count: usize,
+    tag_value_sum: f32,
+    antidote_sum: f32,
 }
 
 #[inline]
-fn compute_raw_value(base_value: Option<&BaseValue>, current_value: Option<&CurrEffectiveValue>, time_multiplier: Option<&TimeBasedMultiplier>) -> Option<f32> {
-    let base_or_current = base_value.map(|b| b.0).or_else(|| current_value.map(|v| v.0))?;
+fn compute_raw_value(base_value: Option<&BaseValue>, time_multiplier: Option<&TimeBasedMultiplier>) -> Option<f32> {
+    let base_or_current = base_value.map(|b| b.0)?;
     let multiplier = time_multiplier.map_or(1.0, |tm| tm.sample());
     Some(base_or_current * multiplier)
 }
@@ -72,12 +71,7 @@ pub fn update_modifier_effective_values(
         Entity,
         &ModifierTarget,
         Option<&EntityZeroRef>,
-        Option<&BaseValue>,
-        Option<&TimeBasedMultiplier>,
-        Option<&ModifierTags>,
-        Option<&OffsetValForSelf>,
-        Option<&CopyFracOfOthersIntoSelf>,
-        Option<&Antidote>,
+
     )>,
     base_values_query: Query<&BaseValue>,
     time_multipliers_query: Query<&TimeBasedMultiplier>,
@@ -86,85 +80,84 @@ pub fn update_modifier_effective_values(
     copy_fracs_query: Query<&CopyFracOfOthersIntoSelf>,
     antidotes_query: Query<&Antidote>,
     mut effective_query: Query<&mut CurrEffectiveValue>,
-) {
-    let mut target_aggs: EntityHashMap<TargetAggregates> = EntityHashMap::new();
-    let mut new_eff_values = Vec::new();
 
-    for (entity, target, ezero_ref, _base_value, _time_multiplier, _tags, _offsets, _copy_fracs, _antidote) in modifiers_query.iter() {
+    mut target_aggs: Local<EntityHashMap<HashIdMap<TargetAggregate>>>
+) {
+    target_aggs.clear();
+
+    let mut count = 0;
+    for (entity, target, ezero_ref, ) in modifiers_query.iter() {
         let base_value = resolve_modifier_component(entity, ezero_ref, &base_values_query);
         let time_multiplier = resolve_modifier_component(entity, ezero_ref, &time_multipliers_query);
-        let Some(raw_value) = compute_raw_value(base_value.as_ref(), None, time_multiplier.as_ref()) else { continue; };
+        let Some(raw_value) = compute_raw_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
+        count += 1;
         let tags = resolve_modifier_component(entity, ezero_ref, &modifier_tags_query).unwrap_or_default();
 
-        let target_agg = target_aggs.entry(target.0).or_default();
+        let target_agg = target_aggs.entry(target.0).or_insert_with(|| HashIdMap::with_capacity(tags.len()));
         for tag in tags.iter() {
-            *target_agg.tag_counts.entry(tag.clone()).or_insert(0) += 1;
-            *target_agg.tag_value_sum.entry(tag.clone()).or_insert(0.0) += raw_value;
+            let tag_hash = HashId::from(tag.as_ref());
+            let tag_agg = target_agg.0.entry(tag_hash).or_default();
+            tag_agg.tag_count += 1;
+            tag_agg.tag_value_sum += raw_value;
         }
         let antidote = resolve_modifier_component(entity, ezero_ref, &antidotes_query);
         if let Some(antidote) = antidote {
             for (tag, effectiveness) in antidote.0.iter() {
-                *target_agg.antidote_sum.entry(tag.clone()).or_insert(0.0) += raw_value * effectiveness;
+                let tag_hash = HashId::from(tag.as_ref());
+                let tag_agg = target_agg.0.entry(tag_hash).or_default();
+                tag_agg.antidote_sum += raw_value * effectiveness;
             }
         }
     }
+    let mut computed_values: EntityHashMap<CurrEffectiveValue> = EntityHashMap::with_capacity(count);
 
-    let mut computed_values: EntityHashMap<f32> = EntityHashMap::new();
-
-    for (modi_entity, target, ezero_ref, _base_value, _time_multiplier, _tags, _offsets, _copy_fracs, _antidote) in modifiers_query.iter() {
+    for (modi_entity, target, ezero_ref, ) in modifiers_query.iter() {
         let Some(target_agg) = target_aggs.get(&target.0) else { continue; };
         let base_value = resolve_modifier_component(modi_entity, ezero_ref, &base_values_query);
         let time_multiplier = resolve_modifier_component(modi_entity, ezero_ref, &time_multipliers_query);
-        let Some(raw_value) = compute_raw_value(base_value.as_ref(), None, time_multiplier.as_ref()) else { continue; };
+        let Some(time_based_value) = compute_raw_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
         let tags = resolve_modifier_component(modi_entity, ezero_ref, &modifier_tags_query).unwrap_or_default();
 
-        let mut value = raw_value;
+        let mut value = time_based_value;
 
         let offsets = resolve_modifier_component(modi_entity, ezero_ref, &offset_vals_query);
         if let Some(offsets) = offsets {
             for (tag, offset) in offsets.0.iter() {
-                let Some(count) = target_agg.tag_counts.get(tag) else { continue; };
-                let has_other = if tags.contains(tag.clone()) {
-                    *count > 1
-                } else {
-                    *count > 0
-                };
+                let Some(tag_agg) = target_agg.get_opt(HashId::from(tag.as_ref())) else { continue; };
+                let has_other = if tags.contains(tag.clone()) { tag_agg.tag_count > 1 } else { tag_agg.tag_count > 0 };
                 if has_other {
                     value += offset;
                 }
             }
         }
-
         let copy_fracs = resolve_modifier_component(modi_entity, ezero_ref, &copy_fracs_query);
         if let Some(copy_fracs) = copy_fracs {
             for (tag, mult) in copy_fracs.0.iter() {
-                let Some(sum) = target_agg.tag_value_sum.get(tag) else { continue; };
-                let mut copy_value = *sum;
+                let Some(tag_agg) = target_agg.get_opt(HashId::from(tag.as_ref())) else { continue; };
+                let mut copy_value = tag_agg.tag_value_sum;
                 if tags.contains(tag.clone()) {
-                    copy_value -= raw_value;
+                    copy_value -= time_based_value;
                 }
                 if copy_value != 0.0 {
                     value += copy_value * mult.clamp(0.0, 1.0);
                 }
             }
         }
-
         for tag in tags.iter() {
-            if let Some(counter) = target_agg.antidote_sum.get(tag) {
-                value -= *counter;
+            if let Some(tag_agg) = target_agg.get_opt(HashId::from(tag.as_ref())) {
+                value -= tag_agg.antidote_sum;
             }
         }
-
-        computed_values.insert(modi_entity, value);
+        computed_values.insert(modi_entity, CurrEffectiveValue(value));
     }
-
-    for (&entity, &new_value) in computed_values.iter() {
-        match effective_query.get_mut(entity) {
-            Ok(mut current) => current.0 = new_value,
-            Err(_) => new_eff_values.push((entity, CurrEffectiveValue(new_value))),
+    computed_values.retain(|entity, new_value| match effective_query.get_mut(*entity) {
+        Ok(mut current) => {
+            *current = *new_value;
+            false
         }
-    }
-    cmd.try_insert_batch(new_eff_values);
+        Err(_) => true,
+    });
+    cmd.try_insert_batch(computed_values);
 }
 
 pub fn sync_modifier_name_to_effects(
@@ -173,7 +166,6 @@ pub fn sync_modifier_name_to_effects(
             Entity,
             &mut Name,
             Option<&EntityZeroRef>,
-            Option<&CurrEffectiveValue>,
             Has<WalkSpeed>,
             Has<FlySpeed>,
             Has<SwimSpeed>,
@@ -206,11 +198,12 @@ pub fn sync_modifier_name_to_effects(
                     Added<Vision>,
                     Added<MinForDamage>,
                     Changed<CurrEffectiveValue>,
+                    Changed<EntityZeroRef>,
                 )>,
             )>,
         ),
     >,
-    ezero_curr_values: Query<&CurrEffectiveValue>,
+    curr_values: Query<&CurrEffectiveValue>,
     effects_query: Query<
         (
             Has<BloodCapacity>,
@@ -228,7 +221,6 @@ pub fn sync_modifier_name_to_effects(
         entity,
         mut name,
         ezero_ref,
-        curr_value,
         has_walk_speed,
         has_fly_speed,
         has_swim_speed,
@@ -248,7 +240,7 @@ pub fn sync_modifier_name_to_effects(
             has_vision,
             has_min_for_damage,
         )) = effects_query.get(entity) else { continue; };
-        let curr_value = resolve_modifier_component(entity, ezero_ref, &ezero_curr_values);
+        let curr_value = resolve_modifier_component(entity, ezero_ref, &curr_values);
 
         let mut effects = Vec::with_capacity(17);
         if has_walk_speed { effects.push("Walk"); }

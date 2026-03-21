@@ -36,8 +36,6 @@ pub enum ProbePattern {
         radius_step: f32,
         sample_spacing: f32,
     },
-    /// curr_length_in_dir, steps_taken, dir_vec, pos, turn parity
-    Spiral(u64, u64, IVec2, GlobalTilePos, bool),
     Chunk(ChunkPos),
     Region {
         spacing: u16,
@@ -45,9 +43,6 @@ pub enum ProbePattern {
     },
 }
 impl ProbePattern {
-    pub fn spiral(start_pos: GlobalTilePos) -> Self {
-        ProbePattern::Spiral(1, 0, IVec2::new(0, 1), start_pos, false)
-    }
     pub fn concentric(radius_step: f32, sample_spacing: f32) -> Self {
         ProbePattern::Concentric {
             radius_step: radius_step.max(0.0001),

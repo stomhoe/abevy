@@ -1,5 +1,5 @@
 (
-    id: "coland",
+    id: "land",
     opfilter_id: "land",
     probe_pattern: "conc",
     // Radius increase per ring comes from step_size.

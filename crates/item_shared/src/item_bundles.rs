@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_common::prelude::EntityZeroCloneDeny;
+use game_common::EntityZeroCloneDeny;
 use crate::ItemSpritesConfig;
 
 #[derive(Bundle)]

@@ -242,7 +242,7 @@ impl Default for PortalSeri {
 }
 
 fn default_portal_terrprobe() -> String {
-    "portal_spiral".to_string()
+    "portal".to_string()
 }
 
 #[derive(Deserialize, Asset, TypePath, )]

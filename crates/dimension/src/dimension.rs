@@ -20,7 +20,7 @@ pub fn plugin(app: &mut App) {
             (replace_multiple_string_refs_by_entity_refs, replace_dim_string_ref_by_entity_ref, replace_portal_tile_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected)
             .and(in_state(AssetLoading::SpawnReplicatedEntities))),
             spawn_egui_macro_chunk_holders,
-            readjust_childof_to_new_dim_if_parent_was_dimension,
+            ensure_childof_for_enti_with_dimension_ref_and_readjust_if_parent_was_dimension,
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
 

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use common::common_components::Prefix;
-use game_common::{game_common_components::{EntityZero, ExcludedFromAutoRenamer}, prelude::EntityZeroRef};
+use game_common::{game_common_components::{EntityZero, ExcludedFromAutoRenamer}, EntityZeroRef};
 use bevy_replicon::prelude::*;
 
 use crate::modifier_components::{ApplyMode, ModifierTarget};

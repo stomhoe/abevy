@@ -4,10 +4,8 @@ pub use bevy_ecs_tilemap::tiles::*;
 use bevy_replicon::prelude::*;
 use common::common_components::*;
 
-use game_common::game_common_components::*;
-use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 
-use game_common::prelude::*;
+use ::game_common::*;
 use item_shared::ItemsGeneratedOnDeath;
 use ::tilemap_shared::*;
 

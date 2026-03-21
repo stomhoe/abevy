@@ -42,4 +42,10 @@ in mono-queries (queries for a single component T), NEVER wrap the queried compo
 
 AVOID putting conflicting queries in system params, queries must be disjoint. To fix overlapping queried components, extract said overlapping &Component into a new shared monoquery
 
-if you find a problem, stop generating code instead of implementing a hacky solution, tell the user for
+when using cmd.entity(enti).try_remove::<SomeComponent>, use try_remove directly, dont collect the entis into a Vec and do it at all at the end with a for loop.
+
+also, cmd.try_insert_batch(some_collection) exists and it can be called with any iterable collection which yields (Entity, B:Into<Bundle>) tuples
+
+IMPORTANT: if you find a problem/impossibility for a user-requested implementation/code fix, don't force a hacky code patch. Instead, stop generating code and inform the user about the wall you ran into so he decides how to continue
+
+IMPORTANT: if you got requested implicitely or explicitely fix/generate some code notice you are in read mode (can't edit files), dont read/explore/generate any code, instead immediately tell the user to change your authorization level before beginning.

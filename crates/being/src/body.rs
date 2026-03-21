@@ -72,8 +72,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodySums>()
     .add_message::<IncomingDamage>()
     //TEMPORAL
-    .register_type::<BodypartChildOfBodypart>()
     .register_type::<BodypartChildrenBodyparts>()
-    .register_type::<BodySums>()
     ;
 }

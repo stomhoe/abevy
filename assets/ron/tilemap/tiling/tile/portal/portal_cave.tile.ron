@@ -16,7 +16,7 @@
     portal: (
         dest_dimension: "dungeon",
         oe_tile: "portal_cave",
-        oe_terrprobe: "portal_spiral",
+        oe_terrprobe: "portal",
         dungeon: "",
         offset_pos_destinations: [
             (1.0, (4, 2)),

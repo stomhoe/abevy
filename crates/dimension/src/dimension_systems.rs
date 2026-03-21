@@ -87,12 +87,23 @@ pub fn replace_multiple_string_refs_by_entity_refs(
             .insert(MultipleDimensionRefs(entity_set));
     }
 }
+
 #[allow(unused_parens)]
-pub fn readjust_childof_to_new_dim_if_parent_was_dimension(mut cmd: Commands,
+pub fn ensure_childof_for_enti_with_dimension_ref_and_readjust_if_parent_was_dimension(
+    mut cmd: Commands,
     dimension_query: Query<(Entity),(With<Dimension>)>,
-    query: Query<(Entity, &DimensionRef, &ChildOf),(Changed<DimensionRef>, )>,
+    query: Query<
+        (Entity, &DimensionRef, Option<&ChildOf>),
+        (
+            Or<(Without<ChildOf>, Changed<DimensionRef>)>,
+        ),
+    >,
 ) {
     for (ent, dimension_ref, child_of) in query.iter() {
+        let Some(child_of) = child_of else {
+            cmd.entity(ent).try_insert(ChildOf(dimension_ref.0));
+            continue;
+        };
         if dimension_query.get(child_of.parent()).is_ok() {
             cmd.entity(ent).try_insert(ChildOf(dimension_ref.0));
         }

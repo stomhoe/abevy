@@ -1,5 +1,5 @@
 (
-    id: "suelf",
+    id: "elf",
     opfilter_id: "elf",
     probe_pattern: "conc",
     concentric_sample_spacing: 6.0,

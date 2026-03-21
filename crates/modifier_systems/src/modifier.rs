@@ -22,7 +22,7 @@ pub fn plugin(app: &mut App) {
         FixedUpdate,
         (
             materialize_modifier_synergies,
-            update_modifier_effective_values.run_if(on_timer(Duration::from_millis(200))),
+            update_modifier_effective_values.run_if(on_timer(Duration::from_millis(300))),
             sync_modifier_name_to_effects,
         )
             .chain()

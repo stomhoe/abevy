@@ -37,7 +37,7 @@ pub struct GameInitSettings {
 impl Default for GameInitSettings {
     fn default() -> Self {
         Self {
-            players_spawn_probe_id: StrId::trunc("coland"),
+            players_spawn_probe_id: StrId::trunc("land"),
             players_initial_bit: StrId::trunc("player_warrior"),
         }
     }
@@ -59,7 +59,7 @@ impl GameInitSettingsSeri {
         }
     }
 }
-fn default_players_spawn_probe_id() -> String { "coland".to_string() }
+fn default_players_spawn_probe_id() -> String { "land".to_string() }
 fn default_players_initial_bit_ref_strid() -> String { "player_warrior".to_string() }
 
 pub fn load_game_init_settings(mut settings: ResMut<GameInitSettings>) {

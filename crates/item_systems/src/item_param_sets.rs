@@ -99,7 +99,7 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
             .filter_map(|&ent| self.ac_z_query.get(ent).ok().map(|&AcZ(z)| z))
             .max_by(f32::total_cmp)
             .unwrap_or_default()
-            + 0.001;
+            + 1.0;
         let mut item_cmd = cmd.entity(item_ent);
         item_cmd.remove::<ItemHeldIn>();
         item_cmd.insert((

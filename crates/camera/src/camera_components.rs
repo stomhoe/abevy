@@ -1,2 +1,2 @@
 
-pub use game_common::prelude::CameraTarget;
+pub use game_common::CameraTarget;

@@ -13,7 +13,7 @@ pub struct Bodypart;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct TreeRoot;
 
-#[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone, Reflect)]
+#[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone, )]
 #[relationship(relationship_target = BodypartChildrenBodyparts)]
 pub struct BodypartChildOfBodypart {#[relationship] #[entities] pub parent_bodypart: Entity,}
 

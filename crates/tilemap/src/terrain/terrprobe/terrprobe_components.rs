@@ -9,8 +9,6 @@ use ::tilemap_shared::*;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum ProbePatternSeri {
-    #[serde(alias = "spiral")]
-    Spiral,
     #[serde(alias = "conc")]
     #[serde(alias = "co")]
     #[serde(alias = "concentric")]
@@ -23,7 +21,6 @@ pub enum ProbePatternSeri {
 impl ProbePatternSeri {
     pub fn parse(s: &str) -> Option<Self> {
         match s.trim().to_ascii_lowercase().as_str() {
-            "spiral" => Some(Self::Spiral),
             "concentric" | "conc" | "co" => Some(Self::Concentric),
             "chunk" => Some(Self::Chunk),
             "region" => Some(Self::Region),
@@ -72,7 +69,6 @@ impl TerrProbeTempl {
             sgc_blacklist: structuregen_blacklist,
             sgc_required_tile_tags,
             probe_pattern: match probe_pattern {
-                ProbePatternSeri::Spiral => ProbePattern::spiral(GlobalTilePos::default()),
                 ProbePatternSeri::Concentric => ProbePattern::concentric(step_size.max(1) as f32, concentric_sample_spacing),
                 ProbePatternSeri::Chunk => ProbePattern::chunk(ChunkPos::default()),
                 ProbePatternSeri::Region => ProbePattern::region(step_size, region_multiplier),
