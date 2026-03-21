@@ -38,10 +38,12 @@ pub fn add_spritechildren_and_comps(
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
     sprite_config_ref_query: Query<&EntityZeroRef, common::AnyDisabling>,
     mut removed_disabled: RemovedComponents<Disabled>,
+    mut removed_unloaded: RemovedComponents<being_shared::Unloaded>,
     mut fathers_to_build: Local<Vec<Entity>>,
 ) {
     fathers_to_build.clear();
     fathers_to_build.extend(removed_disabled.read());
+    fathers_to_build.extend(removed_unloaded.read());
     fathers_to_build.extend(changed_fathers.iter());
 
     fathers_to_build.iter().for_each(|&parent_of_sprite| {
@@ -60,7 +62,7 @@ pub fn add_spritechildren_and_comps(
                 for sprite_ent in held_sprites.iter() {
                     if let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) {
                         if sprite_cfg_ref.0 == spritecfg_ent {
-                            warn!(target: "sprite_building", "SpriteConfig '{}' already present in HeldSprites of base holder {:?}, skipping.", str_id, baseholder_ref.base);
+                            debug!(target: "sprite_building", "SpriteConfig '{}' already present in HeldSprites of base holder {:?}, skipping.", str_id, baseholder_ref.base);
                             //cmd.entity(parent_of_sprite).insert(DoNotRetryBuildScRef);
                             return;
                         }

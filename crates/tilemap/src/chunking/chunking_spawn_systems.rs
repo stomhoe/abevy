@@ -2,12 +2,11 @@
 use std::mem::take;
 
 use bevy::prelude::*;
-use common::common_components::{StrId20B};
 use common::log_targets::CHUNK_ACTIVATION;
 use tilemap_shared::*;
 use being_shared::Being;
 
-use super::macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState};
+use super::macro_chunk_components::{BiomeDistribution, MacroChunkBiomePendingSampleState};
 use crate::regioning::{regioning_components::Region, regioning_resources::LoadedRegions};
 
 
@@ -79,6 +78,7 @@ fn insert_border_chunk_positions(
 pub fn spawn_activated_chunks(
     mut cmd: Commands,
     query: Query<(&ActivatingChunks, &DimensionRef, ), Changed<ActivatingChunks>>,
+    macro_chunk_holder_query: Query<&MacroChunkHolderRef>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
     mut loaded_regions: ResMut<LoadedRegions>,
@@ -99,6 +99,10 @@ pub fn spawn_activated_chunks(
                 }
                 let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
                 let macro_chunk_key = (dimension_ref, macro_chunk_pos);
+                let Ok(macro_chunk_holder_ref) = macro_chunk_holder_query.get(dimension_ref.0) else {
+                    error!(target: CHUNK_ACTIVATION, "Dimension {:?} has no MacroChunkHolderRef for macrochunk {}", dimension_ref, macro_chunk_pos);
+                    continue;
+                };
                 let macro_chunk_ent = loaded_macro_chunks.0.get(&macro_chunk_key)
                     .copied()
                     .unwrap_or_else(|| {
@@ -106,11 +110,10 @@ pub fn spawn_activated_chunks(
                         comps_for_macrochunk_ents.push((macro_chunk_ent, (
                             MacroChunk,
                             BiomeDistribution::default(),
-                            MacroChunkBiomeSamplingState::default(),
+                            MacroChunkBiomePendingSampleState::default(),
                             macro_chunk_pos,
-                            StrId20B::trunc(format!("{:?}", macro_chunk_pos)),
-                            Transform::default(),
-                            ChildOf(dimension_ref.0),
+                            Name::new(format!("{:?}", macro_chunk_pos)),
+                            ChildOf(macro_chunk_holder_ref.0),
                             dimension_ref,
                         )));
                         loaded_macro_chunks.0.insert(macro_chunk_key, macro_chunk_ent);
@@ -119,6 +122,7 @@ pub fn spawn_activated_chunks(
                         });
                         macro_chunk_ent
                     });
+                cmd.entity(macro_chunk_ent).try_insert(ChildOf(macro_chunk_holder_ref.0));
                 let region_ent = {
                     let region_pos = chunk_pos.to_region_pos();
                     let region_key = (dimension_ref, region_pos);
@@ -129,7 +133,7 @@ pub fn spawn_activated_chunks(
                         comps_for_region_ents.push((region_ent, (
                             region_pos,
                             Region,
-                            StrId20B::trunc(format!("{:?}", region_pos)),
+                            Name::new(format!("{:?}", region_pos)),
                             Transform::default(),
                             ChildOf(dimension_ref.0),
                             dimension_ref,
@@ -151,7 +155,7 @@ pub fn spawn_activated_chunks(
                     TerrGenState::Pending,
                     Visibility::Hidden,
                     TilesToSave::default(),
-                    StrId20B::trunc(format!("{:?}", chunk_pos)),
+                    Name::new(format!("{:?}", chunk_pos)),
                     Transform::default(),
                     chunk_pos,
                     ChildOf(region_ent),

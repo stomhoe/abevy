@@ -20,7 +20,7 @@ use tilemap::terrain::biome::biome_components::CreatureSampler;
 use tilemap::{
     chunking::{
         chunking_components::{Chunk, MacroChunk},
-        macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState},
+        macro_chunk_components::{BiomeDistribution, MacroChunkBiomePendingSampleState},
     },
     terrain::terrgen_messages::*,
 };
@@ -55,7 +55,8 @@ struct SampledNaturalPackCenter {
 
 #[derive(SystemParam)]
 pub struct NaturalWildlifeSpawnQueries<'w, 's> {
-    macro_chunk_query: Query<'w, 's, (&'static DimensionRef, &'static MacroChunkPos, &'static BiomeDistribution, &'static MacroChunkBiomeSamplingState), With<MacroChunk>>,
+    macro_chunk_query: Query<'w, 's, (&'static DimensionRef, &'static MacroChunkPos, &'static BiomeDistribution), With<MacroChunk>>,
+    macro_chunk_biome_sampling_states: Query<'w, 's, &'static MacroChunkBiomePendingSampleState>,
     biome_pack_samplers: Query<'w, 's, &'static CreatureSampler>,
     pack_being_samplers: Query<'w, 's, &'static PackBeingSampler>,
     pack_min_dists_query: Query<'w, 's, &'static PackMinDistsToPacksOrRaces>,
@@ -205,10 +206,11 @@ pub fn cleanup_pending_natural_wildlife_index(
     }
 }
 
+#[allow(unused_parens, )]
 pub fn spawn_natural_wildlife_for_macro_chunk(
     mut cmd: Commands,
     mut loaded_macrochunks: MessageReader<MacroChunkLoaded>,
-    mut biomesampled_macrochunks: MessageReader<MacroChunkBiomeSampled>,
+    mut removed_macro_chunk_biome_pending_sample_states: RemovedComponents<MacroChunkBiomePendingSampleState>,
     spawn_queries: NaturalWildlifeSpawnQueries,
     mut spawn_res: NaturalWildlifeSpawnRes,
     mut spawn_locals: NaturalWildlifeSpawnLocals,
@@ -217,41 +219,39 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
     spawn_locals.requests.clear();
 
     for loaded_macrochunk in loaded_macrochunks.read() {
-        let Ok((&dim_ref, &macro_chunk_pos, _, biome_sampling_state)) = spawn_queries.macro_chunk_query.get(loaded_macrochunk.macro_chunk_ent) else {
+        let Ok((&dim_ref, &macro_chunk_pos, _)) = spawn_queries.macro_chunk_query.get(loaded_macrochunk.macro_chunk_ent) else {
             continue;
         };
         if spawn_res.seeded_macrochunks.0.contains(&(dim_ref, macro_chunk_pos)) {
             continue;
         }
-        match biome_sampling_state {
-            MacroChunkBiomeSamplingState::Unsampled => {
-                spawn_locals.requests.push(RequestMacroChunkBiomeSampling {
-                    macro_chunk_ent: loaded_macrochunk.macro_chunk_ent,
-                });
+        match spawn_queries.macro_chunk_biome_sampling_states.get(loaded_macrochunk.macro_chunk_ent) {
+            Ok(biome_sampling_state) => {
+                if matches!(*biome_sampling_state, MacroChunkBiomePendingSampleState::Unsampled) {
+                    spawn_locals.requests.push(RequestMacroChunkBiomeSampling {
+                        macro_chunk_ent: loaded_macrochunk.macro_chunk_ent,
+                    });
+                }
             }
-            MacroChunkBiomeSamplingState::Sampled => {
+            Err(_) => {
                 if spawn_locals.macrochunks_seen.insert(loaded_macrochunk.macro_chunk_ent) {
                     spawn_locals.macrochunks_to_seed.push(loaded_macrochunk.macro_chunk_ent);
                 }
             }
-            MacroChunkBiomeSamplingState::Sampling { .. } => {}
         }
     }
     spawn_res.request_writer.write_batch(spawn_locals.requests.drain(..));
 
-    for sampled_macrochunk in biomesampled_macrochunks.read() {
-        if spawn_locals.macrochunks_seen.insert(sampled_macrochunk.macro_chunk_ent) {
-            spawn_locals.macrochunks_to_seed.push(sampled_macrochunk.macro_chunk_ent);
+    for removed_macrochunk_ent in removed_macro_chunk_biome_pending_sample_states.read() {
+        if spawn_locals.macrochunks_seen.insert(removed_macrochunk_ent) {
+            spawn_locals.macrochunks_to_seed.push(removed_macrochunk_ent);
         }
     }
     let mut rng = rand::rng();
     for macro_chunk_ent in spawn_locals.macrochunks_to_seed.drain(..) {
-        let Ok((&dim_ref, &macro_chunk_pos, distribution, biome_sampling_state)) = spawn_queries.macro_chunk_query.get(macro_chunk_ent) else {
+        let Ok((&dim_ref, &macro_chunk_pos, distribution)) = spawn_queries.macro_chunk_query.get(macro_chunk_ent) else {
             continue;
         };
-        if !matches!(biome_sampling_state, MacroChunkBiomeSamplingState::Sampled) {
-            continue;
-        }
         if spawn_res.seeded_macrochunks.0.contains(&(dim_ref, macro_chunk_pos)) {
             trace!(target: WILDLIFE_SYSTEM, "Skipping natural spawn reseed for already-seeded macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
             continue;

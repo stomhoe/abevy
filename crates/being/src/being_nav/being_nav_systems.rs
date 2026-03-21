@@ -7,7 +7,6 @@ use bevy::{
     prelude::*,
 };
 use common::log_targets::BEING_SYSTEM;
-use movement::movement_components::SpeedMagnitude;
 use param_sets::BlockingTileParamSet;
 
 use super::being_nav_resources::AiNavGrids;

@@ -1,0 +1,23 @@
+(
+    id: "shoulder",
+    name: "Shoulder",
+    coverage_weight: 12,
+    weighted_stats: {
+        "mass_kg": 1.4,
+        "hp_capacity": 14.0,
+        "hp_regen_rate": 0.8,
+        "blood_capacity": 7.5,
+        "walk_speed": 0.1,
+        "swim_speed": 0.1,
+        "manip_dex": 0.2,
+        "manip_str": 0.5,
+        "pain_sensitivity": 1.2,
+        "caloric_burn_rate": 1.0,
+    },
+    synergies: {
+        "manip_strength_limb": CopyFrac(0.1),
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.6,
+)

@@ -8,10 +8,6 @@ pub struct RaceSeri {
     pub id: String,
     pub name: String,
     pub body_or_sampler: String,
-    #[serde(default)]
-    pub mass_kg: f32,
-    #[serde(default)]
-    pub distributed_totals: HashMap<String, f32>,
     pub name_generator: Option<String>,
     #[serde(default)]
     pub icon_path: String,
@@ -23,7 +19,6 @@ pub struct RaceSeri {
     pub singular: String,
     #[serde(default)]
     pub plural: String,
-    pub sexes: HashMap<String, RaceSexEntrySeri>,
     #[serde(default)]
     pub sentient: bool,
     pub fallback_sprites_to_sample: Vec<String>,
@@ -37,8 +32,6 @@ pub struct RaceSeri {
     pub vert_variation: NormalDistSeri,
     #[serde(default)]
     pub sets_of_choosable_sprites: Vec<(String, HashSet<String>)>,
-    #[serde(default)]
-    pub caloric_burn_rate_multiplier: f32,
     #[serde(default)]
     pub can_walk_on: HashSet<String>,
     #[serde(default = "default_true")]

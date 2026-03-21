@@ -7,22 +7,13 @@
     demonym: "kraken",
     singular: "kraken",
     plural: "krakens",
-    sexes: {
-        "male": (weight: 1, sprites: []),
-        "female": (weight: 1, sprites: []),
-    },
     sentient: false,
     fallback_sprites_to_sample: ["kraken"],
     sets_of_choosable_sprites: [],
-    caloric_burn_rate_multiplier: 0.0,
     can_walk_on: [],
     walk_speeds_on_tiles: {},
     whitelisted_tiles_for_spawning: [],
     blacklisted_tiles_for_spawning: [],
-    mass_kg: 80.0,
-    distributed_totals: {
-        "walk_speed": 10,
-    },
     wander: (
         dir_secs_min: 1.0,
         dir_secs_max: 2.5,

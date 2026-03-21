@@ -2,7 +2,6 @@ use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use common::common_id_components::{HashId, HashIdMap};
 use common::common_tag_components::*;
 use game_common::game_common_components::EntityZero;
 use game_common::game_common_samplers::*;
@@ -14,8 +13,7 @@ use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources
 use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeEntityMap;
 use crate::body::BodyTreeRef;
-use crate::body::body_part::body_part_components::*;
-use crate::body::body_tree_components::BodyTreeDistributedTotals;
+use crate::body::body_tree_components::*;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntityMap;
 use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
 use crate::being_interaction_zone_helper::build_being_interaction_zones;
@@ -31,6 +29,7 @@ pub fn init_races(
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sexes_map: Res<SexEntityMap>,
     body_tree_map: Res<BodyTreeEntityMap>,
+    body_tree_source_query: Query<&BodyTreeSexes, With<BodyTree>>,
     body_sampler_map:Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
     mut biome_pack_samplers: Query<&mut CreatureSampler>,
@@ -135,35 +134,6 @@ pub fn init_races(
                 race_seri.melee_interaction_zone.clone(),
                 race_seri.collision_zone.clone(),
             ));
-            let mut totals = HashIdMap::default();
-            for (key, val) in &race_seri.distributed_totals {
-                totals.overwrite(HashId::from(key), val.max(0.0));
-            }
-            if !totals.contains_key(BodyPartStat::STAT_HP_CAPACITY) {
-                totals.overwrite(BodyPartStat::STAT_HP_CAPACITY, 1.0);
-            }
-            if !totals.contains_key(BodyPartStat::STAT_HP_REGEN_RATE) {
-                totals.overwrite(BodyPartStat::STAT_HP_REGEN_RATE, 1.0);
-            }
-            if !totals.contains_key(BodyPartStat::STAT_BLOOD_CAPACITY) {
-                totals.overwrite(BodyPartStat::STAT_BLOOD_CAPACITY, 1.0);
-            }
-            if !totals.contains_key(BodyPartStat::STAT_VISION) {
-                totals.overwrite(BodyPartStat::STAT_VISION, 1.0);
-            }
-            if !totals.contains_key(BodyPartStat::STAT_CALORIC_BURN_RATE) {
-                totals.overwrite(BodyPartStat::STAT_CALORIC_BURN_RATE, 1.0);
-            }
-            if !totals.contains_key(BodyPartStat::STAT_WALK_SPEED) {
-                totals.overwrite(BodyPartStat::STAT_WALK_SPEED, 300.);
-            }
-            if !totals.contains_key(BodyPartStat::STAT_MASS_KG) {
-                totals.overwrite(BodyPartStat::STAT_MASS_KG, race_seri.mass_kg.max(0.0));
-            }
-            entity_cmds.insert((
-                BodyTreeDistributedTotals(totals),
-            ));
-
         let body_tree_str_id = StrId::trunc(&race_seri.body_or_sampler);
 
         if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_tree_str_id) {
@@ -256,10 +226,13 @@ pub fn init_races(
             cmd.entity(entity).insert(BlacklistedSpawnTileTags::new(&race_seri.blacklisted_spawn_tile_tags));
         }
 
-        if !race_seri.sexes.is_empty() {
+        let body_tree_ent = body_tree_map.0.get_cloned(&body_tree_str_id).ok();
+        let body_tree_sexes = body_tree_ent.and_then(|body_tree_ent| body_tree_source_query.get(body_tree_ent).ok());
+
+        if let Some(body_tree_sexes) = body_tree_sexes {
             let mut sex_entities_weights: Vec<(Entity, f32)> = Vec::new();
             let mut sex_size_variations = bevy::ecs::entity::EntityHashMap::default();
-            for (sex_id, sex_cfg) in &race_seri.sexes {
+            for (sex_id, sex_cfg) in &body_tree_sexes.0 {
                 match sexes_map.0.get_cloned(sex_id) {
                     Ok(sex_entity) => {
                         sex_entities_weights.push((sex_entity, sex_cfg.weight as f32));
@@ -300,6 +273,8 @@ pub fn init_races(
             if !sex_size_variations.is_empty() {
                 cmd.entity(entity).insert(SexSizeVariationsBySex(sex_size_variations));
             }
+        } else {
+            warn!(target: "race_init", "BodyTree '{}' has no BodyTreeSexes; race '{}' will not get sex sampler data", body_tree_str_id, str_id);
         }
         if race_seri.scale_hp_and_strength_with_size {
             cmd.entity(entity).insert(ScaleHpAndStrengthWithSampledSize);

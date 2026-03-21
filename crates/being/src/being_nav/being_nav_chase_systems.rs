@@ -556,56 +556,6 @@ pub fn retain_chunks_for_player_faction_chasers(
     }
 }
 
-fn unload_being_for_chunk_despawn(commands: &mut Commands, being_ent: Entity) {
-    let mut entity = commands.entity(being_ent);
-    entity.try_insert(BackgroundSimulated);
-    entity.try_remove::<(Name, LoadChunksAround, ActivatingChunks, RetainedChasePathSnapshot)>();
-}
-
-pub fn on_chunk_with_beings_attempt_unload(
-    mut commands: Commands,
-    mut reader: MessageReader<ChunkWithBeingsWantsDespawn>,
-    chunks_query: Query<&BeingsWithinChunk>,
-    beings: Query<&Chasing, With<Being>>,
-    player_targets: Query<(), (With<Being>, PlayerBeing)>,
-    mut writer: MessageWriter<MakeChunkSnapshotForChaser>,
-    mut messages: Local<Vec<MakeChunkSnapshotForChaser>>,
-) {
-    for msg in reader.read() {
-        let Ok(beings_within_chunk) = chunks_query.get(msg.chunk_ent) else {
-            continue;
-        };
-
-        let should_cancel = beings_within_chunk.iter().any(|being_ent| {
-            let Ok(chaser) = beings.get(being_ent) else {
-                return false;
-            };
-            player_targets.get(chaser.target).is_ok()
-        });
-
-        if should_cancel {
-            for being_ent in beings_within_chunk.iter() {
-                let Ok(chaser) = beings.get(being_ent) else {
-                    continue;
-                };
-                if player_targets.get(chaser.target).is_err() {
-                    continue;
-                }
-                messages.push(MakeChunkSnapshotForChaser(being_ent));
-            }
-            debug!(target: BEING_SYSTEM, "Canceled despawn for chunk {:?} because at least one resident must stay loaded", msg.chunk_ent);
-            continue;
-        }
-
-        for being_ent in beings_within_chunk.iter() {
-            unload_being_for_chunk_despawn(&mut commands, being_ent);
-        }
-
-        commands.entity(msg.chunk_ent).try_despawn();
-        writer.write_batch(messages.drain(..));
-    }
-}
-
 #[allow(unused_parens, unused_imports, )]
 pub fn make_chunk_snapshot_for_hunter(
     mut commands: Commands,

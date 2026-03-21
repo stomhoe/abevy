@@ -12,7 +12,7 @@ mod being_portal_systems;
 mod being_behavior_systems;
 mod being_on_chunk_despawn_systems;
 mod being_interaction_zone_helper;
-pub mod nav;
+pub mod being_nav;
 mod being_build_systems;
 pub mod being_bundles;
 
@@ -22,4 +22,3 @@ pub mod race;
 pub mod pack;
 pub mod sex;
 pub mod body;
-

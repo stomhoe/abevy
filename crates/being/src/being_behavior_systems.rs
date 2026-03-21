@@ -1,5 +1,5 @@
 use crate::being_inst_template::being_inst_template_resources::BitRef;
-use crate::body::{Bodies, BodySums};
+use crate::body::{Body, BodySums};
 use crate::being_components::{Being, Chasing};
 use crate::race::race_components::Race;
 use crate::race::race_resources::RaceRef;
@@ -79,16 +79,13 @@ pub fn tick_hunger(time: Res<Time>, mut query: Query<&mut Hunger>) {
 
 fn health_ratio(
     being: Entity,
-    bodies_query: &Query<&Bodies, With<Being>>,
+    bodies_query: &Query<&Body, With<Being>>,
     body_health_query: &Query<&BodySums>,
 ) -> f32 {
-    let Ok(bodies) = bodies_query.get(being) else {
+    let Ok(body) = bodies_query.get(being) else {
         return 0.0;
     };
-    let Some(body_ent) = bodies.entities().first() else {
-        return 0.0;
-    };
-    let Ok(health) = body_health_query.get(*body_ent) else {
+    let Ok(health) = body_health_query.get(body.entity()) else {
         return 0.0;
     };
     if health.total_hp <= 0.0 {
@@ -98,7 +95,7 @@ fn health_ratio(
 }
 
 pub fn update_predator_chase_targets(
-    bodies_query: Query<&Bodies, With<Being>>,
+    bodies_query: Query<&Body, With<Being>>,
     body_health_query: Query<&BodySums>,
     predators: Query<
         (

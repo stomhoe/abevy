@@ -1,56 +1,67 @@
-use being::body::{BodySums, BodyOf};
-use being::body::body_part::body_part_components::{BodyPartMissing, BodyPartOf};
-use bevy::ecs::entity::EntityHashMap;
+use being::body::{BodyOf, BodySums};
+use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::prelude::*;
-use modifier_shared::modifier_components::{CurrEffectiveValue, ModifierTarget};
+use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use modifier_shared::modifier_components::{AppliedModifiers, CurrEffectiveValue, ModifierTarget};
 use modifier_shared::modifier_types::{ManipulationDexterity, ManipulationStrength};
+use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
+use ::being_shared::*;
 
+
+#[allow(unused_parens, )]
 pub fn update_body_manipulation_totals(
-    bodies: Query<Entity, With<BodyOf>>,
-    part_of_query: Query<(&BodyPartOf, Has<BodyPartMissing>)>,
-    dex_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<ManipulationDexterity>>,
-    strength_mods: Query<(&ModifierTarget, &CurrEffectiveValue), With<ManipulationStrength>>,
-    mut body_health_query: Query<&mut BodySums>,
+    bodies: Query<(Entity, &BodyOf),>,
+    parts_query: Query<(Entity, &ChildOf, Option<&EntityZeroRef>, Has<Missing>, ), (With<BodypartChildOfBodypart>, Without<EntityZero>, )>,
+    part_applied_mods_query: Query<&AppliedModifiers, >,
+    mods: Query<(Entity, &ModifierTarget, Option<&EntityZeroRef>, ), (Without<EntityZero>, )>,
+    curr_values: Query<&CurrEffectiveValue, >,
+    dex_markers: Query<(), With<ManipulationDexterity>>,
+    strength_markers: Query<(), With<ManipulationStrength>>,
+    mut body_health_query: Query<&mut BodySums, >,
+    mut dexterity_by_body: Local<EntityHashMap<f32>>,
+    mut strength_by_body: Local<EntityHashMap<f32>>,
 ) {
-    let mut dexterity_by_body: EntityHashMap<f32> = EntityHashMap::default();
-    let mut strength_by_body: EntityHashMap<f32> = EntityHashMap::default();
+    dexterity_by_body.clear();
+    strength_by_body.clear();
 
-    for (target, value) in dex_mods.iter() {
-        let Some(body) = target_body(target.0, &part_of_query, &bodies) else {
+    for (part_ent, part_of, part_ezero_ref, is_missing, ) in parts_query.iter() {
+        if is_missing {
+            continue;
+        }
+        let body_ent = part_of.parent();
+        let mut part_dex = 0.0;
+        let mut part_str = 0.0;
+        let mut effects = EntityHashSet::default();
+        collect_applied_modifier_entities(&mut effects, part_ent, part_ezero_ref, &part_applied_mods_query);
+        for mod_ent in effects.iter() {
+            let Ok((entity, target, ezero_ref, )) = mods.get(*mod_ent) else { continue };
+            if target.0 != part_ent
+                && part_ezero_ref.map(|part_ezero_ref| target.0 != part_ezero_ref.0).unwrap_or(true)
+            {
+                continue;
+            }
+            let Some(value) = resolve_modifier_component(entity, ezero_ref, &curr_values) else { continue };
+            if modifier_has_marker::<ManipulationDexterity>(entity, ezero_ref, &dex_markers) {
+                part_dex += value.0.max(0.0);
+            }
+            if modifier_has_marker::<ManipulationStrength>(entity, ezero_ref, &strength_markers) {
+                part_str += value.0.max(0.0);
+            }
+        }
+        if part_dex > 0.0 {
+            *dexterity_by_body.entry(body_ent).or_insert(0.0) += part_dex;
+        }
+        if part_str > 0.0 {
+            *strength_by_body.entry(body_ent).or_insert(0.0) += part_str;
+        }
+    }
+
+    for (body_ent, body_of, ) in bodies.iter() {
+        let Ok(mut health) = body_health_query.get_mut(body_ent) else {
             continue;
         };
-        *dexterity_by_body.entry(body).or_insert(0.0) += value.0.max(0.0);
+        let _ = body_of;
+        health.manip_dex = dexterity_by_body.get(&body_ent).copied().unwrap_or(0.0);
+        health.manip_str = strength_by_body.get(&body_ent).copied().unwrap_or(0.0);
     }
-
-    for (target, value) in strength_mods.iter() {
-        let Some(body) = target_body(target.0, &part_of_query, &bodies) else {
-            continue;
-        };
-        *strength_by_body.entry(body).or_insert(0.0) += value.0.max(0.0);
-    }
-
-    for body in bodies.iter() {
-        let Ok(mut health) = body_health_query.get_mut(body) else {
-            continue;
-        };
-        health.manip_dex = dexterity_by_body.get(&body).copied().unwrap_or(0.0);
-        health.manip_str = strength_by_body.get(&body).copied().unwrap_or(0.0);
-    }
-}
-
-fn target_body(
-    target: Entity,
-    part_of_query: &Query<(&BodyPartOf, Has<BodyPartMissing>)>,
-    bodies: &Query<Entity, With<BodyOf>>,
-) -> Option<Entity> {
-    if bodies.get(target).is_ok() {
-        return Some(target);
-    }
-    let Ok((part_of, is_missing)) = part_of_query.get(target) else {
-        return None;
-    };
-    if is_missing {
-        return None;
-    }
-    Some(part_of.body)
 }

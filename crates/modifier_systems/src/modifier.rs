@@ -117,7 +117,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<Sway>()
     .replicate::<StaggerPower>()
     .replicate::<Knockback>()
-    .replicate::<BodyPartTargetingPrecision>()
+    .replicate::<BodypartTargetingPrecision>()
     .replicate::<MassKg>()
     .replicate::<Encumberance>()
     .replicate::<Bulk>()

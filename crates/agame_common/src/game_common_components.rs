@@ -191,3 +191,5 @@ impl TickMultFactor {
         self.0
     }
 }
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct CloneEzeroChildren;

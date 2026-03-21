@@ -78,6 +78,7 @@ pub fn init_tiles(
             ChildOf(holder),
             AssetScoped,
             size_in_tiles,
+            CloneEzeroChildren,
             //SparedFromHotReloading,
         )).id();
         cmd.entity(tile_enti).insert(OffsetForTerrgenPlacement(GlobalTilePos::new(

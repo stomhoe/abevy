@@ -205,9 +205,20 @@ impl PredatorHuntThreshold {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
+#[relationship(relationship_target = SimulatedBeingsWithin)]
 #[require(Unloaded)]
-pub struct BackgroundSimulated;
+pub struct BgSimulatedIn {
+    #[relationship] #[entities]
+    pub macro_chunk_ent: Entity,
+}
+
+
+#[derive(Component, Debug, )]
+#[relationship_target(relationship = BgSimulatedIn)]
+pub struct SimulatedBeingsWithin(Vec<Entity>);
+
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]

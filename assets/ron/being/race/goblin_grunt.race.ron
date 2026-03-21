@@ -7,22 +7,13 @@
     demonym: "goblin grunt",
     singular: "goblin grunt",
     plural: "goblin grunts",
-    sexes: {
-        "male": (weight: 1, sprites: []),
-        "female": (weight: 1, sprites: []),
-    },
     sentient: true,
     fallback_sprites_to_sample: ["goblin_grunt"],
     sets_of_choosable_sprites: [],
-    caloric_burn_rate_multiplier: 0.0,
     can_walk_on: [],
     walk_speeds_on_tiles: {},
     whitelisted_tiles_for_spawning: [],
     blacklisted_tiles_for_spawning: [],
-    mass_kg: 80.0,
-    distributed_totals: {
-        "walk_speed": 60,
-    },
     wander: (
         dir_secs_min: 1.0,
         dir_secs_max: 2.5,

@@ -2,12 +2,13 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use common::common_components::StrId;
-use game_common::game_common_components::EntityZero;
+use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use modifier_shared::{modifier_has_marker, resolve_modifier_component};
 use modifier_shared::{modifier_components::*, modifier_types::*};
-
+use ::being_shared::*;
 use game_common::game_common_components::Dead;
 
-use crate::body::{body_tree_components::*, body_part::body_part_components::*};
+use crate::body::{body_tree_components::*, };
 
 #[derive(Default, Clone)]
 struct BodyAggregates {
@@ -23,18 +24,23 @@ struct BodyAggregates {
 #[derive(SystemParam)]
 pub struct BodyHealthQueryParams<'w, 's> {
     bodies_query: Query<'w, 's, Entity, With<BodyOf>>,
-    parts_query: Query<'w, 's, (Entity, &'static BodyPartOf, Option<&'static BodyPartVital>, Has<BodyPartMissing>), (With<BodyPart>, Without<EntityZero>)>,
-    hp_capacity_mods_query: Query<'w, 's, (&'static ModifierTarget, Option<&'static ModifierTags>, Option<&'static BaseValue>, Option<&'static CurrEffectiveValue>), With<HitpointsCapacity>>,
-    damage_query: Query<'w, 's, (Entity, Option<&'static mut BodyPartDamage>), With<BodyPart>>,
+    parts_query: Query<'w, 's, (Entity, &'static ChildOf, Option<&'static Vital>, Option<&'static EntityZeroRef>, Has<Missing>), (With<BodypartChildOfBodypart>, Without<EntityZero>)>,
+    modifiers_query: Query<'w, 's, (Entity, &'static ModifierTarget, Option<&'static EntityZeroRef>), Without<EntityZero>>,
+    part_applied_mods_query: Query<'w, 's, &'static AppliedModifiers>,
+    damage_query: Query<'w, 's, (Entity, Option<&'static mut BodypartDamage>), >,
     body_health_query: Query<'w, 's, Option<&'static mut BodySums>>,
     dead_query: Query<'w, 's, Option<&'static mut Dead>>,
-    bleed_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<BleedRate>>,
-    blood_capacity_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<BloodCapacity>>,
-    hp_regen_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<HitpointRegenRate>>,
-    consciousness_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<Consciousness>>,
-    pain_infliction_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<PainInfliction>>,
-    pain_sensitivity_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<PainSensitivity>>,
-    vision_mods: Query<'w, 's, (&'static ModifierTarget, &'static CurrEffectiveValue), With<Vision>>,
+    curr_values_query: Query<'w, 's, &'static CurrEffectiveValue>,
+    base_values_query: Query<'w, 's, &'static BaseValue>,
+    modifier_tags_query: Query<'w, 's, &'static ModifierTags>,
+    hitpoints_capacity_markers: Query<'w, 's, (), With<HitpointsCapacity>>,
+    bleed_markers: Query<'w, 's, (), With<BleedRate>>,
+    blood_capacity_markers: Query<'w, 's, (), With<BloodCapacity>>,
+    hp_regen_markers: Query<'w, 's, (), With<HitpointRegenRate>>,
+    consciousness_markers: Query<'w, 's, (), With<Consciousness>>,
+    pain_infliction_markers: Query<'w, 's, (), With<PainInfliction>>,
+    pain_sensitivity_markers: Query<'w, 's, (), With<PainSensitivity>>,
+    vision_markers: Query<'w, 's, (), With<Vision>>,
 }
 
 #[derive(SystemParam)]
@@ -81,12 +87,12 @@ pub fn apply_body_damage(
     mut cmd: Commands,
     time: Res<Time>,
     mut reader: MessageReader<IncomingDamage>,
-    bodies_query: Query<&BodyParts, (With<BodyOf>, Without<EntityZero>)>,
+    bodies_query: Query<&BodypartChildrenBodyparts, (With<BodyOf>, Without<EntityZero>)>,
     parts_query: Query<
-        (Option<&BodyPartCoverageWeight>, Option<&BodyPartMissing>),
-        (With<BodyPart>, Without<EntityZero>),
+        (Option<&BodypartCoverageWeight>, Option<&Missing>),
+        (With<BodypartChildOfBodypart>, Without<EntityZero>),
     >,
-    mut damage_query: Query<&mut BodyPartDamage, (With<BodyPart>, Without<EntityZero>)>,
+    mut damage_query: Query<&mut BodypartDamage, (Without<EntityZero>)>,
     mut weighted_parts: Local<Vec<(Entity, u16)>>,
 ) {
     for damage_msg in reader.read() {
@@ -133,51 +139,106 @@ pub fn apply_body_damage(
                 part_damage.0 += damage_amount.max(0.0);
             } else {
                 cmd.entity(part_ent)
-                    .try_insert(BodyPartDamage(damage_amount.max(0.0)));
+                    .try_insert(BodypartDamage(damage_amount.max(0.0)));
             }
         }
     }
 }
 
 #[allow(unused_parens)]
-pub fn sync_body_part_missing(
+pub fn sync_bodypart_missing(
     mut cmd: Commands,
-    parts_query: Query<(Entity, Option<&BodyPartMissing>), With<BodyPart>>,
+    parts_query: Query<(Entity, Option<&EntityZeroRef>), (With<BodypartChildOfBodypart>, Without<EntityZero>)>,
+    part_applied_mods_query: Query<&AppliedModifiers>,
     hp_mods_query: Query<
         (
             Entity,
             &ModifierTarget,
-            Option<&ModifierTags>,
-            Option<&BaseValue>,
-            Option<&CurrEffectiveValue>,
+            Option<&EntityZeroRef>,
         ),
-        With<HitpointsCapacity>,
+        Without<EntityZero>,
     >,
-    mut damage_query: Query<(Entity, Option<&mut BodyPartDamage>), With<BodyPart>>,
-    mut to_remove_missing: Local<Vec<Entity>>,
-    mut to_add_missing: Local<Vec<Entity>>,
-    mut parts: Local<EntityHashSet>,
+    curr_values_query: Query<&CurrEffectiveValue>,
+    base_values_query: Query<&BaseValue>,
+    modifier_tags_query: Query<&ModifierTags>,
+    hitpoints_capacity_markers: Query<(), With<HitpointsCapacity>>,
+    mut damage_query: Query<(Entity, Option<&mut BodypartDamage>), (With<BodypartChildOfBodypart>, Without<EntityZero>)>,
     mut max_hp_by_part: Local<EntityHashMap<f32>>,
 ) {
-    to_remove_missing.clear();
-    to_add_missing.clear();
-    parts.clear();
     max_hp_by_part.clear();
 
-    parts_query.iter().for_each(|(ent, _)| {
-        parts.insert(ent);
-    });
-    for (_mod_ent, target, _tags, base_value, current_value) in hp_mods_query.iter() {
-        let value = current_value
-            .map(|v| v.0)
-            .or_else(|| base_value.map(|v| v.0))
-            .unwrap_or(0.0);
-        if parts.contains(&target.0) {
-            *max_hp_by_part.entry(target.0).or_insert(0.0) += value;
+    for (part_ent, part_ezero_ref) in parts_query.iter() {
+        let mut max_hp = 0.0;
+        if let Ok(applied_mods) = part_applied_mods_query.get(part_ent) {
+            for mod_ent in applied_mods.iter() {
+                let Ok((mod_ent, target, ezero_ref)) = hp_mods_query.get(mod_ent) else {
+                    continue;
+                };
+                if target.0 != part_ent {
+                    continue;
+                }
+                let is_hitpoints_capacity = modifier_has_marker::<HitpointsCapacity>(
+                    mod_ent,
+                    ezero_ref,
+                    &hitpoints_capacity_markers,
+                );
+                if !is_hitpoints_capacity {
+                    continue;
+                }
+                let tags = resolve_modifier_component(mod_ent, ezero_ref, &modifier_tags_query).unwrap_or_default();
+                if tags.contains("current_hp") {
+                    continue;
+                }
+                let base_value = resolve_modifier_component(mod_ent, ezero_ref, &base_values_query);
+                let current_value = resolve_modifier_component(mod_ent, ezero_ref, &curr_values_query);
+                let value = current_value
+                    .map(|v| v.0)
+                    .or_else(|| base_value.map(|v| v.0))
+                    .unwrap_or(0.0);
+                max_hp += value;
+            }
+        }
+        if max_hp <= 0.0 {
+            let Some(part_ezero_ref) = part_ezero_ref else {
+                continue;
+            };
+            let Ok(source_applied_mods) = part_applied_mods_query.get(part_ezero_ref.0) else {
+                continue;
+            };
+            for mod_ent in source_applied_mods.iter() {
+                let Ok((mod_ent, target, ezero_ref)) = hp_mods_query.get(mod_ent) else {
+                    continue;
+                };
+                if target.0 != part_ezero_ref.0 {
+                    continue;
+                }
+                let is_hitpoints_capacity = modifier_has_marker::<HitpointsCapacity>(
+                    mod_ent,
+                    ezero_ref,
+                    &hitpoints_capacity_markers,
+                );
+                if !is_hitpoints_capacity {
+                    continue;
+                }
+                let tags = resolve_modifier_component(mod_ent, ezero_ref, &modifier_tags_query).unwrap_or_default();
+                if tags.contains("current_hp") {
+                    continue;
+                }
+                let base_value = resolve_modifier_component(mod_ent, ezero_ref, &base_values_query);
+                let current_value = resolve_modifier_component(mod_ent, ezero_ref, &curr_values_query);
+                let value = current_value
+                    .map(|v| v.0)
+                    .or_else(|| base_value.map(|v| v.0))
+                    .unwrap_or(0.0);
+                max_hp += value;
+            }
+        }
+        if max_hp > 0.0 {
+            max_hp_by_part.insert(part_ent, max_hp);
         }
     }
 
-    for (part_ent, missing) in parts_query.iter() {
+    for (part_ent, _) in parts_query.iter() {
         let max_hp = max_hp_by_part
             .get(&part_ent)
             .copied()
@@ -197,20 +258,11 @@ pub fn sync_body_part_missing(
         }
 
         if current_hp <= 0.0 {
-            if missing.is_none() {
-                to_add_missing.push(part_ent);
-            }
-        } else if missing.is_some() {
-            to_remove_missing.push(part_ent);
+            cmd.entity(part_ent).try_insert_if_new(Missing);
+        } else {
+            cmd.entity(part_ent).try_remove::<Missing>();
         }
     }
-
-    to_add_missing.iter().for_each(|&ent| {
-        cmd.entity(ent).try_insert(BodyPartMissing);
-    });
-    to_remove_missing.iter().for_each(|&ent| {
-        cmd.entity(ent).try_remove::<BodyPartMissing>();
-    });
 }
 
 #[allow(unused_parens)]
@@ -230,51 +282,98 @@ pub fn update_body_health_from_parts(
     local_params.pain_sensitivity_by_part.clear();
     local_params.pain_infliction_by_body.clear();
     local_params.pain_sensitivity_by_body.clear();
+    let mut instance_part_by_source_part: EntityHashMap<Entity> = EntityHashMap::default();
 
     queries.bodies_query.iter().for_each(|ent| {
         local_params.bodies.insert(ent);
     });
 
-    queries.parts_query.iter().for_each(|(ent, ..)| {
+    queries.parts_query.iter().for_each(|(ent, _, _, part_ezero_ref, _)| {
         local_params.parts.insert(ent);
+        let Some(part_ezero_ref) = part_ezero_ref else {
+            return;
+        };
+        instance_part_by_source_part.insert(part_ezero_ref.0, ent);
     });
 
-    for (target, tags, base_value, current_value) in queries.hp_capacity_mods_query.iter() {
+    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+        let is_hitpoints_capacity = modifier_has_marker::<HitpointsCapacity>(
+            mod_ent,
+            ezero_ref,
+            &queries.hitpoints_capacity_markers,
+        );
+        if !is_hitpoints_capacity {
+            continue;
+        }
+        let tags = resolve_modifier_component(mod_ent, ezero_ref, &queries.modifier_tags_query).unwrap_or_default();
+        let base_value = resolve_modifier_component(mod_ent, ezero_ref, &queries.base_values_query);
+        let current_value = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query);
         let value = current_value
             .map(|v| v.0)
             .or_else(|| base_value.map(|v| v.0))
             .unwrap_or(0.0);
-        let is_current = tags.map(|t| t.contains("current_hp")).unwrap_or(false);
+        let is_current = tags.contains("current_hp");
 
-        if local_params.parts.contains(&target.0) && !is_current {
+        if !is_current && local_params.parts.contains(&target.0) {
             *local_params.max_hp_by_part.entry(target.0).or_insert(0.0) += value;
+        } else if !is_current
+            && let Some(part_ent) = instance_part_by_source_part.get(&target.0)
+        {
+            *local_params.max_hp_by_part.entry(*part_ent).or_insert(0.0) += value;
         } else if local_params.bodies.contains(&target.0) && !is_current {
             *local_params.body_max_hp_bonus.entry(target.0).or_insert(0.0) += value;
         }
     }
 
-    for (target, value) in queries.pain_infliction_mods.iter() {
+    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+        let is_pain_infliction = modifier_has_marker::<PainInfliction>(
+            mod_ent,
+            ezero_ref,
+            &queries.pain_infliction_markers,
+        );
+        if !is_pain_infliction {
+            continue;
+        }
+        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+            continue;
+        };
         if local_params.parts.contains(&target.0) {
             *local_params.pain_infliction_by_part.entry(target.0).or_insert(0.0) += value.0;
+        } else if let Some(part_ent) = instance_part_by_source_part.get(&target.0) {
+            *local_params.pain_infliction_by_part.entry(*part_ent).or_insert(0.0) += value.0;
         } else if local_params.bodies.contains(&target.0) {
             *local_params.pain_infliction_by_body.entry(target.0).or_insert(0.0) += value.0;
         }
     }
-    for (target, value) in queries.pain_sensitivity_mods.iter() {
+    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+        let is_pain_sensitivity = modifier_has_marker::<PainSensitivity>(
+            mod_ent,
+            ezero_ref,
+            &queries.pain_sensitivity_markers,
+        );
+        if !is_pain_sensitivity {
+            continue;
+        }
+        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+            continue;
+        };
         if local_params.parts.contains(&target.0) {
             *local_params.pain_sensitivity_by_part.entry(target.0).or_insert(0.0) += value.0;
+        } else if let Some(part_ent) = instance_part_by_source_part.get(&target.0) {
+            *local_params.pain_sensitivity_by_part.entry(*part_ent).or_insert(0.0) += value.0;
         } else if local_params.bodies.contains(&target.0) {
             *local_params.pain_sensitivity_by_body.entry(target.0).or_insert(0.0) += value.0;
         }
     }
 
-    for (part_ent, body_of, vital, missing) in queries.parts_query.iter() {
-        if !local_params.bodies.contains(&body_of.body) {
+    for (part_ent, body_of, vital, part_ezero_ref, missing) in queries.parts_query.iter() {
+        let body_ent = body_of.parent();
+        if !local_params.bodies.contains(&body_ent) {
             continue;
         }
 
-        local_params.part_to_body.insert(part_ent, body_of.body);
-        let agg = local_params.aggregates.entry(body_of.body).or_default();
+        local_params.part_to_body.insert(part_ent, body_ent);
+        let agg = local_params.aggregates.entry(body_ent).or_default();
 
         let max_hp = local_params.max_hp_by_part
             .get(&part_ent)
@@ -294,20 +393,82 @@ pub fn update_body_health_from_parts(
         } else {
             0.0
         };
+        let source_part_pain_infliction = part_ezero_ref.and_then(|part_ezero_ref| {
+            let Ok(applied_mods) = queries.part_applied_mods_query.get(part_ezero_ref.0) else {
+                return None;
+            };
+            let mut total = 0.0;
+            for mod_ent in applied_mods.iter() {
+                let Ok((mod_ent, _, ezero_ref)) = queries.modifiers_query.get(mod_ent) else {
+                    continue;
+                };
+                let is_pain_infliction = modifier_has_marker::<PainInfliction>(
+                    mod_ent,
+                    ezero_ref,
+                    &queries.pain_infliction_markers,
+                );
+                if !is_pain_infliction {
+                    continue;
+                }
+                let Some(value) = resolve_modifier_component(
+                    mod_ent,
+                    ezero_ref,
+                    &queries.curr_values_query,
+                ) else {
+                    continue;
+                };
+                total += value.0;
+            }
+            Some(total)
+        }).unwrap_or(0.0);
+
         let pain_infliction = local_params.pain_infliction_by_part
             .get(&part_ent)
             .copied()
             .unwrap_or(0.0)
+            + source_part_pain_infliction
             + local_params.pain_infliction_by_body
-                .get(&body_of.body)
+                .get(&body_ent)
                 .copied()
                 .unwrap_or(0.0);
+        let source_part_pain_sensitivity = part_ezero_ref.and_then(|part_ezero_ref| {
+            let Ok(applied_mods) = queries.part_applied_mods_query.get(part_ezero_ref.0) else {
+                return None;
+            };
+            let mut total = 0.0;
+            let mut has_any = false;
+            for mod_ent in applied_mods.iter() {
+                let Ok((mod_ent, _, ezero_ref)) = queries.modifiers_query.get(mod_ent) else {
+                    continue;
+                };
+                let is_pain_sensitivity = modifier_has_marker::<PainSensitivity>(
+                    mod_ent,
+                    ezero_ref,
+                    &queries.pain_sensitivity_markers,
+                );
+                if !is_pain_sensitivity {
+                    continue;
+                }
+                let Some(value) = resolve_modifier_component(
+                    mod_ent,
+                    ezero_ref,
+                    &queries.curr_values_query,
+                ) else {
+                    continue;
+                };
+                total += value.0;
+                has_any = true;
+            }
+            if has_any { Some(total) } else { None }
+        }).unwrap_or(1.0);
+
         let pain_sensitivity_part = local_params.pain_sensitivity_by_part
             .get(&part_ent)
             .copied()
-            .unwrap_or(1.0);
+            .unwrap_or(0.0)
+            + source_part_pain_sensitivity;
         let pain_sensitivity_body = local_params.pain_sensitivity_by_body
-            .get(&body_of.body)
+            .get(&body_ent)
             .copied()
             .unwrap_or(1.0);
         let pain_sensitivity_mult = pain_sensitivity_part * pain_sensitivity_body;
@@ -332,10 +493,28 @@ pub fn update_body_health_from_parts(
     local_params.vision_mod_sum.clear();
     local_params.body_regen_map.clear();
 
-    for (target, value) in queries.bleed_mods.iter() {
+    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+        let is_bleed = modifier_has_marker::<BleedRate>(mod_ent, ezero_ref, &queries.bleed_markers);
+        if !is_bleed {
+            continue;
+        }
+        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+            continue;
+        };
         add_modifier_sum(&mut local_params.bleed_mod_sum, target.0, value.0, &local_params.bodies, &local_params.part_to_body);
     }
-    for (target, value) in queries.blood_capacity_mods.iter() {
+    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+        let is_blood_capacity = modifier_has_marker::<BloodCapacity>(
+            mod_ent,
+            ezero_ref,
+            &queries.blood_capacity_markers,
+        );
+        if !is_blood_capacity {
+            continue;
+        }
+        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+            continue;
+        };
         add_modifier_sum(
             &mut local_params.blood_capacity_mod_sum,
             target.0,
@@ -344,7 +523,18 @@ pub fn update_body_health_from_parts(
             &local_params.part_to_body,
         );
     }
-    for (target, value) in queries.hp_regen_mods.iter() {
+    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+        let is_hp_regen = modifier_has_marker::<HitpointRegenRate>(
+            mod_ent,
+            ezero_ref,
+            &queries.hp_regen_markers,
+        );
+        if !is_hp_regen {
+            continue;
+        }
+        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+            continue;
+        };
         add_modifier_sum(
             &mut local_params.hp_regen_mod_sum,
             target.0,
@@ -353,7 +543,18 @@ pub fn update_body_health_from_parts(
             &local_params.part_to_body,
         );
     }
-    for (target, value) in queries.consciousness_mods.iter() {
+    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+        let is_consciousness = modifier_has_marker::<Consciousness>(
+            mod_ent,
+            ezero_ref,
+            &queries.consciousness_markers,
+        );
+        if !is_consciousness {
+            continue;
+        }
+        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+            continue;
+        };
         add_modifier_sum(
             &mut local_params.consciousness_mod_sum,
             target.0,
@@ -362,7 +563,14 @@ pub fn update_body_health_from_parts(
             &local_params.part_to_body,
         );
     }
-    for (target, value) in queries.vision_mods.iter() {
+    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+        let is_vision = modifier_has_marker::<Vision>(mod_ent, ezero_ref, &queries.vision_markers);
+        if !is_vision {
+            continue;
+        }
+        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+            continue;
+        };
         add_modifier_sum(&mut local_params.vision_mod_sum, target.0, value.0, &local_params.bodies, &local_params.part_to_body);
     }
 
@@ -488,46 +696,64 @@ pub fn update_body_health_from_parts(
 /// Slowdown multiplier is 1.0 - pain, so pain = 0 means no slowdown, pain = 1.0 means full stop.
 pub fn apply_pain_slowdown(
     mut cmd: Commands,
-    mut body_health_query: Query<(Entity, &BodyOf, &BodySums), Changed<BodySums>>,
-    mut slowdown_mod_query: Query<(&ModifierTarget, &mut BaseValue), With<PainSlowdown>>,
-    mut has_slowdown: Local<EntityHashSet>,
+    mut body_health_query: Query<(Entity, &BodyOf, &BodySums), (Changed<BodySums>,)>,
+    mut slowdown_mod_query: Query<(Entity, &ModifierTarget, &mut BaseValue), (With<PainSlowdown>,)>,
+    mut slowdown_by_being: Local<EntityHashMap<(Entity, f32)>>,
+    mut kept_slowdown_ent_by_being: Local<EntityHashMap<Entity>>,
+    mut seen_beings: Local<EntityHashSet>,
+    mut extra_slowdown_ents: Local<Vec<Entity>>,
 ) {
-    has_slowdown.clear();
-
-    for (target, mut base_value) in slowdown_mod_query.iter_mut() {
-        for (_, body_of, body_health) in body_health_query.iter_mut() {
-            if body_of.being != target.0 {
-                continue;
-            }
-            base_value.0 = (1.0 - body_health.pain).max(0.0);
-            break;
-        }
-    }
-    for (target, _) in slowdown_mod_query.iter() {
-        has_slowdown.insert(target.0);
-    }
+    slowdown_by_being.clear();
+    kept_slowdown_ent_by_being.clear();
+    seen_beings.clear();
+    extra_slowdown_ents.clear();
 
     for (body_ent, body_of, body_health) in body_health_query.iter_mut() {
-        if has_slowdown.contains(&body_of.being) {
+        let pain_multiplier = (1.0 - body_health.pain).clamp(0.0, 1.0);
+        let entry = slowdown_by_being
+            .entry(body_of.being)
+            .or_insert((body_ent, pain_multiplier));
+        if pain_multiplier < entry.1 {
+            *entry = (body_ent, pain_multiplier);
+        }
+    }
+    if slowdown_by_being.is_empty() {
+        return;
+    }
+
+    for (mod_ent, target, mut base_value) in slowdown_mod_query.iter_mut() {
+        let Some((_, pain_multiplier)) = slowdown_by_being.get(&target.0) else {
+            continue;
+        };
+        if !seen_beings.insert(target.0) {
+            extra_slowdown_ents.push(mod_ent);
             continue;
         }
-        has_slowdown.insert(body_of.being);
+        base_value.0 = *pain_multiplier;
+        cmd.entity(mod_ent).insert(ChildOf(target.0));
+        kept_slowdown_ent_by_being.insert(target.0, mod_ent);
+    }
 
-        let pain_multiplier = (1.0 - body_health.pain).max(0.0);
+    for extra_ent in extra_slowdown_ents.iter() {
+        cmd.entity(*extra_ent).try_despawn();
+    }
 
-        let bundle = (
-            ModifierTarget(body_of.being),
-            BaseValue(pain_multiplier),
-            CurrEffectiveValue(pain_multiplier),
+    for (being_ent, (_, pain_multiplier)) in slowdown_by_being.iter() {
+        if kept_slowdown_ent_by_being.contains_key(being_ent) {
+            continue;
+        }
+        cmd.spawn((
+            WalkSpeed,
+            SwimSpeed,
+            FlySpeed,
+            ModifierTarget(*being_ent),
+            BaseValue(*pain_multiplier),
+            CurrEffectiveValue(*pain_multiplier),
             ApplyMode::Mul,
             PainSlowdown,
             ModifierTags::default(),
             StrId::trunc("pain_slowdown"),
-            ChildOf(body_ent),
-        );
-
-        cmd.spawn((WalkSpeed, bundle.clone()));
-        cmd.spawn((SwimSpeed, bundle.clone()));
-        cmd.spawn((FlySpeed, bundle.clone()));
+            ChildOf(*being_ent),
+        ));
     }
 }

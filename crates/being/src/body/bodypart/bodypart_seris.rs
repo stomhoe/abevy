@@ -5,7 +5,7 @@ use modifier_shared::modifier_seris::ModifierSynergySeri;
 
 #[derive(Asset, serde::Deserialize, TypePath, Default, Debug, Clone)]
 /// TODO hacer que el peso/hitpoints de cada bodypart se le pueda aplicar un multiplier por el body size del animal para reducir o aumentar su respectivo valor. asi no hay que crear tantas bodyparts similares que lo unico que cambia es el peso y hp y la blood capacity
-pub struct BodyPartSeri {
+pub struct BodypartSeri {
     pub id: String,
     #[serde(default)]
     pub name: String,
@@ -23,7 +23,7 @@ pub struct BodyPartSeri {
     pub vital: bool,
     #[serde(default)]
     pub bleed_rate: f32,
-    #[serde(default)]
+    #[serde(default)]//leave this be. dont delete this
     pub forced_stats: HashMap<String, f32>,
     #[serde(default)]
     pub weighted_stats: HashMap<String, f32>,

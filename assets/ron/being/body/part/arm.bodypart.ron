@@ -2,20 +2,17 @@
     id: "arm",
     name: "Arm",
     coverage_weight: 30,
-    forced_stats: {
+    weighted_stats: {
+        "mass_kg": 3.5,
         "hp_capacity": 20.0,
         "hp_regen_rate": 0.8,
-        "pain_sensitivity": 1.0,
         "blood_capacity": 12.0,
+        "walk_speed": 0.6,
+        "swim_speed": 0.5,
         "manip_dex": 1.0,
         "manip_str": 1.2,
-        "walk_speed": 0.0,
-        "swim_speed": 0.5,
+        "pain_sensitivity": 1.0,
         "caloric_burn_rate": 1.8,
-    },
-    weighted_stats: {
-        "walk_speed": 0.6,
-        "mass_kg": 3.5,
     },
     synergies: {
         "manip_strength_limb": CopyFrac(0.2),

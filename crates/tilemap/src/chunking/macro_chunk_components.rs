@@ -64,6 +64,7 @@ impl BiomePackCountAvgedNormDists {
 }
 
 #[derive(Component, Debug, Clone, Default)]
+//TODO borrar cuano ya deje de ser usado
 pub struct BiomeDistribution {
 	pub produced_biome_sampler: EntityWeightedSampler,
 	pub pack_count_multiplier_avged_norm_dists_per_biome: EntityHashMap<BiomePackCountAvgedNormDists>,
@@ -71,15 +72,14 @@ pub struct BiomeDistribution {
 	pub accumulated_chunk_weights_for_biome: EntityHashMap<HashMap<ChunkPos, f32>>,
 }
 
-#[derive(Component, Debug, Clone, Default)]
-pub enum MacroChunkBiomeSamplingState {
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub enum MacroChunkBiomePendingSampleState {
 	#[default]
 	Unsampled,
 	Sampling {
-		expected_samples: usize,
-		completed_samples: usize,
+		expected_samples: u32,
+		completed_samples: u32,
 	},
-	Sampled,
 }
 
 impl BiomeDistribution {

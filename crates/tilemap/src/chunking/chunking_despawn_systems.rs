@@ -174,6 +174,7 @@ pub fn on_chunk_despawn(
     }
 
 
+    /*
     let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
     let has_remaining_chunks = loaded_chunks.0.keys().any(|&(dim_ref, chunk_pos)| {
         dim_ref == chunk_dimension && chunk_pos.to_macrochunk_pos() == macro_chunk_pos
@@ -185,4 +186,5 @@ pub fn on_chunk_despawn(
         return;
     };
     cmd.entity(macro_chunk_ent).try_despawn();
+    */
 }

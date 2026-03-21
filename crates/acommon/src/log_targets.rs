@@ -54,6 +54,7 @@ pub const GAME_INIT: &str = "game_init";
 // ============================================================================
 pub const SPRITE_BUILD: &str = "sprite_build";
 pub const BEING_TEMPLATE_BUILD: &str = "being_template_build";
+pub const BODY_BUILD: &str = "body_build";
 
 // ============================================================================
 // RUNTIME SYSTEMS - SPRITE & ANIMATION (format: <name>_system)

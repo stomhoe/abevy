@@ -613,6 +613,7 @@ dependencies = [
  "common",
  "faction_shared",
  "game_common",
+ "item_shared",
  "serde",
  "tilemap_shared",
 ]
@@ -6000,6 +6001,7 @@ name = "modifier_systems"
 version = "0.1.0"
 dependencies = [
  "being",
+ "being_shared",
  "bevy 0.18.0",
  "bevy_replicon",
  "common",

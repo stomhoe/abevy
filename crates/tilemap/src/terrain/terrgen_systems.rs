@@ -1,10 +1,11 @@
 use bevy::{ecs::entity::EntityHashMap, platform::collections::HashSet, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use camera::camera_components::CameraTarget;
 use common::{common_components::{HashId, StrId}, common_tag_components::HashedTagsVec};
+use common::log_targets::TERRGEN_SYSTEM;
 use std::mem::take;
 
 use crate::{
-    chunking::{macro_chunk_components::{BiomeDistribution, MacroChunkBiomeSamplingState}},
+    chunking::{macro_chunk_components::{BiomeDistribution, MacroChunkBiomePendingSampleState}},
     terrain::{
         terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
@@ -17,7 +18,7 @@ use crate::{
             process_pending_ops_batch,
             register_completed_chunk_gpos,
         },
-        terrgen_messages::{ChunkTerrainBuilt, MacroChunkBiomeSampled, PendingOp, PendingOpInput, PendingOpPurpose, RequestMacroChunkBiomeSampling},
+        terrgen_messages::{ChunkTerrainBuilt, PendingOp, PendingOpInput, PendingOpPurpose, RequestMacroChunkBiomeSampling},
         terrgen_resources::*,
     },
     tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles},
@@ -27,18 +28,18 @@ use ::tilemap_shared::*;
 pub use crate::terrain::terrprobe::terrprobe_systems::search_suitable_positions;
 
 #[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenQueriesParamSet<'w, 's> {
-    pub oplist_query: Query<'w, 's, (&'static OperationList, &'static OplistSize, Option<&'static HashedTagsVec>, &'static StrId), ()>,
-    pub fnl_noises: Query<'w, 's, &'static FnlNoiseComp>,
-    pub op_filters: Query<'w, 's, &'static OpFilter>,
-    pub dim_hash_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
-    pub camera_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTransform), With<CameraTarget>>,
-    pub macro_chunk_biome_distributions: Query<'w, 's, &'static mut BiomeDistribution>,
-    pub macro_chunk_biome_sampling_states: Query<'w, 's, &'static mut MacroChunkBiomeSamplingState>,
+pub struct TerrgenQueries<'w, 's> {
+	pub oplist_query: Query<'w, 's, (&'static OperationList, &'static OplistSize, Option<&'static HashedTagsVec>, &'static StrId), ()>,
+	pub fnl_noises: Query<'w, 's, &'static FnlNoiseComp>,
+	pub op_filters: Query<'w, 's, &'static OpFilter>,
+	pub dim_hash_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
+	pub camera_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTransform), With<CameraTarget>>,
+	pub macro_chunk_biome_distributions: Query<'w, 's, &'static mut BiomeDistribution>,
+	pub macro_chunk_biome_sampling_states: Query<'w, 's, &'static mut MacroChunkBiomePendingSampleState>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenResourcesParamSet<'w> {
+pub struct TerrgenResources<'w> {
     pub collected: ResMut<'w, MassCollectedTiles>,
     pub terrgen_tasks: ResMut<'w, TerrGenAsyncTasks>,
     pub debug_grid: ResMut<'w, TerrGenDebugGrid>,
@@ -46,9 +47,8 @@ pub struct TerrgenResourcesParamSet<'w> {
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenMessageBuffers<'w> {
+pub struct TerrgenMessageWriters<'w> {
     pub chunk_built_writer: MessageWriter<'w, ChunkTerrainBuilt>,
-    pub macro_chunk_biome_sampled_writer: MessageWriter<'w, MacroChunkBiomeSampled>,
     pub sampled_value_writer: MessageWriter<'w, SuitablePosFound>,
     pub sampled_value_matrix_writer: MessageWriter<'w, SampledValuesCollected>,
 }
@@ -60,52 +60,48 @@ pub struct TerrgenLocalBuffers<'s> {
     pub expected_root_gpos_by_chunk: Local<'s, EntityHashMap<usize>>,
     pub completed_root_gpos_by_chunk: Local<'s, EntityHashMap<HashSet<GlobalTilePos>>>,
     pub chunk_built_msgs: Local<'s, Vec<ChunkTerrainBuilt>>,
-    pub macro_chunk_biome_sampled_msgs: Local<'s, Vec<MacroChunkBiomeSampled>>,
     pub sampled_value_events: Local<'s, Vec<SuitablePosFound>>,
     pub sampled_value_matrix_events: Local<'s, Vec<SampledValuesCollected>>,
     pub finished_macro_chunk_biome_samples: Local<'s, Vec<(Vec<TerrGenBiomeTagSample>, Vec<Entity>)>>,
     pub pending_ops: Local<'s, Vec<PendingOp>>,
-    pub sampled_macrochunks: Local<'s, Vec<MacroChunkBiomeSampled>>,
 }
 
 const BIOME_SAMPLE_GRID_AXIS_STEPS: [i32; 3] = [1, 3, 5];
 
+#[allow(unused_parens, )]
 pub fn request_macrochunk_biome_sampling(
+    mut cmd: Commands,
     mut reader: MessageReader<RequestMacroChunkBiomeSampling>,
-    mut macro_chunk_query: Query<(&DimensionRef, &MacroChunkPos, &mut MacroChunkBiomeSamplingState), With<MacroChunk>>,
+    mut macro_chunk_query: Query<(&DimensionRef, &MacroChunkPos, &mut MacroChunkBiomePendingSampleState, ), (With<MacroChunk>, )>,
     dimension_query: Query<&DimensionRootOplist>,
     oplists: Query<&OplistSize, With<OperationList>>,
     mut pending_ops_writer: MessageWriter<PendingOp>,
-    mut msg_buffers: TerrgenMessageBuffers,
     mut local_buffers: TerrgenLocalBuffers,
 ) {
     local_buffers.pending_ops.clear();
-    local_buffers.sampled_macrochunks.clear();
     for request in reader.read() {
         let Ok((&dim_ref, &macro_chunk_pos, mut biome_state)) = macro_chunk_query.get_mut(request.macro_chunk_ent) else {
             continue;
         };
-        if !matches!(*biome_state, MacroChunkBiomeSamplingState::Unsampled) {
+        if !matches!(*biome_state, MacroChunkBiomePendingSampleState::Unsampled) {
             continue;
         }
         let Ok(&root_oplist) = dimension_query.get(dim_ref.0) else {
-            error!(target: "terrgen_systems", "No root operation list for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
+            error!(target: TERRGEN_SYSTEM, "No root operation list for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
             continue;
         };
         let Ok(_) = oplists.get(root_oplist.0) else {
-            error!(target: "terrgen_systems", "No oplist size for root operation list {:?}", root_oplist);
+            error!(target: TERRGEN_SYSTEM, "No oplist size for root operation list {:?}", root_oplist);
             continue;
         };
         let sample_positions = macro_chunk_biome_sample_positions(macro_chunk_pos);
-        let expected_samples = sample_positions.len();
+        let expected_samples = sample_positions.len() as u32;
         if expected_samples == 0 {
-            *biome_state = MacroChunkBiomeSamplingState::Sampled;
-            local_buffers.sampled_macrochunks.push(MacroChunkBiomeSampled {
-                macro_chunk_ent: request.macro_chunk_ent,
-            });
+            cmd.entity(request.macro_chunk_ent).try_remove::<MacroChunkBiomePendingSampleState>();
+            debug!(target: TERRGEN_SYSTEM, "Completed biome sampling for macrochunk {} in {:?} without pending samples", macro_chunk_pos, dim_ref);
             continue;
         }
-        *biome_state = MacroChunkBiomeSamplingState::Sampling {
+        *biome_state = MacroChunkBiomePendingSampleState::Sampling {
             expected_samples,
             completed_samples: 0,
         };
@@ -121,15 +117,12 @@ pub fn request_macrochunk_biome_sampling(
                 },
             });
         }
-        trace!(target: "terrgen_systems", "Queued {} biome samples for macrochunk {} in {:?}", expected_samples, macro_chunk_pos, dim_ref);
+        trace!(target: TERRGEN_SYSTEM, "Queued {} biome samples for macrochunk {} in {:?}", expected_samples, macro_chunk_pos, dim_ref);
     }
     pending_ops_writer.write_batch(local_buffers.pending_ops.drain(..));
-    msg_buffers
-        .macro_chunk_biome_sampled_writer
-        .write_batch(local_buffers.sampled_macrochunks.drain(..));
 }
 
-#[allow(unused_parens)]
+#[allow(unused_parens, )]
 pub fn launch_terrain_operations(
     mut commands: Commands,
     chunks_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), With<Chunk>>,
@@ -147,11 +140,11 @@ pub fn launch_terrain_operations(
             continue;
         }
         let Ok(&dim_root_op_list) = dimension_query.get(dim_ref.0) else {
-            error!(target: "terrgen_systems", "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
+            error!(target: TERRGEN_SYSTEM, "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
             continue;
         };
         let Ok(&oplist_size) = oplists.get(dim_root_op_list.0) else {
-            error!(target: "terrgen_systems", "Dimension references non-existent root operation list {:?}", dim_root_op_list);
+            error!(target: TERRGEN_SYSTEM, "Dimension references non-existent root operation list {:?}", dim_root_op_list);
             continue;
         };
         launch_queue.0.push(TerrGenLaunchWork {
@@ -167,13 +160,13 @@ pub fn launch_terrain_operations(
     commands.try_insert_batch(terr_gen_ops);
 }
 
-#[allow(unused_parens)]
+#[allow(unused_parens, )]
 pub fn process_pending_ops_and_collect_tiles(
     mut cmd: Commands,
-    mut queries: TerrgenQueriesParamSet,
-    mut resources: TerrgenResourcesParamSet,
+    mut queries: TerrgenQueries,
+    mut resources: TerrgenResources,
     param_set: CloneSpawnParamSet,
-    mut msg_buffers: TerrgenMessageBuffers,
+    mut msg_buffers: TerrgenMessageWriters,
     mut local_buffers: TerrgenLocalBuffers,
     mut pending_ops_reader: MessageReader<PendingOp>,
 ) {
@@ -326,7 +319,7 @@ pub fn process_pending_ops_and_collect_tiles(
             let Ok(biome_sampling_state) = queries.macro_chunk_biome_sampling_states.get_mut(sample.macro_chunk_ent) else {
                 continue;
             };
-            if !matches!(*biome_sampling_state, MacroChunkBiomeSamplingState::Sampling { .. }) {
+            if !matches!(*biome_sampling_state, MacroChunkBiomePendingSampleState::Sampling { .. }) {
                 continue;
             }
             distribution.add_tag_weights_in_chunk(sample.sample_chunk_pos, sample.biome_tags);
@@ -335,7 +328,7 @@ pub fn process_pending_ops_and_collect_tiles(
             let Ok(mut biome_sampling_state) = queries.macro_chunk_biome_sampling_states.get_mut(macro_chunk_ent) else {
                 continue;
             };
-            let MacroChunkBiomeSamplingState::Sampling {
+            let MacroChunkBiomePendingSampleState::Sampling {
                 expected_samples,
                 completed_samples,
             } = &mut *biome_sampling_state else {
@@ -349,13 +342,8 @@ pub fn process_pending_ops_and_collect_tiles(
         }
     }
     for macro_chunk_ent in finished_macro_chunk_ents {
-        let Ok(mut biome_sampling_state) = queries.macro_chunk_biome_sampling_states.get_mut(macro_chunk_ent) else {
-            continue;
-        };
-        *biome_sampling_state = MacroChunkBiomeSamplingState::Sampled;
-        local_buffers.macro_chunk_biome_sampled_msgs.push(MacroChunkBiomeSampled {
-            macro_chunk_ent,
-        });
+        cmd.entity(macro_chunk_ent).try_remove::<MacroChunkBiomePendingSampleState>();
+        debug!(target: TERRGEN_SYSTEM, "Completed biome sampling for macrochunk entity {:?}", macro_chunk_ent);
     }
 
     msg_buffers.sampled_value_writer.write_batch(local_buffers.sampled_value_events.drain(..));
@@ -368,10 +356,6 @@ pub fn process_pending_ops_and_collect_tiles(
     msg_buffers
         .chunk_built_writer
         .write_batch(local_buffers.chunk_built_msgs.drain(..));
-    msg_buffers
-        .macro_chunk_biome_sampled_writer
-        .write_batch(local_buffers.macro_chunk_biome_sampled_msgs.drain(..));
-
     if !launch_queue.0.is_empty() {
         let work_items = take(&mut launch_queue.0);
         for work in work_items.iter() {
@@ -440,7 +424,7 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
                     continue;
                 }
                 trace!(
-                    target: "terrgen_systems",
+                    target: TERRGEN_SYSTEM,
                     "Spawning terr operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
                     work.root_oplist,
                     gpos,

@@ -92,11 +92,9 @@ pub fn readjust_childof_to_new_dim_if_parent_was_dimension(mut cmd: Commands,
     dimension_query: Query<(Entity),(With<Dimension>)>,
     query: Query<(Entity, &DimensionRef, &ChildOf),(Changed<DimensionRef>, )>,
 ) {
-    let mut new_child_ofs = Vec::new();
     for (ent, dimension_ref, child_of) in query.iter() {
         if dimension_query.get(child_of.parent()).is_ok() {
-            new_child_ofs.push((ent, ChildOf(dimension_ref.0)));
+            cmd.entity(ent).try_insert(ChildOf(dimension_ref.0));
         }
     }
-    cmd.try_insert_batch(new_child_ofs);
 }

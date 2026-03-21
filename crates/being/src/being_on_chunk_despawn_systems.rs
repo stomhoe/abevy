@@ -1,11 +1,12 @@
 use crate::being_components::{Being, Chasing};
-use crate::being_bundles::RemoveOnFreeze;
+use crate::being_bundles::{ReinsertOnUnfreeze, RemoveOnFreeze};
 use crate::being_messages::MakeChunkSnapshotForChaser;
 
 use ::being_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_SYSTEM;
-use tilemap_shared::{ChunkWithBeingsWantsDespawn, MakeChunkDespawn};
+use sprite_shared::HeldSprites;
+use tilemap_shared::{ChunkLoaded, ChunkWithBeingsWantsDespawn, LoadedMacroChunks, MakeChunkDespawn};
 use tilemap::chunking::*;
 use tilemap_shared::{ChunkPos, DimensionRef};
 use ::being_shared::being_shared_resources::FrozenBgSimulatedBeingsMap;
@@ -15,22 +16,62 @@ use ::being_shared::being_shared_resources::FrozenBgSimulatedBeingsMap;
 #[allow(unused_parens)]
 pub fn freeze_being(mut cmd: Commands,
     mut reader: MessageReader<UnloadBeing>,
-    query: Query<(&DimensionRef, &ChunkPos), (With<Being>, )>,
+    query: Query<(&DimensionRef, &ChunkPos, &HeldSprites), (With<Being>, )>,
     mut frozen_bg_simulated_being_map: ResMut<FrozenBgSimulatedBeingsMap>,
+    macro_chunk_pos_map: Res<LoadedMacroChunks>,
 ) {
     for unloaded_being in reader.read() {
-        let Ok((dimension_ref, chunk_pos)) = query.get(unloaded_being.0) else {
+        let Ok((&dim, &chunk_pos, held_sprites)) = query.get(unloaded_being.0) else {
             continue;
         };
 
-        frozen_bg_simulated_being_map.0.entry((*dimension_ref, *chunk_pos)).or_default().push(unloaded_being.0);
+        for sprite_ent in held_sprites.iter() {
+            cmd.entity(sprite_ent).try_despawn();
+        }
+        frozen_bg_simulated_being_map.0.entry((dim, chunk_pos)).or_default().push(unloaded_being.0);
+
+        let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
+        let Some(&macro_chunk_ent) = macro_chunk_pos_map.0.get(&(dim, macro_chunk_pos)) else {
+            error!("macro chunk not found for being on freeze");
+            continue;
+        };
+
+
         let mut entity = cmd.entity(unloaded_being.0);
-        entity.try_insert(BackgroundSimulated);
+        entity.try_insert(BgSimulatedIn{ macro_chunk_ent });
         entity.try_remove::<RemoveOnFreeze>();
     }
 
 }
 
+#[allow(unused_parens, )]
+pub fn unfreeze_beings_on_chunk_load(
+    mut cmd: Commands,
+    mut reader: MessageReader<ChunkLoaded>,
+    mut frozen_bg_simulated_being_map: ResMut<FrozenBgSimulatedBeingsMap>,
+) {
+    let mut vec_ins_batch = Vec::new();
+    for &msg in reader.read() {
+        let Some(being_ents) = frozen_bg_simulated_being_map.0.remove(&(msg.dimension, msg.chunk_pos)) else {
+            continue;
+        };
+
+        debug!(
+            target: BEING_SYSTEM,
+            "Restoring {} frozen beings for loaded chunk {:?} in {:?}",
+            being_ents.len(),
+            msg.chunk_pos,
+            msg.dimension,
+        );
+
+        for being_ent in being_ents {
+            cmd.entity(being_ent).try_remove::<(BgSimulatedIn, Unloaded)>();
+            let ins = ReinsertOnUnfreeze::new(msg);
+            vec_ins_batch.push((being_ent, ins));
+        }
+    }
+    cmd.try_insert_batch(vec_ins_batch);
+}
 
 #[allow(unused_parens, )]
 pub fn on_chunk_with_beings_attempt_unload(

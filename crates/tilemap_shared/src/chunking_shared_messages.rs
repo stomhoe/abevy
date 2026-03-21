@@ -3,7 +3,7 @@ use bevy::{prelude::*};
 
 use crate::{ChunkPos, DimensionRef};
 
-#[derive(Message, Debug, Clone, )]
+#[derive(Message, Debug, Clone, Copy)]
 pub struct ChunkLoaded {
     pub dimension: DimensionRef,
     pub chunk_pos: ChunkPos,

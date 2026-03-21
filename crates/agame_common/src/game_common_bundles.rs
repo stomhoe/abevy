@@ -18,10 +18,11 @@ pub struct EntityZeroCloneDeny(
     AddHashIdFromStrId,
     HashId,
     GameCommonStringComponentsBundle,
+    CloneEzeroChildren,
 );
 
 #[derive(Bundle)]
-pub(crate) struct DenyForEntityZeroClonedChild(
+pub struct DenyForEntityZeroClonedChild(
     EntityZero,
     BaseHolderRef,
     Disabled,

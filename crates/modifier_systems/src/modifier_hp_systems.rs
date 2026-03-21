@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use being::body::{Bodies, IncomingDamage};
+use being::body::{Body, IncomingDamage};
 use game_common::game_common_components::{
     Dead,
     DespawnOnDeath,
@@ -13,7 +13,7 @@ use tilemap_shared::SafeDespawn;
 pub fn apply_health_damage(
     mut reader: MessageReader<HealthDamage>,
     mut health_query: Query<&mut Health, Without<EntityZero>>,
-    body_query: Query<&Bodies, Without<EntityZero>>,
+    body_query: Query<&Body, Without<EntityZero>>,
     mut body_damage_writer: MessageWriter<IncomingDamage>,
     mut body_damage_messages: Local<Vec<IncomingDamage>>,
 ) {
@@ -31,14 +31,11 @@ pub fn apply_health_damage(
         if sent_to_direct_health {
             continue;
         }
-        let Ok(target_bodies) = body_query.get(msg.entity) else {
-            continue;
-        };
-        let Some(&body) = target_bodies.entities().first() else {
+        let Ok(target_body) = body_query.get(msg.entity) else {
             continue;
         };
         body_damage_messages.push(IncomingDamage {
-            body,
+            body: target_body.entity(),
             amount: msg.amount,
         });
     }

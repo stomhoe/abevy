@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use ::being_shared::{*, UnloadBeing};
-use tilemap_shared::{BeingsAtGpos, ChunkWithBeingsWantsDespawn, GlobalTilePos};
+use tilemap_shared::{BeingsAtGpos, ChunkLoaded, ChunkWithBeingsWantsDespawn, GlobalTilePos};
 
 use common::common_states::AssetLoading;
 use game_common::{
@@ -11,8 +11,8 @@ use game_common::{
 use sprite_systems::AcSpriteSystems;
 use crate::being_melee_systems::apply_melee_attack;
 use crate::being_messages::MakeChunkSnapshotForChaser;
-use crate::being_on_chunk_despawn_systems::{freeze_being, on_chunk_with_beings_attempt_unload};
-use crate::nav::{AiNavGrids, ChaserNavPlans};
+use crate::being_on_chunk_despawn_systems::{freeze_being, on_chunk_with_beings_attempt_unload, unfreeze_beings_on_chunk_load};
+use crate::being_nav::{AiNavGrids, ChaserNavPlans};
 
 use crate::{
     being_behavior_systems::*,
@@ -23,7 +23,7 @@ use crate::{
     being_portal_systems::*,
     being_systems::*,
     body::{self, BodySystems},
-    nav,
+    being_nav,
     pack::PackSystems,
     race::RaceSystems,
 };
@@ -35,13 +35,14 @@ pub fn plugin(app: &mut App) {
         crate::race::plugin,
         crate::sex::plugin,
         body::plugin,
-        nav::plugin,
+        being_nav::plugin,
         crate::being_inst_template::plugin,
         crate::pack::plugin,
     ))
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
     .init_resource::<ChaserNavPlans>()
+    .init_resource::<FrozenBgSimulatedBeingsMap>()
 
     .add_systems(Update, (
         (
@@ -54,6 +55,7 @@ pub fn plugin(app: &mut App) {
             assign_uncomputed_beings_to_host,
             cross_portal,
             freeze_being.run_if(on_message::<UnloadBeing>),
+            unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>),
             on_chunk_with_beings_attempt_unload
                 .in_set(tilemap_shared::PreChunkDespawnSystems)
                 .run_if(on_message::<ChunkWithBeingsWantsDespawn>),
@@ -93,6 +95,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<DirectControllable>()
     .replicate::<Chasing>()
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
+    .replicate::<being_shared::BgSimulatedIn>()
 
     .replicate::<PackMemberRank>()
 

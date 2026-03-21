@@ -24,26 +24,42 @@ pub fn plugin(app: &mut App) {
             receive_gpos_from_server
                 .run_if(in_state(ClientState::Connected))
                 .run_if(on_message::<SyncGpos>),
-        )
+            )
             .in_set(MovementSystems),
     )
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
-                (
-                    receive_step_request_from_client
-                        .run_if(in_state(ServerState::Running))
-                        .run_if(on_message::<FromClient<SendStepRequest>>),
-                ),
+                receive_step_request_from_client
+                    .run_if(in_state(ServerState::Running))
+                    .run_if(on_message::<FromClient<SendStepRequest>>),
                 apply_pending_tile_corrections
                     .run_if(in_state(ClientState::Connected)),
                 sync_occupancy_for_beings_at_gpos_res,
+            )
+                .in_set(MovementSystems),
+        )
+        .add_systems(
+            MOVEMENT_SCHEDULE,
+            (
                 resolve_overlapping_beings.in_set(HostSystems),
                 process_input_direction_modifiers,
                 process_speed_modifiers,
+            )
+                .in_set(MovementSystems),
+        )
+        .add_systems(
+            MOVEMENT_SCHEDULE,
+            (
                 emit_move_state_on_movevecmag_speed_mag_change,
                 start_grid_locked_steps,
                 progress_tile_transition_transform,
+            )
+                .in_set(MovementSystems),
+        )
+        .add_systems(
+            MOVEMENT_SCHEDULE,
+            (
                 update_facing_dir,
                 do_free_movement,
             )

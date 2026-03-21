@@ -2,6 +2,26 @@
     id: "orc1",
     name: "Orc Variant Body",
     tags: ["humanoid"],
+    mass_kg: 80.0,
+    distributed_totals: {
+        "mass_kg": 80.0,
+        "hp_capacity": 491.0,
+        "hp_regen_rate": 23.5,
+        "blood_capacity": 285.5,
+        "bleed_rate": 30.4,
+        "walk_speed": 62.0,
+        "swim_speed": 6.3,
+        "manip_dex": 7.3,
+        "manip_str": 4.4,
+        "vision": 2.0,
+        "pain_sensitivity": 27.4,
+        "caloric_burn_rate": 52.5,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
     root: (
         part_id: "torso",
         label_override: "Torso",
@@ -32,8 +52,16 @@
             ]),
             (part_id: "spine", label_override: "Spine", children: []),
             (part_id: "pelvis", label_override: "Pelvis", children: []),
-            (part_id: "arm", label_override: "Left Arm", children: [(part_id: "hand", label_override: "Left Hand", children: [])]),
-            (part_id: "arm", label_override: "Right Arm", children: [(part_id: "hand", label_override: "Right Hand", children: [])]),
+            (part_id: "shoulder", label_override: "Left Shoulder", children: [
+                (part_id: "arm", label_override: "Left Arm", children: [
+                    (part_id: "hand", label_override: "Left Hand", children: []),
+                ]),
+            ]),
+            (part_id: "shoulder", label_override: "Right Shoulder", children: [
+                (part_id: "arm", label_override: "Right Arm", children: [
+                    (part_id: "hand", label_override: "Right Hand", children: []),
+                ]),
+            ]),
             (part_id: "leg", label_override: "Left Leg", children: [(part_id: "foot", label_override: "Left Foot", children: [])]),
             (part_id: "leg", label_override: "Right Leg", children: [(part_id: "foot", label_override: "Right Foot", children: [])]),
         ],

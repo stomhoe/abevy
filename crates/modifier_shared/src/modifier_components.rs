@@ -4,7 +4,6 @@ use bevy::prelude::*;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
-use game_common::game_common_components::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Reflect)]
@@ -13,9 +12,6 @@ use serde::{Deserialize, Serialize};
     AssetScoped,
     SparedFromHotReloading,
     Replicated,
-    ApplyMode::Add,
-    Prefix::trunc("Modif"),
-    ExcludedFromAutoRenamer,
 )]
 pub struct ModifierTarget(
     #[relationship]

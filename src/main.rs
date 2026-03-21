@@ -86,6 +86,7 @@ fn build_filter() -> String {
         {}={},\
         {}={},\
         {}={},\
+        {}={},\
         {}={},",
         log_targets::NAGA, ERROR,
         log_targets::WGPU_HAL, ERROR,
@@ -110,7 +111,7 @@ fn build_filter() -> String {
         log_targets::TERRGEN_INIT, WARN,
         log_targets::SGC_INIT, WARN,
 
-        log_targets::TERRGEN_SYSTEM, INFO,
+        log_targets::TERRGEN_SYSTEM, DEBUG,
         log_targets::TERRGEN_PROCESS, INFO,
         log_targets::STRUCTURE_SPAWN, WARN,
         log_targets::TILEMAP_SYSTEM, INFO,
@@ -127,6 +128,7 @@ fn build_filter() -> String {
         log_targets::SPRITE_SYSTEM, WARN,
 
         log_targets::BEING_CONTROL, INFO,
+        log_targets::BODY_BUILD, DEBUG,
         log_targets::GAME_INIT, DEBUG,
 
         log_targets::SPRITE_ANIMATION_INIT, WARN,

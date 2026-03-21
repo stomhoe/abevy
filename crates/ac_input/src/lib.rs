@@ -3,6 +3,7 @@ pub use ac_input::*;
 pub use paste;
 
 pub mod ac_input_being_actions;
+pub mod ac_input_egui_holders;
 pub mod ac_input_contexts;
 pub mod ac_input_game_actions;
 pub mod ac_input_actions;
@@ -16,6 +17,7 @@ pub mod prelude {
         ac_input::*,
         ac_input_actions::*,
         ac_input_contexts::*,
+        ac_input_egui_holders::*,
         player_action_request_macros::*,
         player_action_requests::*,
         ac_input_systems::*,

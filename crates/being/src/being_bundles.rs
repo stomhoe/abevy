@@ -9,7 +9,7 @@ use movement::{movement_components::GridLockedMovement, prelude::MovementRemoveO
 use tilemap::chunking::chunking_components::*;
 use tilemap_shared::{LoadChunksAround, ChunkPos, DimensionRef, GlobalTilePos, };
 
-use crate::{being_components::*, nav::RetainedChasePathSnapshot};
+use crate::{being_components::*, being_nav::RetainedChasePathSnapshot};
 
 
 
@@ -17,6 +17,7 @@ use crate::{being_components::*, nav::RetainedChasePathSnapshot};
 pub struct BeingBundle(
     pub Being,
     pub DimensionRef,
+    pub ChildOf,
     pub Transform,
     pub tilemap_shared::GlobalTilePos,
     pub GridLockedMovement,
@@ -26,6 +27,7 @@ impl BeingBundle {
         Self(
             Being::default(),
             dimension_ref,
+            ChildOf(dimension_ref.0),
             Transform::from_translation(tile_pos.to_translation(0.0)),
             tile_pos,
             GridLockedMovement {
@@ -50,3 +52,27 @@ pub struct RemoveOnFreeze(
     pub MovementRemoveOnFreezeBundle,
 
 );//en vez de esto, hacer un estado serializado?
+
+#[derive(Bundle, Debug, )]
+pub struct ReinsertOnUnfreeze(
+    pub Name,
+    pub Transform,
+    pub GlobalTransform,
+    pub DimensionRef,
+    pub ChunkPos,
+    pub Visibility,
+    pub GridLockedMovement,
+);
+impl ReinsertOnUnfreeze {
+    pub fn new(msg: tilemap_shared::ChunkLoaded) -> Self {
+        Self(
+            Name::default(),
+            Transform::default(),
+            GlobalTransform::default(),
+            msg.dimension,
+            msg.chunk_pos,
+            Visibility::default(),
+            GridLockedMovement::default(),
+        )
+    }
+}

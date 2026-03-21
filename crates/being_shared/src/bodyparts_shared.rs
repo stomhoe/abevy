@@ -7,41 +7,28 @@ use item_shared::item_components::SlottedItemHolder;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-#[require(Replicated, Prefix::trunc("BodyPart"), )]
-pub struct BodyPart;
+#[require(Replicated, Prefix::trunc("Bodypart"), )]
+pub struct Bodypart;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct BodyRootPart;
+pub struct TreeRoot;
 
-#[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone, )]
-#[relationship(relationship_target = BodyParts)]
-pub struct BodyPartOf {#[relationship] #[entities] pub body: Entity,}
+#[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone, Reflect)]
+#[relationship(relationship_target = BodypartChildrenBodyparts)]
+pub struct BodypartChildOfBodypart {#[relationship] #[entities] pub parent_bodypart: Entity,}
 
-#[derive(Component, Debug, Clone)]
-#[relationship_target(relationship = BodyPartOf)]
-pub struct BodyParts(Vec<Entity>);
+#[derive(Component, Debug, Clone, Reflect)]
+#[relationship_target(relationship = BodypartChildOfBodypart)]
+pub struct BodypartChildrenBodyparts(Vec<Entity>);
 
-#[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone)]
-#[relationship(relationship_target = BodyPartChildren)]
-pub struct BodyPartParent {#[relationship] #[entities] pub parent: Entity,}
 
-#[derive(Component, Debug, Clone)]
-#[relationship_target(relationship = BodyPartParent)]
-pub struct BodyPartChildren(Vec<Entity>);
-
-pub type BodyPartSlots = SlottedItemHolder;
+pub type BodypartSlots = SlottedItemHolder;
 
 #[derive(Component, Debug, Default, Copy, Clone, )]
-pub struct BodyPartCoverageWeight(pub u16);
+pub struct BodypartCoverageWeight(pub u16);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct BodyPartForcedDistribution(pub HashIdMap<f32>);
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct BodyPartWeightedDistribution(pub HashIdMap<f32>);
-
-pub struct BodyPartStat;
-impl BodyPartStat {
+pub struct BodypartStat;
+impl BodypartStat {
     pub const STAT_MASS_KG: HashId = HashId::hash("mass_kg");
     pub const STAT_HP_CAPACITY: HashId = HashId::hash("hp_capacity");
     pub const STAT_HP_REGEN_RATE: HashId = HashId::hash("hp_regen_rate");
@@ -59,37 +46,43 @@ impl BodyPartStat {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct BodyPartVital;
+pub struct Vital;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct BodyPartMissing;
+pub struct Missing;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
-pub struct BodyPartDamage(pub f32);
+pub struct BodypartDamage(pub f32);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
-pub enum BodyPartDepth {
+pub enum BodypartDepth {
     #[default]
     Surface,
     Inside,
     Core,
 }
 
-impl From<&str> for BodyPartDepth {
+impl From<&str> for BodypartDepth {
     fn from(value: &str) -> Self {
         match value.trim().to_lowercase().as_str() {
-            "inside" | "inner" => BodyPartDepth::Inside,
-            "core" | "root" => BodyPartDepth::Core,
-            _ => BodyPartDepth::Surface,
+            "inside" | "inner" => BodypartDepth::Inside,
+            "core" | "root" => BodypartDepth::Core,
+            _ => BodypartDepth::Surface,
         }
     }
 }
 
-impl From<String> for BodyPartDepth {
+impl From<String> for BodypartDepth {
     fn from(value: String) -> Self {
-        BodyPartDepth::from(value.as_str())
+        BodypartDepth::from(value.as_str())
     }
 }
 
+pub type BodypartTags = TagSet;
 
-pub type BodyPartTags = TagSet;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
+pub struct BodypartForcedStats(pub HashIdMap<f32>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct BodypartWeightedDistribution(pub HashIdMap<f32>);

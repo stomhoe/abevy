@@ -2,6 +2,25 @@
     id: "human",
     name: "Human Body",
     tags: ["humanoid"],
+    mass_kg: 70.0,
+    distributed_totals: {
+        "mass_kg": 70.0,
+        "hp_capacity": 390.0,
+        "hp_regen_rate": 18.8,
+        "blood_capacity": 225.0,
+        "bleed_rate": 24.8,
+        "walk_speed": 60.0,
+        "swim_speed": 3.9,
+        "manip_dex": 4.5,
+        "manip_str": 2.4,
+        "vision": 2.0,
+        "pain_sensitivity": 23.0,
+        "caloric_burn_rate": 40.9,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
     root: (
         part_id: "torso",
         label_override: "Torso",
@@ -59,17 +78,35 @@
                 children: [],
             ),
             (
-                part_id: "arm",
-                label_override: "Arm",
+                part_id: "shoulder",
+                label_override: "Left shoulder",
                 children: [
-                    (part_id: "hand", label_override: "Hand", children: []),
+                    (part_id: "arm", label_override: "Left arm", children: [
+                        (part_id: "hand", label_override: "Left Hand", children: []),
+                    ]),
                 ],
             ),
             (
                 part_id: "leg",
-                label_override: "Leg",
+                label_override: "Left leg",
                 children: [
-                    (part_id: "foot", label_override: "Foot", children: []),
+                    (part_id: "foot", label_override: "Left foot", children: []),
+                ],
+            ),
+            (
+                part_id: "shoulder",
+                label_override: "Right shoulder",
+                children: [
+                    (part_id: "arm", label_override: "Right arm", children: [
+                        (part_id: "hand", label_override: "Right Hand", children: []),
+                    ]),
+                ],
+            ),
+            (
+                part_id: "leg",
+                label_override: "Right leg",
+                children: [
+                    (part_id: "foot", label_override: "Right foot", children: []),
                 ],
             ),
         ],

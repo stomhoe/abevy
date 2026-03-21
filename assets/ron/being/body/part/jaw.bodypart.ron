@@ -2,17 +2,15 @@
     id: "jaw",
     name: "Jaw",
     coverage_weight: 5,
-    forced_stats: {
+    weighted_stats: {
+        "mass_kg": 0.25,
         "hp_capacity": 9.0,
         "hp_regen_rate": 0.8,
-        "pain_sensitivity": 1.2,
         "blood_capacity": 4.5,
         "manip_dex": 0.1,
         "manip_str": 0.4,
+        "pain_sensitivity": 1.2,
         "caloric_burn_rate": 0.4,
-    },
-    weighted_stats: {
-        "mass_kg": 0.25,
     },
     depth: "surface",
     vital: false,

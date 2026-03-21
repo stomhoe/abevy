@@ -116,6 +116,7 @@ pub fn sample_from_sprite_entities(
         if !sampled_configs.is_empty() {
             configs_to_build.push((*ent, ScsToBuild(std::mem::take(&mut sampled_configs))));
         }
+        cmd.entity(*ent).try_remove::<SampleSpriteEnts>();
     }
 
     cmd.try_insert_batch(std::mem::take(&mut configs_to_build));

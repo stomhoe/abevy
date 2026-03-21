@@ -108,8 +108,13 @@ macro_rules! impl_tag_hashset_methods {
 }
 macro_rules! define_tag_hashset_and_impl_methods {
     ($name:ident, $tag_type:ty) => {
-        #[derive(Component, Debug, Deserialize, Serialize, Clone, Default, PartialEq, Eq, TypePath, Asset)]
+        #[derive(Component, Deserialize, Serialize, Clone, Default, PartialEq, Eq, TypePath, Asset)]
         pub struct $name(pub HashSet<$tag_type>);
+        impl Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_list().entries(self.0.iter()).finish()
+            }
+        }
         impl_tag_hashset_methods!($name, $tag_type);
     };
 }

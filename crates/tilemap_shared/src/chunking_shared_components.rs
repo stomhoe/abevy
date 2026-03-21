@@ -1,4 +1,4 @@
-use bevy::{ecs::{entity::EntityHashSet, system::SystemParam}, prelude::*};
+use bevy::{ecs::{entity::{EntityHashSet, }, system::SystemParam}, prelude::*};
 use bevy_inspector_egui::egui;
 
 use crate::{LoadChunksAround, ChunkPos};
@@ -21,6 +21,9 @@ pub struct MacroChunk;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct MacroChunkRef(pub Entity);
+
+#[derive(Component, Debug, Clone, Copy, )]
+pub struct MacroChunkHolderRef(pub Entity);
 
 #[derive(Component, Debug, Copy, Clone, )]
 pub struct SaveTile {

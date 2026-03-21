@@ -81,7 +81,6 @@ pub fn plugin(app: &mut App) {
         .add_message::<PendingOp>()
         .add_message::<ChunkTerrainBuilt>()
         .add_message::<RequestMacroChunkBiomeSampling>()
-        .add_message::<MacroChunkBiomeSampled>()
 
 
         ;

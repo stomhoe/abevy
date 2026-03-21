@@ -1,5 +1,7 @@
+use ::being_shared::*;
 use bevy::prelude::*;
 use bevy::ecs::schedule::common_conditions::on_message;
+use bevy::ecs::schedule::ApplyDeferred;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::{HostSystems, game_common::ModifierSystems};
@@ -11,7 +13,7 @@ use crate::body::{
 };
 
 pub mod body_tree_components;
-pub mod body_part;
+pub mod bodypart;
 pub mod body_tree_resources;
 pub mod body_tree_seris;
 pub mod body_sampler;
@@ -19,7 +21,6 @@ mod body_systems;
 mod body_hp_systems;
 mod body_tree_build_systems;
 mod body_tree_ezero_init_systems;
-#[allow(unused_imports)] pub use body_part::body_part_components::*;
 #[allow(unused_imports)] pub use body_tree_components::*;
 #[allow(unused_imports)] pub use body_tree_resources::*;
 #[allow(unused_imports)] pub use body_tree_seris::*;
@@ -31,19 +32,19 @@ pub struct BodySystems;
 pub fn plugin(app: &mut App) {
     app.add_plugins((
         body_sampler::plugin,
-        body_part::plugin,
+        bodypart::plugin,
         plugin_body_tree,
     ))
     .add_systems(
         Update,
         (
-            (update_body_tree_weight_sum).in_set(ModifierSystems),
+            update_body_tree_weight_sum.in_set(ModifierSystems),
             (
                 apply_body_damage.run_if(on_message::<IncomingDamage>),
-                sync_body_part_missing,
+                sync_bodypart_missing,
                 update_body_health_from_parts,
                 apply_pain_slowdown,
-                build_body_tree,
+                build_body_trees_on_beings,
             )
             .in_set(HostSystems)
             .in_set(ModifierSystems),
@@ -52,13 +53,13 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
-            (init_ezero_body_trees, map_body_tree_id_to_entity).chain().in_set(BodySystems),
+            (init_ezero_body_trees, ApplyDeferred, distribute_ezero_body_tree_modifiers, map_body_tree_id_to_entity).chain().in_set(BodySystems),
         ),
     )
     .configure_sets(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
-            crate::body::body_part::BodyPartSystems.before(BodySystems),
+            crate::body::bodypart::BodypartSystems.before(BodySystems),
             BodySystems.before(body_sampler::BodySamplerSystems),
         ),
     )
@@ -69,5 +70,10 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyOf>()
     .replicate_filtered::<ChildOf, With<BodyOf>>()
     .replicate::<BodySums>()
-    .add_message::<IncomingDamage>();
+    .add_message::<IncomingDamage>()
+    //TEMPORAL
+    .register_type::<BodypartChildOfBodypart>()
+    .register_type::<BodypartChildrenBodyparts>()
+    .register_type::<BodySums>()
+    ;
 }

@@ -67,7 +67,7 @@ pub fn init_dimensions(
             Transform::default(),
             DisplayName::new(seri.name.clone()),
             Dimension,
-            Gravity(seri.gravity.max(0.0)),
+            Gravity(seri.gravity.max(1.0)),
             Visibility::Visible,
         )))
     }
@@ -75,4 +75,20 @@ pub fn init_dimensions(
     cmd.insert_batch(tagsets_to_insert);
     cmd.insert_batch(whitelisted_structure_gen_tags_to_insert);
     cmd.insert_batch(blacklisted_structure_gen_tags_to_insert);
+}
+
+#[allow(unused_parens, )]
+pub fn spawn_egui_macro_chunk_holders(
+    mut cmd: Commands,
+    query: Query<Entity, (With<Dimension>, Without<MacroChunkHolderRef>)>,
+) {
+    for dim_ent in query.iter() {
+        let holder_ent = cmd
+            .spawn((
+                Name::new("EguiMacroChunkHolder"),
+                ChildOf(dim_ent),
+            ))
+            .id();
+        cmd.entity(dim_ent).try_insert(MacroChunkHolderRef(holder_ent));
+    }
 }

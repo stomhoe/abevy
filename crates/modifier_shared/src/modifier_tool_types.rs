@@ -49,5 +49,5 @@ common::define_marker_components!(
     Sway,
     StaggerPower,
     Knockback,
-    BodyPartTargetingPrecision,
+    BodypartTargetingPrecision,
 );

@@ -25,22 +25,22 @@ pub fn tick_time_based_multipliers(
 pub fn clone_ezero_children_ents(
     mut cmd: Commands,
     query: Query<
-        (Entity, &EntityZeroRef, Has<Replicated>, Has<Persisted>),
+        (Entity, &EntityZeroRef, Has<Replicated>, ),
         (Changed<EntityZeroRef>, common::AnyDisabling),
     >,
 
-    ezero: Query<(&Children, Option<&HeldSprites>), (common::AnyDisabling)>,
+    ezero: Query<(&Children, Option<&HeldSprites>, ), (common::AnyDisabling, With<CloneEzeroChildren>, )>,
     client_state: Res<State<ClientState>>,
 ) {
     let mut new_child_of = Vec::new();
     let mut new_base_holder_ref = Vec::new();
 
     let is_client = *client_state.get() != ClientState::Disconnected;
-    query.iter().for_each(|(new_ent, ezero_ref, is_replicated, is_persisted)| {
+    query.iter().for_each(|(new_ent, ezero_ref, is_replicated, )| {
         let Ok((ezero_children, ezero_held_sprites)) = ezero.get(ezero_ref.0)
         else { return };
 
-        let is_replicated = (is_replicated || is_persisted);
+        let is_replicated = (is_replicated );
 
         if is_client && is_replicated {
             return;
@@ -83,7 +83,7 @@ pub fn despawn_sprites_without_childof(
 #[allow(unused_parens)]
 pub fn set_entity_name(
     ezeros_query: Query<
-        AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &EntityZeroRef)>,
+        AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName,)>,
         (With<EntityZero>, common::AnyDisabling),
     >,
     mut changers_query: Query<
@@ -114,7 +114,7 @@ pub fn set_entity_name(
 
         let mut ezero_id = String::new();
         if let Some(ezero_ref) = ezero_ref {
-            if let Ok((z_prefix, z_strid, z_strid20, z_display_name, _)) =
+            if let Ok((z_prefix, z_strid, z_strid20, z_display_name, )) =
                 ezeros_query.get(ezero_ref.0)
             {
                 if prefix.is_none() {
@@ -130,7 +130,7 @@ pub fn set_entity_name(
                     display_name = z_display_name;
                 }
             }
-            ezero_id = format!("{:?}", ezero_ref.0);
+            ezero_id = format!(" {:?}", ezero_ref);
         }
 
         let prefix = prefix.unwrap_or("");
@@ -142,21 +142,21 @@ pub fn set_entity_name(
                 + 1
                 + sid.len()
                 + sid20.len()
-                + ezero_id.len()
-                + display_name.map(|d| d.0.len() + 2).unwrap_or(0),
+                + display_name.map(|d| d.0.len() + 2).unwrap_or(0)
+                + ezero_id.len(),
         );
 
         new_name.push_str(prefix);
         new_name.push(' ');
         new_name.push_str(sid);
         new_name.push_str(sid20);
-        if !ezero_id.is_empty() {
-            new_name.push_str(&ezero_id);
-        }
-
         if let Some(dn) = display_name {
             new_name.push(' ');
             new_name.push_str(dn.0.as_str());
+        }
+
+        if !ezero_id.is_empty() {
+            new_name.push_str(&ezero_id);
         }
 
         name.set(new_name);

@@ -41,7 +41,7 @@ pub enum TryStartStepOutcome {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-#[require(SpeedMagnitude, FinalNormMoveDir, InputMoveDir, MoveAnimActive, AppliedModifiers, SnapTransformToGpos::OnAdd,)]
+#[require(InputMoveDir, FinalNormMoveDir, SpeedMagnitude, MoveAnimActive, AppliedModifiers, SnapTransformToGpos::OnAdd,)]
 pub struct GridLockedMovement {
     pub visual_origin_tile: IVec2,
     pub step_dir: IVec2,

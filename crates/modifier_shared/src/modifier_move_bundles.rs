@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use game_common::game_common_timers::SimDespawnTimer;
 
-use crate::{modifier_components::*, modifier_types::WalkSpeed};
+use crate::{modifier_components::*, modifier_types::*};
 
 
 
@@ -39,3 +39,10 @@ impl TempSpeedModifier {
         )
     }
 }
+
+#[derive(Bundle, Debug, )]
+pub struct AllSpeeds(
+    WalkSpeed,
+    FlySpeed,
+    SwimSpeed,
+);

@@ -1,11 +1,12 @@
 use core::f32;
 
-use being_shared::{BodyTreeWeightSum, ComputedLocally};
+use being_shared::{Body, BodypartChildrenBodyparts, BodyTreeWeightSum, ComputedLocally};
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::{EntityZero, EntityZeroRef};
 
+use modifier_shared::{modifier_has_marker, resolve_modifier_component};
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
 use tilemap_shared::*;
@@ -17,22 +18,23 @@ pub fn process_input_direction_modifiers(
     mut being_query: Query<(
         Entity,
         &AppliedModifiers,
+        Option<&Body>,
         &InputMoveDir,
         &mut FinalNormMoveDir,
         Has<ComputedLocally>,
     )>,
-    modifiers_query: Query<(
-        Entity,
-        &ModifierTarget,
-        &CurrEffectiveValue,
-        &ApplyMode,
-        Has<InvertMovement>,
-    )>,
+    modifiers_query: Query<(Entity, &ModifierTarget, Option<&EntityZeroRef>, ), (Without<EntityZero>, )>,
+    curr_values_query: Query<&CurrEffectiveValue, >,
+    apply_modes_query: Query<&ApplyMode, >,
+    invert_markers_query: Query<(), With<InvertMovement>>,
+    bodyparts_query: Query<&BodypartChildrenBodyparts, >,
+    children_query: Query<&Children, >,
+    ezero_refs_query: Query<&EntityZeroRef>,
     mut effects: Local<EntityHashSet>,
 
 ) {
     let is_client = state.get() == &ClientState::Connected;
-    for (being_ent, applied, input_move_dir, mut norm_move_dir, controlled_locally) in being_query.iter_mut()
+    for (being_ent, applied, body, input_move_dir, mut norm_move_dir, controlled_locally) in being_query.iter_mut()
     {
         if is_client && !controlled_locally {
             continue;
@@ -50,14 +52,41 @@ pub fn process_input_direction_modifiers(
                 effects.insert(modifier_ent);
             }
         }
+        let Some(body) = body else {
+            continue;
+        };
+        let Ok(bodyparts) = bodyparts_query.get(body.entity()) else {
+            continue;
+        };
+        for bodypart_ent in bodyparts.iter() {
+            let Ok(part_ezero_ref) = ezero_refs_query.get(bodypart_ent) else {
+                continue;
+            };
+            let Ok(children) = children_query.get(part_ezero_ref.0) else {
+                continue;
+            };
+            for child_ent in children.iter() {
+                effects.insert(child_ent);
+            }
+        }
         for effect in effects.iter() {
-            let Ok((_, _, &CurrEffectiveValue(val), optype, invert)) = modifiers_query.get(*effect)
+            let Ok((modifier_ent, _, ezero_ref, )) = modifiers_query.get(*effect)
             else {
                 continue;
             };
+            if !modifier_has_marker::<InvertMovement>(modifier_ent, ezero_ref, &invert_markers_query) {
+                continue;
+            }
+            let Some(curr_value) = resolve_modifier_component(modifier_ent, ezero_ref, &curr_values_query) else {
+                continue;
+            };
+            let Some(optype) = resolve_modifier_component(modifier_ent, ezero_ref, &apply_modes_query) else {
+                continue;
+            };
+            let val = curr_value.0;
             match optype {
-                ApplyMode::Add if invert => invert_sum += val,
-                ApplyMode::Mul if invert => invert_scale *= val.max(0.0),
+                ApplyMode::Add => invert_sum += val,
+                ApplyMode::Mul => invert_scale *= val.max(0.0),
                 _ => {}
             }
         }
@@ -78,21 +107,19 @@ pub fn process_speed_modifiers(
         &DimensionRef,
         &GlobalTilePos,
         &AppliedModifiers,
+        Option<&Body>,
         &mut SpeedMagnitude,
         Option<&BodyTreeWeightSum>,
         Has<ComputedLocally>,
     )>,
-    modifiers_query: Query<
-        (
-            Entity,
-            &ModifierTarget,
-            &CurrEffectiveValue,
-            &ApplyMode,
-            Has<MitigatingOnly>,
-        ),
-        With<WalkSpeed>,
-    >,
-    tile_entity_zero_refs: Query<&EntityZeroRef>,
+    modifiers_query: Query<(Entity, &ModifierTarget, Option<&EntityZeroRef>, ), (Without<EntityZero>, )>,
+    curr_values_query: Query<&CurrEffectiveValue>,
+    apply_modes_query: Query<&ApplyMode, >,
+    walk_markers_query: Query<(), With<WalkSpeed>>,
+    mitigating_only_markers_query: Query<(), With<MitigatingOnly>>,
+    bodyparts_query: Query<&BodypartChildrenBodyparts, >,
+    children_query: Query<&Children, >,
+    ezero_refs_query: Query<&EntityZeroRef>,
     tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
     mut tile_gathering: TileGatheringParamSet,
 ) {
@@ -101,6 +128,7 @@ pub fn process_speed_modifiers(
         &dim_ref,
         tile_pos,
         applied,
+        body,
         mut speed_magnitude,
         body_weight_sum,
         controlled_locally,
@@ -126,12 +154,44 @@ pub fn process_speed_modifiers(
                 effects.insert(modifier_ent);
             }
         }
+        let Some(body) = body else {
+            continue;
+        };
+        let Ok(bodyparts) = bodyparts_query.get(body.entity()) else {
+            continue;
+        };
+        for bodypart_ent in bodyparts.iter() {
+            let Ok(part_ezero_ref) = ezero_refs_query.get(bodypart_ent) else {
+                continue;
+            };
+            let Ok(children) = children_query.get(part_ezero_ref.0) else {
+                continue;
+            };
+            for child_ent in children.iter() {
+                effects.insert(child_ent);
+            }
+        }
         for effect in effects.iter() {
-            let Ok((_, _, &CurrEffectiveValue(val), optype, mitigating)) =
+            let Ok((modifier_ent, _, ezero_ref, )) =
                 modifiers_query.get(*effect)
             else {
                 continue;
             };
+            if !modifier_has_marker::<WalkSpeed>(modifier_ent, ezero_ref, &walk_markers_query) {
+                continue;
+            }
+            let Some(curr_value) = resolve_modifier_component(modifier_ent, ezero_ref, &curr_values_query) else {
+                continue;
+            };
+            let Some(optype) = resolve_modifier_component(modifier_ent, ezero_ref, &apply_modes_query) else {
+                continue;
+            };
+            let mitigating = modifier_has_marker::<MitigatingOnly>(
+                modifier_ent,
+                ezero_ref,
+                &mitigating_only_markers_query,
+            );
+            let val = curr_value.0;
             match optype {
                 ApplyMode::Add => {
                     if val > 0.0 {
@@ -162,7 +222,7 @@ pub fn process_speed_modifiers(
 
         let mut tile_walk_mult: f32 = 1.0;
         for tile_ent in tile_gathering.gather_tiles_at_to_drain(dim_ref, *tile_pos) {
-            let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(*tile_ent) else {
+            let Ok(tile_cfg_ref) = ezero_refs_query.get(*tile_ent) else {
                 continue;
             };
             let Ok(tile_walk_mult_cfg) = tile_walk_speed_mults.get(tile_cfg_ref.0) else {

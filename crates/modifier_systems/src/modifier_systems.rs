@@ -1,8 +1,9 @@
 use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap};
 #[allow(unused_imports)] use bevy::prelude::*;
-use game_common::game_common_components::TimeBasedMultiplier;
+use game_common::game_common_components::{EntityZero, EntityZeroRef, TimeBasedMultiplier};
 use common::common_components::Tag;
 
+use modifier_shared::resolve_modifier_component;
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::*;
 
@@ -70,6 +71,7 @@ pub fn update_modifier_effective_values(
     modifiers_query: Query<(
         Entity,
         &ModifierTarget,
+        Option<&EntityZeroRef>,
         Option<&BaseValue>,
         Option<&TimeBasedMultiplier>,
         Option<&ModifierTags>,
@@ -77,20 +79,29 @@ pub fn update_modifier_effective_values(
         Option<&CopyFracOfOthersIntoSelf>,
         Option<&Antidote>,
     )>,
+    base_values_query: Query<&BaseValue>,
+    time_multipliers_query: Query<&TimeBasedMultiplier>,
+    modifier_tags_query: Query<&ModifierTags>,
+    offset_vals_query: Query<&OffsetValForSelf>,
+    copy_fracs_query: Query<&CopyFracOfOthersIntoSelf>,
+    antidotes_query: Query<&Antidote>,
     mut effective_query: Query<&mut CurrEffectiveValue>,
 ) {
     let mut target_aggs: EntityHashMap<TargetAggregates> = EntityHashMap::new();
     let mut new_eff_values = Vec::new();
 
-    for (_entity, target, base_value, time_multiplier, tags, _offsets, _copy_fracs, antidote) in modifiers_query.iter() {
-        let Some(raw_value) = compute_raw_value(base_value, None, time_multiplier) else { continue; };
-        let tags = tags.cloned().unwrap_or_default();
+    for (entity, target, ezero_ref, _base_value, _time_multiplier, _tags, _offsets, _copy_fracs, _antidote) in modifiers_query.iter() {
+        let base_value = resolve_modifier_component(entity, ezero_ref, &base_values_query);
+        let time_multiplier = resolve_modifier_component(entity, ezero_ref, &time_multipliers_query);
+        let Some(raw_value) = compute_raw_value(base_value.as_ref(), None, time_multiplier.as_ref()) else { continue; };
+        let tags = resolve_modifier_component(entity, ezero_ref, &modifier_tags_query).unwrap_or_default();
 
         let target_agg = target_aggs.entry(target.0).or_default();
         for tag in tags.iter() {
             *target_agg.tag_counts.entry(tag.clone()).or_insert(0) += 1;
             *target_agg.tag_value_sum.entry(tag.clone()).or_insert(0.0) += raw_value;
         }
+        let antidote = resolve_modifier_component(entity, ezero_ref, &antidotes_query);
         if let Some(antidote) = antidote {
             for (tag, effectiveness) in antidote.0.iter() {
                 *target_agg.antidote_sum.entry(tag.clone()).or_insert(0.0) += raw_value * effectiveness;
@@ -100,13 +111,16 @@ pub fn update_modifier_effective_values(
 
     let mut computed_values: EntityHashMap<f32> = EntityHashMap::new();
 
-    for (modi_entity, target, base_value, time_multiplier, tags, offsets, copy_fracs, _antidote) in modifiers_query.iter() {
+    for (modi_entity, target, ezero_ref, _base_value, _time_multiplier, _tags, _offsets, _copy_fracs, _antidote) in modifiers_query.iter() {
         let Some(target_agg) = target_aggs.get(&target.0) else { continue; };
-        let Some(raw_value) = compute_raw_value(base_value, None, time_multiplier) else { continue; };
-        let tags = tags.cloned().unwrap_or_default();
+        let base_value = resolve_modifier_component(modi_entity, ezero_ref, &base_values_query);
+        let time_multiplier = resolve_modifier_component(modi_entity, ezero_ref, &time_multipliers_query);
+        let Some(raw_value) = compute_raw_value(base_value.as_ref(), None, time_multiplier.as_ref()) else { continue; };
+        let tags = resolve_modifier_component(modi_entity, ezero_ref, &modifier_tags_query).unwrap_or_default();
 
         let mut value = raw_value;
 
+        let offsets = resolve_modifier_component(modi_entity, ezero_ref, &offset_vals_query);
         if let Some(offsets) = offsets {
             for (tag, offset) in offsets.0.iter() {
                 let Some(count) = target_agg.tag_counts.get(tag) else { continue; };
@@ -121,6 +135,7 @@ pub fn update_modifier_effective_values(
             }
         }
 
+        let copy_fracs = resolve_modifier_component(modi_entity, ezero_ref, &copy_fracs_query);
         if let Some(copy_fracs) = copy_fracs {
             for (tag, mult) in copy_fracs.0.iter() {
                 let Some(sum) = target_agg.tag_value_sum.get(tag) else { continue; };
@@ -157,6 +172,7 @@ pub fn sync_modifier_name_to_effects(
         (
             Entity,
             &mut Name,
+            Option<&EntityZeroRef>,
             Option<&CurrEffectiveValue>,
             Has<WalkSpeed>,
             Has<FlySpeed>,
@@ -168,7 +184,7 @@ pub fn sync_modifier_name_to_effects(
             Has<HitpointRegenRate>,
         ),
         (
-            With<ModifierTarget>,
+            Without<EntityZero>,
             Or<(
                 Or<(
                     Added<WalkSpeed>,
@@ -189,12 +205,12 @@ pub fn sync_modifier_name_to_effects(
                     Added<ManipulationStrength>,
                     Added<Vision>,
                     Added<MinForDamage>,
-                    Added<CurrEffectiveValue>,
                     Changed<CurrEffectiveValue>,
                 )>,
             )>,
         ),
     >,
+    ezero_curr_values: Query<&CurrEffectiveValue>,
     effects_query: Query<
         (
             Has<BloodCapacity>,
@@ -206,12 +222,12 @@ pub fn sync_modifier_name_to_effects(
             Has<Vision>,
             Has<MinForDamage>,
         ),
-        With<ModifierTarget>,
     >,
 ) {
     for (
         entity,
         mut name,
+        ezero_ref,
         curr_value,
         has_walk_speed,
         has_fly_speed,
@@ -232,6 +248,7 @@ pub fn sync_modifier_name_to_effects(
             has_vision,
             has_min_for_damage,
         )) = effects_query.get(entity) else { continue; };
+        let curr_value = resolve_modifier_component(entity, ezero_ref, &ezero_curr_values);
 
         let mut effects = Vec::with_capacity(17);
         if has_walk_speed { effects.push("Walk"); }
