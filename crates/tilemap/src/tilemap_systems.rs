@@ -74,6 +74,7 @@ pub struct ProcessTilesPreParams<'w, 's> {
     pub tile_components_queries: ParamSet<'w, 's, (ComponentsQueries<'w, 's>,)>,
     pub shader_query: Query<'w, 's, &'static TileShader, ()>,
     pub terrbl_query: Query<'w, 's, &'static TerrBlendParams>,
+    pub terrbl_handle_query: Query<'w, 's, &'static mut MaterialTilemapHandle<TerrBlendMat>>,
     pub locals: SystemLocals<'s>,
 }
 
@@ -389,8 +390,17 @@ pub fn process_tiles_pre(
             match shader {
                 TileShader::TerrBlend(_) => {
                     if let Some(material) = terrbl_material {
-                        let material = MaterialTilemapHandle::from(resources.texture_overlay_mat.add(material));
-                        terrbl_mats.push((tmap_ent, material));
+                        if let Ok(mut terrbl_handle) = params.terrbl_handle_query.get_mut(tmap_ent) {
+                            let curr_handle = (**terrbl_handle).clone();
+                            if let Some(curr_mat) = resources.texture_overlay_mat.get_mut(&curr_handle) {
+                                *curr_mat = material;
+                            } else {
+                                **terrbl_handle = resources.texture_overlay_mat.add(material);
+                            }
+                        } else {
+                            let material = MaterialTilemapHandle::from(resources.texture_overlay_mat.add(material));
+                            terrbl_mats.push((tmap_ent, material));
+                        }
                     } else {
                         error!(
                             target: TILEMAP_SYSTEM,

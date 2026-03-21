@@ -157,7 +157,12 @@ pub fn refresh_terrbl_tilemaps(
                     continue;
                 };
                 trace!(target: TILEMAP_SYSTEM, "terrbl debug: refreshed marked material for tmap {:?}", tmap_ent);
-                **material_handle = params.texture_overlay_mat.add(material);
+                let curr_handle = (**material_handle).clone();
+                if let Some(curr_mat) = params.texture_overlay_mat.get_mut(&curr_handle) {
+                    *curr_mat = material;
+                } else {
+                    **material_handle = params.texture_overlay_mat.add(material);
+                }
             }
         }
         cmd.entity(tmap_ent).remove::<NeedsTerrblRefresh>();
