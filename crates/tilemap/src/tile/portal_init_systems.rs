@@ -92,16 +92,15 @@ pub fn validate_portal_recipes(
 #[allow(unused_parens)]
 pub fn instantiate_portal(
     mut cmd: Commands,
-    portals: Query<
+    portal_query: Query<
         (
             Entity,
             &DimensionRef,
             &GlobalTilePos,
             &EntityZeroRef,
-            Has<AwaitingStartSearch>,
             Option<&SearchingForSuitablePos>,
         ),
-        (Without<EntityZero>, With<Tile>),
+        (Without<EntityZero>, With<Tile>, With<AwaitingStartSearch>),
     >,
     ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>,)>,
     mut mass_collected: ResMut<MassCollectedTiles>,
@@ -205,7 +204,7 @@ pub fn instantiate_portal(
         target: PORTAL_INIT,
         searched_entity_label: "portal tile",
         cmd: cmd,
-        searching_entities: portals,
+        searching_entities: portal_query,
         search_params: search_params,
         make_search_request: make_search_request,
         handle_success_event: handle_success_event,

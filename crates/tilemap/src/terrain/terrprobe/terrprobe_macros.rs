@@ -12,7 +12,7 @@ macro_rules! run_suitable_pos_search_logic {
     ) => {{
         $search_params.pending_by_requester.clear();
         $search_params.requester_collect_all.clear();
-        for (ent, &dim_ref, &my_pos, &ezero_ref, _, searching_for) in $searching_entities.iter() {
+        for (ent, &dim_ref, &my_pos, &ezero_ref, searching_for) in $searching_entities.iter() {
             if let Some($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos {
                 requester,
                 collect_all_successes,
@@ -28,10 +28,7 @@ macro_rules! run_suitable_pos_search_logic {
         }
 
         $searching_entities
-            .iter().for_each(|(search_ent, &dim_ref, &global_pos, ezero_ref, is_awaiting_start, ..)| {
-                if !is_awaiting_start {
-                    return;
-                }
+            .iter().for_each(|(search_ent, &dim_ref, &global_pos, ezero_ref, ..)| {
                 $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::AwaitingStartSearch>();
 
                 let Some(mut probe) =

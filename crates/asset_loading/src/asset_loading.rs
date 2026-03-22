@@ -27,10 +27,6 @@ pub fn plugin(app: &mut App) {
             reload_assets_while_ingame,
             sync_hot_reload_markers,
             process_hot_reload_request,
-            validate_defs_after_load.run_if(
-                in_state(AssetLoading::SpawnReplicatedEntities)
-                    .and(in_state(ClientState::Disconnected))
-            ),
         ).chain())
         .add_systems(OnExit(AppState::StatefulGameSession),
             despawn_asset_scoped_entities
@@ -47,7 +43,8 @@ pub fn plugin(app: &mut App) {
         // Don't use OnExit(AssetLoading::SpawnReplicatedEntities) because clients aren't in that state
 
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            on_assets_loaded.in_set(AssetHotReloading)
+            on_assets_loaded.in_set(AssetHotReloading),
+            validate_defs_after_load.run_if(in_state(ClientState::Disconnected)),
         ))
         .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             AssetHotReloading.run_if(in_state(AssetHotReloadState::Ongoing)).after(GameplaySystems)
