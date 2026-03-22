@@ -2,9 +2,11 @@ use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
 use common::{common_states::AssetLoading };
 use bevy_ecs_tilemap::prelude::*;
+use bevy::ecs::schedule::common_conditions::any_with_component;
 use game_common::{game_common_samplers::EntityWeightedSampler};
 use sprite_systems::AcSpriteSystems;
 use bevy::prelude::*;
+use crate::terrain::terrprobe::{search_suitable_positions, terrprobe_components::AwaitingStartSearch, terrprobe_messages::{SearchFailed, SuitablePosFound}};
 use crate::tile::tile_systems::*;
 use crate::tile::portal_init_systems::*;
 use crate::tile::tile_init_systems::*;
@@ -45,7 +47,14 @@ pub fn plugin(app: &mut App) {
     app
     .add_systems(Update, (
 
-        instantiate_portal.run_if(in_state(ClientState::Disconnected)),
+        start_portal_search
+            .run_if(in_state(ClientState::Disconnected))
+            .run_if(any_with_component::<AwaitingStartSearch>)
+            .before(search_suitable_positions),
+        resolve_portal_search_results
+            .run_if(in_state(ClientState::Disconnected))
+            .run_if(on_message::<SuitablePosFound>.or(on_message::<SearchFailed>))
+            .after(search_suitable_positions),
         flip_tile_based_on_initial_pos_hash,
         rotate_tile_based_on_initial_pos_hash,
         sync_sprite_flips_with_tileflip,

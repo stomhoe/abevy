@@ -60,7 +60,7 @@ pub fn map_portal_tiles(
 #[allow(unused_parens)]
 pub fn validate_portal_recipes(
     mut cmd: Commands,
-    mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>)>,
+    mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>), With<EntityZero>>,
     dimension_query: Query<&DimensionRootOplist>,
     terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
 ) {
@@ -90,21 +90,20 @@ pub fn validate_portal_recipes(
     }
 }
 #[allow(unused_parens)]
-pub fn instantiate_portal(
+pub fn start_portal_search(
     mut cmd: Commands,
-    portal_query: Query<
+    portals: Query<
         (
             Entity,
             &DimensionRef,
             &GlobalTilePos,
             &EntityZeroRef,
+            Option<&PortalTo>,
             Option<&SearchingForSuitablePos>,
         ),
         (Without<EntityZero>, With<Tile>, With<AwaitingStartSearch>),
     >,
     ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>,)>,
-    mut mass_collected: ResMut<MassCollectedTiles>,
-    mut register_pos: ResMut<ImportantRegisteredPositions>,
     terrprobe_query: Query<&TerrProbeTempl>,
     mut search_params: SearchParams,
 ) {
@@ -134,6 +133,72 @@ pub fn instantiate_portal(
         Some(probe)
     };
 
+    for (portal_ent, dim_ref, global_pos, ezero_ref, portal_to, searching_for) in portals.iter() {
+        if portal_to.is_some() {
+            cmd.entity(portal_ent).try_remove::<AwaitingStartSearch>();
+            continue;
+        }
+        if searching_for.is_some() {
+            continue;
+        }
+        cmd.entity(portal_ent).try_remove::<AwaitingStartSearch>();
+
+        let Some(mut probe) = make_search_request(&mut cmd, portal_ent, *global_pos, *ezero_ref) else {
+            continue;
+        };
+        if probe.requester == Entity::PLACEHOLDER {
+            probe.requester = portal_ent;
+        }
+        let requester = probe.requester;
+
+        info!(
+            target: PORTAL_INIT,
+            "Starting suitable-pos search for portal tile entity {:?} at position {:?}",
+            portal_ent,
+            global_pos
+        );
+
+        cmd.entity(portal_ent).try_insert(SearchingForSuitablePos {
+            requester,
+            collect_all_successes: probe.collect_all_successes,
+        });
+        search_params
+            .requester_collect_all
+            .insert(requester, probe.collect_all_successes);
+        search_params
+            .requester_had_success
+            .insert(requester, false);
+        search_params
+            .min_result_distance_by_requester
+            .insert(requester, probe.min_result_distance as u64);
+        search_params.pos_searches_msgs_to_write.push(probe);
+        search_params
+            .pending_by_requester
+            .entry(requester)
+            .or_default()
+            .push((portal_ent, *global_pos, *dim_ref, *ezero_ref));
+    }
+    search_params.write_pos_searches();
+}
+
+#[allow(unused_parens)]
+pub fn resolve_portal_search_results(
+    mut cmd: Commands,
+    portals: Query<
+        (
+            Entity,
+            &DimensionRef,
+            &GlobalTilePos,
+            &EntityZeroRef,
+            Option<&SearchingForSuitablePos>,
+        ),
+        (Without<EntityZero>, With<Tile>),
+    >,
+    ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>,)>,
+    mut mass_collected: ResMut<MassCollectedTiles>,
+    mut register_pos: ResMut<ImportantRegisteredPositions>,
+    mut search_params: SearchParams,
+) {
     let mut handle_success_event = |cmd: &mut Commands,
                                     portal_ent: Entity,
                                     my_pos: GlobalTilePos,
@@ -172,9 +237,6 @@ pub fn instantiate_portal(
             .try_insert(PortalTo::new(oe_portal, portal_recipe.sampler.clone()))
             .try_remove::<(SearchingForSuitablePos, AwaitingStartSearch)>();
 
-        cmd.entity(oe_portal)
-            .try_remove::<(AwaitingStartSearch)>();
-
         if !portal_recipe.one_way {
             cmd.entity(oe_portal).try_insert(PortalTo::new(portal_ent, portal_recipe.sampler.clone()));
         }
@@ -204,9 +266,8 @@ pub fn instantiate_portal(
         target: PORTAL_INIT,
         searched_entity_label: "portal tile",
         cmd: cmd,
-        searching_entities: portal_query,
+        searching_entities: portals,
         search_params: search_params,
-        make_search_request: make_search_request,
         handle_success_event: handle_success_event,
         handle_pending_failure: handle_pending_failure,
     );

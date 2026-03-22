@@ -6,7 +6,6 @@ macro_rules! run_suitable_pos_search_logic {
         cmd: $cmd:ident,
         searching_entities: $searching_entities:ident,
         search_params: $search_params:ident,
-        make_search_request: $make_search_request:ident,
         handle_success_event: $handle_success_event:ident,
         handle_pending_failure: $handle_pending_failure:ident,
     ) => {{
@@ -26,50 +25,6 @@ macro_rules! run_suitable_pos_search_logic {
                 $search_params.requester_had_success.entry(*requester).or_insert(false);
             }
         }
-
-        $searching_entities
-            .iter().for_each(|(search_ent, &dim_ref, &global_pos, ezero_ref, ..)| {
-                $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::AwaitingStartSearch>();
-
-                let Some(mut probe) =
-                    $make_search_request(&mut $cmd, search_ent, global_pos, *ezero_ref)
-                else {
-                    return;
-                };
-                if probe.requester == Entity::PLACEHOLDER {
-                    probe.requester = search_ent;
-                }
-                let requester = probe.requester;
-
-                info!(
-                    target: $target,
-                    "Starting suitable-pos search for {} entity {:?} at position {:?}",
-                    $searched_entity_label,
-                    search_ent,
-                    global_pos
-                );
-
-                $cmd.entity(search_ent)
-                    .try_insert($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos {
-                        requester,
-                        collect_all_successes: probe.collect_all_successes,
-                    });
-                $search_params
-                    .requester_collect_all
-                    .insert(requester, probe.collect_all_successes);
-                $search_params
-                    .requester_had_success
-                    .insert(requester, false);
-                $search_params
-                    .min_result_distance_by_requester
-                    .insert(requester, probe.min_result_distance as u64);
-                $search_params.pos_searches_msgs_to_write.push(probe);
-                $search_params
-                    .pending_by_requester
-                    .entry(requester)
-                    .or_default()
-                    .push((search_ent, global_pos, dim_ref, *ezero_ref));
-            });
 
         let mut accepted_results: Vec<(DimensionRef, GlobalTilePos)> = Vec::new();
         for suitable_pos in $search_params.reader_search_successful.read() {

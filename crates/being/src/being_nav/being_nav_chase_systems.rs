@@ -1,6 +1,6 @@
 use crate::being_components::{Being, Chasing};
 use ::being_shared::*;
-use ::tilemap_shared::{BeingsWithinChunk, ChunkPos, DimensionRef, GlobalTilePos, LoadedChunks};
+use ::tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, LoadedChunks};
 use bevy::{
     ecs::entity::EntityHashSet,
     platform::collections::{HashMap, HashSet},
@@ -14,7 +14,7 @@ use movement::movement_components::InputMoveDir;
 use movement::movement_components::SpeedMagnitude;
 use param_sets::BlockingTileParamSet;
 use tilemap::chunking::chunking_components::ActivatingChunks;
-use tilemap_shared::{LoadChunksAround, CheckIfChunkShouldDespawn, ChunkWithBeingsWantsDespawn};
+use tilemap_shared::{LoadChunksAround, CheckIfChunkShouldDespawn, };
 use std::time::Duration;
 
 use super::being_nav_components::RetainedChasePathSnapshot;

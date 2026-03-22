@@ -7,7 +7,6 @@ use bevy::{
     platform::collections::HashMap,
     prelude::*,
 };
-use common::log_targets::BEING_SYSTEM;
 use param_sets::BlockingTileParamSet;
 
 use super::being_nav_resources::AiNavGrids;
