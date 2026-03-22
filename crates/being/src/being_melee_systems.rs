@@ -46,7 +46,7 @@ pub fn apply_melee_attack(
         Option<&TileFlip>,
         Option<&CardinalDirection>,
     )>,
-    tile_receivers: Query<(&InteractionZones, Option<&SizeInTiles>)>,
+    tile_receivers: Query<&InteractionZones>,
     mut health_damage_writer: MessageWriter<HealthDamage>,
     mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
     mut health_damage_messages: Local<Vec<HealthDamage>>,
@@ -94,7 +94,6 @@ pub fn apply_melee_attack(
                 break;
             }
             if !melee_zone.is_inside_any(
-                SizeInTiles::default(),
                 TileFlip::default(),
                 attacker_direction,
                 attacker_pos,
@@ -121,7 +120,6 @@ pub fn apply_melee_attack(
                     &zone_sources,
                 );
                 let hit = collision_zone.is_inside_any(
-                    SizeInTiles::default(),
                     TileFlip::default(),
                     target_direction.copied().unwrap_or_default(),
                     target_pos_px,
@@ -143,7 +141,6 @@ pub fn apply_melee_attack(
                 break;
             }
             if !melee_zone.is_inside_any(
-                SizeInTiles::default(),
                 TileFlip::default(),
                 attacker_direction,
                 attacker_pos,
@@ -160,17 +157,16 @@ pub fn apply_melee_attack(
                 else {
                     continue;
                 };
-                let Ok((target_zones, target_size_in_tiles)) = tile_receivers.get(tile_ezero) else {
+                let Ok(target_zones) = tile_receivers.get(tile_ezero) else {
                     continue;
                 };
                 let hit_point = candidate_gpos;
                 let accepts_hit = target_zones.is_point_inside_zone(
                     COLLISION_MASK_HASHID,
-                    target_size_in_tiles.copied().unwrap_or_default(),
                     tile_origin.to_pixelpos(),
-                    hit_point.to_pixelpos(),
-                    tile_flip.copied().unwrap_or_default(),
                     tile_direction.copied().unwrap_or_default(),
+                    tile_flip.copied().unwrap_or_default(),
+                    hit_point.to_pixelpos(),
                 );
                 if !accepts_hit {
                     continue;

@@ -19,7 +19,6 @@ pub struct Bifurcation{
 #[require(Prefix::trunc("OpList"), Replicated, AssetScoped, HotReload, AddSameHashedTags)]
 #[component(map_entities)]
 pub struct OperationList {
-    /// Expression tree representation (slot-free runtime system)
     pub expr_tree: crate::terrain::terrgen_expression::ExprOpList,
     /// Variable names to keep in runtime debug capture for this oplist.
     pub hash_ids_mapped_to_strids: HashIdMap<StrId>,

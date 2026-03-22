@@ -1,6 +1,6 @@
 (
     id: "rat",
-    spawn_being_count_normal_dist: (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0),
+    spawn_being_count_normal_dist: (min_dev: 5.0, max_dev: 6.0, mean: 6.0, std_dev: 4.0),
     race_ids: {
         "rat": (1.0, (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0)),
     },

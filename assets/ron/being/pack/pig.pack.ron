@@ -1,13 +1,12 @@
 (
-    id: "wolf",
+    id: "pig",
     spawn_being_count_normal_dist: (min_dev: 2.0, max_dev: 4.0, mean: 6.0, std_dev: 2.0),
     race_ids: {
-        "wolf": (1.0, (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0)),
+        "pig": (1.0, (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0)),
     },
     bit_ids: {},
     biome_affinity: {
-        "temp": 0.6,
-        "artic": 0.6,
+        "temp": 1.2,
     },
     behavior_on_member_attack: "",
     chunk_separation_to_others: {},

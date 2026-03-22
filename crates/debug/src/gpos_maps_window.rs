@@ -177,14 +177,13 @@ pub fn gpos_maps_window_system(
                             blocked = true;
                             break;
                         }
-                        let Ok((interaction_zones, size_in_tiles)) = tile_interaction_zones.get(ezero_ref.0) else { continue; };
+                        let Ok((interaction_zones, _size_in_tiles)) = tile_interaction_zones.get(ezero_ref.0) else { continue; };
                         if interaction_zones.is_point_inside_zone(
                             InteractionZones::COLLISION_MASK_HASHID,
-                            *size_in_tiles,
                             tile_origin.to_pixelpos(),
-                            gpos.to_pixelpos(),
-                            tile_flip.copied().unwrap_or_default(),
                             direction.copied().unwrap_or_default(),
+                            tile_flip.copied().unwrap_or_default(),
+                            gpos.to_pixelpos(),
                         ) {
                             blocked = true;
                             break;

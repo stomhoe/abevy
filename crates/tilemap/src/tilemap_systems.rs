@@ -183,7 +183,7 @@ pub fn process_tiles_pre(
             }
         }
 
-        //cmd.entity(tile_ent).try_insert_if_new(Signature::from((ez_hash_id, dim_hash, bundle.gpos)));
+        cmd.entity(tile_ent).try_insert_if_new(Signature::from((ez_hash_id, _dim_hash, bundle.gpos)));
 
         if to_persist {
             if is_host {

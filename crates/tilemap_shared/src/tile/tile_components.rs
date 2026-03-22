@@ -104,14 +104,13 @@ impl InteractionZones {
     pub fn is_point_inside_zone(
         &self,
         zone_id: HashId,
-        size_in_tiles: SizeInTiles,
-        anchor_transf: Vec2,
-        client_transf: Vec2,
-        flip: TileFlip,
+        zone_anchor: Vec2,
         direction: CardinalDirection,
+        flip: TileFlip,
+        point_transf: Vec2,
     ) -> bool {
         let zone = self.0.get(zone_id).ok();
-        zone.is_some_and(|zone| zone.is_inside_any(size_in_tiles, flip, direction, anchor_transf, client_transf))
+        zone.is_some_and(|zone| zone.is_inside_any(flip, direction, zone_anchor, point_transf))
     }
     pub fn interaction_zones_intersect(
         &self,
@@ -196,13 +195,12 @@ impl InteractionZone {
 
     pub fn is_inside_any(
         &self,
-        size_in_tiles: SizeInTiles,
         flip: TileFlip,
         direction: CardinalDirection,
         anchor_transf: Vec2,
         consumer_transf: Vec2,
     ) -> bool {
-        let _ = (size_in_tiles, flip);
+        let _ = flip;
         self.contains_gpos(direction, anchor_transf.into(), consumer_transf.into())
     }
 
