@@ -20,6 +20,7 @@ use crate::{
     being_components::*,
     being_control_systems::*,
     being_inst_template::BeingInstTemplateSystems,
+    being_portal_resources::*,
     being_portal_systems::*,
     being_systems::*,
     body::{self, BodySystems},
@@ -43,6 +44,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<AiNavGrids>()
     .init_resource::<ChaserNavPlans>()
     .init_resource::<FrozenBgSimulatedBeingsMap>()
+    .init_resource::<PortalCrossingIndex>()
 
     .add_systems(Update, (
         (
@@ -53,6 +55,7 @@ pub fn plugin(app: &mut App) {
             add_activates_chunks,
             sync_player_being_chunk_ranges,
             assign_uncomputed_beings_to_host,
+            rebuild_portal_crossing_index,
             cross_portal,
             freeze_being.run_if(on_message::<UnloadBeing>),
             unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>),

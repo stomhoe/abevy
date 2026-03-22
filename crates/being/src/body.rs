@@ -1,5 +1,5 @@
 use ::being_shared::*;
-use bevy::prelude::*;
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy::ecs::schedule::common_conditions::on_message;
 use bevy::ecs::schedule::ApplyDeferred;
 use bevy_replicon::prelude::*;
@@ -42,7 +42,7 @@ pub fn plugin(app: &mut App) {
             (
                 apply_body_damage.run_if(on_message::<IncomingDamage>),
                 sync_bodypart_missing,
-                update_body_health_from_parts,
+                update_body_health_from_parts.run_if(on_timer(core::time::Duration::from_millis(200))),
                 apply_pain_slowdown,
                 build_body_trees_on_beings,
             )

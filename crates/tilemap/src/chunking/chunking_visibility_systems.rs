@@ -17,7 +17,7 @@ pub fn update_chunk_visib(
     if reader.is_empty() {
         return;
     }
-    to_draw.reserve(reader.read().size_hint().0);
+    to_draw.reserve(reader.len());
     reader.clear();
     if camera_query.is_empty() {
         return;

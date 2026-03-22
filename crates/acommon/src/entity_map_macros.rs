@@ -212,8 +212,9 @@ macro_rules! define_entity_map_systems {
                     *max_holder
                 };
 
-                let mut child_ofs = Vec::with_capacity(query.iter().size_hint().0);
-                for ezero_ent in query.iter() {
+                let iter = query.iter();
+                let mut child_ofs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
+                for ezero_ent in iter {
                     child_ofs.push((ezero_ent, ChildOf(holder_id)));
                 }
                 cmd.try_insert_batch(child_ofs);
@@ -230,8 +231,9 @@ macro_rules! define_entity_map_systems {
                     error!(target: $target, "{} EntityMap does not exist, inject {} into bevy", stringify!($main_component), stringify!([<plugin_ $main_component:snake>]));
                     return;
                 };
-                let mut refs = Vec::with_capacity(query.iter().size_hint().0);
-                for (customer_ent, str_id_ref) in query.iter() {
+                let iter = query.iter();
+                let mut refs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
+                for (customer_ent, str_id_ref) in iter {
                     let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
                         error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;
@@ -462,8 +464,9 @@ macro_rules! define_entity_map_systems {
                     *max_holder
                 };
 
-                let mut child_ofs = Vec::with_capacity(query.iter().size_hint().0);
-                for ezero_ent in query.iter() {
+                let iter = query.iter();
+                let mut child_ofs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
+                for ezero_ent in iter {
                     child_ofs.push((ezero_ent, ChildOf(holder_id)));
                 }
                 cmd.try_insert_batch(child_ofs);
@@ -480,8 +483,9 @@ macro_rules! define_entity_map_systems {
                     error_once!(target: $target, "{} EntityMap does not exist, inject {} into app", stringify!($main_component), stringify!([<plugin_ $main_component:snake>]));
                     return;
                 };
-                let mut refs = Vec::with_capacity(query.iter().size_hint().0);
-                for (customer_ent, str_id_ref) in query.iter() {
+                let iter = query.iter();
+                let mut refs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
+                for (customer_ent, str_id_ref) in iter {
                     let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
                         error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;
@@ -706,8 +710,9 @@ macro_rules! define_entity_map_systems_no_replicate {
                     *max_holder
                 };
 
-                let mut child_ofs = Vec::with_capacity(query.iter().size_hint().0);
-                for ezero_ent in query.iter() {
+                let iter = query.iter();
+                let mut child_ofs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
+                for ezero_ent in iter {
                     child_ofs.push((ezero_ent, ChildOf(holder_id)));
                 }
                 cmd.try_insert_batch(child_ofs);
@@ -724,8 +729,9 @@ macro_rules! define_entity_map_systems_no_replicate {
                     error_once!(target: $target, "{} EntityMap does not exist, inject {} into app", stringify!($main_component), stringify!([<plugin_ $main_component:snake _no_replicate>]));
                     return;
                 };
-                let mut refs = Vec::with_capacity(query.iter().size_hint().0);
-                for (customer_ent, str_id_ref) in query.iter() {
+                let iter = query.iter();
+                let mut refs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
+                for (customer_ent, str_id_ref) in iter {
                     let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
                         error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;

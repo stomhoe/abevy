@@ -55,12 +55,16 @@ pub fn switch_or_readjust_sprite_animation(
     images: Res<Assets<Image>>,
     mut sprite_entis_to_iter: Local<EntityHashSet>,
 ) {
+    let changers_iter = changers.iter();
+    let cfg_refs_iter = changed_sprite_cfg_refs.iter();
     sprite_entis_to_iter.reserve(
-        changers.iter().size_hint().0 + move_anims_changed.len() + changed_sprite_cfg_refs.iter().size_hint().0
+        changers_iter.size_hint().1.unwrap_or(changers_iter.size_hint().0)
+            + move_anims_changed.len()
+            + cfg_refs_iter.size_hint().1.unwrap_or(cfg_refs_iter.size_hint().0)
     );
-    sprite_entis_to_iter.extend(changers.iter());
+    sprite_entis_to_iter.extend(changers_iter);
     sprite_entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
-    sprite_entis_to_iter.extend(changed_sprite_cfg_refs.iter().map(|base_holder| base_holder.base));
+    sprite_entis_to_iter.extend(cfg_refs_iter.map(|base_holder| base_holder.base));
 
     for (held_sprites, direction, moving, grounding) in base.iter_many(sprite_entis_to_iter.drain()) {
         for held_sprite in held_sprites.iter() {
@@ -295,8 +299,9 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
 ){
     if connected.is_empty() { return; }
     entis_to_iter.clear();
-    entis_to_iter.reserve(changers.iter().size_hint().0 + move_anims_changed.len());
-    entis_to_iter.extend(changers.iter());
+    let changers_iter = changers.iter();
+    entis_to_iter.reserve(changers_iter.size_hint().1.unwrap_or(changers_iter.size_hint().0) + move_anims_changed.len());
+    entis_to_iter.extend(changers_iter);
     entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
 
     for (being_ent, &moving, grounding, direction, id) in bases_query.iter_many(entis_to_iter.iter()) {

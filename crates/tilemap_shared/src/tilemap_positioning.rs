@@ -47,6 +47,7 @@ pub struct PrevPos {
 
 impl GlobalTilePos {
     pub const TILE_SIZE_PXS: UVec2 = UVec2 { x: 32, y: 32 };
+    pub const ONE: Self = Self(IVec2::ONE);
 
     pub fn to_tilepos(&self) -> TilePos {
         let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();

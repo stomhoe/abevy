@@ -14,8 +14,9 @@ pub fn add_activates_chunks(
     mut removed: RemovedComponents<BelongsToAPlayerFaction>,
     chunk_range: Res<LoadChunksAround>,
 ) {
-    let mut activates_chunks = Vec::with_capacity(query.iter().size_hint().0);
-    query.iter().for_each(|ent| activates_chunks.push((ent, (*chunk_range, ))));
+    let iter = query.iter();
+    let mut activates_chunks = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
+    iter.for_each(|ent| activates_chunks.push((ent, (*chunk_range, ))));
     for ent in removed.read() {
         cmd.entity(ent).try_remove::<(LoadChunksAround, ActivatingChunks)>();
     }

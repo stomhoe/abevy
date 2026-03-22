@@ -3,7 +3,8 @@ use ::being_shared::*;
 use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
 use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks, LoadChunksAround};
 use bevy::{
-    platform::collections::{HashMap, HashSet},
+    ecs::entity::{EntityHashMap, EntityHashSet},
+    platform::collections::HashMap,
     prelude::*,
 };
 use common::log_targets::BEING_SYSTEM;
@@ -30,12 +31,20 @@ pub fn sync_ai_nav_grids(
     >,
     beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
     mut grids: ResMut<AiNavGrids>,
+    mut needed_dims: Local<EntityHashSet>,
+    mut dim_centers: Local<EntityHashMap<IVec2>>,
+    mut dim_center_counts: Local<EntityHashMap<i32>>,
 ) {
-    let mut needed_dims: HashSet<Entity> = HashSet::default();
-    let mut dim_centers: HashMap<Entity, IVec2> = HashMap::default();
-    let mut dim_center_counts: HashMap<Entity, i32> = HashMap::default();
+    let chaser_iter = chasers_query.iter();
+    let chaser_count = chaser_iter.size_hint().1.unwrap_or(chaser_iter.size_hint().0);
+    needed_dims.clear();
+    needed_dims.reserve(chaser_count);
+    dim_centers.clear();
+    dim_centers.reserve(chaser_count);
+    dim_center_counts.clear();
+    dim_center_counts.reserve(chaser_count);
 
-    for (gpos, dim_ref, controlled_by, _to_chase) in chasers_query.iter() {
+    for (gpos, dim_ref, controlled_by, _to_chase) in chaser_iter {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_dc_input {
                 continue;
@@ -139,7 +148,9 @@ pub fn sync_ai_nav_grids(
             continue;
         };
         cache.occupied.clear();
-        for (being_ent, gpos, dim_ref) in beings_query.iter() {
+        let being_iter = beings_query.iter();
+        cache.occupied.reserve(being_iter.size_hint().1.unwrap_or(being_iter.size_hint().0));
+        for (being_ent, gpos, dim_ref) in being_iter {
             if dim_ref.0 != dim {
                 continue;
             }

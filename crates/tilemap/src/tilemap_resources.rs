@@ -102,7 +102,7 @@ impl MassCollectedTiles {
         _param_set: &CloneSpawnParamSet,
     ) -> Vec<Entity> {
         let ezeros_iter = ezeros.into_iter();
-        let mut spawned = Vec::with_capacity(ezeros_iter.size_hint().0);
+        let mut spawned = Vec::with_capacity(ezeros_iter.size_hint().1.unwrap_or(ezeros_iter.size_hint().0));
         spawned.extend(ezeros_iter.map(|ezero| {
 
             self.clonespawn_and_push_tile(cmd, ezero, global_pos, dim_ref, )

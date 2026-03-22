@@ -83,10 +83,9 @@ pub fn emit_global_tile_pos_change(
     mut mwriter: MessageWriter<GlobalTilePosChanged>,
     mut changed: Local<Vec<GlobalTilePosChanged>>,
 ) {
-    changed.reserve(query.iter().size_hint().0);
-    for (entity, prev_tile_pos, global_tile_pos, &dimension_ref) in
-        query.iter_mut()
-    {
+    let iter = query.iter();
+    changed.reserve(iter.size_hint().1.unwrap_or(iter.size_hint().0));
+    for (entity, prev_tile_pos, global_tile_pos, &dimension_ref) in query.iter_mut() {
         let old = prev_tile_pos.as_deref().map(|prev| (prev.dim, prev.gpos));
         if old != Some((dimension_ref, *global_tile_pos)) {
             changed.push(GlobalTilePosChanged {

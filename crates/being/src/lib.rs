@@ -8,6 +8,7 @@ mod being_messages;
 mod being_systems;
 mod being_melee_systems;
 mod being_control_systems;
+pub mod being_portal_resources;
 mod being_portal_systems;
 mod being_behavior_systems;
 mod being_simulation_systems;

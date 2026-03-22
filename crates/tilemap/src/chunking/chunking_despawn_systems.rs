@@ -56,7 +56,8 @@ pub fn on_message_signal_despawn_all_chunks(
         return;
     }
     reader.clear();
-    let mut evs = Vec::with_capacity(chunks_query.iter().size_hint().0);
+    let iter = chunks_query.iter();
+    let mut evs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
     for ent in chunks_query.iter() {
         evs.push(MakeChunkDespawn { chunk_ent: ent, reschedule_if_beings_present: false });
     }

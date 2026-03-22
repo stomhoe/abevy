@@ -135,8 +135,9 @@ pub fn become_child_of_sprite_with_tag(
     mut sprites_to_process: Local<EntityHashSet>,
 ) {
     let mut childofs_to_add = Vec::new();
-    sprites_to_process.reserve(removed_disabled.len() + changed_new_sprites.iter().size_hint().0);
-    sprites_to_process.extend(changed_new_sprites.iter());
+    let changed_iter = changed_new_sprites.iter();
+    sprites_to_process.reserve(removed_disabled.len() + changed_iter.size_hint().1.unwrap_or(changed_iter.size_hint().0));
+    sprites_to_process.extend(changed_iter);
     sprites_to_process.extend(removed_disabled.read());
 
 

@@ -23,9 +23,10 @@ pub fn add_movement_components_to_beings(
     mut removed_disabled: RemovedComponents<Disabled>,
     mut beings_to_update: Local<EntityHashSet>,
 ) {
-    beings_to_update.reserve(removed_disabled.len() + added_beings.iter().size_hint().0);
+    let added_iter = added_beings.iter();
+    beings_to_update.reserve(removed_disabled.len() + added_iter.size_hint().1.unwrap_or(added_iter.size_hint().0));
     beings_to_update.extend(removed_disabled.read());
-    beings_to_update.extend(added_beings.iter());
+    beings_to_update.extend(added_iter);
     let mut rng = rand::rng();
 
     for being_ent in beings_to_update.drain() {
