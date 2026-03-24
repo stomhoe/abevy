@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashMap;
-use ::being_shared::*;
-use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan};
+use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan, SharedChaseFlowField};
 
 #[derive(Resource)]
 pub struct AiNavGrids {
@@ -18,6 +17,11 @@ impl Default for AiNavGrids {
             rebuild_timer: Timer::from_seconds(0.35, TimerMode::Repeating),
         }
     }
+}
+
+#[derive(Resource, Default)]
+pub struct SharedChaseFlowFields {
+    pub by_target: EntityHashMap<SharedChaseFlowField>,
 }
 
 #[derive(Resource, Default)]

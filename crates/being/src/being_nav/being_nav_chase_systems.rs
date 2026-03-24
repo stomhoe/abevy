@@ -1,7 +1,13 @@
-use crate::being_components::Being;
+use crate::{
+    being_components::Being,
+    being_inst_template::being_inst_template_resources::BitRef,
+    being_interaction_zone_helper::resolve_being_interaction_zone,
+    being_messages::MakeChunkSnapshotForChaser,
+    race::race_resources::RaceRef,
+};
 use ::being_shared::*;
 use faction_shared::BelongsToAPlayerFaction;
-use ::tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, LoadedChunks};
+use ::tilemap_shared::*;
 use bevy::{
     ecs::entity::EntityHashSet,
     platform::collections::{HashMap, HashSet},
@@ -9,17 +15,14 @@ use bevy::{
 };
 use bevy_northstar::prelude::*;
 use common::log_targets::BEING_SYSTEM;
-use movement::movement_components::FinalNormMoveDir;
-use movement::movement_components::InputMoveDir;
-use movement::movement_components::SpeedMagnitude;
+use movement::movement_components::*;
 use param_sets::BlockingTileParamSet;
 use tilemap::chunking::chunking_components::ActivatingChunks;
-use tilemap_shared::{CardinalDirection, CheckIfChunkShouldDespawn, LoadChunksAround, };
 use std::time::Duration;
 
 use super::being_nav_components::RetainedChasePathSnapshot;
-use super::being_nav_resources::{AiNavGrids, ChaserNavPlans};
-use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan};
+use super::being_nav_resources::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
+use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan, SharedChaseFlowField};
 use super::being_nav_helpers::{
     cardinal_step_toward,
     rebuild_connected_chase_chunk_path,
@@ -29,12 +32,12 @@ use super::being_nav_helpers::{
     retained_target_trail_stale_timeout,
     retained_target_chunk_trails_match_positions,
 };
-use crate::being_messages::MakeChunkSnapshotForChaser;
 
 const BOXED_TARGET_RETRY_SECS: f32 = 0.4;
 const PARTIAL_TARGET_RETRY_SECS: f32 = 1.0;
 const TARGET_SHIFT_REBUILD_TILES: i32 = 1;
 const BLOCKED_STEP_RETRY_SECS: f32 = 0.08;
+const CHASE_PACK_COMPACT_DISTANCE_TILES: i32 = 3;
 const BOXED_TARGET_FALLBACK_DELTAS: [IVec2; 12] = [
     IVec2::new(2, 0),
     IVec2::new(-2, 0),
@@ -126,6 +129,352 @@ fn request_fast_repath(
     }
 }
 
+fn collect_chase_goal_tiles(
+    cache: &AiNavGridCache,
+    target_pos: GlobalTilePos,
+    collision_zone: &InteractionZone,
+    zone_tiles: &mut Vec<GlobalTilePos>,
+    goal_tiles: &mut Vec<GlobalTilePos>,
+    seed_goal_tiles: &mut Vec<(GlobalTilePos, u32)>,
+    zone_hits: &mut Vec<GlobalTilePos>,
+) {
+    zone_tiles.clear();
+    goal_tiles.clear();
+    seed_goal_tiles.clear();
+    zone_hits.clear();
+
+    zone_tiles.reserve(collision_zone.perimeter_size().max(4) as usize);
+    collision_zone.gather_zone_positions(CardinalDirection::South, target_pos.to_pixelpos(), zone_tiles);
+    if zone_tiles.is_empty() {
+        zone_tiles.push(target_pos);
+    }
+    zone_tiles.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
+    zone_tiles.dedup();
+
+    goal_tiles.reserve(zone_tiles.len().saturating_mul(8));
+    for zone_tile in zone_tiles.iter().copied() {
+        for delta in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
+            let candidate = GlobalTilePos(zone_tile.0 + delta);
+            if zone_tiles
+                .binary_search_by_key(&(candidate.0.x, candidate.0.y), |pos| (pos.0.x, pos.0.y))
+                .is_ok()
+            {
+                continue;
+            }
+
+            zone_hits.clear();
+            collision_zone.gather_accessible_border_positions_for_checked_pos(
+                target_pos,
+                candidate,
+                zone_hits,
+            );
+            if zone_hits.is_empty() {
+                continue;
+            }
+
+            let Some(local) = cache.local_from_gpos(candidate) else {
+                continue;
+            };
+            if !cache.grid.is_passable(local) {
+                continue;
+            }
+            goal_tiles.push(candidate);
+        }
+    }
+
+    let mut min_zone = zone_tiles.first().copied().unwrap_or(target_pos).0;
+    let mut max_zone = min_zone;
+    for zone_tile in zone_tiles.iter().copied() {
+        min_zone = min_zone.min(zone_tile.0);
+        max_zone = max_zone.max(zone_tile.0);
+    }
+    for y in (min_zone.y - CHASE_PACK_COMPACT_DISTANCE_TILES)..=(max_zone.y + CHASE_PACK_COMPACT_DISTANCE_TILES) {
+        for x in (min_zone.x - CHASE_PACK_COMPACT_DISTANCE_TILES)..=(max_zone.x + CHASE_PACK_COMPACT_DISTANCE_TILES) {
+            let candidate = GlobalTilePos::new(x, y);
+            if zone_tiles
+                .binary_search_by_key(&(candidate.0.x, candidate.0.y), |pos| (pos.0.x, pos.0.y))
+                .is_ok()
+            {
+                continue;
+            }
+            let Some(min_zone_dist) = shared_chase_min_zone_distance(zone_tiles, candidate) else {
+                continue;
+            };
+            if min_zone_dist == 0 || min_zone_dist > CHASE_PACK_COMPACT_DISTANCE_TILES as u32 {
+                continue;
+            }
+            let Some(local) = cache.local_from_gpos(candidate) else {
+                continue;
+            };
+            if !cache.grid.is_passable(local) {
+                continue;
+            }
+            goal_tiles.push(candidate);
+        }
+    }
+
+    if goal_tiles.is_empty() {
+        for delta in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
+            let candidate = GlobalTilePos(target_pos.0 + delta);
+            let Some(local) = cache.local_from_gpos(candidate) else {
+                continue;
+            };
+            if !cache.grid.is_passable(local) {
+                continue;
+            }
+            goal_tiles.push(candidate);
+        }
+    }
+
+    goal_tiles.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
+    goal_tiles.dedup();
+
+    seed_goal_tiles.reserve(goal_tiles.len());
+    for goal_tile in goal_tiles.iter().copied() {
+        let Some(seed_cost) = shared_chase_min_zone_distance(zone_tiles, goal_tile)
+            .map(|dist| dist.saturating_sub(1)) else {
+            continue;
+        };
+        let Some(local) = cache.local_from_gpos(goal_tile) else {
+            continue;
+        };
+        if cache.occupied.contains_key(&local) {
+            continue;
+        }
+        seed_goal_tiles.push((goal_tile, seed_cost, ));
+    }
+    if seed_goal_tiles.is_empty() {
+        seed_goal_tiles.extend(goal_tiles.iter().copied().filter_map(|goal_tile| {
+            shared_chase_min_zone_distance(zone_tiles, goal_tile)
+                .map(|dist| (goal_tile, dist.saturating_sub(1), ))
+        }));
+    }
+}
+
+fn rebuild_shared_chase_flow_field(
+    chase_fields: &mut SharedChaseFlowFields,
+    cache: &AiNavGridCache,
+    target_ent: Entity,
+    target_dim: DimensionRef,
+    target_pos: GlobalTilePos,
+    target_bit_ref: Option<&BitRef>,
+    target_race_ref: Option<&RaceRef>,
+    interaction_zones_query: &Query<&InteractionZones, >,
+    zone_tiles: &mut Vec<GlobalTilePos>,
+    goal_tiles: &mut Vec<GlobalTilePos>,
+    seed_goal_tiles: &mut Vec<(GlobalTilePos, u32)>,
+    zone_hits: &mut Vec<GlobalTilePos>,
+) -> Option<()> {
+    let collision_zone = resolve_being_interaction_zone(
+        interaction_zones_query.get(target_ent).ok(),
+        target_bit_ref,
+        target_race_ref,
+        InteractionZones::COLLISION,
+        interaction_zones_query,
+    );
+    collect_chase_goal_tiles(
+        cache,
+        target_pos,
+        &collision_zone,
+        zone_tiles,
+        goal_tiles,
+        seed_goal_tiles,
+        zone_hits,
+    );
+    let flow_field = SharedChaseFlowField::build(
+        cache,
+        target_dim.0,
+        target_pos,
+        goal_tiles,
+        seed_goal_tiles,
+    )?;
+    debug!(
+        target: BEING_SYSTEM,
+        "Built shared chase flow target={:?} dim={:?} anchor={:?} goals={} open_goals={} zone_tiles={}",
+        target_ent,
+        target_dim,
+        target_pos,
+        flow_field.goal_tiles.len(),
+        flow_field.seed_goal_tiles.len(),
+        zone_tiles.len(),
+    );
+    chase_fields.by_target.insert(target_ent, flow_field);
+    Some(())
+}
+
+fn choose_shared_chase_step(
+    blocking_tiles: &mut BlockingTileParamSet,
+    cache: &AiNavGridCache,
+    flow_field: &SharedChaseFlowField,
+    chaser_ent: Entity,
+    chaser_dim: DimensionRef,
+    chaser_pos: GlobalTilePos,
+    last_dir: Option<IVec2>,
+) -> Option<Vec2> {
+    const SHARED_CHASE_HOLD_DISTANCE: u32 = 2;
+    const SHARED_CHASE_HOLD_MARGIN: i32 = 120;
+
+    let curr_dist = flow_field.distance_at_gpos(cache, chaser_pos)?;
+    if curr_dist == 0 {
+        return Some(Vec2::ZERO);
+    }
+
+    let target_delta = chaser_pos.0 - flow_field.target_pos.0;
+    let forward_axis = cardinal_step_toward(-target_delta);
+    let lateral_axis = IVec2::new(-forward_axis.y, forward_axis.x);
+    let desired_lane_offset = if lateral_axis == IVec2::ZERO {
+        0
+    } else {
+        let max_lane_offset = ((curr_dist as i32) / 5).clamp(0, 3);
+        if max_lane_offset == 0 {
+            0
+        } else {
+            let lane_count = (max_lane_offset * 2) + 1;
+            let ent_index = chaser_ent.index_u32() as i32;
+            let mut lane = (ent_index % lane_count) - max_lane_offset;
+            if lane == 0 {
+                lane = if ent_index % 2 == 0 { 1 } else { -1 };
+            }
+            lane.clamp(-max_lane_offset, max_lane_offset)
+        }
+    };
+    let current_lane_penalty = if lateral_axis == IVec2::ZERO {
+        0
+    } else {
+        let lane_offset = (chaser_pos.0 - flow_field.target_pos.0).dot(lateral_axis);
+        (lane_offset - desired_lane_offset).abs() * 35
+    };
+    let current_crowd_penalty = shared_chase_neighbor_crowd_penalty(cache, chaser_ent, chaser_pos);
+    let hold_score = (curr_dist as i32 * 1000)
+        + current_lane_penalty
+        + current_crowd_penalty
+        - 220;
+
+    let mut best_step = None;
+    let mut best_non_improving_step = None;
+    let mut best_score = i32::MAX;
+    let mut best_non_improving_score = i32::MAX;
+    for delta in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
+        let next_pos = GlobalTilePos(chaser_pos.0 + delta);
+        let Some(next_dist) = flow_field.distance_at_gpos(cache, next_pos) else {
+            continue;
+        };
+        if blocking_tiles.is_blocked_at_tiles_only(chaser_dim, next_pos, chaser_ent) {
+            continue;
+        }
+        if blocking_tiles.is_blocked_at(chaser_dim, next_pos, chaser_ent) {
+            continue;
+        }
+        if next_dist > curr_dist.saturating_add(1) {
+            continue;
+        }
+
+        let progress_penalty = if next_dist > curr_dist {
+            900
+        } else if next_dist == curr_dist {
+            180
+        } else {
+            0
+        };
+        let lane_penalty = if lateral_axis == IVec2::ZERO {
+            0
+        } else {
+            let lane_offset = (next_pos.0 - flow_field.target_pos.0).dot(lateral_axis);
+            (lane_offset - desired_lane_offset).abs() * 35
+        };
+        let crowd_penalty = shared_chase_neighbor_crowd_penalty(cache, chaser_ent, next_pos);
+        let goal_bonus = if flow_field.is_goal_tile(next_pos) { -120 } else { 0 };
+        let direction_change_penalty = if let Some(last_dir) = last_dir {
+            if delta == -last_dir {
+                if next_dist < curr_dist { 120 } else { 700 }
+            } else if delta != last_dir && next_dist >= curr_dist {
+                180
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+        let score = (next_dist as i32 * 1000)
+            + progress_penalty
+            + lane_penalty
+            + crowd_penalty
+            + direction_change_penalty
+            + goal_bonus;
+        if next_dist < curr_dist {
+            if score < best_score {
+                best_score = score;
+                best_step = Some(delta.as_vec2());
+            }
+            continue;
+        }
+        if score < best_non_improving_score {
+            best_non_improving_score = score;
+            best_non_improving_step = Some(delta.as_vec2());
+        }
+    }
+
+    if best_step.is_some() {
+        return best_step;
+    }
+    if curr_dist <= SHARED_CHASE_HOLD_DISTANCE {
+        return Some(Vec2::ZERO);
+    }
+    if let Some(best_non_improving_step) = best_non_improving_step {
+        if let Some(last_dir) = last_dir {
+            if best_non_improving_step.as_ivec2() == -last_dir {
+                return Some(Vec2::ZERO);
+            }
+        }
+        if best_non_improving_score + SHARED_CHASE_HOLD_MARGIN < hold_score {
+            return Some(best_non_improving_step);
+        }
+    }
+    Some(Vec2::ZERO)
+}
+
+fn shared_chase_min_zone_distance(
+    zone_tiles: &[GlobalTilePos],
+    pos: GlobalTilePos,
+) -> Option<u32> {
+    let mut min_dist: Option<u32> = None;
+    for zone_tile in zone_tiles.iter().copied() {
+        let dist = zone_tile.taxicab_tile_distance(pos) as u32;
+        min_dist = Some(min_dist.map(|curr| curr.min(dist)).unwrap_or(dist));
+    }
+    min_dist
+}
+
+fn shared_chase_neighbor_crowd_penalty(
+    cache: &AiNavGridCache,
+    chaser_ent: Entity,
+    pos: GlobalTilePos,
+) -> i32 {
+    let mut crowd_penalty = 0;
+    for neighbor_delta in [
+        IVec2::X,
+        -IVec2::X,
+        IVec2::Y,
+        -IVec2::Y,
+        IVec2::new(1, 1),
+        IVec2::new(1, -1),
+        IVec2::new(-1, 1),
+        IVec2::new(-1, -1),
+    ] {
+        let Some(local) = cache.local_from_gpos(GlobalTilePos(pos.0 + neighbor_delta)) else {
+            continue;
+        };
+        let Some(&occupant_ent) = cache.occupied.get(&local) else {
+            continue;
+        };
+        if occupant_ent == chaser_ent {
+            continue;
+        }
+        crowd_penalty += if neighbor_delta.x == 0 || neighbor_delta.y == 0 { 70 } else { 40 };
+    }
+    crowd_penalty
+}
+
 #[allow(unused_parens, )]
 pub fn cleanup_player_chase_chunk_retention(
     mut commands: Commands,
@@ -178,20 +527,39 @@ pub fn rebuild_goto_nav_plans(
         (
             Entity,
             &GlobalTilePos,
-            &::tilemap_shared::DimensionRef,
+            &DimensionRef,
             &GoTo,
-            Option<&movement::movement_components::SpeedMagnitude>,
+            Option<&SpeedMagnitude>,
+            Option<&GoToMeta>,
+            Option<&Chasing>,
         ),
         (With<Being>, LocalAiControlled),
     >,
     grids: Res<AiNavGrids>,
+    targets_query: Query<
+        (
+            &GlobalTilePos,
+            &DimensionRef,
+            Option<&BitRef>,
+            Option<&RaceRef>,
+        ),
+        (),
+    >,
+    interaction_zones_query: Query<&InteractionZones, >,
+    mut chase_fields: ResMut<SharedChaseFlowFields>,
     mut plans: ResMut<ChaserNavPlans>,
     mut dynamic_blocking: Local<HashMap<UVec3, Entity>>,
     mut active_chasers: Local<EntityHashSet>,
+    mut active_chase_targets: Local<EntityHashSet>,
+    mut chase_zone_tiles: Local<Vec<GlobalTilePos>>,
+    mut chase_goal_tiles: Local<Vec<GlobalTilePos>>,
+    mut chase_seed_goal_tiles: Local<Vec<(GlobalTilePos, u32)>>,
+    mut chase_zone_hits: Local<Vec<GlobalTilePos>>,
 ) {
     active_chasers.clear();
+    active_chase_targets.clear();
 
-    for (chaser_ent, chaser_gpos, &chaser_dim, goto, chaser_speed) in goto_beings.iter() {
+    for (chaser_ent, chaser_gpos, &chaser_dim, goto, chaser_speed, go_to_meta, chasing, ) in goto_beings.iter() {
         active_chasers.insert(chaser_ent);
 
         let target_pos = goto.pos;
@@ -212,6 +580,109 @@ pub fn rebuild_goto_nav_plans(
             plan.clear_path_and_retry(goto_interval, target_pos);
             continue;
         };
+
+        let is_shared_chase = matches!(go_to_meta, Some(meta) if meta.source == NavOrderSource::Chasing);
+        if is_shared_chase {
+            let Some(chasing) = chasing else {
+                plan.clear_path_and_retry(goto_interval, target_pos);
+                continue;
+            };
+            let Ok((target_gpos, &target_dim, target_bit_ref, target_race_ref, )) = targets_query.get(chasing.target) else {
+                plan.clear_path_and_retry(goto_interval, target_pos);
+                continue;
+            };
+            if target_dim != chaser_dim {
+                plan.clear_path_and_retry(goto_interval, *target_gpos);
+                continue;
+            }
+
+            active_chase_targets.insert(chasing.target);
+            let target_pos = *target_gpos;
+            let target_shifted = plan
+                .last_target_pos
+                .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= TARGET_SHIFT_REBUILD_TILES)
+                .unwrap_or(true);
+            let need_rebuild = plan.path_tiles.is_empty() || timer_finished || target_shifted;
+
+            let collision_zone = resolve_being_interaction_zone(
+                interaction_zones_query.get(chasing.target).ok(),
+                target_bit_ref,
+                target_race_ref,
+                InteractionZones::COLLISION,
+                &interaction_zones_query,
+            );
+            collect_chase_goal_tiles(
+                cache,
+                target_pos,
+                &collision_zone,
+                &mut chase_zone_tiles,
+                &mut chase_goal_tiles,
+                &mut chase_seed_goal_tiles,
+                &mut chase_zone_hits,
+            );
+            let needs_flow_rebuild = chase_fields
+                .by_target
+                .get(&chasing.target)
+                .map(|field| {
+                    !field.matches_grid(cache, target_dim.0, target_pos)
+                        || field.goal_tiles != *chase_goal_tiles
+                        || field.seed_goal_tiles != *chase_seed_goal_tiles
+                })
+                .unwrap_or(true);
+            if needs_flow_rebuild {
+                let Some(()) = rebuild_shared_chase_flow_field(
+                    &mut chase_fields,
+                    cache,
+                    chasing.target,
+                    target_dim,
+                    target_pos,
+                    target_bit_ref,
+                    target_race_ref,
+                    &interaction_zones_query,
+                    &mut chase_zone_tiles,
+                    &mut chase_goal_tiles,
+                    &mut chase_seed_goal_tiles,
+                    &mut chase_zone_hits,
+                ) else {
+                    plan.clear_path_and_retry(
+                        goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
+                        target_pos,
+                    );
+                    trace!(target: BEING_SYSTEM, "Deferred chase flow rebuild for {:?}: prey {:?} has no valid goal tiles at {:?}", chaser_ent, chasing.target, target_pos);
+                    continue;
+                };
+            }
+            let Some(flow_field) = chase_fields.by_target.get(&chasing.target) else {
+                plan.clear_path_and_retry(
+                    goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
+                    target_pos,
+                );
+                continue;
+            };
+            if !need_rebuild {
+                continue;
+            }
+            if flow_field.is_goal_tile(*chaser_gpos) {
+                plan.clear_path_and_retry(Duration::from_secs_f32(0.2), target_pos);
+                trace!(target: BEING_SYSTEM, "Holding boxed chase slot for {:?}: prey {:?} anchor {:?}", chaser_ent, chasing.target, target_pos);
+                continue;
+            }
+            if !flow_field.reconstruct_path_tiles(cache, *chaser_gpos, &mut plan.path_tiles) {
+                plan.clear_path_and_retry(
+                    goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
+                    target_pos,
+                );
+                trace!(target: BEING_SYSTEM, "Deferred chase plan rebuild for {:?}: prey {:?} unreachable from {:?} on shared field", chaser_ent, chasing.target, chaser_gpos);
+                continue;
+            }
+
+            plan.next_step_ix = 0;
+            plan.last_target_pos = Some(target_pos);
+            plan.holds_at_partial_endpoint = false;
+            plan.rebuild_timer = Timer::new(goto_interval, TimerMode::Once);
+            trace!(target: BEING_SYSTEM, "Rebuilt shared chase plan for {:?}: prey {:?}, anchor {:?}, steps {}", chaser_ent, chasing.target, target_pos, plan.path_tiles.len());
+            continue;
+        }
 
         let Some((start, goal)) = cache.local_path_points(*chaser_gpos, target_pos) else {
             plan.clear_path_and_retry(goto_interval, target_pos);
@@ -273,7 +744,7 @@ pub fn rebuild_goto_nav_plans(
                 );
                 continue;
             }
-            let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_goto, _blocker_speed)) = goto_beings.get(occupant_ent) else {
+            let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_goto, _blocker_speed, _blocker_meta, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
                 consider_chase_goal_candidate(
                     &mut best_path_tiles,
                     &mut best_path_is_partial,
@@ -384,7 +855,7 @@ pub fn rebuild_goto_nav_plans(
                     );
                     continue;
                 }
-                let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_goto, _blocker_speed)) = goto_beings.get(occupant_ent) else {
+                let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_goto, _blocker_speed, _blocker_meta, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
                     consider_chase_goal_candidate(
                         &mut best_path_tiles,
                         &mut best_path_is_partial,
@@ -480,6 +951,9 @@ pub fn rebuild_goto_nav_plans(
     }
 
     plans.by_ent.retain(|ent, _| active_chasers.contains(ent));
+    chase_fields
+        .by_target
+        .retain(|target_ent, field| active_chase_targets.contains(target_ent) && grids.by_dim.contains_key(&field.dim));
 }
 
 #[allow(unused_parens, )]
@@ -489,20 +963,51 @@ pub fn goto_behavior(
         (
             Entity,
             &GlobalTilePos,
-            &::tilemap_shared::DimensionRef,
+            &DimensionRef,
             &GoTo,
+            Option<&GoToMeta>,
+            Option<&Chasing>,
         ),
         (With<Being>, LocalAiControlled),
     >,
+    grids: Res<AiNavGrids>,
+    chase_fields: Res<SharedChaseFlowFields>,
     mut plans: ResMut<ChaserNavPlans>,
     mut input_dirs: Query<&mut InputMoveDir>,
+    mut last_shared_dirs: Local<HashMap<Entity, IVec2>>,
 ) {
-    for (chaser_ent, chaser_gpos, &chaser_dim, goto) in goto_beings.iter_mut() {
+    for (chaser_ent, chaser_gpos, &chaser_dim, goto, go_to_meta, chasing, ) in goto_beings.iter_mut() {
         let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
             continue;
         };
         let chaser_pos = *chaser_gpos;
         let target_pos = goto.pos;
+
+        let shared_flow_field = if matches!(go_to_meta, Some(meta) if meta.source == NavOrderSource::Chasing) {
+            chasing.and_then(|chasing| {
+                let cache = grids.by_dim.get(&chaser_dim.0)?;
+                chase_fields
+                    .by_target
+                    .get(&chasing.target)
+                    .filter(|flow_field| flow_field.matches_grid(cache, chaser_dim.0, target_pos))
+                    .map(|flow_field| (cache, flow_field))
+            })
+        } else {
+            None
+        };
+        if let Some((cache, flow_field, )) = shared_flow_field {
+            if flow_field.is_goal_tile(chaser_pos) || flow_field.distance_at_gpos(cache, chaser_pos) == Some(0) {
+                input_move_dir.0 = Vec2::ZERO;
+                last_shared_dirs.remove(&chaser_ent);
+                let face_delta = target_pos.0 - chaser_pos.0;
+                if face_delta != IVec2::ZERO {
+                    let facing = CardinalDirection::from_dir_vec(cardinal_step_toward(face_delta));
+                    blocking_tiles.set_being_direction(chaser_ent, facing);
+                }
+                continue;
+            }
+        }
+
         let Some(direct_chase_dir) = chaser_pos.direct_chase_dir(target_pos, goto.stop_distance) else {
             input_move_dir.0 = Vec2::ZERO;
             let face_delta = target_pos.0 - chaser_pos.0;
@@ -513,7 +1018,37 @@ pub fn goto_behavior(
             continue;
         };
 
-        let move_input = if let Some(plan) = plans.by_ent.get_mut(&chaser_ent) {
+        let move_input = if let Some((cache, flow_field, )) = shared_flow_field {
+            choose_shared_chase_step(
+                &mut blocking_tiles,
+                cache,
+                flow_field,
+                chaser_ent,
+                chaser_dim,
+                chaser_pos,
+                last_shared_dirs.get(&chaser_ent).copied(),
+            )
+            .unwrap_or_else(|| {
+                plans
+                    .by_ent
+                    .get_mut(&chaser_ent)
+                    .map(|plan| {
+                        match plan.next_step(chaser_pos) {
+                            Some(next) => {
+                                let desired = cardinal_step_toward(next.0 - chaser_pos.0);
+                                if desired == IVec2::ZERO {
+                                    direct_chase_dir
+                                } else {
+                                    desired.as_vec2()
+                                }
+                            }
+                            None if plan.holds_at_partial_endpoint => Vec2::ZERO,
+                            None => direct_chase_dir,
+                        }
+                    })
+                    .unwrap_or(direct_chase_dir)
+            })
+        } else if let Some(plan) = plans.by_ent.get_mut(&chaser_ent) {
             match plan.next_step(chaser_pos) {
                 Some(next) => {
                     let desired = cardinal_step_toward(next.0 - chaser_pos.0);
@@ -552,6 +1087,13 @@ pub fn goto_behavior(
         };
 
         let move_axis = FinalNormMoveDir(move_input).normalize_to_axis_dir();
+        if shared_flow_field.is_some() {
+            if move_axis != IVec2::ZERO {
+                last_shared_dirs.insert(chaser_ent, move_axis);
+            }
+        } else {
+            last_shared_dirs.remove(&chaser_ent);
+        }
         if move_axis != IVec2::ZERO {
             let next_pos = GlobalTilePos(chaser_pos.0 + move_axis);
             if blocking_tiles.is_blocked_at_tiles_only(chaser_dim, next_pos, chaser_ent) {

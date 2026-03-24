@@ -13,7 +13,7 @@ use sprite_systems::AcSpriteSystems;
 use crate::being_melee_systems::apply_melee_attack;
 use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder, PredatorSeenByPrey};
 use crate::being_on_chunk_despawn_systems::{freeze_being, on_chunk_with_beings_attempt_unload, unfreeze_beings_on_chunk_load};
-use crate::being_nav::{AiNavGrids, ChaserNavPlans};
+use crate::being_nav::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
 
 use crate::{
     being_hunt_systems::*,
@@ -44,6 +44,7 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
+    .init_resource::<SharedChaseFlowFields>()
     .init_resource::<ChaserNavPlans>()
     .init_resource::<FrozenBgSimulatedBeingsMap>()
     .init_resource::<PortalCrossingIndex>()
