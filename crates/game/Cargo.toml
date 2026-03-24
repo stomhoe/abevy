@@ -20,7 +20,7 @@ faction = { path = "../faction" }
 player = { path = "../player" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
-
+faction_shared = { path = "../faction_shared" }
 
 bevy = { workspace = true }
 

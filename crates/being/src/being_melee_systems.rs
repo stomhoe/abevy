@@ -3,6 +3,7 @@ use ::tilemap_shared::*;
 use bevy::{ecs::entity::EntityHashSet, prelude::*};
 use common::log_targets::BEING_SYSTEM;
 use game_common::game_common_components::{EntityZeroRef, HealthDamage};
+use param_sets::BlockingTileParamSet;
 use tilemap::tile::tile_components::TileFlip;
 
 use crate::{
@@ -20,7 +21,6 @@ pub fn apply_melee_attack(
         (
             &DimensionRef,
             &GlobalTransform,
-            &CardinalDirection,
             Option<&InteractionZones>,
             Option<&BitRef>,
             Option<&RaceRef>,
@@ -31,7 +31,6 @@ pub fn apply_melee_attack(
         (
             &GlobalTransform,
             Option<&InteractionZones>,
-            Option<&CardinalDirection>,
             Option<&BitRef>,
             Option<&RaceRef>,
         ),
@@ -39,12 +38,11 @@ pub fn apply_melee_attack(
     >,
     zone_sources: Query<&InteractionZones>,
     beings_at_gpos: Res<BeingsAtGpos>,
-    mut tile_gathering: TileGatheringParamSet,
+    mut tile_gathering: BlockingTileParamSet,
     tile_instances: Query<(
         &GlobalTilePos,
         &EntityZeroRef,
         Option<&TileFlip>,
-        Option<&CardinalDirection>,
     )>,
     tile_receivers: Query<&InteractionZones>,
     mut health_damage_writer: MessageWriter<HealthDamage>,
@@ -55,12 +53,17 @@ pub fn apply_melee_attack(
     const MELEE_DAMAGE: f32 = 10.0;
     for melee in melee_attacks.read() {
         let attacker_ent = melee.being_ent;
-        let Ok((&attacker_dim, attacker_transform, &attacker_direction, interaction_zones, bit_ref, race_ref, )) =
+        let Ok((&attacker_dim, attacker_transform, interaction_zones, bit_ref, race_ref, )) =
             beings.get(attacker_ent)
         else {
             info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} not found", attacker_ent);
             continue;
         };
+        let Ok(attacker_direction) = tile_gathering.cardinal_direction_query().get_mut(attacker_ent) else {
+            info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} has no facing direction", attacker_ent);
+            continue;
+        };
+        let attacker_direction = *attacker_direction;
         let melee_zone = resolve_being_interaction_zone(
             interaction_zones,
             bit_ref,
@@ -105,23 +108,27 @@ pub fn apply_melee_attack(
                 if target_entity == attacker_ent || !hit_entities.insert(target_entity) {
                     continue;
                 }
-                let Ok((target_transform, target_zones, target_direction, target_bit_ref, target_race_ref, )) =
+                let Ok((target_transform, target_zones, target_bit_ref, target_race_ref, )) =
                     being_receivers.get(target_entity)
                 else {
                     continue;
                 };
+                let Ok(target_direction) = tile_gathering.cardinal_direction_query().get_mut(target_entity) else {
+                    continue;
+                };
+                let target_direction = *target_direction;
                 let target_pos_px = target_transform.translation().xy();
                 let hit_point = candidate_gpos.to_pixelpos();
                 let collision_zone = resolve_being_interaction_zone(
                     target_zones,
                     target_bit_ref,
                     target_race_ref,
-                    COLLISION_MASK_HASHID,
+                    InteractionZones::COLLISION,
                     &zone_sources,
                 );
                 let hit = collision_zone.is_inside_any(
                     TileFlip::default(),
-                    target_direction.copied().unwrap_or_default(),
+                    target_direction,
                     target_pos_px,
                     hit_point,
                 );
@@ -148,23 +155,27 @@ pub fn apply_melee_attack(
             ) {
                 continue;
             }
-            for &target_entity in tile_gathering.gather_tiles_at_to_drain(attacker_dim, candidate_gpos) {
+            let tile_entities = tile_gathering.gather_tiles_at_to_drain(attacker_dim, candidate_gpos).to_vec();
+            for target_entity in tile_entities {
                 if !hit_entities.insert(target_entity) {
                     continue;
                 }
-                let Ok((&tile_origin, &EntityZeroRef(tile_ezero), tile_flip, tile_direction)) =
-                    tile_instances.get(target_entity)
+                let Ok((&tile_origin, &EntityZeroRef(tile_ezero), tile_flip)) = tile_instances.get(target_entity)
                 else {
                     continue;
                 };
+                let Ok(tile_direction) = tile_gathering.cardinal_direction_query().get_mut(target_entity) else {
+                    continue;
+                };
+                let tile_direction = *tile_direction;
                 let Ok(target_zones) = tile_receivers.get(tile_ezero) else {
                     continue;
                 };
                 let hit_point = candidate_gpos;
                 let accepts_hit = target_zones.is_point_inside_zone(
-                    COLLISION_MASK_HASHID,
+                    InteractionZones::COLLISION,
                     tile_origin.to_pixelpos(),
-                    tile_direction.copied().unwrap_or_default(),
+                    tile_direction,
                     tile_flip.copied().unwrap_or_default(),
                     hit_point.to_pixelpos(),
                 );

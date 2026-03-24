@@ -1,8 +1,10 @@
-use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, MapEntities}, platform::collections::HashMap, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use ::common::*;
 use game_common::game_common_samplers::{CappedNormalDist, EntityWeightedSampler};
+use tilemap_shared::{DimensionRef, GlobalTilePos, };
 use tilemap_shared::{ChunkPos, MacroChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
+use serde::{Deserialize, Serialize};
 
 const PACK_CLUSTER_RADIUS_CHUNKS: i32 = 1;
 const PACK_CENTER_MIN_SEPARATION_CHUNKS: i32 = 2;
@@ -90,9 +92,20 @@ pub struct PackBeingSampler(#[entities] pub EntityWeightedSampler);
 #[derive(Component, Debug, Clone, Default)]
 pub struct PackMemberRankSampler(pub EntityHashMap<CappedNormalDist>);
 
+#[derive(Component, Debug, Clone, Default)]
+pub struct CenterRankMultipliers(pub EntityHashMap<f32>);
+
+#[derive(Component, Debug, Copy, Clone)]
+pub struct GlobalCenterRankWeightMultiplier(pub f32);
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct PackBehavior(pub StrId);
+pub struct PackOnAttackBehavior(pub StrId);
+
+#[derive(Component, Debug, Copy, Clone)]
+pub struct PackAttackAlertEffectivenessFalloff(pub f32);
+
+#[derive(Component, Debug, Copy, Clone)]
+pub struct PackCounterRegroupTightness(pub f32);
 
 #[derive(Component, Debug, Clone, Default)]
 pub struct PackMinDistsToPacksOrRaces(pub EntityHashMap<u8>);
@@ -121,3 +134,9 @@ impl PackInitialSize {
         self.0.sample(rng).round().max(1.0) as usize
     }
 }
+
+#[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
+pub struct PackCenterPos(pub HashMap<DimensionRef, GlobalTilePos>);
+
+/*
+*/

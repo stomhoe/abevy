@@ -11,6 +11,7 @@ multiplayer_shared = { path = "../multiplayer_shared" }
 #sprite_shared = { path = "../sprite_shared" }
 #tilemap = { path = "../tilemap" }
 faction = { path = "../faction" }
+faction_shared = { path = "../faction_shared" }
 player = { path = "../player" }
 #being = { path = "../being" }
 

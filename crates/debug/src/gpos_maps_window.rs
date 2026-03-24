@@ -4,7 +4,7 @@ use camera::camera_components::CameraTarget;
 use bevy_ecs_tilemap::tiles::TileFlip;
 use game_common::game_common_components::EntityZeroRef;
 use std::collections::HashSet;
-use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, InteractionZones, ItemsAtGpos, TileGatheringParamSet, WalkSpeedMultIfOnTop};
+use tilemap_shared::{BeingsAtGpos, DimensionRef, GlobalTilePos, InteractionZones, ItemsAtGpos, TileGatheringParamSet, WalkSpeedMultIfOnTop};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -102,7 +102,7 @@ pub fn gpos_maps_window_system(
     beings_at_gpos: Res<BeingsAtGpos>,
     items_at_gpos: Res<ItemsAtGpos>,
     mut tile_gathering: TileGatheringParamSet,
-    tile_instance_query: Query<(&EntityZeroRef, &GlobalTilePos, Option<&TileFlip>, Option<&CardinalDirection>)>,
+    tile_instance_query: Query<(&EntityZeroRef, &GlobalTilePos, Option<&TileFlip>)>,
     walk_speed: Query<&WalkSpeedMultIfOnTop>,
     tile_interaction_zones: Query<(&InteractionZones, &tilemap_shared::SizeInTiles)>,
     camera_target_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
@@ -171,17 +171,22 @@ pub fn gpos_maps_window_system(
                 for x in -ui_state.radius..=ui_state.radius {
                     let gpos = center + GlobalTilePos::new(x, y);
                     let mut blocked = false;
-                    for &tile_ent in tile_gathering.gather_tiles_at_to_drain(dim_ref, gpos) {
-                        let Ok((ezero_ref, tile_origin, tile_flip, direction)) = tile_instance_query.get(tile_ent) else { continue; };
+                    let tile_ents = tile_gathering.gather_tiles_at_to_drain(dim_ref, gpos).to_vec();
+                    for tile_ent in tile_ents {
+                        let Ok((ezero_ref, tile_origin, tile_flip)) = tile_instance_query.get(tile_ent) else { continue; };
                         if walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
                             blocked = true;
                             break;
                         }
                         let Ok((interaction_zones, _size_in_tiles)) = tile_interaction_zones.get(ezero_ref.0) else { continue; };
+                        let Ok(direction) = tile_gathering.cardinal_direction_query.get_mut(tile_ent) else {
+                            continue;
+                        };
+                        let direction = *direction;
                         if interaction_zones.is_point_inside_zone(
-                            InteractionZones::COLLISION_MASK_HASHID,
+                            InteractionZones::COLLISION,
                             tile_origin.to_pixelpos(),
-                            direction.copied().unwrap_or_default(),
+                            direction,
                             tile_flip.copied().unwrap_or_default(),
                             gpos.to_pixelpos(),
                         ) {

@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use common::common_components::{DisplayName, StrId, Tag};
 use game_common::game_common_string_components::Description;
+use faction_shared::FactionInstTempl;
 
 use crate::{
     culture::culture_resources::CultureStrIdRef,
-    faction_components::FactionInstTempl,
     faction_inst_templ::faction_inst_templ_resources::*,
 };
 

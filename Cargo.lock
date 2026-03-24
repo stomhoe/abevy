@@ -586,6 +586,7 @@ dependencies = [
  "camera",
  "common",
  "faction",
+ "faction_shared",
  "game_common",
  "item_shared",
  "modifier_shared",
@@ -598,6 +599,7 @@ dependencies = [
  "sprite_animation_shared",
  "sprite_shared",
  "sprite_systems",
+ "superstate",
  "tilemap",
  "tilemap_shared",
 ]
@@ -615,6 +617,7 @@ dependencies = [
  "game_common",
  "item_shared",
  "serde",
+ "superstate",
  "tilemap_shared",
 ]
 
@@ -4738,6 +4741,7 @@ checksum = "af9673d8203fcb076b19dfd17e38b3d4ae9f44959416ea532ce72415a6020365"
 name = "faction"
 version = "0.1.0"
 dependencies = [
+ "being_shared",
  "bevy 0.18.0",
  "bevy_asset_loader",
  "bevy_common_assets",
@@ -5010,6 +5014,7 @@ dependencies = [
  "bevy_replicon",
  "common",
  "faction",
+ "faction_shared",
  "game_common",
  "modifier_shared",
  "movement",
@@ -5530,6 +5535,7 @@ dependencies = [
  "bevy_replicon_renet",
  "common",
  "faction",
+ "faction_shared",
  "game_common",
  "multiplayer_shared",
  "player",
@@ -8099,6 +8105,14 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "superstate"
+version = "0.1.0"
+dependencies = [
+ "bevy_app 0.18.0",
+ "bevy_ecs 0.18.0",
+]
 
 [[package]]
 name = "svg_fmt"

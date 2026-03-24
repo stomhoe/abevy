@@ -11,12 +11,12 @@ use crate::{
 
 pub fn default_interaction_zone(zone_id: HashId) -> InteractionZone {
     if zone_id == InteractionZones::MELEE_ATTACK {
-        return InteractionZones::melee_default_zone();
+        return InteractionZone::melee_default_zone();
     }
-    if zone_id == InteractionZones::COLLISION_MASK_HASHID {
-        return InteractionZones::collision_default_zone();
+    if zone_id == InteractionZones::COLLISION {
+        return InteractionZone::collision_default_zone();
     }
-    InteractionZone::new(InteractionZoneSeri::default())
+    InteractionZone::from_seri(InteractionZoneSeri::default())
 }
 
 pub fn interaction_zone_from_seri_or_default(
@@ -26,7 +26,7 @@ pub fn interaction_zone_from_seri_or_default(
     if zone_seri.is_sentinel() {
         return default_interaction_zone(zone_id);
     }
-    InteractionZone::new(zone_seri)
+    InteractionZone::from_seri(zone_seri)
 }
 
 pub fn build_being_interaction_zones(
@@ -39,8 +39,8 @@ pub fn build_being_interaction_zones(
         interaction_zone_from_seri_or_default(InteractionZones::MELEE_ATTACK, melee_zone_seri),
     );
     zones.overwrite(
-        InteractionZones::COLLISION_MASK_HASHID,
-        interaction_zone_from_seri_or_default(InteractionZones::COLLISION_MASK_HASHID, collision_zone_seri),
+        InteractionZones::COLLISION,
+        interaction_zone_from_seri_or_default(InteractionZones::COLLISION, collision_zone_seri),
     );
     InteractionZones(zones)
 }
@@ -60,10 +60,10 @@ pub fn build_being_interaction_zones_with_base(
         ),
     );
     zones.overwrite(
-        InteractionZones::COLLISION_MASK_HASHID,
+        InteractionZones::COLLISION,
         resolve_zone_with_base(
             base_zones,
-            InteractionZones::COLLISION_MASK_HASHID,
+            InteractionZones::COLLISION,
             collision_zone_seri,
         ),
     );
@@ -76,7 +76,7 @@ fn resolve_zone_with_base(
     zone_seri: InteractionZoneSeri,
 ) -> InteractionZone {
     if !zone_seri.is_sentinel() {
-        return InteractionZone::new(zone_seri);
+        return InteractionZone::from_seri(zone_seri);
     }
     if let Some(zone) = base_zones.and_then(|base| base.0.get(zone_id).ok()) {
         return zone.clone();

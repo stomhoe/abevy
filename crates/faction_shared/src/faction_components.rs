@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 #[require(Replicated, Prefix::trunc("Faction"), AssetScoped, SparedFromHotReloading,)]
 pub struct Faction;
 
+
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
 #[require(Replicated, Prefix::trunc("FactionInstTemplate"), AssetScoped, SparedFromHotReloading,)]
 pub struct FactionInstTempl;
@@ -17,7 +19,7 @@ pub struct FactionInstTempl;
 pub struct Culture;
 
 #[derive(Component, Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct FactionOwner {
+pub struct GroupPlayerAuthority {
     #[entities]
     pub player: Entity,
 }
@@ -28,33 +30,37 @@ pub struct IsAffiliatedToMyFaction;
 #[derive(Component, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct BelongsToAPlayerFaction;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq)]
-#[relationship(relationship_target = FactionThings)]
-pub struct BelongsToFaction(
-    #[relationship]
-    #[entities]
-    pub Entity,
-);
+#[derive(Component, Debug, Clone, Default)]
+pub struct PlayerMembers(pub Vec<Entity>);
+impl PlayerMembers {
+    pub fn insert(&mut self, player: Entity) -> bool {
+        if self.contains(player) {
+            return false;
+        }
+        self.0.push(player);
+        true
+    }
 
-#[derive(Component, Debug, Clone)]
-#[relationship_target(relationship = BelongsToFaction)]
-pub struct FactionThings(Vec<Entity>);
+    pub fn remove(&mut self, player: Entity) -> bool {
+        let Some(idx) = self.0.iter().position(|&ent| ent == player) else {
+            return false;
+        };
+        self.0.swap_remove(idx);
+        true
+    }
 
+    pub fn contains(&self, player: Entity) -> bool {
+        self.0.contains(&player)
+    }
 
-#[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq)]
-#[relationship(relationship_target = PlayerMembers)]
-pub struct PlayerOfFaction {
-    #[relationship]
-    #[entities]
-    faction: Entity,
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.0.iter().copied()
+    }
 }
-impl PlayerOfFaction {
-    pub fn new(faction: Entity) -> Self { PlayerOfFaction { faction } }
-}
-
-#[derive(Component, Debug, Clone)]
-#[relationship_target(relationship = PlayerOfFaction)]
-pub struct PlayerMembers(Vec<Entity>);
 
 #[derive(Component, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct InterFactionEvent(u32);

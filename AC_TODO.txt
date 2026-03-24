@@ -44,3 +44,6 @@ hacer textura sand desde 0
 hacer q los prey animal intenten escapar en direccion opuesta a los depredadores si hay varios
 
 antes de freezear beings hacer registrar hasta donde pueden llegar con su pathfinding, perdon, registrar con que beings puede interactuar. hay q hacerlo antes de q despawnee el chunnk con todas sus tiles
+
+
+hacer q el sprite o sampler se ponga por body

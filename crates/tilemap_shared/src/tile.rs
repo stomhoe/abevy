@@ -1,3 +1,4 @@
+pub use crate::interaction_zones::*;
 pub use crate::tile::tile_components::*;
 pub use crate::tile::tile_seris::*;
 

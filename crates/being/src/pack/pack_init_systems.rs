@@ -1,4 +1,5 @@
 use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
+use being_shared::NoSpawnGroup;
 use common::common_components::StrId;
 use game_common::{
     game_common_components::EntityZero,
@@ -33,6 +34,7 @@ pub fn init_packs(
     let mut pack_by_id: HashMap<StrId, Entity> = HashMap::default();
     let mut being_samplers_by_pack: EntityHashMap<PackBeingSampler> = EntityHashMap::default();
     let mut rank_sampler_by_pack: EntityHashMap<PackMemberRankSampler> = EntityHashMap::default();
+    let mut center_rank_multipliers_by_pack: EntityHashMap<CenterRankMultipliers> = EntityHashMap::default();
     let mut min_dists_by_pack: EntityHashMap<PackMinDistsToPacksOrRaces> = EntityHashMap::default();
 
     for pack_seri in &pack_seris {
@@ -46,11 +48,27 @@ pub fn init_packs(
         let Some(&pack_entity) = pack_by_id.get(&str_id) else {
             continue;
         };
+        if !pack_seri.spawn_pack_entity {
+            cmd.entity(pack_entity).insert(NoSpawnGroup);
+        }
+        cmd.entity(pack_entity).insert(pack_seri.tags_with_id());
+        if !pack_seri.wander_config.is_disabled() {
+            cmd.entity(pack_entity)
+                .insert(pack_seri.wander_config.clone().sanitized());
+        }
+        if pack_seri.center_rank_weight_multiplier != 1.0 {
+            cmd.entity(pack_entity).insert(GlobalCenterRankWeightMultiplier(
+                pack_seri.center_rank_weight_multiplier,
+            ));
+        }
 
         let being_sampler = being_samplers_by_pack
             .entry(pack_entity)
             .or_default();
         let leader_priority = rank_sampler_by_pack
+            .entry(pack_entity)
+            .or_default();
+        let center_rank_multipliers = center_rank_multipliers_by_pack
             .entry(pack_entity)
             .or_default();
         let min_dists = min_dists_by_pack
@@ -82,10 +100,29 @@ pub fn init_packs(
             leader_priority.0.insert(bit_ent, CappedNormalDist::from_seri(priority.clone()));
         }
 
+        for (member_id, multiplier) in &pack_seri.center_rank_weight_multipliers {
+            let trimmed = member_id.trim();
+            if trimmed.is_empty() || *multiplier <= 0.0 {
+                continue;
+            }
+            let member_ent = race_emap
+                .0
+                .get_cloned(trimmed)
+                .or_else(|_| bit_emap.0.get_cloned(trimmed));
+            let Ok(member_ent) = member_ent else {
+                continue;
+            };
+            center_rank_multipliers.0.insert(member_ent, *multiplier);
+        }
+
         if !pack_seri.behavior_on_member_attack.trim().is_empty() {
             cmd.entity(pack_entity)
-                .insert(PackBehavior(StrId::trunc(&pack_seri.behavior_on_member_attack)));
+                .insert(PackOnAttackBehavior(StrId::trunc(&pack_seri.behavior_on_member_attack)));
         }
+        cmd.entity(pack_entity).insert((
+            PackAttackAlertEffectivenessFalloff(pack_seri.attack_alert_effectiveness_falloff.max(0.0)),
+            PackCounterRegroupTightness(pack_seri.counter_regroup_tightness.max(0.0)),
+        ));
 
         if !pack_seri.spawn_being_count_normal_dist.is_sentinel() {
             cmd.entity(pack_entity)
@@ -184,6 +221,13 @@ pub fn init_packs(
         }
         cmd.entity(pack_ent)
             .insert(rank_sampler);
+    }
+    for (pack_ent, center_rank_multipliers) in center_rank_multipliers_by_pack {
+        if center_rank_multipliers.0.is_empty() {
+            continue;
+        }
+        cmd.entity(pack_ent)
+            .insert(center_rank_multipliers);
     }
     for (pack_ent, min_dists) in min_dists_by_pack {
         if min_dists.is_empty() {

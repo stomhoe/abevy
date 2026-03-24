@@ -8,13 +8,13 @@ use being::{
     being_bundles::BeingBundle,
     being_inst_template::being_inst_template_resources::BitRef,
     being_components::Being,
-    pack::pack_components::{Pack, PackBeingSampler, PackInitialSize, PackMinDistsToPacksOrRaces},
+    pack::pack_components::*,
     race::{race_components::Race, race_resources::RaceRef},
 };
-use being_shared::BeingInstTemplate;
+use ::being_shared::*;
 use common::file_logging::file_log;
 use common::log_targets::WILDLIFE_SYSTEM;
-use game_common::game_common_samplers::EntityWeightedSampler;
+use ::game_common::*;
 use movement::movement_components::GridLockedMovement;
 use param_sets::BlockingTileParamSet;
 use tilemap::terrain::biome::biome_components::CreatureSampler;
@@ -62,7 +62,7 @@ pub struct NaturalWildlifeSpawnQueries<'w, 's> {
     pack_being_samplers: Query<'w, 's, &'static PackBeingSampler>,
     pack_min_dists_query: Query<'w, 's, &'static PackMinDistsToPacksOrRaces>,
     bit_race_query: Query<'w, 's, &'static RaceRef>,
-    spawn_target_query: Query<'w, 's, (Has<BeingInstTemplate>, Has<Race>, Has<Pack>)>,
+    spawn_target_query: Query<'w, 's, (Has<BeingInstTemplate>, Has<Race>, Has<Pack>, Has<NoSpawnGroup>), With<EntityZero>>,
     spawn_pack_size_query: Query<'w, 's, &'static PackInitialSize>,
 }
 
@@ -182,11 +182,11 @@ fn is_pack_center_candidate_valid(
 
 fn spawn_relation_target(
     spawn_target: Entity,
-    is_pack: bool,
+    spawns_pack_entity: bool,
     is_race: bool,
     bit_race_query: &Query<&RaceRef>,
 ) -> Entity {
-    if is_pack || is_race {
+    if spawns_pack_entity || is_race {
         return spawn_target;
     }
     bit_race_query.get(spawn_target).map(|race_ref| race_ref.0).unwrap_or(spawn_target)
@@ -317,7 +317,7 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
                 trace!(target: WILDLIFE_SYSTEM, "Natural spawn found no candidate wildlife for macrochunk {} in {:?} after affinity filtering", macro_chunk_pos, dim_ref);
                 break;
             };
-            let Ok((_, is_race, is_pack)) = spawn_queries.spawn_target_query.get(pack_target) else {
+            let Ok((_, is_race, is_pack, has_no_spawn_group)) = spawn_queries.spawn_target_query.get(pack_target) else {
                 warn!(target: WILDLIFE_SYSTEM, "Natural spawn target {:?} for macrochunk {} in {:?} is neither bit, race, nor pack", pack_target, macro_chunk_pos, dim_ref);
                 continue;
             };
@@ -326,6 +326,7 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
                 .ok()
                 .map(|dist| dist.sample_count(&mut rng))
                 .unwrap_or(1);
+            let spawns_pack_entity = pack_size > 1 && !has_no_spawn_group;
             spawn_locals.sampled_beings.clear();
             if is_pack {
                 let Ok(pack_being_sampler) = spawn_queries.pack_being_samplers.get(pack_target) else {
@@ -340,7 +341,7 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
             } else {
                 spawn_locals.sampled_beings.resize(pack_size, pack_target);
             }
-            let relation_target = spawn_relation_target(pack_target, is_pack, is_race, &spawn_queries.bit_race_query);
+            let relation_target = spawn_relation_target(pack_target, spawns_pack_entity, is_race, &spawn_queries.bit_race_query);
             let pack_min_dists = spawn_queries.pack_min_dists_query.get(pack_target).ok();
             let Some(pack_center_chunk) = choose_prioritized_pack_center_chunk(
                 distribution,
@@ -373,8 +374,15 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
                 center_chunk: pack_center_chunk,
             });
             spawned_packs += 1;
+            let pack_entity = spawns_pack_entity.then(|| {
+                let pack_entity = cmd.spawn((Pack, )).id();
+                if is_pack {
+                    cmd.entity(pack_entity).insert(EntityZeroRef(pack_target));
+                }
+                pack_entity
+            });
             for (spawn_chunk, &spawn_target) in spawn_chunks.into_iter().zip(spawn_locals.sampled_beings.iter()) {
-                let Ok((is_bit, is_race, _)) = spawn_queries.spawn_target_query.get(spawn_target) else {
+                let Ok((is_bit, is_race, _, _)) = spawn_queries.spawn_target_query.get(spawn_target) else {
                     warn!(target: WILDLIFE_SYSTEM, "Natural spawn member target {:?} for macrochunk {} in {:?} is neither bit nor race", spawn_target, macro_chunk_pos, dim_ref);
                     continue;
                 };
@@ -387,6 +395,9 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
                         PendingNaturalSpawnUnfreeze,
                     ))
                     .id();
+                if let Some(pack_entity) = pack_entity {
+                    cmd.entity(entity).insert(SquadMemberOf::single(pack_entity));
+                }
                 spawn_res.pending_wildlife_by_chunk.insert(entity, dim_ref, spawn_chunk);
                 if is_bit {
                     cmd.entity(entity).insert(BitRef(spawn_target));
@@ -394,6 +405,9 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
                     cmd.entity(entity).insert(RaceRef(spawn_target));
                 }
                 spawned_beings += 1;
+            }
+            if let Some(pack_entity) = pack_entity {
+                debug!(target: WILDLIFE_SYSTEM, "Natural spawn created pack {:?} for target {:?} in macrochunk {} in {:?} with {} members", pack_entity, pack_target, macro_chunk_pos, dim_ref, spawn_locals.sampled_beings.len());
             }
         }
 

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use ::being_shared::{*, UnloadBeing};
+use faction::faction_resources::FactionRef;
 use tilemap_shared::{BeingsAtGpos, ChunkLoaded, ChunkWithBeingsWantsDespawn, GlobalTilePos};
 
 use common::common_states::AssetLoading;
@@ -10,12 +11,13 @@ use game_common::{
 };
 use sprite_systems::AcSpriteSystems;
 use crate::being_melee_systems::apply_melee_attack;
-use crate::being_messages::MakeChunkSnapshotForChaser;
+use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder, PredatorSeenByPrey};
 use crate::being_on_chunk_despawn_systems::{freeze_being, on_chunk_with_beings_attempt_unload, unfreeze_beings_on_chunk_load};
 use crate::being_nav::{AiNavGrids, ChaserNavPlans};
 
 use crate::{
-    being_behavior_systems::*,
+    being_hunt_systems::*,
+    being_prey_systems::*,
     being_build_systems::{build_beings_from_refs, sample_sprite_normal_size_variations, },
     being_components::*,
     being_control_systems::*,
@@ -55,7 +57,9 @@ pub fn plugin(app: &mut App) {
             add_activates_chunks,
             sync_player_being_chunk_ranges,
             assign_uncomputed_beings_to_host,
+            sync_group_members_from_member_of,
             rebuild_portal_crossing_index,
+            refresh_leader_on_member_rank_change,
             cross_portal,
             freeze_being.run_if(on_message::<UnloadBeing>),
             unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>),
@@ -67,9 +71,16 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         on_control_change,
         sync_predator_config_from_sources,
+        sync_detection_vision_cone_from_sources,
         add_predator_behavior_components,
         tick_hunger,
-        update_predator_chase_targets,
+        update_predator_hunting_targets,
+        sync_hunting_to_chasing.after(update_predator_hunting_targets),
+        clear_predator_detected_when_not_hunting.after(sync_hunting_to_chasing),
+        detect_predators_with_vision_cones.after(sync_hunting_to_chasing),
+        update_prey_nav_states_from_predator_detection
+            .run_if(on_message::<PredatorSeenByPrey>)
+            .after(detect_predators_with_vision_cones),
     ).chain())
     .add_systems(
         Update,
@@ -97,21 +108,40 @@ pub fn plugin(app: &mut App) {
     .replicate::<CharacterCreatedBy>()
     .replicate::<DirectControllable>()
     .replicate::<Chasing>()
+    .replicate::<Wandering>()
+    .replicate::<Fleeing>()
+    .replicate::<GoTo>()
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
     .replicate::<being_shared::BgSimulatedIn>()
 
-    .replicate::<PackMemberRank>()
+    .replicate::<MemberRanks>()
 
     .replicate::<Sentient>()
     .replicate::<HumanControlled>()
     .replicate::<PreventsChunkUnloading>()
+    .replicate::<Hunting>()
+    .replicate::<DetectionVisionCone>()
+    .replicate::<PredatorDetectedByPrey>()
+    .replicate::<LedBy>()
+    .replicate::<JoinedGroups>()
+    .register_type::<JoinedGroups>()
+    .replicate::<FactionRef>()
+    .replicate::<SquadMemberOf>()
+    .replicate::<crate::pack::pack_components::PackCenterPos>()
+
+
 
     .replicate_filtered::<ChildOf, With<Being>>()
 
     .add_message::<MakeChunkSnapshotForChaser>()
+    .add_message::<NavOrder>()
+    .add_message::<PredatorSeenByPrey>()
     .add_message::<UnloadBeing>()
 
 
 
     ;
 }
+/*
+ * can you make refresh_terrbl_tilemaps more change-detection-driven or messagereader-driven ?
+ */

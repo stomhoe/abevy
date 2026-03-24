@@ -5,12 +5,18 @@ pub use being_shared_resources::*;
 pub use common::common_components::Grounding;
 
 pub mod being_shared;
+pub mod being_shared_seris;
 pub mod body_tree_shared;
 pub mod bodyparts_shared;
 pub mod being_inst_templ_shared;
 pub mod being_shared_messages;
 pub mod being_shared_resources;
 pub mod being_shared_audio;
+pub mod being_shared_group;
+pub mod being_shared_nav_states;
 pub use body_tree_shared::*;
 pub use bodyparts_shared::*;
 pub use being_shared_audio::*;
+pub use being_shared_seris::*;
+pub use being_shared_group::*;
+pub use being_shared_nav_states::*;

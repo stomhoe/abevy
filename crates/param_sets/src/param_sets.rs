@@ -21,27 +21,35 @@ pub struct BlockingTileParamSet<'w, 's> {
     wallphaser_query: Query<'w, 's, (), With<WallPhaser>>,
     will_despawn_query: Query<'w, 's, (), (With<Dead>, With<DespawnOnDeath>)>,
     tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos), (With<Tile>, Without<Being>)>,
-    tile_direction_query: Query<'w, 's, &'static CardinalDirection, (With<Tile>, Without<Being>)>,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
     tile_tags: Query<'w, 's, &'static TagSet, (With<Tile>, Without<Being>)>,
     interaction_zones: Query<'w, 's, &'static InteractionZones, >,
     being_collision_query: Query<'w, 's, (Option<&'static InteractionZones>, &'static GlobalTransform), (With<Being>, )>,
-    being_direction_query: Query<'w, 's, &'static mut CardinalDirection, (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
     terrgen_states: Query<'w, 's, &'static TerrGenState, With<Chunk>>,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
+    pub fn cardinal_direction_query(
+        &mut self,
+    ) -> &mut Query<'w, 's, &'static mut CardinalDirection, ()> {
+        &mut self.tile_gathering_params.cardinal_direction_query
+    }
+
     pub fn gather_tiles_at_to_drain(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
         self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos)
     }
 
     pub fn get_being_direction(&mut self, being: Entity) -> Option<CardinalDirection> {
-        self.being_direction_query.get_mut(being).ok().map(|direction| *direction)
+        self.tile_gathering_params
+            .cardinal_direction_query
+            .get_mut(being)
+            .ok()
+            .map(|direction| *direction)
     }
 
     pub fn set_being_direction(&mut self, being: Entity, direction: CardinalDirection) -> bool {
-        let Ok(mut current_direction) = self.being_direction_query.get_mut(being) else {
+        let Ok(mut current_direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(being) else {
             return false;
         };
         *current_direction = direction;
@@ -117,13 +125,14 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 };
                 let target_zone = target_zones
                     .and_then(|zones| zones.get_collision_mask().cloned())
-                    .unwrap_or_else(InteractionZones::collision_default_zone);
-                let Ok(target_direction) = self.being_direction_query.get(target_being) else {
+                    .unwrap_or_else(InteractionZone::collision_default_zone);
+                let Ok(target_direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(target_being) else {
                     return false;
                 };
+                let target_direction = *target_direction;
                 let target_anchor = target_transform.translation().xy();
                 let intersects = target_zone.intersects_zone(
-                    *target_direction,
+                    target_direction,
                     target_anchor,
                     &moving_collision_zone,
                     moving_direction,
@@ -173,12 +182,13 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                     continue;
                 };
                 let direction = self
-                    .tile_direction_query
-                    .get(tile_entity)
-                    .copied()
+                    .tile_gathering_params
+                    .cardinal_direction_query
+                    .get_mut(tile_entity)
+                    .map(|direction| *direction)
                     .unwrap_or_default();
                 let blocks_here = interaction_zones.interaction_zones_intersect(
-                    InteractionZones::COLLISION_MASK_HASHID,
+                    InteractionZones::COLLISION,
                     &moving_collision_zone,
                     direction,
                     tile_origin.to_pixelpos(),
@@ -241,15 +251,16 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                     let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
                         return true;
                     };
-                    let target_zone = target_zones
-                        .and_then(|zones| zones.get_collision_mask().cloned())
-                        .unwrap_or_else(InteractionZones::collision_default_zone);
-                    let Ok(target_direction) = self.being_direction_query.get(target_being) else {
+                let target_zone = target_zones
+                    .and_then(|zones| zones.get_collision_mask().cloned())
+                    .unwrap_or_else(InteractionZone::collision_default_zone);
+                    let Ok(target_direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(target_being) else {
                         return true;
                     };
+                    let target_direction = *target_direction;
                     let target_anchor = target_transform.translation().xy();
                     let intersects = target_zone.intersects_zone(
-                        *target_direction,
+                        target_direction,
                         target_anchor,
                         &moving_collision_zone,
                         moving_direction,
@@ -286,12 +297,13 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                     continue;
                 };
                 let direction = self
-                    .tile_direction_query
-                    .get(tile_entity)
-                    .copied()
+                    .tile_gathering_params
+                    .cardinal_direction_query
+                    .get_mut(tile_entity)
+                    .map(|direction| *direction)
                     .unwrap_or_default();
                 let blocks_here = interaction_zones.interaction_zones_intersect(
-                    InteractionZones::COLLISION_MASK_HASHID,
+                    InteractionZones::COLLISION,
                     &moving_collision_zone,
                     direction,
                     tile_origin.to_pixelpos(),
@@ -312,22 +324,22 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         false
     }
 
-    fn resolve_being_collision_zone_and_direction(&self, being: Entity) -> (InteractionZone, CardinalDirection) {
+    fn resolve_being_collision_zone_and_direction(&mut self, being: Entity) -> (InteractionZone, CardinalDirection) {
         let Ok((zones, _)) = self.being_collision_query.get(being) else {
-            return (InteractionZones::collision_default_zone(), CardinalDirection::default());
+            return (InteractionZone::collision_default_zone(), CardinalDirection::default());
         };
-        let Ok(direction) = self.being_direction_query.get(being) else {
+        let Ok(direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(being) else {
             return (
                 zones
                     .and_then(|zones| zones.get_collision_mask().cloned())
-                    .unwrap_or_else(InteractionZones::collision_default_zone),
+                    .unwrap_or_else(InteractionZone::collision_default_zone),
                 CardinalDirection::default(),
             );
         };
         (
             zones
                 .and_then(|zones| zones.get_collision_mask().cloned())
-                .unwrap_or_else(InteractionZones::collision_default_zone),
+                .unwrap_or_else(InteractionZone::collision_default_zone),
             *direction,
         )
     }

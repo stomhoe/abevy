@@ -4,7 +4,8 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::AssetLoading;
 
-use crate::{culture::{culture_init_systems::*, culture_resources::*}, faction_components::Culture};
+use faction_shared::Culture;
+use crate::{culture::{culture_init_systems::*, culture_resources::*}, };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct CultureSystems;
@@ -31,14 +32,6 @@ pub fn plugin(app: &mut App) {
 }
 
 mod culture_init_systems;
+pub mod culture_components;
 pub mod culture_resources;
 pub mod culture_seris;
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        culture_init_systems::*,
-        culture_resources::*,
-        culture_seris::*,
-    };
-}

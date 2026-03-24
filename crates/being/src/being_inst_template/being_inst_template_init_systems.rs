@@ -1,4 +1,4 @@
-use being_shared::{BeingInstTemplate, Predator, PredatorHuntThreshold};
+use being_shared::{BeingInstTemplate, DetectionVisionCone, Predator, PredatorHuntThreshold, NoSpawnGroup, WanderConfig};
 use bevy::prelude::*;
 use common::common_components::*;
 
@@ -50,6 +50,7 @@ pub fn init_being_templates(
         let str_id = StrId::trunc(&template_seri.id);
 
         let bit_entity = cmd.spawn_empty().id();
+        cmd.entity(bit_entity).insert(template_seri.tags_with_id());
 
         let being_inst_template = BeingInstTemplate {
             points: template_seri.points,
@@ -90,6 +91,12 @@ pub fn init_being_templates(
                 spawn_pack_size_normal_dist,
             )));
         }
+        if !template_seri.spawn_pack_entity {
+            cmd.entity(bit_entity).insert(NoSpawnGroup);
+        }
+        if !template_seri.wander.is_disabled() {
+            cmd.entity(bit_entity).insert(WanderConfig::from_seri(&template_seri.wander));
+        }
         if !template_seri.whitelisted_spawn_tile_tags.is_empty() {
             cmd.entity(bit_entity).insert(WhitelistedSpawnTileTags(tilemap_shared::being_components::WhitelistedTags(TagSet::new(&template_seri.whitelisted_spawn_tile_tags))));
         }
@@ -101,6 +108,15 @@ pub fn init_being_templates(
                 Predator::default(),
                 PredatorHuntThreshold(template_seri.predator_hunt_threshold),
             ));
+        }
+        if DetectionVisionCone::is_configured_in_seri(
+            template_seri.detection_vision_cone_range_tiles,
+            template_seri.detection_vision_cone_half_angle_deg,
+        ) {
+            cmd.entity(bit_entity).insert(DetectionVisionCone {
+                range_tiles: template_seri.detection_vision_cone_range_tiles.max(0.0),
+                half_angle_deg: template_seri.detection_vision_cone_half_angle_deg.clamp(1.0, 179.0),
+            });
         }
         // Resolve race entity from race string
         let race_str_id = StrId::trunc(&template_seri.race);

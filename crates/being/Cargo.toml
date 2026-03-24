@@ -8,6 +8,8 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 player = { path = "../player" }
 faction = { path = "../faction" }
+faction_shared = { path = "../faction_shared" }
+
 tilemap = { path = "../tilemap" }
 camera = { path = "../camera" }
 movement = { path = "../movement" }
@@ -24,6 +26,7 @@ param_sets = { path = "../param_sets" }
 bevy = { workspace = true }
 bevy_enhanced_input = { workspace = true }
 big-brain = { workspace = true }
+superstate = { workspace = true }
 
 serde = { workspace = true }
 bevy_northstar = { workspace = true }

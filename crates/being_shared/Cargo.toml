@@ -11,6 +11,7 @@ faction_shared = { path = "../faction_shared" }
 item_shared = { path = "../item_shared" }
 
 bevy = { workspace = true }
+superstate = { workspace = true }
 
 serde = { workspace = true }
 #strum = { workspace = true }

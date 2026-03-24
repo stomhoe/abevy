@@ -1,0 +1,100 @@
+use bevy::{ecs::entity::MapEntities, prelude::*};
+use serde::{Deserialize, Serialize};
+use superstate::SuperstateInfo;
+use tilemap_shared::{DimensionRef, GlobalTilePos};
+
+#[derive(Component, Debug, Default, Clone)]
+#[require(SuperstateInfo<BehavorialNavState>, )]//you need to add a plugin look at superstate crate i git cloned for example
+pub struct BehavorialNavState;
+
+#[derive(Component, Debug, Default, Clone, Deserialize, Serialize)]
+#[require(BehavorialNavState, )]//refactor this to only be behavorial intent and updatting goto accordingly in a non nav system, not used for nav systems. nav system should only understand GoTo(gpos: GlobalTilePos, stop_distance: f32)
+pub struct Wandering;
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
+#[relationship(relationship_target = Chasers)]
+#[require(BehavorialNavState, )]
+pub struct Chasing {
+    #[relationship] #[entities]
+    pub target: Entity,
+    pub stop_distance: f32,
+}
+impl Chasing {
+    pub fn new(target: Entity, stop_distance: f32) -> Self {
+        Self {
+            target,
+            stop_distance: stop_distance.max(0.0),
+        }
+    }
+
+    pub fn chase_target_pos(
+        &self,
+        chaser_ent: Entity,
+        chaser_dim: DimensionRef,
+        targets_query: &Query<(Entity, &GlobalTilePos, &DimensionRef), >,
+    ) -> Option<GlobalTilePos> {
+        if self.target == chaser_ent {
+            return None;
+        }
+        let Ok((_target_ent, target_gpos, &target_dim, )) = targets_query.get(self.target) else {
+            return None;
+        };
+        if target_dim != chaser_dim {
+            return None;
+        }
+        Some(*target_gpos)
+    }
+}
+
+#[derive(Component, Debug, )]
+#[relationship_target(relationship = Chasing)]
+pub struct Chasers(Vec<Entity>);
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
+#[require(BehavorialNavState, )]
+pub struct Fleeing(#[entities] pub Entity);
+impl Fleeing {
+    pub fn new(flee_from: Entity) -> Self {
+        Self(flee_from)
+    }
+
+    pub fn flee_from(&self) -> Entity {
+        self.0
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum NavOrderSource {
+    Wandering,
+    Chasing,
+    Fleeing,
+}
+impl NavOrderSource {
+    pub fn tie_break_rank(self) -> u8 {
+        match self {
+            Self::Fleeing => 3,
+            Self::Chasing => 2,
+            Self::Wandering => 1,
+        }
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+pub struct GoTo {
+    pub pos: GlobalTilePos,
+    pub stop_distance: f32,
+}
+impl GoTo {
+    pub fn new(pos: GlobalTilePos, stop_distance: f32) -> Self {
+        Self {
+            pos,
+            stop_distance: stop_distance.max(0.0),
+        }
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+pub struct GoToMeta {
+    pub source: NavOrderSource,
+    pub updated_tick: u32,
+}

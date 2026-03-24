@@ -2,8 +2,9 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use common::common_components::{DisplayName, Prefix, StrId, Tag};
 use game_common::game_common_string_components::Description;
 
+use crate::culture::culture_components::*;
 use crate::culture::culture_resources::*;
-use crate::faction_components::Culture;
+use faction_shared::Culture;
 
 pub fn init_cultures(
     mut cmd: Commands,

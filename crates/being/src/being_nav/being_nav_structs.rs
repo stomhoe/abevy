@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_northstar::CardinalGrid;
+use bevy_northstar::prelude::*;
 use ::tilemap_shared::GlobalTilePos;
 use bevy::platform::collections::HashMap;
 use std::time::Duration;
@@ -33,6 +34,27 @@ impl AiNavGridCache {
         }
 
         Some((start, goal))
+    }
+}
+
+impl crate::being_nav::being_nav_resources::AiNavGrids {
+    pub fn can_pathfind_between(
+        &self,
+        from_pos: GlobalTilePos,
+        to_pos: GlobalTilePos,
+        dim: ::tilemap_shared::DimensionRef,
+    ) -> bool {
+        let Some(cache) = self.by_dim.get(&dim.0) else {
+            return true;
+        };
+        let Some((start, goal)) = cache.local_path_points(from_pos, to_pos) else {
+            return false;
+        };
+        let mut req = PathfindArgs::new(start, goal).astar();
+        let Some(path) = cache.grid.pathfind(&mut req) else {
+            return false;
+        };
+        !path.is_partial()
     }
 }
 

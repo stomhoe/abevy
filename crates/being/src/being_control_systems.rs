@@ -1,10 +1,10 @@
 use ::being_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_CONTROL;
-use faction::faction_components::BelongsToAPlayerFaction;
+use faction_shared::BelongsToAPlayerFaction;
 use game_common::game_common_components::CameraTarget;
-use movement::movement_components::InputMoveDir;
-use player::player_components::{HostPlayer, Mine, Player};
+use movement::movement_components::{InputMaxSpeed, InputMoveDir, InputSpeedThrottleMult};
+use player::{player_components::{HostPlayer, Mine, Player}, prelude::MyPlayer};
 use tilemap::chunking::chunking_components::ActivatingChunks;
 use tilemap_shared::LoadChunksAround;
 
@@ -37,8 +37,8 @@ pub fn sync_player_being_chunk_ranges(
 
 pub fn on_control_change(
     mut commands: Commands,
-    self_player: Query<(Entity, Has<HostPlayer>), (With<Player>, With<Mine>)>,
-    self_player_became_mine: Query<(), (With<Player>, With<Mine>, Added<Mine>)>,
+    self_player: Query<(Entity, Has<HostPlayer>), (MyPlayer)>,
+    self_player_became_mine: Query<(), (MyPlayer, Added<Mine>)>,
     changed_query: Query<(Entity, &ComputedBy, Has<CameraTarget>), Changed<ComputedBy>>,
     computed_by_query: Query<(Entity, &ComputedBy, Has<CameraTarget>)>,
     mut input_dirs: Query<&mut InputMoveDir>,
@@ -57,15 +57,17 @@ pub fn on_control_change(
             trace!(target: BEING_CONTROL, "InputMoveDir reset on control change for {:?}: {:?} -> {:?}", being_ent, input_dir.0, Vec2::ZERO);
             input_dir.0 = Vec2::ZERO;
         }
-            if controlled_by.client_ent == self_entity {
+        if controlled_by.client_ent == self_entity {
             info!(target: BEING_CONTROL, "debug {:?} is now computed locally by self", being_ent);
             commands.entity(being_ent).try_insert_if_new((ComputedLocally, ));
             if controlled_by.human_dc_input {
                 debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget due to human input", being_ent);
                 commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), *default_chunk_range_for_player_beings, ));
+                commands.entity(being_ent).try_insert(InputSpeedThrottleMult(1.0));
+                commands.entity(being_ent).try_remove::<InputMaxSpeed>();
             } else {
                 debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
-                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, LoadChunksAround, )>();
+                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, )>();
             }
         } else {
             commands.entity(being_ent).try_remove::<(ComputedLocally, CameraTarget)>();

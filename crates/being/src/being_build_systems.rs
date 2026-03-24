@@ -5,7 +5,8 @@ use bevy::{
 };
 #[allow(unused_imports, )]
 use common::{AnyDisabling, common_components::{SampleSpriteEnts, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
-use faction::faction_components::BelongsToFaction;
+use faction::faction_resources::FactionRef;
+use being_shared::JoinedGroups;
 use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteGlobalNormalDistResult, SpriteHoriNormalDist, SpriteHoriNormalDistResult, SpriteVertNormalDist, SpriteVertNormalDistResult}, game_common_timers::EntityZero};
 use tilemap_shared::InteractionZones;
 
@@ -32,6 +33,7 @@ pub fn build_beings_from_refs(
         (
             Option<&BitRef>,
             Option<&RaceRef>,
+            Option<&mut JoinedGroups>,
             Has<SampleSpriteEnts>,
             Has<BodyTreeRef>,
             Has<BodyWeightedSamplerRef>,
@@ -45,7 +47,7 @@ pub fn build_beings_from_refs(
         Option<&SampleSpriteEnts>,
         Option<&RaceRef>,
         Option<&BodyWeightedSamplerRef>,
-        Option<&BelongsToFaction>,
+        Option<&FactionRef>,
         Option<&CappedNormalDist>,
     )>,
     race_query: Query<(
@@ -61,7 +63,7 @@ pub fn build_beings_from_refs(
     let mut sample_sprites_to_ins = Vec::new();
     let mut race_refs_to_ins = Vec::new();
     let mut body_sampler_to_ins = Vec::new();
-    let mut belongs_to_fac_refs_to_ins = Vec::new();
+    let mut member_of_to_ins = Vec::new();
     let mut sex_refs_to_ins = Vec::new();
 
     beings_to_build.clear();
@@ -71,7 +73,7 @@ pub fn build_beings_from_refs(
     let mut rng = rand::rng();
 
     for being_ent in beings_to_build.drain() {
-        let Ok((bit_ref, race_ref, has_sample_sprites, has_body_tree_ref, has_body_sampler_ref, has_sex_ref, has_interaction_zones, )) = customer_query.get_mut(being_ent) else {
+        let Ok((bit_ref, race_ref, member_of, has_sample_sprites, has_body_tree_ref, has_body_sampler_ref, has_sex_ref, has_interaction_zones, )) = customer_query.get_mut(being_ent) else {
             continue;
         };
         let is_reenabled_only = changed_beings.get(being_ent).is_err();
@@ -90,7 +92,7 @@ pub fn build_beings_from_refs(
         let mut has_body_tree_ref_now = has_body_tree_ref || has_body_sampler_ref;
 
         if let Some(bit_ref) = bit_ref {
-            let Ok((template, sample_sprites, bit_race_ref, sample_body_body_tree, belongs_to_fac, _norm_dist)) = bit_query.get(bit_ref.0) else {
+            let Ok((template, sample_sprites, bit_race_ref, sample_body_body_tree, faction_ref, _norm_dist)) = bit_query.get(bit_ref.0) else {
                 warn!(target: BEING_TEMPLATE_BUILD, "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
                 continue;
             };
@@ -103,9 +105,12 @@ pub fn build_beings_from_refs(
                 body_sampler_to_ins.push((being_ent, *sample_body_body_tree));
                 has_body_tree_ref_now = true;
             }
-            if let Some(belongs_to_fac) = belongs_to_fac {
-                let belongs_to_fac = belongs_to_fac.clone();
-                belongs_to_fac_refs_to_ins.push((being_ent, belongs_to_fac));
+            if let Some(faction_ref) = faction_ref {
+                if let Some(mut member_of) = member_of {
+                    member_of.insert(faction_ref.0);
+                } else {
+                    member_of_to_ins.push((being_ent, JoinedGroups::single(faction_ref.0)));
+                }
             }
             if let Some(bit_race_ref) = bit_race_ref {
                 if race_ref.map(|r| r.0) != Some(bit_race_ref.0) {
@@ -177,7 +182,7 @@ pub fn build_beings_from_refs(
     cmd.try_insert_batch(sample_sprites_to_ins);
     cmd.try_insert_batch(race_refs_to_ins);
     cmd.try_insert_batch(body_sampler_to_ins);
-    cmd.try_insert_batch_if_new(belongs_to_fac_refs_to_ins);
+    cmd.try_insert_batch_if_new(member_of_to_ins);
     cmd.try_insert_batch_if_new(sex_refs_to_ins);
 }
 

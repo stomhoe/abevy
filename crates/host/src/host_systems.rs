@@ -1,10 +1,11 @@
 use std::{mem, };
 
 use bevy_replicon_renet::{RenetServer, netcode::NetcodeServerTransport};
-use faction::faction_components::{BelongsToFaction, Faction};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_states::{AssetLoading, GamePhase} ;
+use faction::faction_resources::FactionRef;
+use faction_shared::Faction;
 use multiplayer_shared::multiplayer_events::{SendUsername, AttemptHostServer, StartServerFailed};
 use player::player_components::{Mine, Player};
 
@@ -49,7 +50,7 @@ pub fn host_on_player_connect(on_connected_client: On<Add, ConnectedClient>,
         return;
     };
 
-    cmd.entity(on_connected_client.entity).insert((Player, BelongsToFaction(host_faction)));
+    cmd.entity(on_connected_client.entity).insert((Player, FactionRef(host_faction)));
     info!(target: "host_systems", "(HOST) `{}` connected", on_connected_client.entity);
 
 }

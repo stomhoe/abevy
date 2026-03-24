@@ -23,3 +23,5 @@ pub struct TrustedForOtracosa;
 pub struct HostPlayer;
 
 pub type MyPlayer = (With<Player>, With<Mine>);
+
+//pub type MyFaction = (With<Faction>, With<Mine>);

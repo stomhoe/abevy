@@ -46,7 +46,7 @@ pub fn sync_occupancy_for_beings_at_gpos_res(
         reused_colmask_vec.clear();
         if let Some(interaction_zones) = interaction_zones {
             interaction_zones.gather_zone_positions_for_hashid(
-                InteractionZones::COLLISION_MASK_HASHID,
+                InteractionZones::COLLISION,
                 facing_dir.copied().unwrap_or_default(),
                 gpos.to_pixelpos(),
                 &mut reused_colmask_vec,
@@ -175,7 +175,6 @@ pub fn start_grid_locked_steps(
         &SpeedMagnitude,
         &mut GlobalTilePos,
         &mut GridLockedMovement,
-        &CardinalDirection,
     ), (With<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut sync_gpos_msgs: Local<Vec<ToClients<SyncGpos>>>,
@@ -190,7 +189,6 @@ pub fn start_grid_locked_steps(
         speed_magnitude,
         mut tile_pos,
         mut glm,
-        facing_dir,
     ) in beings.iter_mut()
     {
         glm.ensure_grid_anchor(*tile_pos);
@@ -214,7 +212,7 @@ pub fn start_grid_locked_steps(
                     true
                 }
                 TryStartStepOutcome::Blocked => {
-                    if *facing_dir == next_dir {
+                    if blocking_tiles.get_being_direction(entity).is_some_and(|facing_dir| facing_dir == next_dir) {
                         false
                     } else {
                         steps_to_request = 1;
@@ -242,7 +240,9 @@ pub fn start_grid_locked_steps(
                 *credit = (*credit - steps_taken as f32).max(0.0);
                 steps_to_request = steps_taken;
                 true
-            } else if dir != IVec2::ZERO && *facing_dir != next_dir {
+            } else if dir != IVec2::ZERO
+                && blocking_tiles.get_being_direction(entity).is_some_and(|facing_dir| facing_dir != next_dir)
+            {
                 steps_to_request = 1;
                 true
             } else {

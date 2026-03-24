@@ -3,7 +3,16 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use common::{common_components::Tag, common_tag_components::TagSet};
 
-use crate::{DimensionRef, GlobalTilePos, HashIdToTexIndex, InteractionZones, LoadedChunks, SpriteTilesAtGpos, Tilemaps};
+use crate::{
+    CardinalDirection,
+    DimensionRef,
+    GlobalTilePos,
+    HashIdToTexIndex,
+    InteractionZones,
+    LoadedChunks,
+    SpriteTilesAtGpos,
+    Tilemaps,
+};
 
 #[derive(SystemParam)]
 #[allow(unused_parens, )]
@@ -12,6 +21,7 @@ pub struct TileGatheringParamSet<'w, 's> {
     spritetiles_at_gpos: ResMut<'w, SpriteTilesAtGpos>,
     loaded_chunks: Res<'w, LoadedChunks>,
     chunk_children: Query<'w, 's, &'static Tilemaps>,
+    pub cardinal_direction_query: Query<'w, 's, &'static mut CardinalDirection, ()>,
     pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static mut HashIdToTexIndex, &'static mut TilemapTexture),>,
     tile_tags: Query<'w, 's, &'static TagSet>,
     to_drain: Local<'s, Vec<Entity>>,

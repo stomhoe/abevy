@@ -61,6 +61,7 @@ avian2d = "0.5.0"
 #bevy_rand = "0.11.1"
 bevy_northstar = "0.6.1"
 big-brain = "0.22.0"
+superstate = { path = "Superstate" }
 
 #cargo upgrade --incompatible
 

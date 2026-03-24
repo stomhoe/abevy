@@ -9,6 +9,19 @@ use tilemap_shared::{DimensionRef, GlobalTilePos, SnapTransformToGpos};
 pub struct InputMoveDir(pub Vec2);
 
 #[derive(Component, Debug, Clone, Copy)]
+//for limiting on speed via a multiplier on our max available speed
+pub struct InputSpeedThrottleMult(pub f32);//higher than 1.0 or lower than 0.0 doesnt do anything
+impl Default for InputSpeedThrottleMult {
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+//for limiting on speed via a max speed magnitude (dont mutate SpeedMagnitude's value with this, just use this as a .max on its value when its used)
+pub struct InputMaxSpeed(pub f32);
+
+#[derive(Component, Debug, Clone, Copy)]
 pub struct PendingTileCorrection {
     pub gpos: GlobalTilePos,
     pub secs_left: f32,

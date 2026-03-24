@@ -2,8 +2,9 @@ use bevy::prelude::*;
 #[allow(unused_imports, )]
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
+use game_common::HostSystems;
 
-use crate::pack::{pack_init_systems::*, pack_resources::*};
+use crate::pack::{pack_init_systems::*, pack_resources::*, pack_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct PackSystems;
@@ -15,10 +16,14 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             OnEnter(AssetLoading::SpawnReplicatedEntities),
             ((init_packs, map_pack_id_to_entity).chain()).in_set(PackSystems),
-        );
+        )
+        .add_systems(Update, (update_pack_center_pos, cleanup_empty_packs).in_set(HostSystems))
+
+    ;
 }
 
 mod pack_init_systems;
 pub mod pack_components;
 pub mod pack_resources;
 pub mod pack_seris;
+pub mod pack_systems;

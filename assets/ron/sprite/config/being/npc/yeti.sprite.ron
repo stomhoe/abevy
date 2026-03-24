@@ -1,0 +1,23 @@
+SpriteConfigSeri(
+    id: "yeti",
+    name: "Yeti",
+    mapped_anims: {
+        ("south", "idle", "g", "") : "yeti_south_idle",
+        ("south", "move", "g", "") : "yeti_south_move",
+        ("west", "idle", "g", "") : "yeti_west_idle",
+        ("west", "move", "g", "") : "yeti_west_move",
+        ("east", "idle", "g", "") : "yeti_east_idle",
+        ("east", "move", "g", "") : "yeti_east_move",
+        ("north", "idle", "g", "") : "yeti_north_idle",
+        ("north", "move", "g", "") : "yeti_north_move",
+    },
+    children_sprites: [],
+    shares_tag: [],
+    directionable: true,
+    movement_based: true,
+    grounding_based: false,
+    baseline_move_speed: 200.0,
+    offset: (0., 6.),
+    scale: (1.2, 1.2),
+    tags: [],
+)

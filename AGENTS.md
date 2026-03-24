@@ -49,3 +49,6 @@ also, cmd.try_insert_batch(some_collection) exists and it can be called with any
 IMPORTANT: if you find a problem/impossibility for a user-requested implementation/code fix, don't force a hacky code patch. Instead, stop generating code and inform the user about the wall you ran into so he decides how to continue
 
 IMPORTANT: if you got requested implicitely or explicitely fix/generate some code notice you are in read mode (can't edit files), dont read/explore/generate any code, instead immediately tell the user to change your authorization level before beginning.
+
+
+try to use .reserve()/with_capacity() for collections in which you know how many you are going to insert as max

@@ -11,7 +11,7 @@ use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
 use tilemap_shared::*;
 
-use crate::movement_components::{InputMoveDir, FinalNormMoveDir, SpeedMagnitude};
+use crate::movement_components::{InputMaxSpeed, InputMoveDir, InputSpeedThrottleMult, FinalNormMoveDir, SpeedMagnitude};
 
 pub fn process_input_direction_modifiers(
     state: Res<State<ClientState>>,
@@ -110,6 +110,8 @@ pub fn process_speed_modifiers(
         Option<&Body>,
         &mut SpeedMagnitude,
         Option<&BodyTreeWeightSum>,
+        Option<&InputSpeedThrottleMult>,
+        Option<&InputMaxSpeed>,
         Has<ComputedLocally>,
     )>,
     modifiers_query: Query<(Entity, &ModifierTarget, Option<&EntityZeroRef>, ), (Without<EntityZero>, )>,
@@ -131,6 +133,8 @@ pub fn process_speed_modifiers(
         body,
         mut speed_magnitude,
         body_weight_sum,
+        input_speed_throttle_mult,
+        input_max_speed,
         controlled_locally,
     ) in being_query.iter_mut()
     {
@@ -231,7 +235,12 @@ pub fn process_speed_modifiers(
             tile_walk_mult = tile_walk_mult.min(tile_walk_mult_cfg.0);
         }
         let final_speed = final_speed * tile_walk_mult.max(0.0);
-        let final_speed = final_speed * 5000.;
+        let mut final_speed = final_speed * 5000.;
+        let speed_throttle = input_speed_throttle_mult.map(|v| v.0).unwrap_or(1.0).clamp(0.0, 1.0);
+        final_speed *= speed_throttle;
+        if let Some(input_max_speed) = input_max_speed {
+            final_speed = final_speed.min(input_max_speed.0.max(0.0));
+        }
         if (speed_magnitude.0 - final_speed).abs() > f32::EPSILON {
             speed_magnitude.0 = final_speed;
         }

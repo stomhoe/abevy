@@ -3,7 +3,9 @@ use being::being_components::*;
 use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use ::being_shared::*;
 use common::{GAME_INIT, common_components::StrId, common_states::AppState};
-use faction::{faction_components::*, faction_resources::*};
+use faction::{faction_resources::*};
+use ::being_shared::JoinedGroups;
+use faction_shared::Faction;
 use movement::movement_components::GridLockedMovement;
 use player::player_components::*;
 use tilemap::{
@@ -105,7 +107,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     cmd.spawn((
         Mine, HostPlayer,
         StrId::trunc("HOOOOOST"),
-        BelongsToFaction(host_faction),
+        FactionRef(host_faction),
     ));
     app_state.set(AppState::StatefulGameSession);
 }
@@ -134,7 +136,7 @@ pub fn host_on_player_added(mut cmd: Commands,
 
             let _created_character = cmd.spawn((Being, username.clone(),
                 CharacterCreatedBy { player: player_ent },
-                BelongsToFaction(host_faction),
+                JoinedGroups::single(host_faction),
                 ComputedBy {
                     client_ent: player_ent,
                     human_dc_input: true,

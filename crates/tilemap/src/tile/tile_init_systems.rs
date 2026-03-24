@@ -120,9 +120,9 @@ pub fn init_tiles(
         if !seri.interaction_zones.is_empty() || !seri.colmask.is_empty() {
             let mut zones = InteractionZones::from_seri(std::mem::take(&mut seri.interaction_zones));
             if !seri.colmask.is_empty() {
-                match InteractionZones::collision_mask_zone_from_rows(&seri.colmask, size_in_tiles) {
+                match InteractionZones::new_collision_mask_zone_tiles_only(&seri.colmask, size_in_tiles) {
                     Ok(zone) => {
-                        zones.0.overwrite(InteractionZones::COLLISION_MASK_HASHID, zone);
+                        zones.0.overwrite(InteractionZones::COLLISION, zone);
                     }
                     Err(err) => {
                         error!("Tile '{}' has invalid collision_mask: {}", str_id, err);

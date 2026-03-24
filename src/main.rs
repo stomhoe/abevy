@@ -127,7 +127,7 @@ fn build_filter() -> String {
         log_targets::SPRITE_BUILD, INFO,
         log_targets::SPRITE_SYSTEM, WARN,
 
-        log_targets::BEING_CONTROL, INFO,
+        log_targets::BEING_CONTROL, TRACE,
         log_targets::BODY_BUILD, DEBUG,
         log_targets::GAME_INIT, DEBUG,
 

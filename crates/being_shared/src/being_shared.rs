@@ -1,6 +1,5 @@
 
-use bevy::{ecs::entity::EntityHashMap, prelude::*};
-use bevy::platform::collections::HashSet;
+use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
@@ -8,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
 use faction_shared::BelongsToAPlayerFaction;
 use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
+use crate::being_shared_seris::{DEFAULT_AVOID_ENTITY_RADIUS, DEFAULT_AVOID_ENTITY_STRENGTH, WanderSeri};
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct ComputedLocally;
@@ -205,6 +205,29 @@ impl PredatorHuntThreshold {
     }
 }
 
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+pub struct DetectionVisionCone {
+    pub range_tiles: f32,
+    pub half_angle_deg: f32,
+}
+impl Default for DetectionVisionCone {
+    fn default() -> Self {
+        Self {
+            range_tiles: 9.0,
+            half_angle_deg: 45.0,
+        }
+    }
+}
+impl DetectionVisionCone {
+    pub const SERI_SENTINEL: f32 = f32::NEG_INFINITY;
+    pub fn is_configured_in_seri(range_tiles: f32, half_angle_deg: f32) -> bool {
+        range_tiles > Self::SERI_SENTINEL && half_angle_deg > Self::SERI_SENTINEL
+    }
+}
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
+pub struct PredatorDetectedByPrey(#[entities] pub Entity);
+
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
 #[relationship(relationship_target = SimulatedBeingsWithin)]
@@ -224,12 +247,6 @@ pub struct SimulatedBeingsWithin(Vec<Entity>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct Unloaded;
 
-#[derive(Component, Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct FactionLeader {
-    #[entities]
-    pub being: Entity,
-}
-
 
 pub type PlayerBeing = (With<Being>, With<BelongsToAPlayerFaction>);
 
@@ -237,7 +254,31 @@ pub type LoadedBeing = (With<Being>, Without<Unloaded>);
 pub type UnloadedBeing = (With<Being>, With<Unloaded>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct PackMemberRank;
+pub struct MemberRank(pub f32);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct NoSpawnGroup;
+
+/*
+           .replicate::<SquadMemberOf>()
+*/
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
+#[relationship(relationship_target = SquadMembers)]
+pub struct SquadMemberOf {
+    #[relationship] #[entities]
+    pub squad: Entity,
+}
+impl SquadMemberOf {
+    pub fn single(squad: Entity) -> Self {
+        Self { squad }
+    }
+}
+
+// current physically close distance group of beings we belong to and are currently operating with
+#[derive(Component, Debug, )]
+#[relationship_target(relationship = SquadMemberOf)]
+pub struct SquadMembers(Vec<Entity>);
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 #[require(Replicated, )]//HACER Q MEJOR ESTO SE REGISTRE EN EL CHUNK PARA NO TENER QUE QUERYEAR TODA TILE O BIENG ADENTRO
@@ -245,3 +286,185 @@ pub struct PreventsChunkUnloading;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct ChunkPersistersWithin(pub u32);
+
+/*
+*/
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
+#[relationship(relationship_target = HuntedBy)]
+pub struct Hunting {
+    #[relationship] #[entities]
+    pub prey: Entity,
+}
+
+#[derive(Component, Debug, )]
+#[relationship_target(relationship = Hunting)]
+pub struct HuntedBy(Vec<Entity>);
+
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+pub struct WanderConfig {
+    pub dir_secs_min: f32,
+    pub dir_secs_max: f32,
+    pub move_secs_min: f32,
+    pub move_secs_max: f32,
+    pub halt_secs_min: f32,
+    pub halt_secs_max: f32,
+    pub speed_min: f32,
+    pub speed_max: f32,
+    #[serde(default)]
+    pub avoid_tile_tags: HashSet<String>,
+    #[serde(default)]
+    pub avoid_bit_tags: HashSet<String>,
+    #[serde(default)]
+    pub avoid_race_tags: HashSet<String>,
+    #[serde(default)]
+    pub avoid_pack_tags: HashSet<String>,
+    #[serde(default = "crate::being_shared_seris::default_nan")]
+    pub max_drift: f32,
+    #[serde(default)]
+    pub pack_orbit_radius: f32,
+    #[serde(default)]
+    pub pack_orbit_retarget_secs_min: f32,
+    #[serde(default)]
+    pub pack_orbit_retarget_secs_max: f32,
+    #[serde(default)]
+    pub wander_around_leader: bool,
+    #[serde(default)]
+    pub avoid_entity_radius: HashMap<String, f32>,
+    #[serde(default)]
+    pub avoid_entity_strength: HashMap<String, f32>,
+}
+impl Default for WanderConfig {
+    fn default() -> Self {
+        Self {
+            dir_secs_min: 0.8,
+            dir_secs_max: 2.4,
+            move_secs_min: 0.9,
+            move_secs_max: 2.4,
+            halt_secs_min: 0.25,
+            halt_secs_max: 1.4,
+            speed_min: 0.2,
+            speed_max: 0.6,
+            avoid_tile_tags: HashSet::default(),
+            avoid_bit_tags: HashSet::default(),
+            avoid_race_tags: HashSet::default(),
+            avoid_pack_tags: HashSet::default(),
+            max_drift: f32::NAN,
+            pack_orbit_radius: 0.0,
+            pack_orbit_retarget_secs_min: 0.0,
+            pack_orbit_retarget_secs_max: 0.0,
+            wander_around_leader: false,
+            avoid_entity_radius: HashMap::default(),
+            avoid_entity_strength: HashMap::default(),
+        }
+    }
+}
+
+impl WanderConfig {
+    pub fn from_seri(seri: &WanderSeri) -> Self {
+        Self {
+            dir_secs_min: seri.dir_secs_min,
+            dir_secs_max: seri.dir_secs_max,
+            move_secs_min: seri.move_secs_min,
+            move_secs_max: seri.move_secs_max,
+            halt_secs_min: seri.halt_secs_min,
+            halt_secs_max: seri.halt_secs_max,
+            speed_min: seri.speed_min,
+            speed_max: seri.speed_max,
+            avoid_tile_tags: seri.avoid_tile_tags.clone(),
+            avoid_bit_tags: seri.avoid_bit_tags.clone(),
+            avoid_race_tags: seri.avoid_race_tags.clone(),
+            avoid_pack_tags: seri.avoid_pack_tags.clone(),
+            max_drift: seri.max_drift,
+            pack_orbit_radius: seri.pack_orbit_radius,
+            pack_orbit_retarget_secs_min: seri.pack_orbit_retarget_secs_min,
+            pack_orbit_retarget_secs_max: seri.pack_orbit_retarget_secs_max,
+            wander_around_leader: seri.wander_around_leader,
+            avoid_entity_radius: seri
+                .avoid_entity_radius
+                .iter()
+                .map(|(tag, radius)| (tag.clone(), radius.max(0.0)))
+                .collect(),
+            avoid_entity_strength: seri
+                .avoid_entity_strength
+                .iter()
+                .map(|(tag, strength)| (tag.clone(), strength.max(0.0)))
+                .collect(),
+        }
+        .sanitized()
+    }
+
+    pub fn sanitized(mut self) -> Self {
+        self.dir_secs_min = self.dir_secs_min.max(0.01);
+        self.dir_secs_max = self.dir_secs_max.max(self.dir_secs_min);
+        self.move_secs_min = self.move_secs_min.max(0.01);
+        self.move_secs_max = self.move_secs_max.max(self.move_secs_min);
+        self.halt_secs_min = self.halt_secs_min.max(0.01);
+        self.halt_secs_max = self.halt_secs_max.max(self.halt_secs_min);
+        self.speed_min = self.speed_min.max(0.0);
+        self.speed_max = self.speed_max.max(self.speed_min);
+        self.pack_orbit_radius = self.pack_orbit_radius.max(0.0);
+        self.pack_orbit_retarget_secs_min = self.pack_orbit_retarget_secs_min.max(0.0);
+        self.pack_orbit_retarget_secs_max = self
+            .pack_orbit_retarget_secs_max
+            .max(self.pack_orbit_retarget_secs_min);
+        self.avoid_entity_radius = self
+            .avoid_entity_radius
+            .into_iter()
+            .map(|(tag, radius)| (tag, radius.max(0.0)))
+            .collect();
+        self.avoid_entity_strength = self
+            .avoid_entity_strength
+            .into_iter()
+            .map(|(tag, strength)| (tag, strength.max(0.0)))
+            .collect();
+        self
+    }
+
+    pub fn is_disabled(&self) -> bool {
+        self.dir_secs_min == 0.0
+            && self.dir_secs_max == 0.0
+            && self.move_secs_min == 0.0
+            && self.move_secs_max == 0.0
+            && self.halt_secs_min == 0.0
+            && self.halt_secs_max == 0.0
+            && self.speed_min == 0.0
+            && self.speed_max == 0.0
+            && self.avoid_tile_tags.is_empty()
+            && self.avoid_bit_tags.is_empty()
+            && self.avoid_race_tags.is_empty()
+            && self.avoid_pack_tags.is_empty()
+            && self.max_drift.is_nan()
+            && self.pack_orbit_radius == 0.0
+            && self.pack_orbit_retarget_secs_min == 0.0
+            && self.pack_orbit_retarget_secs_max == 0.0
+            && !self.wander_around_leader
+            && self.avoid_entity_radius.is_empty()
+            && self.avoid_entity_strength.is_empty()
+    }
+
+    pub fn avoid_entity_radius_for(&self, tag: &str) -> f32 {
+        self.avoid_entity_radius
+            .get(tag)
+            .copied()
+            .unwrap_or(DEFAULT_AVOID_ENTITY_RADIUS)
+    }
+
+    pub fn avoid_entity_strength_for(&self, tag: &str) -> f32 {
+        self.avoid_entity_strength
+            .get(tag)
+            .copied()
+            .unwrap_or(DEFAULT_AVOID_ENTITY_STRENGTH)
+    }
+
+    pub fn max_avoid_entity_radius(&self) -> f32 {
+        self.avoid_entity_radius
+            .values()
+            .copied()
+            .fold(DEFAULT_AVOID_ENTITY_RADIUS, f32::max)
+    }
+}
+
+
+
+/*
+*/

@@ -1,5 +1,6 @@
-use crate::being_components::{Being, Chasing};
+use crate::being_components::Being;
 use ::being_shared::*;
+use faction_shared::BelongsToAPlayerFaction;
 use ::tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, LoadedChunks};
 use bevy::{
     ecs::entity::EntityHashSet,
@@ -8,13 +9,12 @@ use bevy::{
 };
 use bevy_northstar::prelude::*;
 use common::log_targets::BEING_SYSTEM;
-use faction::faction_components::BelongsToAPlayerFaction;
 use movement::movement_components::FinalNormMoveDir;
 use movement::movement_components::InputMoveDir;
 use movement::movement_components::SpeedMagnitude;
 use param_sets::BlockingTileParamSet;
 use tilemap::chunking::chunking_components::ActivatingChunks;
-use tilemap_shared::{LoadChunksAround, CheckIfChunkShouldDespawn, };
+use tilemap_shared::{CardinalDirection, CheckIfChunkShouldDespawn, LoadChunksAround, };
 use std::time::Duration;
 
 use super::being_nav_components::RetainedChasePathSnapshot;
@@ -33,6 +33,22 @@ use crate::being_messages::MakeChunkSnapshotForChaser;
 
 const BOXED_TARGET_RETRY_SECS: f32 = 0.4;
 const PARTIAL_TARGET_RETRY_SECS: f32 = 1.0;
+const TARGET_SHIFT_REBUILD_TILES: i32 = 1;
+const BLOCKED_STEP_RETRY_SECS: f32 = 0.08;
+const BOXED_TARGET_FALLBACK_DELTAS: [IVec2; 12] = [
+    IVec2::new(2, 0),
+    IVec2::new(-2, 0),
+    IVec2::new(0, 2),
+    IVec2::new(0, -2),
+    IVec2::new(1, 1),
+    IVec2::new(1, -1),
+    IVec2::new(-1, 1),
+    IVec2::new(-1, -1),
+    IVec2::new(3, 0),
+    IVec2::new(-3, 0),
+    IVec2::new(0, 3),
+    IVec2::new(0, -3),
+];
 
 fn consider_chase_goal_candidate(
     best_path_tiles: &mut Vec<GlobalTilePos>,
@@ -96,6 +112,20 @@ fn queue_released_chase_chunks_for_despawn(
     }
 }
 
+fn request_fast_repath(
+    plans: &mut ChaserNavPlans,
+    chaser_ent: Entity,
+    target_pos: GlobalTilePos,
+) {
+    let Some(plan) = plans.by_ent.get_mut(&chaser_ent) else {
+        return;
+    };
+    let fast_retry = Duration::from_secs_f32(BLOCKED_STEP_RETRY_SECS);
+    if plan.rebuild_timer.duration() > fast_retry {
+        plan.clear_path_and_retry(fast_retry, target_pos);
+    }
+}
+
 #[allow(unused_parens, )]
 pub fn cleanup_player_chase_chunk_retention(
     mut commands: Commands,
@@ -142,26 +172,17 @@ pub fn cleanup_player_chase_chunk_retention(
 }
 
 #[allow(unused_parens, )]
-pub fn rebuild_chaser_nav_plans(
+pub fn rebuild_goto_nav_plans(
     time: Res<Time>,
-    chasers: Query<
+    goto_beings: Query<
         (
             Entity,
             &GlobalTilePos,
             &::tilemap_shared::DimensionRef,
-            &Chasing,
+            &GoTo,
             Option<&movement::movement_components::SpeedMagnitude>,
         ),
         (With<Being>, LocalAiControlled),
-    >,
-    beings_query: Query<
-        (
-            Entity,
-            &GlobalTilePos,
-            &::tilemap_shared::DimensionRef,
-            Option<&movement::movement_components::SpeedMagnitude>,
-        ),
-        With<Being>,
     >,
     grids: Res<AiNavGrids>,
     mut plans: ResMut<ChaserNavPlans>,
@@ -170,48 +191,30 @@ pub fn rebuild_chaser_nav_plans(
 ) {
     active_chasers.clear();
 
-    for (chaser_ent, chaser_gpos, &chaser_dim, to_chase, chaser_speed) in chasers.iter() {
+    for (chaser_ent, chaser_gpos, &chaser_dim, goto, chaser_speed) in goto_beings.iter() {
         active_chasers.insert(chaser_ent);
 
-        let chase_interval = if let Ok((_target_ent, target_gpos, &target_dim, prey_speed)) = beings_query.get(to_chase.target) {
-            if target_dim != chaser_dim || to_chase.target == chaser_ent {
-                Duration::from_secs_f32(0.2)
-            } else {
-                ChaserNavPlan::rebuild_interval(
-                    chaser_speed.map_or(1.0, |speed| speed.0),
-                    prey_speed.map_or(1.0, |speed| speed.0),
-                    chaser_gpos.taxicab_tile_distance(*target_gpos),
-                )
-            }
-        } else {
-            Duration::from_secs_f32(0.2)
-        };
+        let target_pos = goto.pos;
+        let goto_interval = ChaserNavPlan::rebuild_interval(
+            chaser_speed.map_or(1.0, |speed| speed.0),
+            0.0,
+            chaser_gpos.taxicab_tile_distance(target_pos),
+        );
 
         let plan = plans.by_ent.entry(chaser_ent).or_default();
         let timer_finished = plan.rebuild_timer.tick(time.delta()).just_finished();
-
-        let Ok((_target_ent, target_gpos, &target_dim, _prey_speed)) = beings_query.get(to_chase.target) else {
-            plan.reset(chase_interval);
-            continue;
-        };
-        if target_dim != chaser_dim || to_chase.target == chaser_ent {
-            plan.reset(chase_interval);
-            continue;
-        };
-        let target_pos = *target_gpos;
-
-        if chaser_gpos.taxicab_tile_distance(target_pos) <= to_chase.stop_distance.max(0.0) {
+        if chaser_gpos.taxicab_tile_distance(target_pos) <= goto.stop_distance.max(0.0) {
             plan.clear_path_and_retry(Duration::from_secs_f32(0.25), target_pos);
             continue;
         }
 
         let Some(cache) = grids.by_dim.get(&chaser_dim.0) else {
-            plan.clear_path_and_retry(chase_interval, target_pos);
+            plan.clear_path_and_retry(goto_interval, target_pos);
             continue;
         };
 
         let Some((start, goal)) = cache.local_path_points(*chaser_gpos, target_pos) else {
-            plan.clear_path_and_retry(chase_interval, target_pos);
+            plan.clear_path_and_retry(goto_interval, target_pos);
             continue;
         };
 
@@ -245,7 +248,7 @@ pub fn rebuild_chaser_nav_plans(
                     &mut dynamic_blocking,
                     cache,
                     chaser_ent,
-                    to_chase.target,
+                    Entity::PLACEHOLDER,
                     *chaser_gpos,
                     start,
                     local,
@@ -253,7 +256,7 @@ pub fn rebuild_chaser_nav_plans(
                 );
                 continue;
             };
-            if occupant_ent == chaser_ent || occupant_ent == to_chase.target {
+            if occupant_ent == chaser_ent {
                 consider_chase_goal_candidate(
                     &mut best_path_tiles,
                     &mut best_path_is_partial,
@@ -262,7 +265,7 @@ pub fn rebuild_chaser_nav_plans(
                     &mut dynamic_blocking,
                     cache,
                     chaser_ent,
-                    to_chase.target,
+                    Entity::PLACEHOLDER,
                     *chaser_gpos,
                     start,
                     local,
@@ -270,7 +273,7 @@ pub fn rebuild_chaser_nav_plans(
                 );
                 continue;
             }
-            let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_chaser, _blocker_speed)) = chasers.get(occupant_ent) else {
+            let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_goto, _blocker_speed)) = goto_beings.get(occupant_ent) else {
                 consider_chase_goal_candidate(
                     &mut best_path_tiles,
                     &mut best_path_is_partial,
@@ -279,7 +282,7 @@ pub fn rebuild_chaser_nav_plans(
                     &mut dynamic_blocking,
                     cache,
                     chaser_ent,
-                    to_chase.target,
+                    Entity::PLACEHOLDER,
                     *chaser_gpos,
                     start,
                     local,
@@ -287,8 +290,22 @@ pub fn rebuild_chaser_nav_plans(
                 );
                 continue;
             };
-            if blocker_chaser.target == to_chase.target {
+            if blocker_goto.pos == target_pos {
                 blocked_target_approach_count += 1;
+                consider_chase_goal_candidate(
+                    &mut best_path_tiles,
+                    &mut best_path_is_partial,
+                    &mut best_path_remaining,
+                    &mut best_path_cost,
+                    &mut dynamic_blocking,
+                    cache,
+                    chaser_ent,
+                    Entity::PLACEHOLDER,
+                    *chaser_gpos,
+                    start,
+                    local,
+                    Some(occupant_ent),
+                );
                 continue;
             }
 
@@ -300,7 +317,7 @@ pub fn rebuild_chaser_nav_plans(
                 &mut dynamic_blocking,
                 cache,
                 chaser_ent,
-                to_chase.target,
+                Entity::PLACEHOLDER,
                 *chaser_gpos,
                 start,
                 local,
@@ -312,7 +329,7 @@ pub fn rebuild_chaser_nav_plans(
 
         let target_shifted = plan
             .last_target_pos
-            .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= 2)
+            .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= TARGET_SHIFT_REBUILD_TILES)
             .unwrap_or(true);
         let need_rebuild = timer_finished || target_shifted;
         if !need_rebuild {
@@ -320,32 +337,122 @@ pub fn rebuild_chaser_nav_plans(
         }
 
         if target_boxed_by_same_target_chasers {
-            plan.clear_path_and_retry(
-                chase_interval.max(Duration::from_secs_f32(BOXED_TARGET_RETRY_SECS)),
-                target_pos,
-            );
-            trace!(target: BEING_SYSTEM, "Delaying chase nav for {:?}: prey {:?} boxed by same-target chasers", chaser_ent, to_chase.target);
-            continue;
-        }
-
-        if target_boxed_by_same_target_chasers {
-            plan.clear_path_and_retry(
-                chase_interval.max(Duration::from_secs_f32(BOXED_TARGET_RETRY_SECS)),
-                target_pos,
-            );
-            trace!(target: BEING_SYSTEM, "Delaying chase nav for {:?}: prey {:?} boxed by same-target chasers", chaser_ent, to_chase.target);
-            continue;
+            for delta in BOXED_TARGET_FALLBACK_DELTAS {
+                let local = target_pos.0 + delta - cache.min;
+                if local.x < 0
+                    || local.y < 0
+                    || local.x >= cache.grid.width() as i32
+                    || local.y >= cache.grid.height() as i32
+                {
+                    continue;
+                }
+                let local = UVec3::new(local.x as u32, local.y as u32, 0);
+                if !cache.grid.is_passable(local) {
+                    continue;
+                }
+                let Some(&occupant_ent) = cache.occupied.get(&local) else {
+                    consider_chase_goal_candidate(
+                        &mut best_path_tiles,
+                        &mut best_path_is_partial,
+                        &mut best_path_remaining,
+                        &mut best_path_cost,
+                        &mut dynamic_blocking,
+                        cache,
+                        chaser_ent,
+                        Entity::PLACEHOLDER,
+                        *chaser_gpos,
+                        start,
+                        local,
+                        None,
+                    );
+                    continue;
+                };
+                if occupant_ent == chaser_ent {
+                    consider_chase_goal_candidate(
+                        &mut best_path_tiles,
+                        &mut best_path_is_partial,
+                        &mut best_path_remaining,
+                        &mut best_path_cost,
+                        &mut dynamic_blocking,
+                        cache,
+                        chaser_ent,
+                        Entity::PLACEHOLDER,
+                        *chaser_gpos,
+                        start,
+                        local,
+                        None,
+                    );
+                    continue;
+                }
+                let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_goto, _blocker_speed)) = goto_beings.get(occupant_ent) else {
+                    consider_chase_goal_candidate(
+                        &mut best_path_tiles,
+                        &mut best_path_is_partial,
+                        &mut best_path_remaining,
+                        &mut best_path_cost,
+                        &mut dynamic_blocking,
+                        cache,
+                        chaser_ent,
+                        Entity::PLACEHOLDER,
+                        *chaser_gpos,
+                        start,
+                        local,
+                        Some(occupant_ent),
+                    );
+                    continue;
+                };
+                if blocker_goto.pos == target_pos {
+                    consider_chase_goal_candidate(
+                        &mut best_path_tiles,
+                        &mut best_path_is_partial,
+                        &mut best_path_remaining,
+                        &mut best_path_cost,
+                        &mut dynamic_blocking,
+                        cache,
+                        chaser_ent,
+                        Entity::PLACEHOLDER,
+                        *chaser_gpos,
+                        start,
+                        local,
+                        Some(occupant_ent),
+                    );
+                    continue;
+                }
+                consider_chase_goal_candidate(
+                    &mut best_path_tiles,
+                    &mut best_path_is_partial,
+                    &mut best_path_remaining,
+                    &mut best_path_cost,
+                    &mut dynamic_blocking,
+                    cache,
+                    chaser_ent,
+                    Entity::PLACEHOLDER,
+                    *chaser_gpos,
+                    start,
+                    local,
+                    Some(occupant_ent),
+                );
+            }
+            if best_path_tiles.is_empty() {
+                plan.clear_path_and_retry(
+                    goto_interval.max(Duration::from_secs_f32(BOXED_TARGET_RETRY_SECS)),
+                    target_pos,
+                );
+                trace!(target: BEING_SYSTEM, "Delaying GoTo nav for {:?}: target {:?} boxed by same-target movers", chaser_ent, target_pos);
+                continue;
+            }
+            trace!(target: BEING_SYSTEM, "Using boxed-target fallback approach for {:?}: target {:?}, steps {}", chaser_ent, target_pos, best_path_tiles.len());
         }
 
         if best_path_tiles.is_empty() {
-            rebuild_dynamic_blocking(&mut dynamic_blocking, cache, chaser_ent, to_chase.target, start, goal);
+            rebuild_dynamic_blocking(&mut dynamic_blocking, cache, chaser_ent, Entity::PLACEHOLDER, start, goal);
             let mut req = PathfindArgs::new(start, goal)
                 .astar()
                 .partial()
                 .blocking(&dynamic_blocking);
             let Some(path) = cache.grid.pathfind(&mut req) else {
-                plan.clear_path_and_retry(chase_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)), target_pos);
-                trace!(target: BEING_SYSTEM, "Deferred chase nav retry for {:?}: prey {:?}, dist {:.2}, interval {:.2}s", chaser_ent, to_chase.target, chaser_gpos.taxicab_tile_distance(target_pos), chase_interval.as_secs_f32());
+                plan.clear_path_and_retry(goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)), target_pos);
+                trace!(target: BEING_SYSTEM, "Deferred GoTo nav retry for {:?}: target {:?}, dist {:.2}, interval {:.2}s", chaser_ent, target_pos, chaser_gpos.taxicab_tile_distance(target_pos), goto_interval.as_secs_f32());
                 continue;
             };
             best_path_is_partial = path.is_partial();
@@ -363,44 +470,46 @@ pub fn rebuild_chaser_nav_plans(
         plan.holds_at_partial_endpoint = best_path_is_partial;
         plan.rebuild_timer = Timer::new(
             if best_path_is_partial {
-                chase_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS))
+                goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS))
             } else {
-                chase_interval
+                goto_interval
             },
             TimerMode::Once,
         );
-        trace!(target: BEING_SYSTEM, "Rebuilt chase nav for {:?}: prey {:?}, dist {:.2}, interval {:.2}s, steps {}", chaser_ent, to_chase.target, chaser_gpos.taxicab_tile_distance(target_pos), chase_interval.as_secs_f32(), plan.path_tiles.len());
+        trace!(target: BEING_SYSTEM, "Rebuilt GoTo nav for {:?}: target {:?}, dist {:.2}, interval {:.2}s, steps {}", chaser_ent, target_pos, chaser_gpos.taxicab_tile_distance(target_pos), goto_interval.as_secs_f32(), plan.path_tiles.len());
     }
 
     plans.by_ent.retain(|ent, _| active_chasers.contains(ent));
 }
 
-pub fn chase_behavior(
+#[allow(unused_parens, )]
+pub fn goto_behavior(
     mut blocking_tiles: BlockingTileParamSet,
-    mut chasers: Query<
+    mut goto_beings: Query<
         (
             Entity,
             &GlobalTilePos,
             &::tilemap_shared::DimensionRef,
-            &Chasing,
+            &GoTo,
         ),
         (With<Being>, LocalAiControlled),
     >,
-    targets_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef)>,
     mut plans: ResMut<ChaserNavPlans>,
     mut input_dirs: Query<&mut InputMoveDir>,
 ) {
-    for (chaser_ent, chaser_gpos, &chaser_dim, to_chase) in chasers.iter_mut() {
+    for (chaser_ent, chaser_gpos, &chaser_dim, goto) in goto_beings.iter_mut() {
         let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
             continue;
         };
         let chaser_pos = *chaser_gpos;
-        let Some(target_pos) = to_chase.chase_target_pos(chaser_ent, chaser_dim, &targets_query) else {
+        let target_pos = goto.pos;
+        let Some(direct_chase_dir) = chaser_pos.direct_chase_dir(target_pos, goto.stop_distance) else {
             input_move_dir.0 = Vec2::ZERO;
-            continue;
-        };
-        let Some(direct_chase_dir) = chaser_pos.direct_chase_dir(target_pos, to_chase.stop_distance) else {
-            input_move_dir.0 = Vec2::ZERO;
+            let face_delta = target_pos.0 - chaser_pos.0;
+            if face_delta != IVec2::ZERO {
+                let facing = CardinalDirection::from_dir_vec(cardinal_step_toward(face_delta));
+                blocking_tiles.set_being_direction(chaser_ent, facing);
+            }
             continue;
         };
 
@@ -411,7 +520,28 @@ pub fn chase_behavior(
                     if desired == IVec2::ZERO {
                         direct_chase_dir
                     } else {
-                        desired.as_vec2()
+                        let desired_next_pos = GlobalTilePos(chaser_pos.0 + desired);
+                        let desired_next_dist = desired_next_pos.taxicab_tile_distance(target_pos);
+                        let current_dist = chaser_pos.taxicab_tile_distance(target_pos);
+                        let direct_axis = FinalNormMoveDir(direct_chase_dir).normalize_to_axis_dir();
+                        if direct_axis != IVec2::ZERO {
+                            let direct_next_pos = GlobalTilePos(chaser_pos.0 + direct_axis);
+                            let direct_next_dist = direct_next_pos.taxicab_tile_distance(target_pos);
+                            if direct_next_dist < desired_next_dist {
+                                trace!(target: BEING_SYSTEM, "GoTo choosing direct step over plan for {:?}: target {:?}, planned {:?} dist {:.1}, direct {:?} dist {:.1}", chaser_ent, target_pos, desired, desired_next_dist, direct_axis, direct_next_dist);
+                                direct_chase_dir
+                            } else if desired_next_dist > current_dist {
+                                trace!(target: BEING_SYSTEM, "GoTo overriding stale plan step for {:?}: target {:?}, planned {:?} would increase dist {:.1}->{:.1}, using direct {:?}", chaser_ent, target_pos, desired, current_dist, desired_next_dist, direct_axis);
+                                direct_chase_dir
+                            } else {
+                                desired.as_vec2()
+                            }
+                        } else if desired_next_dist > current_dist {
+                            trace!(target: BEING_SYSTEM, "GoTo overriding stale plan step for {:?}: target {:?}, planned {:?} would increase dist {:.1}->{:.1}, using direct {:?}", chaser_ent, target_pos, desired, current_dist, desired_next_dist, direct_axis);
+                            direct_chase_dir
+                        } else {
+                            desired.as_vec2()
+                        }
                     }
                 }
                 None if plan.holds_at_partial_endpoint => Vec2::ZERO,
@@ -426,14 +556,14 @@ pub fn chase_behavior(
             let next_pos = GlobalTilePos(chaser_pos.0 + move_axis);
             if blocking_tiles.is_blocked_at_tiles_only(chaser_dim, next_pos, chaser_ent) {
                 input_move_dir.0 = Vec2::ZERO;
-                if let Some(plan) = plans.by_ent.get_mut(&chaser_ent) {
-                    plan.clear_path_and_retry(Duration::from_secs_f32(0.08), target_pos);
-                }
-                trace!(target: BEING_SYSTEM, "Chase repath after static blocked step for {:?}: prey {:?}, dir {:?}, from {:?}", chaser_ent, to_chase.target, move_axis, chaser_pos);
+                request_fast_repath(&mut plans, chaser_ent, target_pos);
+                trace!(target: BEING_SYSTEM, "GoTo repath after static blocked step for {:?}: target {:?}, dir {:?}, from {:?}", chaser_ent, target_pos, move_axis, chaser_pos);
                 continue;
             }
             if blocking_tiles.is_blocked_at(chaser_dim, next_pos, chaser_ent) {
                 input_move_dir.0 = Vec2::ZERO;
+                request_fast_repath(&mut plans, chaser_ent, target_pos);
+                trace!(target: BEING_SYSTEM, "GoTo repath after dynamic blocked step for {:?}: target {:?}, dir {:?}, from {:?}", chaser_ent, target_pos, move_axis, chaser_pos);
                 continue;
             }
         }

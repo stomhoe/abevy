@@ -7,6 +7,7 @@ use game_common::game_common_components::EntityZero;
 use game_common::game_common_samplers::*;
 use game_common::game_common_string_components::*;
 use common::common_components::SampleSpriteEnts;
+use being_shared::WanderConfig;
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 
@@ -20,7 +21,7 @@ use crate::being_interaction_zone_helper::build_being_interaction_zones_with_bas
 use crate::pack::pack_components::PackInitialSize;
 use crate::{race::{race_components::*, race_resources::*}, sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
-use ::being_shared::{Predator, PredatorHuntThreshold};
+use ::being_shared::{DetectionVisionCone, Predator, PredatorHuntThreshold, NoSpawnGroup};
 use tilemap_shared::{BlacklistedSpawnTileTags, InteractionZones, WhitelistedSpawnTileTags};
 
 pub fn init_races(
@@ -128,7 +129,7 @@ pub fn init_races(
                 None
             }
         };
-            let mut entity_cmds = cmd.spawn((Race, EntityZero, str_id.clone(), ingame_name, singular, plural));
+        let mut entity_cmds = cmd.spawn((Race, EntityZero, str_id.clone(), ingame_name, singular, plural));
         let body_tree_str_id = StrId::trunc(&race_seri.body_or_sampler);
         let mut body_tree_ent = None;
 
@@ -175,11 +176,15 @@ pub fn init_races(
             });
         }
 
+        entity_cmds.insert(race_seri.tags_with_id());
         let entity = entity_cmds.id();
         if !race_seri.spawn_pack_size_normal_dist.is_sentinel() {
             cmd.entity(entity).insert(PackInitialSize(CappedNormalDist::from_seri(
                 race_seri.spawn_pack_size_normal_dist.clone(),
             )));
+        }
+        if !race_seri.spawn_pack_entity {
+            cmd.entity(entity).insert(NoSpawnGroup);
         }
         if PredatorHuntThreshold::is_configured_in_seri(race_seri.predator_hunt_threshold) {
             let mut own_races = bevy::platform::collections::HashSet::default();
@@ -210,19 +215,17 @@ pub fn init_races(
                 PredatorHuntThreshold(race_seri.predator_hunt_threshold),
             ));
         }
-        if !race_seri.wander.is_disabled() {
-            let wander_cfg = &race_seri.wander;
-            cmd.entity(entity).insert(WanderConfig {
-                dir_secs_min: wander_cfg.dir_secs_min.max(0.01),
-                dir_secs_max: wander_cfg.dir_secs_max.max(wander_cfg.dir_secs_min.max(0.01)),
-                move_secs_min: wander_cfg.move_secs_min.max(0.01),
-                move_secs_max: wander_cfg.move_secs_max.max(wander_cfg.move_secs_min.max(0.01)),
-                halt_secs_min: wander_cfg.halt_secs_min.max(0.01),
-                halt_secs_max: wander_cfg.halt_secs_max.max(wander_cfg.halt_secs_min.max(0.01)),
-                speed_min: wander_cfg.speed_min.max(0.0),
-                speed_max: wander_cfg.speed_max.max(wander_cfg.speed_min.max(0.0)),
-                avoid_tile_tags: BlacklistedTags::new(&wander_cfg.avoid),
+        if DetectionVisionCone::is_configured_in_seri(
+            race_seri.detection_vision_cone_range_tiles,
+            race_seri.detection_vision_cone_half_angle_deg,
+        ) {
+            cmd.entity(entity).insert(DetectionVisionCone {
+                range_tiles: race_seri.detection_vision_cone_range_tiles.max(0.0),
+                half_angle_deg: race_seri.detection_vision_cone_half_angle_deg.clamp(1.0, 179.0),
             });
+        }
+        if !race_seri.wander.is_disabled() {
+            cmd.entity(entity).insert(WanderConfig::from_seri(&race_seri.wander));
         }
         if !race_seri.whitelisted_spawn_tile_tags.is_empty() {
             cmd.entity(entity).insert(WhitelistedSpawnTileTags::new(&race_seri.whitelisted_spawn_tile_tags));

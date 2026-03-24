@@ -4,8 +4,6 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet, MapEntities};
 use common::common_components::*;
 use game_common::game_common_samplers::{EntityWeightedSampler, SpriteGlobalNormalDist};
 use serde::{Deserialize, Serialize};
-use tilemap_shared::BlacklistedTags;
-
 #[derive(Component, Serialize, Deserialize, Clone)]
 #[require(Replicated, Prefix::trunc("Race"), AssetScoped, HotReload)]
 pub struct Race;
@@ -38,18 +36,6 @@ impl SexesSampler {
 #[derive(Component, Debug, Default, Clone)]
 pub struct SexSizeVariationsBySex(pub EntityHashMap<SpriteGlobalNormalDist>);
 
-#[derive(Component, Debug, Clone)]
-pub struct WanderConfig {
-    pub dir_secs_min: f32,
-    pub dir_secs_max: f32,
-    pub move_secs_min: f32,
-    pub move_secs_max: f32,
-    pub halt_secs_min: f32,
-    pub halt_secs_max: f32,
-    pub speed_min: f32,
-    pub speed_max: f32,
-    pub avoid_tile_tags: BlacklistedTags,
-}
 
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct ProducesStepSfx;

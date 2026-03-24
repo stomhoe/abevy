@@ -1,11 +1,15 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
+use common::common_tag_components::TagSet;
 use game_common::game_common_seris::NormalDistSeri;
+use being_shared::WanderSeri;
 use tilemap_shared::tilemap_seris::InteractionZoneSeri;
 
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct RaceSeri {
     pub id: String,
+    #[serde(default)]
+    pub tags: HashSet<String>,
     pub name: String,
     pub body_or_sampler: String,
     pub name_generator: Option<String>,
@@ -56,6 +60,10 @@ pub struct RaceSeri {
     pub predator_prey_kg_ratio_over_us_tolerance: f32,
     #[serde(default = "default_predator_hunt_threshold")]
     pub predator_hunt_threshold: f32,
+    #[serde(default = "default_detection_vision_cone_sentinel")]
+    pub detection_vision_cone_range_tiles: f32,
+    #[serde(default = "default_detection_vision_cone_sentinel")]
+    pub detection_vision_cone_half_angle_deg: f32,
     #[serde(default)]
     pub wander: WanderSeri,
     #[serde(default = "tilemap_shared::tilemap_seris::sentinel_melee_interaction_zone")]
@@ -83,6 +91,15 @@ pub struct RaceSeri {
     #[serde(default)]
     //if empty, can spawn on any tile. if nonempty, cannot spawn on tiles with any of these tags, except if they are also in the whitelist, in which case the whitelist takes priority and the tags in this blacklist are ignored.
     pub blacklisted_spawn_tile_tags: HashSet<String>,
+
+    #[serde(default = "default_true")]
+    pub spawn_pack_entity: bool,
+}
+
+impl RaceSeri {
+    pub fn tags_with_id(&self) -> TagSet {
+        TagSet::new(self.tags.iter().chain(std::iter::once(&self.id)))
+    }
 }
 
 #[derive(serde::Deserialize, Debug, Clone, Default)]
@@ -102,34 +119,8 @@ pub struct RaceSexEntrySeri {//TODO fix usage
     pub size_variation: Option<NormalDistSeri>,
 }
 
-#[derive(serde::Deserialize, Asset, TypePath, Debug, Clone, Default)]
-pub struct WanderSeri {
-    pub dir_secs_min: f32,
-    pub dir_secs_max: f32,
-    pub move_secs_min: f32,
-    pub move_secs_max: f32,
-    pub halt_secs_min: f32,
-    pub halt_secs_max: f32,
-    pub speed_min: f32,
-    pub speed_max: f32,
-    #[serde(default)]
-    pub avoid: HashSet<String>,
-}
-impl WanderSeri {
-    pub fn is_disabled(&self) -> bool {
-        self.dir_secs_min == 0.0
-            && self.dir_secs_max == 0.0
-            && self.move_secs_min == 0.0
-            && self.move_secs_max == 0.0
-            && self.halt_secs_min == 0.0
-            && self.halt_secs_max == 0.0
-            && self.speed_min == 0.0
-            && self.speed_max == 0.0
-            && self.avoid.is_empty()
-    }
-}
-
 fn default_true() -> bool { true }
 fn default_predator_hunt_threshold() -> f32 { ::being_shared::PredatorHuntThreshold::SERI_SENTINEL }
+fn default_detection_vision_cone_sentinel() -> f32 { ::being_shared::DetectionVisionCone::SERI_SENTINEL }
 fn default_pack_size_range() -> (u32, u32) { (1, 1) }
 fn default_prey_body_size_ratio_tolerance() -> f32 { -1.0 }

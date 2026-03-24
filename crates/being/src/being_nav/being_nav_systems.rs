@@ -1,16 +1,256 @@
-use crate::being_components::{Being, Chasing};
+use crate::being_components::Being;
+use crate::being_inst_template::being_inst_template_resources::BitRef;
+use crate::race::race_resources::RaceRef;
+use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
-use ::tilemap_shared::{ChunkPos, GlobalTilePos, LoadedChunks, LoadChunksAround};
+use ::tilemap_shared::{BlacklistedTags, ChunkPos, GlobalTilePos, LoadedChunks, LoadChunksAround};
 use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
     platform::collections::HashMap,
     prelude::*,
 };
+use common::log_targets::BEING_SYSTEM;
 use param_sets::BlockingTileParamSet;
+use movement::movement_components::{InputMaxSpeed, InputSpeedThrottleMult};
 
 use super::being_nav_resources::AiNavGrids;
 use super::being_nav_structs::AiNavGridCache;
+
+#[allow(unused_parens, )]
+pub fn ensure_loaded_beings_have_nav_state(
+    mut cmd: Commands,
+    beings: Query<(Entity, Has<Wandering>, Has<Chasing>, Has<Fleeing>, ), (With<Being>, LoadedBeing, )>,
+) {
+    for (being_ent, has_wandering, has_chasing, has_fleeing, ) in beings.iter() {
+        if has_wandering || has_chasing || has_fleeing {
+            continue;
+        }
+        cmd.entity(being_ent).try_insert(Wandering);
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn update_goto_from_chasing(
+    mut writer: MessageWriter<NavOrder>,
+    mut messages: Local<Vec<NavOrder>>,
+    chasing_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Chasing, ), (With<Being>, LocalAiControlled, )>,
+    targets_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), >,
+) {
+    for (being_ent, &being_dim, chasing, ) in chasing_query.iter() {
+        let order = chasing
+            .chase_target_pos(being_ent, being_dim, &targets_query)
+            .map(|target_pos| {
+                NavOrder::new(
+                    being_ent,
+                    200,
+                    NavOrderSource::Chasing,
+                    Some(GoTo::new(target_pos, chasing.stop_distance)),
+                    Some(1.0),
+                    None,
+                )
+            })
+            .unwrap_or_else(|| {
+                NavOrder::new(
+                    being_ent,
+                    200,
+                    NavOrderSource::Chasing,
+                    None,
+                    Some(1.0),
+                    None,
+                )
+            });
+        messages.push(order);
+    }
+    writer.write_batch(messages.drain(..));
+}
+
+fn choose_flee_target_pos(
+    blocking_tiles: &mut BlockingTileParamSet,
+    being_ent: Entity,
+    being_dim: ::tilemap_shared::DimensionRef,
+    being_gpos: GlobalTilePos,
+    flee_from_gpos: GlobalTilePos,
+    avoid_tile_tags: &BlacklistedTags,
+) -> Option<GlobalTilePos> {
+    let away = being_gpos.0 - flee_from_gpos.0;
+    let primary_step = if away == IVec2::ZERO {
+        IVec2::X
+    } else if away.x.abs() >= away.y.abs() {
+        IVec2::new(away.x.signum(), 0)
+    } else {
+        IVec2::new(0, away.y.signum())
+    };
+    let lateral_step = IVec2::new(-primary_step.y, primary_step.x);
+    for step in [primary_step, lateral_step, -lateral_step, -primary_step] {
+        if step == IVec2::ZERO {
+            continue;
+        }
+        let mut best = None;
+        for dist in 1..=8 {
+            let candidate = GlobalTilePos(being_gpos.0 + step * dist);
+            if blocking_tiles.is_blocked_at_tiles_only(being_dim, candidate, being_ent) {
+                break;
+            }
+            if !avoid_tile_tags.is_empty() && blocking_tiles.has_tagset_at(being_dim, candidate, &avoid_tile_tags.0) {
+                continue;
+            }
+            best = Some(candidate);
+        }
+        if best.is_some() {
+            return best;
+        }
+    }
+    None
+}
+
+fn resolve_flee_wander_cfg(
+    member_of: Option<&SquadMemberOf>,
+    bit_ref: Option<&BitRef>,
+    race_ref: Option<&RaceRef>,
+    wander_cfg_query: &Query<&WanderConfig>,
+) -> WanderConfig {
+    if let Some(member_of) = member_of {
+        if let Ok(cfg) = wander_cfg_query.get(member_of.squad) {
+            return cfg.clone();
+        }
+    }
+    if let Some(bit_ref) = bit_ref {
+        if let Ok(cfg) = wander_cfg_query.get(bit_ref.0) {
+            return cfg.clone();
+        }
+    }
+    if let Some(race_ref) = race_ref {
+        if let Ok(cfg) = wander_cfg_query.get(race_ref.0) {
+            return cfg.clone();
+        }
+    }
+    WanderConfig::default()
+}
+
+#[allow(unused_parens, )]
+pub fn update_goto_from_fleeing(
+    mut writer: MessageWriter<NavOrder>,
+    mut blocking_tiles: BlockingTileParamSet,
+    flee_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Option<&BitRef>, Option<&RaceRef>, ), (With<Being>, LocalAiControlled, )>,
+    flee_from_query: Query<(&GlobalTilePos, &::tilemap_shared::DimensionRef, ), (With<Being>, )>,
+    wander_cfg_query: Query<&WanderConfig>,
+    mut messages: Local<Vec<NavOrder>>,
+) {
+    for (being_ent, being_gpos, &being_dim, fleeing, member_of, bit_ref, race_ref, ) in flee_query.iter() {
+        let Ok((flee_from_gpos, &flee_from_dim, )) = flee_from_query.get(fleeing.flee_from()) else {
+            messages.push(NavOrder::new(
+                being_ent,
+                255,
+                NavOrderSource::Fleeing,
+                None,
+                Some(1.0),
+                None,
+            ));
+            continue;
+        };
+        if flee_from_dim != being_dim {
+            messages.push(NavOrder::new(
+                being_ent,
+                255,
+                NavOrderSource::Fleeing,
+                None,
+                Some(1.0),
+                None,
+            ));
+            continue;
+        }
+        let cfg = resolve_flee_wander_cfg(member_of, bit_ref, race_ref, &wander_cfg_query);
+        let avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
+        let Some(target_pos) = choose_flee_target_pos(
+            &mut blocking_tiles,
+            being_ent,
+            being_dim,
+            *being_gpos,
+            *flee_from_gpos,
+            &avoid_tile_tags,
+        ) else {
+            messages.push(NavOrder::new(
+                being_ent,
+                255,
+                NavOrderSource::Fleeing,
+                None,
+                Some(1.0),
+                None,
+            ));
+            continue;
+        };
+        messages.push(NavOrder::new(
+            being_ent,
+            255,
+            NavOrderSource::Fleeing,
+            Some(GoTo::new(target_pos, 0.0)),
+            Some(1.0),
+            None,
+        ));
+    }
+    writer.write_batch(messages.drain(..));
+}
+
+#[allow(unused_parens, )]
+pub fn apply_nav_orders(
+    mut cmd: Commands,
+    time: Res<Time>,
+    mut reader: MessageReader<NavOrder>,
+    mut selected_by_ent: Local<EntityHashMap<NavOrder>>,
+) {
+    selected_by_ent.clear();
+    for order in reader.read() {
+        let should_replace = selected_by_ent
+            .get(&order.being_ent)
+            .map(|curr| {
+                order.priority > curr.priority
+                    || (order.priority == curr.priority
+                        && order.source.tie_break_rank() > curr.source.tie_break_rank())
+            })
+            .unwrap_or(true);
+        if should_replace {
+            selected_by_ent.insert(order.being_ent, order.clone());
+        }
+    }
+    let tick = time.elapsed().as_millis() as u32;
+    for (being_ent, order) in selected_by_ent.drain() {
+        if let Some(go_to) = order.go_to {
+            cmd.entity(being_ent).try_insert(go_to);
+            cmd.entity(being_ent).try_insert(GoToMeta {
+                source: order.source,
+                updated_tick: tick,
+            });
+        } else {
+            cmd.entity(being_ent).try_remove::<(GoTo, GoToMeta)>();
+        }
+        let speed_throttle_mult = order.speed_throttle_mult.unwrap_or(1.0).clamp(0.0, 1.0);
+        cmd.entity(being_ent).try_insert(InputSpeedThrottleMult(speed_throttle_mult));
+        if let Some(max_speed) = order.max_speed {
+            cmd.entity(being_ent).try_insert(InputMaxSpeed(max_speed.max(0.0)));
+        } else {
+            cmd.entity(being_ent).try_remove::<InputMaxSpeed>();
+        }
+        trace!(target: BEING_SYSTEM, "NavOrder winner {:?}: source={:?} priority={} goto={:?} throttle={:.2}", being_ent, order.source, order.priority, order.go_to, speed_throttle_mult);
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn clear_nav_outputs_for_beings_without_nav_state(
+    mut cmd: Commands,
+    query: Query<(Entity, Has<Wandering>, Has<Chasing>, Has<Fleeing>, Has<GoTo>, ), (With<Being>, LocalAiControlled, )>,
+) {
+    for (being_ent, has_wandering, has_chasing, has_fleeing, has_go_to, ) in query.iter() {
+        if has_wandering || has_chasing || has_fleeing {
+            continue;
+        }
+        if has_go_to {
+            cmd.entity(being_ent).try_remove::<(GoTo, GoToMeta)>();
+        }
+        cmd.entity(being_ent).try_insert(InputSpeedThrottleMult(1.0));
+        cmd.entity(being_ent).try_remove::<InputMaxSpeed>();
+    }
+}
 
 
 
@@ -24,7 +264,7 @@ pub fn sync_ai_nav_grids(
             &GlobalTilePos,
             &::tilemap_shared::DimensionRef,
             Option<&ComputedBy>,
-            &Chasing,
+            &GoTo,
         ),
         With<Being>,
     >,
@@ -43,7 +283,7 @@ pub fn sync_ai_nav_grids(
     dim_center_counts.clear();
     dim_center_counts.reserve(chaser_count);
 
-    for (gpos, dim_ref, controlled_by, _to_chase) in chaser_iter {
+    for (gpos, dim_ref, controlled_by, _goto, ) in chaser_iter {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_dc_input {
                 continue;

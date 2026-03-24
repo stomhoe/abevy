@@ -10,6 +10,7 @@ game_common = { path = "../agame_common" }
 #tilemap = { path = "../tilemap" }
 player = { path = "../player" }
 faction_shared = { path = "../faction_shared" }
+being_shared = { path = "../being_shared" }
 
 
 bevy = { workspace = true }

@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 use common::common_components::StrId;
 
+use faction_shared::Faction;
+
 use crate::{
     culture::culture_resources::CultureRef,
-    faction_components::Faction,
     faction_inst_templ::faction_inst_templ_resources::*,
 };
 

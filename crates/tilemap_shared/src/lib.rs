@@ -1,5 +1,6 @@
 pub mod being_components;
 pub mod entities_at_gpos;
+pub mod interaction_zones;
 pub mod tile;
 pub mod tilemap_components;
 pub mod tilemap_messages;
