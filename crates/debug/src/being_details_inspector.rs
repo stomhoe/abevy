@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
-use common::common_components::{DisplayName, StrId};
+use common::common_components::{DisplayName, HashId, StrId};
 use common::common_tag_components::TagSet;
 use common::log_targets::DEBUG;
 use game_common::game_common_components::{EntityZero, EntityZeroRef};
@@ -19,7 +19,7 @@ use modifier_shared::modifier_types::*;
 use modifier_shared::{modifier_has_marker, resolve_modifier_component};
 use movement::movement_components::*;
 use player::prelude::*;
-use tilemap_shared::{CardinalDirection, GlobalTilePos, InteractionZones};
+use tilemap_shared::{CardinalDirection, GlobalTilePos, InteractionZone, InteractionZones};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -130,6 +130,76 @@ fn paint_collision_mask_preview(ui: &mut egui::Ui, collision_zone: &tilemap_shar
             }
         }
     }
+}
+
+fn paint_interaction_zone_preview(
+    ui: &mut egui::Ui,
+    interaction_zone: &InteractionZone,
+    facing: CardinalDirection,
+    anchor_gpos: GlobalTilePos,
+) {
+    let mut zone_positions = Vec::new();
+    interaction_zone.gather_zone_positions(facing, anchor_gpos.to_pixelpos(), &mut zone_positions);
+    let zone_positions = zone_positions
+        .into_iter()
+        .map(|pos| GlobalTilePos(pos.0 - anchor_gpos.0))
+        .collect::<Vec<_>>();
+
+    let mut min_x = 0;
+    let mut max_x = 0;
+    let mut min_y = 0;
+    let mut max_y = 0;
+    for pos in zone_positions.iter().copied() {
+        min_x = min_x.min(pos.0.x);
+        max_x = max_x.max(pos.0.x);
+        min_y = min_y.min(pos.0.y);
+        max_y = max_y.max(pos.0.y);
+    }
+
+    let cell_size = 18.0;
+    let width = (max_x - min_x + 1) as f32 * cell_size;
+    let height = (max_y - min_y + 1) as f32 * cell_size;
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    let background = ui.visuals().extreme_bg_color;
+    let stroke = egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color);
+    let anchor_stroke = egui::Stroke::new(2.0, egui::Color32::YELLOW);
+    painter.rect_filled(rect, 3.0, background);
+
+    for y in (min_y..=max_y).rev() {
+        for x in min_x..=max_x {
+            let cell = GlobalTilePos::new(x, y);
+            let occupied = zone_positions.contains(&cell);
+            let is_anchor = cell == GlobalTilePos::default();
+            let x_idx = (x - min_x) as f32;
+            let y_idx = (max_y - y) as f32;
+            let cell_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.min.x + x_idx * cell_size, rect.min.y + y_idx * cell_size),
+                egui::vec2(cell_size, cell_size),
+            )
+            .shrink(1.0);
+            painter.rect_stroke(cell_rect, 2.0, stroke, egui::StrokeKind::Inside);
+            if is_anchor {
+                painter.rect_stroke(cell_rect, 2.0, anchor_stroke, egui::StrokeKind::Inside);
+            }
+            if occupied {
+                painter.rect_filled(cell_rect.shrink(1.0), 1.0, ui.visuals().selection.bg_fill);
+            }
+        }
+    }
+}
+
+fn interaction_zone_label(zone_id: HashId) -> String {
+    if zone_id == InteractionZones::COLLISION {
+        return "Collision Mask".to_string();
+    }
+    if zone_id == InteractionZones::MELEE_ATTACK {
+        return "Melee Attack".to_string();
+    }
+    if zone_id == InteractionZones::ENTER {
+        return "Enter".to_string();
+    }
+    format!("{:?}", zone_id)
 }
 
 fn modifier_values(
@@ -275,6 +345,7 @@ pub fn being_details_inspector(world: &mut World) {
     };
     let mut selected_part = selected_entities.selected_being_bodypart;
     let mut show_full_components = selected_entities.show_full_being_components;
+    let mut selected_interaction_zone = selected_entities.selected_being_interaction_zone;
 
     let mut egui_context_query = world.query_filtered::<
         &bevy_inspector_egui::bevy_egui::EguiContext,
@@ -577,6 +648,62 @@ pub fn being_details_inspector(world: &mut World) {
             });
             ui.separator();
 
+            ui.collapsing("InteractionZones", |ui| {
+                let Ok(interaction_zones) = interaction_zones_query.get(world, selected_being_entity) else {
+                    ui.label("Missing InteractionZones.");
+                    return;
+                };
+                let Ok(being_gpos) = gpos_query.get(world, selected_being_entity) else {
+                    ui.label("Missing GlobalTilePos.");
+                    return;
+                };
+                let facing = facing_query
+                    .get(world, selected_being_entity)
+                    .copied()
+                    .unwrap_or_default();
+                let zone_ids = interaction_zones.0.keys().copied().collect::<Vec<_>>();
+                if zone_ids.is_empty() {
+                    ui.label("No interaction zones.");
+                    return;
+                }
+                if selected_interaction_zone.is_none()
+                    || !interaction_zones.0.contains_key(selected_interaction_zone.unwrap())
+                {
+                    selected_interaction_zone = zone_ids.first().copied();
+                }
+
+                egui::ComboBox::from_label("Zone")
+                    .selected_text(
+                        selected_interaction_zone
+                            .map(interaction_zone_label)
+                            .unwrap_or_else(|| "None".to_string()),
+                    )
+                    .show_ui(ui, |ui| {
+                        for zone_id in &zone_ids {
+                            ui.selectable_value(
+                                &mut selected_interaction_zone,
+                                Some(*zone_id),
+                                interaction_zone_label(*zone_id),
+                            );
+                        }
+                    });
+
+                let Some(zone_id) = selected_interaction_zone else {
+                    ui.label("No zone selected.");
+                    return;
+                };
+                let Some(zone) = interaction_zones.0.get_opt(zone_id) else {
+                    ui.label("Selected zone missing on this being.");
+                    return;
+                };
+
+                ui.label(format!("Selected zone: {}", interaction_zone_label(zone_id)));
+                ui.label(format!("Being gpos: [{}, {}]", being_gpos.0.x, being_gpos.0.y));
+                ui.label(format!("Facing: {:?}", facing));
+                paint_interaction_zone_preview(ui, zone, facing, *being_gpos);
+            });
+            ui.separator();
+
             ui.collapsing("Inventory", |ui| {
                 for (holder_entity, holder_label) in &inventory_holders {
                     let Ok(held_items) = held_items_query.get(world, *holder_entity) else {
@@ -737,9 +864,11 @@ pub fn being_details_inspector(world: &mut World) {
     if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
         if clear_selection {
             selected_entities.selected_being = None;
+            selected_entities.selected_being_interaction_zone = None;
             selected_entities.selected_being_bodypart = None;
             selected_entities.show_full_being_components = false;
         } else {
+            selected_entities.selected_being_interaction_zone = selected_interaction_zone;
             selected_entities.selected_being_bodypart = selected_part;
             selected_entities.show_full_being_components = show_full_components;
         }

@@ -60,7 +60,7 @@ impl<'w, 's> TileDeleteOthersParamSet<'w, 's> {
         self.checked_ents.clear();
         for y in (scan_origin.0.y - scan_radius)..=(scan_origin.0.y + newtile_size.y - 1 + scan_radius) {
             for x in (scan_origin.0.x - scan_radius)..=(scan_origin.0.x + newtile_size.x - 1 + scan_radius) {
-                gather_params.gather_tiles_at(&mut * self.checked_ents, dim, GlobalTilePos::new(x, y));
+                gather_params.gather_tiles_at_extend(&mut * self.checked_ents, dim, GlobalTilePos::new(x, y));
             }
         }
         self.checked_ents.drain(..).for_each(|otile_ent| {

@@ -24,10 +24,20 @@ pub struct TileGatheringParamSet<'w, 's> {
     pub cardinal_direction_query: Query<'w, 's, &'static mut CardinalDirection, ()>,
     pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static mut HashIdToTexIndex, &'static mut TilemapTexture),>,
     tile_tags: Query<'w, 's, &'static TagSet>,
-    to_drain: Local<'s, Vec<Entity>>,
+    pub to_drain: Local<'s, Vec<Entity>>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
-    pub fn gather_tiles_at(&self, collected_entis: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
+    pub fn drain_tiles_to_drain(&mut self) -> impl Iterator<Item = Entity> + '_ {
+        self.to_drain.drain(..)
+    }
+
+    pub fn gather_tiles_at(&mut self, dim: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
+        self.to_drain.clear();
+        self.gather_tiles_at_to_drain(dim, gpos);
+        self.to_drain.as_slice()
+    }
+
+    pub fn gather_tiles_at_extend(&self, collected_entis: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
         let chunk_pos = gpos.to_chunkpos();
         collected_entis.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
         let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
@@ -80,13 +90,11 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
         false
     }
 
-    pub fn gather_tiles_at_to_drain(&mut self, dim: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
-        let to_drain: &mut Vec<Entity> = self.to_drain.as_mut();
-        to_drain.clear();
+    pub fn gather_tiles_at_to_drain(&mut self, dim: DimensionRef, gpos: GlobalTilePos) {
         let chunk_pos = gpos.to_chunkpos();
-        to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
+        self.to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
         let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
-            return &self.to_drain;
+            return;
         };
         if let Ok(tilemaps) = self.chunk_children.get(chunk_ent) {
             for tmap_ent in tilemaps.iter() {
@@ -95,11 +103,10 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
                 };
                 let tpos = gpos.to_tilepos();
                 if let Some(tile_ent) = storage.get(&tpos) {
-                    to_drain.push(tile_ent);
+                    self.to_drain.push(tile_ent);
                 }
             }
         }
-        &self.to_drain
     }
 
     pub fn insert_spritetile(

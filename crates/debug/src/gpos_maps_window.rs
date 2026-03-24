@@ -2,9 +2,11 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
 use bevy_ecs_tilemap::tiles::TileFlip;
+use being::being_components::Being;
+use being::{being_inst_template::being_inst_template_resources::BitRef, race::race_resources::RaceRef};
 use game_common::game_common_components::EntityZeroRef;
 use std::collections::HashSet;
-use tilemap_shared::{BeingsAtGpos, DimensionRef, GlobalTilePos, InteractionZones, ItemsAtGpos, TileGatheringParamSet, WalkSpeedMultIfOnTop};
+use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, InteractionZone, InteractionZones, ItemsAtGpos, TileGatheringParamSet, WalkSpeedMultIfOnTop};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -38,6 +40,7 @@ fn paint_grid(
     cell_px: f32,
     camera_local: Option<GlobalTilePos>,
     count_at: impl Fn(GlobalTilePos) -> usize,
+    border_at: impl Fn(GlobalTilePos) -> bool,
 ) -> Option<GlobalTilePos> {
     ui.label(title);
     let side = (radius * 2 + 1).max(1) as usize;
@@ -87,6 +90,14 @@ fn paint_grid(
                     egui::Color32::WHITE,
                 );
             }
+            if border_at(gpos) {
+                painter.rect_stroke(
+                    cell_rect.shrink(0.5),
+                    0.0,
+                    egui::Stroke::new(2.0, egui::Color32::RED),
+                    egui::StrokeKind::Inside,
+                );
+            }
             if response.clicked() {
                 clicked = Some(gpos);
             }
@@ -105,9 +116,12 @@ pub fn gpos_maps_window_system(
     tile_instance_query: Query<(&EntityZeroRef, &GlobalTilePos, Option<&TileFlip>)>,
     walk_speed: Query<&WalkSpeedMultIfOnTop>,
     tile_interaction_zones: Query<(&InteractionZones, &tilemap_shared::SizeInTiles)>,
+    being_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&InteractionZones>, Option<&BitRef>, Option<&RaceRef>, Has<being_shared::HumanControlled>), With<Being>>,
+    zone_sources: Query<&InteractionZones>,
     camera_target_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     being_dim_pos: Query<(&DimensionRef, &Transform)>,
     mut terrain_blocked: Local<HashSet<(i32, i32)>>,
+    mut melee_zone_tiles: Local<HashSet<(i32, i32)>>,
     mut ui_state: Local<GposMapsUiState>,
 ) {
     if !window_visible.gpos_maps {
@@ -166,14 +180,64 @@ pub fn gpos_maps_window_system(
 
             let center = GlobalTilePos::new(ui_state.center_x, ui_state.center_y);
             let dim_ref = DimensionRef(ui_state.center_dim);
+            let probe_zone = InteractionZone::collision_default_zone();
+            melee_zone_tiles.clear();
+            let mut fallback_being = None;
+            for (being_ent, being_dim, being_gpos, interaction_zones, bit_ref, race_ref, has_human_control) in being_query.iter() {
+                if has_human_control && being_dim == &dim_ref {
+                    let _ = (being_gpos, interaction_zones, bit_ref, race_ref);
+                    fallback_being = Some(being_ent);
+                    break;
+                }
+            }
+            let debug_being = selected.selected_being.or(fallback_being);
+            if let Some(being_ent) = debug_being {
+                if let Ok((_entity, being_dim, being_gpos, interaction_zones, bit_ref, race_ref, _has_human_control)) = being_query.get(being_ent) {
+                    if *being_dim == dim_ref {
+                        let melee_zone = interaction_zones
+                            .and_then(|zones| zones.0.get(InteractionZones::MELEE_ATTACK).ok())
+                            .cloned()
+                            .or_else(|| {
+                                bit_ref
+                                    .and_then(|bit_ref| zone_sources.get(bit_ref.0).ok())
+                                    .and_then(|zones| zones.0.get(InteractionZones::MELEE_ATTACK).ok())
+                                    .cloned()
+                            })
+                            .or_else(|| {
+                                race_ref
+                                    .and_then(|race_ref| zone_sources.get(race_ref.0).ok())
+                                    .and_then(|zones| zones.0.get(InteractionZones::MELEE_ATTACK).ok())
+                                    .cloned()
+                            })
+                            .unwrap_or_else(InteractionZone::melee_default_zone);
+                        let facing = tile_gathering
+                            .cardinal_direction_query
+                            .get_mut(being_ent)
+                            .map(|direction| *direction)
+                            .unwrap_or_default();
+                        let mut zone_positions = Vec::new();
+                        melee_zone.gather_zone_positions(facing, being_gpos.to_pixelpos(), &mut zone_positions);
+                        for pos in zone_positions {
+                            melee_zone_tiles.insert((pos.0.x - center.0.x, pos.0.y - center.0.y));
+                        }
+                        ui.label(format!("Melee overlay entity: {:?}", being_ent));
+                    } else {
+                        ui.label(format!("Melee overlay entity {:?} is in {:?}", being_ent, being_dim));
+                    }
+                } else {
+                    ui.label(format!("Melee overlay entity {:?} missing being data", being_ent));
+                }
+            } else {
+                ui.label("Melee overlay entity: none");
+            }
             terrain_blocked.clear();
             for y in -ui_state.radius..=ui_state.radius {
                 for x in -ui_state.radius..=ui_state.radius {
                     let gpos = center + GlobalTilePos::new(x, y);
                     let mut blocked = false;
-                    let tile_ents = tile_gathering.gather_tiles_at_to_drain(dim_ref, gpos).to_vec();
+                    let tile_ents = tile_gathering.gather_tiles_at(dim_ref, gpos).to_vec();
                     for tile_ent in tile_ents {
-                        let Ok((ezero_ref, tile_origin, tile_flip)) = tile_instance_query.get(tile_ent) else { continue; };
+                        let Ok((ezero_ref, tile_origin, _tile_flip)) = tile_instance_query.get(tile_ent) else { continue; };
                         if walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
                             blocked = true;
                             break;
@@ -183,11 +247,12 @@ pub fn gpos_maps_window_system(
                             continue;
                         };
                         let direction = *direction;
-                        if interaction_zones.is_point_inside_zone(
+                        if interaction_zones.interaction_zones_intersect(
                             InteractionZones::COLLISION,
-                            tile_origin.to_pixelpos(),
+                            &probe_zone,
                             direction,
-                            tile_flip.copied().unwrap_or_default(),
+                            tile_origin.to_pixelpos(),
+                            CardinalDirection::South,
                             gpos.to_pixelpos(),
                         ) {
                             blocked = true;
@@ -224,14 +289,14 @@ pub fn gpos_maps_window_system(
                 let clicked_beings = paint_grid(&mut cols[0], "BeingsAtGpos (being occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     let gpos = center + local;
                     beings_at_gpos.get_beings_at_pos(dim_ref, gpos).len()
-                });
+                }, |local| melee_zone_tiles.contains(&(local.0.x, local.0.y)));
                 let clicked_items = paint_grid(&mut cols[1], "ItemsAtGpos (item occupancy)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     let gpos = center + local;
                     items_at_gpos.items_at_pos(dim_ref, gpos).len()
-                });
+                }, |local| melee_zone_tiles.contains(&(local.0.x, local.0.y)));
                 let clicked_terrain = paint_grid(&mut cols[2], "Terrain Blocking (zones/speed<=0.01)", ui_state.radius, ui_state.cell_px, camera_local, |local| {
                     if terrain_blocked.contains(&(local.0.x, local.0.y)) { 1 } else { 0 }
-                });
+                }, |local| melee_zone_tiles.contains(&(local.0.x, local.0.y)));
                 if let Some(local) = clicked_beings {
                     let entities = beings_at_gpos.get_beings_at_pos(dim_ref, center + local);
                     if let Some(being_entity) = entities.first().copied() {
@@ -251,7 +316,7 @@ pub fn gpos_maps_window_system(
                 }
                 if let Some(local) = clicked_terrain {
                     let gpos = center + local;
-                    if let Some(tile_entity) = tile_gathering.gather_tiles_at_to_drain(dim_ref, gpos).first().copied() {
+                    if let Some(tile_entity) = tile_gathering.gather_tiles_at(dim_ref, gpos).first().copied() {
                         selected.selected_tile = Some(tile_entity);
                         window_visible.tile_details = true;
                     }

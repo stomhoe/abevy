@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
+use being::being_components::Being;
 use camera::camera_components::CameraTarget;
 use game_common::game_common_components::EntityZeroRef;
 use param_sets::EntitiesAtGposParamSet;
@@ -51,12 +52,7 @@ pub fn capture_world_tile_click_selection(
     state.clicked_gpos = Some(clicked_gpos);
     state.entities_at_gpos.clear();
     entities_at_gpos.gather_entities_at(&mut state.entities_at_gpos, dim_ref, clicked_gpos);
-    state.entities_at_gpos.extend(
-        tile_gathering
-            .gather_tiles_at_to_drain(dim_ref, clicked_gpos)
-            .iter()
-            .copied(),
-    );
+    state.entities_at_gpos.extend(tile_gathering.gather_tiles_at(dim_ref, clicked_gpos).iter().copied());
     state.entities_at_gpos.sort_unstable_by_key(|entity| entity.index());
     state.entities_at_gpos.dedup();
 }
@@ -67,6 +63,7 @@ pub fn world_tile_click_picker_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut state: ResMut<WorldTileClickInspectorState>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
+    being_query: Query<(Entity, Has<Being>)>,
     name_query: Query<&Name>,
     ezero_ref_query: Query<&EntityZeroRef>,
     acz_query: Query<&AcZ>,
@@ -123,9 +120,23 @@ pub fn world_tile_click_picker_window(
                     let is_selected = selected_entities.selected_exempted_entity == Some(entity);
                     let row = format!("{}  ({:?})", name_label, entity);
                     if ui.selectable_label(is_selected, row).clicked() {
-                        selected_entities.selected_exempted_entity = Some(entity);
-                        selected_entities.selected_tile = None;
-                        window_visible.tile_details = true;
+                        let Ok((_, is_being)) = being_query.get(entity) else {
+                            continue;
+                        };
+                        if is_being {
+                            selected_entities.selected_being = Some(entity);
+                            selected_entities.selected_being_bodypart = None;
+                            selected_entities.show_full_being_components = false;
+                            selected_entities.selected_exempted_entity = None;
+                            selected_entities.selected_tile = None;
+                            window_visible.tile_details = false;
+                            window_visible.being_details = true;
+                        } else {
+                            selected_entities.selected_exempted_entity = Some(entity);
+                            selected_entities.selected_tile = None;
+                            window_visible.being_details = false;
+                            window_visible.tile_details = true;
+                        }
                     }
                 }
             });

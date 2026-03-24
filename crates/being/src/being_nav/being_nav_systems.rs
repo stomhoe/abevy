@@ -89,7 +89,7 @@ fn choose_flee_target_pos(
         let mut best = None;
         for dist in 1..=8 {
             let candidate = GlobalTilePos(being_gpos.0 + step * dist);
-            if blocking_tiles.is_blocked_at_tiles_only(being_dim, candidate, being_ent) {
+            if blocking_tiles.is_blocked_at(being_dim, candidate, being_ent) {
                 break;
             }
             if !avoid_tile_tags.is_empty() && blocking_tiles.has_tagset_at(being_dim, candidate, &avoid_tile_tags.0) {

@@ -17,20 +17,10 @@ use crate::{
 #[allow(unused_parens, )]
 pub fn apply_melee_attack(
     mut melee_attacks: MessageReader<LocalMeleeAttackRequest>,
-    beings: Query<
+    beings_query: Query<
         (
             &DimensionRef,
             &GlobalTransform,
-            Option<&InteractionZones>,
-            Option<&BitRef>,
-            Option<&RaceRef>,
-        ),
-        (With<Being>, ),
-    >,
-    being_receivers: Query<
-        (
-            &GlobalTransform,
-            Option<&InteractionZones>,
             Option<&BitRef>,
             Option<&RaceRef>,
         ),
@@ -44,7 +34,6 @@ pub fn apply_melee_attack(
         &EntityZeroRef,
         Option<&TileFlip>,
     )>,
-    tile_receivers: Query<&InteractionZones>,
     mut health_damage_writer: MessageWriter<HealthDamage>,
     mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
     mut health_damage_messages: Local<Vec<HealthDamage>>,
@@ -53,8 +42,8 @@ pub fn apply_melee_attack(
     const MELEE_DAMAGE: f32 = 10.0;
     for melee in melee_attacks.read() {
         let attacker_ent = melee.being_ent;
-        let Ok((&attacker_dim, attacker_transform, interaction_zones, bit_ref, race_ref, )) =
-            beings.get(attacker_ent)
+        let Ok((&attacker_dim, attacker_transform, bit_ref, race_ref, )) =
+            beings_query.get(attacker_ent)
         else {
             info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} not found", attacker_ent);
             continue;
@@ -64,8 +53,10 @@ pub fn apply_melee_attack(
             continue;
         };
         let attacker_direction = *attacker_direction;
+        let attacker_interaction_zones = zone_sources.get(attacker_ent).ok();
+
         let melee_zone = resolve_being_interaction_zone(
-            interaction_zones,
+            attacker_interaction_zones,
             bit_ref,
             race_ref,
             InteractionZones::MELEE_ATTACK,
@@ -104,44 +95,43 @@ pub fn apply_melee_attack(
             ) {
                 continue;
             }
-            for &target_entity in beings_at_gpos.get_beings_at_pos(attacker_dim, candidate_gpos) {
-                if target_entity == attacker_ent || !hit_entities.insert(target_entity) {
+            for &target_ent in beings_at_gpos.get_beings_at_pos(attacker_dim, candidate_gpos) {
+                if target_ent == attacker_ent || !hit_entities.insert(target_ent) {
                     continue;
                 }
-                let Ok((target_transform, target_zones, target_bit_ref, target_race_ref, )) =
-                    being_receivers.get(target_entity)
+                let Ok((_, target_transform, target_bit_ref, target_race_ref, )) =
+                    beings_query.get(target_ent)
                 else {
                     continue;
                 };
-                let Ok(target_direction) = tile_gathering.cardinal_direction_query().get_mut(target_entity) else {
-                    continue;
-                };
-                let target_direction = *target_direction;
+                let target_direction = tile_gathering.cardinal_direction_query().get(target_ent).cloned().unwrap_or_default();
+                let target_interaction_zones = zone_sources.get(target_ent).ok();
+
                 let target_pos_px = target_transform.translation().xy();
-                let hit_point = candidate_gpos.to_pixelpos();
                 let collision_zone = resolve_being_interaction_zone(
-                    target_zones,
+                    target_interaction_zones,
                     target_bit_ref,
                     target_race_ref,
                     InteractionZones::COLLISION,
                     &zone_sources,
                 );
-                let hit = collision_zone.is_inside_any(
-                    TileFlip::default(),
+                let hit = collision_zone.intersects_zone(
                     target_direction,
                     target_pos_px,
-                    hit_point,
+                    &melee_zone,
+                    attacker_direction,
+                    attacker_pos,
                 );
                 if !hit {
                     continue;
                 }
                 health_damage_messages.push(HealthDamage {
-                    entity: target_entity,
+                    entity: target_ent,
                     amount: MELEE_DAMAGE,
                 });
                 hit_beings += 1;
                 hit_done = true;
-                info!(target: BEING_SYSTEM, "Melee hit being {:?}", target_entity);
+                info!(target: BEING_SYSTEM, "Melee hit being {:?}", target_ent);
                 break;
             }
             if hit_done {
@@ -155,29 +145,32 @@ pub fn apply_melee_attack(
             ) {
                 continue;
             }
-            let tile_entities = tile_gathering.gather_tiles_at_to_drain(attacker_dim, candidate_gpos).to_vec();
+            let tile_entities = tile_gathering.gather_tiles_at(attacker_dim, candidate_gpos).to_vec();
             for target_entity in tile_entities {
                 if !hit_entities.insert(target_entity) {
+                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} already hit", target_entity);
                     continue;
                 }
-                let Ok((&tile_origin, &EntityZeroRef(tile_ezero), tile_flip)) = tile_instances.get(target_entity)
+                let Ok((&tile_origin, &EntityZeroRef(tile_ezero), _tile_flip)) = tile_instances.get(target_entity)
                 else {
+                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile instance", target_entity);
                     continue;
                 };
-                let Ok(tile_direction) = tile_gathering.cardinal_direction_query().get_mut(target_entity) else {
+                let tile_direction = tile_gathering
+                    .cardinal_direction_query()
+                    .get_mut(target_entity)
+                    .map(|direction| *direction)
+                    .unwrap_or_default();
+                let Ok(target_zones) = zone_sources.get(tile_ezero) else {
                     continue;
                 };
-                let tile_direction = *tile_direction;
-                let Ok(target_zones) = tile_receivers.get(tile_ezero) else {
-                    continue;
-                };
-                let hit_point = candidate_gpos;
-                let accepts_hit = target_zones.is_point_inside_zone(
+                let accepts_hit = target_zones.interaction_zones_intersect(
                     InteractionZones::COLLISION,
-                    tile_origin.to_pixelpos(),
+                    &melee_zone,
                     tile_direction,
-                    tile_flip.copied().unwrap_or_default(),
-                    hit_point.to_pixelpos(),
+                    tile_origin.to_pixelpos(),
+                    attacker_direction,
+                    attacker_pos,
                 );
                 if !accepts_hit {
                     continue;

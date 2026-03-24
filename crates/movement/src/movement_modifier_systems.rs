@@ -225,8 +225,9 @@ pub fn process_speed_modifiers(
         final_speed /= total_weight_newtons;
 
         let mut tile_walk_mult: f32 = 1.0;
-        for tile_ent in tile_gathering.gather_tiles_at_to_drain(dim_ref, *tile_pos) {
-            let Ok(tile_cfg_ref) = ezero_refs_query.get(*tile_ent) else {
+        let tile_ents = tile_gathering.gather_tiles_at(dim_ref, *tile_pos).to_vec();
+        for tile_ent in tile_ents {
+            let Ok(tile_cfg_ref) = ezero_refs_query.get(tile_ent) else {
                 continue;
             };
             let Ok(tile_walk_mult_cfg) = tile_walk_speed_mults.get(tile_cfg_ref.0) else {

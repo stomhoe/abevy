@@ -2,6 +2,7 @@
 use bevy::prelude::*;
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 pub use crate::debug_seris::*;
+use common::common_components::HashId;
 use std::collections::HashMap;
 
 #[derive(Resource, Debug, Clone)]
@@ -77,6 +78,7 @@ pub struct DebugSelectedEntities {
     pub selected_noise: Option<Entity>,
     pub selected_tile: Option<Entity>,
     pub selected_being: Option<Entity>,
+    pub selected_being_interaction_zone: Option<HashId>,
     pub selected_being_bodypart: Option<Entity>,
     pub show_full_being_components: bool,
     pub selected_player: Option<Entity>,
@@ -103,6 +105,7 @@ impl Default for DebugSelectedEntities {
             selected_noise: None,
             selected_tile: None,
             selected_being: None,
+            selected_being_interaction_zone: None,
             selected_being_bodypart: None,
             show_full_being_components: false,
             selected_player: None,

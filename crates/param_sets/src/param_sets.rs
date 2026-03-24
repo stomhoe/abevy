@@ -30,13 +30,21 @@ pub struct BlockingTileParamSet<'w, 's> {
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
+    pub fn gather_tiles_at(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
+        self.tile_gathering_params.gather_tiles_at(dim_ref, gpos)
+    }
+
+    pub fn drain_tiles_to_drain(&mut self) -> impl Iterator<Item = Entity> + '_ {
+        self.tile_gathering_params.to_drain.drain(..)
+    }
+
     pub fn cardinal_direction_query(
         &mut self,
     ) -> &mut Query<'w, 's, &'static mut CardinalDirection, ()> {
         &mut self.tile_gathering_params.cardinal_direction_query
     }
 
-    pub fn gather_tiles_at_to_drain(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
+    pub fn gather_tiles_at_to_drain(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos) {
         self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos)
     }
 
@@ -151,8 +159,8 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         let mut has_blacklist_match = false;
 
         for occupied_gpos in occupied_gposes.iter().copied() {
-            let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos).to_vec();
-            for tile_entity in tiles_at_pos {
+            self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos);
+            for tile_entity in self.tile_gathering_params.to_drain.drain(..) {
                 let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
                     continue;
                 };
@@ -215,8 +223,8 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         if target_tags.is_empty() {
             return false;
         }
-        let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos).to_vec();
-        for tile_entity in tiles_at_pos {
+        self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos);
+        for tile_entity in self.tile_gathering_params.to_drain.drain(..) {
             let Ok((ezero_ref, ..)) = self.tile_instance_query.get(tile_entity) else {
                 continue;
             };
@@ -280,8 +288,8 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
         let mut all_tiles_failed = true;
         for occupied_gpos in occupied_gposes.iter().copied() {
-            let tiles_at_pos = self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos).to_vec();
-            for tile_entity in tiles_at_pos {
+            self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos);
+            for tile_entity in self.tile_gathering_params.to_drain.drain(..) {
                 let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
                     continue;
                 };

@@ -379,8 +379,9 @@ pub fn play_step_sfx_from_moved_distance(
         }
 
         if !disable_tile_step_sfx {
-            for tile_ent in tile_gathering.gather_tiles_at_to_drain(dim_ref, GlobalTilePos::from(current_pos_px)) {
-                let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(*tile_ent) else { continue };
+            let tile_ents = tile_gathering.gather_tiles_at(dim_ref, GlobalTilePos::from(current_pos_px)).to_vec();
+            for tile_ent in tile_ents {
+                let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(tile_ent) else { continue };
                 let Ok((tile_step_sfx, tile_step_sfx_cfg)) = tile_step_sfxs.get(tile_cfg_ref.0) else { continue };
                 if tile_step_sfx_cfg.is_some_and(|cfg| !cfg.prevent_repeat) {
                     prevent_repeat = false;

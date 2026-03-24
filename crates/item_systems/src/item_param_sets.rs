@@ -93,10 +93,12 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
     ) {
         let item_ent = item_ent.unwrap_or_else(|| clone_item_from_ezero(cmd, item_ezero_ref, dim_ref));
         let gpos = self.find_nonstackable_drop_gpos(Some(dim_ref), gpos);
-        let z = self.blocking_tiles
-            .gather_tiles_at_to_drain(dim_ref, gpos)
+        let z = self
+            .blocking_tiles
+            .gather_tiles_at(dim_ref, gpos)
             .iter()
-            .filter_map(|&ent| self.ac_z_query.get(ent).ok().map(|&AcZ(z)| z))
+            .copied()
+            .filter_map(|ent| self.ac_z_query.get(ent).ok().map(|&AcZ(z)| z))
             .max_by(f32::total_cmp)
             .unwrap_or_default()
             + 1.0;
