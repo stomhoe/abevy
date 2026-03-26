@@ -5,11 +5,11 @@ use std::collections::BTreeMap;
 
 use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
 
-use being::{being_inst_template::being_inst_template_resources::BitRef, race::race_resources::RaceRef};
 use camera::camera_components::CameraTarget;
 use common::common_components::StrId;
 use tilemap::chunking::{chunking_components::{Chunk, MacroChunk, MacroChunkRef, TerrGenState}, macro_chunk_components::{BiomeDistribution, MacroChunkBiomePendingSampleState}};
 use ::tilemap_shared::*;
+use ::being_shared::*;
 use wildlife::{NaturalSpawnOrigin, NaturalSpawnReservationIndex, SeededNaturalWildlifeMacroChunks};
 
 #[derive(Clone, Copy, Default)]

@@ -5,7 +5,7 @@ use bevy_replicon::prelude::*;
 use bevy::platform::collections::HashMap;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
-pub use being_shared::{Body, BodyOf, BodyTreeWeightSum};
+pub use ::being_shared::*;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(
@@ -20,7 +20,7 @@ pub struct BodyTree;
 pub struct StatBudgetsToDistribute(pub HashIdMap<f32>);
 
 #[derive(Component, Debug, Default, Clone)]
-pub struct BodyTreeSexes(pub HashMap<String, crate::race::race_seris::RaceSexEntrySeri>);
+pub struct BodyTreeSexes(pub HashMap<String, RaceSexEntrySeri>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 pub struct CaloricBurnRateMultiplier(pub f32);

@@ -119,10 +119,6 @@ impl BiomeDistribution {
 		}
 	}
 
-	pub fn predominant_chunk_for_biome(&self, biome: Entity) -> Option<ChunkPos> {
-		self.predominant_chunk_for_biome.get(&biome).copied()
-	}
-
 	pub fn sorted_chunk_candidates_for_biome(&self, biome: Entity) -> Vec<ChunkPos> {
 		let Some(chunk_weights) = self.accumulated_chunk_weights_for_biome.get(&biome) else {
 			return Vec::new();

@@ -6,16 +6,13 @@ use bevy::{
 };
 use being::{
     being_bundles::BeingBundle,
-    being_inst_template::being_inst_template_resources::BitRef,
     pack::pack_components::*,
-    race::{race_components::Race, race_resources::RaceRef},
 };
 use ::being_shared::*;
 use common::file_logging::file_log;
 use common::common_components::StrId;
 use common::log_targets::WILDLIFE_SYSTEM;
 use ::game_common::*;
-use movement::movement_components::GridLockedMovement;
 use param_sets::BlockingTileParamSet;
 use tilemap::terrain::biome::biome_components::CreatureSampler;
 use tilemap::{
@@ -291,20 +288,13 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
             continue;
         }
         let Some(biome_ent) = distribution.produced_biome_sampler.sample_with_rng(&mut rng) else {
-            debug!(target: WILDLIFE_SYSTEM, "Natural spawn found no weighted biome for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
+            trace!(target: WILDLIFE_SYSTEM, "Natural spawn found no weighted biome for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
             continue;
         };
         let pack_count = distribution
             .averaged_pack_count_multiplier_stats(biome_ent)
             .sample_pack_count_multiplier(&mut rng);
-        let strongest_center_chunk = distribution.predominant_chunk_for_biome(biome_ent);
-        file_log(
-            "wildlife",
-            "host",
-            &format!(
-                "seed macrochunk={macro_chunk_pos} dim={dim_ref:?} biome={biome_ent:?} pack_count={pack_count} strongest_center={strongest_center_chunk:?}"
-            ),
-        );
+
         spawn_locals.pack_centers.clear();
         spawn_locals.pack_centers.reserve(pack_count);
         let mut spawned_packs = 0usize;
@@ -316,7 +306,7 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
                 break;
             };
             let Ok((_, is_race, is_pack, has_no_spawn_group)) = spawn_queries.spawn_target_query.get(pack_target) else {
-                warn!(target: WILDLIFE_SYSTEM, "Natural spawn target {:?} for macrochunk {} in {:?} is neither bit, race, nor pack", pack_target, macro_chunk_pos, dim_ref);
+                error!(target: WILDLIFE_SYSTEM, "Natural spawn target {:?} for macrochunk {} in {:?} is neither bit, race, nor pack", pack_target, macro_chunk_pos, dim_ref);
                 continue;
             };
             let pack_size = spawn_queries.spawn_pack_size_query
@@ -381,7 +371,7 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
             });
             for (spawn_chunk, &spawn_target) in spawn_chunks.into_iter().zip(spawn_locals.sampled_beings.iter()) {
                 let Ok((is_bit, is_race, _, _)) = spawn_queries.spawn_target_query.get(spawn_target) else {
-                    warn!(target: WILDLIFE_SYSTEM, "Natural spawn member target {:?} for macrochunk {} in {:?} is neither bit nor race", spawn_target, macro_chunk_pos, dim_ref);
+                    error!(target: WILDLIFE_SYSTEM, "Natural spawn member target {:?} for macrochunk {} in {:?} is neither bit nor race", spawn_target, macro_chunk_pos, dim_ref);
                     continue;
                 };
                 let gpos = spawn_chunk.random_gpos_within(&mut rng);
@@ -394,7 +384,7 @@ pub fn spawn_natural_wildlife_for_macro_chunk(
                     ))
                     .id();
                 if let Some(pack_entity) = pack_entity {
-                    cmd.entity(entity).insert(SquadMemberOf::single(pack_entity));
+                    cmd.entity(entity).insert(SquadMemberOf(pack_entity));
                 }
                 spawn_res.pending_wildlife_by_chunk.insert(entity, dim_ref, spawn_chunk);
                 if is_bit {
@@ -436,15 +426,12 @@ pub fn unfreeze_natural_wildlife_for_first_time_loaded_chunks(
     mut cmd: Commands,
     mut built_chunks: MessageReader<ChunkTerrainBuilt>,
     built_chunk_query: Query<(&DimensionRef, &ChunkPos), With<Chunk>>,
-    mut blocking_tiles: BlockingTileParamSet,
+    mut param_set: BlockingTileParamSet,
     mut pending_wildlife_by_chunk: ResMut<NaturalSpawnReservationIndex>,
     mut being_query: Query<
         (
-            Entity,
             &DimensionRef,
             Has<PendingNaturalSpawnUnfreeze>,
-            &mut Transform,
-            &mut GridLockedMovement,
         ),
         With<Disabled>,
     >,
@@ -474,15 +461,15 @@ pub fn unfreeze_natural_wildlife_for_first_time_loaded_chunks(
         };
         touched_chunks += 1;
         let pending_wildlife_by_chunk_ptr = pending_wildlife_by_chunk_ptr;
-        being_ents.retain(|being_ent| {
-            if !processed_beings.insert(*being_ent) {
+        being_ents.retain(|&being_ent| {
+            if !processed_beings.insert(being_ent) {
                 return true;
             }
-            let being_str_id = being_str_id_query.get(*being_ent).ok();
-            let Ok((being_ent, &dim_ref, is_pending_natural_spawn, mut transform, mut movement)) = being_query.get_mut(*being_ent) else {
+            let being_str_id = being_str_id_query.get(being_ent).ok();
+            let Ok((&dim_ref, is_pending_natural_spawn)) = being_query.get_mut(being_ent) else {
                 error!(target: WILDLIFE_SYSTEM, "Natural spawn unfreeze could not fetch reserved being {:?} in {:?} for chunk {:?}; likely despawned before activation", being_str_id.map(StrId::as_str).unwrap_or("<no-strid>"), dim_ref, key.1);
                 unsafe {
-                    (*pending_wildlife_by_chunk_ptr).remove_being_except_chunk(*being_ent, key);
+                    (*pending_wildlife_by_chunk_ptr).remove_being_except_chunk(being_ent, key);
                 }
                 return false;
             };
@@ -493,8 +480,8 @@ pub fn unfreeze_natural_wildlife_for_first_time_loaded_chunks(
                 }
                 return false;
             }
-            let bit_ref = blocking_tiles.get_being_bit_ref(being_ent);
-            let race_ref = blocking_tiles.get_being_race_ref(being_ent);
+            let bit_ref = param_set.get_being_bit_ref(being_ent);
+            let race_ref = param_set.get_being_race_ref(being_ent);
             Being::collect_spawn_tile_tag_filters(
                 bit_ref.map(|bit_ref| bit_ref.0),
                 race_ref.map(|race_ref| race_ref.0),
@@ -503,7 +490,7 @@ pub fn unfreeze_natural_wildlife_for_first_time_loaded_chunks(
                 &mut whitelisted_spawn_tile_tags,
                 &mut blacklisted_spawn_tile_tags,
             );
-            let Ok(&gpos) = blocking_tiles.gpos_query.get(being_ent) else {
+            let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
                 error!(target: WILDLIFE_SYSTEM, "Natural spawn unfreeze could not read gpos for reserved being {:?} in {:?} for chunk {:?}", being_str_id.map(StrId::as_str).unwrap_or("<no-strid>"), dim_ref, key.1);
                 unsafe {
                     (*pending_wildlife_by_chunk_ptr).remove_being_except_chunk(being_ent, key);
@@ -511,7 +498,7 @@ pub fn unfreeze_natural_wildlife_for_first_time_loaded_chunks(
                 return false;
             };
             let home_chunk = gpos.to_chunkpos();
-            let Some(found_gpos) = blocking_tiles.find_closest_allowe_gpos(
+            let Some(found_gpos) = param_set.find_closest_allowed_gpos(
                 dim_ref,
                 gpos,
                 being_ent,
@@ -521,14 +508,8 @@ pub fn unfreeze_natural_wildlife_for_first_time_loaded_chunks(
                 error!(target: WILDLIFE_SYSTEM, "Natural spawn unfreeze found no valid tile for reserved being {:?} in {:?} around chunk {:?}; it will stay frozen for now", being_str_id.map(StrId::as_str).unwrap_or("<no-strid>"), dim_ref, home_chunk);
                 return true;
             };
-            let Ok(mut gpos) = blocking_tiles.gpos_query.get_mut(being_ent) else {
-                error!(target: WILDLIFE_SYSTEM, "Natural spawn unfreeze could not reacquire mutable gpos for reserved being {:?} in {:?} for chunk {:?}", being_str_id.map(StrId::as_str).unwrap_or("<no-strid>"), dim_ref, key.1);
-                return true;
-            };
-            *gpos = found_gpos;
-            movement.clear_step(found_gpos);
-            transform.translation = found_gpos.to_translation(transform.translation.z);
             cmd.entity(being_ent)
+                .try_insert(found_gpos)
                 .try_remove::<(Disabled, PendingNaturalSpawnUnfreeze)>();
             unsafe {
                 (*pending_wildlife_by_chunk_ptr).remove_being_except_chunk(being_ent, key);

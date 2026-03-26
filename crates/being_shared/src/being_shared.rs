@@ -96,8 +96,6 @@ pub struct BeingInstTemplate{
     pub extra_health_multiplier: f32,
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct Sentient;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
@@ -148,32 +146,99 @@ pub struct CreatedCharacters(Vec<Entity>);
 
 
 #[derive(Component, Debug, Clone, )]
-pub struct MappedSpritesToSample(
+pub struct SexMappedSpritesToSample(
     /// sexent - samplespriteents
     pub EntityHashMap<SampleSpriteEnts>,
 );
 
+
+
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
-pub struct Predator {
-    pub own_races: HashSet<StrId>,
+pub struct PredatorCfg {
     pub territorialism: f32,
     pub pack_size_min: u32,
     pub pack_size_max: u32,
     pub do_not_hunt_tags: TagSet,
     pub prey_body_size_ratio_tolerance: f32,
+    pub min_hunger_to_hunt: f32,
+    pub min_hp_ratio_to_hunt: f32,
 }
-impl Default for Predator {
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PredatorSeri {
+    #[serde(default)]
+    pub territorialism: f32,
+    #[serde(default)]
+    pub pack_size_min: u32,
+    #[serde(default)]
+    pub pack_size_max: u32,
+    #[serde(default)]
+    pub do_not_hunt_tags: HashSet<String>,
+    #[serde(default)]
+    pub prey_body_size_ratio_tolerance: f32,
+    #[serde(default = "default_predator_seri_uninitialized")]
+    pub min_hunger_to_hunt: f32,
+    #[serde(default)]
+    pub min_hp_ratio_to_hunt: f32,
+}
+impl PredatorSeri {
+    pub const SERI_UNINITIALIZED: f32 = f32::NEG_INFINITY;
+    pub fn is_uninitialized(&self) -> bool {
+        self.min_hunger_to_hunt == Self::SERI_UNINITIALIZED
+    }
+}
+impl Default for PredatorSeri {
     fn default() -> Self {
         Self {
-            own_races: HashSet::default(),
+            territorialism: 0.0,
+            pack_size_min: 1,
+            pack_size_max: 1,
+            do_not_hunt_tags: HashSet::default(),
+            prey_body_size_ratio_tolerance: -1.0,
+            min_hunger_to_hunt: Self::SERI_UNINITIALIZED,
+            min_hp_ratio_to_hunt: 0.0,
+        }
+    }
+}
+impl Default for PredatorCfg {
+    fn default() -> Self {
+        Self {
             territorialism: 0.0,
             pack_size_min: 1,
             pack_size_max: 1,
             do_not_hunt_tags: TagSet::default(),
             prey_body_size_ratio_tolerance: -1.0,
+            min_hunger_to_hunt: 40.0,
+            min_hp_ratio_to_hunt: 0.0,
         }
     }
 }
+impl PredatorCfg {
+    pub fn from_seri(seri: &PredatorSeri) -> Option<Self> {
+        if seri.is_uninitialized() {
+            return None;
+        }
+        let mut pack_size_min = seri.pack_size_min;
+        let mut pack_size_max = seri.pack_size_max;
+        if pack_size_min == 0 {
+            pack_size_min = 1;
+        }
+        if pack_size_max < pack_size_min {
+            pack_size_max = pack_size_min;
+        }
+        Some(Self {
+            territorialism: seri.territorialism.max(0.0),
+            pack_size_min,
+            pack_size_max,
+            do_not_hunt_tags: TagSet::new(&seri.do_not_hunt_tags),
+            prey_body_size_ratio_tolerance: seri.prey_body_size_ratio_tolerance,
+            min_hunger_to_hunt: seri.min_hunger_to_hunt.max(0.0),
+            min_hp_ratio_to_hunt: seri.min_hp_ratio_to_hunt.clamp(0.0, 1.0),
+        })
+    }
+}
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct Predator;
+
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
 pub struct Hunger {
@@ -188,20 +253,6 @@ impl Default for Hunger {
             max: 100.0,
             increase_per_sec: 2.0,
         }
-    }
-}
-
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
-pub struct PredatorHuntThreshold(pub f32);
-impl Default for PredatorHuntThreshold {
-    fn default() -> Self {
-        Self(40.0)
-    }
-}
-impl PredatorHuntThreshold {
-    pub const SERI_SENTINEL: f32 = f32::NEG_INFINITY;
-    pub fn is_configured_in_seri(value: f32) -> bool {
-        value > Self::SERI_SENTINEL
     }
 }
 
@@ -224,6 +275,8 @@ impl DetectionVisionCone {
         range_tiles > Self::SERI_SENTINEL && half_angle_deg > Self::SERI_SENTINEL
     }
 }
+
+fn default_predator_seri_uninitialized() -> f32 { PredatorSeri::SERI_UNINITIALIZED }
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
 pub struct PredatorDetectedByPrey(#[entities] pub Entity);
@@ -259,20 +312,9 @@ pub struct MemberRank(pub f32);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct NoSpawnGroup;
 
-/*
-           .replicate::<SquadMemberOf>()
-*/
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
 #[relationship(relationship_target = SquadMembers)]
-pub struct SquadMemberOf {
-    #[relationship] #[entities]
-    pub squad: Entity,
-}
-impl SquadMemberOf {
-    pub fn single(squad: Entity) -> Self {
-        Self { squad }
-    }
-}
+pub struct SquadMemberOf(#[relationship]#[entities]pub Entity);
 
 // current physically close distance group of beings we belong to and are currently operating with
 #[derive(Component, Debug, )]

@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
 };
 
-use movement::{movement_components::GridLockedMovement, prelude::MovementRemoveOnFreezeBundle};
+use ::movement::*;
 use tilemap::chunking::chunking_components::*;
 use tilemap_shared::{LoadChunksAround, ChunkPos, DimensionRef, GlobalTilePos, };
 use ::being_shared::*;
@@ -22,6 +22,7 @@ pub struct BeingBundle(
     pub Transform,
     pub tilemap_shared::GlobalTilePos,
     pub GridLockedMovement,
+    pub GridLockedMovementVisual,
 );
 impl BeingBundle {
     pub fn new(dimension_ref: DimensionRef, tile_pos: GlobalTilePos) -> Self {
@@ -32,6 +33,9 @@ impl BeingBundle {
             Transform::from_translation(tile_pos.to_translation(0.0)),
             tile_pos,
             GridLockedMovement {
+                ..default()
+            },
+            GridLockedMovementVisual {
                 visual_origin_tile: tile_pos.0,
                 ..default()
             },
@@ -39,21 +43,36 @@ impl BeingBundle {
     }
 }
 
+
 #[derive(Bundle, Debug, )]
-pub struct RemoveOnFreeze(
+pub struct RemoveOnEnterSemiRealSimMode(
     pub Name,
     pub LoadChunksAround,
     pub ActivatingChunks,
     pub RetainedChasePathSnapshot,
+    pub Visibility,
+    pub StepDistanceSfxState,
+    pub PendingTileCorrection,
+    pub sprite_animation_shared::MoveAnimActive,
+    /*
+        pub GridLockedMovementVisual,
+     */
+);
+
+#[derive(Bundle, Debug, )]
+pub struct RemoveOnEnterFakeSimMode(
     pub Transform,
     pub GlobalTransform,
+    pub RemoveOnEnterSemiRealSimMode,
     pub DimensionRef,
     pub ChunkPos,
     pub Visibility,
-    pub MovementRemoveOnFreezeBundle,
     pub StepDistanceSfxState,
-
-);//en vez de esto, hacer un estado serializado?
+    pub GridLockedMovement,
+    pub InputMoveDir,
+    pub FinalNormMoveDir,
+    pub tilemap_shared::SnapTransformToGpos,
+);
 
 #[derive(Bundle, Debug, )]
 pub struct ReinsertOnUnfreeze(
@@ -64,6 +83,7 @@ pub struct ReinsertOnUnfreeze(
     pub ChunkPos,
     pub Visibility,
     pub GridLockedMovement,
+    pub GridLockedMovementVisual,
 );
 impl ReinsertOnUnfreeze {
     pub fn new(msg: tilemap_shared::ChunkLoaded) -> Self {
@@ -75,6 +95,7 @@ impl ReinsertOnUnfreeze {
             msg.chunk_pos,
             Visibility::default(),
             GridLockedMovement::default(),
+            GridLockedMovementVisual::default(),
         )
     }
 }

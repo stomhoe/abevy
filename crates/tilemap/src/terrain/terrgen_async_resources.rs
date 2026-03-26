@@ -1,4 +1,5 @@
-use bevy::{platform::collections::HashSet, prelude::*, tasks::Task};
+use bevy::{prelude::*, tasks::Task};
+use bitvec::prelude::*;
 use common::common_components::HashId;
 
 use crate::{
@@ -12,6 +13,34 @@ use crate::{
 
 use ::tilemap_shared::*;
 
+#[derive(Debug, Clone, )]
+pub struct TerrGenBlockedGposMask(pub BitArr!(for ChunkPos::CHUNK_AREA));
+impl TerrGenBlockedGposMask {
+    pub fn is_empty(&self) -> bool {
+        self.0.as_bitslice().count_ones() == 0
+    }
+    pub fn count_blocked(&self) -> usize {
+        self.0.as_bitslice().count_ones()
+    }
+    pub fn is_blocked(&self, bit_idx: usize) -> bool {
+        self.0.as_bitslice().get(bit_idx).map_or(false, |bit| *bit)
+    }
+    pub fn set_blocked(&mut self, bit_idx: usize) {
+        self.0.as_mut_bitslice().set(bit_idx, true);
+    }
+    pub fn set_blocked_gpos(&mut self, chunk_pos: ChunkPos, gpos: GlobalTilePos) {
+        let Some(bit_idx) = chunk_pos.bit_index_in_chunk(gpos) else {
+            return;
+        };
+        self.set_blocked(bit_idx);
+    }
+}
+impl Default for TerrGenBlockedGposMask {
+    fn default() -> Self {
+        Self(BitArray::ZERO)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TerrGenLaunchWork {
     pub chunk_ent: Entity,
@@ -19,7 +48,7 @@ pub struct TerrGenLaunchWork {
     pub dim_ref: DimensionRef,
     pub root_oplist: DimensionRootOplist,
     pub oplist_size: OplistSize,
-    pub blocked_gpos: HashSet<GlobalTilePos>,
+    pub blocked_gpos: TerrGenBlockedGposMask,
 }
 
 #[derive(Resource, Debug, Default)]

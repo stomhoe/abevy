@@ -1,12 +1,11 @@
 
 #[allow(unused_imports, )]use being::being_bundles::{BeingBundle, };
-use being::being_inst_template::being_inst_template_resources::BitStrIdRef;
 use ::being_shared::*;
 use common::{GAME_INIT, common_components::StrId, common_states::AppState};
 use faction::{faction_resources::*};
 use ::being_shared::JoinedGroups;
 use faction_shared::Faction;
-use movement::movement_components::GridLockedMovement;
+use movement::movement_components::{GridLockedMovement, GridLockedMovementVisual};
 use player::player_components::*;
 use tilemap::{
     terrain::{
@@ -240,7 +239,8 @@ pub fn put_player_beings_on_map(
                 .try_insert((
                 Transform::from_translation(gpos.to_translation(0.0)),
                 gpos,
-                GridLockedMovement {
+                GridLockedMovement::default(),
+                GridLockedMovementVisual {
                     visual_origin_tile: gpos.0,
                     ..default()
                 },

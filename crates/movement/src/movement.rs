@@ -19,6 +19,7 @@ pub fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         (
+            add_grid_locked_movement_requirements,
             add_movement_components_to_beings,
             copy_client_move_input_to_controlled_beings,
             receive_gpos_from_server

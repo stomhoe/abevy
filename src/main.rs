@@ -39,6 +39,7 @@ fn build_filter() -> String {
         {}={},\
         {}={},\
         {}={},\
+        {}={},\
         \
         {}={},\
         {}={},\
@@ -143,6 +144,7 @@ fn build_filter() -> String {
         log_targets::TILEMAP_LOAD, WARN,
         log_targets::DIMENSION_LOAD, WARN,
         log_targets::CONTROL, WARN,
+        log_targets::BEING_TEMPLATE_BUILD, DEBUG,
         log_targets::BEING_SYSTEM, DEBUG,
         log_targets::BEING_MELEE_DEBUG, TRACE,
         log_targets::FACTION_SYSTEM, WARN,

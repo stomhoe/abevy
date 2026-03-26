@@ -1,7 +1,6 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-use common::{common_components::Tag, common_tag_components::TagSet};
 
 use crate::{
     CardinalDirection,
@@ -32,17 +31,17 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
         &mut self.cardinal_direction_query
     }
 
-    pub fn drain_tiles_to_drain(&mut self) -> impl Iterator<Item = Entity> + '_ {
+    pub fn drain_gathered(&mut self) -> impl Iterator<Item = Entity> + '_ {
         self.to_drain.drain(..)
     }
 
-    pub fn gather_tiles_at(&mut self, dim: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
+    pub fn gather_tiles(&mut self, dim: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
         self.to_drain.clear();
-        self.gather_tiles_at_to_drain(dim, gpos);
+        self.gather_tiles_to_drain(dim, gpos);
         self.to_drain.as_slice()
     }
 
-    pub fn gather_tiles_at_extend(&self, collected_entis: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
+    pub fn gather_tiles_extend(&self, collected_entis: &mut impl Extend<Entity>, dim: DimensionRef, gpos: GlobalTilePos) {
         let chunk_pos = gpos.to_chunkpos();
         collected_entis.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
         let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
@@ -60,7 +59,7 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
             }
         }
     }
-    pub fn gather_tiles_at_to_drain(&mut self, dim: DimensionRef, gpos: GlobalTilePos) {
+    pub fn gather_tiles_to_drain(&mut self, dim: DimensionRef, gpos: GlobalTilePos) {
         let chunk_pos = gpos.to_chunkpos();
         self.to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
         let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {

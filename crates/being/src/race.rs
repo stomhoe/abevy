@@ -1,8 +1,9 @@
+use ::being_shared::*;
 use bevy::prelude::*;
 #[allow(unused_imports, )]
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use crate::race::{race_components::*, race_init_systems::*, race_resources::*};
+use crate::race::{race_init_systems::*, };
 
 
 
@@ -26,6 +27,3 @@ pub fn plugin(app: &mut App) {
 }
 
 mod race_init_systems;
-pub mod race_components;
-pub mod race_resources;
-pub mod race_seris;

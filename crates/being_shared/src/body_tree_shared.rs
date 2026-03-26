@@ -4,7 +4,7 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Clone, Serialize, Deserialize, MapEntities)]
-#[relationship(relationship_target = Body)]
+#[relationship(relationship_target = HeldBody)]
 #[require(Replicated)]
 pub struct BodyOf {
     #[relationship]
@@ -14,8 +14,8 @@ pub struct BodyOf {
 
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = BodyOf)]
-pub struct Body(Entity);
-impl Body {
+pub struct HeldBody(Entity);
+impl HeldBody {
     pub fn entity(&self) -> Entity {
         self.0
     }

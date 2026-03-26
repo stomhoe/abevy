@@ -1,6 +1,6 @@
 use core::f32;
 
-use being_shared::{Body, BodypartChildrenBodyparts, BodyTreeWeightSum, ComputedLocally};
+use being_shared::{HeldBody, BodypartChildrenBodyparts, BodyTreeWeightSum, ComputedLocally};
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
@@ -18,7 +18,7 @@ pub fn process_input_direction_modifiers(
     mut being_query: Query<(
         Entity,
         &AppliedModifiers,
-        Option<&Body>,
+        Option<&HeldBody>,
         &InputMoveDir,
         &mut FinalNormMoveDir,
         Has<ComputedLocally>,
@@ -107,7 +107,7 @@ pub fn process_speed_modifiers(
         &DimensionRef,
         &GlobalTilePos,
         &AppliedModifiers,
-        Option<&Body>,
+        Option<&HeldBody>,
         &mut SpeedMagnitude,
         Option<&BodyTreeWeightSum>,
         Option<&InputSpeedThrottleMult>,
@@ -225,7 +225,7 @@ pub fn process_speed_modifiers(
         final_speed /= total_weight_newtons;
 
         let mut tile_walk_mult: f32 = 1.0;
-        let tile_ents = tile_gathering.gather_tiles_at(dim_ref, *tile_pos).to_vec();
+        let tile_ents = tile_gathering.gather_tiles(dim_ref, *tile_pos).to_vec();
         for tile_ent in tile_ents {
             let Ok(tile_cfg_ref) = templ_refs_query.get(tile_ent) else {
                 continue;

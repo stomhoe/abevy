@@ -1,19 +1,19 @@
-use being_shared::{BeingInstTemplate, DetectionVisionCone, Predator, PredatorHuntThreshold, NoSpawnGroup, WanderConfig};
+
 use bevy::prelude::*;
 use common::common_components::*;
+use ::being_shared::*;
 
+use game_common::TemplEnti;
 use ::sprite_shared::*;
 use tilemap_shared::tilemap_shared_samplers::*;
 
-use crate::being_inst_template::{being_inst_template_resources::*,
-};
+
 use crate::pack::pack_components::PackInitialSize;
-use crate::race::race_resources::{RaceEntityMap, RaceRef};
-use crate::being_interaction_zone_helper::build_being_interaction_zones_with_base;
+use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionStrIdRef};
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
-use tilemap_shared::{BlacklistedSpawnTileTags, InteractionZones, WhitelistedSpawnTileTags};
+use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
 use common::common_tag_components::TagSet;
 
 pub fn init_being_templates(
@@ -23,7 +23,6 @@ pub fn init_being_templates(
     body_tree_map: Res<BodyTreeEntityMap>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
-    race_zones_query: Query<&InteractionZones>,
     mut biome_pack_samplers: Query<&mut CreatureSampler>,
 ) {
     if !bit_map.0.is_empty(){
@@ -36,7 +35,6 @@ pub fn init_being_templates(
         warn!(target: "being_template_init", "BodyWeightedSamplerEntityMap is empty (may be ok if none are used)");
     }
 
-    let mut main_comps = Vec::new();
     let mut samples = Vec::new();
     let mut race_refs_to_insert = Vec::new();
     let mut faction_refs_to_insert = Vec::new();
@@ -49,15 +47,18 @@ pub fn init_being_templates(
     for template_seri in load_bit_seri_defs() {
         let str_id = StrId::trunc(&template_seri.id);
 
-        let bit_entity = cmd.spawn_empty().id();
-        cmd.entity(bit_entity).insert(template_seri.tags_with_id());
 
         let being_inst_template = BeingInstTemplate {
             points: template_seri.points,
             extra_health_multiplier: template_seri.health_multiplier.max(0.001),
         };
+        let bit_entity = cmd.spawn((
+            being_inst_template,
+            str_id.clone(),
+            TemplEnti
+        )).id();
 
-        main_comps.push((bit_entity, (being_inst_template, str_id.clone())));
+        cmd.entity(bit_entity).insert(template_seri.tags_and_own_id());
 
         if !template_seri.scs_samplers.is_empty() {
             samples.push((bit_entity, SampleSpritesFromStrIds::new(template_seri.scs_samplers,)));
@@ -103,11 +104,8 @@ pub fn init_being_templates(
         if !template_seri.blacklisted_spawn_tile_tags.is_empty() {
             cmd.entity(bit_entity).insert(BlacklistedSpawnTileTags(tilemap_shared::being_components::BlacklistedTags(TagSet::new(&template_seri.blacklisted_spawn_tile_tags))));
         }
-        if PredatorHuntThreshold::is_configured_in_seri(template_seri.predator_hunt_threshold) {
-            cmd.entity(bit_entity).insert((
-                Predator::default(),
-                PredatorHuntThreshold(template_seri.predator_hunt_threshold),
-            ));
+        if let Some(predator_cfg) = PredatorCfg::from_seri(&template_seri.predator) {
+            cmd.entity(bit_entity).insert(predator_cfg);
         }
         if DetectionVisionCone::is_configured_in_seri(
             template_seri.detection_vision_cone_range_tiles,
@@ -120,19 +118,13 @@ pub fn init_being_templates(
         }
         // Resolve race entity from race string
         let race_str_id = StrId::trunc(&template_seri.race);
-        let race_entity = match race_emap.0.get_cloned(&race_str_id) {
-            Ok(race_entity) => {
-                race_refs_to_insert.push((bit_entity, RaceRef(race_entity)));
-                Some(race_entity)
-            }
-            Err(_) => {
-                error!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
-                None
-            }
+        let Ok(race_entity) = race_emap.0.get_cloned(&template_seri.race) else {
+            error!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
+            continue;
         };
-        let race_base_zones = race_entity.and_then(|race_entity| race_zones_query.get(race_entity).ok());
-        cmd.entity(bit_entity).insert(build_being_interaction_zones_with_base(
-            race_base_zones,
+        race_refs_to_insert.push((bit_entity, RaceRef(race_entity)));
+        cmd.entity(bit_entity).insert(build_being_interaction_zones_with_fallback(
+            None,
             template_seri.melee_attack_zone.clone(),
             template_seri.collision_zone.clone(),
         ));
@@ -154,7 +146,6 @@ pub fn init_being_templates(
             biome_pack_sampler.add_affinity(bit_entity, *weight);
         }
     }
-    cmd.try_insert_batch(main_comps);
     cmd.try_insert_batch(samples);
     cmd.try_insert_batch(faction_refs_to_insert);
     cmd.try_insert_batch(race_refs_to_insert);

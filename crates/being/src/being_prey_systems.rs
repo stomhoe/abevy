@@ -1,26 +1,15 @@
-use crate::being_inst_template::being_inst_template_resources::BitRef;
-use crate::being_messages::PredatorSeenByPrey;
+
+use crate::being_messages::PredatorSpottedByPrey;
 use crate::pack::pack_components::{
     Pack,
     PackAttackAlertEffectivenessFalloff,
     PackCounterRegroupTightness,
     PackOnAttackBehavior,
 };
-use crate::race::race_resources::RaceRef;
 use ::being_shared::*;
-use bevy::{
-    ecs::{entity::EntityHashSet, entity_disabling::Disabled},
-    prelude::*,
-};
-use common::AnyDisabling;
+use bevy::prelude::*;
 use common::log_targets::BEING_SYSTEM;
 use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
-
-fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>) -> EntityHashSet {
-    let mut entities = EntityHashSet::default();
-    entities.extend(removed_disabled.read());
-    entities
-}
 
 fn target_in_vision_cone(
     origin: GlobalTilePos,
@@ -48,51 +37,30 @@ fn target_in_vision_cone(
 }
 
 #[allow(unused_parens, )]
-pub fn sync_detection_vision_cone_from_sources(
-    mut commands: Commands,
-    changed_beings: Query<Entity, (With<Being>, Or<(Changed<BitRef>, Changed<RaceRef>)>, )>,
-    beings: Query<(Option<&BitRef>, Option<&RaceRef>, ), (With<Being>, AnyDisabling, )>,
-    bit_cfg: Query<&DetectionVisionCone>,
-    race_cfg: Query<&DetectionVisionCone>,
-    mut removed_disabled: RemovedComponents<Disabled>,
-) {
-    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
-    let mut beings_to_sync = reenabled_beings;
-    beings_to_sync.extend(changed_beings.iter());
-
-    for being_ent in beings_to_sync {
-        let Ok((bit_ref, race_ref, )) = beings.get(being_ent) else {
-            continue;
-        };
-        let bit_cone = bit_ref.and_then(|r| bit_cfg.get(r.0).ok()).copied();
-        let race_cone = race_ref.and_then(|r| race_cfg.get(r.0).ok()).copied();
-        let Some(chosen) = bit_cone.or(race_cone) else {
-            commands.entity(being_ent).try_remove::<DetectionVisionCone>();
-            continue;
-        };
-        commands.entity(being_ent).try_insert(chosen);
-    }
-}
-
-#[allow(unused_parens, )]
 pub fn detect_predators_with_vision_cones(
     prey_query: Query<
         (
             Entity,
             &GlobalTilePos,
             &DimensionRef,
-            &DetectionVisionCone,
+            Option<&BitRef>,
+            Option<&RaceRef>,
             Option<&CardinalDirection>,
         ),
-        (With<Being>, ),
+        (With<Being>, Without<Predator>, ),
     >,
     predators_query: Query<(Entity, &GlobalTilePos, &DimensionRef), (With<Being>, With<Predator>, )>,
-    mut writer: MessageWriter<PredatorSeenByPrey>,
-    mut messages: Local<Vec<PredatorSeenByPrey>>,
+    cone_query: Query<&DetectionVisionCone>,
+    mut writer: MessageWriter<PredatorSpottedByPrey>,
+    mut messages: Local<Vec<PredatorSpottedByPrey>>,
 ) {
     messages.clear();
-    for (prey_ent, prey_gpos, &prey_dim, &cone, facing) in prey_query.iter() {
+    for (prey_ent, prey_gpos, &prey_dim, bit_ref, race_ref, facing) in prey_query.iter() {
         let facing = facing.copied().unwrap_or_default();
+        let cone = bit_ref
+            .and_then(|bit_ref| cone_query.get(bit_ref.0).ok().copied())
+            .or_else(|| race_ref.and_then(|race_ref| cone_query.get(race_ref.0).ok().copied()))
+            .unwrap_or_default();
         for (predator_ent, predator_gpos, &predator_dim) in predators_query.iter() {
             if predator_ent == prey_ent || predator_dim != prey_dim {
                 continue;
@@ -100,7 +68,7 @@ pub fn detect_predators_with_vision_cones(
             if !target_in_vision_cone(*prey_gpos, facing, *predator_gpos, cone) {
                 continue;
             }
-            messages.push(PredatorSeenByPrey {
+            messages.push(PredatorSpottedByPrey {
                 prey: prey_ent,
                 predator: predator_ent,
             });
@@ -112,9 +80,10 @@ pub fn detect_predators_with_vision_cones(
 #[allow(unused_parens, )]
 pub fn update_prey_nav_states_from_predator_detection(
     mut cmd: Commands,
-    mut reader: MessageReader<PredatorSeenByPrey>,
+    mut reader: MessageReader<PredatorSpottedByPrey>,
     prey_query: Query<
         (
+            Has<Predator>,
             Option<&SquadMemberOf>,
             &GlobalTilePos,
             &DimensionRef,
@@ -133,9 +102,12 @@ pub fn update_prey_nav_states_from_predator_detection(
     member_pos_query: Query<(&GlobalTilePos, &DimensionRef, ), (With<Being>, )>,
 ) {
     for msg in reader.read() {
-        let Ok((member_of, victim_gpos, &victim_dim, )) = prey_query.get(msg.prey) else {
+        let Ok((is_predator, member_of, victim_gpos, &victim_dim, )) = prey_query.get(msg.prey) else {
             continue;
         };
+        if is_predator {
+            continue;
+        }
         cmd.entity(msg.prey).try_insert(Fleeing::new(msg.predator));
         cmd.entity(msg.predator).try_insert(PredatorDetectedByPrey(msg.prey));
 
@@ -143,7 +115,7 @@ pub fn update_prey_nav_states_from_predator_detection(
             trace!(target: BEING_SYSTEM, "Predator detected by {:?}; applying flee only to self against {:?}", msg.prey, msg.predator);
             continue;
         };
-        let Ok((on_attack_behavior, alert_falloff, regroup_tightness, members, )) = pack_query.get(member_of.squad) else {
+        let Ok((on_attack_behavior, alert_falloff, regroup_tightness, members, )) = pack_query.get(member_of.0) else {
             continue;
         };
         let behavior = on_attack_behavior

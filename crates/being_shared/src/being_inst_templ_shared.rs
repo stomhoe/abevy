@@ -1,9 +1,8 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use tilemap_shared::tilemap_shared_samplers::NormalDistSeri;
 use common::common_tag_components::TagSet;
-use crate::WanderSeri;
+use crate::{BeingInstTemplate, WanderSeri};
 use tilemap_shared::InteractionZoneSeri;
-use crate::BeingInstTemplate;
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BitSeri {
@@ -32,8 +31,8 @@ pub struct BitSeri {
     pub whitelisted_tiles_for_spawning: HashSet<String>,
     #[serde(default)]
     pub blacklisted_tiles_for_spawning: HashSet<String>,
-    #[serde(default = "default_predator_hunt_threshold")]
-    pub predator_hunt_threshold: f32,
+    #[serde(default)]
+    pub predator: crate::PredatorSeri,
     #[serde(default = "default_detection_vision_cone_sentinel")]
     pub detection_vision_cone_range_tiles: f32,
     #[serde(default = "default_detection_vision_cone_sentinel")]
@@ -59,13 +58,12 @@ pub struct BitSeri {
 }
 
 impl BitSeri {
-    pub fn tags_with_id(&self) -> TagSet {
+    pub fn tags_and_own_id(&self) -> TagSet {
         TagSet::new(self.tags.iter().chain(std::iter::once(&self.id)))
     }
 }
 
 fn default_multiplier() -> f32 { 1.0 }
-fn default_predator_hunt_threshold() -> f32 { crate::PredatorHuntThreshold::SERI_SENTINEL }
 fn default_detection_vision_cone_sentinel() -> f32 { crate::DetectionVisionCone::SERI_SENTINEL }
 fn default_true() -> bool { true }
 

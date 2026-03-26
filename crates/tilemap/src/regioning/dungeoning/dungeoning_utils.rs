@@ -1,7 +1,8 @@
-use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy::{platform::collections::HashMap, prelude::*};
 use common::common_components::HashId;
 use game_common::game_common_components::ArgsDict;
 use crate::tile::tile_sampler_components::TileWeightedSampler;
+use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 use ::tilemap_shared::*;
 
 #[derive(Default, Debug)]
@@ -56,13 +57,14 @@ fn parse_bool_arg(values: &[String]) -> Option<bool> {
 }
 
 pub fn extend_occupied_gpos(
-    blocked_gpos: &mut HashSet<GlobalTilePos>,
+    blocked_gpos: &mut TerrGenBlockedGposMask,
+    chunk_pos: ChunkPos,
     anchor_gpos: GlobalTilePos,
     size: UVec2,
 ) {
     for y in anchor_gpos.0.y..(anchor_gpos.0.y + size.y as i32) {
         for x in anchor_gpos.0.x..(anchor_gpos.0.x + size.x as i32) {
-            blocked_gpos.insert(GlobalTilePos::new(x, y));
+            blocked_gpos.set_blocked_gpos(chunk_pos, GlobalTilePos::new(x, y));
         }
     }
 }

@@ -3,14 +3,12 @@ use bevy_kira_audio::prelude::*;
 use bevy_kira_audio::{DefaultSpatialRadius, SpatialAudioEmitter};
 use bevy_spritesheet_animation::prelude::*;
 
-use being::race::race_components::{ProducesStepSfx, RaceFootstepSfxConfig};
-use being::race::race_resources::RaceRef;
 use ::being_shared::*;
 use game_common::game_common_components::TemplEntiRef;
 use ::sprite_shared::*;
 use sprite_animation_shared::MoveAnimActive;
 use tilemap::tile::tile_components::{TileStepSfx, TileStepSfxConfig};
-use tilemap_shared::{DimensionRef, GlobalTilePos, TileGatheringParamSet};
+use ::tilemap_shared::*;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::ac_audio_components::*;
@@ -378,7 +376,7 @@ pub fn play_step_sfx_from_moved_distance(
         }
 
         if !disable_tile_step_sfx {
-            let tile_ents = tile_gathering.gather_tiles_at(dim_ref, GlobalTilePos::from(current_pos_px)).to_vec();
+            let tile_ents = tile_gathering.gather_tiles(dim_ref, GlobalTilePos::from(current_pos_px)).to_vec();
             for tile_ent in tile_ents {
                 let Ok(tile_cfg_ref) = tile_templ_enti_refs.get(tile_ent) else { continue };
                 let Ok((tile_step_sfx, tile_step_sfx_cfg)) = tile_step_sfxs.get(tile_cfg_ref.0) else { continue };

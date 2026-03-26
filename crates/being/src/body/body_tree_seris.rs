@@ -2,7 +2,7 @@
 use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
 use tilemap_shared::InteractionZoneSeri;
-use crate::race::race_seris::RaceSexEntrySeri;
+
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BodypartNodeSeri {
@@ -23,7 +23,7 @@ pub struct BodyTreeSeri {
     #[serde(default)]
     pub distributed_totals: HashMap<String, f32>,
     #[serde(default)]
-    pub sexes: HashMap<String, RaceSexEntrySeri>,
+    pub sexes: HashMap<String, being_shared::RaceSexEntrySeri>,
     #[serde(default)]
     pub caloric_burn_rate_multiplier: f32,
     #[serde(default = "tilemap_shared::sentinel_melee_interaction_zone")]

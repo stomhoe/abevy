@@ -174,6 +174,18 @@ impl ChunkPos {
     pub fn to_macrochunk_pos(&self) -> MacroChunkPos {
         MacroChunkPos(self.0.div_euclid(MacroChunkPos::SIZE_IN_CHUNKS.0))
     }
+    pub fn bit_index_in_chunk(&self, gpos: GlobalTilePos) -> Option<usize> {
+        let local = gpos.0 - self.to_tilepos().0;
+        if local.x < 0 || local.y < 0 {
+            return None;
+        }
+        let x = local.x as usize;
+        let y = local.y as usize;
+        if x >= Self::CHUNK_SIZE.x as usize || y >= Self::CHUNK_SIZE.y as usize {
+            return None;
+        }
+        Some(y * Self::CHUNK_SIZE.x as usize + x)
+    }
 
     pub fn chunk_pos_from_flat_index_within_region(index: usize, region_pos: RegionPos) -> Self {
         let x = (index as i32 % REGION_SIZE_IN_CHUNKS.x()) as i32;

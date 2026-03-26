@@ -14,6 +14,10 @@
     walk_speeds_on_tiles: {},
     whitelisted_tiles_for_spawning: [],
     blacklisted_tiles_for_spawning: [],
+    predator: (
+        do_not_hunt_tags: ["werewolf"],
+        min_hunger_to_hunt: 40.0,
+    ),
     wander: (
         dir_secs_min: 1.0,
         dir_secs_max: 2.5,

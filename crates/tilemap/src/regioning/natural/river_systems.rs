@@ -11,7 +11,7 @@ use tilemap_shared::{ChunkPos, DimensionRef, GlobalGenSettings, GlobalTilePos, H
 use crate::{
     regioning::{
         regioning_components::ClaimList,
-        regioning_messages::{ChunksClaim, OfferChunk, SgcPrepareTilesOrder, StructureBuildCompliance},
+        regioning_messages::{ChunksClaim, OfferChunk, SgcPrepareTilesOrder, StructureBuildCompliance, TerrGenDisabledGposForChunks},
         regioning_sgc_components::StructuredGenConfig,
     },
     terrain::terrprobe::{
@@ -311,7 +311,7 @@ pub fn claim_chunks_for_river_structures(
                     i: req.offer_i,
                     region_ent: req.region_ent,
                     sgc_ent: req.sgc_ent,
-                    chunks_gpos,
+                    chunks_pos: chunks_gpos,
                     partition_tolerant: true,
                 });
                 claims_emitted = claims_emitted.saturating_add(1);
@@ -409,7 +409,7 @@ pub fn river_structure_building_system(
             order.i,
             order.region_pos,
             order.dimension_ref,
-            order.chunks_gpos.len()
+            order.chunks_pos.len()
         );
 
         let mut compliance = StructureBuildCompliance {
@@ -417,7 +417,7 @@ pub fn river_structure_building_system(
             structure_gen_cfg_ent: order.structured_gen_cfg_ent,
             dimension_ref: order.dimension_ref,
             chunks: Vec::new(),
-            terrgen_disabled_gpos_for_chunks: Vec::new(),
+            terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks::default(),
             terrgen_disabled_for_chunks: Vec::new(),
         };
 
@@ -572,7 +572,7 @@ pub fn river_structure_building_system(
         );
         generated_tiles_total = generated_tiles_total.saturating_add(generated_count);
 
-        let claimed_chunks: HashSet<ChunkPos> = order.chunks_gpos.iter().copied().collect();
+        let claimed_chunks: HashSet<ChunkPos> = order.chunks_pos.iter().copied().collect();
         let mut tiles_by_chunk: HashMap<ChunkPos, Vec<(GlobalTilePos, TemplEntiRef, Option<tilemap_shared::DeleteOtherTilesInSamePos>)>> =
             HashMap::default();
         for gpos in generated_tiles.iter().copied() {
@@ -617,7 +617,7 @@ pub fn river_structure_building_system(
 
         river_debug.clear_generated_river(order.dimension_ref, order.region_pos);
         let info = river_debug.region_mut(order.dimension_ref, order.region_pos);
-        info.claimed_chunks.extend(order.chunks_gpos.iter().copied());
+        info.claimed_chunks.extend(order.chunks_pos.iter().copied());
         info.river_tiles.extend(generated_tiles.into_iter().filter(|p| {
             claimed_chunks.contains(&p.to_chunkpos())
         }));

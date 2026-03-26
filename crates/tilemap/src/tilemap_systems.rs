@@ -33,7 +33,6 @@ pub struct SystemLocals<'s> {
     pub changed_structs: Local<'s, HashSet<MapKey>>,
     pub tile_runtime_info: Local<'s, EntityHashMap<(TemplEntiRef, TileTextureIndex)>>,
     pub terrbl_debug_budget: Local<'s, u32>,
-    pub safe_despawns: Local<'s, Vec<SafeDespawn>>,
 }
 
 #[derive(SystemParam)]
@@ -170,16 +169,17 @@ pub fn process_tiles_pre(
             continue;
         }
 
-        {
-            process_tile_despawns_from_templ(
-                &mut tile_components.delete_others_paramset,
-                &resources.regpos_map,
-                &params.tile_gathering_paramset,
-                tile_ent,
-                bundle.templ_ref,
-                bundle.dim_ref,
-                bundle.gpos,
-            );
+        if process_tile_despawns_from_templ(
+            &mut tile_components.delete_others_paramset,
+            &resources.regpos_map,
+            &params.tile_gathering_paramset,
+            tile_ent,
+            bundle.templ_ref,
+            bundle.dim_ref,
+            bundle.gpos,
+        ) {
+            resources.collected_tiles.0.swap_remove(i);
+            continue;
         }
 
         cmd.entity(tile_ent).try_insert_if_new(Signature::from((ez_hash_id, _dim_hash, bundle.gpos)));

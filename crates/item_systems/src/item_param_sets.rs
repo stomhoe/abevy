@@ -107,7 +107,7 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
         let gpos = self.find_nonstackable_drop_gpos(Some(dim_ref), gpos);
         let z = self
             .blocking_tiles
-            .gather_tiles_at(dim_ref, gpos)
+            .gather_tiles(dim_ref, gpos)
             .iter()
             .copied()
             .filter_map(|ent| self.ac_z_query.get(ent).ok().map(|&AcZ(z)| z))

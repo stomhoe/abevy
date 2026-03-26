@@ -120,9 +120,6 @@ impl SampleSpriteEnts {
     pub fn new(entities: Vec<Entity>) -> Self {
         Self(entities)
     }
-    pub fn entities(&self) -> &Vec<Entity> {
-        &self.0
-    }
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Eq, Clone, Copy, Hash, PartialEq)]

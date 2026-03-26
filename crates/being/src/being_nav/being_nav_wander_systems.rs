@@ -1,7 +1,6 @@
-use crate::being_inst_template::being_inst_template_resources::BitRef;
 
-use crate::race::race_resources::RaceRef;
-use crate::pack::pack_components::PackCenterPos;
+
+use crate::pack::pack_components::PackCenterPerDim;
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use bevy::{
@@ -20,7 +19,7 @@ use ::tilemap_shared::*;
 pub struct WanderState {
     dir: Vec2,
     dir_timer: Timer,
-    move_speed: f32,
+    speed_mult: f32,
     halting: bool,
     phase_timer: Timer,
     pack_orbit_timer: Timer,
@@ -35,7 +34,7 @@ impl WanderState {
                 sample_seconds(rng, cfg.dir_secs_min, cfg.dir_secs_max),
                 TimerMode::Once,
             ),
-            move_speed: sample_seconds(rng, cfg.speed_min, cfg.speed_max),
+            speed_mult: sample_seconds(rng, cfg.speed_min, cfg.speed_max),
             halting: false,
             phase_timer: Timer::from_seconds(
                 sample_seconds(rng, cfg.move_secs_min, cfg.move_secs_max),
@@ -95,14 +94,14 @@ fn apply_wander_input(
                 sample_seconds(rng, cfg.move_secs_min, cfg.move_secs_max),
                 TimerMode::Once,
             );
-            state.move_speed = sample_seconds(rng, cfg.speed_min, cfg.speed_max);
+            state.speed_mult = sample_seconds(rng, cfg.speed_min, cfg.speed_max);
         }
     }
 
     if state.halting {
         Vec2::ZERO
     } else {
-        state.dir * state.move_speed
+        state.dir * state.speed_mult
     }
 }
 
@@ -144,7 +143,7 @@ fn resolve_wander_cfg(
     wander_cfg_query: &Query<&WanderConfig>,
 ) -> WanderConfig {
     if let Some(member_of) = member_of {
-        if let Ok(cfg) = wander_cfg_query.get(member_of.squad) {
+        if let Ok(cfg) = wander_cfg_query.get(member_of.0) {
             return cfg.clone();
         }
     }
@@ -264,7 +263,7 @@ fn collect_entity_avoidance(
             }
         }
         if let Some(member_of) = member_of {
-            let Ok(pack_tags) = tag_query.get(member_of.squad) else {
+            let Ok(pack_tags) = tag_query.get(member_of.0) else {
                 continue;
             };
             avoidance += strongest_entity_avoidance(
@@ -308,7 +307,7 @@ pub fn wander_behavior(
         (With<Being>, ),
     >,
     tag_query: Query<&TagSet>,
-    pack_center_query: Query<&PackCenterPos>,
+    pack_center_query: Query<&PackCenterPerDim>,
     mut wander_states: Local<EntityHashMap<WanderState>>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
@@ -329,7 +328,7 @@ pub fn wander_behavior(
 
         if let Some(member_of) = member_of {
             if let Some(pack_center) = pack_center_query
-                .get(member_of.squad)
+                .get(member_of.0)
                 .ok()
                 .and_then(|pack_center| pack_center.0.get(&dim_ref).copied())
             {
@@ -349,14 +348,14 @@ pub fn wander_behavior(
                             let pull = ((orbit_distance - cfg.pack_orbit_radius).max(0.0)
                                 / cfg.pack_orbit_radius.max(1.0))
                                 .clamp(0.0, 1.0);
-                            input_dir += orbit_delta.as_vec2().normalize_or_zero() * (state.move_speed * 0.75 * pull);
+                            input_dir += orbit_delta.as_vec2().normalize_or_zero() * (state.speed_mult * 0.75 * pull);
                         }
                     }
                 }
                 if cfg.max_drift.is_finite() && pack_distance > cfg.max_drift {
                     let pull = ((pack_distance - cfg.max_drift).max(0.0) / cfg.max_drift.max(1.0))
                         .clamp(0.0, 1.0);
-                    input_dir += pack_delta.as_vec2().normalize_or_zero() * (state.move_speed * 1.5 * pull);
+                    input_dir += pack_delta.as_vec2().normalize_or_zero() * (state.speed_mult * 1.5 * pull);
                 }
             }
         }
@@ -366,7 +365,7 @@ pub fn wander_behavior(
             pred_ent,
             &dim_ref,
             &cfg,
-            state.move_speed,
+            state.speed_mult,
             &threat_query,
             &tag_query,
         );
@@ -380,7 +379,7 @@ pub fn wander_behavior(
                 &WhitelistedSpawnTileTags::default(),
                 &BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
             ) {
-                if let Some(target_pos) = blocking_tiles.find_closest_allowe_gpos(
+                if let Some(target_pos) = blocking_tiles.find_closest_allowed_gpos(
                     dim_ref,
                     gpos,
                     pred_ent,
@@ -388,7 +387,7 @@ pub fn wander_behavior(
                     &avoid_tile_tags,
                 ) {
                     let delta = target_pos.0 - gpos.0;
-                    input_dir = delta.as_vec2().normalize_or_zero() * (state.move_speed * 2.0);
+                    input_dir = delta.as_vec2().normalize_or_zero() * (state.speed_mult * 2.0);
                 } else {
                     input_dir = Vec2::ZERO;
                 }
@@ -411,16 +410,15 @@ pub fn wander_behavior(
                 }
             }
         }
-        let throttle = state.move_speed.clamp(0.0, 1.0);
+        let throttle = state.speed_mult.clamp(0.0, 1.0);
         let axis = FinalNormMoveDir(input_dir).normalize_to_axis_dir();
         if axis == IVec2::ZERO {
-            messages.push(NavOrder::new(
+            messages.push(NavOrder::with_speed_throttle(
                 pred_ent,
                 10,
                 NavOrderSource::Wandering,
                 None,
-                Some(0.0),
-                None,
+                0.0,
             ));
             continue;
         }
@@ -434,24 +432,22 @@ pub fn wander_behavior(
             farthest_target = candidate;
         }
         if farthest_target == gpos {
-            messages.push(NavOrder::new(
+            messages.push(NavOrder::with_speed_throttle(
                 pred_ent,
                 10,
                 NavOrderSource::Wandering,
                 None,
-                Some(0.0),
-                None,
+                0.0,
             ));
             continue;
         }
 
-        messages.push(NavOrder::new(
+        messages.push(NavOrder::with_speed_throttle(
             pred_ent,
             10,
             NavOrderSource::Wandering,
             Some(GoTo::new(farthest_target, 0.0)),
-            Some(throttle),
-            None,
+            throttle,
         ));
     }
     writer.write_batch(messages.drain(..));

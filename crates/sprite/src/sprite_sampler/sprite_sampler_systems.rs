@@ -105,7 +105,7 @@ pub fn sample_from_sprite_entities(
         sampled_configs.clear();
         visited.clear();
 
-        for entity in sample_sprites.entities().iter() {
+        for entity in sample_sprites.0.iter() {
             sample_from_entity_recursive(
                 *entity,
                 &samplers_query,

@@ -293,7 +293,10 @@ pub(crate) fn pending_root_gpos_count_for_chunk(work: &TerrGenLaunchWork) -> usi
             let pos_within_chunk = IVec2::new(x as i32, y as i32);
             let gpos = work.chunk_pos.to_tilepos()
                 + GlobalTilePos(pos_within_chunk * work.oplist_size.inner().as_ivec2());
-            if work.blocked_gpos.contains(&gpos) {
+            let Some(bit_idx) = work.chunk_pos.bit_index_in_chunk(gpos) else {
+                continue;
+            };
+            if work.blocked_gpos.is_blocked(bit_idx) {
                 continue;
             }
             count += 1;

@@ -1,5 +1,6 @@
 use std::{collections::HashSet, };
 
+use being_shared::Unloaded;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
@@ -24,27 +25,17 @@ pub struct SpriteChanged(pub Entity);
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
     sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>)>)>,
-    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>)>)>,
+    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>)>, Without<Unloaded>, Without<Disabled>)>,
     mut removed_disabled: RemovedComponents<Disabled>,
-    mut removed_unloaded: RemovedComponents<being_shared::Unloaded>,
+    mut removed_unloaded: RemovedComponents<Unloaded>,
     mut writer: MessageWriter<SpriteChanged>,
     mut changed: Local<HashSet<SpriteChanged>>,
 )
 {
-    for sprite_ent in sprite_query.iter() {
-        changed.insert(SpriteChanged(sprite_ent));
-    }
-    for sprite_ent in removed_disabled.read() {
-        changed.insert(SpriteChanged(sprite_ent));
-    }
-    for held_sprites in baseholder_query.iter() {
-        for sprite_ent in held_sprites.iter() {
-            changed.insert(SpriteChanged(sprite_ent));
-        }
-    }
-    for unloaded_ent in removed_unloaded.read() {
-        changed.insert(SpriteChanged(unloaded_ent));
-    }
+    changed.extend(sprite_query.iter().map(SpriteChanged));
+    changed.extend(removed_disabled.read().map(SpriteChanged));
+    changed.extend(baseholder_query.iter().flat_map(|held_sprites| held_sprites.iter().map(|sprite_ent| SpriteChanged(sprite_ent))));
+    changed.extend(removed_unloaded.read().map(|removed| SpriteChanged(removed)));
     writer.write_batch(changed.drain());
 }
 
@@ -56,7 +47,8 @@ pub fn disable_children_sprites_of_disabled(
     non_templ_bases: Query<(&HeldSprites),(Without<TemplEnti>,)>,
     mut removed: RemovedComponents<Disabled>,
 ) {
-    let mut disableds = Vec::new();
+    let iter = templ_bases.iter();
+    let mut disableds = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
     for (held_sprites) in templ_bases.iter() {
         for sprite_ent in held_sprites.iter() {
             disableds.push((sprite_ent, Disabled));
@@ -92,17 +84,13 @@ pub fn z_sort_system(
     mut draw_tmaps: Local<Vec<DrawTilemap>>,
     mut ents_to_process: Local<EntityHashSet>,
 ) {
-    for ent in changed_query.iter() {
-        ents_to_process.insert(ent);
-    }
+    ents_to_process.extend(changed_query.iter());
     let (camera_y, camera_moved) = camera_query.iter().next()
         .map(|cam| (cam.to_pixelpos().y, cam.is_changed()))
         .unwrap_or((0.0, false));
 
     if camera_moved {
-        for ent in all_spriteable_query.iter() {
-            ents_to_process.insert(ent);
-        }
+        ents_to_process.extend(all_spriteable_query.iter());
     }
     let mut iter = process_query.iter_many_mut(ents_to_process.drain());
     while let Some((ent, mut transform, global_transform, ysort_origin, maybe_z_index, templ_ref, is_tilemap, child_of)) = iter.fetch_next() {

@@ -53,7 +53,7 @@ pub fn capture_world_tile_click_selection(
     state.clicked_gpos = Some(clicked_gpos);
     state.entities_at_gpos.clear();
     entities_at_gpos.gather_entities_at(&mut state.entities_at_gpos, dim_ref, clicked_gpos);
-    state.entities_at_gpos.extend(tile_gathering.gather_tiles_at(dim_ref, clicked_gpos).iter().copied());
+    state.entities_at_gpos.extend(tile_gathering.gather_tiles(dim_ref, clicked_gpos).iter().copied());
     state.entities_at_gpos.sort_unstable_by_key(|entity| entity.index());
     state.entities_at_gpos.dedup();
 }

@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy::platform::collections::HashSet;
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
@@ -10,10 +9,11 @@ use ::tilemap_shared::*;
 
 use crate::regioning::{
     regioning_components::*,
-    regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder},
+    regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder, TerrGenDisabledGposForChunks},
     regioning_sgc_components::StructuredGenConfig,
 };
 use crate::tile::tile_resources::*;
+use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 use super::super::dungeoning_carve_helpers::carve_room_circle;
 use super::super::dungeoning_ids::SPIRAL;
 use super::super::dungeoning_utils::extend_occupied_gpos;
@@ -87,7 +87,7 @@ pub fn spiral_dungeon_building_system(
             }
         };
 
-        let chunk_positions = &build_order.chunks_gpos;
+        let chunk_positions = &build_order.chunks_pos;
         if chunk_positions.is_empty() { continue; }
 
         let min_chunk_x = chunk_positions.iter().map(|chunk| chunk.x()).min().unwrap();
@@ -432,10 +432,10 @@ pub fn spiral_dungeon_building_system(
         let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
         let disable_lava_terrgen = terrgen_disable_by_tile_id.should_disable_for("lava_tile_id");
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
-        let mut terrgen_disabled_gpos_for_chunks = Vec::with_capacity(chunk_positions.len());
+        let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         for &chunk_pos in chunk_positions {
             let mut tiles4chunk: TilesFromBuilder = Vec::new();
-            let mut blocked_gpos = HashSet::default();
+            let mut terrgen_disabled_gpos = TerrGenBlockedGposMask::default();
             for tile_pos in chunk_pos.get_tilepositions_within_chunk() {
                 let local_tile = tile_pos.0 - origin_tile.0;
                 if local_tile.x < 0 || local_tile.y < 0 { continue; }
@@ -447,13 +447,13 @@ pub fn spiral_dungeon_building_system(
                     tiles4chunk.push((tile_pos, lava_entity, lava_delete_other_tiles.clone()));
                     if disable_lava_terrgen {
                         let size = templ_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
-                        extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
+                        extend_occupied_gpos(&mut terrgen_disabled_gpos, chunk_pos, tile_pos, size);
                     }
                 } else if floor_map[map_idx] {
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
                         let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
-                        extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
+                        extend_occupied_gpos(&mut terrgen_disabled_gpos, chunk_pos, tile_pos, size);
                     }
                 } else if wall_map[map_idx] {
                     tiles4chunk.push((tile_pos, wall_entity, None));
@@ -461,8 +461,9 @@ pub fn spiral_dungeon_building_system(
             }
 
             chunk_tiles.push((chunk_pos, tiles4chunk));
-            terrgen_disabled_gpos_for_chunks.push((chunk_pos, blocked_gpos));
+            terrgen_disabled_gpos_for_chunks.insert_for_chunk(chunk_pos, terrgen_disabled_gpos);
         }
+        info!(target: DUNGEONING_SYSTEM, "structure={} pushing compliance blocked_terrgen_gpos={}", structured_gen_cfg.structure_id(), terrgen_disabled_gpos_for_chunks.count_blocked());
         compliances_to_emit.push(StructureBuildCompliance {
             i: build_order.i,
             structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,

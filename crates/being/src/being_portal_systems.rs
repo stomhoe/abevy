@@ -3,7 +3,7 @@ use ::tilemap_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_SYSTEM;
 use game_common::game_common_components::TemplEntiRef;
-use movement::movement_components::GridLockedMovement;
+use movement::movement_components::{GridLockedMovement, GridLockedMovementVisual};
 use modifier_shared::*;
 use tilemap::tile::tile_components::*;
 use crate::being_portal_resources::PortalCrossingIndex;
@@ -81,6 +81,7 @@ pub fn cross_portal(
             &GlobalTilePos,
             &mut Transform,
             &mut GridLockedMovement,
+            &mut GridLockedMovementVisual,
             Option<&TouchingPortal>,
         ),
         (
@@ -90,7 +91,7 @@ pub fn cross_portal(
     >,
 ) {
     let mut rng = rand::rng();
-    for (being_entity, mut being_dim, &being_gpos, mut being_transform, mut being_glm, touching_portal, ) in being_query.iter_mut() {
+    for (being_entity, mut being_dim, &being_gpos, mut being_transform, mut being_glm, mut being_glm_visual, touching_portal, ) in being_query.iter_mut() {
         let mut interacting_portal_ent = None;
         if let Some(portals) = portal_index.portals_at_tile(being_dim.0, being_gpos) {
             interacting_portal_ent = portals.iter().copied().find(|portal_ent| {
@@ -151,7 +152,7 @@ pub fn cross_portal(
             being_dim.0 = dest_dim.0;
             let arrival_gpos = dest_tile_gpos + sampled_offset;
             being_transform.translation = arrival_gpos.to_translation(being_transform.translation.z);
-            being_glm.clear_step(arrival_gpos);
+            being_glm.clear_step(&mut being_glm_visual, arrival_gpos);
             cmd.entity(being_entity).try_insert(arrival_gpos);
             debug!(target: BEING_SYSTEM, "Teleported {:?} from {:?} to {:?} via portal {:?}", being_entity, being_gpos, arrival_gpos, interacting_portal_ent);
             continue;

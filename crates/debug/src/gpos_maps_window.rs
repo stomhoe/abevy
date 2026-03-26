@@ -3,7 +3,7 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
 use bevy_ecs_tilemap::tiles::TileFlip;
 use ::being_shared::*;
-use being::{being_inst_template::being_inst_template_resources::BitRef, race::race_resources::RaceRef};
+
 use game_common::game_common_components::TemplEntiRef;
 use std::collections::HashSet;
 use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, InteractionZone, InteractionZones, ItemsAtGpos, TileGatheringParamSet, WalkSpeedMultIfOnTop};
@@ -235,7 +235,7 @@ pub fn gpos_maps_window_system(
                 for x in -ui_state.radius..=ui_state.radius {
                     let gpos = center + GlobalTilePos::new(x, y);
                     let mut blocked = false;
-                    let tile_ents = tile_gathering.gather_tiles_at(dim_ref, gpos).to_vec();
+                    let tile_ents = tile_gathering.gather_tiles(dim_ref, gpos).to_vec();
                     for tile_ent in tile_ents {
                         let Ok((templ_ref, tile_origin, _tile_flip)) = tile_instance_query.get(tile_ent) else { continue; };
                         if walk_speed.get(templ_ref.0).cloned().unwrap_or_default().is_extremely_low() {
@@ -316,7 +316,7 @@ pub fn gpos_maps_window_system(
                 }
                 if let Some(local) = clicked_terrain {
                     let gpos = center + local;
-                    if let Some(tile_entity) = tile_gathering.gather_tiles_at(dim_ref, gpos).first().copied() {
+                    if let Some(tile_entity) = tile_gathering.gather_tiles(dim_ref, gpos).first().copied() {
                         selected.selected_tile = Some(tile_entity);
                         window_visible.tile_details = true;
                     }

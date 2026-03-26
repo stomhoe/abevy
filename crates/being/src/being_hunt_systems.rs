@@ -1,18 +1,13 @@
-use crate::being_inst_template::being_inst_template_resources::BitRef;
+
 use crate::being_nav::AiNavGrids;
-use crate::body::{Body, BodySums};
-use crate::race::race_components::Race;
-use crate::race::race_resources::RaceRef;
+use crate::body::{HeldBody, BodySums};
 use ::being_shared::*;
 use bevy::{
     ecs::{
         entity::{EntityHashMap, EntityHashSet},
-        entity_disabling::Disabled,
     },
     prelude::*,
 };
-use common::AnyDisabling;
-use common::common_components::StrId;
 use common::common_tag_components::TagSet;
 use tilemap_shared::{CardinalDirection, GlobalTilePos};
 
@@ -21,55 +16,6 @@ const HUNT_RETARGET_HYSTERESIS_TILES: i32 = 3;
 const SNEAK_FRONT_PENALTY_TILES: i32 = 6;
 const SNEAK_SIDE_PENALTY_TILES: i32 = 3;
 
-#[allow(unused_parens, )]
-pub fn add_predator_behavior_components(
-    mut commands: Commands,
-    query: Query<Entity, (With<Predator>, Without<Hunger>, )>,
-) {
-    for being_ent in query.iter() {
-        commands
-            .entity(being_ent)
-            .try_insert((Hunger::default(), PredatorHuntThreshold::default()));
-    }
-}
-
-#[allow(unused_parens, )]
-pub fn sync_predator_config_from_sources(
-    mut commands: Commands,
-    changed_beings: Query<Entity, (With<Being>, Or<(Changed<BitRef>, Changed<RaceRef>)>, )>,
-    beings: Query<(Option<&BitRef>, Option<&RaceRef>, ), (With<Being>, AnyDisabling, )>,
-    bit_pred_cfg: Query<&Predator>,
-    race_pred_cfg: Query<&Predator>,
-    bit_cfg: Query<&PredatorHuntThreshold>,
-    race_cfg: Query<&PredatorHuntThreshold>,
-    mut removed_disabled: RemovedComponents<Disabled>,
-) {
-    let reenabled_beings = collect_reenabled_entities(&mut removed_disabled);
-    let mut beings_to_sync = reenabled_beings;
-    beings_to_sync.extend(changed_beings.iter());
-
-    for being_ent in beings_to_sync {
-        let Ok((bit_ref, race_ref, )) = beings.get(being_ent) else {
-            continue;
-        };
-        let bit_predator = bit_ref.and_then(|r| bit_pred_cfg.get(r.0).ok()).cloned();
-        let race_predator = race_ref.and_then(|r| race_pred_cfg.get(r.0).ok()).cloned();
-        let bit_threshold = bit_ref.and_then(|r| bit_cfg.get(r.0).ok()).copied();
-        let race_threshold = race_ref.and_then(|r| race_cfg.get(r.0).ok()).copied();
-
-        let Some(chosen) = bit_threshold.or(race_threshold) else {
-            continue;
-        };
-        let predator = bit_predator.or(race_predator).unwrap_or_default();
-        commands.entity(being_ent).try_insert((predator, chosen));
-    }
-}
-
-fn collect_reenabled_entities(removed_disabled: &mut RemovedComponents<Disabled>) -> EntityHashSet {
-    let mut entities = EntityHashSet::default();
-    entities.extend(removed_disabled.read());
-    entities
-}
 
 #[allow(unused_parens, )]
 pub fn tick_hunger(
@@ -87,7 +33,7 @@ pub fn tick_hunger(
 
 fn health_ratio(
     being: Entity,
-    bodies_query: &Query<&Body, (With<Being>, )>,
+    bodies_query: &Query<&HeldBody, >,
     body_health_query: &Query<&BodySums, >,
 ) -> Option<f32> {
     let Ok(body) = bodies_query.get(being) else {
@@ -128,162 +74,137 @@ fn sneak_penalty_tiles(
     }
 }
 
+fn resolve_predator_cfg(
+    bit_ref: Option<&BitRef>,
+    race_ref: Option<&RaceRef>,
+    bit_cfg_query: &Query<&PredatorCfg>,
+) -> Option<PredatorCfg> {
+    bit_ref
+        .and_then(|bit_ref| bit_cfg_query.get(bit_ref.0).ok())
+        .or_else(|| race_ref.and_then(|race_ref| bit_cfg_query.get(race_ref.0).ok()))
+        .cloned()
+}
+
 #[allow(unused_parens, )]
+pub fn sync_predator_squad_marker(
+    mut cmd: Commands,
+    changed_predators: Query<&SquadMemberOf, (Or<(Added<Predator>, Changed<SquadMemberOf>)>, With<Being>, )>,
+    mut removed_predator: RemovedComponents<Predator>,
+    squad_members_query: Query<&SquadMembers, >,
+    member_predator_query: Query<Has<Predator>, (With<Being>, )>,
+    squad_member_of_query: Query<&SquadMemberOf, >,
+    mut squads_to_process: Local<EntityHashSet>,
+) {
+    squads_to_process.clear();
+    for member_of in changed_predators.iter() {
+        squads_to_process.insert(member_of.0);
+    }
+    for pred_ent in removed_predator.read() {
+        let Ok(member_of) = squad_member_of_query.get(pred_ent) else {
+            continue;
+        };
+        squads_to_process.insert(member_of.0);
+    }
+
+    for squad_ent in squads_to_process.drain() {
+        let Ok(squad_members) = squad_members_query.get(squad_ent) else {
+            continue;
+        };
+        let has_predator = squad_members.iter().any(|member_ent| member_predator_query.get(member_ent).is_ok_and(|has_predator| has_predator));
+        if has_predator {
+            cmd.entity(squad_ent).try_insert_if_new(Predator);
+        } else {
+            cmd.entity(squad_ent).try_remove::<Predator>();
+        }
+    }
+}
+
+#[allow(unused_parens, )]
+/// DON'T ALTER THIS SIGNATURE
 pub fn update_predator_hunting_targets(
-    bodies_query: Query<&Body, (With<Being>, )>,
+    mut cmd: Commands,
+    bodies_query: Query<&HeldBody, >,
     body_health_query: Query<&BodySums, >,
     predators: Query<
         (
             Entity,
-            &GlobalTilePos,
-            &::tilemap_shared::DimensionRef,
-            &Predator,
-            Option<&RaceRef>,
-            Option<&BodyTreeWeightSum>,
-            Option<&ComputedBy>,
             Option<&SquadMemberOf>,
             Option<&Hunting>,
             Has<PredatorDetectedByPrey>,
             &Hunger,
-            &PredatorHuntThreshold,
         ),
-        (With<Predator>, ),
+        (With<Predator>, LocalAiControlled),
     >,
-    prey_query: Query<
-        (
-            Entity,
-            &GlobalTilePos,
-            &::tilemap_shared::DimensionRef,
-            Option<&RaceRef>,
-            Option<&BodyTreeWeightSum>,
-            Option<&TagSet>,
-            Option<&SquadMemberOf>,
-            Option<&CardinalDirection>,
-        ),
-        (With<Being>, ),
-    >,
-    race_str_id_query: Query<&StrId, (With<Race>, )>,
-    squads_query: Query<&SquadMembers, >,
+    gpos_query: Query<&GlobalTilePos, >,
+    dim_query: Query<&::tilemap_shared::DimensionRef, >,
+    body_tree_weight_query: Query<&BodyTreeWeightSum, >,
+    tagset_query: Query<&TagSet, >,
+    squad_member_of_query: Query<&SquadMemberOf, >,
+    squad_members_query: Query<(&SquadMembers), (With<Predator>, )>,
+    card_dir_query: Query<&CardinalDirection, >,
+    bit_ref_query: Query<&BitRef, ()>,
+    race_ref_query: Query<&RaceRef, ()>,
+    predator_cfg_query: Query<&PredatorCfg, >,
+
     grids: Res<AiNavGrids>,
-    mut valid_prey_positions: Local<EntityHashMap<GlobalTilePos>>,
-    mut valid_prey_dims: Local<EntityHashMap<::tilemap_shared::DimensionRef>>,
-    mut valid_prey_race: Local<EntityHashMap<Option<RaceRef>>>,
-    mut valid_prey_weight: Local<EntityHashMap<f32>>,
-    mut valid_prey_tags: Local<EntityHashMap<Option<TagSet>>>,
-    mut valid_prey_squad: Local<EntityHashMap<Option<Entity>>>,
-    mut valid_prey_facing: Local<EntityHashMap<Option<CardinalDirection>>>,
-    mut cmd: Commands,
 ) {
-    valid_prey_positions.clear();
-    valid_prey_dims.clear();
-    valid_prey_race.clear();
-    valid_prey_weight.clear();
-    valid_prey_tags.clear();
-    valid_prey_squad.clear();
-    valid_prey_facing.clear();
-    for (prey_ent, prey_gpos, &prey_dim, prey_race, prey_weight_sum, prey_tags, prey_member_of, prey_facing, ) in prey_query.iter() {
-        valid_prey_positions.insert(prey_ent, *prey_gpos);
-        valid_prey_dims.insert(prey_ent, prey_dim);
-        valid_prey_race.insert(prey_ent, prey_race.copied());
-        valid_prey_weight.insert(prey_ent, prey_weight_sum.map(|sum| sum.0).unwrap_or_default());
-        valid_prey_tags.insert(prey_ent, prey_tags.cloned());
-        valid_prey_squad.insert(prey_ent, prey_member_of.map(|member_of| member_of.squad));
-        valid_prey_facing.insert(prey_ent, prey_facing.copied());
-    }
-
-    let mut predator_squads: EntityHashMap<Vec<(Entity, GlobalTilePos, ::tilemap_shared::DimensionRef)>> =
-        EntityHashMap::default();
-    let mut predators_without_squad = Vec::new();
-    for (
-        pred_ent,
-        pred_gpos,
-        &pred_dim,
-        predator_cfg,
-        pred_race,
-        pred_weight_sum,
-        controlled_by,
-        pred_member_of,
-        hunting,
-        predator_detected,
-        hunger,
-        hunt_threshold,
-    ) in predators.iter()
-    {
-        if let Some(controlled_by) = controlled_by {
-            if controlled_by.human_dc_input {
-                cmd.entity(pred_ent).try_remove::<Hunting>();
-                continue;
-            }
+    for (pred_ent, squad_member_of, hunting, predator_detected, hunger) in predators.iter() {
+        if squad_member_of.is_some() {
+            continue;
         }
-
+        let bit_ref = bit_ref_query.get(pred_ent).ok();
+        let race_ref = race_ref_query.get(pred_ent).ok();
+        let Some(predator_cfg) = resolve_predator_cfg(bit_ref, race_ref, &predator_cfg_query) else {
+            cmd.entity(pred_ent).try_remove::<Hunting>();
+            continue;
+        };
         let hp = health_ratio(pred_ent, &bodies_query, &body_health_query);
-        if hunger.curr < hunt_threshold.0 || hp.is_some_and(|hp| hp <= 0.9) {
+        if hunger.curr < predator_cfg.min_hunger_to_hunt || hp.is_some_and(|hp| hp <= predator_cfg.min_hp_ratio_to_hunt) {
             cmd.entity(pred_ent).try_remove::<Hunting>();
             continue;
         }
-        if pred_member_of.is_some() && (predator_cfg.pack_size_min > 1 || predator_cfg.pack_size_max > 1) {
-            let squad = pred_member_of.map_or(pred_ent, |member_of| member_of.squad);
-            predator_squads
-                .entry(squad)
-                .or_default()
-                .push((pred_ent, *pred_gpos, pred_dim));
-            continue;
-        }
-        predators_without_squad.push((
-            pred_ent,
-            *pred_gpos,
-            pred_dim,
-            predator_cfg.clone(),
-            pred_race.copied(),
-            pred_weight_sum.map(|sum| sum.0).unwrap_or_default(),
-            hunting.map(|hunting| hunting.prey),
-            predator_detected,
-        ));
-    }
 
-    for (pred_ent, pred_pos, pred_dim, predator_cfg, pred_race, pred_weight_newtons, current_prey, predator_detected, ) in predators_without_squad.into_iter() {
+        let Ok(&pred_pos) = gpos_query.get(pred_ent) else {
+            cmd.entity(pred_ent).try_remove::<Hunting>();
+            continue;
+        };
+        let Ok(&pred_dim) = dim_query.get(pred_ent) else {
+            cmd.entity(pred_ent).try_remove::<Hunting>();
+            continue;
+        };        let pred_weight_newtons = body_tree_weight_query.get(pred_ent).map(|sum| sum.0).unwrap_or_default();
+
         let mut closest: Option<(Entity, i32)> = None;
-        for (&prey_ent, prey_pos) in valid_prey_positions.iter() {
-            let Some(&prey_dim) = valid_prey_dims.get(&prey_ent) else {
-                continue;
-            };
-            if prey_ent == pred_ent || prey_dim != pred_dim {
+        for (prey_ent, _, _, _, _) in predators.iter() {
+            if prey_ent == pred_ent {
                 continue;
             }
-            let prey_tags = valid_prey_tags.get(&prey_ent).and_then(|tags| tags.as_ref());
-            if let Some(prey_tags) = prey_tags {
+            let Ok(&prey_pos) = gpos_query.get(prey_ent) else {
+                continue;
+            };
+            let Ok(&prey_dim) = dim_query.get(prey_ent) else {
+                continue;
+            };
+            if prey_dim != pred_dim {
+                continue;
+            }
+            if let Ok(prey_tags) = tagset_query.get(prey_ent) {
                 if predator_cfg.do_not_hunt_tags.intersects(prey_tags) {
                     continue;
                 }
             }
-            let prey_weight_newtons = valid_prey_weight.get(&prey_ent).copied().unwrap_or_default();
+
+            let prey_weight_newtons = body_tree_weight_query.get(prey_ent).map(|sum| sum.0).unwrap_or_default();
             if predator_cfg.prey_body_size_ratio_tolerance > 0.0
                 && pred_weight_newtons > 0.0
                 && prey_weight_newtons > pred_weight_newtons * predator_cfg.prey_body_size_ratio_tolerance
             {
                 continue;
             }
-            let prey_race = valid_prey_race.get(&prey_ent).copied().flatten();
-            if let Some(prey_race) = prey_race {
-                if let Ok(prey_race_id) = race_str_id_query.get(prey_race.0) {
-                    if predator_cfg.own_races.contains(prey_race_id) {
-                        continue;
-                    }
-                }
-            }
-            if let (Some(pred_race), Some(prey_race)) = (pred_race, prey_race) {
-                if pred_race.0 == prey_race.0 {
-                    continue;
-                }
-            }
+
             let delta = prey_pos.0 - pred_pos.0;
             let mut manhattan = delta.x.abs() + delta.y.abs();
             if !predator_detected {
-                manhattan += sneak_penalty_tiles(
-                    pred_pos,
-                    *prey_pos,
-                    valid_prey_facing.get(&prey_ent).copied().flatten(),
-                );
+                manhattan += sneak_penalty_tiles(pred_pos, prey_pos, card_dir_query.get(prey_ent).ok().copied());
             }
             let Some((_, curr_best)) = closest else {
                 closest = Some((prey_ent, manhattan));
@@ -299,11 +220,8 @@ pub fn update_predator_hunting_targets(
             continue;
         };
         let mut chosen_target = closest_target;
-        if let Some(current_prey) = current_prey {
-            if let (Some(current_pos), Some(&current_dim)) = (
-                valid_prey_positions.get(&current_prey).copied(),
-                valid_prey_dims.get(&current_prey),
-            ) {
+        if let Some(current_prey) = hunting.map(|hunting| hunting.prey) {
+            if let (Ok(&current_pos), Ok(&current_dim)) = (gpos_query.get(current_prey), dim_query.get(current_prey)) {
                 if current_dim == pred_dim && grids.can_pathfind_between(pred_pos, current_pos, pred_dim) {
                     let current_dist = (current_pos.0 - pred_pos.0).abs().x + (current_pos.0 - pred_pos.0).abs().y;
                     if current_dist <= closest_dist + HUNT_RETARGET_HYSTERESIS_TILES {
@@ -315,128 +233,189 @@ pub fn update_predator_hunting_targets(
         cmd.entity(pred_ent).try_insert(Hunting { prey: chosen_target, });
     }
 
-    for (_predator_squad, squad_preds, ) in predator_squads.iter() {
-        if squad_preds.is_empty() {
+    for (squad_members) in squad_members_query.iter() {
+        if squad_members.iter().next().is_none() {
             continue;
         }
-        let pred_dim = squad_preds[0].2;
+
+        let mut squad_dim = None;
         let mut anchor_sum = IVec2::ZERO;
-        for (_, gpos, _, ) in squad_preds.iter() {
-            anchor_sum += gpos.0;
-        }
-        let anchor_pos = GlobalTilePos(anchor_sum / squad_preds.len() as i32);
-        let mut prey_candidates: Vec<(Entity, i32)> = Vec::new();
-        prey_candidates.reserve(valid_prey_positions.len());
-        for (&prey_ent, prey_pos) in valid_prey_positions.iter() {
-            let Some(&prey_dim) = valid_prey_dims.get(&prey_ent) else {
+        let mut active_member_count = 0;
+        let mut active_member_ents = Vec::new();
+        for member_ent in squad_members.iter() {
+            let Ok((_, _, hunting, controlled_by, hunger)) = predators.get(member_ent) else {
                 continue;
             };
-            if prey_dim != pred_dim {
+            if controlled_by {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            }
+
+            let member_bit_ref = bit_ref_query.get(member_ent).ok();
+            let member_race_ref = race_ref_query.get(member_ent).ok();
+            let Some(predator_cfg) = resolve_predator_cfg(member_bit_ref, member_race_ref, &predator_cfg_query) else {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            };
+            let hp = health_ratio(member_ent, &bodies_query, &body_health_query);
+            if hunger.curr < predator_cfg.min_hunger_to_hunt || hp.is_some_and(|hp| hp <= predator_cfg.min_hp_ratio_to_hunt) {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            }
+
+            let Ok(&member_pos) = gpos_query.get(member_ent) else {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            };
+            let Ok(&member_dim) = dim_query.get(member_ent) else {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            };
+            if let Some(squad_dim) = squad_dim {
+                if squad_dim != member_dim {
+                    continue;
+                }
+            } else {
+                squad_dim = Some(member_dim);
+            }
+
+            anchor_sum += member_pos.0;
+            active_member_count += 1;
+            active_member_ents.push((member_ent, member_pos, member_dim, hunting.map(|hunting| hunting.prey)));
+        }
+
+        let Some(squad_dim) = squad_dim else {
+            continue;
+        };
+        if active_member_count == 0 {
+            continue;
+        }
+        let anchor_pos = GlobalTilePos(anchor_sum / active_member_count as i32);
+
+        let mut committed_counts: EntityHashMap<u32> = EntityHashMap::default();
+        for (_, member_pos, member_dim, current_prey) in active_member_ents.iter().copied() {
+            let Some(current_prey) = current_prey else {
+                continue;
+            };
+            let Ok(&current_pos) = gpos_query.get(current_prey) else {
+                continue;
+            };
+            let Ok(&current_dim) = dim_query.get(current_prey) else {
+                continue;
+            };
+            if current_dim != member_dim || !grids.can_pathfind_between(member_pos, current_pos, member_dim) {
+                continue;
+            }
+            *committed_counts.entry(current_prey).or_insert(0) += 1;
+        }
+
+        let mut base_target = None;
+        let mut best_base_dist = i32::MAX;
+        for (prey_ent, _, _, _, _) in predators.iter() {
+            if squad_members.iter().any(|member_ent| member_ent == prey_ent) {
+                continue;
+            }
+            let Ok(&prey_pos) = gpos_query.get(prey_ent) else {
+                continue;
+            };
+            let Ok(&prey_dim) = dim_query.get(prey_ent) else {
+                continue;
+            };
+            if prey_dim != squad_dim {
                 continue;
             }
             let dist = (prey_pos.0 - anchor_pos.0).abs().x + (prey_pos.0 - anchor_pos.0).abs().y;
-            prey_candidates.push((prey_ent, dist));
+            if dist < best_base_dist {
+                best_base_dist = dist;
+                base_target = Some(prey_ent);
+            }
         }
-        prey_candidates.sort_by_key(|(_, dist)| *dist);
 
-        let Some(&(closest_base_target, closest_base_dist)) = prey_candidates.first() else {
-            for (pred_ent, _, _, ) in squad_preds.iter() {
-                cmd.entity(*pred_ent).try_remove::<Hunting>();
+        let Some(mut base_target) = base_target else {
+            for member_ent in squad_members.iter() {
+                cmd.entity(member_ent).try_remove::<Hunting>();
             }
             continue;
         };
-        let mut base_target = closest_base_target;
-        if let Some((_, pred_pos, pred_dim, )) = squad_preds.first() {
-            let mut current_target_counts: EntityHashMap<u32> = EntityHashMap::default();
-            for (pred_ent, _, _, ) in squad_preds.iter() {
-                let Ok((_pred_ent, _pred_gpos, _pred_dim, _predator_cfg, _pred_race, _pred_weight_sum, _controlled_by, _pred_member_of, hunting, _predator_detected, _hunger, _hunt_threshold)) = predators.get(*pred_ent) else {
-                    continue;
-                };
-                let Some(hunting) = hunting else {
-                    continue;
-                };
-                let Some(current_pos) = valid_prey_positions.get(&hunting.prey).copied() else {
-                    continue;
-                };
-                let Some(&current_dim) = valid_prey_dims.get(&hunting.prey) else {
-                    continue;
-                };
-                if current_dim != *pred_dim || !grids.can_pathfind_between(*pred_pos, current_pos, *pred_dim) {
-                    continue;
-                }
-                *current_target_counts.entry(hunting.prey).or_insert(0) += 1;
-            }
-            if let Some((&committed_target, _)) = current_target_counts.iter().max_by_key(|(_, count)| **count) {
-                if let Some(committed_pos) = valid_prey_positions.get(&committed_target).copied() {
-                    let committed_dist = (committed_pos.0 - anchor_pos.0).abs().x + (committed_pos.0 - anchor_pos.0).abs().y;
-                    if committed_dist <= closest_base_dist + HUNT_RETARGET_HYSTERESIS_TILES {
-                        base_target = committed_target;
-                    }
+
+        if let Some((&committed_target, _)) = committed_counts.iter().max_by_key(|(_, count)| **count) {
+            if let Ok(&committed_pos) = gpos_query.get(committed_target) {
+                let committed_dist = (committed_pos.0 - anchor_pos.0).abs().x + (committed_pos.0 - anchor_pos.0).abs().y;
+                if committed_dist <= best_base_dist + HUNT_RETARGET_HYSTERESIS_TILES {
+                    base_target = committed_target;
                 }
             }
         }
 
-        let mut target_list: Vec<Entity> = Vec::new();
-        if let Some(Some(target_squad)) = valid_prey_squad.get(&base_target).copied() {
-            let Ok(target_squad_members) = squads_query.get(target_squad) else {
-                target_list.push(base_target);
-                for (pred_ent, pred_pos, pred_dim, ) in squad_preds.iter() {
-                    let Some(prey_pos) = valid_prey_positions.get(&base_target).copied() else {
+        let mut target_list = Vec::new();
+        if let Ok(target_member_of) = squad_member_of_query.get(base_target) {
+            if let Ok((target_squad_members)) = squad_members_query.get(target_member_of.0) {
+                let mut reachable_squad_targets: Vec<(Entity, i32)> = Vec::new();
+                for target_member in target_squad_members.iter() {
+                    if squad_members.iter().any(|member_ent| member_ent == target_member) {
+                        continue;
+                    }
+                    let Ok(&member_pos) = gpos_query.get(target_member) else {
                         continue;
                     };
-                    if !grids.can_pathfind_between(*pred_pos, prey_pos, *pred_dim) {
+                    let Ok(&member_dim) = dim_query.get(target_member) else {
+                        continue;
+                    };
+                    if member_dim != squad_dim {
                         continue;
                     }
-                    cmd.entity(*pred_ent).try_insert(Hunting { prey: base_target, });
-                }
-                continue;
-            };
 
-            let mut reachable_squad_targets: Vec<(Entity, i32)> = Vec::new();
-            for target_member in target_squad_members.iter() {
-                let Some(member_pos) = valid_prey_positions.get(&target_member).copied() else {
-                    continue;
-                };
-                let Some(&member_dim) = valid_prey_dims.get(&target_member) else {
-                    continue;
-                };
-                if member_dim != pred_dim {
-                    continue;
-                }
-                let mut reachable = false;
-                for (_pred_ent, pred_pos, pred_dim, ) in squad_preds.iter() {
-                    if !grids.can_pathfind_between(*pred_pos, member_pos, *pred_dim) {
+                    let mut reachable = false;
+                    for member_ent in squad_members.iter() {
+                        let Ok(&pred_pos) = gpos_query.get(member_ent) else {
+                            continue;
+                        };
+                        let Ok(&pred_dim) = dim_query.get(member_ent) else {
+                            continue;
+                        };
+                        if !grids.can_pathfind_between(pred_pos, member_pos, pred_dim) {
+                            continue;
+                        }
+                        reachable = true;
+                        break;
+                    }
+                    if !reachable {
                         continue;
                     }
-                    reachable = true;
-                    break;
+                    let dist = (member_pos.0 - anchor_pos.0).abs().x + (member_pos.0 - anchor_pos.0).abs().y;
+                    reachable_squad_targets.push((target_member, dist));
                 }
-                if !reachable {
-                    continue;
+                reachable_squad_targets.sort_by_key(|(_, dist)| *dist);
+                if reachable_squad_targets.is_empty() {
+                    target_list.push(base_target);
+                } else {
+                    target_list.extend(reachable_squad_targets.into_iter().map(|(target, _)| target));
                 }
-                let dist = (member_pos.0 - anchor_pos.0).abs().x + (member_pos.0 - anchor_pos.0).abs().y;
-                reachable_squad_targets.push((target_member, dist));
-            }
-            reachable_squad_targets.sort_by_key(|(_, dist)| *dist);
-            target_list.reserve(reachable_squad_targets.len());
-            target_list.extend(reachable_squad_targets.into_iter().map(|(target, _)| target));
-            if target_list.is_empty() {
+            } else {
                 target_list.push(base_target);
             }
         } else {
             target_list.push(base_target);
         }
 
-        for (ix, (pred_ent, pred_pos, pred_dim, )) in squad_preds.iter().enumerate() {
+        for (ix, member_ent) in squad_members.iter().enumerate() {
+            let Ok(&member_pos) = gpos_query.get(member_ent) else {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            };
+            let Ok(&member_dim) = dim_query.get(member_ent) else {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            };
             let mut target_ix = (ix / HUNTERS_PER_PREY_TARGET).min(target_list.len().saturating_sub(1));
             let mut assigned_target = None;
             while target_ix < target_list.len() {
                 let target = target_list[target_ix];
-                let Some(target_pos) = valid_prey_positions.get(&target).copied() else {
+                let Some(target_pos) = gpos_query.get(target).ok().copied() else {
                     target_ix += 1;
                     continue;
                 };
-                if !grids.can_pathfind_between(*pred_pos, target_pos, *pred_dim) {
+                if !grids.can_pathfind_between(member_pos, target_pos, member_dim) {
                     target_ix += 1;
                     continue;
                 }
@@ -444,18 +423,18 @@ pub fn update_predator_hunting_targets(
                 break;
             }
             let Some(assigned_target) = assigned_target else {
-                cmd.entity(*pred_ent).try_remove::<Hunting>();
+                cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             };
-            cmd.entity(*pred_ent).try_insert(Hunting { prey: assigned_target, });
+            cmd.entity(member_ent).try_insert(Hunting { prey: assigned_target, });
         }
     }
 }
 
 #[allow(unused_parens, )]
-pub fn sync_hunting_to_chasing(
+pub fn sync_chasing_to_hunt(
     mut cmd: Commands,
-    hunting_predators: Query<(Entity, &Hunting, Option<&Chasing>, ), (With<Predator>, )>,
+    hunting_predators: Query<(Entity, &Hunting, Option<&Chasing>, ), (Changed<Hunting>)>,
 ) {
     for (pred_ent, hunting, chasing, ) in hunting_predators.iter() {
         if chasing
@@ -471,12 +450,10 @@ pub fn sync_hunting_to_chasing(
 #[allow(unused_parens, )]
 pub fn clear_predator_detected_when_not_hunting(
     mut commands: Commands,
-    query: Query<(Entity, Has<Hunting>, Has<PredatorDetectedByPrey>, ), (With<Predator>, )>,
+    query: Query<(Entity, ), (Without<Hunting>, With<PredatorDetectedByPrey>)>,
 ) {
-    for (pred_ent, has_hunting, has_detected, ) in query.iter() {
-        if has_hunting || !has_detected {
-            continue;
-        }
+    for (pred_ent, ) in query.iter() {
+
         commands.entity(pred_ent).try_remove::<PredatorDetectedByPrey>();
     }
 }

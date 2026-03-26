@@ -134,7 +134,7 @@ impl PackInitialSize {
 }
 
 #[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
-pub struct PackCenterPos(pub HashMap<DimensionRef, GlobalTilePos>);
+pub struct PackCenterPerDim(pub HashMap<DimensionRef, GlobalTilePos>);
 
 /*
 */

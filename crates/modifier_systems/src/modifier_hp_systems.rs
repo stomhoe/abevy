@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use being::body::{Body, IncomingDamage};
+use being::body::{HeldBody, IncomingDamage};
 use game_common::game_common_components::{
     Dead,
     DespawnOnDeath,
@@ -13,7 +13,7 @@ use tilemap_shared::SafeDespawn;
 pub fn apply_health_damage(
     mut reader: MessageReader<HealthDamage>,
     mut health_query: Query<&mut Health, Without<TemplEnti>>,
-    body_query: Query<&Body, Without<TemplEnti>>,
+    body_query: Query<&HeldBody, Without<TemplEnti>>,
     mut body_damage_writer: MessageWriter<IncomingDamage>,
     mut body_damage_messages: Local<Vec<IncomingDamage>>,
 ) {

@@ -1,8 +1,10 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
 #[allow(unused_imports, )]
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::HostSystems;
+use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use crate::pack::{pack_init_systems::*, pack_resources::*, pack_systems::*};
 
@@ -17,7 +19,7 @@ pub fn plugin(app: &mut App) {
             OnEnter(AssetLoading::SpawnReplicatedEntities),
             ((init_packs, map_pack_id_to_entity).chain()).in_set(PackSystems),
         )
-        .add_systems(Update, (update_pack_center_pos, cleanup_empty_packs).in_set(HostSystems))
+        .add_systems(Update, (update_pack_center_pos.run_if(on_timer(Duration::from_secs_f32(1.))), despawn_empty_squads).in_set(HostSystems))
 
     ;
 }

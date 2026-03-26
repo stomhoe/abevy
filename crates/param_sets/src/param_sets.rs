@@ -396,7 +396,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         occupied_gpos: GlobalTilePos,
     ) {
         self.collision_tile_samples.clear();
-        self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos);
+        self.tile_gathering_params.gather_tiles_to_drain(dim_ref, occupied_gpos);
         if !self.tile_gathering_params.to_drain.is_empty() {
             let tile_entities_len = self.tile_gathering_params.to_drain.len();
             let tile_entities_ptr = self.tile_gathering_params.to_drain.as_ptr();
@@ -441,7 +441,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         }
     }
 
-    pub fn find_closest_allowe_gpos(
+    pub fn find_closest_allowed_gpos(
         &mut self,
         dim_ref: DimensionRef,
         target_gpos: GlobalTilePos,

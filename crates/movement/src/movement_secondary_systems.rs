@@ -12,14 +12,65 @@ use ::being_shared::*;
 use ac_input::ac_input_actions::*;
 use player::player_components::{Mine, Player};
 
-use crate::movement_components::*;
+use crate::{movement_bundles::*, movement_components::*};
 
 pub const INPUT_DEADZONE: f32 = 0.2;
+
+#[allow(unused_parens, )]
+pub fn add_grid_locked_movement_requirements(
+    mut commands: Commands,
+    query: Query<(Entity, Has<Being>, Has<Unloaded>), With<GridLockedMovement>>,
+    added_grid_locked_movements: Query<Entity, Added<GridLockedMovement>>,
+    mut removed_disabled: RemovedComponents<Disabled>,
+    mut removed_unloaded: RemovedComponents<Unloaded>,
+    mut to_process: Local<EntityHashSet>,
+) {
+    let mut loaded_move_anims = 0usize;
+    let mut total = 0usize;
+    let added_grid_locked_movements = added_grid_locked_movements.iter();
+    to_process.reserve(
+        removed_disabled.len()
+            + removed_unloaded.len()
+            + added_grid_locked_movements
+                .size_hint()
+                .1
+                .unwrap_or(added_grid_locked_movements.size_hint().0),
+    );
+    to_process.extend(removed_disabled.read());
+    to_process.extend(removed_unloaded.read());
+    to_process.extend(added_grid_locked_movements);
+
+    for being_ent in to_process.drain() {
+        let Ok((_, has_being, has_unloaded)) = query.get(being_ent) else {
+            continue;
+        };
+        total += 1;
+        if has_being && !has_unloaded {
+            loaded_move_anims += 1;
+            commands.entity(being_ent).try_insert_if_new((
+                GridLockedMovementRequirementsBundle::default(),
+                MoveVisualsBundle::default(),
+            ));
+        } else {
+            commands
+                .entity(being_ent)
+                .try_insert_if_new(GridLockedMovementRequirementsBundle::default());
+        }
+    }
+    if total > 0 {
+        debug!(
+            target: MOVEMENT_SYSTEM,
+            "Backfilled GridLockedMovement requirements for {} entities (MoveAnimActive on {} loaded beings)",
+            total,
+            loaded_move_anims
+        );
+    }
+}
 
 pub fn add_movement_components_to_beings(
     mut commands: Commands,
     added_beings: Query<Entity, Added<Being>>,
-    beings: Query<(), With<Being>>,
+    beings: Query<(), (With<Being>, Without<Disabled>, Without<Unloaded>)>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut beings_to_update: Local<EntityHashSet>,
 ) {
@@ -50,8 +101,8 @@ pub fn add_movement_components_to_beings(
 #[allow(unused_parens, )]
 pub fn update_facing_dir(
     mut query: Query<(Entity, &FinalNormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
-    mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
-    mut messages: Local<HashSet<MatchHeldSpritesAnimStateToBeingState>>,
+    mut writer: MessageWriter<MirrorHolderStateForSprite>,
+    mut messages: Local<HashSet<MirrorHolderStateForSprite>>,
 ) {
     for (being_ent, norm_move_dir, glm, mut facing_dir) in query.iter_mut() {
         let dir = glm
@@ -66,7 +117,7 @@ pub fn update_facing_dir(
         if *facing_dir != next {
             *facing_dir = next;
             trace!(target: MOVEMENT_SYSTEM, "Facing updated for {:?} to {:?}", being_ent, next);
-            messages.insert(MatchHeldSpritesAnimStateToBeingState(being_ent));
+            messages.insert(MirrorHolderStateForSprite(being_ent));
         }
     }
     writer.write_batch(messages.drain());
@@ -118,9 +169,9 @@ pub fn copy_client_move_input_to_controlled_beings(
 #[allow(unused_parens, )]
 pub fn emit_move_state_on_movevecmag_speed_mag_change(
     query: Query<(Entity, &SpeedMagnitude), (Changed<SpeedMagnitude>, )>,
-    mut writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
+    mut writer: MessageWriter<MirrorHolderStateForSprite>,
     mut prev_by_ent: Local<EntityHashMap<SpeedMagnitude>>,
-    mut messages: Local<Vec<MatchHeldSpritesAnimStateToBeingState>>,
+    mut messages: Local<Vec<MirrorHolderStateForSprite>>,
 ) {
     for (ent, &speed_magnitude) in query.iter() {
         let Some(&prev) = prev_by_ent.get(&ent) else {
@@ -128,7 +179,7 @@ pub fn emit_move_state_on_movevecmag_speed_mag_change(
             continue;
         };
         if prev != speed_magnitude {
-            messages.push(MatchHeldSpritesAnimStateToBeingState(ent));
+            messages.push(MirrorHolderStateForSprite(ent));
             prev_by_ent.insert(ent, speed_magnitude);
         }
     }

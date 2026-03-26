@@ -12,9 +12,9 @@ use crate::body::BodyTreeEntityMap;
 use crate::body::BodyTreeRef;
 use crate::body::body_tree_components::*;
 use crate::body::body_sampler::body_sampler_resources::*;
-use crate::being_interaction_zone_helper::build_being_interaction_zones_with_base;
+use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
 use crate::pack::pack_components::PackInitialSize;
-use crate::{race::{race_components::*, race_resources::*}, sex };
+use crate::{sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::*;
 use ::tilemap_shared::*;
@@ -137,7 +137,7 @@ pub fn init_races(
         let body_tree_zones = body_tree_ent
             .and_then(|body_tree_ent| body_tree_source_query.get(body_tree_ent).ok())
             .and_then(|(_, zones)| zones);
-        entity_cmds.insert(build_being_interaction_zones_with_base(
+        entity_cmds.insert(build_being_interaction_zones_with_fallback(
             body_tree_zones,
             race_seri.melee_interaction_zone.clone(),
             race_seri.collision_zone.clone(),
@@ -181,34 +181,8 @@ pub fn init_races(
         if !race_seri.spawn_pack_entity {
             cmd.entity(entity).insert(NoSpawnGroup);
         }
-        if PredatorHuntThreshold::is_configured_in_seri(race_seri.predator_hunt_threshold) {
-            let mut own_races = bevy::platform::collections::HashSet::default();
-            for race_id in &race_seri.friend_races {
-                let trimmed = race_id.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
-                own_races.insert(StrId::trunc(trimmed));
-            }
-            own_races.insert(str_id.clone());
-            let (mut pack_min, mut pack_max) = race_seri.predator_pack_size_range;
-            if pack_min == 0 {
-                pack_min = 1;
-            }
-            if pack_max < pack_min {
-                pack_max = pack_min;
-            }
-            cmd.entity(entity).insert((
-                Predator {
-                    own_races,
-                    territorialism: race_seri.predator_territorialism.max(0.0),
-                    pack_size_min: pack_min,
-                    pack_size_max: pack_max,
-                    do_not_hunt_tags: common::common_tag_components::TagSet::new(&race_seri.predator_dont_hunt),
-                    prey_body_size_ratio_tolerance: race_seri.predator_prey_kg_ratio_over_us_tolerance,
-                },
-                PredatorHuntThreshold(race_seri.predator_hunt_threshold),
-            ));
+        if let Some(predator_cfg) = PredatorCfg::from_seri(&race_seri.predator) {
+            cmd.entity(entity).insert(predator_cfg);
         }
         if DetectionVisionCone::is_configured_in_seri(
             race_seri.detection_vision_cone_range_tiles,
@@ -285,7 +259,7 @@ pub fn init_races(
         }
 
         cmd.entity(entity)
-            .insert(MappedSpritesToSample(mapped_sprites_to_sample));
+            .insert(SexMappedSpritesToSample(mapped_sprites_to_sample));
 
         for (biome_tag, weight) in &race_seri.biome_affinity {
             if *weight == 0.0 {

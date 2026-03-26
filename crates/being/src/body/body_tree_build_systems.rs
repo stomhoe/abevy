@@ -6,7 +6,6 @@ use modifier_shared::modifier_components::{AppliedModifiers, ModifierSynergies};
 
 use crate::body::BodyTreeRef;
 use crate::body::{body_tree_components::*};
-use crate::race::race_components::Race;
 use ::being_shared::*;
 
 #[allow(unused_parens, )]

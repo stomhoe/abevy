@@ -7,7 +7,7 @@ use ::being_shared::{GoTo, NavOrderSource};
 pub struct MakeChunkSnapshotForChaser(pub Entity);
 
 #[derive(Message, Debug, Clone, Copy)]
-pub struct PredatorSeenByPrey {
+pub struct PredatorSpottedByPrey {
     pub prey: Entity,
     pub predator: Entity,
 }
@@ -18,8 +18,8 @@ pub struct NavOrder {
     pub priority: u8,
     pub source: NavOrderSource,
     pub go_to: Option<GoTo>,
-    pub speed_throttle_mult: Option<f32>,
-    pub max_speed: Option<f32>,
+    pub speed_throttle_mult: f32,
+    pub max_speed: f32,
 }
 impl NavOrder {
     pub fn new(
@@ -27,8 +27,23 @@ impl NavOrder {
         priority: u8,
         source: NavOrderSource,
         go_to: Option<GoTo>,
-        speed_throttle_mult: Option<f32>,
-        max_speed: Option<f32>,
+    ) -> Self {
+        Self {
+            being_ent,
+            priority,
+            source,
+            go_to,
+            speed_throttle_mult: 1.0,
+            max_speed: f32::MAX,
+        }
+    }
+
+    pub fn with_speed_throttle(
+        being_ent: Entity,
+        priority: u8,
+        source: NavOrderSource,
+        go_to: Option<GoTo>,
+        speed_throttle_mult: f32,
     ) -> Self {
         Self {
             being_ent,
@@ -36,6 +51,23 @@ impl NavOrder {
             source,
             go_to,
             speed_throttle_mult,
+            max_speed: f32::MAX,
+        }
+    }
+
+    pub fn with_max_speed(
+        being_ent: Entity,
+        priority: u8,
+        source: NavOrderSource,
+        go_to: Option<GoTo>,
+        max_speed: f32,
+    ) -> Self {
+        Self {
+            being_ent,
+            priority,
+            source,
+            go_to,
+            speed_throttle_mult: 1.0,
             max_speed,
         }
     }

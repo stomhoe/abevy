@@ -176,7 +176,7 @@ pub fn sync_modifier_name_to_effects(
             Has<HitpointRegenRate>,
         ),
         (
-            Without<TemplEnti>,
+            With<ModifierTarget>,
             Or<(
                 Or<(
                     Added<WalkSpeed>,

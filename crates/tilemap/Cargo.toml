@@ -36,7 +36,7 @@ rand_pcg = { workspace = true }
 #delegate = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }
 bevy-inspector-egui = { workspace = true }
-bit-vec = { workspace = true }
+bitvec = { workspace = true }
 paste = { workspace = true }
 smallvec = { workspace = true }
 avian2d = { workspace = true }

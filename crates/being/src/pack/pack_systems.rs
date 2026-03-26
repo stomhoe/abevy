@@ -4,28 +4,30 @@ use game_common::game_common_components::TemplEnti;
 use tilemap_shared::{DimensionRef, GlobalTilePos, };
 use ::being_shared::*;
 
-use crate::being_inst_template::being_inst_template_resources::BitRef;
-use crate::race::race_resources::RaceRef;
-use crate::pack::pack_components::{Pack, PackCenterPos, CenterRankMultipliers, GlobalCenterRankWeightMultiplier, };
+use crate::pack::pack_components::*;
 
 #[allow(unused_parens, )]
-pub fn cleanup_empty_packs(
+pub fn despawn_empty_squads(
     mut cmd: Commands,
-    pack_query: Query<(Entity,), (With<Pack>, Without<TemplEnti>, Without<SquadMembers>, )>,
+    query: Query<(), (Without<TemplEnti>, Without<SquadMembers>, Without<faction_shared::Faction>)>,
+    mut removed_squad_members: RemovedComponents<SquadMembers>,
 ) {
-    for (pack_ent, ) in pack_query.iter() {
-        cmd.entity(pack_ent).try_despawn();
+    for squad_ent in removed_squad_members.read() {
+        if query.get(squad_ent).is_ok() {
+            cmd.entity(squad_ent).try_despawn();
+        }
     }
 }
 
 #[allow(unused_parens, )]
 pub fn update_pack_center_pos(
     mut cmd: Commands,
-    pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterRankMultipliers>, ), (Without<TemplEnti>, )>,
+    mut pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterRankMultipliers>, Option<&mut PackCenterPerDim>, ), (Without<TemplEnti>, )>,
     member_pos_query: Query<(&DimensionRef, &GlobalTilePos, Option<&BitRef>, Option<&RaceRef>, ), (Without<TemplEnti>, ),>,
+    mut centers: Local<HashMap<DimensionRef, (Vec2, f32)>>,
 ) {
-    for (pack_ent, members, member_ranks, global_weight_multiplier, center_rank_multipliers, ) in pack_query.iter() {
-        let mut centers: HashMap<DimensionRef, (Vec2, f32)> = HashMap::default();
+    for (pack_ent, members, member_ranks, global_weight_multiplier, center_rank_multipliers, pack_center_pos, ) in pack_query.iter_mut() {
+        centers.clear();
         for member_ent in members.iter() {
             let Ok((member_dim_ref, member_gpos, member_bit_ref, member_race_ref, )) = member_pos_query.get(member_ent) else {
                 continue;
@@ -55,21 +57,24 @@ pub fn update_pack_center_pos(
             entry.0 += member_gpos.0.as_vec2() * rank_weight;
             entry.1 += rank_weight;
         }
-        if centers.is_empty() {
-            cmd.entity(pack_ent).try_remove::<PackCenterPos>();
-            continue;
-        }
-        let mut pack_centers = HashMap::default();
-        for (dim_ref, (sum, weight_sum)) in centers {
+
+        let mut pack_center_pos_new: PackCenterPerDim = Default::default();
+        for (&dim_ref, &(sum, weight_sum)) in centers.iter() {
             if weight_sum <= 0.0 {
                 continue;
             }
-            pack_centers.insert(dim_ref, GlobalTilePos((sum / weight_sum).round().as_ivec2()));
+            pack_center_pos_new
+                .0
+                .insert(dim_ref, GlobalTilePos(((sum / weight_sum).round().as_ivec2())));
         }
-        if pack_centers.is_empty() {
-            cmd.entity(pack_ent).try_remove::<PackCenterPos>();
+        if pack_center_pos_new.0.is_empty() {
+            cmd.entity(pack_ent).try_remove::<PackCenterPerDim>();
             continue;
         }
-        cmd.entity(pack_ent).try_insert(PackCenterPos(pack_centers));
+        if let Some(mut pack_center_pos) = pack_center_pos {
+            pack_center_pos.0 = pack_center_pos_new.0;
+        } else {
+            cmd.entity(pack_ent).try_insert(pack_center_pos_new);
+        }
     }
 }

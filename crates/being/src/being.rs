@@ -11,14 +11,20 @@ use game_common::{
 };
 use sprite_systems::AcSpriteSystems;
 use crate::being_melee_systems::apply_melee_attack;
-use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder, PredatorSeenByPrey};
+use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder, PredatorSpottedByPrey};
 use crate::being_on_chunk_despawn_systems::{freeze_being, on_chunk_with_beings_attempt_unload, unfreeze_beings_on_chunk_load};
 use crate::being_nav::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
 use crate::being_simulation_systems::insert_macrochunk_nav_islands;
 use tilemap_shared::MacroChunkLoaded;
 
 use crate::{
-    being_hunt_systems::*,
+    being_hunt_systems::{
+        clear_predator_detected_when_not_hunting,
+        sync_chasing_to_hunt,
+        sync_predator_squad_marker,
+        tick_hunger,
+        update_predator_hunting_targets,
+    },
     being_prey_systems::*,
     being_build_systems::{build_beings_from_refs, sample_sprite_normal_size_variations, },
     being_control_systems::*,
@@ -64,7 +70,7 @@ pub fn plugin(app: &mut App) {
             refresh_leader_on_member_rank_change,
             cross_portal,
             freeze_being.run_if(on_message::<UnloadBeing>),
-            unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>),
+            unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>).after(freeze_being),
             insert_macrochunk_nav_islands.run_if(on_message::<MacroChunkLoaded>),
             on_chunk_with_beings_attempt_unload
                 .in_set(tilemap_shared::PreChunkDespawnSystems)
@@ -73,16 +79,14 @@ pub fn plugin(app: &mut App) {
     ))
     .add_systems(Update, (
         on_control_change,
-        sync_predator_config_from_sources,
-        sync_detection_vision_cone_from_sources,
-        add_predator_behavior_components,
+        sync_predator_squad_marker,
         tick_hunger,
         update_predator_hunting_targets,
-        sync_hunting_to_chasing.after(update_predator_hunting_targets),
-        clear_predator_detected_when_not_hunting.after(sync_hunting_to_chasing),
-        detect_predators_with_vision_cones.after(sync_hunting_to_chasing),
+        sync_chasing_to_hunt.after(update_predator_hunting_targets),
+        clear_predator_detected_when_not_hunting.after(sync_chasing_to_hunt),
+        detect_predators_with_vision_cones.after(sync_chasing_to_hunt),
         update_prey_nav_states_from_predator_detection
-            .run_if(on_message::<PredatorSeenByPrey>)
+            .run_if(on_message::<PredatorSpottedByPrey>)
             .after(detect_predators_with_vision_cones),
     ).chain())
     .add_systems(
@@ -118,6 +122,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<being_shared::BgSimulatedIn>()
 
     .replicate::<MemberRanks>()
+    .replicate::<Predator>()
 
     .replicate::<Sentient>()
     .replicate::<HumanControlled>()
@@ -130,7 +135,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<JoinedGroups>()
     .replicate::<FactionRef>()
     .replicate::<SquadMemberOf>()
-    .replicate::<crate::pack::pack_components::PackCenterPos>()
+    .replicate::<crate::pack::pack_components::PackCenterPerDim>()
 
 
 
@@ -138,7 +143,7 @@ pub fn plugin(app: &mut App) {
 
     .add_message::<MakeChunkSnapshotForChaser>()
     .add_message::<NavOrder>()
-    .add_message::<PredatorSeenByPrey>()
+    .add_message::<PredatorSpottedByPrey>()
     .add_message::<UnloadBeing>()
 
 

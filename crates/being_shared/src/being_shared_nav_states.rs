@@ -79,22 +79,29 @@ impl NavOrderSource {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Default)]
 pub struct GoTo {
-    pub pos: GlobalTilePos,
+    pub pos: Option<GlobalTilePos>,
     pub stop_distance: f32,
+    pub source: Option<NavOrderSource>,
+    pub updated_tick: u32,
 }
 impl GoTo {
     pub fn new(pos: GlobalTilePos, stop_distance: f32) -> Self {
         Self {
-            pos,
+            pos: Some(pos),
             stop_distance: stop_distance.max(0.0),
+            source: None,
+            updated_tick: 0,
         }
     }
-}
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
-pub struct GoToMeta {
-    pub source: NavOrderSource,
-    pub updated_tick: u32,
+    pub fn with_source(pos: GlobalTilePos, stop_distance: f32, source: NavOrderSource, updated_tick: u32) -> Self {
+        Self {
+            pos: Some(pos),
+            stop_distance: stop_distance.max(0.0),
+            source: Some(source),
+            updated_tick,
+        }
+    }
 }

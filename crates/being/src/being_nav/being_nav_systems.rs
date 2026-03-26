@@ -1,6 +1,4 @@
 
-use crate::being_inst_template::being_inst_template_resources::BitRef;
-use crate::race::race_resources::RaceRef;
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
@@ -46,8 +44,6 @@ pub fn update_goto_from_chasing(
                     200,
                     NavOrderSource::Chasing,
                     Some(GoTo::new(target_pos, chasing.stop_distance)),
-                    Some(1.0),
-                    None,
                 )
             })
             .unwrap_or_else(|| {
@@ -55,8 +51,6 @@ pub fn update_goto_from_chasing(
                     being_ent,
                     200,
                     NavOrderSource::Chasing,
-                    None,
-                    Some(1.0),
                     None,
                 )
             });
@@ -117,7 +111,7 @@ fn resolve_flee_wander_cfg(
     wander_cfg_query: &Query<&WanderConfig>,
 ) -> WanderConfig {
     if let Some(member_of) = member_of {
-        if let Ok(cfg) = wander_cfg_query.get(member_of.squad) {
+        if let Ok(cfg) = wander_cfg_query.get(member_of.0) {
             return cfg.clone();
         }
     }
@@ -153,8 +147,6 @@ pub fn update_goto_from_fleeing(
                 255,
                 NavOrderSource::Fleeing,
                 None,
-                Some(1.0),
-                None,
             ));
             continue;
         };
@@ -164,8 +156,6 @@ pub fn update_goto_from_fleeing(
                 255,
                 NavOrderSource::Fleeing,
                 None,
-                Some(1.0),
-                None,
             ));
             continue;
         };
@@ -174,8 +164,6 @@ pub fn update_goto_from_fleeing(
                 being_ent,
                 255,
                 NavOrderSource::Fleeing,
-                None,
-                Some(1.0),
                 None,
             ));
             continue;
@@ -197,8 +185,6 @@ pub fn update_goto_from_fleeing(
                 255,
                 NavOrderSource::Fleeing,
                 None,
-                Some(1.0),
-                None,
             ));
             continue;
         };
@@ -207,8 +193,6 @@ pub fn update_goto_from_fleeing(
             255,
             NavOrderSource::Fleeing,
             Some(GoTo::new(target_pos, 0.0)),
-            Some(1.0),
-            None,
         ));
     }
     writer.write_batch(messages.drain(..));
@@ -220,6 +204,7 @@ pub fn apply_nav_orders(
     time: Res<Time>,
     mut reader: MessageReader<NavOrder>,
     mut selected_by_ent: Local<EntityHashMap<NavOrder>>,
+    mut go_to_query: Query<Option<&mut GoTo>, >,
     mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
 ) {
     selected_by_ent.clear();
@@ -239,39 +224,52 @@ pub fn apply_nav_orders(
     let tick = time.elapsed().as_millis() as u32;
     for (being_ent, order) in selected_by_ent.drain() {
         if let Some(go_to) = order.go_to {
-            cmd.entity(being_ent).try_insert(go_to);
-            cmd.entity(being_ent).try_insert(GoToMeta {
-                source: order.source,
-                updated_tick: tick,
-            });
+            if let Ok(Some(mut curr_go_to)) = go_to_query.get_mut(being_ent) {
+                curr_go_to.pos = go_to.pos;
+                curr_go_to.stop_distance = go_to.stop_distance;
+                curr_go_to.source = Some(order.source);
+                curr_go_to.updated_tick = tick;
+            } else {
+                cmd.entity(being_ent).try_insert(GoTo::with_source(
+                    go_to.pos.expect("NavOrder::go_to should always contain a target"),
+                    go_to.stop_distance,
+                    order.source,
+                    tick,
+                ));
+            }
         } else {
-            cmd.entity(being_ent).try_remove::<(GoTo, GoToMeta)>();
+            if let Ok(Some(mut curr_go_to)) = go_to_query.get_mut(being_ent) {
+                curr_go_to.pos = None;
+                curr_go_to.source = None;
+                curr_go_to.updated_tick = 0;
+            }
         }
-        let speed_throttle_mult = order.speed_throttle_mult.unwrap_or(1.0).clamp(0.0, 1.0);
+        let speed_throttle_mult = order.speed_throttle_mult.clamp(0.0, 1.0);
         let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) else {
             continue;
         };
         input_speed_throttle_mult.0 = speed_throttle_mult;
-        input_max_speed.0 = order.max_speed.map_or(f32::MAX, |max_speed| max_speed.max(0.0));
+        input_max_speed.0 = order.max_speed.max(0.0);
         trace!(target: BEING_SYSTEM, "NavOrder winner {:?}: source={:?} priority={} goto={:?} throttle={:.2}", being_ent, order.source, order.priority, order.go_to, speed_throttle_mult);
     }
 }
 
 #[allow(unused_parens, )]
 pub fn clear_nav_outputs_for_beings_without_nav_state(
-    mut cmd: Commands,
-    query: Query<(Entity, Has<Wandering>, Has<Chasing>, Has<Fleeing>, Has<GoTo>, ), (With<Being>, LocalAiControlled, )>,
+    mut query: Query<(Entity, Has<Wandering>, Has<Chasing>, Has<Fleeing>, Option<&mut GoTo>, ), (With<Being>, LocalAiControlled, )>,
     mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
 ) {
-    for (being_ent, has_wandering, has_chasing, has_fleeing, has_go_to, ) in query.iter() {
+    for (being_ent, has_wandering, has_chasing, has_fleeing, go_to, ) in query.iter_mut() {
         if has_wandering || has_chasing || has_fleeing {
             continue;
         }
         let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) else {
             continue;
         };
-        if has_go_to {
-            cmd.entity(being_ent).try_remove::<(GoTo, GoToMeta)>();
+        if let Some(mut go_to) = go_to {
+            go_to.pos = None;
+            go_to.source = None;
+            go_to.updated_tick = 0;
         }
         input_speed_throttle_mult.0 = 1.0;
         input_max_speed.0 = f32::MAX;
@@ -290,7 +288,7 @@ pub fn sync_ai_nav_grids(
             Entity,
             &::tilemap_shared::DimensionRef,
             Option<&ComputedBy>,
-            &GoTo,
+            Option<&GoTo>,
         ),
         With<Being>,
     >,
@@ -309,7 +307,13 @@ pub fn sync_ai_nav_grids(
     dim_center_counts.clear();
     dim_center_counts.reserve(chaser_count);
 
-    for (being_ent, dim_ref, controlled_by, _goto, ) in chaser_iter {
+    for (being_ent, dim_ref, controlled_by, goto, ) in chaser_iter {
+        let Some(goto) = goto else {
+            continue;
+        };
+        if goto.pos.is_none() {
+            continue;
+        };
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_dc_input {
                 continue;

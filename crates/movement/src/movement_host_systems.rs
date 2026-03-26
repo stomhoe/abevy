@@ -3,7 +3,7 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use param_sets::BlockingTileParamSet;
-use sprite_animation_shared::MatchHeldSpritesAnimStateToBeingState;
+use sprite_animation_shared::MirrorHolderStateForSprite;
 use tilemap::tile::tile_components::Tile;
 use tilemap_shared::{DimensionRef, GlobalTilePos};
 
@@ -29,11 +29,12 @@ pub fn receive_step_request_from_client(
         &DimensionRef,
         &SpeedMagnitude,
         &mut GridLockedMovement,
+        &mut GridLockedMovementVisual,
     ), (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
-    mut move_state_writer: MessageWriter<MatchHeldSpritesAnimStateToBeingState>,
-    mut move_state_msgs: Local<Vec<MatchHeldSpritesAnimStateToBeingState>>,
+    mut move_state_writer: MessageWriter<MirrorHolderStateForSprite>,
+    mut move_state_msgs: Local<Vec<MirrorHolderStateForSprite>>,
     mut rate_states: Local<EntityHashMap<ClientStepRateState>>,
 ) {
     for from_client in events.read() {
@@ -59,7 +60,7 @@ pub fn receive_step_request_from_client(
             );
             continue;
         }
-        let Ok((entity, &dim_ref, speed_magnitude, mut glm)) = beings.get_mut(being_ent) else {
+        let Ok((entity, &dim_ref, speed_magnitude, mut glm, mut glm_visual)) = beings.get_mut(being_ent) else {
             continue;
         };
         let Ok(&tile_pos) = blocking_tiles.gpos_query.get(entity) else {
@@ -96,7 +97,7 @@ pub fn receive_step_request_from_client(
             });
             continue;
         }
-        glm.ensure_grid_anchor(curr_tile_pos);
+        glm.ensure_grid_anchor(&mut glm_visual, curr_tile_pos);
         let step_ticks = ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         let steps_taken = if step_ticks > 1 {
             let next_gpos = GlobalTilePos(curr_tile_pos.0 + dir_vec);
@@ -113,6 +114,7 @@ pub fn receive_step_request_from_client(
             continue;
             }
             match glm.try_start_step(
+                &mut glm_visual,
                 &mut blocking_tiles,
                 dim_ref,
                 entity,
@@ -123,7 +125,7 @@ pub fn receive_step_request_from_client(
                 TryStartStepOutcome::Successful => {
                     if facing_dir != step_dir {
                         let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
-                        move_state_msgs.push(MatchHeldSpritesAnimStateToBeingState(being_ent));
+                        move_state_msgs.push(MirrorHolderStateForSprite(being_ent));
                     }
                     1
                 }
@@ -155,6 +157,7 @@ pub fn receive_step_request_from_client(
             }
         } else {
             let steps_taken = glm.advance_steps_immediate(
+                &mut glm_visual,
                 &mut blocking_tiles,
                 dim_ref,
                 entity,
@@ -176,7 +179,7 @@ pub fn receive_step_request_from_client(
             }
             if facing_dir != step_dir {
                 let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
-                move_state_msgs.push(MatchHeldSpritesAnimStateToBeingState(being_ent));
+                move_state_msgs.push(MirrorHolderStateForSprite(being_ent));
             }
             steps_taken
         };

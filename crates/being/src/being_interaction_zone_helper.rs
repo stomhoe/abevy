@@ -1,11 +1,8 @@
 use bevy::prelude::*;
 use common::common_components::{HashId, HashIdMap};
 use tilemap_shared::{InteractionZone, InteractionZoneSeri, InteractionZones};
+use ::being_shared::*;
 
-use crate::{
-    being_inst_template::being_inst_template_resources::BitRef,
-    race::race_resources::RaceRef,
-};
 
 //refactorizar esto
 
@@ -45,8 +42,8 @@ pub fn build_being_interaction_zones(
     InteractionZones(zones)
 }
 
-pub fn build_being_interaction_zones_with_base(
-    base_zones: Option<&InteractionZones>,
+pub fn build_being_interaction_zones_with_fallback(
+    fallback_zones: Option<&InteractionZones>,
     melee_zone_seri: InteractionZoneSeri,
     collision_zone_seri: InteractionZoneSeri,
 ) -> InteractionZones {
@@ -54,7 +51,7 @@ pub fn build_being_interaction_zones_with_base(
     zones.overwrite(
         InteractionZones::MELEE_ATTACK,
         resolve_zone_with_base(
-            base_zones,
+            fallback_zones,
             InteractionZones::MELEE_ATTACK,
             melee_zone_seri,
         ),
@@ -62,7 +59,7 @@ pub fn build_being_interaction_zones_with_base(
     zones.overwrite(
         InteractionZones::COLLISION,
         resolve_zone_with_base(
-            base_zones,
+            fallback_zones,
             InteractionZones::COLLISION,
             collision_zone_seri,
         ),

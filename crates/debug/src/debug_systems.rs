@@ -55,7 +55,7 @@ pub fn debug_increase_speed(
         }
     }
 
-    let new_value = (current_value * factor).max(1.0);
+    let new_value = (current_value * factor).max(0.1);
     if is_client {
         pending.by_being.insert(being_ent, new_value);
         debug!(target: DEBUG, "Queued debug speed update for {:?} -> {}", being_ent, new_value);

@@ -94,18 +94,9 @@ pub struct RaceSeri {
     pub whitelisted_tiles_for_spawning: HashSet<String>,
     #[serde(default)]
     pub blacklisted_tiles_for_spawning: HashSet<String>,
-    #[serde(default)]// these are not hunted/attacked even if hungry and carnivore
-    pub friend_races: HashSet<String>,
+
     #[serde(default)]
-    pub predator_territorialism: f32,
-    #[serde(default = "default_u32_1_1")]
-    pub predator_pack_size_range: (u32, u32),
-    #[serde(default)]
-    pub predator_dont_hunt: HashSet<String>,
-    #[serde(default = "default_prey_body_size_ratio_tolerance")]
-    pub predator_prey_kg_ratio_over_us_tolerance: f32,
-    #[serde(default = "default_predator_hunt_threshold")]
-    pub predator_hunt_threshold: f32,
+    pub predator: crate::PredatorSeri,
     #[serde(default = "default_detection_vision_cone_sentinel")]
     pub detection_vision_cone_range_tiles: f32,
     #[serde(default = "default_detection_vision_cone_sentinel")]
@@ -156,10 +147,8 @@ pub struct RaceSexEntrySeri {//TODO fix usage
 }
 
 fn default_true() -> bool { true }
-fn default_predator_hunt_threshold() -> f32 { crate::PredatorHuntThreshold::SERI_SENTINEL }
+
 fn default_detection_vision_cone_sentinel() -> f32 { crate::DetectionVisionCone::SERI_SENTINEL }
-fn default_u32_1_1() -> (u32, u32) { (1, 1) }
-fn default_prey_body_size_ratio_tolerance() -> f32 { -1.0 }
 
 common::define_entity_map_systems!(
     Race,

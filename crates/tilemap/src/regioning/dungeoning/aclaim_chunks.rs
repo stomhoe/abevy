@@ -133,7 +133,7 @@ pub fn claim_chunks_for_various_dungeon_types(
             i: offer.i,
             region_ent: offer.region_ent,
             sgc_ent: offer.structured_gen_cfg_ent,
-            chunks_gpos: chunk_positions,
+            chunks_pos: chunk_positions,
             partition_tolerant: false,
         });
         trace!(target: "dungeoning", "Emitting ClaimedChunks for ExampleStructure covering {} chunks around {:?}", chunk_count, center_chunk);

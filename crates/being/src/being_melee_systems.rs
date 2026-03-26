@@ -137,7 +137,7 @@ pub fn apply_melee_attack(
             ) {
                 continue;
             }
-            let tile_entities = tile_gathering.gather_tiles_at(attacker_dim, candidate_gpos).to_vec();
+            let tile_entities = tile_gathering.gather_tiles(attacker_dim, candidate_gpos).to_vec();
             for target_entity in tile_entities {
                 if !hit_entities.insert(target_entity) {
                     error!(target: BEING_SYSTEM, "Melee hit entity {:?} already hit", target_entity);

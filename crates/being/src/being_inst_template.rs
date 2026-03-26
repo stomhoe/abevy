@@ -1,8 +1,8 @@
-
+use ::being_shared::*;
 use bevy::{prelude::*, };
 use common::{common_states::AssetLoading, };
 
-use crate::{being_inst_template::{ being_inst_template_init_systems::*, being_inst_template_resources::*}, };
+use crate::{being_inst_template::{ being_inst_template_init_systems::* } };
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -29,5 +29,3 @@ pub fn plugin(app: &mut App) {
 }
 
 mod being_inst_template_init_systems;
-pub mod being_inst_template_resources;
-pub mod being_inst_template_seris;

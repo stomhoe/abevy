@@ -4,7 +4,7 @@ use std::mem::take;
 use bevy::prelude::*;
 use common::log_targets::CHUNK_ACTIVATION;
 use tilemap_shared::*;
-use being_shared::Being;
+use being_shared::{Being, Unloaded};
 
 use super::macro_chunk_components::{BiomeDistribution, MacroChunkBiomePendingSampleState};
 use crate::{chunking::MacroChunkTileIndices, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}};
@@ -189,7 +189,7 @@ pub fn update_within_chunk(
     mut cmd: Commands,
     mut query: Query<
         (Entity, &GlobalTilePos, &DimensionRef, Option<&WithinChunk>, Option<&mut ChunkPos>),
-        (With<Being>, Changed<GlobalTilePos>),
+        (With<Being>, Without<Unloaded>, Changed<GlobalTilePos>),
     >,
     loaded_chunks: Res<LoadedChunks>,
 ) {

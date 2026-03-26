@@ -1,5 +1,4 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy::platform::collections::HashSet;
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
@@ -8,13 +7,14 @@ use rand::{Rng, SeedableRng, seq::SliceRandom};
 use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 use ::tilemap_shared::*;
 
-use crate::regioning::{regioning_components::*, regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_sgc_components::StructuredGenConfig
+use crate::regioning::{regioning_components::*, regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder, TerrGenDisabledGposForChunks}, regioning_sgc_components::StructuredGenConfig
 };
 use crate::tile::tile_resources::*;
 use crate::tile::tile_sampler_components::TileWeightedSampler;
 use crate::tile::tile_sampler_resources::TileWeightedSamplerEntityMap;
 use super::super::dungeoning_ids::ARCHI;
 use super::super::dungeoning_utils::{extend_occupied_gpos, resolve_sampled_tile_entity_from_sampler};
+use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 
 #[allow(unused_parens, )]
 pub fn archimedes_spiral_building_system(
@@ -88,7 +88,7 @@ pub fn archimedes_spiral_building_system(
             .clamp(0.0, 1.0);
 
 
-        let chunk_positions = &build_order.chunks_gpos;
+        let chunk_positions = &build_order.chunks_pos;
         if chunk_positions.is_empty() { continue; }
 
         let min_chunk_x = chunk_positions.iter().map(|chunk| chunk.x()).min().unwrap();
@@ -333,10 +333,10 @@ pub fn archimedes_spiral_building_system(
         let floor_delete_other_tiles = delete_other_tiles_by_tile_id.get("floor_tile_id");
         let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
         let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
-        let mut terrgen_disabled_gpos_for_chunks = Vec::with_capacity(chunk_positions.len());
+        let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         for &chunk_pos in chunk_positions {
             tiles4chunk.clear();
-            let mut blocked_gpos = HashSet::default();
+            let mut blocked_gpos = TerrGenBlockedGposMask::default();
             for tile_pos in chunk_pos.get_tilepositions_within_chunk() {
                 let local_tile = tile_pos.0 - origin_tile.0;
                 if local_tile.x < 0 || local_tile.y < 0 { continue; }
@@ -349,7 +349,7 @@ pub fn archimedes_spiral_building_system(
                         tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                         if disable_floor_terrgen {
                             let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
-                            extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
+                            extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                         }
                     }
                     tiles4chunk.push((tile_pos, boulder_entity, None));
@@ -359,13 +359,14 @@ pub fn archimedes_spiral_building_system(
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
                         let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
-                        extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
+                        extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                     }
                 }
             }
-            chunk_tiles.push((chunk_pos, std::mem::take(&mut *tiles4chunk)));
-            terrgen_disabled_gpos_for_chunks.push((chunk_pos, blocked_gpos));
+            chunk_tiles.push((chunk_pos, std::mem::take(&mut tiles4chunk)));
+            terrgen_disabled_gpos_for_chunks.insert_for_chunk(chunk_pos, blocked_gpos);
         }
+        info!(target: DUNGEONING_SYSTEM, "structure={} pushing compliance blocked_terrgen_gpos={}", structured_gen_cfg.structure_id(), terrgen_disabled_gpos_for_chunks.count_blocked());
         compliances_to_emit.push(StructureBuildCompliance {
             i: build_order.i,
             structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,

@@ -1,4 +1,4 @@
-use being_shared::BeingInstTemplate;
+use ::being_shared::*;
 use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
@@ -8,7 +8,7 @@ use crate::{
         body_sampler::{body_sampler_components::BodyWeightedSampler, body_sampler_resources::BodyWeightedSamplerRef},
         body_tree_components::*,
         body_tree_resources::*,
-    }, race::race_components::Race
+    },
 };
 
 #[allow(unused_parens)]

@@ -29,8 +29,8 @@ impl Default for GlobalGenSettings {
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Default)]
 pub enum SnapTransformToGpos {
-    #[default]
     OnChange,
+    #[default]
     OnAdd,
 }
 

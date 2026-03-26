@@ -1,5 +1,5 @@
 use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
-use being_shared::NoSpawnGroup;
+use ::being_shared::*;
 use common::common_components::StrId;
 use game_common::{
     game_common_components::TemplEnti,
@@ -8,9 +8,7 @@ use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources
 use tilemap_shared::CappedNormalDist;
 
 use crate::{
-    being_inst_template::being_inst_template_resources::{BeingInstTemplateEntityMap, load_bit_seri_defs},
     pack::{pack_components::*, pack_resources::*},
-    race::race_resources::{RaceEntityMap, load_race_seri_defs},
 };
 
 pub fn init_packs(

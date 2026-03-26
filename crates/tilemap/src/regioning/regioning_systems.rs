@@ -13,7 +13,7 @@ use crate::regioning::natural::RiverDebugData;
 use crate::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
 use crate::regioning::regioning_sgc_seris::load_structure_generation_settings_seri_defs;
 
-use bit_vec::BitVec;
+use bitvec::prelude::*;
 
 #[inline]
 fn passes_dimension_tag_filters(
@@ -239,7 +239,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                 claim.i,
                 claim.region_ent,
                 claim.sgc_ent,
-                claim.chunks_gpos.len(),
+                claim.chunks_pos.len(),
                 claim.partition_tolerant
             );
 
@@ -298,9 +298,9 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                 }
                 let mut undo_claims = false;
                 let mut claimed_up_to: u64 = 0;
-                let mut failed_claims_bitmask = BitVec::from_elem(REGION_SIZE_IN_CHUNKS.area_usize(), false);
+                let mut failed_claims_bitmask: BitArr!(for MAX_CLAIMS) = BitArray::ZERO;
 
-                'nextpos: for (claim_i, &chunk_pos) in claim.chunks_gpos.iter().enumerate(){
+                'nextpos: for (claim_i, &chunk_pos) in claim.chunks_pos.iter().enumerate(){
                     let Some(occupiers) = grid_of_sgc.0.get_values(chunk_pos, region_pos) else {
                         undo_claims = true;
                         error!(target: "sgc_chunk_claim", "Chunk at {:?} is outside region bounds, undoing all claims for this structure", chunk_pos);
@@ -368,7 +368,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                 }
                 if undo_claims {
                     for i in 0..claimed_up_to {
-                        let chunk_pos = claim.chunks_gpos[i as usize];
+                        let chunk_pos = claim.chunks_pos[i as usize];
                         grid_of_sgc.0.free(chunk_pos, region_pos, claim.sgc_ent);
                     }
                 } else {
@@ -376,22 +376,22 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                     .and_modify(|count| *count += 1)
                     .or_insert(1);
 
-                    for i in (0..claim.chunks_gpos.len()).rev() {
-                        if failed_claims_bitmask.get(i).unwrap_or(false) {
-                            claim.chunks_gpos.swap_remove(i);
+                    for i in (0..claim.chunks_pos.len()).rev() {
+                        if failed_claims_bitmask.as_bitslice().get(i).map_or(false, |bit| *bit) {
+                            claim.chunks_pos.swap_remove(i);
                         }
                     }
-                    planned.add_build_order_pending(claim.i, &claim.chunks_gpos, structure_settings.structure_build_timeout_secs as f32);
+                    planned.add_build_order_pending(claim.i, &claim.chunks_pos, structure_settings.structure_build_timeout_secs as f32);
                     regions_which_started_building.push((region_ent, RegionState::BuildingStarted));
                     debug!(target: "sgc_chunk_claim", "Region at {:?} emitting {} build orders for structure '{}'",
-                        region_pos, claim.chunks_gpos.len(), structured_gen_cfg.structure_id());
+                        region_pos, claim.chunks_pos.len(), structured_gen_cfg.structure_id());
 
                     let order = SgcPrepareTilesOrder {
                         i: claim.i,
                         region_pos,
                         dimension_ref,
                         structured_gen_cfg_ent: claim.sgc_ent,
-                        chunks_gpos: claim.chunks_gpos,
+                        chunks_pos: claim.chunks_pos,
                     };
                     build_orders.push(order);
                 }
@@ -427,7 +427,7 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
             .chunks
             .first()
             .map(|(chunk_pos, _)| chunk_pos.to_region_pos())
-            .or_else(|| build.terrgen_disabled_gpos_for_chunks.first().map(|(chunk_pos, _)| chunk_pos.to_region_pos()));
+            .or_else(|| build.terrgen_disabled_gpos_for_chunks.first_chunk_pos().map(|chunk_pos| chunk_pos.to_region_pos()));
         let chunks = take(&mut build.chunks);
         let terrgen_disabled_gpos_for_chunks = take(&mut build.terrgen_disabled_gpos_for_chunks);
         let Some(region_pos) = region_pos else {

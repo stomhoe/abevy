@@ -5,7 +5,6 @@ use common::common_components::{DisplayName, StrId};
 use ::tilemap_shared::*;
 use std::collections::BTreeMap;
 
-use being::{being_inst_template::being_inst_template_resources::BitRef, race::race_resources::RaceRef};
 use camera::camera_components::CameraTarget;
 use ::being_shared::*;
 use crate::debug_ui_helpers::direction_arrow;
@@ -19,15 +18,13 @@ fn ref_id_label(entity: Entity, id_query: &Query<&StrId>) -> String {
 }
 
 fn being_list_entry_label(
-    entity: Entity,
     display_name: Option<&DisplayName>,
     name: Option<&Name>,
-    being_id: Option<&StrId>,
     race_ref: Option<&RaceRef>,
     bit_ref: Option<&BitRef>,
     id_query: &Query<&StrId>,
 ) -> String {
-    let mut parts = Vec::with_capacity(4);
+    let mut parts = Vec::with_capacity(3);
 
     let main_name = display_name
         .map(|dn| dn.0.as_str())
@@ -38,11 +35,6 @@ fn being_list_entry_label(
         parts.push(n.to_string());
     }
 
-    parts.push(
-        being_id
-            .map(|str_id| str_id.as_str().to_string())
-            .unwrap_or_else(|| format!("{:?}", entity)),
-    );
     parts.push(
         race_ref
             .map(|race_ref| ref_id_label(race_ref.0, id_query))
@@ -98,13 +90,13 @@ pub fn beings_list_window(
     // Group beings by dimension
     let mut beings_by_dimension: BTreeMap<String, Vec<(Entity, String, Vec2, f32)>> = BTreeMap::new();
 
-    for (entity, display_name, name, being_id, race_ref, bit_ref, dim_ref, global_pos) in being_query.iter() {
+    for (entity, display_name, name, _, race_ref, bit_ref, dim_ref, global_pos) in being_query.iter() {
         let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
             format!("{}", n)
         } else {
             format!("{:?}", dim_ref)
         };
-        let label = being_list_entry_label(entity, display_name, name, being_id, race_ref, bit_ref, &id_query);
+        let label = being_list_entry_label(display_name, name, race_ref, bit_ref, &id_query);
         let direction = if camera_dim_ref.map(|camera_ref| camera_ref == dim_ref).unwrap_or(false) {
             if let Some(cam_pos) = camera_pos {
                 let being_pixel_pos: Vec2 = (*global_pos).into();

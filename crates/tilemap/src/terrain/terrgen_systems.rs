@@ -122,11 +122,11 @@ pub fn request_macrochunk_biome_sampling(
 #[allow(unused_parens, )]
 pub fn launch_terrain_operations(
     mut commands: Commands,
-    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), With<Chunk>>,
+    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), (With<Chunk>, Changed<TerrGenState>)>,
     dimension_query: Query<(&DimensionRootOplist), ()>,
     oplists: Query<(&OplistSize), (With<OperationList>,)>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
-    mut blocked_terrgen_gpos: ResMut<TerrGenDisabledGposByChunk>,
+    blocked_terrgen_gpos: Res<TerrGenDisabledGposByChunk>,
 ) {
     if chunks_query.is_empty() { return; }
 
@@ -137,20 +137,25 @@ pub fn launch_terrain_operations(
             continue;
         }
         let Ok(&dim_root_op_list) = dimension_query.get(dim_ref.0) else {
-            error!(target: TERRGEN_SYSTEM, "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
+            error_once!(target: TERRGEN_SYSTEM, "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
             continue;
         };
         let Ok(&oplist_size) = oplists.get(dim_root_op_list.0) else {
-            error!(target: TERRGEN_SYSTEM, "Dimension references non-existent root operation list {:?}", dim_root_op_list);
+            error_once!(target: TERRGEN_SYSTEM, "Dimension references non-existent root operation list {:?}", dim_root_op_list);
             continue;
         };
+        let blocked_gpos = blocked_terrgen_gpos.get_for_chunk(dim_ref, chunk_pos);
+        if !blocked_gpos.is_empty() {
+            debug!(target: TERRGEN_SYSTEM, "launch_terrain_operations chunk {:?} dim {:?} blocked_gpos={}", chunk_pos, dim_ref, blocked_gpos.count_blocked());
+        }
+
         launch_queue.0.push(TerrGenLaunchWork {
             chunk_ent,
             chunk_pos: chunk_pos,
             dim_ref,
             root_oplist: dim_root_op_list,
             oplist_size: oplist_size,
-            blocked_gpos: blocked_terrgen_gpos.take_for_chunk(dim_ref, chunk_pos),
+            blocked_gpos,
         });
         terr_gen_ops.push((chunk_ent, TerrGenState::OpsLaunched));
     }
@@ -414,7 +419,10 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
             for y in 0..ChunkPos::CHUNK_SIZE.y / work.oplist_size.y() {
                 let pos_within_chunk = IVec2::new(x as i32, y as i32);
                 let gpos = work.chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * work.oplist_size.inner().as_ivec2());
-                if work.blocked_gpos.contains(&gpos) {
+                let Some(bit_idx) = work.chunk_pos.bit_index_in_chunk(gpos) else {
+                    continue;
+                };
+                if work.blocked_gpos.is_blocked(bit_idx) {
                     continue;
                 }
                 trace!(

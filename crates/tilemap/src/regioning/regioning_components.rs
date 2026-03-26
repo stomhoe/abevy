@@ -3,7 +3,7 @@ use game_common::game_common_components::{ TemplEntiRef};
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use ::tilemap_shared::*;
 
-use crate::{regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
+use crate::{regioning::regioning_messages::{ChunksClaim, TerrGenDisabledGposForChunks}, terrain::terrgen_async_resources::TerrGenBlockedGposMask};
 use ::tilemap_shared::DeleteOtherTilesInSamePos;
 use bevy_inspector_egui::{egui, };
 
@@ -69,7 +69,7 @@ pub struct PendingBuildOrder {
 #[derive(Component, Debug, Default, Clone)]
 pub struct RegionPlannedTiles {
     tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, TilesFromBuilder>,
-    terrgen_disabled_gpos_on_chunk_load_map: HashMap<ChunkPos, HashSet<GlobalTilePos>>,
+    terrgen_disabled_gpos_on_chunk_load: HashMap<ChunkPos, TerrGenBlockedGposMask>,
     // store pending build orders along with their timeout timer
     pending_build_orders: HashMap<u64, PendingBuildOrder>,
     pending_chunks: HashSet<ChunkPos>,
@@ -107,7 +107,7 @@ impl RegionPlannedTiles {
         &mut self,
         order_i: u64,
         chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)>,
-        terrgen_disabled_gpos_for_chunks: Vec<(ChunkPos, HashSet<GlobalTilePos>)>,
+        terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks,
     ) -> Result<bool, BevyError> {
         let Some(order) = self.pending_build_orders.remove(&order_i) else {
             return Err(BevyError::from(format!(
@@ -116,8 +116,9 @@ impl RegionPlannedTiles {
             )));
         };
         let mut provided_chunks: HashSet<ChunkPos> = HashSet::new();
+        let selected_chunks: HashSet<ChunkPos> = order.chunks.iter().copied().collect();
         for (chunk_pos, tile_data) in chunk_tiles {
-            if !order.chunks.contains(&chunk_pos) {
+            if !selected_chunks.contains(&chunk_pos) {
                 return Err(BevyError::from(format!(
                     "ChunkPos {:?} is not part of build order {}",
                     chunk_pos, order_i
@@ -129,23 +130,25 @@ impl RegionPlannedTiles {
             self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new).extend(tile_data);
             provided_chunks.insert(chunk_pos);
         }
-        for (chunk_pos, blocked_gpos) in terrgen_disabled_gpos_for_chunks {
-            if !order.chunks.contains(&chunk_pos) {
-                return Err(BevyError::from(format!(
-                    "ChunkPos {:?} is not part of build order {}",
-                    chunk_pos, order_i
-                )));
+        let mut dropped_out_of_bounds = 0usize;
+        for (chunk_pos, blocked_gpos) in terrgen_disabled_gpos_for_chunks.0 {
+            if !selected_chunks.contains(&chunk_pos) {
+                dropped_out_of_bounds += blocked_gpos.count_blocked();
+                continue;
             }
-            self.terrgen_disabled_gpos_on_chunk_load_map
-                .entry(chunk_pos)
-                .or_default()
-                .extend(blocked_gpos);
-            provided_chunks.insert(chunk_pos);
+            self.terrgen_disabled_gpos_on_chunk_load.insert(chunk_pos, blocked_gpos);
+        }
+        if dropped_out_of_bounds > 0 {
+            debug!(
+                target: common::log_targets::REGION_SYSTEM,
+                "Dropped {} terrgen-disabled gpos outside selected chunk bounds for build order {}",
+                dropped_out_of_bounds,
+                order_i
+            );
         }
         for chunk_pos in order.chunks {
             if !provided_chunks.contains(&chunk_pos) {
                 self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
-                self.terrgen_disabled_gpos_on_chunk_load_map.entry(chunk_pos).or_default();
             }
             self.pending_chunks.remove(&chunk_pos);
         }
@@ -156,8 +159,8 @@ impl RegionPlannedTiles {
         self.tiles_to_spawn_on_chunk_load_map.get(chunk_pos)
     }
 
-    pub fn take_terrgen_disabled_gpos(&mut self, chunk_pos: ChunkPos) -> HashSet<GlobalTilePos> {
-        self.terrgen_disabled_gpos_on_chunk_load_map.remove(&chunk_pos).unwrap_or_default()
+    pub fn take_terrgen_disabled_gpos(&mut self, chunk_pos: ChunkPos) -> TerrGenBlockedGposMask {
+        self.terrgen_disabled_gpos_on_chunk_load.remove(&chunk_pos).unwrap_or_default()
     }
 
     pub fn pending_build_orders_iter(&self) -> impl Iterator<Item = (&u64, &PendingBuildOrder)> {
@@ -175,7 +178,6 @@ impl RegionPlannedTiles {
     pub fn mark_chunk_timed_out(&mut self, chunk_pos: ChunkPos) {
         self.pending_chunks.remove(&chunk_pos);
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
-        self.terrgen_disabled_gpos_on_chunk_load_map.entry(chunk_pos).or_default();
     }
     pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, TemplEntiRef, Option<DeleteOtherTilesInSamePos>)]> {
         let chunk_pos = gpos.to_chunkpos();

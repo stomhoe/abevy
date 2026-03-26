@@ -1,4 +1,4 @@
-use crate::being_bundles::{ReinsertOnUnfreeze, RemoveOnFreeze};
+use crate::being_bundles::*;
 use crate::being_messages::MakeChunkSnapshotForChaser;
 
 use ::being_shared::*;
@@ -38,7 +38,7 @@ pub fn freeze_being(mut cmd: Commands,
 
         let mut entity = cmd.entity(unloaded_being.0);
         entity.try_insert(BgSimulatedIn{ macro_chunk_ent });
-        //entity.try_remove::<RemoveOnFreeze>();
+        entity.try_remove::<RemoveOnEnterSemiRealSimMode>();
     }
 
 }
@@ -65,11 +65,10 @@ pub fn unfreeze_beings_on_chunk_load(
 
         for being_ent in being_ents {
             cmd.entity(being_ent).try_remove::<(BgSimulatedIn, Unloaded)>();
-            let ins = ReinsertOnUnfreeze::new(msg);
-            vec_ins_batch.push((being_ent, ins));
+            vec_ins_batch.push((being_ent, ReinsertOnUnfreeze::new(msg)));
         }
     }
-    cmd.try_insert_batch(vec_ins_batch);
+    cmd.try_insert_batch_if_new(vec_ins_batch);
 }
 
 #[allow(unused_parens, )]
@@ -77,8 +76,8 @@ pub fn on_chunk_with_beings_attempt_unload(
     mut reader: MessageReader<ChunkWithBeingsWantsDespawn>,
     chunks_query: Query<&BeingsWithinChunk>,
     chaser_beings: Query<&Chasing, With<Being>>,
-    prevents_chunk_unloading_query: Query<(), (With<PreventsChunkUnloading>, )>,
-    player_targets: Query<(), (With<Being>, PlayerBeing)>,
+    prevents_chunk_unloading_query: Query<(), (Or<(With<PreventsChunkUnloading>, With<HumanControlled>),>,)>,
+    player_targets: Query<(), (PlayerBeing)>,
     mut mcsfc_writer: MessageWriter<MakeChunkSnapshotForChaser>,
     mut mcsfc_messages: Local<Vec<MakeChunkSnapshotForChaser>>,
     mut chunks_to_despawn: Local<Vec<MakeChunkDespawn>>,

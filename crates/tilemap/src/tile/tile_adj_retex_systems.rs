@@ -60,7 +60,7 @@ pub fn tile_adjacency_dependent_retexturing_system(
         if !locals.unique_rechecks.insert(key) {
             continue;
         }
-        params.gather_tiles_at_extend(&mut *locals.tiles_to_recheck, msg.dim, msg.gpos);
+        params.gather_tiles_extend(&mut *locals.tiles_to_recheck, msg.dim, msg.gpos);
         for tile_ent in locals.tiles_to_recheck.drain(..) {
             let Ok((templ_ref, &dim, &gpos, ..)) = tile_query.get(tile_ent) else {
                 continue;
@@ -69,14 +69,14 @@ pub fn tile_adjacency_dependent_retexturing_system(
                 continue;
             };
             locals.adj_masks_by_hid.clear();
-            params.gather_tiles_at_extend(&mut *locals.north_adj_tiles_templs, dim, gpos.adjacent_north());
-            params.gather_tiles_at_extend(&mut *locals.south_adj_tiles_templs, dim, gpos.adjacent_south());
-            params.gather_tiles_at_extend(&mut *locals.west_adj_tiles_templs, dim, gpos.adjacent_west());
-            params.gather_tiles_at_extend(&mut *locals.east_adj_tiles_templs, dim, gpos.adjacent_east());
-            params.gather_tiles_at_extend(&mut *locals.northeast_adj_tiles_templs, dim, gpos.adjacent_northeast());
-            params.gather_tiles_at_extend(&mut *locals.northwest_adj_tiles_templs, dim, gpos.adjacent_northwest());
-            params.gather_tiles_at_extend(&mut *locals.southeast_adj_tiles_templs, dim, gpos.adjacent_southeast());
-            params.gather_tiles_at_extend(&mut *locals.southwest_adj_tiles_templs, dim, gpos.adjacent_southwest());
+            params.gather_tiles_extend(&mut *locals.north_adj_tiles_templs, dim, gpos.adjacent_north());
+            params.gather_tiles_extend(&mut *locals.south_adj_tiles_templs, dim, gpos.adjacent_south());
+            params.gather_tiles_extend(&mut *locals.west_adj_tiles_templs, dim, gpos.adjacent_west());
+            params.gather_tiles_extend(&mut *locals.east_adj_tiles_templs, dim, gpos.adjacent_east());
+            params.gather_tiles_extend(&mut *locals.northeast_adj_tiles_templs, dim, gpos.adjacent_northeast());
+            params.gather_tiles_extend(&mut *locals.northwest_adj_tiles_templs, dim, gpos.adjacent_northwest());
+            params.gather_tiles_extend(&mut *locals.southeast_adj_tiles_templs, dim, gpos.adjacent_southeast());
+            params.gather_tiles_extend(&mut *locals.southwest_adj_tiles_templs, dim, gpos.adjacent_southwest());
             let mut process_adjacent_tiles = |adj_mask: AdjMask, adj_tiles: &mut Vec<Entity>| {
                 for adj_tile_ent in adj_tiles.drain(..) {
                     let Ok((templ_ref, ..)) = tile_query.get(adj_tile_ent) else {

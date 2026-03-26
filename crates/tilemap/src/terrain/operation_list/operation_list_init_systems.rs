@@ -18,7 +18,6 @@ use crate::{
     },
     tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerEntityMap},
 };
-use ::tilemap_shared::*;
 
 use std::collections::{HashMap, HashSet};
 

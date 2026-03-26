@@ -3,7 +3,7 @@ use bevy_northstar::CardinalGrid;
 use bevy_northstar::prelude::*;
 use ::tilemap_shared::GlobalTilePos;
 use bevy::platform::collections::HashMap;
-use std::{cmp::Reverse, collections::{BinaryHeap, VecDeque}, time::Duration};
+use std::{cmp::Reverse, collections::{BinaryHeap, }, time::Duration};
 
 pub struct AiNavGridCache {
     pub min: IVec2,

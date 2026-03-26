@@ -1,7 +1,7 @@
 use ac_input::ac_input_actions::*;
 use ::being_shared::*;
 
-use being::body::{Body, BodySums};
+use being::body::{HeldBody, BodySums};
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
@@ -357,7 +357,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut egui_context = egui_context.clone();
     let screen_rect = egui_context.get_mut().content_rect();
 
-    let mut body_query = world.query::<&Body>();
+    let mut body_query = world.query::<&HeldBody>();
     let mut body_sums_query = world.query::<&BodySums>();
     let mut display_name_query = world.query::<&DisplayName>();
     let mut str_id_query = world.query::<&StrId>();

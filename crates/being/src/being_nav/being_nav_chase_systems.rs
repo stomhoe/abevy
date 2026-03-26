@@ -1,8 +1,6 @@
 use crate::{
-    being_inst_template::being_inst_template_resources::BitRef,
     being_interaction_zone_helper::resolve_being_interaction_zone,
     being_messages::MakeChunkSnapshotForChaser,
-    race::race_resources::RaceRef,
 };
 use ::being_shared::*;
 use faction_shared::BelongsToAPlayerFaction;
@@ -488,36 +486,6 @@ fn shared_chase_min_zone_distance(
     min_dist
 }
 
-fn shared_chase_neighbor_crowd_penalty(
-    cache: &AiNavGridCache,
-    chaser_ent: Entity,
-    pos: GlobalTilePos,
-) -> i32 {
-    let mut crowd_penalty = 0;
-    for neighbor_delta in [
-        IVec2::X,
-        -IVec2::X,
-        IVec2::Y,
-        -IVec2::Y,
-        IVec2::new(1, 1),
-        IVec2::new(1, -1),
-        IVec2::new(-1, 1),
-        IVec2::new(-1, -1),
-    ] {
-        let Some(local) = cache.local_from_gpos(GlobalTilePos(pos.0 + neighbor_delta)) else {
-            continue;
-        };
-        let Some(&occupant_ent) = cache.occupied.get(&local) else {
-            continue;
-        };
-        if occupant_ent == chaser_ent {
-            continue;
-        }
-        crowd_penalty += if neighbor_delta.x == 0 || neighbor_delta.y == 0 { 70 } else { 40 };
-    }
-    crowd_penalty
-}
-
 #[allow(unused_parens, )]
 pub fn cleanup_player_chase_chunk_retention(
     mut commands: Commands,
@@ -566,14 +534,13 @@ pub fn cleanup_player_chase_chunk_retention(
 #[allow(unused_parens, )]
 pub fn rebuild_goto_nav_plans(
     time: Res<Time>,
-    mut blocking_tiles: BlockingTileParamSet,
+    blocking_tiles: BlockingTileParamSet,
     goto_beings: Query<
         (
             Entity,
             &DimensionRef,
-            &GoTo,
+            Option<&GoTo>,
             Option<&SpeedMagnitude>,
-            Option<&GoToMeta>,
             Option<&Chasing>,
         ),
         (With<Being>, LocalAiControlled),
@@ -590,7 +557,7 @@ pub fn rebuild_goto_nav_plans(
     scratch.shared_rebuild_jobs.clear();
     scratch.shared_goal_owners.clear();
 
-    for (chaser_ent, &chaser_dim, goto, chaser_speed, go_to_meta, chasing, ) in goto_beings.iter() {
+    for (chaser_ent, &chaser_dim, goto, chaser_speed, chasing, ) in goto_beings.iter() {
         let Ok(chaser_gpos) = blocking_tiles.gpos_query.get(chaser_ent) else {
             continue;
         };
@@ -598,7 +565,14 @@ pub fn rebuild_goto_nav_plans(
         let chaser_gpos = &chaser_gpos;
         scratch.active_chasers.insert(chaser_ent);
 
-        let target_pos = goto.pos;
+        let Some(goto) = goto else {
+            plans.by_ent.entry(chaser_ent).or_default().reset(Duration::from_secs_f32(0.25));
+            continue;
+        };
+        let Some(target_pos) = goto.pos else {
+            plans.by_ent.entry(chaser_ent).or_default().reset(Duration::from_secs_f32(0.25));
+            continue;
+        };
         let goto_interval = ChaserNavPlan::rebuild_interval(
             chaser_speed.map_or(1.0, |speed| speed.0),
             0.0,
@@ -617,7 +591,7 @@ pub fn rebuild_goto_nav_plans(
             continue;
         };
 
-        let is_shared_chase = matches!(go_to_meta, Some(meta) if meta.source == NavOrderSource::Chasing);
+        let is_shared_chase = goto.source == Some(NavOrderSource::Chasing);
         if is_shared_chase {
             let Some(chasing) = chasing else {
                 plan.clear_path_and_retry(goto_interval, target_pos);
@@ -784,7 +758,7 @@ pub fn rebuild_goto_nav_plans(
                 );
                 continue;
             }
-            let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_meta, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
+            let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
                 consider_chase_goal_candidate(
                     &mut best_path_tiles,
                     &mut best_path_is_partial,
@@ -801,7 +775,7 @@ pub fn rebuild_goto_nav_plans(
                 );
                 continue;
             };
-            if blocker_goto.pos == target_pos {
+            if blocker_goto.is_some_and(|blocker_goto| blocker_goto.pos == Some(target_pos)) {
                 blocked_target_approach_count += 1;
                 consider_chase_goal_candidate(
                     &mut best_path_tiles,
@@ -895,7 +869,7 @@ pub fn rebuild_goto_nav_plans(
                     );
                     continue;
                 }
-                let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_meta, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
+                let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
                     consider_chase_goal_candidate(
                         &mut best_path_tiles,
                         &mut best_path_is_partial,
@@ -912,7 +886,7 @@ pub fn rebuild_goto_nav_plans(
                     );
                     continue;
                 };
-                if blocker_goto.pos == target_pos {
+                if blocker_goto.is_some_and(|blocker_goto| blocker_goto.pos == Some(target_pos)) {
                     consider_chase_goal_candidate(
                         &mut best_path_tiles,
                         &mut best_path_is_partial,
@@ -1018,8 +992,7 @@ pub fn goto_behavior(
         (
             Entity,
             &DimensionRef,
-            &GoTo,
-            Option<&GoToMeta>,
+            Option<&GoTo>,
             Option<&Chasing>,
         ),
         (With<Being>, LocalAiControlled),
@@ -1030,7 +1003,7 @@ pub fn goto_behavior(
     mut input_dirs: Query<&mut InputMoveDir>,
         mut last_shared_dirs: Local<HashMap<Entity, IVec2>>,
 ) {
-    for (chaser_ent, &chaser_dim, goto, go_to_meta, chasing, ) in goto_beings.iter_mut() {
+    for (chaser_ent, &chaser_dim, goto, chasing, ) in goto_beings.iter_mut() {
         let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
             continue;
         };
@@ -1039,9 +1012,18 @@ pub fn goto_behavior(
         };
         let chaser_pos = *chaser_pos;
         let chaser_pos = &chaser_pos;
-        let target_pos = goto.pos;
+        let Some(goto) = goto else {
+            input_move_dir.0 = Vec2::ZERO;
+            last_shared_dirs.remove(&chaser_ent);
+            continue;
+        };
+        let Some(target_pos) = goto.pos else {
+            input_move_dir.0 = Vec2::ZERO;
+            last_shared_dirs.remove(&chaser_ent);
+            continue;
+        };
 
-        let shared_flow_field = if matches!(go_to_meta, Some(meta) if meta.source == NavOrderSource::Chasing) {
+        let shared_flow_field = if goto.source == Some(NavOrderSource::Chasing) {
             chasing.and_then(|chasing| {
                 let cache = grids.by_dim.get(&chaser_dim.0)?;
                 chase_fields
