@@ -1,10 +1,10 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::TemplEntiRef;
 use tilemap_shared::DimensionRef;
 use tilemap_shared::{ChunkPos, GlobalTilePos, RegionPos};
 
-use crate::{tile::tile_components::*};
+use ::tilemap_shared::DeleteOtherTilesInSamePos;
 
 
 
@@ -44,7 +44,7 @@ pub struct SgcPrepareTilesOrder {
 }
 
 
-pub type StructureTilesForChunk = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTilesInSamePos>)>;
+pub type StructureTilesForChunk = Vec<(GlobalTilePos, TemplEntiRef, Option<DeleteOtherTilesInSamePos>)>;
 pub type TerrGenDisabledGposForChunk = Vec<(ChunkPos, HashSet<GlobalTilePos>)>;
 
 #[derive(Message, Debug, )]

@@ -2,8 +2,8 @@ use bevy::ecs::system::SystemParam;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use common::log_targets;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
-use item_shared::{clone_item_from_ezero, dropped_scs_to_build, Item, ItemHeldIn};
+use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use item_shared::{clone_item_from_templ, dropped_scs_to_build, Item, ItemHeldIn};
 use param_sets::BlockingTileParamSet;
 use ::sprite_shared::AcZ;
 use tilemap_shared::{DimensionRef, GlobalTilePos};
@@ -11,13 +11,17 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 #[derive(SystemParam)]
 pub struct ItemGroundMaterializeParamSet<'w, 's> {
     blocking_tiles: BlockingTileParamSet<'w, 's>,
-    item_cfg_query: Query<'w, 's, &'static item_shared::ItemSpritesConfig, (With<Item>, With<EntityZero>)>,
-    item_ground_query: Query<'w, 's, (&'static EntityZeroRef, &'static DimensionRef, &'static GlobalTilePos), (With<Item>, Without<EntityZero>)>,
+    item_cfg_query: Query<'w, 's, &'static item_shared::ItemSpritesConfig, (With<Item>, With<TemplEnti>)>,
+    item_ground_query: Query<'w, 's, (&'static TemplEntiRef, &'static DimensionRef), (With<Item>, Without<TemplEnti>)>,
     ac_z_query: Query<'w, 's, &'static AcZ>,
     occupied_nonstackable: Local<'s, HashSet<GlobalTilePos>>,
 }
 
 impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
+    pub fn get_gpos(&mut self, entity: Entity) -> Option<GlobalTilePos> {
+        self.blocking_tiles.gpos_query.get(entity).ok().copied()
+    }
+
     fn find_nonstackable_drop_gpos(&mut self, dim_ref: Option<DimensionRef>, drop_gpos: GlobalTilePos) -> GlobalTilePos {
         let occupied_nonstackable: &mut HashSet<GlobalTilePos> = &mut self.occupied_nonstackable;
         let mut next = drop_gpos;
@@ -72,26 +76,34 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
     }
 
     pub fn materialize_item_on_ground(&mut self, cmd: &mut Commands, item_ent: Entity) {
-        let Ok((&item_ezero_ref, &dim_ref, &gpos)) = self.item_ground_query.get(item_ent) else {
+        let Ok((&item_templ_ref, &dim_ref)) = self.item_ground_query.get(item_ent) else {
             warn!(
                 target: log_targets::ITEM_SYSTEM,
-                "Skipping ground materialization: item {:?} is missing EntityZeroRef/DimensionRef/GlobalTilePos",
+                "Skipping ground materialization: item {:?} is missing EntityZeroRef/DimensionRef",
                 item_ent,
             );
             return;
         };
-        self.materialize_item_on_ground_from_ezero(cmd, Some(item_ent), item_ezero_ref, dim_ref, gpos);
+        let Some(gpos) = self.get_gpos(item_ent) else {
+            warn!(
+                target: log_targets::ITEM_SYSTEM,
+                "Skipping ground materialization: item {:?} is missing GlobalTilePos",
+                item_ent,
+            );
+            return;
+        };
+        self.materialize_item_on_ground_from_templ(cmd, Some(item_ent), item_templ_ref, dim_ref, gpos);
     }
 
-    pub fn materialize_item_on_ground_from_ezero(
+    pub fn materialize_item_on_ground_from_templ(
         &mut self,
         cmd: &mut Commands,
         item_ent: Option<Entity>,
-        item_ezero_ref: EntityZeroRef,
+        item_templ_ref: TemplEntiRef,
         dim_ref: DimensionRef,
         gpos: GlobalTilePos,
     ) {
-        let item_ent = item_ent.unwrap_or_else(|| clone_item_from_ezero(cmd, item_ezero_ref, dim_ref));
+        let item_ent = item_ent.unwrap_or_else(|| clone_item_from_templ(cmd, item_templ_ref, dim_ref));
         let gpos = self.find_nonstackable_drop_gpos(Some(dim_ref), gpos);
         let z = self
             .blocking_tiles
@@ -109,15 +121,15 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
             AcZ(z),
             ChildOf(dim_ref.0),
         ));
-        let Some(scs_to_build) = dropped_scs_to_build(&self.item_cfg_query, item_ezero_ref) else {
+        let Some(scs_to_build) = dropped_scs_to_build(&self.item_cfg_query, item_templ_ref) else {
             return;
         };
         item_cmd.insert(scs_to_build);
         debug!(
             target: log_targets::ITEM_SYSTEM,
-            "Materialized item {:?} (ezero {:?}) on ground at dim={:?} gpos={:?}",
+            "Materialized item {:?} (templ {:?}) on ground at dim={:?} gpos={:?}",
             item_ent,
-            item_ezero_ref.0,
+            item_templ_ref.0,
             dim_ref.0,
             gpos,
         );

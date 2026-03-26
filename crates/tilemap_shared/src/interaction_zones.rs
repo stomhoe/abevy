@@ -4,9 +4,51 @@ use bevy_ecs_tilemap::prelude::*;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    tile::tile_seris::InteractionZoneSeri, CardinalDirection, GlobalTilePos, SizeInTiles,
-};
+use crate::{CardinalDirection, GlobalTilePos, SizeInTiles};
+
+#[derive(Component, Deserialize, TypePath, Clone, Debug, Default)]
+pub struct InteractionZoneSeri {
+    #[serde(default)]
+    pub offset_positions: Vec<(i8, i8)>,
+    #[serde(default)]
+    pub radius_offset: Vec<(f32, (f32, f32))>,
+}
+impl InteractionZoneSeri {
+    pub fn sentinel() -> Self {
+        Self {
+            offset_positions: Vec::new(),
+            radius_offset: vec![(f32::NAN, (f32::NAN, f32::NAN))],
+        }
+    }
+    pub fn sentinel_melee_interaction_zone() -> Self { Self::sentinel() }
+    pub fn sentinel_collision_zone() -> Self { Self::sentinel() }
+    pub fn is_sentinel(&self) -> bool {
+        self.offset_positions.is_empty()
+            && self.radius_offset.len() == 1
+            && self.radius_offset[0].0.is_nan()
+            && self.radius_offset[0].1.0.is_nan()
+            && self.radius_offset[0].1.1.is_nan()
+    }
+    pub fn default_collision_zone() -> Self {
+        Self {
+            offset_positions: vec![(0, 0)],
+            radius_offset: Vec::new(),
+        }
+    }
+    pub fn default_melee_interaction_zone() -> Self {
+        Self {
+            offset_positions: vec![(0, 1)],
+            radius_offset: Vec::new(),
+        }
+    }
+}
+
+pub fn sentinel_melee_interaction_zone() -> InteractionZoneSeri {
+    InteractionZoneSeri::sentinel_melee_interaction_zone()
+}
+pub fn sentinel_collision_zone() -> InteractionZoneSeri {
+    InteractionZoneSeri::sentinel_collision_zone()
+}
 
 #[derive(Component, Clone, Deserialize, Serialize, Debug)]
 /// interaction positions (offsets relative to the tile's anchor GlobalTilePos)
@@ -91,17 +133,17 @@ impl InteractionZones {
     pub fn get_collision_mask(&self) -> Option<&InteractionZone> {
         self.0.get(Self::COLLISION).ok()
     }
-    pub fn gather_zone_positions_for_hashid(
+    pub fn gather_zone_positions_for_hashid<'a>(
         &self,
         zone_id: HashId,
         direction: CardinalDirection,
         anchor_transf: Vec2,
-        out: &mut Vec<GlobalTilePos>,
-    ) {
+        out: &'a mut Vec<GlobalTilePos>,
+    ) -> &'a [GlobalTilePos] {
         let Some(zone) = self.0.get(zone_id).ok() else {
-            return;
+            return out.as_slice();
         };
-        zone.gather_zone_positions(direction, anchor_transf, out);
+        zone.gather_zone_positions(direction, anchor_transf, out)
     }
     pub const ENTER: HashId = HashId::hash("enter");
     pub const MELEE_ATTACK: HashId = HashId::hash("melee_attack");
@@ -214,12 +256,12 @@ impl InteractionZone {
         false
     }
 
-    pub fn gather_zone_positions(
+    pub fn gather_zone_positions<'a>(
         &self,
         direction: CardinalDirection,
         anchor_transf: Vec2,
-        out: &mut Vec<GlobalTilePos>,
-    ) {
+        out: &'a mut Vec<GlobalTilePos>,
+    ) -> &'a [GlobalTilePos] {
         let anchor_gpos: GlobalTilePos = anchor_transf.into();
 
         for &offset_pos in &self.offset_positions {
@@ -240,6 +282,7 @@ impl InteractionZone {
                 }
             }
         }
+        out.as_slice()
     }
 
     fn contains_gpos(

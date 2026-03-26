@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use common::common_components::{HashId, HashIdMap};
-use tilemap_shared::{tilemap_seris::InteractionZoneSeri, InteractionZone, InteractionZones};
+use tilemap_shared::{InteractionZone, InteractionZoneSeri, InteractionZones};
 
 use crate::{
     being_inst_template::being_inst_template_resources::BitRef,

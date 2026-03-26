@@ -66,7 +66,7 @@ pub fn plugin(app: &mut App) {
 
 
     .init_resource::<ItemsAtGpos>()
-
+    .init_resource::<CardinalDirAtGpos>()
 
 
 ;

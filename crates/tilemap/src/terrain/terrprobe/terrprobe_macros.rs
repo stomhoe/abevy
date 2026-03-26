@@ -11,7 +11,7 @@ macro_rules! run_suitable_pos_search_logic {
     ) => {{
         $search_params.pending_by_requester.clear();
         $search_params.requester_collect_all.clear();
-        for (ent, &dim_ref, &my_pos, &ezero_ref, searching_for) in $searching_entities.iter() {
+        for (ent, &dim_ref, &my_pos, &templ_ref, searching_for) in $searching_entities.iter() {
             if let Some($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos {
                 requester,
                 collect_all_successes,
@@ -20,7 +20,7 @@ macro_rules! run_suitable_pos_search_logic {
                     .pending_by_requester
                     .entry(*requester)
                     .or_default()
-                    .push((ent, my_pos, dim_ref, ezero_ref));
+                    .push((ent, my_pos, dim_ref, templ_ref));
                 $search_params.requester_collect_all.insert(*requester, *collect_all_successes);
                 $search_params.requester_had_success.entry(*requester).or_insert(false);
             }
@@ -42,7 +42,7 @@ macro_rules! run_suitable_pos_search_logic {
                 let Some(owners) = $search_params.pending_by_requester.get_mut(&requester) else {
                     continue;
                 };
-                let Some((search_ent, my_pos, dim_ref, ezero_ref)) = owners.last().copied() else {
+                let Some((search_ent, my_pos, dim_ref, templ_ref)) = owners.last().copied() else {
                     continue;
                 };
 
@@ -66,7 +66,7 @@ macro_rules! run_suitable_pos_search_logic {
                     search_ent,
                     my_pos,
                     dim_ref,
-                    ezero_ref,
+                    templ_ref,
                     suitable_pos.found_pos,
                     suitable_pos.val,
                     suitable_pos.is_last,
@@ -112,7 +112,7 @@ macro_rules! run_suitable_pos_search_logic {
                 .remove(&failed_search.0)
                 .unwrap_or(false);
             $search_params.min_result_distance_by_requester.remove(&failed_search.0);
-            for (search_ent, global_pos, dim_ref, ezero_ref) in pending_searches {
+            for (search_ent, global_pos, dim_ref, templ_ref) in pending_searches {
                 $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos>();
                 if !(collect_all_successes && had_success) {
                     error!(
@@ -121,7 +121,7 @@ macro_rules! run_suitable_pos_search_logic {
                         $searched_entity_label,
                         failed_search.0
                     );
-                    $handle_pending_failure(search_ent, global_pos, dim_ref, ezero_ref, failed_search.0);
+                    $handle_pending_failure(search_ent, global_pos, dim_ref, templ_ref, failed_search.0);
                 }
             }
         }
@@ -218,7 +218,7 @@ macro_rules! run_sampled_value_matrix_search_logic {
     ) => {{
         $search_params.pending_by_requester.clear();
         $search_params.requester_collect_all.clear();
-        for (ent, &dim_ref, &my_pos, &ezero_ref, _, searching_for) in $searching_entities.iter() {
+        for (ent, &dim_ref, &my_pos, &templ_ref, _, searching_for) in $searching_entities.iter() {
             if let Some($crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos {
                 requester,
                 collect_all_successes,
@@ -227,21 +227,21 @@ macro_rules! run_sampled_value_matrix_search_logic {
                     .pending_by_requester
                     .entry(*requester)
                     .or_default()
-                    .push((ent, my_pos, dim_ref, ezero_ref));
+                    .push((ent, my_pos, dim_ref, templ_ref));
                 $search_params.requester_collect_all.insert(*requester, *collect_all_successes);
                 $search_params.requester_had_success.entry(*requester).or_insert(false);
             }
         }
 
         $searching_entities
-            .iter().for_each(|(search_ent, &dim_ref, &global_pos, ezero_ref, is_awaiting_start, ..)| {
+            .iter().for_each(|(search_ent, &dim_ref, &global_pos, templ_ref, is_awaiting_start, ..)| {
                 if !is_awaiting_start {
                     return;
                 }
                 $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::AwaitingStartSearch>();
 
                 let Some(mut probe) =
-                    $make_search_request(&mut $cmd, search_ent, global_pos, *ezero_ref)
+                    $make_search_request(&mut $cmd, search_ent, global_pos, *templ_ref)
                 else {
                     return;
                 };
@@ -277,7 +277,7 @@ macro_rules! run_sampled_value_matrix_search_logic {
                     .pending_by_requester
                     .entry(requester)
                     .or_default()
-                    .push((search_ent, global_pos, dim_ref, *ezero_ref));
+                    .push((search_ent, global_pos, dim_ref, *templ_ref));
             });
 
         for sampled_values in $search_params.reader_sampled_value_matrix.read() {
@@ -289,7 +289,7 @@ macro_rules! run_sampled_value_matrix_search_logic {
                 let Some(owners) = $search_params.pending_by_requester.get_mut(&requester) else {
                     continue;
                 };
-                let Some((search_ent, my_pos, dim_ref, ezero_ref)) = owners.last().copied() else {
+                let Some((search_ent, my_pos, dim_ref, templ_ref)) = owners.last().copied() else {
                     continue;
                 };
                 if $handle_sampled_values_event(
@@ -297,7 +297,7 @@ macro_rules! run_sampled_value_matrix_search_logic {
                     search_ent,
                     my_pos,
                     dim_ref,
-                    ezero_ref,
+                    templ_ref,
                     &sampled_values.matrix.values,
                 ) {
                     owners.pop();
@@ -324,7 +324,7 @@ macro_rules! run_sampled_value_matrix_search_logic {
             $search_params.requester_collect_all.remove(&failed_search.0);
             $search_params.requester_had_success.remove(&failed_search.0);
             $search_params.min_result_distance_by_requester.remove(&failed_search.0);
-            for (search_ent, global_pos, dim_ref, ezero_ref) in pending_searches {
+            for (search_ent, global_pos, dim_ref, templ_ref) in pending_searches {
                 $cmd.entity(search_ent).try_remove::<$crate::terrain::terrprobe::terrprobe_components::SearchingForSuitablePos>();
                 error!(
                     target: $target,
@@ -332,7 +332,7 @@ macro_rules! run_sampled_value_matrix_search_logic {
                     $searched_entity_label,
                     failed_search.0
                 );
-                $handle_pending_failure(search_ent, global_pos, dim_ref, ezero_ref, failed_search.0);
+                $handle_pending_failure(search_ent, global_pos, dim_ref, templ_ref, failed_search.0);
             }
         }
 

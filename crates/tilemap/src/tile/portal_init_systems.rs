@@ -1,5 +1,4 @@
 use ::game_common::game_common_components::*;
-use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
 use bevy::prelude::*;
@@ -16,13 +15,13 @@ use crate::{
 #[allow(unused_parens)]
 pub fn map_portal_tiles(
     mut cmd: Commands,
-    mut portals_ezero_query: Query<(Entity, &TileStrId, &mut PortalSeri),
-        (With<EntityZero>, common::AnyDisabling, Changed<PortalSeri>),
+    mut portals_templ_query: Query<(Entity, &TileStrId, &mut PortalSeri),
+        (With<TemplEnti>, common::AnyDisabling, Changed<PortalSeri>),
     >,
     tiles_map: Res<TileEntityMap>,
 ) {
     info!("Mapping portal tiles");
-    portals_ezero_query.iter_mut().for_each(|(ent, str_id, portal_seri)| {
+    portals_templ_query.iter_mut().for_each(|(ent, str_id, portal_seri)| {
         let Ok(tile_ent) = tiles_map.0.get_cloned(&portal_seri.oe_tile) else {
             error!(
                 target: PORTAL_INIT,
@@ -60,11 +59,11 @@ pub fn map_portal_tiles(
 #[allow(unused_parens)]
 pub fn validate_portal_recipes(
     mut cmd: Commands,
-    mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>), With<EntityZero>>,
+    mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>), With<TemplEnti>>,
     dimension_query: Query<&DimensionRootOplist>,
     terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
 ) {
-    for (ezero_portal, mut recipe, portal_seri_opt) in portal_recipes.iter_mut() {
+    for (templ_portal, mut recipe, portal_seri_opt) in portal_recipes.iter_mut() {
         if recipe.dest_dimension == Entity::PLACEHOLDER {
             continue;
         }
@@ -81,11 +80,11 @@ pub fn validate_portal_recipes(
 
         if recipe.terrprobe_ent != Entity::PLACEHOLDER {
             debug!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} is valid with root oplist {:?} and terrprobe {:?}.", recipe.dest_dimension, root_oplist, recipe.terrprobe_ent);
-            cmd.entity(ezero_portal).try_insert(AwaitingStartSearch);
+            cmd.entity(templ_portal).try_insert(AwaitingStartSearch);
         } else {
             let terrprobe_id = portal_seri_opt.map(|p| p.oe_terrprobe.as_str()).unwrap_or("<missing PortalSeri>");
             error_once!(target: PORTAL_INIT, "PortalRecipe references missing terrprobe '{}' for dest_dimension entity {:?}", terrprobe_id, recipe.dest_dimension);
-            cmd.entity(ezero_portal).try_remove::<AwaitingStartSearch>();
+            cmd.entity(templ_portal).try_remove::<AwaitingStartSearch>();
         }
     }
 }
@@ -97,27 +96,27 @@ pub fn start_portal_search(
             Entity,
             &DimensionRef,
             &GlobalTilePos,
-            &EntityZeroRef,
+            &TemplEntiRef,
             Option<&PortalTo>,
             Option<&SearchingForSuitablePos>,
         ),
-        (Without<EntityZero>, With<Tile>, With<AwaitingStartSearch>),
+        (Without<TemplEnti>, With<Tile>, With<AwaitingStartSearch>),
     >,
-    ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>,)>,
+    templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<TemplEnti>,)>,
     terrprobe_query: Query<&TerrProbeTempl>,
     mut search_params: SearchParams,
 ) {
     let make_search_request = |_cmd: &mut Commands,
                                portal_ent: Entity,
                                global_pos: GlobalTilePos,
-                               ezero_ref: EntityZeroRef|
+                               templ_ref: TemplEntiRef|
      -> Option<TerrProbeJob> {
-        let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
-            error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, ezero_ref.0);
+        let Ok((str_id, portal_recipe_opt)) = templ_query.get(templ_ref.0) else {
+            error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, templ_ref.0);
             return None;
         };
         let Some(portal_recipe) = portal_recipe_opt else {
-            error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, ezero_ref.0);
+            error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, templ_ref.0);
             return None;
         };
         let probe_template_ent = portal_recipe.terrprobe_ent;
@@ -133,7 +132,7 @@ pub fn start_portal_search(
         Some(probe)
     };
 
-    for (portal_ent, dim_ref, global_pos, ezero_ref, portal_to, searching_for) in portals.iter() {
+    for (portal_ent, dim_ref, global_pos, templ_ref, portal_to, searching_for) in portals.iter() {
         if portal_to.is_some() {
             cmd.entity(portal_ent).try_remove::<AwaitingStartSearch>();
             continue;
@@ -143,7 +142,7 @@ pub fn start_portal_search(
         }
         cmd.entity(portal_ent).try_remove::<AwaitingStartSearch>();
 
-        let Some(mut probe) = make_search_request(&mut cmd, portal_ent, *global_pos, *ezero_ref) else {
+        let Some(mut probe) = make_search_request(&mut cmd, portal_ent, *global_pos, *templ_ref) else {
             continue;
         };
         if probe.requester == Entity::PLACEHOLDER {
@@ -176,7 +175,7 @@ pub fn start_portal_search(
             .pending_by_requester
             .entry(requester)
             .or_default()
-            .push((portal_ent, *global_pos, *dim_ref, *ezero_ref));
+            .push((portal_ent, *global_pos, *dim_ref, *templ_ref));
     }
     search_params.write_pos_searches();
 }
@@ -189,12 +188,12 @@ pub fn resolve_portal_search_results(
             Entity,
             &DimensionRef,
             &GlobalTilePos,
-            &EntityZeroRef,
+            &TemplEntiRef,
             Option<&SearchingForSuitablePos>,
         ),
-        (Without<EntityZero>, With<Tile>),
+        (Without<TemplEnti>, With<Tile>),
     >,
-    ezero_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<EntityZero>,)>,
+    templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<TemplEnti>,)>,
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut register_pos: ResMut<ImportantRegisteredPositions>,
     mut search_params: SearchParams,
@@ -203,17 +202,17 @@ pub fn resolve_portal_search_results(
                                     portal_ent: Entity,
                                     my_pos: GlobalTilePos,
                                     dim_ref: DimensionRef,
-                                    ezero_ref: EntityZeroRef,
+                                    templ_ref: TemplEntiRef,
                                     found_pos: GlobalTilePos,
                                     _sampled_val: f32,
                                     _is_last: bool|
      -> bool {
-        let Ok((str_id, portal_recipe_opt)) = ezero_query.get(ezero_ref.0) else {
-            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, ezero_ref.0);
+        let Ok((str_id, portal_recipe_opt)) = templ_query.get(templ_ref.0) else {
+            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, templ_ref.0);
             return false;
         };
         let Some(portal_recipe) = portal_recipe_opt else {
-            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, ezero_ref.0);
+            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, templ_ref.0);
             return false;
         };
         let portal_recipe = portal_recipe.clone();
@@ -222,7 +221,7 @@ pub fn resolve_portal_search_results(
 
         let oe_dim_ref = DimensionRef(portal_recipe.dest_dimension);
 
-        let oe_portal_tileref = EntityZeroRef(portal_recipe.oe_portal_tile);
+        let oe_portal_tileref = TemplEntiRef(portal_recipe.oe_portal_tile);
         debug!(target: PORTAL_INIT, "OE Portal TileRef: {:?}", oe_portal_tileref);
 
         let oe_portal = mass_collected.clonespawn_and_push_tile(
@@ -248,9 +247,9 @@ pub fn resolve_portal_search_results(
     let handle_pending_failure = |portal_ent: Entity,
                                   global_pos: GlobalTilePos,
                                   dim_ref: DimensionRef,
-                                  tile_ref: EntityZeroRef,
+                                  tile_ref: TemplEntiRef,
                                   failed_filter_ent: Entity| {
-        let Ok((str_id, portal_template)) = ezero_query.get(tile_ref.0) else {
+        let Ok((str_id, portal_template)) = templ_query.get(tile_ref.0) else {
             error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which no longer exists or has no StrId.", failed_filter_ent, portal_ent, tile_ref.0);
             return;
         };

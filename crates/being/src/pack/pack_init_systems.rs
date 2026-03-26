@@ -2,10 +2,10 @@ use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::
 use being_shared::NoSpawnGroup;
 use common::common_components::StrId;
 use game_common::{
-    game_common_components::EntityZero,
-    game_common_samplers::CappedNormalDist,
+    game_common_components::TemplEnti,
 };
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
+use tilemap_shared::CappedNormalDist;
 
 use crate::{
     being_inst_template::being_inst_template_resources::{BeingInstTemplateEntityMap, load_bit_seri_defs},
@@ -39,7 +39,7 @@ pub fn init_packs(
 
     for pack_seri in &pack_seris {
         let str_id = StrId::trunc(&pack_seri.id);
-        let pack_entity = cmd.spawn((Pack, EntityZero, str_id.clone())).id();
+        let pack_entity = cmd.spawn((Pack, TemplEnti, str_id.clone())).id();
         pack_by_id.insert(str_id, pack_entity);
     }
 

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::TemplEntiRef;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -32,7 +32,7 @@ impl ProbePatternSeri {
 #[derive(Debug, Clone, Component, Deserialize, Serialize)]
 pub struct TerrProbeTempl {
     pub opfilter_ref: OpFilterRef,
-    pub sgc_admitted_tiles_as_found_pos: Vec<EntityZeroRef>,
+    pub sgc_admitted_tiles_as_found_pos: Vec<TemplEntiRef>,
     pub sgc_whitelist: Vec<Entity>,
     pub sgc_blacklist: Vec<Entity>,
     pub sgc_required_tile_tags: HashSet<String>,
@@ -51,7 +51,7 @@ impl TerrProbeTempl {
         structuregen_whitelist: Vec<Entity>,
         structuregen_blacklist: Vec<Entity>,
         sgc_required_tile_tags: HashSet<String>,
-        sgc_admitted_tiles_as_found_pos: Vec<EntityZeroRef>,
+        sgc_admitted_tiles_as_found_pos: Vec<TemplEntiRef>,
         probe_pattern: ProbePatternSeri,
         concentric_sample_spacing: f32,
         step_size: u16,

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashMap;
+
 use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan, SharedChaseFlowField};
 
 #[derive(Resource)]

@@ -17,7 +17,7 @@ pub struct WanderSeri {
     #[serde(default)]
     pub avoid_bit_tags: HashSet<String>,
     #[serde(default)]
-    pub avoid_pack_tags: HashSet<String>,//avoid pack instances which reference packezero with these tags
+    pub avoid_pack_tags: HashSet<String>,//avoid pack instances which reference packtempl with these tags
     #[serde(default = "default_nan")]
     pub max_drift: f32, //use NaN as sentinel for None (if None it should deactivate)
     #[serde(default)]

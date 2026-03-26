@@ -3,8 +3,8 @@ use bevy::platform::collections::HashSet;
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use game_common::game_common_components::EntityZeroRef;
-use game_common::game_common_samplers::EntityWeightedSampler;
+use game_common::game_common_components::TemplEntiRef;
+use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 use rand::{Rng, SeedableRng, seq::SliceRandom};
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;
@@ -33,10 +33,10 @@ pub fn drunkwalk_dungeon_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
-    ezeros_map: Res<TileEntityMap>,
+    templs_map: Res<TileEntityMap>,
     sampler_map: Res<TileWeightedSamplerEntityMap>,
     sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
-    ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::TemplEnti>, common::AnyDisabling)>,
     dimension_hash: Query<&HashId>,
     settings: Query<&GlobalGenSettings>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
@@ -94,26 +94,26 @@ pub fn drunkwalk_dungeon_building_system(
             .parse_arg("boulder_frequency_mult", 0.1_f32)
             .clamp(0.0, 1.0);
 
-        let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
-            Ok(entity) => EntityZeroRef(entity),
+        let floor_entity = match templs_map.0.get_cloned(floor_tile_id) {
+            Ok(entity) => TemplEntiRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", floor_tile_id);
+                error!(target: "dungeoning", "TileTempl with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", floor_tile_id);
                 continue;
             }
         };
 
-        let wall_entity = match ezeros_map.0.get_cloned(wall_tile_id) {
-            Ok(entity) => EntityZeroRef(entity),
+        let wall_entity = match templs_map.0.get_cloned(wall_tile_id) {
+            Ok(entity) => TemplEntiRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", wall_tile_id);
+                error!(target: "dungeoning", "TileTempl with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", wall_tile_id);
                 continue;
             }
         };
 
-        let lava_entity = match ezeros_map.0.get_cloned(lava_tile_id) {
-            Ok(entity) => EntityZeroRef(entity),
+        let lava_entity = match templs_map.0.get_cloned(lava_tile_id) {
+            Ok(entity) => TemplEntiRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", lava_tile_id);
+                error!(target: "dungeoning", "TileTempl with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", lava_tile_id);
                 continue;
             }
         };
@@ -441,7 +441,7 @@ pub fn drunkwalk_dungeon_building_system(
                 }
             }
         }
-        let mut boulder_anchor_map: Vec<Option<EntityZeroRef>> = vec![None; tile_map_size];
+        let mut boulder_anchor_map: Vec<Option<TemplEntiRef>> = vec![None; tile_map_size];
         if boulder_frequency > 0.0 {
             let boulder_sampler: Option<&EntityWeightedSampler> = sampler_map
                 .0
@@ -481,7 +481,7 @@ pub fn drunkwalk_dungeon_building_system(
                     ) else {
                         continue;
                     };
-                    let size = ezero_size_query
+                    let size = templ_size_query
                         .get(sampled_boulder_ent)
                         .copied()
                         .unwrap_or_default()
@@ -506,7 +506,7 @@ pub fn drunkwalk_dungeon_building_system(
                     if !can_place {
                         continue;
                     }
-                    boulder_anchor_map[y * tile_width + x] = Some(EntityZeroRef(sampled_boulder_ent));
+                    boulder_anchor_map[y * tile_width + x] = Some(TemplEntiRef(sampled_boulder_ent));
                     placed += 1;
 
                     let start_x = x.saturating_sub(padding);
@@ -550,7 +550,7 @@ pub fn drunkwalk_dungeon_building_system(
                     if floor_map[map_idx] {
                         tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                         if disable_floor_terrgen {
-                            let size = ezero_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                            let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
                             extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                         }
                     }
@@ -558,13 +558,13 @@ pub fn drunkwalk_dungeon_building_system(
                 } else if hazard_map[map_idx] {
                     tiles4chunk.push((tile_pos, lava_entity, lava_delete_other_tiles.clone()));
                     if disable_lava_terrgen {
-                        let size = ezero_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                     }
                 } else if floor_map[map_idx] {
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
-                        let size = ezero_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                     }
                 } else if wall_map[map_idx] {

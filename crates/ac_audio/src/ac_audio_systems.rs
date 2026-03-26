@@ -2,11 +2,11 @@ use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 use bevy_kira_audio::{DefaultSpatialRadius, SpatialAudioEmitter};
 use bevy_spritesheet_animation::prelude::*;
-use being::being_components::Being;
+
 use being::race::race_components::{ProducesStepSfx, RaceFootstepSfxConfig};
 use being::race::race_resources::RaceRef;
-use being_shared::ComputedLocally;
-use game_common::game_common_components::EntityZeroRef;
+use ::being_shared::*;
+use game_common::game_common_components::TemplEntiRef;
 use ::sprite_shared::*;
 use sprite_animation_shared::MoveAnimActive;
 use tilemap::tile::tile_components::{TileStepSfx, TileStepSfxConfig};
@@ -15,14 +15,13 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::ac_audio_components::*;
 use crate::SpatialAudioSettings;
-use being_shared::StepDistanceSfxState;
 
 pub fn play_sprite_animation_sfx_on_frame_change(
     mut cmd: Commands,
     mut sprites: Query<(
         Entity,
         &SpritesheetAnimation,
-        &EntityZeroRef,
+        &TemplEntiRef,
         Option<&mut SpatialAudioEmitter>,
         Option<&mut AnimationFrameSfxState>,
     ), Changed<SpritesheetAnimation>>,
@@ -127,7 +126,7 @@ pub fn sync_sprite_loop_sfx(
     mut cmd: Commands,
     mut sprites: Query<(
         Entity,
-        &EntityZeroRef,
+        &TemplEntiRef,
         &BaseHolderRef,
         Option<&SpritesheetAnimation>,
         Option<&mut SpatialAudioEmitter>,
@@ -202,7 +201,7 @@ pub fn sync_sprite_timed_sfx(
     mut cmd: Commands,
     mut sprites: Query<(
         Entity,
-        &EntityZeroRef,
+        &TemplEntiRef,
         &BaseHolderRef,
         Option<&SpritesheetAnimation>,
         Option<&mut SpatialAudioEmitter>,
@@ -297,9 +296,9 @@ pub fn play_step_sfx_from_moved_distance(
     ), With<Being>>,
     race_step_sfx_enabled: Query<&ProducesStepSfx>,
     race_footstep_sfx_cfgs: Query<&RaceFootstepSfxConfig>,
-    sprite_entity_zero_refs: Query<&EntityZeroRef>,
+    sprite_templ_enti_refs: Query<&TemplEntiRef>,
     sprite_step_cfgs: Query<&SpriteTimedSfx>,
-    tile_entity_zero_refs: Query<&EntityZeroRef>,
+    tile_templ_enti_refs: Query<&TemplEntiRef>,
     tile_step_sfxs: Query<(&TileStepSfx, Option<&TileStepSfxConfig>)>,
     mut tile_gathering: TileGatheringParamSet,
     settings: Res<SpatialAudioSettings>,
@@ -362,7 +361,7 @@ pub fn play_step_sfx_from_moved_distance(
         }
         if let Some(held_sprites) = held_sprites {
             for held_sprite in held_sprites.iter() {
-                let Ok(sprite_cfg_ref) = sprite_entity_zero_refs.get(held_sprite) else { continue };
+                let Ok(sprite_cfg_ref) = sprite_templ_enti_refs.get(held_sprite) else { continue };
                 let Ok(step_cfg) = sprite_step_cfgs.get(sprite_cfg_ref.0) else { continue };
                 if step_cfg.condition != SfxPlayCondition::WhileMoveActive {
                     continue;
@@ -381,7 +380,7 @@ pub fn play_step_sfx_from_moved_distance(
         if !disable_tile_step_sfx {
             let tile_ents = tile_gathering.gather_tiles_at(dim_ref, GlobalTilePos::from(current_pos_px)).to_vec();
             for tile_ent in tile_ents {
-                let Ok(tile_cfg_ref) = tile_entity_zero_refs.get(tile_ent) else { continue };
+                let Ok(tile_cfg_ref) = tile_templ_enti_refs.get(tile_ent) else { continue };
                 let Ok((tile_step_sfx, tile_step_sfx_cfg)) = tile_step_sfxs.get(tile_cfg_ref.0) else { continue };
                 if tile_step_sfx_cfg.is_some_and(|cfg| !cfg.prevent_repeat) {
                     prevent_repeat = false;

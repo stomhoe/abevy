@@ -13,9 +13,9 @@ pub fn apply_offsets(
         &mut Transform,
         &BaseHolderRef,
         &ChildOf,
-        Option<&EntityZeroRef>,
+        Option<&TemplEntiRef>,
         Option<&Offset2D>,
-    ), (Without<EntityZero>, )>,
+    ), (Without<TemplEnti>, )>,
     sprite_config_query: Query<(
         Option<&TagSet>,
         Option<&Offset2D>,
@@ -23,7 +23,7 @@ pub fn apply_offsets(
         Option<&OffsetUpDown>, Option<&OffsetUp>, Option<&OffsetDown>,
     ),()>,
     offset_for_children_query: Query<&OffsetForChildren>,
-    parent_sprite_query: Query<&EntityZeroRef>,
+    parent_sprite_query: Query<&TemplEntiRef>,
     base_query: Query<&CardinalDirection>,
 ) {
     for (msg, _) in reader.par_read() {
@@ -35,7 +35,7 @@ pub fn apply_offsets(
         };
         let mut total_offset = Offset2D::default();
 
-        if let Some(EntityZeroRef(sprite_config)) = sprite_config_ref.cloned() {
+        if let Some(TemplEntiRef(sprite_config)) = sprite_config_ref.cloned() {
             let Ok((my_cats, offset, offset_sideways, offset_updown, offset_up, offset_down)) = sprite_config_query.get(sprite_config)
             else {
                 error_once!("Failed to get sprite config entity {:?}", sprite_config);
@@ -63,10 +63,10 @@ pub fn apply_offsets(
                     }
                 }
                 if let Some(my_cats) = my_cats {
-                    let Ok(&EntityZeroRef(ezero_ent)) = parent_sprite_query.get(child_of.parent()) else {
+                    let Ok(&TemplEntiRef(templ_ent)) = parent_sprite_query.get(child_of.parent()) else {
                         continue;
                     };
-                    let Ok(offset_for_children) = offset_for_children_query.get(ezero_ent) else {
+                    let Ok(offset_for_children) = offset_for_children_query.get(templ_ent) else {
                         continue;
                     };
                     for (offset_cat, &(offset, _dir)) in offset_for_children.0.iter() {

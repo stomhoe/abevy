@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use ::sprite_animation_shared::*;
 use crate::sprite_scale_offset::Offset2D;
 
+pub use tilemap_shared::AcZ;
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct MovementBased;
 
@@ -210,31 +212,6 @@ impl From<&str> for AppliesOnSpriteDirection {
 pub struct YSortOrigin(pub f32);
 impl YSortOrigin {
     pub const Y_SORT_DIV: f32 = 1e-6;
-}
-
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
-pub struct AcZ(pub f32);
-impl AcZ {
-    pub fn new(z: f32) -> Self {
-        Self(z)
-    }
-    pub fn used_float(&self) -> f32 {
-        self.0 * Self::Z_MULT
-    }
-    const Z_MULT: f32 = 1e-3;
-
-    pub const Z_SORT_MULT: f32 = 1e-6;
-}
-impl PartialEq for AcZ {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.to_bits() == other.0.to_bits()
-    }
-}
-impl Eq for AcZ {}
-impl std::hash::Hash for AcZ {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.to_bits().hash(state)
-    }
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]

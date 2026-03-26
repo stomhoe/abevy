@@ -155,7 +155,6 @@ pub fn main_menu_window(
                 window_visible.beings_list = false;
                 window_visible.players_list = false;
                 window_visible.portals_list = false;
-                window_visible.portal_details = false;
                 window_visible.terrgen_editor = false;
                 window_visible.terrgen_values = false;
                 window_visible.settings_editor = false;
@@ -170,6 +169,7 @@ pub fn main_menu_window(
                 window_visible.sprite_configs_list = false;
                 window_visible.sprite_details = false;
                 window_visible.gpos_maps = false;
+                window_visible.tile_indices_map = false;
                 window_visible.world_tile_click_picker = false;
                 window_visible.hot_reload_window_open_on_start = false;
                 window_visible.river_debug = false;
@@ -189,6 +189,9 @@ pub fn main_menu_window(
             }
             if ui.button(egui::RichText::new("GPos Maps").size(16.0)).clicked() {
                 window_visible.gpos_maps = !window_visible.gpos_maps;
+            }
+            if ui.button(egui::RichText::new("Tile Index Map").size(16.0)).clicked() {
+                window_visible.tile_indices_map = !window_visible.tile_indices_map;
             }
             if ui.button(egui::RichText::new("Tile Click Picker").size(16.0)).clicked() {
                 window_visible.world_tile_click_picker = !window_visible.world_tile_click_picker;

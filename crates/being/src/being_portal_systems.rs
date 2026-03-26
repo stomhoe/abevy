@@ -2,8 +2,7 @@ use ::being_shared::*;
 use ::tilemap_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_SYSTEM;
-use game_common::game_common_components::EntityZeroRef;
-use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
+use game_common::game_common_components::TemplEntiRef;
 use movement::movement_components::GridLockedMovement;
 use modifier_shared::*;
 use tilemap::tile::tile_components::*;
@@ -16,7 +15,7 @@ fn portal_is_interacting(
             &DimensionRef,
             &GlobalTilePos,
             Option<&PortalTo>,
-            Option<&EntityZeroRef>,
+            Option<&TemplEntiRef>,
             Option<&TileFlip>,
             Option<&CardinalDirection>,
         ),
@@ -28,7 +27,7 @@ fn portal_is_interacting(
     being_transform: &Transform,
     portal_ent: Entity,
 ) -> Option<GlobalTilePos> {
-    let Ok((_, &portal_dim, &portal_gpos, portal_to, portal_ezero_ref, portal_flip, portal_facedir, )) =
+    let Ok((_, &portal_dim, &portal_gpos, portal_to, portal_templ_ref, portal_flip, portal_facedir, )) =
         portal_query.get(portal_ent)
     else {
         return None;
@@ -39,8 +38,8 @@ fn portal_is_interacting(
     if portal_dim != being_dim {
         return None;
     }
-    let is_interacting = if let Some(ezero_ref) = portal_ezero_ref {
-        if let Ok((interaction_zones, )) = interaction_zones_query.get(ezero_ref.0) {
+    let is_interacting = if let Some(templ_ref) = portal_templ_ref {
+        if let Ok((interaction_zones, )) = interaction_zones_query.get(templ_ref.0) {
             interaction_zones.is_point_inside_zone(
                 InteractionZones::ENTER,
                 portal_gpos.to_pixelpos(),
@@ -67,7 +66,7 @@ pub fn cross_portal(
             &DimensionRef,
             &GlobalTilePos,
             Option<&PortalTo>,
-            Option<&EntityZeroRef>,
+            Option<&TemplEntiRef>,
             Option<&TileFlip>,
             Option<&CardinalDirection>,
         ),
@@ -138,12 +137,12 @@ pub fn cross_portal(
                 error!(target: BEING_SYSTEM, "Portal entity {:?} not found in portal query", interacting_portal_ent);
                 continue;
             };
-            let Ok((_, &dest_dim, &dest_tile_gpos, _, dest_tile_ezero_ref, _, _, )) = portal_query.get(interacting_portal_to.dest_tile) else {
+            let Ok((_, &dest_dim, &dest_tile_gpos, _, dest_tile_templ_ref, _, _, )) = portal_query.get(interacting_portal_to.dest_tile) else {
                 error!(target: BEING_SYSTEM, "Portal entity {:?} not found in portal query", interacting_portal_to.dest_tile);
                 continue;
             };
-            let arrival_sampler = dest_tile_ezero_ref
-                .and_then(|ezero| portal_arrival_sampler_query.get(ezero.0).ok())
+            let arrival_sampler = dest_tile_templ_ref
+                .and_then(|templ| portal_arrival_sampler_query.get(templ.0).ok())
                 .map(|(arrivals, )| arrivals)
                 .and_then(|arrivals| arrivals.sample_with_rng(&mut rng));
             let sampled_offset = arrival_sampler

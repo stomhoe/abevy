@@ -23,10 +23,15 @@ pub struct TileGatheringParamSet<'w, 's> {
     chunk_children: Query<'w, 's, &'static Tilemaps>,
     pub cardinal_direction_query: Query<'w, 's, &'static mut CardinalDirection, ()>,
     pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static mut HashIdToTexIndex, &'static mut TilemapTexture),>,
-    tile_tags: Query<'w, 's, &'static TagSet>,
     pub to_drain: Local<'s, Vec<Entity>>,
 }
 impl<'w, 's> TileGatheringParamSet<'w, 's> {
+    pub fn cardinal_direction_query(
+        &mut self,
+    ) -> &mut Query<'w, 's, &'static mut CardinalDirection, ()> {
+        &mut self.cardinal_direction_query
+    }
+
     pub fn drain_tiles_to_drain(&mut self) -> impl Iterator<Item = Entity> + '_ {
         self.to_drain.drain(..)
     }
@@ -55,41 +60,6 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
             }
         }
     }
-
-    pub fn has_tile_at(&self, dim: DimensionRef, gpos: GlobalTilePos, tag: Tag) -> bool {
-        for &tile_ent in self.spritetiles_at_gpos.tiles_at_pos(dim, gpos) {
-            let Ok(tile_tags) = self.tile_tags.get(tile_ent) else {
-                continue;
-            };
-            if tile_tags.contains(tag.clone()) {
-                return true;
-            }
-        }
-        let chunk_pos = gpos.to_chunkpos();
-        let Some(&chunk_ent) = self.loaded_chunks.0.get(&(dim, chunk_pos)) else {
-            return false;
-        };
-        let Ok(tilemaps) = self.chunk_children.get(chunk_ent) else {
-            return false;
-        };
-        let tpos = gpos.to_tilepos();
-        for tmap_ent in tilemaps.iter() {
-            let Ok((storage, ..)) = self.tilemap_query.get(tmap_ent) else {
-                continue;
-            };
-            let Some(tile_ent) = storage.get(&tpos) else {
-                continue;
-            };
-            let Ok(tile_tags) = self.tile_tags.get(tile_ent) else {
-                continue;
-            };
-            if tile_tags.contains(tag.clone()) {
-                return true;
-            }
-        }
-        false
-    }
-
     pub fn gather_tiles_at_to_drain(&mut self, dim: DimensionRef, gpos: GlobalTilePos) {
         let chunk_pos = gpos.to_chunkpos();
         self.to_drain.extend(self.spritetiles_at_gpos.tiles_at_pos(dim, gpos).iter().copied());
@@ -107,6 +77,18 @@ impl<'w, 's> TileGatheringParamSet<'w, 's> {
                 }
             }
         }
+    }
+
+    pub fn get_being_direction(&mut self, being: Entity) -> Option<CardinalDirection> {
+        self.cardinal_direction_query.get_mut(being).ok().map(|direction| *direction)
+    }
+
+    pub fn set_being_direction(&mut self, being: Entity, direction: CardinalDirection) -> bool {
+        let Ok(mut current_direction) = self.cardinal_direction_query.get_mut(being) else {
+            return false;
+        };
+        *current_direction = direction;
+        true
     }
 
     pub fn insert_spritetile(

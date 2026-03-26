@@ -1,4 +1,3 @@
-use crate::being_components::Being;
 use crate::being_inst_template::being_inst_template_resources::BitRef;
 use crate::being_nav::AiNavGrids;
 use crate::body::{Body, BodySums};

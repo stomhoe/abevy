@@ -1,7 +1,7 @@
 use being_shared::BeingInstTemplate;
 use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
-use game_common::game_common_samplers::EntityWeightedSampler;
+use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 
 use crate::{
     body::{

@@ -2,17 +2,11 @@ use ::being_shared::*;
 use ::tilemap_shared::*;
 use bevy::{ecs::entity::EntityHashSet, prelude::*};
 use common::log_targets::BEING_SYSTEM;
-use game_common::game_common_components::{EntityZeroRef, HealthDamage};
+use game_common::game_common_components::{TemplEntiRef, HealthDamage};
 use param_sets::BlockingTileParamSet;
 use tilemap::tile::tile_components::TileFlip;
 
-use crate::{
-    being_components::*,
-    being_inst_template::being_inst_template_resources::BitRef,
-    being_interaction_zone_helper::resolve_being_interaction_zone,
-    being_messages::*,
-    race::race_resources::RaceRef,
-};
+use crate::{being_interaction_zone_helper::resolve_being_interaction_zone, being_messages::*};
 
 #[allow(unused_parens, )]
 pub fn apply_melee_attack(
@@ -21,19 +15,13 @@ pub fn apply_melee_attack(
         (
             &DimensionRef,
             &GlobalTransform,
-            Option<&BitRef>,
-            Option<&RaceRef>,
         ),
         (With<Being>, ),
     >,
     zone_sources: Query<&InteractionZones>,
     beings_at_gpos: Res<BeingsAtGpos>,
     mut tile_gathering: BlockingTileParamSet,
-    tile_instances: Query<(
-        &GlobalTilePos,
-        &EntityZeroRef,
-        Option<&TileFlip>,
-    )>,
+    tile_instances: Query<(&TemplEntiRef, Option<&TileFlip>,)>,
     mut health_damage_writer: MessageWriter<HealthDamage>,
     mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
     mut health_damage_messages: Local<Vec<HealthDamage>>,
@@ -42,7 +30,7 @@ pub fn apply_melee_attack(
     const MELEE_DAMAGE: f32 = 10.0;
     for melee in melee_attacks.read() {
         let attacker_ent = melee.being_ent;
-        let Ok((&attacker_dim, attacker_transform, bit_ref, race_ref, )) =
+        let Ok((&attacker_dim, attacker_transform, )) =
             beings_query.get(attacker_ent)
         else {
             info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} not found", attacker_ent);
@@ -54,11 +42,13 @@ pub fn apply_melee_attack(
         };
         let attacker_direction = *attacker_direction;
         let attacker_interaction_zones = zone_sources.get(attacker_ent).ok();
+        let attacker_bit_ref = tile_gathering.get_being_bit_ref(attacker_ent);
+        let attacker_race_ref = tile_gathering.get_being_race_ref(attacker_ent);
 
         let melee_zone = resolve_being_interaction_zone(
             attacker_interaction_zones,
-            bit_ref,
-            race_ref,
+            attacker_bit_ref,
+            attacker_race_ref,
             InteractionZones::MELEE_ATTACK,
             &zone_sources,
         );
@@ -99,13 +89,15 @@ pub fn apply_melee_attack(
                 if target_ent == attacker_ent || !hit_entities.insert(target_ent) {
                     continue;
                 }
-                let Ok((_, target_transform, target_bit_ref, target_race_ref, )) =
+                let Ok((_, target_transform, )) =
                     beings_query.get(target_ent)
                 else {
                     continue;
                 };
                 let target_direction = tile_gathering.cardinal_direction_query().get(target_ent).cloned().unwrap_or_default();
                 let target_interaction_zones = zone_sources.get(target_ent).ok();
+                let target_bit_ref = tile_gathering.get_being_bit_ref(target_ent);
+                let target_race_ref = tile_gathering.get_being_race_ref(target_ent);
 
                 let target_pos_px = target_transform.translation().xy();
                 let collision_zone = resolve_being_interaction_zone(
@@ -151,9 +143,13 @@ pub fn apply_melee_attack(
                     error!(target: BEING_SYSTEM, "Melee hit entity {:?} already hit", target_entity);
                     continue;
                 }
-                let Ok((&tile_origin, &EntityZeroRef(tile_ezero), _tile_flip)) = tile_instances.get(target_entity)
+                let Ok((&TemplEntiRef(tile_templ), _tile_flip)) = tile_instances.get(target_entity)
                 else {
                     error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile instance", target_entity);
+                    continue;
+                };
+                let Ok(&tile_origin) = tile_gathering.gpos_query.get(target_entity) else {
+                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile position", target_entity);
                     continue;
                 };
                 let tile_direction = tile_gathering
@@ -161,7 +157,7 @@ pub fn apply_melee_attack(
                     .get_mut(target_entity)
                     .map(|direction| *direction)
                     .unwrap_or_default();
-                let Ok(target_zones) = zone_sources.get(tile_ezero) else {
+                let Ok(target_zones) = zone_sources.get(tile_templ) else {
                     continue;
                 };
                 let accepts_hit = target_zones.interaction_zones_intersect(
@@ -183,9 +179,9 @@ pub fn apply_melee_attack(
                 hit_done = true;
                 info!(
                     target: BEING_SYSTEM,
-                    "Melee hit tile instance {:?} (ezero {:?})",
+                    "Melee hit tile instance {:?} (templ {:?})",
                     target_entity,
-                    tile_ezero
+                    tile_templ
                 );
                 break;
             }

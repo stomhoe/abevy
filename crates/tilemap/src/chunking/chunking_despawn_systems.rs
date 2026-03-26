@@ -148,9 +148,9 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
 pub fn on_chunk_despawn(
     trig: On<Despawn, (Chunk, )>,
     chunk_query: Query<(&DimensionRef, &ChunkPos, Option<&BeingsWithinChunk>), ()>,
-    mut cmd: Commands,
+    mut ___________cmd: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
-    mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
+    mut ____________loaded_macro_chunks: ResMut<LoadedMacroChunks>,
     mut ub_writer: MessageWriter<UnloadBeing>,
     mut ub_messages: Local<Vec<UnloadBeing>>,
 ){

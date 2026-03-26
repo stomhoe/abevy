@@ -35,22 +35,22 @@ pub fn reckeck_adjacency_for(
 pub struct TileAdjacencyRetextureLocals<'s> {
     pub adj_masks_by_hid: Local<'s, HashMap<HashId, AdjMask>>,
     pub tiles_to_recheck: Local<'s, Vec<Entity>>,
-    pub north_adj_tiles_ezeros: Local<'s, Vec<Entity>>,
-    pub south_adj_tiles_ezeros: Local<'s, Vec<Entity>>,
-    pub west_adj_tiles_ezeros: Local<'s, Vec<Entity>>,
-    pub east_adj_tiles_ezeros: Local<'s, Vec<Entity>>,
-    pub northeast_adj_tiles_ezeros: Local<'s, Vec<Entity>>,
-    pub northwest_adj_tiles_ezeros: Local<'s, Vec<Entity>>,
-    pub southeast_adj_tiles_ezeros: Local<'s, Vec<Entity>>,
-    pub southwest_adj_tiles_ezeros: Local<'s, Vec<Entity>>,
+    pub north_adj_tiles_templs: Local<'s, Vec<Entity>>,
+    pub south_adj_tiles_templs: Local<'s, Vec<Entity>>,
+    pub west_adj_tiles_templs: Local<'s, Vec<Entity>>,
+    pub east_adj_tiles_templs: Local<'s, Vec<Entity>>,
+    pub northeast_adj_tiles_templs: Local<'s, Vec<Entity>>,
+    pub northwest_adj_tiles_templs: Local<'s, Vec<Entity>>,
+    pub southeast_adj_tiles_templs: Local<'s, Vec<Entity>>,
+    pub southwest_adj_tiles_templs: Local<'s, Vec<Entity>>,
     pub unique_rechecks: Local<'s, HashSet<(DimensionRef, GlobalTilePos)>>,
 }
 
 #[allow(unused_parens)]
 pub fn tile_adjacency_dependent_retexturing_system(
     mut reader: MessageReader<RecheckTileAdjacency>,
-    mut tile_query: Query<(&EntityZeroRef, &DimensionRef, &GlobalTilePos, Option<&mut sprite_animation_shared::AnimExtraState>, Option<(&mut TileTextureIndex, &mut TileFlip, &TilemapId)>, ), ()>,
-    ezero_query: Query<(&HashId, Option<&AdjRetexConfig>), ()>,
+    mut tile_query: Query<(&TemplEntiRef, &DimensionRef, &GlobalTilePos, Option<&mut sprite_animation_shared::AnimExtraState>, Option<(&mut TileTextureIndex, &mut TileFlip, &TilemapId)>, ), ()>,
+    templ_query: Query<(&HashId, Option<&AdjRetexConfig>), ()>,
     params: TileGatheringParamSet,
     mut locals: TileAdjacencyRetextureLocals,
 ) {
@@ -62,48 +62,48 @@ pub fn tile_adjacency_dependent_retexturing_system(
         }
         params.gather_tiles_at_extend(&mut *locals.tiles_to_recheck, msg.dim, msg.gpos);
         for tile_ent in locals.tiles_to_recheck.drain(..) {
-            let Ok((ezero_ref, &dim, &gpos, ..)) = tile_query.get(tile_ent) else {
+            let Ok((templ_ref, &dim, &gpos, ..)) = tile_query.get(tile_ent) else {
                 continue;
             };
-            let Ok((_, Some(adj_retex_config))) = ezero_query.get(ezero_ref.0) else {
+            let Ok((_, Some(adj_retex_config))) = templ_query.get(templ_ref.0) else {
                 continue;
             };
             locals.adj_masks_by_hid.clear();
-            params.gather_tiles_at_extend(&mut *locals.north_adj_tiles_ezeros, dim, gpos.adjacent_north());
-            params.gather_tiles_at_extend(&mut *locals.south_adj_tiles_ezeros, dim, gpos.adjacent_south());
-            params.gather_tiles_at_extend(&mut *locals.west_adj_tiles_ezeros, dim, gpos.adjacent_west());
-            params.gather_tiles_at_extend(&mut *locals.east_adj_tiles_ezeros, dim, gpos.adjacent_east());
-            params.gather_tiles_at_extend(&mut *locals.northeast_adj_tiles_ezeros, dim, gpos.adjacent_northeast());
-            params.gather_tiles_at_extend(&mut *locals.northwest_adj_tiles_ezeros, dim, gpos.adjacent_northwest());
-            params.gather_tiles_at_extend(&mut *locals.southeast_adj_tiles_ezeros, dim, gpos.adjacent_southeast());
-            params.gather_tiles_at_extend(&mut *locals.southwest_adj_tiles_ezeros, dim, gpos.adjacent_southwest());
+            params.gather_tiles_at_extend(&mut *locals.north_adj_tiles_templs, dim, gpos.adjacent_north());
+            params.gather_tiles_at_extend(&mut *locals.south_adj_tiles_templs, dim, gpos.adjacent_south());
+            params.gather_tiles_at_extend(&mut *locals.west_adj_tiles_templs, dim, gpos.adjacent_west());
+            params.gather_tiles_at_extend(&mut *locals.east_adj_tiles_templs, dim, gpos.adjacent_east());
+            params.gather_tiles_at_extend(&mut *locals.northeast_adj_tiles_templs, dim, gpos.adjacent_northeast());
+            params.gather_tiles_at_extend(&mut *locals.northwest_adj_tiles_templs, dim, gpos.adjacent_northwest());
+            params.gather_tiles_at_extend(&mut *locals.southeast_adj_tiles_templs, dim, gpos.adjacent_southeast());
+            params.gather_tiles_at_extend(&mut *locals.southwest_adj_tiles_templs, dim, gpos.adjacent_southwest());
             let mut process_adjacent_tiles = |adj_mask: AdjMask, adj_tiles: &mut Vec<Entity>| {
                 for adj_tile_ent in adj_tiles.drain(..) {
-                    let Ok((ezero_ref, ..)) = tile_query.get(adj_tile_ent) else {
+                    let Ok((templ_ref, ..)) = tile_query.get(adj_tile_ent) else {
                         continue;
                     };
-                    let Ok((&hid, ..)) = ezero_query.get(ezero_ref.0) else {
+                    let Ok((&hid, ..)) = templ_query.get(templ_ref.0) else {
                         continue;
                     };
                     locals.adj_masks_by_hid.entry(hid).or_default().insert(adj_mask);
                 }
             };
-            process_adjacent_tiles(DiagonalCardinalDirection::North.adj_mask_bit(), &mut locals.north_adj_tiles_ezeros);
-            process_adjacent_tiles(DiagonalCardinalDirection::South.adj_mask_bit(), &mut locals.south_adj_tiles_ezeros);
-            process_adjacent_tiles(DiagonalCardinalDirection::West.adj_mask_bit(), &mut locals.west_adj_tiles_ezeros);
-            process_adjacent_tiles(DiagonalCardinalDirection::East.adj_mask_bit(), &mut locals.east_adj_tiles_ezeros);
-            process_adjacent_tiles(DiagonalCardinalDirection::NorthEast.adj_mask_bit(), &mut locals.northeast_adj_tiles_ezeros);
-            process_adjacent_tiles(DiagonalCardinalDirection::NorthWest.adj_mask_bit(), &mut locals.northwest_adj_tiles_ezeros);
-            process_adjacent_tiles(DiagonalCardinalDirection::SouthEast.adj_mask_bit(), &mut locals.southeast_adj_tiles_ezeros);
-            process_adjacent_tiles(DiagonalCardinalDirection::SouthWest.adj_mask_bit(), &mut locals.southwest_adj_tiles_ezeros);
+            process_adjacent_tiles(DiagonalCardinalDirection::North.adj_mask_bit(), &mut locals.north_adj_tiles_templs);
+            process_adjacent_tiles(DiagonalCardinalDirection::South.adj_mask_bit(), &mut locals.south_adj_tiles_templs);
+            process_adjacent_tiles(DiagonalCardinalDirection::West.adj_mask_bit(), &mut locals.west_adj_tiles_templs);
+            process_adjacent_tiles(DiagonalCardinalDirection::East.adj_mask_bit(), &mut locals.east_adj_tiles_templs);
+            process_adjacent_tiles(DiagonalCardinalDirection::NorthEast.adj_mask_bit(), &mut locals.northeast_adj_tiles_templs);
+            process_adjacent_tiles(DiagonalCardinalDirection::NorthWest.adj_mask_bit(), &mut locals.northwest_adj_tiles_templs);
+            process_adjacent_tiles(DiagonalCardinalDirection::SouthEast.adj_mask_bit(), &mut locals.southeast_adj_tiles_templs);
+            process_adjacent_tiles(DiagonalCardinalDirection::SouthWest.adj_mask_bit(), &mut locals.southwest_adj_tiles_templs);
 
             let Some((hid_to_use, new_flip)) = adj_retex_config.get_tex_in_curr_adjacency_state(&locals.adj_masks_by_hid) else {
                 continue;
             };
-            let Ok((ezero_ref, .., anim_state, tmap_tile_data)) = tile_query.get_mut(tile_ent) else {
+            let Ok((templ_ref, .., anim_state, tmap_tile_data)) = tile_query.get_mut(tile_ent) else {
                 continue;
             };
-            let Ok((&tile_hid, ..)) = ezero_query.get(ezero_ref.0) else {
+            let Ok((&tile_hid, ..)) = templ_query.get(templ_ref.0) else {
                 continue;
             };
             if let Some((mut tex_idx, mut flip, tmap_ent)) = tmap_tile_data {

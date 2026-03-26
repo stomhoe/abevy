@@ -7,9 +7,71 @@ use crate::{
 //    common_events::*,
 };
 use bevy_inspector_egui::{egui, inspector_egui_impls::{InspectorPrimitive}, reflect_inspector::InspectorUi};
-use std::fmt::Display;
+use serde::{Deserialize, Serialize};
+use std::{fmt::Display, ops::{Index, IndexMut}};
 
 pub type HashIdToEntityMap = HashIdMap<Entity>;
+
+#[derive(Component, Clone, Debug, Deserialize, Serialize, Default)]
+pub struct BiArray<T> {
+    width: usize,
+    height: usize,
+    values: Vec<T>,
+}
+impl<T> BiArray<T> {
+    pub fn from_vec(width: usize, height: usize, values: Vec<T>) -> Self {
+        assert_eq!(values.len(), width.saturating_mul(height));
+        Self {
+            width,
+            height,
+            values,
+        }
+    }
+    pub fn from_fn(width: usize, height: usize, mut f: impl FnMut(usize, usize) -> T) -> Self {
+        let mut values = Vec::with_capacity(width.saturating_mul(height));
+        for y in 0..height {
+            for x in 0..width {
+                values.push(f(x, y));
+            }
+        }
+        Self::from_vec(width, height, values)
+    }
+    pub fn width(&self) -> usize {
+        self.width
+    }
+    pub fn height(&self) -> usize {
+        self.height
+    }
+    pub fn flat_index(&self, x: usize, y: usize) -> usize {
+        y * self.width + x
+    }
+    pub fn get(&self, x: usize, y: usize) -> Option<&T> {
+        self.values.get(self.flat_index(x, y))
+    }
+    pub fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
+        let i = self.flat_index(x, y);
+        self.values.get_mut(i)
+    }
+    pub fn values(&self) -> &[T] {
+        self.values.as_slice()
+    }
+    pub fn values_mut(&mut self) -> &mut [T] {
+        self.values.as_mut_slice()
+    }
+}
+impl<T> Index<(usize, usize)> for BiArray<T> {
+    type Output = T;
+
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        &self.values[self.flat_index(index.0, index.1)]
+    }
+}
+impl<T> IndexMut<(usize, usize)> for BiArray<T> {
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        let i = self.flat_index(index.0, index.1);
+        &mut self.values[i]
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct FixedStr<const N: usize>([u8; N]);

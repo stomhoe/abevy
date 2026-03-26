@@ -1,7 +1,6 @@
 
-use ::game_common::{game_common_components::*, };
-use game_common::game_common_samplers::GlobalTilePosWeightedSampler;
-use ::sprite_shared::{*, sprite_scale_offset::Offset2D};
+use ::game_common::*;
+use ::sprite_shared::*;
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
 use bevy::{
@@ -13,9 +12,7 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
 use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet};
-use game_common::game_common_components::{DespawnOnDeath, Health};
 use item_shared::{ItemEntityMap, ItemsGeneratedOnDeath};
-use ::sprite_shared::SpriteConfig;
 use sprite_animation_shared::AcAnimationProgresses;
 use std::{fs, path::PathBuf};
 
@@ -46,7 +43,8 @@ pub fn init_tiles(
 
     let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();
 
-    let mut res_tile_tags = EzeroTileEntsWithinTag::default();
+    let mut res_tile_tags = TemplTileEntsWithinTag::default();
+    let mut tile_indexing = TileIndexing::default();
 
     let mut tile_seris = load_tile_seri_defs();
     let mut dropped_on_death_seris = std::collections::HashMap::new();
@@ -67,24 +65,28 @@ pub fn init_tiles(
                 return;
             }
         };
+        let hash_id = HashId::hash(str_id.as_str());
         let my_z = AcZ(seri.z);
         let size_in_tiles = SizeInTiles::new(&str_id, Some(seri.size_in_tiles), );
+        let tile_index = tile_indexing.register_templ_tile(hash_id);
         let tile_enti = cmd.spawn((
             Tile, Replicated, str_id.clone(), //PROBLEMA: EL DISABLED HACE Q EL DESPAWNONEXIT NO FUNCIONE
             Prefix::trunc("Tile"),
             my_z.clone(),
-            EntityZero,
+            TemplEnti,
+            hash_id,
+            tile_index,
             AddHashIdFromStrId,
             ChildOf(holder),
             AssetScoped,
             size_in_tiles,
-            CloneEzeroChildren,
+            CloneTemplChildren,
             //SparedFromHotReloading,
         )).id();
-        cmd.entity(tile_enti).insert(OffsetForTerrgenPlacement(GlobalTilePos::new(
-            seri.terrgen_offset.0 as i32,
-            seri.terrgen_offset.1 as i32,
-        )));
+        let offset_for_terrgen_placement = OffsetForTerrgenPlacement::from_i32s(seri.terrgen_offset);
+        if offset_for_terrgen_placement != OffsetForTerrgenPlacement::default() {
+            cmd.entity(tile_enti).insert(offset_for_terrgen_placement);
+        }
 
         let mut tag_set = TagSet::default();
         let self_tag = Tag::trunc(str_id.as_str());
@@ -158,7 +160,7 @@ pub fn init_tiles(
         }
 
         let delete_other_tiles_seri = std::mem::take(&mut seri.delete_other_tiles);
-        let delete_other_tiles = delete_other_tiles_from_seri(&delete_other_tiles_seri);
+        let delete_other_tiles = delete_other_tiles_seri.delete_other_tiles_from_seri();
         if !delete_other_tiles.is_empty() {
             cmd.entity(tile_enti).insert(delete_other_tiles);
         }
@@ -227,7 +229,11 @@ pub fn init_tiles(
         if !seri.is_spritetile {
             cmd.entity(tile_enti).insert(TileImagePaths(std::mem::take(&mut seri.img_paths)));
             if seri.shader.trim() == "terrbl" {
-                cmd.entity(tile_enti).insert(terrbl_params_from_seri(&seri.terrbl_params));
+                let Ok(terrbl_params) = seri.terrbl_params.to_runtime() else {
+                    error!("Tile '{}' could not parse terrbl params", str_id);
+                    return;
+                };
+                cmd.entity(tile_enti).insert(terrbl_params);
                 let Ok(shader_ent) = shader_map.0.get_cloned("terrbl") else {
                     error!("Tile '{}' could not resolve single terrbl shader entity", str_id);
                     return;
@@ -266,7 +272,7 @@ pub fn init_tiles(
                         ChildOf(tile_enti),
                         BaseHolderRef{ base: tile_enti },
                         StrId::trunc(format!("{}", path_holder).replace("texture/", "")),
-                        EntityZero,
+                        TemplEnti,
                         path_holder,
                         Replicated,
                         my_z.clone(),
@@ -287,6 +293,7 @@ pub fn init_tiles(
             }
         }
     }
+    cmd.spawn((tile_indexing,));
     cmd.insert_resource(res_tile_tags);
 }
 
@@ -327,12 +334,12 @@ fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
 pub fn init_childrensprite(
     mut cmd: Commands,
     asset_server: Res<AssetServer>,
-    ezero_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>), (With<EntityZero>,)>,
+    templ_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>), (With<TemplEnti>,)>,
     childrensprite_query: Query<
-        (Entity, AnyOf<(&ImagePathHolder, &EntityZeroRef)>),
+        (Entity, AnyOf<(&ImagePathHolder, &TemplEntiRef)>),
         (
             Without<AcAnimationProgresses>,
-            Or<(Changed<ImagePathHolder>, Changed<EntityZeroRef>)>,
+            Or<(Changed<ImagePathHolder>, Changed<TemplEntiRef>)>,
             With<TileChildSprite>,
             Without<Sprite>,
             Without<TilemapId>,
@@ -343,7 +350,7 @@ pub fn init_childrensprite(
     >,
 ) {
     let mut to_insert = Vec::new();
-    for (entity, (image_path_holder, ezero_ref)) in childrensprite_query.iter() {
+    for (entity, (image_path_holder, templ_ref)) in childrensprite_query.iter() {
         if let Some(img_path_holder) = image_path_holder {
             trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
             to_insert.push((
@@ -353,21 +360,21 @@ pub fn init_childrensprite(
                     ..Default::default()
                 },
             ));
-        } else if let Some(ezero_ref) = ezero_ref {
-            let Ok((img_path_holder, is_ezero_a_spriteconfig)) = ezero_img_path.get(ezero_ref.0)
+        } else if let Some(templ_ref) = templ_ref {
+            let Ok((img_path_holder, is_templ_a_spriteconfig)) = templ_img_path.get(templ_ref.0)
             else {
-                error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity doesn't exist", entity, ezero_ref.0);
+                error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity doesn't exist", entity, templ_ref.0);
                 continue;
             };
-            if is_ezero_a_spriteconfig {
+            if is_templ_a_spriteconfig {
                 continue;
             }
             let Some(img_path_holder): Option<&ImagePathHolder> = img_path_holder else {
-                error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity has no ImagePathHolder", entity, ezero_ref.0);
+                error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity has no ImagePathHolder", entity, templ_ref.0);
                 continue;
             };
 
-            trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, ezero_ref.0, img_path_holder.path());
+            trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
             to_insert.push((
                 entity,
                 Sprite {
@@ -386,18 +393,18 @@ pub fn init_childrensprite(
 pub fn add_handles(
     mut cmd: Commands,
     asset_server: Res<AssetServer>,
-    ezero_id_query: Query<
+    templ_id_query: Query<
         (Entity, &TileStrId, &TileImagePaths),
         (
-            With<EntityZero>,
+            With<TemplEnti>,
             Without<TileHashIdsHandles>,
             Changed<TileImagePaths>,
         ),
     >,
 ) {
     let mut comps = Vec::new();
-    for (enti, str_id, tile_image_paths) in ezero_id_query.iter() {
-        let tile_handles = TileHashIdsHandles::from_paths(&asset_server, tile_image_paths.clone());
+    for (enti, str_id, tile_image_paths) in templ_id_query.iter() {
+        let tile_handles = TileHashIdsHandles::from_paths(&asset_server, tile_image_paths.0.clone());
 
         match tile_handles {
             Ok(tile_handles) => {
@@ -416,7 +423,7 @@ pub fn add_handles(
 pub fn map_min_dist_tiles(
     mut cmd: Commands,
     tiles_map: Res<TileEntityMap>,
-    tile_tags: Res<EzeroTileEntsWithinTag>,
+    tile_tags: Res<TemplTileEntsWithinTag>,
 ) {
     let mut keep_away: EntityHashMap<EntityHashSet> = EntityHashMap::default();
     let all_seris = load_tile_seri_defs();
@@ -465,10 +472,10 @@ pub fn map_min_dist_tiles(
     cmd.try_insert_batch(keep_dist_comps);
 }
 #[allow(unused_parens)]
-pub fn on_ezero_tile_despawn(
-    on_despawn: On<Despawn, (Tile, EntityZero, TagSet)>,
+pub fn on_templ_tile_despawn(
+    on_despawn: On<Despawn, (Tile, TemplEnti, TagSet)>,
     query: Query<(&TagSet), (AnyDisabling)>,
-    mut tile_ents_within_tag: If<ResMut<EzeroTileEntsWithinTag>>
+    mut tile_ents_within_tag: If<ResMut<TemplTileEntsWithinTag>>
 ) {
     if let Ok(tag_set) = query.get(on_despawn.entity) {
         tag_set.iter().for_each(|tag| {

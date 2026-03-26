@@ -5,7 +5,7 @@ use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
 use common::common_id_components::{HashId, HashIdMap};
 use common::log_targets::BODY_BUILD;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use game_common::game_common_components::{TemplEnti, TemplEntiRef};
 use modifier_shared::modifier_components::{ApplyMode, BaseValue, CurrEffectiveValue, ModifierSynergies, ModifierTarget};
 use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_types::*;
@@ -20,7 +20,7 @@ use crate::body::{
 const STAT_BLEED_RATE: HashId = HashId::hash("bleed_rate");
 
 #[allow(unused_parens)]
-pub fn init_ezero_body_trees(
+pub fn init_templ_body_trees(
     mut cmd: Commands,
     body_map: Res<BodyTreeEntityMap>,
     part_map: Res<BodypartEntityMap>,
@@ -43,7 +43,7 @@ pub fn init_ezero_body_trees(
         cmd.entity(body_tree_ent).insert((
             body_id.clone(),
             BodyTree,
-            EntityZero,
+            TemplEnti,
             build_being_interaction_zones(
                 seri.melee_interaction_zone.clone(),
                 seri.collision_zone.clone(),
@@ -97,7 +97,7 @@ pub fn init_ezero_body_trees(
         let root_node = std::mem::take(&mut seri.root);
         let root_id = StrId::trunc(root_node.part_id.as_str());
 
-        let root_ent = rec_build_ezero_body_tree(
+        let root_ent = rec_build_templ_body_tree(
             &mut cmd,
             &part_map,
             body_tree_ent,
@@ -117,42 +117,42 @@ pub fn init_ezero_body_trees(
 }
 
 #[allow(unused_parens, )]
-pub fn distribute_ezero_body_tree_modifiers(
+pub fn distribute_templ_body_tree_modifiers(
     mut cmd: Commands,
     body_map: Res<BodyTreeEntityMap>,
-    body_tree_query: Query<(Entity, &StrId, &StatBudgetsToDistribute, ), (With<BodyTree>, With<EntityZero>, )>,
-    ezero_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<EntityZero>, )>,
+    body_tree_query: Query<(Entity, &StrId, &StatBudgetsToDistribute, ), (With<BodyTree>, With<TemplEnti>, )>,
+    templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<TemplEnti>, )>,
     forced_query: Query<&BodypartForcedStats, >,
     weighted_query: Query<&BodypartWeightedDistribution, >,
     synergy_query: Query<&ModifierSynergies, >,
-    ezero_bodypart_refs_query: Query<&EntityZeroRef, (With<EntityZero>, )>,
-    mut ezeros_mapped_to_bodyparts: Local<Vec<(Entity, Entity)>>,
+    templ_bodypart_refs_query: Query<&TemplEntiRef, (With<TemplEnti>, )>,
+    mut templs_mapped_to_bodyparts: Local<Vec<(Entity, Entity)>>,
 ) {
     if !body_map.0.is_empty() {
         return;
     }
 
     for (body_tree_ent, body_id, totals_to_distribute, ) in body_tree_query.iter() {
-        let Ok((bodyparts_list, )) = ezero_tree_bodyparts_query.get(body_tree_ent) else {
+        let Ok((bodyparts_list, )) = templ_tree_bodyparts_query.get(body_tree_ent) else {
             error!(target: BODY_BUILD, "BodyTree {} has no bodypart children after deferred tree build; skipping distribution", body_id);
             continue;
         };
-        ezeros_mapped_to_bodyparts.clear();
+        templs_mapped_to_bodyparts.clear();
         for bodypart_ent in bodyparts_list.iter() {
-            let Ok(ezero_ref) = ezero_bodypart_refs_query.get(bodypart_ent) else {
+            let Ok(templ_ref) = templ_bodypart_refs_query.get(bodypart_ent) else {
                 error!(target: BODY_BUILD, "BodyTree {} bodypart node {:?} is missing EntityZeroRef; skipping node", body_id, bodypart_ent);
                 continue;
             };
-            ezeros_mapped_to_bodyparts.push((bodypart_ent, ezero_ref.0));
+            templs_mapped_to_bodyparts.push((bodypart_ent, templ_ref.0));
         }
-        if ezeros_mapped_to_bodyparts.is_empty() {
-            error!(target: BODY_BUILD, "BodyTree {} produced zero ezero bodypart references; skipping distribution", body_id);
+        if templs_mapped_to_bodyparts.is_empty() {
+            error!(target: BODY_BUILD, "BodyTree {} produced zero templ bodypart references; skipping distribution", body_id);
             continue;
         }
         apply_distributions(
             &mut cmd,
             body_id,
-            &ezeros_mapped_to_bodyparts,
+            &templs_mapped_to_bodyparts,
             body_tree_ent,
             stat_from_hashid_map(&totals_to_distribute.0, BodypartStat::STAT_MASS_KG),
             totals_to_distribute.clone(),
@@ -163,10 +163,10 @@ pub fn distribute_ezero_body_tree_modifiers(
     }
 }
 //dont alter this
-fn rec_build_ezero_body_tree(
+fn rec_build_templ_body_tree(
     cmd: &mut Commands,
     part_map: &Res<BodypartEntityMap>,
-    ezero_body_ent: Entity,
+    templ_body_ent: Entity,
     body_id: &StrId,
     node: BodypartNodeSeri,
     parent_node_ent: Option<Entity>,
@@ -177,10 +177,10 @@ fn rec_build_ezero_body_tree(
         return None;
     };
 
-    let parent_bodypart = parent_node_ent.unwrap_or(ezero_body_ent);
+    let parent_bodypart = parent_node_ent.unwrap_or(templ_body_ent);
     let node_ent = cmd.entity(source_part_ent).clone_and_spawn_with_opt_out(|builder| {
         builder.deny::<(
-            EntityZero,
+            TemplEnti,
             ChildOf,
             Children,
             BodypartChildrenBodyparts,
@@ -188,9 +188,9 @@ fn rec_build_ezero_body_tree(
     }).id();
     cmd.entity(node_ent).insert((
         BodypartChildOfBodypart { parent_bodypart },
-        ChildOf(ezero_body_ent),
-        EntityZeroRef(source_part_ent),
-        EntityZero,
+        ChildOf(templ_body_ent),
+        TemplEntiRef(source_part_ent),
+        TemplEnti,
         Name::default(),
     ));
 
@@ -200,7 +200,7 @@ fn rec_build_ezero_body_tree(
     }
 
     for child in node.children {
-        rec_build_ezero_body_tree(cmd, part_map, ezero_body_ent, body_id, child, Some(node_ent));
+        rec_build_templ_body_tree(cmd, part_map, templ_body_ent, body_id, child, Some(node_ent));
     }
 
     Some(node_ent)

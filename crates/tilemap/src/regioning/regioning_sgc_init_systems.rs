@@ -2,7 +2,8 @@ use std::cmp::Ordering;
 
 use bevy::{platform::collections::HashSet, prelude::*};
 use common::{common_components::*, common_tag_components::TagSet, log_targets::SGC_INIT};
-use game_common::{game_common_components::ArgsDict, game_common_samplers::EntityWeightedSampler};
+use game_common::game_common_components::ArgsDict;
+use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 use ::tilemap_shared::*;
 
 use crate::{

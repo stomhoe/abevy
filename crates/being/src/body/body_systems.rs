@@ -1,12 +1,11 @@
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::prelude::*;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use game_common::game_common_components::{TemplEnti, TemplEntiRef};
 use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
 use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_components::*;
 use tilemap_shared::{Dimension, DimensionRef, Gravity};
 
-use crate::being_components::Being;
 use crate::body::{body_tree_components::*,};
 use ::being_shared::*;
 
@@ -15,9 +14,9 @@ pub fn update_body_tree_weight_sum(
     body_changed_query: Query<Entity, (With<BodyOf>, Or<(Added<BodyOf>, Changed<BodypartChildrenBodyparts>)>)>,
     being_dim_changed_query: Query<Entity, (With<Being>, Changed<DimensionRef>)>,
     part_body_changed_query: Query<&ChildOf, (With<BodypartChildOfBodypart>, Or<( Changed<BodypartChildOfBodypart>, Changed<Missing>, Changed<BodypartChildrenBodyparts>)>)>,
-    parts_query: Query<(Entity, &ChildOf, Option<&EntityZeroRef>, Has<Missing>), With<BodypartChildOfBodypart>>,
+    parts_query: Query<(Entity, &ChildOf, Option<&TemplEntiRef>, Has<Missing>), With<BodypartChildOfBodypart>>,
     part_applied_mods_query: Query<&AppliedModifiers>,
-    mass_modifiers_query: Query<(Entity, &ModifierTarget, Option<&EntityZeroRef>), Without<EntityZero>>,
+    mass_modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<TemplEnti>>,
     curr_values_query: Query<&CurrEffectiveValue>,
     mass_markers_query: Query<(), With<MassKg>>,
     body_of_query: Query<(Entity, &BodyOf), With<BodyOf>>,
@@ -65,27 +64,27 @@ pub fn update_body_tree_weight_sum(
     }
 
     let mut mass_per_body: EntityHashMap<f32> = EntityHashMap::default();
-    for (part_ent, body_of, part_ezero_ref, missing) in parts_query.iter() {
+    for (part_ent, body_of, part_templ_ref, missing) in parts_query.iter() {
         let body_ent = body_of.parent();
         if missing || !affected_bodies.contains(&body_ent) {
             continue;
         }
         let mut part_mass = 0.0;
         let mut effects = EntityHashSet::default();
-        collect_applied_modifier_entities(&mut effects, part_ent, part_ezero_ref, &part_applied_mods_query);
+        collect_applied_modifier_entities(&mut effects, part_ent, part_templ_ref, &part_applied_mods_query);
         for mod_ent in effects.iter() {
-            let Ok((entity, target, ezero_ref)) = mass_modifiers_query.get(*mod_ent) else {
+            let Ok((entity, target, templ_ref)) = mass_modifiers_query.get(*mod_ent) else {
                 continue;
             };
             if target.0 != part_ent
-                && part_ezero_ref.map(|part_ezero_ref| target.0 != part_ezero_ref.0).unwrap_or(true)
+                && part_templ_ref.map(|part_templ_ref| target.0 != part_templ_ref.0).unwrap_or(true)
             {
                 continue;
             }
-            if !modifier_has_marker::<MassKg>(entity, ezero_ref, &mass_markers_query) {
+            if !modifier_has_marker::<MassKg>(entity, templ_ref, &mass_markers_query) {
                 continue;
             }
-            let Some(value) = resolve_modifier_component(entity, ezero_ref, &curr_values_query) else {
+            let Some(value) = resolve_modifier_component(entity, templ_ref, &curr_values_query) else {
                 continue;
             };
             part_mass += value.0.max(0.0);

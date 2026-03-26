@@ -4,11 +4,11 @@ use ::common::*;
 use ::sprite_shared::*;
 use bevy::ecs::entity_disabling::Disabled;
 use bevy::prelude::*;
-use tilemap_shared::*;
+use ::tilemap_shared::*;
 
 #[derive(Bundle)]
 pub struct EntityZeroCloneDeny(
-    EntityZero,
+    TemplEnti,
     InteractionZones,
     AcZ,
     YSortOrigin,
@@ -18,12 +18,12 @@ pub struct EntityZeroCloneDeny(
     AddHashIdFromStrId,
     HashId,
     GameCommonStringComponentsBundle,
-    CloneEzeroChildren,
+    CloneTemplChildren,
 );
 
 #[derive(Bundle)]
 pub struct DenyForEntityZeroClonedChild(
-    EntityZero,
+    TemplEnti,
     BaseHolderRef,
     Disabled,
     ImagePathHolder,

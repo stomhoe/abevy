@@ -191,7 +191,7 @@ macro_rules! define_entity_map_systems {
                 }
             }
             #[allow(unused_parens)]
-            pub fn [<add_ $main_component:snake _ezeros_to_egui_holder>](
+            pub fn [<add_ $main_component:snake _templs_to_egui_holder>](
                 mut cmd: Commands,
                 holder_query: Query<(Entity, Option<&Children>), (With<[<Egui $abbreviation sHolder>]>)>,
                 query: Query<(Entity), (With<$main_component>, $with_filters, Without<ChildOf>)>,
@@ -214,8 +214,8 @@ macro_rules! define_entity_map_systems {
 
                 let iter = query.iter();
                 let mut child_ofs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
-                for ezero_ent in iter {
-                    child_ofs.push((ezero_ent, ChildOf(holder_id)));
+                for templ_ent in iter {
+                    child_ofs.push((templ_ent, ChildOf(holder_id)));
                 }
                 cmd.try_insert_batch(child_ofs);
             }
@@ -264,7 +264,7 @@ macro_rules! define_entity_map_systems {
                     .init_resource::<[<$main_component EntityMap>]>()
                     //.register_type::<[<Egui $abbreviation sHolder>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
-                         [<add_ $main_component:snake _ezeros_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1))),
+                         [<add_ $main_component:snake _templs_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1))),
                     ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])
                     ;
@@ -443,7 +443,7 @@ macro_rules! define_entity_map_systems {
                 }
             }
             #[allow(unused_parens)]
-            pub fn [<add_ $main_component:snake _ezeros_to_egui_holder>](
+            pub fn [<add_ $main_component:snake _templs_to_egui_holder>](
                 mut cmd: Commands,
                 holder_query: Query<(Entity, Option<&Children>), (With<[<Egui $abbreviation sHolder>]>)>,
                 query: Query<(Entity), (With<$main_component>, $with_filters, Without<ChildOf>)>,
@@ -466,8 +466,8 @@ macro_rules! define_entity_map_systems {
 
                 let iter = query.iter();
                 let mut child_ofs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
-                for ezero_ent in iter {
-                    child_ofs.push((ezero_ent, ChildOf(holder_id)));
+                for templ_ent in iter {
+                    child_ofs.push((templ_ent, ChildOf(holder_id)));
                 }
                 cmd.try_insert_batch(child_ofs);
             }
@@ -532,7 +532,7 @@ macro_rules! define_entity_map_systems {
                     .init_resource::<[<$main_component EntityMap>]>()
                     //.register_type::<[<Egui $abbreviation sHolder>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
-                         [<add_ $main_component:snake _ezeros_to_egui_holder>]
+                         [<add_ $main_component:snake _templs_to_egui_holder>]
                             .run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
                             .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
                     ))
@@ -689,7 +689,7 @@ macro_rules! define_entity_map_systems_no_replicate {
                 }
             }
             #[allow(unused_parens)]
-            pub fn [<add_ $main_component:snake _ezeros_to_egui_holder>](
+            pub fn [<add_ $main_component:snake _templs_to_egui_holder>](
                 mut cmd: Commands,
                 holder_query: Query<(Entity, Option<&Children>), (With<[<Egui $abbreviation sHolder>]>)>,
                 query: Query<(Entity), (With<$main_component>, $with_filters, Without<ChildOf>)>,
@@ -712,8 +712,8 @@ macro_rules! define_entity_map_systems_no_replicate {
 
                 let iter = query.iter();
                 let mut child_ofs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
-                for ezero_ent in iter {
-                    child_ofs.push((ezero_ent, ChildOf(holder_id)));
+                for templ_ent in iter {
+                    child_ofs.push((templ_ent, ChildOf(holder_id)));
                 }
                 cmd.try_insert_batch(child_ofs);
             }
@@ -754,7 +754,7 @@ macro_rules! define_entity_map_systems_no_replicate {
                     .init_resource::<bevy_asset_loader::dynamic_asset::DynamicAssets>()
                     .init_resource::<[<$main_component EntityMap>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
-                         [<add_ $main_component:snake _ezeros_to_egui_holder>]
+                         [<add_ $main_component:snake _templs_to_egui_holder>]
                             .run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
                             .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
                     ))

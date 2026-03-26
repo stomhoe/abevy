@@ -1,9 +1,10 @@
-use game_common::game_common_components::{ EntityZeroRef};
+use game_common::game_common_components::{ TemplEntiRef};
 
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use ::tilemap_shared::*;
 
 use crate::{regioning::regioning_messages::ChunksClaim, tile::tile_components::*};
+use ::tilemap_shared::DeleteOtherTilesInSamePos;
 use bevy_inspector_egui::{egui, };
 
 use common::{common_components::*, };
@@ -57,7 +58,7 @@ impl Default for ClaimList {
 #[derive(Component, Debug, Default, Clone)]
 pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
 
-pub type TilesFromBuilder = Vec<(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTilesInSamePos>)>;
+pub type TilesFromBuilder = Vec<(GlobalTilePos, TemplEntiRef, Option<DeleteOtherTilesInSamePos>)>;
 
 #[derive(Debug, Clone)]
 pub struct PendingBuildOrder {
@@ -176,7 +177,7 @@ impl RegionPlannedTiles {
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
         self.terrgen_disabled_gpos_on_chunk_load_map.entry(chunk_pos).or_default();
     }
-    pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, EntityZeroRef, Option<DeleteOtherTilesInSamePos>)]> {
+    pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, TemplEntiRef, Option<DeleteOtherTilesInSamePos>)]> {
         let chunk_pos = gpos.to_chunkpos();
         self.tiles_to_spawn_on_chunk_load_map.get(&chunk_pos).map(Vec::as_slice)
     }

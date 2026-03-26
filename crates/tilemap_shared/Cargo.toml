@@ -16,7 +16,7 @@ bevy-inspector-egui = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }
 #bevy-inspector-egui = { workspace = true }
 rand = { workspace = true }
-#rand_distr = { workspace = true }
+rand_distr = { workspace = true }
 #rand_seeder = { workspace = true }
 #rand_pcg = { workspace = true }
 #noiz = { workspace = true }

@@ -1,5 +1,4 @@
 use crate::{
-    being_components::Being,
     being_inst_template::being_inst_template_resources::BitRef,
     being_interaction_zone_helper::resolve_being_interaction_zone,
     being_messages::MakeChunkSnapshotForChaser,
@@ -311,7 +310,7 @@ fn choose_shared_chase_step(
     chaser_pos: GlobalTilePos,
     last_dir: Option<IVec2>,
 ) -> Option<Vec2> {
-    const SHARED_CHASE_HOLD_DISTANCE: u32 = 2;
+    const SHARED_CHASE_HOLD_DISTANCE: u32 = 1;
     const SHARED_CHASE_HOLD_MARGIN: i32 = 120;
 
     let curr_dist = flow_field.distance_at_gpos(cache, chaser_pos)?;
@@ -962,7 +961,6 @@ pub fn goto_behavior(
     mut goto_beings: Query<
         (
             Entity,
-            &GlobalTilePos,
             &DimensionRef,
             &GoTo,
             Option<&GoToMeta>,
@@ -974,13 +972,15 @@ pub fn goto_behavior(
     chase_fields: Res<SharedChaseFlowFields>,
     mut plans: ResMut<ChaserNavPlans>,
     mut input_dirs: Query<&mut InputMoveDir>,
-    mut last_shared_dirs: Local<HashMap<Entity, IVec2>>,
+        mut last_shared_dirs: Local<HashMap<Entity, IVec2>>,
 ) {
-    for (chaser_ent, chaser_gpos, &chaser_dim, goto, go_to_meta, chasing, ) in goto_beings.iter_mut() {
+    for (chaser_ent, &chaser_dim, goto, go_to_meta, chasing, ) in goto_beings.iter_mut() {
         let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
             continue;
         };
-        let chaser_pos = *chaser_gpos;
+        let Ok(&chaser_pos) = blocking_tiles.gpos_query.get(chaser_ent) else {
+            continue;
+        };
         let target_pos = goto.pos;
 
         let shared_flow_field = if matches!(go_to_meta, Some(meta) if meta.source == NavOrderSource::Chasing) {

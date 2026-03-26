@@ -9,7 +9,7 @@ use bevy_inspector_egui::bevy_inspector;
 use common::common_components::{DisplayName, HashId, StrId};
 use common::common_tag_components::TagSet;
 use common::log_targets::DEBUG;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use game_common::game_common_components::{TemplEnti, TemplEntiRef};
 use item_shared::{
     item_components::{HeldItems, SlottedItemHolder},
     ItemOperation,
@@ -205,14 +205,14 @@ fn interaction_zone_label(zone_id: HashId) -> String {
 fn modifier_values(
     world: &World,
     modifier_ent: Entity,
-    ezero_ref: Option<&EntityZeroRef>,
+    templ_ref: Option<&TemplEntiRef>,
     base_values_query: &mut QueryState<&BaseValue>,
     curr_values_query: &mut QueryState<&CurrEffectiveValue>,
 ) -> StatSummary {
-    let base = resolve_modifier_component(modifier_ent, ezero_ref, &base_values_query.query(world))
+    let base = resolve_modifier_component(modifier_ent, templ_ref, &base_values_query.query(world))
         .map(|value| value.0)
         .unwrap_or(0.0);
-    let effective = resolve_modifier_component(modifier_ent, ezero_ref, &curr_values_query.query(world))
+    let effective = resolve_modifier_component(modifier_ent, templ_ref, &curr_values_query.query(world))
         .map(|value| value.0)
         .unwrap_or(base);
     StatSummary { base, effective }
@@ -222,7 +222,7 @@ fn collect_part_stats(
     world: &World,
     target_ent: Entity,
     applied_mods: &AppliedModifiers,
-    modifiers_query: &mut QueryState<(Entity, &ModifierTarget, Option<&EntityZeroRef>), Without<EntityZero>>,
+    modifiers_query: &mut QueryState<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<TemplEnti>>,
     base_values_query: &mut QueryState<&BaseValue>,
     curr_values_query: &mut QueryState<&CurrEffectiveValue>,
     hp_capacity_query: &mut QueryState<(), With<HitpointsCapacity>>,
@@ -237,7 +237,7 @@ fn collect_part_stats(
     let mut stats = PartStats::default();
 
     for modifier_ent in applied_mods.iter() {
-        let Ok((modifier_ent, target, ezero_ref)) = modifiers_query.get(world, modifier_ent) else {
+        let Ok((modifier_ent, target, templ_ref)) = modifiers_query.get(world, modifier_ent) else {
             continue;
         };
         if target.0 != target_ent {
@@ -246,62 +246,62 @@ fn collect_part_stats(
         let values = modifier_values(
             world,
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             base_values_query,
             curr_values_query,
         );
         if modifier_has_marker::<HitpointsCapacity>(
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             &hp_capacity_query.query(world),
         ) {
             stats.hp_capacity.add(values.base, values.effective);
         }
         if modifier_has_marker::<HitpointRegenRate>(
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             &hp_regen_query.query(world),
         ) {
             stats.hp_regen.add(values.base, values.effective);
         }
         if modifier_has_marker::<BloodCapacity>(
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             &blood_capacity_query.query(world),
         ) {
             stats.blood_capacity.add(values.base, values.effective);
         }
         if modifier_has_marker::<BleedRate>(
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             &bleed_rate_query.query(world),
         ) {
             stats.bleed_rate.add(values.base, values.effective);
         }
         if modifier_has_marker::<PainSensitivity>(
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             &pain_sensitivity_query.query(world),
         ) {
             stats.pain_sensitivity.add(values.base, values.effective);
         }
         if modifier_has_marker::<Vision>(
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             &vision_query.query(world),
         ) {
             stats.vision.add(values.base, values.effective);
         }
         if modifier_has_marker::<ManipulationDexterity>(
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             &manip_dex_query.query(world),
         ) {
             stats.manip_dex.add(values.base, values.effective);
         }
         if modifier_has_marker::<ManipulationStrength>(
             modifier_ent,
-            ezero_ref,
+            templ_ref,
             &manip_str_query.query(world),
         ) {
             stats.manip_str.add(values.base, values.effective);
@@ -377,10 +377,10 @@ pub fn being_details_inspector(world: &mut World) {
     let mut grid_move_query = world.query::<&GridLockedMovement>();
     let mut gpos_query = world.query::<&tilemap_shared::GlobalTilePos>();
     let mut facing_query = world.query::<&CardinalDirection>();
-    let mut ezero_refs_query = world.query::<&EntityZeroRef>();
+    let mut templ_refs_query = world.query::<&TemplEntiRef>();
     let mut applied_mods_query = world.query::<&AppliedModifiers>();
     let mut modifiers_query =
-        world.query_filtered::<(Entity, &ModifierTarget, Option<&EntityZeroRef>), Without<EntityZero>>();
+        world.query_filtered::<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<TemplEnti>>();
     let mut base_values_query = world.query::<&BaseValue>();
     let mut curr_values_query = world.query::<&CurrEffectiveValue>();
     let mut apply_modes_query = world.query::<&ApplyMode>();
@@ -397,11 +397,11 @@ pub fn being_details_inspector(world: &mut World) {
             Entity,
             &ModifierTarget,
             Option<&ChildOf>,
-            Option<&EntityZeroRef>,
+            Option<&TemplEntiRef>,
             Option<&TagSet>,
             Has<PainSlowdown>,
         ),
-        (With<WalkSpeed>, Without<EntityZero>),
+        (With<WalkSpeed>, Without<TemplEnti>),
     >();
 
     let Ok(body) = body_query.get(world, selected_being_entity) else {
@@ -414,7 +414,7 @@ pub fn being_details_inspector(world: &mut World) {
         str_id_query.get(world, body_entity).ok(),
     );
     let body_sums = body_sums_query.get(world, body_entity).ok().cloned();
-    let body_ezero_ref = ezero_refs_query.get(world, body_entity).ok().copied();
+    let body_templ_ref = templ_refs_query.get(world, body_entity).ok().copied();
 
     let mut inventory_holders = vec![(
         selected_being_entity,
@@ -477,8 +477,8 @@ pub fn being_details_inspector(world: &mut World) {
             ui.heading("Body");
             ui.label(format!("Body: {} [{:?}]", body_label, body_entity));
             ui.label(format!(
-                "Body ezero ref: {}",
-                body_ezero_ref.map_or("missing".to_string(), |refe| format!("{:?}", refe.0))
+                "Body templ ref: {}",
+                body_templ_ref.map_or("missing".to_string(), |refe| format!("{:?}", refe.0))
             ));
             if let Some(sums) = body_sums {
                 ui.label(format!("HP: {:.2}/{:.2}", sums.current_hp, sums.total_hp));
@@ -572,13 +572,13 @@ pub fn being_details_inspector(world: &mut World) {
                 let mut source_bodyparts = Vec::new();
                 if let Ok(bodyparts) = bodyparts_query.get(world, body_entity) {
                     for bodypart_ent in bodyparts.iter() {
-                        let Ok(part_ezero_ref) = ezero_refs_query.get(world, bodypart_ent) else {
+                        let Ok(part_templ_ref) = templ_refs_query.get(world, bodypart_ent) else {
                             continue;
                         };
-                        source_bodyparts.push(part_ezero_ref.0);
+                        source_bodyparts.push(part_templ_ref.0);
                     }
                 }
-                for (modifier_ent, target, child_of, ezero_ref, tagset, pain_slowdown) in walk_modifiers_query.iter(world) {
+                for (modifier_ent, target, child_of, templ_ref, tagset, pain_slowdown) in walk_modifiers_query.iter(world) {
                     let from_source_bodypart = child_of
                         .map(|child| source_bodyparts.contains(&child.parent()))
                         .unwrap_or(false);
@@ -588,13 +588,13 @@ pub fn being_details_inspector(world: &mut World) {
                     let values = modifier_values(
                         world,
                         modifier_ent,
-                        ezero_ref,
+                        templ_ref,
                         &mut base_values_query,
                         &mut curr_values_query,
                     );
                     let Some(op) = resolve_modifier_component(
                         modifier_ent,
-                        ezero_ref,
+                        templ_ref,
                         &apply_modes_query.query(world),
                     ) else {
                         continue;
@@ -619,8 +619,8 @@ pub fn being_details_inspector(world: &mut World) {
                     if pain_slowdown {
                         row.push_str(" PainMult");
                     }
-                    if let Some(ezero_ref) = ezero_ref {
-                        row.push_str(&format!(" EzRef {:?}", ezero_ref.0));
+                    if let Some(templ_ref) = templ_ref {
+                        row.push_str(&format!(" EzRef {:?}", templ_ref.0));
                     }
                     walk_rows.push(row);
                 }
@@ -793,9 +793,9 @@ pub fn being_details_inspector(world: &mut World) {
                     .map_or(0.0, |damage| damage.0);
                 ui.label(format!("Part damage: {:.2}", part_damage));
 
-                let source_part_ent = ezero_refs_query.get(world, selected_part_entity).ok().map(|refe| refe.0);
+                let source_part_ent = templ_refs_query.get(world, selected_part_entity).ok().map(|refe| refe.0);
                 ui.label(format!(
-                    "Part ezero ref: {}",
+                    "Part templ ref: {}",
                     source_part_ent.map_or("missing".to_string(), |ent| format!("{:?}", ent))
                 ));
                 ui.separator();

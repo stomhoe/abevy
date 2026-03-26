@@ -2,7 +2,7 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use common::common_components::StrId;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use game_common::game_common_components::{TemplEnti, TemplEntiRef};
 use modifier_shared::{modifier_has_marker, resolve_modifier_component};
 use modifier_shared::{modifier_components::*, modifier_types::*};
 use ::being_shared::*;
@@ -24,8 +24,8 @@ struct BodyAggregates {
 #[derive(SystemParam)]
 pub struct BodyHealthQueryParams<'w, 's> {
     bodies_query: Query<'w, 's, Entity, With<BodyOf>>,
-    parts_query: Query<'w, 's, (Entity, &'static ChildOf, Option<&'static Vital>, Option<&'static EntityZeroRef>, Has<Missing>), (With<BodypartChildOfBodypart>, Without<EntityZero>)>,
-    modifiers_query: Query<'w, 's, (Entity, &'static ModifierTarget, Option<&'static EntityZeroRef>), Without<EntityZero>>,
+    parts_query: Query<'w, 's, (Entity, &'static ChildOf, Option<&'static Vital>, Option<&'static TemplEntiRef>, Has<Missing>), (With<BodypartChildOfBodypart>, Without<TemplEnti>)>,
+    modifiers_query: Query<'w, 's, (Entity, &'static ModifierTarget, Option<&'static TemplEntiRef>), Without<TemplEnti>>,
     part_applied_mods_query: Query<'w, 's, &'static AppliedModifiers>,
     damage_query: Query<'w, 's, (Entity, Option<&'static mut BodypartDamage>), >,
     body_health_query: Query<'w, 's, Option<&'static mut BodySums>>,
@@ -87,12 +87,12 @@ pub fn apply_body_damage(
     mut cmd: Commands,
     time: Res<Time>,
     mut reader: MessageReader<IncomingDamage>,
-    bodies_query: Query<&BodypartChildrenBodyparts, (With<BodyOf>, Without<EntityZero>)>,
+    bodies_query: Query<&BodypartChildrenBodyparts, (With<BodyOf>, Without<TemplEnti>)>,
     parts_query: Query<
         (Option<&BodypartCoverageWeight>, Option<&Missing>),
-        (With<BodypartChildOfBodypart>, Without<EntityZero>),
+        (With<BodypartChildOfBodypart>, Without<TemplEnti>),
     >,
-    mut damage_query: Query<&mut BodypartDamage, (Without<EntityZero>)>,
+    mut damage_query: Query<&mut BodypartDamage, (Without<TemplEnti>)>,
     mut weighted_parts: Local<Vec<(Entity, u16)>>,
 ) {
     for damage_msg in reader.read() {
@@ -148,30 +148,30 @@ pub fn apply_body_damage(
 #[allow(unused_parens)]
 pub fn sync_bodypart_missing(
     mut cmd: Commands,
-    parts_query: Query<(Entity, Option<&EntityZeroRef>), (With<BodypartChildOfBodypart>, Without<EntityZero>)>,
+    parts_query: Query<(Entity, Option<&TemplEntiRef>), (With<BodypartChildOfBodypart>, Without<TemplEnti>)>,
     part_applied_mods_query: Query<&AppliedModifiers>,
     hp_mods_query: Query<
         (
             Entity,
             &ModifierTarget,
-            Option<&EntityZeroRef>,
+            Option<&TemplEntiRef>,
         ),
-        Without<EntityZero>,
+        Without<TemplEnti>,
     >,
     curr_values_query: Query<&CurrEffectiveValue>,
     base_values_query: Query<&BaseValue>,
     modifier_tags_query: Query<&ModifierTags>,
     hitpoints_capacity_markers: Query<(), With<HitpointsCapacity>>,
-    mut damage_query: Query<(Entity, Option<&mut BodypartDamage>), (With<BodypartChildOfBodypart>, Without<EntityZero>)>,
+    mut damage_query: Query<(Entity, Option<&mut BodypartDamage>), (With<BodypartChildOfBodypart>, Without<TemplEnti>)>,
     mut max_hp_by_part: Local<EntityHashMap<f32>>,
 ) {
     max_hp_by_part.clear();
 
-    for (part_ent, part_ezero_ref) in parts_query.iter() {
+    for (part_ent, part_templ_ref) in parts_query.iter() {
         let mut max_hp = 0.0;
         if let Ok(applied_mods) = part_applied_mods_query.get(part_ent) {
             for mod_ent in applied_mods.iter() {
-                let Ok((mod_ent, target, ezero_ref)) = hp_mods_query.get(mod_ent) else {
+                let Ok((mod_ent, target, templ_ref)) = hp_mods_query.get(mod_ent) else {
                     continue;
                 };
                 if target.0 != part_ent {
@@ -179,18 +179,18 @@ pub fn sync_bodypart_missing(
                 }
                 let is_hitpoints_capacity = modifier_has_marker::<HitpointsCapacity>(
                     mod_ent,
-                    ezero_ref,
+                    templ_ref,
                     &hitpoints_capacity_markers,
                 );
                 if !is_hitpoints_capacity {
                     continue;
                 }
-                let tags = resolve_modifier_component(mod_ent, ezero_ref, &modifier_tags_query).unwrap_or_default();
+                let tags = resolve_modifier_component(mod_ent, templ_ref, &modifier_tags_query).unwrap_or_default();
                 if tags.contains("current_hp") {
                     continue;
                 }
-                let base_value = resolve_modifier_component(mod_ent, ezero_ref, &base_values_query);
-                let current_value = resolve_modifier_component(mod_ent, ezero_ref, &curr_values_query);
+                let base_value = resolve_modifier_component(mod_ent, templ_ref, &base_values_query);
+                let current_value = resolve_modifier_component(mod_ent, templ_ref, &curr_values_query);
                 let value = current_value
                     .map(|v| v.0)
                     .or_else(|| base_value.map(|v| v.0))
@@ -199,33 +199,33 @@ pub fn sync_bodypart_missing(
             }
         }
         if max_hp <= 0.0 {
-            let Some(part_ezero_ref) = part_ezero_ref else {
+            let Some(part_templ_ref) = part_templ_ref else {
                 continue;
             };
-            let Ok(source_applied_mods) = part_applied_mods_query.get(part_ezero_ref.0) else {
+            let Ok(source_applied_mods) = part_applied_mods_query.get(part_templ_ref.0) else {
                 continue;
             };
             for mod_ent in source_applied_mods.iter() {
-                let Ok((mod_ent, target, ezero_ref)) = hp_mods_query.get(mod_ent) else {
+                let Ok((mod_ent, target, templ_ref)) = hp_mods_query.get(mod_ent) else {
                     continue;
                 };
-                if target.0 != part_ezero_ref.0 {
+                if target.0 != part_templ_ref.0 {
                     continue;
                 }
                 let is_hitpoints_capacity = modifier_has_marker::<HitpointsCapacity>(
                     mod_ent,
-                    ezero_ref,
+                    templ_ref,
                     &hitpoints_capacity_markers,
                 );
                 if !is_hitpoints_capacity {
                     continue;
                 }
-                let tags = resolve_modifier_component(mod_ent, ezero_ref, &modifier_tags_query).unwrap_or_default();
+                let tags = resolve_modifier_component(mod_ent, templ_ref, &modifier_tags_query).unwrap_or_default();
                 if tags.contains("current_hp") {
                     continue;
                 }
-                let base_value = resolve_modifier_component(mod_ent, ezero_ref, &base_values_query);
-                let current_value = resolve_modifier_component(mod_ent, ezero_ref, &curr_values_query);
+                let base_value = resolve_modifier_component(mod_ent, templ_ref, &base_values_query);
+                let current_value = resolve_modifier_component(mod_ent, templ_ref, &curr_values_query);
                 let value = current_value
                     .map(|v| v.0)
                     .or_else(|| base_value.map(|v| v.0))
@@ -288,26 +288,26 @@ pub fn update_body_health_from_parts(
         local_params.bodies.insert(ent);
     });
 
-    queries.parts_query.iter().for_each(|(ent, _, _, part_ezero_ref, _)| {
+    queries.parts_query.iter().for_each(|(ent, _, _, part_templ_ref, _)| {
         local_params.parts.insert(ent);
-        let Some(part_ezero_ref) = part_ezero_ref else {
+        let Some(part_templ_ref) = part_templ_ref else {
             return;
         };
-        instance_part_by_source_part.insert(part_ezero_ref.0, ent);
+        instance_part_by_source_part.insert(part_templ_ref.0, ent);
     });
 
-    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+    for (mod_ent, target, templ_ref) in queries.modifiers_query.iter() {
         let is_hitpoints_capacity = modifier_has_marker::<HitpointsCapacity>(
             mod_ent,
-            ezero_ref,
+            templ_ref,
             &queries.hitpoints_capacity_markers,
         );
         if !is_hitpoints_capacity {
             continue;
         }
-        let tags = resolve_modifier_component(mod_ent, ezero_ref, &queries.modifier_tags_query).unwrap_or_default();
-        let base_value = resolve_modifier_component(mod_ent, ezero_ref, &queries.base_values_query);
-        let current_value = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query);
+        let tags = resolve_modifier_component(mod_ent, templ_ref, &queries.modifier_tags_query).unwrap_or_default();
+        let base_value = resolve_modifier_component(mod_ent, templ_ref, &queries.base_values_query);
+        let current_value = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query);
         let value = current_value
             .map(|v| v.0)
             .or_else(|| base_value.map(|v| v.0))
@@ -325,16 +325,16 @@ pub fn update_body_health_from_parts(
         }
     }
 
-    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+    for (mod_ent, target, templ_ref) in queries.modifiers_query.iter() {
         let is_pain_infliction = modifier_has_marker::<PainInfliction>(
             mod_ent,
-            ezero_ref,
+            templ_ref,
             &queries.pain_infliction_markers,
         );
         if !is_pain_infliction {
             continue;
         }
-        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+        let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
             continue;
         };
         if local_params.parts.contains(&target.0) {
@@ -345,16 +345,16 @@ pub fn update_body_health_from_parts(
             *local_params.pain_infliction_by_body.entry(target.0).or_insert(0.0) += value.0;
         }
     }
-    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+    for (mod_ent, target, templ_ref) in queries.modifiers_query.iter() {
         let is_pain_sensitivity = modifier_has_marker::<PainSensitivity>(
             mod_ent,
-            ezero_ref,
+            templ_ref,
             &queries.pain_sensitivity_markers,
         );
         if !is_pain_sensitivity {
             continue;
         }
-        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+        let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
             continue;
         };
         if local_params.parts.contains(&target.0) {
@@ -366,7 +366,7 @@ pub fn update_body_health_from_parts(
         }
     }
 
-    for (part_ent, body_of, vital, part_ezero_ref, missing) in queries.parts_query.iter() {
+    for (part_ent, body_of, vital, part_templ_ref, missing) in queries.parts_query.iter() {
         let body_ent = body_of.parent();
         if !local_params.bodies.contains(&body_ent) {
             continue;
@@ -393,18 +393,18 @@ pub fn update_body_health_from_parts(
         } else {
             0.0
         };
-        let source_part_pain_infliction = part_ezero_ref.and_then(|part_ezero_ref| {
-            let Ok(applied_mods) = queries.part_applied_mods_query.get(part_ezero_ref.0) else {
+        let source_part_pain_infliction = part_templ_ref.and_then(|part_templ_ref| {
+            let Ok(applied_mods) = queries.part_applied_mods_query.get(part_templ_ref.0) else {
                 return None;
             };
             let mut total = 0.0;
             for mod_ent in applied_mods.iter() {
-                let Ok((mod_ent, _, ezero_ref)) = queries.modifiers_query.get(mod_ent) else {
+                let Ok((mod_ent, _, templ_ref)) = queries.modifiers_query.get(mod_ent) else {
                     continue;
                 };
                 let is_pain_infliction = modifier_has_marker::<PainInfliction>(
                     mod_ent,
-                    ezero_ref,
+                    templ_ref,
                     &queries.pain_infliction_markers,
                 );
                 if !is_pain_infliction {
@@ -412,7 +412,7 @@ pub fn update_body_health_from_parts(
                 }
                 let Some(value) = resolve_modifier_component(
                     mod_ent,
-                    ezero_ref,
+                    templ_ref,
                     &queries.curr_values_query,
                 ) else {
                     continue;
@@ -431,19 +431,19 @@ pub fn update_body_health_from_parts(
                 .get(&body_ent)
                 .copied()
                 .unwrap_or(0.0);
-        let source_part_pain_sensitivity = part_ezero_ref.and_then(|part_ezero_ref| {
-            let Ok(applied_mods) = queries.part_applied_mods_query.get(part_ezero_ref.0) else {
+        let source_part_pain_sensitivity = part_templ_ref.and_then(|part_templ_ref| {
+            let Ok(applied_mods) = queries.part_applied_mods_query.get(part_templ_ref.0) else {
                 return None;
             };
             let mut total = 0.0;
             let mut has_any = false;
             for mod_ent in applied_mods.iter() {
-                let Ok((mod_ent, _, ezero_ref)) = queries.modifiers_query.get(mod_ent) else {
+                let Ok((mod_ent, _, templ_ref)) = queries.modifiers_query.get(mod_ent) else {
                     continue;
                 };
                 let is_pain_sensitivity = modifier_has_marker::<PainSensitivity>(
                     mod_ent,
-                    ezero_ref,
+                    templ_ref,
                     &queries.pain_sensitivity_markers,
                 );
                 if !is_pain_sensitivity {
@@ -451,7 +451,7 @@ pub fn update_body_health_from_parts(
                 }
                 let Some(value) = resolve_modifier_component(
                     mod_ent,
-                    ezero_ref,
+                    templ_ref,
                     &queries.curr_values_query,
                 ) else {
                     continue;
@@ -493,26 +493,26 @@ pub fn update_body_health_from_parts(
     local_params.vision_mod_sum.clear();
     local_params.body_regen_map.clear();
 
-    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
-        let is_bleed = modifier_has_marker::<BleedRate>(mod_ent, ezero_ref, &queries.bleed_markers);
+    for (mod_ent, target, templ_ref) in queries.modifiers_query.iter() {
+        let is_bleed = modifier_has_marker::<BleedRate>(mod_ent, templ_ref, &queries.bleed_markers);
         if !is_bleed {
             continue;
         }
-        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+        let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
             continue;
         };
         add_modifier_sum(&mut local_params.bleed_mod_sum, target.0, value.0, &local_params.bodies, &local_params.part_to_body);
     }
-    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+    for (mod_ent, target, templ_ref) in queries.modifiers_query.iter() {
         let is_blood_capacity = modifier_has_marker::<BloodCapacity>(
             mod_ent,
-            ezero_ref,
+            templ_ref,
             &queries.blood_capacity_markers,
         );
         if !is_blood_capacity {
             continue;
         }
-        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+        let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
             continue;
         };
         add_modifier_sum(
@@ -523,16 +523,16 @@ pub fn update_body_health_from_parts(
             &local_params.part_to_body,
         );
     }
-    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+    for (mod_ent, target, templ_ref) in queries.modifiers_query.iter() {
         let is_hp_regen = modifier_has_marker::<HitpointRegenRate>(
             mod_ent,
-            ezero_ref,
+            templ_ref,
             &queries.hp_regen_markers,
         );
         if !is_hp_regen {
             continue;
         }
-        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+        let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
             continue;
         };
         add_modifier_sum(
@@ -543,16 +543,16 @@ pub fn update_body_health_from_parts(
             &local_params.part_to_body,
         );
     }
-    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
+    for (mod_ent, target, templ_ref) in queries.modifiers_query.iter() {
         let is_consciousness = modifier_has_marker::<Consciousness>(
             mod_ent,
-            ezero_ref,
+            templ_ref,
             &queries.consciousness_markers,
         );
         if !is_consciousness {
             continue;
         }
-        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+        let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
             continue;
         };
         add_modifier_sum(
@@ -563,12 +563,12 @@ pub fn update_body_health_from_parts(
             &local_params.part_to_body,
         );
     }
-    for (mod_ent, target, ezero_ref) in queries.modifiers_query.iter() {
-        let is_vision = modifier_has_marker::<Vision>(mod_ent, ezero_ref, &queries.vision_markers);
+    for (mod_ent, target, templ_ref) in queries.modifiers_query.iter() {
+        let is_vision = modifier_has_marker::<Vision>(mod_ent, templ_ref, &queries.vision_markers);
         if !is_vision {
             continue;
         }
-        let Some(value) = resolve_modifier_component(mod_ent, ezero_ref, &queries.curr_values_query) else {
+        let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
             continue;
         };
         add_modifier_sum(&mut local_params.vision_mod_sum, target.0, value.0, &local_params.bodies, &local_params.part_to_body);

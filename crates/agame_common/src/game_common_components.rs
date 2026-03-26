@@ -192,4 +192,4 @@ impl TickMultFactor {
     }
 }
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct CloneEzeroChildren;
+pub struct CloneTemplChildren;

@@ -2,15 +2,40 @@
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
-#[allow(unused_imports)]
-use bevy::platform::collections::{HashSet, HashMap};
+use common::common_components::HashId;
 use common::common_tag_components::TagSet;
+use std::borrow::Cow;
+use std::ops::{Deref, DerefMut};
 
 use ::being_shared::*;
 use game_common::game_common_components::*;
+use tilemap::chunking::*;
 use tilemap::tile::*;
-use ::tilemap_shared::*;
-use tilemap::chunking::chunking_components::{Chunk, TerrGenState};
+
+#[derive(Clone, Copy, )]
+struct CollisionTileSample {
+    templ_ent: Entity,
+    tile_origin: GlobalTilePos,
+    direction: CardinalDirection,
+    dead_despawning: bool,
+}
+
+fn resolve_tile_direction(
+    hash_id_query: &Query<&HashId, common::AnyDisabling>,
+    card_at_gpos: &Res<CardinalDirAtGpos>,
+    templ_ent: Entity,
+    gpos: GlobalTilePos,
+    fallback: CardinalDirection,
+) -> CardinalDirection {
+    let Ok(hash_id) = hash_id_query.get(templ_ent) else {
+        return fallback;
+    };
+    card_at_gpos
+        .0
+        .get(&(*hash_id, gpos))
+        .copied()
+        .unwrap_or(fallback)
+}
 
 
 /// system which uses this must be put .in_set(PreChunkDespawnReaders)
@@ -19,49 +44,56 @@ use tilemap::chunking::chunking_components::{Chunk, TerrGenState};
 pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
     wallphaser_query: Query<'w, 's, (), With<WallPhaser>>,
-    will_despawn_query: Query<'w, 's, (), (With<Dead>, With<DespawnOnDeath>)>,
-    tile_instance_query: Query<'w, 's, (&'static EntityZeroRef, &'static GlobalTilePos), (With<Tile>, Without<Being>)>,
-    walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, >,
-    tile_tags: Query<'w, 's, &'static TagSet, (With<Tile>, Without<Being>)>,
-    interaction_zones: Query<'w, 's, &'static InteractionZones, >,
-    being_collision_query: Query<'w, 's, (Option<&'static InteractionZones>, &'static GlobalTransform), (With<Being>, )>,
-    terrgen_states: Query<'w, 's, &'static TerrGenState, With<Chunk>>,
+    will_despawn_query: Query<'w, 's, (), (With<Dead>, With<DespawnOnDeath>, common::AnyDisabling)>,
+    templ_ref_query: Query<'w, 's, &'static TemplEntiRef, ()>,
+    pub gpos_query: Query<'w, 's, &'static mut GlobalTilePos, common::AnyDisabling>,
+    walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, common::AnyDisabling>,
+    race_ref_query: Query<'w, 's, &'static RaceRef, common::AnyDisabling>,
+    bit_ref_query: Query<'w, 's, &'static BitRef, common::AnyDisabling>,
+    tags: Query<'w, 's, &'static TagSet, >,
+    interaction_zones: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
+    macro_chunk_tile_indices: Query<'w, 's, &'static MacroChunkTileIndices, common::AnyDisabling>,
+    tile_indexing_query: Query<'w, 's, &'static TileIndexing, >,
+    hash_id_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
+    loaded_macro_chunks: Res<'w, LoadedMacroChunks>,
+    tile_map: Res<'w, TileEntityMap>,
+    card_at_gpos: Res<'w, CardinalDirAtGpos>,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
+    occupied_gposes: Local<'s, Vec<GlobalTilePos>>,
+    collision_tile_samples: Local<'s, Vec<CollisionTileSample>>,
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
-    pub fn gather_tiles_at(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
-        self.tile_gathering_params.gather_tiles_at(dim_ref, gpos)
+    pub fn get_being_bit_ref(&self, being: Entity) -> Option<&BitRef> {
+        self.bit_ref_query.get(being).ok()
     }
 
-    pub fn drain_tiles_to_drain(&mut self) -> impl Iterator<Item = Entity> + '_ {
-        self.tile_gathering_params.to_drain.drain(..)
+    pub fn get_being_race_ref(&self, being: Entity) -> Option<&RaceRef> {
+        self.race_ref_query.get(being).ok()
     }
 
-    pub fn cardinal_direction_query(
-        &mut self,
-    ) -> &mut Query<'w, 's, &'static mut CardinalDirection, ()> {
-        &mut self.tile_gathering_params.cardinal_direction_query
-    }
-
-    pub fn gather_tiles_at_to_drain(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos) {
-        self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos)
-    }
-
-    pub fn get_being_direction(&mut self, being: Entity) -> Option<CardinalDirection> {
-        self.tile_gathering_params
-            .cardinal_direction_query
-            .get_mut(being)
+    fn resolve_collision_context_for_entity<'a>(&'a self, entity: Entity) -> (Cow<'a, InteractionZone>, CardinalDirection) {
+        let collision_zone = self
+            .interaction_zones
+            .get(entity)
             .ok()
-            .map(|direction| *direction)
-    }
-
-    pub fn set_being_direction(&mut self, being: Entity, direction: CardinalDirection) -> bool {
-        let Ok(mut current_direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(being) else {
-            return false;
-        };
-        *current_direction = direction;
-        true
+            .and_then(|zones| zones.get_collision_mask())
+            .map(Cow::Borrowed)
+            .or_else(|| {
+                self.bit_ref_query.get(entity).ok()
+                    .and_then(|bit_ref| self.interaction_zones.get(bit_ref.0).ok())
+                    .and_then(|zones| zones.get_collision_mask())
+                    .map(Cow::Borrowed)
+            })
+            .or_else(|| {
+                self.race_ref_query.get(entity).ok()
+                    .and_then(|race_ref| self.interaction_zones.get(race_ref.0).ok())
+                    .and_then(|zones| zones.get_collision_mask())
+                    .map(Cow::Borrowed)
+            })
+            .unwrap_or_else(|| Cow::Owned(InteractionZone::collision_default_zone()));
+        let facing_dir = self.tile_gathering_params.cardinal_direction_query.get(entity).cloned().unwrap_or_default();
+        (collision_zone, facing_dir)
     }
 
     pub fn find_nearest_unblocked_gpos_in_chunk(
@@ -116,57 +148,70 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         &mut self,
         dim_ref: DimensionRef,
         gpos: GlobalTilePos,
-        being: Entity,
+        entity: Entity,
         whitelisted_tags: &WhitelistedSpawnTileTags,
         blacklisted_tags: &BlacklistedSpawnTileTags,
     ) -> bool {
         let moving_anchor = gpos.to_pixelpos();
-        let (moving_collision_zone, moving_direction) = self.resolve_being_collision_zone_and_direction(being);
-        let occupied_gposes = Self::gather_occupied_gposes(&moving_collision_zone, moving_direction, moving_anchor, gpos);
-        for occupied_gpos in occupied_gposes.iter().copied() {
-            for &target_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, occupied_gpos).iter() {
-                if target_being == being {
+        self.occupied_gposes.clear();
+
+        let (collision_zone, facing_dir) = self.resolve_collision_context_for_entity(entity);
+        let default_collision_zone;
+        let collision_zone_ptr = match collision_zone {
+            Cow::Borrowed(collision_zone) => collision_zone as *const InteractionZone,
+            Cow::Owned(collision_zone) => {
+                default_collision_zone = collision_zone;
+                &default_collision_zone as *const InteractionZone
+            }
+        };
+        let collision_zone = unsafe { &*collision_zone_ptr };
+
+        collision_zone.gather_zone_positions(facing_dir, moving_anchor, &mut self.occupied_gposes);
+        if self.occupied_gposes.is_empty() {
+            self.occupied_gposes.push(gpos);
+        }
+        let can_phase = self.wallphaser_query.get(entity).is_ok();
+
+        let mut all_tiles_failed = true;
+        let mut has_whitelist_match = whitelisted_tags.0.is_empty();
+        let mut has_blacklist_match = false;
+        let occupied_gposes_len = self.occupied_gposes.len();
+        let occupied_gposes_ptr = self.occupied_gposes.as_ptr();
+        for occupied_idx in 0..occupied_gposes_len {
+            let occupied_gpos = unsafe { *occupied_gposes_ptr.add(occupied_idx) };
+            for &other_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, occupied_gpos).iter() {
+                if other_being == entity {
                     continue;
                 }
-                let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
-                    return false;
-                };
-                let target_zone = target_zones
+                let target_zones = self.interaction_zones.get(other_being).ok();
+                let coli_zone = target_zones
                     .and_then(|zones| zones.get_collision_mask().cloned())
                     .unwrap_or_else(InteractionZone::collision_default_zone);
-                let Ok(target_direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(target_being) else {
-                    return false;
+                let target_direction = self.tile_gathering_params.cardinal_direction_query.get(other_being)
+                    .cloned()
+                    .unwrap_or_default();
+                let Ok(gpos) = self.gpos_query.get(other_being) else {
+                    continue;
                 };
-                let target_direction = *target_direction;
-                let target_anchor = target_transform.translation().xy();
-                let intersects = target_zone.intersects_zone(
+                let target_anchor: Vec2 = gpos.to_pixelpos();
+                let intersects = coli_zone.intersects_zone(
                     target_direction,
                     target_anchor,
-                    &moving_collision_zone,
-                    moving_direction,
+                    collision_zone,
+                    facing_dir,
                     moving_anchor,
                 );
                 if intersects {
                     return false;
                 }
             }
-        }
-
-        let can_phase = self.wallphaser_query.get(being).is_ok();
-
-        let mut all_tiles_failed = true;
-        let mut has_whitelist_match = whitelisted_tags.0.is_empty();
-        let mut has_blacklist_match = false;
-
-        for occupied_gpos in occupied_gposes.iter().copied() {
-            self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos);
-            for tile_entity in self.tile_gathering_params.to_drain.drain(..) {
-                let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
-                    continue;
-                };
+            self.gather_collision_tile_samples(dim_ref, occupied_gpos);
+            let tile_samples_len = self.collision_tile_samples.len();
+            let tile_samples_ptr = self.collision_tile_samples.as_ptr();
+            for tile_sample_idx in 0..tile_samples_len {
+                let sample = unsafe { *tile_samples_ptr.add(tile_sample_idx) };
                 all_tiles_failed = false;
-
-                if let Ok(tile_tags) = self.tile_tags.get(ezero_ref.0) {
+                if let Ok(tile_tags) = self.tags.get(sample.templ_ent) {
                     if !whitelisted_tags.0.is_empty() && tile_tags.intersects(&whitelisted_tags.0.0) {
                         has_whitelist_match = true;
                     }
@@ -174,39 +219,31 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                         has_blacklist_match = true;
                     }
                 }
-
                 if can_phase {
                     continue;
                 }
-
-                if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
-                    if self.will_despawn_query.get(tile_entity).is_err() {
-                        return false;
-                    }
+                if sample.dead_despawning {
                     continue;
                 }
-
-                let Ok(interaction_zones) = self.interaction_zones.get(ezero_ref.0) else {
+                if self.walk_speed.get(sample.templ_ent).cloned().unwrap_or_default().is_extremely_low() {
+                    return false;
+                }
+                let Ok(interaction_zones) = self.interaction_zones.get(sample.templ_ent) else {
                     continue;
                 };
-                let direction = self
-                    .tile_gathering_params
-                    .cardinal_direction_query
-                    .get_mut(tile_entity)
-                    .map(|direction| *direction)
-                    .unwrap_or_default();
                 let blocks_here = interaction_zones.interaction_zones_intersect(
                     InteractionZones::COLLISION,
-                    &moving_collision_zone,
-                    direction,
-                    tile_origin.to_pixelpos(),
-                    moving_direction,
+                    collision_zone,
+                    sample.direction,
+                    sample.tile_origin.to_pixelpos(),
+                    facing_dir,
                     moving_anchor,
                 );
-                if blocks_here && self.will_despawn_query.get(tile_entity).is_err() {
+                if blocks_here {
                     return false;
                 }
             }
+            self.collision_tile_samples.clear();
         }
 
         if all_tiles_failed {
@@ -219,59 +256,57 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         !has_blacklist_match
     }
 
-    pub fn has_tagset_at(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, target_tags: &TagSet) -> bool {
-        if target_tags.is_empty() {
-            return false;
-        }
-        self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, gpos);
-        for tile_entity in self.tile_gathering_params.to_drain.drain(..) {
-            let Ok((ezero_ref, ..)) = self.tile_instance_query.get(tile_entity) else {
-                continue;
-            };
-            let Ok(tile_tags) = self.tile_tags.get(ezero_ref.0) else {
-                continue;
-            };
-            if tile_tags.intersects(target_tags) {
-                return true;
-            }
-        }
-        false
+    pub fn is_blocked_at(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, ) -> bool {
+        self.is_blocked_at_impl_except_dead_despawning(dim_ref, gpos, being, true, )
     }
 
-    pub fn is_blocked_at(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
-        self.is_blocked_at_impl_except_dead_despawning(dim_ref, gpos, being, true)
-    }
-
-    pub fn is_blocked_at_tiles_only(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity) -> bool {
-        self.is_blocked_at_impl_except_dead_despawning(dim_ref, gpos, being, false)
+    pub fn is_blocked_at_tiles_only(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, ) -> bool {
+        self.is_blocked_at_impl_except_dead_despawning(dim_ref, gpos, being, false, )
     }
 
     fn is_blocked_at_impl_except_dead_despawning(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, include_beings: bool) -> bool {
         let moving_anchor = gpos.to_pixelpos();
-        let (moving_collision_zone, moving_direction) = self.resolve_being_collision_zone_and_direction(being);
-        let occupied_gposes = Self::gather_occupied_gposes(&moving_collision_zone, moving_direction, moving_anchor, gpos);
+        let (collision_zone, facing_dir) = self.resolve_collision_context_for_entity(being);
+        let default_collision_zone;
+        let collision_zone_ptr = match collision_zone {
+            Cow::Borrowed(collision_zone) => collision_zone as *const InteractionZone,
+            Cow::Owned(collision_zone) => {
+                default_collision_zone = collision_zone;
+                &default_collision_zone as *const InteractionZone
+            }
+        };
+        let collision_zone = unsafe { &*collision_zone_ptr };
+
+        self.occupied_gposes.clear();
+        collision_zone.gather_zone_positions(facing_dir, moving_anchor, &mut self.occupied_gposes);
+        if self.occupied_gposes.is_empty() {
+            self.occupied_gposes.push(gpos);
+        }
+        let occupied_gposes = self.occupied_gposes.clone();
         if include_beings {
             for occupied_gpos in occupied_gposes.iter().copied() {
-                for &target_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, occupied_gpos).iter() {
-                    if target_being == being {
+                for &other_being in self.beings_at_gpos.get_beings_at_pos(dim_ref, occupied_gpos).iter() {
+                    if other_being == being {
                         continue;
                     }
-                    let Ok((target_zones, target_transform)) = self.being_collision_query.get(target_being) else {
+                    let target_zones = self.interaction_zones.get(other_being).ok();
+                    let target_zone = target_zones
+                        .and_then(|zones| zones.get_collision_mask().cloned())
+                        .unwrap_or_else(InteractionZone::collision_default_zone);
+                    let Ok(target_direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(other_being) else {
                         return true;
                     };
-                let target_zone = target_zones
-                    .and_then(|zones| zones.get_collision_mask().cloned())
-                    .unwrap_or_else(InteractionZone::collision_default_zone);
-                    let Ok(target_direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(target_being) else {
+                    let Ok(gpos) = self.gpos_query.get(other_being) else {
                         return true;
                     };
+                    let target_anchor = gpos.to_pixelpos();
                     let target_direction = *target_direction;
-                    let target_anchor = target_transform.translation().xy();
+
                     let intersects = target_zone.intersects_zone(
                         target_direction,
                         target_anchor,
-                        &moving_collision_zone,
-                        moving_direction,
+                        collision_zone,
+                        facing_dir,
                         moving_anchor,
                     );
                     if intersects {
@@ -288,40 +323,29 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
         let mut all_tiles_failed = true;
         for occupied_gpos in occupied_gposes.iter().copied() {
-            self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos);
-            for tile_entity in self.tile_gathering_params.to_drain.drain(..) {
-                let Ok((ezero_ref, tile_origin)) = self.tile_instance_query.get(tile_entity) else {
-                    continue;
-                };
+            self.gather_collision_tile_samples(dim_ref, occupied_gpos);
+            let tile_samples = self.collision_tile_samples.drain(..).collect::<Vec<_>>();
+            for sample in tile_samples {
                 all_tiles_failed = false;
-                if self.walk_speed.get(ezero_ref.0).cloned().unwrap_or_default().is_extremely_low() {
-                    let Ok(_) = self.will_despawn_query.get(tile_entity) else {
-                        return true;
-                    };
+                if sample.dead_despawning {
                     continue;
                 }
-
-                let Ok(interaction_zones) = self.interaction_zones.get(ezero_ref.0) else {
+                if self.walk_speed.get(sample.templ_ent).cloned().unwrap_or_default().is_extremely_low() {
+                    return true;
+                }
+                let Ok(interaction_zones) = self.interaction_zones.get(sample.templ_ent) else {
                     continue;
                 };
-                let direction = self
-                    .tile_gathering_params
-                    .cardinal_direction_query
-                    .get_mut(tile_entity)
-                    .map(|direction| *direction)
-                    .unwrap_or_default();
                 let blocks_here = interaction_zones.interaction_zones_intersect(
                     InteractionZones::COLLISION,
-                    &moving_collision_zone,
-                    direction,
-                    tile_origin.to_pixelpos(),
-                    moving_direction,
+                    collision_zone,
+                    sample.direction,
+                    sample.tile_origin.to_pixelpos(),
+                    facing_dir,
                     moving_anchor,
                 );
                 if blocks_here {
-                    let Ok(_) = self.will_despawn_query.get(tile_entity) else {
-                        return true;
-                    };
+                    return true;
                 }
             }
         }
@@ -332,121 +356,178 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         false
     }
 
-    fn resolve_being_collision_zone_and_direction(&mut self, being: Entity) -> (InteractionZone, CardinalDirection) {
-        let Ok((zones, _)) = self.being_collision_query.get(being) else {
-            return (InteractionZone::collision_default_zone(), CardinalDirection::default());
+    fn gather_tile_templs_at<'a>(
+        &self,
+        dim_ref: DimensionRef,
+        gpos: GlobalTilePos,
+        out: &'a mut Vec<Entity>,
+    ) -> &'a [Entity] {
+        out.clear();
+        let macro_chunk_pos = gpos.to_chunkpos().to_macrochunk_pos();
+        let Some(&macro_chunk_ent) = self.loaded_macro_chunks.0.get(&(dim_ref, macro_chunk_pos)) else {
+            return out.as_slice();
         };
-        let Ok(direction) = self.tile_gathering_params.cardinal_direction_query.get_mut(being) else {
-            return (
-                zones
-                    .and_then(|zones| zones.get_collision_mask().cloned())
-                    .unwrap_or_else(InteractionZone::collision_default_zone),
-                CardinalDirection::default(),
-            );
+        let Ok(macro_chunk_tile_indices) = self.macro_chunk_tile_indices.get(macro_chunk_ent) else {
+            return out.as_slice();
         };
-        (
-            zones
-                .and_then(|zones| zones.get_collision_mask().cloned())
-                .unwrap_or_else(InteractionZone::collision_default_zone),
-            *direction,
-        )
-    }
-
-    fn gather_occupied_gposes(
-        moving_collision_zone: &InteractionZone,
-        moving_direction: CardinalDirection,
-        moving_anchor: Vec2,
-        fallback_gpos: GlobalTilePos,
-    ) -> Vec<GlobalTilePos> {
-        let mut occupied_gposes = Vec::new();
-        moving_collision_zone.gather_zone_positions(moving_direction, moving_anchor, &mut occupied_gposes);
-        if occupied_gposes.is_empty() {
-            occupied_gposes.push(fallback_gpos);
+        let Ok(tile_indexing) = self.tile_indexing_query.single() else {
+            return out.as_slice();
+        };
+        let macro_chunk_anchor = macro_chunk_pos.to_chunkpos().to_tilepos();
+        let Some(tile_indices) = macro_chunk_tile_indices.tile_indices_at_gpos(macro_chunk_anchor, gpos) else {
+            return out.as_slice();
+        };
+        out.reserve(tile_indices.len());
+        for &tile_index in tile_indices.iter() {
+            let Some(tile_hash_id) = tile_indexing.hash_id_for_index(tile_index) else {
+                continue;
+            };
+            let Ok(tile_templ_ent) = self.tile_map.0.get_cloned(tile_hash_id) else {
+                continue;
+            };
+            out.push(tile_templ_ent);
         }
-        occupied_gposes
+        out.as_slice()
     }
 
-    pub fn find_closest_spawn_suitable_gpos_across_loaded_chunks(
+    fn gather_collision_tile_samples(
         &mut self,
-        loaded_chunks: &LoadedChunks,
+        dim_ref: DimensionRef,
+        occupied_gpos: GlobalTilePos,
+    ) {
+        self.collision_tile_samples.clear();
+        self.tile_gathering_params.gather_tiles_at_to_drain(dim_ref, occupied_gpos);
+        if !self.tile_gathering_params.to_drain.is_empty() {
+            let tile_entities_len = self.tile_gathering_params.to_drain.len();
+            let tile_entities_ptr = self.tile_gathering_params.to_drain.as_ptr();
+            self.collision_tile_samples.reserve(tile_entities_len);
+            for tile_entity_idx in 0..tile_entities_len {
+                let tile_entity = unsafe { *tile_entities_ptr.add(tile_entity_idx) };
+                let Ok(templ_ref) = self.templ_ref_query.get(tile_entity) else {
+                    continue;
+                };
+                let Ok(tile_origin) = self.gpos_query.get(tile_entity) else {
+                    continue;
+                };
+                let fallback_direction = self
+                    .tile_gathering_params
+                    .cardinal_direction_query
+                    .get(tile_entity)
+                    .cloned()
+                    .unwrap_or_default();
+                self.collision_tile_samples.push(CollisionTileSample {
+                    templ_ent: templ_ref.0,
+                    tile_origin: *tile_origin,
+                    direction: resolve_tile_direction(&self.hash_id_query, &self.card_at_gpos, templ_ref.0, *tile_origin, fallback_direction),
+                    dead_despawning: self.will_despawn_query.get(tile_entity).is_ok(),
+                });
+            }
+            self.tile_gathering_params.to_drain.clear();
+        } else {
+            let mut fallback_templs = Vec::new();
+            let templ_ents = self.gather_tile_templs_at(dim_ref, occupied_gpos, &mut fallback_templs);
+            let templ_ents_len = templ_ents.len();
+            let templ_ents_ptr = templ_ents.as_ptr();
+            self.collision_tile_samples.reserve(templ_ents_len);
+            for templ_ent_idx in 0..templ_ents_len {
+                let templ_ent = unsafe { *templ_ents_ptr.add(templ_ent_idx) };
+                self.collision_tile_samples.push(CollisionTileSample {
+                    templ_ent,
+                    tile_origin: occupied_gpos,
+                    direction: resolve_tile_direction(&self.hash_id_query, &self.card_at_gpos, templ_ent, occupied_gpos, CardinalDirection::default()),
+                    dead_despawning: false,
+                });
+            }
+        }
+    }
+
+    pub fn find_closest_allowe_gpos(
+        &mut self,
         dim_ref: DimensionRef,
         target_gpos: GlobalTilePos,
         being: Entity,
         whitelisted_tags: &WhitelistedTags,
         blacklisted_tags: &BlacklistedTags,
-        max_chunk_manhattan: i32,
     ) -> Option<GlobalTilePos> {
-        let home_chunk = target_gpos.to_chunkpos();
-
-        // collect chunks in this dimension
-        let mut nearby_chunks: Vec<(ChunkPos, Entity)> = Vec::new();
-        for (&(dref, chunk_pos), &chunk_ent) in loaded_chunks.0.iter() {
-            if dref != dim_ref {
-                continue;
-            }
-            let manhattan = (chunk_pos.0.x - home_chunk.0.x).abs() + (chunk_pos.0.y - home_chunk.0.y).abs();
-            if manhattan as i32 <= max_chunk_manhattan {
-                nearby_chunks.push((chunk_pos, chunk_ent));
-            }
-        }
-
-        // sort by Manhattan distance ascending
-        nearby_chunks.sort_by_key(|(cp, _)| (cp.0.x - home_chunk.0.x).abs() + (cp.0.y - home_chunk.0.y).abs());
-
-        let mut index = 0usize;
-        while index < nearby_chunks.len() {
-            let (chunk_pos, chunk_ent) = nearby_chunks[index];
-            let distance = (chunk_pos.0.x - home_chunk.0.x).abs() + (chunk_pos.0.y - home_chunk.0.y).abs();
-            // if we've moved to a new distance level and it's already > max, stop
-            if distance as i32 > max_chunk_manhattan {
-                break;
-            }
-
-            let anchor = chunk_pos.clamp_gpos_to_chunk(target_gpos);
-            // check terrgen readiness for this chunk
-            if let Ok(terr) = self.terrgen_states.get(chunk_ent) {
-                if !terr.is_ready() {
-                    index += 1;
-                    continue;
-                }
-            } else {
-                index += 1;
-                continue;
-            }
-
-            if let Some(found_gpos) = self.find_nearest_unblocked_gpos_in_chunk(
-                dim_ref,
-                anchor,
-                being,
-                whitelisted_tags,
-                blacklisted_tags,
-            ) {
-                return Some(found_gpos);
-            }
-
-            index += 1;
-        }
-
-        None
-    }
-
-    pub fn find_closest_allowed_gpos_across_loaded_chunks(
-        &mut self,
-        loaded_chunks: &LoadedChunks,
-        dim_ref: DimensionRef,
-        target_gpos: GlobalTilePos,
-        being: Entity,
-        blacklisted_tags: &BlacklistedTags,
-    ) -> Option<GlobalTilePos> {
-        self.find_closest_spawn_suitable_gpos_across_loaded_chunks(
-            loaded_chunks,
+        if self.allowed_at(
             dim_ref,
             target_gpos,
             being,
-            &WhitelistedTags::default(),
-            blacklisted_tags,
-            i32::MAX,
-        )
+            &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
+            &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+        ) {
+            return Some(target_gpos);
+        }
+
+        const MAX_SPIRAL_RADIUS: i32 = 256;
+        for radius in 1..=MAX_SPIRAL_RADIUS {
+            let min = -radius;
+            let max = radius;
+            for x in min..=max {
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, min));
+                if self.allowed_at(
+                    dim_ref,
+                    candidate,
+                    being,
+                    &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
+                    &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                ) {
+                    return Some(candidate);
+                }
+            }
+            for y in (min + 1)..=max {
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(max, y));
+                if self.allowed_at(
+                    dim_ref,
+                    candidate,
+                    being,
+                    &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
+                    &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                ) {
+                    return Some(candidate);
+                }
+            }
+            for x in (min..max).rev() {
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, max));
+                if self.allowed_at(
+                    dim_ref,
+                    candidate,
+                    being,
+                    &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
+                    &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                ) {
+                    return Some(candidate);
+                }
+            }
+            for y in ((min + 1)..max).rev() {
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(min, y));
+                if self.allowed_at(
+                    dim_ref,
+                    candidate,
+                    being,
+                    &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
+                    &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                ) {
+                    return Some(candidate);
+                }
+            }
+        }
+        error!(target: "asd", "No valid tile found for {:?} in {:?} around {}", being, dim_ref, target_gpos);
+        None
+    }
+}
+
+impl<'w, 's> Deref for BlockingTileParamSet<'w, 's> {
+    type Target = TileGatheringParamSet<'w, 's>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tile_gathering_params
+    }
+}
+
+impl<'w, 's> DerefMut for BlockingTileParamSet<'w, 's> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.tile_gathering_params
     }
 }
 

@@ -1,12 +1,12 @@
 use bevy::prelude::*;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::TemplEntiRef;
 use tilemap_shared::{DimensionRef, GlobalTilePos};
 
 
 
 #[derive(Message, Debug, Copy, Clone)]
 pub enum ItemOperation {
-    FromEzero(EntityZeroRef, KnownItemDest),
+    FromTempl(TemplEntiRef, KnownItemDest),
     Preexisting(Entity, Option<KnownItemDest>), // if None, walk ancestry to find ground pos of holder entity and drop item there
 }
 
@@ -17,12 +17,12 @@ pub enum KnownItemDest {
 }
 
 impl ItemOperation {
-    pub fn spawn_on_ground(ezero_ref: EntityZeroRef, dim_ref: DimensionRef, gpos: GlobalTilePos) -> Self {
-        Self::FromEzero(ezero_ref, KnownItemDest::Ground(dim_ref, gpos))
+    pub fn spawn_on_ground(templ_ref: TemplEntiRef, dim_ref: DimensionRef, gpos: GlobalTilePos) -> Self {
+        Self::FromTempl(templ_ref, KnownItemDest::Ground(dim_ref, gpos))
     }
 
-    pub fn spawn_into_holder(ezero_ref: EntityZeroRef, holder: Entity) -> Self {
-        Self::FromEzero(ezero_ref, KnownItemDest::Holder(holder))
+    pub fn spawn_into_holder(templ_ref: TemplEntiRef, holder: Entity) -> Self {
+        Self::FromTempl(templ_ref, KnownItemDest::Holder(holder))
     }
 
     pub fn drop_preexisting_on_holder_position(item: Entity) -> Self {

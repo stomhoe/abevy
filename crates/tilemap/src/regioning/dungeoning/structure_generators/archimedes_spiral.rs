@@ -3,9 +3,9 @@ use bevy::platform::collections::HashSet;
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::TemplEntiRef;
 use rand::{Rng, SeedableRng, seq::SliceRandom};
-use game_common::game_common_samplers::EntityWeightedSampler;
+use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 use ::tilemap_shared::*;
 
 use crate::regioning::{regioning_components::*, regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder}, regioning_sgc_components::StructuredGenConfig
@@ -21,10 +21,10 @@ pub fn archimedes_spiral_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
-    ezeros_map: Res<TileEntityMap>,
+    templs_map: Res<TileEntityMap>,
     sampler_map: Res<TileWeightedSamplerEntityMap>,
     sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
-    ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::TemplEnti>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
@@ -58,18 +58,18 @@ pub fn archimedes_spiral_building_system(
         let delete_other_tiles_by_tile_id = super::super::dungeoning_utils::DeleteOtherTilesConfigMap::from_args(&structured_gen_cfg.args);
         let terrgen_disable_by_tile_id = super::super::dungeoning_utils::TerrGenDisableConfigMap::from_args(&structured_gen_cfg.args);
 
-        let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
-            Ok(entity) => EntityZeroRef(entity),
+        let floor_entity = match templs_map.0.get_cloned(floor_tile_id) {
+            Ok(entity) => TemplEntiRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero '{:?}' not found for archimedes spiral dungeon", floor_tile_id);
+                error!(target: "dungeoning", "TileTempl '{:?}' not found for archimedes spiral dungeon", floor_tile_id);
                 continue;
             }
         };
 
-        let wall_entity = match ezeros_map.0.get_cloned(wall_tile_id) {
-            Ok(entity) => EntityZeroRef(entity),
+        let wall_entity = match templs_map.0.get_cloned(wall_tile_id) {
+            Ok(entity) => TemplEntiRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero '{:?}' not found for archimedes spiral dungeon", wall_tile_id);
+                error!(target: "dungeoning", "TileTempl '{:?}' not found for archimedes spiral dungeon", wall_tile_id);
                 continue;
             }
         };
@@ -246,7 +246,7 @@ pub fn archimedes_spiral_building_system(
             prev_y = Some(y);
             theta += angle_step;
         }
-        let mut boulder_anchor_map: Vec<Option<EntityZeroRef>> = vec![None; tile_map_size];
+        let mut boulder_anchor_map: Vec<Option<TemplEntiRef>> = vec![None; tile_map_size];
         if boulder_frequency > 0.0 {
             let boulder_sampler: Option<&EntityWeightedSampler> = sampler_map
                 .0
@@ -286,7 +286,7 @@ pub fn archimedes_spiral_building_system(
                     ) else {
                         continue;
                     };
-                    let size = ezero_size_query
+                    let size = templ_size_query
                         .get(sampled_boulder_ent)
                         .copied()
                         .unwrap_or_default()
@@ -311,7 +311,7 @@ pub fn archimedes_spiral_building_system(
                     if !can_place {
                         continue;
                     }
-                    boulder_anchor_map[y * tile_width + x] = Some(EntityZeroRef(sampled_boulder_ent));
+                    boulder_anchor_map[y * tile_width + x] = Some(TemplEntiRef(sampled_boulder_ent));
                     placed += 1;
 
                     let start_x = x.saturating_sub(padding);
@@ -348,7 +348,7 @@ pub fn archimedes_spiral_building_system(
                     if floor_map[map_idx] {
                         tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                         if disable_floor_terrgen {
-                            let size = ezero_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                            let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
                             extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                         }
                     }
@@ -358,7 +358,7 @@ pub fn archimedes_spiral_building_system(
                 } else if floor_map[map_idx] {
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
-                        let size = ezero_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                     }
                 }

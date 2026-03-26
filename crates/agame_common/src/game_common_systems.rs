@@ -22,22 +22,22 @@ pub fn tick_time_based_multipliers(
     }
 }
 #[allow(unused_parens)]
-pub fn clone_ezero_children_ents(
+pub fn clone_templ_children_ents(
     mut cmd: Commands,
     query: Query<
-        (Entity, &EntityZeroRef, Has<Replicated>, ),
-        (Changed<EntityZeroRef>, common::AnyDisabling),
+        (Entity, &TemplEntiRef, Has<Replicated>, ),
+        (Changed<TemplEntiRef>, common::AnyDisabling),
     >,
 
-    ezero: Query<(&Children, Option<&HeldSprites>, ), (common::AnyDisabling, With<CloneEzeroChildren>, )>,
+    templ: Query<(&Children, Option<&HeldSprites>, ), (common::AnyDisabling, With<CloneTemplChildren>, )>,
     client_state: Res<State<ClientState>>,
 ) {
     let mut new_child_of = Vec::new();
     let mut new_base_holder_ref = Vec::new();
 
     let is_client = *client_state.get() != ClientState::Disconnected;
-    query.iter().for_each(|(new_ent, ezero_ref, is_replicated, )| {
-        let Ok((ezero_children, ezero_held_sprites)) = ezero.get(ezero_ref.0)
+    query.iter().for_each(|(new_ent, templ_ref, is_replicated, )| {
+        let Ok((templ_children, templ_held_sprites)) = templ.get(templ_ref.0)
         else { return };
 
         let is_replicated = (is_replicated );
@@ -46,7 +46,7 @@ pub fn clone_ezero_children_ents(
             return;
         }
 
-        ezero_children.iter().for_each(|child_to_clone| {
+        templ_children.iter().for_each(|child_to_clone| {
             let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
                 move |builder|{ builder.deny::<DenyForEntityZeroClonedChild>();
                     if ! is_replicated{
@@ -54,12 +54,12 @@ pub fn clone_ezero_children_ents(
                     }
                 }
             ).id();
-            new_child_of.push((cloned_child, (ChildOf(new_ent), EntityZeroRef(child_to_clone))));
+            new_child_of.push((cloned_child, (ChildOf(new_ent), TemplEntiRef(child_to_clone))));
 
-            debug!(target: "entity_zero", "Cloned child {:?} of EntityZero {:?} as child of {:?}", cloned_child, ezero_ref.0, new_ent);
+            debug!(target: "entity_zero", "Cloned child {:?} of EntityZero {:?} as child of {:?}", cloned_child, templ_ref.0, new_ent);
 
-            if let Some(ezero_held_sprites) = ezero_held_sprites {
-                if ezero_held_sprites.contains(&child_to_clone) {
+            if let Some(templ_held_sprites) = templ_held_sprites {
+                if templ_held_sprites.contains(&child_to_clone) {
                     new_base_holder_ref.push((cloned_child, BaseHolderRef { base: new_ent,  }, ));
                 }
             }
@@ -82,14 +82,14 @@ pub fn despawn_sprites_without_childof(
 /// DEACTIVATE THIS SYSTEM IN RELEASE BUILDS
 #[allow(unused_parens)]
 pub fn set_entity_name(
-    ezeros_query: Query<
+    templs_query: Query<
         AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName,)>,
-        (With<EntityZero>, common::AnyDisabling),
+        (With<TemplEnti>, common::AnyDisabling),
     >,
     mut changers_query: Query<
         (
             &mut Name,
-            AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &EntityZeroRef)>,
+            AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName, &TemplEntiRef)>,
         ),
         (
             Without<ExcludedFromAutoRenamer>,
@@ -98,13 +98,13 @@ pub fn set_entity_name(
                 Changed<StrId>,
                 Changed<StrId20B>,
                 Changed<DisplayName>,
-                Changed<EntityZeroRef>,
+                Changed<TemplEntiRef>,
             )>,
             common::AnyDisabling,
         ),
     >,
 ) {
-    for (mut name, (e_prefix, strid, strid20b, display_name, ezero_ref)) in
+    for (mut name, (e_prefix, strid, strid20b, display_name, templ_ref)) in
         changers_query.iter_mut()
     {
         let mut prefix = e_prefix.map(|p| p.as_str());
@@ -112,10 +112,10 @@ pub fn set_entity_name(
         let mut sid20 = strid20b.map(|s| s.as_str());
         let mut display_name = display_name;
 
-        let mut ezero_id = String::new();
-        if let Some(ezero_ref) = ezero_ref {
+        let mut templ_id = String::new();
+        if let Some(templ_ref) = templ_ref {
             if let Ok((z_prefix, z_strid, z_strid20, z_display_name, )) =
-                ezeros_query.get(ezero_ref.0)
+                templs_query.get(templ_ref.0)
             {
                 if prefix.is_none() {
                     prefix = z_prefix.map(|p| p.as_str());
@@ -130,7 +130,7 @@ pub fn set_entity_name(
                     display_name = z_display_name;
                 }
             }
-            ezero_id = format!(" {:?}", ezero_ref);
+            templ_id = format!(" {:?}", templ_ref);
         }
 
         let prefix = prefix.unwrap_or("");
@@ -143,7 +143,7 @@ pub fn set_entity_name(
                 + sid.len()
                 + sid20.len()
                 + display_name.map(|d| d.0.len() + 2).unwrap_or(0)
-                + ezero_id.len(),
+                + templ_id.len(),
         );
 
         new_name.push_str(prefix);
@@ -155,8 +155,8 @@ pub fn set_entity_name(
             new_name.push_str(dn.0.as_str());
         }
 
-        if !ezero_id.is_empty() {
-            new_name.push_str(&ezero_id);
+        if !templ_id.is_empty() {
+            new_name.push_str(&templ_id);
         }
 
         name.set(new_name);

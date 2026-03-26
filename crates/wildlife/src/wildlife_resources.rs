@@ -29,18 +29,42 @@ impl NaturalSpawnReservationIndex {
         let Some((dim_ref, home_chunk)) = self.reservation_by_being.remove(&being_ent) else {
             return;
         };
-        let mut empty_keys = Vec::with_capacity(4);
         for key in watched_chunk_keys(dim_ref, home_chunk) {
-            let Some(being_ents) = self.by_chunk.get_mut(&key) else {
-                continue;
+            let should_remove = {
+                let Some(being_ents) = self.by_chunk.get_mut(&key) else {
+                    continue;
+                };
+                being_ents.remove(&being_ent);
+                being_ents.is_empty()
             };
-            being_ents.remove(&being_ent);
-            if being_ents.is_empty() {
-                empty_keys.push(key);
+            if should_remove {
+                self.by_chunk.remove(&key);
             }
         }
-        for key in empty_keys {
-            self.by_chunk.remove(&key);
+    }
+
+    pub fn remove_being_except_chunk(
+        &mut self,
+        being_ent: Entity,
+        skip_key: (DimensionRef, ChunkPos),
+    ) {
+        let Some((dim_ref, home_chunk)) = self.reservation_by_being.remove(&being_ent) else {
+            return;
+        };
+        for key in watched_chunk_keys(dim_ref, home_chunk) {
+            if key == skip_key {
+                continue;
+            }
+            let should_remove = {
+                let Some(being_ents) = self.by_chunk.get_mut(&key) else {
+                    continue;
+                };
+                being_ents.remove(&being_ent);
+                being_ents.is_empty()
+            };
+            if should_remove {
+                self.by_chunk.remove(&key);
+            }
         }
     }
 }

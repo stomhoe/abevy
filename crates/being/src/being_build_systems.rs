@@ -1,4 +1,4 @@
-use ::being_shared::{BeingInstTemplate, MappedSpritesToSample};
+use ::being_shared::*;
 use bevy::{
     ecs::{entity::EntityHashSet, entity_disabling::Disabled},
     prelude::*,
@@ -6,12 +6,10 @@ use bevy::{
 #[allow(unused_imports, )]
 use common::{AnyDisabling, common_components::{SampleSpriteEnts, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_resources::FactionRef;
-use being_shared::JoinedGroups;
-use game_common::{game_common_samplers::{CappedNormalDist, SpriteGlobalNormalDist, SpriteGlobalNormalDistResult, SpriteHoriNormalDist, SpriteHoriNormalDistResult, SpriteVertNormalDist, SpriteVertNormalDistResult}, game_common_timers::EntityZero};
-use tilemap_shared::InteractionZones;
+use game_common::game_common_timers::TemplEnti;
+use ::tilemap_shared::*;
 
 use crate::{
-    being_components::Being,
     being_inst_template::being_inst_template_resources::{BitRef},
     body::{BodyTreeRef, body_sampler::body_sampler_resources::BodyWeightedSamplerRef},
     race::race_components::{Race, SexesSampler, SexSizeVariationsBySex},
@@ -24,7 +22,7 @@ pub fn build_beings_from_refs(
     changed_beings: Query<
         Entity,
         (
-            Without<EntityZero>,
+            Without<TemplEnti>,
             Without<BeingInstTemplate>,
             Or<(Changed<BitRef>, Changed<RaceRef>)>,
         ),
@@ -40,7 +38,7 @@ pub fn build_beings_from_refs(
             Has<SexRef>,
             Has<InteractionZones>,
         ),
-        (Without<EntityZero>, Without<BeingInstTemplate>, AnyDisabling),
+        (Without<TemplEnti>, Without<BeingInstTemplate>, AnyDisabling),
     >,
     bit_query: Query<(
         &BeingInstTemplate,

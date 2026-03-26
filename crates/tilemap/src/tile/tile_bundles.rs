@@ -7,10 +7,10 @@ use common::common_components::*;
 
 use ::game_common::*;
 use item_shared::ItemsGeneratedOnDeath;
-use ::tilemap_shared::*;
+use ::tilemap_shared::{*, DeleteOtherTilesInSamePos, PortalSeri};
 
 use crate::tile::tile_components::*;
-use crate::tile::tile_resources::{PortalSeri, TileImagePaths};
+use crate::tile::tile_resources::TileImagePaths;
 use crate::tile::tile_shader::tile_shader_components::*;
 
 
@@ -45,11 +45,11 @@ pub struct ToDenyOnTileClone(
     FlipVerticallyBasedOnHash,
     FlipHorizontallyBasedOnHash,
     OffsetForTerrgenPlacement,
-    RotateCardinallyBasedOnHash,
-    TransformBasedCardRotation,
+    ChangeFacingDirectionBasedOnHash,
+    RotateTransform,
     TerrBlendParams,
     ItemsGeneratedOnDeath,
-
+    TileIndex,
 
 );
 
@@ -58,7 +58,7 @@ struct ToDenyOnReleaseBuild(Name);
 
 #[derive(Bundle, Debug, Clone)]
 pub struct TileMassSpawnBundle {
-    pub ezero_ref: EntityZeroRef,
+    pub templ_ref: TemplEntiRef,
     pub gpos: GlobalTilePos,
     pub snap_to_gpos: SnapTransformToGpos,
     pub dim_ref: DimensionRef,

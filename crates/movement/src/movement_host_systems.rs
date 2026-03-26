@@ -28,7 +28,6 @@ pub fn receive_step_request_from_client(
         Entity,
         &DimensionRef,
         &SpeedMagnitude,
-        &mut GlobalTilePos,
         &mut GridLockedMovement,
     ), (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
@@ -60,9 +59,13 @@ pub fn receive_step_request_from_client(
             );
             continue;
         }
-        let Ok((entity, &dim_ref, speed_magnitude, mut tile_pos, mut glm)) = beings.get_mut(being_ent) else {
+        let Ok((entity, &dim_ref, speed_magnitude, mut glm)) = beings.get_mut(being_ent) else {
             continue;
         };
+        let Ok(&tile_pos) = blocking_tiles.gpos_query.get(entity) else {
+            continue;
+        };
+        let mut curr_tile_pos = tile_pos;
         let Some(facing_dir) = blocking_tiles.get_being_direction(being_ent) else {
             continue;
         };
@@ -86,23 +89,23 @@ pub fn receive_step_request_from_client(
                 mode: SendMode::Direct(client_id),
                 message: SyncGpos {
                     being_ent,
-                    gpos: *tile_pos,
+                    gpos: curr_tile_pos,
                     dir: facing_dir,
                     force_resync: true,
                 },
             });
             continue;
         }
-        glm.ensure_grid_anchor(*tile_pos);
+        glm.ensure_grid_anchor(curr_tile_pos);
         let step_ticks = ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         let steps_taken = if step_ticks > 1 {
-            let next_gpos = GlobalTilePos(tile_pos.0 + dir_vec);
+            let next_gpos = GlobalTilePos(curr_tile_pos.0 + dir_vec);
             if blocking_tiles.is_blocked_at(dim_ref, next_gpos, entity) {
                 messages.push(ToClients {
                     mode: SendMode::Direct(client_id),
                 message: SyncGpos {
                     being_ent,
-                    gpos: *tile_pos,
+                    gpos: curr_tile_pos,
                     dir: facing_dir,
                     force_resync: true,
                 },
@@ -113,7 +116,7 @@ pub fn receive_step_request_from_client(
                 &mut blocking_tiles,
                 dim_ref,
                 entity,
-                &mut tile_pos,
+                &mut curr_tile_pos,
                 dir_vec,
                 step_ticks,
             ) {
@@ -129,7 +132,7 @@ pub fn receive_step_request_from_client(
                         mode: SendMode::Direct(client_id),
                         message: SyncGpos {
                             being_ent,
-                            gpos: *tile_pos,
+                            gpos: curr_tile_pos,
                             dir: facing_dir,
                             force_resync: true,
                         },
@@ -141,7 +144,7 @@ pub fn receive_step_request_from_client(
                         mode: SendMode::Direct(client_id),
                         message: SyncGpos {
                             being_ent,
-                            gpos: *tile_pos,
+                            gpos: curr_tile_pos,
                             dir: facing_dir,
                             force_resync: true,
                         },
@@ -155,7 +158,7 @@ pub fn receive_step_request_from_client(
                 &mut blocking_tiles,
                 dim_ref,
                 entity,
-                &mut tile_pos,
+                &mut curr_tile_pos,
                 dir_vec,
                 requested_steps,
             );
@@ -164,7 +167,7 @@ pub fn receive_step_request_from_client(
                     mode: SendMode::Direct(client_id),
                     message: SyncGpos {
                         being_ent,
-                        gpos: *tile_pos,
+                        gpos: curr_tile_pos,
                         dir: facing_dir,
                         force_resync: true,
                     },
@@ -182,7 +185,7 @@ pub fn receive_step_request_from_client(
             mode: SendMode::Broadcast,
             message: SyncGpos {
                 being_ent,
-                gpos: *tile_pos,
+                gpos: curr_tile_pos,
                 dir: step_dir,
                 force_resync: false,
             },
@@ -193,7 +196,7 @@ pub fn receive_step_request_from_client(
             being_ent,
             step_dir,
             steps_taken,
-            tile_pos,
+            curr_tile_pos,
             state.step_credit,
             secs_per_step
         );

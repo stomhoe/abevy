@@ -121,7 +121,33 @@ impl_display_debug!(MacroChunkPos, "Macrochunk pos", "Mpos");
 impl_position_ops!(MacroChunkPos);
 impl_position_conversions!(MacroChunkPos);
 
-pub const MACRO_CHUNK_SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(8);
+
+impl MacroChunkPos {
+    pub const SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(8);
+    pub fn chunk_bounds(&self) -> (ChunkPos, ChunkPos) {
+        let min = ChunkPos(self.0 * Self::SIZE_IN_CHUNKS.0);
+        let max = ChunkPos((self.0 + IVec2::ONE) * Self::SIZE_IN_CHUNKS.0);
+        (min, max)
+    }
+    pub fn to_chunkpos(&self) -> ChunkPos {
+        ChunkPos(self.0 * Self::SIZE_IN_CHUNKS.0)
+    }
+    pub fn contains_chunkpos(&self, cp: ChunkPos) -> bool {
+        let (min, max) = self.chunk_bounds();
+        cp.x() >= min.x() && cp.y() >= min.y() && cp.x() < max.x() && cp.y() < max.y()
+    }
+    pub fn sample_macro_chunk_positions<'a>(&self, n_points: usize, out: &'a mut Vec<GlobalTilePos>) -> &'a [GlobalTilePos] {
+        let (min_chunk, max_chunk_excl) = self.chunk_bounds();
+        let chunk_count = (max_chunk_excl.x() - min_chunk.x()) as usize * (max_chunk_excl.y() - min_chunk.y()) as usize;
+        out.reserve(chunk_count * n_points * n_points);
+        for y in min_chunk.y()..max_chunk_excl.y() {
+            for x in min_chunk.x()..max_chunk_excl.x() {
+                ChunkPos::new(x, y).get_n_equally_spaced_sample_points(n_points, out);
+            }
+        }
+        out.as_slice()
+    }
+}
 
 
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, )]
@@ -146,7 +172,7 @@ impl ChunkPos {
         RegionPos(self.0.div_euclid(REGION_SIZE_IN_CHUNKS.0))
     }
     pub fn to_macrochunk_pos(&self) -> MacroChunkPos {
-        MacroChunkPos(self.0.div_euclid(MACRO_CHUNK_SIZE_IN_CHUNKS.0))
+        MacroChunkPos(self.0.div_euclid(MacroChunkPos::SIZE_IN_CHUNKS.0))
     }
 
     pub fn chunk_pos_from_flat_index_within_region(index: usize, region_pos: RegionPos) -> Self {
@@ -218,6 +244,22 @@ impl ChunkPos {
             chunk_origin.y + rng.random_range(0..Self::CHUNK_SIZE.y as i32),
         ))
     }
+    pub fn get_n_equally_spaced_sample_points<'a>(&self, n: usize, out: &'a mut Vec<GlobalTilePos>) -> &'a [GlobalTilePos] {
+        if n == 0 {
+            return out.as_slice();
+        }
+        let sample_steps = n as i32 + 1;
+        let chunk_origin = self.to_tilepos().0;
+        out.reserve(n * n);
+        for sample_y in 0..n {
+            let y = (Self::CHUNK_SIZE.y as i32 * (sample_y as i32 + 1)) / sample_steps;
+            for sample_x in 0..n {
+                let x = (Self::CHUNK_SIZE.x as i32 * (sample_x as i32 + 1)) / sample_steps;
+                out.push(GlobalTilePos(chunk_origin + IVec2::new(x, y)));
+            }
+        }
+        out.as_slice()
+    }
 }
 impl From<GlobalTilePos> for ChunkPos {
     fn from(global_tile_pos: GlobalTilePos) -> Self {
@@ -235,46 +277,7 @@ impl From<Vec3> for ChunkPos {
     }
 }
 
-impl MacroChunkPos {
-    pub fn chunk_bounds(&self) -> (ChunkPos, ChunkPos) {
-        let min = ChunkPos(self.0 * MACRO_CHUNK_SIZE_IN_CHUNKS.0);
-        let max = ChunkPos((self.0 + IVec2::ONE) * MACRO_CHUNK_SIZE_IN_CHUNKS.0);
-        (min, max)
-    }
-    pub fn to_chunkpos(&self) -> ChunkPos {
-        ChunkPos(self.0 * MACRO_CHUNK_SIZE_IN_CHUNKS.0)
-    }
-    pub fn contains_chunkpos(&self, cp: ChunkPos) -> bool {
-        let (min, max) = self.chunk_bounds();
-        cp.x() >= min.x() && cp.y() >= min.y() && cp.x() < max.x() && cp.y() < max.y()
-    }
-    pub fn random_unique_gposes(&self, n: usize, rng: &mut impl Rng) -> Vec<GlobalTilePos> {
-        if n == 0 {
-            return Vec::new();
-        }
-        let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
-        let macro_size_chunks = MACRO_CHUNK_SIZE_IN_CHUNKS.0;
-        let macro_size_tiles = macro_size_chunks * chunk_size;
-        let total_tiles = (macro_size_tiles.x as usize).saturating_mul(macro_size_tiles.y as usize);
-        if total_tiles == 0 {
-            return Vec::new();
-        }
-        let target = n.min(total_tiles);
-        let mut chosen: bevy::platform::collections::HashSet<usize> = bevy::platform::collections::HashSet::default();
-        let mut out: Vec<GlobalTilePos> = Vec::with_capacity(target);
-        let base_tile = self.to_chunkpos().to_tilepos().0;
-        while out.len() < target {
-            let idx = rng.random_range(0..total_tiles);
-            if !chosen.insert(idx) {
-                continue;
-            }
-            let local_x = (idx % macro_size_tiles.x as usize) as i32;
-            let local_y = (idx / macro_size_tiles.x as usize) as i32;
-            out.push(GlobalTilePos(base_tile + IVec2::new(local_x, local_y)));
-        }
-        out
-    }
-}
+
 
 #[derive(Component, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, )]
 pub struct OplistSize(UVec2);

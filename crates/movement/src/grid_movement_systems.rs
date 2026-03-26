@@ -60,16 +60,13 @@ pub fn sync_occupancy_for_beings_at_gpos_res(
 }
 
 pub fn resolve_overlapping_beings(
-    mut beings: ParamSet<(
-        Query<(Entity, &DimensionRef, &GlobalTilePos), With<Being>>,
-        Query<(
-            Option<&StrId>,
-            &DimensionRef,
-            &mut GlobalTilePos,
-            &mut Transform,
-            Option<&mut GridLockedMovement>,
-        ), With<Being>>,
-    )>,
+    mut beings: Query<(
+        Entity,
+        Option<&StrId>,
+        &DimensionRef,
+        &mut Transform,
+        Option<&mut GridLockedMovement>,
+    ), With<Being>>,
     loaded_chunks: Res<LoadedChunks>,
     mut blocking_tiles: BlockingTileParamSet,
     mut occupied_positions: Local<HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>>,
@@ -80,7 +77,10 @@ pub fn resolve_overlapping_beings(
     duplicate_positions.clear();
     reserved_positions.clear();
 
-    for (being_ent, &dim_ref, &gpos) in beings.p0().iter() {
+    for (being_ent, _, &dim_ref, _, _) in beings.iter_mut() {
+        let Ok(&gpos) = blocking_tiles.gpos_query.get(being_ent) else {
+            continue;
+        };
         occupied_positions
             .entry((dim_ref, gpos))
             .or_default()
@@ -125,14 +125,19 @@ pub fn resolve_overlapping_beings(
                 continue;
             };
 
-            let mut beings_mut = beings.p1();
-            let Ok((str_id, &current_dim, mut gpos, mut transform, movement)) = beings_mut.get_mut(being_ent) else {
+            let Ok((_, str_id, &current_dim, mut transform, movement)) = beings.get_mut(being_ent) else {
                 continue;
             };
-            if current_dim != dim_ref || *gpos == found_gpos {
+            let Ok(&current_gpos) = blocking_tiles.gpos_query.get(being_ent) else {
+                continue;
+            };
+            if current_dim != dim_ref || current_gpos == found_gpos {
                 continue;
             }
 
+            let Ok(mut gpos) = blocking_tiles.gpos_query.get_mut(being_ent) else {
+                continue;
+            };
             *gpos = found_gpos;
             transform.translation = found_gpos.to_translation(transform.translation.z);
             if let Some(mut movement) = movement {
@@ -173,7 +178,6 @@ pub fn start_grid_locked_steps(
         &FinalNormMoveDir,
         &DimensionRef,
         &SpeedMagnitude,
-        &mut GlobalTilePos,
         &mut GridLockedMovement,
     ), (With<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
@@ -187,16 +191,20 @@ pub fn start_grid_locked_steps(
         final_norm_move_dir,
         &dim_ref,
         speed_magnitude,
-        mut tile_pos,
         mut glm,
     ) in beings.iter_mut()
     {
-        glm.ensure_grid_anchor(*tile_pos);
+        let Ok(&tile_pos) = blocking_tiles.gpos_query.get(entity) else {
+            continue;
+        };
+        let mut tile_pos = tile_pos;
+        glm.ensure_grid_anchor(tile_pos);
         let dir = final_norm_move_dir.normalize_to_axis_dir();
         let next_dir = CardinalDirection::from_dir_vec(dir);
         let step_ticks = ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir);
 
         let mut steps_to_request = 0;
+        let mut moved_tile_pos = false;
         let should_sync_with_others = if step_ticks > 1 {
             burst_step_credit_by_ent.remove(&entity);
             match glm.try_start_step(
@@ -209,6 +217,7 @@ pub fn start_grid_locked_steps(
             ) {
                 TryStartStepOutcome::Successful => {
                     steps_to_request = 1;
+                    moved_tile_pos = true;
                     true
                 }
                 TryStartStepOutcome::Blocked => {
@@ -239,6 +248,7 @@ pub fn start_grid_locked_steps(
             if steps_taken > 0 {
                 *credit = (*credit - steps_taken as f32).max(0.0);
                 steps_to_request = steps_taken;
+                moved_tile_pos = true;
                 true
             } else if dir != IVec2::ZERO
                 && blocking_tiles.get_being_direction(entity).is_some_and(|facing_dir| facing_dir != next_dir)
@@ -250,7 +260,19 @@ pub fn start_grid_locked_steps(
             }
         };
         if !should_sync_with_others {
+            if moved_tile_pos {
+                let Ok(mut being_gpos) = blocking_tiles.gpos_query.get_mut(entity) else {
+                    continue;
+                };
+                *being_gpos = tile_pos;
+            }
             continue;
+        }
+        if moved_tile_pos {
+            let Ok(mut being_gpos) = blocking_tiles.gpos_query.get_mut(entity) else {
+                continue;
+            };
+            *being_gpos = tile_pos;
         }
         if client_state.get() == &ClientState::Connected {
             req_step_msgs.push(SendStepRequest {
@@ -261,7 +283,7 @@ pub fn start_grid_locked_steps(
         } else if !connected.is_empty() {
             let message = SyncGpos {
                 being_ent: entity,
-                gpos: *tile_pos,
+                gpos: tile_pos,
                 dir: next_dir,
                 force_resync: false,
             };

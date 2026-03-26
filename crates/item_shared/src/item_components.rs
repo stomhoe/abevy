@@ -7,8 +7,8 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
-use game_common::game_common_samplers::EntityCountMapWeightedSampler;
-use crate::{ItemEntityMap, ItemsGeneratedOnDeathSeri, SlottedItemHolderSeri};
+use tilemap_shared::tilemap_shared_samplers::EntityCountMapWeightedSampler;
+use crate::{ItemEntityMap, GeneratedItemsSeri, SlottedItemHolderSeri};
 use serde::{Deserialize, Serialize};
 use ::sprite_shared::*;
 use tilemap_shared::SnapTransformToGpos;
@@ -64,9 +64,9 @@ impl Default for ItemsGeneratedOnDeath {
 
 impl ItemsGeneratedOnDeath {
     pub fn from_gen_on_death_seri(
-        seri: &ItemsGeneratedOnDeathSeri,
+        seri: &GeneratedItemsSeri,
         item_map: &ItemEntityMap,
-        all_drop_seris: &HashMap<String, ItemsGeneratedOnDeathSeri>,
+        all_drop_seris: &HashMap<String, GeneratedItemsSeri>,
     ) -> Self {
         let mut visited = std::collections::HashSet::new();
         let mut weights: Vec<(EntityHashMap<u32>, f32)> = Vec::new();
@@ -75,9 +75,9 @@ impl ItemsGeneratedOnDeath {
     }
 
     fn append_weights_from_seri(
-        seri: &ItemsGeneratedOnDeathSeri,
+        seri: &GeneratedItemsSeri,
         item_map: &ItemEntityMap,
-        all_drop_seris: &HashMap<String, ItemsGeneratedOnDeathSeri>,
+        all_drop_seris: &HashMap<String, GeneratedItemsSeri>,
         visited: &mut std::collections::HashSet<String>,
         parent_weight: f32,
         out: &mut Vec<(EntityHashMap<u32>, f32)>,

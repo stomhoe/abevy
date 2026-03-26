@@ -1,6 +1,3 @@
-//! Re-exports all dungeoning building systems from the dungeoning submodule.
-//! All actual implementations are in crates/tilemap/src/regioning/dungeoning/.
-
 #[allow(unused_imports)]
 pub use super::{
     claim_chunks_for_various_dungeon_types,

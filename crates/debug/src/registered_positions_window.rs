@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 
-use tilemap::tilemap_resources::ImportantRegisteredPositions;
+use tilemap_shared::ImportantRegisteredPositions;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -39,7 +39,7 @@ pub fn registered_positions_window(
             ui.horizontal(|ui| {
                 ui.label("RegisteredPositions:");
                 ui.label(format!("Exempted entities: {}", registered_positions.get_exempted_tile_ents().len()));
-                ui.label(format!("Registered ezero entries: {}", registered_positions.get_registered_ezeros().len()));
+                ui.label(format!("Registered templ entries: {}", registered_positions.get_registered_templs().len()));
             });
             ui.separator();
 
@@ -62,9 +62,9 @@ pub fn registered_positions_window(
                     }
 
                     // Show registered entries
-                    if !registered_positions.get_registered_ezeros().is_empty() {
+                    if !registered_positions.get_registered_templs().is_empty() {
                         ui.label("Registered Positions:");
-                        for (entity, positions) in registered_positions.get_registered_ezeros().iter() {
+                        for (entity, positions) in registered_positions.get_registered_templs().iter() {
                             ui.label(format!("Entity {:?}: {} positions", entity, positions.len()));
                             for (dim_ref, pos) in positions {
                                 ui.label(format!("  Dim: {:?}, Pos: {:?}", dim_ref, pos));

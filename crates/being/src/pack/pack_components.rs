@@ -1,9 +1,7 @@
 use bevy::{ecs::entity::{EntityHashMap, MapEntities}, platform::collections::HashMap, prelude::*};
 use bevy_replicon::prelude::Replicated;
 use ::common::*;
-use game_common::game_common_samplers::{CappedNormalDist, EntityWeightedSampler};
-use tilemap_shared::{DimensionRef, GlobalTilePos, };
-use tilemap_shared::{ChunkPos, MacroChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
+use ::tilemap_shared::*;
 use serde::{Deserialize, Serialize};
 
 const PACK_CLUSTER_RADIUS_CHUNKS: i32 = 1;
@@ -38,7 +36,7 @@ impl Pack {
             }
         }
         let min_chunk = macro_chunk_pos.to_chunkpos().0;
-        let max_chunk_excl = min_chunk + MACRO_CHUNK_SIZE_IN_CHUNKS.0;
+        let max_chunk_excl = min_chunk + MacroChunkPos::SIZE_IN_CHUNKS.0;
         for _ in 0..PACK_CENTER_SAMPLE_ATTEMPTS {
             let candidate = ChunkPos(IVec2::new(
                 rng.random_range(min_chunk.x..max_chunk_excl.x),
@@ -69,7 +67,7 @@ impl Pack {
         out.push(center_chunk);
 
         let min_chunk = macro_chunk_pos.to_chunkpos().0;
-        let max_chunk = min_chunk + MACRO_CHUNK_SIZE_IN_CHUNKS.0 - IVec2::ONE;
+        let max_chunk = min_chunk + MacroChunkPos::SIZE_IN_CHUNKS.0 - IVec2::ONE;
         while out.len() < pack_size {
             let offset = IVec2::new(
                 rng.random_range(-PACK_CLUSTER_RADIUS_CHUNKS..=PACK_CLUSTER_RADIUS_CHUNKS),

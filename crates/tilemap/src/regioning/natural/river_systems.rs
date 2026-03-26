@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
 };
 use common::{common_components::HashId, log_targets::RIVER_SYSTEM};
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::TemplEntiRef;
 use std::collections::VecDeque;
 use tilemap_shared::{ChunkPos, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, RegionPos};
 
@@ -447,7 +447,7 @@ pub fn river_structure_building_system(
             compliances_to_emit.push(compliance);
             continue;
         };
-        let river_tile_ref = EntityZeroRef(river_tile_ent);
+        let river_tile_ref = TemplEntiRef(river_tile_ent);
 
         let Some(region_info_ro) = river_debug.0.get(&(order.dimension_ref, order.region_pos)) else {
             error!(
@@ -573,7 +573,7 @@ pub fn river_structure_building_system(
         generated_tiles_total = generated_tiles_total.saturating_add(generated_count);
 
         let claimed_chunks: HashSet<ChunkPos> = order.chunks_gpos.iter().copied().collect();
-        let mut tiles_by_chunk: HashMap<ChunkPos, Vec<(GlobalTilePos, EntityZeroRef, Option<crate::tile::tile_components::DeleteOtherTilesInSamePos>)>> =
+        let mut tiles_by_chunk: HashMap<ChunkPos, Vec<(GlobalTilePos, TemplEntiRef, Option<tilemap_shared::DeleteOtherTilesInSamePos>)>> =
             HashMap::default();
         for gpos in generated_tiles.iter().copied() {
             let chunk_pos = gpos.to_chunkpos();

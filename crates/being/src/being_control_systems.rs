@@ -34,12 +34,12 @@ pub fn sync_player_being_chunk_ranges(
         *chunk_range = *default_chunk_range_for_player_beings;
     }
 }
-
+#[allow(unused_parens, )]
 pub fn on_control_change(
     mut commands: Commands,
     self_player: Query<(Entity, Has<HostPlayer>), (MyPlayer)>,
     self_player_became_mine: Query<(), (MyPlayer, Added<Mine>)>,
-    changed_query: Query<(Entity, &ComputedBy, Has<CameraTarget>), Changed<ComputedBy>>,
+    changed_query: Query<(Entity, &ComputedBy, Has<CameraTarget>), (Changed<ComputedBy>, )>,
     computed_by_query: Query<(Entity, &ComputedBy, Has<CameraTarget>)>,
     mut input_dirs: Query<&mut InputMoveDir>,
     mut removed_controlled_by: RemovedComponents<ComputedBy>,

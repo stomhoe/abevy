@@ -3,8 +3,8 @@ use bevy::ecs::entity::EntityHashMap;
 use ac_input::player_action_requests::LocalItemPickupRequest;
 use being_shared::Being;
 use common::log_targets;
-use game_common::game_common_components::{Dead, EntityZero, EntityZeroRef};
-use item_shared::{clone_item_from_ezero, DroppedItem, HeldItems, Item, ItemHeldIn, ItemOperation, ItemSpritesConfig, ItemsGeneratedOnDeath, KnownItemDest};
+use game_common::game_common_components::{Dead, TemplEnti, TemplEntiRef};
+use ::item_shared::*;
 use ::sprite_shared::{HeldSprites, ScsToBuild};
 use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
 
@@ -78,8 +78,8 @@ pub fn sync_items_at_gpos(
     mut items_at_gpos: Option<ResMut<ItemsAtGpos>>,
     mut removed_items: RemovedComponents<Item>,
     mut tracked_pos: Local<EntityHashMap<(DimensionRef, GlobalTilePos)>>,
-    query: Query<(Entity, &EntityZeroRef, Option<&DimensionRef>, Option<&Transform>, Option<&GlobalTilePos>, Has<ItemHeldIn>, Has<ScsToBuild>), (With<Item>, Without<EntityZero>)>,
-    item_cfg_query: Query<&ItemSpritesConfig, (With<Item>, With<EntityZero>)>,
+    query: Query<(Entity, &TemplEntiRef, Option<&DimensionRef>, Option<&Transform>, Option<&GlobalTilePos>, Has<ItemHeldIn>, Has<ScsToBuild>), (With<Item>, Without<TemplEnti>)>,
+    item_cfg_query: Query<&ItemSpritesConfig, (With<Item>, With<TemplEnti>)>,
 ) {
     let Some(items_at_gpos) = items_at_gpos.as_mut() else {
         tracked_pos.clear();
@@ -95,7 +95,7 @@ pub fn sync_items_at_gpos(
         items_at_gpos.remove_item(old_dim, old_gpos, item_ent);
     }
 
-    for (item_ent, ezero_ref, dim_ref, transform, curr_gpos, is_held, has_scs_to_build) in query.iter() {
+    for (item_ent, templ_ref, dim_ref, transform, curr_gpos, is_held, has_scs_to_build) in query.iter() {
         if is_held {
             let Some((old_dim, old_gpos)) = tracked_pos.remove(&item_ent) else {
                 if curr_gpos.is_some() {
@@ -135,7 +135,7 @@ pub fn sync_items_at_gpos(
         };
         if !has_scs_to_build {
             let dropped_sprite_cfg = item_cfg_query
-                .get(ezero_ref.0)
+                .get(templ_ref.0)
                 .ok()
                 .and_then(|cfg| {
                     if cfg.dropped_sprite_cfg.0 != Entity::PLACEHOLDER {
@@ -177,34 +177,34 @@ pub fn execute_item_operations(
     mut cmd: Commands,
     mut item_operations: MessageReader<ItemOperation>,
     dim_ref_query: Query<&DimensionRef>,
-    item_instance_query: Query<&ItemHeldIn, (With<Item>, Without<EntityZero>)>,
-    ezero_item_query: Query<(), (With<Item>, With<EntityZero>)>,
-    location_query: Query<(Option<&DimensionRef>, Option<&GlobalTilePos>, Option<&ChildOf>)>,
+    item_instance_query: Query<&ItemHeldIn, (With<Item>, Without<TemplEnti>)>,
+    templ_item_query: Query<(), (With<Item>, With<TemplEnti>)>,
+    child_of_query: Query<&ChildOf>,
     mut materialize_params: ItemGroundMaterializeParamSet,
 ) {
     for &item_operation in item_operations.read() {
         match item_operation {
-            ItemOperation::FromEzero(ezero_ref, KnownItemDest::Holder(target)) => {
+            ItemOperation::FromTempl(templ_ref, KnownItemDest::Holder(target)) => {
                 let Ok(&dim_ref) = dim_ref_query.get(target) else {
                     warn!(
                         target: log_targets::ITEM_SYSTEM,
-                        "Skipping item op for ezero {:?}: target {:?} has no DimensionRef",
-                        ezero_ref.0,
+                        "Skipping item op for templ {:?}: target {:?} has no DimensionRef",
+                        templ_ref.0,
                         target,
                     );
                     continue;
                 };
-                let item_instance = clone_item_from_ezero(&mut cmd, ezero_ref, dim_ref);
+                let item_instance = clone_item_from_templ(&mut cmd, templ_ref, dim_ref);
                 cmd.entity(item_instance).insert((ItemHeldIn { holder: target }, ChildOf(target)));
             }
-            ItemOperation::FromEzero(ezero_ref, KnownItemDest::Ground(dim_ref, gpos)) => {
-                materialize_params.materialize_item_on_ground_from_ezero(&mut cmd, None, ezero_ref, dim_ref, gpos);
+            ItemOperation::FromTempl(templ_ref, KnownItemDest::Ground(dim_ref, gpos)) => {
+                materialize_params.materialize_item_on_ground_from_templ(&mut cmd, None, templ_ref, dim_ref, gpos);
             }
             ItemOperation::Preexisting(item, known_dest) => {
-                if ezero_item_query.get(item).is_ok() {
+                if templ_item_query.get(item).is_ok() {
                     warn!(
                         target: log_targets::ITEM_SYSTEM,
-                        "Skipping preexisting item op for ezero {:?}; expected an item instance",
+                        "Skipping preexisting item op for templ {:?}; expected an item instance",
                         item,
                     );
                     continue;
@@ -237,7 +237,7 @@ pub fn execute_item_operations(
                     None => {
                         let mut current = held_in.holder;
                         let found_pos = loop {
-                            let Ok((dim_ref, gpos, child_of)) = location_query.get(current) else {
+                            let Ok(child_of) = child_of_query.get(current) else {
                                 warn!(
                                     target: log_targets::ITEM_SYSTEM,
                                     "Skipping preexisting item op for {:?}: failed to inspect location chain at {:?}",
@@ -246,18 +246,15 @@ pub fn execute_item_operations(
                                 );
                                 break None;
                             };
-                            if let Some((&dim_ref, &gpos)) = dim_ref.zip(gpos) {
-                                break Some((dim_ref, gpos));
-                            }
-                            let Some(child_of) = child_of else {
-                                warn!(
-                                    target: log_targets::ITEM_SYSTEM,
-                                    "Skipping preexisting item op for {:?}: no DimensionRef/GlobalTilePos found in holder chain",
-                                    item,
-                                );
-                                break None;
+                            let Ok(&dim_ref) = dim_ref_query.get(current) else {
+                                current = child_of.parent();
+                                continue;
                             };
-                            current = child_of.parent();
+                            let Some(gpos) = materialize_params.get_gpos(current) else {
+                                current = child_of.parent();
+                                continue;
+                            };
+                            break Some((dim_ref, gpos));
                         };
                         let Some((dim_ref, gpos)) = found_pos else {
                             continue;
@@ -280,21 +277,21 @@ pub fn generate_items_on_deaths(
             Option<&GlobalTransform>,
             Option<&GlobalTilePos>,
             Option<&ItemsGeneratedOnDeath>,
-            Option<&EntityZeroRef>,
+            Option<&TemplEntiRef>,
         ),
-        (Without<EntityZero>, Added<Dead>),
+        (Without<TemplEnti>, Added<Dead>),
     >,
-    ezero_drop_query: Query<&ItemsGeneratedOnDeath, With<EntityZero>>,
+    templ_drop_query: Query<&ItemsGeneratedOnDeath, With<TemplEnti>>,
     mut item_operations: Local<Vec<ItemOperation>>,
 ) {
     let mut rng = rand::rng();
-    for (is_dead, dim_ref, global_transform, tile_pos, generated_on_death, ezero_ref) in query.iter() {
+    for (is_dead, dim_ref, global_transform, tile_pos, generated_on_death, templ_ref) in query.iter() {
         if !is_dead {
             continue;
         }
         let generated_on_death = generated_on_death
             .cloned()
-            .or_else(|| ezero_ref.and_then(|ezero_ref| ezero_drop_query.get(ezero_ref.0).ok()).cloned());
+            .or_else(|| templ_ref.and_then(|templ_ref| templ_drop_query.get(templ_ref.0).ok()).cloned());
         let Some(generated_on_death) = generated_on_death else {
             continue;
         };
@@ -302,13 +299,13 @@ pub fn generate_items_on_deaths(
             info!(
                 target: log_targets::ITEM_SYSTEM,
                 "Entity death ({:?}) produced no sampled drops (tile_pos={:?}, dim_ref={:?})",
-                ezero_ref.map(|e| e.0),
+                templ_ref.map(|e| e.0),
                 tile_pos,
                 dim_ref.map(|d| d.0),
             );
             continue;
         };
-        info!(target: log_targets::ITEM_SYSTEM, "Entity death ({:?}) at {:?}: generating {} item types", ezero_ref.map(|e| e.0), tile_pos, item_counts.len());
+        info!(target: log_targets::ITEM_SYSTEM, "Entity death ({:?}) at {:?}: generating {} item types", templ_ref.map(|e| e.0), tile_pos, item_counts.len());
         let drop_pos = global_transform
             .map(|transform| transform.translation().xy())
             .or_else(|| tile_pos.map(GlobalTilePos::to_pixelpos))
@@ -319,39 +316,39 @@ pub fn generate_items_on_deaths(
         let count_multiplier = generated_on_death.count_multiplier.max(0.0);
         let dim_ref = dim_ref.copied();
 
-        for (item_ezero, base_count) in item_counts {
+        for (item_templ, base_count) in item_counts {
             let scaled_count = base_count as f32 * count_multiplier;
             let drop_count = scaled_count.round() as u32;
             if drop_count == 0 {
                 info!(
                     target: log_targets::ITEM_SYSTEM,
                     " - Skipping {:?}: base_count={}, multiplier={}, rounded_drop_count=0",
-                    item_ezero,
+                    item_templ,
                     base_count,
                     count_multiplier,
                 );
                 continue;
             }
             if drop_count > 0 {
-                info!(target: log_targets::ITEM_SYSTEM, " - Spawning {} x {:?} at {:?}", drop_count, item_ezero, drop_gpos);
+                info!(target: log_targets::ITEM_SYSTEM, " - Spawning {} x {:?} at {:?}", drop_count, item_templ, drop_gpos);
             }
             for _ in 0..drop_count {
                 let Some(dim_ref) = dim_ref else {
                     warn!(
                         target: log_targets::ITEM_SYSTEM,
-                        "   -> missing DimensionRef on dead entity; ezero {:?} cannot be spawned on ground",
-                        item_ezero,
+                        "   -> missing DimensionRef on dead entity; templ {:?} cannot be spawned on ground",
+                        item_templ,
                     );
                     continue;
                 };
                 info!(
                     target: log_targets::ITEM_SYSTEM,
-                    "   -> queued item op dim={:?} gpos={:?} ezero={:?}",
+                    "   -> queued item op dim={:?} gpos={:?} templ={:?}",
                     dim_ref.0,
                     drop_gpos,
-                    item_ezero,
+                    item_templ,
                 );
-                item_operations.push(ItemOperation::spawn_on_ground(EntityZeroRef(item_ezero), dim_ref, drop_gpos));
+                item_operations.push(ItemOperation::spawn_on_ground(TemplEntiRef(item_templ), dim_ref, drop_gpos));
             }
         }
     }

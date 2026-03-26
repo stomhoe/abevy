@@ -44,7 +44,7 @@ pub fn process_hot_reload_request(
     mut hot_reload_request: ResMut<HotReloadRequest>,
     mut loading_state: ResMut<NextState<AssetLoading>>,
     mut hot_loading: ResMut<NextState<AssetHotReloadState>>,
-    mut regpos: ResMut<tilemap::tilemap_resources::ImportantRegisteredPositions>,
+    mut regpos: ResMut<tilemap_shared::ImportantRegisteredPositions>,
     mut force_all_chunks_despawn_writer: MessageWriter<ForceAllChunksDespawn>,
     client_state: Res<State<ServerState>>,
 ) {

@@ -1,8 +1,8 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::common_components::HashId;
-use game_common::{game_common_components::ArgsDict, game_common_samplers::EntityWeightedSampler};
-use ::tilemap_shared::{GlobalGenSettings, GlobalTilePos};
-use crate::tile::{tile_components::DeleteOtherTilesInSamePos, tile_sampler_components::TileWeightedSampler};
+use game_common::game_common_components::ArgsDict;
+use crate::tile::tile_sampler_components::TileWeightedSampler;
+use ::tilemap_shared::*;
 
 #[derive(Default, Debug)]
 pub struct DeleteOtherTilesConfigMap {

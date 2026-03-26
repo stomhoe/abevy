@@ -36,7 +36,7 @@ pub fn add_spritechildren_and_comps(
         (With<SpriteConfig>, common::AnyDisabling),
     >,
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
-    sprite_config_ref_query: Query<&EntityZeroRef, common::AnyDisabling>,
+    sprite_config_ref_query: Query<&TemplEntiRef, common::AnyDisabling>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut removed_unloaded: RemovedComponents<being_shared::Unloaded>,
     mut fathers_to_build: Local<Vec<Entity>>,
@@ -71,7 +71,7 @@ pub fn add_spritechildren_and_comps(
             }
             let sprite = cmd.spawn((
                 str_id.clone(),
-                EntityZeroRef(spritecfg_ent),
+                TemplEntiRef(spritecfg_ent),
                 Visibility::default(),
                 Transform::default(),
                 AcAnimationProgresses::default(),
@@ -100,21 +100,21 @@ pub fn add_spritechildren_and_comps(
 #[allow(unused_parens)]
 pub fn remap_broken_sprite_config_refs_after_hotreload(
     mut sprites_query: Query<
-        (&StrId, &mut EntityZeroRef),
+        (&StrId, &mut TemplEntiRef),
         (Without<SpriteConfig>, With<BaseHolderRef>),
     >,
     sprite_cfg_query: Query<(), With<SpriteConfig>>,
     sprite_map: Res<SpriteConfigEntityMap>,
 ) {
-    for (sprite_id, mut ezero_ref) in sprites_query.iter_mut() {
-        if sprite_cfg_query.get(ezero_ref.0).is_ok() {
+    for (sprite_id, mut templ_ref) in sprites_query.iter_mut() {
+        if sprite_cfg_query.get(templ_ref.0).is_ok() {
             continue;
         }
         let Ok(new_cfg_ent) = sprite_map.0.get_cloned(sprite_id) else {
             continue;
         };
-        if new_cfg_ent != ezero_ref.0 {
-            ezero_ref.0 = new_cfg_ent;
+        if new_cfg_ent != templ_ref.0 {
+            templ_ref.0 = new_cfg_ent;
         }
     }
 }
@@ -122,13 +122,13 @@ pub fn remap_broken_sprite_config_refs_after_hotreload(
 #[allow(unused_parens)]
 pub fn become_child_of_sprite_with_tag(
     mut cmd: Commands,
-    changed_new_sprites: Query<Entity, (Without<SpriteConfig>, Changed<EntityZeroRef>)>,
+    changed_new_sprites: Query<Entity, (Without<SpriteConfig>, Changed<TemplEntiRef>)>,
     new_sprites: Query<
-        (&BaseHolderRef, &EntityZeroRef),
+        (&BaseHolderRef, &TemplEntiRef),
         (Without<SpriteConfig>, common::AnyDisabling),
     >,
     sprite_holder: Query<&HeldSprites>,
-    other_sprites: Query<(Entity, &EntityZeroRef), (Without<SpriteConfig>,)>,
+    other_sprites: Query<(Entity, &TemplEntiRef), (Without<SpriteConfig>,)>,
     becomes_query: Query<(&BecomeChildOfSpriteWithTag), (common::AnyDisabling)>,
     other_cats: Query<&TagSet, (common::AnyDisabling)>,
     mut removed_disabled: RemovedComponents<Disabled>,
@@ -179,7 +179,7 @@ fn needs_sprite_build(
     to_build: &ScsToBuild,
     baseholder_ref: &BaseHolderRef,
     held_sprites_query: &Query<&HeldSprites, common::AnyDisabling>,
-    sprite_config_ref_query: &Query<&EntityZeroRef, common::AnyDisabling>,
+    sprite_config_ref_query: &Query<&TemplEntiRef, common::AnyDisabling>,
 ) -> bool {
     let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) else {
         return true;

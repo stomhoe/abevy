@@ -52,7 +52,7 @@ pub struct SlottedItemHolderSeri {
 }
 
 #[derive(Deserialize, Asset, TypePath, Default, Debug, Clone)]
-pub struct ItemsGeneratedOnDeathSeri {
+pub struct GeneratedItemsSeri {
     pub id: String,
     /// Weighted drop entries where each entry is an item-id -> count map
     #[serde(default)]
@@ -67,7 +67,7 @@ pub struct ItemsGeneratedOnDeathSeri {
 
 fn default_drop_count_multiplier() -> f32 { 1.0 }
 
-impl ItemsGeneratedOnDeathSeri {
+impl GeneratedItemsSeri {
     pub fn is_sentinel(&self) -> bool {
         self.id.trim().is_empty()
             && self.weights.is_empty()

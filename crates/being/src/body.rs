@@ -9,7 +9,7 @@ use crate::body::{
     body_systems::*,
     body_hp_systems::*,
     body_tree_build_systems::*,
-    body_tree_ezero_init_systems::*,
+    body_tree_templ_init_systems::*,
 };
 
 pub mod body_tree_components;
@@ -20,7 +20,7 @@ pub mod body_sampler;
 mod body_systems;
 mod body_hp_systems;
 mod body_tree_build_systems;
-mod body_tree_ezero_init_systems;
+mod body_tree_templ_init_systems;
 #[allow(unused_imports)] pub use body_tree_components::*;
 #[allow(unused_imports)] pub use body_tree_resources::*;
 #[allow(unused_imports)] pub use body_tree_seris::*;
@@ -53,7 +53,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
-            (init_ezero_body_trees, ApplyDeferred, distribute_ezero_body_tree_modifiers, map_body_tree_id_to_entity).chain().in_set(BodySystems),
+            (init_templ_body_trees, ApplyDeferred, distribute_templ_body_tree_modifiers, map_body_tree_id_to_entity).chain().in_set(BodySystems),
         ),
     )
     .configure_sets(

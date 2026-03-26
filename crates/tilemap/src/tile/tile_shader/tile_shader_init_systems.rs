@@ -1,9 +1,10 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use crate::tile::terrbl::TerrBlendMat;
+
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::*;
 use common::log_targets::TILE_SHADER_INIT;
+use tilemap_shared::TerrBlendMat;
 use crate::tile::tile_shader::{TileShaderEntityMap, tile_shader_components::*, tile_shader_resources::*};
 
 

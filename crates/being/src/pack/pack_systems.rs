@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
-use game_common::game_common_components::EntityZero;
+use game_common::game_common_components::TemplEnti;
 use tilemap_shared::{DimensionRef, GlobalTilePos, };
 use ::being_shared::*;
 
@@ -11,7 +11,7 @@ use crate::pack::pack_components::{Pack, PackCenterPos, CenterRankMultipliers, G
 #[allow(unused_parens, )]
 pub fn cleanup_empty_packs(
     mut cmd: Commands,
-    pack_query: Query<(Entity,), (With<Pack>, Without<EntityZero>, Without<SquadMembers>, )>,
+    pack_query: Query<(Entity,), (With<Pack>, Without<TemplEnti>, Without<SquadMembers>, )>,
 ) {
     for (pack_ent, ) in pack_query.iter() {
         cmd.entity(pack_ent).try_despawn();
@@ -21,8 +21,8 @@ pub fn cleanup_empty_packs(
 #[allow(unused_parens, )]
 pub fn update_pack_center_pos(
     mut cmd: Commands,
-    pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterRankMultipliers>, ), (Without<EntityZero>, )>,
-    member_pos_query: Query<(&DimensionRef, &GlobalTilePos, Option<&BitRef>, Option<&RaceRef>, ), (Without<EntityZero>, ),>,
+    pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterRankMultipliers>, ), (Without<TemplEnti>, )>,
+    member_pos_query: Query<(&DimensionRef, &GlobalTilePos, Option<&BitRef>, Option<&RaceRef>, ), (Without<TemplEnti>, ),>,
 ) {
     for (pack_ent, members, member_ranks, global_weight_multiplier, center_rank_multipliers, ) in pack_query.iter() {
         let mut centers: HashMap<DimensionRef, (Vec2, f32)> = HashMap::default();

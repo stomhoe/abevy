@@ -2,7 +2,8 @@ use bevy::{platform::collections::HashMap, prelude::*};
 use common::{common_components::{HashId, Tag}, common_tag_components::TagSet};
 use game_common::{game_common_components::ArgsDict, game_common_samplers::EntityWeightedSampler};
 use ::tilemap_shared::{GlobalGenSettings, GlobalTilePos};
-use crate::tile::{tile_components::DeleteOtherTilesInSamePos, tile_sampler_components::TileWeightedSampler};
+use crate::tile::tile_sampler_components::TileWeightedSampler;
+use ::tilemap_shared::DeleteOtherTilesInSamePos;
 
 fn parse_delete_other_tiles_tags(selector: &str) -> Vec<Tag> {
     let selector = selector.trim();

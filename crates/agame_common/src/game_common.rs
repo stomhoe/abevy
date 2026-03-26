@@ -3,9 +3,10 @@ use bevy_ecs_tilemap::map::TilemapId;
 use bevy_replicon::prelude::*;
 #[allow(unused_imports, )]
 use common::{common_states::*};
+use tilemap_shared::tilemap_shared_samplers::*;
 
 use crate::{
-    game_common_components::*, game_common_samplers::*, game_common_states::*,
+    game_common_components::*, game_common_states::*,
     game_common_string_components::Description, game_common_systems::*, game_common_timers::{TimedOut, tick_timers},
 };
 
@@ -36,7 +37,7 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             (tick_time_based_multipliers).in_set(SimRunningSystems),
-            clone_ezero_children_ents,
+            clone_templ_children_ents,
             set_entity_name,
             tick_timers,
             despawn_sprites_without_childof,
@@ -91,8 +92,8 @@ pub fn plugin(app: &mut App) {
     .init_state::<GameSetupScreen>()
     .init_state::<SimulationState>()
     .replicate::<Description>()
-    .replicate::<EntityZero>()
-    .replicate::<EntityZeroRef>()
+    .replicate::<TemplEnti>()
+    .replicate::<TemplEntiRef>()
 
     .replicate::<Directionable>()
     //.replicate::<EntityCountMapWeightedSampler>()
@@ -106,7 +107,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate_once::<GlobalTransform>()
     .replicate_once::<Transform>()
-    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EntityZero>,)>()
+    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<TemplEnti>,)>()
     .replicate_once_as::<Visibility, common::common_components::VisibilityGameState>()
     .add_message::<TimedOut>()
     .add_message::<HealthDamage>()

@@ -66,8 +66,6 @@ pub struct TerrgenLocalBuffers<'s> {
     pub pending_ops: Local<'s, Vec<PendingOp>>,
 }
 
-const BIOME_SAMPLE_GRID_AXIS_STEPS: [i32; 3] = [1, 3, 5];
-
 #[allow(unused_parens, )]
 pub fn request_macrochunk_biome_sampling(
     mut cmd: Commands,
@@ -77,6 +75,7 @@ pub fn request_macrochunk_biome_sampling(
     oplists: Query<&OplistSize, With<OperationList>>,
     mut pending_ops_writer: MessageWriter<PendingOp>,
     mut local_buffers: TerrgenLocalBuffers,
+    mut sample_positions: Local<Vec<GlobalTilePos>>,
 ) {
     local_buffers.pending_ops.clear();
     for request in reader.read() {
@@ -94,18 +93,16 @@ pub fn request_macrochunk_biome_sampling(
             error!(target: TERRGEN_SYSTEM, "No oplist size for root operation list {:?}", root_oplist);
             continue;
         };
-        let sample_positions = macro_chunk_biome_sample_positions(macro_chunk_pos);
+        sample_positions.clear();
+        let sample_positions = macro_chunk_pos.sample_macro_chunk_positions(3, &mut sample_positions);
         let expected_samples = sample_positions.len() as u32;
         if expected_samples == 0 {
             cmd.entity(request.macro_chunk_ent).try_remove::<MacroChunkBiomePendingSampleState>();
             debug!(target: TERRGEN_SYSTEM, "Completed biome sampling for macrochunk {} in {:?} without pending samples", macro_chunk_pos, dim_ref);
             continue;
         }
-        *biome_state = MacroChunkBiomePendingSampleState::Sampling {
-            expected_samples,
-            completed_samples: 0,
-        };
-        for gpos in sample_positions {
+        *biome_state = MacroChunkBiomePendingSampleState::Sampling { remaining_samples: expected_samples };
+        for &gpos in sample_positions {
             local_buffers.pending_ops.push(PendingOp {
                 oplist: root_oplist,
                 input: PendingOpInput {
@@ -328,14 +325,11 @@ pub fn process_pending_ops_and_collect_tiles(
             let Ok(mut biome_sampling_state) = queries.macro_chunk_biome_sampling_states.get_mut(macro_chunk_ent) else {
                 continue;
             };
-            let MacroChunkBiomePendingSampleState::Sampling {
-                expected_samples,
-                completed_samples,
-            } = &mut *biome_sampling_state else {
+            let MacroChunkBiomePendingSampleState::Sampling { remaining_samples } = &mut *biome_sampling_state else {
                 continue;
             };
-            *completed_samples = completed_samples.saturating_add(1);
-            if *completed_samples < *expected_samples {
+            *remaining_samples = remaining_samples.saturating_sub(1);
+            if *remaining_samples > 0 {
                 continue;
             }
             finished_macro_chunk_ents.push(macro_chunk_ent);
@@ -446,26 +440,4 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
         }
     }
     batch
-}
-
-fn macro_chunk_biome_sample_positions(macro_chunk_pos: MacroChunkPos) -> Vec<GlobalTilePos> {
-    let (min_chunk, max_chunk_excl) = macro_chunk_pos.chunk_bounds();
-    let chunk_size = ChunkPos::CHUNK_SIZE.as_ivec2();
-    let chunk_count = (max_chunk_excl.x() - min_chunk.x()) as usize
-        * (max_chunk_excl.y() - min_chunk.y()) as usize;
-    let mut out = Vec::with_capacity(chunk_count * BIOME_SAMPLE_GRID_AXIS_STEPS.len().pow(2));
-    for y in min_chunk.y()..max_chunk_excl.y() {
-        for x in min_chunk.x()..max_chunk_excl.x() {
-            let min_tile = ChunkPos::new(x, y).to_tilepos().0;
-            for sample_y in BIOME_SAMPLE_GRID_AXIS_STEPS {
-                for sample_x in BIOME_SAMPLE_GRID_AXIS_STEPS {
-                    out.push(GlobalTilePos(min_tile + IVec2::new(
-                        (chunk_size.x * sample_x) / 6,
-                        (chunk_size.y * sample_y) / 6,
-                    )));
-                }
-            }
-        }
-    }
-    out
 }

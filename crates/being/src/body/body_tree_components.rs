@@ -51,7 +51,7 @@ BodyTreeDistributedTotals` is the cached stat budget for a body tree template.
 
 Where it lives:
 - Defined on the body-tree template side in [`crates/being/src/body/body_tree_seris.rs`](/mnt/data/abevy/crates/being/src/body/body_tree_seris.rs)
-- Attached to the body-tree source entity in [`crates/being/src/body/body_tree_ezero_init_systems.rs`](/mnt/data/abevy/crates/being/src/body/body_tree_ezero_init_systems.rs)
+- Attached to the body-tree source entity in [`crates/being/src/body/body_tree_templ_init_systems.rs`](/mnt/data/abevy/crates/being/src/body/body_tree_templ_init_systems.rs)
 - Read when building a concrete being body in [`crates/being/src/body/body_tree_build_systems.rs`](/mnt/data/abevy/crates/being/src/body/body_tree_build_systems.rs)
 
 What it is used for:

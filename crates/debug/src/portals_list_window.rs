@@ -4,8 +4,8 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use std::collections::BTreeMap;
 
 use camera::camera_components::CameraTarget;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
-use tilemap::tile::tile_components::{PortalTo, TileStrId};
+use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use tilemap::tile::tile_components::{TileStrId};
 use ::tilemap_shared::*;
 
 use crate::debug_ui_helpers::direction_arrow;
@@ -16,10 +16,10 @@ pub fn portals_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    portal_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&EntityZeroRef>, &PortalTo), With<PortalTo>>,
+    portal_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&TemplEntiRef>, &PortalTo), With<PortalTo>>,
     dimension_query: Query<&Name>,
     camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
-    ezero_query: Query<&TileStrId, With<EntityZero>>,
+    templ_query: Query<&TileStrId, With<TemplEnti>>,
     target_query: Query<Entity>,
 ) {
     if !window_visible.portals_list {
@@ -41,9 +41,9 @@ pub fn portals_list_window(
     let camera_dim_ref = camera_info.map(|(dim_ref, _)| dim_ref);
 
     // Group portals by dimension
-    let mut portals_by_dimension: BTreeMap<String, Vec<(Entity, GlobalTilePos, Option<EntityZeroRef>, Vec2, bool, f32)>> = BTreeMap::new();
+    let mut portals_by_dimension: BTreeMap<String, Vec<(Entity, GlobalTilePos, Option<TemplEntiRef>, Vec2, bool, f32)>> = BTreeMap::new();
 
-    for (entity, dim_ref, global_pos, ezero_ref, portal_to) in portal_query.iter() {
+    for (entity, dim_ref, global_pos, templ_ref, portal_to) in portal_query.iter() {
         let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
             format!("{}", n)
         } else {
@@ -70,7 +70,7 @@ pub fn portals_list_window(
         portals_by_dimension
             .entry(dim_name)
             .or_insert_with(Vec::new)
-            .push((entity, *global_pos, ezero_ref.copied(), direction, target_exists, distance));
+            .push((entity, *global_pos, templ_ref.copied(), direction, target_exists, distance));
     }
 
     // Sort dimensions with camera dimension first
@@ -106,13 +106,13 @@ pub fn portals_list_window(
                     egui::CollapsingHeader::new(format!("{} ({})", dim_key, portals.len()))
                         .default_open(true)
                         .show(ui, |ui| {
-                            for (entity, _global_pos, ezero_ref, direction, target_exists, distance) in portals.iter() {
+                            for (entity, _global_pos, templ_ref, direction, target_exists, distance) in portals.iter() {
                                 // Check if this portal is selected
                                 let is_selected = selected_entities.selected_portals.contains(entity);
 
                                 // Get the StrId from EntityZero
-                                let str_id_str = if let Some(ezero_ref) = ezero_ref {
-                                    if let Ok(str_id) = ezero_query.get(ezero_ref.0) {
+                                let str_id_str = if let Some(templ_ref) = templ_ref {
+                                    if let Ok(str_id) = templ_query.get(templ_ref.0) {
                                         format!("{}", str_id)
                                     } else {
                                         "Unknown".to_string()
@@ -134,10 +134,11 @@ pub fn portals_list_window(
                                 };
 
                                 if ui.selectable_label(is_selected, text).clicked() {
-                                    // Single select: clear previous selection and select new portal
                                     selected_entities.selected_portals.clear();
                                     selected_entities.selected_portals.insert(*entity);
-                                    window_visible.portal_details = true;
+                                    selected_entities.selected_tile = Some(*entity);
+                                    selected_entities.selected_exempted_entity = None;
+                                    window_visible.tile_details = true;
                                 }
                             }
                         });

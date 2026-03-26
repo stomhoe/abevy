@@ -1,4 +1,3 @@
-use crate::being_components::Being;
 use crate::being_bundles::{ReinsertOnUnfreeze, RemoveOnFreeze};
 use crate::being_messages::MakeChunkSnapshotForChaser;
 

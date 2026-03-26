@@ -4,7 +4,7 @@ use bevy::prelude::*;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
-use game_common::game_common_components::EntityZero;
+use game_common::game_common_components::TemplEnti;
 use item_shared::item_components::SlottedItemHolder;
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_seris::ModifierSynergySeri;
@@ -85,7 +85,7 @@ pub fn init_bodyparts(
         spawned_ids.insert(part_id.clone());
 
         cmd.entity(part_ent)
-            .insert((part_id.clone(), Bodypart, EntityZero));
+            .insert((part_id.clone(), Bodypart, TemplEnti));
 
         if !part.name.trim().is_empty() {
             cmd.entity(part_ent).insert(DisplayName::trunc(part.name.clone()));

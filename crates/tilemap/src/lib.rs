@@ -1,3 +1,5 @@
+#![allow(incomplete_features)]
+#![feature(inherent_associated_types)]
 
 pub use tilemap::*;
 pub mod tilemap;

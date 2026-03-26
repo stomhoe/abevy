@@ -8,19 +8,20 @@ use bevy_replicon::prelude::*;
 use game_common::AcClientSystems;
 use movement::MovementSystems;
 
-use crate::{
-    being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
-    debug_chunking_window::*, debug_fonts::*, debug_messages::*, debug_resources::*,
-    debug_systems::*, debug_window_systems::*,
-    gpos_maps_window::*,
-    macrochunks_grid_window::*,
-    player_details_inspector::*, players_list_window::*, portals_details_inspector::*, portals_list_window::*, region_details_inspector::*,
-    regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
-    sprite_cfgs_list_window::*, terrgen_editor_window::*, terrgen_values_window::*,
-    world_tile_click_picker_window::*,
-    tile_details_inspector::*,
-    tilemap_details_inspector::*,
-};
+    use crate::{
+        being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
+        debug_chunking_window::*, debug_fonts::*, debug_messages::*, debug_resources::*,
+        debug_systems::*, debug_window_systems::*,
+        gpos_maps_window::*,
+        macrochunks_grid_window::*,
+        player_details_inspector::*, players_list_window::*, portals_list_window::*, region_details_inspector::*,
+        regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
+        sprite_cfgs_list_window::*, terrgen_editor_window::*, terrgen_values_window::*,
+        tile_indices_map_window::*,
+        world_tile_click_picker_window::*,
+        tile_details_inspector::*,
+        tilemap_details_inspector::*,
+    };
 
 #[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
@@ -69,6 +70,7 @@ pub fn plugin(app: &mut App) {
                 hot_reload_window,
                 registered_positions_window,
                 gpos_maps_window_system,
+                tile_indices_map_window,
                 world_tile_click_picker_window,
                 terrgen_debug_window_system
                     .run_if(|visible: Res<DubugWindowsVisibility>| visible.terrgen_values),
@@ -81,7 +83,6 @@ pub fn plugin(app: &mut App) {
                 tile_details_inspector,
                 chunk_details_inspector,
                 region_details_inspector,
-                portals_details_inspector,
                 tilemap_details_inspector,
                 being_details_inspector,
                 player_details_inspector,

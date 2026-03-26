@@ -1,4 +1,4 @@
-use crate::being_components::Being;
+
 use crate::being_inst_template::being_inst_template_resources::BitRef;
 use crate::race::race_resources::RaceRef;
 use crate::being_messages::NavOrder;
@@ -26,7 +26,7 @@ pub fn ensure_loaded_beings_have_nav_state(
         if has_wandering || has_chasing || has_fleeing {
             continue;
         }
-        cmd.entity(being_ent).try_insert(Wandering);
+        cmd.entity(being_ent).try_insert_if_new(Wandering);
     }
 }
 
@@ -92,7 +92,13 @@ fn choose_flee_target_pos(
             if blocking_tiles.is_blocked_at(being_dim, candidate, being_ent) {
                 break;
             }
-            if !avoid_tile_tags.is_empty() && blocking_tiles.has_tagset_at(being_dim, candidate, &avoid_tile_tags.0) {
+            if !avoid_tile_tags.is_empty() && !blocking_tiles.allowed_at(
+                being_dim,
+                candidate,
+                being_ent,
+                &::tilemap_shared::WhitelistedSpawnTileTags::default(),
+                &::tilemap_shared::BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
+            ) {
                 continue;
             }
             best = Some(candidate);
@@ -132,13 +138,16 @@ fn resolve_flee_wander_cfg(
 pub fn update_goto_from_fleeing(
     mut writer: MessageWriter<NavOrder>,
     mut blocking_tiles: BlockingTileParamSet,
-    flee_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Option<&BitRef>, Option<&RaceRef>, ), (With<Being>, LocalAiControlled, )>,
-    flee_from_query: Query<(&GlobalTilePos, &::tilemap_shared::DimensionRef, ), (With<Being>, )>,
+    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, ), (With<Being>, LocalAiControlled, )>,
+    flee_from_query: Query<(&::tilemap_shared::DimensionRef, ), (With<Being>, )>,
     wander_cfg_query: Query<&WanderConfig>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
-    for (being_ent, being_gpos, &being_dim, fleeing, member_of, bit_ref, race_ref, ) in flee_query.iter() {
-        let Ok((flee_from_gpos, &flee_from_dim, )) = flee_from_query.get(fleeing.flee_from()) else {
+    for (being_ent, &being_dim, fleeing, member_of, ) in flee_query.iter() {
+        let Ok(&being_gpos) = blocking_tiles.gpos_query.get(being_ent) else {
+            continue;
+        };
+        let Ok((flee_from_dim, )) = flee_from_query.get(fleeing.flee_from()) else {
             messages.push(NavOrder::new(
                 being_ent,
                 255,
@@ -149,7 +158,18 @@ pub fn update_goto_from_fleeing(
             ));
             continue;
         };
-        if flee_from_dim != being_dim {
+        let Ok(&flee_from_gpos) = blocking_tiles.gpos_query.get(fleeing.flee_from()) else {
+            messages.push(NavOrder::new(
+                being_ent,
+                255,
+                NavOrderSource::Fleeing,
+                None,
+                Some(1.0),
+                None,
+            ));
+            continue;
+        };
+        if *flee_from_dim != being_dim {
             messages.push(NavOrder::new(
                 being_ent,
                 255,
@@ -160,14 +180,16 @@ pub fn update_goto_from_fleeing(
             ));
             continue;
         }
+        let bit_ref = blocking_tiles.get_being_bit_ref(being_ent);
+        let race_ref = blocking_tiles.get_being_race_ref(being_ent);
         let cfg = resolve_flee_wander_cfg(member_of, bit_ref, race_ref, &wander_cfg_query);
         let avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
         let Some(target_pos) = choose_flee_target_pos(
             &mut blocking_tiles,
             being_ent,
             being_dim,
-            *being_gpos,
-            *flee_from_gpos,
+            being_gpos,
+            flee_from_gpos,
             &avoid_tile_tags,
         ) else {
             messages.push(NavOrder::new(
@@ -261,14 +283,14 @@ pub fn sync_ai_nav_grids(
     mut param_set: BlockingTileParamSet,
     chasers_query: Query<
         (
-            &GlobalTilePos,
+            Entity,
             &::tilemap_shared::DimensionRef,
             Option<&ComputedBy>,
             &GoTo,
         ),
         With<Being>,
     >,
-    beings_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), With<Being>>,
+    beings_query: Query<(Entity, &::tilemap_shared::DimensionRef), With<Being>>,
     mut grids: ResMut<AiNavGrids>,
     mut needed_dims: Local<EntityHashSet>,
     mut dim_centers: Local<EntityHashMap<IVec2>>,
@@ -283,13 +305,16 @@ pub fn sync_ai_nav_grids(
     dim_center_counts.clear();
     dim_center_counts.reserve(chaser_count);
 
-    for (gpos, dim_ref, controlled_by, _goto, ) in chaser_iter {
+    for (being_ent, dim_ref, controlled_by, _goto, ) in chaser_iter {
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_dc_input {
                 continue;
             }
         }
         needed_dims.insert(dim_ref.0);
+        let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
+            continue;
+        };
         let pos = gpos.0;
         let center = dim_centers.entry(dim_ref.0).or_insert(IVec2::ZERO);
         *center += pos;
@@ -389,10 +414,13 @@ pub fn sync_ai_nav_grids(
         cache.occupied.clear();
         let being_iter = beings_query.iter();
         cache.occupied.reserve(being_iter.size_hint().1.unwrap_or(being_iter.size_hint().0));
-        for (being_ent, gpos, dim_ref) in being_iter {
+        for (being_ent, dim_ref) in being_iter {
             if dim_ref.0 != dim {
                 continue;
             }
+            let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
+                continue;
+            };
             let max_grid = cache.min
                 + IVec2::new(
                     cache.grid.width() as i32 - 1,

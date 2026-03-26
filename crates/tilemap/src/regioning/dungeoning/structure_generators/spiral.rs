@@ -4,7 +4,7 @@ use bevy::platform::collections::HashSet;
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::TemplEntiRef;
 use rand::{Rng, SeedableRng};
 use ::tilemap_shared::*;
 
@@ -23,8 +23,8 @@ pub fn spiral_dungeon_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
-    ezeros_map: Res<TileEntityMap>,
-    ezero_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::EntityZero>, common::AnyDisabling)>,
+    templs_map: Res<TileEntityMap>,
+    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::TemplEnti>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
@@ -63,26 +63,26 @@ pub fn spiral_dungeon_building_system(
         let delete_other_tiles_by_tile_id = super::super::dungeoning_utils::DeleteOtherTilesConfigMap::from_args(&structured_gen_cfg.args);
         let terrgen_disable_by_tile_id = super::super::dungeoning_utils::TerrGenDisableConfigMap::from_args(&structured_gen_cfg.args);
 
-        let floor_entity = match ezeros_map.0.get_cloned(floor_tile_id) {
-            Ok(entity) => EntityZeroRef(entity),
+        let floor_entity = match templs_map.0.get_cloned(floor_tile_id) {
+            Ok(entity) => TemplEntiRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero '{:?}' not found for spiral dungeon", floor_tile_id);
+                error!(target: "dungeoning", "TileTempl '{:?}' not found for spiral dungeon", floor_tile_id);
                 continue;
             }
         };
 
-        let wall_entity = match ezeros_map.0.get_cloned(wall_tile_id) {
-            Ok(entity) => EntityZeroRef(entity),
+        let wall_entity = match templs_map.0.get_cloned(wall_tile_id) {
+            Ok(entity) => TemplEntiRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero '{:?}' not found for spiral dungeon", wall_tile_id);
+                error!(target: "dungeoning", "TileTempl '{:?}' not found for spiral dungeon", wall_tile_id);
                 continue;
             }
         };
 
-        let lava_entity = match ezeros_map.0.get_cloned(lava_tile_id) {
-            Ok(entity) => EntityZeroRef(entity),
+        let lava_entity = match templs_map.0.get_cloned(lava_tile_id) {
+            Ok(entity) => TemplEntiRef(entity),
             Err(_) => {
-                error!(target: "dungeoning", "TileEzero '{:?}' not found for spiral dungeon", lava_tile_id);
+                error!(target: "dungeoning", "TileTempl '{:?}' not found for spiral dungeon", lava_tile_id);
                 continue;
             }
         };
@@ -446,13 +446,13 @@ pub fn spiral_dungeon_building_system(
                 if hazard_map[map_idx] {
                     tiles4chunk.push((tile_pos, lava_entity, lava_delete_other_tiles.clone()));
                     if disable_lava_terrgen {
-                        let size = ezero_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                     }
                 } else if floor_map[map_idx] {
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
-                        let size = ezero_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, tile_pos, size);
                     }
                 } else if wall_map[map_idx] {

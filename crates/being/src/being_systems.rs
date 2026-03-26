@@ -6,8 +6,6 @@ use common::common_components::StrId;
 use common::log_targets::BEING_SYSTEM;
 use faction::faction_resources::FactionRef;
 
-#[allow(unused_imports, )] use crate::being_components::*;
-
 #[allow(unused_parens, )]
 pub fn validate_added_beings_have_gpos(
     query: Query<(Entity, Option<&StrId>, Has<GlobalTilePos>, ), (LoadedBeing, ),>,

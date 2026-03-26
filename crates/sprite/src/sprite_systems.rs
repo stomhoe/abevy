@@ -5,7 +5,7 @@ use bevy::ecs::entity::EntityHashSet;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use game_common::game_common_components::{EntityZero, EntityZeroRef, };
+use game_common::game_common_components::{TemplEnti, TemplEntiRef, };
 use tilemap_shared::{GlobalTilePos};
 use ::tilemap_shared::directions::*;
 
@@ -23,7 +23,7 @@ pub struct SpriteChanged(pub Entity);
 
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
-    sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<EntityZeroRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>)>)>,
+    sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>)>)>,
     baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>)>)>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut writer: MessageWriter<SpriteChanged>,
@@ -48,18 +48,18 @@ pub fn sprite_change_detection(
 #[allow(unused_parens)]
 pub fn disable_children_sprites_of_disabled(
     mut cmd: Commands,
-    ezero_bases: Query<(&HeldSprites),(With<EntityZero>, Added<Disabled>)>,
-    non_ezero_bases: Query<(&HeldSprites),(Without<EntityZero>,)>,
+    templ_bases: Query<(&HeldSprites),(With<TemplEnti>, Added<Disabled>)>,
+    non_templ_bases: Query<(&HeldSprites),(Without<TemplEnti>,)>,
     mut removed: RemovedComponents<Disabled>,
 ) {
     let mut disableds = Vec::new();
-    for (held_sprites) in ezero_bases.iter() {
+    for (held_sprites) in templ_bases.iter() {
         for sprite_ent in held_sprites.iter() {
             disableds.push((sprite_ent, Disabled));
         }
     }
     for ent in removed.read() {
-        if let Ok((held_sprites)) = non_ezero_bases.get(ent) {
+        if let Ok((held_sprites)) = non_templ_bases.get(ent) {
             for sprite_ent in held_sprites.iter() {
                 cmd.entity(sprite_ent).try_remove::<Disabled>();
             }
@@ -73,16 +73,16 @@ pub type Zsortable = (Or<(With<Sprite>, With<TilemapAnchor>, With<Mesh2d>)>, Wit
 #[allow(unused_parens, )]
 pub fn z_sort_system(
     changed_query: Query<Entity,
-        (Or<(Changed<EntityZeroRef>, Changed<GlobalTilePos>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>, Added<Sprite>, Added<Mesh2d>,)>,
+        (Or<(Changed<TemplEntiRef>, Changed<GlobalTilePos>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>, Added<Sprite>, Added<Mesh2d>,)>,
         Zsortable)>,
     mut process_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>,
-        Option<&AcZ>, Option<&EntityZeroRef>, Has<TilemapAnchor>, &ChildOf, ),>,
+        Option<&AcZ>, Option<&TemplEntiRef>, Has<TilemapAnchor>, &ChildOf, ),>,
 
     parent_sprite_query: Query<&Sprite, (common::AnyDisabling,)>,
     camera_query: Query<Ref<GlobalTilePos>, With<Camera>>,
     all_spriteable_query: Query<Entity, (Zsortable)>,
 
-    ezero_query: Query<(&AcZ, Option<&YSortOrigin>), ()>,
+    templ_query: Query<(&AcZ, Option<&YSortOrigin>), ()>,
 
     mut mw_draw_tmap: MessageWriter<DrawTilemap>,
     mut draw_tmaps: Local<Vec<DrawTilemap>>,
@@ -101,13 +101,13 @@ pub fn z_sort_system(
         }
     }
     let mut iter = process_query.iter_many_mut(ents_to_process.drain());
-    while let Some((ent, mut transform, global_transform, ysort_origin, maybe_z_index, ezero_ref, is_tilemap, child_of)) = iter.fetch_next() {
+    while let Some((ent, mut transform, global_transform, ysort_origin, maybe_z_index, templ_ref, is_tilemap, child_of)) = iter.fetch_next() {
         let has_parent_sprite = parent_sprite_query.get(child_of.parent()).is_ok();
 
-        let (base_z, maybe_ysort_origin) = if let Some(ezero_ref) = ezero_ref
-            && let Ok((ezero_z_index, ezero_ysort_origin)) = ezero_query.get(ezero_ref.0)
+        let (base_z, maybe_ysort_origin) = if let Some(templ_ref) = templ_ref
+            && let Ok((templ_z_index, templ_ysort_origin)) = templ_query.get(templ_ref.0)
         {
-            (ezero_z_index.used_float(), ezero_ysort_origin.copied().or(ysort_origin.copied()))
+            (templ_z_index.used_float(), templ_ysort_origin.copied().or(ysort_origin.copied()))
         } else {
             (maybe_z_index.cloned().unwrap_or_default().used_float(), ysort_origin.copied())
         };

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
-use game_common::game_common_components::EntityZero;
+use game_common::game_common_components::TemplEnti;
 use game_common::game_common_string_components::Description;
 use modifier_shared::modifier_item_types::*;
 use modifier_shared::modifier_helpers::spawn_modifier;
@@ -97,7 +97,7 @@ pub fn init_items(
             str_id.clone(),
             Prefix::trunc("Item"),
             AddHashIdFromStrId,
-            EntityZero,
+            TemplEnti,
             ChildOf(holder),
         ));
         if !seri.name.trim().is_empty() {

@@ -2,8 +2,9 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 use common::common_tag_components::TagSet;
-use game_common::game_common_components::EntityZeroRef;
-use tilemap::tile::tile_components::{DeleteOtherTilesInSamePos, TileStrId};
+use game_common::game_common_components::TemplEntiRef;
+use tilemap::tile::tile_components::{TileStrId};
+use tilemap_shared::DeleteOtherTilesInSamePos;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -25,9 +26,9 @@ pub fn tile_details_inspector(world: &mut World) {
 
     // Try to get the TileStrId from the referenced EntityZero
     let tile_str_id = if let Ok(entity_ref) = world.get_entity(selected_tile_entity) {
-        if let Some(ezero_ref) = entity_ref.get::<EntityZeroRef>() {
-            if let Ok(ezero_entity) = world.get_entity(ezero_ref.0) {
-                if let Some(str_id) = ezero_entity.get::<TileStrId>() {
+        if let Some(templ_ref) = entity_ref.get::<TemplEntiRef>() {
+            if let Ok(templ_entity) = world.get_entity(templ_ref.0) {
+                if let Some(str_id) = templ_entity.get::<TileStrId>() {
                     Some(format!("{}", str_id))
                 } else {
                     None
@@ -43,18 +44,18 @@ pub fn tile_details_inspector(world: &mut World) {
     };
 
     let mut delete_other_tiles_here = None;
-    let mut delete_other_tiles_ezero = None;
+    let mut delete_other_tiles_templ = None;
     let mut tags_here = None;
-    let mut tags_ezero = None;
-    let mut referenced_ezero_entity = None;
+    let mut tags_templ = None;
+    let mut referenced_templ_entity = None;
     if let Ok(entity_ref) = world.get_entity(selected_tile_entity) {
         delete_other_tiles_here = entity_ref.get::<DeleteOtherTilesInSamePos>().cloned();
         tags_here = entity_ref.get::<TagSet>().cloned();
-        if let Some(ezero_ref) = entity_ref.get::<EntityZeroRef>() {
-            referenced_ezero_entity = Some(ezero_ref.0);
-            if let Ok(ezero_entity_ref) = world.get_entity(ezero_ref.0) {
-                delete_other_tiles_ezero = ezero_entity_ref.get::<DeleteOtherTilesInSamePos>().cloned();
-                tags_ezero = ezero_entity_ref.get::<TagSet>().cloned();
+        if let Some(templ_ref) = entity_ref.get::<TemplEntiRef>() {
+            referenced_templ_entity = Some(templ_ref.0);
+            if let Ok(templ_entity_ref) = world.get_entity(templ_ref.0) {
+                delete_other_tiles_templ = templ_entity_ref.get::<DeleteOtherTilesInSamePos>().cloned();
+                tags_templ = templ_entity_ref.get::<TagSet>().cloned();
             }
         }
     }
@@ -104,14 +105,14 @@ pub fn tile_details_inspector(world: &mut World) {
                 delete_other_tiles_here.as_ref(),
             );
 
-            if let Some(ezero_entity) = referenced_ezero_entity {
+            if let Some(templ_entity) = referenced_templ_entity {
                 ui.separator();
-                ui.label(format!("EntityZeroRef target: {:?}", ezero_entity));
-                render_tagset_section(ui, "TagSet on EntityZero", tags_ezero.as_ref());
+                ui.label(format!("EntityZeroRef target: {:?}", templ_entity));
+                render_tagset_section(ui, "TagSet on EntityZero", tags_templ.as_ref());
                 render_delete_other_tiles_section(
                     ui,
                     "DeleteOtherTilesInSamePos on EntityZero",
-                    delete_other_tiles_ezero.as_ref(),
+                    delete_other_tiles_templ.as_ref(),
                 );
             }
 

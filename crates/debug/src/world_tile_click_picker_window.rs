@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
-use being::being_components::Being;
+use ::being_shared::*;
+
 use camera::camera_components::CameraTarget;
-use game_common::game_common_components::EntityZeroRef;
+use game_common::game_common_components::TemplEntiRef;
 use param_sets::EntitiesAtGposParamSet;
 use sprite_shared::AcZ;
 use std::cmp::Ordering;
@@ -65,7 +66,7 @@ pub fn world_tile_click_picker_window(
     mut selected_entities: ResMut<DebugSelectedEntities>,
     being_query: Query<(Entity, Has<Being>)>,
     name_query: Query<&Name>,
-    ezero_ref_query: Query<&EntityZeroRef>,
+    templ_ref_query: Query<&TemplEntiRef>,
     acz_query: Query<&AcZ>,
 ) {
     if !window_visible.world_tile_click_picker {
@@ -96,8 +97,8 @@ pub fn world_tile_click_picker_window(
             ui.separator();
 
             state.entities_at_gpos.sort_unstable_by(|left, right| {
-                let left_acz = acz_for_entity(*left, &acz_query, &ezero_ref_query);
-                let right_acz = acz_for_entity(*right, &acz_query, &ezero_ref_query);
+                let left_acz = acz_for_entity(*left, &acz_query, &templ_ref_query);
+                let right_acz = acz_for_entity(*right, &acz_query, &templ_ref_query);
                 right_acz
                     .partial_cmp(&left_acz)
                     .unwrap_or(Ordering::Equal)
@@ -108,8 +109,8 @@ pub fn world_tile_click_picker_window(
                 for &entity in &state.entities_at_gpos {
                     let name_label = if let Ok(name) = name_query.get(entity) {
                         name.as_str().to_string()
-                    } else if let Ok(&EntityZeroRef(ezero_entity)) = ezero_ref_query.get(entity) {
-                        if let Ok(name) = name_query.get(ezero_entity) {
+                    } else if let Ok(&TemplEntiRef(templ_entity)) = templ_ref_query.get(entity) {
+                        if let Ok(name) = name_query.get(templ_entity) {
                             name.as_str().to_string()
                         } else {
                             "<no Name>".to_string()
@@ -149,17 +150,17 @@ pub fn world_tile_click_picker_window(
 fn acz_for_entity(
     entity: Entity,
     acz_query: &Query<&AcZ>,
-    ezero_ref_query: &Query<&EntityZeroRef>,
+    templ_ref_query: &Query<&TemplEntiRef>,
 ) -> f32 {
     acz_query
         .get(entity)
         .map(|acz| acz.0)
         .ok()
         .or_else(|| {
-            ezero_ref_query
+            templ_ref_query
                 .get(entity)
                 .ok()
-                .and_then(|ezero_ref| acz_query.get(ezero_ref.0).ok().map(|acz| acz.0))
+                .and_then(|templ_ref| acz_query.get(templ_ref.0).ok().map(|acz| acz.0))
         })
         .unwrap_or(f32::NEG_INFINITY)
 }

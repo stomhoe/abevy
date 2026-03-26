@@ -7,7 +7,7 @@ use being_shared::{Grounding, ComputedBy, ComputedLocally};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*, file_logging::file_log};
-use game_common::{game_common_components::{Directionable, EntityZeroRef, }, EntityZero};
+use game_common::{game_common_components::{Directionable, TemplEntiRef, }, TemplEnti};
 use movement::movement_components::SpeedMagnitude;
 use player::player_components::*;
 use ::sprite_animation_shared::*;
@@ -20,21 +20,21 @@ pub fn switch_or_readjust_sprite_animation(
 
     mut move_anims_changed: MessageReader<MatchHeldSpritesAnimStateToBeingState>,
 
-    changers: Query<Entity, (Or<(Changed<HeldSprites>, Changed<Grounding>, )>, Without<EntityZero>)>,
-    changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<EntityZeroRef>, Without<SpriteConfig>, Without<EntityZero>)>,
+    changers: Query<Entity, (Or<(Changed<HeldSprites>, Changed<Grounding>, )>, Without<TemplEnti>)>,
+    changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<TemplEntiRef>, Without<SpriteConfig>, Without<TemplEnti>)>,
 
-    base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, Option<&Grounding>, ), (Without<EntityZero>)>,
+    base: Query<(&HeldSprites, Option<&CardinalDirection>, Option<&MoveAnimActive>, Option<&Grounding>, ), (Without<TemplEnti>)>,
     mut sprites_query: Query<(
         Entity,
         Has<Sprite>,
         Option<&mut SpritesheetAnimation>,
         &BaseHolderRef,
-        &EntityZeroRef,
+        &TemplEntiRef,
         Option<&AnimExtraState>,
         Option<&PlayingSpeed>,
         Option<&mut AcAnimationProgresses>,
         Option<&mut Transform>,
-    ), (Without<EntityZero>)>,
+    ), (Without<TemplEnti>)>,
 
     spriteconfig: Query<(
         Option<&MappedAnimations>,

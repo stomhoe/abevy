@@ -4,7 +4,7 @@ use being_shared::{Body, BodypartChildrenBodyparts, BodyTreeWeightSum, ComputedL
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use game_common::game_common_components::{TemplEnti, TemplEntiRef};
 
 use modifier_shared::{modifier_has_marker, resolve_modifier_component};
 use modifier_shared::modifier_components::*;
@@ -23,13 +23,13 @@ pub fn process_input_direction_modifiers(
         &mut FinalNormMoveDir,
         Has<ComputedLocally>,
     )>,
-    modifiers_query: Query<(Entity, &ModifierTarget, Option<&EntityZeroRef>, ), (Without<EntityZero>, )>,
+    modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<TemplEnti>, )>,
     curr_values_query: Query<&CurrEffectiveValue, >,
     apply_modes_query: Query<&ApplyMode, >,
     invert_markers_query: Query<(), With<InvertMovement>>,
     bodyparts_query: Query<&BodypartChildrenBodyparts, >,
     children_query: Query<&Children, >,
-    ezero_refs_query: Query<&EntityZeroRef>,
+    templ_refs_query: Query<&TemplEntiRef>,
     mut effects: Local<EntityHashSet>,
 
 ) {
@@ -59,10 +59,10 @@ pub fn process_input_direction_modifiers(
             continue;
         };
         for bodypart_ent in bodyparts.iter() {
-            let Ok(part_ezero_ref) = ezero_refs_query.get(bodypart_ent) else {
+            let Ok(part_templ_ref) = templ_refs_query.get(bodypart_ent) else {
                 continue;
             };
-            let Ok(children) = children_query.get(part_ezero_ref.0) else {
+            let Ok(children) = children_query.get(part_templ_ref.0) else {
                 continue;
             };
             for child_ent in children.iter() {
@@ -70,17 +70,17 @@ pub fn process_input_direction_modifiers(
             }
         }
         for effect in effects.iter() {
-            let Ok((modifier_ent, _, ezero_ref, )) = modifiers_query.get(*effect)
+            let Ok((modifier_ent, _, templ_ref, )) = modifiers_query.get(*effect)
             else {
                 continue;
             };
-            if !modifier_has_marker::<InvertMovement>(modifier_ent, ezero_ref, &invert_markers_query) {
+            if !modifier_has_marker::<InvertMovement>(modifier_ent, templ_ref, &invert_markers_query) {
                 continue;
             }
-            let Some(curr_value) = resolve_modifier_component(modifier_ent, ezero_ref, &curr_values_query) else {
+            let Some(curr_value) = resolve_modifier_component(modifier_ent, templ_ref, &curr_values_query) else {
                 continue;
             };
-            let Some(optype) = resolve_modifier_component(modifier_ent, ezero_ref, &apply_modes_query) else {
+            let Some(optype) = resolve_modifier_component(modifier_ent, templ_ref, &apply_modes_query) else {
                 continue;
             };
             let val = curr_value.0;
@@ -114,14 +114,14 @@ pub fn process_speed_modifiers(
         Option<&InputMaxSpeed>,
         Has<ComputedLocally>,
     )>,
-    modifiers_query: Query<(Entity, &ModifierTarget, Option<&EntityZeroRef>, ), (Without<EntityZero>, )>,
+    modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<TemplEnti>, )>,
     curr_values_query: Query<&CurrEffectiveValue>,
     apply_modes_query: Query<&ApplyMode, >,
     walk_markers_query: Query<(), With<WalkSpeed>>,
     mitigating_only_markers_query: Query<(), With<MitigatingOnly>>,
     bodyparts_query: Query<&BodypartChildrenBodyparts, >,
     children_query: Query<&Children, >,
-    ezero_refs_query: Query<&EntityZeroRef>,
+    templ_refs_query: Query<&TemplEntiRef>,
     tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
     mut tile_gathering: TileGatheringParamSet,
 ) {
@@ -165,10 +165,10 @@ pub fn process_speed_modifiers(
             continue;
         };
         for bodypart_ent in bodyparts.iter() {
-            let Ok(part_ezero_ref) = ezero_refs_query.get(bodypart_ent) else {
+            let Ok(part_templ_ref) = templ_refs_query.get(bodypart_ent) else {
                 continue;
             };
-            let Ok(children) = children_query.get(part_ezero_ref.0) else {
+            let Ok(children) = children_query.get(part_templ_ref.0) else {
                 continue;
             };
             for child_ent in children.iter() {
@@ -176,23 +176,23 @@ pub fn process_speed_modifiers(
             }
         }
         for effect in effects.iter() {
-            let Ok((modifier_ent, _, ezero_ref, )) =
+            let Ok((modifier_ent, _, templ_ref, )) =
                 modifiers_query.get(*effect)
             else {
                 continue;
             };
-            if !modifier_has_marker::<WalkSpeed>(modifier_ent, ezero_ref, &walk_markers_query) {
+            if !modifier_has_marker::<WalkSpeed>(modifier_ent, templ_ref, &walk_markers_query) {
                 continue;
             }
-            let Some(curr_value) = resolve_modifier_component(modifier_ent, ezero_ref, &curr_values_query) else {
+            let Some(curr_value) = resolve_modifier_component(modifier_ent, templ_ref, &curr_values_query) else {
                 continue;
             };
-            let Some(optype) = resolve_modifier_component(modifier_ent, ezero_ref, &apply_modes_query) else {
+            let Some(optype) = resolve_modifier_component(modifier_ent, templ_ref, &apply_modes_query) else {
                 continue;
             };
             let mitigating = modifier_has_marker::<MitigatingOnly>(
                 modifier_ent,
-                ezero_ref,
+                templ_ref,
                 &mitigating_only_markers_query,
             );
             let val = curr_value.0;
@@ -227,7 +227,7 @@ pub fn process_speed_modifiers(
         let mut tile_walk_mult: f32 = 1.0;
         let tile_ents = tile_gathering.gather_tiles_at(dim_ref, *tile_pos).to_vec();
         for tile_ent in tile_ents {
-            let Ok(tile_cfg_ref) = ezero_refs_query.get(tile_ent) else {
+            let Ok(tile_cfg_ref) = templ_refs_query.get(tile_ent) else {
                 continue;
             };
             let Ok(tile_walk_mult_cfg) = tile_walk_speed_mults.get(tile_cfg_ref.0) else {

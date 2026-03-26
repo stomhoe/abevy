@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use ::being_shared::{*, UnloadBeing};
+use ::being_shared::*;
 use faction::faction_resources::FactionRef;
 use tilemap_shared::{BeingsAtGpos, ChunkLoaded, ChunkWithBeingsWantsDespawn, GlobalTilePos};
 
@@ -14,12 +14,13 @@ use crate::being_melee_systems::apply_melee_attack;
 use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder, PredatorSeenByPrey};
 use crate::being_on_chunk_despawn_systems::{freeze_being, on_chunk_with_beings_attempt_unload, unfreeze_beings_on_chunk_load};
 use crate::being_nav::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
+use crate::being_simulation_systems::insert_macrochunk_nav_islands;
+use tilemap_shared::MacroChunkLoaded;
 
 use crate::{
     being_hunt_systems::*,
     being_prey_systems::*,
     being_build_systems::{build_beings_from_refs, sample_sprite_normal_size_variations, },
-    being_components::*,
     being_control_systems::*,
     being_inst_template::BeingInstTemplateSystems,
     being_portal_resources::*,
@@ -64,6 +65,7 @@ pub fn plugin(app: &mut App) {
             cross_portal,
             freeze_being.run_if(on_message::<UnloadBeing>),
             unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>),
+            insert_macrochunk_nav_islands.run_if(on_message::<MacroChunkLoaded>),
             on_chunk_with_beings_attempt_unload
                 .in_set(tilemap_shared::PreChunkDespawnSystems)
                 .run_if(on_message::<ChunkWithBeingsWantsDespawn>),

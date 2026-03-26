@@ -1,13 +1,9 @@
-use being_shared::MappedSpritesToSample;
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use common::common_tag_components::*;
-use game_common::game_common_components::EntityZero;
-use game_common::game_common_samplers::*;
+use game_common::game_common_components::TemplEnti;
 use game_common::game_common_string_components::*;
 use common::common_components::SampleSpriteEnts;
-use being_shared::WanderConfig;
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 
@@ -15,14 +11,13 @@ use sex::sex_resources::SexEntityMap;
 use crate::body::BodyTreeEntityMap;
 use crate::body::BodyTreeRef;
 use crate::body::body_tree_components::*;
-use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerEntityMap;
-use crate::body::body_sampler::body_sampler_resources::BodyWeightedSamplerRef;
+use crate::body::body_sampler::body_sampler_resources::*;
 use crate::being_interaction_zone_helper::build_being_interaction_zones_with_base;
 use crate::pack::pack_components::PackInitialSize;
 use crate::{race::{race_components::*, race_resources::*}, sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
-use ::being_shared::{DetectionVisionCone, Predator, PredatorHuntThreshold, NoSpawnGroup};
-use tilemap_shared::{BlacklistedSpawnTileTags, InteractionZones, WhitelistedSpawnTileTags};
+use ::being_shared::*;
+use ::tilemap_shared::*;
 
 pub fn init_races(
     mut cmd: Commands,
@@ -129,7 +124,7 @@ pub fn init_races(
                 None
             }
         };
-        let mut entity_cmds = cmd.spawn((Race, EntityZero, str_id.clone(), ingame_name, singular, plural));
+        let mut entity_cmds = cmd.spawn((Race, TemplEnti, str_id.clone(), ingame_name, singular, plural));
         let body_tree_str_id = StrId::trunc(&race_seri.body_or_sampler);
         let mut body_tree_ent = None;
 
@@ -176,7 +171,7 @@ pub fn init_races(
             });
         }
 
-        entity_cmds.insert(race_seri.tags_with_id());
+        entity_cmds.insert(race_seri.tags_with_my_id());
         let entity = entity_cmds.id();
         if !race_seri.spawn_pack_size_normal_dist.is_sentinel() {
             cmd.entity(entity).insert(PackInitialSize(CappedNormalDist::from_seri(

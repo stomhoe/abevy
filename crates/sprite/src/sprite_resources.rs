@@ -7,7 +7,7 @@ use crate::sprite_components::SpriteConfig;
 
 common::define_entity_map_systems!(
     SpriteConfig,
-    (With<game_common::game_common_components::EntityZero>, ),
+    (With<game_common::game_common_components::TemplEnti>, ),
     Sc,
     "sprite_config",
     "",

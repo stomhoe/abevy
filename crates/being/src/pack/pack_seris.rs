@@ -1,6 +1,6 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::common_tag_components::TagSet;
-use game_common::game_common_seris::NormalDistSeri;
+use tilemap_shared::tilemap_shared_samplers::NormalDistSeri;
 
 use being_shared::WanderConfig;
 
@@ -17,7 +17,7 @@ pub struct PackSeri {
     #[serde(default = "default_true")]
     pub spawn_pack_entity: bool,
 
-    #[serde(default = "NormalDistSeri::sentinel")]
+    #[serde(default)]
     pub spawn_being_count_normal_dist: NormalDistSeri,
     #[serde(default)]
     pub race_ids: HashMap<String, (SpawnWeight, RankDist)>,

@@ -1,7 +1,7 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
-use game_common::game_common_components::{EntityZeroRef, };
-use game_common::game_common_samplers::*;
+use game_common::game_common_components::{TemplEntiRef, };
+use tilemap_shared::tilemap_shared_samplers::*;
 use ::sprite_shared::{sprite_scale_offset::*, };
 use ::tilemap_shared::directions::*;
 
@@ -13,7 +13,7 @@ use crate::sprite_systems::SpriteChanged;
 pub fn apply_scales(
     mut reader: MessageReader<SpriteChanged>,
     //puede ser un meshtexture2d en vez de un sprite(para aplicar shaders)
-    mut sprite_que: Query<(&mut Transform, Option<&mut Sprite>, &BaseHolderRef, &EntityZeroRef,
+    mut sprite_que: Query<(&mut Transform, Option<&mut Sprite>, &BaseHolderRef, &TemplEntiRef,
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,
     ),>,
     sprite_config_query: Query<(Option<&FlipHorizIfDir>, Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,  ), ()>,
@@ -21,7 +21,7 @@ pub fn apply_scales(
 ) {
     for (msg, _) in reader.par_read() {
         let Ok((
-            mut transform, sprite, spriteholder, &EntityZeroRef(spritecfg_ent),
+            mut transform, sprite, spriteholder, &TemplEntiRef(spritecfg_ent),
              scale, scale_look_up_down, scale_look_sideways,
         )) = sprite_que.get_mut(msg.0) else { continue };
         let mut total_scale = scale.copied().unwrap_or_default();

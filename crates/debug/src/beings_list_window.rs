@@ -5,10 +5,9 @@ use common::common_components::{DisplayName, StrId};
 use ::tilemap_shared::*;
 use std::collections::BTreeMap;
 
-use being::being_components::Being;
 use being::{being_inst_template::being_inst_template_resources::BitRef, race::race_resources::RaceRef};
 use camera::camera_components::CameraTarget;
-
+use ::being_shared::*;
 use crate::debug_ui_helpers::direction_arrow;
 use crate::debug_resources::*;
 

@@ -16,7 +16,7 @@ SpriteConfigSeri(
     directionable: true,
     movement_based: true,
     grounding_based: false,
-    baseline_move_speed: 200.0,
+    baseline_move_speed: 100.0,
     offset: (0., 4.),
     scale: (1.2, 1.2),
     tags: [],

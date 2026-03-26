@@ -7,11 +7,9 @@ mod macrochunks_grid_window;
 mod tile_details_inspector;
 mod chunk_details_inspector;
 mod region_details_inspector;
-mod portals_details_inspector;
 mod tilemap_details_inspector;
 mod being_details_inspector;
 mod player_details_inspector;
-mod exempted_entity_details_inspector;
 mod regions_list_window;
 mod beings_list_window;
 mod players_list_window;
@@ -27,6 +25,7 @@ mod debug_systems;
 mod debug_fonts;
 mod debug_messages;
 mod gpos_maps_window;
+mod tile_indices_map_window;
 mod world_tile_click_picker_window;
 mod debug_ui_helpers;
 
@@ -42,11 +41,9 @@ pub mod prelude {
         tile_details_inspector::*,
         chunk_details_inspector::*,
         region_details_inspector::*,
-        portals_details_inspector::*,
         tilemap_details_inspector::*,
         being_details_inspector::*,
         player_details_inspector::*,
-        exempted_entity_details_inspector::*,
         regions_list_window::*,
         beings_list_window::*,
         players_list_window::*,
@@ -62,6 +59,7 @@ pub mod prelude {
         debug_fonts::*,
         debug_messages::*,
         gpos_maps_window::*,
+        tile_indices_map_window::*,
         world_tile_click_picker_window::*,
     };
 }

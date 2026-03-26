@@ -3,7 +3,8 @@ use std::{mem::take};
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{common_components::{HashId, Prefix}, common_tag_components::TagSet, log_targets::SGC_CHUNK_CLAIM};
 use debug_unwraps::DebugUnwrapExt;
-use game_common::{game_common_timers::*, game_common_samplers::EntityWeightedSampler};
+use game_common::game_common_timers::*;
+use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 use rand::SeedableRng;
 use ::tilemap_shared::*;
 
@@ -487,8 +488,8 @@ pub fn clonespawn_tiles_on_chunk_spawn(mut cmd: Commands,
 
             if let Some(tiles_to_spawn) = reg_planned.get(&chunk_pos) {
                 debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
-                for (tile_gpos, ezero_ref, delete_others) in tiles_to_spawn {
-                    let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *ezero_ref, *tile_gpos, dimension_ref, );
+                for (tile_gpos, templ_ref, delete_others) in tiles_to_spawn {
+                    let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *templ_ref, *tile_gpos, dimension_ref, );
                     if let Some(delete_others) = delete_others {
                         to_insert_delete_others.push((tile_ent, (delete_others.clone())));
                     }

@@ -62,28 +62,20 @@ impl LoadChunksAround {
         self.discovery_range == 1
     }
 }
-
 pub const ONE_CHUNK_RANGE_SETTINGS: LoadChunksAround = LoadChunksAround {
-    chunk_visib_max_dist: 1000.0,
-    chunk_active_max_dist: 250.0,
+    chunk_visib_max_dist: 1000.0, chunk_active_max_dist: 250.0,
     discovery_range: 1,
 };
-
 pub const TWO_CHUNK_RANGE_SETTINGS: LoadChunksAround = LoadChunksAround {
-    chunk_visib_max_dist: 2000.0,
-    chunk_active_max_dist: 100.0,
+    chunk_visib_max_dist: 2000.0, chunk_active_max_dist: 100.0,
     discovery_range: 2,
 };
-
 pub const NORMAL_CHUNK_RANGE_SETTINGS: LoadChunksAround = LoadChunksAround {
-    chunk_visib_max_dist: 6000.0,
-    chunk_active_max_dist: 6000.0,
+    chunk_visib_max_dist: 6000.0, chunk_active_max_dist: 6000.0,
     discovery_range: 4,
 };
-
 pub const EXTRA_RANGE_SETTINGS: LoadChunksAround = LoadChunksAround {
-    chunk_visib_max_dist: 14000.0,
-    chunk_active_max_dist: 14000.0,
+    chunk_visib_max_dist: 14000.0, chunk_active_max_dist: 14000.0,
     discovery_range: 4,
 };
 

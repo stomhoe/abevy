@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::HashedTagsVec;
-use game_common::game_common_components::{EntityZero, EntityZeroRef};
+use game_common::game_common_components::{TemplEnti, TemplEntiRef};
 
 use crate::terrain::{
     terrprobe::opfilter::opfilter_resources::{OpFilterEntityMap, OpFilterRef},
@@ -12,7 +12,7 @@ use crate::terrain::{
         terrprobe_resources::{EguiTptsHolder, TerrProbeTemplEntityMap, load_terrain_probe_seri_defs},
     },
 };
-use crate::{regioning::regioning_resources::StructuredGenConfigEntityMap, tile::tile_resources::EzeroTileEntsWithinTag};
+use crate::{regioning::regioning_resources::StructuredGenConfigEntityMap, tile::tile_resources::TemplTileEntsWithinTag};
 #[allow(unused_parens)]
 pub fn init_terrain_probes(
     mut cmd: Commands,
@@ -20,8 +20,8 @@ pub fn init_terrain_probes(
     sgc_entity_map: Res<StructuredGenConfigEntityMap>,
     opfilter_entity_map: Res<OpFilterEntityMap>,
     opfilter_query: Query<&OpFilter>,
-    tile_ents_with_tag: Res<EzeroTileEntsWithinTag>,
-    entity_zeroes: Query<&EntityZero>,
+    tile_ents_with_tag: Res<TemplTileEntsWithinTag>,
+    entity_zeroes: Query<&TemplEnti>,
     egui_holder_query: Query<Entity, With<EguiTptsHolder>>,
 ) {
     if !map.0.is_empty() { return; }
@@ -123,9 +123,9 @@ pub fn init_terrain_probes(
                 let Ok(_) = entity_zeroes.get(tile_ent) else {
                     continue;
                 };
-                let ezero_ref = EntityZeroRef(tile_ent);
-                if sgc_admitted_tiles_as_found_pos.iter().all(|existing| *existing != ezero_ref) {
-                    sgc_admitted_tiles_as_found_pos.push(ezero_ref);
+                let templ_ref = TemplEntiRef(tile_ent);
+                if sgc_admitted_tiles_as_found_pos.iter().all(|existing| *existing != templ_ref) {
+                    sgc_admitted_tiles_as_found_pos.push(templ_ref);
                 }
             }
         }

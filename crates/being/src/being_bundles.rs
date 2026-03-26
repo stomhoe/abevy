@@ -8,9 +8,9 @@ use bevy::{
 use movement::{movement_components::GridLockedMovement, prelude::MovementRemoveOnFreezeBundle};
 use tilemap::chunking::chunking_components::*;
 use tilemap_shared::{LoadChunksAround, ChunkPos, DimensionRef, GlobalTilePos, };
-use being_shared::StepDistanceSfxState;
+use ::being_shared::*;
 
-use crate::{being_components::*, being_nav::RetainedChasePathSnapshot};
+use crate::{being_nav::RetainedChasePathSnapshot};
 
 
 

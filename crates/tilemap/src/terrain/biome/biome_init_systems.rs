@@ -3,7 +3,7 @@ use common::{
     common_components::StrId,
     log_targets::BIOME_INIT,
 };
-use game_common::game_common_components::EntityZero;
+use game_common::game_common_components::TemplEnti;
 
 use crate::terrain::biome::{
     biome_components::{Biome, CreatureSampler},
@@ -29,7 +29,7 @@ pub fn init_biomes(
             (
                 Biome,
                 CreatureSampler::default(),
-                EntityZero,
+                TemplEnti,
                 str_id,
             ),
         ));

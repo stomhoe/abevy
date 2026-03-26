@@ -50,8 +50,8 @@ fn short_tile_label(str_id: &str) -> String {
 fn render_tilemap_grid(
     ui: &mut egui::Ui,
     tile_storage: &TileStorage,
-    tile_query: &Query<(Entity, &EntityZeroRef, Option<&InitialPos>), With<Tile>>,
-    ezero_query: &Query<&TileStrId, With<EntityZero>>,
+    tile_query: &Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
+    templ_query: &Query<&TileStrId, With<TemplEnti>>,
     selected_tile: &mut Option<Entity>,
     camera_tile_pos: Option<GlobalTilePos>,
 ) -> Option<Entity> {
@@ -85,11 +85,11 @@ fn render_tilemap_grid(
             if let Some(tile_entity) = tile_storage.checked_get(&tile_pos) {
                 let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
                 let mut is_camera_tile = false;
-                if let Ok((_, ezero_ref, initial_pos)) = tile_query.get(tile_entity) {
+                if let Ok((_, templ_ref, initial_pos)) = tile_query.get(tile_entity) {
                     is_camera_tile = camera_tile_pos
                         .zip(initial_pos.map(|p| p.pos))
                         .map_or(false, |(cam_pos, tile_pos)| cam_pos == tile_pos);
-                    if let Ok(str_id) = ezero_query.get(ezero_ref.0) {
+                    if let Ok(str_id) = templ_query.get(templ_ref.0) {
                         let str_id_str = str_id.as_str();
                         let label = short_tile_label(str_id_str);
                         let fill = get_color_for_str_id(str_id_str).gamma_multiply(0.25);
@@ -169,7 +169,7 @@ fn render_spritetiles_grid(
     chunk_pos: ChunkPos,
     child_entities: &[Entity],
     tile_storage_query: &Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
-    spritetile_gpos_query: &Query<(Entity, &GlobalTilePos, Option<&EntityZeroRef>, Option<&StrId>)>,
+    spritetile_gpos_query: &Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>, Option<&StrId>)>,
     id_query: &Query<&StrId>,
     selected_sprite: &mut Option<Entity>,
     camera_tile_pos: Option<GlobalTilePos>,
@@ -182,7 +182,7 @@ fn render_spritetiles_grid(
         if tile_storage_query.get(child_entity).is_ok() {
             continue;
         }
-        let Ok((ent, gpos, ezero_ref, maybe_str_id)) = spritetile_gpos_query.get(child_entity) else {
+        let Ok((ent, gpos, templ_ref, maybe_str_id)) = spritetile_gpos_query.get(child_entity) else {
             continue;
         };
         if ChunkPos::from(*gpos) != chunk_pos {
@@ -194,8 +194,8 @@ fn render_spritetiles_grid(
         }
         let display_str = if let Some(str_id) = maybe_str_id {
             str_id.as_str().to_string()
-        } else if let Some(ezero_ref) = ezero_ref
-            && let Ok(str_id) = id_query.get(ezero_ref.0)
+        } else if let Some(templ_ref) = templ_ref
+            && let Ok(str_id) = id_query.get(templ_ref.0)
         {
             str_id.as_str().to_string()
         } else {
@@ -318,9 +318,9 @@ pub fn debug_chunking_window(
     loaded_chunks: Res<LoadedChunks>,
     // Query for child entities to check their components
     tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
-    tile_query: Query<(Entity, &EntityZeroRef, Option<&InitialPos>), With<Tile>>,
-    spritetile_gpos_query: Query<(Entity, &GlobalTilePos, Option<&EntityZeroRef>, Option<&StrId>)>,
-    ezero_query: Query<&TileStrId, With<EntityZero>>,
+    tile_query: Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
+    spritetile_gpos_query: Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>, Option<&StrId>)>,
+    templ_query: Query<&TileStrId, With<TemplEnti>>,
     id_query: Query<&StrId>,
 ) {
     if !window_visible.chunks_list {
@@ -606,7 +606,7 @@ pub fn debug_chunking_window(
                                                 ui,
                                                 tile_storage,
                                                 &tile_query,
-                                                &ezero_query,
+                                                &templ_query,
                                                 &mut selected_entities.selected_tile,
                                                 camera_tile_pos_for_this_dim,
                                             ) {

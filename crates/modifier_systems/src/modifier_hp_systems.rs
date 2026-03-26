@@ -3,7 +3,7 @@ use being::body::{Body, IncomingDamage};
 use game_common::game_common_components::{
     Dead,
     DespawnOnDeath,
-    EntityZero,
+    TemplEnti,
     Health,
     HealthDamage,
 };
@@ -12,8 +12,8 @@ use tilemap_shared::SafeDespawn;
 
 pub fn apply_health_damage(
     mut reader: MessageReader<HealthDamage>,
-    mut health_query: Query<&mut Health, Without<EntityZero>>,
-    body_query: Query<&Body, Without<EntityZero>>,
+    mut health_query: Query<&mut Health, Without<TemplEnti>>,
+    body_query: Query<&Body, Without<TemplEnti>>,
     mut body_damage_writer: MessageWriter<IncomingDamage>,
     mut body_damage_messages: Local<Vec<IncomingDamage>>,
 ) {
@@ -44,7 +44,7 @@ pub fn apply_health_damage(
 
 pub fn mark_dead_by_health(
     mut cmd: Commands,
-    query: Query<(Entity, &Health, Has<Dead>), (Without<EntityZero>, Changed<Health>)>,
+    query: Query<(Entity, &Health, Has<Dead>), (Without<TemplEnti>, Changed<Health>)>,
 ) {
     for (entity, health, is_dead) in query.iter() {
         if health.0 <= 0.0 {
@@ -63,7 +63,7 @@ pub fn despawn_entities_on_death(
     query: Query<
         (Entity, Has<Tile>),
         (
-            Without<EntityZero>,
+            Without<TemplEnti>,
             With<DespawnOnDeath>,
             Changed<Dead>,
         ),
@@ -71,8 +71,10 @@ pub fn despawn_entities_on_death(
     mut writer: MessageWriter<SafeDespawn>,
     mut messages: Local<Vec<SafeDespawn>>,
 ) {
-    for (entity, _is_tile) in query.iter() {
-        messages.push(SafeDespawn(entity));
+    for (entity, is_tile) in query.iter() {
+        if is_tile {
+            messages.push(SafeDespawn(entity));
+        }
     }
     writer.write_batch(messages.drain(..));
 }

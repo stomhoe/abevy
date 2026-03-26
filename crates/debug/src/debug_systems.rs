@@ -3,7 +3,7 @@ use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::{ClientState, FromClient};
 use common::HashId;
 use common::log_targets::DEBUG;
-use game_common::game_common_components::EntityZero;
+use game_common::game_common_components::TemplEnti;
 use movement::movement_components::InputMoveDir;
 use modifier_shared::{
     modifier_components::*,
@@ -22,7 +22,7 @@ pub fn debug_increase_speed(
     speed_up: Single<&Action<DebugIncreaseSpeedAction>>,
     speed_down: Single<&Action<DebugDecreaseSpeedAction>>,
     my_being_query: Query<(Entity, &AppliedModifiers), (LocalHumanControlled)>,
-    debug_modi_query: Query<(&HashId, Option<&BaseValue>), (With<WalkSpeed>, Without<EntityZero>)>,
+    debug_modi_query: Query<(&HashId, Option<&BaseValue>), (With<WalkSpeed>, Without<TemplEnti>)>,
     client_state: Res<State<ClientState>>,
     mut pending: ResMut<PendingSpeedDebugUpdates>,
     mut writer: MessageWriter<UpdateBeingSpeed>,
@@ -78,7 +78,7 @@ pub fn debug_increase_speed(
 pub fn disable_movement_while_speed_debug_update_pending(
     mut pending: ResMut<PendingSpeedDebugUpdates>,
     local_beings: Query<(), LocalHumanControlled>,
-    walk_speeds: Query<(&ModifierTarget, &HashId, Option<&BaseValue>), (With<WalkSpeed>, Without<EntityZero>)>,
+    walk_speeds: Query<(&ModifierTarget, &HashId, Option<&BaseValue>), (With<WalkSpeed>, Without<TemplEnti>)>,
     mut move_dirs: Query<&mut InputMoveDir>,
 ) {
     let mut completed = Vec::new();
@@ -121,7 +121,7 @@ pub fn receive_increase_speed_from_client(
     mut cmd: Commands,
     mut events: MessageReader<FromClient<UpdateBeingSpeed>>,
     controlled_beings_query: Query<(&AppliedModifiers, &ComputedBy, ), ()>,
-    debug_modi_query: Query<(Entity, &HashId), (With<WalkSpeed>, Without<EntityZero>)>,
+    debug_modi_query: Query<(Entity, &HashId), (With<WalkSpeed>, Without<TemplEnti>)>,
 ) {
     let debug_hash = HashId::hash("debug");
 

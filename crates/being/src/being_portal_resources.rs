@@ -2,9 +2,7 @@ use ::tilemap_shared::*;
 use bevy::ecs::entity::EntityHashMap;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use tilemap::tile::tile_components::PortalTo;
-
-use crate::being_components::Being;
+use ::being_shared::*;
 
 #[derive(Resource, Debug, Default)]
 pub struct PortalCrossingIndex {

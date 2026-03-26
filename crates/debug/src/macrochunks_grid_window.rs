@@ -9,7 +9,7 @@ use being::{being_inst_template::being_inst_template_resources::BitRef, race::ra
 use camera::camera_components::CameraTarget;
 use common::common_components::StrId;
 use tilemap::chunking::{chunking_components::{Chunk, MacroChunk, MacroChunkRef, TerrGenState}, macro_chunk_components::{BiomeDistribution, MacroChunkBiomePendingSampleState}};
-use tilemap_shared::{ChunkPos, DimensionRef, LoadedMacroChunks, MacroChunkPos, MACRO_CHUNK_SIZE_IN_CHUNKS};
+use ::tilemap_shared::*;
 use wildlife::{NaturalSpawnOrigin, NaturalSpawnReservationIndex, SeededNaturalWildlifeMacroChunks};
 
 #[derive(Clone, Copy, Default)]
@@ -160,19 +160,7 @@ fn biome_distribution_lines(distribution: &BiomeDistribution, id_query: &Query<&
 fn macrochunk_fill_color(cell: &MacroChunkCell) -> egui::Color32 {
     match cell.biome_sampling_state {
         Some(MacroChunkBiomePendingSampleState::Unsampled) => egui::Color32::from_rgb(52, 52, 52),
-        Some(MacroChunkBiomePendingSampleState::Sampling {
-            expected_samples,
-            completed_samples,
-        }) => {
-            let progress = if expected_samples == 0 {
-                0.0
-            } else {
-                completed_samples as f32 / expected_samples as f32
-            };
-            let red = (150.0 + 55.0 * (1.0 - progress)) as u8;
-            let green = (90.0 + 110.0 * progress) as u8;
-            egui::Color32::from_rgb(red, green, 60)
-        }
+        Some(MacroChunkBiomePendingSampleState::Sampling { .. }) => egui::Color32::from_rgb(170, 120, 60),
         None if cell.seeded_for_wildlife => egui::Color32::from_rgb(60, 140, 82),
         None => egui::Color32::from_rgb(65, 105, 165),
     }
@@ -214,15 +202,8 @@ fn macrochunk_hover_text(cell: &MacroChunkCell, id_query: &Query<&StrId>) -> Str
     ];
     match cell.biome_sampling_state {
         Some(MacroChunkBiomePendingSampleState::Unsampled) => lines.push("Biome state: Unsampled".to_string()),
-        Some(MacroChunkBiomePendingSampleState::Sampling {
-            expected_samples,
-            completed_samples,
-        }) => {
-            lines.push(format!(
-                "Biome state: Sampling {}/{}",
-                completed_samples,
-                expected_samples,
-            ));
+        Some(MacroChunkBiomePendingSampleState::Sampling { remaining_samples }) => {
+            lines.push(format!("Biome state: Sampling, {} remaining", remaining_samples));
             if let Some((label, weight)) = dominant_biome(&cell.biome_distribution, id_query) {
                 lines.push(format!("Current dominant biome: {} ({:.2})", label, weight));
             }
@@ -333,8 +314,8 @@ fn render_chunk_states_map(
     current_chunk: Option<ChunkPos>,
     origin_counts_by_chunk: &HashMap<ChunkPos, usize>,
 ) -> Option<ChunkPos> {
-    let width = MACRO_CHUNK_SIZE_IN_CHUNKS.0.x as f32;
-    let height = MACRO_CHUNK_SIZE_IN_CHUNKS.0.y as f32;
+    let width = MacroChunkPos::SIZE_IN_CHUNKS.0.x as f32;
+    let height = MacroChunkPos::SIZE_IN_CHUNKS.0.y as f32;
     let available_size = ui.available_size_before_wrap();
     let max_grid_side = available_size.x.min(available_size.y).min(240.0);
     let cell_side = (available_size.x / width)
@@ -353,9 +334,9 @@ fn render_chunk_states_map(
         chunks_by_local_pos.insert((local.x, local.y), (entity, chunk_pos, terrgen_state));
     }
 
-    for local_y in (0..MACRO_CHUNK_SIZE_IN_CHUNKS.0.y as i32).rev() {
-        for local_x in 0..MACRO_CHUNK_SIZE_IN_CHUNKS.0.x as i32 {
-            let row = (MACRO_CHUNK_SIZE_IN_CHUNKS.0.y as i32 - 1 - local_y) as f32;
+    for local_y in (0..MacroChunkPos::SIZE_IN_CHUNKS.0.y as i32).rev() {
+        for local_x in 0..MacroChunkPos::SIZE_IN_CHUNKS.0.x as i32 {
+            let row = (MacroChunkPos::SIZE_IN_CHUNKS.0.y as i32 - 1 - local_y) as f32;
             let col = local_x as f32;
             let cell_rect = egui::Rect::from_min_size(
                 egui::pos2(rect.left() + col * cell_side, rect.top() + row * cell_side),
@@ -580,21 +561,8 @@ fn show_macrochunk_details(
         Some(MacroChunkBiomePendingSampleState::Unsampled) => {
             ui.label("Biome state: Unsampled");
         }
-        Some(MacroChunkBiomePendingSampleState::Sampling {
-            expected_samples,
-            completed_samples,
-        }) => {
-            ui.label(format!(
-                "Biome state: Sampling {}/{}",
-                completed_samples,
-                expected_samples,
-            ));
-            if expected_samples > 0 {
-                ui.add(
-                    egui::ProgressBar::new(completed_samples as f32 / expected_samples as f32)
-                        .show_percentage(),
-                );
-            }
+        Some(MacroChunkBiomePendingSampleState::Sampling { remaining_samples }) => {
+            ui.label(format!("Biome state: Sampling, {} remaining", remaining_samples));
             if let Some((label, weight)) = dominant_biome(&cell.biome_distribution, id_query) {
                 ui.label(format!("Current dominant biome: {} ({:.2})", label, weight));
             }

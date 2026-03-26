@@ -1,9 +1,9 @@
 use crate::being_inst_template::being_inst_template_resources::BitRef;
-use crate::being_components::Being;
 
 use crate::race::race_resources::RaceRef;
 use crate::pack::pack_components::PackCenterPos;
 use crate::being_messages::NavOrder;
+use ::being_shared::*;
 use bevy::{
     ecs::entity::EntityHashMap,
     platform::collections::HashSet,
@@ -14,8 +14,7 @@ use movement::movement_components::FinalNormMoveDir;
 use param_sets::BlockingTileParamSet;
 use rand::Rng;
 use std::time::Duration;
-use tilemap_shared::{BlacklistedTags, DimensionRef, GlobalTilePos, LoadedChunks};
-use ::being_shared::{Fleeing, GoTo, LocalAiControlled, NavOrderSource, SquadMemberOf, Wandering, WanderConfig};
+use ::tilemap_shared::*;
 
 #[derive(Debug, Clone)]
 pub struct WanderState {
@@ -198,18 +197,15 @@ fn strongest_entity_avoidance(
 }
 
 fn collect_entity_avoidance(
+    blocking_tiles: &mut BlockingTileParamSet,
     self_ent: Entity,
     self_dim: &DimensionRef,
-    self_pos: &GlobalTilePos,
     cfg: &WanderConfig,
     move_speed: f32,
     threat_query: &Query<
         (
             Entity,
-            &GlobalTilePos,
             &DimensionRef,
-            Option<&BitRef>,
-            Option<&RaceRef>,
             Option<&SquadMemberOf>,
         ),
         (With<Being>, ),
@@ -226,10 +222,16 @@ fn collect_entity_avoidance(
     }
 
     let mut avoidance = Vec2::ZERO;
-    for (threat_ent, threat_pos, &threat_dim, bit_ref, race_ref, member_of) in threat_query.iter() {
+    let Ok(&self_pos) = blocking_tiles.gpos_query.get(self_ent) else {
+        return Vec2::ZERO;
+    };
+    for (threat_ent, &threat_dim, member_of) in threat_query.iter() {
         if threat_ent == self_ent || threat_dim != *self_dim {
             continue;
         }
+        let Ok(&threat_pos) = blocking_tiles.gpos_query.get(threat_ent) else {
+            continue;
+        };
         let delta = self_pos.0 - threat_pos.0;
         let delta_vec = delta.as_vec2();
         let distance = delta_vec.length();
@@ -237,7 +239,7 @@ fn collect_entity_avoidance(
             continue;
         }
 
-        if let Some(bit_ref) = bit_ref {
+        if let Some(bit_ref) = blocking_tiles.get_being_bit_ref(threat_ent) {
             if let Ok(bit_tags) = tag_query.get(bit_ref.0) {
                 avoidance += strongest_entity_avoidance(
                     cfg,
@@ -249,7 +251,7 @@ fn collect_entity_avoidance(
                 );
             }
         }
-        if let Some(race_ref) = race_ref {
+        if let Some(race_ref) = blocking_tiles.get_being_race_ref(threat_ent) {
             if let Ok(race_tags) = tag_query.get(race_ref.0) {
                 avoidance += strongest_entity_avoidance(
                     cfg,
@@ -287,15 +289,11 @@ fn collect_entity_avoidance(
 pub fn wander_behavior(
     mut writer: MessageWriter<NavOrder>,
     time: Res<Time>,
-    loaded_chunks: Res<LoadedChunks>,
     mut blocking_tiles: BlockingTileParamSet,
     mut beings: Query<
         (
             Entity,
-            &GlobalTilePos,
             &DimensionRef,
-            Option<&BitRef>,
-            Option<&RaceRef>,
             Option<&SquadMemberOf>,
         ),
         (With<Being>, With<Wandering>, Without<Fleeing>, LocalAiControlled),
@@ -304,10 +302,7 @@ pub fn wander_behavior(
     threat_query: Query<
         (
             Entity,
-            &GlobalTilePos,
             &DimensionRef,
-            Option<&BitRef>,
-            Option<&RaceRef>,
             Option<&SquadMemberOf>,
         ),
         (With<Being>, ),
@@ -319,7 +314,12 @@ pub fn wander_behavior(
 ) {
     let mut rng = rand::rng();
     let dt = time.delta_secs();
-    for (pred_ent, gpos, &dim_ref, bit_ref, race_ref, member_of, ) in beings.iter_mut() {
+    for (pred_ent, &dim_ref, member_of, ) in beings.iter_mut() {
+        let Ok(&gpos) = blocking_tiles.gpos_query.get(pred_ent) else {
+            continue;
+        };
+        let bit_ref = blocking_tiles.get_being_bit_ref(pred_ent);
+        let race_ref = blocking_tiles.get_being_race_ref(pred_ent);
         let cfg = resolve_wander_cfg(member_of, bit_ref, race_ref, &wander_cfg_query);
         let avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
         let state = wander_states
@@ -362,9 +362,9 @@ pub fn wander_behavior(
         }
 
         input_dir += collect_entity_avoidance(
+            &mut blocking_tiles,
             pred_ent,
             &dim_ref,
-            gpos,
             &cfg,
             state.move_speed,
             &threat_query,
@@ -373,12 +373,18 @@ pub fn wander_behavior(
 
         // Check if currently in an undesirable tile, and if so, scan for nearby desirable tile
         if !avoid_tile_tags.is_empty() {
-            if blocking_tiles.has_tagset_at(dim_ref, *gpos, &avoid_tile_tags.0) {
-                if let Some(target_pos) = blocking_tiles.find_closest_allowed_gpos_across_loaded_chunks(
-                    &loaded_chunks,
+            if !blocking_tiles.allowed_at(
+                dim_ref,
+                gpos,
+                pred_ent,
+                &WhitelistedSpawnTileTags::default(),
+                &BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
+            ) {
+                if let Some(target_pos) = blocking_tiles.find_closest_allowe_gpos(
                     dim_ref,
-                    *gpos,
+                    gpos,
                     pred_ent,
+                    &WhitelistedTags::default(),
                     &avoid_tile_tags,
                 ) {
                     let delta = target_pos.0 - gpos.0;
@@ -394,7 +400,13 @@ pub fn wander_behavior(
                     IVec2::new(0, input_dir.y.signum() as i32)
                 };
                 let next = GlobalTilePos(gpos.0 + step);
-                if blocking_tiles.has_tagset_at(dim_ref, next, &avoid_tile_tags.0) {
+                if !blocking_tiles.allowed_at(
+                    dim_ref,
+                    next,
+                    pred_ent,
+                    &WhitelistedSpawnTileTags::default(),
+                    &BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
+                ) {
                     input_dir = Vec2::ZERO;
                 }
             }
@@ -413,7 +425,7 @@ pub fn wander_behavior(
             continue;
         }
 
-        let mut farthest_target = *gpos;
+        let mut farthest_target = gpos;
         for dist in 1..=4 {
             let candidate = GlobalTilePos(gpos.0 + axis * dist);
             if blocking_tiles.is_blocked_at_tiles_only(dim_ref, candidate, pred_ent) {
@@ -421,7 +433,7 @@ pub fn wander_behavior(
             }
             farthest_target = candidate;
         }
-        if farthest_target == *gpos {
+        if farthest_target == gpos {
             messages.push(NavOrder::new(
                 pred_ent,
                 10,
