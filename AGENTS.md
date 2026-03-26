@@ -51,3 +51,6 @@ IMPORTANT: if you find a problem/impossibility for a user-requested implementati
 try to use .reserve()/with_capacity() for collections in which you know how many you are going to insert as max
 
 VERY IMPORTANT: if you got requested implicitely or explicitely to fix/generate some code, first check if you are in read mode (can't edit files), dont read/explore/generate any code, instead immediately tell the user to change your authorization level before beginning.
+
+
+if using BlockedTileParamSet in a system, use its inner gpos query instead of querying for gpos in the consumer system, otherwise query conflict will hapen

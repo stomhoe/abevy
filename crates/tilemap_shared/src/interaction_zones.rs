@@ -198,32 +198,33 @@ impl InteractionZone {
         self.perimeter_size
     }
 
-    pub fn gather_accessible_border_positions_for_checked_pos(
+    pub fn has_accessible_border_position_for_checked_pos(
         &self,
         anchor_pos: GlobalTilePos,
         checked_pos: GlobalTilePos,
-        out: &mut Vec<GlobalTilePos>,
-    ) {
+        scratch_zone_positions: &mut Vec<GlobalTilePos>,
+    ) -> bool {
         if self.perimeter_size == 0 {
-            return;
+            return false;
         }
-        out.reserve(4);
-        let mut zone_positions = Vec::with_capacity(self.perimeter_size as usize);
-        self.gather_zone_positions(CardinalDirection::South, anchor_pos.to_pixelpos(), &mut zone_positions);
-        if zone_positions.is_empty() {
-            return;
+        scratch_zone_positions.clear();
+        scratch_zone_positions.reserve(self.perimeter_size as usize);
+        self.gather_zone_positions(CardinalDirection::South, anchor_pos.to_pixelpos(), scratch_zone_positions);
+        if scratch_zone_positions.is_empty() {
+            return false;
         }
-        zone_positions.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
-        zone_positions.dedup();
+        scratch_zone_positions.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
+        scratch_zone_positions.dedup();
         for delta in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
             let neighbor = checked_pos + delta;
-            if zone_positions
+            if scratch_zone_positions
                 .binary_search_by_key(&(neighbor.0.x, neighbor.0.y), |pos| (pos.0.x, pos.0.y))
                 .is_ok()
             {
-                out.push(neighbor);
+                return true;
             }
         }
+        false
     }
 
     pub fn is_inside_any(

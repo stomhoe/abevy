@@ -26,6 +26,7 @@ pub fn sprite_change_detection(
     sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>)>)>,
     baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>)>)>,
     mut removed_disabled: RemovedComponents<Disabled>,
+    mut removed_unloaded: RemovedComponents<being_shared::Unloaded>,
     mut writer: MessageWriter<SpriteChanged>,
     mut changed: Local<HashSet<SpriteChanged>>,
 )
@@ -40,6 +41,9 @@ pub fn sprite_change_detection(
         for sprite_ent in held_sprites.iter() {
             changed.insert(SpriteChanged(sprite_ent));
         }
+    }
+    for unloaded_ent in removed_unloaded.read() {
+        changed.insert(SpriteChanged(unloaded_ent));
     }
     writer.write_batch(changed.drain());
 }

@@ -42,6 +42,7 @@ pub fn on_control_change(
     changed_query: Query<(Entity, &ComputedBy, Has<CameraTarget>), (Changed<ComputedBy>, )>,
     computed_by_query: Query<(Entity, &ComputedBy, Has<CameraTarget>)>,
     mut input_dirs: Query<&mut InputMoveDir>,
+    mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
     mut removed_controlled_by: RemovedComponents<ComputedBy>,
     default_chunk_range_for_player_beings: Res<LoadChunksAround>,
 ) {
@@ -63,8 +64,10 @@ pub fn on_control_change(
             if controlled_by.human_dc_input {
                 debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget due to human input", being_ent);
                 commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), *default_chunk_range_for_player_beings, ));
-                commands.entity(being_ent).try_insert(InputSpeedThrottleMult(1.0));
-                commands.entity(being_ent).try_remove::<InputMaxSpeed>();
+                if let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) {
+                    input_speed_throttle_mult.0 = 1.0;
+                    input_max_speed.0 = f32::MAX;
+                }
             } else {
                 debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
                 commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, )>();

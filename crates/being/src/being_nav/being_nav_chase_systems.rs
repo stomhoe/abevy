@@ -8,7 +8,7 @@ use ::being_shared::*;
 use faction_shared::BelongsToAPlayerFaction;
 use ::tilemap_shared::*;
 use bevy::{
-    ecs::entity::EntityHashSet,
+    ecs::{entity::EntityHashSet, system::SystemParam},
     platform::collections::{HashMap, HashSet},
     prelude::*,
 };
@@ -32,11 +32,36 @@ use super::being_nav_helpers::{
     retained_target_chunk_trails_match_positions,
 };
 
+#[derive(Clone, Copy)]
+struct SharedChaseRebuildJob {
+    chaser_ent: Entity,
+    chaser_dim: DimensionRef,
+    chaser_gpos: GlobalTilePos,
+    target_ent: Entity,
+    target_pos: GlobalTilePos,
+    target_dist: u32,
+    goto_interval: Duration,
+}
+
+#[derive(SystemParam)]
+pub struct RebuildGotoNavPlansScratch<'s> {
+    dynamic_blocking: Local<'s, HashMap<UVec3, Entity>>,
+    active_chasers: Local<'s, EntityHashSet>,
+    active_chase_targets: Local<'s, EntityHashSet>,
+    shared_rebuild_jobs: Local<'s, Vec<SharedChaseRebuildJob>>,
+    shared_goal_owners: Local<'s, HashMap<GlobalTilePos, Entity>>,
+    chase_zone_tiles: Local<'s, Vec<GlobalTilePos>>,
+    chase_goal_tiles: Local<'s, Vec<GlobalTilePos>>,
+    chase_slot_tiles: Local<'s, Vec<GlobalTilePos>>,
+    chase_seed_goal_tiles: Local<'s, Vec<(GlobalTilePos, u32)>>,
+    chase_zone_hits: Local<'s, Vec<GlobalTilePos>>,
+}
+
 const BOXED_TARGET_RETRY_SECS: f32 = 0.4;
 const PARTIAL_TARGET_RETRY_SECS: f32 = 1.0;
 const TARGET_SHIFT_REBUILD_TILES: i32 = 1;
 const BLOCKED_STEP_RETRY_SECS: f32 = 0.08;
-const CHASE_PACK_COMPACT_DISTANCE_TILES: i32 = 3;
+const SHARED_CHASE_SUPPORT_RING_DEPTH: u32 = 2;
 const BOXED_TARGET_FALLBACK_DELTAS: [IVec2; 12] = [
     IVec2::new(2, 0),
     IVec2::new(-2, 0),
@@ -134,11 +159,13 @@ fn collect_chase_goal_tiles(
     collision_zone: &InteractionZone,
     zone_tiles: &mut Vec<GlobalTilePos>,
     goal_tiles: &mut Vec<GlobalTilePos>,
+    slot_tiles: &mut Vec<GlobalTilePos>,
     seed_goal_tiles: &mut Vec<(GlobalTilePos, u32)>,
     zone_hits: &mut Vec<GlobalTilePos>,
 ) {
     zone_tiles.clear();
     goal_tiles.clear();
+    slot_tiles.clear();
     seed_goal_tiles.clear();
     zone_hits.clear();
 
@@ -150,7 +177,8 @@ fn collect_chase_goal_tiles(
     zone_tiles.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
     zone_tiles.dedup();
 
-    goal_tiles.reserve(zone_tiles.len().saturating_mul(8));
+    let mut seen_goal_tiles = HashSet::with_capacity(zone_tiles.len().saturating_mul(8));
+    goal_tiles.reserve(zone_tiles.len().saturating_mul(4));
     for zone_tile in zone_tiles.iter().copied() {
         for delta in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
             let candidate = GlobalTilePos(zone_tile.0 + delta);
@@ -161,13 +189,11 @@ fn collect_chase_goal_tiles(
                 continue;
             }
 
-            zone_hits.clear();
-            collision_zone.gather_accessible_border_positions_for_checked_pos(
+            if !collision_zone.has_accessible_border_position_for_checked_pos(
                 target_pos,
                 candidate,
                 zone_hits,
-            );
-            if zone_hits.is_empty() {
+            ) {
                 continue;
             }
 
@@ -177,38 +203,9 @@ fn collect_chase_goal_tiles(
             if !cache.grid.is_passable(local) {
                 continue;
             }
-            goal_tiles.push(candidate);
-        }
-    }
-
-    let mut min_zone = zone_tiles.first().copied().unwrap_or(target_pos).0;
-    let mut max_zone = min_zone;
-    for zone_tile in zone_tiles.iter().copied() {
-        min_zone = min_zone.min(zone_tile.0);
-        max_zone = max_zone.max(zone_tile.0);
-    }
-    for y in (min_zone.y - CHASE_PACK_COMPACT_DISTANCE_TILES)..=(max_zone.y + CHASE_PACK_COMPACT_DISTANCE_TILES) {
-        for x in (min_zone.x - CHASE_PACK_COMPACT_DISTANCE_TILES)..=(max_zone.x + CHASE_PACK_COMPACT_DISTANCE_TILES) {
-            let candidate = GlobalTilePos::new(x, y);
-            if zone_tiles
-                .binary_search_by_key(&(candidate.0.x, candidate.0.y), |pos| (pos.0.x, pos.0.y))
-                .is_ok()
-            {
-                continue;
+            if seen_goal_tiles.insert(candidate) {
+                goal_tiles.push(candidate);
             }
-            let Some(min_zone_dist) = shared_chase_min_zone_distance(zone_tiles, candidate) else {
-                continue;
-            };
-            if min_zone_dist == 0 || min_zone_dist > CHASE_PACK_COMPACT_DISTANCE_TILES as u32 {
-                continue;
-            }
-            let Some(local) = cache.local_from_gpos(candidate) else {
-                continue;
-            };
-            if !cache.grid.is_passable(local) {
-                continue;
-            }
-            goal_tiles.push(candidate);
         }
     }
 
@@ -225,8 +222,64 @@ fn collect_chase_goal_tiles(
         }
     }
 
-    goal_tiles.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
+    goal_tiles.sort_unstable_by_key(|pos| {
+        (pos.taxicab_tile_distance(target_pos) as u32, pos.0.x, pos.0.y)
+    });
     goal_tiles.dedup();
+
+    let mut seen_slot_tiles = HashSet::with_capacity(goal_tiles.len().saturating_mul(8));
+    let mut frontier = Vec::with_capacity(goal_tiles.len());
+    frontier.extend(goal_tiles.iter().copied());
+    slot_tiles.reserve(goal_tiles.len().saturating_mul((SHARED_CHASE_SUPPORT_RING_DEPTH as usize).saturating_add(1)));
+    for &goal_tile in goal_tiles.iter() {
+        seen_slot_tiles.insert(goal_tile);
+        slot_tiles.push(goal_tile);
+    }
+    for _ in 0..SHARED_CHASE_SUPPORT_RING_DEPTH {
+        let mut next_frontier = Vec::with_capacity(frontier.len().saturating_mul(4));
+        let mut ring_candidates: Vec<(GlobalTilePos, u32, u32)> = Vec::with_capacity(frontier.len().saturating_mul(4));
+        for source_tile in frontier.iter().copied() {
+            for delta in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
+                let candidate = GlobalTilePos(source_tile.0 + delta);
+                if !seen_slot_tiles.insert(candidate) {
+                    continue;
+                }
+                if zone_tiles
+                    .binary_search_by_key(&(candidate.0.x, candidate.0.y), |pos| (pos.0.x, pos.0.y))
+                    .is_ok()
+                {
+                    continue;
+                }
+                let Some(local) = cache.local_from_gpos(candidate) else {
+                    continue;
+                };
+                if !cache.grid.is_passable(local) {
+                    continue;
+                }
+                let adjacent_goal_count = [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y]
+                    .into_iter()
+                    .filter(|delta| goal_tiles
+                        .binary_search_by_key(
+                            &((candidate.0 + *delta).x, (candidate.0 + *delta).y),
+                            |pos| (pos.0.x, pos.0.y),
+                        )
+                        .is_ok())
+                    .count() as u32;
+                let support_score = adjacent_goal_count.saturating_mul(4);
+                ring_candidates.push((candidate, support_score, candidate.taxicab_tile_distance(target_pos) as u32));
+                next_frontier.push(candidate);
+            }
+        }
+        ring_candidates.sort_unstable_by_key(|(pos, support_score, target_dist, )| {
+            (std::cmp::Reverse(*support_score), *target_dist, pos.0.x, pos.0.y)
+        });
+        slot_tiles.extend(ring_candidates.into_iter().map(|(candidate, _, _, )| candidate));
+        frontier.clear();
+        frontier.extend(next_frontier.drain(..));
+        if frontier.is_empty() {
+            break;
+        }
+    }
 
     seed_goal_tiles.reserve(goal_tiles.len());
     for goal_tile in goal_tiles.iter().copied() {
@@ -261,6 +314,7 @@ fn rebuild_shared_chase_flow_field(
     interaction_zones_query: &Query<&InteractionZones, >,
     zone_tiles: &mut Vec<GlobalTilePos>,
     goal_tiles: &mut Vec<GlobalTilePos>,
+    slot_tiles: &mut Vec<GlobalTilePos>,
     seed_goal_tiles: &mut Vec<(GlobalTilePos, u32)>,
     zone_hits: &mut Vec<GlobalTilePos>,
 ) -> Option<()> {
@@ -277,6 +331,7 @@ fn rebuild_shared_chase_flow_field(
         &collision_zone,
         zone_tiles,
         goal_tiles,
+        slot_tiles,
         seed_goal_tiles,
         zone_hits,
     );
@@ -285,15 +340,17 @@ fn rebuild_shared_chase_flow_field(
         target_dim.0,
         target_pos,
         goal_tiles,
+        slot_tiles,
         seed_goal_tiles,
     )?;
     debug!(
         target: BEING_SYSTEM,
-        "Built shared chase flow target={:?} dim={:?} anchor={:?} goals={} open_goals={} zone_tiles={}",
+        "Built shared chase flow target={:?} dim={:?} anchor={:?} goals={} slots={} open_goals={} zone_tiles={}",
         target_ent,
         target_dim,
         target_pos,
         flow_field.goal_tiles.len(),
+        flow_field.slot_tiles.len(),
         flow_field.seed_goal_tiles.len(),
         zone_tiles.len(),
     );
@@ -301,135 +358,122 @@ fn rebuild_shared_chase_flow_field(
     Some(())
 }
 
-fn choose_shared_chase_step(
-    blocking_tiles: &mut BlockingTileParamSet,
-    cache: &AiNavGridCache,
+fn shared_flow_target_reached(
     flow_field: &SharedChaseFlowField,
-    chaser_ent: Entity,
-    chaser_dim: DimensionRef,
     chaser_pos: GlobalTilePos,
-    last_dir: Option<IVec2>,
-) -> Option<Vec2> {
-    const SHARED_CHASE_HOLD_DISTANCE: u32 = 1;
-    const SHARED_CHASE_HOLD_MARGIN: i32 = 120;
+) -> bool {
+    flow_field.is_goal_tile(chaser_pos)
+}
 
-    let curr_dist = flow_field.distance_at_gpos(cache, chaser_pos)?;
-    if curr_dist == 0 {
-        return Some(Vec2::ZERO);
+fn choose_shared_chase_goal(
+    flow_field: &SharedChaseFlowField,
+    cache: &AiNavGridCache,
+    chaser_ent: Entity,
+    reserved_goal: Option<GlobalTilePos>,
+    reserved_goals: &HashMap<GlobalTilePos, Entity>,
+) -> Option<GlobalTilePos> {
+    if let Some(reserved_goal) = reserved_goal.filter(|goal| flow_field.is_slot_tile(*goal)) {
+        match reserved_goals.get(&reserved_goal) {
+            Some(&owner) if owner != chaser_ent => {}
+            _ => return Some(reserved_goal),
+        }
+    }
+    if flow_field.slot_tiles.is_empty() {
+        return None;
     }
 
-    let target_delta = chaser_pos.0 - flow_field.target_pos.0;
-    let forward_axis = cardinal_step_toward(-target_delta);
-    let lateral_axis = IVec2::new(-forward_axis.y, forward_axis.x);
-    let desired_lane_offset = if lateral_axis == IVec2::ZERO {
-        0
-    } else {
-        let max_lane_offset = ((curr_dist as i32) / 5).clamp(0, 3);
-        if max_lane_offset == 0 {
-            0
-        } else {
-            let lane_count = (max_lane_offset * 2) + 1;
-            let ent_index = chaser_ent.index_u32() as i32;
-            let mut lane = (ent_index % lane_count) - max_lane_offset;
-            if lane == 0 {
-                lane = if ent_index % 2 == 0 { 1 } else { -1 };
-            }
-            lane.clamp(-max_lane_offset, max_lane_offset)
+    for goal_tile in flow_field.slot_tiles.iter().copied() {
+        if reserved_goals.contains_key(&goal_tile) {
+            continue;
         }
+        let Some(local) = cache.local_from_gpos(goal_tile) else {
+            continue;
+        };
+        if cache.occupied.contains_key(&local) {
+            continue;
+        }
+        return Some(goal_tile);
+    }
+
+    None
+}
+
+fn rebuild_shared_chase_plan_for_job(
+    job: SharedChaseRebuildJob,
+    cache: &AiNavGridCache,
+    chase_fields: &mut SharedChaseFlowFields,
+    plans: &mut ChaserNavPlans,
+    dynamic_blocking: &mut HashMap<UVec3, Entity>,
+    reserved_goals: &mut HashMap<GlobalTilePos, Entity>,
+) {
+    let Some(flow_field) = chase_fields.by_target.get(&job.target_ent) else {
+        return;
     };
-    let current_lane_penalty = if lateral_axis == IVec2::ZERO {
-        0
-    } else {
-        let lane_offset = (chaser_pos.0 - flow_field.target_pos.0).dot(lateral_axis);
-        (lane_offset - desired_lane_offset).abs() * 35
+    let Some(plan) = plans.by_ent.get_mut(&job.chaser_ent) else {
+        return;
     };
-    let current_crowd_penalty = shared_chase_neighbor_crowd_penalty(cache, chaser_ent, chaser_pos);
-    let hold_score = (curr_dist as i32 * 1000)
-        + current_lane_penalty
-        + current_crowd_penalty
-        - 220;
 
-    let mut best_step = None;
-    let mut best_non_improving_step = None;
-    let mut best_score = i32::MAX;
-    let mut best_non_improving_score = i32::MAX;
-    for delta in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
-        let next_pos = GlobalTilePos(chaser_pos.0 + delta);
-        let Some(next_dist) = flow_field.distance_at_gpos(cache, next_pos) else {
-            continue;
-        };
-        if blocking_tiles.is_blocked_at_tiles_only(chaser_dim, next_pos, chaser_ent) {
-            continue;
-        }
-        if blocking_tiles.is_blocked_at(chaser_dim, next_pos, chaser_ent) {
-            continue;
-        }
-        if next_dist > curr_dist.saturating_add(1) {
-            continue;
-        }
+    let Some(reserved_goal) = choose_shared_chase_goal(
+        flow_field,
+        cache,
+        job.chaser_ent,
+        plan.reserved_shared_goal,
+        reserved_goals,
+    ) else {
+        plan.clear_shared_goal();
+        plan.clear_path_and_retry(
+            job.goto_interval.max(Duration::from_secs_f32(BOXED_TARGET_RETRY_SECS)),
+            job.target_pos,
+        );
+        trace!(target: BEING_SYSTEM, "Deferred shared chase for {:?}: prey {:?} has no unblocked reserved slot near {:?}", job.chaser_ent, job.target_ent, job.target_pos);
+        return;
+    };
+    plan.reserved_shared_goal = Some(reserved_goal);
+    reserved_goals.insert(reserved_goal, job.chaser_ent);
 
-        let progress_penalty = if next_dist > curr_dist {
-            900
-        } else if next_dist == curr_dist {
-            180
-        } else {
-            0
-        };
-        let lane_penalty = if lateral_axis == IVec2::ZERO {
-            0
-        } else {
-            let lane_offset = (next_pos.0 - flow_field.target_pos.0).dot(lateral_axis);
-            (lane_offset - desired_lane_offset).abs() * 35
-        };
-        let crowd_penalty = shared_chase_neighbor_crowd_penalty(cache, chaser_ent, next_pos);
-        let goal_bonus = if flow_field.is_goal_tile(next_pos) { -120 } else { 0 };
-        let direction_change_penalty = if let Some(last_dir) = last_dir {
-            if delta == -last_dir {
-                if next_dist < curr_dist { 120 } else { 700 }
-            } else if delta != last_dir && next_dist >= curr_dist {
-                180
-            } else {
-                0
-            }
-        } else {
-            0
-        };
-        let score = (next_dist as i32 * 1000)
-            + progress_penalty
-            + lane_penalty
-            + crowd_penalty
-            + direction_change_penalty
-            + goal_bonus;
-        if next_dist < curr_dist {
-            if score < best_score {
-                best_score = score;
-                best_step = Some(delta.as_vec2());
-            }
-            continue;
+    let Some((start, goal)) = cache.local_path_points(job.chaser_gpos, reserved_goal) else {
+        if reserved_goals.get(&reserved_goal) == Some(&job.chaser_ent) {
+            reserved_goals.remove(&reserved_goal);
         }
-        if score < best_non_improving_score {
-            best_non_improving_score = score;
-            best_non_improving_step = Some(delta.as_vec2());
-        }
-    }
+        plan.clear_path_and_retry(
+            job.goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
+            job.target_pos,
+        );
+        trace!(target: BEING_SYSTEM, "Deferred shared chase plan rebuild for {:?}: prey {:?} cannot path from {:?} to reserved slot {:?}", job.chaser_ent, job.target_ent, job.chaser_gpos, reserved_goal);
+        return;
+    };
 
-    if best_step.is_some() {
-        return best_step;
-    }
-    if curr_dist <= SHARED_CHASE_HOLD_DISTANCE {
-        return Some(Vec2::ZERO);
-    }
-    if let Some(best_non_improving_step) = best_non_improving_step {
-        if let Some(last_dir) = last_dir {
-            if best_non_improving_step.as_ivec2() == -last_dir {
-                return Some(Vec2::ZERO);
-            }
+    rebuild_dynamic_blocking(dynamic_blocking, cache, job.chaser_ent, Entity::PLACEHOLDER, start, goal);
+    let mut req = PathfindArgs::new(start, goal)
+        .astar()
+        .partial()
+        .blocking(dynamic_blocking);
+    let Some(path) = cache.grid.pathfind(&mut req) else {
+        if reserved_goals.get(&reserved_goal) == Some(&job.chaser_ent) {
+            reserved_goals.remove(&reserved_goal);
         }
-        if best_non_improving_score + SHARED_CHASE_HOLD_MARGIN < hold_score {
-            return Some(best_non_improving_step);
-        }
-    }
-    Some(Vec2::ZERO)
+        plan.clear_path_and_retry(
+            job.goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
+            job.target_pos,
+        );
+        trace!(target: BEING_SYSTEM, "Deferred shared chase plan rebuild for {:?}: prey {:?} unreachable from {:?} to reserved slot {:?}", job.chaser_ent, job.target_ent, job.chaser_gpos, reserved_goal);
+        return;
+    };
+
+    plan.path_tiles.clear();
+    plan.path_tiles.extend(path.path().iter().map(|step| GlobalTilePos(step.xy().as_ivec2() + cache.min)));
+    plan.next_step_ix = 0;
+    plan.last_target_pos = Some(job.target_pos);
+    plan.holds_at_partial_endpoint = path.is_partial();
+    plan.rebuild_timer = Timer::new(
+        if path.is_partial() {
+            job.goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS))
+        } else {
+            job.goto_interval
+        },
+        TimerMode::Once,
+    );
+    trace!(target: BEING_SYSTEM, "Rebuilt shared chase plan for {:?}: prey {:?}, anchor {:?}, reserved {:?}, steps {}", job.chaser_ent, job.target_ent, job.target_pos, reserved_goal, plan.path_tiles.len());
 }
 
 fn shared_chase_min_zone_distance(
@@ -522,10 +566,10 @@ pub fn cleanup_player_chase_chunk_retention(
 #[allow(unused_parens, )]
 pub fn rebuild_goto_nav_plans(
     time: Res<Time>,
+    mut blocking_tiles: BlockingTileParamSet,
     goto_beings: Query<
         (
             Entity,
-            &GlobalTilePos,
             &DimensionRef,
             &GoTo,
             Option<&SpeedMagnitude>,
@@ -535,31 +579,24 @@ pub fn rebuild_goto_nav_plans(
         (With<Being>, LocalAiControlled),
     >,
     grids: Res<AiNavGrids>,
-    targets_query: Query<
-        (
-            &GlobalTilePos,
-            &DimensionRef,
-            Option<&BitRef>,
-            Option<&RaceRef>,
-        ),
-        (),
-    >,
+    targets_query: Query<&DimensionRef, ()>,
     interaction_zones_query: Query<&InteractionZones, >,
     mut chase_fields: ResMut<SharedChaseFlowFields>,
     mut plans: ResMut<ChaserNavPlans>,
-    mut dynamic_blocking: Local<HashMap<UVec3, Entity>>,
-    mut active_chasers: Local<EntityHashSet>,
-    mut active_chase_targets: Local<EntityHashSet>,
-    mut chase_zone_tiles: Local<Vec<GlobalTilePos>>,
-    mut chase_goal_tiles: Local<Vec<GlobalTilePos>>,
-    mut chase_seed_goal_tiles: Local<Vec<(GlobalTilePos, u32)>>,
-    mut chase_zone_hits: Local<Vec<GlobalTilePos>>,
+    mut scratch: RebuildGotoNavPlansScratch,
 ) {
-    active_chasers.clear();
-    active_chase_targets.clear();
+    scratch.active_chasers.clear();
+    scratch.active_chase_targets.clear();
+    scratch.shared_rebuild_jobs.clear();
+    scratch.shared_goal_owners.clear();
 
-    for (chaser_ent, chaser_gpos, &chaser_dim, goto, chaser_speed, go_to_meta, chasing, ) in goto_beings.iter() {
-        active_chasers.insert(chaser_ent);
+    for (chaser_ent, &chaser_dim, goto, chaser_speed, go_to_meta, chasing, ) in goto_beings.iter() {
+        let Ok(chaser_gpos) = blocking_tiles.gpos_query.get(chaser_ent) else {
+            continue;
+        };
+        let chaser_gpos = *chaser_gpos;
+        let chaser_gpos = &chaser_gpos;
+        scratch.active_chasers.insert(chaser_ent);
 
         let target_pos = goto.pos;
         let goto_interval = ChaserNavPlan::rebuild_interval(
@@ -586,22 +623,29 @@ pub fn rebuild_goto_nav_plans(
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             };
-            let Ok((target_gpos, &target_dim, target_bit_ref, target_race_ref, )) = targets_query.get(chasing.target) else {
+            let Ok(target_gpos) = blocking_tiles.gpos_query.get(chasing.target) else {
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             };
+            let target_pos = *target_gpos;
+            let Ok(target_dim) = targets_query.get(chasing.target) else {
+                plan.clear_path_and_retry(goto_interval, target_pos);
+                continue;
+            };
+            let target_dim = *target_dim;
             if target_dim != chaser_dim {
-                plan.clear_path_and_retry(goto_interval, *target_gpos);
+                plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             }
 
-            active_chase_targets.insert(chasing.target);
-            let target_pos = *target_gpos;
+            scratch.active_chase_targets.insert(chasing.target);
             let target_shifted = plan
                 .last_target_pos
                 .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= TARGET_SHIFT_REBUILD_TILES)
                 .unwrap_or(true);
             let need_rebuild = plan.path_tiles.is_empty() || timer_finished || target_shifted;
+            let target_bit_ref = blocking_tiles.get_being_bit_ref(chasing.target);
+            let target_race_ref = blocking_tiles.get_being_race_ref(chasing.target);
 
             let collision_zone = resolve_being_interaction_zone(
                 interaction_zones_query.get(chasing.target).ok(),
@@ -614,18 +658,20 @@ pub fn rebuild_goto_nav_plans(
                 cache,
                 target_pos,
                 &collision_zone,
-                &mut chase_zone_tiles,
-                &mut chase_goal_tiles,
-                &mut chase_seed_goal_tiles,
-                &mut chase_zone_hits,
+                &mut scratch.chase_zone_tiles,
+                &mut scratch.chase_goal_tiles,
+                &mut scratch.chase_slot_tiles,
+                &mut scratch.chase_seed_goal_tiles,
+                &mut scratch.chase_zone_hits,
             );
             let needs_flow_rebuild = chase_fields
                 .by_target
                 .get(&chasing.target)
                 .map(|field| {
                     !field.matches_grid(cache, target_dim.0, target_pos)
-                        || field.goal_tiles != *chase_goal_tiles
-                        || field.seed_goal_tiles != *chase_seed_goal_tiles
+                        || field.goal_tiles != *scratch.chase_goal_tiles
+                        || field.slot_tiles != *scratch.chase_slot_tiles
+                        || field.seed_goal_tiles != *scratch.chase_seed_goal_tiles
                 })
                 .unwrap_or(true);
             if needs_flow_rebuild {
@@ -638,10 +684,11 @@ pub fn rebuild_goto_nav_plans(
                     target_bit_ref,
                     target_race_ref,
                     &interaction_zones_query,
-                    &mut chase_zone_tiles,
-                    &mut chase_goal_tiles,
-                    &mut chase_seed_goal_tiles,
-                    &mut chase_zone_hits,
+                    &mut scratch.chase_zone_tiles,
+                    &mut scratch.chase_goal_tiles,
+                    &mut scratch.chase_slot_tiles,
+                    &mut scratch.chase_seed_goal_tiles,
+                    &mut scratch.chase_zone_hits,
                 ) else {
                     plan.clear_path_and_retry(
                         goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
@@ -658,31 +705,25 @@ pub fn rebuild_goto_nav_plans(
                 );
                 continue;
             };
+            if let Some(reserved_goal) = plan.reserved_shared_goal.filter(|goal| flow_field.is_slot_tile(*goal)) {
+                scratch.shared_goal_owners.insert(reserved_goal, chaser_ent);
+            }
             if !need_rebuild {
                 continue;
             }
-            if flow_field.is_goal_tile(*chaser_gpos) {
-                plan.clear_path_and_retry(Duration::from_secs_f32(0.2), target_pos);
-                trace!(target: BEING_SYSTEM, "Holding boxed chase slot for {:?}: prey {:?} anchor {:?}", chaser_ent, chasing.target, target_pos);
-                continue;
-            }
-            if !flow_field.reconstruct_path_tiles(cache, *chaser_gpos, &mut plan.path_tiles) {
-                plan.clear_path_and_retry(
-                    goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
-                    target_pos,
-                );
-                trace!(target: BEING_SYSTEM, "Deferred chase plan rebuild for {:?}: prey {:?} unreachable from {:?} on shared field", chaser_ent, chasing.target, chaser_gpos);
-                continue;
-            }
-
-            plan.next_step_ix = 0;
-            plan.last_target_pos = Some(target_pos);
-            plan.holds_at_partial_endpoint = false;
-            plan.rebuild_timer = Timer::new(goto_interval, TimerMode::Once);
-            trace!(target: BEING_SYSTEM, "Rebuilt shared chase plan for {:?}: prey {:?}, anchor {:?}, steps {}", chaser_ent, chasing.target, target_pos, plan.path_tiles.len());
+            scratch.shared_rebuild_jobs.push(SharedChaseRebuildJob {
+                chaser_ent,
+                chaser_dim,
+                chaser_gpos: *chaser_gpos,
+                target_ent: chasing.target,
+                target_pos,
+                target_dist: chaser_gpos.taxicab_tile_distance(target_pos) as u32,
+                goto_interval,
+            });
             continue;
         }
 
+        plan.clear_shared_goal();
         let Some((start, goal)) = cache.local_path_points(*chaser_gpos, target_pos) else {
             plan.clear_path_and_retry(goto_interval, target_pos);
             continue;
@@ -715,7 +756,7 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
-                    &mut dynamic_blocking,
+                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
@@ -732,7 +773,7 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
-                    &mut dynamic_blocking,
+                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
@@ -743,13 +784,13 @@ pub fn rebuild_goto_nav_plans(
                 );
                 continue;
             }
-            let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_goto, _blocker_speed, _blocker_meta, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
+            let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_meta, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
                 consider_chase_goal_candidate(
                     &mut best_path_tiles,
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
-                    &mut dynamic_blocking,
+                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
@@ -767,7 +808,7 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
-                    &mut dynamic_blocking,
+                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
@@ -784,7 +825,7 @@ pub fn rebuild_goto_nav_plans(
                 &mut best_path_is_partial,
                 &mut best_path_remaining,
                 &mut best_path_cost,
-                &mut dynamic_blocking,
+                &mut scratch.dynamic_blocking,
                 cache,
                 chaser_ent,
                 Entity::PLACEHOLDER,
@@ -826,7 +867,7 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_is_partial,
                         &mut best_path_remaining,
                         &mut best_path_cost,
-                        &mut dynamic_blocking,
+                        &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
                         Entity::PLACEHOLDER,
@@ -843,7 +884,7 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_is_partial,
                         &mut best_path_remaining,
                         &mut best_path_cost,
-                        &mut dynamic_blocking,
+                        &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
                         Entity::PLACEHOLDER,
@@ -854,13 +895,13 @@ pub fn rebuild_goto_nav_plans(
                     );
                     continue;
                 }
-                let Ok((_blocker_ent, _blocker_gpos, _blocker_dim, blocker_goto, _blocker_speed, _blocker_meta, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
+                let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_meta, _blocker_chasing, )) = goto_beings.get(occupant_ent) else {
                     consider_chase_goal_candidate(
                         &mut best_path_tiles,
                         &mut best_path_is_partial,
                         &mut best_path_remaining,
                         &mut best_path_cost,
-                        &mut dynamic_blocking,
+                        &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
                         Entity::PLACEHOLDER,
@@ -877,7 +918,7 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_is_partial,
                         &mut best_path_remaining,
                         &mut best_path_cost,
-                        &mut dynamic_blocking,
+                        &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
                         Entity::PLACEHOLDER,
@@ -893,7 +934,7 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
-                    &mut dynamic_blocking,
+                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
@@ -915,11 +956,11 @@ pub fn rebuild_goto_nav_plans(
         }
 
         if best_path_tiles.is_empty() {
-            rebuild_dynamic_blocking(&mut dynamic_blocking, cache, chaser_ent, Entity::PLACEHOLDER, start, goal);
+            rebuild_dynamic_blocking(&mut scratch.dynamic_blocking, cache, chaser_ent, Entity::PLACEHOLDER, start, goal);
             let mut req = PathfindArgs::new(start, goal)
                 .astar()
                 .partial()
-                .blocking(&dynamic_blocking);
+                .blocking(&scratch.dynamic_blocking);
             let Some(path) = cache.grid.pathfind(&mut req) else {
                 plan.clear_path_and_retry(goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)), target_pos);
                 trace!(target: BEING_SYSTEM, "Deferred GoTo nav retry for {:?}: target {:?}, dist {:.2}, interval {:.2}s", chaser_ent, target_pos, chaser_gpos.taxicab_tile_distance(target_pos), goto_interval.as_secs_f32());
@@ -949,10 +990,25 @@ pub fn rebuild_goto_nav_plans(
         trace!(target: BEING_SYSTEM, "Rebuilt GoTo nav for {:?}: target {:?}, dist {:.2}, interval {:.2}s, steps {}", chaser_ent, target_pos, chaser_gpos.taxicab_tile_distance(target_pos), goto_interval.as_secs_f32(), plan.path_tiles.len());
     }
 
-    plans.by_ent.retain(|ent, _| active_chasers.contains(ent));
+    scratch.shared_rebuild_jobs.sort_unstable_by_key(|job| (job.target_dist, job.chaser_ent.index_u32()));
+    for job in scratch.shared_rebuild_jobs.iter().copied() {
+        let Some(cache) = grids.by_dim.get(&job.chaser_dim.0) else {
+            continue;
+        };
+        rebuild_shared_chase_plan_for_job(
+            job,
+            cache,
+            &mut chase_fields,
+            &mut plans,
+            &mut scratch.dynamic_blocking,
+            &mut scratch.shared_goal_owners,
+        );
+    }
+
+    plans.by_ent.retain(|ent, _| scratch.active_chasers.contains(ent));
     chase_fields
         .by_target
-        .retain(|target_ent, field| active_chase_targets.contains(target_ent) && grids.by_dim.contains_key(&field.dim));
+        .retain(|target_ent, field| scratch.active_chase_targets.contains(target_ent) && grids.by_dim.contains_key(&field.dim));
 }
 
 #[allow(unused_parens, )]
@@ -978,9 +1034,11 @@ pub fn goto_behavior(
         let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
             continue;
         };
-        let Ok(&chaser_pos) = blocking_tiles.gpos_query.get(chaser_ent) else {
+        let Ok(chaser_pos) = blocking_tiles.gpos_query.get(chaser_ent) else {
             continue;
         };
+        let chaser_pos = *chaser_pos;
+        let chaser_pos = &chaser_pos;
         let target_pos = goto.pos;
 
         let shared_flow_field = if matches!(go_to_meta, Some(meta) if meta.source == NavOrderSource::Chasing) {
@@ -995,8 +1053,16 @@ pub fn goto_behavior(
         } else {
             None
         };
-        if let Some((cache, flow_field, )) = shared_flow_field {
-            if flow_field.is_goal_tile(chaser_pos) || flow_field.distance_at_gpos(cache, chaser_pos) == Some(0) {
+        let shared_reserved_goal = plans.by_ent.get(&chaser_ent).and_then(|plan| plan.reserved_shared_goal);
+        let shared_reserved_is_support = shared_flow_field
+            .as_ref()
+            .and_then(|(_, flow_field, )| shared_reserved_goal.map(|reserved_goal| !flow_field.is_goal_tile(reserved_goal)))
+            .unwrap_or(false);
+        if let Some((_cache, flow_field, )) = shared_flow_field {
+            let shared_target_reached = shared_reserved_goal
+                .map(|reserved_goal| reserved_goal == *chaser_pos)
+                .unwrap_or_else(|| shared_flow_target_reached(flow_field, *chaser_pos));
+            if shared_target_reached {
                 input_move_dir.0 = Vec2::ZERO;
                 last_shared_dirs.remove(&chaser_ent);
                 let face_delta = target_pos.0 - chaser_pos.0;
@@ -1018,42 +1084,14 @@ pub fn goto_behavior(
             continue;
         };
 
-        let move_input = if let Some((cache, flow_field, )) = shared_flow_field {
-            choose_shared_chase_step(
-                &mut blocking_tiles,
-                cache,
-                flow_field,
-                chaser_ent,
-                chaser_dim,
-                chaser_pos,
-                last_shared_dirs.get(&chaser_ent).copied(),
-            )
-            .unwrap_or_else(|| {
-                plans
-                    .by_ent
-                    .get_mut(&chaser_ent)
-                    .map(|plan| {
-                        match plan.next_step(chaser_pos) {
-                            Some(next) => {
-                                let desired = cardinal_step_toward(next.0 - chaser_pos.0);
-                                if desired == IVec2::ZERO {
-                                    direct_chase_dir
-                                } else {
-                                    desired.as_vec2()
-                                }
-                            }
-                            None if plan.holds_at_partial_endpoint => Vec2::ZERO,
-                            None => direct_chase_dir,
-                        }
-                    })
-                    .unwrap_or(direct_chase_dir)
-            })
-        } else if let Some(plan) = plans.by_ent.get_mut(&chaser_ent) {
-            match plan.next_step(chaser_pos) {
+        let move_input = if let Some(plan) = plans.by_ent.get_mut(&chaser_ent) {
+            match plan.next_step(*chaser_pos) {
                 Some(next) => {
                     let desired = cardinal_step_toward(next.0 - chaser_pos.0);
                     if desired == IVec2::ZERO {
                         direct_chase_dir
+                    } else if shared_reserved_is_support {
+                        desired.as_vec2()
                     } else {
                         let desired_next_pos = GlobalTilePos(chaser_pos.0 + desired);
                         let desired_next_dist = desired_next_pos.taxicab_tile_distance(target_pos);
@@ -1079,6 +1117,7 @@ pub fn goto_behavior(
                         }
                     }
                 }
+                None if plan.reserved_shared_goal.is_some() => Vec2::ZERO,
                 None if plan.holds_at_partial_endpoint => Vec2::ZERO,
                 None => direct_chase_dir,
             }

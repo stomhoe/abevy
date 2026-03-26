@@ -38,7 +38,7 @@ pub fn freeze_being(mut cmd: Commands,
 
         let mut entity = cmd.entity(unloaded_being.0);
         entity.try_insert(BgSimulatedIn{ macro_chunk_ent });
-        entity.try_remove::<RemoveOnFreeze>();
+        //entity.try_remove::<RemoveOnFreeze>();
     }
 
 }

@@ -49,6 +49,7 @@ pub struct SharedChaseFlowField {
     pub dim: Entity,
     pub target_pos: GlobalTilePos,
     pub goal_tiles: Vec<GlobalTilePos>,
+    pub slot_tiles: Vec<GlobalTilePos>,
     pub seed_goal_tiles: Vec<(GlobalTilePos, u32)>,
     pub min: IVec2,
     pub width: u32,
@@ -75,12 +76,14 @@ impl SharedChaseFlowField {
         dim: Entity,
         target_pos: GlobalTilePos,
         goal_tiles: &[GlobalTilePos],
+        slot_tiles: &[GlobalTilePos],
         seed_goal_tiles: &[(GlobalTilePos, u32)],
     ) -> Option<Self> {
         let tile_count = cache.grid.width() as usize * cache.grid.height() as usize;
         let mut distances = vec![u32::MAX; tile_count];
         let mut frontier = BinaryHeap::new();
         let mut valid_goal_tiles = Vec::with_capacity(goal_tiles.len());
+        let mut valid_slot_tiles = Vec::with_capacity(slot_tiles.len());
         let mut valid_seed_goal_tiles = Vec::with_capacity(seed_goal_tiles.len());
 
         for goal_tile in goal_tiles.iter().copied() {
@@ -91,6 +94,15 @@ impl SharedChaseFlowField {
                 continue;
             }
             valid_goal_tiles.push(goal_tile);
+        }
+        for slot_tile in slot_tiles.iter().copied() {
+            let Some(local) = cache.local_from_gpos(slot_tile) else {
+                continue;
+            };
+            if !cache.grid.is_passable(local) {
+                continue;
+            }
+            valid_slot_tiles.push(slot_tile);
         }
 
         for (goal_tile, seed_cost, ) in seed_goal_tiles.iter().copied() {
@@ -109,7 +121,10 @@ impl SharedChaseFlowField {
             valid_seed_goal_tiles.push((goal_tile, seed_cost, ));
         }
 
-        if valid_goal_tiles.is_empty() || valid_seed_goal_tiles.is_empty() {
+        valid_goal_tiles.dedup();
+        valid_slot_tiles.dedup();
+
+        if valid_goal_tiles.is_empty() || valid_slot_tiles.is_empty() || valid_seed_goal_tiles.is_empty() {
             return None;
         }
 
@@ -146,6 +161,7 @@ impl SharedChaseFlowField {
             dim,
             target_pos,
             goal_tiles: valid_goal_tiles,
+            slot_tiles: valid_slot_tiles,
             seed_goal_tiles: valid_seed_goal_tiles,
             min: cache.min,
             width: cache.grid.width(),
@@ -158,9 +174,14 @@ impl SharedChaseFlowField {
         &self,
         pos: GlobalTilePos,
     ) -> bool {
-        self.goal_tiles
-            .binary_search_by_key(&(pos.0.x, pos.0.y), |goal| (goal.0.x, goal.0.y))
-            .is_ok()
+        self.goal_tiles.contains(&pos)
+    }
+
+    pub fn is_slot_tile(
+        &self,
+        pos: GlobalTilePos,
+    ) -> bool {
+        self.slot_tiles.contains(&pos)
     }
 
     pub fn distance_at_gpos(
@@ -277,6 +298,7 @@ pub struct ChaserNavPlan {
     pub rebuild_timer: Timer,
     pub last_target_pos: Option<GlobalTilePos>,
     pub holds_at_partial_endpoint: bool,
+    pub reserved_shared_goal: Option<GlobalTilePos>,
 }
 
 impl Default for ChaserNavPlan {
@@ -287,6 +309,7 @@ impl Default for ChaserNavPlan {
             rebuild_timer: Timer::from_seconds(0.1, TimerMode::Once),
             last_target_pos: None,
             holds_at_partial_endpoint: false,
+            reserved_shared_goal: None,
         }
     }
 }
@@ -305,7 +328,12 @@ impl ChaserNavPlan {
         self.next_step_ix = 0;
         self.last_target_pos = None;
         self.holds_at_partial_endpoint = false;
+        self.reserved_shared_goal = None;
         self.rebuild_timer = Timer::new(interval, TimerMode::Once);
+    }
+
+    pub fn clear_shared_goal(&mut self) {
+        self.reserved_shared_goal = None;
     }
 
     pub fn clear_path_and_retry(&mut self, interval: Duration, target_pos: GlobalTilePos) {

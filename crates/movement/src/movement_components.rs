@@ -20,6 +20,11 @@ impl Default for InputSpeedThrottleMult {
 #[derive(Component, Debug, Clone, Copy)]
 //for limiting on speed via a max speed magnitude (dont mutate SpeedMagnitude's value with this, just use this as a .max on its value when its used)
 pub struct InputMaxSpeed(pub f32);
+impl Default for InputMaxSpeed {
+    fn default() -> Self {
+        Self(f32::MAX)
+    }
+}
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PendingTileCorrection {

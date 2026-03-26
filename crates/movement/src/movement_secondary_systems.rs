@@ -39,7 +39,8 @@ pub fn add_movement_components_to_beings(
             Visibility::default(),
             CardinalDirection::random(&mut rng),
             AppliedModifiers::default(),
-
+            InputMaxSpeed::default(),
+            InputSpeedThrottleMult::default(),
             AssetScoped,
             GridLockedMovement::default(),
         ));

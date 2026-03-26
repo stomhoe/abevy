@@ -220,6 +220,7 @@ pub fn apply_nav_orders(
     time: Res<Time>,
     mut reader: MessageReader<NavOrder>,
     mut selected_by_ent: Local<EntityHashMap<NavOrder>>,
+    mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
 ) {
     selected_by_ent.clear();
     for order in reader.read() {
@@ -247,12 +248,11 @@ pub fn apply_nav_orders(
             cmd.entity(being_ent).try_remove::<(GoTo, GoToMeta)>();
         }
         let speed_throttle_mult = order.speed_throttle_mult.unwrap_or(1.0).clamp(0.0, 1.0);
-        cmd.entity(being_ent).try_insert(InputSpeedThrottleMult(speed_throttle_mult));
-        if let Some(max_speed) = order.max_speed {
-            cmd.entity(being_ent).try_insert(InputMaxSpeed(max_speed.max(0.0)));
-        } else {
-            cmd.entity(being_ent).try_remove::<InputMaxSpeed>();
-        }
+        let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) else {
+            continue;
+        };
+        input_speed_throttle_mult.0 = speed_throttle_mult;
+        input_max_speed.0 = order.max_speed.map_or(f32::MAX, |max_speed| max_speed.max(0.0));
         trace!(target: BEING_SYSTEM, "NavOrder winner {:?}: source={:?} priority={} goto={:?} throttle={:.2}", being_ent, order.source, order.priority, order.go_to, speed_throttle_mult);
     }
 }
@@ -261,16 +261,20 @@ pub fn apply_nav_orders(
 pub fn clear_nav_outputs_for_beings_without_nav_state(
     mut cmd: Commands,
     query: Query<(Entity, Has<Wandering>, Has<Chasing>, Has<Fleeing>, Has<GoTo>, ), (With<Being>, LocalAiControlled, )>,
+    mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
 ) {
     for (being_ent, has_wandering, has_chasing, has_fleeing, has_go_to, ) in query.iter() {
         if has_wandering || has_chasing || has_fleeing {
             continue;
         }
+        let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) else {
+            continue;
+        };
         if has_go_to {
             cmd.entity(being_ent).try_remove::<(GoTo, GoToMeta)>();
         }
-        cmd.entity(being_ent).try_insert(InputSpeedThrottleMult(1.0));
-        cmd.entity(being_ent).try_remove::<InputMaxSpeed>();
+        input_speed_throttle_mult.0 = 1.0;
+        input_max_speed.0 = f32::MAX;
     }
 }
 
