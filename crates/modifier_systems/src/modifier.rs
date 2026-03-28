@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use game_common::game_common::ModifierSystems;
-use game_common::game_common_components::HealthDamage;
 use item_systems::generate_items_on_deaths;
 use {
     crate::modifier_hp_systems::*,
@@ -30,10 +29,8 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         Update,
         (
-            apply_health_damage.run_if(on_message::<HealthDamage>),
             update_body_manipulation_totals,
             (
-                mark_dead_by_health.after(apply_health_damage),
                 generate_items_on_deaths,
                 despawn_entities_on_death,
             )

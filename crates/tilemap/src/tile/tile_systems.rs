@@ -14,7 +14,7 @@ use ::tilemap_shared::*;
 pub type ExcludedComps = (Without<Templ>, Without<TilemapAnchor>, Without<TilePos>);
 
 #[allow(unused_parens)]
-/// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
+/// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, TemplEntiRef O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn snap_transform_to_gpos(
     mut cmd: Commands,
     mut main_query: Query<

@@ -40,10 +40,13 @@ pub fn plugin(app: &mut App) {
         (
             update_body_tree_weight_sum.in_set(ModifierSystems),
             (
-                apply_body_damage.run_if(on_message::<IncomingDamage>),
-                sync_bodypart_missing,
+                apply_damage.run_if(on_message::<IncHealthDamageOrHeal>),
+                refresh_template_bodyparts_users_list.before(update_body_health_from_parts),
+                update_bodypart_max_hp_map,
+                set_bodypart_as_missing_if_0_hp,
                 update_body_health_from_parts.run_if(on_timer(core::time::Duration::from_millis(200))),
-                apply_pain_slowdown,
+                apply_bodypart_hp_regen,
+                ensure_pain_slowdown_modifiers,
                 build_body_trees_on_beings,
             )
             .in_set(HostSystems)
@@ -70,7 +73,9 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyOf>()
     .replicate_filtered::<ChildOf, With<BodyOf>>()
     .replicate::<BodySums>()
-    .add_message::<IncomingDamage>()
+    .init_resource::<BodypartMaxHpMap>()
+    .init_resource::<BodypartTemplateByPart>()
+    .add_message::<IncHealthDamageOrHeal>()
     //TEMPORAL
     .register_type::<BodypartChildrenBodyparts>()
     ;

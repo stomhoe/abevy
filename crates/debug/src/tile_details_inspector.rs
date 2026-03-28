@@ -107,7 +107,7 @@ pub fn tile_details_inspector(world: &mut World) {
 
             if let Some(templ_entity) = referenced_templ_entity {
                 ui.separator();
-                ui.label(format!("EntityZeroRef target: {:?}", templ_entity));
+                ui.label(format!("TemplEntiRef target: {:?}", templ_entity));
                 render_tagset_section(ui, "TagSet on EntityZero", tags_templ.as_ref());
                 render_delete_other_tiles_section(
                     ui,

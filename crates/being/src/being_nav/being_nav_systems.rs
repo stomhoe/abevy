@@ -119,6 +119,9 @@ fn choose_flee_target_pos(
 
         let base_dist = (being_gpos.0 - flee_from_gpos.0).abs().element_sum();
         let candidate_dist = (candidate.0 - flee_from_gpos.0).abs().element_sum();
+        if candidate_dist <= base_dist {
+            return None;
+        }
         let dist_gain = candidate_dist - base_dist;
 
         let mut open_exits = 0u8;
@@ -239,6 +242,7 @@ fn resolve_flee_wander_cfg(
 
 #[allow(unused_parens, )]
 pub fn update_goto_from_fleeing(
+    mut cmd: Commands,
     mut writer: MessageWriter<NavOrder>,
     mut blocking_tiles: BlockingTileParamSet,
     flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, ), (With<Being>, LocalAiControlled, )>,
@@ -246,11 +250,13 @@ pub fn update_goto_from_fleeing(
     wander_cfg_query: Query<&WanderConfig>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
+    const FLEE_STOP_DISTANCE_TILES: i32 = 20;
     for (being_ent, &being_dim, fleeing, member_of, ) in flee_query.iter() {
         let Ok(&being_gpos) = blocking_tiles.gpos_query.get(being_ent) else {
             continue;
         };
         let Ok((flee_from_dim, )) = flee_from_query.get(fleeing.flee_from()) else {
+            cmd.entity(being_ent).try_remove::<Fleeing>();
             messages.push(NavOrder::new(
                 being_ent,
                 255,
@@ -260,6 +266,7 @@ pub fn update_goto_from_fleeing(
             continue;
         };
         let Ok(&flee_from_gpos) = blocking_tiles.gpos_query.get(fleeing.flee_from()) else {
+            cmd.entity(being_ent).try_remove::<Fleeing>();
             messages.push(NavOrder::new(
                 being_ent,
                 255,
@@ -269,6 +276,18 @@ pub fn update_goto_from_fleeing(
             continue;
         };
         if *flee_from_dim != being_dim {
+            cmd.entity(being_ent).try_remove::<Fleeing>();
+            messages.push(NavOrder::new(
+                being_ent,
+                255,
+                NavOrderSource::Fleeing,
+                None,
+            ));
+            continue;
+        }
+        let flee_dist = (being_gpos.0 - flee_from_gpos.0).abs().element_sum();
+        if flee_dist >= FLEE_STOP_DISTANCE_TILES {
+            cmd.entity(being_ent).try_remove::<Fleeing>();
             messages.push(NavOrder::new(
                 being_ent,
                 255,
@@ -289,6 +308,7 @@ pub fn update_goto_from_fleeing(
             flee_from_gpos,
             &avoid_tile_tags,
         ) else {
+            cmd.entity(being_ent).try_remove::<Fleeing>();
             messages.push(NavOrder::new(
                 being_ent,
                 255,

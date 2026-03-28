@@ -2,6 +2,7 @@ use ac_input::ac_input_actions::*;
 use ::being_shared::*;
 
 use being::body::{HeldBody, BodySums};
+use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
@@ -16,7 +17,7 @@ use item_shared::{
 };
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::*;
-use modifier_shared::{modifier_has_marker, resolve_modifier_component};
+use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
 use movement::movement_components::*;
 use player::prelude::*;
 use tilemap_shared::{CardinalDirection, GlobalTilePos, InteractionZone, InteractionZones};
@@ -385,7 +386,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut display_name_query = world.query::<&DisplayName>();
     let mut str_id_query = world.query::<&StrId>();
     let mut bodyparts_query = world.query::<&BodypartChildrenBodyparts>();
-    let mut bodypart_damage_query = world.query::<&BodypartDamage>();
+    let mut bodypart_damage_query = world.query::<&AccuDamage>();
     let mut held_items_query = world.query::<&HeldItems>();
     let mut slot_holder_query = world.query::<&SlottedItemHolder>();
     let mut norm_move_dir_query = world.query::<&FinalNormMoveDir>();
@@ -619,22 +620,38 @@ pub fn being_details_inspector(world: &mut World) {
                 let mut walk_min: f32 = 0.0;
                 let mut walk_max: f32 = f32::INFINITY;
                 let mut walk_rows = Vec::new();
-                let mut source_bodyparts = Vec::new();
+                let mut walk_effects = EntityHashSet::default();
+                let applied_mods = applied_mods_query.query(world);
+                let being_templ_ref = templ_refs_query.get(world, selected_being_entity).ok();
+                collect_applied_modifier_entities(
+                    &mut walk_effects,
+                    selected_being_entity,
+                    being_templ_ref,
+                    &applied_mods,
+                );
+                collect_applied_modifier_entities(
+                    &mut walk_effects,
+                    body_entity,
+                    body_templ_ref.as_ref(),
+                    &applied_mods,
+                );
                 if let Ok(bodyparts) = bodyparts_query.get(world, body_entity) {
                     for bodypart_ent in bodyparts.iter() {
-                        let Ok(part_templ_ref) = templ_refs_query.get(world, bodypart_ent) else {
-                            continue;
-                        };
-                        source_bodyparts.push(part_templ_ref.0);
+                        let part_templ_ref = templ_refs_query.get(world, bodypart_ent).ok();
+                        collect_applied_modifier_entities(
+                            &mut walk_effects,
+                            bodypart_ent,
+                            part_templ_ref,
+                            &applied_mods,
+                        );
                     }
                 }
-                for (modifier_ent, target, child_of, templ_ref, tagset, pain_slowdown) in walk_modifiers_query.iter(world) {
-                    let from_source_bodypart = child_of
-                        .map(|child| source_bodyparts.contains(&child.parent()))
-                        .unwrap_or(false);
-                    if target.0 != selected_being_entity && !from_source_bodypart {
+                for effect in walk_effects.iter() {
+                    let Ok((modifier_ent, target, child_of, templ_ref, tagset, pain_slowdown)) =
+                        walk_modifiers_query.get(world, *effect)
+                    else {
                         continue;
-                    }
+                    };
                     let values = modifier_values(
                         world,
                         modifier_ent,
@@ -656,8 +673,9 @@ pub fn being_details_inspector(world: &mut World) {
                         ApplyMode::Max => walk_max = walk_max.min(values.effective).max(0.0),
                     }
                     let mut row = format!(
-                        "{:?} ChOf {} {} {:?}",
+                        "{:?} Tgt {:?} ChOf {} {} {:?}",
                         modifier_ent,
+                        target.0,
                         child_of.map_or("missing".to_string(), |child| format!("{:?}", child.parent())),
                         format_value_pair(values),
                         op,

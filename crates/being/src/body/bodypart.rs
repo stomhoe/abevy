@@ -29,6 +29,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<TreeRoot>()
     .replicate::<Vital>()
     .replicate::<Missing>()
-    .replicate::<BodypartDamage>()
+    .replicate::<AccuDamage>()
     ;
 }

@@ -3,6 +3,7 @@ use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}
 use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
+use game_common::Dead;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
 use faction_shared::BelongsToAPlayerFaction;
@@ -65,6 +66,7 @@ impl Being {
         blacklisted_tags.0.retain(|tag| !whitelisted_tags.0.contains_ref(tag));
     }
 }
+pub type AliveBeing = (With<Being>, Without<Dead>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct HumanControlled;

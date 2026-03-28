@@ -181,7 +181,7 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("▢▢  Chunking").size(16.0)).clicked() {
                 window_visible.chunks_list = !window_visible.chunks_list;
             }
-            if ui.button(egui::RichText::new("▦ MacroChunks Grid").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("MacroChunks Grid").size(16.0)).clicked() {
                 window_visible.macrochunks_grid = !window_visible.macrochunks_grid;
             }
             if ui.button(egui::RichText::new("⬜ Regions").size(16.0)).clicked() {
@@ -193,7 +193,7 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("Tile Index Map").size(16.0)).clicked() {
                 window_visible.tile_indices_map = !window_visible.tile_indices_map;
             }
-            if ui.button(egui::RichText::new("Tile Click Picker").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("🖱️ TileGpos Click Picker").size(16.0)).clicked() {
                 window_visible.world_tile_click_picker = !window_visible.world_tile_click_picker;
             }
             if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
@@ -211,7 +211,7 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("🌍 Terrain generation editor").size(16.0)).clicked() {
                 window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
-            if ui.button(egui::RichText::new("🧮 Terrain noise values map").size(16.0)).clicked() {
+            if ui.button(egui::RichText::new("▦ Terrain noise values map").size(16.0)).clicked() {
                 window_visible.terrgen_values = !window_visible.terrgen_values;
             }
             if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {

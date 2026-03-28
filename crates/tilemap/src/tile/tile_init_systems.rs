@@ -210,7 +210,7 @@ pub fn init_tiles(
             cmd.entity(tile_enti).insert(BlocksProjectiles);
         }
         if seri.hp > 0.0 {
-            cmd.entity(tile_enti).insert((Health(seri.hp), DespawnOnDeath));
+            //cmd.entity(tile_enti).insert((Health(seri.hp), DespawnOnDeath));
         }
         if !seri.items_dropped_on_death.is_sentinel() {
             if let Some(item_map) = item_map.as_ref() {
@@ -363,18 +363,18 @@ pub fn init_childrensprite(
         } else if let Some(templ_ref) = templ_ref {
             let Ok((img_path_holder, is_templ_a_spriteconfig)) = templ_img_path.get(templ_ref.0)
             else {
-                error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity doesn't exist", entity, templ_ref.0);
+                error!(target: "childrensprite_init","Entity {:?} has TemplEntiRef {:?} but the referenced entity doesn't exist", entity, templ_ref.0);
                 continue;
             };
             if is_templ_a_spriteconfig {
                 continue;
             }
             let Some(img_path_holder): Option<&ImagePathHolder> = img_path_holder else {
-                error!(target: "childrensprite_init","Entity {:?} has EntityZeroRef {:?} but the referenced entity has no ImagePathHolder", entity, templ_ref.0);
+                error!(target: "childrensprite_init","Entity {:?} has TemplEntiRef {:?} but the referenced entity has no ImagePathHolder", entity, templ_ref.0);
                 continue;
             };
 
-            trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} via EntityZeroRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
+            trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} via TemplEntiRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
             to_insert.push((
                 entity,
                 Sprite {
@@ -383,7 +383,7 @@ pub fn init_childrensprite(
                 },
             ));
         } else {
-            error!(target: "childrensprite_init","Entity {:?} has neither ImagePathHolder nor EntityZeroRef", entity);
+            error!(target: "childrensprite_init","Entity {:?} has neither ImagePathHolder nor TemplEntiRef", entity);
         }
     }
     cmd.try_insert_batch(to_insert);

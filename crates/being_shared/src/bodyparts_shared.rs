@@ -52,7 +52,7 @@ pub struct Vital;
 pub struct Missing;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
-pub struct BodypartDamage(pub f32);
+pub struct AccuDamage(pub f32);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub enum BodypartDepth {

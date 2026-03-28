@@ -2,9 +2,9 @@
     id: "dragon_yellow",
     name: "Dragon Yellow Body",
     tags: ["humanoid"],
-    mass_kg: 1500.0,
+    mass_kg: 15000.0,
     distributed_totals: {
-        "mass_kg": 1500.0,
+        "mass_kg": 15000.0,
         "hp_capacity": 1600.0,
         "hp_regen_rate": 15.0,
         "blood_capacity": 400.0,

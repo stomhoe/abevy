@@ -272,7 +272,6 @@ pub fn generate_items_on_deaths(
     mut item_operation_writer: MessageWriter<ItemOperation>,
     query: Query<
         (
-            Has<Dead>,
             Option<&DimensionRef>,
             Option<&GlobalTransform>,
             Option<&GlobalTilePos>,
@@ -285,10 +284,7 @@ pub fn generate_items_on_deaths(
     mut item_operations: Local<Vec<ItemOperation>>,
 ) {
     let mut rng = rand::rng();
-    for (is_dead, dim_ref, global_transform, tile_pos, generated_on_death, templ_ref) in query.iter() {
-        if !is_dead {
-            continue;
-        }
+    for (dim_ref, global_transform, tile_pos, generated_on_death, templ_ref) in query.iter() {
         let generated_on_death = generated_on_death
             .cloned()
             .or_else(|| templ_ref.and_then(|templ_ref| templ_drop_query.get(templ_ref.0).ok()).cloned());

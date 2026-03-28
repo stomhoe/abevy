@@ -79,7 +79,7 @@ pub fn world_tile_click_picker_window(
     };
     let mut open = window_visible.world_tile_click_picker;
 
-    egui::Window::new("World Tile Click Picker")
+    egui::Window::new("🖱️ TileGpos Click Picker")
         .default_size([520.0, 380.0])
         .open(&mut open)
         .show(ctx, |ui| {

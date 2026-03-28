@@ -17,7 +17,7 @@ pub use ::being_shared::*;
 pub struct BodyTree;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct StatBudgetsToDistribute(pub HashIdMap<f32>);
+pub struct StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree(pub HashIdMap<f32>);
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct BodyTreeSexes(pub HashMap<String, RaceSexEntrySeri>);
@@ -25,7 +25,7 @@ pub struct BodyTreeSexes(pub HashMap<String, RaceSexEntrySeri>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 pub struct CaloricBurnRateMultiplier(pub f32);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 pub struct BodySums {
     pub total_hp: f32,
     pub current_hp: f32,
@@ -38,13 +38,47 @@ pub struct BodySums {
     pub manip_dex: f32,
     pub manip_str: f32,
 }
-
-#[derive(Debug, Copy, Clone, Message)]
-pub struct IncomingDamage {
-    pub body: Entity,
-    pub amount: f32,
+impl Default for BodySums {
+    fn default() -> Self {
+        Self {
+            total_hp: 0.0,
+            current_hp: 0.0,
+            blood: f32::NAN,
+            blood_capacity: 0.0,
+            bleed_rate: 0.0,
+            consciousness: 0.0,
+            pain: 0.0,
+            vision: 0.0,
+            manip_dex: 0.0,
+            manip_str: 0.0,
+        }
+    }
 }
 
+#[derive(Debug, Copy, Clone, Message)]
+pub struct IncHealthDamageOrHeal {
+    pub target_ent: Entity,
+    pub amount: f32,
+    pub distribute_mode: DamageDistributeMode,
+}
+impl IncHealthDamageOrHeal {
+    pub fn new(target: Entity, amount: f32, ) -> Self {
+        Self {
+            target_ent: target,
+            amount,
+            distribute_mode: DamageDistributeMode::default(),
+        }
+    }
+}
+#[derive(Debug, Copy, Clone, Message, Default)]
+pub enum DamageDistributeMode {
+    #[default]
+    SampledBodyPart,
+    EquitativelyDistributedBetweenAllBasedOnRatioOverBodyTotalHitpointsCapacity,
+    /// can be used to specifically heal damaged bodyparts
+    DistributeProportionalToPreexistentDamage,
+
+}
 
 /*
 BodyTreeDistributedTotals` is the cached stat budget for a body tree template.

@@ -66,10 +66,9 @@ pub struct Dead;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct DespawnOnDeath;
 
-#[derive(Debug, Deserialize, Serialize, Copy, Clone, Message)]
+#[derive(Debug, Copy, Clone, Message)]
 pub struct HealthDamage {
-    pub entity: Entity,
-    pub amount: f32,
+    pub entity: Entity, pub amount: f32,
 }
 
 #[derive(Component, Debug, Clone)]

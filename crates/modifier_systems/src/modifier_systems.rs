@@ -51,18 +51,18 @@ pub fn materialize_modifier_synergies(
     }
 }
 
+
+#[inline]
+fn compute_time_affected_value(base_value: Option<&BaseValue>, time_multiplier: Option<&TimeBasedMultiplier>) -> Option<f32> {
+    let base_or_current = base_value.map(|b| b.0)?;
+    let multiplier = time_multiplier.map_or(1.0, |tm| tm.sample());
+    Some(base_or_current * multiplier)
+}
 #[derive(Default, Clone)]
 pub struct TargetAggregate {
     tag_count: usize,
     tag_value_sum: f32,
     antidote_sum: f32,
-}
-
-#[inline]
-fn compute_raw_value(base_value: Option<&BaseValue>, time_multiplier: Option<&TimeBasedMultiplier>) -> Option<f32> {
-    let base_or_current = base_value.map(|b| b.0)?;
-    let multiplier = time_multiplier.map_or(1.0, |tm| tm.sample());
-    Some(base_or_current * multiplier)
 }
 
 #[allow(unused_parens)]
@@ -90,23 +90,23 @@ pub fn update_modifier_effective_values(
     for (entity, target, templ_ref, ) in modifiers_query.iter() {
         let base_value = resolve_modifier_component(entity, templ_ref, &base_values_query);
         let time_multiplier = resolve_modifier_component(entity, templ_ref, &time_multipliers_query);
-        let Some(raw_value) = compute_raw_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
+        let Some(raw_value) = compute_time_affected_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
         count += 1;
         let tags = resolve_modifier_component(entity, templ_ref, &modifier_tags_query).unwrap_or_default();
 
         let target_agg = target_aggs.entry(target.0).or_insert_with(|| HashIdMap::with_capacity(tags.len()));
         for tag in tags.iter() {
             let tag_hash = HashId::from(tag.as_ref());
-            let tag_agg = target_agg.0.entry(tag_hash).or_default();
-            tag_agg.tag_count += 1;
-            tag_agg.tag_value_sum += raw_value;
+            let target_agg = target_agg.0.entry(tag_hash).or_default();
+            target_agg.tag_count += 1;
+            target_agg.tag_value_sum += raw_value;
         }
         let antidote = resolve_modifier_component(entity, templ_ref, &antidotes_query);
         if let Some(antidote) = antidote {
             for (tag, effectiveness) in antidote.0.iter() {
                 let tag_hash = HashId::from(tag.as_ref());
-                let tag_agg = target_agg.0.entry(tag_hash).or_default();
-                tag_agg.antidote_sum += raw_value * effectiveness;
+                let target_agg = target_agg.0.entry(tag_hash).or_default();
+                target_agg.antidote_sum += raw_value * effectiveness;
             }
         }
     }
@@ -116,7 +116,7 @@ pub fn update_modifier_effective_values(
         let Some(target_agg) = target_aggs.get(&target.0) else { continue; };
         let base_value = resolve_modifier_component(modi_entity, templ_ref, &base_values_query);
         let time_multiplier = resolve_modifier_component(modi_entity, templ_ref, &time_multipliers_query);
-        let Some(time_based_value) = compute_raw_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
+        let Some(time_based_value) = compute_time_affected_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
         let tags = resolve_modifier_component(modi_entity, templ_ref, &modifier_tags_query).unwrap_or_default();
 
         let mut value = time_based_value;

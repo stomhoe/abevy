@@ -79,7 +79,7 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
         let Ok((&item_templ_ref, &dim_ref)) = self.item_ground_query.get(item_ent) else {
             warn!(
                 target: log_targets::ITEM_SYSTEM,
-                "Skipping ground materialization: item {:?} is missing EntityZeroRef/DimensionRef",
+                "Skipping ground materialization: item {:?} is missing TemplEntiRef/DimensionRef",
                 item_ent,
             );
             return;

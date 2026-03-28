@@ -2,9 +2,10 @@ use ::being_shared::*;
 use ::tilemap_shared::*;
 use bevy::{ecs::entity::EntityHashSet, prelude::*};
 use common::log_targets::BEING_SYSTEM;
-use game_common::game_common_components::{TemplEntiRef, HealthDamage};
+use game_common::game_common_components::TemplEntiRef;
 use param_sets::BlockingTileParamSet;
 use tilemap::tile::tile_components::TileFlip;
+use crate::body::{DamageDistributeMode, IncHealthDamageOrHeal};
 
 use crate::{being_interaction_zone_helper::resolve_being_interaction_zone, being_messages::*};
 
@@ -22,10 +23,10 @@ pub fn apply_melee_attack(
     beings_at_gpos: Res<BeingsAtGpos>,
     mut tile_gathering: BlockingTileParamSet,
     tile_instances: Query<(&TemplEntiRef, Option<&TileFlip>,)>,
-    mut health_damage_writer: MessageWriter<HealthDamage>,
-    mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
-    mut health_damage_messages: Local<Vec<HealthDamage>>,
     mut hit_entities: Local<EntityHashSet>,
+    mut candidate_tile_gposes: Local<Vec<GlobalTilePos>>,
+    mut incoming_damage_messages: Local<Vec<IncHealthDamageOrHeal>>,
+    mut incoming_damage_writer: MessageWriter<IncHealthDamageOrHeal>,
 ) {
     const MELEE_DAMAGE: f32 = 10.0;
     for melee in melee_attacks.read() {
@@ -73,7 +74,7 @@ pub fn apply_melee_attack(
             &mut candidate_tile_gposes,
         );
         let mut hit_done = false;
-        for &candidate_gpos in candidate_tile_gposes.iter() {
+        for candidate_gpos in candidate_tile_gposes.drain(..) {
             if hit_done {
                 break;
             }
@@ -117,9 +118,10 @@ pub fn apply_melee_attack(
                 if !hit {
                     continue;
                 }
-                health_damage_messages.push(HealthDamage {
-                    entity: target_ent,
+                incoming_damage_messages.push(IncHealthDamageOrHeal {
+                    target_ent,
                     amount: MELEE_DAMAGE,
+                    distribute_mode: DamageDistributeMode::SampledBodyPart,
                 });
                 hit_beings += 1;
                 hit_done = true;
@@ -138,23 +140,23 @@ pub fn apply_melee_attack(
                 continue;
             }
             let tile_entities = tile_gathering.gather_tiles(attacker_dim, candidate_gpos).to_vec();
-            for target_entity in tile_entities {
-                if !hit_entities.insert(target_entity) {
-                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} already hit", target_entity);
+            for target_ent in tile_entities {
+                if !hit_entities.insert(target_ent) {
+                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} already hit", target_ent);
                     continue;
                 }
-                let Ok((&TemplEntiRef(tile_templ), _tile_flip)) = tile_instances.get(target_entity)
+                let Ok((&TemplEntiRef(tile_templ), _tile_flip)) = tile_instances.get(target_ent)
                 else {
-                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile instance", target_entity);
+                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile_templ", target_ent);
                     continue;
                 };
-                let Ok(&tile_origin) = tile_gathering.gpos_query.get(target_entity) else {
-                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile position", target_entity);
+                let Ok(&tile_origin) = tile_gathering.gpos_query.get(target_ent) else {
+                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile position", target_ent);
                     continue;
                 };
                 let tile_direction = tile_gathering
                     .cardinal_direction_query()
-                    .get_mut(target_entity)
+                    .get_mut(target_ent)
                     .map(|direction| *direction)
                     .unwrap_or_default();
                 let Ok(target_zones) = zone_sources.get(tile_templ) else {
@@ -171,16 +173,17 @@ pub fn apply_melee_attack(
                 if !accepts_hit {
                     continue;
                 }
-                health_damage_messages.push(HealthDamage {
-                    entity: target_entity,
+                incoming_damage_messages.push(IncHealthDamageOrHeal {
+                    target_ent,
                     amount: MELEE_DAMAGE,
+                    distribute_mode: DamageDistributeMode::SampledBodyPart,
                 });
                 hit_tiles += 1;
                 hit_done = true;
                 info!(
                     target: BEING_SYSTEM,
                     "Melee hit tile instance {:?} (templ {:?})",
-                    target_entity,
+                    target_ent,
                     tile_templ
                 );
                 break;
@@ -198,5 +201,5 @@ pub fn apply_melee_attack(
             );
         }
     }
-    health_damage_writer.write_batch(health_damage_messages.drain(..));
+    incoming_damage_writer.write_batch(incoming_damage_messages.drain(..));
 }

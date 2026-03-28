@@ -26,6 +26,7 @@ pub fn build_body_trees_on_beings(
             BodyOf { being: being_ent },
             ChildOf(being_ent),
             TemplEntiRef(tree_to_build.0),
+            BodySums::default(),
         )).id();
 
         let Ok((templ_bodyparts, )) = templ_tree_bodyparts_query.get(tree_to_build.0) else {

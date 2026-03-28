@@ -6,35 +6,35 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 
-use modifier_shared::{modifier_has_marker, resolve_modifier_component};
+use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
 use tilemap_shared::*;
 
 use crate::movement_components::{InputMaxSpeed, InputMoveDir, InputSpeedThrottleMult, FinalNormMoveDir, SpeedMagnitude};
 
+#[allow(unused_parens, )]
 pub fn process_input_direction_modifiers(
     state: Res<State<ClientState>>,
     mut being_query: Query<(
         Entity,
-        &AppliedModifiers,
         Option<&HeldBody>,
         &InputMoveDir,
         &mut FinalNormMoveDir,
         Has<ComputedLocally>,
     )>,
+    applied_mods_query: Query<&AppliedModifiers, >,
     modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
     curr_values_query: Query<&CurrEffectiveValue, >,
     apply_modes_query: Query<&ApplyMode, >,
     invert_markers_query: Query<(), With<InvertMovement>>,
     bodyparts_query: Query<&BodypartChildrenBodyparts, >,
-    children_query: Query<&Children, >,
     templ_refs_query: Query<&TemplEntiRef>,
     mut effects: Local<EntityHashSet>,
 
 ) {
     let is_client = state.get() == &ClientState::Connected;
-    for (being_ent, applied, body, input_move_dir, mut norm_move_dir, controlled_locally) in being_query.iter_mut()
+    for (being_ent, body, input_move_dir, mut norm_move_dir, controlled_locally) in being_query.iter_mut()
     {
         if is_client && !controlled_locally {
             continue;
@@ -44,30 +44,20 @@ pub fn process_input_direction_modifiers(
         let mut invert_sum: f32 = 0.0;
         let mut invert_scale: f32 = 1.0;
         effects.clear();
-        applied.iter().for_each(|ent| {
-            effects.insert(ent);
-        });
-        for (modifier_ent, target, ..) in modifiers_query.iter() {
-            if target.0 == being_ent {
-                effects.insert(modifier_ent);
-            }
-        }
+        let being_templ_ref = templ_refs_query.get(being_ent).ok();
+        collect_applied_modifier_entities(&mut effects, being_ent, being_templ_ref, &applied_mods_query);
         let Some(body) = body else {
             continue;
         };
-        let Ok(bodyparts) = bodyparts_query.get(body.entity()) else {
+        let body_ent = body.entity();
+        let body_templ_ref = templ_refs_query.get(body_ent).ok();
+        collect_applied_modifier_entities(&mut effects, body_ent, body_templ_ref, &applied_mods_query);
+        let Ok(bodyparts) = bodyparts_query.get(body_ent) else {
             continue;
         };
         for bodypart_ent in bodyparts.iter() {
-            let Ok(part_templ_ref) = templ_refs_query.get(bodypart_ent) else {
-                continue;
-            };
-            let Ok(children) = children_query.get(part_templ_ref.0) else {
-                continue;
-            };
-            for child_ent in children.iter() {
-                effects.insert(child_ent);
-            }
+            let part_templ_ref = templ_refs_query.get(bodypart_ent).ok();
+            collect_applied_modifier_entities(&mut effects, bodypart_ent, part_templ_ref, &applied_mods_query);
         }
         for effect in effects.iter() {
             let Ok((modifier_ent, _, templ_ref, )) = modifiers_query.get(*effect)
@@ -100,13 +90,13 @@ pub fn process_input_direction_modifiers(
     }
 }
 
+#[allow(unused_parens, )]
 pub fn process_speed_modifiers(
     state: Res<State<ClientState>>,
     mut being_query: Query<(
         Entity,
         &DimensionRef,
         &GlobalTilePos,
-        &AppliedModifiers,
         Option<&HeldBody>,
         &mut SpeedMagnitude,
         Option<&BodyTreeWeightSum>,
@@ -114,22 +104,22 @@ pub fn process_speed_modifiers(
         Option<&InputMaxSpeed>,
         Has<ComputedLocally>,
     )>,
+    applied_mods_query: Query<&AppliedModifiers, >,
     modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
     curr_values_query: Query<&CurrEffectiveValue>,
     apply_modes_query: Query<&ApplyMode, >,
     walk_markers_query: Query<(), With<WalkSpeed>>,
     mitigating_only_markers_query: Query<(), With<MitigatingOnly>>,
     bodyparts_query: Query<&BodypartChildrenBodyparts, >,
-    children_query: Query<&Children, >,
     templ_refs_query: Query<&TemplEntiRef>,
     tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
+    mut effects: Local<EntityHashSet>,
     mut tile_gathering: TileGatheringParamSet,
 ) {
     for (
         being_ent,
         &dim_ref,
         tile_pos,
-        applied,
         body,
         mut speed_magnitude,
         body_weight_sum,
@@ -149,31 +139,21 @@ pub fn process_speed_modifiers(
         let mut slowdown_mitigators_sum: f32 = 0.0;
         let mut speed_sum: f32 = 0.0;
 
-        let mut effects = EntityHashSet::default();
-        applied.iter().for_each(|ent| {
-            effects.insert(ent);
-        });
-        for (modifier_ent, target, ..) in modifiers_query.iter() {
-            if target.0 == being_ent {
-                effects.insert(modifier_ent);
-            }
-        }
+        effects.clear();
+        let being_templ_ref = templ_refs_query.get(being_ent).ok();
+        collect_applied_modifier_entities(&mut effects, being_ent, being_templ_ref, &applied_mods_query);
         let Some(body) = body else {
             continue;
         };
-        let Ok(bodyparts) = bodyparts_query.get(body.entity()) else {
+        let body_ent = body.entity();
+        let body_templ_ref = templ_refs_query.get(body_ent).ok();
+        collect_applied_modifier_entities(&mut effects, body_ent, body_templ_ref, &applied_mods_query);
+        let Ok(bodyparts) = bodyparts_query.get(body_ent) else {
             continue;
         };
         for bodypart_ent in bodyparts.iter() {
-            let Ok(part_templ_ref) = templ_refs_query.get(bodypart_ent) else {
-                continue;
-            };
-            let Ok(children) = children_query.get(part_templ_ref.0) else {
-                continue;
-            };
-            for child_ent in children.iter() {
-                effects.insert(child_ent);
-            }
+            let part_templ_ref = templ_refs_query.get(bodypart_ent).ok();
+            collect_applied_modifier_entities(&mut effects, bodypart_ent, part_templ_ref, &applied_mods_query);
         }
         for effect in effects.iter() {
             let Ok((modifier_ent, _, templ_ref, )) =

@@ -12,6 +12,7 @@ use modifier_shared::modifier_types::*;
 use ::being_shared::*;
 use crate::being_interaction_zone_helper::build_being_interaction_zones;
 
+use crate::body::body_hp_systems::UserBodypartInstances;
 use crate::body::{
     body_tree_components::*, bodypart::bodypart_resources::*,
     body_tree_resources::*,
@@ -28,7 +29,6 @@ pub fn init_templ_body_trees(
     if !body_map.0.is_empty() {
         return;
     }
-
     for mut seri in load_body_tree_seri_defs() {
 
         let body_id = match StrId::new_with_result(seri.id, 3) {
@@ -87,13 +87,12 @@ pub fn init_templ_body_trees(
         if !totals.contains_key(BodypartStat::STAT_MASS_KG) {
             totals.overwrite(BodypartStat::STAT_MASS_KG, seri.mass_kg.max(0.0));
         }
-        let totals_to_distribute = StatBudgetsToDistribute(totals.clone());
+        let totals_to_distribute = StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree(totals.clone());
         cmd.entity(body_tree_ent).insert((
             totals_to_distribute.clone(),
             BodyTreeSexes(seri.sexes.clone()),
             CaloricBurnRateMultiplier(seri.caloric_burn_rate_multiplier),
         ));
-
         let root_node = std::mem::take(&mut seri.root);
         let root_id = StrId::trunc(root_node.part_id.as_str());
 
@@ -116,47 +115,7 @@ pub fn init_templ_body_trees(
     }
 }
 
-#[allow(unused_parens, )]
-pub fn distribute_templ_body_tree_modifiers(
-    mut cmd: Commands,
-    body_tree_query: Query<(Entity, &StrId, &StatBudgetsToDistribute, ), (With<BodyTree>, With<Templ>, )>,
-    templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<Templ>, )>,
-    forced_query: Query<&BodypartForcedStats, >,
-    weighted_query: Query<&BodypartWeightedDistribution, >,
-    synergy_query: Query<&ModifierSynergies, >,
-    templ_bodypart_refs_query: Query<&TemplEntiRef, (With<Templ>, )>,
-    mut templs_mapped_to_bodyparts: Local<Vec<(Entity, Entity)>>,
-) {
-    for (body_tree_ent, body_id, totals_to_distribute, ) in body_tree_query.iter() {
-        let Ok((bodyparts_list, )) = templ_tree_bodyparts_query.get(body_tree_ent) else {
-            error!(target: BODY_BUILD, "BodyTree {} has no bodypart children after deferred tree build; skipping distribution", body_id);
-            continue;
-        };
-        templs_mapped_to_bodyparts.clear();
-        for bodypart_ent in bodyparts_list.iter() {
-            let Ok(templ_ref) = templ_bodypart_refs_query.get(bodypart_ent) else {
-                error!(target: BODY_BUILD, "BodyTree {} bodypart node {:?} is missing EntityZeroRef; skipping node", body_id, bodypart_ent);
-                continue;
-            };
-            templs_mapped_to_bodyparts.push((bodypart_ent, templ_ref.0));
-        }
-        if templs_mapped_to_bodyparts.is_empty() {
-            error!(target: BODY_BUILD, "BodyTree {} produced zero templ bodypart references; skipping distribution", body_id);
-            continue;
-        }
-        apply_distributions(
-            &mut cmd,
-            body_id,
-            &templs_mapped_to_bodyparts,
-            body_tree_ent,
-            stat_from_hashid_map(&totals_to_distribute.0, BodypartStat::STAT_MASS_KG),
-            totals_to_distribute.clone(),
-            &forced_query,
-            &weighted_query,
-            &synergy_query,
-        );
-    }
-}
+
 //dont alter this
 fn rec_build_templ_body_tree(
     cmd: &mut Commands,
@@ -185,6 +144,7 @@ fn rec_build_templ_body_tree(
         BodypartChildOfBodypart { parent_bodypart },
         ChildOf(templ_body_ent),
         TemplEntiRef(source_part_ent),
+        UserBodypartInstances::default(),
         Templ,
         Name::default(),
     ));
@@ -201,27 +161,51 @@ fn rec_build_templ_body_tree(
     Some(node_ent)
 }
 
-fn forced_or_weighted(forced: f32, weight: f32, total_free: f32, weight_sum: f32) -> f32 {
-    if forced > 0.0 {
-        forced
-    } else if weight > 0.0 && total_free > 0.0 && weight_sum > 0.0 {
-        (weight / weight_sum) * total_free
-    } else {
-        0.0
+
+
+#[allow(unused_parens, )]
+pub fn distribute_templ_body_tree_modifiers(
+    mut cmd: Commands,
+    body_tree_query: Query<(Entity, &StrId, &StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree, &Children), (With<BodyTree>, With<Templ>, )>,
+    forced_query: Query<&BodypartForcedStats, >,
+    weighted_query: Query<&BodypartWeightedDistribution, >,
+    synergy_query: Query<&ModifierSynergies, >,
+    templ_bodypart_refs_query: Query<&TemplEntiRef, ()>,
+    mut templs_mapped_to_bodyparts: Local<Vec<(Entity, Entity)>>,
+) {
+    for (body_tree_ent, body_id, budgets_to_distribute, bodyparts_list) in body_tree_query.iter() {
+
+        templs_mapped_to_bodyparts.clear();
+        for bodypart_ent in bodyparts_list.iter() {
+            let Ok(templ_ref) = templ_bodypart_refs_query.get(bodypart_ent) else {
+                error!(target: BODY_BUILD, "BodyTree {} bodypart node {:?} is missing TemplEntiRef; skipping node", body_id, bodypart_ent);
+                continue;
+            };
+            templs_mapped_to_bodyparts.push((bodypart_ent, templ_ref.0));
+        }
+        if templs_mapped_to_bodyparts.is_empty() {
+            error!(target: BODY_BUILD, "BodyTree {} produced zero templ bodypart references; skipping distribution", body_id);
+            continue;
+        }
+        distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
+            &mut cmd,
+            body_id,
+            &templs_mapped_to_bodyparts,
+            body_tree_ent,
+            budgets_to_distribute,
+            &forced_query,
+            &weighted_query,
+            &synergy_query,
+        );
     }
 }
 
-fn stat_from_hashid_map(map: &HashIdMap<f32>, stat: HashId) -> f32 {
-    map.get_opt(stat).copied().unwrap_or(0.0).max(0.0)
-}
-
-fn apply_distributions(
+fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     cmd: &mut Commands,
     body_id: &StrId,
     parts: &[(Entity, Entity)],
     body_ent: Entity,
-    total_mass: f32,
-    totals: StatBudgetsToDistribute,
+    totals: &StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree,
     forced_query: &Query<&BodypartForcedStats>,
     weighted_query: &Query<&BodypartWeightedDistribution>,
     synergy_query: &Query<&ModifierSynergies>,
@@ -245,7 +229,7 @@ fn apply_distributions(
     let mut sum_w_pain = 0.0;
     let mut sum_w_bleed = 0.0;
 
-    let mut forced_mass = 0.0;
+    let mut forced_mass_kg = 0.0;
     let mut forced_hp = 0.0;
     let mut forced_regen = 0.0;
     let mut forced_blood = 0.0;
@@ -261,44 +245,44 @@ fn apply_distributions(
     for &(_, source_part) in parts {
         let forced = forced_query.get(source_part).map(|x| &x.0).unwrap_or(&empty_stats);
         let weights = weighted_query.get(source_part).map(|x| &x.0).unwrap_or(&empty_stats);
-        let mass = stat_from_hashid_map(forced, BodypartStat::STAT_MASS_KG);
-        if mass > 0.0 { forced_mass += mass; } else { sum_w_mass += stat_from_hashid_map(weights, BodypartStat::STAT_MASS_KG); }
-        let hp = stat_from_hashid_map(forced, BodypartStat::STAT_HP_CAPACITY);
-        if hp > 0.0 { forced_hp += hp; } else { sum_w_hp += stat_from_hashid_map(weights, BodypartStat::STAT_HP_CAPACITY); }
-        let regen = stat_from_hashid_map(forced, BodypartStat::STAT_HP_REGEN_RATE);
-        if regen > 0.0 { forced_regen += regen; } else { sum_w_regen += stat_from_hashid_map(weights, BodypartStat::STAT_HP_REGEN_RATE); }
-        let blood = stat_from_hashid_map(forced, BodypartStat::STAT_BLOOD_CAPACITY);
-        if blood > 0.0 { forced_blood += blood; } else { sum_w_blood += stat_from_hashid_map(weights, BodypartStat::STAT_BLOOD_CAPACITY); }
-        let walk = stat_from_hashid_map(forced, BodypartStat::STAT_WALK_SPEED);
-        if walk > 0.0 { forced_walk += walk; } else { sum_w_walk += stat_from_hashid_map(weights, BodypartStat::STAT_WALK_SPEED); }
-        let swim = stat_from_hashid_map(forced, BodypartStat::STAT_SWIM_SPEED);
-        if swim > 0.0 { forced_swim += swim; } else { sum_w_swim += stat_from_hashid_map(weights, BodypartStat::STAT_SWIM_SPEED); }
-        let fly = stat_from_hashid_map(forced, BodypartStat::STAT_FLY_SPEED);
-        if fly > 0.0 { forced_fly += fly; } else { sum_w_fly += stat_from_hashid_map(weights, BodypartStat::STAT_FLY_SPEED); }
-        let manip = stat_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_DEXTERITY);
-        if manip > 0.0 { forced_manip += manip; } else { sum_w_manip += stat_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_DEXTERITY); }
-        let manip_strength = stat_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_STRENGTH);
-        if manip_strength > 0.0 { forced_manip_strength += manip_strength; } else { sum_w_manip_strength += stat_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_STRENGTH); }
-        let vision = stat_from_hashid_map(forced, BodypartStat::STAT_VISION);
-        if vision > 0.0 { forced_vision += vision; } else { sum_w_vision += stat_from_hashid_map(weights, BodypartStat::STAT_VISION); }
-        let pain = stat_from_hashid_map(forced, BodypartStat::STAT_PAIN_SENSITIVITY);
-        if pain > 0.0 { forced_pain += pain; } else { sum_w_pain += stat_from_hashid_map(weights, BodypartStat::STAT_PAIN_SENSITIVITY); }
-        let bleed = stat_from_hashid_map(forced, STAT_BLEED_RATE);
-        if bleed > 0.0 { forced_bleed += bleed; } else { sum_w_bleed += stat_from_hashid_map(weights, STAT_BLEED_RATE); }
+        let mass = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MASS_KG);
+        if mass > 0.0 { forced_mass_kg += mass; } else { sum_w_mass += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MASS_KG); }
+        let hp = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_HP_CAPACITY);
+        if hp > 0.0 { forced_hp += hp; } else { sum_w_hp += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_HP_CAPACITY); }
+        let regen = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_HP_REGEN_RATE);
+        if regen > 0.0 { forced_regen += regen; } else { sum_w_regen += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_HP_REGEN_RATE); }
+        let blood = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_BLOOD_CAPACITY);
+        if blood > 0.0 { forced_blood += blood; } else { sum_w_blood += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_BLOOD_CAPACITY); }
+        let walk = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_WALK_SPEED);
+        if walk > 0.0 { forced_walk += walk; } else { sum_w_walk += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_SPEED); }
+        let swim = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_SWIM_SPEED);
+        if swim > 0.0 { forced_swim += swim; } else { sum_w_swim += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_SWIM_SPEED); }
+        let fly = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_FLY_SPEED);
+        if fly > 0.0 { forced_fly += fly; } else { sum_w_fly += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_FLY_SPEED); }
+        let manip = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_DEXTERITY);
+        if manip > 0.0 { forced_manip += manip; } else { sum_w_manip += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_DEXTERITY); }
+        let manip_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_STRENGTH);
+        if manip_strength > 0.0 { forced_manip_strength += manip_strength; } else { sum_w_manip_strength += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_STRENGTH); }
+        let vision = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_VISION);
+        if vision > 0.0 { forced_vision += vision; } else { sum_w_vision += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_VISION); }
+        let pain = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_PAIN_SENSITIVITY);
+        if pain > 0.0 { forced_pain += pain; } else { sum_w_pain += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_PAIN_SENSITIVITY); }
+        let bleed = get_stat_value_from_hashid_map(forced, STAT_BLEED_RATE);
+        if bleed > 0.0 { forced_bleed += bleed; } else { sum_w_bleed += get_stat_value_from_hashid_map(weights, STAT_BLEED_RATE); }
     }
 
-    let free_mass = (total_mass - forced_mass).max(0.0);
-    let free_hp = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_HP_CAPACITY) - forced_hp).max(0.0);
-    let free_regen = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_HP_REGEN_RATE) - forced_regen).max(0.0);
-    let free_blood = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_BLOOD_CAPACITY) - forced_blood).max(0.0);
-    let free_walk = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_WALK_SPEED) - forced_walk).max(0.0);
-    let free_swim = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_SWIM_SPEED) - forced_swim).max(0.0);
-    let free_fly = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_FLY_SPEED) - forced_fly).max(0.0);
-    let free_manip = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_MANIPULATION_DEXTERITY) - forced_manip).max(0.0);
-    let free_manip_strength = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_MANIPULATION_STRENGTH) - forced_manip_strength).max(0.0);
-    let free_vision = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_VISION) - forced_vision).max(0.0);
-    let free_pain = (stat_from_hashid_map(&totals.0, BodypartStat::STAT_PAIN_SENSITIVITY) - forced_pain).max(0.0);
-    let free_bleed = (stat_from_hashid_map(&totals.0, STAT_BLEED_RATE) - forced_bleed).max(0.0);
+    let free_mass_kg = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_MASS_KG) - forced_mass_kg).max(0.0);
+    let free_hp = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_HP_CAPACITY) - forced_hp).max(0.0);
+    let free_regen = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_HP_REGEN_RATE) - forced_regen).max(0.0);
+    let free_blood = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_BLOOD_CAPACITY) - forced_blood).max(0.0);
+    let free_walk = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_WALK_SPEED) - forced_walk).max(0.0);
+    let free_swim = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_SWIM_SPEED) - forced_swim).max(0.0);
+    let free_fly = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_FLY_SPEED) - forced_fly).max(0.0);
+    let free_manip = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_MANIPULATION_DEXTERITY) - forced_manip).max(0.0);
+    let free_manip_strength = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_MANIPULATION_STRENGTH) - forced_manip_strength).max(0.0);
+    let free_vision = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_VISION) - forced_vision).max(0.0);
+    let free_pain = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_PAIN_SENSITIVITY) - forced_pain).max(0.0);
+    let free_bleed = (get_stat_value_from_hashid_map(&totals.0, STAT_BLEED_RATE) - forced_bleed).max(0.0);
 
     for &(part, source_part) in parts {
         let Ok(forced_stats) = forced_query.get(source_part) else {
@@ -312,15 +296,12 @@ fn apply_distributions(
         let forced = &forced_stats.0;
         let weights = &weighted_stats.0;
         let synergies = synergy_query.get(source_part).ok();
-        if synergies.is_none() {
-            trace!(target: BODY_BUILD, "BodyTree {} source part {:?} has no ModifierSynergies", body_id, source_part);
-        }
 
         let mut spawned_modifiers = 0;
         let mass_kg = forced_or_weighted(
-            stat_from_hashid_map(forced, BodypartStat::STAT_MASS_KG),
-            stat_from_hashid_map(weights, BodypartStat::STAT_MASS_KG),
-            free_mass,
+            get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MASS_KG),
+            get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MASS_KG),
+            free_mass_kg,
             sum_w_mass,
         );
         if mass_kg > 0.0 {
@@ -328,44 +309,44 @@ fn apply_distributions(
             cmd.spawn((ModifierTarget(part), BaseValue(mass_kg), CurrEffectiveValue(mass_kg), ApplyMode::Add, MassKg, ChildOf(part)));
         }
 
-        let forced_hp_capacity = stat_from_hashid_map(forced, BodypartStat::STAT_HP_CAPACITY);
-        let hp = forced_or_weighted(forced_hp_capacity, stat_from_hashid_map(weights, BodypartStat::STAT_HP_CAPACITY), free_hp, sum_w_hp);
+        let forced_hp_capacity = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_HP_CAPACITY);
+        let hp = forced_or_weighted(forced_hp_capacity, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_HP_CAPACITY), free_hp, sum_w_hp);
         if hp > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(part), BaseValue(hp), CurrEffectiveValue(hp), ApplyMode::Add, HitpointsCapacity, ChildOf(part)));
         }
-        let forced_regen_rate = stat_from_hashid_map(forced, BodypartStat::STAT_HP_REGEN_RATE);
-        let regen = forced_or_weighted(forced_regen_rate, stat_from_hashid_map(weights, BodypartStat::STAT_HP_REGEN_RATE), free_regen, sum_w_regen);
+        let forced_regen_rate = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_HP_REGEN_RATE);
+        let regen = forced_or_weighted(forced_regen_rate, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_HP_REGEN_RATE), free_regen, sum_w_regen);
         if regen > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(part), BaseValue(regen), CurrEffectiveValue(regen), ApplyMode::Add, HitpointRegenRate, ChildOf(part)));
         }
-        let forced_blood_capacity = stat_from_hashid_map(forced, BodypartStat::STAT_BLOOD_CAPACITY);
-        let blood = forced_or_weighted(forced_blood_capacity, stat_from_hashid_map(weights, BodypartStat::STAT_BLOOD_CAPACITY), free_blood, sum_w_blood);
+        let forced_blood_capacity = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_BLOOD_CAPACITY);
+        let blood = forced_or_weighted(forced_blood_capacity, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_BLOOD_CAPACITY), free_blood, sum_w_blood);
         if blood > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(part), BaseValue(blood), CurrEffectiveValue(blood), ApplyMode::Add, BloodCapacity, ChildOf(part)));
         }
-        let forced_walk_speed = stat_from_hashid_map(forced, BodypartStat::STAT_WALK_SPEED);
-        let walk = forced_or_weighted(forced_walk_speed, stat_from_hashid_map(weights, BodypartStat::STAT_WALK_SPEED), free_walk, sum_w_walk);
+        let forced_walk_speed = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_WALK_SPEED);
+        let walk = forced_or_weighted(forced_walk_speed, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_SPEED), free_walk, sum_w_walk);
         if walk > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(body_ent), BaseValue(walk), CurrEffectiveValue(walk), ApplyMode::Add, WalkSpeed, ChildOf(part)));
         }
-        let forced_swim_speed = stat_from_hashid_map(forced, BodypartStat::STAT_SWIM_SPEED);
-        let swim = forced_or_weighted(forced_swim_speed, stat_from_hashid_map(weights, BodypartStat::STAT_SWIM_SPEED), free_swim, sum_w_swim);
+        let forced_swim_speed = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_SWIM_SPEED);
+        let swim = forced_or_weighted(forced_swim_speed, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_SWIM_SPEED), free_swim, sum_w_swim);
         if swim > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(body_ent), BaseValue(swim), CurrEffectiveValue(swim), ApplyMode::Add, SwimSpeed, ChildOf(part)));
         }
-        let forced_fly_speed = stat_from_hashid_map(forced, BodypartStat::STAT_FLY_SPEED);
-        let fly = forced_or_weighted(forced_fly_speed, stat_from_hashid_map(weights, BodypartStat::STAT_FLY_SPEED), free_fly, sum_w_fly);
+        let forced_fly_speed = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_FLY_SPEED);
+        let fly = forced_or_weighted(forced_fly_speed, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_FLY_SPEED), free_fly, sum_w_fly);
         if fly > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(body_ent), BaseValue(fly), CurrEffectiveValue(fly), ApplyMode::Add, FlySpeed, ChildOf(part)));
         }
-        let forced_manipulation = stat_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_DEXTERITY);
-        let manip = forced_or_weighted(forced_manipulation, stat_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_DEXTERITY), free_manip, sum_w_manip);
+        let forced_manipulation = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_DEXTERITY);
+        let manip = forced_or_weighted(forced_manipulation, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_DEXTERITY), free_manip, sum_w_manip);
         if manip > 0.0 {
             spawned_modifiers += 1;
             let modifier_ent = cmd.spawn((ModifierTarget(part), BaseValue(manip), CurrEffectiveValue(manip), ApplyMode::Add, ManipulationDexterity, ChildOf(part))).id();
@@ -373,8 +354,8 @@ fn apply_distributions(
                 cmd.entity(modifier_ent).insert(synergies.clone());
             }
         }
-        let forced_manipulation_strength = stat_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_STRENGTH);
-        let manip_strength = forced_or_weighted(forced_manipulation_strength, stat_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_STRENGTH), free_manip_strength, sum_w_manip_strength);
+        let forced_manipulation_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_STRENGTH);
+        let manip_strength = forced_or_weighted(forced_manipulation_strength, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_STRENGTH), free_manip_strength, sum_w_manip_strength);
         if manip_strength > 0.0 {
             spawned_modifiers += 1;
             let modifier_ent = cmd.spawn((ModifierTarget(part), BaseValue(manip_strength), CurrEffectiveValue(manip_strength), ApplyMode::Add, ManipulationStrength, ChildOf(part))).id();
@@ -382,20 +363,20 @@ fn apply_distributions(
                 cmd.entity(modifier_ent).insert(synergies.clone());
             }
         }
-        let forced_vision = stat_from_hashid_map(forced, BodypartStat::STAT_VISION);
-        let vision = forced_or_weighted(forced_vision, stat_from_hashid_map(weights, BodypartStat::STAT_VISION), free_vision, sum_w_vision);
+        let forced_vision = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_VISION);
+        let vision = forced_or_weighted(forced_vision, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_VISION), free_vision, sum_w_vision);
         if vision > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(part), BaseValue(vision), CurrEffectiveValue(vision), ApplyMode::Add, Vision, ChildOf(part)));
         }
-        let forced_pain_sensitivity = stat_from_hashid_map(forced, BodypartStat::STAT_PAIN_SENSITIVITY);
-        let pain = forced_or_weighted(forced_pain_sensitivity, stat_from_hashid_map(weights, BodypartStat::STAT_PAIN_SENSITIVITY), free_pain, sum_w_pain);
+        let forced_pain_sensitivity = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_PAIN_SENSITIVITY);
+        let pain = forced_or_weighted(forced_pain_sensitivity, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_PAIN_SENSITIVITY), free_pain, sum_w_pain);
         if pain > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(part), BaseValue(pain), CurrEffectiveValue(pain), ApplyMode::Add, PainSensitivity, ChildOf(part)));
         }
-        let forced_bleed_rate = stat_from_hashid_map(forced, STAT_BLEED_RATE);
-        let bleed = forced_or_weighted(forced_bleed_rate, stat_from_hashid_map(weights, STAT_BLEED_RATE), free_bleed, sum_w_bleed);
+        let forced_bleed_rate = get_stat_value_from_hashid_map(forced, STAT_BLEED_RATE);
+        let bleed = forced_or_weighted(forced_bleed_rate, get_stat_value_from_hashid_map(weights, STAT_BLEED_RATE), free_bleed, sum_w_bleed);
         if bleed > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(part), BaseValue(bleed), CurrEffectiveValue(bleed), ApplyMode::Add, BleedRate, ChildOf(part)));
@@ -404,7 +385,22 @@ fn apply_distributions(
         if spawned_modifiers == 0 {
             error!(target: BODY_BUILD, "BodyTree {} source part {:?} produced no modifiers; forced and weighted distributions may be empty", body_id, source_part);
         } else {
-            trace!(target: BODY_BUILD, "BodyTree {} source part {:?} spawned {} modifiers", body_id, source_part, spawned_modifiers);
+            info!(target: BODY_BUILD, "BodyTree {} source part {:?} spawned {} modifiers", body_id, source_part, spawned_modifiers);
         }
     }
+}
+
+/// Pick forced value if nonzero, otherwise take my portion of the budget based on my weight relative to the sum of all weights.
+fn forced_or_weighted(forced: f32, weight: f32, total_free: f32, weight_sum: f32) -> f32 {
+    if forced > 0.0 {
+        forced
+    } else if weight > 0.0 && total_free > 0.0 && weight_sum > 0.0 {
+        (weight / weight_sum) * total_free
+    } else {
+        0.0
+    }
+}
+
+fn get_stat_value_from_hashid_map(map: &HashIdMap<f32>, stat: HashId) -> f32 {
+    map.get_opt(stat).copied().unwrap_or_default().max(0.0)
 }
