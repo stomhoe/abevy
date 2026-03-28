@@ -7,7 +7,6 @@
         "hp_capacity": 3.0,
         "hp_regen_rate": 0.6,
         "blood_capacity": 1.2,
-        "manip_dex": 0.0,
         "manip_str": 0.2,
         "pain_sensitivity": 0.9,
         "caloric_burn_rate": 0.1,

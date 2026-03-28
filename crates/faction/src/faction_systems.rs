@@ -4,7 +4,7 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use ::being_shared::*;
 use common::log_targets::FACTION_SYSTEM;
-use game_common::TemplEnti;
+use game_common::Templ;
 use player::player_components::*;
 
 #[allow(unused_imports, )]use faction_shared::*;
@@ -88,7 +88,7 @@ pub fn update_player_members_of_groups(
     mut removed_member_of: RemovedComponents<JoinedGroups>,
     mut removed_faction_ref: RemovedComponents<FactionRef>,
     mut removed_mine: RemovedComponents<Mine>,
-    faction_query: Query<(), (With<Faction>, Without<TemplEnti>)>,
+    faction_query: Query<(), (With<Faction>, Without<Templ>)>,
     mut player_members_query: Query<&mut PlayerMembers, >,
     mut prev_player_group: Local<EntityHashMap<Option<Entity>>>,
     mut prev_mine_groups: Local<EntityHashSet>,

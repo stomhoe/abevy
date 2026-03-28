@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use game_common::game_common_components::TemplEnti;
+use game_common::game_common_components::Templ;
 use game_common::game_common_string_components::*;
 use common::common_components::SampleSpriteEnts;
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
@@ -124,7 +124,7 @@ pub fn init_races(
                 None
             }
         };
-        let mut entity_cmds = cmd.spawn((Race, TemplEnti, str_id.clone(), ingame_name, singular, plural));
+        let mut entity_cmds = cmd.spawn((Race, Templ, str_id.clone(), ingame_name, singular, plural));
         let body_tree_str_id = StrId::trunc(&race_seri.body_or_sampler);
         let mut body_tree_ent = None;
 

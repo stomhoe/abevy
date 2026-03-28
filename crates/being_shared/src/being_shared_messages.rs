@@ -6,4 +6,4 @@
 pub struct UnfreezeBeing(pub Entity);
 
 #[derive(Message, Debug, Clone, )]
-pub struct UnloadBeing(pub Entity);
+pub struct FaithfulSimBeing(pub Entity);

@@ -2,7 +2,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use common::log_targets;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 use item_shared::{clone_item_from_templ, dropped_scs_to_build, Item, ItemHeldIn};
 use param_sets::BlockingTileParamSet;
 use ::sprite_shared::AcZ;
@@ -11,8 +11,8 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 #[derive(SystemParam)]
 pub struct ItemGroundMaterializeParamSet<'w, 's> {
     blocking_tiles: BlockingTileParamSet<'w, 's>,
-    item_cfg_query: Query<'w, 's, &'static item_shared::ItemSpritesConfig, (With<Item>, With<TemplEnti>)>,
-    item_ground_query: Query<'w, 's, (&'static TemplEntiRef, &'static DimensionRef), (With<Item>, Without<TemplEnti>)>,
+    item_cfg_query: Query<'w, 's, &'static item_shared::ItemSpritesConfig, (With<Item>, With<Templ>)>,
+    item_ground_query: Query<'w, 's, (&'static TemplEntiRef, &'static DimensionRef), (With<Item>, Without<Templ>)>,
     ac_z_query: Query<'w, 's, &'static AcZ>,
     occupied_nonstackable: Local<'s, HashSet<GlobalTilePos>>,
 }

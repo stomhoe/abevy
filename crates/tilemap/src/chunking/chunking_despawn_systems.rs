@@ -1,7 +1,7 @@
 
 use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
-use being_shared::UnloadBeing;
+use being_shared::FaithfulSimBeing;
 use ::tilemap_shared::*;
 use common::log_targets::CHUNK_ACTIVATION;
 
@@ -151,8 +151,8 @@ pub fn on_chunk_despawn(
     mut ___________cmd: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut ____________loaded_macro_chunks: ResMut<LoadedMacroChunks>,
-    mut ub_writer: MessageWriter<UnloadBeing>,
-    mut ub_messages: Local<Vec<UnloadBeing>>,
+    mut ub_writer: MessageWriter<FaithfulSimBeing>,
+    mut ub_messages: Local<Vec<FaithfulSimBeing>>,
 ){
     let Ok((&chunk_dimension, &chunk_pos, beings_within_chunk)) = chunk_query.get(trig.entity) else {
         error!(target: "chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
@@ -169,7 +169,7 @@ pub fn on_chunk_despawn(
     }
     if let Some(beings_within_chunk) = beings_within_chunk {
         for being_ent in beings_within_chunk.iter() {
-            ub_messages.push(UnloadBeing(being_ent));
+            ub_messages.push(FaithfulSimBeing(being_ent));
         }
         ub_writer.write_batch(ub_messages.drain(..));
     }

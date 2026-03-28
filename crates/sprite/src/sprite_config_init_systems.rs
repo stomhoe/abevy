@@ -66,7 +66,7 @@ pub fn init_sprite_configs(
                 SpriteConfig,
                 visib,
                 offset4children_cats,
-                TemplEnti,
+                Templ,
                 ChildOf(scs_holder),
                 Transform::default(),
             ),

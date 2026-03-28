@@ -1,6 +1,6 @@
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::prelude::*;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
 use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_components::*;
@@ -16,7 +16,7 @@ pub fn update_body_tree_weight_sum(
     part_body_changed_query: Query<&ChildOf, (With<BodypartChildOfBodypart>, Or<( Changed<BodypartChildOfBodypart>, Changed<Missing>, Changed<BodypartChildrenBodyparts>)>)>,
     parts_query: Query<(Entity, &ChildOf, Option<&TemplEntiRef>, Has<Missing>), With<BodypartChildOfBodypart>>,
     part_applied_mods_query: Query<&AppliedModifiers>,
-    mass_modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<TemplEnti>>,
+    mass_modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<Templ>>,
     curr_values_query: Query<&CurrEffectiveValue>,
     mass_markers_query: Query<(), With<MassKg>>,
     body_of_query: Query<(Entity, &BodyOf), With<BodyOf>>,

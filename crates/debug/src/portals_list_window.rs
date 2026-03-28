@@ -4,7 +4,7 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use std::collections::BTreeMap;
 
 use camera::camera_components::CameraTarget;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 use tilemap::tile::tile_components::{TileStrId};
 use ::tilemap_shared::*;
 
@@ -19,7 +19,7 @@ pub fn portals_list_window(
     portal_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&TemplEntiRef>, &PortalTo), With<PortalTo>>,
     dimension_query: Query<&Name>,
     camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
-    templ_query: Query<&TileStrId, With<TemplEnti>>,
+    templ_query: Query<&TileStrId, With<Templ>>,
     target_query: Query<Entity>,
 ) {
     if !window_visible.portals_list {

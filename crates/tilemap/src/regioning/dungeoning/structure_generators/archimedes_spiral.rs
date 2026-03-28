@@ -24,7 +24,7 @@ pub fn archimedes_spiral_building_system(
     templs_map: Res<TileEntityMap>,
     sampler_map: Res<TileWeightedSamplerEntityMap>,
     sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
-    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::TemplEnti>, common::AnyDisabling)>,
+    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,

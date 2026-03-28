@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::HashedTagsVec;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 
 use crate::terrain::{
     terrprobe::opfilter::opfilter_resources::{OpFilterEntityMap, OpFilterRef},
@@ -21,7 +21,7 @@ pub fn init_terrain_probes(
     opfilter_entity_map: Res<OpFilterEntityMap>,
     opfilter_query: Query<&OpFilter>,
     tile_ents_with_tag: Res<TemplTileEntsWithinTag>,
-    entity_zeroes: Query<&TemplEnti>,
+    entity_zeroes: Query<&Templ>,
     egui_holder_query: Query<Entity, With<EguiTptsHolder>>,
 ) {
     if !map.0.is_empty() { return; }

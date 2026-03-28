@@ -2,7 +2,7 @@ use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::
 use ::being_shared::*;
 use common::common_components::StrId;
 use game_common::{
-    game_common_components::TemplEnti,
+    game_common_components::Templ,
 };
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 use tilemap_shared::CappedNormalDist;
@@ -37,7 +37,7 @@ pub fn init_packs(
 
     for pack_seri in &pack_seris {
         let str_id = StrId::trunc(&pack_seri.id);
-        let pack_entity = cmd.spawn((Pack, TemplEnti, str_id.clone())).id();
+        let pack_entity = cmd.spawn((Pack, Templ, str_id.clone())).id();
         pack_by_id.insert(str_id, pack_entity);
     }
 

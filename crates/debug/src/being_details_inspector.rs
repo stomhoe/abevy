@@ -9,7 +9,7 @@ use bevy_inspector_egui::bevy_inspector;
 use common::common_components::{DisplayName, HashId, StrId};
 use common::common_tag_components::TagSet;
 use common::log_targets::DEBUG;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 use item_shared::{
     item_components::{HeldItems, SlottedItemHolder},
     ItemOperation,
@@ -202,6 +202,29 @@ fn interaction_zone_label(zone_id: HashId) -> String {
     format!("{:?}", zone_id)
 }
 
+fn resolve_interaction_zones_with_source(
+    world: &World,
+    being_ent: Entity,
+    bit_ref_ent: Option<Entity>,
+    race_ref_ent: Option<Entity>,
+    interaction_zones_query: &mut QueryState<&InteractionZones>,
+) -> Option<(InteractionZones, &'static str, Entity)> {
+    if let Ok(zones) = interaction_zones_query.get(world, being_ent) {
+        return Some((zones.clone(), "being", being_ent));
+    }
+    if let Some(bit_ent) = bit_ref_ent {
+        if let Ok(zones) = interaction_zones_query.get(world, bit_ent) {
+            return Some((zones.clone(), "bit", bit_ent));
+        }
+    }
+    if let Some(race_ent) = race_ref_ent {
+        if let Ok(zones) = interaction_zones_query.get(world, race_ent) {
+            return Some((zones.clone(), "race", race_ent));
+        }
+    }
+    None
+}
+
 fn modifier_values(
     world: &World,
     modifier_ent: Entity,
@@ -222,7 +245,7 @@ fn collect_part_stats(
     world: &World,
     target_ent: Entity,
     applied_mods: &AppliedModifiers,
-    modifiers_query: &mut QueryState<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<TemplEnti>>,
+    modifiers_query: &mut QueryState<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<Templ>>,
     base_values_query: &mut QueryState<&BaseValue>,
     curr_values_query: &mut QueryState<&CurrEffectiveValue>,
     hp_capacity_query: &mut QueryState<(), With<HitpointsCapacity>>,
@@ -370,6 +393,8 @@ pub fn being_details_inspector(world: &mut World) {
     let mut input_move_dir_query = world.query::<&InputMoveDir>();
     let mut computed_by_query = world.query::<&ComputedBy>();
     let mut computed_locally_query = world.query::<&ComputedLocally>();
+    let mut bit_ref_query = world.query::<&BitRef>();
+    let mut race_ref_query = world.query::<&RaceRef>();
     let mut interaction_zones_query = world.query::<&InteractionZones>();
     let mut player_actions_query =
         world.query_filtered::<&Actions<BeingDirectControlInputContext>, MyPlayer>();
@@ -380,7 +405,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut templ_refs_query = world.query::<&TemplEntiRef>();
     let mut applied_mods_query = world.query::<&AppliedModifiers>();
     let mut modifiers_query =
-        world.query_filtered::<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<TemplEnti>>();
+        world.query_filtered::<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<Templ>>();
     let mut base_values_query = world.query::<&BaseValue>();
     let mut curr_values_query = world.query::<&CurrEffectiveValue>();
     let mut apply_modes_query = world.query::<&ApplyMode>();
@@ -401,13 +426,15 @@ pub fn being_details_inspector(world: &mut World) {
             Option<&TagSet>,
             Has<PainSlowdown>,
         ),
-        (With<WalkSpeed>, Without<TemplEnti>),
+        (With<WalkSpeed>, Without<Templ>),
     >();
 
     let Ok(body) = body_query.get(world, selected_being_entity) else {
         return;
     };
     let body_entity = body.entity();
+    let bit_ref_ent = bit_ref_query.get(world, selected_being_entity).ok().map(|bit_ref| bit_ref.0);
+    let race_ref_ent = race_ref_query.get(world, selected_being_entity).ok().map(|race_ref| race_ref.0);
     let body_label = part_label(
         body_entity,
         display_name_query.get(world, body_entity).ok(),
@@ -548,19 +575,42 @@ pub fn being_details_inspector(world: &mut World) {
                     .copied()
                     .unwrap_or_default();
                 ui.separator();
-                match interaction_zones_query.get(world, selected_being_entity) {
-                    Ok(interaction_zones) => {
+                match resolve_interaction_zones_with_source(
+                    world,
+                    selected_being_entity,
+                    bit_ref_ent,
+                    race_ref_ent,
+                    &mut interaction_zones_query,
+                ) {
+                    Some((interaction_zones, source_kind, source_ent)) => {
+                        if source_kind == "being" {
+                            ui.label(format!("Collision Mask source: being [{:?}]", source_ent));
+                        } else {
+                            ui.label(format!(
+                                "Collision Mask source: {} fallback [{:?}]",
+                                source_kind, source_ent
+                            ));
+                        }
                         if let Some(collision_zone) = interaction_zones.get_collision_mask() {
-                            ui.label(format!("Collision Mask: {:?}", selected_being_entity));
                             paint_collision_mask_preview(ui, collision_zone, facing);
                         } else {
-                            warn_once!(target: DEBUG, "Being {:?} has InteractionZones but no collision_mask zone", selected_being_entity);
+                            warn_once!(
+                                target: DEBUG,
+                                "Being {:?} resolved InteractionZones from {} {:?} but collision_mask zone is missing",
+                                selected_being_entity,
+                                source_kind,
+                                source_ent
+                            );
                             ui.label("Collision Mask: missing collision_mask zone");
                         }
                     }
-                    Err(_) => {
-                        warn_once!(target: DEBUG, "Being {:?} has no InteractionZones component", selected_being_entity);
-                        ui.label("Collision Mask: missing InteractionZones");
+                    None => {
+                        warn_once!(
+                            target: DEBUG,
+                            "Being {:?} has no InteractionZones on being/bit/race fallback chain",
+                            selected_being_entity
+                        );
+                        ui.label("Collision Mask: missing on being/bit/race");
                     }
                 }
 
@@ -649,8 +699,14 @@ pub fn being_details_inspector(world: &mut World) {
             ui.separator();
 
             ui.collapsing("InteractionZones", |ui| {
-                let Ok(interaction_zones) = interaction_zones_query.get(world, selected_being_entity) else {
-                    ui.label("Missing InteractionZones.");
+                let Some((interaction_zones, source_kind, source_ent)) = resolve_interaction_zones_with_source(
+                    world,
+                    selected_being_entity,
+                    bit_ref_ent,
+                    race_ref_ent,
+                    &mut interaction_zones_query,
+                ) else {
+                    ui.label("Missing InteractionZones on being/bit/race.");
                     return;
                 };
                 let Ok(being_gpos) = gpos_query.get(world, selected_being_entity) else {
@@ -661,6 +717,14 @@ pub fn being_details_inspector(world: &mut World) {
                     .get(world, selected_being_entity)
                     .copied()
                     .unwrap_or_default();
+                if source_kind == "being" {
+                    ui.label(format!("Zone source: being [{:?}]", source_ent));
+                } else {
+                    ui.label(format!(
+                        "Zone source: {} fallback [{:?}]",
+                        source_kind, source_ent
+                    ));
+                }
                 let zone_ids = interaction_zones.0.keys().copied().collect::<Vec<_>>();
                 if zone_ids.is_empty() {
                     ui.label("No interaction zones.");

@@ -4,7 +4,7 @@ use being_shared::{HeldBody, BodypartChildrenBodyparts, BodyTreeWeightSum, Compu
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 
 use modifier_shared::{modifier_has_marker, resolve_modifier_component};
 use modifier_shared::modifier_components::*;
@@ -23,7 +23,7 @@ pub fn process_input_direction_modifiers(
         &mut FinalNormMoveDir,
         Has<ComputedLocally>,
     )>,
-    modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<TemplEnti>, )>,
+    modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
     curr_values_query: Query<&CurrEffectiveValue, >,
     apply_modes_query: Query<&ApplyMode, >,
     invert_markers_query: Query<(), With<InvertMovement>>,
@@ -114,7 +114,7 @@ pub fn process_speed_modifiers(
         Option<&InputMaxSpeed>,
         Has<ComputedLocally>,
     )>,
-    modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<TemplEnti>, )>,
+    modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
     curr_values_query: Query<&CurrEffectiveValue>,
     apply_modes_query: Query<&ApplyMode, >,
     walk_markers_query: Query<(), With<WalkSpeed>>,

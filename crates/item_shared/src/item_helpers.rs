@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use common::log_targets;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 use sprite_shared::ScsToBuild;
 use tilemap_shared::DimensionRef;
 
@@ -19,7 +19,7 @@ pub fn clone_item_from_templ(cmd: &mut Commands, templ_ref: TemplEntiRef, dimens
 }
 
 pub fn dropped_scs_to_build(
-    item_cfg_query: &Query<&crate::ItemSpritesConfig, (With<Item>, With<TemplEnti>)>,
+    item_cfg_query: &Query<&crate::ItemSpritesConfig, (With<Item>, With<Templ>)>,
     templ_ref: TemplEntiRef,
 ) -> Option<ScsToBuild> {
     let dropped_sprite_cfg = item_cfg_query

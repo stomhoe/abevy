@@ -5,6 +5,7 @@ use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
 use ::tilemap_shared::{BlacklistedTags, ChunkPos, GlobalTilePos, LoadedChunks, LoadChunksAround};
 use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
+    ecs::system::SystemParam,
     platform::collections::HashMap,
     prelude::*,
 };
@@ -15,17 +16,24 @@ use movement::movement_components::{InputMaxSpeed, InputSpeedThrottleMult};
 use super::being_nav_resources::AiNavGrids;
 use super::being_nav_structs::AiNavGridCache;
 
+#[derive(SystemParam)]
+pub struct SyncAiNavGridsScratch<'s> {
+    needed_dims: Local<'s, EntityHashSet>,
+    dim_centers: Local<'s, EntityHashMap<IVec2>>,
+    dim_center_counts: Local<'s, EntityHashMap<i32>>,
+    dirty_dims: Local<'s, EntityHashSet>,
+    occupancy_initialized_dims: Local<'s, EntityHashSet>,
+    prev_being_state: Local<'s, EntityHashMap<(Entity, GlobalTilePos)>>,
+    seen_beings: Local<'s, EntityHashSet>,
+    beings_by_dim: Local<'s, EntityHashMap<Vec<(Entity, GlobalTilePos)>>>,
+}
+
 #[allow(unused_parens, )]
 pub fn ensure_loaded_beings_have_nav_state(
     mut cmd: Commands,
-    beings: Query<(Entity, Has<Wandering>, Has<Chasing>, Has<Fleeing>, ), (With<Being>, LoadedBeing, )>,
+    beings: Query<(Entity, ), (With<Being>, Without<Wandering>, Without<Chasing>, Without<Fleeing>, )>,
 ) {
-    for (being_ent, has_wandering, has_chasing, has_fleeing, ) in beings.iter() {
-        if has_wandering || has_chasing || has_fleeing {
-            continue;
-        }
-        cmd.entity(being_ent).try_insert_if_new(Wandering);
-    }
+    for (being_ent, ) in beings { cmd.entity(being_ent).try_insert(Wandering); }
 }
 
 #[allow(unused_parens, )]
@@ -66,7 +74,101 @@ fn choose_flee_target_pos(
     being_gpos: GlobalTilePos,
     flee_from_gpos: GlobalTilePos,
     avoid_tile_tags: &BlacklistedTags,
-) -> Option<GlobalTilePos> {
+) -> Option<(GlobalTilePos, i32, u8)> {
+    fn tile_is_valid_flee_step(
+        blocking_tiles: &mut BlockingTileParamSet,
+        being_ent: Entity,
+        being_dim: ::tilemap_shared::DimensionRef,
+        candidate: GlobalTilePos,
+        avoid_tile_tags: &BlacklistedTags,
+    ) -> bool {
+        if blocking_tiles.is_blocked_at(being_dim, candidate, being_ent, ) {
+            return false;
+        }
+        if avoid_tile_tags.is_empty() {
+            return true;
+        }
+        blocking_tiles.allowed_at(
+            being_dim,
+            candidate,
+            being_ent,
+            &::tilemap_shared::WhitelistedSpawnTileTags::default(),
+            &::tilemap_shared::BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
+        )
+    }
+
+    fn candidate_escape_score(
+        blocking_tiles: &mut BlockingTileParamSet,
+        being_ent: Entity,
+        being_dim: ::tilemap_shared::DimensionRef,
+        being_gpos: GlobalTilePos,
+        flee_from_gpos: GlobalTilePos,
+        candidate: GlobalTilePos,
+        step_dir: IVec2,
+        avoid_tile_tags: &BlacklistedTags,
+    ) -> Option<(i32, u8)> {
+        if !tile_is_valid_flee_step(
+            blocking_tiles,
+            being_ent,
+            being_dim,
+            candidate,
+            avoid_tile_tags,
+        ) {
+            return None;
+        }
+
+        let base_dist = (being_gpos.0 - flee_from_gpos.0).abs().element_sum();
+        let candidate_dist = (candidate.0 - flee_from_gpos.0).abs().element_sum();
+        let dist_gain = candidate_dist - base_dist;
+
+        let mut open_exits = 0u8;
+        for neighbor_dir in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
+            let neighbor = GlobalTilePos(candidate.0 + neighbor_dir);
+            if tile_is_valid_flee_step(
+                blocking_tiles,
+                being_ent,
+                being_dim,
+                neighbor,
+                avoid_tile_tags,
+            ) {
+                open_exits += 1;
+            }
+        }
+
+        let mut forward_run = 0i32;
+        if step_dir != IVec2::ZERO {
+            for run_dist in 1..=3 {
+                let forward = GlobalTilePos(candidate.0 + step_dir * run_dist);
+                if tile_is_valid_flee_step(
+                    blocking_tiles,
+                    being_ent,
+                    being_dim,
+                    forward,
+                    avoid_tile_tags,
+                ) {
+                    forward_run += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        let mut score = candidate_dist * 28
+            + dist_gain * 80
+            + (open_exits as i32) * 26
+            + forward_run * 18;
+        if dist_gain < 0 {
+            score -= 220;
+        }
+        if open_exits <= 1 {
+            score -= 260;
+        }
+        if open_exits == 0 {
+            score -= 400;
+        }
+        Some((score, open_exits))
+    }
+
     let away = being_gpos.0 - flee_from_gpos.0;
     let primary_step = if away == IVec2::ZERO {
         IVec2::X
@@ -76,32 +178,39 @@ fn choose_flee_target_pos(
         IVec2::new(0, away.y.signum())
     };
     let lateral_step = IVec2::new(-primary_step.y, primary_step.x);
+    let mut best: Option<(GlobalTilePos, i32, u8)> = None;
     for step in [primary_step, lateral_step, -lateral_step, -primary_step] {
         if step == IVec2::ZERO {
             continue;
         }
-        let mut best = None;
         for dist in 1..=8 {
             let candidate = GlobalTilePos(being_gpos.0 + step * dist);
-            if blocking_tiles.is_blocked_at(being_dim, candidate, being_ent) {
+            if blocking_tiles.is_blocked_at(being_dim, candidate, being_ent, ) {
                 break;
             }
-            if !avoid_tile_tags.is_empty() && !blocking_tiles.allowed_at(
-                being_dim,
-                candidate,
+            let Some((score, open_exits)) = candidate_escape_score(
+                blocking_tiles,
                 being_ent,
-                &::tilemap_shared::WhitelistedSpawnTileTags::default(),
-                &::tilemap_shared::BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
-            ) {
+                being_dim,
+                being_gpos,
+                flee_from_gpos,
+                candidate,
+                step,
+                avoid_tile_tags,
+            ) else {
                 continue;
+            };
+            if best
+                .map(|(_, best_score, best_open_exits)| {
+                    score > best_score || (score == best_score && open_exits > best_open_exits)
+                })
+                .unwrap_or(true)
+            {
+                best = Some((candidate, score, open_exits));
             }
-            best = Some(candidate);
-        }
-        if best.is_some() {
-            return best;
         }
     }
-    None
+    best
 }
 
 fn resolve_flee_wander_cfg(
@@ -172,7 +281,7 @@ pub fn update_goto_from_fleeing(
         let race_ref = blocking_tiles.get_being_race_ref(being_ent);
         let cfg = resolve_flee_wander_cfg(member_of, bit_ref, race_ref, &wander_cfg_query);
         let avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
-        let Some(target_pos) = choose_flee_target_pos(
+        let Some((target_pos, score, open_exits)) = choose_flee_target_pos(
             &mut blocking_tiles,
             being_ent,
             being_dim,
@@ -188,6 +297,16 @@ pub fn update_goto_from_fleeing(
             ));
             continue;
         };
+        trace!(
+            target: BEING_SYSTEM,
+            "Flee target selected for {:?}: from={:?} threat={:?} target={:?} score={} exits={}",
+            being_ent,
+            being_gpos,
+            flee_from_gpos,
+            target_pos,
+            score,
+            open_exits
+        );
         messages.push(NavOrder::new(
             being_ent,
             255,
@@ -278,6 +397,7 @@ pub fn clear_nav_outputs_for_beings_without_nav_state(
 
 
 
+#[allow(unused_parens, )]
 pub fn sync_ai_nav_grids(
     time: Res<Time>,
     loaded_chunks: Res<LoadedChunks>,
@@ -293,19 +413,18 @@ pub fn sync_ai_nav_grids(
         With<Being>,
     >,
     beings_query: Query<(Entity, &::tilemap_shared::DimensionRef), With<Being>>,
+    mut removed_beings: RemovedComponents<Being>,
     mut grids: ResMut<AiNavGrids>,
-    mut needed_dims: Local<EntityHashSet>,
-    mut dim_centers: Local<EntityHashMap<IVec2>>,
-    mut dim_center_counts: Local<EntityHashMap<i32>>,
+    mut scratch: SyncAiNavGridsScratch,
 ) {
     let chaser_iter = chasers_query.iter();
     let chaser_count = chaser_iter.size_hint().1.unwrap_or(chaser_iter.size_hint().0);
-    needed_dims.clear();
-    needed_dims.reserve(chaser_count);
-    dim_centers.clear();
-    dim_centers.reserve(chaser_count);
-    dim_center_counts.clear();
-    dim_center_counts.reserve(chaser_count);
+    scratch.needed_dims.clear();
+    scratch.needed_dims.reserve(chaser_count);
+    scratch.dim_centers.clear();
+    scratch.dim_centers.reserve(chaser_count);
+    scratch.dim_center_counts.clear();
+    scratch.dim_center_counts.reserve(chaser_count);
 
     for (being_ent, dim_ref, controlled_by, goto, ) in chaser_iter {
         let Some(goto) = goto else {
@@ -319,26 +438,75 @@ pub fn sync_ai_nav_grids(
                 continue;
             }
         }
-        needed_dims.insert(dim_ref.0);
+        scratch.needed_dims.insert(dim_ref.0);
         let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
             continue;
         };
         let pos = gpos.0;
-        let center = dim_centers.entry(dim_ref.0).or_insert(IVec2::ZERO);
+        let center = scratch.dim_centers.entry(dim_ref.0).or_insert(IVec2::ZERO);
         *center += pos;
-        *dim_center_counts.entry(dim_ref.0).or_insert(0) += 1;
+        *scratch.dim_center_counts.entry(dim_ref.0).or_insert(0) += 1;
     }
 
-    grids.by_dim.retain(|dim, _| needed_dims.contains(dim));
+    grids.by_dim.retain(|dim, _| scratch.needed_dims.contains(dim));
     grids
         .center_by_dim
-        .retain(|dim, _| needed_dims.contains(dim));
+        .retain(|dim, _| scratch.needed_dims.contains(dim));
+    scratch.dirty_dims.clear();
+    scratch.dirty_dims.reserve(scratch.needed_dims.len());
+    scratch.seen_beings.clear();
+    scratch.beings_by_dim.clear();
+    scratch.beings_by_dim.reserve(scratch.needed_dims.len());
+    let mut removed_any_being = false;
+    for _ in removed_beings.read() {
+        removed_any_being = true;
+    }
+    if removed_any_being {
+        scratch.dirty_dims.extend(scratch.needed_dims.iter().copied());
+    }
+    for (being_ent, dim_ref) in beings_query.iter() {
+        if !scratch.needed_dims.contains(&dim_ref.0) {
+            continue;
+        }
+        let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
+            continue;
+        };
+        scratch.seen_beings.insert(being_ent);
+        scratch
+            .beings_by_dim
+            .entry(dim_ref.0)
+            .or_default()
+            .push((being_ent, gpos));
+        let previous = scratch.prev_being_state.insert(being_ent, (dim_ref.0, gpos));
+        let Some((previous_dim, previous_gpos)) = previous else {
+            scratch.dirty_dims.insert(dim_ref.0);
+            continue;
+        };
+        if previous_dim != dim_ref.0 {
+            scratch.dirty_dims.insert(previous_dim);
+            scratch.dirty_dims.insert(dim_ref.0);
+            continue;
+        }
+        if previous_gpos != gpos {
+            scratch.dirty_dims.insert(dim_ref.0);
+        }
+    }
+    scratch.prev_being_state.retain(|being_ent, (prev_dim, _)| {
+        let keep = scratch.seen_beings.contains(being_ent) && scratch.needed_dims.contains(prev_dim);
+        if !keep && scratch.needed_dims.contains(prev_dim) {
+            scratch.dirty_dims.insert(*prev_dim);
+        }
+        keep
+    });
+    scratch.occupancy_initialized_dims.retain(|dim| scratch.needed_dims.contains(dim));
 
     let max_side = (((chunk_range.discovery_range as i32 * 2) - 1).max(1) as u32)
         * ChunkPos::CHUNK_SIZE.x.max(1);
     let should_rebuild = grids.rebuild_timer.tick(time.delta()).just_finished();
+    let mut rebuilt_grids = 0usize;
+    let mut refreshed_occupancy = 0usize;
 
-    for dim in needed_dims.iter().copied() {
+    for dim in scratch.needed_dims.iter().copied() {
         let mut min_tile: Option<IVec2> = None;
         let mut max_tile: Option<IVec2> = None;
 
@@ -359,9 +527,10 @@ pub fn sync_ai_nav_grids(
             continue;
         };
 
-        let center = dim_centers
+        let center = scratch
+            .dim_centers
             .get(&dim)
-            .zip(dim_center_counts.get(&dim))
+            .zip(scratch.dim_center_counts.get(&dim))
             .map(|(sum, count)| *sum / count.max(&1))
             .unwrap_or((min_tile + max_tile) / 2);
 
@@ -385,6 +554,7 @@ pub fn sync_ai_nav_grids(
             .unwrap_or(true);
         let needs_new_grid = !grids.by_dim.contains_key(&dim);
         let rebuild_grid = needs_new_grid || should_rebuild || center_changed;
+        let mut rebuilt_grid = false;
 
         if rebuild_grid {
             let mut grid = CardinalGrid::new(
@@ -414,21 +584,26 @@ pub fn sync_ai_nav_grids(
                 },
             );
             grids.center_by_dim.insert(dim, center);
+            rebuilt_grids += 1;
+            rebuilt_grid = true;
         }
-
+        let should_refresh_occupancy = rebuilt_grid
+            || scratch.dirty_dims.contains(&dim)
+            || !scratch.occupancy_initialized_dims.contains(&dim);
+        if !should_refresh_occupancy {
+            continue;
+        }
         let Some(cache) = grids.by_dim.get_mut(&dim) else {
             continue;
         };
         cache.occupied.clear();
-        let being_iter = beings_query.iter();
-        cache.occupied.reserve(being_iter.size_hint().1.unwrap_or(being_iter.size_hint().0));
-        for (being_ent, dim_ref) in being_iter {
-            if dim_ref.0 != dim {
-                continue;
-            }
-            let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
-                continue;
-            };
+        let Some(dim_beings) = scratch.beings_by_dim.get(&dim) else {
+            scratch.occupancy_initialized_dims.insert(dim);
+            refreshed_occupancy += 1;
+            continue;
+        };
+        cache.occupied.reserve(dim_beings.len());
+        for &(being_ent, gpos) in dim_beings.iter() {
             let max_grid = cache.min
                 + IVec2::new(
                     cache.grid.width() as i32 - 1,
@@ -446,5 +621,17 @@ pub fn sync_ai_nav_grids(
                 .occupied
                 .insert(UVec3::new(local.x, local.y, 0), being_ent);
         }
+        scratch.occupancy_initialized_dims.insert(dim);
+        refreshed_occupancy += 1;
+    }
+    if rebuilt_grids > 0 || refreshed_occupancy > 0 {
+        trace!(
+            target: BEING_SYSTEM,
+            "sync_ai_nav_grids: dims={} rebuilt_grids={} refreshed_occupancy={} dirty_dims={}",
+            scratch.needed_dims.len(),
+            rebuilt_grids,
+            refreshed_occupancy,
+            scratch.dirty_dims.len()
+        );
     }
 }

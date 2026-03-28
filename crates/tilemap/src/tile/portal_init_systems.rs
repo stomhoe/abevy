@@ -16,7 +16,7 @@ use crate::{
 pub fn map_portal_tiles(
     mut cmd: Commands,
     mut portals_templ_query: Query<(Entity, &TileStrId, &mut PortalSeri),
-        (With<TemplEnti>, common::AnyDisabling, Changed<PortalSeri>),
+        (With<Templ>, common::AnyDisabling, Changed<PortalSeri>),
     >,
     tiles_map: Res<TileEntityMap>,
 ) {
@@ -59,7 +59,7 @@ pub fn map_portal_tiles(
 #[allow(unused_parens)]
 pub fn validate_portal_recipes(
     mut cmd: Commands,
-    mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>), With<TemplEnti>>,
+    mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>), With<Templ>>,
     dimension_query: Query<&DimensionRootOplist>,
     terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
 ) {
@@ -100,9 +100,9 @@ pub fn start_portal_search(
             Option<&PortalTo>,
             Option<&SearchingForSuitablePos>,
         ),
-        (Without<TemplEnti>, With<Tile>, With<AwaitingStartSearch>),
+        (Without<Templ>, With<Tile>, With<AwaitingStartSearch>),
     >,
-    templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<TemplEnti>,)>,
+    templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<Templ>,)>,
     terrprobe_query: Query<&TerrProbeTempl>,
     mut search_params: SearchParams,
 ) {
@@ -191,9 +191,9 @@ pub fn resolve_portal_search_results(
             &TemplEntiRef,
             Option<&SearchingForSuitablePos>,
         ),
-        (Without<TemplEnti>, With<Tile>),
+        (Without<Templ>, With<Tile>),
     >,
-    templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<TemplEnti>,)>,
+    templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<Templ>,)>,
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut register_pos: ResMut<ImportantRegisteredPositions>,
     mut search_params: SearchParams,

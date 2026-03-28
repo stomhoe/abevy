@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use common::common_components::*;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 use common::log_targets::BODY_BUILD;
 use modifier_shared::modifier_components::{AppliedModifiers, ModifierSynergies};
 
@@ -13,12 +13,12 @@ pub fn build_body_trees_on_beings(
     mut cmd: Commands,
     consumer_beings_query: Query<
         (Entity, &BodyTreeRef, ),
-        (With<Being>, Added<BodyTreeRef>, Without<TemplEnti>, Without<Race>, Without<BeingInstTemplate>),
+        (With<Being>, Added<BodyTreeRef>, Without<Templ>, Without<Race>, Without<BeingInstTemplate>),
     >,
-    templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<TemplEnti>,)>,
+    templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<Templ>,)>,
     root_bodypart_query: Query<(), (With<TreeRoot>, )>,
-    toclone_query: Query<(&BodypartChildrenBodyparts, ), (With<TemplEnti>, )>,
-    display_name_query: Query<(&DisplayName, Has<TemplEnti>),>,
+    toclone_query: Query<(&BodypartChildrenBodyparts, ), (With<Templ>, )>,
+    display_name_query: Query<(&DisplayName, Has<Templ>),>,
 ) {
     for (being_ent, tree_to_build, ) in consumer_beings_query.iter() {
         trace!(target: BODY_BUILD, "Building body tree {} for being {} from source templ {}", entity_dbg(tree_to_build.0, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(tree_to_build.0, &display_name_query));
@@ -58,17 +58,17 @@ pub fn build_body_trees_on_beings(
 fn walk_and_clone_tree(
     cmd: &mut Commands,
     templtree_curr_node_ent: Entity,
-    ref_of_bpart_toclone_query: &Query<(&BodypartChildrenBodyparts, ), (With<TemplEnti>, )>,
+    ref_of_bpart_toclone_query: &Query<(&BodypartChildrenBodyparts, ), (With<Templ>, )>,
     parent_node: Option<Entity>,
     body_ent: Entity,
-    display_name_query: &Query<(&DisplayName, Has<TemplEnti>),>,
+    display_name_query: &Query<(&DisplayName, Has<Templ>),>,
 ) -> Option<Entity> {
     let parent_bodypart = parent_node.unwrap_or(body_ent);
     let cloned_bodypart_ent = cmd
         .entity(templtree_curr_node_ent)
         .clone_and_spawn_with_opt_out(|builder| {
             builder.deny::<(
-                TemplEnti, Children, AppliedModifiers, ModifierSynergies, BodypartForcedStats, BodypartWeightedDistribution, ChildOf, BodypartChildOfBodypart, BodypartChildrenBodyparts
+                Templ, Children, AppliedModifiers, ModifierSynergies, BodypartForcedStats, BodypartWeightedDistribution, ChildOf, BodypartChildOfBodypart, BodypartChildrenBodyparts
             )>();
         })
         .id();
@@ -101,7 +101,7 @@ fn walk_and_clone_tree(
 
 fn entity_dbg(
     entity: Entity,
-    display_name_query: &Query<(&DisplayName, Has<TemplEnti>),>,
+    display_name_query: &Query<(&DisplayName, Has<Templ>),>,
 ) -> String {
     let Ok((display_name, is_templ)) = display_name_query.get(entity) else {
         return format!("{:?}", entity);

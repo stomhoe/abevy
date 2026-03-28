@@ -3,7 +3,7 @@ use bevy::ecs::entity::EntityHashMap;
 use ac_input::player_action_requests::LocalItemPickupRequest;
 use being_shared::Being;
 use common::log_targets;
-use game_common::game_common_components::{Dead, TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Dead, Templ, TemplEntiRef};
 use ::item_shared::*;
 use ::sprite_shared::{HeldSprites, ScsToBuild};
 use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
@@ -78,8 +78,8 @@ pub fn sync_items_at_gpos(
     mut items_at_gpos: Option<ResMut<ItemsAtGpos>>,
     mut removed_items: RemovedComponents<Item>,
     mut tracked_pos: Local<EntityHashMap<(DimensionRef, GlobalTilePos)>>,
-    query: Query<(Entity, &TemplEntiRef, Option<&DimensionRef>, Option<&Transform>, Option<&GlobalTilePos>, Has<ItemHeldIn>, Has<ScsToBuild>), (With<Item>, Without<TemplEnti>)>,
-    item_cfg_query: Query<&ItemSpritesConfig, (With<Item>, With<TemplEnti>)>,
+    query: Query<(Entity, &TemplEntiRef, Option<&DimensionRef>, Option<&Transform>, Option<&GlobalTilePos>, Has<ItemHeldIn>, Has<ScsToBuild>), (With<Item>, Without<Templ>)>,
+    item_cfg_query: Query<&ItemSpritesConfig, (With<Item>, With<Templ>)>,
 ) {
     let Some(items_at_gpos) = items_at_gpos.as_mut() else {
         tracked_pos.clear();
@@ -177,8 +177,8 @@ pub fn execute_item_operations(
     mut cmd: Commands,
     mut item_operations: MessageReader<ItemOperation>,
     dim_ref_query: Query<&DimensionRef>,
-    item_instance_query: Query<&ItemHeldIn, (With<Item>, Without<TemplEnti>)>,
-    templ_item_query: Query<(), (With<Item>, With<TemplEnti>)>,
+    item_instance_query: Query<&ItemHeldIn, (With<Item>, Without<Templ>)>,
+    templ_item_query: Query<(), (With<Item>, With<Templ>)>,
     child_of_query: Query<&ChildOf>,
     mut materialize_params: ItemGroundMaterializeParamSet,
 ) {
@@ -279,9 +279,9 @@ pub fn generate_items_on_deaths(
             Option<&ItemsGeneratedOnDeath>,
             Option<&TemplEntiRef>,
         ),
-        (Without<TemplEnti>, Added<Dead>),
+        (Without<Templ>, Added<Dead>),
     >,
-    templ_drop_query: Query<&ItemsGeneratedOnDeath, With<TemplEnti>>,
+    templ_drop_query: Query<&ItemsGeneratedOnDeath, With<Templ>>,
     mut item_operations: Local<Vec<ItemOperation>>,
 ) {
     let mut rng = rand::rng();

@@ -5,7 +5,7 @@ use bevy::{math::f32, };
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 use common::{common_components::{Tag}, };
-use game_common::game_common_components::TemplEnti;
+use game_common::game_common_components::Templ;
 use serde::{Deserialize, Serialize};
 pub use ::tilemap_shared::*;
 
@@ -15,8 +15,8 @@ use crate::tile::tile_components::*;
 
 common::define_entity_map_systems!(
     Tile,
-    (With<TemplEnti>, common::AnyDisabling),
-    (Tile, TemplEnti),
+    (With<Templ>, common::AnyDisabling),
+    (Tile, Templ),
     TileSeri, "seri.tilemap.tile", "tile.ron",
 );
 

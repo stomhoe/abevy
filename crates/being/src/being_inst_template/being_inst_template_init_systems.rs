@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use common::common_components::*;
 use ::being_shared::*;
 
-use game_common::TemplEnti;
+use game_common::Templ;
 use ::sprite_shared::*;
 use tilemap_shared::tilemap_shared_samplers::*;
 
@@ -55,7 +55,7 @@ pub fn init_being_templates(
         let bit_entity = cmd.spawn((
             being_inst_template,
             str_id.clone(),
-            TemplEnti
+            Templ
         )).id();
 
         cmd.entity(bit_entity).insert(template_seri.tags_and_own_id());

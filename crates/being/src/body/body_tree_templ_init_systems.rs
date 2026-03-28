@@ -5,7 +5,7 @@ use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
 use common::common_id_components::{HashId, HashIdMap};
 use common::log_targets::BODY_BUILD;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplEntiRef};
 use modifier_shared::modifier_components::{ApplyMode, BaseValue, CurrEffectiveValue, ModifierSynergies, ModifierTarget};
 use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_types::*;
@@ -43,7 +43,7 @@ pub fn init_templ_body_trees(
         cmd.entity(body_tree_ent).insert((
             body_id.clone(),
             BodyTree,
-            TemplEnti,
+            Templ,
             build_being_interaction_zones(
                 seri.melee_interaction_zone.clone(),
                 seri.collision_zone.clone(),
@@ -119,19 +119,14 @@ pub fn init_templ_body_trees(
 #[allow(unused_parens, )]
 pub fn distribute_templ_body_tree_modifiers(
     mut cmd: Commands,
-    body_map: Res<BodyTreeEntityMap>,
-    body_tree_query: Query<(Entity, &StrId, &StatBudgetsToDistribute, ), (With<BodyTree>, With<TemplEnti>, )>,
-    templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<TemplEnti>, )>,
+    body_tree_query: Query<(Entity, &StrId, &StatBudgetsToDistribute, ), (With<BodyTree>, With<Templ>, )>,
+    templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<Templ>, )>,
     forced_query: Query<&BodypartForcedStats, >,
     weighted_query: Query<&BodypartWeightedDistribution, >,
     synergy_query: Query<&ModifierSynergies, >,
-    templ_bodypart_refs_query: Query<&TemplEntiRef, (With<TemplEnti>, )>,
+    templ_bodypart_refs_query: Query<&TemplEntiRef, (With<Templ>, )>,
     mut templs_mapped_to_bodyparts: Local<Vec<(Entity, Entity)>>,
 ) {
-    if !body_map.0.is_empty() {
-        return;
-    }
-
     for (body_tree_ent, body_id, totals_to_distribute, ) in body_tree_query.iter() {
         let Ok((bodyparts_list, )) = templ_tree_bodyparts_query.get(body_tree_ent) else {
             error!(target: BODY_BUILD, "BodyTree {} has no bodypart children after deferred tree build; skipping distribution", body_id);
@@ -180,7 +175,7 @@ fn rec_build_templ_body_tree(
     let parent_bodypart = parent_node_ent.unwrap_or(templ_body_ent);
     let node_ent = cmd.entity(source_part_ent).clone_and_spawn_with_opt_out(|builder| {
         builder.deny::<(
-            TemplEnti,
+            Templ,
             ChildOf,
             Children,
             BodypartChildrenBodyparts,
@@ -190,7 +185,7 @@ fn rec_build_templ_body_tree(
         BodypartChildOfBodypart { parent_bodypart },
         ChildOf(templ_body_ent),
         TemplEntiRef(source_part_ent),
-        TemplEnti,
+        Templ,
         Name::default(),
     ));
 

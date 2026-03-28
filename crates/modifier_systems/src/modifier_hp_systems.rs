@@ -3,7 +3,7 @@ use being::body::{HeldBody, IncomingDamage};
 use game_common::game_common_components::{
     Dead,
     DespawnOnDeath,
-    TemplEnti,
+    Templ,
     Health,
     HealthDamage,
 };
@@ -12,8 +12,8 @@ use tilemap_shared::SafeDespawn;
 
 pub fn apply_health_damage(
     mut reader: MessageReader<HealthDamage>,
-    mut health_query: Query<&mut Health, Without<TemplEnti>>,
-    body_query: Query<&HeldBody, Without<TemplEnti>>,
+    mut health_query: Query<&mut Health, Without<Templ>>,
+    body_query: Query<&HeldBody, Without<Templ>>,
     mut body_damage_writer: MessageWriter<IncomingDamage>,
     mut body_damage_messages: Local<Vec<IncomingDamage>>,
 ) {
@@ -44,7 +44,7 @@ pub fn apply_health_damage(
 
 pub fn mark_dead_by_health(
     mut cmd: Commands,
-    query: Query<(Entity, &Health, Has<Dead>), (Without<TemplEnti>, Changed<Health>)>,
+    query: Query<(Entity, &Health, Has<Dead>), (Without<Templ>, Changed<Health>)>,
 ) {
     for (entity, health, is_dead) in query.iter() {
         if health.0 <= 0.0 {
@@ -63,7 +63,7 @@ pub fn despawn_entities_on_death(
     query: Query<
         (Entity, Has<Tile>),
         (
-            Without<TemplEnti>,
+            Without<Templ>,
             With<DespawnOnDeath>,
             Changed<Dead>,
         ),

@@ -6,7 +6,7 @@ use bevy::ecs::entity::EntityHashSet;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef, };
+use game_common::game_common_components::{Templ, TemplEntiRef, };
 use tilemap_shared::{GlobalTilePos};
 use ::tilemap_shared::directions::*;
 
@@ -25,7 +25,7 @@ pub struct SpriteChanged(pub Entity);
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
     sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>)>)>,
-    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>)>, Without<Unloaded>, Without<Disabled>)>,
+    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>)>, Without<Unloaded>, Without<Disabled>)>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut removed_unloaded: RemovedComponents<Unloaded>,
     mut writer: MessageWriter<SpriteChanged>,
@@ -43,8 +43,8 @@ pub fn sprite_change_detection(
 #[allow(unused_parens)]
 pub fn disable_children_sprites_of_disabled(
     mut cmd: Commands,
-    templ_bases: Query<(&HeldSprites),(With<TemplEnti>, Added<Disabled>)>,
-    non_templ_bases: Query<(&HeldSprites),(Without<TemplEnti>,)>,
+    templ_bases: Query<(&HeldSprites),(With<Templ>, Added<Disabled>)>,
+    non_templ_bases: Query<(&HeldSprites),(Without<Templ>,)>,
     mut removed: RemovedComponents<Disabled>,
 ) {
     let iter = templ_bases.iter();

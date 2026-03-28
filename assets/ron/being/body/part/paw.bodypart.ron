@@ -9,7 +9,6 @@
         "blood_capacity": 9.0,
         "walk_speed": 1.4,
         "swim_speed": 1.0,
-        "manip_dex": 0.4,
         "pain_sensitivity": 1.1,
         "caloric_burn_rate": 1.6,
     },

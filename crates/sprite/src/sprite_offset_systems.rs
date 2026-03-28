@@ -15,7 +15,7 @@ pub fn apply_offsets(
         &ChildOf,
         Option<&TemplEntiRef>,
         Option<&Offset2D>,
-    ), (Without<TemplEnti>, )>,
+    ), (Without<Templ>, )>,
     sprite_config_query: Query<(
         Option<&TagSet>,
         Option<&Offset2D>,

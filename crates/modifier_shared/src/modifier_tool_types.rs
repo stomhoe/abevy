@@ -1,8 +1,10 @@
 use crate::modifier_components::ModifierTags;
 
 common::define_marker_components!(
-    with_serde,
+    repli,
     require(ModifierTags),
+    define_plugin(plugin),
+    define_copy_from_template_system(copy_modifier_tool_markers_from_template),
     Tool,
     DamageBlunt,
     DamageSharp,

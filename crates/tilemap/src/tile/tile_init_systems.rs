@@ -73,7 +73,7 @@ pub fn init_tiles(
             Tile, Replicated, str_id.clone(), //PROBLEMA: EL DISABLED HACE Q EL DESPAWNONEXIT NO FUNCIONE
             Prefix::trunc("Tile"),
             my_z.clone(),
-            TemplEnti,
+            Templ,
             hash_id,
             tile_index,
             AddHashIdFromStrId,
@@ -272,7 +272,7 @@ pub fn init_tiles(
                         ChildOf(tile_enti),
                         BaseHolderRef{ base: tile_enti },
                         StrId::trunc(format!("{}", path_holder).replace("texture/", "")),
-                        TemplEnti,
+                        Templ,
                         path_holder,
                         Replicated,
                         my_z.clone(),
@@ -334,7 +334,7 @@ fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
 pub fn init_childrensprite(
     mut cmd: Commands,
     asset_server: Res<AssetServer>,
-    templ_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>), (With<TemplEnti>,)>,
+    templ_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>), (With<Templ>,)>,
     childrensprite_query: Query<
         (Entity, AnyOf<(&ImagePathHolder, &TemplEntiRef)>),
         (
@@ -396,7 +396,7 @@ pub fn add_handles(
     templ_id_query: Query<
         (Entity, &TileStrId, &TileImagePaths),
         (
-            With<TemplEnti>,
+            With<Templ>,
             Without<TileHashIdsHandles>,
             Changed<TileImagePaths>,
         ),
@@ -473,7 +473,7 @@ pub fn map_min_dist_tiles(
 }
 #[allow(unused_parens)]
 pub fn on_templ_tile_despawn(
-    on_despawn: On<Despawn, (Tile, TemplEnti, TagSet)>,
+    on_despawn: On<Despawn, (Tile, Templ, TagSet)>,
     query: Query<(&TagSet), (AnyDisabling)>,
     mut tile_ents_within_tag: If<ResMut<TemplTileEntsWithinTag>>
 ) {

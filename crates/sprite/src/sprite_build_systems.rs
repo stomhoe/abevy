@@ -18,9 +18,9 @@ pub fn add_spritechildren_and_comps(
     changed_fathers: Query<
         Entity,
         (
+            Or<(Changed<ScsToBuild>, Changed<Visibility>, (Without<HeldSprites>, With<ScsToBuild>,))>,
             Without<SpriteConfig>,
             Without<BeingInstTemplate>,
-            Changed<ScsToBuild>,
         ),
     >,
     father_query: Query<

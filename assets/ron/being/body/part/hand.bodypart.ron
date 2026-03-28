@@ -12,8 +12,6 @@
         "hp_capacity": 12.0,
         "hp_regen_rate": 0.8,
         "blood_capacity": 7.0,
-        "walk_speed": 0.0,
-        "swim_speed": 0.2,
         "manip_dex": 1.5,
         "manip_str": 0.8,
         "pain_sensitivity": 1.3,

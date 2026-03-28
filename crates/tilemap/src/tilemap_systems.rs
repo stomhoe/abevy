@@ -71,9 +71,9 @@ pub struct ComponentsQueries<'w, 's> {
 
 #[derive(SystemParam)]
 pub struct ProcessTilesPreParams<'w, 's> {
-    pub resources: ParamSet<'w, 's, (SystemResources<'w>,)>,
+    pub resources: SystemResources<'w>,
     pub tile_gathering_paramset: TileGatheringParamSet<'w, 's>,
-    pub tile_components_queries: ParamSet<'w, 's, (ComponentsQueries<'w, 's>,)>,
+    pub tile_components_queries: ComponentsQueries<'w, 's>,
     pub shader_query: Query<'w, 's, &'static TileShader, ()>,
     pub terrbl_query: Query<'w, 's, &'static TerrBlendParams>,
     pub terrbl_handle_query: Query<'w, 's, &'static mut MaterialTilemapHandle<TerrBlendMat>>,
@@ -85,8 +85,8 @@ pub fn process_tiles_pre(
     mut cmd: Commands,
     mut params: ProcessTilesPreParams,
 ) {
-    let resources = &mut params.resources.p0();
-    let tile_components = &mut params.tile_components_queries.p0();
+    let resources = &mut params.resources;
+    let tile_components = &mut params.tile_components_queries;
     let locals = &mut params.locals;
 
     if *locals.terrbl_debug_budget == 0 {
@@ -99,10 +99,10 @@ pub fn process_tiles_pre(
 
     let tiles_len = resources.collected_tiles.0.len();
 
-    let mut tilemap_bundles = Vec::with_capacity(200);
+    let mut tilemap_bundles = Vec::new();
 
     let mut to_insert_replicated = Vec::with_capacity(tiles_len/100);
-    let mut spritetiles_to_remove_bundle = Vec::with_capacity(tiles_len/20);
+    let mut spritetiles_to_remove_tmapbundle = Vec::with_capacity(tiles_len/20);
 
     let mut child_ofs_to_insert: Vec<(Entity, ChildOf)> = Vec::with_capacity(tiles_len);
 
@@ -191,7 +191,7 @@ pub fn process_tiles_pre(
                 if is_spritetile{
                     let interaction_zones = tile_components.interaction_zones_query.get(bundle.templ_ref.0).ok();
                     params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
-                    spritetiles_to_remove_bundle.push(tile_ent);
+                    spritetiles_to_remove_tmapbundle.push(tile_ent);
                     i += 1;
                     continue;
                 }
@@ -228,7 +228,7 @@ pub fn process_tiles_pre(
         }
 
         if is_spritetile {
-            spritetiles_to_remove_bundle.push(tile_ent);
+            spritetiles_to_remove_tmapbundle.push(tile_ent);
             let interaction_zones = tile_components.interaction_zones_query.get(bundle.templ_ref.0).ok();
             params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
             child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
@@ -275,7 +275,7 @@ pub fn process_tiles_pre(
     //DEJAR CON IF NEW ASÍ TILES DE TILEMAP PUEDEN SER REPLICADAS
     cmd.try_insert_batch_if_new(take(&mut resources.collected_tiles.0));
 
-    for tile_ent in spritetiles_to_remove_bundle.drain(..) {
+    for tile_ent in spritetiles_to_remove_tmapbundle.drain(..) {
         cmd.entity(tile_ent).try_remove::<TileBundleNoTileFlip>();
     }
     cmd.try_insert_batch(child_ofs_to_insert);

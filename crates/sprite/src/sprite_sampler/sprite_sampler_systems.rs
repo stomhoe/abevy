@@ -3,7 +3,7 @@ use bevy::ecs::{entity::EntityHashSet, entity_disabling::Disabled};
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::{AnyDisabling, common_components::StrId, };
 
-use game_common::game_common_components::TemplEnti;
+use game_common::game_common_components::Templ;
 use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 use common::common_components::SampleSpriteEnts;
 use sprite_shared::SampleSpritesFromStrIds;
@@ -75,8 +75,8 @@ pub fn replace_sampler_string_ids_by_entities(
 #[allow(unused_parens)]
 pub fn sample_from_sprite_entities(
     mut cmd: Commands,
-    changed_beings: Query<Entity, (Changed<SampleSpriteEnts>, Without<BeingInstTemplate>, Without<TemplEnti>)>,
-    being_query: Query<(&SampleSpriteEnts, Has<ScsToBuild>), (Without<BeingInstTemplate>, Without<TemplEnti>, AnyDisabling)>,
+    changed_beings: Query<Entity, (Changed<SampleSpriteEnts>, Without<BeingInstTemplate>, Without<Templ>)>,
+    being_query: Query<(&SampleSpriteEnts, Has<ScsToBuild>), (Without<BeingInstTemplate>, Without<Templ>, AnyDisabling)>,
     samplers_query: Query<&EntityWeightedSampler>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut beings_to_process: Local<Vec<Entity>>,

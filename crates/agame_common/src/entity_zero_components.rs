@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display, Formatter, Result};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-pub struct TemplEnti;
+pub struct Templ;
 
 #[derive(
     Component, Clone, Deserialize, Serialize, Reflect, Copy, PartialEq, Eq, Hash, MapEntities,

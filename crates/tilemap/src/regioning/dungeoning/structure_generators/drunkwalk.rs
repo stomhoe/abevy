@@ -35,7 +35,7 @@ pub fn drunkwalk_dungeon_building_system(
     sampler_map: Res<TileWeightedSamplerEntityMap>,
     structured_gens: Query<(&StructuredGenConfig,),()>,
     sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
-    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::TemplEnti>, common::AnyDisabling)>,
+    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     dimension_hash: Query<&HashId>,
     settings: Query<&GlobalGenSettings>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,

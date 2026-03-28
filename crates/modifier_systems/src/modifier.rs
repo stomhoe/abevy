@@ -8,16 +8,15 @@ use {
     crate::modifier_systems::*,
     bevy::time::common_conditions::on_timer,
     bevy_replicon::prelude::*,
-    modifier_shared::{
-        modifier_components::*,
-        modifier_item_types::*,
-        modifier_tool_types::*,
-        modifier_types::*,
-    },
+    modifier_shared::modifier_components::*,
     std::time::Duration,
 };
 
 pub fn plugin(app: &mut App) {
+    modifier_shared::modifier_types::plugin(app);
+    modifier_shared::modifier_tool_types::plugin(app);
+    modifier_shared::modifier_item_types::plugin(app);
+
     app.add_systems(
         FixedUpdate,
         (
@@ -47,87 +46,14 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<ModifierTarget>()
     .replicate::<BaseValue>()
-    .replicate::<CurrEffectiveValue>() //NO SÉ SI ES TEMPORAL O NO
+    .replicate::<CurrEffectiveValue>()
     .replicate::<MitigatingOnly>()
     .replicate::<ApplyMode>()
-    .replicate::<WalkSpeed>()
-    .replicate::<SwimSpeed>()
-    .replicate::<FlySpeed>()
-    .replicate::<InvertMovement>()
-    .replicate::<HitpointsCapacity>()
-    .replicate::<HitpointRegenRate>()
-    .replicate::<BloodCapacity>()
-    .replicate::<Consciousness>()
-    .replicate::<PainSensitivity>()
-    .replicate::<PainInfliction>()
-    .replicate::<PainSlowdown>()
-    .replicate::<ManipulationDexterity>()
-    .replicate::<ManipulationStrength>()
-    .replicate::<Vision>()
     .replicate::<Antidote>()
     .replicate::<ModifierSynergies>()
     .replicate::<OffsetValForSelf>()
     .replicate::<CopyFracOfOthersIntoSelf>()
     .replicate::<MinForDamage>()
     .replicate::<ConvertsDamageOnNonPenetration>()
-    .replicate::<BleedRate>()
-    .replicate::<Tool>()
-    .replicate::<DamageBlunt>()
-    .replicate::<DamageSharp>()
-    .replicate::<DamagePierce>()
-    .replicate::<DamageSlash>()
-    .replicate::<DamageFire>()
-    .replicate::<DamageFrost>()
-    .replicate::<DamageLightning>()
-    .replicate::<DamageAcid>()
-    .replicate::<DamagePoison>()
-    .replicate::<DamageArcane>()
-    .replicate::<DamageHoly>()
-    .replicate::<DamageShadow>()
-    .replicate::<DamageTrue>()
-    .replicate::<PenetrationBlunt>()
-    .replicate::<PenetrationSharp>()
-    .replicate::<PenetrationFire>()
-    .replicate::<PenetrationFrost>()
-    .replicate::<PenetrationLightning>()
-    .replicate::<PenetrationAcid>()
-    .replicate::<PenetrationArcane>()
-    .replicate::<ArmorBypassChance>()
-    .replicate::<ArmorShred>()
-    .replicate::<SpallChance>()
-    .replicate::<SpallDamageMult>()
-    .replicate::<FragmentationChance>()
-    .replicate::<FragmentCount>()
-    .replicate::<MuzzleVelocity>()
-    .replicate::<ProjectileMass>()
-    .replicate::<ProjectileDrag>()
-    .replicate::<ProjectileGravityMult>()
-    .replicate::<PenetrationFalloffPerTile>()
-    .replicate::<DamageFalloffPerTile>()
-    .replicate::<RicochetChance>()
-    .replicate::<RicochetMaxAngle>()
-    .replicate::<AttackWindup>()
-    .replicate::<AttackCooldown>()
-    .replicate::<AttackRecovery>()
-    .replicate::<MeleeReach>()
-    .replicate::<MinRange>()
-    .replicate::<MaxRange>()
-    .replicate::<Spread>()
-    .replicate::<Recoil>()
-    .replicate::<Sway>()
-    .replicate::<StaggerPower>()
-    .replicate::<Knockback>()
-    .replicate::<BodypartTargetingPrecision>()
-    .replicate::<MassKg>()
-    .replicate::<Encumberance>()
-    .replicate::<Bulk>()
-    .replicate::<Durability>()
-    .replicate::<MaxDurability>()
-    .replicate::<MarketValue>()
-    .replicate::<Warmth>()
-    .replicate::<ArmorBlunt>()
-    .replicate::<ArmorSharp>()
-    .replicate::<ArmorFire>()
-    .replicate::<StackLimit>()
     .replicate_filtered::<ChildOf, With<ModifierTarget>>();
 }

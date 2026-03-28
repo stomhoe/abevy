@@ -34,7 +34,7 @@ pub fn corridor_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     templs_map: Res<TileEntityMap>,
-    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::TemplEnti>, common::AnyDisabling)>,
+    templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,

@@ -11,7 +11,7 @@ use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, };
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
 
-pub type ExcludedComps = (Without<TemplEnti>, Without<TilemapAnchor>, Without<TilePos>);
+pub type ExcludedComps = (Without<Templ>, Without<TilemapAnchor>, Without<TilePos>);
 
 #[allow(unused_parens)]
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, ENTITYZEROREF O CHILDOF, O SI SE AGREGA REPLICATED
@@ -77,7 +77,7 @@ pub fn emit_global_tile_pos_change(
         ),
         (
             Or<(Changed<GlobalTilePos>, Changed<DimensionRef>)>,
-            Without<TemplEnti>, With<Tile>,
+            Without<Templ>, With<Tile>,
         ),
     >,
     mut mwriter: MessageWriter<GlobalTilePosChanged>,
@@ -112,7 +112,7 @@ pub fn add_spawned_tiles_to_gpos_map(
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
     query: Query<
         (Entity, &DimensionRef, &GlobalTilePos, &TemplEntiRef),
-        (common::AnyDisabling, Without<TemplEnti>, Without<TilemapId>),
+        (common::AnyDisabling, Without<Templ>, Without<TilemapId>),
     >,
     interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
     mut entities: Local<EntityHashSet>,
@@ -142,7 +142,7 @@ pub fn add_projectile_colliders_to_tiles(
     mut cmd: Commands,
     query: Query<
         (Entity, &GlobalTilePos, Option<&OplistSize>),
-        (Added<BlocksProjectiles>, With<Tile>, Without<TemplEnti>),
+        (Added<BlocksProjectiles>, With<Tile>, Without<Templ>),
     >,
 ) {
     for (ent, gpos, oplist_size) in query.iter() {

@@ -1,5 +1,5 @@
 use crate::game_common_components::*;
-use crate::game_common_bundles::DenyForEntityZeroClonedChild;
+use crate::game_common_bundles::DenyForTemplClonedChildren;
 use crate::game_common_timers::*;
 use ::common::*;
 use ::sprite_shared::*;
@@ -48,7 +48,7 @@ pub fn clone_templ_children_ents(
 
         templ_children.iter().for_each(|child_to_clone| {
             let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
-                move |builder|{ builder.deny::<DenyForEntityZeroClonedChild>();
+                move |builder|{ builder.deny::<DenyForTemplClonedChildren>();
                     if ! is_replicated{
                         builder.deny::<Replicated>();
                     }
@@ -84,7 +84,7 @@ pub fn despawn_sprites_without_childof(
 pub fn set_entity_name(
     templs_query: Query<
         AnyOf<(&Prefix, &StrId, &StrId20B, &DisplayName,)>,
-        (With<TemplEnti>, common::AnyDisabling),
+        (With<Templ>, common::AnyDisabling),
     >,
     mut changers_query: Query<
         (

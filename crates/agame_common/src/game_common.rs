@@ -92,7 +92,7 @@ pub fn plugin(app: &mut App) {
     .init_state::<GameSetupScreen>()
     .init_state::<SimulationState>()
     .replicate::<Description>()
-    .replicate::<TemplEnti>()
+    .replicate::<Templ>()
     .replicate::<TemplEntiRef>()
 
     .replicate::<Directionable>()
@@ -107,7 +107,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate_once::<GlobalTransform>()
     .replicate_once::<Transform>()
-    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<TemplEnti>,)>()
+    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<Templ>,)>()
     .replicate_once_as::<Visibility, common::common_components::VisibilityGameState>()
     .add_message::<TimedOut>()
     .add_message::<HealthDamage>()

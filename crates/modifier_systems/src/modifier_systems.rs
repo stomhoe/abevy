@@ -1,7 +1,7 @@
 use bevy::ecs::entity::EntityHashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::common_id_components::*;
-use game_common::game_common_components::{TemplEnti, TemplEntiRef, TimeBasedMultiplier};
+use game_common::game_common_components::{TemplEntiRef, TimeBasedMultiplier};
 
 use modifier_shared::resolve_modifier_component;
 use modifier_shared::modifier_components::*;
@@ -50,6 +50,7 @@ pub fn materialize_modifier_synergies(
         }
     }
 }
+
 #[derive(Default, Clone)]
 pub struct TargetAggregate {
     tag_count: usize,

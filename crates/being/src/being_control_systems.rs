@@ -55,21 +55,17 @@ pub fn on_control_change(
     };
     let mut apply_control_change = |being_ent: Entity, controlled_by: &ComputedBy, is_camera_target: bool| {
         if let Ok(mut input_dir) = input_dirs.get_mut(being_ent) {
-            trace!(target: BEING_CONTROL, "InputMoveDir reset on control change for {:?}: {:?} -> {:?}", being_ent, input_dir.0, Vec2::ZERO);
             input_dir.0 = Vec2::ZERO;
         }
         if controlled_by.client_ent == self_entity {
-            info!(target: BEING_CONTROL, "debug {:?} is now computed locally by self", being_ent);
             commands.entity(being_ent).try_insert_if_new((ComputedLocally, ));
             if controlled_by.human_dc_input {
-                debug!(target: BEING_CONTROL, "Entity {:?} is now a CameraTarget due to human input", being_ent);
                 commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), *default_chunk_range_for_player_beings, ));
                 if let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) {
                     input_speed_throttle_mult.0 = 1.0;
                     input_max_speed.0 = f32::MAX;
                 }
             } else {
-                debug!(target: BEING_CONTROL, "Entity {:?} is no longer a CameraTarget", being_ent);
                 commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, )>();
             }
         } else {

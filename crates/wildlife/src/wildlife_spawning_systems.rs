@@ -57,7 +57,7 @@ pub struct NaturalWildlifeSpawnQueries<'w, 's> {
     pack_being_samplers: Query<'w, 's, &'static PackBeingSampler>,
     pack_min_dists_query: Query<'w, 's, &'static PackMinDistsToPacksOrRaces>,
     bit_race_query: Query<'w, 's, &'static RaceRef>,
-    spawn_target_query: Query<'w, 's, (Has<BeingInstTemplate>, Has<Race>, Has<Pack>, Has<NoSpawnGroup>), With<TemplEnti>>,
+    spawn_target_query: Query<'w, 's, (Has<BeingInstTemplate>, Has<Race>, Has<Pack>, Has<NoSpawnGroup>), With<Templ>>,
     spawn_pack_size_query: Query<'w, 's, &'static PackInitialSize>,
 }
 

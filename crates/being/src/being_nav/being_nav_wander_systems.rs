@@ -4,16 +4,21 @@ use crate::pack::pack_components::PackCenterPerDim;
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use bevy::{
-    ecs::entity::EntityHashMap,
+    ecs::entity::{EntityHashMap, EntityHashSet},
     platform::collections::HashSet,
     prelude::*,
 };
 use common::common_tag_components::TagSet;
+use common::log_targets::BEING_SYSTEM;
 use movement::movement_components::FinalNormMoveDir;
 use param_sets::BlockingTileParamSet;
 use rand::Rng;
 use std::time::Duration;
 use ::tilemap_shared::*;
+
+const WANDER_LOD_NEAR_TILES: i32 = 24;
+const WANDER_LOD_MID_TILES: i32 = 48;
+const WANDER_LOD_FAR_TILES: i32 = 96;
 
 #[derive(Debug, Clone)]
 pub struct WanderState {
@@ -24,6 +29,8 @@ pub struct WanderState {
     phase_timer: Timer,
     pack_orbit_timer: Timer,
     pack_orbit_target: Option<GlobalTilePos>,
+    lod_level: u8,
+    lod_timer: Timer,
 }
 
 impl WanderState {
@@ -42,8 +49,46 @@ impl WanderState {
             ),
             pack_orbit_timer: sample_pack_orbit_timer(rng, cfg),
             pack_orbit_target: None,
+            lod_level: 0,
+            lod_timer: Timer::from_seconds(0.0, TimerMode::Once),
         }
     }
+}
+
+fn wander_lod_level_for_distance(closest_tile_distance_sq: i32) -> u8 {
+    if closest_tile_distance_sq <= WANDER_LOD_NEAR_TILES * WANDER_LOD_NEAR_TILES {
+        0
+    } else if closest_tile_distance_sq <= WANDER_LOD_MID_TILES * WANDER_LOD_MID_TILES {
+        1
+    } else if closest_tile_distance_sq <= WANDER_LOD_FAR_TILES * WANDER_LOD_FAR_TILES {
+        2
+    } else {
+        3
+    }
+}
+
+fn wander_lod_interval_for_level(level: u8) -> Duration {
+    match level {
+        0 => Duration::ZERO,
+        1 => Duration::from_secs_f32(0.10),
+        2 => Duration::from_secs_f32(0.25),
+        _ => Duration::from_secs_f32(0.50),
+    }
+}
+
+fn closest_activator_tile_distance_sq(
+    being_gpos: GlobalTilePos,
+    activators: &[GlobalTilePos],
+) -> i32 {
+    let mut closest_dist_sq = i32::MAX;
+    for &activator_gpos in activators.iter() {
+        let delta = activator_gpos.0 - being_gpos.0;
+        let dist_sq = delta.x.saturating_mul(delta.x).saturating_add(delta.y.saturating_mul(delta.y));
+        if dist_sq < closest_dist_sq {
+            closest_dist_sq = dist_sq;
+        }
+    }
+    closest_dist_sq
 }
 
 fn pick_wander_dir(rng: &mut impl Rng) -> Vec2 {
@@ -201,6 +246,7 @@ fn collect_entity_avoidance(
     self_dim: &DimensionRef,
     cfg: &WanderConfig,
     move_speed: f32,
+    beings_at_gpos: &BeingsAtGpos,
     threat_query: &Query<
         (
             Entity,
@@ -210,6 +256,7 @@ fn collect_entity_avoidance(
         (With<Being>, ),
     >,
     tag_query: &Query<&TagSet>,
+    nearby_threats: &mut EntityHashSet,
 ) -> Vec2 {
     if cfg.avoid_race_tags.is_empty() && cfg.avoid_bit_tags.is_empty() && cfg.avoid_pack_tags.is_empty() {
         return Vec2::ZERO;
@@ -224,8 +271,27 @@ fn collect_entity_avoidance(
     let Ok(&self_pos) = blocking_tiles.gpos_query.get(self_ent) else {
         return Vec2::ZERO;
     };
-    for (threat_ent, &threat_dim, member_of) in threat_query.iter() {
-        if threat_ent == self_ent || threat_dim != *self_dim {
+    let radius_tiles = max_radius.ceil().max(1.0) as i32;
+    nearby_threats.clear();
+    for dy in -radius_tiles..=radius_tiles {
+        for dx in -radius_tiles..=radius_tiles {
+            let scan_gpos = GlobalTilePos(self_pos.0 + IVec2::new(dx, dy));
+            nearby_threats.extend(
+                beings_at_gpos
+                    .get_beings_at_pos(*self_dim, scan_gpos)
+                    .iter()
+                    .copied(),
+            );
+        }
+    }
+    for threat_ent in nearby_threats.iter().copied() {
+        if threat_ent == self_ent {
+            continue;
+        }
+        let Ok((_, &threat_dim, member_of, )) = threat_query.get(threat_ent) else {
+            continue;
+        };
+        if threat_dim != *self_dim {
             continue;
         }
         let Ok(&threat_pos) = blocking_tiles.gpos_query.get(threat_ent) else {
@@ -306,14 +372,33 @@ pub fn wander_behavior(
         ),
         (With<Being>, ),
     >,
+    activators_query: Query<(Entity, &DimensionRef), (With<LoadChunksAround>, )>,
+    beings_at_gpos: Res<BeingsAtGpos>,
     tag_query: Query<&TagSet>,
     pack_center_query: Query<&PackCenterPerDim>,
     mut wander_states: Local<EntityHashMap<WanderState>>,
+    mut nearby_threats: Local<EntityHashSet>,
+    mut activator_positions_by_dim: Local<EntityHashMap<Vec<GlobalTilePos>>>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
     let mut rng = rand::rng();
     let dt = time.delta_secs();
+    let mut evaluated_wanderers = 0usize;
+    let mut skipped_for_lod = 0usize;
+    activator_positions_by_dim.clear();
+    let activator_iter = activators_query.iter();
+    activator_positions_by_dim.reserve(activator_iter.size_hint().1.unwrap_or(activator_iter.size_hint().0));
+    for (activator_ent, &dim_ref) in activator_iter {
+        let Ok(&activator_gpos) = blocking_tiles.gpos_query.get(activator_ent) else {
+            continue;
+        };
+        activator_positions_by_dim
+            .entry(dim_ref.0)
+            .or_default()
+            .push(activator_gpos);
+    }
     for (pred_ent, &dim_ref, member_of, ) in beings.iter_mut() {
+        evaluated_wanderers += 1;
         let Ok(&gpos) = blocking_tiles.gpos_query.get(pred_ent) else {
             continue;
         };
@@ -321,9 +406,28 @@ pub fn wander_behavior(
         let race_ref = blocking_tiles.get_being_race_ref(pred_ent);
         let cfg = resolve_wander_cfg(member_of, bit_ref, race_ref, &wander_cfg_query);
         let avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
+        let avoid_spawn_tile_tags = BlacklistedSpawnTileTags(avoid_tile_tags.clone());
         let state = wander_states
             .entry(pred_ent)
             .or_insert_with(|| WanderState::new(&mut rng, &cfg));
+        let lod_level = activator_positions_by_dim
+            .get(&dim_ref.0)
+            .map(|activators| wander_lod_level_for_distance(closest_activator_tile_distance_sq(gpos, activators)))
+            .unwrap_or(3);
+        if state.lod_level != lod_level {
+            state.lod_level = lod_level;
+            state.lod_timer = Timer::new(wander_lod_interval_for_level(lod_level), TimerMode::Once);
+            state.lod_timer.tick(state.lod_timer.duration());
+        } else if lod_level > 0 {
+            state.lod_timer.tick(Duration::from_secs_f32(dt));
+        }
+        if lod_level > 0 && !state.lod_timer.just_finished() {
+            skipped_for_lod += 1;
+            continue;
+        }
+        if lod_level > 0 {
+            state.lod_timer = Timer::new(wander_lod_interval_for_level(lod_level), TimerMode::Once);
+        }
         let mut input_dir = apply_wander_input(state, dt, &mut rng, &cfg);
 
         if let Some(member_of) = member_of {
@@ -366,8 +470,10 @@ pub fn wander_behavior(
             &dim_ref,
             &cfg,
             state.speed_mult,
+            &beings_at_gpos,
             &threat_query,
             &tag_query,
+            &mut nearby_threats,
         );
 
         // Check if currently in an undesirable tile, and if so, scan for nearby desirable tile
@@ -377,7 +483,7 @@ pub fn wander_behavior(
                 gpos,
                 pred_ent,
                 &WhitelistedSpawnTileTags::default(),
-                &BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
+                &avoid_spawn_tile_tags,
             ) {
                 if let Some(target_pos) = blocking_tiles.find_closest_allowed_gpos(
                     dim_ref,
@@ -404,7 +510,7 @@ pub fn wander_behavior(
                     next,
                     pred_ent,
                     &WhitelistedSpawnTileTags::default(),
-                    &BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
+                    &avoid_spawn_tile_tags,
                 ) {
                     input_dir = Vec2::ZERO;
                 }
@@ -449,6 +555,15 @@ pub fn wander_behavior(
             Some(GoTo::new(farthest_target, 0.0)),
             throttle,
         ));
+    }
+    if evaluated_wanderers > 0 {
+        trace!(
+            target: BEING_SYSTEM,
+            "wander_behavior: evaluated_wanderers={} skipped_for_lod={} emitted_nav_orders={}",
+            evaluated_wanderers,
+            skipped_for_lod,
+            messages.len()
+        );
     }
     writer.write_batch(messages.drain(..));
 }

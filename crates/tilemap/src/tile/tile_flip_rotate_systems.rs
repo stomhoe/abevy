@@ -11,7 +11,7 @@ pub fn flip_tile_based_on_initial_pos_hash(
     settings: Query<&GlobalGenSettings>,
     mut tile_query: Query<
         (&mut TileFlip, &InitialPos, &TemplEntiRef),
-        (Changed<InitialPos>, Without<TemplEnti>, common::AnyDisabling,),
+        (Changed<InitialPos>, Without<Templ>, common::AnyDisabling,),
     >,
     dim_hash_query: Query<&HashId, common::AnyDisabling>,
     templ_query: Query<(
@@ -70,7 +70,7 @@ pub fn rotate_tile_based_on_initial_pos_hash(
         (
             Changed<InitialPos>,
             common::AnyDisabling,
-            Without<TemplEnti>,
+            Without<Templ>,
         ),
     >,
     templ_query: Query<(Has<RotateTransform>), (With<ChangeFacingDirectionBasedOnHash>,),
@@ -125,7 +125,7 @@ pub fn sync_sprite_flips_with_tileflip(
         (
             Or<(Changed<TileFlip>, Changed<HeldSprites>, Changed<Children>)>,
             With<Tile>,
-            Without<TemplEnti>,
+            Without<Templ>,
             common::AnyDisabling,
         ),
     >,
@@ -160,7 +160,7 @@ pub fn track_non_default_tile_cardinal_direction_changes(
     hash_id_query: Query<&common::HashId>,
     query: Query<
         (&CardinalDirection, &GlobalTilePos, &TemplEntiRef),
-        (With<Tile>, Without<TemplEnti>, Changed<CardinalDirection>, common::AnyDisabling, ),
+        (With<Tile>, Without<Templ>, Changed<CardinalDirection>, common::AnyDisabling, ),
     >,
     mut card_at_gpos: ResMut<CardinalDirAtGpos>,
 ) {
@@ -180,7 +180,7 @@ pub fn sync_cardinal_dir_at_gpos_on_gpos_change(
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
     query: Query<
         (&CardinalDirection, &GlobalTilePos, &TemplEntiRef),
-        (With<Tile>, Without<TemplEnti>, common::AnyDisabling, ),
+        (With<Tile>, Without<Templ>, common::AnyDisabling, ),
     >,
     hash_id_query: Query<&common::HashId>,
     mut card_at_gpos: ResMut<CardinalDirAtGpos>,

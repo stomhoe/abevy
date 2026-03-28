@@ -51,7 +51,7 @@ fn render_tilemap_grid(
     ui: &mut egui::Ui,
     tile_storage: &TileStorage,
     tile_query: &Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
-    templ_query: &Query<&TileStrId, With<TemplEnti>>,
+    templ_query: &Query<&TileStrId, With<Templ>>,
     selected_tile: &mut Option<Entity>,
     camera_tile_pos: Option<GlobalTilePos>,
 ) -> Option<Entity> {
@@ -320,7 +320,7 @@ pub fn debug_chunking_window(
     tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
     tile_query: Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
     spritetile_gpos_query: Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>, Option<&StrId>)>,
-    templ_query: Query<&TileStrId, With<TemplEnti>>,
+    templ_query: Query<&TileStrId, With<Templ>>,
     id_query: Query<&StrId>,
 ) {
     if !window_visible.chunks_list {

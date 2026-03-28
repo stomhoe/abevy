@@ -50,11 +50,11 @@ pub struct RemoveOnEnterSemiRealSimMode(
     pub LoadChunksAround,
     pub ActivatingChunks,
     pub RetainedChasePathSnapshot,
-    pub Visibility,
     pub StepDistanceSfxState,
-    pub PendingTileCorrection,
-    pub sprite_animation_shared::MoveAnimActive,
     /*
+        pub PendingTileCorrection,
+        pub Visibility,
+        pub sprite_animation_shared::MoveAnimActive,
         pub GridLockedMovementVisual,
      */
 );

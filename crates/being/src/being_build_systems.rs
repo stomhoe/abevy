@@ -6,7 +6,7 @@ use bevy::{
 #[allow(unused_imports, )]
 use common::{AnyDisabling, common_components::{SampleSpriteEnts, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_resources::FactionRef;
-use game_common::game_common_timers::TemplEnti;
+use game_common::game_common_timers::Templ;
 use ::sprite_shared::*;
 use ::tilemap_shared::*;
 
@@ -17,7 +17,7 @@ use crate::{
 
 #[derive(SystemParam)]
 pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
-    changed_beings: Query<'w, 's, Entity, (Or<(Changed<BitRef>, Changed<RaceRef>)>, Without<TemplEnti>, Without<BeingInstTemplate>, AnyDisabling)>,
+    changed_beings: Query<'w, 's, Entity, (Or<(Changed<BitRef>, Changed<RaceRef>)>, Without<Templ>, Without<BeingInstTemplate>, AnyDisabling)>,
     bit_query: Query<'w, 's, (&'static BeingInstTemplate,)>,
     scs_to_build_query: Query<'w, 's, (), With<ScsToBuild>>,
     mapped_sprites_to_sample_query: Query<'w, 's, &'static SexMappedSpritesToSample>,

@@ -8,7 +8,7 @@ use ::tilemap_shared::*;
 
 #[derive(Bundle)]
 pub struct EntityZeroCloneDeny(
-    TemplEnti,
+    Templ,
     InteractionZones,
     AcZ,
     YSortOrigin,
@@ -22,8 +22,8 @@ pub struct EntityZeroCloneDeny(
 );
 
 #[derive(Bundle)]
-pub struct DenyForEntityZeroClonedChild(
-    TemplEnti,
+pub struct DenyForTemplClonedChildren(
+    Templ,
     BaseHolderRef,
     Disabled,
     ImagePathHolder,

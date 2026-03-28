@@ -15,7 +15,7 @@ pub use crate::tile::tile_delete_others_systems::{process_tile_despawns_from_tem
 #[allow(unused_parens)]
 pub fn on_spritetile_despawn(
     trig: On<Despawn, (Tile, Transform, SpriteTile)>,
-    query: Query<(&DimensionRef, &GlobalTilePos, &TemplEntiRef), (Without<TilemapId>, Without<TilePos>, Without<TemplEnti>, AnyDisabling)>,
+    query: Query<(&DimensionRef, &GlobalTilePos, &TemplEntiRef), (Without<TilemapId>, Without<TilePos>, Without<Templ>, AnyDisabling)>,
     interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
     mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
 ) {
@@ -29,7 +29,7 @@ pub fn on_spritetile_despawn(
 pub fn despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles(
     query: Query<
         (Entity, &DimensionRef, &GlobalTilePos, &TemplEntiRef, &DeleteOtherTilesInSamePos, Option<&TagSet>),
-        (Added<DeleteOtherTilesInSamePos>, common::AnyDisabling, Without<TemplEnti>),
+        (Added<DeleteOtherTilesInSamePos>, common::AnyDisabling, Without<Templ>),
     >,
     registered_positions: Res<ImportantRegisteredPositions>,
     gather_params: TileGatheringParamSet,
@@ -45,7 +45,7 @@ pub fn despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_t
 pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
     query: Query<
         (Entity, &DimensionRef, &GlobalTilePos, &TemplEntiRef),
-        (common::AnyDisabling, Without<TemplEnti>),
+        (common::AnyDisabling, Without<Templ>),
     >,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
     registered_positions: Res<ImportantRegisteredPositions>,

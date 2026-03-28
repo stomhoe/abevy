@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
-use game_common::game_common_components::TemplEnti;
+use game_common::game_common_components::Templ;
 use tilemap_shared::{DimensionRef, GlobalTilePos, };
 use ::being_shared::*;
 
@@ -9,7 +9,7 @@ use crate::pack::pack_components::*;
 #[allow(unused_parens, )]
 pub fn despawn_empty_squads(
     mut cmd: Commands,
-    query: Query<(), (Without<TemplEnti>, Without<SquadMembers>, Without<faction_shared::Faction>)>,
+    query: Query<(), (Without<Templ>, Without<SquadMembers>, Without<faction_shared::Faction>)>,
     mut removed_squad_members: RemovedComponents<SquadMembers>,
 ) {
     for squad_ent in removed_squad_members.read() {
@@ -22,8 +22,8 @@ pub fn despawn_empty_squads(
 #[allow(unused_parens, )]
 pub fn update_pack_center_pos(
     mut cmd: Commands,
-    mut pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterRankMultipliers>, Option<&mut PackCenterPerDim>, ), (Without<TemplEnti>, )>,
-    member_pos_query: Query<(&DimensionRef, &GlobalTilePos, Option<&BitRef>, Option<&RaceRef>, ), (Without<TemplEnti>, ),>,
+    mut pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterRankMultipliers>, Option<&mut PackCenterPerDim>, ), (Without<Templ>, )>,
+    member_pos_query: Query<(&DimensionRef, &GlobalTilePos, Option<&BitRef>, Option<&RaceRef>, ), (Without<Templ>, ),>,
     mut centers: Local<HashMap<DimensionRef, (Vec2, f32)>>,
 ) {
     for (pack_ent, members, member_ranks, global_weight_multiplier, center_rank_multipliers, pack_center_pos, ) in pack_query.iter_mut() {

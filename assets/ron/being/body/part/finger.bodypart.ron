@@ -7,8 +7,6 @@
         "hp_capacity": 6.0,
         "hp_regen_rate": 0.6,
         "blood_capacity": 3.0,
-        "walk_speed": 0.0,
-        "swim_speed": 0.0,
         "manip_dex": 0.9,
         "manip_str": 0.2,
         "pain_sensitivity": 1.6,
